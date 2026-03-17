@@ -186,10 +186,12 @@ export default function TreeRegistrationScreen() {
             <TreeRow
               key={tree.id}
               posicion={tree.posicion}
-              especieCodigo={tree.especieId === null ? 'N/N' : null}
+              especieCodigo={tree.especieId === null ? 'N/N' : tree.subId.replace(/^.*?([A-Z]+)\d+$/, '$1')}
               subId={tree.subId}
+              fotoUrl={tree.fotoUrl}
               isLast={index === 0}
               onDelete={index === 0 ? handleUndo : undefined}
+              onAttachPhoto={() => handleAddPhotoToTree(tree.id)}
             />
           ))}
         </View>
