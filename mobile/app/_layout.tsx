@@ -8,6 +8,8 @@ import { Slot, useRouter, useSegments } from 'expo-router';
 import { Text, View, StyleSheet } from 'react-native';
 import { useEffect } from 'react';
 import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
+import { seedPlantationIfNeeded } from '../src/database/seeds/seedPlantation';
+import { seedPlantationSpeciesIfNeeded } from '../src/database/seeds/seedPlantationSpecies';
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
@@ -18,7 +20,10 @@ export default function RootLayout() {
   // Run species seed after migrations succeed
   useEffect(() => {
     if (success) {
-      seedSpeciesIfNeeded().catch(console.error);
+      seedSpeciesIfNeeded()
+        .then(() => seedPlantationIfNeeded())
+        .then(() => seedPlantationSpeciesIfNeeded())
+        .catch(console.error);
     }
   }, [success]);
 

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
@@ -27,7 +27,9 @@ export const subgroups = sqliteTable('subgroups', {
   estado: text('estado').notNull().default('activa'),
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
-});
+}, (t) => ({
+  uniqueCode: uniqueIndex('subgroups_plantation_code_unique').on(t.plantacionId, t.codigo),
+}));
 
 export const trees = sqliteTable('trees', {
   id: text('id').primaryKey(),
@@ -40,4 +42,11 @@ export const trees = sqliteTable('trees', {
   globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
   createdAt: text('created_at').notNull(),
+});
+
+export const plantationSpecies = sqliteTable('plantation_species', {
+  id: text('id').primaryKey(),
+  plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
+  especieId: text('especie_id').notNull().references(() => species.id),
+  ordenVisual: integer('orden_visual').notNull().default(0),
 });
