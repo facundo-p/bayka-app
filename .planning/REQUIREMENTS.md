@@ -43,8 +43,8 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### SubGroup Management
 
-- [ ] **SUBG-01**: Technician can create a SubGroup with name, code, and type (linea/parcela)
-- [ ] **SUBG-02**: SubGroup code must be unique within the plantation
+- [x] **SUBG-01**: Technician can create a SubGroup with name, code, and type (linea/parcela)
+- [x] **SUBG-02**: SubGroup code must be unique within the plantation
 - [ ] **SUBG-03**: System shows last created SubGroup name when creating a new one
 - [ ] **SUBG-04**: Technician can view list of SubGroups with state indicators (activa/finalizada/sincronizada)
 - [ ] **SUBG-05**: Technician can finalize a SubGroup (activa → finalizada)
@@ -55,15 +55,15 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 - [ ] **TREE-01**: Technician sees species button grid when registering trees in a SubGroup
 - [ ] **TREE-02**: One tap on a species button creates a tree record instantly (no confirmation)
-- [ ] **TREE-03**: Tree position increments automatically within the SubGroup
-- [ ] **TREE-04**: SubID generated automatically (SubGroupCode + SpeciesCode + Position)
+- [x] **TREE-03**: Tree position increments automatically within the SubGroup
+- [x] **TREE-04**: SubID generated automatically (SubGroupCode + SpeciesCode + Position)
 - [ ] **TREE-05**: Last 3 registered trees displayed on registration screen
 - [ ] **TREE-06**: Technician can attach optional photo to any tree (camera or gallery)
 - [ ] **TREE-07**: Technician can delete the last registered tree (undo)
 
 ### N/N Workflow
 
-- [ ] **NN-01**: Technician can register unidentified tree as N/N via dedicated button
+- [x] **NN-01**: Technician can register unidentified tree as N/N via dedicated button
 - [ ] **NN-02**: Photo is mandatory when registering N/N tree
 - [ ] **NN-03**: N/N resolution screen shows photo and species selector
 - [ ] **NN-04**: Technician can resolve N/N by selecting correct species
@@ -71,8 +71,8 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Reverse Order
 
-- [ ] **REVR-01**: Technician can reverse tree order within a SubGroup
-- [ ] **REVR-02**: Reverse recalculates all tree positions
+- [x] **REVR-01**: Technician can reverse tree order within a SubGroup
+- [x] **REVR-02**: Reverse recalculates all tree positions
 - [ ] **REVR-03**: Reverse only allowed before SubGroup is synced
 
 ### Sync
@@ -153,8 +153,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Complete |
 | AUTH-05 | Phase 1 | Complete |
-| SUBG-01 | Phase 2 | Pending |
-| SUBG-02 | Phase 2 | Pending |
+| SUBG-01 | Phase 2 | Complete |
+| SUBG-02 | Phase 2 | Complete |
 | SUBG-03 | Phase 2 | Pending |
 | SUBG-04 | Phase 2 | Pending |
 | SUBG-05 | Phase 2 | Pending |
@@ -162,18 +162,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SUBG-07 | Phase 2 | Pending |
 | TREE-01 | Phase 2 | Pending |
 | TREE-02 | Phase 2 | Pending |
-| TREE-03 | Phase 2 | Pending |
-| TREE-04 | Phase 2 | Pending |
+| TREE-03 | Phase 2 | Complete |
+| TREE-04 | Phase 2 | Complete |
 | TREE-05 | Phase 2 | Pending |
 | TREE-06 | Phase 2 | Pending |
 | TREE-07 | Phase 2 | Pending |
-| NN-01 | Phase 2 | Pending |
+| NN-01 | Phase 2 | Complete |
 | NN-02 | Phase 2 | Pending |
 | NN-03 | Phase 2 | Pending |
 | NN-04 | Phase 2 | Pending |
 | NN-05 | Phase 2 | Pending |
-| REVR-01 | Phase 2 | Pending |
-| REVR-02 | Phase 2 | Pending |
+| REVR-01 | Phase 2 | Complete |
+| REVR-02 | Phase 2 | Complete |
 | REVR-03 | Phase 2 | Pending |
 | SYNC-01 | Phase 3 | Pending |
 | SYNC-02 | Phase 3 | Pending |
