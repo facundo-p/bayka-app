@@ -492,7 +492,7 @@ export const subgroups = sqliteTable('subgroups', {
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
   tipo: text('tipo').notNull().default('linea'), // linea | parcela
-  estado: text('estado').notNull().default('recording'), // recording | finished | synced
+  estado: text('estado').notNull().default('activa'), // activa | finalizada | sincronizada
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
 });
@@ -504,6 +504,8 @@ export const trees = sqliteTable('trees', {
   posicion: integer('posicion').notNull(),
   subId: text('sub_id').notNull(),
   fotoUrl: text('foto_url'),
+  plantacionId: integer('plantacion_id'),
+  globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
   createdAt: text('created_at').notNull(),
 });
@@ -572,6 +574,7 @@ create table subgroups (
   nombre text not null,
   codigo text not null,
   tipo text not null default 'linea' check (tipo in ('linea', 'parcela')),
+  estado text not null default 'activa' check (estado in ('activa', 'finalizada', 'sincronizada')),
   usuario_creador uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
   unique (plantation_id, codigo)  -- uniqueness constraint
@@ -585,6 +588,8 @@ create table trees (
   posicion integer not null,
   sub_id text not null,
   foto_url text,
+  plantacion_id integer,
+  global_id integer,
   usuario_registro uuid not null references auth.users(id),
   created_at timestamptz not null default now()
 );

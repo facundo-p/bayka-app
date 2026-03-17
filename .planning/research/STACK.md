@@ -126,7 +126,7 @@ export default {
 - Local SQLite is the source of truth at all times
 - Supabase is write-only during sync (push SubGroup + Trees atomically via RPC or batch upsert)
 - Pull updated data (other technicians' SubGroups, species catalog) after push succeeds
-- Mark SubGroup as `synced = true` in local DB after successful push; make immutable
+- Mark SubGroup as `sincronizada` in local DB after successful push; make immutable
 - Sync unit = one SubGroup + its Trees in a single Supabase transaction (Postgres function via RPC)
 - Because `autoRefreshToken` can fail offline: persist session in expo-secure-store and restore on app foreground
 

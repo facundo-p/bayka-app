@@ -61,6 +61,7 @@ create table subgroups (
   nombre text not null,
   codigo text not null,
   tipo text not null default 'linea' check (tipo in ('linea', 'parcela')),
+  estado text not null default 'activa' check (estado in ('activa', 'finalizada', 'sincronizada')),
   usuario_creador uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
   unique (plantation_id, codigo)
@@ -74,6 +75,8 @@ create table trees (
   posicion integer not null,
   sub_id text not null,
   foto_url text,
+  plantacion_id integer,
+  global_id integer,
   usuario_registro uuid not null references auth.users(id),
   created_at timestamptz not null default now()
 );

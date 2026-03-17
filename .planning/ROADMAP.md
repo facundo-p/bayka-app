@@ -41,12 +41,12 @@ Plans:
 **Depends on**: Phase 1
 **Requirements**: SUBG-01, SUBG-02, SUBG-03, SUBG-04, SUBG-05, SUBG-06, SUBG-07, TREE-01, TREE-02, TREE-03, TREE-04, TREE-05, TREE-06, TREE-07, NN-01, NN-02, NN-03, NN-04, NN-05, REVR-01, REVR-02, REVR-03
 **Success Criteria** (what must be TRUE):
-  1. Technician can create a SubGroup with a unique code and type, and see it listed with its current state (recording / finished / synced)
+  1. Technician can create a SubGroup with a unique code and type, and see it listed with its current state (activa / finalizada / sincronizada)
   2. Tapping a species button instantly creates a tree record with auto-incremented position and SubID — no dialog, no loading indicator
   3. Technician can undo the last registered tree without a confirmation dialog
   4. Registering a N/N tree requires a photo; the SubGroup cannot be finalized until all N/N trees are resolved with a species
-  5. Technician can reverse the order of trees in a SubGroup before it is synced, and positions recalculate correctly
-  6. Technician can only edit SubGroups they created; synced SubGroups are read-only
+  5. Technician can reverse the order of trees in a SubGroup before it is sincronizada, and positions recalculate correctly
+  6. Technician can only edit SubGroups they created; sincronizada SubGroups are read-only
 **Plans**: TBD
 
 Plans:
@@ -56,13 +56,13 @@ Plans:
 - [ ] 02-04: N/N resolution screen (local photo thumbnail, species selector, resolve action)
 
 ### Phase 3: Sync + Dashboard
-**Goal**: Technicians can see their plantation progress on the dashboard and manually sync finished SubGroups to the server, downloading other technicians' data in return
+**Goal**: Technicians can see their plantation progress on the dashboard and manually sync finalizada SubGroups to the server, downloading other technicians' data in return
 **Depends on**: Phase 2
 **Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04, SYNC-05, SYNC-06, SYNC-07, DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
 **Success Criteria** (what must be TRUE):
   1. Technician sees their assigned plantations on the dashboard with total trees, unsynced tree count, and today's tree count
   2. Admin sees all plantations for the organization with the same stats
-  3. Technician can initiate sync and finished SubGroups upload atomically (SubGroup + all trees in one server transaction); on success the SubGroup becomes immutable
+  3. Technician can initiate sync and finalizada SubGroups upload atomically (SubGroup + all trees in one server transaction); on success the SubGroup becomes immutable
   4. If the server rejects a sync due to duplicate SubGroup code, the user sees a plain-language error and the SubGroup remains local
   5. After sync, the app downloads updated species and other technicians' SubGroups
   6. The number of SubGroups pending sync is always visible without navigating away
@@ -70,7 +70,7 @@ Plans:
 
 Plans:
 - [ ] 03-01: Supabase RPC function for atomic SubGroup sync (server-side Postgres transaction, idempotency key, RLS, conflict detection)
-- [ ] 03-02: SyncService (outbox written atomically with domain write, pull-then-push order, conflict error surface, synced state mark)
+- [ ] 03-02: SyncService (outbox written atomically with domain write, pull-then-push order, conflict error surface, sincronizada state mark)
 - [ ] 03-03: Dashboard screens (plantation list for tecnico and admin, stats live queries, pending sync badge, sync trigger CTA)
 
 ### Phase 4: Admin + Export
@@ -79,7 +79,7 @@ Plans:
 **Requirements**: PLAN-01, PLAN-02, PLAN-03, PLAN-04, PLAN-05, PLAN-06, IDGN-01, IDGN-02, IDGN-03, IDGN-04, EXPO-01, EXPO-02, EXPO-03
 **Success Criteria** (what must be TRUE):
   1. Admin can create a plantation with lugar and periodo, add species from the global catalog (with configurable button order), and assign technicians
-  2. Admin can finalize a plantation after all its SubGroups are synced; finalization locks further SubGroup creation
+  2. Admin can finalize a plantation after all its SubGroups are sincronizada; finalization locks further SubGroup creation
   3. Admin can trigger ID generation after finalization: plantation-sequential IDs and global organization IDs are assigned with a configurable initial seed
   4. Admin can export a finalized plantation to CSV and Excel files containing all required columns (ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie)
 **Plans**: TBD

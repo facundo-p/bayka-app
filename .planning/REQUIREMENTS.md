@@ -46,8 +46,8 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 - [ ] **SUBG-01**: Technician can create a SubGroup with name, code, and type (linea/parcela)
 - [ ] **SUBG-02**: SubGroup code must be unique within the plantation
 - [ ] **SUBG-03**: System shows last created SubGroup name when creating a new one
-- [ ] **SUBG-04**: Technician can view list of SubGroups with state indicators (recording/finished/synced)
-- [ ] **SUBG-05**: Technician can finalize a SubGroup (recording → finished)
+- [ ] **SUBG-04**: Technician can view list of SubGroups with state indicators (activa/finalizada/sincronizada)
+- [ ] **SUBG-05**: Technician can finalize a SubGroup (activa → finalizada)
 - [ ] **SUBG-06**: Synced SubGroups are immutable (no edit allowed)
 - [ ] **SUBG-07**: Technician can only edit SubGroups they created
 
@@ -77,11 +77,11 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Sync
 
-- [ ] **SYNC-01**: Technician can manually initiate sync for finished SubGroups
+- [ ] **SYNC-01**: Technician can manually initiate sync for finalizada SubGroups
 - [ ] **SYNC-02**: Sync uploads SubGroup + all trees as atomic unit
 - [ ] **SYNC-03**: Server rejects sync if SubGroup code already exists in plantation
 - [ ] **SYNC-04**: Sync conflict shows clear error message to user
-- [ ] **SYNC-05**: Successful sync marks SubGroup as synced (immutable)
+- [ ] **SYNC-05**: Successful sync marks SubGroup as sincronizada (immutable)
 - [ ] **SYNC-06**: During sync, app downloads updated data from other technicians
 - [ ] **SYNC-07**: User can see list of SubGroups pending sync
 

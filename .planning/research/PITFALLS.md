@@ -66,8 +66,8 @@ Implementing an atomic upsert across multiple tables (SubGroups + Trees in a sin
 **How to avoid:**
 - Implement sync as a Supabase **PostgreSQL RPC function** (Edge Function or `rpc()` call) that wraps SubGroup + Tree inserts in a single database transaction. If any tree insert fails, the entire operation rolls back.
 - The client sends the complete SubGroup payload as a single JSON body to one endpoint.
-- Use the client-generated idempotency key as a guard: if the SubGroup code already exists and is marked `synced`, return 200 without re-inserting. This makes the operation safe to retry.
-- After server confirmation, mark the local SubGroup as `synced` and set immutability flag.
+- Use the client-generated idempotency key as a guard: if the SubGroup code already exists and is marked `sincronizada`, return 200 without re-inserting. This makes the operation safe to retry.
+- After server confirmation, mark the local SubGroup as `sincronizada` and set immutability flag.
 
 **Warning signs:**
 - Partial SubGroups visible in the admin dashboard.
@@ -105,7 +105,7 @@ SQLite in React Native/Expo is a local file. The ORM (Drizzle) generates migrati
 ### Pitfall 5: Species Button Grid Becomes Unusable Under Real Field Conditions
 
 **What goes wrong:**
-The species grid looks fine on a desk: 20 buttons, legible labels. In the field: direct sunlight washes out the screen, dirty gloves miss small touch targets, and technicians register the wrong species at speed. A 20-minute planting session produces a SubGroup that must be manually corrected or re-done. Since synced SubGroups are immutable, an error caught after sync has no remedy in Phase 1.
+The species grid looks fine on a desk: 20 buttons, legible labels. In the field: direct sunlight washes out the screen, dirty gloves miss small touch targets, and technicians register the wrong species at speed. A 20-minute planting session produces a SubGroup that must be manually corrected or re-done. Since sincronizada SubGroups are immutable, an error caught after sync has no remedy in Phase 1.
 
 **Why it happens:**
 Developers test UI on simulators or in office conditions. Touch targets are sized by "looks reasonable" rather than HIG/Material minimums for gloved use. Screen contrast is evaluated without simulating sunlight wash-out. One-tap registration with no confirmation dialog is correctly prioritized for speed, but this makes accidental taps irreversible without per-species undo.
@@ -137,7 +137,7 @@ Offline-first apps store data only locally until the user syncs. This is intenti
 
 **How to avoid:**
 - Make the sync status **visually prominent and persistent** — a badge or banner on the plantation screen showing "X SubGroups not synced" at all times.
-- When the technician finishes recording a SubGroup and taps "Finalize," immediately prompt sync if connectivity is available. Don't make them navigate to a separate sync screen.
+- When the technician finishes registering a SubGroup and taps "Finalize," immediately prompt sync if connectivity is available. Don't make them navigate to a separate sync screen.
 - Include a prominent in-app warning before any destructive action that would lose unsynced data.
 - Consider exposing a "what's at risk" screen: "You have 3 SubGroups with 847 trees that have not been synced. Sync before logging out."
 - On Android, ensure SQLite database is in a directory excluded from automatic backup/restore to avoid stale data on new devices (restore from backup would bring old data without sync status).
@@ -181,7 +181,7 @@ N/N resolution is a post-hoc identification step that requires re-examining phot
 | AsyncStorage for sync queue instead of SQLite outbox | Simpler initial implementation | Duplicate/lost syncs; impossible to make atomic with domain writes | Never — use SQLite from day one |
 | Multiple REST calls for SubGroup sync instead of single RPC | Easier to debug individual steps | Non-atomic sync; partial data on server after connection drop | Never — one RPC from day one |
 | Skip drizzle migration setup, recreate DB on schema change | No migration code to write | Wipes all local user data on every app update | Never — set up migrations in Phase 1 |
-| Inline species name in tree record instead of FK to species table | Faster to query | Species rename breaks historical data; sync conflicts on species name changes | Never for synced data |
+| Inline species name in tree record instead of FK to species table | Faster to query | Species rename breaks historical data; sync conflicts on species name changes | Never for sincronizada data |
 | Synchronous SQLite calls on main thread | Simpler code | UI freezes during heavy write operations (e.g., syncing 500 trees) | Never — use async API |
 | Store photos as base64 in SQLite | Single storage location | Memory spikes; SQLite file bloat; app crashes on low-end devices | Never — store as file path + local URI |
 | Hardcode Supabase URL + anon key in source | Works immediately | Secret exposure if repo is ever public; no environment switching | Only if repo stays private forever and no staging/prod split needed |
@@ -222,7 +222,7 @@ N/N resolution is a post-hoc identification step that requires re-examining phot
 | No RLS on `subgroups` and `trees` tables | Any authenticated user can read or modify any plantation's data | Apply RLS: technicians see only their assigned plantations; admins see all |
 | Storing Supabase service role key in mobile app | Full database access if key is extracted from APK/IPA | Never use service role key on client; use anon key + RLS only |
 | Allowing duplicate SubGroup codes per plantation | Data integrity failure; ambiguous sync results | UNIQUE constraint on `(plantation_id, subgroup_code)` in Postgres + client-side check before finalizing |
-| No validation of tree count before sync | Malformed payloads accepted by server | Server RPC validates: SubGroup must have at least 1 tree and no pending N/N trees before marking as synced |
+| No validation of tree count before sync | Malformed payloads accepted by server | Server RPC validates: SubGroup must have at least 1 tree and no pending N/N trees before marking as sincronizada |
 
 ---
 
@@ -233,7 +233,7 @@ N/N resolution is a post-hoc identification step that requires re-examining phot
 | Sync button hidden in a menu or settings screen | Technicians forget to sync; data lost or stale | Sync CTA prominent on plantation detail screen; badge count of unsynced SubGroups always visible |
 | Confirmation dialog on every tree registration | Registration too slow; technicians skip or rush | Zero confirmation on registration; provide undo of last tree only (one-tap decrement) |
 | Species labels truncated to 2-3 characters | Wrong species registered; data quality failure | Use species abbreviation codes designed for the domain; show full name on long-press |
-| No visual distinction between synced/unsynced/recording states | Technician doesn't know what's safe | Color-coded SubGroup state chips: recording (yellow), finished (orange), synced (green) |
+| No visual distinction between sincronizada/unsynced/activa states | Technician doesn't know what's safe | Color-coded SubGroup state chips: activa (yellow), finalizada (orange), sincronizada (green) |
 | Error messages shown as technical strings | Technicians can't act on errors | All user-facing errors must be in plain Spanish with a clear next action ("Sin conexión. Volvé a intentar cuando tengas señal.") |
 | App requires login on every session | Disruptive in the field; workers share devices | Persist session; only require login after explicit logout or token unrecoverable expiry |
 | Dark mode not tested in outdoor sunlight | Text unreadable in glare | Test both themes at maximum brightness outdoors; prefer high-contrast light theme as default |
@@ -248,7 +248,7 @@ N/N resolution is a post-hoc identification step that requires re-examining phot
 - [ ] **Schema migration:** Install v1 with data, upgrade to v2 with a schema change; verify all local data survives.
 - [ ] **N/N photo offline:** Resolve an N/N tree in airplane mode; verify the photo loads from local storage, not the network.
 - [ ] **Glove test:** Register 10 trees using thick winter gloves on a physical device; verify no accidental wrong-species taps.
-- [ ] **SubGroup immutability:** Verify that a synced SubGroup cannot be edited — the UI must not present edit controls on synced records.
+- [ ] **SubGroup immutability:** Verify that a sincronizada SubGroup cannot be edited — the UI must not present edit controls on sincronizada records.
 - [ ] **Sync status visibility:** Count the number of UI interactions required to see how many SubGroups are pending sync. Must be zero (always visible).
 - [ ] **RLS enforcement:** Authenticate as Technician A and attempt to fetch Technician B's SubGroups via Supabase client; must return empty.
 - [ ] **Large SubGroup performance:** Register 300 trees in a single SubGroup, finalize, sync; verify sync completes in <30 seconds on a mid-range Android device.

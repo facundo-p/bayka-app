@@ -24,7 +24,7 @@ export const subgroups = sqliteTable('subgroups', {
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
   tipo: text('tipo').notNull().default('linea'),
-  estado: text('estado').notNull().default('recording'),
+  estado: text('estado').notNull().default('activa'),
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
 });
@@ -36,6 +36,8 @@ export const trees = sqliteTable('trees', {
   posicion: integer('posicion').notNull(),
   subId: text('sub_id').notNull(),
   fotoUrl: text('foto_url'),
+  plantacionId: integer('plantacion_id'),
+  globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
   createdAt: text('created_at').notNull(),
 });

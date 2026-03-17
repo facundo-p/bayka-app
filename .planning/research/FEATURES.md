@@ -16,7 +16,7 @@ Features technicians and admins assume exist. Missing these = product feels brok
 |---------|--------------|------------|-------|
 | Offline-first data entry | Field sites have no connectivity; any app that requires internet is DOA | HIGH | SQLite local store; all writes local, sync on demand |
 | One-tap species registration | Speed is the dominant UX constraint; walking users, gloved hands, sunlight | MEDIUM | Button grid, no confirmation dialogs, instant feedback |
-| Clear sync state visibility | Data loss is catastrophic; users must always know what's pending | LOW | Color-coded state indicators (recording / finished / synced) on every list item |
+| Clear sync state visibility | Data loss is catastrophic; users must always know what's pending | LOW | Color-coded state indicators (activa / finalizada / sincronizada) on every list item |
 | Persistent session / auth | Field users don't re-login mid-task; session must survive app close | LOW | Supabase JWT stored in secure device storage |
 | Role separation (admin / field) | Admins configure, field workers register; mixing roles creates confusion | MEDIUM | Simple role check on login; different navigation roots |
 | Photo capture from camera | Unidentified trees require photo evidence; standard in every field tool | LOW | React Native Camera / Expo Camera; local storage only |
@@ -26,7 +26,7 @@ Features technicians and admins assume exist. Missing these = product feels brok
 | Data export (CSV/Excel) | Downstream analysis in spreadsheets is the norm for ecological data teams | MEDIUM | Export on plantation finalization; columns fixed per spec |
 | Dashboard with progress stats | Technicians and admins need to see how far along a plantation is | LOW | Tree count (total, unsynced, today) per plantation |
 | Unidentified tree workflow (N/N) | Field reality: species sometimes can't be identified on the spot | MEDIUM | N/N button in grid; photo mandatory; must resolve before sync |
-| SubGroup state machine | Clear lifecycle (recording → finished → synced) is required for data integrity | MEDIUM | State enforced both in local DB and on server |
+| SubGroup state machine | Clear lifecycle (activa → finalizada → sincronizada) is required for data integrity | MEDIUM | State enforced both in local DB and on server |
 | Immutability after sync | Synced data must be trusted as a stable record; edits after sync break audit trails | LOW | UI hides edit controls for synced records; server enforces |
 | Error messages in plain language | Gloved users under time pressure cannot parse technical errors | LOW | "SubGroup code already exists" not "409 Conflict" |
 
@@ -129,7 +129,7 @@ Minimum required to validate in the Bayka autumn 2026 planting season.
 - [ ] N/N registration with mandatory photo — field reality, must be handled
 - [ ] N/N resolution screen — gate to sync; must exist before sync does
 - [ ] Reverse order button — field reality, technicians walk lines both ways
-- [ ] SubGroup finalization (recording → finished) — explicit intent gate
+- [ ] SubGroup finalization (activa → finalizada) — explicit intent gate
 - [ ] Manual sync (SubGroup + trees as atomic unit) — reason the app exists
 - [ ] Sync conflict detection and clear error message — data integrity guarantee
 - [ ] Download updated data on sync — enables multi-technician coordination

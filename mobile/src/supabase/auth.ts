@@ -22,7 +22,7 @@ export async function clearSession(): Promise<void> {
   await SecureStore.deleteItemAsync(ACCESS_TOKEN_KEY);
   await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
   await SecureStore.deleteItemAsync(ROLE_KEY);
-  await SecureStore.deleteItemAsync(EMAIL_KEY);
+  // EMAIL_KEY is intentionally kept — pre-fills login screen after logout
 }
 
 export async function restoreSession(): Promise<{ access_token: string; refresh_token: string } | null> {

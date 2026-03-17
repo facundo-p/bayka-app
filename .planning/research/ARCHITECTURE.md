@@ -176,7 +176,7 @@ const { data: treeList } = useTreesForSubGroup(subGroupId);
 
 ### Pattern 3: Atomic SubGroup Sync with Outbox State
 
-**What:** SyncService reads all SubGroups in `finished` state (with no N/N trees), uploads each one as an atomic transaction to Supabase (SubGroup row + all Tree rows in a single RPC/transaction), then marks the SubGroup as `synced` locally only on success.
+**What:** SyncService reads all SubGroups in `finalizada` state (with no N/N trees), uploads each one as an atomic transaction to Supabase (SubGroup row + all Tree rows in a single RPC/transaction), then marks the SubGroup as `sincronizada` locally only on success.
 
 **When to use:** Every sync operation — this is the core sync invariant of the system.
 
@@ -200,7 +200,7 @@ async function syncSubGroup(subGroup: SubGroup): Promise<SyncResult> {
   }
 
   await SubGroupRepository.markSynced(subGroup.id);
-  return { status: 'synced' };
+  return { status: 'sincronizada' };
 }
 ```
 
@@ -241,12 +241,12 @@ useSync hook calls SyncService.sync()
     ↓
 SyncService writes remote data to local SQLite (species, plantation updates)
     ↓
-[PUSH] SyncService queries finished SubGroups without N/N trees
+[PUSH] SyncService queries finalizada SubGroups without N/N trees
     ↓
 For each eligible SubGroup:
     SyncService POSTs SubGroup + Trees to Supabase in one transaction
     On success: SubGroupRepository.markSynced(id)
-    On conflict: returns conflict error, SubGroup stays 'finished'
+    On conflict: returns conflict error, SubGroup stays 'finalizada'
     ↓
 SyncService returns SyncSummary { synced: N, failed: N, conflicts: [...] }
     ↓
@@ -256,16 +256,16 @@ useSync updates local state → UI shows sync result
 ### SubGroup State Machine
 
 ```
-[recording]  ←────────────────────────────────────┐
-    │                                              │
-    │ Technician taps "Finish SubGroup"            │ (only before finish)
-    │ (blocks if N/N trees exist)                  │
-    ▼                                              │
-[finished]   ←── can be re-opened in Phase 1?  ───┘
+[activa]  ←────────────────────────────────────┐
+    │                                                │
+    │ Technician taps "Finish SubGroup"              │ (only before finish)
+    │ (blocks if N/N trees exist)                    │
+    ▼                                                │
+[finalizada]   ←── can be re-opened in Phase 1?  ───┘
     │
     │ Sync succeeds
     ▼
-[synced]  ── IMMUTABLE — no further edits permitted
+[sincronizada]  ── IMMUTABLE — no further edits permitted
 ```
 
 ### Authentication Flow
@@ -378,7 +378,7 @@ The component dependencies determine the natural build sequence:
 
 **Why it's wrong:** Creates orphaned tree records if the SubGroup is never finished. Makes rollback impossible. Violates the immutability invariant (synced data must be complete).
 
-**Do this instead:** Only sync `finished` SubGroups. The SubGroup + all its trees must upload in a single server-side transaction.
+**Do this instead:** Only sync `finalizada` SubGroups. The SubGroup + all its trees must upload in a single server-side transaction.
 
 ### Anti-Pattern 4: Allowing Sync During Active Registration
 
@@ -386,7 +386,7 @@ The component dependencies determine the natural build sequence:
 
 **Why it's wrong:** Race condition between INSERT and the sync read. A tree registered 100ms before the sync starts may or may not be included, making the synced SubGroup non-deterministic.
 
-**Do this instead:** Sync only operates on `finished` SubGroups. An active SubGroup is in `recording` state and invisible to the SyncService.
+**Do this instead:** Sync only operates on `finalizada` SubGroups. An active SubGroup is in `activa` state and invisible to the SyncService.
 
 ### Anti-Pattern 5: Auth-Gated Offline Data Access
 

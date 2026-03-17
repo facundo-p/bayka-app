@@ -335,26 +335,26 @@ Al crear un nuevo SubGrupo, se debe mostrar al usuario el nombre del último Sub
 Los SubGrupos tienen los siguientes estados:
 
 ```
-recording
-finished
-synced
+activa
+finalizada
+sincronizada
 ```
 
 ---
 
-### recording
+### activa
 
 El SubGrupo se está registrando activamente.
 
 ---
 
-### finished
+### finalizada
 
 El técnico finalizó el registro de árboles.
 
 ---
 
-### synced
+### sincronizada
 
 El SubGrupo fue sincronizado con el servidor.
 
@@ -530,7 +530,7 @@ SubGrupo
 Un SubGrupo solo puede sincronizarse si:
 
 ```
-estado = finished
+estado = finalizada
 y no existen N/N sin resolver
 ```
 

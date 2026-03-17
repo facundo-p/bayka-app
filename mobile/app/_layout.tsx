@@ -4,7 +4,7 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import migrations from '../drizzle/migrations';
 import { db } from '../src/database/client';
 import { useAuth } from '../src/hooks/useAuth';
-import { Redirect, Stack } from 'expo-router';
+import { Slot, useRouter, useSegments } from 'expo-router';
 import { Text, View, StyleSheet } from 'react-native';
 import { useEffect } from 'react';
 import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
@@ -12,6 +12,8 @@ import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
   const { session, role, loading } = useAuth();
+  const router = useRouter();
+  const segments = useSegments();
 
   // Run species seed after migrations succeed
   useEffect(() => {
@@ -19,6 +21,30 @@ export default function RootLayout() {
       seedSpeciesIfNeeded().catch(console.error);
     }
   }, [success]);
+
+  // Redirect based on auth state — after layout is mounted
+  useEffect(() => {
+    if (!success || loading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const inAdminGroup = segments[0] === '(admin)';
+    const inTecnicoGroup = segments[0] === '(tecnico)';
+
+    if (!session) {
+      // Not logged in → login screen
+      if (!inAuthGroup) {
+        router.replace('/(auth)/login');
+      }
+    } else if (role === 'admin') {
+      if (!inAdminGroup) {
+        router.replace('/(admin)/plantaciones');
+      }
+    } else {
+      if (!inTecnicoGroup) {
+        router.replace('/(tecnico)/plantaciones');
+      }
+    }
+  }, [success, loading, session, role, segments]);
 
   // Migration error — unrecoverable
   if (error) {
@@ -40,7 +66,7 @@ export default function RootLayout() {
     );
   }
 
-  // Auth loading (session restore in progress)
+  // Auth loading
   if (loading) {
     return (
       <View style={styles.center}>
@@ -49,16 +75,8 @@ export default function RootLayout() {
     );
   }
 
-  // Not logged in → login screen
-  if (!session) {
-    return <Redirect href="/(auth)/login" />;
-  }
-
-  // Logged in → route by role
-  if (role === 'admin') {
-    return <Redirect href="/(admin)/plantaciones" />;
-  }
-  return <Redirect href="/(tecnico)/plantaciones" />;
+  // Always render Slot — navigation happens via router.replace in useEffect
+  return <Slot />;
 }
 
 const styles = StyleSheet.create({

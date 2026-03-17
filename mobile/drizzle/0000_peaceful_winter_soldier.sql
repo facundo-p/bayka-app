@@ -23,7 +23,7 @@ CREATE TABLE `subgroups` (
 	`nombre` text NOT NULL,
 	`codigo` text NOT NULL,
 	`tipo` text DEFAULT 'linea' NOT NULL,
-	`estado` text DEFAULT 'recording' NOT NULL,
+	`estado` text DEFAULT 'activa' NOT NULL,
 	`usuario_creador` text NOT NULL,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`plantacion_id`) REFERENCES `plantations`(`id`) ON UPDATE no action ON DELETE no action
@@ -36,6 +36,8 @@ CREATE TABLE `trees` (
 	`posicion` integer NOT NULL,
 	`sub_id` text NOT NULL,
 	`foto_url` text,
+	`plantacion_id` integer,
+	`global_id` integer,
 	`usuario_registro` text NOT NULL,
 	`created_at` text NOT NULL,
 	FOREIGN KEY (`subgrupo_id`) REFERENCES `subgroups`(`id`) ON UPDATE no action ON DELETE no action,

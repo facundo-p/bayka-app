@@ -41,12 +41,12 @@ The core value proposition is one-tap tree registration via a species button gri
 **Must have (table stakes):**
 - Offline-first data entry — fatal without it; field sites have no connectivity
 - One-tap species registration — walking pace, gloved hands, no dialogs
-- Clear sync state visibility — color-coded recording/finished/synced on every list item
+- Clear sync state visibility — color-coded activa/finalizada/sincronizada on every list item
 - Persistent session / auth — field workers cannot re-login mid-task
 - Role separation (admin / tecnico) — different navigation roots, different capabilities
 - Photo capture for N/N trees — mandatory; enables field identification
 - Manual sync initiation — user-controlled; auto-sync assumptions fail offline
-- SubGroup state machine (recording -> finished -> synced) — enforces data integrity
+- SubGroup state machine (activa -> finalizada -> sincronizada) — enforces data integrity
 - Immutability after sync — synced data is the research record
 - N/N workflow (register + mandatory photo + resolve gate) — field reality
 - Data export (CSV/Excel) — downstream ecological analysis requirement
@@ -80,9 +80,9 @@ The architecture is a four-layer stack: Presentation (screens, components, hooks
 
 **Major components:**
 1. Repository layer (SubGroupRepository, TreeRepository, PlantationRepository, SpeciesRepository) — the only layer that reads/writes SQLite; screens and hooks never import Drizzle directly
-2. SyncService — coordinates pull (species catalog, remote SubGroups) then push (finished local SubGroups via single Postgres RPC); marks SubGroup synced only on server confirmation
+2. SyncService — coordinates pull (species catalog, remote SubGroups) then push (finalizada local SubGroups via single Postgres RPC); marks SubGroup sincronizada only on server confirmation
 3. Species button grid + live query hooks — critical path for registration performance; tree insert triggers live query -> UI re-render in <5ms with no network
-4. SubGroup state machine — enforces recording -> finished -> synced lifecycle; SyncService only sees `finished` SubGroups; `synced` state is immutable
+4. SubGroup state machine — enforces activa -> finalizada -> sincronizada lifecycle; SyncService only sees `finalizada` SubGroups; `sincronizada` state is immutable
 5. Expo Router layout guards — auth-gated routes via `_layout.tsx`; admin and tecnico navigation roots separated at file system level
 
 **Key patterns:** Repository pattern over raw Drizzle (isolation + testability), live queries for reactive UI (eliminates stale state), atomic SubGroup sync via single RPC (no partial uploads), pull-then-push sync order (pull latest species/config before uploading local SubGroups).
@@ -133,7 +133,7 @@ Based on combined research, the natural build order follows the dependency chain
 
 **Delivers:** PlantationRepository, SubGroupRepository, TreeRepository, SpeciesRepository — all with typed queries and live query hooks. SubGroup state machine implemented in the repository layer. IDGenerator utility (SubID computation).
 
-**Addresses features:** SubGroup state machine (recording -> finished -> synced), sequential position tracking, SubID generation.
+**Addresses features:** SubGroup state machine (activa -> finalizada -> sincronizada), sequential position tracking, SubID generation.
 
 **Avoids pitfalls:** Querying SQLite from screens directly (Architecture anti-pattern 1).
 
@@ -165,9 +165,9 @@ Based on combined research, the natural build order follows the dependency chain
 
 ### Phase 5: SubGroup Management + N/N Resolution
 
-**Rationale:** SubGroup lifecycle management wraps around tree registration. N/N resolution must exist before sync can exist (it is a sync gate). The SubGroup finalization flow (recording -> finished) triggers the N/N resolution prompt.
+**Rationale:** SubGroup lifecycle management wraps around tree registration. N/N resolution must exist before sync can exist (it is a sync gate). The SubGroup finalization flow (activa -> finalizada) triggers the N/N resolution prompt.
 
-**Delivers:** SubGroup creation + list screen, SubGroup finalization (recording -> finished) with N/N gate, N/N resolution screen (photo from local storage, species assignment), reverse order button (position recalculation pre-finalization), sync status visibility on SubGroup cards (color-coded chips).
+**Delivers:** SubGroup creation + list screen, SubGroup finalization (activa -> finalizada) with N/N gate, N/N resolution screen (photo from local storage, species assignment), reverse order button (position recalculation pre-finalization), sync status visibility on SubGroup cards (color-coded chips).
 
 **Addresses features:** SubGroup management, SubGroup state machine, N/N resolution gate, reverse order button, sync state visibility.
 
@@ -177,9 +177,9 @@ Based on combined research, the natural build order follows the dependency chain
 
 ### Phase 6: Sync Service
 
-**Rationale:** Sync is the reason the app exists, but it is the last domain feature because it depends on the complete SubGroup lifecycle (recording -> finished) being functional. The Postgres RPC must be designed and tested before the client sync code is written.
+**Rationale:** Sync is the reason the app exists, but it is the last domain feature because it depends on the complete SubGroup lifecycle (activa -> finalizada) being functional. The Postgres RPC must be designed and tested before the client sync code is written.
 
-**Delivers:** SyncService (pull remote species/config then push finished SubGroups), outbox record written atomically with SubGroup domain write (`withExclusiveTransactionAsync`), Postgres RPC function (SubGroup + trees in single transaction), client idempotency key, SubGroup marked synced only on server confirmation, conflict detection (duplicate SubGroup code) with plain-language error, sync result summary screen, prominent unsynced SubGroup count badge.
+**Delivers:** SyncService (pull remote species/config then push finalizada SubGroups), outbox record written atomically with SubGroup domain write (`withExclusiveTransactionAsync`), Postgres RPC function (SubGroup + trees in single transaction), client idempotency key, SubGroup marked sincronizada only on server confirmation, conflict detection (duplicate SubGroup code) with plain-language error, sync result summary screen, prominent unsynced SubGroup count badge.
 
 **Addresses features:** Manual sync, atomic SubGroup sync unit, sync conflict detection, download updated data on sync, unsynced data visibility.
 

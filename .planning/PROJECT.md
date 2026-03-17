@@ -61,7 +61,7 @@ Reliable, fast tree registration in the field — every tree recorded, no data l
 - **Typical plantation:** ~20 species, multiple SubGroups (lines/parcels), thousands of trees
 - **Key UI constraint:** Species button grid must support one-tap registration; buttons must be large enough for gloved use
 - **Data model:** Organization → Plantations → SubGroups → Trees, with Species as global catalog
-- **SubGroup states:** recording → finished → synced
+- **SubGroup states:** activa → finalizada → sincronizada
 - **Plantation states:** activa → finalizada
 - **Existing documentation:** SPECS.md, domain-model.md, architecture.md, ui-ux-guidelines.md in docs/
 
