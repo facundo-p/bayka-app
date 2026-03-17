@@ -47,13 +47,13 @@ Plans:
   4. Registering a N/N tree requires a photo; the SubGroup cannot be finalized until all N/N trees are resolved with a species
   5. Technician can reverse the order of trees in a SubGroup before it is sincronizada, and positions recalculate correctly
   6. Technician can only edit SubGroups they created; sincronizada SubGroups are read-only
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 02-01: Repository layer + domain model (SubGroupRepository, TreeRepository, SpeciesRepository with Drizzle live queries; SubGroup state machine; SubID generator; IDGenerator utility)
-- [ ] 02-02: SubGroup management screens (create, list with state chips, finalize flow with N/N gate)
-- [ ] 02-03: Tree registration screen (species button grid 60x60pt, one-tap insert, undo last, last-3 display, photo attach, reverse order, N/N registration + mandatory photo)
-- [ ] 02-04: N/N resolution screen (local photo thumbnail, species selector, resolve action)
+- [ ] 02-01-PLAN.md — Dependencies (expo-image-picker, expo-file-system), schema extension (plantation_species table + unique index), demo plantation seed, idGenerator and reverseOrder utils with unit tests, test scaffolds
+- [ ] 02-02-PLAN.md — SubGroupRepository, TreeRepository, PlantationSpeciesRepository, PhotoService, three hooks (useSubGroups, useTrees, usePlantationSpecies), repository unit tests
+- [ ] 02-03-PLAN.md — Plantation list screen, Stack navigation, SubGroup list with state chips, create SubGroup form, finalization flow with N/N gate (checkpoint)
+- [ ] 02-04-PLAN.md — Tree registration screen (species grid, one-tap, last-3, undo, N/N capture, reverse, finalizar) + N/N resolution screen (checkpoint)
 
 ### Phase 3: Sync + Dashboard
 **Goal**: Technicians can see their plantation progress on the dashboard and manually sync finalizada SubGroups to the server, downloading other technicians' data in return
