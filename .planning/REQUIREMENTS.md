@@ -143,13 +143,70 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (populated during roadmap creation) | | |
+| FOUN-01 | Phase 1 | Pending |
+| FOUN-02 | Phase 1 | Pending |
+| FOUN-03 | Phase 1 | Pending |
+| FOUN-04 | Phase 1 | Pending |
+| FOUN-05 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| SUBG-01 | Phase 2 | Pending |
+| SUBG-02 | Phase 2 | Pending |
+| SUBG-03 | Phase 2 | Pending |
+| SUBG-04 | Phase 2 | Pending |
+| SUBG-05 | Phase 2 | Pending |
+| SUBG-06 | Phase 2 | Pending |
+| SUBG-07 | Phase 2 | Pending |
+| TREE-01 | Phase 2 | Pending |
+| TREE-02 | Phase 2 | Pending |
+| TREE-03 | Phase 2 | Pending |
+| TREE-04 | Phase 2 | Pending |
+| TREE-05 | Phase 2 | Pending |
+| TREE-06 | Phase 2 | Pending |
+| TREE-07 | Phase 2 | Pending |
+| NN-01 | Phase 2 | Pending |
+| NN-02 | Phase 2 | Pending |
+| NN-03 | Phase 2 | Pending |
+| NN-04 | Phase 2 | Pending |
+| NN-05 | Phase 2 | Pending |
+| REVR-01 | Phase 2 | Pending |
+| REVR-02 | Phase 2 | Pending |
+| REVR-03 | Phase 2 | Pending |
+| SYNC-01 | Phase 3 | Pending |
+| SYNC-02 | Phase 3 | Pending |
+| SYNC-03 | Phase 3 | Pending |
+| SYNC-04 | Phase 3 | Pending |
+| SYNC-05 | Phase 3 | Pending |
+| SYNC-06 | Phase 3 | Pending |
+| SYNC-07 | Phase 3 | Pending |
+| DASH-01 | Phase 3 | Pending |
+| DASH-02 | Phase 3 | Pending |
+| DASH-03 | Phase 3 | Pending |
+| DASH-04 | Phase 3 | Pending |
+| DASH-05 | Phase 3 | Pending |
+| DASH-06 | Phase 3 | Pending |
+| PLAN-01 | Phase 4 | Pending |
+| PLAN-02 | Phase 4 | Pending |
+| PLAN-03 | Phase 4 | Pending |
+| PLAN-04 | Phase 4 | Pending |
+| PLAN-05 | Phase 4 | Pending |
+| PLAN-06 | Phase 4 | Pending |
+| IDGN-01 | Phase 4 | Pending |
+| IDGN-02 | Phase 4 | Pending |
+| IDGN-03 | Phase 4 | Pending |
+| IDGN-04 | Phase 4 | Pending |
+| EXPO-01 | Phase 4 | Pending |
+| EXPO-02 | Phase 4 | Pending |
+| EXPO-03 | Phase 4 | Pending |
 
 **Coverage:**
-- v1 requirements: 44 total
-- Mapped to phases: 0
-- Unmapped: 44
+- v1 requirements: 57 total
+- Mapped to phases: 57
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after initial definition*
+*Last updated: 2026-03-16 after roadmap creation*
