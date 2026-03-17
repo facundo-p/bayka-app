@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: planning
-stopped_at: Completed 01-foundation-auth-02-PLAN.md
-last_updated: "2026-03-17T01:58:45.604Z"
+stopped_at: Completed 01-foundation-auth 01-01-PLAN.md
+last_updated: "2026-03-17T02:11:23.949Z"
 last_activity: 2026-03-16 — Roadmap created
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -51,6 +51,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-foundation-auth P02 | 3min | 2 tasks | 5 files |
+| Phase 01-foundation-auth P01 | 14 | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Recent decisions affecting current work:
 - Phase 3: Supabase RPC for sync requires dedicated design task before client code (research flag: Phase 6 → Phase 3 here)
 - [Phase 01-foundation-auth]: Use supabase.auth.admin.createUser() for seeding — not raw SQL into auth.users (Pitfall 6)
 - [Phase 01-foundation-auth]: Organization fixed UUID (00000000-0000-0000-0000-000000000001) for deterministic seeding
+- [Phase 01-foundation-auth]: jest testEnvironment: node for unit tests; jestSetup.js pre-mocks expo winter runtime globals to prevent dynamic import errors
+- [Phase 01-foundation-auth]: expo-router/entry as main entry point; --legacy-peer-deps for Supabase due to react-dom peer conflict in Expo SDK 55
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T01:58:45.600Z
-Stopped at: Completed 01-foundation-auth-02-PLAN.md
+Last session: 2026-03-17T02:11:23.947Z
+Stopped at: Completed 01-foundation-auth 01-01-PLAN.md
 Resume file: None

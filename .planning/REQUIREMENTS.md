@@ -9,9 +9,9 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Foundation
 
-- [ ] **FOUN-01**: App bootstraps with Expo SDK 55, React Native, TypeScript
-- [ ] **FOUN-02**: Local SQLite database initialized with Drizzle ORM schema and migrations
-- [ ] **FOUN-03**: Species catalog seeded into local database on first launch
+- [x] **FOUN-01**: App bootstraps with Expo SDK 55, React Native, TypeScript
+- [x] **FOUN-02**: Local SQLite database initialized with Drizzle ORM schema and migrations
+- [x] **FOUN-03**: Species catalog seeded into local database on first launch
 - [x] **FOUN-04**: Users seeded in Supabase (2 admin + 2 tecnico)
 - [x] **FOUN-05**: Supabase backend schema deployed (organizations, users, plantations, subgroups, trees, species)
 
@@ -143,9 +143,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUN-01 | Phase 1 | Pending |
-| FOUN-02 | Phase 1 | Pending |
-| FOUN-03 | Phase 1 | Pending |
+| FOUN-01 | Phase 1 | Complete |
+| FOUN-02 | Phase 1 | Complete |
+| FOUN-03 | Phase 1 | Complete |
 | FOUN-04 | Phase 1 | Complete |
 | FOUN-05 | Phase 1 | Complete |
 | AUTH-01 | Phase 1 | Pending |
