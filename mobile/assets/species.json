@@ -1,0 +1,12 @@
+[
+  { "id": "sp-001", "codigo": "ANC", "nombre": "Anchico", "nombre_cientifico": "Parapiptadenia rigida" },
+  { "id": "sp-002", "codigo": "IBI", "nombre": "Ibirá Pitá", "nombre_cientifico": "Peltophorum dubium" },
+  { "id": "sp-003", "codigo": "LAP", "nombre": "Lapacho", "nombre_cientifico": "Handroanthus impetiginosus" },
+  { "id": "sp-004", "codigo": "TIM", "nombre": "Timbó", "nombre_cientifico": "Enterolobium contortisiliquum" },
+  { "id": "sp-005", "codigo": "PAL", "nombre": "Palo Blanco", "nombre_cientifico": "Calycophyllum multiflorum" },
+  { "id": "sp-006", "codigo": "URA", "nombre": "Urunday", "nombre_cientifico": "Astronium balansae" },
+  { "id": "sp-007", "codigo": "CED", "nombre": "Cedro", "nombre_cientifico": "Cedrela fissilis" },
+  { "id": "sp-008", "codigo": "TAR", "nombre": "Tarco", "nombre_cientifico": "Jacaranda mimosifolia" },
+  { "id": "sp-009", "codigo": "VIR", "nombre": "Virarú", "nombre_cientifico": "Ruprechtia laxiflora" },
+  { "id": "sp-010", "codigo": "NAT", "nombre": "Nativo", "nombre_cientifico": null }
+]

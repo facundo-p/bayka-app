@@ -16,3 +16,8 @@ jest.mock('expo-sqlite', () => ({
     execSync: jest.fn(),
   })),
 }));
+
+// Mock drizzle-orm/expo-sqlite to avoid native module issues in tests
+jest.mock('drizzle-orm/expo-sqlite', () => ({
+  drizzle: jest.fn(() => ({})),
+}));
