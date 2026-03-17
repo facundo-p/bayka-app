@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: "Completed 02-field-registration-02-01-PLAN.md"
-last_updated: "2026-03-17T21:33:04Z"
+status: executing
+stopped_at: Completed 02-field-registration-02-02-PLAN.md
+last_updated: "2026-03-17T21:41:57.537Z"
 last_activity: 2026-03-17 — Phase 2 Plan 01 complete
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 1
+  total_plans: 7
+  completed_plans: 5
   percent: 25
 ---
 
@@ -54,6 +54,7 @@ Progress: [██░░░░░░░░] 25%
 | Phase 01-foundation-auth P01 | 14 | 2 tasks | 19 files |
 | Phase 01-foundation-auth P03 | 296s | 2 tasks | 18 files |
 | Phase 02-field-registration P01 | 5min | 2 tasks | 14 files |
+| Phase 02-field-registration P02 | 235s | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,9 @@ Recent decisions affecting current work:
 - [Phase 02-field-registration P01]: Seeds chained sequentially (species → plantation → plantation_species) to preserve FK dependency order
 - [Phase 02-field-registration P01]: generateSubId is pure concatenation (subgrupoCodigo + especieCodigo + posicion) — no padding
 - [Phase 02-field-registration P01]: computeReversedPositions formula: total - oldPosicion + 1; works with non-contiguous positions
+- [Phase 02-field-registration]: expo-image-picker 16 (SDK 52): Use MediaTypeOptions.Images not array syntax for backward compatibility
+- [Phase 02-field-registration]: reverseTreeOrder fetches species codigo per tree inside transaction for consistency
+- [Phase 02-field-registration]: usePlantationSpecies uses useState+useEffect not useLiveQuery — species are stable during session
 
 ### Pending Todos
 
@@ -87,6 +91,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T21:33:04Z
-Stopped at: Completed 02-field-registration-02-01-PLAN.md
-Resume file: .planning/phases/02-field-registration/02-02-PLAN.md
+Last session: 2026-03-17T21:41:57.533Z
+Stopped at: Completed 02-field-registration-02-02-PLAN.md
+Resume file: None
