@@ -29,12 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. App shows admin navigation for admin users and technician navigation for tecnico users immediately after login
   4. Different users can log in on the same device and each gets their own session
   5. SQLite database initializes with the full schema and seeded species catalog on first launch; schema migrations run automatically on app update
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Project scaffolding (Expo SDK 55, TypeScript, Expo Router, Drizzle ORM, SQLite WAL mode, Metro config for .sql files)
-- [ ] 01-02: Supabase backend schema + seeded data (tables, RLS policies, 2 admin + 2 tecnico users seeded)
-- [ ] 01-03: Auth flow + offline-safe session (login screen, expo-secure-store token persistence, offline session restoration, role detection, layout guards)
+- [ ] 01-01-PLAN.md — Expo SDK 55 scaffolding, Drizzle schema, SQLite WAL client, Metro SQL config, test infrastructure, species seed
+- [ ] 01-02-PLAN.md — Supabase Postgres schema (8 tables, RLS), seed script for 4 test users
+- [ ] 01-03-PLAN.md — Offline-safe auth (Supabase client, SecureStore session helpers, useAuth hook), login screen, role-based tab navigation
 
 ### Phase 2: Field Registration
 **Goal**: Technicians can create SubGroups, register trees by tapping species buttons, handle N/N trees, reverse order, and finalize SubGroups — entirely offline
@@ -96,7 +96,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation + Auth | 0/3 | Not started | - |
+| 1. Foundation + Auth | 0/3 | Ready to execute | - |
 | 2. Field Registration | 0/4 | Not started | - |
 | 3. Sync + Dashboard | 0/3 | Not started | - |
 | 4. Admin + Export | 0/3 | Not started | - |
