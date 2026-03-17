@@ -348,3 +348,28 @@ sincronizar
 ```
 
 La interfaz debe apoyar este flujo de forma natural.
+
+---
+
+# 18. Cuentas Guardadas en Login
+
+En contextos de campo, un mismo dispositivo puede ser utilizado por distintos técnicos a lo largo del día.
+
+Para facilitar el cambio de usuario:
+
+```
+la pantalla de login muestra cuentas guardadas como chips tocables
+debajo del botón de inicio de sesión
+```
+
+Comportamiento:
+
+```
+checkbox "Recordar cuenta" activado por defecto
+al iniciar sesión exitosamente, se guarda la cuenta
+las cuentas guardadas aparecen como chips bajo "Cuentas guardadas"
+tocar un chip autocompleta email y contraseña
+el último email utilizado se precarga en el campo de email
+```
+
+Este patrón reduce la necesidad de escribir credenciales repetidamente, lo cual es especialmente valioso en campo donde la escritura manual es lenta e incómoda.

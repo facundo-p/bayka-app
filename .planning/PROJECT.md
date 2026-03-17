@@ -41,6 +41,7 @@ Reliable, fast tree registration in the field — every tree recorded, no data l
 - [ ] Single organization (Bayka) — multi-org architecture prepared but transparent
 - [ ] Species seeded via initial data load, not editable in Phase 1
 - [ ] Users seeded initially (2 admin + 2 tecnico)
+- [ ] Saved accounts on login screen: "Recordar cuenta" checkbox saves credentials encrypted in SecureStore; saved accounts appear as tappable chips for quick login on shared devices
 
 ### Out of Scope
 

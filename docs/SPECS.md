@@ -239,6 +239,19 @@ Para simplificar el MVP, se pensó en generar los usuarios desde un seed incial.
 - Un mismo dispositivo puede ser utilizado por distintos usuarios iniciando sesión con diferentes cuentas.
 - Un usuario técnico solo podrá editar SubGrupos que él haya cargado
 
+## Cuentas guardadas
+
+La pantalla de login incluye un checkbox **"Recordar cuenta"** entre el campo de contraseña y el botón de inicio de sesión. Este checkbox está **activado por defecto**.
+
+Cuando el checkbox está activado y el login es exitoso, el email y la contraseña se guardan **encriptados en SecureStore** del dispositivo.
+
+En visitas posteriores a la pantalla de login:
+
+- Las cuentas guardadas se muestran como **chips tocables** debajo del botón de login, bajo el título **"Cuentas guardadas"**.
+- Al tocar un chip, se autocompletan los campos de email y contraseña.
+- Se pueden guardar **múltiples cuentas** (útil para dispositivos compartidos en campo).
+- El último email utilizado se **precarga automáticamente** en el campo de email.
+
 
 ---
 
