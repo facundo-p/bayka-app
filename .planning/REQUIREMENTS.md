@@ -17,11 +17,11 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can log in with email and password via Supabase Auth
-- [ ] **AUTH-02**: User session persists across app restarts (offline-safe token storage)
-- [ ] **AUTH-03**: User can log out from any screen
-- [ ] **AUTH-04**: App detects user role (admin/tecnico) and shows appropriate navigation
-- [ ] **AUTH-05**: Different users can log in on the same device
+- [x] **AUTH-01**: User can log in with email and password via Supabase Auth
+- [x] **AUTH-02**: User session persists across app restarts (offline-safe token storage)
+- [x] **AUTH-03**: User can log out from any screen
+- [x] **AUTH-04**: App detects user role (admin/tecnico) and shows appropriate navigation
+- [x] **AUTH-05**: Different users can log in on the same device
 
 ### Dashboard
 
@@ -148,11 +148,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FOUN-03 | Phase 1 | Complete |
 | FOUN-04 | Phase 1 | Complete |
 | FOUN-05 | Phase 1 | Complete |
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
-| AUTH-04 | Phase 1 | Pending |
-| AUTH-05 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
+| AUTH-03 | Phase 1 | Complete |
+| AUTH-04 | Phase 1 | Complete |
+| AUTH-05 | Phase 1 | Complete |
 | SUBG-01 | Phase 2 | Pending |
 | SUBG-02 | Phase 2 | Pending |
 | SUBG-03 | Phase 2 | Pending |
