@@ -45,35 +45,35 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 - [x] **SUBG-01**: Technician can create a SubGroup with name, code, and type (linea/parcela)
 - [x] **SUBG-02**: SubGroup code must be unique within the plantation
-- [ ] **SUBG-03**: System shows last created SubGroup name when creating a new one
-- [ ] **SUBG-04**: Technician can view list of SubGroups with state indicators (activa/finalizada/sincronizada)
-- [ ] **SUBG-05**: Technician can finalize a SubGroup (activa → finalizada)
-- [ ] **SUBG-06**: Synced SubGroups are immutable (no edit allowed)
-- [ ] **SUBG-07**: Technician can only edit SubGroups they created
+- [x] **SUBG-03**: System shows last created SubGroup name when creating a new one
+- [x] **SUBG-04**: Technician can view list of SubGroups with state indicators (activa/finalizada/sincronizada)
+- [x] **SUBG-05**: Technician can finalize a SubGroup (activa → finalizada)
+- [x] **SUBG-06**: Synced SubGroups are immutable (no edit allowed)
+- [x] **SUBG-07**: Technician can only edit SubGroups they created
 
 ### Tree Registration
 
-- [ ] **TREE-01**: Technician sees species button grid when registering trees in a SubGroup
-- [ ] **TREE-02**: One tap on a species button creates a tree record instantly (no confirmation)
+- [x] **TREE-01**: Technician sees species button grid when registering trees in a SubGroup
+- [x] **TREE-02**: One tap on a species button creates a tree record instantly (no confirmation)
 - [x] **TREE-03**: Tree position increments automatically within the SubGroup
 - [x] **TREE-04**: SubID generated automatically (SubGroupCode + SpeciesCode + Position)
-- [ ] **TREE-05**: Last 3 registered trees displayed on registration screen
-- [ ] **TREE-06**: Technician can attach optional photo to any tree (camera or gallery)
-- [ ] **TREE-07**: Technician can delete the last registered tree (undo)
+- [x] **TREE-05**: Last 3 registered trees displayed on registration screen
+- [x] **TREE-06**: Technician can attach optional photo to any tree (camera or gallery)
+- [x] **TREE-07**: Technician can delete the last registered tree (undo)
 
 ### N/N Workflow
 
 - [x] **NN-01**: Technician can register unidentified tree as N/N via dedicated button
-- [ ] **NN-02**: Photo is mandatory when registering N/N tree
-- [ ] **NN-03**: N/N resolution screen shows photo and species selector
-- [ ] **NN-04**: Technician can resolve N/N by selecting correct species
-- [ ] **NN-05**: SubGroup with unresolved N/N trees cannot be synced
+- [x] **NN-02**: Photo is mandatory when registering N/N tree
+- [x] **NN-03**: N/N resolution screen shows photo and species selector
+- [x] **NN-04**: Technician can resolve N/N by selecting correct species
+- [x] **NN-05**: SubGroup with unresolved N/N trees cannot be synced
 
 ### Reverse Order
 
 - [x] **REVR-01**: Technician can reverse tree order within a SubGroup
 - [x] **REVR-02**: Reverse recalculates all tree positions
-- [ ] **REVR-03**: Reverse only allowed before SubGroup is synced
+- [x] **REVR-03**: Reverse only allowed before SubGroup is synced
 
 ### Sync
 
@@ -155,26 +155,26 @@ Which phases cover which requirements. Updated during roadmap creation.
 | AUTH-05 | Phase 1 | Complete |
 | SUBG-01 | Phase 2 | Complete |
 | SUBG-02 | Phase 2 | Complete |
-| SUBG-03 | Phase 2 | Pending |
-| SUBG-04 | Phase 2 | Pending |
-| SUBG-05 | Phase 2 | Pending |
-| SUBG-06 | Phase 2 | Pending |
-| SUBG-07 | Phase 2 | Pending |
-| TREE-01 | Phase 2 | Pending |
-| TREE-02 | Phase 2 | Pending |
+| SUBG-03 | Phase 2 | Complete |
+| SUBG-04 | Phase 2 | Complete |
+| SUBG-05 | Phase 2 | Complete |
+| SUBG-06 | Phase 2 | Complete |
+| SUBG-07 | Phase 2 | Complete |
+| TREE-01 | Phase 2 | Complete |
+| TREE-02 | Phase 2 | Complete |
 | TREE-03 | Phase 2 | Complete |
 | TREE-04 | Phase 2 | Complete |
-| TREE-05 | Phase 2 | Pending |
-| TREE-06 | Phase 2 | Pending |
-| TREE-07 | Phase 2 | Pending |
+| TREE-05 | Phase 2 | Complete |
+| TREE-06 | Phase 2 | Complete |
+| TREE-07 | Phase 2 | Complete |
 | NN-01 | Phase 2 | Complete |
-| NN-02 | Phase 2 | Pending |
-| NN-03 | Phase 2 | Pending |
-| NN-04 | Phase 2 | Pending |
-| NN-05 | Phase 2 | Pending |
+| NN-02 | Phase 2 | Complete |
+| NN-03 | Phase 2 | Complete |
+| NN-04 | Phase 2 | Complete |
+| NN-05 | Phase 2 | Complete |
 | REVR-01 | Phase 2 | Complete |
 | REVR-02 | Phase 2 | Complete |
-| REVR-03 | Phase 2 | Pending |
+| REVR-03 | Phase 2 | Complete |
 | SYNC-01 | Phase 3 | Pending |
 | SYNC-02 | Phase 3 | Pending |
 | SYNC-03 | Phase 3 | Pending |

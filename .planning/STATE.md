@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 02-field-registration-02-03-PLAN.md
-last_updated: "2026-03-17T22:00:00.000Z"
+stopped_at: Completed 02-field-registration-02-04-PLAN.md
+last_updated: "2026-03-17T21:56:12.351Z"
 last_activity: 2026-03-17 — Phase 2 Plan 03 complete
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 7
-  completed_plans: 6
+  completed_plans: 7
   percent: 43
 ---
 
@@ -56,6 +56,7 @@ Progress: [████░░░░░░] 43%
 | Phase 02-field-registration P01 | 5min | 2 tasks | 14 files |
 | Phase 02-field-registration P02 | 235s | 2 tasks | 9 files |
 | Phase 02-field-registration P03 | 15min | 2 tasks | 5 files |
+| Phase 02-field-registration P04 | 183s | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase 02-field-registration P03]: userId obtained via supabase.auth.getUser() — no USER_ID key in SecureStore, works offline after session restore
 - [Phase 02-field-registration P03]: Tipo toggle as two Pressable buttons (segmented control) — avoids react-native-picker dependency
 - [Phase 02-field-registration P03]: Tree registration entry route: /(tecnico)/plantation/subgroup/[id]?plantacionId=...&subgrupoCodigo=...
+- [Phase 02-field-registration]: TreeRow shows N/N via especieId===null check; no species join needed for last-3 display
+- [Phase 02-field-registration]: N/N resolution index clamped with Math.min after resolveNNTree to handle live data disappearance
 
 ### Pending Todos
 
@@ -95,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-17T22:00:00.000Z
-Stopped at: Completed 02-field-registration-02-03-PLAN.md
+Last session: 2026-03-17T21:56:12.348Z
+Stopped at: Completed 02-field-registration-02-04-PLAN.md
 Resume file: None

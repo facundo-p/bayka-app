@@ -13,7 +13,7 @@ Bayka is built in 4 phases that follow the dependency chain from infrastructure 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation + Auth** - Offline-safe infrastructure, SQLite schema, Supabase auth with persistent sessions, role-based navigation shell (completed 2026-03-17)
-- [ ] **Phase 2: Field Registration** - Species button grid, one-tap tree registration, SubGroup lifecycle, N/N workflow, reverse order
+- [x] **Phase 2: Field Registration** - Species button grid, one-tap tree registration, SubGroup lifecycle, N/N workflow, reverse order (completed 2026-03-17)
 - [ ] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats
 - [ ] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export
 
@@ -97,6 +97,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Auth | 3/3 | Complete    | 2026-03-17 |
-| 2. Field Registration | 3/4 | In Progress|  |
+| 2. Field Registration | 4/4 | Complete   | 2026-03-17 |
 | 3. Sync + Dashboard | 0/3 | Not started | - |
 | 4. Admin + Export | 0/3 | Not started | - |
