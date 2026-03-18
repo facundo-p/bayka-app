@@ -7,10 +7,11 @@ interface Props {
   nombre: string;
   onPress: () => void;
   isNN?: boolean;
+  selected?: boolean;
   disabled?: boolean;
 }
 
-export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, disabled = false }: Props) {
+export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, selected = false, disabled = false }: Props) {
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -25,12 +26,13 @@ export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, d
       style={[
         styles.button,
         isNN && styles.buttonNN,
-        pressed && (isNN ? styles.buttonNNPressed : styles.buttonPressed),
+        selected && styles.buttonSelected,
+        pressed && !selected && (isNN ? styles.buttonNNPressed : styles.buttonPressed),
         disabled && styles.buttonDisabled,
       ]}
     >
-      <Text style={[styles.code, isNN && styles.codeNN]}>{codigo}</Text>
-      <Text style={[styles.name, isNN && styles.nameNN]}>{nombre}</Text>
+      <Text style={[styles.code, isNN && styles.codeNN, selected && styles.codeSelected]}>{codigo}</Text>
+      <Text style={[styles.name, isNN && styles.nameNN, selected && styles.nameSelected]}>{nombre}</Text>
     </Pressable>
   );
 }
@@ -59,6 +61,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondaryYellowMedium,
     borderColor: colors.secondaryYellowDark,
   },
+  buttonSelected: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDark,
+  },
   buttonDisabled: {
     opacity: 0.4,
   },
@@ -70,6 +76,9 @@ const styles = StyleSheet.create({
   codeNN: {
     color: colors.secondary,
   },
+  codeSelected: {
+    color: colors.white,
+  },
   name: {
     fontSize: fontSize.xs,
     color: colors.primaryMedium,
@@ -78,5 +87,8 @@ const styles = StyleSheet.create({
   },
   nameNN: {
     color: colors.secondary,
+  },
+  nameSelected: {
+    color: colors.white,
   },
 });

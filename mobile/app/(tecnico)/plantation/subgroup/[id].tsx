@@ -35,6 +35,7 @@ import { eq } from 'drizzle-orm';
 import SpeciesButtonGrid from '../../../../src/components/SpeciesButtonGrid';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../../../../src/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TreeRegistrationScreen() {
   const { id: subgrupoId } = useLocalSearchParams<{
@@ -51,6 +52,7 @@ export default function TreeRegistrationScreen() {
 
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const [userId, setUserId] = useState<string>('');
   const [finalizing, setFinalizing] = useState(false);
@@ -272,7 +274,7 @@ export default function TreeRegistrationScreen() {
   return (
     <View style={styles.container}>
       {/* Custom header: back arrow + name (centered) + N/N badge */}
-      <View style={styles.headerBar}>
+      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable onPress={() => router.back()} style={styles.headerBackButton} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </Pressable>
@@ -522,7 +524,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xl,
-    paddingTop: 52,
+    // paddingTop set inline via useSafeAreaInsets
     flexDirection: 'row',
     alignItems: 'center',
   },

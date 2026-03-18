@@ -8,6 +8,7 @@ import {
   Alert,
   StyleSheet,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useTrees } from '../../../../src/hooks/useTrees';
@@ -18,7 +19,10 @@ import { db } from '../../../../src/database/client';
 import { trees, subgroups } from '../../../../src/database/schema';
 import { eq, and, isNull, asc, sql } from 'drizzle-orm';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import SpeciesButtonGrid from '../../../../src/components/SpeciesButtonGrid';
+import PhotoViewer from '../../../../src/components/PhotoViewer';
 import { colors, fontSize, spacing, borderRadius } from '../../../../src/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NNTree {
   id: string;
@@ -39,6 +43,7 @@ export default function NNResolutionScreen() {
   }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   // Determine mode: single subgroup or plantation-wide
   const isPlantationMode = !subgrupoId;
@@ -84,8 +89,10 @@ export default function NNResolutionScreen() {
   const { species, loading: speciesLoading } = usePlantationSpecies(plantacionId ?? '');
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | null>(null);
+  // Map of treeId -> selectedSpeciesId (persists across navigation)
+  const [selections, setSelections] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [zoomPhotoUri, setZoomPhotoUri] = useState<string | null>(null);
 
   // Hide default header, use custom
   useEffect(() => {
@@ -111,21 +118,45 @@ export default function NNResolutionScreen() {
   // Determine the subgrupoCodigo for resolving
   const currentSubgrupoCodigo = currentTree.subgrupoCodigo ?? subgrupoCodigo ?? '';
 
+  const currentSelectionId = selections[currentTree?.id] ?? null;
+
+  function handleSelectSpecies(especieId: string) {
+    if (!currentTree) return;
+    setSelections((prev) => {
+      if (prev[currentTree.id] === especieId) {
+        const next = { ...prev };
+        delete next[currentTree.id];
+        return next;
+      }
+      return { ...prev, [currentTree.id]: especieId };
+    });
+  }
+
   async function handleGuardar() {
-    if (!selectedSpeciesId) {
-      Alert.alert('Seleccionar especie', 'Debes seleccionar una especie antes de guardar.');
+    // Count how many have selections
+    const toResolve = unresolvedTrees.filter((t) => selections[t.id]);
+    if (toResolve.length === 0) {
+      Alert.alert('Seleccionar especie', 'Seleccioná una especie para al menos un árbol N/N.');
       return;
     }
 
     setSaving(true);
     try {
-      await resolveNNTree(currentTree.id, selectedSpeciesId, currentSubgrupoCodigo);
-      setSelectedSpeciesId(null);
-
-      if (safeIndex >= unresolvedTrees.length - 1) {
+      for (const tree of toResolve) {
+        const speciesId = selections[tree.id];
+        const codigo = tree.subgrupoCodigo ?? subgrupoCodigo ?? '';
+        await resolveNNTree(tree.id, speciesId, codigo);
+      }
+      // Clear resolved from selections
+      const resolved = new Set(toResolve.map((t) => t.id));
+      setSelections((prev) => {
+        const next = { ...prev };
+        for (const id of resolved) delete next[id];
+        return next;
+      });
+      // If all resolved, go back
+      if (toResolve.length === unresolvedTrees.length) {
         router.back();
-      } else {
-        setCurrentIndex((prev) => Math.min(prev, unresolvedTrees.length - 2));
       }
     } finally {
       setSaving(false);
@@ -135,21 +166,19 @@ export default function NNResolutionScreen() {
   function handleAnterior() {
     if (safeIndex > 0) {
       setCurrentIndex(safeIndex - 1);
-      setSelectedSpeciesId(null);
     }
   }
 
   function handleSiguiente() {
     if (safeIndex < total - 1) {
       setCurrentIndex(safeIndex + 1);
-      setSelectedSpeciesId(null);
     }
   }
 
   return (
     <View style={styles.container}>
       {/* Custom header */}
-      <View style={styles.headerBar}>
+      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
         <Pressable onPress={() => router.back()} style={styles.headerBackButton} hitSlop={12}>
           <Ionicons name="arrow-back" size={24} color={colors.white} />
         </Pressable>
@@ -180,13 +209,15 @@ export default function NNResolutionScreen() {
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <>
-              {/* Photo */}
+              {/* Photo — tap to zoom */}
               {currentTree.fotoUrl ? (
-                <Image
-                  source={{ uri: currentTree.fotoUrl }}
-                  style={styles.photo}
-                  resizeMode="cover"
-                />
+                <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
+                  <Image
+                    source={{ uri: currentTree.fotoUrl }}
+                    style={styles.photo}
+                    resizeMode="cover"
+                  />
+                </Pressable>
               ) : (
                 <View style={styles.photoPlaceholder}>
                   <Text style={styles.photoPlaceholderText}>Sin foto</Text>
@@ -203,29 +234,10 @@ export default function NNResolutionScreen() {
               {speciesLoading ? (
                 <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
               ) : (
-                <FlatList
-                  data={species}
-                  keyExtractor={(item) => item.id}
-                  numColumns={3}
-                  scrollEnabled={false}
-                  contentContainerStyle={styles.speciesGrid}
-                  columnWrapperStyle={styles.speciesRow}
-                  renderItem={({ item }) => {
-                    const isSelected = selectedSpeciesId === item.especieId;
-                    return (
-                      <Pressable
-                        style={[styles.speciesButton, isSelected && styles.speciesButtonSelected]}
-                        onPress={() => setSelectedSpeciesId(item.especieId)}
-                      >
-                        <Text style={[styles.speciesCode, isSelected && styles.speciesCodeSelected]}>
-                          {item.codigo}
-                        </Text>
-                        <Text style={[styles.speciesName, isSelected && styles.speciesNameSelected]} numberOfLines={2}>
-                          {item.nombre}
-                        </Text>
-                      </Pressable>
-                    );
-                  }}
+                <SpeciesButtonGrid
+                  species={species}
+                  onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
+                  selectedId={currentSelectionId}
                 />
               )}
 
@@ -262,10 +274,16 @@ export default function NNResolutionScreen() {
           {saving ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <Text style={styles.guardarButtonText}>Guardar</Text>
+            <Text style={styles.guardarButtonText}>
+              {Object.keys(selections).length > 0
+                ? `Guardar (${Object.keys(selections).length})`
+                : 'Guardar'}
+            </Text>
           )}
         </Pressable>
       </View>
+      {/* Zoom photo viewer */}
+      <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
     </View>
   );
 }
@@ -278,8 +296,8 @@ const styles = StyleSheet.create({
   headerBar: {
     backgroundColor: colors.primary,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-    paddingTop: 52,
+    paddingVertical: spacing.sm,
+    // paddingTop set inline via useSafeAreaInsets
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -389,46 +407,7 @@ const styles = StyleSheet.create({
   loader: {
     marginVertical: spacing['4xl'],
   },
-  speciesGrid: {
-    paddingHorizontal: spacing.xxl,
-    paddingBottom: spacing.md,
-  },
-  speciesRow: {
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  speciesButton: {
-    flex: 1,
-    minHeight: 60,
-    backgroundColor: colors.primaryBgLight,
-    borderRadius: borderRadius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-  },
-  speciesButtonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
-  },
-  speciesCode: {
-    fontSize: fontSize.xl,
-    fontWeight: 'bold',
-    color: colors.primaryDark,
-  },
-  speciesCodeSelected: {
-    color: colors.white,
-  },
-  speciesName: {
-    fontSize: fontSize.xxs,
-    color: colors.primaryMedium,
-    textAlign: 'center',
-    marginTop: 2,
-  },
-  speciesNameSelected: {
-    color: colors.primaryBorder,
-  },
+  // Species grid uses shared SpeciesButtonGrid component
   navigationRow: {
     flexDirection: 'row',
     gap: spacing.xl,
@@ -473,4 +452,5 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: fontSize.xl,
   },
+  // Zoom photo viewer uses shared PhotoViewer component
 });

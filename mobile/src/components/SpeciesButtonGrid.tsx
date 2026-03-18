@@ -6,18 +6,21 @@ import { spacing } from '../theme';
 interface Props {
   species: PlantationSpeciesItem[];
   onSelectSpecies: (item: { especieId: string; especieCodigo: string }) => void;
-  onNNPress: () => void;
+  onNNPress?: () => void;
   disabled?: boolean;
+  /** When set, shows the grid in selection mode (no N/N, highlights selected) */
+  selectedId?: string | null;
 }
 
 const NUM_COLUMNS = 3;
 
-// Special marker for the N/N button
 const NN_ITEM = { _nn: true, id: '__nn__' };
 
-export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress, disabled = false }: Props) {
-  // Species + N/N at the end + invisible placeholders to fill last row
-  const allItems = [...species, NN_ITEM];
+export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress, disabled = false, selectedId }: Props) {
+  const isSelectionMode = selectedId !== undefined;
+
+  // Build data: species + N/N (if not selection mode) + placeholders
+  const allItems = isSelectionMode ? [...species] : [...species, NN_ITEM];
   const remainder = allItems.length % NUM_COLUMNS;
   const placeholderCount = remainder === 0 ? 0 : NUM_COLUMNS - remainder;
   const data = [
@@ -43,7 +46,7 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
               <SpeciesButton
                 codigo="N/N"
                 nombre="No identificado"
-                onPress={onNNPress}
+                onPress={onNNPress ?? (() => {})}
                 isNN
                 disabled={disabled}
               />
@@ -58,6 +61,7 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
               nombre={speciesItem.nombre}
               onPress={() => onSelectSpecies({ especieId: speciesItem.especieId, especieCodigo: speciesItem.codigo })}
               disabled={disabled}
+              selected={isSelectionMode && selectedId === speciesItem.especieId}
             />
           </View>
         );
