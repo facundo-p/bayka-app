@@ -1,4 +1,5 @@
 import { Pressable, Text, View, StyleSheet } from 'react-native';
+import { colors, fontSize, spacing, borderRadius } from '../theme';
 
 interface Props {
   posicion: number;
@@ -36,22 +37,22 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#f9f9f9',
-    borderRadius: 6,
-    gap: 8,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: colors.backgroundAlt,
+    borderRadius: borderRadius.md,
+    gap: spacing.md,
   },
   rowLast: {
-    backgroundColor: '#f0f7f0',
+    backgroundColor: colors.primaryBgLight,
     borderLeftWidth: 3,
-    borderLeftColor: '#4caf50',
+    borderLeftColor: colors.primaryLight,
   },
-  position: { fontSize: 16, fontWeight: 'bold', color: '#333', minWidth: 28 },
-  code: { fontSize: 16, fontWeight: '600', color: '#2d6a2d', minWidth: 48 },
-  subId: { fontSize: 12, color: '#888', flex: 1 },
-  photoButton: { padding: 4 },
-  photoIcon: { fontSize: 16 },
-  undoButton: { paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#ffebee', borderRadius: 4 },
-  undoText: { fontSize: 12, color: '#c62828', fontWeight: '600' },
+  position: { fontSize: fontSize.xl, fontWeight: 'bold', color: colors.textMedium, minWidth: 28 },
+  code: { fontSize: fontSize.xl, fontWeight: '600', color: colors.primary, minWidth: 48 },
+  subId: { fontSize: fontSize.sm, color: colors.textMuted, flex: 1 },
+  photoButton: { padding: spacing.xs },
+  photoIcon: { fontSize: fontSize.xl },
+  undoButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.dangerBg, borderRadius: borderRadius.sm },
+  undoText: { fontSize: fontSize.sm, color: colors.danger, fontWeight: '600' },
 });

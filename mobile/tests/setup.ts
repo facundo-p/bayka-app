@@ -25,6 +25,11 @@ jest.mock('@react-native-community/netinfo', () => ({
   fetch: jest.fn().mockResolvedValue({ isConnected: true }),
 }));
 
+// Mock expo-crypto
+jest.mock('expo-crypto', () => ({
+  randomUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(2, 10)),
+}));
+
 // Mock expo-sqlite
 jest.mock('expo-sqlite', () => ({
   openDatabaseSync: jest.fn(() => ({

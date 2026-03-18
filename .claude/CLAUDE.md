@@ -65,3 +65,11 @@
 - Sin inline styling.
 - CSS separado y reutilizable.
 - Parametrizar colores y variables comunes.
+
+### 8. Diseño centralizado y código compartido (OBLIGATORIO)
+
+**Colores, espaciado, tipografía y estilos comunes** DEBEN definirse en un único archivo de tema (`src/theme.ts`). Nunca hardcodear valores de color o tamaño directamente en los archivos de pantalla o componente. Si necesitás un color, importalo del tema.
+
+**Cero código duplicado entre roles (admin/tecnico).** Las pantallas que comparten funcionalidad (plantaciones, subgrupos, perfil, etc.) DEBEN ser componentes compartidos en `src/components/` o `src/screens/`, parametrizados por rol si es necesario. Las carpetas `(admin)` y `(tecnico)` solo deben contener archivos de layout de navegación y wrappers mínimos que importen los componentes compartidos.
+
+**Regla de un solo lugar:** Para cambiar un color, un estilo común, o un comportamiento compartido, debe ser necesario editar UN SOLO archivo. Si hay que tocar más de un archivo para un cambio de estilo, es un bug de arquitectura.

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,35 +7,95 @@ import {
   Pressable,
   Alert,
   StyleSheet,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useTrees } from '../../../../src/hooks/useTrees';
 import { usePlantationSpecies } from '../../../../src/hooks/usePlantationSpecies';
 import { resolveNNTree } from '../../../../src/repositories/TreeRepository';
+import { useLiveData } from '../../../../src/database/liveQuery';
+import { db } from '../../../../src/database/client';
+import { trees, subgroups } from '../../../../src/database/schema';
+import { eq, and, isNull, asc, sql } from 'drizzle-orm';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { colors, fontSize, spacing, borderRadius } from '../../../../src/theme';
+
+interface NNTree {
+  id: string;
+  posicion: number;
+  subId: string;
+  fotoUrl: string | null;
+  especieId: string | null;
+  subgrupoId: string;
+  subgrupoCodigo?: string;
+  subgrupoNombre?: string;
+}
 
 export default function NNResolutionScreen() {
   const { subgrupoId, subgrupoCodigo, plantacionId } = useLocalSearchParams<{
-    subgrupoId: string;
-    subgrupoCodigo: string;
+    subgrupoId?: string;
+    subgrupoCodigo?: string;
     plantacionId: string;
   }>();
   const router = useRouter();
+  const navigation = useNavigation();
 
-  const { allTrees } = useTrees(subgrupoId ?? '');
+  // Determine mode: single subgroup or plantation-wide
+  const isPlantationMode = !subgrupoId;
+
+  // Single subgroup mode: use existing hook
+  const singleSubgroupTrees = useTrees(subgrupoId ?? '');
+
+  // Plantation-wide mode: query all N/N trees across subgroups
+  const { data: plantationNNTrees } = useLiveData(
+    () => {
+      if (!isPlantationMode) return Promise.resolve([]);
+      return db.select({
+        id: trees.id,
+        posicion: trees.posicion,
+        subId: trees.subId,
+        fotoUrl: trees.fotoUrl,
+        especieId: trees.especieId,
+        subgrupoId: trees.subgrupoId,
+        subgrupoCodigo: subgroups.codigo,
+        subgrupoNombre: subgroups.nombre,
+      })
+        .from(trees)
+        .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+        .where(and(
+          isNull(trees.especieId),
+          eq(subgroups.plantacionId, plantacionId ?? '')
+        ))
+        .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+    },
+    [plantacionId, isPlantationMode]
+  );
+
+  // Build unified unresolved list
+  let unresolvedTrees: NNTree[];
+  if (isPlantationMode) {
+    unresolvedTrees = (plantationNNTrees ?? []) as NNTree[];
+  } else {
+    unresolvedTrees = singleSubgroupTrees.allTrees
+      .filter((t) => t.especieId === null)
+      .map((t) => ({ ...t, subgrupoCodigo: subgrupoCodigo ?? '', subgrupoNombre: undefined }));
+  }
+
   const { species, loading: speciesLoading } = usePlantationSpecies(plantacionId ?? '');
-
-  const unresolvedTrees = allTrees.filter((t) => t.especieId === null);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedSpeciesId, setSelectedSpeciesId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  // Hide default header, use custom
+  useEffect(() => {
+    navigation.setOptions({ headerShown: false });
+  }, [navigation]);
+
   if (unresolvedTrees.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No hay árboles N/N pendientes</Text>
+        <Text style={styles.emptyText}>No hay arboles N/N pendientes</Text>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Volver</Text>
         </Pressable>
@@ -43,8 +103,13 @@ export default function NNResolutionScreen() {
     );
   }
 
-  const currentTree = unresolvedTrees[currentIndex];
+  // Clamp currentIndex
+  const safeIndex = Math.min(currentIndex, unresolvedTrees.length - 1);
+  const currentTree = unresolvedTrees[safeIndex];
   const total = unresolvedTrees.length;
+
+  // Determine the subgrupoCodigo for resolving
+  const currentSubgrupoCodigo = currentTree.subgrupoCodigo ?? subgrupoCodigo ?? '';
 
   async function handleGuardar() {
     if (!selectedSpeciesId) {
@@ -54,15 +119,12 @@ export default function NNResolutionScreen() {
 
     setSaving(true);
     try {
-      await resolveNNTree(currentTree.id, selectedSpeciesId, subgrupoCodigo ?? '');
+      await resolveNNTree(currentTree.id, selectedSpeciesId, currentSubgrupoCodigo);
       setSelectedSpeciesId(null);
 
-      // If this was the last unresolved tree, go back
-      if (currentIndex >= unresolvedTrees.length - 1) {
+      if (safeIndex >= unresolvedTrees.length - 1) {
         router.back();
       } else {
-        // Stay at same index — the resolved tree will disappear from the list
-        // If index is now out of bounds, clamp
         setCurrentIndex((prev) => Math.min(prev, unresolvedTrees.length - 2));
       }
     } finally {
@@ -71,259 +133,344 @@ export default function NNResolutionScreen() {
   }
 
   function handleAnterior() {
-    if (currentIndex > 0) {
-      setCurrentIndex(currentIndex - 1);
+    if (safeIndex > 0) {
+      setCurrentIndex(safeIndex - 1);
       setSelectedSpeciesId(null);
     }
   }
 
   function handleSiguiente() {
-    if (currentIndex < total - 1) {
-      setCurrentIndex(currentIndex + 1);
+    if (safeIndex < total - 1) {
+      setCurrentIndex(safeIndex + 1);
       setSelectedSpeciesId(null);
     }
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Counter */}
-      <View style={styles.counterRow}>
+    <View style={styles.container}>
+      {/* Custom header */}
+      <View style={styles.headerBar}>
+        <Pressable onPress={() => router.back()} style={styles.headerBackButton} hitSlop={12}>
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
+        </Pressable>
+        <Text style={styles.headerTitle}>Resolver N/N</Text>
+        <View style={styles.headerSpacer} />
+      </View>
+
+      {/* Fixed info row */}
+      <View style={styles.infoRow}>
         <Text style={styles.counterText}>
-          N/N {currentIndex + 1} de {total}
+          N/N {safeIndex + 1} de {total}
         </Text>
-        <Text style={styles.posicionText}>Posición {currentTree.posicion}</Text>
-      </View>
-
-      {/* Photo */}
-      {currentTree.fotoUrl ? (
-        <Image
-          source={{ uri: currentTree.fotoUrl }}
-          style={styles.photo}
-          resizeMode="cover"
-        />
-      ) : (
-        <View style={styles.photoPlaceholder}>
-          <Text style={styles.photoPlaceholderText}>Sin foto</Text>
+        <View style={styles.infoRight}>
+          {isPlantationMode && currentTree.subgrupoNombre && (
+            <Text style={styles.subgrupoLabel}>{currentTree.subgrupoNombre}</Text>
+          )}
+          {isPlantationMode && currentTree.subgrupoCodigo && (
+            <Text style={styles.subgrupoCodeLabel}>{currentTree.subgrupoCodigo}</Text>
+          )}
+          <Text style={styles.posicionText}>Posicion {currentTree.posicion}</Text>
         </View>
-      )}
-
-      {/* Species picker */}
-      <Text style={styles.pickerLabel}>Seleccionar especie:</Text>
-
-      {speciesLoading ? (
-        <ActivityIndicator size="large" color="#2d6a2d" style={styles.loader} />
-      ) : (
-        <FlatList
-          data={species}
-          keyExtractor={(item) => item.id}
-          numColumns={3}
-          scrollEnabled={false}
-          contentContainerStyle={styles.speciesGrid}
-          columnWrapperStyle={styles.speciesRow}
-          renderItem={({ item }) => {
-            const isSelected = selectedSpeciesId === item.especieId;
-            return (
-              <Pressable
-                style={[styles.speciesButton, isSelected && styles.speciesButtonSelected]}
-                onPress={() => setSelectedSpeciesId(item.especieId)}
-              >
-                <Text style={[styles.speciesCode, isSelected && styles.speciesCodeSelected]}>
-                  {item.codigo}
-                </Text>
-                <Text style={[styles.speciesName, isSelected && styles.speciesNameSelected]} numberOfLines={2}>
-                  {item.nombre}
-                </Text>
-              </Pressable>
-            );
-          }}
-        />
-      )}
-
-      {/* Navigation */}
-      <View style={styles.navigationRow}>
-        <Pressable
-          style={[styles.navButton, currentIndex === 0 && styles.navButtonDisabled]}
-          onPress={handleAnterior}
-          disabled={currentIndex === 0}
-        >
-          <Text style={styles.navButtonText}>Anterior</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.navButton, currentIndex >= total - 1 && styles.navButtonDisabled]}
-          onPress={handleSiguiente}
-          disabled={currentIndex >= total - 1}
-        >
-          <Text style={styles.navButtonText}>Siguiente</Text>
-        </Pressable>
       </View>
 
-      {/* Save button */}
-      <Pressable
-        style={[styles.guardarButton, saving && styles.guardarButtonDisabled]}
-        onPress={handleGuardar}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color="#fff" />
-        ) : (
-          <Text style={styles.guardarButtonText}>Guardar</Text>
-        )}
-      </Pressable>
-    </ScrollView>
+      {/* Scrollable middle content */}
+      <View style={styles.scrollWrapper}>
+        <FlatList
+          data={[currentTree]}
+          keyExtractor={(item) => item.id}
+          ListHeaderComponent={
+            <>
+              {/* Photo */}
+              {currentTree.fotoUrl ? (
+                <Image
+                  source={{ uri: currentTree.fotoUrl }}
+                  style={styles.photo}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Text style={styles.photoPlaceholderText}>Sin foto</Text>
+                </View>
+              )}
+
+              {/* Species picker label */}
+              <Text style={styles.pickerLabel}>Seleccionar especie:</Text>
+            </>
+          }
+          renderItem={() => null}
+          ListFooterComponent={
+            <>
+              {speciesLoading ? (
+                <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+              ) : (
+                <FlatList
+                  data={species}
+                  keyExtractor={(item) => item.id}
+                  numColumns={3}
+                  scrollEnabled={false}
+                  contentContainerStyle={styles.speciesGrid}
+                  columnWrapperStyle={styles.speciesRow}
+                  renderItem={({ item }) => {
+                    const isSelected = selectedSpeciesId === item.especieId;
+                    return (
+                      <Pressable
+                        style={[styles.speciesButton, isSelected && styles.speciesButtonSelected]}
+                        onPress={() => setSelectedSpeciesId(item.especieId)}
+                      >
+                        <Text style={[styles.speciesCode, isSelected && styles.speciesCodeSelected]}>
+                          {item.codigo}
+                        </Text>
+                        <Text style={[styles.speciesName, isSelected && styles.speciesNameSelected]} numberOfLines={2}>
+                          {item.nombre}
+                        </Text>
+                      </Pressable>
+                    );
+                  }}
+                />
+              )}
+
+              {/* Navigation */}
+              <View style={styles.navigationRow}>
+                <Pressable
+                  style={[styles.navButton, safeIndex === 0 && styles.navButtonDisabled]}
+                  onPress={handleAnterior}
+                  disabled={safeIndex === 0}
+                >
+                  <Text style={styles.navButtonText}>Anterior</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.navButton, safeIndex >= total - 1 && styles.navButtonDisabled]}
+                  onPress={handleSiguiente}
+                  disabled={safeIndex >= total - 1}
+                >
+                  <Text style={styles.navButtonText}>Siguiente</Text>
+                </Pressable>
+              </View>
+            </>
+          }
+        />
+      </View>
+
+      {/* Fixed bottom: Guardar button */}
+      <View style={styles.fixedBottom}>
+        <Pressable
+          style={[styles.guardarButton, saving && styles.guardarButtonDisabled]}
+          onPress={handleGuardar}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={styles.guardarButtonText}>Guardar</Text>
+          )}
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: colors.background,
   },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
+  headerBar: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xl,
+    paddingTop: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerBackButton: {
+    padding: spacing.xs,
+    marginRight: spacing.md,
+  },
+  headerTitle: {
+    color: colors.white,
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  infoRight: {
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  subgrupoLabel: {
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    color: colors.textMedium,
+  },
+  subgrupoCodeLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    fontFamily: 'monospace',
+  },
+  counterText: {
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
+    color: colors.secondary,
+  },
+  posicionText: {
+    fontSize: fontSize.base,
+    color: colors.textMuted,
+  },
+  scrollWrapper: {
+    flex: 1,
   },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
+    padding: spacing['5xl'],
   },
   emptyText: {
-    fontSize: 16,
-    color: '#555',
-    marginBottom: 24,
+    fontSize: fontSize.xl,
+    color: colors.textSecondary,
+    marginBottom: spacing['4xl'],
     textAlign: 'center',
   },
   backButton: {
-    backgroundColor: '#2d6a2d',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing['4xl'],
+    paddingVertical: spacing.xl,
+    borderRadius: borderRadius.lg,
   },
   backButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: 'bold',
-    fontSize: 15,
-  },
-  counterRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  counterText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#e65100',
-  },
-  posicionText: {
-    fontSize: 14,
-    color: '#888',
+    fontSize: fontSize.lg,
   },
   photo: {
     width: '100%',
     height: 280,
-    borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#e0e0e0',
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.xxl,
+    marginTop: spacing.xxl,
+    marginHorizontal: 0,
+    backgroundColor: colors.border,
   },
   photoPlaceholder: {
     width: '100%',
     height: 280,
-    borderRadius: 8,
-    marginBottom: 16,
-    backgroundColor: '#e0e0e0',
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.xxl,
+    marginTop: spacing.xxl,
+    backgroundColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   photoPlaceholderText: {
-    color: '#888',
-    fontSize: 16,
+    color: colors.textMuted,
+    fontSize: fontSize.xl,
   },
   pickerLabel: {
-    fontSize: 15,
+    fontSize: fontSize.lg,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
+    color: colors.textMedium,
+    marginBottom: spacing.lg,
+    paddingHorizontal: spacing.xxl,
   },
   loader: {
-    marginVertical: 24,
+    marginVertical: spacing['4xl'],
   },
   speciesGrid: {
-    paddingBottom: 8,
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.md,
   },
   speciesRow: {
-    gap: 6,
-    marginBottom: 6,
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   speciesButton: {
     flex: 1,
     minHeight: 60,
-    backgroundColor: '#f0f7f0',
-    borderRadius: 8,
+    backgroundColor: colors.primaryBgLight,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 8,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#c8e6c9',
+    borderColor: colors.primaryBorder,
   },
   speciesButtonSelected: {
-    backgroundColor: '#2d6a2d',
-    borderColor: '#1b5e20',
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDark,
   },
   speciesCode: {
-    fontSize: 16,
+    fontSize: fontSize.xl,
     fontWeight: 'bold',
-    color: '#1b5e20',
+    color: colors.primaryDark,
   },
   speciesCodeSelected: {
-    color: '#fff',
+    color: colors.white,
   },
   speciesName: {
-    fontSize: 10,
-    color: '#388e3c',
+    fontSize: fontSize.xxs,
+    color: colors.primaryMedium,
     textAlign: 'center',
     marginTop: 2,
   },
   speciesNameSelected: {
-    color: '#c8e6c9',
+    color: colors.primaryBorder,
   },
   navigationRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-    marginBottom: 12,
+    gap: spacing.xl,
+    marginTop: spacing.xxl,
+    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.xxl,
   },
   navButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: spacing.xl,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#2d6a2d',
+    borderColor: colors.primary,
     alignItems: 'center',
   },
   navButtonDisabled: {
-    borderColor: '#ccc',
+    borderColor: colors.borderMuted,
     opacity: 0.4,
   },
   navButtonText: {
-    color: '#2d6a2d',
+    color: colors.primary,
     fontWeight: '600',
-    fontSize: 14,
+    fontSize: fontSize.base,
+  },
+  fixedBottom: {
+    padding: spacing.xxl,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   guardarButton: {
-    backgroundColor: '#2d6a2d',
-    paddingVertical: 16,
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.xxl,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
   },
   guardarButtonDisabled: {
     opacity: 0.5,
   },
   guardarButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: fontSize.xl,
   },
 });

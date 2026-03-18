@@ -10,6 +10,7 @@ import { useEffect } from 'react';
 import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
 import { seedPlantationIfNeeded } from '../src/database/seeds/seedPlantation';
 import { seedPlantationSpeciesIfNeeded } from '../src/database/seeds/seedPlantationSpecies';
+import { colors, fontSize, spacing } from '../src/theme';
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
@@ -75,7 +76,7 @@ export default function RootLayout() {
   if (loading) {
     return (
       <View style={styles.center}>
-        <Text style={styles.loadingText}>Iniciando sesión...</Text>
+        <Text style={styles.loadingText}>Iniciando sesion...</Text>
       </View>
     );
   }
@@ -89,27 +90,27 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 24,
+    backgroundColor: colors.surface,
+    padding: spacing['4xl'],
   },
   loadingText: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: fontSize.xl,
+    color: colors.textSecondary,
   },
   errorTitle: {
-    fontSize: 18,
+    fontSize: fontSize.xxl,
     fontWeight: 'bold',
-    color: '#c00',
-    marginBottom: 8,
+    color: colors.dangerText,
+    marginBottom: spacing.md,
   },
   errorBody: {
-    fontSize: 15,
-    color: '#333',
-    marginBottom: 16,
+    fontSize: fontSize.lg,
+    color: colors.textMedium,
+    marginBottom: spacing.xxl,
   },
   errorDetail: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: fontSize.sm,
+    color: colors.textPlaceholder,
     textAlign: 'center',
   },
 });

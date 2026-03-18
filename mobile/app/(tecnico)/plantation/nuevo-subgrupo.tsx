@@ -14,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { createSubGroup, getLastSubGroupName } from '../../../src/repositories/SubGroupRepository';
 import type { SubGroupTipo } from '../../../src/repositories/SubGroupRepository';
 import { supabase, isSupabaseConfigured } from '../../../src/supabase/client';
+import { colors, fontSize, spacing, borderRadius } from '../../../src/theme';
 
 export default function NuevoSubGrupo() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
@@ -58,9 +59,9 @@ export default function NuevoSubGrupo() {
     if (result.success) {
       router.back();
     } else if (result.error === 'codigo_duplicate') {
-      setCodigoError('Este código ya existe en la plantación');
+      setCodigoError('Este codigo ya existe en la plantacion');
     } else {
-      setCodigoError('Error al crear el SubGrupo. Intentá de nuevo.');
+      setCodigoError('Error al crear el subgrupo. Intenta de nuevo.');
     }
   }
 
@@ -72,7 +73,7 @@ export default function NuevoSubGrupo() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.sectionTitle}>Datos del SubGrupo</Text>
+        <Text style={styles.sectionTitle}>Datos del subgrupo</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>Nombre</Text>
@@ -80,17 +81,17 @@ export default function NuevoSubGrupo() {
             style={styles.input}
             value={nombre}
             onChangeText={setNombre}
-            placeholder="Ej: Línea 1"
-            placeholderTextColor="#aaa"
+            placeholder="Ej: Linea 1"
+            placeholderTextColor={colors.textLight}
             autoCapitalize="words"
           />
           {lastSubGroupName && (
-            <Text style={styles.referenceText}>Último SubGrupo: {lastSubGroupName}</Text>
+            <Text style={styles.referenceText}>Ultimo subgrupo: {lastSubGroupName}</Text>
           )}
         </View>
 
         <View style={styles.field}>
-          <Text style={styles.label}>Código</Text>
+          <Text style={styles.label}>Codigo</Text>
           <TextInput
             style={[styles.input, codigoError ? styles.inputError : null]}
             value={codigo}
@@ -99,7 +100,7 @@ export default function NuevoSubGrupo() {
               if (codigoError) setCodigoError(null);
             }}
             placeholder="Ej: L1"
-            placeholderTextColor="#aaa"
+            placeholderTextColor={colors.textLight}
             autoCapitalize="characters"
             autoCorrect={false}
           />
@@ -114,7 +115,7 @@ export default function NuevoSubGrupo() {
               onPress={() => setTipo('linea')}
             >
               <Text style={[styles.segmentLabel, tipo === 'linea' && styles.segmentLabelActive]}>
-                Línea
+                Linea
               </Text>
             </Pressable>
             <Pressable
@@ -134,9 +135,9 @@ export default function NuevoSubGrupo() {
           disabled={!canSubmit}
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <ActivityIndicator color={colors.white} />
           ) : (
-            <Text style={styles.submitBtnText}>Crear SubGrupo</Text>
+            <Text style={styles.submitBtnText}>Crear subgrupo</Text>
           )}
         </Pressable>
       </ScrollView>
@@ -147,86 +148,86 @@ export default function NuevoSubGrupo() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   container: {
-    padding: 20,
+    padding: spacing.xxxl,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: fontSize.title,
     fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 20,
+    color: colors.text,
+    marginBottom: spacing.xxxl,
   },
   field: {
-    marginBottom: 20,
+    marginBottom: spacing.xxxl,
   },
   label: {
-    fontSize: 14,
+    fontSize: fontSize.base,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
+    color: colors.textMedium,
+    marginBottom: spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
+    borderColor: colors.borderLight,
+    borderRadius: borderRadius.lg,
     paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fafafa',
+    paddingVertical: spacing.xl,
+    fontSize: fontSize.xl,
+    color: colors.text,
+    backgroundColor: colors.surfaceAlt,
   },
   inputError: {
-    borderColor: '#e53935',
+    borderColor: colors.dangerLight,
   },
   referenceText: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 6,
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
   },
   errorText: {
-    fontSize: 13,
-    color: '#e53935',
-    marginTop: 6,
+    fontSize: fontSize.md,
+    color: colors.dangerLight,
+    marginTop: spacing.sm,
   },
   segmentedControl: {
     flexDirection: 'row',
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: '#2d6a2d',
+    borderColor: colors.primary,
     overflow: 'hidden',
   },
   segmentButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   segmentButtonActive: {
-    backgroundColor: '#2d6a2d',
+    backgroundColor: colors.primary,
   },
   segmentLabel: {
-    fontSize: 15,
+    fontSize: fontSize.lg,
     fontWeight: '600',
-    color: '#2d6a2d',
+    color: colors.primary,
   },
   segmentLabelActive: {
-    color: '#fff',
+    color: colors.white,
   },
   submitBtn: {
-    backgroundColor: '#2d6a2d',
+    backgroundColor: colors.primary,
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.md,
   },
   submitBtnDisabled: {
-    backgroundColor: '#a5c9a5',
+    backgroundColor: colors.primaryFaded,
   },
   submitBtnText: {
-    color: '#fff',
-    fontSize: 16,
+    color: colors.white,
+    fontSize: fontSize.xl,
     fontWeight: 'bold',
   },
 });

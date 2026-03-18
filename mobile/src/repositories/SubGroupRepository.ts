@@ -1,7 +1,9 @@
 import { db } from '../database/client';
 import { subgroups, trees } from '../database/schema';
 import { eq, and, desc, isNull, count } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { notifyDataChanged } from '../database/liveQuery';
+import * as Crypto from 'expo-crypto';
+import { localNow } from '../utils/dateUtils';
 
 export type SubGroupEstado = 'activa' | 'finalizada' | 'sincronizada';
 export type SubGroupTipo = 'linea' | 'parcela';
@@ -15,15 +17,6 @@ export interface SubGroup {
   estado: SubGroupEstado;
   usuarioCreador: string;
   createdAt: string;
-}
-
-// Hook — use in screens. Returns live list ordered by createdAt DESC.
-export function useSubGroupsForPlantation(plantacionId: string) {
-  return useLiveQuery(
-    db.select().from(subgroups)
-      .where(eq(subgroups.plantacionId, plantacionId))
-      .orderBy(desc(subgroups.createdAt))
-  );
 }
 
 // Returns the nombre of the most recently created SubGroup for this plantation.
@@ -49,7 +42,7 @@ export async function createSubGroup(params: {
   usuarioCreador: string;
 }): Promise<CreateSubGroupResult> {
   try {
-    const id = crypto.randomUUID();
+    const id = Crypto.randomUUID();
     await db.insert(subgroups).values({
       id,
       plantacionId: params.plantacionId,
@@ -58,8 +51,9 @@ export async function createSubGroup(params: {
       tipo: params.tipo,
       estado: 'activa',
       usuarioCreador: params.usuarioCreador,
-      createdAt: new Date().toISOString(),
+      createdAt: localNow(),
     });
+    notifyDataChanged();
     return { success: true, id };
   } catch (e: any) {
     if (e?.message?.includes('UNIQUE constraint failed')) {
@@ -88,6 +82,7 @@ export async function finalizeSubGroup(subgrupoId: string): Promise<FinalizeResu
     .set({ estado: 'finalizada' })
     .where(eq(subgroups.id, subgrupoId));
 
+  notifyDataChanged();
   return { success: true };
 }
 
@@ -95,4 +90,22 @@ export async function finalizeSubGroup(subgrupoId: string): Promise<FinalizeResu
 export function canEdit(subgroup: { usuarioCreador: string; estado: SubGroupEstado }, userId: string): boolean {
   if (subgroup.estado === 'sincronizada') return false;
   return subgroup.usuarioCreador === userId;
+}
+
+/**
+ * Deletes a subgroup and all its trees.
+ * Returns the number of trees that were deleted so the UI can show a warning.
+ */
+export async function deleteSubGroup(subgrupoId: string): Promise<{ deleted: boolean; treeCount: number }> {
+  const [treeResult] = await db.select({ count: count() })
+    .from(trees)
+    .where(eq(trees.subgrupoId, subgrupoId));
+
+  const treeCount = treeResult?.count ?? 0;
+
+  await db.delete(trees).where(eq(trees.subgrupoId, subgrupoId));
+  await db.delete(subgroups).where(eq(subgroups.id, subgrupoId));
+
+  notifyDataChanged();
+  return { deleted: true, treeCount };
 }

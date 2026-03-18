@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useAuth } from '../../src/hooks/useAuth';
 import * as SecureStore from 'expo-secure-store';
+import { colors, fontSize, spacing, borderRadius } from '../../src/theme';
 
 const SAVED_ACCOUNTS_KEY = 'saved_accounts';
 
@@ -48,7 +49,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      setError('Completar email y contraseña');
+      setError('Completar email y contrasena');
       return;
     }
     setLoading(true);
@@ -62,7 +63,7 @@ export default function LoginScreen() {
     const { error: authError } = await signIn(email.trim(), password);
 
     if (authError) {
-      setError('Email o contraseña incorrectos');
+      setError('Email o contrasena incorrectos');
       setLoading(false);
     }
   }
@@ -79,7 +80,7 @@ export default function LoginScreen() {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#999"
+          placeholderTextColor={colors.textPlaceholder}
           value={email}
           onChangeText={(text) => { setEmail(text); setError(null); }}
           autoCapitalize="none"
@@ -90,8 +91,8 @@ export default function LoginScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor="#999"
+          placeholder="Contrasena"
+          placeholderTextColor={colors.textPlaceholder}
           value={password}
           onChangeText={(text) => { setPassword(text); setError(null); }}
           secureTextEntry
@@ -120,7 +121,7 @@ export default function LoginScreen() {
           activeOpacity={0.8}
         >
           <Text style={styles.buttonText}>
-            {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            {loading ? 'Iniciando sesion...' : 'Iniciar sesion'}
           </Text>
         </TouchableOpacity>
 
@@ -156,120 +157,120 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
   },
   form: {
     flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 40,
+    paddingHorizontal: spacing['5xl'],
+    paddingVertical: spacing['6xl'],
   },
   logo: {
-    fontSize: 36,
+    fontSize: fontSize.hero,
     fontWeight: 'bold',
-    color: '#2d6a2d',
-    marginBottom: 4,
+    color: colors.primary,
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#777',
-    marginBottom: 32,
+    fontSize: fontSize.base,
+    color: colors.textSubtle,
+    marginBottom: spacing['5xl'],
   },
   input: {
     width: '100%',
     height: 52,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#222',
-    marginBottom: 12,
-    backgroundColor: '#fafafa',
+    borderColor: colors.borderLight,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.xxl,
+    fontSize: fontSize.xl,
+    color: colors.textDark,
+    marginBottom: spacing.xl,
+    backgroundColor: colors.surfaceAlt,
   },
   rememberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.xl,
   },
   checkbox: {
     width: 22,
     height: 22,
     borderWidth: 2,
-    borderColor: '#ccc',
-    borderRadius: 4,
+    borderColor: colors.borderMuted,
+    borderRadius: borderRadius.sm,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: spacing.md,
   },
   checkboxChecked: {
-    backgroundColor: '#2d6a2d',
-    borderColor: '#2d6a2d',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   checkmark: {
-    color: '#fff',
-    fontSize: 14,
+    color: colors.white,
+    fontSize: fontSize.base,
     fontWeight: 'bold',
   },
   rememberText: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: fontSize.base,
+    color: colors.textSecondary,
   },
   errorText: {
-    color: '#c00',
-    fontSize: 14,
-    marginBottom: 12,
+    color: colors.dangerText,
+    fontSize: fontSize.base,
+    marginBottom: spacing.xl,
     alignSelf: 'flex-start',
   },
   button: {
     width: '100%',
     height: 52,
-    backgroundColor: '#2d6a2d',
-    borderRadius: 8,
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: spacing.md,
   },
   buttonDisabled: {
-    backgroundColor: '#aaa',
+    backgroundColor: colors.disabled,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 16,
+    color: colors.white,
+    fontSize: fontSize.xl,
     fontWeight: '600',
   },
   accountsSection: {
     width: '100%',
-    marginTop: 24,
+    marginTop: spacing['4xl'],
   },
   accountsTitle: {
-    fontSize: 13,
-    color: '#999',
-    marginBottom: 8,
+    fontSize: fontSize.md,
+    color: colors.textPlaceholder,
+    marginBottom: spacing.md,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   accountChip: {
-    backgroundColor: '#f0f0f0',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
+    backgroundColor: colors.surfacePressed,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: borderRadius.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: colors.border,
   },
   accountChipActive: {
-    backgroundColor: '#e8f5e9',
-    borderColor: '#2d6a2d',
+    backgroundColor: colors.primaryBg,
+    borderColor: colors.primary,
   },
   accountChipText: {
-    fontSize: 15,
-    color: '#333',
+    fontSize: fontSize.lg,
+    color: colors.textMedium,
   },
   accountChipTextActive: {
-    color: '#2d6a2d',
+    color: colors.primary,
     fontWeight: '600',
   },
 });

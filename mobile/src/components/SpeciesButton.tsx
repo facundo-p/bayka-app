@@ -1,5 +1,6 @@
-import { Pressable, Text, StyleSheet } from 'react-native';
+import { Pressable, Text, StyleSheet, Vibration } from 'react-native';
 import { useState } from 'react';
+import { colors, fontSize, spacing, borderRadius } from '../theme';
 
 interface Props {
   codigo: string;
@@ -16,7 +17,10 @@ export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, d
     <Pressable
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      onPress={onPress}
+      onPress={() => {
+        Vibration.vibrate(50);
+        onPress();
+      }}
       disabled={disabled}
       style={[
         styles.button,
@@ -35,44 +39,44 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 60,
     flex: 1,
-    backgroundColor: '#f0f7f0',
-    borderRadius: 8,
+    backgroundColor: colors.primaryBgLight,
+    borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 8,
+    padding: spacing.md,
     borderWidth: 1,
-    borderColor: '#c8e6c9',
+    borderColor: colors.primaryBorder,
   },
   buttonPressed: {
-    backgroundColor: '#a5d6a7',
-    borderColor: '#66bb6a',
+    backgroundColor: colors.primaryBgMuted,
+    borderColor: colors.primaryAccent,
   },
   buttonNN: {
-    backgroundColor: '#fff8e1',
-    borderColor: '#ffca28',
+    backgroundColor: colors.secondaryYellowLight,
+    borderColor: colors.secondaryYellow,
   },
   buttonNNPressed: {
-    backgroundColor: '#ffe082',
-    borderColor: '#ffb300',
+    backgroundColor: colors.secondaryYellowMedium,
+    borderColor: colors.secondaryYellowDark,
   },
   buttonDisabled: {
     opacity: 0.4,
   },
   code: {
-    fontSize: 18,
+    fontSize: fontSize.xxl,
     fontWeight: 'bold',
-    color: '#1b5e20',
+    color: colors.primaryDark,
   },
   codeNN: {
-    color: '#e65100',
+    color: colors.secondary,
   },
   name: {
-    fontSize: 11,
-    color: '#388e3c',
+    fontSize: fontSize.xs,
+    color: colors.primaryMedium,
     textAlign: 'center',
     marginTop: 2,
   },
   nameNN: {
-    color: '#e65100',
+    color: colors.secondary,
   },
 });

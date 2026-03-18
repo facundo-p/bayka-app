@@ -1,16 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
+import PlaceholderScreen from '../../src/screens/PlaceholderScreen';
 
 export default function AdminPanel() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin</Text>
-      <Text style={styles.subtitle}>Próximamente disponible</Text>
-    </View>
-  );
+  return <PlaceholderScreen title="Admin" />;
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#2d6a2d' },
-  subtitle: { fontSize: 14, color: '#777', marginTop: 8 },
-});

@@ -1,8 +1,11 @@
 import { db } from '../database/client';
 import { trees, species as speciesTable } from '../database/schema';
-import { eq, max } from 'drizzle-orm';
+import { eq, max, asc } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
+import { notifyDataChanged } from '../database/liveQuery';
+import * as Crypto from 'expo-crypto';
+import { localNow } from '../utils/dateUtils';
 
 export interface InsertTreeParams {
   subgrupoId: string;
@@ -29,7 +32,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
   const nextPosition = (maxResult?.maxPos ?? 0) + 1;
   const subId = generateSubId(params.subgrupoCodigo, params.especieCodigo, nextPosition);
 
-  const id = crypto.randomUUID();
+  const id = Crypto.randomUUID();
   await db.insert(trees).values({
     id,
     subgrupoId: params.subgrupoId,
@@ -38,9 +41,10 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
     subId,
     fotoUrl: params.fotoUrl ?? null,
     usuarioRegistro: params.userId,
-    createdAt: new Date().toISOString(),
+    createdAt: localNow(),
   });
 
+  notifyDataChanged();
   return { id, posicion: nextPosition, subId };
 }
 
@@ -53,6 +57,7 @@ export async function deleteLastTree(subgrupoId: string): Promise<{ deleted: boo
   if (maxResult?.id == null) return { deleted: false };
 
   await db.delete(trees).where(eq(trees.id, maxResult.id));
+  notifyDataChanged();
   return { deleted: true };
 }
 
@@ -85,6 +90,7 @@ export async function reverseTreeOrder(
         .where(eq(trees.id, id));
     }
   });
+  notifyDataChanged();
 }
 
 export async function resolveNNTree(
@@ -107,14 +113,56 @@ export async function resolveNNTree(
   await db.update(trees)
     .set({ especieId, subId: newSubId })
     .where(eq(trees.id, treeId));
+  notifyDataChanged();
 }
 
 /**
- * Attaches or replaces the photo for any tree (optional, non-N/N trees).
- * Called from the tree registration screen camera icon handler.
+ * Attaches, replaces, or removes the photo for any tree.
+ * Pass empty string to remove the photo.
  */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
   await db.update(trees)
-    .set({ fotoUrl })
+    .set({ fotoUrl: fotoUrl || null })
     .where(eq(trees.id, treeId));
+  notifyDataChanged();
+}
+
+/**
+ * Deletes a single tree and recalculates positions + subIds for all
+ * remaining trees in the subgroup so they stay consecutive (1, 2, 3...).
+ */
+export async function deleteTreeAndRecalculate(
+  treeId: string,
+  subgrupoId: string,
+  subgrupoCodigo: string
+): Promise<void> {
+  await db.delete(trees).where(eq(trees.id, treeId));
+
+  // Fetch remaining trees ordered by current position
+  const remaining = await db.select().from(trees)
+    .where(eq(trees.subgrupoId, subgrupoId))
+    .orderBy(asc(trees.posicion));
+
+  // Recalculate positions and subIds
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < remaining.length; i++) {
+      const tree = remaining[i];
+      const newPos = i + 1;
+
+      let especieCodigo = 'NN';
+      if (tree.especieId) {
+        const [sp] = await tx.select({ codigo: speciesTable.codigo })
+          .from(speciesTable)
+          .where(eq(speciesTable.id, tree.especieId));
+        especieCodigo = sp?.codigo ?? 'NN';
+      }
+
+      const newSubId = generateSubId(subgrupoCodigo, especieCodigo, newPos);
+      await tx.update(trees)
+        .set({ posicion: newPos, subId: newSubId })
+        .where(eq(trees.id, tree.id));
+    }
+  });
+
+  notifyDataChanged();
 }
