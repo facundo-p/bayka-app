@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   FlatList,
-  Alert,
   StyleSheet,
   Pressable,
   ActivityIndicator,
@@ -27,7 +26,8 @@ import {
   deleteSubGroup,
   reactivateSubGroup,
 } from '../repositories/SubGroupRepository';
-import { captureNNPhoto, attachTreePhoto } from '../services/PhotoService';
+import { launchCamera, launchGallery } from '../services/PhotoService';
+import { usePhotoPicker } from '../hooks/usePhotoPicker';
 import { useLiveData } from '../database/liveQuery';
 import { db } from '../database/client';
 import { subgroups } from '../database/schema';
@@ -39,8 +39,10 @@ import { colors, fontSize, spacing, borderRadius } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import type { SubGroupEstado } from '../repositories/SubGroupRepository';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function TreeRegistrationScreen() {
   const { id: subgrupoId } = useLocalSearchParams<{
@@ -59,6 +61,8 @@ export default function TreeRegistrationScreen() {
   const navigation = useNavigation();
 
   const userId = useCurrentUserId() ?? '';
+  const confirm = useConfirm();
+  const { pickPhoto } = usePhotoPicker(confirm.show, launchCamera, launchGallery);
   const [finalizing, setFinalizing] = useState(false);
   const [reversing, setReversing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -102,7 +106,7 @@ export default function TreeRegistrationScreen() {
 
   async function handleNNPress() {
     if (isReadOnly) return;
-    const photoUri = await captureNNPhoto();
+    const photoUri = await pickPhoto();
     if (!photoUri) return;
     await insertTree({
       subgrupoId: subgrupoId ?? '',
@@ -120,7 +124,7 @@ export default function TreeRegistrationScreen() {
   }
 
   async function handleAddPhotoToTree(treeId: string) {
-    const photoUri = await attachTreePhoto();
+    const photoUri = await pickPhoto();
     if (!photoUri) return;
     await updateTreePhoto(treeId, photoUri);
   }
@@ -128,6 +132,7 @@ export default function TreeRegistrationScreen() {
   function handleReverseOrder() {
     if (isReadOnly) return;
     showConfirmDialog(
+      confirm.show,
       'Invertir Orden',
       'Invertir el orden de los árboles? Se recalcularán todas las posiciones y códigos.',
       'Invertir',
@@ -139,6 +144,7 @@ export default function TreeRegistrationScreen() {
           setReversing(false);
         }
       },
+      { icon: 'swap-vertical-outline' },
     );
   }
 
@@ -146,44 +152,31 @@ export default function TreeRegistrationScreen() {
     if (isReadOnly) return;
 
     if (totalCount === 0) {
-      Alert.alert('No se puede finalizar', 'No hay arboles cargados.');
+      showInfoDialog(confirm.show, 'No se puede finalizar', 'No hay arboles cargados.', 'information-circle-outline', colors.secondary);
       return;
     }
 
-    if (unresolvedNN > 0) {
-      Alert.alert(
-        'No se puede finalizar',
-        `Hay ${unresolvedNN} arbol${unresolvedNN > 1 ? 'es' : ''} N/N sin resolver. Resolver arboles N/N antes de finalizar.`
-      );
-      return;
-    }
+    const nnWarning = unresolvedNN > 0
+      ? ` Hay ${unresolvedNN} arbol${unresolvedNN > 1 ? 'es' : ''} N/N sin resolver.
+      (deberan resolverse antes de sincronizar).`
+      : '';
 
-    Alert.alert(
+    showConfirmDialog(
+      confirm.show,
       'Finalizar subgrupo',
-      'Confirmar finalizacion? No podras registrar mas arboles.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Finalizar',
-          style: 'destructive',
-          onPress: async () => {
-            setFinalizing(true);
-            try {
-              const result = await finalizeSubGroup(subgrupoId ?? '');
-              if (!result.success && result.error === 'unresolved_nn') {
-                Alert.alert(
-                  'No se puede finalizar',
-                  `Hay ${result.count} arbol${result.count > 1 ? 'es' : ''} N/N sin resolver. Resolver arboles N/N antes de finalizar.`
-                );
-              } else if (result.success) {
-                router.back();
-              }
-            } finally {
-              setFinalizing(false);
-            }
-          },
-        },
-      ]
+      `Confirmar finalizacion? 
+      ${nnWarning}`,
+      'Finalizar',
+      async () => {
+        setFinalizing(true);
+        try {
+          await finalizeSubGroup(subgrupoId ?? '');
+          router.back();
+        } finally {
+          setFinalizing(false);
+        }
+      },
+      { icon: 'checkmark-circle-outline', style: 'primary' },
     );
   }
 
@@ -195,6 +188,7 @@ export default function TreeRegistrationScreen() {
       : 'Esta accion no se puede deshacer.';
 
     showDoubleConfirmDialog(
+      confirm.show,
       'Eliminar subgrupo',
       warningMessage,
       'Confirmar eliminacion',
@@ -213,24 +207,22 @@ export default function TreeRegistrationScreen() {
 
   async function handleReactivate() {
     if (!subgrupoId || !canReactivate) return;
-    Alert.alert(
+    showConfirmDialog(
+      confirm.show,
       'Reactivar subgrupo',
       'Cambiar el estado del subgrupo a activa? Podrás registrar más árboles.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Reactivar',
-          onPress: async () => {
-            await reactivateSubGroup(subgrupoId);
-          },
-        },
-      ]
+      'Reactivar',
+      async () => {
+        await reactivateSubGroup(subgrupoId);
+      },
+      { icon: 'refresh-outline' },
     );
   }
 
   function handleDeleteTree(treeId: string, posicion: number) {
     if (isReadOnly) return;
     showConfirmDialog(
+      confirm.show,
       'Eliminar arbol',
       `Eliminar el arbol en posicion ${posicion}? Las posiciones se recalcularan automaticamente.`,
       'Eliminar',
@@ -242,6 +234,7 @@ export default function TreeRegistrationScreen() {
           setDeletingTreeId(null);
         }
       },
+      { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' },
     );
   }
 
@@ -431,7 +424,7 @@ export default function TreeRegistrationScreen() {
               style={styles.photoActionBtn}
               onPress={async () => {
                 if (!viewingPhoto) return;
-                const newUri = await attachTreePhoto();
+                const newUri = await pickPhoto();
                 if (newUri) {
                   await updateTreePhoto(viewingPhoto.treeId, newUri);
                   setViewingPhoto({ uri: newUri, treeId: viewingPhoto.treeId });
@@ -531,6 +524,7 @@ export default function TreeRegistrationScreen() {
           />
         </View>
       </Modal>
+      <ConfirmModal {...confirm.confirmProps} />
     </View>
   );
 }

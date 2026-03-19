@@ -23,7 +23,7 @@ jest.mock('../../src/database/liveQuery', () => ({
 
 jest.mock('../../src/repositories/SubGroupRepository', () => ({
   markAsSincronizada: jest.fn(),
-  getFinalizadaSubGroups: jest.fn(),
+  getSyncableSubGroups: jest.fn(),
 }));
 
 import {
@@ -36,11 +36,11 @@ import {
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
-import { markAsSincronizada, getFinalizadaSubGroups } from '../../src/repositories/SubGroupRepository';
+import { markAsSincronizada, getSyncableSubGroups } from '../../src/repositories/SubGroupRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
-const mockGetFinalizadaSubGroups = getFinalizadaSubGroups as jest.Mock;
+const mockGetFinalizadaSubGroups = getSyncableSubGroups as jest.Mock;
 const mockMarkAsSincronizada = markAsSincronizada as jest.Mock;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockDb = db as jest.Mocked<typeof db>;

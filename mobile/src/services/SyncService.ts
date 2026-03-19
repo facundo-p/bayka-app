@@ -5,7 +5,7 @@ import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
   markAsSincronizada,
-  getFinalizadaSubGroups,
+  getSyncableSubGroups,
   SubGroup,
 } from '../repositories/SubGroupRepository';
 
@@ -178,8 +178,8 @@ export async function syncPlantation(
   // Step 2: PULL from server before uploading
   await pullFromServer(plantacionId);
 
-  // Step 3: Get pending subgroups
-  const pending = await getFinalizadaSubGroups(plantacionId);
+  // Step 3: Get syncable subgroups (finalizada + no unresolved N/N)
+  const pending = await getSyncableSubGroups(plantacionId);
   const total = pending.length;
   const results: SyncSubGroupResult[] = [];
 

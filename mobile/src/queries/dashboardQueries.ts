@@ -88,7 +88,7 @@ export async function getPendingSyncCounts() {
 /**
  * DASH-06
  * Returns tree count per plantation for trees registered by the current user TODAY.
- * Uses a SQL LIKE comparison against the ISO date prefix (YYYY-MM-DD).
+ * JOINs through subgroups to get plantacionId (trees.plantacionId is unused/null).
  */
 export async function getTodayTreeCounts(userId: string | null) {
   if (!userId) return [];
@@ -96,30 +96,48 @@ export async function getTodayTreeCounts(userId: string | null) {
   todayStart.setHours(0, 0, 0, 0);
   return db
     .select({
-      plantacionId: trees.plantacionId,
+      plantacionId: subgroups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
     .where(
       and(
         eq(trees.usuarioRegistro, userId),
         sql`${trees.createdAt} >= ${todayStart.toISOString()}`
       )
     )
-    .groupBy(trees.plantacionId);
+    .groupBy(subgroups.plantacionId);
+}
+
+/**
+ * DASH-03 (synced portion)
+ * Returns tree count per plantation for trees in sincronizada SubGroups.
+ */
+export async function getSyncedTreeCounts() {
+  return db
+    .select({
+      plantacionId: subgroups.plantacionId,
+      treeCount: count(),
+    })
+    .from(trees)
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .where(eq(subgroups.estado, 'sincronizada'))
+    .groupBy(subgroups.plantacionId);
 }
 
 /**
  * DASH-03
  * Returns total tree count per plantation regardless of user.
- * Used for the "total trees" stat on each plantation card.
+ * JOINs through subgroups to get plantacionId (trees.plantacionId is unused/null).
  */
 export async function getTotalTreeCounts() {
   return db
     .select({
-      plantacionId: trees.plantacionId,
+      plantacionId: subgroups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
-    .groupBy(trees.plantacionId);
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .groupBy(subgroups.plantacionId);
 }

@@ -8,7 +8,6 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
@@ -17,7 +16,6 @@ import { plantations, trees } from '../database/schema';
 import { eq, desc, and, isNull, count, sql } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 import {
-  canEdit,
   deleteSubGroup,
   updateSubGroup,
   updateSubGroupCode,
@@ -32,8 +30,10 @@ import { colors, fontSize, spacing, borderRadius } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { showDoubleConfirmDialog, showConfirmDialog } from '../utils/alertHelpers';
 import { useSync } from '../hooks/useSync';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import SyncProgressModal from '../components/SyncProgressModal';
 
@@ -45,9 +45,10 @@ export default function PlantationDetailScreen() {
   const userId = useCurrentUserId();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
+  const confirm = useConfirm();
 
   // Pending sync count for this plantation (finalizada SubGroups)
-  const { pendingCount } = usePendingSyncCount(plantacionId);
+  const { syncableCount, blockedByNN } = usePendingSyncCount(plantacionId);
 
   // Sync hook — drives the SyncProgressModal
   const {
@@ -190,6 +191,7 @@ export default function PlantationDetailScreen() {
       : 'Esta accion no se puede deshacer.';
 
     showDoubleConfirmDialog(
+      confirm.show,
       'Eliminar subgrupo',
       warningMessage,
       'Confirmar eliminacion',
@@ -273,26 +275,36 @@ export default function PlantationDetailScreen() {
           </View>
         </View>
 
-        {/* Sync CTA — visible when there are finalizada SubGroups to upload */}
-        {pendingCount > 0 && (
+        {/* Sync CTA — visible when there are syncable SubGroups to upload */}
+        {syncableCount > 0 && (
           <Pressable
             style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
             onPress={() => {
-              Alert.alert(
+              showConfirmDialog(
+                confirm.show,
                 'Sincronizar',
-                `Se van a sincronizar ${pendingCount} subgrupo${pendingCount > 1 ? 's' : ''} finalizado${pendingCount > 1 ? 's' : ''}. Necesitas conexion a internet.`,
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Sincronizar', onPress: startSync },
-                ]
+                `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexion a internet.`,
+                'Sincronizar',
+                startSync,
+                { icon: 'cloud-upload-outline', iconColor: colors.info },
               );
             }}
           >
             <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
             <Text style={styles.syncButtonText}>
-              Sincronizar {pendingCount} subgrupo{pendingCount > 1 ? 's' : ''}
+              Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
             </Text>
           </Pressable>
+        )}
+
+        {/* N/N sync blocked banner */}
+        {blockedByNN > 0 && (
+          <View style={styles.nnSyncBlockedRow}>
+            <Ionicons name="alert-circle-outline" size={14} color={colors.secondary} />
+            <Text style={styles.nnSyncBlockedText}>
+              {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
+            </Text>
+          </View>
         )}
 
         {totalNN > 0 && (
@@ -339,6 +351,8 @@ export default function PlantationDetailScreen() {
         failureCount={failureCount}
         onDismiss={resetSync}
       />
+
+      <ConfirmModal {...confirm.confirmProps} />
 
       {/* Edit subgroup modal */}
       <Modal
@@ -467,6 +481,21 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: '600',
     color: colors.secondary,
+  },
+  nnSyncBlockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.secondaryBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  nnSyncBlockedText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.secondary,
+    fontWeight: '500',
   },
   card: {
     backgroundColor: colors.surface,

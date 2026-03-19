@@ -10,10 +10,9 @@ import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import {
   getPlantationsForRole,
   getUnsyncedTreeCounts,
-  getUserTotalTreeCounts,
+  getSyncedTreeCounts,
   getPendingSyncCounts,
   getTodayTreeCounts,
-  getTotalTreeCounts,
 } from '../queries/dashboardQueries';
 
 export default function PlantacionesScreen() {
@@ -22,48 +21,40 @@ export default function PlantacionesScreen() {
   const insets = useSafeAreaInsets();
   const userId = useCurrentUserId();
 
-  // Determine role from route prefix (DASH-01 / DASH-02)
   const isAdmin = routePrefix === '(admin)';
 
-  // Role-gated plantation list: admin sees all, tecnico sees only assigned
   const { data: plantationList } = useLiveData(
     () => getPlantationsForRole(isAdmin, userId),
     [userId, isAdmin]
   );
 
-  // DASH-03: Total tree count per plantation (all users)
-  const { data: totalCounts } = useLiveData(
-    () => getTotalTreeCounts()
+  // DASH-03: Synced trees per plantation
+  const { data: syncedCounts } = useLiveData(
+    () => getSyncedTreeCounts()
   );
 
-  // DASH-04: Trees registered by current user that are NOT yet sincronizada
+  // DASH-04: Unsynced trees (user's, in non-sincronizada subgroups)
   const { data: unsyncedCounts } = useLiveData(
     () => getUnsyncedTreeCounts(userId),
     [userId]
   );
 
-  // DASH-05: All trees registered by current user (any estado)
-  const { data: userTotalCounts } = useLiveData(
-    () => getUserTotalTreeCounts(userId),
-    [userId]
-  );
-
-  // SYNC-07: Pending sync (finalizada SubGroups) count per plantation
+  // SYNC-07: Pending sync SubGroups per plantation
   const { data: pendingSyncCounts } = useLiveData(
     () => getPendingSyncCounts()
   );
 
-  // DASH-06: Trees registered by current user today
+  // DASH-06: Today's trees by current user
   const { data: todayCounts } = useLiveData(
     () => getTodayTreeCounts(userId),
     [userId]
   );
 
   // Build lookup maps
-  const totalCountMap = new Map<string, number>();
-  if (totalCounts) {
-    for (const row of totalCounts) {
-      if (row.plantacionId != null) totalCountMap.set(String(row.plantacionId), row.treeCount);
+  const syncedCountMap = new Map<string, number>();
+  if (syncedCounts) {
+    for (const row of syncedCounts) {
+      syncedCountMap.set(row.plantacionId, row.treeCount);
     }
   }
 
@@ -71,13 +62,6 @@ export default function PlantacionesScreen() {
   if (unsyncedCounts) {
     for (const row of unsyncedCounts) {
       unsyncedCountMap.set(row.plantacionId, row.treeCount);
-    }
-  }
-
-  const userTotalCountMap = new Map<string, number>();
-  if (userTotalCounts) {
-    for (const row of userTotalCounts) {
-      userTotalCountMap.set(row.plantacionId, row.treeCount);
     }
   }
 
@@ -91,7 +75,7 @@ export default function PlantacionesScreen() {
   const todayCountMap = new Map<string, number>();
   if (todayCounts) {
     for (const row of todayCounts) {
-      if (row.plantacionId != null) todayCountMap.set(String(row.plantacionId), row.treeCount);
+      todayCountMap.set(row.plantacionId, row.treeCount);
     }
   }
 
@@ -113,9 +97,9 @@ export default function PlantacionesScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
-          const todayCount = todayCountMap.get(item.id) ?? 0;
-          const totalTreeCount = totalCountMap.get(item.id) ?? 0;
+          const syncedCount = syncedCountMap.get(item.id) ?? 0;
           const unsyncedCount = unsyncedCountMap.get(item.id) ?? 0;
+          const todayCount = todayCountMap.get(item.id) ?? 0;
           const pendingSync = pendingSyncMap.get(item.id) ?? 0;
 
           return (
@@ -124,44 +108,42 @@ export default function PlantacionesScreen() {
               onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
             >
               <View style={styles.cardInner}>
-                <View style={styles.cardTopRow}>
+                {/* Title row: lugar + periodo */}
+                <View style={styles.cardTitleRow}>
                   <View style={styles.cardTitleArea}>
                     <Text style={styles.cardTitle}>{item.lugar}</Text>
                     <Text style={styles.cardSubtitle}>{item.periodo}</Text>
                   </View>
-                  <View style={styles.cardRightArea}>
-                    <View style={styles.treeBadgeRow}>
-                      {/* DASH-03: Total trees */}
-                      <View style={styles.totalTreeBadge}>
-                        <TreeIcon size={12} />
-                        <Text style={styles.totalTreeBadgeText}>{totalTreeCount} arboles</Text>
-                      </View>
-                      {/* DASH-04: Unsynced trees */}
-                      {unsyncedCount > 0 && (
-                        <View style={styles.unsyncedBadge}>
-                          <Ionicons name="cloud-upload-outline" size={11} color={colors.secondary} />
-                          <Text style={styles.unsyncedBadgeText}>{unsyncedCount} sin sincronizar</Text>
-                        </View>
-                      )}
-                      {/* DASH-06: Today's count */}
-                      {todayCount > 0 && (
-                        <View style={styles.todayBadge}>
-                          <Text style={styles.todayBadgeText}>Hoy: {todayCount}</Text>
-                        </View>
-                      )}
-                    </View>
-                    <View style={styles.estadoChip}>
-                      <Text style={styles.estadoLabel}>{item.estado.toUpperCase()}</Text>
-                    </View>
+                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                </View>
+
+                {/* Stats row: sincronizados | pendientes | hoy */}
+                <View style={styles.statsRow}>
+                  <View style={styles.statItem}>
+                    <TreeIcon size={11} />
+                    <Text style={styles.statValue}>{syncedCount}</Text>
+                    <Text style={styles.statLabel}>sincronizados</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Ionicons name="cloud-upload-outline" size={12} color={colors.secondary} />
+                    <Text style={[styles.statValue, unsyncedCount > 0 && { color: colors.secondary }]}>{unsyncedCount}</Text>
+                    <Text style={styles.statLabel}>pendientes</Text>
+                  </View>
+                  <View style={styles.statDivider} />
+                  <View style={styles.statItem}>
+                    <Ionicons name="today-outline" size={12} color={colors.info} />
+                    <Text style={[styles.statValue, todayCount > 0 && { color: colors.info }]}>{todayCount}</Text>
+                    <Text style={styles.statLabel}>hoy</Text>
                   </View>
                 </View>
 
-                {/* SYNC-07: Pending sync count */}
+                {/* Pending sync banner */}
                 {pendingSync > 0 && (
                   <View style={styles.pendingSyncRow}>
                     <Ionicons name="cloud-upload-outline" size={14} color={colors.secondary} />
                     <Text style={styles.pendingSyncText}>
-                      {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} pendiente{pendingSync > 1 ? 's' : ''}
+                      {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} pendiente{pendingSync > 1 ? 's' : ''} de sincronizar
                     </Text>
                   </View>
                 )}
@@ -220,94 +202,66 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   cardInner: {
-    padding: spacing.xxl,
+    padding: spacing.xl,
   },
-  cardTopRow: {
+  cardTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   cardTitleArea: {
     flex: 1,
     marginRight: spacing.md,
   },
-  cardRightArea: {
-    alignItems: 'flex-end',
-    gap: spacing.sm,
-  },
-  treeBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
-  totalTreeBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 2,
-    borderRadius: borderRadius.lg,
-    gap: spacing.xs,
-  },
-  totalTreeBadgeText: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  unsyncedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.secondaryBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 2,
-    borderRadius: borderRadius.lg,
-    gap: spacing.xs,
-  },
-  unsyncedBadgeText: {
-    fontSize: fontSize.sm,
-    color: colors.secondary,
-    fontWeight: '600',
-  },
   cardTitle: {
     fontSize: fontSize.xxl,
     fontWeight: 'bold',
     color: colors.text,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: fontSize.base,
     color: colors.textFaint,
   },
-  todayBadge: {
-    backgroundColor: colors.infoBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 2,
-    borderRadius: borderRadius.lg,
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
   },
-  todayBadgeText: {
-    fontSize: fontSize.sm,
-    color: colors.info,
-    fontWeight: '600',
+  statItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
   },
-  estadoChip: {
-    backgroundColor: colors.primaryBg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 2,
-    borderRadius: borderRadius.lg,
-    alignSelf: 'flex-end',
-  },
-  estadoLabel: {
-    fontSize: fontSize.sm,
+  statValue: {
+    fontSize: fontSize.base,
+    fontWeight: 'bold',
     color: colors.primary,
-    fontWeight: '600',
+  },
+  statLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+  },
+  statDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: colors.border,
   },
   pendingSyncRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    backgroundColor: colors.secondaryBg,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   pendingSyncText: {
     fontSize: fontSize.sm,
