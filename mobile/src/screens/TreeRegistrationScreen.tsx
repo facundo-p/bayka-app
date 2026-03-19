@@ -25,18 +25,21 @@ import {
   finalizeSubGroup,
   canEdit,
   deleteSubGroup,
+  reactivateSubGroup,
 } from '../repositories/SubGroupRepository';
 import { captureNNPhoto, attachTreePhoto } from '../services/PhotoService';
-import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { useLiveData } from '../database/liveQuery';
 import { db } from '../database/client';
 import { subgroups } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
+import CustomHeader from '../components/CustomHeader';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SubGroupEstado } from '../repositories/SubGroupRepository';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
+import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
 
 export default function TreeRegistrationScreen() {
   const { id: subgrupoId } = useLocalSearchParams<{
@@ -53,9 +56,8 @@ export default function TreeRegistrationScreen() {
 
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
 
-  const [userId, setUserId] = useState<string>('');
+  const userId = useCurrentUserId() ?? '';
   const [finalizing, setFinalizing] = useState(false);
   const [reversing, setReversing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -72,23 +74,19 @@ export default function TreeRegistrationScreen() {
     [subgrupoId]
   );
   const subgroup = subgroupRows?.[0] ?? null;
+  const subgroupEstado = (subgroup?.estado ?? 'activa') as SubGroupEstado;
+  const isCreator = subgroup && userId ? subgroup.usuarioCreador === userId : false;
   const isOwner = subgroup && userId
-    ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroup.estado as SubGroupEstado }, userId)
+    ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroupEstado }, userId)
     : false;
-  const isReadOnly = !isOwner;
+  // Read-only when not owner OR when subgroup is not activa
+  const isReadOnly = !isOwner || subgroupEstado !== 'activa';
+  const canReactivate = isCreator && subgroupEstado === 'finalizada';
 
   // Hide default header, use custom one
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
-
-  // Resolve userId once
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.id) setUserId(data.user.id);
-    });
-  }, []);
 
   async function handleSpeciesPress(especieId: string, especieCodigo: string) {
     if (isReadOnly) return;
@@ -128,24 +126,18 @@ export default function TreeRegistrationScreen() {
 
   function handleReverseOrder() {
     if (isReadOnly) return;
-    Alert.alert(
+    showConfirmDialog(
       'Revertir Orden',
       'Revertir el orden de los arboles? Se recalcularan todas las posiciones y codigos.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Revertir',
-          style: 'destructive',
-          onPress: async () => {
-            setReversing(true);
-            try {
-              await reverseTreeOrder(subgrupoId ?? '', subgrupoCodigo ?? '');
-            } finally {
-              setReversing(false);
-            }
-          },
-        },
-      ]
+      'Revertir',
+      async () => {
+        setReversing(true);
+        try {
+          await reverseTreeOrder(subgrupoId ?? '', subgrupoCodigo ?? '');
+        } finally {
+          setReversing(false);
+        }
+      },
     );
   }
 
@@ -201,35 +193,34 @@ export default function TreeRegistrationScreen() {
       ? `Este subgrupo tiene ${totalCount} arbol${totalCount > 1 ? 'es' : ''} cargado${totalCount > 1 ? 's' : ''}. Esta accion no se puede deshacer.`
       : 'Esta accion no se puede deshacer.';
 
-    Alert.alert(
+    showDoubleConfirmDialog(
       'Eliminar subgrupo',
       warningMessage,
+      'Confirmar eliminacion',
+      'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
+      async () => {
+        setDeleting(true);
+        try {
+          await deleteSubGroup(subgrupoId ?? '');
+          router.back();
+        } finally {
+          setDeleting(false);
+        }
+      },
+    );
+  }
+
+  async function handleReactivate() {
+    if (!subgrupoId || !canReactivate) return;
+    Alert.alert(
+      'Reactivar subgrupo',
+      'Cambiar el estado del subgrupo a activa? Podrás registrar más árboles.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Confirmar eliminacion',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Estas seguro?',
-              'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
-              [
-                { text: 'No, cancelar', style: 'cancel' },
-                {
-                  text: 'Si, eliminar',
-                  style: 'destructive',
-                  onPress: async () => {
-                    setDeleting(true);
-                    try {
-                      await deleteSubGroup(subgrupoId ?? '');
-                      router.back();
-                    } finally {
-                      setDeleting(false);
-                    }
-                  },
-                },
-              ]
-            );
+          text: 'Reactivar',
+          onPress: async () => {
+            await reactivateSubGroup(subgrupoId);
           },
         },
       ]
@@ -238,35 +229,19 @@ export default function TreeRegistrationScreen() {
 
   function handleDeleteTree(treeId: string, posicion: number) {
     if (isReadOnly) return;
-    Alert.alert(
+    showConfirmDialog(
       'Eliminar arbol',
       `Eliminar el arbol en posicion ${posicion}? Las posiciones se recalcularan automaticamente.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setDeletingTreeId(treeId);
-            try {
-              await deleteTreeAndRecalculate(treeId, subgrupoId ?? '', subgrupoCodigo ?? '');
-            } finally {
-              setDeletingTreeId(null);
-            }
-          },
-        },
-      ]
+      'Eliminar',
+      async () => {
+        setDeletingTreeId(treeId);
+        try {
+          await deleteTreeAndRecalculate(treeId, subgrupoId ?? '', subgrupoCodigo ?? '');
+        } finally {
+          setDeletingTreeId(null);
+        }
+      },
     );
-  }
-
-  function getSpeciesCode(tree: { especieId: string | null; especieCodigo: string | null }): string {
-    if (tree.especieId === null) return 'N/N';
-    return tree.especieCodigo ?? '??';
-  }
-
-  function getSpeciesName(tree: { especieId: string | null; especieNombre: string | null }): string {
-    if (tree.especieId === null) return 'N/N';
-    return tree.especieNombre ?? '??';
   }
 
   // Sort trees ascending by position for the full list
@@ -274,23 +249,23 @@ export default function TreeRegistrationScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Custom header: back arrow + name (centered) + N/N badge */}
-      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={() => router.back()} style={styles.headerBackButton} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </Pressable>
-        <Text style={styles.headerName} numberOfLines={1}>
-          {subgrupoNombre ?? subgrupoCodigo}
-        </Text>
-        <View style={styles.headerRight}>
-          <Text style={styles.headerCount}>{totalCount}</Text>
-          {unresolvedNN > 0 && (
-            <View style={styles.headerNNBadge}>
-              <Text style={styles.headerNNText}>{unresolvedNN} N/N</Text>
-            </View>
-          )}
-        </View>
-      </View>
+      {/* Custom header */}
+      <CustomHeader
+        title={subgrupoNombre ?? subgrupoCodigo ?? ''}
+        subtitle={subgroup ? `${subgroup.codigo} · ${subgroup.tipo === 'linea' ? 'Línea' : 'Parcela'}` : undefined}
+        onBack={() => router.back()}
+        rightElement={
+          <View style={styles.headerRight}>
+            <Ionicons name="leaf-outline" size={14} color={colors.primaryCountFaded} />
+            <Text style={styles.headerCount}>{totalCount}</Text>
+            {unresolvedNN > 0 && (
+              <View style={styles.headerNNBadge}>
+                <Text style={styles.headerNNText}>{unresolvedNN} N/N</Text>
+              </View>
+            )}
+          </View>
+        }
+      />
 
       {/* View all trees button */}
       {totalCount > 0 && (
@@ -326,61 +301,104 @@ export default function TreeRegistrationScreen() {
         </View>
       )}
 
-      {/* Species button grid */}
-      <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
-        {speciesLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-        ) : (
-          <SpeciesButtonGrid
-            species={species}
-            onSelectSpecies={({ especieId, especieCodigo }) =>
-              handleSpeciesPress(especieId, especieCodigo)
+      {/* Species button grid — only in edit mode */}
+      {!isReadOnly ? (
+        <>
+          <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
+            {speciesLoading ? (
+              <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+            ) : (
+              <SpeciesButtonGrid
+                species={species}
+                onSelectSpecies={({ especieId, especieCodigo }) =>
+                  handleSpeciesPress(especieId, especieCodigo)
+                }
+                onNNPress={handleNNPress}
+                disabled={isReadOnly}
+              />
+            )}
+          </ScrollView>
+
+          {/* Bottom action bar */}
+          <View style={styles.actionBar}>
+            <Pressable
+              style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+              onPress={handleDeleteSubGroup}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color={colors.danger} />
+              ) : (
+                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+              )}
+            </Pressable>
+
+            <Pressable
+              style={[styles.reverseButton, reversing && styles.buttonDisabled]}
+              onPress={handleReverseOrder}
+              disabled={reversing}
+            >
+              {reversing ? (
+                <ActivityIndicator size="small" color={colors.secondary} />
+              ) : (
+                <Text style={styles.reverseButtonText}>Revertir</Text>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={[styles.finalizarButton, finalizing && styles.buttonDisabled]}
+              onPress={handleFinalizar}
+              disabled={finalizing}
+            >
+              {finalizing ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (
+                <Text style={styles.finalizarButtonText}>Finalizar</Text>
+              )}
+            </Pressable>
+          </View>
+        </>
+      ) : (
+        <>
+          {/* Read-only: show inline tree list */}
+          {canReactivate && (
+            <View style={styles.reactivateBar}>
+              <Pressable style={styles.reactivateButton} onPress={handleReactivate}>
+                <Ionicons name="refresh-outline" size={18} color={colors.primary} />
+                <Text style={styles.reactivateText}>Editar</Text>
+              </Pressable>
+            </View>
+          )}
+          <FlatList
+            data={sortedTrees}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.inlineListContent}
+            renderItem={({ item }) => {
+              const name = getSpeciesName(item);
+              return (
+                <View style={styles.treeRow}>
+                  <Text style={styles.treeRowPos}>{item.posicion}</Text>
+                  <Text style={[styles.treeRowName, item.especieId === null && styles.treeRowNameNN]} numberOfLines={1}>{name}</Text>
+                  <Text style={styles.treeRowCode} numberOfLines={1}>{getSpeciesCode(item)}</Text>
+                  <View style={styles.treeRowActions}>
+                    {item.fotoUrl ? (
+                      <Pressable
+                        onPress={() => setViewingPhoto({ uri: item.fotoUrl!, treeId: item.id })}
+                        hitSlop={8}
+                        style={styles.treeRowBtn}
+                      >
+                        <Ionicons name="image" size={18} color={colors.primary} />
+                      </Pressable>
+                    ) : null}
+                  </View>
+                </View>
+              );
+            }}
+            ListEmptyComponent={
+              <Text style={styles.inlineEmptyText}>No hay árboles</Text>
             }
-            onNNPress={handleNNPress}
-            disabled={isReadOnly}
           />
-        )}
-      </ScrollView>
-
-      {/* Bottom action bar — hidden in read-only mode */}
-      {!isReadOnly && (
-        <View style={styles.actionBar}>
-          <Pressable
-            style={[styles.deleteButton, deleting && styles.buttonDisabled]}
-            onPress={handleDeleteSubGroup}
-            disabled={deleting}
-          >
-            {deleting ? (
-              <ActivityIndicator size="small" color={colors.danger} />
-            ) : (
-              <Ionicons name="trash-outline" size={20} color={colors.danger} />
-            )}
-          </Pressable>
-
-          <Pressable
-            style={[styles.reverseButton, reversing && styles.buttonDisabled]}
-            onPress={handleReverseOrder}
-            disabled={reversing}
-          >
-            {reversing ? (
-              <ActivityIndicator size="small" color={colors.secondary} />
-            ) : (
-              <Text style={styles.reverseButtonText}>Revertir</Text>
-            )}
-          </Pressable>
-
-          <Pressable
-            style={[styles.finalizarButton, finalizing && styles.buttonDisabled]}
-            onPress={handleFinalizar}
-            disabled={finalizing}
-          >
-            {finalizing ? (
-              <ActivityIndicator size="small" color={colors.white} />
-            ) : (
-              <Text style={styles.finalizarButtonText}>Finalizar</Text>
-            )}
-          </Pressable>
-        </View>
+        </>
       )}
 
       {/* Photo viewer modal with actions */}
@@ -436,13 +454,6 @@ export default function TreeRegistrationScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* Read-only banner */}
-      {isReadOnly && subgroup && (
-        <View style={styles.readOnlyBanner}>
-          <Text style={styles.readOnlyText}>Solo lectura</Text>
-        </View>
-      )}
 
       {/* Full tree list modal */}
       <Modal
@@ -521,25 +532,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  headerBar: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl,
-    // paddingTop set inline via useSafeAreaInsets
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerBackButton: {
-    padding: spacing.xs,
-    marginRight: spacing.md,
-  },
-  headerName: {
-    color: colors.white,
-    fontSize: fontSize.xxl,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -586,13 +578,16 @@ const styles = StyleSheet.create({
   treeChip: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.primaryBgLight,
-    borderRadius: borderRadius.round,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    minHeight: 44,
     borderWidth: 1,
     borderColor: colors.primaryBorder,
     gap: spacing.sm,
+    flex: 1,
   },
   treeChipLast: {
     backgroundColor: colors.primaryBg,
@@ -600,12 +595,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   treeChipText: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.lg,
     fontWeight: '600',
     color: colors.primary,
   },
   treeChipTextLast: {
     fontWeight: 'bold',
+    fontSize: fontSize.xl,
   },
   undoChipButton: {
     backgroundColor: colors.dangerBg,
@@ -673,15 +669,38 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.5,
   },
-  readOnlyBanner: {
-    backgroundColor: colors.border,
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
+  reactivateBar: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.primaryBg,
+    alignItems: 'flex-start',
   },
-  readOnlyText: {
-    color: colors.textSecondary,
+  reactivateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  reactivateText: {
+    color: colors.primary,
     fontWeight: '600',
     fontSize: fontSize.base,
+  },
+  inlineListContent: {
+    padding: spacing.xl,
+    gap: spacing.sm,
+    paddingBottom: spacing['6xl'],
+  },
+  inlineEmptyText: {
+    textAlign: 'center',
+    color: colors.textMuted,
+    marginTop: spacing['6xl'],
+    fontSize: fontSize.lg,
   },
   // Modal styles
   modalContainer: {

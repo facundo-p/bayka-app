@@ -1,28 +1,45 @@
 import { useEffect, useState } from 'react';
-import { View, Text, FlatList, Pressable, Alert, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
 import { db } from '../database/client';
 import { plantations, trees } from '../database/schema';
 import { eq, desc, and, isNull, count, sql } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
-import { canEdit, deleteSubGroup } from '../repositories/SubGroupRepository';
+import {
+  canEdit,
+  deleteSubGroup,
+  updateSubGroup,
+  updateSubGroupCode,
+} from '../repositories/SubGroupRepository';
 import { subgroups } from '../database/schema';
-import type { SubGroup } from '../repositories/SubGroupRepository';
+import type { SubGroup, SubGroupTipo } from '../repositories/SubGroupRepository';
 import SubGroupStateChip from '../components/SubGroupStateChip';
-import { supabase, isSupabaseConfigured } from '../supabase/client';
+import SubgrupoForm from '../components/SubgrupoForm';
 import { useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
+import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
-  const [userId, setUserId] = useState<string | null>(null);
+  const userId = useCurrentUserId();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
 
   // Load plantation name for header
   const { data: plantationRows } = useLiveData(
@@ -117,19 +134,16 @@ export default function PlantationDetailScreen() {
     }
   }, [plantationRows, navigation]);
 
-  // Resolve userId
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.id) setUserId(data.user.id);
-    });
-  }, []);
-
   function handleSubGroupPress(subgroup: SubGroup) {
-    if (subgroup.estado !== 'activa') return;
     router.push(
       `/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&subgrupoCodigo=${subgroup.codigo}&subgrupoNombre=${encodeURIComponent(subgroup.nombre)}` as any
     );
+  }
+
+  function handleLongPress(subgroup: SubGroup) {
+    const isOwner = userId ? subgroup.usuarioCreador === userId : false;
+    if (!isOwner || subgroup.estado !== 'activa') return;
+    setEditingSubGroup(subgroup);
   }
 
   function handleDeleteSubGroup(subgroup: SubGroup) {
@@ -138,37 +152,19 @@ export default function PlantationDetailScreen() {
       ? `Este subgrupo tiene ${treeCount} arbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta accion no se puede deshacer.`
       : 'Esta accion no se puede deshacer.';
 
-    Alert.alert(
+    showDoubleConfirmDialog(
       'Eliminar subgrupo',
       warningMessage,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Confirmar eliminacion',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Estas seguro?',
-              'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
-              [
-                { text: 'No, cancelar', style: 'cancel' },
-                {
-                  text: 'Si, eliminar',
-                  style: 'destructive',
-                  onPress: async () => {
-                    setDeletingId(subgroup.id);
-                    try {
-                      await deleteSubGroup(subgroup.id);
-                    } finally {
-                      setDeletingId(null);
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
+      'Confirmar eliminacion',
+      'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
+      async () => {
+        setDeletingId(subgroup.id);
+        try {
+          await deleteSubGroup(subgroup.id);
+        } finally {
+          setDeletingId(null);
+        }
+      },
     );
   }
 
@@ -189,15 +185,15 @@ export default function PlantationDetailScreen() {
           styles.card,
           !isOwner && styles.cardOtherUser,
           item.estado !== 'activa' && styles.cardReadOnly,
-          item.estado === 'activa' && pressed && styles.cardPressed,
+          pressed && styles.cardPressed,
         ]}
         onPress={() => handleSubGroupPress(item)}
-        disabled={item.estado !== 'activa'}
+        onLongPress={() => handleLongPress(item)}
       >
         <View style={styles.cardRow}>
           <Text style={styles.cardName} numberOfLines={1}>{item.nombre}</Text>
-          <Text style={styles.cardCode}>{item.codigo}</Text>
           <Text style={styles.cardTipo}>{tipoLabel}</Text>
+          <Ionicons name="leaf-outline" size={13} color={colors.primary} />
           <Text style={styles.treeCountText}>{treeCount}</Text>
           {nnCount > 0 && (
             <View style={styles.nnBadge}>
@@ -225,39 +221,37 @@ export default function PlantationDetailScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Fixed stats + N/N banner */}
+      <View style={styles.fixedHeader}>
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{totalTrees}</Text>
+            <Text style={styles.statLabel}>Total árboles</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statValueToday}>{todayTrees}</Text>
+            <Text style={styles.statLabel}>Hoy</Text>
+          </View>
+        </View>
+
+        {totalNN > 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.resolveNNBanner, pressed && { opacity: 0.8 }]}
+            onPress={handleResolveAllNN}
+          >
+            <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
+            <Text style={styles.resolveNNText}>
+              Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+          </Pressable>
+        )}
+      </View>
+
       <FlatList
         data={(subgroupRows ?? []) as SubGroup[]}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <>
-            {/* Stats summary */}
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{totalTrees}</Text>
-                <Text style={styles.statLabel}>Total arboles</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValueToday}>{todayTrees}</Text>
-                <Text style={styles.statLabel}>Hoy</Text>
-              </View>
-            </View>
-
-            {/* Resolve all N/N button */}
-            {totalNN > 0 && (
-              <Pressable
-                style={({ pressed }) => [styles.resolveNNBanner, pressed && { opacity: 0.8 }]}
-                onPress={handleResolveAllNN}
-              >
-                <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
-                <Text style={styles.resolveNNText}>
-                  Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
-                </Text>
-                <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
-              </Pressable>
-            )}
-          </>
-        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No hay subgrupos aun</Text>
@@ -266,12 +260,54 @@ export default function PlantationDetailScreen() {
         }
         renderItem={renderSubGroup}
       />
-      <Pressable
-        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-        onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
+      <View style={styles.fabContainer}>
+        <Pressable
+          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+          onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
+        >
+          <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
+        </Pressable>
+      </View>
+
+      {/* Edit subgroup modal */}
+      <Modal
+        visible={!!editingSubGroup}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditingSubGroup(null)}
       >
-        <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
-      </Pressable>
+        <KeyboardAvoidingView
+          style={styles.editModalOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <Pressable style={styles.editModalDismiss} onPress={() => setEditingSubGroup(null)} />
+          <View style={styles.editModalContent}>
+            <Text style={styles.editModalTitle}>Editar subgrupo</Text>
+            {editingSubGroup && (
+              <SubgrupoForm
+                mode="edit"
+                plantacionId={plantacionId ?? ''}
+                initialValues={{
+                  nombre: editingSubGroup.nombre,
+                  codigo: editingSubGroup.codigo,
+                  tipo: editingSubGroup.tipo as SubGroupTipo,
+                }}
+                onSubmit={async (values) => {
+                  const result = await updateSubGroup(editingSubGroup.id, values);
+                  if (result.success && values.codigo !== editingSubGroup.codigo) {
+                    await updateSubGroupCode(editingSubGroup.id, values.codigo, editingSubGroup.codigo);
+                  }
+                  if (result.success) {
+                    setEditingSubGroup(null);
+                  }
+                  return result;
+                }}
+                onCancel={() => setEditingSubGroup(null)}
+              />
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -281,9 +317,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  fixedHeader: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.background,
+  },
   listContent: {
     padding: spacing.xxl,
-    paddingBottom: 120,
+    paddingBottom: spacing.xl,
     gap: spacing.lg,
   },
   statsRow: {
@@ -370,11 +412,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     flex: 1,
   },
-  cardCode: {
-    fontSize: fontSize.sm,
-    color: colors.textSecondary,
-    fontFamily: 'monospace',
-  },
   cardTipo: {
     fontSize: fontSize.xs,
     color: colors.textLight,
@@ -416,13 +453,15 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.sm,
   },
+  fabContainer: {
+    padding: spacing.xl,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   fab: {
-    position: 'absolute',
-    bottom: spacing['4xl'],
-    right: spacing.xxl,
-    left: spacing.xxl,
     backgroundColor: colors.primary,
-    paddingVertical: 14,
+    paddingVertical: spacing.xl,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
     elevation: 4,
@@ -438,5 +477,27 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.xl,
     fontWeight: 'bold',
+  },
+  // Edit modal styles
+  editModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  editModalDismiss: {
+    flex: 1,
+  },
+  editModalContent: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.round,
+    borderTopRightRadius: borderRadius.round,
+    padding: spacing.xxxl,
+    paddingBottom: spacing['6xl'],
+  },
+  editModalTitle: {
+    fontSize: fontSize.title,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.xxxl,
   },
 });

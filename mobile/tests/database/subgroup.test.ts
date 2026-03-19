@@ -26,6 +26,7 @@ jest.mock('../../src/database/client', () => ({
     select: jest.fn(() => ({
       from: jest.fn(() => ({
         where: jest.fn(() => ({
+          limit: mockSelectLimit,
           orderBy: jest.fn(() => ({
             limit: mockSelectLimit,
           })),
@@ -60,6 +61,7 @@ describe('SubGroupRepository', () => {
     (db.select as jest.Mock).mockImplementation(() => ({
       from: jest.fn(() => ({
         where: jest.fn(() => ({
+          limit: mockSelectLimit,
           orderBy: jest.fn(() => ({
             limit: mockSelectLimit,
           })),

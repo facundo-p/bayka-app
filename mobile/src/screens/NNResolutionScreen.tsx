@@ -20,8 +20,8 @@ import { eq, and, isNull, asc, sql } from 'drizzle-orm';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
+import CustomHeader from '../components/CustomHeader';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NNTree {
   id: string;
@@ -42,7 +42,6 @@ export default function NNResolutionScreen() {
   }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
 
   // Determine mode: single subgroup or plantation-wide
   const isPlantationMode = !subgrupoId;
@@ -177,13 +176,7 @@ export default function NNResolutionScreen() {
   return (
     <View style={styles.container}>
       {/* Custom header */}
-      <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
-        <Pressable onPress={() => router.back()} style={styles.headerBackButton} hitSlop={12}>
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Resolver N/N</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <CustomHeader title="Resolver N/N" onBack={() => router.back()} />
 
       {/* Fixed info row */}
       <View style={styles.infoRow}>
@@ -291,28 +284,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  headerBar: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm,
-    // paddingTop set inline via useSafeAreaInsets
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerBackButton: {
-    padding: spacing.xs,
-    marginRight: spacing.md,
-  },
-  headerTitle: {
-    color: colors.white,
-    fontSize: fontSize.xxl,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerSpacer: {
-    width: 36,
   },
   infoRow: {
     flexDirection: 'row',

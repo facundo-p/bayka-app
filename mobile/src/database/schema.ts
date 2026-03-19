@@ -29,6 +29,7 @@ export const subgroups = sqliteTable('subgroups', {
   createdAt: text('created_at').notNull(),
 }, (t) => ({
   uniqueCode: uniqueIndex('subgroups_plantation_code_unique').on(t.plantacionId, t.codigo),
+  uniqueName: uniqueIndex('subgroups_plantation_name_unique').on(t.plantacionId, t.nombre),
 }));
 
 export const trees = sqliteTable('trees', {

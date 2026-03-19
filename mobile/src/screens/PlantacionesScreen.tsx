@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
 import { useLiveData } from '../database/liveQuery';
 import { useRouter } from 'expo-router';
@@ -6,21 +5,17 @@ import { db } from '../database/client';
 import { plantations, trees, subgroups } from '../database/schema';
 import { desc, eq, and, sql, count } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
-import { supabase, isSupabaseConfigured } from '../supabase/client';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 export default function PlantacionesScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
-  const [userId, setUserId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.id) setUserId(data.user.id);
-    });
-  }, []);
+  const insets = useSafeAreaInsets();
+  const userId = useCurrentUserId();
 
   const { data: plantationList } = useLiveData(
     () => db.select().from(plantations).orderBy(desc(plantations.createdAt))
@@ -47,10 +42,28 @@ export default function PlantacionesScreen() {
     [userId, todayStr]
   );
 
+  // Total tree count per plantation (via subgroup join)
+  const { data: totalCounts } = useLiveData(
+    () => db.select({
+      plantacionId: subgroups.plantacionId,
+      treeCount: count(),
+    })
+      .from(trees)
+      .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+      .groupBy(subgroups.plantacionId)
+  );
+
   const todayCountMap = new Map<string, number>();
   if (todayCounts) {
     for (const row of todayCounts) {
       todayCountMap.set(row.plantacionId, row.treeCount);
+    }
+  }
+
+  const totalCountMap = new Map<string, number>();
+  if (totalCounts) {
+    for (const row of totalCounts) {
+      totalCountMap.set(row.plantacionId, row.treeCount);
     }
   }
 
@@ -64,12 +77,16 @@ export default function PlantacionesScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <Text style={styles.headerTitle}>Bayka</Text>
+      </View>
       <FlatList
         data={plantationList}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => {
           const todayCount = todayCountMap.get(item.id) ?? 0;
+          const totalTreeCount = totalCountMap.get(item.id) ?? 0;
           return (
             <Pressable
               style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
@@ -82,11 +99,17 @@ export default function PlantacionesScreen() {
                     <Text style={styles.cardSubtitle}>{item.periodo}</Text>
                   </View>
                   <View style={styles.cardRightArea}>
-                    {todayCount > 0 && (
-                      <View style={styles.todayBadge}>
-                        <Text style={styles.todayBadgeText}>Hoy: {todayCount}</Text>
+                    <View style={styles.treeBadgeRow}>
+                      <View style={styles.totalTreeBadge}>
+                        <Ionicons name="leaf-outline" size={12} color={colors.primary} />
+                        <Text style={styles.totalTreeBadgeText}>{totalTreeCount} árboles</Text>
                       </View>
-                    )}
+                      {todayCount > 0 && (
+                        <View style={styles.todayBadge}>
+                          <Text style={styles.todayBadgeText}>Hoy: {todayCount}</Text>
+                        </View>
+                      )}
+                    </View>
                     <View style={styles.estadoChip}>
                       <Text style={styles.estadoLabel}>{item.estado.toUpperCase()}</Text>
                     </View>
@@ -105,6 +128,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  header: {
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+  },
+  headerTitle: {
+    color: colors.white,
+    fontSize: fontSize.title,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
   emptyContainer: {
     flex: 1,
@@ -149,6 +184,25 @@ const styles = StyleSheet.create({
   cardRightArea: {
     alignItems: 'flex-end',
     gap: spacing.sm,
+  },
+  treeBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  totalTreeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primaryBg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 2,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+  },
+  totalTreeBadgeText: {
+    fontSize: fontSize.sm,
+    color: colors.primary,
+    fontWeight: '600',
   },
   cardTitle: {
     fontSize: fontSize.xxl,

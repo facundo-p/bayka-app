@@ -64,7 +64,8 @@ create table subgroups (
   estado text not null default 'activa' check (estado in ('activa', 'finalizada', 'sincronizada')),
   usuario_creador uuid not null references auth.users(id),
   created_at timestamptz not null default now(),
-  unique (plantation_id, codigo)
+  unique (plantation_id, codigo),
+  unique (plantation_id, nombre)
 );
 
 -- trees
