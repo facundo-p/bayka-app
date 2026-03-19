@@ -18,7 +18,7 @@ Pantalla de plantación
 - [x]  El botón de "nuevo subgrupo" se superpone con el listado de cards de subgrupos. No debería pasar
 - [x]  Al mantener presionada la row correspondiente a un subgrupo, debería abrirse una pantalla de edición para poder modificarle Nombre, Código y tipo. Validar que no exista otro subgrupo con mismo nombre y código. Al editar el código, actualizar todos los subindices de sus árboles, si los tuviese.
 - [x]  En las rows de subgrupo no mostrar código de subgrupo
-- [ ]  En las rows de subgrupo mostrar un icono de árbol al costado del número de árboles.
+- [x]  En las rows de subgrupo mostrar un icono de árbol al costado del número de árboles.
 
 Pantalla de Sub Grupo
 
@@ -36,11 +36,11 @@ para volver, el nombre de la linea (centrado) y la cantidad de n/n. De esta mane
 - [x]  No entiendo qué es el row que dice [id] con flecha para volver atrás
 - [x]  Debería poder accederse a ver todo el listado de árboles cargados
 - [x]  Debería permitirse borrar árboles cargados. Al hacerlo, se actualizan las posiciones de todos los árboles para que queden consecutivas
-- [ ]  El listado de las últimas 3 especies cargadas tiene que mostrarse parecido a como se ven los botones de la grilla en tamaño
-- [ ]  Los usuarios deberían poder acceder a ver el listado de especies registradas en un subgrupo aunque no sean los creadores. De hecho sería ideal que en ese caso accedan solo a ese listado, en lugar a la botonera. Lo mismo para subgrupos marcados como "Finalizadas" o "Sincronizadas".
-- [ ]  El usuario creador de un grupo en estado Finalizado, debe tener un botón de "Editar" en el que pueda volver la linea a estado "Activo".
-- [ ]  En el header, mostrar al costado del nombre del subgrupo, también su código y su tipo, pero grisado, para que resalte el nombre más que estos campos.
-- [ ]  En el header, mostrar al costado de la cantidad de árboles, un ícono de árbol.
+- [x]  El listado de las últimas 3 especies cargadas tiene que mostrarse parecido a como se ven los botones de la grilla en tamaño
+- [x]  Los usuarios deberían poder acceder a ver el listado de especies registradas en un subgrupo aunque no sean los creadores. De hecho sería ideal que en ese caso accedan solo a ese listado, en lugar a la botonera. Lo mismo para subgrupos marcados como "Finalizadas" o "Sincronizadas".
+- [x]  El usuario creador de un grupo en estado Finalizado, debe tener un botón de "Editar" en el que pueda volver la linea a estado "Activo".
+- [x]  En el header, mostrar al costado del nombre del subgrupo, también su código y su tipo, pero grisado, para que resalte el nombre más que estos campos.
+- [x]  En el header, mostrar al costado de la cantidad de árboles, un ícono de árbol.
 
 Pantalla de resolución de n/n
 
