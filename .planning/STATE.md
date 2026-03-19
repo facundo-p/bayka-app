@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 3 context gathered
-last_updated: "2026-03-19T04:29:09.829Z"
-last_activity: 2026-03-17 — Phase 2 Plan 03 complete
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-03-19T05:12:00.000Z"
+last_activity: 2026-03-19 — Phase 3 Plan 01 complete
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 43
+  total_plans: 10
+  completed_plans: 8
+  percent: 50
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 2 — Field Registration
+**Current focus:** Phase 3 — Sync + Dashboard
 
 ## Current Position
 
-Phase: 2 of 4 (Field Registration)
-Plan: 3 of 4 in current phase (Plan 02-03 complete)
-Status: Phase 2 in progress — Plans 02-01, 02-02, 02-03 complete, ready for Plan 02-04
-Last activity: 2026-03-17 — Phase 2 Plan 03 complete
+Phase: 3 of 4 (Sync + Dashboard)
+Plan: 1 of 3 in current phase (Plan 03-01 complete)
+Status: Phase 3 in progress — Plan 03-01 complete, ready for Plan 03-02
+Last activity: 2026-03-19 — Phase 3 Plan 01 complete
 
-Progress: [████░░░░░░] 43%
+Progress: [█████░░░░░] 50%
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [████░░░░░░] 43%
 | Phase 02-field-registration P02 | 235s | 2 tasks | 9 files |
 | Phase 02-field-registration P03 | 15min | 2 tasks | 5 files |
 | Phase 02-field-registration P04 | 183s | 2 tasks | 6 files |
+| Phase 03-sync-dashboard P01 | 115s | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,10 @@ Recent decisions affecting current work:
 - [Phase 02-field-registration P03]: Tree registration entry route: /(tecnico)/plantation/subgroup/[id]?plantacionId=...&subgrupoCodigo=...
 - [Phase 02-field-registration]: TreeRow shows N/N via especieId===null check; no species join needed for last-3 display
 - [Phase 02-field-registration]: N/N resolution index clamped with Math.min after resolveNNTree to handle live data disappearance
+- [Phase 03-sync-dashboard P01]: SECURITY INVOKER chosen over DEFINER — existing RLS policies already permit creator inserts for subgroups and trees
+- [Phase 03-sync-dashboard P01]: ON CONFLICT (id) DO NOTHING on both subgroups and trees — UUID as natural idempotency key handles retry after network drop
+- [Phase 03-sync-dashboard P01]: DUPLICATE_CODE check placed AFTER INSERT — insert first (idempotent re-upload), then check for different-UUID conflict
+- [Phase 03-sync-dashboard P01]: plantation_users added to local SQLite schema for offline tecnico role-filtering (DASH-01)
 
 ### Pending Todos
 
@@ -94,10 +99,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 plan 03-01: Postgres RPC design (multi-table transaction, idempotency, RLS) is the most implementation-sensitive task. Research recommends a focused design sub-task before implementation starts.
+None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-19T04:29:09.827Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-sync-dashboard/03-CONTEXT.md
+Last session: 2026-03-19T05:12:00.000Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-sync-dashboard/03-02-PLAN.md

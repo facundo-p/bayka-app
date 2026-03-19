@@ -69,7 +69,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Supabase RPC function for atomic SubGroup sync (idempotency, DUPLICATE_CODE detection), local plantation_users table + migration, SubGroupRepository sync extensions
+- [x] 03-01-PLAN.md — Supabase RPC function for atomic SubGroup sync (idempotency, DUPLICATE_CODE detection), local plantation_users table + migration, SubGroupRepository sync extensions (completed 2026-03-19)
 - [ ] 03-02-PLAN.md — SyncService (pull-then-push orchestration, per-SubGroup RPC upload, error accumulation, Spanish error messages), useSync hook, unit tests
 - [ ] 03-03-PLAN.md — Dashboard stats (role-gated plantation list, unsynced/total/today counts, pending sync badges), sync CTA + progress modal, tab icon badge (checkpoint)
 
@@ -98,5 +98,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation + Auth | 3/3 | Complete    | 2026-03-17 |
 | 2. Field Registration | 4/4 | Complete    | 2026-03-17 |
-| 3. Sync + Dashboard | 0/3 | Not started | - |
+| 3. Sync + Dashboard | 1/3 | In progress | - |
 | 4. Admin + Export | 0/3 | Not started | - |
