@@ -8,6 +8,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
@@ -32,6 +33,9 @@ import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { useSync } from '../hooks/useSync';
+import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
+import SyncProgressModal from '../components/SyncProgressModal';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
@@ -41,6 +45,20 @@ export default function PlantationDetailScreen() {
   const userId = useCurrentUserId();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
+
+  // Pending sync count for this plantation (finalizada SubGroups)
+  const { pendingCount } = usePendingSyncCount(plantacionId);
+
+  // Sync hook — drives the SyncProgressModal
+  const {
+    state: syncState,
+    progress,
+    results,
+    startSync,
+    reset: resetSync,
+    successCount,
+    failureCount,
+  } = useSync(plantacionId ?? '');
 
   // Load plantation name for header
   const { data: plantationRows } = useLiveData(
@@ -107,6 +125,24 @@ export default function PlantationDetailScreen() {
     },
     [plantacionId, userId, todayStr]
   );
+
+  // Unsynced tree count for current user in this plantation (for stats row)
+  const { data: unsyncedTreesRow } = useLiveData(
+    () => {
+      if (!userId) return Promise.resolve([]);
+      return db
+        .select({ total: count() })
+        .from(trees)
+        .where(
+          and(
+            sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''} AND estado != 'sincronizada')`,
+            eq(trees.usuarioRegistro, userId)
+          )
+        );
+    },
+    [plantacionId, userId]
+  );
+  const unsyncedTrees = unsyncedTreesRow?.[0]?.total ?? 0;
 
   // Build maps
   const nnCountMap = new Map<string, number>();
@@ -225,13 +261,39 @@ export default function PlantationDetailScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{totalTrees}</Text>
-            <Text style={styles.statLabel}>Total árboles</Text>
+            <Text style={styles.statLabel}>Total arboles</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: colors.secondary }]}>{unsyncedTrees}</Text>
+            <Text style={styles.statLabel}>Sin sincronizar</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statValueToday}>{todayTrees}</Text>
             <Text style={styles.statLabel}>Hoy</Text>
           </View>
         </View>
+
+        {/* Sync CTA — visible when there are finalizada SubGroups to upload */}
+        {pendingCount > 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              Alert.alert(
+                'Sincronizar',
+                `Se van a sincronizar ${pendingCount} subgrupo${pendingCount > 1 ? 's' : ''} finalizado${pendingCount > 1 ? 's' : ''}. Necesitas conexion a internet.`,
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Sincronizar', onPress: startSync },
+                ]
+              );
+            }}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
+            <Text style={styles.syncButtonText}>
+              Sincronizar {pendingCount} subgrupo{pendingCount > 1 ? 's' : ''}
+            </Text>
+          </Pressable>
+        )}
 
         {totalNN > 0 && (
           <Pressable
@@ -267,6 +329,16 @@ export default function PlantationDetailScreen() {
           <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
         </Pressable>
       </View>
+
+      {/* Sync progress modal — shown during and after sync */}
+      <SyncProgressModal
+        state={syncState}
+        progress={progress}
+        results={results}
+        successCount={successCount}
+        failureCount={failureCount}
+        onDismiss={resetSync}
+      />
 
       {/* Edit subgroup modal */}
       <Modal
@@ -358,6 +430,26 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.info,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  syncButtonText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontWeight: 'bold',
   },
   resolveNNBanner: {
     flexDirection: 'row',
