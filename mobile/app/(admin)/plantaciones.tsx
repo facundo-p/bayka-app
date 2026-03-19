@@ -1,5 +1,3 @@
-import PlaceholderScreen from '../../src/screens/PlaceholderScreen';
+import PlantacionesScreen from '../../src/screens/PlantacionesScreen';
 
-export default function AdminPlantaciones() {
-  return <PlaceholderScreen title="Plantaciones" />;
-}
+export default PlantacionesScreen;

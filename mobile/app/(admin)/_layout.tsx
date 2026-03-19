@@ -37,6 +37,10 @@ export default function AdminLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="plantation"
+        options={{ href: null }}
+      />
     </Tabs>
   );
 }
