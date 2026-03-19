@@ -261,3 +261,31 @@ export async function deleteSubGroup(subgrupoId: string): Promise<{ deleted: boo
   notifyDataChanged();
   return { deleted: true, treeCount };
 }
+
+// Marks a subgroup as sincronizada after successful server sync.
+// Called by SyncService after RPC confirms the upload.
+export async function markAsSincronizada(subgrupoId: string): Promise<void> {
+  await db.update(subgroups)
+    .set({ estado: 'sincronizada' })
+    .where(eq(subgroups.id, subgrupoId));
+  notifyDataChanged();
+}
+
+// Returns all finalizada subgroups for a plantation (pending sync).
+// Used by SyncService to know which subgroups to upload.
+export async function getFinalizadaSubGroups(plantacionId: string): Promise<SubGroup[]> {
+  return db.select().from(subgroups)
+    .where(and(
+      eq(subgroups.plantacionId, plantacionId),
+      eq(subgroups.estado, 'finalizada')
+    ));
+}
+
+// Returns total count of finalizada subgroups across all plantations.
+// Used by dashboard badge to show total pending sync count.
+export async function getPendingSyncCount(): Promise<number> {
+  const result = await db.select({ cnt: count() })
+    .from(subgroups)
+    .where(eq(subgroups.estado, 'finalizada'));
+  return result[0]?.cnt ?? 0;
+}

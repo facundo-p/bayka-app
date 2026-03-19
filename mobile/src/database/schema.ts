@@ -51,3 +51,12 @@ export const plantationSpecies = sqliteTable('plantation_species', {
   especieId: text('especie_id').notNull().references(() => species.id),
   ordenVisual: integer('orden_visual').notNull().default(0),
 });
+
+export const plantationUsers = sqliteTable('plantation_users', {
+  plantationId: text('plantation_id').notNull().references(() => plantations.id),
+  userId: text('user_id').notNull(),
+  rolEnPlantacion: text('rol_en_plantacion').notNull().default('tecnico'),
+  assignedAt: text('assigned_at').notNull(),
+}, (t) => ({
+  pk: uniqueIndex('plantation_users_pk').on(t.plantationId, t.userId),
+}));
