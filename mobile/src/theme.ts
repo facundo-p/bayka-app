@@ -17,6 +17,12 @@ export const colors = {
   secondaryBg: '#fff3e0',
   secondaryBorder: '#ffcc02',
 
+  // Beige/cream for recent trees chips
+  recentBg: '#f5efe6',
+  recentBgActive: '#efe8db',
+  recentBorder: '#ddd0be',
+  recentText: '#7a6b56',
+
   secondaryYellow: '#ffca28',
   secondaryYellowLight: '#fff8e1',
   secondaryYellowMedium: '#ffe082',

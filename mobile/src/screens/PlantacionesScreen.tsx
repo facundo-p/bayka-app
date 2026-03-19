@@ -7,6 +7,7 @@ import { desc, eq, and, sql, count } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
+import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
@@ -101,7 +102,7 @@ export default function PlantacionesScreen() {
                   <View style={styles.cardRightArea}>
                     <View style={styles.treeBadgeRow}>
                       <View style={styles.totalTreeBadge}>
-                        <Ionicons name="leaf-outline" size={12} color={colors.primary} />
+                        <TreeIcon size={12} />
                         <Text style={styles.totalTreeBadgeText}>{totalTreeCount} árboles</Text>
                       </View>
                       {todayCount > 0 && (

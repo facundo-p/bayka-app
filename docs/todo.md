@@ -1,7 +1,7 @@
 Pantalla general
 
 - [x]  card de plantación debería mostrar cuantos árboles lleva cargados hoy el usuario
-- [ ]  card de plantación debería mostrar cuantos árboles totales hay registrados en la plantación
+- [x]  card de plantación debería mostrar cuantos árboles totales hay registrados en la plantación
 
 Pantalla de plantación
 
@@ -15,9 +15,9 @@ Pantalla de plantación
 - [x]  Remover botón de "finalizar" de la card del sub grupo.
 - [x]  Mostrar en la card del sub grupo un indicador de qe hay árboles n/n por resolver
 - [x]  Subgrupo se escribe sin la G mayúscula
-- [ ]  El botón de "nuevo subgrupo" se superpone con el listado de cards de subgrupos. No debería pasar
-- [ ]  Al mantener presionada la row correspondiente a un subgrupo, debería abrirse una pantalla de edición para poder modificarle Nombre, Código y tipo. Validar que no exista otro subgrupo con mismo nombre y código. Al editar el código, actualizar todos los subindices de sus árboles, si los tuviese.
-- [ ]  En las rows de subgrupo no mostrar código de subgrupo
+- [x]  El botón de "nuevo subgrupo" se superpone con el listado de cards de subgrupos. No debería pasar
+- [x]  Al mantener presionada la row correspondiente a un subgrupo, debería abrirse una pantalla de edición para poder modificarle Nombre, Código y tipo. Validar que no exista otro subgrupo con mismo nombre y código. Al editar el código, actualizar todos los subindices de sus árboles, si los tuviese.
+- [x]  En las rows de subgrupo no mostrar código de subgrupo
 - [ ]  En las rows de subgrupo mostrar un icono de árbol al costado del número de árboles.
 
 Pantalla de Sub Grupo

@@ -28,6 +28,7 @@ import SubgrupoForm from '../components/SubgrupoForm';
 import { useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
+import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
@@ -130,7 +131,7 @@ export default function PlantationDetailScreen() {
   useEffect(() => {
     const lugar = plantationRows?.[0]?.lugar;
     if (lugar) {
-      navigation.setOptions({ title: lugar });
+      navigation.setOptions({ title: lugar, headerTitleAlign: 'center' });
     }
   }, [plantationRows, navigation]);
 
@@ -177,7 +178,6 @@ export default function PlantationDetailScreen() {
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
     const showDelete = isOwner && item.estado === 'activa';
-    const tipoLabel = item.tipo === 'linea' ? 'L' : 'P';
 
     return (
       <Pressable
@@ -191,15 +191,14 @@ export default function PlantationDetailScreen() {
         onLongPress={() => handleLongPress(item)}
       >
         <View style={styles.cardRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.nombre}</Text>
-          <Text style={styles.cardTipo}>{tipoLabel}</Text>
-          <Ionicons name="leaf-outline" size={13} color={colors.primary} />
-          <Text style={styles.treeCountText}>{treeCount}</Text>
+          <Text style={[styles.cardName, !isOwner && styles.cardNameOther]} numberOfLines={1}>{item.nombre}</Text>
           {nnCount > 0 && (
             <View style={styles.nnBadge}>
-              <Text style={styles.nnBadgeText}>{nnCount}</Text>
+              <Text style={styles.nnBadgeText}>{nnCount} N/N</Text>
             </View>
           )}
+          <Text style={styles.treeCountText}>{treeCount}</Text>
+          <TreeIcon size={13} />
           <SubGroupStateChip estado={item.estado} />
           {showDelete && (
             <Pressable
@@ -393,10 +392,11 @@ const styles = StyleSheet.create({
   cardOtherUser: {
     backgroundColor: colors.otherUserBg,
     borderLeftColor: colors.otherUserBorder,
+    opacity: 0.55,
   },
   cardReadOnly: {
     borderLeftColor: colors.borderMuted,
-    opacity: 0.7,
+    opacity: 0.75,
   },
   cardPressed: {
     opacity: 0.7,
@@ -411,6 +411,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
     flex: 1,
+  },
+  cardNameOther: {
+    color: colors.textMuted,
+    fontWeight: '500',
   },
   cardTipo: {
     fontSize: fontSize.xs,

@@ -36,6 +36,7 @@ import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import CustomHeader from '../components/CustomHeader';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
+import TreeIcon from '../components/TreeIcon';
 import type { SubGroupEstado } from '../repositories/SubGroupRepository';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
@@ -127,9 +128,9 @@ export default function TreeRegistrationScreen() {
   function handleReverseOrder() {
     if (isReadOnly) return;
     showConfirmDialog(
-      'Revertir Orden',
-      'Revertir el orden de los arboles? Se recalcularan todas las posiciones y codigos.',
-      'Revertir',
+      'Invertir Orden',
+      'Invertir el orden de los árboles? Se recalcularán todas las posiciones y códigos.',
+      'Invertir',
       async () => {
         setReversing(true);
         try {
@@ -256,8 +257,8 @@ export default function TreeRegistrationScreen() {
         onBack={() => router.back()}
         rightElement={
           <View style={styles.headerRight}>
-            <Ionicons name="leaf-outline" size={14} color={colors.primaryCountFaded} />
             <Text style={styles.headerCount}>{totalCount}</Text>
+            <TreeIcon size={14} />
             {unresolvedNN > 0 && (
               <View style={styles.headerNNBadge}>
                 <Text style={styles.headerNNText}>{unresolvedNN} N/N</Text>
@@ -267,37 +268,44 @@ export default function TreeRegistrationScreen() {
         }
       />
 
-      {/* View all trees button */}
-      {totalCount > 0 && (
+      {/* View all trees button — only in edit mode */}
+      {!isReadOnly && totalCount > 0 && (
         <Pressable
           style={({ pressed }) => [styles.viewAllRow, pressed && { opacity: 0.7 }]}
           onPress={() => setShowTreeList(true)}
         >
           <Ionicons name="list-outline" size={16} color={colors.primary} />
-          <Text style={styles.viewAllText}>Ver todos los arboles ({totalCount})</Text>
+          <Text style={styles.viewAllText}>Ver todos los árboles</Text>
           <Ionicons name="chevron-forward" size={14} color={colors.primary} />
         </Pressable>
       )}
 
-      {/* Last 3 trees as horizontal chips */}
-      {lastThree.length > 0 && (
-        <View style={styles.lastThreeRow}>
-          {[...lastThree].reverse().map((tree, index) => {
-            const isLast = index === lastThree.length - 1;
-            const code = getSpeciesCode(tree);
-            return (
-              <View key={tree.id} style={[styles.treeChip, isLast && styles.treeChipLast]}>
-                <Text style={[styles.treeChipText, isLast && styles.treeChipTextLast]}>
-                  {tree.posicion} {code}
-                </Text>
-                {isLast && !isReadOnly && (
-                  <Pressable onPress={handleUndo} hitSlop={8} style={styles.undoChipButton}>
-                    <Text style={styles.undoChipText}>Deshacer</Text>
-                  </Pressable>
-                )}
-              </View>
-            );
-          })}
+      {/* Last 3 trees — only in edit mode */}
+      {!isReadOnly && (
+        <View style={styles.lastThreeSection}>
+          <Text style={styles.lastThreeLabel}>Últimos ingresados</Text>
+          <View style={styles.lastThreeRow}>
+            {lastThree.length > 0 ? (
+              [...lastThree].reverse().map((tree, index) => {
+                const isLast = index === lastThree.length - 1;
+                const code = getSpeciesCode(tree);
+                return (
+                  <View key={tree.id} style={[styles.treeChip, isLast && styles.treeChipLast]}>
+                    <Text style={[styles.treeChipText, isLast && styles.treeChipTextLast]}>
+                      {tree.posicion} {code}
+                    </Text>
+                    {isLast && (
+                      <Pressable onPress={handleUndo} hitSlop={8} style={styles.undoChipButton}>
+                        <Ionicons name="trash-outline" size={14} color={colors.danger} />
+                      </Pressable>
+                    )}
+                  </View>
+                );
+              })
+            ) : (
+              <Text style={styles.lastThreePlaceholder}>Sin árboles ingresados</Text>
+            )}
+          </View>
         </View>
       )}
 
@@ -341,7 +349,7 @@ export default function TreeRegistrationScreen() {
               {reversing ? (
                 <ActivityIndicator size="small" color={colors.secondary} />
               ) : (
-                <Text style={styles.reverseButtonText}>Revertir</Text>
+                <Text style={styles.reverseButtonText}>Invertir</Text>
               )}
             </Pressable>
 
@@ -568,10 +576,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.primary,
   },
+  lastThreeSection: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  lastThreeLabel: {
+    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.xs,
+  },
+  lastThreePlaceholder: {
+    fontSize: fontSize.sm,
+    color: colors.textLight,
+    fontStyle: 'italic',
+    paddingHorizontal: spacing.xs,
+  },
   lastThreeRow: {
     flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
     gap: spacing.sm,
     alignItems: 'center',
   },
@@ -579,40 +607,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primaryBgLight,
+    backgroundColor: colors.recentBg,
     borderRadius: borderRadius.lg,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
     minHeight: 44,
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    borderColor: colors.recentBorder,
     gap: spacing.sm,
     flex: 1,
   },
   treeChipLast: {
-    backgroundColor: colors.primaryBg,
-    borderColor: colors.primaryLight,
+    backgroundColor: colors.recentBgActive,
+    borderColor: colors.recentText,
     borderWidth: 2,
   },
   treeChipText: {
     fontSize: fontSize.lg,
     fontWeight: '600',
-    color: colors.primary,
+    color: colors.recentText,
   },
   treeChipTextLast: {
     fontWeight: 'bold',
     fontSize: fontSize.xl,
   },
   undoChipButton: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  undoChipText: {
-    fontSize: fontSize.xs,
-    color: colors.danger,
-    fontWeight: '600',
+    padding: spacing.xs,
   },
   gridScroll: {
     flex: 1,

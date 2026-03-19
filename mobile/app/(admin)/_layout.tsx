@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../../src/theme';
+import PlantacionesTabIcon from '../../src/components/PlantacionesTabIcon';
 
 export default function AdminLayout() {
   return (
@@ -14,9 +15,7 @@ export default function AdminLayout() {
         name="plantaciones"
         options={{
           title: 'Plantaciones',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="leaf-outline" size={size} color={color} />
-          ),
+          tabBarIcon: PlantacionesTabIcon,
         }}
       />
       <Tabs.Screen
