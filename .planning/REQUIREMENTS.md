@@ -25,12 +25,12 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Dashboard
 
-- [ ] **DASH-01**: Technician sees list of assigned plantations after login
-- [ ] **DASH-02**: Admin sees all plantations for the organization
-- [ ] **DASH-03**: Each plantation shows total trees registered and synced
-- [ ] **DASH-04**: Each plantation shows user's unsynced tree count
-- [ ] **DASH-05**: Each plantation shows user's total tree count
-- [ ] **DASH-06**: Each plantation shows user's trees registered today
+- [x] **DASH-01**: Technician sees list of assigned plantations after login
+- [x] **DASH-02**: Admin sees all plantations for the organization
+- [x] **DASH-03**: Each plantation shows total trees registered and synced
+- [x] **DASH-04**: Each plantation shows user's unsynced tree count
+- [x] **DASH-05**: Each plantation shows user's total tree count
+- [x] **DASH-06**: Each plantation shows user's trees registered today
 
 ### Plantation Management
 
@@ -83,7 +83,7 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 - [x] **SYNC-04**: Sync conflict shows clear error message to user
 - [x] **SYNC-05**: Successful sync marks SubGroup as sincronizada (immutable)
 - [x] **SYNC-06**: During sync, app downloads updated data from other technicians
-- [ ] **SYNC-07**: User can see list of SubGroups pending sync
+- [x] **SYNC-07**: User can see list of SubGroups pending sync
 
 ### ID Generation
 
@@ -181,13 +181,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SYNC-04 | Phase 3 | Complete |
 | SYNC-05 | Phase 3 | Complete |
 | SYNC-06 | Phase 3 | Complete |
-| SYNC-07 | Phase 3 | Pending |
-| DASH-01 | Phase 3 | Pending |
-| DASH-02 | Phase 3 | Pending |
-| DASH-03 | Phase 3 | Pending |
-| DASH-04 | Phase 3 | Pending |
-| DASH-05 | Phase 3 | Pending |
-| DASH-06 | Phase 3 | Pending |
+| SYNC-07 | Phase 3 | Complete |
+| DASH-01 | Phase 3 | Complete |
+| DASH-02 | Phase 3 | Complete |
+| DASH-03 | Phase 3 | Complete |
+| DASH-04 | Phase 3 | Complete |
+| DASH-05 | Phase 3 | Complete |
+| DASH-06 | Phase 3 | Complete |
 | PLAN-01 | Phase 4 | Pending |
 | PLAN-02 | Phase 4 | Pending |
 | PLAN-03 | Phase 4 | Pending |
