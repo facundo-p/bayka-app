@@ -66,12 +66,12 @@ Plans:
   4. If the server rejects a sync due to duplicate SubGroup code, the user sees a plain-language error and the SubGroup remains local
   5. After sync, the app downloads updated species and other technicians' SubGroups
   6. The number of SubGroups pending sync is always visible without navigating away
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Supabase RPC function for atomic SubGroup sync (server-side Postgres transaction, idempotency key, RLS, conflict detection)
-- [ ] 03-02: SyncService (outbox written atomically with domain write, pull-then-push order, conflict error surface, sincronizada state mark)
-- [ ] 03-03: Dashboard screens (plantation list for tecnico and admin, stats live queries, pending sync badge, sync trigger CTA)
+- [ ] 03-01-PLAN.md — Supabase RPC function for atomic SubGroup sync (idempotency, DUPLICATE_CODE detection), local plantation_users table + migration, SubGroupRepository sync extensions
+- [ ] 03-02-PLAN.md — SyncService (pull-then-push orchestration, per-SubGroup RPC upload, error accumulation, Spanish error messages), useSync hook, unit tests
+- [ ] 03-03-PLAN.md — Dashboard stats (role-gated plantation list, unsynced/total/today counts, pending sync badges), sync CTA + progress modal, tab icon badge (checkpoint)
 
 ### Phase 4: Admin + Export
 **Goal**: Admins can manage plantations (create, configure species, assign technicians, finalize), generate IDs, and export finalized plantation data to CSV/Excel
