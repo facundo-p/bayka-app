@@ -77,12 +77,12 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Sync
 
-- [ ] **SYNC-01**: Technician can manually initiate sync for finalizada SubGroups
+- [x] **SYNC-01**: Technician can manually initiate sync for finalizada SubGroups
 - [x] **SYNC-02**: Sync uploads SubGroup + all trees as atomic unit
 - [x] **SYNC-03**: Server rejects sync if SubGroup code already exists in plantation
-- [ ] **SYNC-04**: Sync conflict shows clear error message to user
-- [ ] **SYNC-05**: Successful sync marks SubGroup as sincronizada (immutable)
-- [ ] **SYNC-06**: During sync, app downloads updated data from other technicians
+- [x] **SYNC-04**: Sync conflict shows clear error message to user
+- [x] **SYNC-05**: Successful sync marks SubGroup as sincronizada (immutable)
+- [x] **SYNC-06**: During sync, app downloads updated data from other technicians
 - [ ] **SYNC-07**: User can see list of SubGroups pending sync
 
 ### ID Generation
@@ -175,12 +175,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REVR-01 | Phase 2 | Complete |
 | REVR-02 | Phase 2 | Complete |
 | REVR-03 | Phase 2 | Complete |
-| SYNC-01 | Phase 3 | Pending |
+| SYNC-01 | Phase 3 | Complete |
 | SYNC-02 | Phase 3 | Complete |
 | SYNC-03 | Phase 3 | Complete |
-| SYNC-04 | Phase 3 | Pending |
-| SYNC-05 | Phase 3 | Pending |
-| SYNC-06 | Phase 3 | Pending |
+| SYNC-04 | Phase 3 | Complete |
+| SYNC-05 | Phase 3 | Complete |
+| SYNC-06 | Phase 3 | Complete |
 | SYNC-07 | Phase 3 | Pending |
 | DASH-01 | Phase 3 | Pending |
 | DASH-02 | Phase 3 | Pending |
