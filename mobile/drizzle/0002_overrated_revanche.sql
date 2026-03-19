@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `subgroups_plantation_name_unique` ON `subgroups` (`plantacion_id`,`nombre`);

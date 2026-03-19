@@ -1,0 +1,16 @@
+{
+  "name": "bayka-app-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Root workspace for Bayka App — contains Supabase seed scripts and shared tooling",
+  "scripts": {
+    "seed": "npx tsx supabase/seed.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "dotenv": "^16.4.7"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.0"
+  }
+}

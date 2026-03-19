@@ -232,7 +232,7 @@ Flujo:
 ```
 Técnico presiona "Finalizar SubGrupo"
 ↓
-Estado cambia a finished
+Estado cambia a finalizada
 ↓
 SubGrupo queda listo para sincronizar
 ```
@@ -252,7 +252,7 @@ Sube SubGrupo + Árboles
 ↓
 Servidor valida datos
 ↓
-SubGrupo marcado como synced
+SubGrupo marcado como sincronizada
 ```
 
 ---
@@ -281,7 +281,7 @@ SubGrupo
 Un SubGrupo puede sincronizarse si:
 
 ```
-estado = finished
+estado = finalizada
 no existen árboles NN
 ```
 

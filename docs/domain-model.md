@@ -282,9 +282,9 @@ parcela
 ### Estados posibles
 
 ```
-recording
-finished
-synced
+activa
+finalizada
+sincronizada
 ```
 
 ### Relaciones
@@ -431,7 +431,7 @@ se suben las fotos
 ### Condiciones para sincronizar
 
 ```
-estado = finished
+estado = finalizada
 no existen árboles NN
 ```
 
