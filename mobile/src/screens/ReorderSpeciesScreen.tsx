@@ -165,13 +165,15 @@ export default function ReorderSpeciesScreen() {
           <Text style={styles.dragHint}>Mantene presionado para reordenar</Text>
         </View>
 
-        <DraggableFlatList
-          data={items}
-          keyExtractor={(item) => item.especieId}
-          onDragEnd={handleDragEnd}
-          renderItem={renderDragItem}
-          contentContainerStyle={styles.dragListContent}
-        />
+        <View style={{ flex: 1 }}>
+          <DraggableFlatList
+            data={items}
+            keyExtractor={(item) => item.especieId}
+            onDragEnd={handleDragEnd}
+            renderItem={renderDragItem}
+            contentContainerStyle={styles.dragListContent}
+          />
+        </View>
 
         <View style={styles.footer}>
           <Pressable
