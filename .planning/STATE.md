@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04-admin-export-01-PLAN.md
-last_updated: "2026-03-20T04:33:06.866Z"
+stopped_at: Completed 04-admin-export-02-PLAN.md
+last_updated: "2026-03-20T04:41:38.175Z"
 last_activity: 2026-03-19 — Phase 3 Plan 03 complete
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 100
 ---
 
@@ -61,6 +61,7 @@ Progress: [██████████] 100%
 | Phase 03-sync-dashboard P02 | 8min | 2 tasks | 3 files |
 | Phase 03-sync-dashboard P03 | 8min | 3 tasks | 7 files |
 | Phase 04-admin-export P01 | 347s | 2 tasks | 10 files |
+| Phase 04-admin-export P02 | 297s | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -105,6 +106,8 @@ Recent decisions affecting current work:
 - [Phase 04-admin-export]: PlantationRepository upserts plantation row directly after Supabase create (pullFromServer doesn't pull the plantation row itself — Pitfall 2)
 - [Phase 04-admin-export]: SheetJS write() uses type:'base64' in ExportService — Node Buffer not available in React Native (Pitfall 4)
 - [Phase 04-admin-export]: getAllTechnicians queries Supabase (not local SQLite) — profiles table only exists on server
+- [Phase 04-admin-export]: Move-up/down buttons used instead of react-native-draggable-flatlist — not installed, must_haves spec already specified move-up/down reorder
+- [Phase 04-admin-export]: organizacionId fetched from Supabase profiles table in each admin screen — no local SQLite copy, fetch per screen
 
 ### Pending Todos
 
@@ -116,6 +119,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-20T04:33:06.862Z
-Stopped at: Completed 04-admin-export-01-PLAN.md
+Last session: 2026-03-20T04:41:38.172Z
+Stopped at: Completed 04-admin-export-02-PLAN.md
 Resume file: None
