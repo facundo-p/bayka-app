@@ -66,17 +66,13 @@ create policy "Admin can delete plantation_users"
 
 -- ─── profiles ────────────────────────────────────────────────────────────────
 
--- Admin can read all profiles in their organization (for technician assignment list)
--- Existing policy only allows users to read their own profile.
--- This adds org-wide read for admins to list all technicians in the same org.
-create policy "Admin can read org profiles"
+-- Allow all authenticated users to read all profiles.
+-- The original "Users can read own profile" policy (migration 001) is too restrictive
+-- for admin operations like technician assignment.
+-- NOTE: A self-referencing SELECT policy on profiles causes infinite recursion in Postgres RLS.
+-- For single-org MVP, allowing all authenticated reads is safe.
+-- Multi-org would need a different approach (e.g., auth.jwt() claims).
+create policy "Authenticated can read all profiles"
   on profiles for select
   to authenticated
-  using (
-    exists (
-      select 1 from profiles p
-      where p.id = auth.uid()
-        and p.rol = 'admin'
-        and p.organizacion_id = profiles.organizacion_id
-    )
-  );
+  using (true);

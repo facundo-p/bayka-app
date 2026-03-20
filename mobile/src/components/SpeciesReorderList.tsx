@@ -29,6 +29,7 @@ export default function SpeciesReorderList({ items, onReorder }: Props) {
       <ScaleDecorator>
         <Pressable
           onLongPress={drag}
+          delayLongPress={150}
           disabled={isActive}
           style={[styles.dragRow, isActive && styles.dragRowActive]}
         >
@@ -50,6 +51,7 @@ export default function SpeciesReorderList({ items, onReorder }: Props) {
       onDragEnd={handleDragEnd}
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
+      dragItemOverflow={true}
     />
   );
 }
