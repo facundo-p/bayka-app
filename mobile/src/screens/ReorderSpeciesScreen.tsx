@@ -1,7 +1,8 @@
 /**
- * ReorderSpeciesScreen — drag-and-drop species button grid.
- * Shows enabled species as buttons matching the real registration grid layout.
- * Admin can drag buttons to reorder. Saves orden_visual on confirm.
+ * ReorderSpeciesScreen — drag-and-drop species reorder with grid preview.
+ *
+ * Shows a draggable list (single column) for reordering, plus a live preview
+ * of the 3-column grid matching the real species button layout.
  *
  * Covers requirement: PLAN-05
  */
@@ -13,6 +14,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,11 +29,11 @@ import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationSpeciesConfig } from '../queries/adminQueries';
 import { saveSpeciesConfig } from '../repositories/PlantationRepository';
 
-const COLUMNS = 4;
+const NUM_COLUMNS = 3;
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const BUTTON_GAP = spacing.md;
-const PADDING = spacing.xxl;
-const BUTTON_WIDTH = (SCREEN_WIDTH - PADDING * 2 - BUTTON_GAP * (COLUMNS - 1)) / COLUMNS;
+const PREVIEW_PADDING = spacing.xxl;
+const PREVIEW_GAP = spacing.md;
+const PREVIEW_BTN_WIDTH = (SCREEN_WIDTH - PREVIEW_PADDING * 2 - PREVIEW_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS;
 
 type SpeciesButton = {
   especieId: string;
@@ -55,8 +57,7 @@ export default function ReorderSpeciesScreen() {
     setLoading(true);
     try {
       const config = await getPlantationSpeciesConfig(plantacionId);
-      const sorted = [...config].sort((a, b) => a.ordenVisual - b.ordenVisual);
-      setItems(sorted);
+      setItems([...config].sort((a, b) => a.ordenVisual - b.ordenVisual));
     } catch (e: any) {
       showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar las especies.', 'alert-circle-outline', colors.danger);
     } finally {
@@ -76,8 +77,7 @@ export default function ReorderSpeciesScreen() {
     if (!plantacionId) return;
     setSaving(true);
     try {
-      const config = items.map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
-      await saveSpeciesConfig(plantacionId, config);
+      await saveSpeciesConfig(plantacionId, items.map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual })));
       router.back();
     } catch (e: any) {
       showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo guardar el orden.', 'alert-circle-outline', colors.danger);
@@ -86,22 +86,54 @@ export default function ReorderSpeciesScreen() {
     }
   }
 
-  function renderItem({ item, drag, isActive }: RenderItemParams<SpeciesButton>) {
+  // Render draggable list item
+  function renderDragItem({ item, drag, isActive }: RenderItemParams<SpeciesButton>) {
     return (
       <ScaleDecorator>
         <Pressable
           onLongPress={drag}
           disabled={isActive}
-          style={[
-            styles.speciesButton,
-            isActive && styles.speciesButtonDragging,
-          ]}
+          style={[styles.dragRow, isActive && styles.dragRowActive]}
         >
-          <Text style={styles.speciesCode}>{item.codigo}</Text>
-          <Text style={styles.speciesName} numberOfLines={1}>{item.nombre}</Text>
-          <Ionicons name="menu" size={14} color={colors.primaryFaded} style={styles.dragHandle} />
+          <Ionicons name="menu" size={20} color={colors.textMuted} />
+          <View style={styles.dragRowButton}>
+            <Text style={styles.dragRowCode}>{item.codigo}</Text>
+          </View>
+          <Text style={styles.dragRowName} numberOfLines={1}>{item.nombre}</Text>
+          <Text style={styles.dragRowOrder}>#{item.ordenVisual + 1}</Text>
         </Pressable>
       </ScaleDecorator>
+    );
+  }
+
+  // Grid preview — shows how the botonera will look
+  function renderGridPreview() {
+    const rows: SpeciesButton[][] = [];
+    for (let i = 0; i < items.length; i += NUM_COLUMNS) {
+      rows.push(items.slice(i, i + NUM_COLUMNS));
+    }
+    return (
+      <View style={styles.previewContainer}>
+        <Text style={styles.previewTitle}>Vista previa de la botonera</Text>
+        <View style={styles.previewGrid}>
+          {rows.map((row, rowIdx) => (
+            <View key={rowIdx} style={styles.previewRow}>
+              {row.map((item) => (
+                <View key={item.especieId} style={styles.previewButton}>
+                  <Text style={styles.previewCode}>{item.codigo}</Text>
+                  <Text style={styles.previewName} numberOfLines={1}>{item.nombre}</Text>
+                </View>
+              ))}
+              {/* Fill empty slots in last row */}
+              {row.length < NUM_COLUMNS &&
+                Array.from({ length: NUM_COLUMNS - row.length }).map((_, i) => (
+                  <View key={`empty-${i}`} style={[styles.previewButton, styles.previewButtonEmpty]} />
+                ))
+              }
+            </View>
+          ))}
+        </View>
+      </View>
     );
   }
 
@@ -118,7 +150,6 @@ export default function ReorderSpeciesScreen() {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>No hay especies configuradas</Text>
-        <Text style={styles.hintText}>Primero habilitá especies desde "Configurar especies"</Text>
       </View>
     );
   }
@@ -126,28 +157,25 @@ export default function ReorderSpeciesScreen() {
   return (
     <>
       <GestureHandlerRootView style={[styles.container, { paddingBottom: insets.bottom }]}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Ordenar botonera</Text>
-          <Text style={styles.headerHint}>Mantene presionado un boton para arrastrarlo</Text>
+        {/* Live grid preview */}
+        {renderGridPreview()}
+
+        {/* Drag list for reordering */}
+        <View style={styles.dragSection}>
+          <Text style={styles.dragHint}>Mantene presionado para reordenar</Text>
         </View>
 
         <DraggableFlatList
           data={items}
           keyExtractor={(item) => item.especieId}
           onDragEnd={handleDragEnd}
-          renderItem={renderItem}
-          numColumns={COLUMNS}
-          contentContainerStyle={styles.gridContent}
-          columnWrapperStyle={styles.gridRow}
+          renderItem={renderDragItem}
+          contentContainerStyle={styles.dragListContent}
         />
 
         <View style={styles.footer}>
           <Pressable
-            style={({ pressed }) => [
-              styles.saveButton,
-              pressed && { opacity: 0.8 },
-              saving && { opacity: 0.6 },
-            ]}
+            style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.8 }, saving && { opacity: 0.6 }]}
             onPress={handleSave}
             disabled={saving}
           >
@@ -168,102 +196,118 @@ export default function ReorderSpeciesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xl,
-    backgroundColor: colors.background,
-  },
-  loadingText: {
-    fontSize: fontSize.base,
-    color: colors.textMuted,
-  },
-  hintText: {
-    fontSize: fontSize.sm,
-    color: colors.textLight,
-  },
-  header: {
-    paddingHorizontal: PADDING,
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, backgroundColor: colors.background },
+  loadingText: { fontSize: fontSize.base, color: colors.textMuted },
+
+  // Grid preview
+  previewContainer: {
+    paddingHorizontal: PREVIEW_PADDING,
     paddingTop: spacing.xxl,
     paddingBottom: spacing.lg,
-    gap: spacing.xs,
   },
-  headerTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  headerHint: {
+  previewTitle: {
     fontSize: fontSize.sm,
+    fontWeight: '600',
     color: colors.textMuted,
-    fontStyle: 'italic',
+    marginBottom: spacing.lg,
   },
-  gridContent: {
-    paddingHorizontal: PADDING,
-    paddingBottom: spacing['5xl'],
+  previewGrid: {
+    gap: PREVIEW_GAP,
   },
-  gridRow: {
-    gap: BUTTON_GAP,
-    marginBottom: BUTTON_GAP,
+  previewRow: {
+    flexDirection: 'row',
+    gap: PREVIEW_GAP,
   },
-  speciesButton: {
-    width: BUTTON_WIDTH,
-    height: 70,
+  previewButton: {
+    width: PREVIEW_BTN_WIDTH,
+    height: 52,
     backgroundColor: colors.primaryBg,
     borderRadius: borderRadius.lg,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.primaryBorder,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
   },
-  speciesButtonDragging: {
-    elevation: 10,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryBgLight,
+  previewButtonEmpty: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
   },
-  speciesCode: {
-    fontSize: fontSize.xl,
+  previewCode: {
+    fontSize: fontSize.lg,
     fontWeight: 'bold',
     color: colors.primary,
   },
-  speciesName: {
+  previewName: {
     fontSize: fontSize.xxs,
     color: colors.textMuted,
     textAlign: 'center',
   },
-  dragHandle: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
+
+  // Drag section
+  dragSection: {
+    paddingHorizontal: PREVIEW_PADDING,
+    paddingBottom: spacing.sm,
   },
-  footer: {
-    padding: spacing.xxl,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
+  dragHint: {
+    fontSize: fontSize.xs,
+    color: colors.textLight,
+    fontStyle: 'italic',
   },
-  saveButton: {
+  dragListContent: {
+    paddingHorizontal: PREVIEW_PADDING,
+    paddingBottom: spacing['5xl'],
+  },
+  dragRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    paddingVertical: spacing.xl,
-    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.xl,
   },
-  saveButtonText: {
-    color: colors.white,
-    fontSize: fontSize.lg,
+  dragRowActive: {
+    elevation: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryBgLight,
+  },
+  dragRowButton: {
+    width: 40,
+    height: 32,
+    backgroundColor: colors.primaryBg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primaryBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dragRowCode: {
+    fontSize: fontSize.sm,
+    fontWeight: 'bold',
+    color: colors.primary,
+  },
+  dragRowName: {
+    flex: 1,
+    fontSize: fontSize.base,
+    color: colors.text,
+  },
+  dragRowOrder: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
     fontWeight: '600',
   },
+
+  // Footer
+  footer: { padding: spacing.xxl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingVertical: spacing.xl, gap: spacing.sm },
+  saveButtonText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '600' },
 });

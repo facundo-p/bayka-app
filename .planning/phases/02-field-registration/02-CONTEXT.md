@@ -14,7 +14,7 @@ Technicians can create SubGroups, register trees by tapping species buttons, han
 ## Implementation Decisions
 
 ### Species button grid
-- 4-column scrollable grid, each button shows species code (large) + nombre (small)
+- 3-column scrollable grid, each button shows species code (large) + nombre (small)
 - Minimum 60pt height per button, full column width — designed for gloved fingers
 - N/N button fixed at the top of the grid, visually distinct (yellow/orange), always visible
 - Species order defined by `orden_visual` from `plantation_species` table
