@@ -89,6 +89,15 @@ Plans:
 - [ ] 04-02: ID generation service + admin trigger (plantation-sequential + global org IDs, seed configuration)
 - [ ] 04-03: Export service (CSV + Excel generation with required columns, export available only on finalized plantations)
 
+### Phase 5: UX Improvements
+**Goal**: Quality-of-life improvements for field use — automatic data freshness checks, enhanced offline indicators, and UX polish
+**Depends on**: Phase 4
+**Requirements**: TBD
+**Ideas (backlog):**
+  - Automatic check for server updates when device has connectivity; notify user with banner to refresh
+  - Offline/online status indicator in header
+  - Background species catalog updates
+
 ## Progress
 
 **Execution Order:**

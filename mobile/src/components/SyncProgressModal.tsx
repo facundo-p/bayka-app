@@ -11,6 +11,7 @@ interface Props {
   results: SyncSubGroupResult[];
   successCount: number;
   failureCount: number;
+  pullSuccess: boolean | null;
   onDismiss: () => void;
 }
 
@@ -20,6 +21,7 @@ export default function SyncProgressModal({
   results,
   successCount,
   failureCount,
+  pullSuccess,
   onDismiss,
 }: Props) {
   if (state === 'idle') return null;
@@ -46,7 +48,36 @@ export default function SyncProgressModal({
             </>
           )}
 
-          {state === 'done' && (
+          {state === 'pulling' && (
+            <>
+              <ActivityIndicator size="large" color={colors.info} />
+              <Text style={styles.title}>Actualizando datos...</Text>
+              <Text style={styles.progressText}>Descargando novedades del servidor</Text>
+            </>
+          )}
+
+          {state === 'done' && pullSuccess !== null && results.length === 0 && (
+            <>
+              <Ionicons
+                name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
+                size={48}
+                color={pullSuccess ? colors.primary : colors.secondary}
+              />
+              <Text style={styles.title}>
+                {pullSuccess ? 'Datos actualizados' : 'Error al actualizar'}
+              </Text>
+              <Text style={styles.progressText}>
+                {pullSuccess
+                  ? 'Se descargaron los ultimos datos del servidor.'
+                  : 'No se pudo conectar con el servidor. Verifica tu conexion.'}
+              </Text>
+              <Pressable style={styles.dismissButton} onPress={onDismiss}>
+                <Text style={styles.dismissText}>Cerrar</Text>
+              </Pressable>
+            </>
+          )}
+
+          {state === 'done' && (results.length > 0 || pullSuccess === null) && (
             <>
               <Ionicons
                 name={failureCount > 0 ? 'alert-circle' : 'checkmark-circle'}

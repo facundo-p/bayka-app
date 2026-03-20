@@ -56,6 +56,8 @@ export default function PlantationDetailScreen() {
     progress,
     results,
     startSync,
+    startPull,
+    pullSuccess,
     reset: resetSync,
     successCount,
     failureCount,
@@ -275,6 +277,15 @@ export default function PlantationDetailScreen() {
           </View>
         </View>
 
+        {/* Pull button — always visible to download latest data */}
+        <Pressable
+          style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
+          onPress={startPull}
+        >
+          <Ionicons name="cloud-download-outline" size={18} color={colors.info} />
+          <Text style={styles.pullButtonText}>Actualizar datos</Text>
+        </Pressable>
+
         {/* Sync CTA — visible when there are syncable SubGroups to upload */}
         {syncableCount > 0 && (
           <Pressable
@@ -349,6 +360,7 @@ export default function PlantationDetailScreen() {
         results={results}
         successCount={successCount}
         failureCount={failureCount}
+        pullSuccess={pullSuccess}
         onDismiss={resetSync}
       />
 
@@ -444,6 +456,21 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  pullButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.infoBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  pullButtonText: {
+    color: colors.info,
+    fontSize: fontSize.base,
+    fontWeight: '600',
   },
   syncButton: {
     flexDirection: 'row',
