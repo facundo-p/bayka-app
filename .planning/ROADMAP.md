@@ -97,6 +97,8 @@ Plans:
   - Automatic check for server updates when device has connectivity; notify user with banner to refresh
   - Offline/online status indicator in header
   - Background species catalog updates
+  - Pantalla de perfil completa: nombre, email, rol, organización (datos de profiles + auth)
+  - Pantalla de plantaciones: título contextual ("Mis plantaciones" para técnico, nombre de org para admin, o algo más adecuado al contexto)
 
 ## Progress
 
