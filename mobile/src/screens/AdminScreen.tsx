@@ -31,8 +31,9 @@ import { supabase, isSupabaseConfigured } from '../supabase/client';
 import ConfirmModal from '../components/ConfirmModal';
 import { useConfirm } from '../hooks/useConfirm';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
-import { checkFinalizationGate, hasIdsGenerated } from '../queries/adminQueries';
-import { createPlantation, finalizePlantation } from '../repositories/PlantationRepository';
+import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
+import { createPlantation, finalizePlantation, generateIds } from '../repositories/PlantationRepository';
+import { exportToCSV, exportToExcel } from '../services/ExportService';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -304,6 +305,12 @@ export default function AdminScreen() {
   const [finalizing, setFinalizing] = useState(false);
   const { confirmProps, show: showConfirm } = useConfirm();
 
+  // Seed dialog state
+  const [seedModalPlantacionId, setSeedModalPlantacionId] = useState<string | null>(null);
+  const [seedValue, setSeedValue] = useState('');
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+
   // Fetch organizacionId from profiles on mount
   useEffect(() => {
     if (!isSupabaseConfigured) return;
@@ -383,19 +390,80 @@ export default function AdminScreen() {
     }
   }
 
-  function handleGenerateIds(plantacionId: string) {
-    // Stub — will be wired in Plan 03
-    console.log('[AdminScreen] Generar IDs stub for', plantacionId);
+  async function handleGenerateIds(plantacionId: string) {
+    try {
+      const maxId = await getMaxGlobalId();
+      const suggested = (maxId + 1).toString();
+      setSeedValue(suggested);
+      setSeedModalPlantacionId(plantacionId);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo obtener el ID sugerido.');
+    }
   }
 
-  function handleExportCsv(plantacionId: string) {
-    // Stub — will be wired in Plan 03
-    console.log('[AdminScreen] Exportar CSV stub for', plantacionId);
+  async function confirmSeedAndGenerate() {
+    if (!seedModalPlantacionId) return;
+    const seed = parseInt(seedValue, 10);
+    if (isNaN(seed) || seed < 1) {
+      Alert.alert('Semilla invalida', 'Ingresa un numero entero mayor a 0.');
+      return;
+    }
+    setSeedModalPlantacionId(null);
+    const pid = seedModalPlantacionId;
+    showConfirm({
+      icon: 'key-outline',
+      iconColor: colors.primary,
+      title: 'Generar IDs',
+      message: 'Se van a generar IDs para todos los arboles de esta plantacion. Esta accion no se puede deshacer.',
+      buttons: [
+        {
+          label: 'Cancelar',
+          style: 'cancel',
+          onPress: () => {},
+        },
+        {
+          label: 'Generar',
+          style: 'primary',
+          icon: 'key-outline',
+          onPress: async () => {
+            setSeedLoading(true);
+            try {
+              await generateIds(pid, seed);
+            } catch (e: any) {
+              Alert.alert('Error', e?.message ?? 'No se pudieron generar los IDs.');
+            } finally {
+              setSeedLoading(false);
+            }
+          },
+        },
+      ],
+    });
   }
 
-  function handleExportExcel(plantacionId: string) {
-    // Stub — will be wired in Plan 03
-    console.log('[AdminScreen] Exportar Excel stub for', plantacionId);
+  async function handleExportCsv(plantacionId: string) {
+    const plantation = (plantationList as Plantation[] | null)?.find((p) => p.id === plantacionId);
+    if (!plantation) return;
+    setExportingId(plantacionId + '_csv');
+    try {
+      await exportToCSV(plantacionId, plantation.lugar);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo exportar el CSV.');
+    } finally {
+      setExportingId(null);
+    }
+  }
+
+  async function handleExportExcel(plantacionId: string) {
+    const plantation = (plantationList as Plantation[] | null)?.find((p) => p.id === plantacionId);
+    if (!plantation) return;
+    setExportingId(plantacionId + '_xlsx');
+    try {
+      await exportToExcel(plantacionId, plantation.lugar);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo exportar el Excel.');
+    } finally {
+      setExportingId(null);
+    }
   }
 
   return (
@@ -447,6 +515,66 @@ export default function AdminScreen() {
 
       {/* Confirm modal */}
       <ConfirmModal {...confirmProps} />
+
+      {/* Seed dialog for ID generation */}
+      <Modal
+        visible={!!seedModalPlantacionId}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSeedModalPlantacionId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, styles.seedModalCard]}>
+            <Text style={styles.modalTitle}>Semilla para ID Global</Text>
+            <Text style={styles.inputLabel}>Valor inicial del ID Global</Text>
+            <TextInput
+              style={styles.textInput}
+              value={seedValue}
+              onChangeText={setSeedValue}
+              keyboardType="number-pad"
+              placeholder="Ej: 1001"
+              placeholderTextColor={colors.textPlaceholder}
+            />
+            <View style={styles.modalButtons}>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.modalBtn,
+                  styles.modalBtnCancel,
+                  pressed && { opacity: 0.7 },
+                ]}
+                onPress={() => setSeedModalPlantacionId(null)}
+                disabled={seedLoading}
+              >
+                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.modalBtn,
+                  styles.modalBtnPrimary,
+                  pressed && { opacity: 0.8 },
+                  seedLoading && { opacity: 0.6 },
+                ]}
+                onPress={confirmSeedAndGenerate}
+                disabled={seedLoading}
+              >
+                {seedLoading ? (
+                  <ActivityIndicator size="small" color={colors.white} />
+                ) : (
+                  <Text style={styles.modalBtnPrimaryText}>Generar</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Export loading overlay */}
+      {exportingId && (
+        <View style={styles.exportOverlay}>
+          <ActivityIndicator size="large" color={colors.white} />
+          <Text style={styles.exportOverlayText}>Exportando...</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -666,6 +794,24 @@ const styles = StyleSheet.create({
   modalBtnPrimaryText: {
     color: colors.white,
     fontSize: fontSize.base,
+    fontWeight: '600',
+  },
+  seedModalCard: {
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+    borderRadius: borderRadius.lg,
+    marginHorizontal: spacing.xxl,
+  },
+  exportOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xl,
+  },
+  exportOverlayText: {
+    color: colors.white,
+    fontSize: fontSize.xl,
     fontWeight: '600',
   },
 });
