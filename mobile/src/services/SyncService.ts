@@ -176,7 +176,12 @@ export async function syncPlantation(
   await supabase.auth.getSession();
 
   // Step 2: PULL from server before uploading
-  await pullFromServer(plantacionId);
+  try {
+    await pullFromServer(plantacionId);
+  } catch (e) {
+    console.error('[Sync] Pull failed:', e);
+    // Pull failure shouldn't block push — continue with upload
+  }
 
   // Step 3: Get syncable subgroups (finalizada + no unresolved N/N)
   const pending = await getSyncableSubGroups(plantacionId);
@@ -196,16 +201,19 @@ export async function syncPlantation(
       const { data, error } = await uploadSubGroup(sg, sgTrees);
 
       if (error) {
+        console.error(`[Sync] RPC error for "${sg.nombre}" (${sg.id}):`, JSON.stringify(error));
         results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
       } else if (data?.success === true) {
         await markAsSincronizada(sg.id);
         results.push({ success: true, subgroupId: sg.id, nombre: sg.nombre });
       } else {
+        console.error(`[Sync] RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
         const errorCode: SyncErrorCode =
           data?.error === 'DUPLICATE_CODE' ? 'DUPLICATE_CODE' : 'UNKNOWN';
         results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: errorCode });
       }
-    } catch {
+    } catch (e) {
+      console.error(`[Sync] Exception for "${sg.nombre}" (${sg.id}):`, e);
       results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
     }
   }

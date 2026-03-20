@@ -29,6 +29,13 @@
       "when": 1773925926801,
       "tag": "0003_closed_zuras",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1773980000000,
+      "tag": "0004_species_uuid_migration",
+      "breakpoints": true
     }
   ]
 }
