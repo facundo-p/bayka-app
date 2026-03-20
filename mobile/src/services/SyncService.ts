@@ -42,11 +42,16 @@ export function getErrorMessage(code: SyncErrorCode): string {
  * and upserts them into local SQLite. Does NOT pull trees (too large).
  */
 export async function pullFromServer(plantacionId: string): Promise<void> {
+  console.log('[Sync] Pull starting for plantation:', plantacionId);
+
   // Pull subgroups
   const { data: remoteSubgroups, error: sgError } = await supabase
     .from('subgroups')
     .select('*')
     .eq('plantation_id', plantacionId);
+
+  if (sgError) console.error('[Sync] Pull subgroups error:', JSON.stringify(sgError));
+  else console.log('[Sync] Pull subgroups:', remoteSubgroups?.length ?? 0, 'rows');
 
   if (!sgError && remoteSubgroups && remoteSubgroups.length > 0) {
     for (const sg of remoteSubgroups) {
@@ -75,6 +80,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     .select('*')
     .eq('plantation_id', plantacionId);
 
+  if (puError) console.error('[Sync] Pull plantation_users error:', JSON.stringify(puError));
+  else console.log('[Sync] Pull plantation_users:', remotePu?.length ?? 0, 'rows');
+
   if (!puError && remotePu && remotePu.length > 0) {
     for (const pu of remotePu) {
       await db.insert(plantationUsers).values({
@@ -97,12 +105,17 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     .select('*')
     .eq('plantation_id', plantacionId);
 
+  if (psError) console.error('[Sync] Pull plantation_species error:', JSON.stringify(psError));
+  else console.log('[Sync] Pull plantation_species:', remotePs?.length ?? 0, 'rows');
+
   if (!psError && remotePs && remotePs.length > 0) {
     for (const ps of remotePs) {
+      // Server has composite PK (plantation_id, species_id), local has text id PK
+      const localId = `ps-${ps.plantation_id}-${ps.species_id}`;
       await db.insert(plantationSpecies).values({
-        id: ps.id,
+        id: localId,
         plantacionId: ps.plantation_id,
-        especieId: ps.especie_id,
+        especieId: ps.species_id,
         ordenVisual: ps.orden_visual,
       }).onConflictDoUpdate({
         target: plantationSpecies.id,
@@ -110,6 +123,42 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
           ordenVisual: sql`excluded.orden_visual`,
         },
       });
+    }
+  }
+
+  // Pull trees for all remote subgroups in this plantation
+  if (remoteSubgroups && remoteSubgroups.length > 0) {
+    const sgIds = remoteSubgroups.map((sg: any) => sg.id);
+    const { data: remoteTrees, error: treeError } = await supabase
+      .from('trees')
+      .select('*')
+      .in('subgroup_id', sgIds);
+
+    if (treeError) console.error('[Sync] Pull trees error:', JSON.stringify(treeError));
+    else console.log('[Sync] Pull trees:', remoteTrees?.length ?? 0, 'rows');
+
+    if (!treeError && remoteTrees && remoteTrees.length > 0) {
+      for (const t of remoteTrees) {
+        await db.insert(trees).values({
+          id: t.id,
+          subgrupoId: t.subgroup_id,
+          especieId: t.species_id,
+          posicion: t.posicion,
+          subId: t.sub_id,
+          fotoUrl: t.foto_url,
+          plantacionId: null,
+          globalId: null,
+          usuarioRegistro: t.usuario_registro,
+          createdAt: t.created_at,
+        }).onConflictDoUpdate({
+          target: trees.id,
+          set: {
+            especieId: sql`excluded.especie_id`,
+            posicion: sql`excluded.posicion`,
+            subId: sql`excluded.sub_id`,
+          },
+        });
+      }
     }
   }
 }

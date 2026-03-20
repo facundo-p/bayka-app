@@ -13,9 +13,7 @@ import { useTrees } from '../hooks/useTrees';
 import { usePlantationSpecies } from '../hooks/usePlantationSpecies';
 import { resolveNNTree } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
-import { db } from '../database/client';
-import { trees, subgroups } from '../database/schema';
-import { eq, and, isNull, asc, sql } from 'drizzle-orm';
+import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
@@ -56,23 +54,7 @@ export default function NNResolutionScreen() {
   const { data: plantationNNTrees } = useLiveData(
     () => {
       if (!isPlantationMode) return Promise.resolve([]);
-      return db.select({
-        id: trees.id,
-        posicion: trees.posicion,
-        subId: trees.subId,
-        fotoUrl: trees.fotoUrl,
-        especieId: trees.especieId,
-        subgrupoId: trees.subgrupoId,
-        subgrupoCodigo: subgroups.codigo,
-        subgrupoNombre: subgroups.nombre,
-      })
-        .from(trees)
-        .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
-        .where(and(
-          isNull(trees.especieId),
-          eq(subgroups.plantacionId, plantacionId ?? '')
-        ))
-        .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+      return getNNTreesForPlantation(plantacionId ?? '');
     },
     [plantacionId, isPlantationMode]
   );

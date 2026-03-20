@@ -29,9 +29,7 @@ import {
 import { launchCamera, launchGallery } from '../services/PhotoService';
 import { usePhotoPicker } from '../hooks/usePhotoPicker';
 import { useLiveData } from '../database/liveQuery';
-import { db } from '../database/client';
-import { subgroups } from '../database/schema';
-import { eq } from 'drizzle-orm';
+import { getSubgroupById } from '../queries/plantationDetailQueries';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import CustomHeader from '../components/CustomHeader';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -75,7 +73,7 @@ export default function TreeRegistrationScreen() {
 
   // Load subgroup data for ownership check
   const { data: subgroupRows } = useLiveData(
-    () => db.select().from(subgroups).where(eq(subgroups.id, subgrupoId ?? '')),
+    () => getSubgroupById(subgrupoId ?? ''),
     [subgrupoId]
   );
   const subgroup = subgroupRows?.[0] ?? null;

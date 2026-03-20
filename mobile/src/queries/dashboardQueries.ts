@@ -7,6 +7,7 @@
 import { db } from '../database/client';
 import { plantations, plantationUsers, subgroups, trees } from '../database/schema';
 import { eq, and, count, desc, sql, ne, getTableColumns } from 'drizzle-orm';
+import { localToday } from '../utils/dateUtils';
 
 /**
  * DASH-01 / DASH-02
@@ -88,12 +89,11 @@ export async function getPendingSyncCounts() {
 /**
  * DASH-06
  * Returns tree count per plantation for trees registered by the current user TODAY.
- * JOINs through subgroups to get plantacionId (trees.plantacionId is unused/null).
+ * Uses localToday() + LIKE for timezone-safe matching (same logic as plantationDetailQueries).
  */
 export async function getTodayTreeCounts(userId: string | null) {
   if (!userId) return [];
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayPrefix = localToday();
   return db
     .select({
       plantacionId: subgroups.plantacionId,
@@ -104,7 +104,7 @@ export async function getTodayTreeCounts(userId: string | null) {
     .where(
       and(
         eq(trees.usuarioRegistro, userId),
-        sql`${trees.createdAt} >= ${todayStart.toISOString()}`
+        sql`${trees.createdAt} LIKE ${todayPrefix + '%'}`
       )
     )
     .groupBy(subgroups.plantacionId);

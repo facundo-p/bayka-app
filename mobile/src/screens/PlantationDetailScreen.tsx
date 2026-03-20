@@ -11,16 +11,20 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
-import { db } from '../database/client';
-import { plantations, trees } from '../database/schema';
-import { eq, desc, and, isNull, count, sql } from 'drizzle-orm';
-import { localToday } from '../utils/dateUtils';
 import {
   deleteSubGroup,
   updateSubGroup,
   updateSubGroupCode,
 } from '../repositories/SubGroupRepository';
-import { subgroups } from '../database/schema';
+import {
+  getPlantationLugar,
+  getSubgroupsForPlantation,
+  getNNCountsPerSubgroup,
+  getTreeCountsPerSubgroup,
+  getTotalTreesInPlantation,
+  getTodayTreesForUser,
+  getUnsyncedTreesForUser,
+} from '../queries/plantationDetailQueries';
 import type { SubGroup, SubGroupTipo } from '../repositories/SubGroupRepository';
 import SubGroupStateChip from '../components/SubGroupStateChip';
 import SubgrupoForm from '../components/SubgrupoForm';
@@ -63,89 +67,18 @@ export default function PlantationDetailScreen() {
     failureCount,
   } = useSync(plantacionId ?? '');
 
-  // Load plantation name for header
-  const { data: plantationRows } = useLiveData(
-    () => db.select({ lugar: plantations.lugar }).from(plantations).where(eq(plantations.id, plantacionId ?? '')),
-    [plantacionId]
-  );
+  const pid = plantacionId ?? '';
 
-  // Load subgroups live
-  const { data: subgroupRows } = useLiveData(
-    () => db.select().from(subgroups)
-      .where(eq(subgroups.plantacionId, plantacionId ?? ''))
-      .orderBy(desc(subgroups.createdAt)),
-    [plantacionId]
-  );
+  // All queries delegated to plantationDetailQueries.ts — zero inline db access
+  const { data: plantationRows } = useLiveData(() => getPlantationLugar(pid), [pid]);
+  const { data: subgroupRows } = useLiveData(() => getSubgroupsForPlantation(pid), [pid]);
+  const { data: nnCounts } = useLiveData(() => getNNCountsPerSubgroup(pid), [pid]);
+  const { data: treeCounts } = useLiveData(() => getTreeCountsPerSubgroup(pid), [pid]);
+  const { data: totalTreesData } = useLiveData(() => getTotalTreesInPlantation(pid).then(t => [{ total: t }]), [pid]);
+  const { data: todayTreesData } = useLiveData(() => getTodayTreesForUser(pid, userId).then(t => [{ total: t }]), [pid, userId]);
+  const { data: unsyncedTreesData } = useLiveData(() => getUnsyncedTreesForUser(pid, userId).then(t => [{ total: t }]), [pid, userId]);
 
-  // Load N/N counts per subgroup
-  const { data: nnCounts } = useLiveData(
-    () => db.select({
-      subgrupoId: trees.subgrupoId,
-      nnCount: count(),
-    })
-      .from(trees)
-      .where(and(
-        isNull(trees.especieId),
-        sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`
-      ))
-      .groupBy(trees.subgrupoId),
-    [plantacionId]
-  );
-
-  // Load tree counts per subgroup
-  const { data: treeCounts } = useLiveData(
-    () => db.select({
-      subgrupoId: trees.subgrupoId,
-      treeCount: count(),
-    })
-      .from(trees)
-      .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`)
-      .groupBy(trees.subgrupoId),
-    [plantacionId]
-  );
-
-  // Total trees in plantation
-  const { data: totalTreesRow } = useLiveData(
-    () => db.select({ total: count() })
-      .from(trees)
-      .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`),
-    [plantacionId]
-  );
-
-  const todayStr = localToday();
-
-  // Today's trees by current user in this plantation
-  const { data: todayTreesRow } = useLiveData(
-    () => {
-      if (!userId) return Promise.resolve([]);
-      return db.select({ total: count() })
-        .from(trees)
-        .where(and(
-          sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`,
-          eq(trees.usuarioRegistro, userId),
-          sql`${trees.createdAt} LIKE ${todayStr + '%'}`
-        ));
-    },
-    [plantacionId, userId, todayStr]
-  );
-
-  // Unsynced tree count for current user in this plantation (for stats row)
-  const { data: unsyncedTreesRow } = useLiveData(
-    () => {
-      if (!userId) return Promise.resolve([]);
-      return db
-        .select({ total: count() })
-        .from(trees)
-        .where(
-          and(
-            sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''} AND estado != 'sincronizada')`,
-            eq(trees.usuarioRegistro, userId)
-          )
-        );
-    },
-    [plantacionId, userId]
-  );
-  const unsyncedTrees = unsyncedTreesRow?.[0]?.total ?? 0;
+  const unsyncedTrees = unsyncedTreesData?.[0]?.total ?? 0;
 
   // Build maps
   const nnCountMap = new Map<string, number>();
@@ -162,8 +95,8 @@ export default function PlantationDetailScreen() {
     }
   }
 
-  const totalTrees = totalTreesRow?.[0]?.total ?? 0;
-  const todayTrees = todayTreesRow?.[0]?.total ?? 0;
+  const totalTrees = totalTreesData?.[0]?.total ?? 0;
+  const todayTrees = todayTreesData?.[0]?.total ?? 0;
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
 
   // Set header title
