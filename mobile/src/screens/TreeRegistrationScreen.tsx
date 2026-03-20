@@ -41,6 +41,9 @@ import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../u
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
+import SpeciesReorderList, { ReorderItem } from '../components/SpeciesReorderList';
+import { saveUserSpeciesOrder } from '../repositories/UserSpeciesOrderRepository';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function TreeRegistrationScreen() {
   const { id: subgrupoId } = useLocalSearchParams<{
@@ -67,9 +70,11 @@ export default function TreeRegistrationScreen() {
   const [viewingPhoto, setViewingPhoto] = useState<{ uri: string; treeId: string } | null>(null);
   const [showTreeList, setShowTreeList] = useState(false);
   const [deletingTreeId, setDeletingTreeId] = useState<string | null>(null);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showReorderModal, setShowReorderModal] = useState(false);
 
   const { allTrees, lastThree, totalCount, unresolvedNN } = useTrees(subgrupoId ?? '');
-  const { species, loading: speciesLoading } = usePlantationSpecies(plantacionId ?? '');
+  const { species, loading: speciesLoading, refreshSpecies } = usePlantationSpecies(plantacionId ?? '');
 
   // Load subgroup data for ownership check
   const { data: subgroupRows } = useLiveData(
@@ -127,7 +132,15 @@ export default function TreeRegistrationScreen() {
     await updateTreePhoto(treeId, photoUri);
   }
 
+  // ─── Config modal handlers ──────────────────────────────────────────────
+  const [reorderItems, setReorderItems] = useState<ReorderItem[]>([]);
+
+  function handleOpenConfig() {
+    setShowConfigModal(true);
+  }
+
   function handleReverseOrder() {
+    setShowConfigModal(false);
     if (isReadOnly) return;
     showConfirmDialog(
       confirm.show,
@@ -144,6 +157,31 @@ export default function TreeRegistrationScreen() {
       },
       { icon: 'swap-vertical-outline' },
     );
+  }
+
+  function handleOpenReorder() {
+    setShowConfigModal(false);
+    // Initialize reorder list from current species order
+    setReorderItems(
+      species.map((s, i) => ({
+        especieId: s.especieId,
+        nombre: s.nombre,
+        codigo: s.codigo,
+        ordenVisual: i,
+      }))
+    );
+    setShowReorderModal(true);
+  }
+
+  async function handleSaveReorder() {
+    if (!userId || !plantacionId) return;
+    await saveUserSpeciesOrder(
+      userId,
+      plantacionId,
+      reorderItems.map((item) => ({ especieId: item.especieId, ordenVisual: item.ordenVisual }))
+    );
+    setShowReorderModal(false);
+    refreshSpecies();
   }
 
   function handleFinalizar() {
@@ -333,15 +371,10 @@ export default function TreeRegistrationScreen() {
             </Pressable>
 
             <Pressable
-              style={[styles.reverseButton, reversing && styles.buttonDisabled]}
-              onPress={handleReverseOrder}
-              disabled={reversing}
+              style={styles.configButton}
+              onPress={handleOpenConfig}
             >
-              {reversing ? (
-                <ActivityIndicator size="small" color={colors.secondary} />
-              ) : (
-                <Text style={styles.reverseButtonText}>Invertir</Text>
-              )}
+              <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
             </Pressable>
 
             <Pressable
@@ -523,6 +556,66 @@ export default function TreeRegistrationScreen() {
         </View>
       </Modal>
       <ConfirmModal {...confirm.confirmProps} />
+
+      {/* Config modal — Invertir + Reordenar botonera */}
+      <Modal visible={showConfigModal} transparent animationType="fade" onRequestClose={() => setShowConfigModal(false)}>
+        <View style={styles.configOverlay}>
+          <Pressable style={styles.configBackdrop} onPress={() => setShowConfigModal(false)} />
+          <View style={styles.configCard}>
+            <Text style={styles.configTitle}>Opciones</Text>
+
+            {!isReadOnly && (
+              <Pressable style={styles.configOption} onPress={handleReverseOrder}>
+                <Ionicons name="swap-vertical-outline" size={22} color={colors.secondary} />
+                <View style={styles.configOptionInfo}>
+                  <Text style={styles.configOptionLabel}>Invertir orden de arboles</Text>
+                  <Text style={styles.configOptionDesc}>Invierte las posiciones y recalcula codigos</Text>
+                </View>
+              </Pressable>
+            )}
+
+            <Pressable style={styles.configOption} onPress={handleOpenReorder}>
+              <Ionicons name="grid-outline" size={22} color={colors.info} />
+              <View style={styles.configOptionInfo}>
+                <Text style={styles.configOptionLabel}>Reordenar botonera</Text>
+                <Text style={styles.configOptionDesc}>Personaliza el orden de los botones de especies</Text>
+              </View>
+            </Pressable>
+
+            <Pressable style={styles.configCancelBtn} onPress={() => setShowConfigModal(false)}>
+              <Text style={styles.configCancelText}>Cerrar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Reorder modal — draggable species list */}
+      <Modal visible={showReorderModal} animationType="slide" onRequestClose={() => setShowReorderModal(false)}>
+        <GestureHandlerRootView style={styles.reorderContainer}>
+          <View style={styles.reorderHeader}>
+            <Text style={styles.reorderTitle}>Reordenar botonera</Text>
+            <Text style={styles.reorderHint}>Mantene presionado para arrastrar</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <SpeciesReorderList items={reorderItems} onReorder={setReorderItems} />
+          </View>
+          <View style={styles.reorderFooter}>
+            <Pressable
+              style={({ pressed }) => [styles.reorderCancelBtn, pressed && { opacity: 0.7 }]}
+              onPress={() => setShowReorderModal(false)}
+            >
+              <Text style={styles.reorderCancelText}>Cancelar</Text>
+            </Pressable>
+            <Pressable
+              style={({ pressed }) => [styles.reorderSaveBtn, pressed && { opacity: 0.8 }]}
+              onPress={handleSaveReorder}
+            >
+              <Ionicons name="checkmark-circle-outline" size={18} color={colors.white} />
+              <Text style={styles.reorderSaveText}>Guardar</Text>
+            </Pressable>
+          </View>
+        </GestureHandlerRootView>
+      </Modal>
     </View>
   );
 }
@@ -653,18 +746,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  reverseButton: {
-    flex: 1,
-    paddingVertical: 14,
+  configButton: {
+    width: 44,
+    height: 44,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
-    borderColor: colors.secondary,
+    borderColor: colors.border,
     alignItems: 'center',
-  },
-  reverseButtonText: {
-    color: colors.secondary,
-    fontWeight: '600',
-    fontSize: fontSize.lg,
+    justifyContent: 'center',
   },
   finalizarButton: {
     flex: 2,
@@ -820,5 +909,118 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.xs,
     fontWeight: '500',
+  },
+  // ─── Config modal ────────────────────────────────────────────────────────
+  configOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  configBackdrop: {
+    flex: 1,
+  },
+  configCard: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: borderRadius.round,
+    borderTopRightRadius: borderRadius.round,
+    padding: spacing['4xl'],
+    gap: spacing.lg,
+  },
+  configTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  configOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxl,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.lg,
+  },
+  configOptionInfo: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  configOptionLabel: {
+    fontSize: fontSize.base,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  configOptionDesc: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+  },
+  configCancelBtn: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    marginTop: spacing.sm,
+  },
+  configCancelText: {
+    fontSize: fontSize.base,
+    color: colors.textMuted,
+    fontWeight: '500',
+  },
+  // ─── Reorder modal ──────────────────────────────────────────────────────
+  reorderContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  reorderHeader: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing['4xl'],
+    paddingBottom: spacing.lg,
+    gap: spacing.xs,
+  },
+  reorderTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  reorderHint: {
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+  },
+  reorderFooter: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    padding: spacing.xxl,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  reorderCancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  reorderCancelText: {
+    color: colors.textMuted,
+    fontSize: fontSize.base,
+    fontWeight: '600',
+  },
+  reorderSaveBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.primary,
+    gap: spacing.sm,
+  },
+  reorderSaveText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontWeight: '600',
   },
 });

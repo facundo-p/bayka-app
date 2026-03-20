@@ -144,20 +144,9 @@ export default function ConfigureSpeciesScreen() {
         keyExtractor={(item) => item.especieId}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
-          <View style={styles.listHeaderContainer}>
-            <Text style={styles.listHeader}>
-              {enabledCount} especie{enabledCount !== 1 ? 's' : ''} seleccionada{enabledCount !== 1 ? 's' : ''}
-            </Text>
-            {enabledCount > 1 && (
-              <Pressable
-                style={({ pressed }) => [styles.reorderLink, pressed && { opacity: 0.6 }]}
-                onPress={() => router.push(`/(admin)/plantation/reorder-species?plantacionId=${plantacionId}` as any)}
-              >
-                <Ionicons name="grid-outline" size={14} color={colors.info} />
-                <Text style={styles.reorderLinkText}>Ordenar botonera</Text>
-              </Pressable>
-            )}
-          </View>
+          <Text style={styles.listHeader}>
+            {enabledCount} especie{enabledCount !== 1 ? 's' : ''} seleccionada{enabledCount !== 1 ? 's' : ''}
+          </Text>
         }
         renderItem={({ item }) => (
           <View style={[styles.row, item.enabled && styles.rowEnabled]}>
@@ -210,10 +199,7 @@ const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, backgroundColor: colors.background },
   loadingText: { fontSize: fontSize.base, color: colors.textMuted },
   listContent: { padding: spacing.xxl, paddingBottom: spacing['5xl'] },
-  listHeaderContainer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xxl },
-  listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500' },
-  reorderLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  reorderLinkText: { fontSize: fontSize.sm, color: colors.info, fontWeight: '600' },
+  listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500', marginBottom: spacing.xxl },
   row: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.lg, paddingVertical: spacing.xl, paddingHorizontal: spacing.xxl,

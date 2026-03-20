@@ -52,6 +52,15 @@ export const plantationSpecies = sqliteTable('plantation_species', {
   ordenVisual: integer('orden_visual').notNull().default(0),
 });
 
+export const userSpeciesOrder = sqliteTable('user_species_order', {
+  userId: text('user_id').notNull(),
+  plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
+  especieId: text('especie_id').notNull().references(() => species.id),
+  ordenVisual: integer('orden_visual').notNull(),
+}, (t) => ({
+  pk: uniqueIndex('user_species_order_pk').on(t.userId, t.plantacionId, t.especieId),
+}));
+
 export const plantationUsers = sqliteTable('plantation_users', {
   plantationId: text('plantation_id').notNull().references(() => plantations.id),
   userId: text('user_id').notNull(),
