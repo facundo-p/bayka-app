@@ -82,12 +82,12 @@ Plans:
   2. Admin can finalize a plantation after all its SubGroups are sincronizada; finalization locks further SubGroup creation
   3. Admin can trigger ID generation after finalization: plantation-sequential IDs and global organization IDs are assigned with a configurable initial seed
   4. Admin can export a finalized plantation to CSV and Excel files containing all required columns (ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Admin plantation management screens (create, species config with order, technician assignment, finalize action)
-- [ ] 04-02: ID generation service + admin trigger (plantation-sequential + global org IDs, seed configuration)
-- [ ] 04-03: Export service (CSV + Excel generation with required columns, export available only on finalized plantations)
+- [ ] 04-01-PLAN.md — RLS migration for admin operations, install xlsx + expo-sharing, data layer (PlantationRepository, adminQueries, exportQueries, ExportService)
+- [ ] 04-02-PLAN.md — Admin management screens (AdminScreen, ConfigureSpeciesScreen, AssignTechniciansScreen) with route wiring and finalization flow
+- [ ] 04-03-PLAN.md — ID generation and export wiring into AdminScreen + PlantationDetailScreen, finalization lockout (checkpoint)
 
 ### Phase 5: UX Improvements
 **Goal**: Quality-of-life improvements for field use — automatic data freshness checks, enhanced offline indicators, and UX polish
@@ -97,8 +97,8 @@ Plans:
   - Automatic check for server updates when device has connectivity; notify user with banner to refresh
   - Offline/online status indicator in header
   - Background species catalog updates
-  - Pantalla de perfil completa: nombre, email, rol, organización (datos de profiles + auth)
-  - Pantalla de plantaciones: título contextual ("Mis plantaciones" para técnico, nombre de org para admin, o algo más adecuado al contexto)
+  - Pantalla de perfil completa: nombre, email, rol, organizacion (datos de profiles + auth)
+  - Pantalla de plantaciones: titulo contextual ("Mis plantaciones" para tecnico, nombre de org para admin, o algo mas adecuado al contexto)
 
 ## Progress
 
