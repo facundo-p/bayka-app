@@ -143,7 +143,7 @@ export default function PlantacionesScreen() {
                   <View style={styles.pendingSyncRow}>
                     <Ionicons name="cloud-upload-outline" size={14} color={colors.secondary} />
                     <Text style={styles.pendingSyncText}>
-                      {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} pendiente{pendingSync > 1 ? 's' : ''} de sincronizar
+                      {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} finalizado{pendingSync > 1 ? 's' : ''} pendiente{pendingSync > 1 ? 's' : ''} de sincronizar
                     </Text>
                   </View>
                 )}
