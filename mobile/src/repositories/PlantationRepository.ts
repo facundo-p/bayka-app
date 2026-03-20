@@ -150,11 +150,12 @@ export async function assignTechnicians(
   userIds: string[]
 ): Promise<void> {
   // Delete all existing user assignments
-  const { error: deleteError } = await supabase
+  const { error: deleteError, count: deleteCount } = await supabase
     .from('plantation_users')
     .delete()
     .eq('plantation_id', plantacionId);
 
+  console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;
 
   // Insert new assignments

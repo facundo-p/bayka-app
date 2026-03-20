@@ -306,15 +306,18 @@ export default function TreeRegistrationScreen() {
         }
       />
 
-      {/* View all trees button — only in edit mode */}
-      {!isReadOnly && totalCount > 0 && (
+      {/* View all trees button — always visible in edit mode to reserve space */}
+      {!isReadOnly && (
         <Pressable
-          style={({ pressed }) => [styles.viewAllRow, pressed && { opacity: 0.7 }]}
-          onPress={() => setShowTreeList(true)}
+          style={({ pressed }) => [styles.viewAllRow, pressed && totalCount > 0 && { opacity: 0.7 }]}
+          onPress={() => totalCount > 0 && setShowTreeList(true)}
+          disabled={totalCount === 0}
         >
-          <Ionicons name="list-outline" size={16} color={colors.primary} />
-          <Text style={styles.viewAllText}>Ver todos los árboles</Text>
-          <Ionicons name="chevron-forward" size={14} color={colors.primary} />
+          <Ionicons name="list-outline" size={16} color={totalCount > 0 ? colors.primary : colors.textLight} />
+          <Text style={[styles.viewAllText, totalCount === 0 && { color: colors.textLight }]}>
+            {totalCount > 0 ? 'Ver todos los árboles' : 'Sin arboles cargados'}
+          </Text>
+          {totalCount > 0 && <Ionicons name="chevron-forward" size={14} color={colors.primary} />}
         </Pressable>
       )}
 
@@ -348,8 +351,8 @@ export default function TreeRegistrationScreen() {
         </View>
       )}
 
-      {/* Species button grid — only in edit mode */}
-      {!isReadOnly ? (
+      {/* Species button grid — show grid by default, tree list only when confirmed read-only */}
+      {!isReadOnly || !dataLoaded ? (
         <>
           <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
             {speciesLoading ? (
