@@ -34,12 +34,12 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### Plantation Management
 
-- [ ] **PLAN-01**: Admin can create a plantation with lugar and periodo
-- [ ] **PLAN-02**: Admin can select species from global catalog for a plantation
-- [ ] **PLAN-03**: Admin can assign technicians to a plantation
-- [ ] **PLAN-04**: Admin can add more species to a plantation after creation
-- [ ] **PLAN-05**: Admin can define visual order of species buttons
-- [ ] **PLAN-06**: Admin can finalize a plantation (when all SubGroups synced)
+- [x] **PLAN-01**: Admin can create a plantation with lugar and periodo
+- [x] **PLAN-02**: Admin can select species from global catalog for a plantation
+- [x] **PLAN-03**: Admin can assign technicians to a plantation
+- [x] **PLAN-04**: Admin can add more species to a plantation after creation
+- [x] **PLAN-05**: Admin can define visual order of species buttons
+- [x] **PLAN-06**: Admin can finalize a plantation (when all SubGroups synced)
 
 ### SubGroup Management
 
@@ -87,16 +87,16 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 
 ### ID Generation
 
-- [ ] **IDGN-01**: Admin triggers ID generation after plantation finalization
-- [ ] **IDGN-02**: Plantation ID assigned sequentially within the plantation
-- [ ] **IDGN-03**: Global Organization ID assigned sequentially across all plantations
-- [ ] **IDGN-04**: Admin can set initial seed for Global Organization ID (system suggests n+1)
+- [x] **IDGN-01**: Admin triggers ID generation after plantation finalization
+- [x] **IDGN-02**: Plantation ID assigned sequentially within the plantation
+- [x] **IDGN-03**: Global Organization ID assigned sequentially across all plantations
+- [x] **IDGN-04**: Admin can set initial seed for Global Organization ID (system suggests n+1)
 
 ### Export
 
-- [ ] **EXPO-01**: Admin can export finalized plantation to CSV
-- [ ] **EXPO-02**: Admin can export finalized plantation to Excel
-- [ ] **EXPO-03**: Export includes: ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie
+- [x] **EXPO-01**: Admin can export finalized plantation to CSV
+- [x] **EXPO-02**: Admin can export finalized plantation to Excel
+- [x] **EXPO-03**: Export includes: ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie
 
 ## v2 Requirements
 
@@ -188,19 +188,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DASH-04 | Phase 3 | Complete |
 | DASH-05 | Phase 3 | Complete |
 | DASH-06 | Phase 3 | Complete |
-| PLAN-01 | Phase 4 | Pending |
-| PLAN-02 | Phase 4 | Pending |
-| PLAN-03 | Phase 4 | Pending |
-| PLAN-04 | Phase 4 | Pending |
-| PLAN-05 | Phase 4 | Pending |
-| PLAN-06 | Phase 4 | Pending |
-| IDGN-01 | Phase 4 | Pending |
-| IDGN-02 | Phase 4 | Pending |
-| IDGN-03 | Phase 4 | Pending |
-| IDGN-04 | Phase 4 | Pending |
-| EXPO-01 | Phase 4 | Pending |
-| EXPO-02 | Phase 4 | Pending |
-| EXPO-03 | Phase 4 | Pending |
+| PLAN-01 | Phase 4 | Complete |
+| PLAN-02 | Phase 4 | Complete |
+| PLAN-03 | Phase 4 | Complete |
+| PLAN-04 | Phase 4 | Complete |
+| PLAN-05 | Phase 4 | Complete |
+| PLAN-06 | Phase 4 | Complete |
+| IDGN-01 | Phase 4 | Complete |
+| IDGN-02 | Phase 4 | Complete |
+| IDGN-03 | Phase 4 | Complete |
+| IDGN-04 | Phase 4 | Complete |
+| EXPO-01 | Phase 4 | Complete |
+| EXPO-02 | Phase 4 | Complete |
+| EXPO-03 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 57 total
