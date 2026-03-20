@@ -747,8 +747,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   configButton: {
-    width: 44,
-    height: 44,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
     borderColor: colors.border,
