@@ -9,6 +9,7 @@ export default function PlantationLayout() {
       <Stack.Screen name="subgroup" options={{ headerShown: false }} />
       <Stack.Screen name="configure-species" options={{ title: 'Configurar especies' }} />
       <Stack.Screen name="assign-technicians" options={{ title: 'Asignar tecnicos' }} />
+      <Stack.Screen name="reorder-species" options={{ title: 'Ordenar botonera' }} />
     </Stack>
   );
 }

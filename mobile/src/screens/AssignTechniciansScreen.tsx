@@ -35,7 +35,6 @@ import { assignTechnicians } from '../repositories/PlantationRepository';
 type TechnicianItem = {
   id: string;
   nombre: string;
-  email: string;
   assigned: boolean;
 };
 
@@ -96,7 +95,6 @@ export default function AssignTechniciansScreen() {
       const merged: TechnicianItem[] = allTechs.map((tech) => ({
         id: tech.id,
         nombre: tech.nombre,
-        email: tech.email,
         assigned: assignedSet.has(tech.id),
       }));
 
@@ -197,7 +195,7 @@ export default function AssignTechniciansScreen() {
               <Text style={[styles.rowName, !item.assigned && styles.rowNameMuted]}>
                 {item.nombre}
               </Text>
-              <Text style={styles.rowEmail}>{item.email}</Text>
+              <Text style={styles.rowRole}>Tecnico</Text>
             </View>
             {item.assigned && (
               <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
@@ -331,7 +329,7 @@ const styles = StyleSheet.create({
   rowNameMuted: {
     color: colors.textMuted,
   },
-  rowEmail: {
+  rowRole: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
   },

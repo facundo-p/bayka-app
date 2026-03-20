@@ -72,15 +72,15 @@ export async function getPlantationEstado(plantacionId: string): Promise<string 
  */
 export async function getAllTechnicians(
   organizacionId: string
-): Promise<Array<{ id: string; nombre: string; email: string }>> {
+): Promise<Array<{ id: string; nombre: string }>> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nombre, email')
+    .select('id, nombre')
     .eq('organizacion_id', organizacionId)
     .eq('rol', 'tecnico');
 
   if (error) throw error;
-  return (data ?? []) as Array<{ id: string; nombre: string; email: string }>;
+  return (data ?? []) as Array<{ id: string; nombre: string }>;
 }
 
 // ─── getPlantationSpeciesConfig ───────────────────────────────────────────────
