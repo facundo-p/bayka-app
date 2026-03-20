@@ -10,7 +10,6 @@ import {
   Platform,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
@@ -40,7 +39,7 @@ import { colors, fontSize, spacing, borderRadius } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { showDoubleConfirmDialog, showConfirmDialog } from '../utils/alertHelpers';
+import { showDoubleConfirmDialog, showConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
 import { useSync } from '../hooks/useSync';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
@@ -181,14 +180,14 @@ export default function PlantationDetailScreen() {
       setSeedValue((maxId + 1).toString());
       setSeedModalVisible(true);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo obtener el ID sugerido.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo obtener el ID sugerido.', 'alert-circle-outline', colors.danger);
     }
   }
 
   function handleSeedConfirm() {
     const seed = parseInt(seedValue, 10);
     if (isNaN(seed) || seed < 1) {
-      Alert.alert('Semilla invalida', 'Ingresa un numero entero mayor a 0.');
+      showInfoDialog(confirm.show, 'Semilla invalida', 'Ingresa un numero entero mayor a 0.', 'alert-circle-outline', colors.secondary);
       return;
     }
     setSeedModalVisible(false);
@@ -209,7 +208,7 @@ export default function PlantationDetailScreen() {
             try {
               await generateIds(pid, seed);
             } catch (e: any) {
-              Alert.alert('Error', e?.message ?? 'No se pudieron generar los IDs.');
+              showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
             } finally {
               setSeedLoading(false);
             }
@@ -225,7 +224,7 @@ export default function PlantationDetailScreen() {
     try {
       await exportToCSV(pid, lugar);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo exportar el CSV.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo exportar el CSV.', 'alert-circle-outline', colors.danger);
     } finally {
       setExportingType(null);
     }
@@ -237,7 +236,7 @@ export default function PlantationDetailScreen() {
     try {
       await exportToExcel(pid, lugar);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo exportar el Excel.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo exportar el Excel.', 'alert-circle-outline', colors.danger);
     } finally {
       setExportingType(null);
     }

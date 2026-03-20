@@ -18,7 +18,6 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +29,7 @@ import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import ConfirmModal from '../components/ConfirmModal';
 import { useConfirm } from '../hooks/useConfirm';
+import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
 import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
 import { createPlantation, finalizePlantation, generateIds } from '../repositories/PlantationRepository';
@@ -361,7 +361,7 @@ export default function AdminScreen() {
                 try {
                   await finalizePlantation(plantacionId);
                 } catch (e: any) {
-                  Alert.alert('Error', e?.message ?? 'No se pudo finalizar la plantacion.');
+                  showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantacion.', 'alert-circle-outline', colors.danger);
                 }
               },
             },
@@ -384,7 +384,7 @@ export default function AdminScreen() {
         });
       }
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo verificar el estado.');
+      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo verificar el estado.', 'alert-circle-outline', colors.danger);
     } finally {
       setFinalizing(false);
     }
@@ -397,7 +397,7 @@ export default function AdminScreen() {
       setSeedValue(suggested);
       setSeedModalPlantacionId(plantacionId);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo obtener el ID sugerido.');
+      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo obtener el ID sugerido.', 'alert-circle-outline', colors.danger);
     }
   }
 
@@ -405,7 +405,7 @@ export default function AdminScreen() {
     if (!seedModalPlantacionId) return;
     const seed = parseInt(seedValue, 10);
     if (isNaN(seed) || seed < 1) {
-      Alert.alert('Semilla invalida', 'Ingresa un numero entero mayor a 0.');
+      showInfoDialog(showConfirm, 'Semilla invalida', 'Ingresa un numero entero mayor a 0.', 'alert-circle-outline', colors.secondary);
       return;
     }
     setSeedModalPlantacionId(null);
@@ -430,7 +430,7 @@ export default function AdminScreen() {
             try {
               await generateIds(pid, seed);
             } catch (e: any) {
-              Alert.alert('Error', e?.message ?? 'No se pudieron generar los IDs.');
+              showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
             } finally {
               setSeedLoading(false);
             }
@@ -447,7 +447,7 @@ export default function AdminScreen() {
     try {
       await exportToCSV(plantacionId, plantation.lugar);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo exportar el CSV.');
+      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo exportar el CSV.', 'alert-circle-outline', colors.danger);
     } finally {
       setExportingId(null);
     }
@@ -460,7 +460,7 @@ export default function AdminScreen() {
     try {
       await exportToExcel(plantacionId, plantation.lugar);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo exportar el Excel.');
+      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo exportar el Excel.', 'alert-circle-outline', colors.danger);
     } finally {
       setExportingId(null);
     }

@@ -15,7 +15,6 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Switch,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -24,6 +23,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import NetInfo from '@react-native-community/netinfo';
 
 import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { showInfoDialog } from '../utils/alertHelpers';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { getAllTechnicians, getAssignedTechnicians } from '../queries/adminQueries';
 import { assignTechnicians } from '../repositories/PlantationRepository';
@@ -43,6 +45,8 @@ export default function AssignTechniciansScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+
+  const confirm = useConfirm();
 
   const [items, setItems] = useState<TechnicianItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +109,7 @@ export default function AssignTechniciansScreen() {
 
       setItems(merged);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudieron cargar los tecnicos.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar los tecnicos.', 'alert-circle-outline', colors.danger);
     } finally {
       setLoading(false);
     }
@@ -127,11 +131,9 @@ export default function AssignTechniciansScreen() {
     try {
       const assignedIds = items.filter((i) => i.assigned).map((i) => i.id);
       await assignTechnicians(plantacionId, assignedIds);
-      Alert.alert('Listo', 'Tecnicos asignados.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      router.back();
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudieron asignar los tecnicos.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron asignar los tecnicos.', 'alert-circle-outline', colors.danger);
     } finally {
       setSaving(false);
     }
@@ -225,6 +227,8 @@ export default function AssignTechniciansScreen() {
           )}
         </Pressable>
       </View>
+
+      <ConfirmModal {...confirm.confirmProps} />
     </View>
   );
 }

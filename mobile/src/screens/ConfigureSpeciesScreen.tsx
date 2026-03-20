@@ -1,8 +1,8 @@
 /**
- * ConfigureSpeciesScreen — species checklist with move-up/down reordering.
+ * ConfigureSpeciesScreen — species checklist with drag-and-drop reordering.
  *
  * Loads the global species catalog and the current plantation species config.
- * Allows toggling species on/off and reordering enabled species.
+ * Allows toggling species on/off and drag-reordering enabled species.
  * Species with existing trees are locked (cannot be disabled).
  *
  * Covers requirements: PLAN-02, PLAN-04, PLAN-05
@@ -15,15 +15,19 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Alert,
   Switch,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { asc } from 'drizzle-orm';
 
 import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { showInfoDialog } from '../utils/alertHelpers';
 import { db } from '../database/client';
 import { species as speciesTable } from '../database/schema';
 import { getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
@@ -47,7 +51,10 @@ export default function ConfigureSpeciesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const [items, setItems] = useState<SpeciesItem[]>([]);
+  const confirm = useConfirm();
+
+  const [enabledItems, setEnabledItems] = useState<SpeciesItem[]>([]);
+  const [disabledItems, setDisabledItems] = useState<SpeciesItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -56,22 +63,18 @@ export default function ConfigureSpeciesScreen() {
     if (!plantacionId) return;
     setLoading(true);
     try {
-      // 1. All species from local catalog
       const allSpecies = await db
         .select()
         .from(speciesTable)
         .orderBy(asc(speciesTable.nombre));
 
-      // 2. Current plantation config (ordered by ordenVisual)
       const currentConfig = await getPlantationSpeciesConfig(plantacionId);
       const configMap = new Map(currentConfig.map((c) => [c.especieId, c.ordenVisual]));
 
-      // 3. Check trees for each species in config
       const treeChecks = await Promise.all(
         allSpecies.map((sp) => hasTreesForSpecies(plantacionId, sp.id))
       );
 
-      // 4. Build merged list: enabled species sorted by ordenVisual, disabled ones at end
       const merged: SpeciesItem[] = allSpecies.map((sp, i) => ({
         especieId: sp.id,
         nombre: sp.nombre,
@@ -81,26 +84,19 @@ export default function ConfigureSpeciesScreen() {
         hasExistingTrees: treeChecks[i],
       }));
 
-      // Sort: enabled items by ordenVisual first, then disabled alphabetically
-      merged.sort((a, b) => {
-        if (a.enabled && !b.enabled) return -1;
-        if (!a.enabled && b.enabled) return 1;
-        if (a.enabled && b.enabled) return a.ordenVisual - b.ordenVisual;
-        return a.nombre.localeCompare(b.nombre);
-      });
+      const enabled = merged
+        .filter((i) => i.enabled)
+        .sort((a, b) => a.ordenVisual - b.ordenVisual)
+        .map((item, idx) => ({ ...item, ordenVisual: idx }));
 
-      // Reassign ordenVisual to enabled items sequentially
-      let order = 0;
-      const normalized = merged.map((item) => {
-        if (item.enabled) {
-          return { ...item, ordenVisual: order++ };
-        }
-        return item;
-      });
+      const disabled = merged
+        .filter((i) => !i.enabled)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre));
 
-      setItems(normalized);
+      setEnabledItems(enabled);
+      setDisabledItems(disabled);
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudieron cargar las especies.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar las especies.', 'alert-circle-outline', colors.danger);
     } finally {
       setLoading(false);
     }
@@ -112,75 +108,81 @@ export default function ConfigureSpeciesScreen() {
 
   // Toggle species enabled/disabled
   function handleToggle(especieId: string, newValue: boolean) {
-    setItems((prev) => {
-      const updated = prev.map((item) => {
-        if (item.especieId !== especieId) return item;
-        return { ...item, enabled: newValue };
-      });
-
-      // Re-sort and re-number enabled items
-      const enabled = updated.filter((i) => i.enabled);
-      const disabled = updated.filter((i) => !i.enabled);
-
-      if (!newValue) {
-        // Moved to disabled: maintain current enabled order, reset disabled order
-        const reordered = enabled.map((item, idx) => ({ ...item, ordenVisual: idx }));
-        return [...reordered, ...disabled];
-      } else {
-        // Moved to enabled: add at end of enabled list
-        const alreadyEnabled = enabled.filter((i) => i.especieId !== especieId);
-        const reordered = alreadyEnabled.map((item, idx) => ({ ...item, ordenVisual: idx }));
-        const newItem = { ...updated.find((i) => i.especieId === especieId)!, ordenVisual: reordered.length };
-        return [...reordered, newItem, ...disabled];
-      }
-    });
+    if (newValue) {
+      // Move from disabled to end of enabled
+      const item = disabledItems.find((i) => i.especieId === especieId);
+      if (!item) return;
+      const newEnabled = [...enabledItems, { ...item, enabled: true, ordenVisual: enabledItems.length }];
+      setEnabledItems(newEnabled);
+      setDisabledItems(disabledItems.filter((i) => i.especieId !== especieId));
+    } else {
+      // Move from enabled to disabled
+      const item = enabledItems.find((i) => i.especieId === especieId);
+      if (!item) return;
+      const newEnabled = enabledItems
+        .filter((i) => i.especieId !== especieId)
+        .map((i, idx) => ({ ...i, ordenVisual: idx }));
+      setEnabledItems(newEnabled);
+      setDisabledItems([...disabledItems, { ...item, enabled: false }].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+    }
   }
 
-  // Move enabled species up in the list
-  function handleMoveUp(especieId: string) {
-    setItems((prev) => {
-      const enabled = prev.filter((i) => i.enabled);
-      const disabled = prev.filter((i) => !i.enabled);
-      const idx = enabled.findIndex((i) => i.especieId === especieId);
-      if (idx <= 0) return prev;
-      const reordered = [...enabled];
-      [reordered[idx - 1], reordered[idx]] = [reordered[idx], reordered[idx - 1]];
-      const renumbered = reordered.map((item, i) => ({ ...item, ordenVisual: i }));
-      return [...renumbered, ...disabled];
-    });
-  }
-
-  // Move enabled species down in the list
-  function handleMoveDown(especieId: string) {
-    setItems((prev) => {
-      const enabled = prev.filter((i) => i.enabled);
-      const disabled = prev.filter((i) => !i.enabled);
-      const idx = enabled.findIndex((i) => i.especieId === especieId);
-      if (idx < 0 || idx >= enabled.length - 1) return prev;
-      const reordered = [...enabled];
-      [reordered[idx], reordered[idx + 1]] = [reordered[idx + 1], reordered[idx]];
-      const renumbered = reordered.map((item, i) => ({ ...item, ordenVisual: i }));
-      return [...renumbered, ...disabled];
-    });
+  // Handle drag-and-drop reorder
+  function handleDragEnd({ data }: { data: SpeciesItem[] }) {
+    setEnabledItems(data.map((item, idx) => ({ ...item, ordenVisual: idx })));
   }
 
   async function handleSave() {
     if (!plantacionId) return;
     setSaving(true);
     try {
-      const enabledItems = items
-        .filter((i) => i.enabled)
-        .map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
-
-      await saveSpeciesConfig(plantacionId, enabledItems);
-      Alert.alert('Listo', 'Especies guardadas.', [
-        { text: 'OK', onPress: () => router.back() },
-      ]);
+      const config = enabledItems.map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
+      await saveSpeciesConfig(plantacionId, config);
+      router.back();
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudieron guardar las especies.');
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron guardar las especies.', 'alert-circle-outline', colors.danger);
     } finally {
       setSaving(false);
     }
+  }
+
+  // Render a draggable enabled species row
+  function renderEnabledItem({ item, drag, isActive }: RenderItemParams<SpeciesItem>) {
+    return (
+      <ScaleDecorator>
+        <Pressable
+          onLongPress={drag}
+          disabled={isActive}
+          style={[styles.row, styles.rowEnabled, isActive && styles.rowDragging]}
+        >
+          <Switch
+            value={true}
+            onValueChange={() => {
+              if (item.hasExistingTrees) {
+                showInfoDialog(confirm.show, 'No se puede desactivar', 'Esta especie tiene arboles registrados en esta plantacion.', 'lock-closed-outline', colors.secondary);
+                return;
+              }
+              handleToggle(item.especieId, false);
+            }}
+            trackColor={{ false: colors.border, true: colors.primaryBgMuted }}
+            thumbColor={colors.primary}
+          />
+          <View style={styles.rowInfo}>
+            <Text style={styles.rowName}>{item.nombre}</Text>
+            <View style={styles.rowMeta}>
+              <Text style={styles.rowCode}>{item.codigo}</Text>
+              {item.hasExistingTrees && (
+                <View style={styles.lockedBadge}>
+                  <Ionicons name="lock-closed" size={10} color={colors.textMuted} />
+                  <Text style={styles.lockedText}>Arboles registrados</Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <Ionicons name="menu" size={20} color={colors.textMuted} />
+        </Pressable>
+      </ScaleDecorator>
+    );
   }
 
   if (loading) {
@@ -192,99 +194,45 @@ export default function ConfigureSpeciesScreen() {
     );
   }
 
-  const enabledItems = items.filter((i) => i.enabled);
-
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <FlatList
-        data={items}
+    <GestureHandlerRootView style={[styles.container, { paddingBottom: insets.bottom }]}>
+      {/* Enabled species — draggable */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>
+          {enabledItems.length} especie{enabledItems.length !== 1 ? 's' : ''} seleccionada{enabledItems.length !== 1 ? 's' : ''}
+        </Text>
+        <Text style={styles.sectionHint}>Mantene presionado para reordenar</Text>
+      </View>
+
+      <DraggableFlatList
+        data={enabledItems}
         keyExtractor={(item) => item.especieId}
+        onDragEnd={handleDragEnd}
+        renderItem={renderEnabledItem}
         contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <Text style={styles.listHeader}>
-            {enabledItems.length} especie{enabledItems.length !== 1 ? 's' : ''} seleccionada
-            {enabledItems.length !== 1 ? 's' : ''}
-          </Text>
-        }
-        renderItem={({ item }) => {
-          const enabledIdx = enabledItems.findIndex((i) => i.especieId === item.especieId);
-          const isFirst = enabledIdx === 0;
-          const isLast = enabledIdx === enabledItems.length - 1;
-
-          return (
-            <View style={[styles.row, item.enabled && styles.rowEnabled]}>
-              {/* Toggle */}
-              <Switch
-                value={item.enabled}
-                onValueChange={(val) => {
-                  if (item.hasExistingTrees && !val) {
-                    Alert.alert(
-                      'No se puede desactivar',
-                      'Esta especie tiene arboles registrados en esta plantacion.',
-                      [{ text: 'OK' }]
-                    );
-                    return;
-                  }
-                  handleToggle(item.especieId, val);
-                }}
-                trackColor={{ false: colors.border, true: colors.primaryBgMuted }}
-                thumbColor={item.enabled ? colors.primary : colors.disabled}
-              />
-
-              {/* Species info */}
-              <View style={styles.rowInfo}>
-                <Text style={[styles.rowName, !item.enabled && styles.rowNameDisabled]}>
-                  {item.nombre}
-                </Text>
-                <View style={styles.rowMeta}>
-                  <Text style={styles.rowCode}>{item.codigo}</Text>
-                  {item.hasExistingTrees && (
-                    <View style={styles.lockedBadge}>
-                      <Ionicons name="lock-closed" size={10} color={colors.textMuted} />
-                      <Text style={styles.lockedText}>Arboles registrados</Text>
-                    </View>
-                  )}
+        ListFooterComponent={
+          disabledItems.length > 0 ? (
+            <View>
+              <Text style={[styles.sectionTitle, { marginTop: spacing.xxl, marginBottom: spacing.lg }]}>
+                Disponibles
+              </Text>
+              {disabledItems.map((item) => (
+                <View key={item.especieId} style={[styles.row, { marginBottom: spacing.md }]}>
+                  <Switch
+                    value={false}
+                    onValueChange={() => handleToggle(item.especieId, true)}
+                    trackColor={{ false: colors.border, true: colors.primaryBgMuted }}
+                    thumbColor={colors.disabled}
+                  />
+                  <View style={styles.rowInfo}>
+                    <Text style={[styles.rowName, styles.rowNameDisabled]}>{item.nombre}</Text>
+                    <Text style={styles.rowCode}>{item.codigo}</Text>
+                  </View>
                 </View>
-              </View>
-
-              {/* Move buttons (only for enabled items) */}
-              {item.enabled && (
-                <View style={styles.moveButtons}>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.moveBtn,
-                      isFirst && styles.moveBtnDisabled,
-                      pressed && !isFirst && { opacity: 0.6 },
-                    ]}
-                    onPress={() => !isFirst && handleMoveUp(item.especieId)}
-                    disabled={isFirst}
-                  >
-                    <Ionicons
-                      name="chevron-up"
-                      size={16}
-                      color={isFirst ? colors.disabled : colors.primary}
-                    />
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [
-                      styles.moveBtn,
-                      isLast && styles.moveBtnDisabled,
-                      pressed && !isLast && { opacity: 0.6 },
-                    ]}
-                    onPress={() => !isLast && handleMoveDown(item.especieId)}
-                    disabled={isLast}
-                  >
-                    <Ionicons
-                      name="chevron-down"
-                      size={16}
-                      color={isLast ? colors.disabled : colors.primary}
-                    />
-                  </Pressable>
-                </View>
-              )}
+              ))}
             </View>
-          );
-        }}
+          ) : null
+        }
       />
 
       {/* Save button */}
@@ -308,7 +256,9 @@ export default function ConfigureSpeciesScreen() {
           )}
         </Pressable>
       </View>
-    </View>
+
+      <ConfirmModal {...confirm.confirmProps} />
+    </GestureHandlerRootView>
   );
 }
 
@@ -328,15 +278,25 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     color: colors.textMuted,
   },
-  listContent: {
-    padding: spacing.xxl,
-    paddingBottom: spacing['5xl'],
+  sectionHeader: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    gap: spacing.xs,
   },
-  listHeader: {
+  sectionTitle: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
-    marginBottom: spacing.xxl,
     fontWeight: '500',
+  },
+  sectionHint: {
+    fontSize: fontSize.xs,
+    color: colors.textLight,
+    fontStyle: 'italic',
+  },
+  listContent: {
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing['5xl'],
   },
   row: {
     flexDirection: 'row',
@@ -353,6 +313,14 @@ const styles = StyleSheet.create({
   rowEnabled: {
     borderColor: colors.primaryBorder,
     backgroundColor: colors.primaryBgLight,
+  },
+  rowDragging: {
+    elevation: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    borderColor: colors.primary,
   },
   rowInfo: {
     flex: 1,
@@ -388,18 +356,6 @@ const styles = StyleSheet.create({
   lockedText: {
     fontSize: fontSize.xxs,
     color: colors.textMuted,
-  },
-  moveButtons: {
-    flexDirection: 'column',
-    gap: spacing.xs,
-  },
-  moveBtn: {
-    padding: spacing.xs,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.primaryBg,
-  },
-  moveBtnDisabled: {
-    backgroundColor: colors.background,
   },
   footer: {
     padding: spacing.xxl,
