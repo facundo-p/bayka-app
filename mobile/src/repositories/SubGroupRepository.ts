@@ -261,18 +261,24 @@ export async function markAsSincronizada(subgrupoId: string): Promise<void> {
 
 // Returns all finalizada subgroups for a plantation (pending sync).
 // Used by SyncService to know which subgroups to upload.
-export async function getFinalizadaSubGroups(plantacionId: string): Promise<SubGroup[]> {
+// When userId is provided, only returns subgroups created by that user.
+export async function getFinalizadaSubGroups(plantacionId: string, userId?: string): Promise<SubGroup[]> {
+  const conditions = [
+    eq(subgroups.plantacionId, plantacionId),
+    eq(subgroups.estado, 'finalizada'),
+  ];
+  if (userId) {
+    conditions.push(eq(subgroups.usuarioCreador, userId));
+  }
   return db.select().from(subgroups)
-    .where(and(
-      eq(subgroups.plantacionId, plantacionId),
-      eq(subgroups.estado, 'finalizada')
-    ));
+    .where(and(...conditions));
 }
 
 // Returns finalizada subgroups that CAN be synced (no unresolved N/N trees).
 // Per spec §4.10: N/N must be resolved before sync, but finalization is allowed with N/N.
-export async function getSyncableSubGroups(plantacionId: string): Promise<SubGroup[]> {
-  const finalizada = await getFinalizadaSubGroups(plantacionId);
+// When userId is provided, only returns subgroups created by that user.
+export async function getSyncableSubGroups(plantacionId: string, userId?: string): Promise<SubGroup[]> {
+  const finalizada = await getFinalizadaSubGroups(plantacionId, userId);
   if (finalizada.length === 0) return [];
 
   // Get N/N counts per subgroup
@@ -293,9 +299,14 @@ export async function getSyncableSubGroups(plantacionId: string): Promise<SubGro
 
 // Returns total count of finalizada subgroups across all plantations.
 // Used by dashboard badge to show total pending sync count.
-export async function getPendingSyncCount(): Promise<number> {
+// When userId is provided, only counts subgroups created by that user.
+export async function getPendingSyncCount(userId?: string): Promise<number> {
+  const conditions = [eq(subgroups.estado, 'finalizada')];
+  if (userId) {
+    conditions.push(eq(subgroups.usuarioCreador, userId));
+  }
   const result = await db.select({ cnt: count() })
     .from(subgroups)
-    .where(eq(subgroups.estado, 'finalizada'));
+    .where(and(...conditions));
   return result[0]?.cnt ?? 0;
 }

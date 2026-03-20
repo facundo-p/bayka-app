@@ -25,9 +25,9 @@ import NetInfo from '@react-native-community/netinfo';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
-import { showInfoDialog } from '../utils/alertHelpers';
+import { showInfoDialog, showConfirmDialog } from '../utils/alertHelpers';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { getAllTechnicians, getAssignedTechnicians } from '../queries/adminQueries';
+import { getAllTechnicians, getAssignedTechnicians, getTechnicianUnsyncedSubgroupCount } from '../queries/adminQueries';
 import { assignTechnicians } from '../repositories/PlantationRepository';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -117,7 +117,26 @@ export default function AssignTechniciansScreen() {
     if (organizacionId) loadData();
   }, [loadData, organizacionId]);
 
-  function handleToggle(id: string, newValue: boolean) {
+  async function handleToggle(id: string, newValue: boolean) {
+    // When unassigning, check for unsynced subgroups and warn
+    if (!newValue && plantacionId) {
+      const unsyncedCount = await getTechnicianUnsyncedSubgroupCount(plantacionId, id);
+      if (unsyncedCount > 0) {
+        showConfirmDialog(
+          confirm.show,
+          'Tecnico con subgrupos pendientes',
+          `Este tecnico tiene ${unsyncedCount} subgrupo${unsyncedCount > 1 ? 's' : ''} sin sincronizar. Si lo desasignas, solo el podra sincronizarlos. Continuar?`,
+          'Desasignar',
+          () => {
+            setItems((prev) =>
+              prev.map((item) => (item.id === id ? { ...item, assigned: false } : item))
+            );
+          },
+          { icon: 'warning-outline', iconColor: colors.secondary, style: 'danger' },
+        );
+        return;
+      }
+    }
     setItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, assigned: newValue } : item))
     );

@@ -233,8 +233,9 @@ export async function syncPlantation(
     // Pull failure shouldn't block push — continue with upload
   }
 
-  // Step 3: Get syncable subgroups (finalizada + no unresolved N/N)
-  const pending = await getSyncableSubGroups(plantacionId);
+  // Step 3: Get syncable subgroups (finalizada + no unresolved N/N), filtered by current user
+  const { data: { user } } = await supabase.auth.getUser();
+  const pending = await getSyncableSubGroups(plantacionId, user?.id);
   const total = pending.length;
   const results: SyncSubGroupResult[] = [];
 

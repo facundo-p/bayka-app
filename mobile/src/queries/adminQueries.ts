@@ -8,7 +8,7 @@
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { subgroups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
-import { eq, and, ne, isNotNull, sql } from 'drizzle-orm';
+import { eq, and, ne, isNotNull, sql, count } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
 
@@ -122,6 +122,30 @@ export async function getAssignedTechnicians(
     })
     .from(plantationUsers)
     .where(eq(plantationUsers.plantationId, plantacionId));
+}
+
+// ─── getTechnicianUnsyncedSubgroupCount ───────────────────────────────────────
+
+/**
+ * Returns the count of subgroups in a plantation created by a specific user
+ * that are NOT yet sincronizada (i.e. activa or finalizada).
+ * Used to warn admins before unassigning a technician.
+ */
+export async function getTechnicianUnsyncedSubgroupCount(
+  plantacionId: string,
+  userId: string
+): Promise<number> {
+  const result = await db
+    .select({ cnt: count() })
+    .from(subgroups)
+    .where(
+      and(
+        eq(subgroups.plantacionId, plantacionId),
+        eq(subgroups.usuarioCreador, userId),
+        ne(subgroups.estado, 'sincronizada')
+      )
+    );
+  return result[0]?.cnt ?? 0;
 }
 
 // ─── hasTreesForSpecies ───────────────────────────────────────────────────────

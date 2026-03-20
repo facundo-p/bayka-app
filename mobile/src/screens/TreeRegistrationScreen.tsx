@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Image,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { useTrees } from '../hooks/useTrees';
@@ -44,6 +45,11 @@ import ConfirmModal from '../components/ConfirmModal';
 import SpeciesReorderList, { ReorderItem } from '../components/SpeciesReorderList';
 import { saveUserSpeciesOrder } from '../repositories/UserSpeciesOrderRepository';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CHIP_GAP = 6; // spacing.sm
+const CHIP_PADDING = 8; // spacing.md (horizontal padding of lastThreeSection)
+const CHIP_WIDTH = (SCREEN_WIDTH - CHIP_PADDING * 2 - CHIP_GAP * 2) / 3;
 
 export default function TreeRegistrationScreen() {
   const { id: subgrupoId } = useLocalSearchParams<{
@@ -87,8 +93,11 @@ export default function TreeRegistrationScreen() {
   const isOwner = subgroup && userId
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroupEstado }, userId)
     : false;
-  // Read-only when not owner OR when subgroup is not activa
-  const isReadOnly = !isOwner || subgroupEstado !== 'activa';
+  // Read-only when not owner OR when subgroup is not activa.
+  // Default to false while data is loading so the grid renders immediately
+  // (avoids flash of read-only tree list before data loads).
+  const dataLoaded = subgroup !== null;
+  const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== 'activa') : false;
   const canReactivate = isCreator && subgroupEstado === 'finalizada';
 
   // Hide default header, use custom one
@@ -314,26 +323,27 @@ export default function TreeRegistrationScreen() {
         <View style={styles.lastThreeSection}>
           <Text style={styles.lastThreeLabel}>Últimos ingresados</Text>
           <View style={styles.lastThreeRow}>
-            {lastThree.length > 0 ? (
-              [...lastThree].reverse().map((tree, index) => {
-                const isLast = index === lastThree.length - 1;
-                const code = getSpeciesCode(tree);
-                return (
-                  <View key={tree.id} style={[styles.treeChip, isLast && styles.treeChipLast]}>
-                    <Text style={[styles.treeChipText, isLast && styles.treeChipTextLast]}>
-                      {tree.posicion} {code}
-                    </Text>
-                    {isLast && (
-                      <Pressable onPress={handleUndo} hitSlop={8} style={styles.undoChipButton}>
-                        <Ionicons name="trash-outline" size={14} color={colors.danger} />
-                      </Pressable>
-                    )}
-                  </View>
-                );
-              })
-            ) : (
-              <Text style={styles.lastThreePlaceholder}>Sin árboles ingresados</Text>
-            )}
+            {[0, 1, 2].map((slotIndex) => {
+              const reversedTrees = [...lastThree].reverse();
+              const tree = reversedTrees[slotIndex];
+              if (!tree) {
+                return <View key={`empty-${slotIndex}`} style={[styles.treeChip, styles.treeChipEmpty]} />;
+              }
+              const isLast = slotIndex === lastThree.length - 1;
+              const code = getSpeciesCode(tree);
+              return (
+                <View key={tree.id} style={[styles.treeChip, isLast && styles.treeChipLast]}>
+                  <Text style={[styles.treeChipText, isLast && styles.treeChipTextLast]}>
+                    {tree.posicion} {code}
+                  </Text>
+                  {isLast && (
+                    <Pressable onPress={handleUndo} hitSlop={8} style={styles.undoChipButton}>
+                      <Ionicons name="trash-outline" size={14} color={colors.danger} />
+                    </Pressable>
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
       )}
@@ -677,12 +687,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     paddingHorizontal: spacing.xs,
   },
-  lastThreePlaceholder: {
-    fontSize: fontSize.sm,
-    color: colors.textLight,
-    fontStyle: 'italic',
-    paddingHorizontal: spacing.xs,
-  },
   lastThreeRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -700,7 +704,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.recentBorder,
     gap: spacing.sm,
-    flex: 1,
+    width: CHIP_WIDTH,
+  },
+  treeChipEmpty: {
+    backgroundColor: 'transparent',
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+    borderWidth: 1,
   },
   treeChipLast: {
     backgroundColor: colors.recentBgActive,
