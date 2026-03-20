@@ -163,13 +163,7 @@ export default function ConfigureSpeciesScreen() {
           <View style={[styles.row, item.enabled && styles.rowEnabled]}>
             <Switch
               value={item.enabled}
-              onValueChange={(val) => {
-                if (item.hasExistingTrees && !val) {
-                  showInfoDialog(confirm.show, 'No se puede desactivar', 'Esta especie tiene arboles registrados en esta plantacion.', 'lock-closed-outline', colors.secondary);
-                  return;
-                }
-                handleToggle(item.especieId, val);
-              }}
+              onValueChange={(val) => handleToggle(item.especieId, val)}
               trackColor={{ false: colors.border, true: colors.primaryBgMuted }}
               thumbColor={item.enabled ? colors.primary : colors.disabled}
             />
