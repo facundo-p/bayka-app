@@ -138,6 +138,7 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     else console.log('[Sync] Pull trees:', remoteTrees?.length ?? 0, 'rows');
 
     if (!treeError && remoteTrees && remoteTrees.length > 0) {
+      console.log('[Sync] Sample tree created_at:', remoteTrees[0].created_at, '| localToday:', require('../utils/dateUtils').localToday());
       for (const t of remoteTrees) {
         await db.insert(trees).values({
           id: t.id,

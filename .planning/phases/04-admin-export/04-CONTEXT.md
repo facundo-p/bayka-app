@@ -24,7 +24,7 @@ Admins can manage plantations (create with lugar+periodo, configure species from
 ### Species configuration
 - Sub-screen of plantation detail, accessible via "Configurar especies" button
 - Checklist from global species catalog — admin toggles which species are available
-- Drag-to-reorder for orden_visual (defines button order in species grid)
+- Drag-and-drop to reorder for orden_visual (defines button order in species grid)
 - Admin can add species at any time (PLAN-04)
 - Admin cannot remove a species if trees already registered with it (data integrity)
 - Changes saved to plantation_species table (local + server)
@@ -33,12 +33,13 @@ Admins can manage plantations (create with lugar+periodo, configure species from
 - Sub-screen of plantation detail, accessible via "Asignar técnicos" button
 - List of all technicians in the organization (from profiles where rol='tecnico')
 - Toggle assignment per technician — updates plantation_users table
+- Admin can assign AND unassign technicians. Unassigned technicians can no longer create SubGroups in the plantation, but their already-synced trees and SubGroups remain intact.
 - Changes saved to server immediately (requires connectivity) for other devices to pull
 - Assigned technicians see the plantation in their Plantaciones tab after next pull
 
 ### Plantation finalization
 - "Finalizar plantación" button on admin plantation detail screen
-- Gate: all SubGroups must be sincronizada — show clear message if not
+- Gate: ALL SubGroups must be sincronizada — if any SubGroup is activa or finalizada (not sincronizada), show clear message and block finalization
 - Confirmation dialog (ConfirmModal) before finalizing
 - Sets plantation estado to 'finalizada' — locks further SubGroup creation
 - After finalization, ID generation becomes available
