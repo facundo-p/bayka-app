@@ -1,7 +1,7 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { subgroups, trees, plantationUsers, plantationSpecies } from '../database/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
   markAsSincronizada,
@@ -83,7 +83,23 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
   if (puError) console.error('[Sync] Pull plantation_users error:', JSON.stringify(puError));
   else console.log('[Sync] Pull plantation_users:', remotePu?.length ?? 0, 'rows');
 
-  if (!puError && remotePu && remotePu.length > 0) {
+  if (!puError && remotePu) {
+    // Delete local plantation_users that are no longer on the server
+    const remoteUserIds = new Set(remotePu.map((pu: any) => pu.user_id));
+    const localPu = await db.select().from(plantationUsers)
+      .where(eq(plantationUsers.plantationId, plantacionId));
+    for (const local of localPu) {
+      if (!remoteUserIds.has(local.userId)) {
+        await db.delete(plantationUsers).where(
+          and(
+            eq(plantationUsers.plantationId, plantacionId),
+            eq(plantationUsers.userId, local.userId),
+          )
+        );
+      }
+    }
+
+    // Upsert remote assignments
     for (const pu of remotePu) {
       await db.insert(plantationUsers).values({
         plantationId: pu.plantation_id,

@@ -94,9 +94,10 @@ export default function TreeRegistrationScreen() {
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroupEstado }, userId)
     : false;
   // Read-only when not owner OR when subgroup is not activa.
-  // Default to false while data is loading so the grid renders immediately
-  // (avoids flash of read-only tree list before data loads).
-  const dataLoaded = subgroup !== null;
+  // Default to false while data is loading so the grid renders immediately.
+  // Both subgroup AND userId must be loaded before we trust the isReadOnly decision
+  // (userId loads async — if subgroup loads first, isOwner would be false → flash of tree list).
+  const dataLoaded = subgroup !== null && userId !== '';
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== 'activa') : false;
   const canReactivate = isCreator && subgroupEstado === 'finalizada';
 
