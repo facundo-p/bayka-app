@@ -14,25 +14,25 @@ import { eq, and, ne, isNotNull, sql, count } from 'drizzle-orm';
 
 /**
  * PLAN-06
- * Checks whether all subgroups in a plantation are 'sincronizada'.
- * Returns canFinalize: true if none are blocking, plus the list of blockers.
+ * Checks whether a plantation can be finalized:
+ * - Must have at least one subgroup
+ * - All subgroups must be 'sincronizada'
+ * Returns canFinalize: true if both conditions met, plus the list of blockers.
  */
 export async function checkFinalizationGate(
   plantacionId: string
-): Promise<{ canFinalize: boolean; blocking: Array<{ nombre: string; estado: string }> }> {
-  const nonSynced = await db
+): Promise<{ canFinalize: boolean; blocking: Array<{ nombre: string; estado: string }>; hasSubgroups: boolean }> {
+  const allSubgroups = await db
     .select({ nombre: subgroups.nombre, estado: subgroups.estado })
     .from(subgroups)
-    .where(
-      and(
-        eq(subgroups.plantacionId, plantacionId),
-        ne(subgroups.estado, 'sincronizada')
-      )
-    );
+    .where(eq(subgroups.plantacionId, plantacionId));
+
+  const nonSynced = allSubgroups.filter((s) => s.estado !== 'sincronizada');
 
   return {
-    canFinalize: nonSynced.length === 0,
+    canFinalize: allSubgroups.length > 0 && nonSynced.length === 0,
     blocking: nonSynced,
+    hasSubgroups: allSubgroups.length > 0,
   };
 }
 

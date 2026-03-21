@@ -42,7 +42,25 @@ describe('adminQueries', () => {
 
   describe('checkFinalizationGate', () => {
     it('Test 1: returns {canFinalize: true, blocking: []} when all subgroups are sincronizada', async () => {
-      // All subgroups are sincronizada → non-sincronizada query returns empty
+      // All subgroups are sincronizada → query returns only sincronizada rows
+      const syncedSubgroups = [
+        { nombre: 'Línea A', estado: 'sincronizada' },
+        { nombre: 'Línea B', estado: 'sincronizada' },
+      ];
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue(syncedSubgroups),
+        }),
+      });
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(true);
+      expect(result.blocking).toEqual([]);
+      expect(result.hasSubgroups).toBe(true);
+    });
+
+    it('Test 1b: returns {canFinalize: false} when plantation has no subgroups', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockResolvedValue([]),
@@ -51,19 +69,20 @@ describe('adminQueries', () => {
 
       const result = await checkFinalizationGate('plantation-1');
 
-      expect(result.canFinalize).toBe(true);
-      expect(result.blocking).toEqual([]);
+      expect(result.canFinalize).toBe(false);
+      expect(result.hasSubgroups).toBe(false);
     });
 
     it('Test 2: returns {canFinalize: false, blocking: [{nombre, estado}]} when some subgroups are not sincronizada', async () => {
-      const nonSyncedSubgroups = [
+      const allSubgroups = [
         { nombre: 'Línea A', estado: 'activa' },
         { nombre: 'Línea B', estado: 'finalizada' },
+        { nombre: 'Línea C', estado: 'sincronizada' },
       ];
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(nonSyncedSubgroups),
+          where: jest.fn().mockResolvedValue(allSubgroups),
         }),
       });
 

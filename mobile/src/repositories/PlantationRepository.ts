@@ -66,6 +66,30 @@ export async function createPlantation(
   return data;
 }
 
+// ─── updatePlantation ─────────────────────────────────────────────────────────
+
+/**
+ * Updates lugar and periodo for an existing plantation on Supabase + local SQLite.
+ */
+export async function updatePlantation(
+  plantacionId: string,
+  lugar: string,
+  periodo: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('plantations')
+    .update({ lugar, periodo })
+    .eq('id', plantacionId);
+  if (error) throw error;
+
+  await db
+    .update(plantations)
+    .set({ lugar, periodo })
+    .where(eq(plantations.id, plantacionId));
+
+  notifyDataChanged();
+}
+
 // ─── finalizePlantation ───────────────────────────────────────────────────────
 
 /**
