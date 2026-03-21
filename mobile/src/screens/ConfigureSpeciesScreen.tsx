@@ -39,8 +39,14 @@ type SpeciesItem = {
   hasExistingTrees: boolean;
 };
 
-export default function ConfigureSpeciesScreen() {
-  const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
+type Props = {
+  plantacionIdProp?: string;
+  onClose?: () => void;
+};
+
+export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Props = {}) {
+  const params = useLocalSearchParams<{ plantacionId: string }>();
+  const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const confirm = useConfirm();
@@ -118,7 +124,7 @@ export default function ConfigureSpeciesScreen() {
         .filter((i) => i.enabled)
         .map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
       await saveSpeciesConfig(plantacionId, enabledItems);
-      router.back();
+      onClose ? onClose() : router.back();
     } catch (e: any) {
       showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron guardar las especies.', 'alert-circle-outline', colors.danger);
     } finally {

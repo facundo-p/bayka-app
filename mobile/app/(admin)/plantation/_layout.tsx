@@ -7,8 +7,6 @@ export default function PlantationLayout() {
       <Stack.Screen name="[id]" options={{ title: 'Subgrupos' }} />
       <Stack.Screen name="nuevo-subgrupo" options={{ title: 'Nuevo subgrupo' }} />
       <Stack.Screen name="subgroup" options={{ headerShown: false }} />
-      <Stack.Screen name="configure-species" options={{ title: 'Configurar especies' }} />
-      <Stack.Screen name="assign-technicians" options={{ title: 'Asignar tecnicos' }} />
     </Stack>
   );
 }

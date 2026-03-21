@@ -34,6 +34,8 @@ import { getPlantationsForRole } from '../queries/dashboardQueries';
 import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
 import { createPlantation, finalizePlantation, generateIds } from '../repositories/PlantationRepository';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
+import ConfigureSpeciesScreen from './ConfigureSpeciesScreen';
+import AssignTechniciansScreen from './AssignTechniciansScreen';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -197,6 +199,8 @@ type PlantationCardProps = {
   onGenerateIds: (id: string) => void;
   onExportCsv: (id: string) => void;
   onExportExcel: (id: string) => void;
+  onConfigSpecies: (id: string) => void;
+  onAssignTech: (id: string) => void;
 };
 
 function PlantationCard({
@@ -205,6 +209,8 @@ function PlantationCard({
   onGenerateIds,
   onExportCsv,
   onExportExcel,
+  onConfigSpecies,
+  onAssignTech,
 }: PlantationCardProps) {
   const router = useRouter();
   const [idsGenerated, setIdsGenerated] = useState(false);
@@ -229,18 +235,14 @@ function PlantationCard({
         <View style={styles.actionRow}>
           <Pressable
             style={({ pressed }) => [styles.actionBtn, styles.actionBtnSecondary, pressed && { opacity: 0.7 }]}
-            onPress={() =>
-              router.push(`/(admin)/plantation/configure-species?plantacionId=${item.id}` as any)
-            }
+            onPress={() => onConfigSpecies(item.id)}
           >
             <Ionicons name="list-outline" size={14} color={colors.primary} />
             <Text style={styles.actionBtnSecondaryText}>Configurar especies</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.actionBtn, styles.actionBtnSecondary, pressed && { opacity: 0.7 }]}
-            onPress={() =>
-              router.push(`/(admin)/plantation/assign-technicians?plantacionId=${item.id}` as any)
-            }
+            onPress={() => onAssignTech(item.id)}
           >
             <Ionicons name="people-outline" size={14} color={colors.primary} />
             <Text style={styles.actionBtnSecondaryText}>Asignar tecnicos</Text>
@@ -310,6 +312,10 @@ export default function AdminScreen() {
   const [seedValue, setSeedValue] = useState('');
   const [seedLoading, setSeedLoading] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
+
+  // Modal states for admin sub-screens
+  const [configSpeciesPlantacionId, setConfigSpeciesPlantacionId] = useState<string | null>(null);
+  const [assignTechPlantacionId, setAssignTechPlantacionId] = useState<string | null>(null);
 
   // Fetch organizacionId from profiles on mount
   useEffect(() => {
@@ -499,6 +505,8 @@ export default function AdminScreen() {
               onGenerateIds={handleGenerateIds}
               onExportCsv={handleExportCsv}
               onExportExcel={handleExportExcel}
+              onConfigSpecies={(id) => setConfigSpeciesPlantacionId(id)}
+              onAssignTech={(id) => setAssignTechPlantacionId(id)}
             />
           )}
         />
@@ -575,6 +583,50 @@ export default function AdminScreen() {
           <Text style={styles.exportOverlayText}>Exportando...</Text>
         </View>
       )}
+
+      {/* Configure Species modal */}
+      <Modal
+        visible={configSpeciesPlantacionId !== null}
+        animationType="slide"
+        onRequestClose={() => setConfigSpeciesPlantacionId(null)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => setConfigSpeciesPlantacionId(null)} hitSlop={12}>
+              <Ionicons name="arrow-back" size={24} color={colors.white} />
+            </Pressable>
+            <Text style={styles.modalHeaderTitle}>Configurar especies</Text>
+          </View>
+          {configSpeciesPlantacionId && (
+            <ConfigureSpeciesScreen
+              plantacionIdProp={configSpeciesPlantacionId}
+              onClose={() => setConfigSpeciesPlantacionId(null)}
+            />
+          )}
+        </View>
+      </Modal>
+
+      {/* Assign Technicians modal */}
+      <Modal
+        visible={assignTechPlantacionId !== null}
+        animationType="slide"
+        onRequestClose={() => setAssignTechPlantacionId(null)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Pressable onPress={() => setAssignTechPlantacionId(null)} hitSlop={12}>
+              <Ionicons name="arrow-back" size={24} color={colors.white} />
+            </Pressable>
+            <Text style={styles.modalHeaderTitle}>Asignar tecnicos</Text>
+          </View>
+          {assignTechPlantacionId && (
+            <AssignTechniciansScreen
+              plantacionIdProp={assignTechPlantacionId}
+              onClose={() => setAssignTechPlantacionId(null)}
+            />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -813,5 +865,24 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: fontSize.xl,
     fontWeight: '600',
+  },
+  // ─── Fullscreen modal for admin sub-screens ─────────────────────────────
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxl,
+    backgroundColor: colors.primary,
+    paddingTop: spacing['5xl'] + spacing.xxl,
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.xxl,
+  },
+  modalHeaderTitle: {
+    color: colors.white,
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
   },
 });

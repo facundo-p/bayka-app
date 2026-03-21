@@ -40,8 +40,14 @@ type TechnicianItem = {
 
 // ─── AssignTechniciansScreen ──────────────────────────────────────────────────
 
-export default function AssignTechniciansScreen() {
-  const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
+type Props = {
+  plantacionIdProp?: string;
+  onClose?: () => void;
+};
+
+export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: Props = {}) {
+  const params = useLocalSearchParams<{ plantacionId: string }>();
+  const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -89,6 +95,8 @@ export default function AssignTechniciansScreen() {
         getAllTechnicians(organizacionId),
         getAssignedTechnicians(plantacionId),
       ]);
+
+      console.log(`[AssignTechs] plantacionId=${plantacionId}, assigned=${JSON.stringify(assigned.map(a => a.userId))}, allTechs=${allTechs.length}`);
 
       const assignedSet = new Set(assigned.map((a) => a.userId));
 
@@ -148,7 +156,7 @@ export default function AssignTechniciansScreen() {
     try {
       const assignedIds = items.filter((i) => i.assigned).map((i) => i.id);
       await assignTechnicians(plantacionId, assignedIds);
-      router.back();
+      onClose ? onClose() : router.back();
     } catch (e: any) {
       showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron asignar los tecnicos.', 'alert-circle-outline', colors.danger);
     } finally {
