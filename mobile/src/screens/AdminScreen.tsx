@@ -35,8 +35,8 @@ import { createPlantation, updatePlantation, finalizePlantation, generateIds } f
 import { exportToCSV, exportToExcel } from '../services/ExportService';
 
 import AdminModalWrapper from '../components/AdminModalWrapper';
-import PlantationCard from '../components/PlantationCard';
-import type { Plantation } from '../components/PlantationCard';
+import PlantationConfigCard from '../components/PlantationConfigCard';
+import type { Plantation } from '../components/PlantationConfigCard';
 import PlantationFormModal from '../components/PlantationFormModal';
 import ConfigureSpeciesScreen from './ConfigureSpeciesScreen';
 import AssignTechniciansScreen from './AssignTechniciansScreen';
@@ -244,7 +244,7 @@ export default function AdminScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
-            <PlantationCard
+            <PlantationConfigCard
               item={item}
               onFinalize={handleFinalize}
               onGenerateIds={handleGenerateIds}
