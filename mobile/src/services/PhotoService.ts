@@ -1,15 +1,18 @@
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { File, Directory, Paths } from 'expo-file-system';
 
-// CRITICAL (Pitfall 1): Always copy from temp picker URI to permanent documentDirectory.
+// CRITICAL (Pitfall 1): Always copy from temp picker URI to permanent Paths.document.
 // Picker temp URIs may be gone after app restart or OS memory pressure.
-async function copyToDocument(tempUri: string): Promise<string> {
+function copyToDocument(tempUri: string): string {
   const filename = `photo_${Date.now()}.jpg`;
-  const dir = `${FileSystem.documentDirectory}photos/`;
-  const dest = `${dir}${filename}`;
-  await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
-  await FileSystem.copyAsync({ from: tempUri, to: dest });
-  return dest;
+  const dir = new Directory(Paths.document, 'photos');
+  if (!dir.exists) {
+    dir.create({ intermediates: true });
+  }
+  const dest = new File(dir, filename);
+  const source = new File(tempUri);
+  source.copy(dest);
+  return dest.uri;
 }
 
 export async function launchCamera(): Promise<string | null> {

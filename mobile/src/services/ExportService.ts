@@ -6,9 +6,9 @@
  *
  * CRITICAL (Pitfall 4): Always use type: 'base64' in XLSX.write — Node Buffer
  * is not available in React Native.
- * CRITICAL (Pitfall 5): Write to FileSystem.cacheDirectory only.
+ * CRITICAL (Pitfall 5): Write to Paths.cache only.
  */
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 import { getExportRows } from '../queries/exportQueries';
@@ -53,13 +53,10 @@ export async function exportToCSV(plantacionId: string, plantationName: string):
     .join('\n');
 
   const csv = header + body;
-  const path = `${FileSystem.cacheDirectory}${plantationName}_export.csv`;
+  const file = new File(Paths.cache, `${plantationName}_export.csv`);
+  file.write(csv, { encoding: 'utf8' });
 
-  await FileSystem.writeAsStringAsync(path, csv, {
-    encoding: FileSystem.EncodingType.UTF8,
-  });
-
-  await Sharing.shareAsync(path, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: 'text/csv',
     dialogTitle: 'Exportar CSV',
   });
@@ -92,13 +89,11 @@ export async function exportToExcel(plantacionId: string, plantationName: string
   // CRITICAL: use type: 'base64' — Node Buffer not available in React Native
   const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-  // CRITICAL: write to cacheDirectory only
-  const path = `${FileSystem.cacheDirectory}${plantationName}_export.xlsx`;
-  await FileSystem.writeAsStringAsync(path, base64, {
-    encoding: FileSystem.EncodingType.Base64,
-  });
+  // CRITICAL: write to Paths.cache only
+  const file = new File(Paths.cache, `${plantationName}_export.xlsx`);
+  file.write(base64, { encoding: 'base64' });
 
-  await Sharing.shareAsync(path, {
+  await Sharing.shareAsync(file.uri, {
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     dialogTitle: 'Exportar Excel',
   });
