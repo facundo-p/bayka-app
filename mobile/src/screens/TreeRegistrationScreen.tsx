@@ -107,7 +107,7 @@ export default function TreeRegistrationScreen() {
   }, [navigation]);
 
   async function handleSpeciesPress(especieId: string, especieCodigo: string) {
-    if (isReadOnly) return;
+    if (isReadOnly || !userId) return;
     await insertTree({
       subgrupoId: subgrupoId ?? '',
       subgrupoCodigo: subgrupoCodigo ?? '',
@@ -118,7 +118,7 @@ export default function TreeRegistrationScreen() {
   }
 
   async function handleNNPress() {
-    if (isReadOnly) return;
+    if (isReadOnly || !userId) return;
     const photoUri = await pickPhoto();
     if (!photoUri) return;
     await insertTree({
