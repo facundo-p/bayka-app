@@ -5,7 +5,6 @@ import {
   Image,
   FlatList,
   Pressable,
-  Alert,
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
@@ -14,14 +13,15 @@ import { useTrees } from '../hooks/useTrees';
 import { usePlantationSpecies } from '../hooks/usePlantationSpecies';
 import { resolveNNTree } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
-import { db } from '../database/client';
-import { trees, subgroups } from '../database/schema';
-import { eq, and, isNull, asc, sql } from 'drizzle-orm';
+import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { showInfoDialog } from '../utils/alertHelpers';
 
 interface NNTree {
   id: string;
@@ -42,6 +42,7 @@ export default function NNResolutionScreen() {
   }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const confirm = useConfirm();
 
   // Determine mode: single subgroup or plantation-wide
   const isPlantationMode = !subgrupoId;
@@ -53,23 +54,7 @@ export default function NNResolutionScreen() {
   const { data: plantationNNTrees } = useLiveData(
     () => {
       if (!isPlantationMode) return Promise.resolve([]);
-      return db.select({
-        id: trees.id,
-        posicion: trees.posicion,
-        subId: trees.subId,
-        fotoUrl: trees.fotoUrl,
-        especieId: trees.especieId,
-        subgrupoId: trees.subgrupoId,
-        subgrupoCodigo: subgroups.codigo,
-        subgrupoNombre: subgroups.nombre,
-      })
-        .from(trees)
-        .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
-        .where(and(
-          isNull(trees.especieId),
-          eq(subgroups.plantacionId, plantacionId ?? '')
-        ))
-        .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+      return getNNTreesForPlantation(plantacionId ?? '');
     },
     [plantacionId, isPlantationMode]
   );
@@ -134,7 +119,7 @@ export default function NNResolutionScreen() {
     // Count how many have selections
     const toResolve = unresolvedTrees.filter((t) => selections[t.id]);
     if (toResolve.length === 0) {
-      Alert.alert('Seleccionar especie', 'Selecciona una especie para al menos un arbol N/N.');
+      showInfoDialog(confirm.show, 'Seleccionar especie', 'Selecciona una especie para al menos un arbol N/N.', 'leaf-outline', colors.secondary);
       return;
     }
 
@@ -276,6 +261,7 @@ export default function NNResolutionScreen() {
       </View>
       {/* Zoom photo viewer */}
       <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
+      <ConfirmModal {...confirm.confirmProps} />
     </View>
   );
 }

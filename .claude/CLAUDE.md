@@ -73,3 +73,16 @@
 **Cero código duplicado entre roles (admin/tecnico).** Las pantallas que comparten funcionalidad (plantaciones, subgrupos, perfil, etc.) DEBEN ser componentes compartidos en `src/components/` o `src/screens/`, parametrizados por rol si es necesario. Las carpetas `(admin)` y `(tecnico)` solo deben contener archivos de layout de navegación y wrappers mínimos que importen los componentes compartidos.
 
 **Regla de un solo lugar:** Para cambiar un color, un estilo común, o un comportamiento compartido, debe ser necesario editar UN SOLO archivo. Si hay que tocar más de un archivo para un cambio de estilo, es un bug de arquitectura.
+
+### 9. Separación lógica de datos y presentación (OBLIGATORIO)
+
+**Cero queries en pantallas o componentes.** Las pantallas (`src/screens/`) y componentes (`src/components/`) NUNCA deben contener llamadas directas a `db.select()`, `db.insert()`, `db.update()`, `db.delete()` ni SQL inline. Toda lógica de acceso a datos debe estar en:
+- `src/repositories/` — mutaciones (insert, update, delete) y queries de entidad
+- `src/queries/` — queries de lectura complejas, estadísticas, agregaciones
+- `src/services/` — lógica de negocio que coordina múltiples repositorios/queries
+
+**Hooks como puente, no como lógica.** Los hooks (`src/hooks/`) pueden llamar a funciones de repositories/queries y gestionar estado reactivo (useLiveData), pero NO deben contener queries SQL raw. Si un hook necesita una query, esa query se define en `queries/` o `repositories/` y el hook la invoca.
+
+**Queries reutilizables y testeables.** Si una query se usa en más de un lugar, DEBE estar en un archivo de queries. Si una query tiene lógica de negocio (filtros por rol, cálculos de fecha, estado), DEBE poder testearse unitariamente sin renderizar un componente.
+
+**Regla práctica:** Si necesitás importar `db` o tablas del schema en un archivo de `screens/` o `components/`, es un code smell. Extraé la query a `queries/` o `repositories/`.

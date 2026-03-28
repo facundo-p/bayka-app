@@ -14,7 +14,7 @@ export async function seedPlantationSpeciesIfNeeded(): Promise<void> {
 
   await db.insert(plantationSpecies).values(
     allSpecies.map((s, i) => ({
-      id: `ps-${DEMO_PLANTATION_ID}-${s.id}`,
+      id: `ps-${DEMO_PLANTATION_ID}-${s.codigo}`,
       plantacionId: DEMO_PLANTATION_ID,
       especieId: s.id,
       ordenVisual: i,

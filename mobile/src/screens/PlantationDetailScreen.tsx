@@ -8,20 +8,28 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
-import { db } from '../database/client';
-import { plantations, trees } from '../database/schema';
-import { eq, desc, and, isNull, count, sql } from 'drizzle-orm';
-import { localToday } from '../utils/dateUtils';
 import {
-  canEdit,
   deleteSubGroup,
   updateSubGroup,
   updateSubGroupCode,
 } from '../repositories/SubGroupRepository';
-import { subgroups } from '../database/schema';
+import {
+  getPlantationLugar,
+  getSubgroupsForPlantation,
+  getNNCountsPerSubgroup,
+  getTreeCountsPerSubgroup,
+  getTotalTreesInPlantation,
+  getTodayTreesForUser,
+  getUnsyncedTreesForUser,
+} from '../queries/plantationDetailQueries';
+import { getPlantationEstado, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
+import { generateIds } from '../repositories/PlantationRepository';
+import { exportToCSV, exportToExcel } from '../services/ExportService';
 import type { SubGroup, SubGroupTipo } from '../repositories/SubGroupRepository';
 import SubGroupStateChip from '../components/SubGroupStateChip';
 import SubgrupoForm from '../components/SubgrupoForm';
@@ -31,7 +39,12 @@ import { colors, fontSize, spacing, borderRadius } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { showDoubleConfirmDialog, showConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
+import { useSync } from '../hooks/useSync';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
+import SyncProgressModal from '../components/SyncProgressModal';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
@@ -41,72 +54,57 @@ export default function PlantationDetailScreen() {
   const userId = useCurrentUserId();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
+  const confirm = useConfirm();
 
-  // Load plantation name for header
-  const { data: plantationRows } = useLiveData(
-    () => db.select({ lugar: plantations.lugar }).from(plantations).where(eq(plantations.id, plantacionId ?? '')),
-    [plantacionId]
+  // Pending sync count for this plantation (finalizada SubGroups)
+  const { syncableCount, blockedByNN } = usePendingSyncCount(plantacionId);
+
+  // Sync hook — drives the SyncProgressModal
+  const {
+    state: syncState,
+    progress,
+    results,
+    startSync,
+    startPull,
+    pullSuccess,
+    reset: resetSync,
+    successCount,
+    failureCount,
+  } = useSync(plantacionId ?? '');
+
+  const pid = plantacionId ?? '';
+
+  // Admin action state
+  const [seedModalVisible, setSeedModalVisible] = useState(false);
+  const [seedValue, setSeedValue] = useState('');
+  const [seedLoading, setSeedLoading] = useState(false);
+  const [exportingType, setExportingType] = useState<'csv' | 'xlsx' | null>(null);
+
+  // All queries delegated to plantationDetailQueries.ts — zero inline db access
+  const { data: plantationRows } = useLiveData(() => getPlantationLugar(pid), [pid]);
+  const { data: subgroupRows } = useLiveData(() => getSubgroupsForPlantation(pid), [pid]);
+  const { data: nnCounts } = useLiveData(() => getNNCountsPerSubgroup(pid), [pid]);
+  const { data: treeCounts } = useLiveData(() => getTreeCountsPerSubgroup(pid), [pid]);
+  const { data: totalTreesData } = useLiveData(() => getTotalTreesInPlantation(pid).then(t => [{ total: t }]), [pid]);
+  const { data: todayTreesData } = useLiveData(() => getTodayTreesForUser(pid, userId).then(t => [{ total: t }]), [pid, userId]);
+  const { data: unsyncedTreesData } = useLiveData(() => getUnsyncedTreesForUser(pid, userId).then(t => [{ total: t }]), [pid, userId]);
+
+  // Plantation estado — drives finalization lockout and admin actions
+  const { data: estadoData } = useLiveData(
+    () => getPlantationEstado(pid).then((e) => [{ estado: e ?? '' }]),
+    [pid]
   );
+  const plantacionEstado = estadoData?.[0]?.estado ?? '';
+  const isFinalizada = plantacionEstado === 'finalizada';
 
-  // Load subgroups live
-  const { data: subgroupRows } = useLiveData(
-    () => db.select().from(subgroups)
-      .where(eq(subgroups.plantacionId, plantacionId ?? ''))
-      .orderBy(desc(subgroups.createdAt)),
-    [plantacionId]
+  // IDs generated check — gates export vs ID generation buttons (admin only)
+  const { data: idsGeneratedData } = useLiveData(
+    () => (routePrefix === '(admin)' && isFinalizada ? hasIdsGenerated(pid).then((v) => [{ generated: v }]) : Promise.resolve([{ generated: false }])),
+    [pid, routePrefix, isFinalizada]
   );
+  const idsGenerated = idsGeneratedData?.[0]?.generated ?? false;
 
-  // Load N/N counts per subgroup
-  const { data: nnCounts } = useLiveData(
-    () => db.select({
-      subgrupoId: trees.subgrupoId,
-      nnCount: count(),
-    })
-      .from(trees)
-      .where(and(
-        isNull(trees.especieId),
-        sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`
-      ))
-      .groupBy(trees.subgrupoId),
-    [plantacionId]
-  );
-
-  // Load tree counts per subgroup
-  const { data: treeCounts } = useLiveData(
-    () => db.select({
-      subgrupoId: trees.subgrupoId,
-      treeCount: count(),
-    })
-      .from(trees)
-      .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`)
-      .groupBy(trees.subgrupoId),
-    [plantacionId]
-  );
-
-  // Total trees in plantation
-  const { data: totalTreesRow } = useLiveData(
-    () => db.select({ total: count() })
-      .from(trees)
-      .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`),
-    [plantacionId]
-  );
-
-  const todayStr = localToday();
-
-  // Today's trees by current user in this plantation
-  const { data: todayTreesRow } = useLiveData(
-    () => {
-      if (!userId) return Promise.resolve([]);
-      return db.select({ total: count() })
-        .from(trees)
-        .where(and(
-          sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`,
-          eq(trees.usuarioRegistro, userId),
-          sql`${trees.createdAt} LIKE ${todayStr + '%'}`
-        ));
-    },
-    [plantacionId, userId, todayStr]
-  );
+  const unsyncedTrees = unsyncedTreesData?.[0]?.total ?? 0;
 
   // Build maps
   const nnCountMap = new Map<string, number>();
@@ -123,8 +121,8 @@ export default function PlantationDetailScreen() {
     }
   }
 
-  const totalTrees = totalTreesRow?.[0]?.total ?? 0;
-  const todayTrees = todayTreesRow?.[0]?.total ?? 0;
+  const totalTrees = totalTreesData?.[0]?.total ?? 0;
+  const todayTrees = todayTreesData?.[0]?.total ?? 0;
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
 
   // Set header title
@@ -154,6 +152,7 @@ export default function PlantationDetailScreen() {
       : 'Esta accion no se puede deshacer.';
 
     showDoubleConfirmDialog(
+      confirm.show,
       'Eliminar subgrupo',
       warningMessage,
       'Confirmar eliminacion',
@@ -171,6 +170,76 @@ export default function PlantationDetailScreen() {
 
   function handleResolveAllNN() {
     router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any);
+  }
+
+  // ─── Admin action handlers ────────────────────────────────────────────────
+
+  async function handleAdminGenerateIds() {
+    try {
+      const maxId = await getMaxGlobalId();
+      setSeedValue((maxId + 1).toString());
+      setSeedModalVisible(true);
+    } catch (e: any) {
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo obtener el ID sugerido.', 'alert-circle-outline', colors.danger);
+    }
+  }
+
+  function handleSeedConfirm() {
+    const seed = parseInt(seedValue, 10);
+    if (isNaN(seed) || seed < 1) {
+      showInfoDialog(confirm.show, 'Semilla invalida', 'Ingresa un numero entero mayor a 0.', 'alert-circle-outline', colors.secondary);
+      return;
+    }
+    setSeedModalVisible(false);
+    const { show: showConfirmAction } = confirm;
+    showConfirmAction({
+      icon: 'key-outline',
+      iconColor: colors.primary,
+      title: 'Generar IDs',
+      message: 'Se van a generar IDs para todos los arboles de esta plantacion. Esta accion no se puede deshacer.',
+      buttons: [
+        { label: 'Cancelar', style: 'cancel', onPress: () => {} },
+        {
+          label: 'Generar',
+          style: 'primary',
+          icon: 'key-outline',
+          onPress: async () => {
+            setSeedLoading(true);
+            try {
+              await generateIds(pid, seed);
+            } catch (e: any) {
+              showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
+            } finally {
+              setSeedLoading(false);
+            }
+          },
+        },
+      ],
+    });
+  }
+
+  async function handleAdminExportCsv() {
+    const lugar = plantationRows?.[0]?.lugar ?? '';
+    setExportingType('csv');
+    try {
+      await exportToCSV(pid, lugar);
+    } catch (e: any) {
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo exportar el CSV.', 'alert-circle-outline', colors.danger);
+    } finally {
+      setExportingType(null);
+    }
+  }
+
+  async function handleAdminExportExcel() {
+    const lugar = plantationRows?.[0]?.lugar ?? '';
+    setExportingType('xlsx');
+    try {
+      await exportToExcel(pid, lugar);
+    } catch (e: any) {
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo exportar el Excel.', 'alert-circle-outline', colors.danger);
+    } finally {
+      setExportingType(null);
+    }
   }
 
   function renderSubGroup({ item }: { item: SubGroup }) {
@@ -225,13 +294,58 @@ export default function PlantationDetailScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statValue}>{totalTrees}</Text>
-            <Text style={styles.statLabel}>Total árboles</Text>
+            <Text style={styles.statLabel}>Total arboles</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: colors.secondary }]}>{unsyncedTrees}</Text>
+            <Text style={styles.statLabel}>Sin sincronizar</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statValueToday}>{todayTrees}</Text>
             <Text style={styles.statLabel}>Hoy</Text>
           </View>
         </View>
+
+        {/* Pull button — always visible to download latest data */}
+        <Pressable
+          style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
+          onPress={startPull}
+        >
+          <Ionicons name="cloud-download-outline" size={18} color={colors.info} />
+          <Text style={styles.pullButtonText}>Actualizar datos</Text>
+        </Pressable>
+
+        {/* Sync CTA — visible when there are syncable SubGroups to upload */}
+        {syncableCount > 0 && (
+          <Pressable
+            style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+            onPress={() => {
+              showConfirmDialog(
+                confirm.show,
+                'Sincronizar',
+                `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexion a internet.`,
+                'Sincronizar',
+                startSync,
+                { icon: 'cloud-upload-outline', iconColor: colors.info },
+              );
+            }}
+          >
+            <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
+            <Text style={styles.syncButtonText}>
+              Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
+            </Text>
+          </Pressable>
+        )}
+
+        {/* N/N sync blocked banner */}
+        {blockedByNN > 0 && (
+          <View style={styles.nnSyncBlockedRow}>
+            <Ionicons name="alert-circle-outline" size={14} color={colors.secondary} />
+            <Text style={styles.nnSyncBlockedText}>
+              {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
+            </Text>
+          </View>
+        )}
 
         {totalNN > 0 && (
           <Pressable
@@ -244,6 +358,62 @@ export default function PlantationDetailScreen() {
             </Text>
             <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
           </Pressable>
+        )}
+
+        {/* Finalization lockout banner — shown for all users when finalizada */}
+        {isFinalizada && (
+          <View style={styles.finalizadaBanner}>
+            <Ionicons name="lock-closed" size={16} color={colors.stateFinalizada} />
+            <Text style={styles.finalizadaBannerText}>Plantacion finalizada</Text>
+          </View>
+        )}
+
+        {/* Admin-only action row */}
+        {routePrefix === '(admin)' && isFinalizada && (
+          <View style={styles.adminActionRow}>
+            {!idsGenerated && (
+              <Pressable
+                style={({ pressed }) => [styles.adminActionBtn, styles.adminActionBtnPrimary, pressed && { opacity: 0.75 }]}
+                onPress={handleAdminGenerateIds}
+                disabled={seedLoading}
+              >
+                <Ionicons name="key-outline" size={16} color={colors.white} />
+                <Text style={styles.adminActionBtnPrimaryText}>Generar IDs</Text>
+              </Pressable>
+            )}
+            {idsGenerated && (
+              <>
+                <Pressable
+                  style={({ pressed }) => [styles.adminActionBtn, styles.adminActionBtnInfo, pressed && { opacity: 0.75 }]}
+                  onPress={handleAdminExportCsv}
+                  disabled={exportingType !== null}
+                >
+                  {exportingType === 'csv' ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <>
+                      <Ionicons name="document-text-outline" size={16} color={colors.white} />
+                      <Text style={styles.adminActionBtnInfoText}>Exportar CSV</Text>
+                    </>
+                  )}
+                </Pressable>
+                <Pressable
+                  style={({ pressed }) => [styles.adminActionBtn, styles.adminActionBtnInfo, pressed && { opacity: 0.75 }]}
+                  onPress={handleAdminExportExcel}
+                  disabled={exportingType !== null}
+                >
+                  {exportingType === 'xlsx' ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <>
+                      <Ionicons name="grid-outline" size={16} color={colors.white} />
+                      <Text style={styles.adminActionBtnInfoText}>Exportar Excel</Text>
+                    </>
+                  )}
+                </Pressable>
+              </>
+            )}
+          </View>
         )}
       </View>
 
@@ -259,14 +429,67 @@ export default function PlantationDetailScreen() {
         }
         renderItem={renderSubGroup}
       />
-      <View style={styles.fabContainer}>
-        <Pressable
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
-        >
-          <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
-        </Pressable>
-      </View>
+      {/* FAB — hidden when plantation is finalizada (Pitfall 8) */}
+      {!isFinalizada && (
+        <View style={styles.fabContainer}>
+          <Pressable
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+            onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
+          >
+            <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Sync progress modal — shown during and after sync */}
+      <SyncProgressModal
+        state={syncState}
+        progress={progress}
+        results={results}
+        successCount={successCount}
+        failureCount={failureCount}
+        pullSuccess={pullSuccess}
+        onDismiss={resetSync}
+      />
+
+      <ConfirmModal {...confirm.confirmProps} />
+
+      {/* Seed dialog for admin ID generation */}
+      <Modal
+        visible={seedModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSeedModalVisible(false)}
+      >
+        <View style={styles.seedOverlay}>
+          <View style={styles.seedCard}>
+            <Text style={styles.seedTitle}>Semilla para ID Global</Text>
+            <Text style={styles.seedLabel}>Valor inicial del ID Global</Text>
+            <TextInput
+              style={styles.seedInput}
+              value={seedValue}
+              onChangeText={setSeedValue}
+              keyboardType="number-pad"
+              placeholder="Ej: 1001"
+              placeholderTextColor={colors.textPlaceholder}
+            />
+            <View style={styles.seedButtons}>
+              <Pressable
+                style={({ pressed }) => [styles.seedBtn, styles.seedBtnCancel, pressed && { opacity: 0.7 }]}
+                onPress={() => setSeedModalVisible(false)}
+              >
+                <Text style={styles.seedBtnCancelText}>Cancelar</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [styles.seedBtn, styles.seedBtnConfirm, pressed && { opacity: 0.8 }]}
+                onPress={handleSeedConfirm}
+              >
+                <Text style={styles.seedBtnConfirmText}>Generar</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit subgroup modal */}
       <Modal
@@ -359,6 +582,41 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
+  pullButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.infoBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  pullButtonText: {
+    color: colors.info,
+    fontSize: fontSize.base,
+    fontWeight: '600',
+  },
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.info,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    elevation: 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  syncButtonText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontWeight: 'bold',
+  },
   resolveNNBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -375,6 +633,21 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontWeight: '600',
     color: colors.secondary,
+  },
+  nnSyncBlockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.secondaryBg,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  nnSyncBlockedText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.secondary,
+    fontWeight: '500',
   },
   card: {
     backgroundColor: colors.surface,
@@ -503,5 +776,121 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.text,
     marginBottom: spacing.xxxl,
+  },
+  // ─── Finalization lockout banner ────────────────────────────────────────────
+  finalizadaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.secondaryBg,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.stateFinalizada + '66',
+  },
+  finalizadaBannerText: {
+    flex: 1,
+    fontSize: fontSize.base,
+    fontWeight: '600',
+    color: colors.stateFinalizada,
+  },
+  // ─── Admin action row ───────────────────────────────────────────────────────
+  adminActionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  adminActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+  },
+  adminActionBtnPrimary: {
+    backgroundColor: colors.primary,
+  },
+  adminActionBtnPrimaryText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  adminActionBtnInfo: {
+    backgroundColor: colors.info,
+  },
+  adminActionBtnInfoText: {
+    color: colors.white,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  // ─── Seed dialog ─────────────────────────────────────────────────────────────
+  seedOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xxl,
+  },
+  seedCard: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing['4xl'],
+    gap: spacing.xl,
+    width: '100%',
+  },
+  seedTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
+    color: colors.text,
+  },
+  seedLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  seedInput: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    fontSize: fontSize.base,
+    color: colors.text,
+    backgroundColor: colors.backgroundAlt,
+  },
+  seedButtons: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    marginTop: spacing.sm,
+  },
+  seedBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    borderRadius: borderRadius.lg,
+    minHeight: 44,
+  },
+  seedBtnCancel: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  seedBtnCancelText: {
+    color: colors.textMuted,
+    fontSize: fontSize.base,
+    fontWeight: '600',
+  },
+  seedBtnConfirm: {
+    backgroundColor: colors.primary,
+  },
+  seedBtnConfirmText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontWeight: '600',
   },
 });

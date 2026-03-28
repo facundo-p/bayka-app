@@ -110,21 +110,9 @@ export async function createSubGroup(params: {
   }
 }
 
-export type FinalizeResult =
-  | { success: true }
-  | { success: false; error: 'unresolved_nn'; count: number };
-
-// Blocks finalization if there are trees with especieId IS NULL (N/N unresolved).
-export async function finalizeSubGroup(subgrupoId: string): Promise<FinalizeResult> {
-  const [nnResult] = await db.select({ count: count() })
-    .from(trees)
-    .where(and(eq(trees.subgrupoId, subgrupoId), isNull(trees.especieId)));
-
-  const unresolvedCount = nnResult?.count ?? 0;
-  if (unresolvedCount > 0) {
-    return { success: false, error: 'unresolved_nn', count: unresolvedCount };
-  }
-
+// Finalizes a SubGroup (activa → finalizada). N/N trees are allowed —
+// the sync gate (not finalization) blocks upload of unresolved N/N.
+export async function finalizeSubGroup(subgrupoId: string): Promise<{ success: true }> {
   await db.update(subgroups)
     .set({ estado: 'finalizada' })
     .where(eq(subgroups.id, subgrupoId));
@@ -260,4 +248,65 @@ export async function deleteSubGroup(subgrupoId: string): Promise<{ deleted: boo
 
   notifyDataChanged();
   return { deleted: true, treeCount };
+}
+
+// Marks a subgroup as sincronizada after successful server sync.
+// Called by SyncService after RPC confirms the upload.
+export async function markAsSincronizada(subgrupoId: string): Promise<void> {
+  await db.update(subgroups)
+    .set({ estado: 'sincronizada' })
+    .where(eq(subgroups.id, subgrupoId));
+  notifyDataChanged();
+}
+
+// Returns all finalizada subgroups for a plantation (pending sync).
+// Used by SyncService to know which subgroups to upload.
+// When userId is provided, only returns subgroups created by that user.
+export async function getFinalizadaSubGroups(plantacionId: string, userId?: string): Promise<SubGroup[]> {
+  const conditions = [
+    eq(subgroups.plantacionId, plantacionId),
+    eq(subgroups.estado, 'finalizada'),
+  ];
+  if (userId) {
+    conditions.push(eq(subgroups.usuarioCreador, userId));
+  }
+  return db.select().from(subgroups)
+    .where(and(...conditions));
+}
+
+// Returns finalizada subgroups that CAN be synced (no unresolved N/N trees).
+// Per spec §4.10: N/N must be resolved before sync, but finalization is allowed with N/N.
+// When userId is provided, only returns subgroups created by that user.
+export async function getSyncableSubGroups(plantacionId: string, userId?: string): Promise<SubGroup[]> {
+  const finalizada = await getFinalizadaSubGroups(plantacionId, userId);
+  if (finalizada.length === 0) return [];
+
+  // Get N/N counts per subgroup
+  const nnCounts = await db.select({
+    subgrupoId: trees.subgrupoId,
+    nnCount: count(),
+  })
+    .from(trees)
+    .where(and(
+      isNull(trees.especieId),
+      sql`${trees.subgrupoId} IN (${sql.join(finalizada.map(sg => sql`${sg.id}`), sql`, `)})`
+    ))
+    .groupBy(trees.subgrupoId);
+
+  const nnMap = new Map(nnCounts.map(r => [r.subgrupoId, r.nnCount]));
+  return finalizada.filter(sg => (nnMap.get(sg.id) ?? 0) === 0);
+}
+
+// Returns total count of finalizada subgroups across all plantations.
+// Used by dashboard badge to show total pending sync count.
+// When userId is provided, only counts subgroups created by that user.
+export async function getPendingSyncCount(userId?: string): Promise<number> {
+  const conditions = [eq(subgroups.estado, 'finalizada')];
+  if (userId) {
+    conditions.push(eq(subgroups.usuarioCreador, userId));
+  }
+  const result = await db.select({ cnt: count() })
+    .from(subgroups)
+    .where(and(...conditions));
+  return result[0]?.cnt ?? 0;
 }

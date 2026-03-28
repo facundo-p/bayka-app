@@ -41,10 +41,17 @@ export default function LoginScreen() {
     getSavedAccounts().then(setSavedAccounts);
   }, []);
 
-  function selectAccount(account: SavedAccount) {
+  async function selectAccount(account: SavedAccount) {
     setEmail(account.email);
     setPassword(account.password);
     setError(null);
+    // Auto-login when tapping a saved account chip
+    setLoading(true);
+    const { error: authError } = await signIn(account.email, account.password);
+    if (authError) {
+      setError('Email o contrasena incorrectos');
+      setLoading(false);
+    }
   }
 
   async function handleLogin() {

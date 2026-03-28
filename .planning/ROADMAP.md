@@ -14,8 +14,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation + Auth** - Offline-safe infrastructure, SQLite schema, Supabase auth with persistent sessions, role-based navigation shell (completed 2026-03-17)
 - [x] **Phase 2: Field Registration** - Species button grid, one-tap tree registration, SubGroup lifecycle, N/N workflow, reverse order (completed 2026-03-17)
-- [ ] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats
-- [ ] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export
+- [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
+- [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
 
 ## Phase Details
 
@@ -66,12 +66,12 @@ Plans:
   4. If the server rejects a sync due to duplicate SubGroup code, the user sees a plain-language error and the SubGroup remains local
   5. After sync, the app downloads updated species and other technicians' SubGroups
   6. The number of SubGroups pending sync is always visible without navigating away
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Supabase RPC function for atomic SubGroup sync (server-side Postgres transaction, idempotency key, RLS, conflict detection)
-- [ ] 03-02: SyncService (outbox written atomically with domain write, pull-then-push order, conflict error surface, sincronizada state mark)
-- [ ] 03-03: Dashboard screens (plantation list for tecnico and admin, stats live queries, pending sync badge, sync trigger CTA)
+- [x] 03-01-PLAN.md — Supabase RPC function for atomic SubGroup sync (idempotency, DUPLICATE_CODE detection), local plantation_users table + migration, SubGroupRepository sync extensions (completed 2026-03-19)
+- [ ] 03-02-PLAN.md — SyncService (pull-then-push orchestration, per-SubGroup RPC upload, error accumulation, Spanish error messages), useSync hook, unit tests
+- [ ] 03-03-PLAN.md — Dashboard stats (role-gated plantation list, unsynced/total/today counts, pending sync badges), sync CTA + progress modal, tab icon badge (checkpoint)
 
 ### Phase 4: Admin + Export
 **Goal**: Admins can manage plantations (create, configure species, assign technicians, finalize), generate IDs, and export finalized plantation data to CSV/Excel
@@ -82,12 +82,23 @@ Plans:
   2. Admin can finalize a plantation after all its SubGroups are sincronizada; finalization locks further SubGroup creation
   3. Admin can trigger ID generation after finalization: plantation-sequential IDs and global organization IDs are assigned with a configurable initial seed
   4. Admin can export a finalized plantation to CSV and Excel files containing all required columns (ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Admin plantation management screens (create, species config with order, technician assignment, finalize action)
-- [ ] 04-02: ID generation service + admin trigger (plantation-sequential + global org IDs, seed configuration)
-- [ ] 04-03: Export service (CSV + Excel generation with required columns, export available only on finalized plantations)
+- [ ] 04-01-PLAN.md — RLS migration for admin operations, install xlsx + expo-sharing, data layer (PlantationRepository, adminQueries, exportQueries, ExportService)
+- [ ] 04-02-PLAN.md — Admin management screens (AdminScreen, ConfigureSpeciesScreen, AssignTechniciansScreen) with route wiring and finalization flow
+- [ ] 04-03-PLAN.md — ID generation and export wiring into AdminScreen + PlantationDetailScreen, finalization lockout (checkpoint)
+
+### Phase 5: UX Improvements
+**Goal**: Quality-of-life improvements for field use — automatic data freshness checks, enhanced offline indicators, and UX polish
+**Depends on**: Phase 4
+**Requirements**: TBD
+**Ideas (backlog):**
+  - Automatic check for server updates when device has connectivity; notify user with banner to refresh
+  - Offline/online status indicator in header
+  - Background species catalog updates
+  - Pantalla de perfil completa: nombre, email, rol, organizacion (datos de profiles + auth)
+  - Pantalla de plantaciones: titulo contextual ("Mis plantaciones" para tecnico, nombre de org para admin, o algo mas adecuado al contexto)
 
 ## Progress
 
@@ -98,5 +109,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 |-------|----------------|--------|-----------|
 | 1. Foundation + Auth | 3/3 | Complete    | 2026-03-17 |
 | 2. Field Registration | 4/4 | Complete    | 2026-03-17 |
-| 3. Sync + Dashboard | 0/3 | Not started | - |
-| 4. Admin + Export | 0/3 | Not started | - |
+| 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
+| 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |

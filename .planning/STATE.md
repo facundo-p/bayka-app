@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 02-field-registration-02-04-PLAN.md
-last_updated: "2026-03-17T22:03:38.867Z"
-last_activity: 2026-03-17 — Phase 2 Plan 03 complete
+status: completed
+stopped_at: Completed 04-admin-export-03-PLAN.md
+last_updated: "2026-03-20T04:53:50.712Z"
+last_activity: 2026-03-19 — Phase 3 Plan 03 complete
 progress:
-  total_phases: 4
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 43
+  total_phases: 5
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 2 — Field Registration
+**Current focus:** Phase 3 — Sync + Dashboard
 
 ## Current Position
 
-Phase: 2 of 4 (Field Registration)
-Plan: 3 of 4 in current phase (Plan 02-03 complete)
-Status: Phase 2 in progress — Plans 02-01, 02-02, 02-03 complete, ready for Plan 02-04
-Last activity: 2026-03-17 — Phase 2 Plan 03 complete
+Phase: 3 of 4 (Sync + Dashboard) — COMPLETE
+Plan: 3 of 3 in current phase (Plan 03-03 complete)
+Status: Phase 3 complete — all plans done. Ready for Phase 4 (Polish)
+Last activity: 2026-03-19 — Phase 3 Plan 03 complete
 
-Progress: [████░░░░░░] 43%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -57,6 +57,12 @@ Progress: [████░░░░░░] 43%
 | Phase 02-field-registration P02 | 235s | 2 tasks | 9 files |
 | Phase 02-field-registration P03 | 15min | 2 tasks | 5 files |
 | Phase 02-field-registration P04 | 183s | 2 tasks | 6 files |
+| Phase 03-sync-dashboard P01 | 115s | 2 tasks | 5 files |
+| Phase 03-sync-dashboard P02 | 8min | 2 tasks | 3 files |
+| Phase 03-sync-dashboard P03 | 8min | 3 tasks | 7 files |
+| Phase 04-admin-export P01 | 347s | 2 tasks | 10 files |
+| Phase 04-admin-export P02 | 297s | 2 tasks | 7 files |
+| Phase 04-admin-export P03 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -87,6 +93,25 @@ Recent decisions affecting current work:
 - [Phase 02-field-registration P03]: Tree registration entry route: /(tecnico)/plantation/subgroup/[id]?plantacionId=...&subgrupoCodigo=...
 - [Phase 02-field-registration]: TreeRow shows N/N via especieId===null check; no species join needed for last-3 display
 - [Phase 02-field-registration]: N/N resolution index clamped with Math.min after resolveNNTree to handle live data disappearance
+- [Phase 03-sync-dashboard P01]: SECURITY INVOKER chosen over DEFINER — existing RLS policies already permit creator inserts for subgroups and trees
+- [Phase 03-sync-dashboard P01]: ON CONFLICT (id) DO NOTHING on both subgroups and trees — UUID as natural idempotency key handles retry after network drop
+- [Phase 03-sync-dashboard P01]: DUPLICATE_CODE check placed AFTER INSERT — insert first (idempotent re-upload), then check for different-UUID conflict
+- [Phase 03-sync-dashboard P01]: plantation_users added to local SQLite schema for offline tecnico role-filtering (DASH-01)
+- [Phase 03-sync-dashboard P02]: notifyDataChanged called once after entire sync loop (not per SubGroup) to prevent render storm
+- [Phase 03-sync-dashboard P02]: uploadSubGroup is pure RPC wrapper — all orchestration (markAsSincronizada, error mapping) in syncPlantation
+- [Phase 03-sync-dashboard P02]: useSync calls notifyDataChanged in finally block — guarantees refresh even if SyncService throws
+- [Phase 03-sync-dashboard P03]: dashboardQueries functions import db from client (not injected) — module-level mocking in Jest is sufficient
+- [Phase 03-sync-dashboard P03]: Drizzle mock chain — intermediate methods (from/innerJoin/where) return chain; terminal (groupBy/orderBy) resolve to arrays; must re-init in beforeEach after clearAllMocks
+- [Phase 03-sync-dashboard P03]: Sync CTA uses colors.info (blue) to differentiate from primary green and secondary orange in visual hierarchy
+- [Phase 03-sync-dashboard P03]: usePendingSyncCount with optional plantacionId — single hook serves both tab badge (global) and per-plantation use cases
+- [Phase 04-admin-export]: PlantationRepository upserts plantation row directly after Supabase create (pullFromServer doesn't pull the plantation row itself — Pitfall 2)
+- [Phase 04-admin-export]: SheetJS write() uses type:'base64' in ExportService — Node Buffer not available in React Native (Pitfall 4)
+- [Phase 04-admin-export]: getAllTechnicians queries Supabase (not local SQLite) — profiles table only exists on server
+- [Phase 04-admin-export]: Move-up/down buttons used instead of react-native-draggable-flatlist — not installed, must_haves spec already specified move-up/down reorder
+- [Phase 04-admin-export]: organizacionId fetched from Supabase profiles table in each admin screen — no local SQLite copy, fetch per screen
+- [Phase 04-admin-export]: Seed dialog as Modal with number-pad TextInput for cross-platform compatibility
+- [Phase 04-admin-export]: ConfirmModal as second confirmation step for irreversible ID generation (two-step pattern)
+- [Phase 04-admin-export]: isFinalizada derived from useLiveData getPlantationEstado — drives FAB lockout and admin action visibility
 
 ### Pending Todos
 
@@ -94,10 +119,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 3 plan 03-01: Postgres RPC design (multi-table transaction, idempotency, RLS) is the most implementation-sensitive task. Research recommends a focused design sub-task before implementation starts.
+None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-17T21:56:12.348Z
-Stopped at: Completed 02-field-registration-02-04-PLAN.md
+Last session: 2026-03-20T04:48:43.604Z
+Stopped at: Completed 04-admin-export-03-PLAN.md
 Resume file: None
