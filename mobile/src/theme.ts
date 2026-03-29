@@ -69,6 +69,10 @@ export const colors = {
   // Other user
   otherUserBg: '#f5f5f5',
   otherUserBorder: '#9e9e9e',
+
+  // Connectivity state
+  online: '#4caf50',
+  offline: '#9e9e9e',
 } as const;
 
 export const spacing = {
