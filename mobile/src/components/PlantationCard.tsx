@@ -10,25 +10,37 @@ import TreeIcon from './TreeIcon';
 type Props = {
   lugar: string;
   periodo: string;
+  totalCount: number;
   syncedCount: number;
-  unsyncedCount: number;
   todayCount: number;
   pendingSync: number;
+  estado?: string;
   onPress: () => void;
 };
 
 export default function PlantationCard({
   lugar,
   periodo,
+  totalCount,
   syncedCount,
-  unsyncedCount,
   todayCount,
   pendingSync,
+  estado,
   onPress,
 }: Props) {
+  const accentColor =
+    estado === 'finalizada'
+      ? colors.stateFinalizada
+      : estado === 'sincronizada'
+        ? colors.stateSincronizada
+        : colors.primary;
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        { borderLeftWidth: 3, borderLeftColor: accentColor },
+        pressed && styles.cardPressed,
+      ]}
       onPress={onPress}
     >
       <View style={styles.cardInner}>
@@ -45,19 +57,17 @@ export default function PlantationCard({
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <TreeIcon size={11} />
-            <Text style={styles.statValue}>{syncedCount}</Text>
+            <Text style={[styles.statValue, { color: colors.statTotal }]}>{totalCount}</Text>
+            <Text style={styles.statLabel}>total</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Ionicons name="cloud-done-outline" size={12} color={colors.statSynced} />
+            <Text style={[styles.statValue, { color: colors.statSynced }]}>{syncedCount}</Text>
             <Text style={styles.statLabel}>sincronizados</Text>
           </View>
-          <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Ionicons name="cloud-upload-outline" size={12} color={colors.secondary} />
-            <Text style={[styles.statValue, unsyncedCount > 0 && { color: colors.secondary }]}>{unsyncedCount}</Text>
-            <Text style={styles.statLabel}>pendientes</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Ionicons name="today-outline" size={12} color={colors.info} />
-            <Text style={[styles.statValue, todayCount > 0 && { color: colors.info }]}>{todayCount}</Text>
+            <Ionicons name="today-outline" size={12} color={colors.statToday} />
+            <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
             <Text style={styles.statLabel}>hoy</Text>
           </View>
         </View>
@@ -80,15 +90,13 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
     elevation: 2,
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  cardPressed: { opacity: 0.7 },
+  cardPressed: { transform: [{ scale: 0.98 }] },
   cardInner: { padding: spacing.xl },
   cardTitleRow: {
     flexDirection: 'row',
@@ -102,15 +110,13 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.sm,
   },
   statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  statValue: { fontSize: fontSize.base, fontWeight: 'bold', color: colors.primary },
+  statValue: { fontSize: fontSize.base, fontWeight: 'bold' },
   statLabel: { fontSize: fontSize.xs, color: colors.textMuted },
-  statDivider: { width: 1, height: 16, backgroundColor: colors.border },
   pendingSyncRow: {
     flexDirection: 'row',
     alignItems: 'center',
