@@ -12,14 +12,16 @@ import { useProfileData } from '../hooks/useProfileData';
 import { checkFreshness } from '../queries/freshnessQueries';
 import { pullFromServer } from '../services/SyncService';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
   getPlantationsForRole,
-  getUnsyncedTreeCounts,
   getSyncedTreeCounts,
   getPendingSyncCounts,
   getTodayTreeCounts,
+  getTotalTreeCounts,
 } from '../queries/dashboardQueries';
 import PlantationCard from '../components/PlantationCard';
+import FilterCards from '../components/FilterCards';
 
 export default function PlantacionesScreen() {
   const router = useRouter();
@@ -34,6 +36,7 @@ export default function PlantacionesScreen() {
 
   const [showFreshnessBanner, setShowFreshnessBanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const { data: plantationList } = useLiveData(
     () => getPlantationsForRole(isAdmin, userId),
@@ -41,9 +44,9 @@ export default function PlantacionesScreen() {
   );
 
   const { data: syncedCounts } = useLiveData(() => getSyncedTreeCounts());
-  const { data: unsyncedCounts } = useLiveData(() => getUnsyncedTreeCounts(userId), [userId]);
   const { data: pendingSyncCounts } = useLiveData(() => getPendingSyncCounts());
   const { data: todayCounts } = useLiveData(() => getTodayTreeCounts(userId), [userId]);
+  const { data: totalCounts } = useLiveData(() => getTotalTreeCounts());
 
   // Check freshness on focus when online
   useFocusEffect(
@@ -79,25 +82,47 @@ export default function PlantacionesScreen() {
   const syncedCountMap = new Map<string, number>();
   if (syncedCounts) for (const row of syncedCounts) syncedCountMap.set(row.plantacionId, row.treeCount);
 
-  const unsyncedCountMap = new Map<string, number>();
-  if (unsyncedCounts) for (const row of unsyncedCounts) unsyncedCountMap.set(row.plantacionId, row.treeCount);
-
   const pendingSyncMap = new Map<string, number>();
   if (pendingSyncCounts) for (const row of pendingSyncCounts) pendingSyncMap.set(row.plantacionId, row.pendingCount);
 
   const todayCountMap = new Map<string, number>();
   if (todayCounts) for (const row of todayCounts) todayCountMap.set(row.plantacionId, row.treeCount);
 
+  const totalCountMap = new Map<string, number>();
+  if (totalCounts) for (const row of totalCounts) totalCountMap.set(row.plantacionId, row.treeCount);
+
+  // Count by estado for filter cards
+  const estadoCounts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  plantationList?.forEach((p: any) => {
+    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
+      estadoCounts[p.estado as keyof typeof estadoCounts]++;
+    }
+  });
+
+  const filteredList = plantationList?.filter(
+    (p: any) => !activeFilter || p.estado === activeFilter
+  ) ?? [];
+
+  const filterConfigs = [
+    { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+    { key: 'sincronizada', label: 'Sincronizadas', count: estadoCounts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
+  ];
+
   if (!plantationList || plantationList.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No hay plantaciones disponibles</Text>
+        <Ionicons name="leaf-outline" size={48} color={colors.textMuted} />
+        <Text style={styles.emptyTitle}>No hay plantaciones disponibles</Text>
+        <Text style={styles.emptySubtext}>Las plantaciones asignadas apareceran aqui</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      {/* Subtle gradient background */}
+      <View style={styles.gradientBg} />
       <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{headerTitle}</Text>
@@ -124,20 +149,31 @@ export default function PlantacionesScreen() {
         </View>
       )}
 
+      <View style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+        <FilterCards
+          filters={filterConfigs}
+          activeFilter={activeFilter}
+          onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
+        />
+      </View>
+
       <FlatList
-        data={plantationList}
+        data={filteredList}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <PlantationCard
-            lugar={item.lugar}
-            periodo={item.periodo}
-            syncedCount={syncedCountMap.get(item.id) ?? 0}
-            unsyncedCount={unsyncedCountMap.get(item.id) ?? 0}
-            todayCount={todayCountMap.get(item.id) ?? 0}
-            pendingSync={pendingSyncMap.get(item.id) ?? 0}
-            onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
-          />
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 80).duration(300)}>
+            <PlantationCard
+              lugar={item.lugar}
+              periodo={item.periodo}
+              totalCount={totalCountMap.get(item.id) ?? 0}
+              syncedCount={syncedCountMap.get(item.id) ?? 0}
+              todayCount={todayCountMap.get(item.id) ?? 0}
+              pendingSync={pendingSyncMap.get(item.id) ?? 0}
+              estado={item.estado}
+              onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
+            />
+          </Animated.View>
         )}
       />
     </View>
@@ -146,19 +182,30 @@ export default function PlantacionesScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  gradientBg: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+    backgroundColor: colors.primaryBg,
+    opacity: 0.7,
+  },
   header: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primaryBg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   headerTitleContainer: {
     flex: 1,
   },
   headerTitle: {
-    color: colors.white,
+    color: colors.primary,
     fontSize: fontSize.title,
     fontWeight: 'bold',
   },
@@ -169,8 +216,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.infoBg,
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderTopWidth: 1,
+    borderTopColor: colors.info + '30',
   },
   freshnessText: {
     flex: 1,
@@ -181,7 +228,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.info,
     paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     marginLeft: spacing.md,
   },
   freshnessButtonText: {
@@ -194,7 +241,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
+    gap: spacing.md,
   },
-  emptyText: { fontSize: fontSize.xl, color: colors.textSubtle },
+  emptyTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: 'bold',
+    color: colors.textMuted,
+  },
+  emptySubtext: {
+    fontSize: fontSize.base,
+    color: colors.textLight,
+  },
   listContent: { padding: spacing.xxl, gap: spacing.xl },
 });
