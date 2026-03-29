@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Field Registration** - Species button grid, one-tap tree registration, SubGroup lifecycle, N/N workflow, reverse order (completed 2026-03-17)
 - [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
 - [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
-- [ ] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers
+- [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
 
 ## Phase Details
 
@@ -116,4 +116,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Field Registration | 4/4 | Complete    | 2026-03-17 |
 | 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
 | 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
-| 5. UX Improvements | 1/2 | In Progress|  |
+| 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
