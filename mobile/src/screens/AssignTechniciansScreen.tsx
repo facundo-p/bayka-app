@@ -20,9 +20,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import NetInfo from '@react-native-community/netinfo';
 
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { showInfoDialog, showConfirmDialog } from '../utils/alertHelpers';
@@ -115,7 +116,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
 
       setItems(merged);
     } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar los tecnicos.', 'alert-circle-outline', colors.danger);
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar los técnicos.', 'alert-circle-outline', colors.danger);
     } finally {
       setLoading(false);
     }
@@ -158,7 +159,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
       await assignTechnicians(plantacionId, assignedIds);
       onClose ? onClose() : router.back();
     } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron asignar los tecnicos.', 'alert-circle-outline', colors.danger);
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron asignar los técnicos.', 'alert-circle-outline', colors.danger);
     } finally {
       setSaving(false);
     }
@@ -168,7 +169,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Cargando tecnicos...</Text>
+        <Text style={styles.loadingText}>Cargando técnicos...</Text>
       </View>
     );
   }
@@ -177,8 +178,8 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="wifi-outline" size={48} color={colors.textMuted} />
-        <Text style={styles.errorTitle}>Sin conexion</Text>
-        <Text style={styles.errorText}>Se necesita conexion a internet para gestionar tecnicos.</Text>
+        <Text style={styles.errorTitle}>Sin conexión</Text>
+        <Text style={styles.errorText}>Se necesita conexión a internet para gestionar técnicos.</Text>
         <Pressable
           style={({ pressed }) => [styles.retryButton, pressed && { opacity: 0.8 }]}
           onPress={loadData}
@@ -207,10 +208,11 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={40} color={colors.textMuted} />
-            <Text style={styles.emptyText}>No hay tecnicos en la organizacion</Text>
+            <Text style={styles.emptyText}>No hay técnicos en la organización</Text>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
           <View style={[styles.row, item.assigned && styles.rowAssigned]}>
             <Switch
               value={item.assigned}
@@ -228,6 +230,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
               <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
             )}
           </View>
+          </Animated.View>
         )}
       />
 
@@ -284,7 +287,7 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.text,
   },
   errorText: {
@@ -306,7 +309,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: colors.white,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   listContent: {
     padding: spacing.xxl,
@@ -316,7 +319,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginBottom: spacing.xxl,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   emptyContainer: {
     alignItems: 'center',
@@ -350,7 +353,7 @@ const styles = StyleSheet.create({
   },
   rowName: {
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.text,
   },
   rowNameMuted: {
@@ -378,6 +381,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: colors.white,
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });

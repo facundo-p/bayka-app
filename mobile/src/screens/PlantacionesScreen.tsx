@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { useLiveData, notifyDataChanged } from '../database/liveQuery';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
@@ -52,8 +52,8 @@ export default function PlantacionesScreen() {
   useFocusEffect(
     useCallback(() => {
       if (!isOnline || !plantationList?.length) return;
-      checkFreshness(plantationList.map((p) => p.id)).then((isFresh) => {
-        if (isFresh) setShowFreshnessBanner(true);
+      checkFreshness(plantationList.map((p) => p.id)).then((hasNewData) => {
+        setShowFreshnessBanner(hasNewData);
       });
     }, [isOnline, plantationList])
   );
@@ -92,7 +92,7 @@ export default function PlantacionesScreen() {
   if (totalCounts) for (const row of totalCounts) totalCountMap.set(row.plantacionId, row.treeCount);
 
   // Count by estado for filter cards
-  const estadoCounts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  const estadoCounts = { activa: 0, finalizada: 0 };
   plantationList?.forEach((p: any) => {
     if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
       estadoCounts[p.estado as keyof typeof estadoCounts]++;
@@ -106,7 +106,6 @@ export default function PlantacionesScreen() {
   const filterConfigs = [
     { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
     { key: 'finalizada', label: 'Finalizadas', count: estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
-    { key: 'sincronizada', label: 'Sincronizadas', count: estadoCounts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
   ];
 
   if (!plantationList || plantationList.length === 0) {
@@ -149,13 +148,13 @@ export default function PlantacionesScreen() {
         </View>
       )}
 
-      <View style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+      <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
         <FilterCards
           filters={filterConfigs}
           activeFilter={activeFilter}
           onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
         />
-      </View>
+      </Animated.View>
 
       <FlatList
         data={filteredList}
@@ -187,12 +186,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 200,
-    backgroundColor: colors.primaryBg,
-    opacity: 0.7,
+    height: 250,
+    backgroundColor: colors.stateActiva,
+    opacity: 0.12,
   },
   header: {
-    backgroundColor: colors.primaryBg,
+    backgroundColor: 'transparent',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: colors.primary,
     fontSize: fontSize.title,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
   },
   freshnessBanner: {
     flexDirection: 'row',
@@ -234,7 +233,7 @@ const styles = StyleSheet.create({
   freshnessButtonText: {
     color: colors.white,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   emptyContainer: {
     flex: 1,
@@ -245,7 +244,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.textMuted,
   },
   emptySubtext: {

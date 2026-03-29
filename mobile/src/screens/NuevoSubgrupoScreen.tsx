@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { createSubGroup, getLastSubGroupName } from '../repositories/SubGroupRepository';
-import { colors, fontSize, spacing } from '../theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { colors, fontSize, spacing, fonts } from '../theme';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import SubgrupoForm from '../components/SubgrupoForm';
 
@@ -31,6 +32,7 @@ export default function NuevoSubgrupoScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <Animated.View entering={FadeInDown.duration(400)}>
         <Text style={styles.sectionTitle}>Datos del subgrupo</Text>
 
         <SubgrupoForm
@@ -54,6 +56,7 @@ export default function NuevoSubgrupoScreen() {
             return result;
           }}
         />
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -69,7 +72,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSize.title,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.xxxl,
   },

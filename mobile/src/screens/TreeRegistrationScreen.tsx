@@ -34,7 +34,8 @@ import { getSubgroupById } from '../queries/plantationDetailQueries';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import CustomHeader from '../components/CustomHeader';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import type { SubGroupEstado } from '../repositories/SubGroupRepository';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
@@ -198,19 +199,19 @@ export default function TreeRegistrationScreen() {
     if (isReadOnly) return;
 
     if (totalCount === 0) {
-      showInfoDialog(confirm.show, 'No se puede finalizar', 'No hay arboles cargados.', 'information-circle-outline', colors.secondary);
+      showInfoDialog(confirm.show, 'No se puede finalizar', 'No hay árboles cargados.', 'information-circle-outline', colors.secondary);
       return;
     }
 
     const nnWarning = unresolvedNN > 0
-      ? ` Hay ${unresolvedNN} arbol${unresolvedNN > 1 ? 'es' : ''} N/N sin resolver.
+      ? ` Hay ${unresolvedNN} árbol${unresolvedNN > 1 ? 'es' : ''} N/N sin resolver.
       (deberan resolverse antes de sincronizar).`
       : '';
 
     showConfirmDialog(
       confirm.show,
       'Finalizar subgrupo',
-      `Confirmar finalizacion? 
+      `Confirmar finalización? 
       ${nnWarning}`,
       'Finalizar',
       async () => {
@@ -230,15 +231,15 @@ export default function TreeRegistrationScreen() {
     if (isReadOnly) return;
 
     const warningMessage = totalCount > 0
-      ? `Este subgrupo tiene ${totalCount} arbol${totalCount > 1 ? 'es' : ''} cargado${totalCount > 1 ? 's' : ''}. Esta accion no se puede deshacer.`
-      : 'Esta accion no se puede deshacer.';
+      ? `Este subgrupo tiene ${totalCount} árbol${totalCount > 1 ? 'es' : ''} cargado${totalCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+      : 'Esta acción no se puede deshacer.';
 
     showDoubleConfirmDialog(
       confirm.show,
       'Eliminar subgrupo',
       warningMessage,
-      'Confirmar eliminacion',
-      'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
+      'Confirmar eliminación',
+      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
       async () => {
         setDeleting(true);
         try {
@@ -269,8 +270,8 @@ export default function TreeRegistrationScreen() {
     if (isReadOnly) return;
     showConfirmDialog(
       confirm.show,
-      'Eliminar arbol',
-      `Eliminar el arbol en posicion ${posicion}? Las posiciones se recalcularan automaticamente.`,
+      'Eliminar árbol',
+      `Eliminar el árbol en posición ${posicion}? Las posiciones se recalcularán automáticamente.`,
       'Eliminar',
       async () => {
         setDeletingTreeId(treeId);
@@ -316,7 +317,7 @@ export default function TreeRegistrationScreen() {
         >
           <Ionicons name="list-outline" size={16} color={totalCount > 0 ? colors.primary : colors.textLight} />
           <Text style={[styles.viewAllText, totalCount === 0 && { color: colors.textLight }]}>
-            {totalCount > 0 ? 'Ver todos los árboles' : 'Sin arboles cargados'}
+            {totalCount > 0 ? 'Ver todos los árboles' : 'Sin árboles cargados'}
           </Text>
           {totalCount > 0 && <Ionicons name="chevron-forward" size={14} color={colors.primary} />}
         </Pressable>
@@ -324,7 +325,7 @@ export default function TreeRegistrationScreen() {
 
       {/* Last 3 trees — only in edit mode */}
       {!isReadOnly && (
-        <View style={styles.lastThreeSection}>
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.lastThreeSection}>
           <Text style={styles.lastThreeLabel}>Últimos ingresados</Text>
           <View style={styles.lastThreeRow}>
             {[0, 1, 2].map((slotIndex) => {
@@ -349,7 +350,7 @@ export default function TreeRegistrationScreen() {
               );
             })}
           </View>
-        </View>
+        </Animated.View>
       )}
 
       {/* Species button grid — show grid by default, tree list only when confirmed read-only */}
@@ -359,14 +360,16 @@ export default function TreeRegistrationScreen() {
             {speciesLoading ? (
               <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
             ) : (
-              <SpeciesButtonGrid
-                species={species}
-                onSelectSpecies={({ especieId, especieCodigo }) =>
-                  handleSpeciesPress(especieId, especieCodigo)
-                }
-                onNNPress={handleNNPress}
-                disabled={isReadOnly}
-              />
+              <Animated.View entering={FadeInDown.delay(100).duration(300)}>
+                <SpeciesButtonGrid
+                  species={species}
+                  onSelectSpecies={({ especieId, especieCodigo }) =>
+                    handleSpeciesPress(especieId, especieCodigo)
+                  }
+                  onNNPress={handleNNPress}
+                  disabled={isReadOnly}
+                />
+              </Animated.View>
             )}
           </ScrollView>
 
@@ -390,6 +393,8 @@ export default function TreeRegistrationScreen() {
             >
               <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
             </Pressable>
+
+            <View style={{ flex: 1 }} />
 
             <Pressable
               style={[styles.finalizarButton, finalizing && styles.buttonDisabled]}
@@ -510,7 +515,7 @@ export default function TreeRegistrationScreen() {
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Arboles ({totalCount})</Text>
+            <Text style={styles.modalTitle}>Árboles ({totalCount})</Text>
             <Pressable onPress={() => setShowTreeList(false)} hitSlop={12}>
               <Ionicons name="close" size={24} color={colors.textMedium} />
             </Pressable>
@@ -564,7 +569,7 @@ export default function TreeRegistrationScreen() {
               );
             }}
             ListEmptyComponent={
-              <Text style={styles.modalEmptyText}>No hay arboles</Text>
+              <Text style={styles.modalEmptyText}>No hay árboles</Text>
             }
           />
         </View>
@@ -582,7 +587,7 @@ export default function TreeRegistrationScreen() {
               <Pressable style={styles.configOption} onPress={handleReverseOrder}>
                 <Ionicons name="swap-vertical-outline" size={22} color={colors.secondary} />
                 <View style={styles.configOptionInfo}>
-                  <Text style={styles.configOptionLabel}>Invertir orden de arboles</Text>
+                  <Text style={styles.configOptionLabel}>Invertir orden de árboles</Text>
                   <Text style={styles.configOptionDesc}>Invierte las posiciones y recalcula codigos</Text>
                 </View>
               </Pressable>
@@ -648,7 +653,7 @@ const styles = StyleSheet.create({
   headerCount: {
     color: colors.primaryCountFaded,
     fontSize: fontSize.title,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
   headerNNBadge: {
     backgroundColor: colors.secondaryBg,
@@ -659,7 +664,7 @@ const styles = StyleSheet.create({
   headerNNText: {
     color: colors.secondary,
     fontSize: fontSize.xs,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
   viewAllRow: {
     flexDirection: 'row',
@@ -672,7 +677,7 @@ const styles = StyleSheet.create({
   viewAllText: {
     flex: 1,
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.primary,
   },
   lastThreeSection: {
@@ -701,7 +706,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.recentBg,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.round,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
     minHeight: 44,
@@ -723,11 +728,11 @@ const styles = StyleSheet.create({
   },
   treeChipText: {
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.recentText,
   },
   treeChipTextLast: {
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     fontSize: fontSize.xl,
   },
   undoChipButton: {
@@ -770,15 +775,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   finalizarButton: {
-    flex: 2,
     paddingVertical: 14,
+    paddingHorizontal: spacing['4xl'],
     borderRadius: borderRadius.lg,
     backgroundColor: colors.primary,
     alignItems: 'center',
   },
   finalizarButtonText: {
     color: colors.white,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     fontSize: fontSize.lg,
   },
   buttonDisabled: {
@@ -803,7 +808,7 @@ const styles = StyleSheet.create({
   },
   reactivateText: {
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     fontSize: fontSize.base,
   },
   inlineListContent: {
@@ -833,7 +838,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
   },
   modalListContent: {
@@ -857,14 +862,14 @@ const styles = StyleSheet.create({
   },
   treeRowPos: {
     fontSize: fontSize.base,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.textMedium,
     width: 26,
     textAlign: 'center',
   },
   treeRowName: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.primary,
     flex: 1,
   },
@@ -922,13 +927,13 @@ const styles = StyleSheet.create({
   photoActionText: {
     color: colors.white,
     fontSize: fontSize.xs,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   // ─── Config modal ────────────────────────────────────────────────────────
   configOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
   },
   configBackdrop: {
     flex: 1,
@@ -942,7 +947,7 @@ const styles = StyleSheet.create({
   },
   configTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -961,7 +966,7 @@ const styles = StyleSheet.create({
   },
   configOptionLabel: {
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.text,
   },
   configOptionDesc: {
@@ -976,7 +981,7 @@ const styles = StyleSheet.create({
   configCancelText: {
     fontSize: fontSize.base,
     color: colors.textMuted,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   // ─── Reorder modal ──────────────────────────────────────────────────────
   reorderContainer: {
@@ -991,7 +996,7 @@ const styles = StyleSheet.create({
   },
   reorderTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
   },
   reorderHint: {
@@ -1020,7 +1025,7 @@ const styles = StyleSheet.create({
   reorderCancelText: {
     color: colors.textMuted,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   reorderSaveBtn: {
     flex: 2,
@@ -1035,6 +1040,6 @@ const styles = StyleSheet.create({
   reorderSaveText: {
     color: colors.white,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });

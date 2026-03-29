@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
@@ -47,7 +47,7 @@ import AssignTechniciansScreen from './AssignTechniciansScreen';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-type EstadoFilter = 'activa' | 'finalizada' | 'sincronizada' | null;
+type EstadoFilter = 'activa' | 'finalizada' | null;
 
 type ExpandedMeta = {
   canFinalize: boolean;
@@ -217,7 +217,7 @@ export default function AdminScreen() {
 
   // ─── Derived data ─────────────────────────────────────────────────────────
 
-  const counts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  const counts = { activa: 0, finalizada: 0 };
   (plantationList as Plantation[] | null)?.forEach(p => {
     if (counts[p.estado as keyof typeof counts] !== undefined) {
       counts[p.estado as keyof typeof counts]++;
@@ -509,15 +509,16 @@ export default function AdminScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         {/* Summary filter cards */}
+        <Animated.View entering={FadeInDown.duration(300)}>
         <FilterCards
           filters={[
             { key: 'activa', label: 'Activas', count: counts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
             { key: 'finalizada', label: 'Finalizadas', count: counts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
-            { key: 'sincronizada', label: 'Sincronizadas', count: counts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
           ]}
           activeFilter={activeFilter}
           onToggleFilter={(key) => handleToggleFilter(key as EstadoFilter)}
         />
+        </Animated.View>
 
         {/* Accordion list */}
         {filteredList.length === 0 ? (
@@ -696,9 +697,9 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: 200,
-    backgroundColor: '#FEF3C7',
-    opacity: 0.5,
+    height: 250,
+    backgroundColor: colors.stateFinalizada,
+    opacity: 0.10,
   },
 
   // ─── Header ─────────────────────────────────────────────────────────────
@@ -715,7 +716,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: colors.primary,
     fontSize: fontSize.heading,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
   },
   headerAddBtn: {
     width: 40,
@@ -744,7 +745,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.textMuted,
   },
   emptySubtext: {
@@ -783,7 +784,7 @@ const styles = StyleSheet.create({
   },
   accordionTitle: {
     fontSize: fontSize.xl,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.text,
   },
   estadoDot: {
@@ -836,7 +837,7 @@ const styles = StyleSheet.create({
   },
   actionItemText: {
     fontSize: fontSize.base,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
     color: colors.textSecondary,
   },
 
@@ -853,7 +854,7 @@ const styles = StyleSheet.create({
   lockedText: {
     color: colors.stateFinalizada,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 
   // ─── Seed dialog ───────────────────────────────────────────────────────
@@ -871,13 +872,13 @@ const styles = StyleSheet.create({
   },
   seedTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.sm,
   },
   seedLabel: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
@@ -913,7 +914,7 @@ const styles = StyleSheet.create({
   seedBtnCancelText: {
     color: colors.textMuted,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   seedBtnPrimary: {
     backgroundColor: colors.primary,
@@ -921,7 +922,7 @@ const styles = StyleSheet.create({
   seedBtnPrimaryText: {
     color: colors.white,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 
   // ─── Export overlay ────────────────────────────────────────────────────
@@ -935,6 +936,6 @@ const styles = StyleSheet.create({
   exportOverlayText: {
     color: colors.white,
     fontSize: fontSize.xl,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });
