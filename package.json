@@ -7,8 +7,10 @@
     "seed": "npx tsx supabase/seed.ts"
   },
   "devDependencies": {
+    "@types/react": "^19.2.14",
+    "dotenv": "^16.4.7",
     "tsx": "^4.19.2",
-    "dotenv": "^16.4.7"
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.99.0"

@@ -21,7 +21,7 @@ export default function AdminLayout() {
       <Tabs.Screen
         name="admin"
         options={{
-          title: 'Admin',
+          title: 'Gestión',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings-outline" size={size} color={color} />
           ),

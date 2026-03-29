@@ -1,6 +1,6 @@
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export type ConfirmModalButton = {
   label: string;
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlay,
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -109,13 +109,14 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   message: {
     fontSize: fontSize.base,
+    fontFamily: fonts.regular,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 20,
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.white,
   },
   buttonTextCancel: {

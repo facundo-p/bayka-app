@@ -10,13 +10,48 @@ import { useEffect } from 'react';
 import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
 import { seedPlantationIfNeeded } from '../src/database/seeds/seedPlantation';
 import { seedPlantationSpeciesIfNeeded } from '../src/database/seeds/seedPlantationSpecies';
-import { colors, fontSize, spacing } from '../src/theme';
+import { colors, fontSize, spacing, fonts } from '../src/theme';
+import {
+  useFonts,
+  Poppins_300Light,
+  Poppins_400Regular,
+  Poppins_500Medium,
+  Poppins_600SemiBold,
+  Poppins_700Bold,
+} from '@expo-google-fonts/poppins';
+import {
+  Comfortaa_400Regular,
+  Comfortaa_600SemiBold,
+  Comfortaa_700Bold,
+} from '@expo-google-fonts/comfortaa';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep splash visible while fonts load
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const { success, error } = useMigrations(db, migrations);
   const { session, role, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
+
+  const [fontsLoaded] = useFonts({
+    Poppins_300Light,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
+    Comfortaa_400Regular,
+    Comfortaa_600SemiBold,
+    Comfortaa_700Bold,
+  });
+
+  // Hide splash when fonts + migrations are ready
+  useEffect(() => {
+    if (fontsLoaded && success) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, success]);
 
   // Run species seed after migrations succeed
   useEffect(() => {
@@ -30,7 +65,7 @@ export default function RootLayout() {
 
   // Redirect based on auth state — after layout is mounted
   useEffect(() => {
-    if (!success || loading) return;
+    if (!success || loading || !fontsLoaded) return;
 
     const inAuthGroup = segments[0] === '(auth)';
     const inAdminGroup = segments[0] === '(admin)';
@@ -50,33 +85,29 @@ export default function RootLayout() {
         router.replace('/(tecnico)/plantaciones');
       }
     }
-  }, [success, loading, session, role, segments]);
+  }, [success, loading, session, role, segments, fontsLoaded]);
 
   // Migration error — unrecoverable
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorTitle}>Error de base de datos</Text>
-        <Text style={styles.errorBody}>Contactar soporte</Text>
-        <Text style={styles.errorDetail}>{error.message}</Text>
+        <Text style={[styles.errorTitle, { fontFamily: fonts.bold }]}>Error de base de datos</Text>
+        <Text style={[styles.errorBody, { fontFamily: fonts.regular }]}>Contactar soporte</Text>
+        <Text style={[styles.errorDetail, { fontFamily: fonts.light }]}>{error.message}</Text>
       </View>
     );
   }
 
-  // Migrations running
-  if (!success) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.loadingText}>Inicializando...</Text>
-      </View>
-    );
+  // Migrations or fonts loading
+  if (!success || !fontsLoaded) {
+    return null; // Splash screen is visible
   }
 
   // Auth loading
   if (loading) {
     return (
       <View style={styles.center}>
-        <Text style={styles.loadingText}>Iniciando sesion...</Text>
+        <Text style={[styles.loadingText, { fontFamily: fonts.regular }]}>Iniciando sesión...</Text>
       </View>
     );
   }
@@ -99,7 +130,6 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
     color: colors.dangerText,
     marginBottom: spacing.md,
   },

@@ -6,6 +6,7 @@ export const colors = {
   primaryDark: '#166534',
   primaryLight: '#22C55E',
   primaryMedium: '#16A34A',
+  headerBg: '#2D8A4E',
   primaryBg: '#F0FDF4',
   primaryBgLight: '#F0FDF4',
   primaryBgMuted: '#86EFAC',
@@ -131,9 +132,23 @@ export const borderRadius = {
   full: 9999,
 } as const;
 
+// ─── Brand fonts ──────────────────────────────────────────────────────────────
+export const fonts = {
+  // Poppins — body, labels, buttons
+  light: 'Poppins_300Light',
+  regular: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
+  semiBold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
+  // Comfortaa — headings, titles
+  heading: 'Comfortaa_700Bold',
+  headingMedium: 'Comfortaa_600SemiBold',
+  headingRegular: 'Comfortaa_400Regular',
+} as const;
+
 // Common header style for Stack navigators
 export const headerStyle = {
-  headerStyle: { backgroundColor: '#1E6B3E' },
+  headerStyle: { backgroundColor: '#2D8A4E' },
   headerTintColor: colors.white,
-  headerTitleStyle: { fontWeight: 'bold' as const },
+  headerTitleStyle: { fontFamily: fonts.heading },
 } as const;

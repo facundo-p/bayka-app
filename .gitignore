@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Skills
+.claude/skills/ui-ux-pro-max
+
 # Build output
 dist/
 build/

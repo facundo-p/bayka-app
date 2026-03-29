@@ -5,7 +5,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import DraggableFlatList, { ScaleDecorator, RenderItemParams } from 'react-native-draggable-flatlist';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export type ReorderItem = {
   especieId: string;
@@ -94,17 +94,18 @@ const styles = StyleSheet.create({
   },
   dragRowCode: {
     fontSize: fontSize.sm,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.primary,
   },
   dragRowName: {
     flex: 1,
     fontSize: fontSize.base,
+    fontFamily: fonts.regular,
     color: colors.text,
   },
   dragRowOrder: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });

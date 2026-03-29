@@ -5,7 +5,7 @@
  */
 import { View, Text, Pressable, StyleSheet, LayoutAnimation } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 type FilterConfig = {
   key: string;
@@ -45,7 +45,7 @@ export default function FilterCards({ filters, activeFilter, onToggleFilter }: P
           >
             <Ionicons
               name={filter.icon as keyof typeof Ionicons.glyphMap}
-              size={20}
+              size={14}
               color={filter.color}
             />
             <Text style={[styles.count, { color: filter.color }]}>
@@ -68,18 +68,20 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.lg,
     gap: spacing.xs,
   },
   count: {
-    fontSize: fontSize.heading,
-    fontWeight: 'bold',
+    fontSize: fontSize.xl,
+    fontFamily: fonts.bold,
   },
   label: {
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontFamily: fonts.medium,
   },
 });

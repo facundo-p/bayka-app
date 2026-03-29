@@ -1,6 +1,6 @@
 import { Pressable, Text, StyleSheet, Vibration } from 'react-native';
 import { useState } from 'react';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
   codigo: string;
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   },
   code: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.primaryDark,
   },
   codeNN: {
@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: fontSize.xs,
+    fontFamily: fonts.regular,
     color: colors.primaryMedium,
     textAlign: 'center',
     marginTop: 2,

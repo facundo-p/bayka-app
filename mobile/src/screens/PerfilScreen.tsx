@@ -3,7 +3,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useProfileData } from '../hooks/useProfileData';
 import { useNetStatus } from '../hooks/useNetStatus';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, borderRadius, spacing } from '../theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { colors, fontSize, borderRadius, spacing, fonts } from '../theme';
 
 interface Props {
   roleLabel: string;
@@ -16,11 +17,13 @@ export default function PerfilScreen({ roleLabel }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.card}>
+      <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
         {/* Avatar placeholder: circle with initials */}
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>
-            {profile?.nombre ? profile.nombre.charAt(0).toUpperCase() : '?'}
+            {profile?.nombre
+              ? profile.nombre.split(' ').map(w => w.charAt(0).toUpperCase()).slice(0, 2).join('')
+              : '?'}
           </Text>
         </View>
 
@@ -29,14 +32,15 @@ export default function PerfilScreen({ roleLabel }: Props) {
 
         <View style={styles.divider} />
 
-        <ProfileRow label="Rol" value={roleLabel} />
+        <ProfileRow label="Rol" value={roleLabel} icon="pricetag-outline" />
         <ProfileRow
-          label="Organizacion"
+          label="Organización"
           value={profile?.organizacionNombre ?? (loading ? 'Cargando...' : '-')}
+          icon="business-outline"
         />
 
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Conexion</Text>
+          <Text style={styles.statusLabel}>Conexión</Text>
           <View style={styles.statusValue}>
             <Ionicons
               name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
@@ -44,28 +48,31 @@ export default function PerfilScreen({ roleLabel }: Props) {
               color={isOnline ? colors.online : colors.offline}
             />
             <Text style={[styles.statusText, { color: isOnline ? colors.online : colors.offline }]}>
-              {isOnline ? 'En linea' : 'Sin conexion'}
+              {isOnline ? 'En línea' : 'Sin conexión'}
             </Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
 
-      <TouchableOpacity
-        style={styles.logoutButton}
-        onPress={signOut}
-        activeOpacity={0.8}
-      >
-        <Text style={styles.logoutText}>Cerrar sesion</Text>
-      </TouchableOpacity>
+      <Animated.View entering={FadeInDown.delay(200).duration(400)}>
+        <TouchableOpacity onPress={signOut} style={styles.logoutLink}>
+          <Text style={styles.logoutLinkText}>Cerrar sesión</Text>
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 }
 
-function ProfileRow({ label, value }: { label: string; value: string }) {
+function ProfileRow({ label, value, icon }: { label: string; value: string; icon?: string }) {
   return (
     <View style={styles.profileRow}>
       <Text style={styles.profileLabel}>{label}</Text>
-      <Text style={styles.profileValue}>{value}</Text>
+      <View style={styles.profileValueRow}>
+        <Text style={styles.profileValue}>{value}</Text>
+        {icon && (
+          <Ionicons name={icon as any} size={16} color={colors.textMuted} />
+        )}
+      </View>
     </View>
   );
 }
@@ -103,16 +110,17 @@ const styles = StyleSheet.create({
   avatarText: {
     color: colors.white,
     fontSize: fontSize.heading,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
   name: {
     fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.textDark,
+    fontFamily: fonts.heading,
+    color: colors.textPrimary,
     marginBottom: spacing.xs,
   },
   email: {
     fontSize: fontSize.base,
+    fontFamily: fonts.regular,
     color: colors.textMuted,
     marginBottom: spacing.xxl,
   },
@@ -130,12 +138,18 @@ const styles = StyleSheet.create({
   },
   profileLabel: {
     fontSize: fontSize.base,
-    color: colors.textSubtle,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
   },
   profileValue: {
     fontSize: fontSize.base,
-    color: colors.textDark,
-    fontWeight: '500',
+    color: colors.textPrimary,
+    fontFamily: fonts.medium,
+  },
+  profileValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   statusRow: {
     flexDirection: 'row',
@@ -145,7 +159,7 @@ const styles = StyleSheet.create({
   },
   statusLabel: {
     fontSize: fontSize.base,
-    color: colors.textSubtle,
+    color: colors.textSecondary,
   },
   statusValue: {
     flexDirection: 'row',
@@ -154,18 +168,15 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: fontSize.base,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
-  logoutButton: {
-    backgroundColor: colors.dangerText,
-    paddingVertical: 14,
-    paddingHorizontal: spacing['5xl'],
-    borderRadius: borderRadius.lg,
+  logoutLink: {
     marginTop: spacing['5xl'],
+    padding: spacing.xl,
   },
-  logoutText: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontWeight: '600',
+  logoutLinkText: {
+    color: colors.danger,
+    fontSize: fontSize.base,
+    fontFamily: fonts.medium,
   },
 });

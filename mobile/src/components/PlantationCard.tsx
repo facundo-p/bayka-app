@@ -4,7 +4,7 @@
  */
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from './TreeIcon';
 
 type Props = {
@@ -33,7 +33,7 @@ export default function PlantationCard({
       ? colors.stateFinalizada
       : estado === 'sincronizada'
         ? colors.stateSincronizada
-        : colors.primary;
+        : colors.stateActiva;
   return (
     <Pressable
       style={({ pressed }) => [
@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   cardTitleArea: { flex: 1, marginRight: spacing.md },
-  cardTitle: { fontSize: fontSize.xxl, fontWeight: 'bold', color: colors.text, marginBottom: 2 },
-  cardSubtitle: { fontSize: fontSize.base, color: colors.textFaint },
+  cardTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.text, marginBottom: 2 },
+  cardSubtitle: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textFaint },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -115,8 +115,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  statValue: { fontSize: fontSize.base, fontWeight: 'bold' },
-  statLabel: { fontSize: fontSize.xs, color: colors.textMuted },
+  statValue: { fontSize: fontSize.base, fontFamily: fonts.bold },
+  statLabel: { fontSize: fontSize.xs, fontFamily: fonts.regular, color: colors.textMuted },
   pendingSyncRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -127,5 +127,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  pendingSyncText: { fontSize: fontSize.sm, color: colors.secondary, fontWeight: '600' },
+  pendingSyncText: { fontSize: fontSize.sm, color: colors.secondary, fontFamily: fonts.semiBold },
 });
