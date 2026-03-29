@@ -46,6 +46,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import SyncProgressModal from '../components/SyncProgressModal';
+import FilterCards from '../components/FilterCards';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
@@ -55,6 +56,7 @@ export default function PlantationDetailScreen() {
   const userId = useCurrentUserId();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
+  const [subgroupFilter, setSubgroupFilter] = useState<string | null>(null);
   const confirm = useConfirm();
 
   // Pending sync count for this plantation (finalizada SubGroups)
@@ -125,6 +127,24 @@ export default function PlantationDetailScreen() {
   const totalTrees = totalTreesData?.[0]?.total ?? 0;
   const todayTrees = todayTreesData?.[0]?.total ?? 0;
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
+
+  // Subgroup estado counts for filter cards
+  const subgroupEstadoCounts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  (subgroupRows ?? []).forEach((sg: any) => {
+    if (subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts] !== undefined) {
+      subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts]++;
+    }
+  });
+
+  const filteredSubgroups = ((subgroupRows ?? []) as SubGroup[]).filter(
+    sg => !subgroupFilter || sg.estado === subgroupFilter
+  );
+
+  const subgroupFilterConfigs = [
+    { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: subgroupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+    { key: 'sincronizada', label: 'Sincronizadas', count: subgroupEstadoCounts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
+  ];
 
   // Set header title
   useEffect(() => {
@@ -422,10 +442,18 @@ export default function PlantationDetailScreen() {
             )}
           </View>
         )}
+
+        <View style={{ paddingTop: spacing.md }}>
+          <FilterCards
+            filters={subgroupFilterConfigs}
+            activeFilter={subgroupFilter}
+            onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
+          />
+        </View>
       </View>
 
       <FlatList
-        data={(subgroupRows ?? []) as SubGroup[]}
+        data={filteredSubgroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
