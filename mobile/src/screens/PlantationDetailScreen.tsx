@@ -35,6 +35,7 @@ import SubGroupStateChip from '../components/SubGroupStateChip';
 import SubgrupoForm from '../components/SubgrupoForm';
 import { useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
@@ -148,15 +149,15 @@ export default function PlantationDetailScreen() {
   function handleDeleteSubGroup(subgroup: SubGroup) {
     const treeCount = treeCountMap.get(subgroup.id) ?? 0;
     const warningMessage = treeCount > 0
-      ? `Este subgrupo tiene ${treeCount} arbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta accion no se puede deshacer.`
-      : 'Esta accion no se puede deshacer.';
+      ? `Este subgrupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+      : 'Esta acción no se puede deshacer.';
 
     showDoubleConfirmDialog(
       confirm.show,
       'Eliminar subgrupo',
       warningMessage,
-      'Confirmar eliminacion',
-      'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
+      'Confirmar eliminación',
+      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
       async () => {
         setDeletingId(subgroup.id);
         try {
@@ -187,7 +188,7 @@ export default function PlantationDetailScreen() {
   function handleSeedConfirm() {
     const seed = parseInt(seedValue, 10);
     if (isNaN(seed) || seed < 1) {
-      showInfoDialog(confirm.show, 'Semilla invalida', 'Ingresa un numero entero mayor a 0.', 'alert-circle-outline', colors.secondary);
+      showInfoDialog(confirm.show, 'Semilla invalida', 'Ingresa un número entero mayor a 0.', 'alert-circle-outline', colors.secondary);
       return;
     }
     setSeedModalVisible(false);
@@ -196,7 +197,7 @@ export default function PlantationDetailScreen() {
       icon: 'key-outline',
       iconColor: colors.primary,
       title: 'Generar IDs',
-      message: 'Se van a generar IDs para todos los arboles de esta plantacion. Esta accion no se puede deshacer.',
+      message: 'Se van a generar IDs para todos los árboles de esta plantación. Esta acción no se puede deshacer.',
       buttons: [
         { label: 'Cancelar', style: 'cancel', onPress: () => {} },
         {
@@ -242,13 +243,14 @@ export default function PlantationDetailScreen() {
     }
   }
 
-  function renderSubGroup({ item }: { item: SubGroup }) {
+  function renderSubGroup({ item, index }: { item: SubGroup; index: number }) {
     const nnCount = nnCountMap.get(item.id) ?? 0;
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
     const showDelete = isOwner && item.estado === 'activa';
 
     return (
+      <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
       <Pressable
         style={({ pressed }) => [
           styles.card,
@@ -284,6 +286,7 @@ export default function PlantationDetailScreen() {
           )}
         </View>
       </Pressable>
+      </Animated.View>
     );
   }
 
@@ -293,70 +296,74 @@ export default function PlantationDetailScreen() {
       <View style={styles.fixedHeader}>
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalTrees}</Text>
-            <Text style={styles.statLabel}>Total arboles</Text>
+            <Text style={[styles.statValue, { color: colors.statTotal }]}>{totalTrees}</Text>
+            <Text style={styles.statLabel}>Total árboles</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.secondary }]}>{unsyncedTrees}</Text>
+            <Text style={[styles.statValue, { color: colors.statPending }]}>{unsyncedTrees}</Text>
             <Text style={styles.statLabel}>Sin sincronizar</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={styles.statValueToday}>{todayTrees}</Text>
+            <Text style={[styles.statValue, { color: colors.statToday }]}>{todayTrees}</Text>
             <Text style={styles.statLabel}>Hoy</Text>
           </View>
         </View>
 
-        {/* Pull button — always visible to download latest data */}
-        <Pressable
-          style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
-          onPress={startPull}
-        >
-          <Ionicons name="cloud-download-outline" size={18} color={colors.info} />
-          <Text style={styles.pullButtonText}>Actualizar datos</Text>
-        </Pressable>
-
-        {/* Sync CTA — visible when there are syncable SubGroups to upload */}
-        {syncableCount > 0 && (
+        {/* Pull + Sync buttons row */}
+        <View style={styles.buttonRow}>
           <Pressable
-            style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
-            onPress={() => {
-              showConfirmDialog(
-                confirm.show,
-                'Sincronizar',
-                `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexion a internet.`,
-                'Sincronizar',
-                startSync,
-                { icon: 'cloud-upload-outline', iconColor: colors.info },
-              );
-            }}
+            style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
+            onPress={startPull}
           >
-            <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
-            <Text style={styles.syncButtonText}>
-              Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
-            </Text>
+            <Ionicons name="cloud-download-outline" size={18} color={colors.statSynced} />
+            <Text style={styles.pullButtonText}>Actualizar datos</Text>
           </Pressable>
-        )}
 
-        {/* N/N sync blocked banner */}
-        {blockedByNN > 0 && (
-          <View style={styles.nnSyncBlockedRow}>
-            <Ionicons name="alert-circle-outline" size={14} color={colors.secondary} />
-            <Text style={styles.nnSyncBlockedText}>
-              {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
-            </Text>
-          </View>
-        )}
+          {syncableCount > 0 && (
+            <Pressable
+              style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+              onPress={() => {
+                showConfirmDialog(
+                  confirm.show,
+                  'Sincronizar',
+                  `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`,
+                  'Sincronizar',
+                  startSync,
+                  { icon: 'cloud-upload-outline', iconColor: colors.info },
+                );
+              }}
+            >
+              <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
+              <Text style={styles.syncButtonText}>
+                Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
+              </Text>
+            </Pressable>
+          )}
+        </View>
 
-        {totalNN > 0 && (
+        {/* Consolidated N/N banner */}
+        {(totalNN > 0 || blockedByNN > 0) && (
           <Pressable
-            style={({ pressed }) => [styles.resolveNNBanner, pressed && { opacity: 0.8 }]}
-            onPress={handleResolveAllNN}
+            style={({ pressed }) => [styles.resolveNNBanner, totalNN > 0 && pressed && { opacity: 0.8 }]}
+            onPress={totalNN > 0 ? handleResolveAllNN : undefined}
+            disabled={totalNN === 0}
           >
             <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
-            <Text style={styles.resolveNNText}>
-              Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+            <View style={styles.nnBannerContent}>
+              {totalNN > 0 && (
+                <Text style={styles.resolveNNText}>
+                  Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
+                </Text>
+              )}
+              {blockedByNN > 0 && (
+                <Text style={styles.nnSyncBlockedText}>
+                  {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
+                </Text>
+              )}
+            </View>
+            {totalNN > 0 && (
+              <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+            )}
           </Pressable>
         )}
 
@@ -557,11 +564,8 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     marginBottom: spacing.sm,
     gap: spacing.xxl,
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   statItem: {
     alignItems: 'center',
@@ -570,47 +574,41 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: fontSize.title,
     fontWeight: 'bold',
-    color: colors.primary,
-  },
-  statValueToday: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.info,
   },
   statLabel: {
     fontSize: fontSize.sm,
     color: colors.textMuted,
     marginTop: 2,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
   pullButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.infoBg,
+    backgroundColor: colors.statSynced + '15',
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.sm,
     gap: spacing.md,
   },
   pullButtonText: {
-    color: colors.info,
+    color: colors.statSynced,
     fontSize: fontSize.base,
     fontWeight: '600',
   },
   syncButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.info,
+    backgroundColor: colors.statSynced,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
-    marginBottom: spacing.sm,
     gap: spacing.md,
-    elevation: 2,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   syncButtonText: {
     color: colors.white,
@@ -629,22 +627,14 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryBorder,
   },
   resolveNNText: {
-    flex: 1,
     fontSize: fontSize.base,
     fontWeight: '600',
     color: colors.secondary,
   },
-  nnSyncBlockedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.secondaryBg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
+  nnBannerContent: {
+    flex: 1,
   },
   nnSyncBlockedText: {
-    flex: 1,
     fontSize: fontSize.sm,
     color: colors.secondary,
     fontWeight: '500',
@@ -652,23 +642,16 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardOtherUser: {
     backgroundColor: colors.otherUserBg,
-    borderLeftColor: colors.otherUserBorder,
     opacity: 0.55,
   },
   cardReadOnly: {
-    borderLeftColor: colors.borderMuted,
     opacity: 0.75,
   },
   cardPressed: {
@@ -680,7 +663,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   cardName: {
-    fontSize: fontSize.base,
+    fontSize: fontSize.xl,
     fontWeight: 'bold',
     color: colors.text,
     flex: 1,
@@ -695,7 +678,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   treeCountText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
     color: colors.primary,
     fontWeight: '600',
   },
@@ -759,7 +742,7 @@ const styles = StyleSheet.create({
   editModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
   },
   editModalDismiss: {
     flex: 1,
@@ -830,7 +813,7 @@ const styles = StyleSheet.create({
   // ─── Seed dialog ─────────────────────────────────────────────────────────────
   seedOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.xxl,
