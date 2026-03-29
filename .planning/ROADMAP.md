@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Field Registration** - Species button grid, one-tap tree registration, SubGroup lifecycle, N/N workflow, reverse order (completed 2026-03-17)
 - [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
 - [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
+- [ ] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers
 
 ## Phase Details
 
@@ -90,20 +91,24 @@ Plans:
 - [ ] 04-03-PLAN.md — ID generation and export wiring into AdminScreen + PlantationDetailScreen, finalization lockout (checkpoint)
 
 ### Phase 5: UX Improvements
-**Goal**: Quality-of-life improvements for field use — automatic data freshness checks, enhanced offline indicators, and UX polish
+**Goal**: Connectivity awareness, data freshness checks, complete profile screen, and contextual header titles for field use
 **Depends on**: Phase 4
-**Requirements**: TBD
-**Ideas (backlog):**
-  - Automatic check for server updates when device has connectivity; notify user with banner to refresh
-  - Offline/online status indicator in header
-  - Background species catalog updates
-  - Pantalla de perfil completa: nombre, email, rol, organizacion (datos de profiles + auth)
-  - Pantalla de plantaciones: titulo contextual ("Mis plantaciones" para tecnico, nombre de org para admin, o algo mas adecuado al contexto)
+**Requirements**: UX-CONN, UX-FRESH, UX-PROF, UX-HEAD
+**Success Criteria** (what must be TRUE):
+  1. PlantacionesScreen shows a connectivity icon (cloud) that reflects online/offline state in real time
+  2. PlantacionesScreen shows role-aware title ("Mis plantaciones" for tecnico, organization name for admin)
+  3. When server has newer data, an inline banner with "Actualizar" button appears on PlantacionesScreen
+  4. PerfilScreen shows complete profile card with nombre, email, rol, organizacion, and connectivity status
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Data/logic layer: useNetStatus hook, useProfileData hook with SecureStore cache, freshnessQueries with cooldown, theme colors
+- [ ] 05-02-PLAN.md — UI layer: PlantacionesScreen (contextual header, connectivity icon, freshness banner), PerfilScreen (profile card), visual verification checkpoint
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -111,3 +116,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Field Registration | 4/4 | Complete    | 2026-03-17 |
 | 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
 | 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
+| 5. UX Improvements | 0/2 | Planned     | - |
