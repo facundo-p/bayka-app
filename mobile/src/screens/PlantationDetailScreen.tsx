@@ -38,6 +38,7 @@ import { useSync } from '../hooks/useSync';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
+import { useNetStatus } from '../hooks/useNetStatus';
 import SyncProgressModal from '../components/SyncProgressModal';
 import FilterCards from '../components/FilterCards';
 
@@ -47,6 +48,7 @@ export default function PlantationDetailScreen() {
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
   const userId = useCurrentUserId();
+  const { isOnline } = useNetStatus();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
   const [subgroupFilter, setSubgroupFilter] = useState<string | null>(null);
@@ -218,37 +220,39 @@ export default function PlantationDetailScreen() {
       {/* Fixed header: buttons + N/N banner */}
       <View style={styles.fixedHeader}>
 
-        {/* Pull + Sync buttons row */}
-        <View style={styles.buttonRow}>
-          <Pressable
-            style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
-            onPress={startPull}
-          >
-            <Ionicons name="cloud-download-outline" size={18} color={colors.statSynced} />
-            <Text style={styles.pullButtonText}>Actualizar datos</Text>
-          </Pressable>
-
-          {syncableCount > 0 && (
+        {/* Pull + Sync buttons — only when online */}
+        {isOnline && (
+          <>
             <Pressable
-              style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
-              onPress={() => {
-                showConfirmDialog(
-                  confirm.show,
-                  'Sincronizar',
-                  `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`,
-                  'Sincronizar',
-                  startSync,
-                  { icon: 'cloud-upload-outline', iconColor: colors.info },
-                );
-              }}
+              style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
+              onPress={startPull}
             >
-              <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
-              <Text style={styles.syncButtonText}>
-                Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
-              </Text>
+              <Ionicons name="cloud-download-outline" size={18} color={colors.statSynced} />
+              <Text style={styles.pullButtonText}>Actualizar datos</Text>
             </Pressable>
-          )}
-        </View>
+
+            {syncableCount > 0 && (
+              <Pressable
+                style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+                onPress={() => {
+                  showConfirmDialog(
+                    confirm.show,
+                    'Sincronizar',
+                    `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`,
+                    'Sincronizar',
+                    startSync,
+                    { icon: 'cloud-upload-outline', iconColor: colors.info },
+                  );
+                }}
+              >
+                <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
+                <Text style={styles.syncButtonText}>
+                  Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
+                </Text>
+              </Pressable>
+            )}
+          </>
+        )}
 
         {/* Consolidated N/N banner */}
         {(totalNN > 0 || blockedByNN > 0) && (
@@ -390,19 +394,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.lg,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
   pullButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.statSynced + '15',
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
+    marginBottom: spacing.sm,
     gap: spacing.md,
   },
   pullButtonText: {
@@ -411,13 +410,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
   },
   syncButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.statSynced,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
+    marginBottom: spacing.sm,
     gap: spacing.md,
   },
   syncButtonText: {

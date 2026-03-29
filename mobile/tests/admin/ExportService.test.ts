@@ -5,14 +5,21 @@ jest.mock('../../src/queries/exportQueries', () => ({
   getExportRows: jest.fn(),
 }));
 
-jest.mock('expo-file-system', () => ({
-  writeAsStringAsync: jest.fn().mockResolvedValue(undefined),
-  cacheDirectory: 'file:///cache/',
-  EncodingType: {
-    UTF8: 'utf8',
-    Base64: 'base64',
-  },
-}));
+const mockWrite = jest.fn();
+
+jest.mock('expo-file-system', () => {
+  const mockDirectory = { uri: 'file:///cache/' };
+  const MockFile = jest.fn().mockImplementation((_dir: unknown, name: string) => ({
+    uri: `file:///cache/${name}`,
+    write: mockWrite,
+  }));
+  return {
+    File: MockFile,
+    Paths: {
+      cache: mockDirectory,
+    },
+  };
+});
 
 jest.mock('expo-sharing', () => ({
   shareAsync: jest.fn().mockResolvedValue(undefined),
@@ -29,12 +36,10 @@ jest.mock('xlsx', () => ({
 
 import { exportToCSV, exportToExcel } from '../../src/services/ExportService';
 import { getExportRows } from '../../src/queries/exportQueries';
-import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 
 const mockGetExportRows = getExportRows as jest.Mock;
-const mockWriteAsStringAsync = FileSystem.writeAsStringAsync as jest.Mock;
 const mockShareAsync = Sharing.shareAsync as jest.Mock;
 
 const sampleRows = [
@@ -61,6 +66,7 @@ const sampleRows = [
 describe('ExportService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWrite.mockReset();
     mockGetExportRows.mockResolvedValue(sampleRows);
   });
 
@@ -70,8 +76,8 @@ describe('ExportService', () => {
     it('Test 1: builds CSV with header "ID Global,ID Parcial,Zona,SubGrupo,SubID,Periodo,Especie"', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
-      expect(mockWriteAsStringAsync).toHaveBeenCalledTimes(1);
-      const writtenContent: string = mockWriteAsStringAsync.mock.calls[0][1];
+      expect(mockWrite).toHaveBeenCalledTimes(1);
+      const writtenContent: string = mockWrite.mock.calls[0][0];
       expect(writtenContent).toContain('ID Global,ID Parcial,Zona,SubGrupo,SubID,Periodo,Especie');
     });
 
@@ -88,7 +94,7 @@ describe('ExportService', () => {
     it('Test 5: quotes fields that may contain commas', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
-      const writtenContent: string = mockWriteAsStringAsync.mock.calls[0][1];
+      const writtenContent: string = mockWrite.mock.calls[0][0];
       // "Zona, Sur" contains comma — must be quoted
       expect(writtenContent).toContain('"Zona, Sur"');
       // "Eucalipto, blanco" contains comma — must be quoted
