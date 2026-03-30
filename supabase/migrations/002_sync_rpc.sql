@@ -1,0 +1,61 @@
+-- Migration 002: sync_subgroup RPC function for atomic SubGroup + trees upload
+-- SECURITY INVOKER: RLS policies on subgroups and trees enforce
+-- auth.uid() = usuario_creador and auth.uid() = usuario_registro respectively.
+-- Since sync only uploads SubGroups the current user created, this aligns correctly.
+
+CREATE OR REPLACE FUNCTION sync_subgroup(
+  p_subgroup JSONB,
+  p_trees    JSONB
+) RETURNS JSONB
+LANGUAGE plpgsql SECURITY INVOKER AS $$
+BEGIN
+  -- 1. Insert SubGroup; ON CONFLICT (id) DO NOTHING for idempotent re-upload
+  --    Server is source of truth for estado: always set to 'sincronizada'.
+  INSERT INTO subgroups (id, plantation_id, nombre, codigo, tipo, estado, usuario_creador, created_at)
+  VALUES (
+    (p_subgroup->>'id')::UUID,
+    (p_subgroup->>'plantation_id')::UUID,
+    p_subgroup->>'nombre',
+    p_subgroup->>'codigo',
+    p_subgroup->>'tipo',
+    'sincronizada',
+    (p_subgroup->>'usuario_creador')::UUID,
+    (p_subgroup->>'created_at')::TIMESTAMPTZ
+  )
+  ON CONFLICT (id) DO NOTHING;
+
+  -- 2. Check DUPLICATE_CODE: a different UUID exists with same plantation_id + codigo.
+  --    This catches the case where another device already uploaded a SubGroup with
+  --    the same code (race condition) or the local UUID differs from the server record.
+  IF EXISTS (
+    SELECT 1 FROM subgroups
+    WHERE plantation_id = (p_subgroup->>'plantation_id')::UUID
+      AND codigo = p_subgroup->>'codigo'
+      AND id <> (p_subgroup->>'id')::UUID
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'DUPLICATE_CODE');
+  END IF;
+
+  -- 3. Insert trees idempotently (ON CONFLICT (id) DO NOTHING handles retries).
+  --    Uses jsonb_array_elements — NOT unnest — because p_trees is JSONB not a Postgres array.
+  INSERT INTO trees (id, subgroup_id, species_id, posicion, sub_id, foto_url, usuario_registro, created_at)
+  SELECT
+    (t->>'id')::UUID,
+    (t->>'subgroup_id')::UUID,
+    NULLIF(t->>'species_id', '')::UUID,
+    (t->>'posicion')::INTEGER,
+    t->>'sub_id',
+    t->>'foto_url',
+    (t->>'usuario_registro')::UUID,
+    (t->>'created_at')::TIMESTAMPTZ
+  FROM jsonb_array_elements(p_trees) AS t
+  ON CONFLICT (id) DO NOTHING;
+
+  RETURN jsonb_build_object('success', true);
+EXCEPTION WHEN OTHERS THEN
+  RETURN jsonb_build_object('success', false, 'error', 'UNKNOWN');
+END;
+$$;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION sync_subgroup(JSONB, JSONB) TO authenticated;

@@ -192,22 +192,12 @@ describe('SubGroupRepository', () => {
       expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
     });
 
-    it('blocks finalization when unresolved N/N trees exist (SUBG-05)', async () => {
-      const { db } = require('../../src/database/client');
-      (db.select as jest.Mock).mockImplementationOnce(() => ({
-        from: jest.fn(() => ({
-          where: jest.fn().mockResolvedValue([{ count: 3 }]),
-        })),
-      }));
-
+    it('allows finalization even with unresolved N/N trees (SUBG-05)', async () => {
+      // Per spec §4.10: N/N blocks sync, not finalization
       const result = await finalizeSubGroup('subgroup-1');
 
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error).toBe('unresolved_nn');
-        expect(result.count).toBe(3);
-      }
-      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(result.success).toBe(true);
+      expect(mockUpdateWhere).toHaveBeenCalled();
     });
   });
 

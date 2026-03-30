@@ -14,8 +14,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation + Auth** - Offline-safe infrastructure, SQLite schema, Supabase auth with persistent sessions, role-based navigation shell (completed 2026-03-17)
 - [x] **Phase 2: Field Registration** - Species button grid, one-tap tree registration, SubGroup lifecycle, N/N workflow, reverse order (completed 2026-03-17)
-- [ ] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats
-- [ ] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export
+- [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
+- [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
+- [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
 
 ## Phase Details
 
@@ -66,12 +67,12 @@ Plans:
   4. If the server rejects a sync due to duplicate SubGroup code, the user sees a plain-language error and the SubGroup remains local
   5. After sync, the app downloads updated species and other technicians' SubGroups
   6. The number of SubGroups pending sync is always visible without navigating away
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Supabase RPC function for atomic SubGroup sync (server-side Postgres transaction, idempotency key, RLS, conflict detection)
-- [ ] 03-02: SyncService (outbox written atomically with domain write, pull-then-push order, conflict error surface, sincronizada state mark)
-- [ ] 03-03: Dashboard screens (plantation list for tecnico and admin, stats live queries, pending sync badge, sync trigger CTA)
+- [x] 03-01-PLAN.md — Supabase RPC function for atomic SubGroup sync (idempotency, DUPLICATE_CODE detection), local plantation_users table + migration, SubGroupRepository sync extensions (completed 2026-03-19)
+- [ ] 03-02-PLAN.md — SyncService (pull-then-push orchestration, per-SubGroup RPC upload, error accumulation, Spanish error messages), useSync hook, unit tests
+- [ ] 03-03-PLAN.md — Dashboard stats (role-gated plantation list, unsynced/total/today counts, pending sync badges), sync CTA + progress modal, tab icon badge (checkpoint)
 
 ### Phase 4: Admin + Export
 **Goal**: Admins can manage plantations (create, configure species, assign technicians, finalize), generate IDs, and export finalized plantation data to CSV/Excel
@@ -82,21 +83,37 @@ Plans:
   2. Admin can finalize a plantation after all its SubGroups are sincronizada; finalization locks further SubGroup creation
   3. Admin can trigger ID generation after finalization: plantation-sequential IDs and global organization IDs are assigned with a configurable initial seed
   4. Admin can export a finalized plantation to CSV and Excel files containing all required columns (ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Admin plantation management screens (create, species config with order, technician assignment, finalize action)
-- [ ] 04-02: ID generation service + admin trigger (plantation-sequential + global org IDs, seed configuration)
-- [ ] 04-03: Export service (CSV + Excel generation with required columns, export available only on finalized plantations)
+- [ ] 04-01-PLAN.md — RLS migration for admin operations, install xlsx + expo-sharing, data layer (PlantationRepository, adminQueries, exportQueries, ExportService)
+- [ ] 04-02-PLAN.md — Admin management screens (AdminScreen, ConfigureSpeciesScreen, AssignTechniciansScreen) with route wiring and finalization flow
+- [ ] 04-03-PLAN.md — ID generation and export wiring into AdminScreen + PlantationDetailScreen, finalization lockout (checkpoint)
+
+### Phase 5: UX Improvements
+**Goal**: Connectivity awareness, data freshness checks, complete profile screen, and contextual header titles for field use
+**Depends on**: Phase 4
+**Requirements**: UX-CONN, UX-FRESH, UX-PROF, UX-HEAD
+**Success Criteria** (what must be TRUE):
+  1. PlantacionesScreen shows a connectivity icon (cloud) that reflects online/offline state in real time
+  2. PlantacionesScreen shows role-aware title ("Mis plantaciones" for tecnico, organization name for admin)
+  3. When server has newer data, an inline banner with "Actualizar" button appears on PlantacionesScreen
+  4. PerfilScreen shows complete profile card with nombre, email, rol, organizacion, and connectivity status
+**Plans**: 2 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Data/logic layer: useNetStatus hook, useProfileData hook with SecureStore cache, freshnessQueries with cooldown, theme colors
+- [ ] 05-02-PLAN.md — UI layer: PlantacionesScreen (contextual header, connectivity icon, freshness banner), PerfilScreen (profile card), visual verification checkpoint
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Auth | 3/3 | Complete    | 2026-03-17 |
 | 2. Field Registration | 4/4 | Complete    | 2026-03-17 |
-| 3. Sync + Dashboard | 0/3 | Not started | - |
-| 4. Admin + Export | 0/3 | Not started | - |
+| 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
+| 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
+| 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |

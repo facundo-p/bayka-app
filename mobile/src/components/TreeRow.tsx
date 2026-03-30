@@ -1,5 +1,5 @@
 import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
   posicion: number;
@@ -48,11 +48,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.primaryLight,
   },
-  position: { fontSize: fontSize.xl, fontWeight: 'bold', color: colors.textMedium, minWidth: 28 },
-  code: { fontSize: fontSize.xl, fontWeight: '600', color: colors.primary, minWidth: 48 },
-  subId: { fontSize: fontSize.sm, color: colors.textMuted, flex: 1 },
+  position: { fontSize: fontSize.xl, fontFamily: fonts.bold, color: colors.textMedium, minWidth: 28 },
+  code: { fontSize: fontSize.xl, fontFamily: fonts.semiBold, color: colors.primary, minWidth: 48 },
+  subId: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textMuted, flex: 1 },
   photoButton: { padding: spacing.xs },
   photoIcon: { fontSize: fontSize.xl },
   undoButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.dangerBg, borderRadius: borderRadius.sm },
-  undoText: { fontSize: fontSize.sm, color: colors.danger, fontWeight: '600' },
+  undoText: { fontSize: fontSize.sm, color: colors.danger, fontFamily: fonts.semiBold },
 });

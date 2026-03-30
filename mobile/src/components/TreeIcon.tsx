@@ -1,13 +1,15 @@
-import { Text } from 'react-native';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { colors } from '../theme';
 
 interface Props {
   size?: number;
+  color?: string;
 }
 
 /**
  * Centralized tree icon for inline use (cards, headers, badges).
  * Change here to update everywhere.
  */
-export default function TreeIcon({ size = 14 }: Props) {
-  return <Text style={{ fontSize: size }}>🌳</Text>;
+export default function TreeIcon({ size = 14, color = colors.primary }: Props) {
+  return <MaterialCommunityIcons name="tree" size={size} color={color} />;
 }

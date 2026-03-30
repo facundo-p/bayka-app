@@ -1,0 +1,276 @@
+/**
+ * ConfigureSpeciesScreen — species toggle list.
+ * Allows enabling/disabling species for a plantation.
+ * Species with existing trees are locked (cannot be disabled).
+ * Reordering is done in a separate screen (ReorderSpeciesScreen).
+ *
+ * Covers requirements: PLAN-02, PLAN-04
+ */
+import { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  ActivityIndicator,
+} from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { asc } from 'drizzle-orm';
+
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { showInfoDialog } from '../utils/alertHelpers';
+import { db } from '../database/client';
+import { species as speciesTable } from '../database/schema';
+import { getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
+import { saveSpeciesConfig } from '../repositories/PlantationRepository';
+
+// ─── Checkbox ────────────────────────────────────────────────────────────────
+
+function Checkbox({ checked, indeterminate, onPress }: { checked: boolean; indeterminate?: boolean; onPress: () => void }) {
+  const iconName = indeterminate ? 'remove' : checked ? 'checkmark' : undefined;
+  const isActive = checked || indeterminate;
+  return (
+    <Pressable
+      style={[styles.checkbox, isActive && styles.checkboxActive]}
+      onPress={onPress}
+      hitSlop={6}
+    >
+      {iconName && <Ionicons name={iconName} size={14} color={colors.white} />}
+    </Pressable>
+  );
+}
+
+type SpeciesItem = {
+  especieId: string;
+  nombre: string;
+  codigo: string;
+  ordenVisual: number;
+  enabled: boolean;
+  hasExistingTrees: boolean;
+};
+
+type Props = {
+  plantacionIdProp?: string;
+  onClose?: () => void;
+};
+
+export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Props = {}) {
+  const params = useLocalSearchParams<{ plantacionId: string }>();
+  const plantacionId = plantacionIdProp ?? params.plantacionId;
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const confirm = useConfirm();
+
+  const [items, setItems] = useState<SpeciesItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadData = useCallback(async () => {
+    if (!plantacionId) return;
+    setLoading(true);
+    try {
+      const allSpecies = await db
+        .select()
+        .from(speciesTable)
+        .orderBy(asc(speciesTable.nombre));
+
+      const currentConfig = await getPlantationSpeciesConfig(plantacionId);
+      const configMap = new Map(currentConfig.map((c) => [c.especieId, c.ordenVisual]));
+
+      const treeChecks = await Promise.all(
+        allSpecies.map((sp) => hasTreesForSpecies(plantacionId, sp.id))
+      );
+
+      const merged: SpeciesItem[] = allSpecies.map((sp, i) => ({
+        especieId: sp.id,
+        nombre: sp.nombre,
+        codigo: sp.codigo,
+        ordenVisual: configMap.has(sp.id) ? configMap.get(sp.id)! : 9999,
+        enabled: configMap.has(sp.id),
+        hasExistingTrees: treeChecks[i],
+      }));
+
+      // Enabled first (by ordenVisual), then disabled (alphabetical)
+      merged.sort((a, b) => {
+        if (a.enabled && !b.enabled) return -1;
+        if (!a.enabled && b.enabled) return 1;
+        if (a.enabled && b.enabled) return a.ordenVisual - b.ordenVisual;
+        return a.nombre.localeCompare(b.nombre);
+      });
+
+      let order = 0;
+      const normalized = merged.map((item) =>
+        item.enabled ? { ...item, ordenVisual: order++ } : item
+      );
+
+      setItems(normalized);
+    } catch (e: any) {
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar las especies.', 'alert-circle-outline', colors.danger);
+    } finally {
+      setLoading(false);
+    }
+  }, [plantacionId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  function handleToggle(especieId: string, newValue: boolean) {
+    setItems((prev) => {
+      const updated = prev.map((item) =>
+        item.especieId === especieId ? { ...item, enabled: newValue } : item
+      );
+      const enabled = updated.filter((i) => i.enabled).map((item, idx) => ({ ...item, ordenVisual: idx }));
+      const disabled = updated.filter((i) => !i.enabled).sort((a, b) => a.nombre.localeCompare(b.nombre));
+      return [...enabled, ...disabled];
+    });
+  }
+
+  function handleSelectAll() {
+    const allEnabled = items.every((i) => i.enabled);
+    if (allEnabled) {
+      // Uncheck all
+      setItems((prev) => {
+        const updated = prev.map((item) => ({ ...item, enabled: false }));
+        return updated.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      });
+    } else {
+      // Check all
+      setItems((prev) => {
+        const updated = prev.map((item, idx) => ({ ...item, enabled: true, ordenVisual: idx }));
+        return updated;
+      });
+    }
+  }
+
+  async function handleSave() {
+    if (!plantacionId) return;
+    setSaving(true);
+    try {
+      const enabledItems = items
+        .filter((i) => i.enabled)
+        .map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
+      await saveSpeciesConfig(plantacionId, enabledItems);
+      onClose ? onClose() : router.back();
+    } catch (e: any) {
+      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron guardar las especies.', 'alert-circle-outline', colors.danger);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const enabledCount = items.filter((i) => i.enabled).length;
+  const allEnabled = items.length > 0 && enabledCount === items.length;
+  const someEnabled = enabledCount > 0 && !allEnabled;
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>Cargando especies...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+      <FlatList
+        data={items}
+        keyExtractor={(item) => item.especieId}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.listHeaderContainer}>
+            <Text style={styles.listHeader}>
+              {enabledCount} especie{enabledCount !== 1 ? 's' : ''} seleccionada{enabledCount !== 1 ? 's' : ''}
+            </Text>
+            <Pressable style={styles.selectAllRow} onPress={handleSelectAll}>
+              <Checkbox
+                checked={allEnabled}
+                indeterminate={someEnabled}
+                onPress={handleSelectAll}
+              />
+              <Text style={styles.selectAllText}>Seleccionar todos</Text>
+            </Pressable>
+          </View>
+        }
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 40).duration(250)}>
+          <Pressable
+            style={[styles.row, item.enabled && styles.rowEnabled]}
+            onPress={() => handleToggle(item.especieId, !item.enabled)}
+          >
+            <Checkbox
+              checked={item.enabled}
+              onPress={() => handleToggle(item.especieId, !item.enabled)}
+            />
+            <Text style={[styles.rowCode, styles.rowCodeBold]}>{item.codigo}</Text>
+            <Text style={[styles.rowName, !item.enabled && styles.rowNameDisabled]} numberOfLines={1}>
+              {item.nombre}
+            </Text>
+            {item.hasExistingTrees && (
+              <Ionicons name="lock-closed" size={12} color={colors.textMuted} />
+            )}
+          </Pressable>
+          </Animated.View>
+        )}
+      />
+
+      <View style={styles.footer}>
+        <Pressable
+          style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.8 }, saving && { opacity: 0.6 }]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <>
+              <Ionicons name="checkmark-circle-outline" size={18} color={colors.white} />
+              <Text style={styles.saveButtonText}>Guardar</Text>
+            </>
+          )}
+        </Pressable>
+      </View>
+
+      <ConfirmModal {...confirm.confirmProps} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, backgroundColor: colors.background },
+  loadingText: { fontSize: fontSize.base, color: colors.textMuted },
+  listContent: { padding: spacing.xxl, paddingBottom: spacing['5xl'] },
+  listHeaderContainer: { marginBottom: spacing.xxl, gap: spacing.xl },
+  listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: fonts.medium },
+  selectAllRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
+  selectAllText: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.text },
+  checkbox: {
+    width: 22, height: 22, borderRadius: borderRadius.sm, borderWidth: 2,
+    borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkboxActive: {
+    backgroundColor: colors.primary, borderColor: colors.primary,
+  },
+  row: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg, paddingVertical: spacing.lg, paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border, gap: spacing.xl,
+  },
+  rowEnabled: { borderColor: colors.primaryBorder, backgroundColor: colors.primaryBgLight },
+  rowName: { flex: 1, fontSize: fontSize.base, color: colors.text },
+  rowNameDisabled: { color: colors.textMuted },
+  rowCode: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: 'monospace' },
+  rowCodeBold: { fontFamily: fonts.bold, color: colors.text },
+  footer: { padding: spacing.xxl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingVertical: spacing.xl, gap: spacing.sm },
+  saveButtonText: { color: colors.white, fontSize: fontSize.lg, fontFamily: fonts.semiBold },
+});

@@ -1,5 +1,5 @@
-import PlaceholderScreen from '../../src/screens/PlaceholderScreen';
+import AdminScreen from '../../src/screens/AdminScreen';
 
 export default function AdminPanel() {
-  return <PlaceholderScreen title="Admin" />;
+  return <AdminScreen />;
 }

@@ -11,27 +11,36 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
-import { db } from '../database/client';
-import { plantations, trees } from '../database/schema';
-import { eq, desc, and, isNull, count, sql } from 'drizzle-orm';
-import { localToday } from '../utils/dateUtils';
 import {
-  canEdit,
   deleteSubGroup,
   updateSubGroup,
   updateSubGroupCode,
 } from '../repositories/SubGroupRepository';
-import { subgroups } from '../database/schema';
+import {
+  getPlantationLugar,
+  getSubgroupsForPlantation,
+  getNNCountsPerSubgroup,
+  getTreeCountsPerSubgroup,
+} from '../queries/plantationDetailQueries';
+import { getPlantationEstado } from '../queries/adminQueries';
 import type { SubGroup, SubGroupTipo } from '../repositories/SubGroupRepository';
 import SubGroupStateChip from '../components/SubGroupStateChip';
 import SubgrupoForm from '../components/SubgrupoForm';
 import { useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { showDoubleConfirmDialog, showConfirmDialog } from '../utils/alertHelpers';
+import { useSync } from '../hooks/useSync';
+import { useConfirm } from '../hooks/useConfirm';
+import ConfirmModal from '../components/ConfirmModal';
+import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
+import { useNetStatus } from '../hooks/useNetStatus';
+import SyncProgressModal from '../components/SyncProgressModal';
+import FilterCards from '../components/FilterCards';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
@@ -39,74 +48,43 @@ export default function PlantationDetailScreen() {
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
   const userId = useCurrentUserId();
+  const { isOnline } = useNetStatus();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
+  const [subgroupFilter, setSubgroupFilter] = useState<string | null>(null);
+  const confirm = useConfirm();
 
-  // Load plantation name for header
-  const { data: plantationRows } = useLiveData(
-    () => db.select({ lugar: plantations.lugar }).from(plantations).where(eq(plantations.id, plantacionId ?? '')),
-    [plantacionId]
+  // Pending sync count for this plantation (finalizada SubGroups)
+  const { syncableCount, blockedByNN } = usePendingSyncCount(plantacionId);
+
+  // Sync hook — drives the SyncProgressModal
+  const {
+    state: syncState,
+    progress,
+    results,
+    startSync,
+    startPull,
+    pullSuccess,
+    reset: resetSync,
+    successCount,
+    failureCount,
+  } = useSync(plantacionId ?? '');
+
+  const pid = plantacionId ?? '';
+
+  // All queries delegated to plantationDetailQueries.ts — zero inline db access
+  const { data: plantationRows } = useLiveData(() => getPlantationLugar(pid), [pid]);
+  const { data: subgroupRows } = useLiveData(() => getSubgroupsForPlantation(pid), [pid]);
+  const { data: nnCounts } = useLiveData(() => getNNCountsPerSubgroup(pid), [pid]);
+  const { data: treeCounts } = useLiveData(() => getTreeCountsPerSubgroup(pid), [pid]);
+
+  // Plantation estado — drives finalization lockout and admin actions
+  const { data: estadoData } = useLiveData(
+    () => getPlantationEstado(pid).then((e) => [{ estado: e ?? '' }]),
+    [pid]
   );
-
-  // Load subgroups live
-  const { data: subgroupRows } = useLiveData(
-    () => db.select().from(subgroups)
-      .where(eq(subgroups.plantacionId, plantacionId ?? ''))
-      .orderBy(desc(subgroups.createdAt)),
-    [plantacionId]
-  );
-
-  // Load N/N counts per subgroup
-  const { data: nnCounts } = useLiveData(
-    () => db.select({
-      subgrupoId: trees.subgrupoId,
-      nnCount: count(),
-    })
-      .from(trees)
-      .where(and(
-        isNull(trees.especieId),
-        sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`
-      ))
-      .groupBy(trees.subgrupoId),
-    [plantacionId]
-  );
-
-  // Load tree counts per subgroup
-  const { data: treeCounts } = useLiveData(
-    () => db.select({
-      subgrupoId: trees.subgrupoId,
-      treeCount: count(),
-    })
-      .from(trees)
-      .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`)
-      .groupBy(trees.subgrupoId),
-    [plantacionId]
-  );
-
-  // Total trees in plantation
-  const { data: totalTreesRow } = useLiveData(
-    () => db.select({ total: count() })
-      .from(trees)
-      .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`),
-    [plantacionId]
-  );
-
-  const todayStr = localToday();
-
-  // Today's trees by current user in this plantation
-  const { data: todayTreesRow } = useLiveData(
-    () => {
-      if (!userId) return Promise.resolve([]);
-      return db.select({ total: count() })
-        .from(trees)
-        .where(and(
-          sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId ?? ''})`,
-          eq(trees.usuarioRegistro, userId),
-          sql`${trees.createdAt} LIKE ${todayStr + '%'}`
-        ));
-    },
-    [plantacionId, userId, todayStr]
-  );
+  const plantacionEstado = estadoData?.[0]?.estado ?? '';
+  const isFinalizada = plantacionEstado === 'finalizada';
 
   // Build maps
   const nnCountMap = new Map<string, number>();
@@ -123,9 +101,25 @@ export default function PlantationDetailScreen() {
     }
   }
 
-  const totalTrees = totalTreesRow?.[0]?.total ?? 0;
-  const todayTrees = todayTreesRow?.[0]?.total ?? 0;
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
+
+  // Subgroup estado counts for filter cards
+  const subgroupEstadoCounts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  (subgroupRows ?? []).forEach((sg: any) => {
+    if (subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts] !== undefined) {
+      subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts]++;
+    }
+  });
+
+  const filteredSubgroups = ((subgroupRows ?? []) as SubGroup[]).filter(
+    sg => !subgroupFilter || sg.estado === subgroupFilter
+  );
+
+  const subgroupFilterConfigs = [
+    { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: subgroupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+    { key: 'sincronizada', label: 'Sincronizadas', count: subgroupEstadoCounts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
+  ];
 
   // Set header title
   useEffect(() => {
@@ -150,14 +144,15 @@ export default function PlantationDetailScreen() {
   function handleDeleteSubGroup(subgroup: SubGroup) {
     const treeCount = treeCountMap.get(subgroup.id) ?? 0;
     const warningMessage = treeCount > 0
-      ? `Este subgrupo tiene ${treeCount} arbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta accion no se puede deshacer.`
-      : 'Esta accion no se puede deshacer.';
+      ? `Este subgrupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+      : 'Esta acción no se puede deshacer.';
 
     showDoubleConfirmDialog(
+      confirm.show,
       'Eliminar subgrupo',
       warningMessage,
-      'Confirmar eliminacion',
-      'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
+      'Confirmar eliminación',
+      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
       async () => {
         setDeletingId(subgroup.id);
         try {
@@ -173,13 +168,14 @@ export default function PlantationDetailScreen() {
     router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any);
   }
 
-  function renderSubGroup({ item }: { item: SubGroup }) {
+  function renderSubGroup({ item, index }: { item: SubGroup; index: number }) {
     const nnCount = nnCountMap.get(item.id) ?? 0;
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
     const showDelete = isOwner && item.estado === 'activa';
 
     return (
+      <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
       <Pressable
         style={({ pressed }) => [
           styles.card,
@@ -197,9 +193,9 @@ export default function PlantationDetailScreen() {
               <Text style={styles.nnBadgeText}>{nnCount} N/N</Text>
             </View>
           )}
+          <SubGroupStateChip estado={item.estado} />
           <Text style={styles.treeCountText}>{treeCount}</Text>
           <TreeIcon size={13} />
-          <SubGroupStateChip estado={item.estado} />
           {showDelete && (
             <Pressable
               onPress={(e) => {
@@ -215,40 +211,95 @@ export default function PlantationDetailScreen() {
           )}
         </View>
       </Pressable>
+      </Animated.View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Fixed stats + N/N banner */}
+      {/* Fixed header: buttons + N/N banner */}
       <View style={styles.fixedHeader}>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalTrees}</Text>
-            <Text style={styles.statLabel}>Total árboles</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValueToday}>{todayTrees}</Text>
-            <Text style={styles.statLabel}>Hoy</Text>
-          </View>
-        </View>
 
-        {totalNN > 0 && (
+        {/* Pull + Sync buttons — only when online */}
+        {isOnline && (
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
+              onPress={startPull}
+            >
+              <Ionicons name="cloud-download-outline" size={18} color={colors.statSynced} />
+              <Text style={styles.pullButtonText}>Actualizar datos</Text>
+            </Pressable>
+
+            {syncableCount > 0 && (
+              <Pressable
+                style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+                onPress={() => {
+                  showConfirmDialog(
+                    confirm.show,
+                    'Sincronizar',
+                    `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`,
+                    'Sincronizar',
+                    startSync,
+                    { icon: 'cloud-upload-outline', iconColor: colors.info },
+                  );
+                }}
+              >
+                <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
+                <Text style={styles.syncButtonText}>
+                  Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
+                </Text>
+              </Pressable>
+            )}
+          </>
+        )}
+
+        {/* Consolidated N/N banner */}
+        {(totalNN > 0 || blockedByNN > 0) && (
           <Pressable
-            style={({ pressed }) => [styles.resolveNNBanner, pressed && { opacity: 0.8 }]}
-            onPress={handleResolveAllNN}
+            style={({ pressed }) => [styles.resolveNNBanner, totalNN > 0 && pressed && { opacity: 0.8 }]}
+            onPress={totalNN > 0 ? handleResolveAllNN : undefined}
+            disabled={totalNN === 0}
           >
             <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
-            <Text style={styles.resolveNNText}>
-              Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+            <View style={styles.nnBannerContent}>
+              {totalNN > 0 && (
+                <Text style={styles.resolveNNText}>
+                  Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
+                </Text>
+              )}
+              {blockedByNN > 0 && (
+                <Text style={styles.nnSyncBlockedText}>
+                  {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
+                </Text>
+              )}
+            </View>
+            {totalNN > 0 && (
+              <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+            )}
           </Pressable>
         )}
+
+        {/* Finalization lockout banner — shown for all users when finalizada */}
+        {isFinalizada && (
+          <View style={styles.finalizadaBanner}>
+            <Ionicons name="lock-closed" size={16} color={colors.stateFinalizada} />
+            <Text style={styles.finalizadaBannerText}>Plantacion finalizada</Text>
+          </View>
+        )}
+
+
+        <Animated.View entering={FadeInDown.delay(100).duration(300)} style={{ paddingTop: spacing.md }}>
+          <FilterCards
+            filters={subgroupFilterConfigs}
+            activeFilter={subgroupFilter}
+            onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
+          />
+        </Animated.View>
       </View>
 
       <FlatList
-        data={(subgroupRows ?? []) as SubGroup[]}
+        data={filteredSubgroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
@@ -259,14 +310,30 @@ export default function PlantationDetailScreen() {
         }
         renderItem={renderSubGroup}
       />
-      <View style={styles.fabContainer}>
-        <Pressable
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
-        >
-          <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
-        </Pressable>
-      </View>
+      {/* FAB — hidden when plantation is finalizada (Pitfall 8) */}
+      {!isFinalizada && (
+        <View style={styles.fabContainer}>
+          <Pressable
+            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+            onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
+          >
+            <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {/* Sync progress modal — shown during and after sync */}
+      <SyncProgressModal
+        state={syncState}
+        progress={progress}
+        results={results}
+        successCount={successCount}
+        failureCount={failureCount}
+        pullSuccess={pullSuccess}
+        onDismiss={resetSync}
+      />
+
+      <ConfirmModal {...confirm.confirmProps} />
 
       {/* Edit subgroup modal */}
       <Modal
@@ -327,37 +394,35 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.lg,
   },
-  statsRow: {
+  pullButton: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.sm,
-    gap: spacing.xxl,
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-  },
-  statItem: {
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: colors.statSynced + '15',
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
   },
-  statValue: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.primary,
+  pullButtonText: {
+    color: colors.statSynced,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
   },
-  statValueToday: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.info,
+  syncButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.statSynced,
+    borderRadius: borderRadius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
   },
-  statLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginTop: 2,
+  syncButtonText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontFamily: fonts.bold,
   },
   resolveNNBanner: {
     flexDirection: 'row',
@@ -371,31 +436,31 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryBorder,
   },
   resolveNNText: {
-    flex: 1,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.secondary,
+  },
+  nnBannerContent: {
+    flex: 1,
+  },
+  nnSyncBlockedText: {
+    fontSize: fontSize.sm,
+    color: colors.secondary,
+    fontFamily: fonts.medium,
   },
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardOtherUser: {
     backgroundColor: colors.otherUserBg,
-    borderLeftColor: colors.otherUserBorder,
     opacity: 0.55,
   },
   cardReadOnly: {
-    borderLeftColor: colors.borderMuted,
     opacity: 0.75,
   },
   cardPressed: {
@@ -407,24 +472,24 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   cardName: {
-    fontSize: fontSize.base,
-    fontWeight: 'bold',
+    fontSize: fontSize.xl,
+    fontFamily: fonts.bold,
     color: colors.text,
     flex: 1,
   },
   cardNameOther: {
     color: colors.textMuted,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   cardTipo: {
     fontSize: fontSize.xs,
     color: colors.textLight,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   treeCountText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   deleteCardButton: {
     padding: 2,
@@ -440,7 +505,7 @@ const styles = StyleSheet.create({
   nnBadgeText: {
     color: colors.secondary,
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   emptyContainer: {
     flex: 1,
@@ -450,7 +515,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: fontSize.xl,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   emptySubtext: {
     fontSize: fontSize.base,
@@ -464,7 +529,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   fab: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.headerBg,
     paddingVertical: spacing.xl,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
@@ -480,13 +545,13 @@ const styles = StyleSheet.create({
   fabLabel: {
     color: colors.white,
     fontSize: fontSize.xl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
   // Edit modal styles
   editModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
   },
   editModalDismiss: {
     flex: 1,
@@ -500,8 +565,27 @@ const styles = StyleSheet.create({
   },
   editModalTitle: {
     fontSize: fontSize.title,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.xxxl,
+  },
+  // ─── Finalization lockout banner ────────────────────────────────────────────
+  finalizadaBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.secondaryBg,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.stateFinalizada + '66',
+  },
+  finalizadaBannerText: {
+    flex: 1,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+    color: colors.stateFinalizada,
   },
 });
