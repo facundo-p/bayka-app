@@ -1,7 +1,7 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fontSize, spacing } from '../theme';
+import { colors, fontSize, spacing, fonts } from '../theme';
 
 interface Props {
   title: string;
@@ -54,11 +54,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: colors.white,
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     textAlign: 'center',
   },
   headerSubtitle: {
     color: colors.primaryCountFaded,
+    fontFamily: fonts.regular,
     fontSize: fontSize.sm,
     marginTop: 2,
     textAlign: 'center',

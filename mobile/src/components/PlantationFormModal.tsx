@@ -8,7 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 type Plantation = {
   id: string;
@@ -164,13 +164,13 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.text,
     marginBottom: spacing.sm,
   },
   inputLabel: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
@@ -181,11 +181,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
     paddingHorizontal: spacing.xxl,
     fontSize: fontSize.base,
+    fontFamily: fonts.regular,
     color: colors.text,
     backgroundColor: colors.backgroundAlt,
   },
   errorText: {
     fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
     color: colors.dangerText,
     textAlign: 'center',
   },
@@ -211,7 +213,7 @@ const styles = StyleSheet.create({
   modalBtnCancelText: {
     color: colors.textMuted,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   modalBtnPrimary: {
     backgroundColor: colors.primary,
@@ -219,6 +221,6 @@ const styles = StyleSheet.create({
   modalBtnPrimaryText: {
     color: colors.white,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });

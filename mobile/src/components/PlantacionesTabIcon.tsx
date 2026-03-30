@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
-import { colors, fontSize } from '../theme';
+import { colors, fontSize, fonts } from '../theme';
 
 interface Props {
   color: string;
@@ -45,6 +45,6 @@ const styles = StyleSheet.create({
   badgeText: {
     color: colors.white,
     fontSize: fontSize.xxs,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
 });

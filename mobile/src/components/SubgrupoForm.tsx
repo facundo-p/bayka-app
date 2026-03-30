@@ -7,7 +7,7 @@ import type {
   CreateSubGroupResult,
   UpdateSubGroupResult,
 } from '../repositories/SubGroupRepository';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
   mode: 'create' | 'edit';
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   },
   cancelText: {
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     fontSize: fontSize.lg,
   },
   editSubmitBtn: {
@@ -177,6 +177,6 @@ const styles = StyleSheet.create({
   submitBtnText: {
     color: colors.white,
     fontSize: fontSize.xl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
 });

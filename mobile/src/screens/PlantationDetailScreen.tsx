@@ -8,8 +8,6 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
-  TextInput,
-  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
@@ -23,28 +21,26 @@ import {
   getSubgroupsForPlantation,
   getNNCountsPerSubgroup,
   getTreeCountsPerSubgroup,
-  getTotalTreesInPlantation,
-  getTodayTreesForUser,
-  getUnsyncedTreesForUser,
 } from '../queries/plantationDetailQueries';
-import { getPlantationEstado, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
-import { generateIds } from '../repositories/PlantationRepository';
-import { exportToCSV, exportToExcel } from '../services/ExportService';
+import { getPlantationEstado } from '../queries/adminQueries';
 import type { SubGroup, SubGroupTipo } from '../repositories/SubGroupRepository';
 import SubGroupStateChip from '../components/SubGroupStateChip';
 import SubgrupoForm from '../components/SubgrupoForm';
 import { useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { showDoubleConfirmDialog, showConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
+import { showDoubleConfirmDialog, showConfirmDialog } from '../utils/alertHelpers';
 import { useSync } from '../hooks/useSync';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
+import { useNetStatus } from '../hooks/useNetStatus';
 import SyncProgressModal from '../components/SyncProgressModal';
+import FilterCards from '../components/FilterCards';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
@@ -52,8 +48,10 @@ export default function PlantationDetailScreen() {
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
   const userId = useCurrentUserId();
+  const { isOnline } = useNetStatus();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingSubGroup, setEditingSubGroup] = useState<SubGroup | null>(null);
+  const [subgroupFilter, setSubgroupFilter] = useState<string | null>(null);
   const confirm = useConfirm();
 
   // Pending sync count for this plantation (finalizada SubGroups)
@@ -74,20 +72,11 @@ export default function PlantationDetailScreen() {
 
   const pid = plantacionId ?? '';
 
-  // Admin action state
-  const [seedModalVisible, setSeedModalVisible] = useState(false);
-  const [seedValue, setSeedValue] = useState('');
-  const [seedLoading, setSeedLoading] = useState(false);
-  const [exportingType, setExportingType] = useState<'csv' | 'xlsx' | null>(null);
-
   // All queries delegated to plantationDetailQueries.ts — zero inline db access
   const { data: plantationRows } = useLiveData(() => getPlantationLugar(pid), [pid]);
   const { data: subgroupRows } = useLiveData(() => getSubgroupsForPlantation(pid), [pid]);
   const { data: nnCounts } = useLiveData(() => getNNCountsPerSubgroup(pid), [pid]);
   const { data: treeCounts } = useLiveData(() => getTreeCountsPerSubgroup(pid), [pid]);
-  const { data: totalTreesData } = useLiveData(() => getTotalTreesInPlantation(pid).then(t => [{ total: t }]), [pid]);
-  const { data: todayTreesData } = useLiveData(() => getTodayTreesForUser(pid, userId).then(t => [{ total: t }]), [pid, userId]);
-  const { data: unsyncedTreesData } = useLiveData(() => getUnsyncedTreesForUser(pid, userId).then(t => [{ total: t }]), [pid, userId]);
 
   // Plantation estado — drives finalization lockout and admin actions
   const { data: estadoData } = useLiveData(
@@ -96,15 +85,6 @@ export default function PlantationDetailScreen() {
   );
   const plantacionEstado = estadoData?.[0]?.estado ?? '';
   const isFinalizada = plantacionEstado === 'finalizada';
-
-  // IDs generated check — gates export vs ID generation buttons (admin only)
-  const { data: idsGeneratedData } = useLiveData(
-    () => (routePrefix === '(admin)' && isFinalizada ? hasIdsGenerated(pid).then((v) => [{ generated: v }]) : Promise.resolve([{ generated: false }])),
-    [pid, routePrefix, isFinalizada]
-  );
-  const idsGenerated = idsGeneratedData?.[0]?.generated ?? false;
-
-  const unsyncedTrees = unsyncedTreesData?.[0]?.total ?? 0;
 
   // Build maps
   const nnCountMap = new Map<string, number>();
@@ -121,9 +101,25 @@ export default function PlantationDetailScreen() {
     }
   }
 
-  const totalTrees = totalTreesData?.[0]?.total ?? 0;
-  const todayTrees = todayTreesData?.[0]?.total ?? 0;
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
+
+  // Subgroup estado counts for filter cards
+  const subgroupEstadoCounts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  (subgroupRows ?? []).forEach((sg: any) => {
+    if (subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts] !== undefined) {
+      subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts]++;
+    }
+  });
+
+  const filteredSubgroups = ((subgroupRows ?? []) as SubGroup[]).filter(
+    sg => !subgroupFilter || sg.estado === subgroupFilter
+  );
+
+  const subgroupFilterConfigs = [
+    { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: subgroupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+    { key: 'sincronizada', label: 'Sincronizadas', count: subgroupEstadoCounts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
+  ];
 
   // Set header title
   useEffect(() => {
@@ -148,15 +144,15 @@ export default function PlantationDetailScreen() {
   function handleDeleteSubGroup(subgroup: SubGroup) {
     const treeCount = treeCountMap.get(subgroup.id) ?? 0;
     const warningMessage = treeCount > 0
-      ? `Este subgrupo tiene ${treeCount} arbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta accion no se puede deshacer.`
-      : 'Esta accion no se puede deshacer.';
+      ? `Este subgrupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+      : 'Esta acción no se puede deshacer.';
 
     showDoubleConfirmDialog(
       confirm.show,
       'Eliminar subgrupo',
       warningMessage,
-      'Confirmar eliminacion',
-      'Esta es la confirmacion final. El subgrupo y todos sus arboles seran eliminados permanentemente.',
+      'Confirmar eliminación',
+      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
       async () => {
         setDeletingId(subgroup.id);
         try {
@@ -172,83 +168,14 @@ export default function PlantationDetailScreen() {
     router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any);
   }
 
-  // ─── Admin action handlers ────────────────────────────────────────────────
-
-  async function handleAdminGenerateIds() {
-    try {
-      const maxId = await getMaxGlobalId();
-      setSeedValue((maxId + 1).toString());
-      setSeedModalVisible(true);
-    } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo obtener el ID sugerido.', 'alert-circle-outline', colors.danger);
-    }
-  }
-
-  function handleSeedConfirm() {
-    const seed = parseInt(seedValue, 10);
-    if (isNaN(seed) || seed < 1) {
-      showInfoDialog(confirm.show, 'Semilla invalida', 'Ingresa un numero entero mayor a 0.', 'alert-circle-outline', colors.secondary);
-      return;
-    }
-    setSeedModalVisible(false);
-    const { show: showConfirmAction } = confirm;
-    showConfirmAction({
-      icon: 'key-outline',
-      iconColor: colors.primary,
-      title: 'Generar IDs',
-      message: 'Se van a generar IDs para todos los arboles de esta plantacion. Esta accion no se puede deshacer.',
-      buttons: [
-        { label: 'Cancelar', style: 'cancel', onPress: () => {} },
-        {
-          label: 'Generar',
-          style: 'primary',
-          icon: 'key-outline',
-          onPress: async () => {
-            setSeedLoading(true);
-            try {
-              await generateIds(pid, seed);
-            } catch (e: any) {
-              showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
-            } finally {
-              setSeedLoading(false);
-            }
-          },
-        },
-      ],
-    });
-  }
-
-  async function handleAdminExportCsv() {
-    const lugar = plantationRows?.[0]?.lugar ?? '';
-    setExportingType('csv');
-    try {
-      await exportToCSV(pid, lugar);
-    } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo exportar el CSV.', 'alert-circle-outline', colors.danger);
-    } finally {
-      setExportingType(null);
-    }
-  }
-
-  async function handleAdminExportExcel() {
-    const lugar = plantationRows?.[0]?.lugar ?? '';
-    setExportingType('xlsx');
-    try {
-      await exportToExcel(pid, lugar);
-    } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudo exportar el Excel.', 'alert-circle-outline', colors.danger);
-    } finally {
-      setExportingType(null);
-    }
-  }
-
-  function renderSubGroup({ item }: { item: SubGroup }) {
+  function renderSubGroup({ item, index }: { item: SubGroup; index: number }) {
     const nnCount = nnCountMap.get(item.id) ?? 0;
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
     const showDelete = isOwner && item.estado === 'activa';
 
     return (
+      <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
       <Pressable
         style={({ pressed }) => [
           styles.card,
@@ -266,9 +193,9 @@ export default function PlantationDetailScreen() {
               <Text style={styles.nnBadgeText}>{nnCount} N/N</Text>
             </View>
           )}
+          <SubGroupStateChip estado={item.estado} />
           <Text style={styles.treeCountText}>{treeCount}</Text>
           <TreeIcon size={13} />
-          <SubGroupStateChip estado={item.estado} />
           {showDelete && (
             <Pressable
               onPress={(e) => {
@@ -284,79 +211,72 @@ export default function PlantationDetailScreen() {
           )}
         </View>
       </Pressable>
+      </Animated.View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Fixed stats + N/N banner */}
+      {/* Fixed header: buttons + N/N banner */}
       <View style={styles.fixedHeader}>
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{totalTrees}</Text>
-            <Text style={styles.statLabel}>Total arboles</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.secondary }]}>{unsyncedTrees}</Text>
-            <Text style={styles.statLabel}>Sin sincronizar</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValueToday}>{todayTrees}</Text>
-            <Text style={styles.statLabel}>Hoy</Text>
-          </View>
-        </View>
 
-        {/* Pull button — always visible to download latest data */}
-        <Pressable
-          style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
-          onPress={startPull}
-        >
-          <Ionicons name="cloud-download-outline" size={18} color={colors.info} />
-          <Text style={styles.pullButtonText}>Actualizar datos</Text>
-        </Pressable>
+        {/* Pull + Sync buttons — only when online */}
+        {isOnline && (
+          <>
+            <Pressable
+              style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
+              onPress={startPull}
+            >
+              <Ionicons name="cloud-download-outline" size={18} color={colors.statSynced} />
+              <Text style={styles.pullButtonText}>Actualizar datos</Text>
+            </Pressable>
 
-        {/* Sync CTA — visible when there are syncable SubGroups to upload */}
-        {syncableCount > 0 && (
-          <Pressable
-            style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
-            onPress={() => {
-              showConfirmDialog(
-                confirm.show,
-                'Sincronizar',
-                `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexion a internet.`,
-                'Sincronizar',
-                startSync,
-                { icon: 'cloud-upload-outline', iconColor: colors.info },
-              );
-            }}
-          >
-            <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
-            <Text style={styles.syncButtonText}>
-              Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
-            </Text>
-          </Pressable>
+            {syncableCount > 0 && (
+              <Pressable
+                style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+                onPress={() => {
+                  showConfirmDialog(
+                    confirm.show,
+                    'Sincronizar',
+                    `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`,
+                    'Sincronizar',
+                    startSync,
+                    { icon: 'cloud-upload-outline', iconColor: colors.info },
+                  );
+                }}
+              >
+                <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
+                <Text style={styles.syncButtonText}>
+                  Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
+                </Text>
+              </Pressable>
+            )}
+          </>
         )}
 
-        {/* N/N sync blocked banner */}
-        {blockedByNN > 0 && (
-          <View style={styles.nnSyncBlockedRow}>
-            <Ionicons name="alert-circle-outline" size={14} color={colors.secondary} />
-            <Text style={styles.nnSyncBlockedText}>
-              {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
-            </Text>
-          </View>
-        )}
-
-        {totalNN > 0 && (
+        {/* Consolidated N/N banner */}
+        {(totalNN > 0 || blockedByNN > 0) && (
           <Pressable
-            style={({ pressed }) => [styles.resolveNNBanner, pressed && { opacity: 0.8 }]}
-            onPress={handleResolveAllNN}
+            style={({ pressed }) => [styles.resolveNNBanner, totalNN > 0 && pressed && { opacity: 0.8 }]}
+            onPress={totalNN > 0 ? handleResolveAllNN : undefined}
+            disabled={totalNN === 0}
           >
             <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
-            <Text style={styles.resolveNNText}>
-              Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
-            </Text>
-            <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+            <View style={styles.nnBannerContent}>
+              {totalNN > 0 && (
+                <Text style={styles.resolveNNText}>
+                  Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}
+                </Text>
+              )}
+              {blockedByNN > 0 && (
+                <Text style={styles.nnSyncBlockedText}>
+                  {blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes
+                </Text>
+              )}
+            </View>
+            {totalNN > 0 && (
+              <Ionicons name="chevron-forward" size={16} color={colors.secondary} />
+            )}
           </Pressable>
         )}
 
@@ -368,57 +288,18 @@ export default function PlantationDetailScreen() {
           </View>
         )}
 
-        {/* Admin-only action row */}
-        {routePrefix === '(admin)' && isFinalizada && (
-          <View style={styles.adminActionRow}>
-            {!idsGenerated && (
-              <Pressable
-                style={({ pressed }) => [styles.adminActionBtn, styles.adminActionBtnPrimary, pressed && { opacity: 0.75 }]}
-                onPress={handleAdminGenerateIds}
-                disabled={seedLoading}
-              >
-                <Ionicons name="key-outline" size={16} color={colors.white} />
-                <Text style={styles.adminActionBtnPrimaryText}>Generar IDs</Text>
-              </Pressable>
-            )}
-            {idsGenerated && (
-              <>
-                <Pressable
-                  style={({ pressed }) => [styles.adminActionBtn, styles.adminActionBtnInfo, pressed && { opacity: 0.75 }]}
-                  onPress={handleAdminExportCsv}
-                  disabled={exportingType !== null}
-                >
-                  {exportingType === 'csv' ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <>
-                      <Ionicons name="document-text-outline" size={16} color={colors.white} />
-                      <Text style={styles.adminActionBtnInfoText}>Exportar CSV</Text>
-                    </>
-                  )}
-                </Pressable>
-                <Pressable
-                  style={({ pressed }) => [styles.adminActionBtn, styles.adminActionBtnInfo, pressed && { opacity: 0.75 }]}
-                  onPress={handleAdminExportExcel}
-                  disabled={exportingType !== null}
-                >
-                  {exportingType === 'xlsx' ? (
-                    <ActivityIndicator size="small" color={colors.white} />
-                  ) : (
-                    <>
-                      <Ionicons name="grid-outline" size={16} color={colors.white} />
-                      <Text style={styles.adminActionBtnInfoText}>Exportar Excel</Text>
-                    </>
-                  )}
-                </Pressable>
-              </>
-            )}
-          </View>
-        )}
+
+        <Animated.View entering={FadeInDown.delay(100).duration(300)} style={{ paddingTop: spacing.md }}>
+          <FilterCards
+            filters={subgroupFilterConfigs}
+            activeFilter={subgroupFilter}
+            onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
+          />
+        </Animated.View>
       </View>
 
       <FlatList
-        data={(subgroupRows ?? []) as SubGroup[]}
+        data={filteredSubgroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
@@ -453,43 +334,6 @@ export default function PlantationDetailScreen() {
       />
 
       <ConfirmModal {...confirm.confirmProps} />
-
-      {/* Seed dialog for admin ID generation */}
-      <Modal
-        visible={seedModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSeedModalVisible(false)}
-      >
-        <View style={styles.seedOverlay}>
-          <View style={styles.seedCard}>
-            <Text style={styles.seedTitle}>Semilla para ID Global</Text>
-            <Text style={styles.seedLabel}>Valor inicial del ID Global</Text>
-            <TextInput
-              style={styles.seedInput}
-              value={seedValue}
-              onChangeText={setSeedValue}
-              keyboardType="number-pad"
-              placeholder="Ej: 1001"
-              placeholderTextColor={colors.textPlaceholder}
-            />
-            <View style={styles.seedButtons}>
-              <Pressable
-                style={({ pressed }) => [styles.seedBtn, styles.seedBtnCancel, pressed && { opacity: 0.7 }]}
-                onPress={() => setSeedModalVisible(false)}
-              >
-                <Text style={styles.seedBtnCancelText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [styles.seedBtn, styles.seedBtnConfirm, pressed && { opacity: 0.8 }]}
-                onPress={handleSeedConfirm}
-              >
-                <Text style={styles.seedBtnConfirmText}>Generar</Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Edit subgroup modal */}
       <Modal
@@ -550,72 +394,35 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
     gap: spacing.lg,
   },
-  statsRow: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.xl,
-    marginBottom: spacing.sm,
-    gap: spacing.xxl,
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.primary,
-  },
-  statValueToday: {
-    fontSize: fontSize.title,
-    fontWeight: 'bold',
-    color: colors.info,
-  },
-  statLabel: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
   pullButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.infoBg,
+    backgroundColor: colors.statSynced + '15',
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.sm,
     gap: spacing.md,
   },
   pullButtonText: {
-    color: colors.info,
+    color: colors.statSynced,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   syncButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.info,
+    backgroundColor: colors.statSynced,
     borderRadius: borderRadius.lg,
     padding: spacing.lg,
     marginBottom: spacing.sm,
     gap: spacing.md,
-    elevation: 2,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
   },
   syncButtonText: {
     color: colors.white,
     fontSize: fontSize.base,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
   resolveNNBanner: {
     flexDirection: 'row',
@@ -629,46 +436,31 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryBorder,
   },
   resolveNNText: {
-    flex: 1,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.secondary,
   },
-  nnSyncBlockedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.secondaryBg,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    marginBottom: spacing.sm,
+  nnBannerContent: {
+    flex: 1,
   },
   nnSyncBlockedText: {
-    flex: 1,
     fontSize: fontSize.sm,
     color: colors.secondary,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    elevation: 1,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 1,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   cardOtherUser: {
     backgroundColor: colors.otherUserBg,
-    borderLeftColor: colors.otherUserBorder,
     opacity: 0.55,
   },
   cardReadOnly: {
-    borderLeftColor: colors.borderMuted,
     opacity: 0.75,
   },
   cardPressed: {
@@ -680,24 +472,24 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   cardName: {
-    fontSize: fontSize.base,
-    fontWeight: 'bold',
+    fontSize: fontSize.xl,
+    fontFamily: fonts.bold,
     color: colors.text,
     flex: 1,
   },
   cardNameOther: {
     color: colors.textMuted,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   cardTipo: {
     fontSize: fontSize.xs,
     color: colors.textLight,
-    fontWeight: '500',
+    fontFamily: fonts.medium,
   },
   treeCountText: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.base,
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   deleteCardButton: {
     padding: 2,
@@ -713,7 +505,7 @@ const styles = StyleSheet.create({
   nnBadgeText: {
     color: colors.secondary,
     fontSize: fontSize.xs,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   emptyContainer: {
     flex: 1,
@@ -723,7 +515,7 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: fontSize.xl,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   emptySubtext: {
     fontSize: fontSize.base,
@@ -737,7 +529,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   fab: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.headerBg,
     paddingVertical: spacing.xl,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
@@ -753,13 +545,13 @@ const styles = StyleSheet.create({
   fabLabel: {
     color: colors.white,
     fontSize: fontSize.xl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
   // Edit modal styles
   editModalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.overlay,
   },
   editModalDismiss: {
     flex: 1,
@@ -773,7 +565,7 @@ const styles = StyleSheet.create({
   },
   editModalTitle: {
     fontSize: fontSize.title,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.xxxl,
   },
@@ -793,104 +585,7 @@ const styles = StyleSheet.create({
   finalizadaBannerText: {
     flex: 1,
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.stateFinalizada,
-  },
-  // ─── Admin action row ───────────────────────────────────────────────────────
-  adminActionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  adminActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.lg,
-  },
-  adminActionBtnPrimary: {
-    backgroundColor: colors.primary,
-  },
-  adminActionBtnPrimaryText: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  adminActionBtnInfo: {
-    backgroundColor: colors.info,
-  },
-  adminActionBtnInfoText: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  // ─── Seed dialog ─────────────────────────────────────────────────────────────
-  seedOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
-  },
-  seedCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing['4xl'],
-    gap: spacing.xl,
-    width: '100%',
-  },
-  seedTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  seedLabel: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  seedInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.xxl,
-    fontSize: fontSize.base,
-    color: colors.text,
-    backgroundColor: colors.backgroundAlt,
-  },
-  seedButtons: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginTop: spacing.sm,
-  },
-  seedBtn: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-    borderRadius: borderRadius.lg,
-    minHeight: 44,
-  },
-  seedBtnCancel: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  seedBtnCancelText: {
-    color: colors.textMuted,
-    fontSize: fontSize.base,
-    fontWeight: '600',
-  },
-  seedBtnConfirm: {
-    backgroundColor: colors.primary,
-  },
-  seedBtnConfirmText: {
-    color: colors.white,
-    fontSize: fontSize.base,
-    fontWeight: '600',
   },
 });

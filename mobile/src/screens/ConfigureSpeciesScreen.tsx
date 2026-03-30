@@ -18,9 +18,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { asc } from 'drizzle-orm';
 
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { showInfoDialog } from '../utils/alertHelpers';
@@ -198,7 +199,8 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Pr
             </Pressable>
           </View>
         }
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 40).duration(250)}>
           <Pressable
             style={[styles.row, item.enabled && styles.rowEnabled]}
             onPress={() => handleToggle(item.especieId, !item.enabled)}
@@ -215,6 +217,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Pr
               <Ionicons name="lock-closed" size={12} color={colors.textMuted} />
             )}
           </Pressable>
+          </Animated.View>
         )}
       />
 
@@ -246,9 +249,9 @@ const styles = StyleSheet.create({
   loadingText: { fontSize: fontSize.base, color: colors.textMuted },
   listContent: { padding: spacing.xxl, paddingBottom: spacing['5xl'] },
   listHeaderContainer: { marginBottom: spacing.xxl, gap: spacing.xl },
-  listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontWeight: '500' },
+  listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: fonts.medium },
   selectAllRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },
-  selectAllText: { fontSize: fontSize.base, fontWeight: '600', color: colors.text },
+  selectAllText: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.text },
   checkbox: {
     width: 22, height: 22, borderRadius: borderRadius.sm, borderWidth: 2,
     borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
@@ -266,8 +269,8 @@ const styles = StyleSheet.create({
   rowName: { flex: 1, fontSize: fontSize.base, color: colors.text },
   rowNameDisabled: { color: colors.textMuted },
   rowCode: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: 'monospace' },
-  rowCodeBold: { fontWeight: '700', color: colors.text },
+  rowCodeBold: { fontFamily: fonts.bold, color: colors.text },
   footer: { padding: spacing.xxl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingVertical: spacing.xl, gap: spacing.sm },
-  saveButtonText: { color: colors.white, fontSize: fontSize.lg, fontWeight: '600' },
+  saveButtonText: { color: colors.white, fontSize: fontSize.lg, fontFamily: fonts.semiBold },
 });

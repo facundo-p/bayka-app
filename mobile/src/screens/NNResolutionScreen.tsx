@@ -15,10 +15,11 @@ import { resolveNNTree } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { showInfoDialog } from '../utils/alertHelpers';
@@ -85,7 +86,7 @@ export default function NNResolutionScreen() {
   if (unresolvedTrees.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No hay arboles N/N pendientes</Text>
+        <Text style={styles.emptyText}>No hay árboles N/N pendientes</Text>
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <Text style={styles.backButtonText}>Volver</Text>
         </Pressable>
@@ -119,7 +120,7 @@ export default function NNResolutionScreen() {
     // Count how many have selections
     const toResolve = unresolvedTrees.filter((t) => selections[t.id]);
     if (toResolve.length === 0) {
-      showInfoDialog(confirm.show, 'Seleccionar especie', 'Selecciona una especie para al menos un arbol N/N.', 'leaf-outline', colors.secondary);
+      showInfoDialog(confirm.show, 'Seleccionar especie', 'Selecciona una especie para al menos un árbol N/N.', 'leaf-outline', colors.secondary);
       return;
     }
 
@@ -180,7 +181,7 @@ export default function NNResolutionScreen() {
       </View>
 
       {/* Scrollable middle content */}
-      <View style={styles.scrollWrapper}>
+      <Animated.View entering={FadeInDown.duration(300)} style={styles.scrollWrapper}>
         <FlatList
           data={[currentTree]}
           keyExtractor={(item) => item.id}
@@ -239,7 +240,7 @@ export default function NNResolutionScreen() {
             </>
           }
         />
-      </View>
+      </Animated.View>
 
       {/* Fixed bottom: Guardar button */}
       <View style={styles.fixedBottom}>
@@ -287,7 +288,7 @@ const styles = StyleSheet.create({
   },
   subgrupoLabel: {
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textMedium,
   },
   subgrupoCodeLabel: {
@@ -297,7 +298,7 @@ const styles = StyleSheet.create({
   },
   counterText: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.secondary,
   },
   posicionText: {
@@ -327,7 +328,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: colors.white,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     fontSize: fontSize.lg,
   },
   photo: {
@@ -355,7 +356,7 @@ const styles = StyleSheet.create({
   },
   pickerLabel: {
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textMedium,
     marginBottom: spacing.lg,
     paddingHorizontal: spacing.xxl,
@@ -385,7 +386,7 @@ const styles = StyleSheet.create({
   },
   navButtonText: {
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     fontSize: fontSize.base,
   },
   fixedBottom: {
@@ -405,7 +406,7 @@ const styles = StyleSheet.create({
   },
   guardarButtonText: {
     color: colors.white,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     fontSize: fontSize.xl,
   },
   // Zoom photo viewer uses shared PhotoViewer component

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { checkFinalizationGate, hasIdsGenerated } from '../queries/adminQueries';
 import PlantationEstadoChip from './PlantationEstadoChip';
 
@@ -94,7 +94,7 @@ export default function PlantationConfigCard({
             onPress={() => onAssignTech(item.id)}
           >
             <Ionicons name="people-outline" size={14} color={colors.primary} />
-            <Text style={styles.actionBtnSecondaryText}>Asignar tecnicos</Text>
+            <Text style={styles.actionBtnSecondaryText}>Asignar técnicos</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [
@@ -196,12 +196,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.text,
     marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: fontSize.base,
+    fontFamily: fonts.regular,
     color: colors.textFaint,
   },
   actionRow: {
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   actionBtnPrimaryText: {
     color: colors.white,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   actionBtnSecondary: {
     backgroundColor: colors.primaryBg,
@@ -233,7 +234,7 @@ const styles = StyleSheet.create({
   actionBtnSecondaryText: {
     color: colors.primary,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   actionBtnDanger: {
     backgroundColor: colors.danger,
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   actionBtnDangerText: {
     color: colors.white,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   lockedBadge: {
     flexDirection: 'row',
@@ -258,6 +259,6 @@ const styles = StyleSheet.create({
   lockedText: {
     color: colors.stateFinalizada,
     fontSize: fontSize.sm,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });

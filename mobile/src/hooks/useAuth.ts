@@ -59,7 +59,6 @@ export function useAuth() {
       async (event, supabaseSession) => {
         // Skip events during initialization — getSession handles that
         if (initializing.current) return;
-
         if (event === 'SIGNED_IN' && supabaseSession) {
           // Fetch role from profiles
           const { data: profile } = await supabase

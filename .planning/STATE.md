@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Completed 04-admin-export-03-PLAN.md
-last_updated: "2026-03-20T04:53:50.712Z"
+stopped_at: Completed 05-ux-improvements-02-PLAN.md
+last_updated: "2026-03-29T00:29:59.705Z"
 last_activity: 2026-03-19 — Phase 3 Plan 03 complete
 progress:
   total_phases: 5
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 5
+  total_plans: 15
+  completed_plans: 15
   percent: 100
 ---
 
@@ -63,6 +63,8 @@ Progress: [██████████] 100%
 | Phase 04-admin-export P01 | 347s | 2 tasks | 10 files |
 | Phase 04-admin-export P02 | 297s | 2 tasks | 7 files |
 | Phase 04-admin-export P03 | 6min | 2 tasks | 2 files |
+| Phase 05-ux-improvements P01 | 257s | 3 tasks | 7 files |
+| Phase 05-ux-improvements P02 | 10min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -112,6 +114,11 @@ Recent decisions affecting current work:
 - [Phase 04-admin-export]: Seed dialog as Modal with number-pad TextInput for cross-platform compatibility
 - [Phase 04-admin-export]: ConfirmModal as second confirmation step for irreversible ID generation (two-step pattern)
 - [Phase 04-admin-export]: isFinalizada derived from useLiveData getPlantationEstado — drives FAB lockout and admin action visibility
+- [Phase 05-ux-improvements]: useNetStatus: isConnected === true && isInternetReachable !== false — treats null isInternetReachable as reachable (Android)
+- [Phase 05-ux-improvements]: useProfileData: cache-first pattern — reads SecureStore immediately, Supabase fetch updates state asynchronously
+- [Phase 05-ux-improvements]: freshnessQueries: module-level lastFreshnessCheck for 30s cooldown; _resetCooldown() for test isolation only
+- [Phase 05-ux-improvements]: PlantacionesScreen header title: isAdmin && org name present uses org name, otherwise 'Mis plantaciones'
+- [Phase 05-ux-improvements]: Freshness banner check in useFocusEffect — triggered on focus when online and plantationList populated
 
 ### Pending Todos
 
@@ -123,6 +130,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-20T04:48:43.604Z
-Stopped at: Completed 04-admin-export-03-PLAN.md
+Last session: 2026-03-29T00:29:59.703Z
+Stopped at: Completed 05-ux-improvements-02-PLAN.md
 Resume file: None

@@ -1,5 +1,5 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, fontSize, spacing } from '../theme';
+import { colors, fontSize, spacing, fonts } from '../theme';
 
 interface Props {
   title: string;
@@ -24,7 +24,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.heading,
-    fontWeight: 'bold',
+    fontFamily: fonts.heading,
     color: colors.primary,
   },
   subtitle: {

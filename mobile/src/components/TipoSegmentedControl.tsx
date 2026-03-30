@@ -1,6 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { SubGroupTipo } from '../repositories/SubGroupRepository';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
   value: SubGroupTipo;
@@ -39,7 +39,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSize.base,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.textMedium,
     marginBottom: spacing.sm,
   },
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   segmentLabel: {
     fontSize: fontSize.lg,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     color: colors.primary,
   },
   segmentLabelActive: {

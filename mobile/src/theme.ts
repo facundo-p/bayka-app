@@ -1,74 +1,99 @@
 // Centralized theme: colors, spacing, typography, and common styles.
 
 export const colors = {
-  primary: '#2d6a2d',
-  primaryDark: '#1b5e20',
-  primaryLight: '#4caf50',
-  primaryMedium: '#388e3c',
-  primaryBg: '#e8f5e9',
-  primaryBgLight: '#f0f7f0',
-  primaryBgMuted: '#a5d6a7',
-  primaryBorder: '#c8e6c9',
-  primaryFaded: '#a5c9a5',
-  primaryAccent: '#66bb6a',
-  primaryCountFaded: '#c8e6c9',
+  // ─── Primary (agriculture green, vibrant) ─────────────────────────────────
+  primary: '#15803D',
+  primaryDark: '#166534',
+  primaryLight: '#22C55E',
+  primaryMedium: '#16A34A',
+  headerBg: '#2D8A4E',
+  primaryBg: '#F0FDF4',
+  primaryBgLight: '#F0FDF4',
+  primaryBgMuted: '#86EFAC',
+  primaryBorder: '#BBF7D0',
+  primaryFaded: '#86EFAC',
+  primaryAccent: '#4ADE80',
+  primaryCountFaded: '#BBF7D0',
 
-  secondary: '#e65100',
-  secondaryBg: '#fff3e0',
-  secondaryBorder: '#ffcc02',
+  // ─── Secondary (warm orange) ──────────────────────────────────────────────
+  secondary: '#EA580C',
+  secondaryBg: '#FFF7ED',
+  secondaryBorder: '#FDBA74',
 
-  // Beige/cream for recent trees chips
+  // ─── Beige/cream for recent trees chips ───────────────────────────────────
   recentBg: '#f5efe6',
   recentBgActive: '#efe8db',
   recentBorder: '#ddd0be',
   recentText: '#7a6b56',
 
+  // ─── Yellow (N/N species) ─────────────────────────────────────────────────
   secondaryYellow: '#ffca28',
   secondaryYellowLight: '#fff8e1',
   secondaryYellowMedium: '#ffe082',
   secondaryYellowDark: '#ffb300',
 
-  danger: '#c62828',
-  dangerLight: '#e53935',
-  dangerBg: '#ffebee',
-  dangerText: '#c00',
+  // ─── Semantic ─────────────────────────────────────────────────────────────
+  danger: '#DC2626',
+  dangerLight: '#EF4444',
+  dangerBg: '#FEF2F2',
 
-  info: '#1565c0',
-  infoBg: '#e3f2fd',
+  info: '#2563EB',
+  infoBg: '#EFF6FF',
 
-  text: '#1a1a1a',
-  textDark: '#222',
-  textMedium: '#333',
-  textSecondary: '#555',
-  textMuted: '#888',
-  textLight: '#aaa',
-  textPlaceholder: '#999',
-  textSubtle: '#777',
-  textFaint: '#666',
+  // ─── Text (4-level hierarchy) ─────────────────────────────────────────────
+  textHeading: '#1E4D3A',   // deep forest green — harmonizes with primary palette
+  textPrimary: '#1E293B',
+  textSecondary: '#475569',
+  textMuted: '#94A3B8',
+  textDisabled: '#CBD5E1',
 
-  background: '#f5f5f5',
-  backgroundAlt: '#f9f9f9',
-  surface: '#fff',
-  surfaceAlt: '#fafafa',
-  surfacePressed: '#f0f0f0',
+  // Aliases for backward compatibility — migrate to textPrimary/Secondary/Muted/Disabled
+  text: '#1E293B',
+  textDark: '#1E293B',
+  textMedium: '#1E293B',
+  textFaint: '#475569',
+  textSubtle: '#475569',
+  textLight: '#94A3B8',
+  textPlaceholder: '#94A3B8',
+  dangerText: '#DC2626',
+  disabled: '#CBD5E1',
 
-  border: '#e0e0e0',
-  borderLight: '#ddd',
-  borderMuted: '#ccc',
+  // ─── Surfaces ─────────────────────────────────────────────────────────────
+  background: '#FAFAF9',
+  backgroundAlt: '#F5F5F4',
+  surface: '#FFFFFF',
+  surfaceAlt: '#FAFAF9',
+  surfacePressed: '#F5F5F4',
 
-  white: '#fff',
-  black: '#000',
-  overlay: 'rgba(0,0,0,0.9)',
-  disabled: '#aaa',
+  // ─── Borders ──────────────────────────────────────────────────────────────
+  border: '#E2E8F0',
+  borderLight: '#E2E8F0',
+  borderMuted: '#CBD5E1',
 
-  // State chips
-  stateActiva: '#4caf50',
-  stateFinalizada: '#ff9800',
-  stateSincronizada: '#2196f3',
+  // ─── Base ─────────────────────────────────────────────────────────────────
+  white: '#FFFFFF',
+  black: '#000000',
+  overlay: 'rgba(0,0,0,0.6)',
 
-  // Other user
-  otherUserBg: '#f5f5f5',
-  otherUserBorder: '#9e9e9e',
+  // ─── State chips ──────────────────────────────────────────────────────────
+  stateActiva: '#22C55E',
+  stateFinalizada: '#F59E0B',
+  stateSincronizada: '#3B82F6',
+
+  // ─── Other user ───────────────────────────────────────────────────────────
+  otherUserBg: '#F5F5F4',
+  otherUserBorder: '#94A3B8',
+
+  // ─── Semantic stat colors (consistent with estado) ──────────────────────
+  statTotal: '#64748B',       // slate-500, neutral for totals
+  statSynced: '#3B82F6',      // blue — same as stateSincronizada, synced = blue
+  statToday: '#8B5CF6',       // violet-500, unique color for "today" that doesn't clash
+  statPending: '#EA580C',     // orange — same as secondary, pending/unsync = orange
+
+  // ─── Connectivity ─────────────────────────────────────────────────────────
+  online: '#22C55E',
+  offline: '#94A3B8',
+
 } as const;
 
 export const spacing = {
@@ -89,27 +114,42 @@ export const fontSize = {
   xs: 11,
   sm: 12,
   md: 13,
-  base: 14,
+  base: 15,
   lg: 15,
   xl: 16,
   xxl: 18,
   title: 20,
   heading: 24,
-  hero: 36,
+  hero: 32,
 } as const;
 
 export const borderRadius = {
-  sm: 4,
-  md: 6,
-  lg: 8,
-  xl: 10,
-  xxl: 12,
-  round: 16,
+  sm: 6,
+  md: 8,
+  lg: 12,
+  xl: 16,
+  xxl: 16,
+  round: 20,
+  full: 9999,
+} as const;
+
+// ─── Brand fonts ──────────────────────────────────────────────────────────────
+export const fonts = {
+  // Poppins — body, labels, buttons
+  light: 'Poppins_300Light',
+  regular: 'Poppins_400Regular',
+  medium: 'Poppins_500Medium',
+  semiBold: 'Poppins_600SemiBold',
+  bold: 'Poppins_700Bold',
+  // Comfortaa — headings, titles
+  heading: 'Comfortaa_700Bold',
+  headingMedium: 'Comfortaa_600SemiBold',
+  headingRegular: 'Comfortaa_400Regular',
 } as const;
 
 // Common header style for Stack navigators
 export const headerStyle = {
-  headerStyle: { backgroundColor: colors.primary },
+  headerStyle: { backgroundColor: '#2D8A4E' },
   headerTintColor: colors.white,
-  headerTitleStyle: { fontWeight: 'bold' as const },
+  headerTitleStyle: { fontFamily: fonts.heading },
 } as const;

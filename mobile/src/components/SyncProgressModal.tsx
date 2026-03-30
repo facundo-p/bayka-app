@@ -1,6 +1,6 @@
 import { Modal, View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncSubGroupResult } from '../services/SyncService';
 import { getErrorMessage } from '../services/SyncService';
@@ -69,7 +69,7 @@ export default function SyncProgressModal({
               <Text style={styles.progressText}>
                 {pullSuccess
                   ? 'Se descargaron los ultimos datos del servidor.'
-                  : 'No se pudo conectar con el servidor. Verifica tu conexion.'}
+                  : 'No se pudo conectar con el servidor. Verifica tu conexión.'}
               </Text>
               <Pressable style={styles.dismissButton} onPress={onDismiss}>
                 <Text style={styles.dismissText}>Cerrar</Text>
@@ -85,7 +85,7 @@ export default function SyncProgressModal({
                 color={failureCount > 0 ? colors.secondary : colors.primary}
               />
               <Text style={styles.title}>
-                {failureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
+                {failureCount === 0 ? 'Sincronización completa' : 'Sincronización parcial'}
               </Text>
               {successCount > 0 && (
                 <Text style={styles.successText}>
@@ -140,17 +140,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
     color: colors.text,
     textAlign: 'center',
   },
   progressText: {
     fontSize: fontSize.xl,
+    fontFamily: fonts.regular,
     color: colors.textMuted,
     textAlign: 'center',
   },
   currentName: {
     fontSize: fontSize.base,
+    fontFamily: fonts.regular,
     color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -158,7 +160,7 @@ const styles = StyleSheet.create({
   successText: {
     fontSize: fontSize.base,
     color: colors.primary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
     textAlign: 'center',
   },
   failureSection: {
@@ -168,7 +170,7 @@ const styles = StyleSheet.create({
   failureTitle: {
     fontSize: fontSize.base,
     color: colors.secondary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   failureItem: {
     backgroundColor: colors.dangerBg,
@@ -179,10 +181,11 @@ const styles = StyleSheet.create({
   failureName: {
     fontSize: fontSize.base,
     color: colors.text,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
   failureMessage: {
     fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
     color: colors.danger,
   },
   dismissButton: {
@@ -195,6 +198,6 @@ const styles = StyleSheet.create({
   dismissText: {
     color: colors.white,
     fontSize: fontSize.base,
-    fontWeight: 'bold',
+    fontFamily: fonts.bold,
   },
 });
