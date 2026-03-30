@@ -22,7 +22,6 @@ import {
   UIManager,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
@@ -39,6 +38,7 @@ import { createPlantation, updatePlantation, finalizePlantation, generateIds } f
 import { exportToCSV, exportToExcel } from '../services/ExportService';
 
 import FilterCards from '../components/FilterCards';
+import ScreenHeader from '../components/ScreenHeader';
 import AdminModalWrapper from '../components/AdminModalWrapper';
 import type { Plantation } from '../components/PlantationConfigCard';
 import PlantationFormModal from '../components/PlantationFormModal';
@@ -110,7 +110,6 @@ function ActionItem({
 // ─── AdminScreen ────────────────────────────────────────────────────────────
 
 export default function AdminScreen() {
-  const insets = useSafeAreaInsets();
   const userId = useCurrentUserId();
 
   const [organizacionId, setOrganizacionId] = useState<string | null>(null);
@@ -494,15 +493,17 @@ export default function AdminScreen() {
       {/* Subtle warm gradient background */}
       <View style={styles.gradientBg} />
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Text style={styles.headerTitle}>Gestión</Text>
-        <Pressable
-          style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => setShowCreateModal(true)}
-        >
-          <Ionicons name="add" size={24} color={colors.primary} />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Gestión"
+        rightElement={
+          <Pressable
+            style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => setShowCreateModal(true)}
+          >
+            <Ionicons name="add" size={24} color={colors.primary} />
+          </Pressable>
+        }
+      />
 
       <ScrollView
         style={styles.scrollView}
@@ -703,21 +704,6 @@ const styles = StyleSheet.create({
   },
 
   // ─── Header ─────────────────────────────────────────────────────────────
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.xxl,
-    paddingBottom: spacing.xl,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: {
-    color: colors.primary,
-    fontSize: fontSize.heading,
-    fontFamily: fonts.heading,
-  },
   headerAddBtn: {
     width: 40,
     height: 40,

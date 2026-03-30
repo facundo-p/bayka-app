@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   cardTitleArea: { flex: 1, marginRight: spacing.md },
-  cardTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.text, marginBottom: 2 },
+  cardTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textHeading, marginBottom: 2 },
   cardSubtitle: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textFaint },
   statsRow: {
     flexDirection: 'row',

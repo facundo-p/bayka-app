@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import { useFocusEffect } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { useNetStatus } from '../hooks/useNetStatus';
 import { useProfileData } from '../hooks/useProfileData';
@@ -22,11 +21,11 @@ import {
 } from '../queries/dashboardQueries';
 import PlantationCard from '../components/PlantationCard';
 import FilterCards from '../components/FilterCards';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function PlantacionesScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
-  const insets = useSafeAreaInsets();
   const userId = useCurrentUserId();
 
   const isAdmin = routePrefix === '(admin)';
@@ -122,16 +121,16 @@ export default function PlantacionesScreen() {
     <View style={styles.container}>
       {/* Subtle gradient background */}
       <View style={styles.gradientBg} />
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle}>{headerTitle}</Text>
-        </View>
-        <Ionicons
-          name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
-          size={20}
-          color={isOnline ? colors.online : colors.offline}
-        />
-      </View>
+      <ScreenHeader
+        title={headerTitle}
+        rightElement={
+          <Ionicons
+            name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
+            size={20}
+            color={isOnline ? colors.online : colors.offline}
+          />
+        }
+      />
 
       {showFreshnessBanner && (
         <View style={styles.freshnessBanner}>
@@ -189,24 +188,6 @@ const styles = StyleSheet.create({
     height: 250,
     backgroundColor: colors.stateActiva,
     opacity: 0.12,
-  },
-  header: {
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitleContainer: {
-    flex: 1,
-  },
-  headerTitle: {
-    color: colors.primary,
-    fontSize: fontSize.title,
-    fontFamily: fonts.heading,
   },
   freshnessBanner: {
     flexDirection: 'row',

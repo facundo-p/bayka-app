@@ -41,6 +41,7 @@ export const colors = {
   infoBg: '#EFF6FF',
 
   // ─── Text (4-level hierarchy) ─────────────────────────────────────────────
+  textHeading: '#1E4D3A',   // deep forest green — harmonizes with primary palette
   textPrimary: '#1E293B',
   textSecondary: '#475569',
   textMuted: '#94A3B8',
