@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-03-31
+revised: 2026-03-31
 ---
 
 # Phase 06 — UI Design Contract
@@ -34,12 +35,19 @@ created: 2026-03-31
 
 Source: `mobile/src/theme.ts` — existing spacing object. No new tokens introduced in this phase.
 
+**Pre-existing tokens (out of scope — do NOT introduce or rename):**
+
+| Token | Value | Multiple of 4? | Status |
+|-------|-------|----------------|--------|
+| spacing.sm | 6px | No | Pre-existing in theme.ts — read-only, not used in Phase 06 layout |
+| spacing.lg | 10px | No | Pre-existing in theme.ts — read-only, not used in Phase 06 layout |
+
+**Phase 06 layout uses only multiples-of-4 tokens from the existing scale:**
+
 | Token | Value | Usage in this phase |
 |-------|-------|---------------------|
 | spacing.xs | 4px | Icon gaps, checkbox inner padding |
-| spacing.sm | 6px | Compact chip/badge padding |
 | spacing.md | 8px | Inter-element gap inside catalog card |
-| spacing.lg | 10px | Vertical padding on filter/header rows |
 | spacing.xl | 12px | Card inner padding, gap between list items |
 | spacing.xxl | 16px | Horizontal screen edge padding |
 | spacing.xxxl | 20px | Modal overlay padding |
@@ -56,17 +64,22 @@ Exceptions:
 
 Source: `mobile/src/theme.ts` — existing fontSize and fonts objects. Two weights used per CLAUDE.md rule.
 
+Exactly 4 font sizes are declared for this phase. The previously declared 16px size (fontSize.xl) is removed — all modal body and progress text uses 15px (fontSize.base) instead.
+
 | Role | Size token | Actual size | Font family | Weight | Line Height |
 |------|-----------|-------------|-------------|--------|-------------|
 | Screen title (catalog header) | fontSize.heading | 24px | fonts.heading (Comfortaa_700Bold) | 700 | 1.2 |
-| Card primary text (lugar) | fontSize.xxl | 18px | fonts.bold (Poppins_700Bold) | 700 | 1.3 |
-| Card secondary text (periodo, estado chip) | fontSize.base | 15px | fonts.regular (Poppins_400Regular) | 400 | 1.4 |
+| Card primary text (lugar) / Modal title | fontSize.xxl | 18px | fonts.bold (Poppins_700Bold) | 700 | 1.3 |
+| Card secondary text (periodo, estado chip) / Modal body / Progress text / Button label | fontSize.base | 15px | fonts.regular or fonts.bold (see weight column) | 400 or 700 | 1.4 |
 | Stat label / metadata | fontSize.xs | 11px | fonts.regular (Poppins_400Regular) | 400 | 1.4 |
-| Modal title | fontSize.xxl | 18px | fonts.bold (Poppins_700Bold) | 700 | 1.3 |
-| Modal body / progress text | fontSize.xl | 16px | fonts.regular (Poppins_400Regular) | 400 | 1.5 |
-| Button label | fontSize.base | 15px | fonts.bold (Poppins_700Bold) | 700 | n/a |
+
+**Weight assignments per role:**
+- 700 (bold): Screen title, card lugar title, modal title, button labels
+- 400 (regular): Card secondary text, modal body copy, progress text, stat labels
 
 Effective weights used: 400 (regular) and 700 (bold). This satisfies the 2-weight maximum per project rule.
+
+**Removed from spec:** fontSize.xl (16px) — consolidated into fontSize.base (15px) to stay within 4-size maximum. The 1px difference provided no visual hierarchy benefit.
 
 ---
 
@@ -124,7 +137,7 @@ SafeAreaView (background: colors.background)
   [error state]
     Ionicons "cloud-offline-outline" size=48 color=colors.textMuted
     Text (emptyTitle style): error copy
-    Pressable retry button
+    Pressable retry button — label "Reintentar carga"
 
   [empty state — no plantations on server]
     Ionicons "leaf-outline" size=48 color=colors.textMuted
@@ -132,6 +145,10 @@ SafeAreaView (background: colors.background)
     Text (emptySubtext style): empty body copy
 
   [loaded state]
+    Focal point: the FlatList of CatalogPlantationCard rows is the primary visual
+    element — cards fill the screen, sticky bar floats above the bottom edge.
+    User attention should land on the first undownloaded card's checkbox.
+
     FlatList
       contentContainerStyle: paddingHorizontal=spacing.xxl, paddingTop=spacing.xl, gap=spacing.xl, paddingBottom=96px (clears CTA button)
       renderItem: CatalogPlantationCard
@@ -244,7 +261,7 @@ Text (currentName, italic): "{currentName}"
 Ionicons "checkmark-circle" size=48 color=colors.primary
 Text (title): "Descarga completa"
 Text (progressText): "{successCount} plantacion(es) descargada(s)"
-Pressable "Cerrar" (dismissButton style)
+Pressable "Cerrar resumen" (dismissButton style)
 ```
 
 `done` — partial failure:
@@ -258,7 +275,7 @@ Text successText: "{successCount} descargada(s) correctamente"
     View failureItem (colors.dangerBg background)
       Text failureName: result.nombre
       Text failureMessage: "No se pudo descargar. Reintenta desde el catalogo."
-Pressable "Cerrar" (dismissButton style)
+Pressable "Cerrar resumen" (dismissButton style)
 ```
 
 `done` — all failed:
@@ -266,7 +283,7 @@ Pressable "Cerrar" (dismissButton style)
 Ionicons "alert-circle" size=48 color=colors.danger
 Text (title): "Error en la descarga"
 Text (progressText): "No se pudo descargar ninguna plantacion. Verifica tu conexion."
-Pressable "Cerrar" (dismissButton style)
+Pressable "Cerrar resumen" (dismissButton style)
 ```
 
 **Styles** (mirror SyncProgressModal exactly):
@@ -283,6 +300,7 @@ Pressable
   disabled: !isOnline
   hitSlop={8}
   opacity: isOnline ? 1 : 0.5
+  accessibilityLabel="Abrir catalogo de plantaciones"
 
   Ionicons
     name: isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'
@@ -307,7 +325,8 @@ When offline: icon is rendered at 0.5 opacity, Pressable disabled. No toast or f
 | Empty state body | "Todas las plantaciones del servidor ya estan en tu dispositivo" | Admin variant |
 | Empty state body (tecnico) | "No tenes plantaciones asignadas en el servidor" | Tecnico variant — use isAdmin to select |
 | Error state heading | "No se pudo cargar el catalogo" | Network/server error on fetch |
-| Error state body | "Verifica tu conexion y vuelve a intentarlo" | With "Reintentar" Pressable button |
+| Error state body | "Verifica tu conexion y vuelve a intentarlo" | Accompanied by "Reintentar carga" Pressable button |
+| Retry button (error state) | "Reintentar carga" | Verb + noun per copywriting convention |
 | Download in progress title | "Descargando..." | DownloadProgressModal syncing state |
 | Download progress counter | "{completed} de {total}" | e.g. "1 de 3" |
 | Download current item | "{plantation.lugar}" | Italic, textSecondary — current plantation name |
@@ -317,8 +336,7 @@ When offline: icon is rendered at 0.5 opacity, Pressable disabled. No toast or f
 | Download failure item | "No se pudo descargar. Reintenta desde el catalogo." | Per-failed-plantation message |
 | Download all-failed title | "Error en la descarga" | All failed |
 | Download all-failed body | "No se pudo descargar ninguna plantacion. Verifica tu conexion." | — |
-| Dismiss modal button | "Cerrar" | All done states |
-| Retry button (error state) | "Reintentar" | Error state in CatalogScreen |
+| Dismiss modal button | "Cerrar resumen" | All done states — verb + noun per copywriting convention |
 
 No destructive actions in this phase. Download is additive (read-only effect on local SQLite via upsert). No confirmation dialog required.
 
@@ -340,12 +358,12 @@ No destructive actions in this phase. Download is additive (read-only effect on 
 3. Per-plantation progress updated via callback: {completed, total, currentName}
 4. On batch completion: modal transitions to 'done' state with results summary
 5. `notifyDataChanged()` called once in finally block after loop
-6. User taps "Cerrar": modal dismissed, screen remains on CatalogScreen with refreshed localIds (downloaded items now show as "Ya descargada")
+6. User taps "Cerrar resumen": modal dismissed, screen remains on CatalogScreen with refreshed localIds (downloaded items now show as "Ya descargada")
 7. selectedIds cleared on dismiss
 
 ### Navigation entry point
 
-- PlantacionesScreen header connectivity icon (Pressable): tapping when isOnline navigates to `/(admin)/plantation/catalog` or `/(tecnico)/plantation/catalog`
+- PlantacionesScreen header connectivity icon (Pressable, accessibilityLabel="Abrir catalogo de plantaciones"): tapping when isOnline navigates to `/(admin)/plantation/catalog` or `/(tecnico)/plantation/catalog`
 - Stack route title: "Catalogo de plantaciones"
 - Back navigation: standard Expo Router back arrow in stack header (headerStyle from theme.ts)
 
@@ -377,6 +395,7 @@ This is a React Native project with no shadcn, no npm UI registry components. Al
 | mobile/src/screens/PlantacionesScreen.tsx | Empty state copy, connectivity icon modification |
 | mobile/src/components/ScreenHeader.tsx | Header layout usage |
 | User input this session | 0 — all questions answered by upstream artifacts |
+| Checker revision 2026-03-31 | Typography consolidated to 4 sizes (dropped 16px → 15px); spacing non-multiples-of-4 declared as pre-existing/out-of-scope; copywriting verb+noun fixes; focal point and accessibilityLabel added |
 
 ---
 
