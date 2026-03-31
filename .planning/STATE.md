@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: completed
-stopped_at: Phase 6 context gathered
-last_updated: "2026-03-31T16:54:12.619Z"
+stopped_at: Phase 6 UI-SPEC approved
+last_updated: "2026-03-31T23:01:03.270Z"
 last_activity: 2026-03-19 — Phase 3 Plan 03 complete
 progress:
   total_phases: 6
@@ -136,6 +136,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-31T16:54:12.613Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-admin-sync-subir-plantaciones-y-finalizaciones-al-servidor/06-CONTEXT.md
+Last session: 2026-03-31T23:01:03.264Z
+Stopped at: Phase 6 UI-SPEC approved
+Resume file: .planning/phases/06-admin-sync-subir-plantaciones-y-finalizaciones-al-servidor/06-UI-SPEC.md
