@@ -17,6 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
 - [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
 - [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
+- [ ] **Phase 6: Plantation Catalog + Download** - Server plantation discovery, batch download to device, offline-first bootstrap for new devices
 
 ## Phase Details
 
@@ -105,10 +106,27 @@ Plans:
 - [ ] 05-01-PLAN.md — Data/logic layer: useNetStatus hook, useProfileData hook with SecureStore cache, freshnessQueries with cooldown, theme colors
 - [ ] 05-02-PLAN.md — UI layer: PlantacionesScreen (contextual header, connectivity icon, freshness banner), PerfilScreen (profile card), visual verification checkpoint
 
+### Phase 6: Plantation Catalog + Download
+**Goal**: Users can discover server plantations via a catalog screen and batch-download them (plantation + subgroups + trees + species + users) for full offline access — enabling new device setup and cross-device plantation sharing
+**Depends on**: Phase 5
+**Requirements**: CATL-01, CATL-02, CATL-03, CATL-04, CATL-05, CATL-06
+**Success Criteria** (what must be TRUE):
+  1. User can tap the connectivity icon when online to open a catalog of server plantations
+  2. Catalog shows plantation details (lugar, periodo, estado, subgroup count, tree count) with role-gated visibility (admin: all org, tecnico: assigned only)
+  3. Already-downloaded plantations are visually distinct and not selectable
+  4. User can select and batch-download plantations with a progress modal showing per-plantation progress
+  5. Downloaded plantations appear immediately in the local plantation list with full offline data
+  6. Connectivity icon is disabled when offline
+**Plans**: 2 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Data layer: catalogQueries (server catalog + local ID lookup), SyncService download extensions (downloadPlantation + batchDownload), unit tests
+- [ ] 06-02-PLAN.md — UI layer: CatalogScreen, CatalogPlantationCard, DownloadProgressModal, route wrappers, PlantacionesScreen icon navigation (checkpoint)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -117,3 +135,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
 | 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
 | 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
+| 6. Plantation Catalog + Download | 0/2 | Planning complete | — |
