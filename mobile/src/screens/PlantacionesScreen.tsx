@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useLiveData, notifyDataChanged } from '../database/liveQuery';
 import { useRouter } from 'expo-router';
@@ -124,11 +124,19 @@ export default function PlantacionesScreen() {
       <ScreenHeader
         title={headerTitle}
         rightElement={
-          <Ionicons
-            name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
-            size={20}
-            color={isOnline ? colors.online : colors.offline}
-          />
+          <Pressable
+            onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
+            disabled={!isOnline}
+            hitSlop={8}
+            style={{ opacity: isOnline ? 1 : 0.5 }}
+            accessibilityLabel="Abrir catalogo de plantaciones"
+          >
+            <Ionicons
+              name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
+              size={20}
+              color={isOnline ? colors.online : colors.offline}
+            />
+          </Pressable>
         }
       />
 
