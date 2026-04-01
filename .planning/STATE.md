@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-03-31T23:01:03.270Z"
-last_activity: 2026-03-19 — Phase 3 Plan 03 complete
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-04-01T01:35:00.000Z"
+last_activity: 2026-04-01 -- Phase 06 Plan 01 complete
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
+  total_plans: 17
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 3 — Sync + Dashboard
+**Current focus:** Phase 06 — admin-sync-subir-plantaciones-y-finalizaciones-al-servidor
 
 ## Current Position
 
-Phase: 3 of 4 (Sync + Dashboard) — COMPLETE
-Plan: 3 of 3 in current phase (Plan 03-03 complete)
-Status: Phase 3 complete — all plans done. Ready for Phase 4 (Polish)
-Last activity: 2026-03-19 — Phase 3 Plan 03 complete
+Phase: 06 (admin-sync-subir-plantaciones-y-finalizaciones-al-servidor) — EXECUTING
+Plan: 2 of 2 (Plan 01 complete)
+Status: Executing Phase 06 — Plan 01 done, Plan 02 pending
+Last activity: 2026-04-01 -- Phase 06 Plan 01 complete
 
 Progress: [██████████] 100%
 
@@ -121,6 +121,10 @@ Recent decisions affecting current work:
 - [Phase 05-ux-improvements]: freshnessQueries: module-level lastFreshnessCheck for 30s cooldown; _resetCooldown() for test isolation only
 - [Phase 05-ux-improvements]: PlantacionesScreen header title: isAdmin && org name present uses org name, otherwise 'Mis plantaciones'
 - [Phase 05-ux-improvements]: Freshness banner check in useFocusEffect — triggered on focus when online and plantationList populated
+- [Phase 06-admin-sync P01]: jest.resetAllMocks() in beforeEach (not clearAllMocks) — clearAllMocks does NOT clear mockReturnValueOnce queues; causes inter-test leakage
+- [Phase 06-admin-sync P01]: Plain JS object chain mocks (not jest.fn()) in supabase chain helpers — jest.fn() instances get cleared by resetAllMocks
+- [Phase 06-admin-sync P01]: batchDownload tests use db.insert mock directly — ES module closures prevent jest.spyOn from intercepting internal calls
+- [Phase 06-admin-sync P01]: subgroup and tree counts fetched in batch (one query each) and merged in memory — avoids N+1 per plantation
 
 ### Roadmap Evolution
 
@@ -136,6 +140,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-31T23:01:03.264Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-admin-sync-subir-plantaciones-y-finalizaciones-al-servidor/06-UI-SPEC.md
+Last session: 2026-04-01T01:35:00.000Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
