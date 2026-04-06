@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { clearSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import { clearSession, restoreSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
+import { cacheCredential, verifyCredential, clearCredential } from '../services/OfflineAuthService';
 import type { Role } from '../types/domain';
 
 export function useAuth() {
@@ -95,18 +97,52 @@ export function useAuth() {
     };
   }, []);
 
+  async function handleOfflineSignIn(email: string, password: string) {
+    const cachedRole = await verifyCredential(email, password);
+    if (!cachedRole) {
+      return { data: { session: null, user: null }, error: { message: 'Sin conexion. Inicia sesion online primero.' } };
+    }
+    const restoredSession = await restoreSession();
+    if (!restoredSession) {
+      return { data: { session: null, user: null }, error: { message: 'Sin conexion y sin sesion previa. Conectate al menos una vez.' } };
+    }
+    setSession(restoredSession);
+    setRole(cachedRole as Role);
+    return { data: { session: restoredSession, user: null }, error: null };
+  }
+
   async function signIn(email: string, password: string) {
-    return supabase.auth.signInWithPassword({ email, password });
+    const net = await NetInfo.fetch();
+    const isOnline = net.isConnected === true && net.isInternetReachable !== false;
+
+    if (!isOnline) {
+      return handleOfflineSignIn(email, password);
+    }
+
+    const result = await supabase.auth.signInWithPassword({ email, password });
+    if (!result.error && result.data.session) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('rol')
+        .eq('id', result.data.session.user.id)
+        .single();
+      const userRole = profile?.rol ?? 'tecnico';
+      await cacheCredential(email, password, userRole);
+    }
+    return result;
   }
 
   async function signOut() {
+    const currentEmail = await SecureStore.getItemAsync(EMAIL_KEY);
     try {
       await supabase.auth.signOut();
     } catch (e) {
       console.error('[Auth] signOut exception:', e);
     }
-    // Always clear locally
     await clearSession();
+    if (currentEmail) {
+      await clearCredential(currentEmail);
+    }
     setSession(null);
     setRole(null);
   }
