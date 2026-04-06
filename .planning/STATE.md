@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-04-06T18:14:07.002Z"
+status: verifying
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-06T18:18:05.948Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 Phase: 08 (login-offline) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-06
 
 Progress: [██████████] 100%
@@ -70,6 +70,7 @@ Progress: [██████████] 100%
 | Phase 07-eliminar-plantacion-local P01 | 190s | 2 tasks | 4 files |
 | Phase 07-eliminar-plantacion-local P02 | 93s | 3 tasks | 2 files |
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
+| Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -132,6 +133,9 @@ Recent decisions affecting current work:
 - [Phase 07-eliminar-plantacion-local]: getUnsyncedSubgroupSummary does NOT filter by usuarioCreador — counts ALL subgroups regardless of technician
 - [Phase 07-eliminar-plantacion-local]: Replaced Ya descargada badge with trash icon on downloaded cards - actionable delete button
 - [Phase 08-login-offline]: clearAllMocks (not resetAllMocks) in offlineAuth tests to preserve setup.ts mock implementations
+- [Phase 08-login-offline]: handleOfflineSignIn extracted as separate function to keep signIn under 20 lines (CLAUDE.md rule)
+- [Phase 08-login-offline]: Credential caching in useAuth.signIn not login screen (CLAUDE.md rule 9: no data logic in screens)
+- [Phase 08-login-offline]: rememberAccount toggle removed -- caching automatic on every online login success
 
 ### Roadmap Evolution
 
@@ -149,6 +153,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-06T18:14:06.999Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-04-06T18:18:05.944Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
 - [ ] **Phase 6: Plantation Catalog + Download** - Server plantation discovery, batch download to device, offline-first bootstrap for new devices
 - [ ] **Phase 7: Eliminar Plantación Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar
-- [ ] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexión en campo
+- [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexión en campo (completed 2026-04-06)
 
 ## Phase Details
 
@@ -155,7 +155,7 @@ Plans:
 
 Plans:
 - [x] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
-- [ ] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
+- [x] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
 
 ## Progress
 
@@ -171,4 +171,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
 | 6. Plantation Catalog + Download | 1/2 | Executing | — |
 | 7. Eliminar Plantación Local | 0/2 | Not started | — |
-| 8. Login Offline | 1/2 | In Progress|  |
+| 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
