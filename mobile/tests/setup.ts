@@ -28,6 +28,9 @@ jest.mock('@react-native-community/netinfo', () => ({
 // Mock expo-crypto
 jest.mock('expo-crypto', () => ({
   randomUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(2, 10)),
+  CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
+  digestStringAsync: jest.fn(async (_alg: string, data: string) => `mock-hash-${data}`),
+  getRandomBytes: jest.fn((n: number) => new Uint8Array(n).fill(42)),
 }));
 
 // Mock expo-sqlite
