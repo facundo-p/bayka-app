@@ -138,7 +138,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Data layer: deletePlantationLocally (cascade delete transaction), getUnsyncedSubgroupSummary (unsynced detection query)
+- [x] 07-01-PLAN.md — Data layer: deletePlantationLocally (cascade delete transaction), getUnsyncedSubgroupSummary (unsynced detection query)
 - [ ] 07-02-PLAN.md — UI layer: trash icon on CatalogPlantationCard, confirmation flow with unsynced warning, state refresh
 
 ### Phase 8: Login Offline

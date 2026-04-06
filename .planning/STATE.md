@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 06-01-PLAN.md
-last_updated: "2026-04-01T01:35:00.000Z"
-last_activity: 2026-04-01 -- Phase 06 Plan 01 complete
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-04-06T04:20:29.316Z"
+last_activity: 2026-04-06
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 5
-  total_plans: 17
-  completed_plans: 16
-  percent: 94
+  total_plans: 21
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 06 — admin-sync-subir-plantaciones-y-finalizaciones-al-servidor
+**Current focus:** Phase 07 — eliminar-plantacion-local
 
 ## Current Position
 
-Phase: 06 (admin-sync-subir-plantaciones-y-finalizaciones-al-servidor) — EXECUTING
-Plan: 2 of 2 (Plan 01 complete)
-Status: Executing Phase 06 — Plan 01 done, Plan 02 pending
-Last activity: 2026-04-01 -- Phase 06 Plan 01 complete
+Phase: 07 (eliminar-plantacion-local) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-06
 
 Progress: [██████████] 100%
 
@@ -67,6 +67,7 @@ Progress: [██████████] 100%
 | Phase 04-admin-export P03 | 6min | 2 tasks | 2 files |
 | Phase 05-ux-improvements P01 | 257s | 3 tasks | 7 files |
 | Phase 05-ux-improvements P02 | 10min | 3 tasks | 2 files |
+| Phase 07-eliminar-plantacion-local P01 | 190s | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,8 @@ Recent decisions affecting current work:
 - [Phase 06-admin-sync P01]: Plain JS object chain mocks (not jest.fn()) in supabase chain helpers — jest.fn() instances get cleared by resetAllMocks
 - [Phase 06-admin-sync P01]: batchDownload tests use db.insert mock directly — ES module closures prevent jest.spyOn from intercepting internal calls
 - [Phase 06-admin-sync P01]: subgroup and tree counts fetched in batch (one query each) and merged in memory — avoids N+1 per plantation
+- [Phase 07-eliminar-plantacion-local]: deletePlantationLocally uses IN subquery for trees (via subgroup IDs) — single SQL statement per table in transaction
+- [Phase 07-eliminar-plantacion-local]: getUnsyncedSubgroupSummary does NOT filter by usuarioCreador — counts ALL subgroups regardless of technician
 
 ### Roadmap Evolution
 
@@ -142,6 +145,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-01T01:35:00.000Z
-Stopped at: Completed 06-01-PLAN.md
+Last session: 2026-04-06T04:20:29.312Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None
