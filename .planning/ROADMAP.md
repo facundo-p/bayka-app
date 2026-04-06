@@ -154,7 +154,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
+- [x] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
 - [ ] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
 
 ## Progress
@@ -171,4 +171,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
 | 6. Plantation Catalog + Download | 1/2 | Executing | — |
 | 7. Eliminar Plantación Local | 0/2 | Not started | — |
-| 8. Login Offline | 0/2 | Not started | — |
+| 8. Login Offline | 1/2 | In Progress|  |

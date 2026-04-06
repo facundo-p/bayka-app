@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-04-06T04:23:37.926Z"
+status: executing
+stopped_at: Completed 08-01-PLAN.md
+last_updated: "2026-04-06T18:14:07.002Z"
 last_activity: 2026-04-06
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 21
-  completed_plans: 18
+  completed_plans: 19
   percent: 100
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 07 — eliminar-plantacion-local
+**Current focus:** Phase 08 — login-offline
 
 ## Current Position
 
-Phase: 07 (eliminar-plantacion-local) — EXECUTING
+Phase: 08 (login-offline) — EXECUTING
 Plan: 2 of 2
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-04-06
 
 Progress: [██████████] 100%
@@ -69,6 +69,7 @@ Progress: [██████████] 100%
 | Phase 05-ux-improvements P02 | 10min | 3 tasks | 2 files |
 | Phase 07-eliminar-plantacion-local P01 | 190s | 2 tasks | 4 files |
 | Phase 07-eliminar-plantacion-local P02 | 93s | 3 tasks | 2 files |
+| Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,7 @@ Recent decisions affecting current work:
 - [Phase 07-eliminar-plantacion-local]: deletePlantationLocally uses IN subquery for trees (via subgroup IDs) — single SQL statement per table in transaction
 - [Phase 07-eliminar-plantacion-local]: getUnsyncedSubgroupSummary does NOT filter by usuarioCreador — counts ALL subgroups regardless of technician
 - [Phase 07-eliminar-plantacion-local]: Replaced Ya descargada badge with trash icon on downloaded cards - actionable delete button
+- [Phase 08-login-offline]: clearAllMocks (not resetAllMocks) in offlineAuth tests to preserve setup.ts mock implementations
 
 ### Roadmap Evolution
 
@@ -147,6 +149,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-06T04:23:37.922Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-04-06T18:14:06.999Z
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
