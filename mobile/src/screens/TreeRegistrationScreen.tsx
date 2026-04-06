@@ -95,7 +95,6 @@ export default function TreeRegistrationScreen() {
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroupEstado }, userId)
     : false;
   // Read-only when not owner OR when subgroup is not activa.
-  // Default to false while data is loading so the grid renders immediately.
   // Both subgroup AND userId must be loaded before we trust the isReadOnly decision
   // (userId loads async — if subgroup loads first, isOwner would be false → flash of tree list).
   const dataLoaded = subgroup !== null && userId !== '';
@@ -309,7 +308,7 @@ export default function TreeRegistrationScreen() {
       />
 
       {/* View all trees button — always visible in edit mode to reserve space */}
-      {!isReadOnly && (
+      {dataLoaded && !isReadOnly && (
         <Pressable
           style={({ pressed }) => [styles.viewAllRow, pressed && totalCount > 0 && { opacity: 0.7 }]}
           onPress={() => totalCount > 0 && setShowTreeList(true)}
@@ -324,7 +323,7 @@ export default function TreeRegistrationScreen() {
       )}
 
       {/* Last 3 trees — only in edit mode */}
-      {!isReadOnly && (
+      {dataLoaded && !isReadOnly && (
         <Animated.View entering={FadeInDown.duration(300)} style={styles.lastThreeSection}>
           <Text style={styles.lastThreeLabel}>Últimos ingresados</Text>
           <View style={styles.lastThreeRow}>
@@ -353,8 +352,12 @@ export default function TreeRegistrationScreen() {
         </Animated.View>
       )}
 
-      {/* Species button grid — show grid by default, tree list only when confirmed read-only */}
-      {!isReadOnly || !dataLoaded ? (
+      {/* Wait for subgroup data before deciding which view to show — avoids flash of wrong content */}
+      {!dataLoaded ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : !isReadOnly ? (
         <>
           <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
             {speciesLoading ? (
@@ -643,6 +646,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerRight: {
     flexDirection: 'row',

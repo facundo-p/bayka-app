@@ -35,28 +35,21 @@ export function useProfileData() {
 
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('nombre, rol, organizacion_id')
+          .select('nombre, rol, organizacion_id, organizations(nombre)')
           .eq('id', user.id)
           .single();
 
         if (!profileData || !mounted) { setLoading(false); return; }
 
-        let orgNombre = '';
-        if (profileData.organizacion_id) {
-          const { data: org } = await supabase
-            .from('organizations')
-            .select('nombre')
-            .eq('id', profileData.organizacion_id)
-            .single();
-          orgNombre = org?.nombre ?? '';
-        }
+        const orgRaw = profileData.organizations as unknown as { nombre: string } | { nombre: string }[] | null;
+        const orgData = Array.isArray(orgRaw) ? orgRaw[0] ?? null : orgRaw;
 
         const fresh: CachedProfile = {
           nombre: profileData.nombre ?? '',
           email: user.email ?? '',
           rol: profileData.rol ?? '',
           organizacionId: profileData.organizacion_id ?? '',
-          organizacionNombre: orgNombre,
+          organizacionNombre: orgData?.nombre ?? '',
         };
 
         if (mounted) setProfile(fresh);

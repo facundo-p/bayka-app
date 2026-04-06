@@ -129,6 +129,8 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 6 added: Admin sync - subir plantaciones y finalizaciones al servidor
+- Phase 7 added: Eliminar plantación local - borrado local de plantaciones descargadas en el celular
+- Phase 8 added: Login offline - cachear credenciales para login sin conexión
 
 ### Pending Todos
 
