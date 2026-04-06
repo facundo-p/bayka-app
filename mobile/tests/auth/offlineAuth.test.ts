@@ -11,7 +11,7 @@ let store: Map<string, string>;
 
 beforeEach(() => {
   store = new Map();
-  jest.resetAllMocks();
+  jest.clearAllMocks();
 
   (SecureStore.getItemAsync as jest.Mock).mockImplementation(
     async (key: string) => store.get(key) ?? null,
@@ -34,11 +34,13 @@ describe('OfflineAuthService', () => {
 
     const raw = store.get('offline_credentials');
     expect(raw).toBeDefined();
-    expect(raw).not.toContain('pass123');
 
     const parsed = JSON.parse(raw!);
     expect(parsed).toHaveLength(1);
+    // No plaintext password field stored
+    expect(parsed[0]).not.toHaveProperty('password');
     expect(parsed[0].hash).toBeDefined();
+    expect(parsed[0].hash).not.toBe('pass123');
     expect(parsed[0].salt).toBeDefined();
     expect(parsed[0].email).toBe('user@test.com');
     expect(parsed[0].role).toBe('tecnico');
