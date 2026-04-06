@@ -8,9 +8,10 @@ interface Props {
   isDownloaded: boolean;
   isSelected: boolean;
   onToggle: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function CatalogPlantationCard({ item, isDownloaded, isSelected, onToggle }: Props) {
+export default function CatalogPlantationCard({ item, isDownloaded, isSelected, onToggle, onDelete }: Props) {
   const stateColor =
     item.estado === 'activa'
       ? colors.stateActiva
@@ -22,7 +23,6 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
 
   return (
     <Pressable
-      disabled={isDownloaded}
       onPress={() => onToggle(item.id)}
       style={[
         styles.card,
@@ -60,11 +60,15 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
         </View>
       </View>
 
-      {/* Right: downloaded badge */}
+      {/* Right: delete action for downloaded cards */}
       {isDownloaded && (
-        <View style={styles.downloadedBadge}>
-          <Text style={styles.downloadedText}>Ya descargada</Text>
-        </View>
+        <Pressable
+          onPress={() => onDelete?.(item.id)}
+          hitSlop={8}
+          style={styles.deleteButton}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.danger} />
+        </Pressable>
       )}
     </Pressable>
   );
@@ -142,12 +146,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontFamily: fonts.regular,
   },
-  downloadedBadge: {
-    alignItems: 'flex-end',
-  },
-  downloadedText: {
-    fontSize: fontSize.xs,
-    color: colors.stateSincronizada,
-    fontFamily: fonts.semiBold,
+  deleteButton: {
+    padding: spacing.sm,
   },
 });
