@@ -6,7 +6,8 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { plantations } from '../database/schema';
+import { plantations, subgroups } from '../database/schema';
+import { eq, and, sql, count } from 'drizzle-orm';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -144,4 +145,38 @@ export async function getServerCatalog(
 export async function getLocalPlantationIds(): Promise<Set<string>> {
   const rows = await db.select({ id: plantations.id }).from(plantations);
   return new Set(rows.map((r) => r.id));
+}
+
+// --- Unsynced subgroup detection ---------------------------------------------
+
+export type UnsyncedSummary = {
+  activaCount: number;
+  finalizadaCount: number;
+};
+
+/**
+ * Returns counts of non-synchronized subgroups for a plantation.
+ * Used to determine whether to show a warning before local deletion.
+ *
+ * IMPORTANT: Does NOT filter by usuarioCreador — counts ALL subgroups
+ * regardless of which technician created them.
+ */
+export async function getUnsyncedSubgroupSummary(
+  plantacionId: string
+): Promise<UnsyncedSummary> {
+  const rows = await db
+    .select({ estado: subgroups.estado, cnt: count() })
+    .from(subgroups)
+    .where(
+      and(
+        eq(subgroups.plantacionId, plantacionId),
+        sql`${subgroups.estado} != 'sincronizada'`
+      )
+    )
+    .groupBy(subgroups.estado);
+
+  return {
+    activaCount: rows.find((r) => r.estado === 'activa')?.cnt ?? 0,
+    finalizadaCount: rows.find((r) => r.estado === 'finalizada')?.cnt ?? 0,
+  };
 }
