@@ -139,7 +139,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — Data layer: deletePlantationLocally (cascade delete transaction), getUnsyncedSubgroupSummary (unsynced detection query)
-- [ ] 07-02-PLAN.md — UI layer: trash icon on CatalogPlantationCard, confirmation flow with unsynced warning, state refresh
+- [x] 07-02-PLAN.md — UI layer: trash icon on CatalogPlantationCard, confirmation flow with unsynced warning, state refresh
 
 ### Phase 8: Login Offline
 **Goal**: After a first successful online login, users can log in offline using cached credentials — critical for field use without connectivity
