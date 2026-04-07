@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
   },
   treeCountText: {
     fontSize: fontSize.base,
-    color: colors.primary,
+    color: colors.plantation,
     fontFamily: fonts.semiBold,
   },
   deleteCardButton: {
@@ -530,7 +530,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   fab: {
-    backgroundColor: colors.headerBg,
+    backgroundColor: colors.plantationHeaderBg,
     paddingVertical: spacing.xl,
     borderRadius: borderRadius.lg,
     alignItems: 'center',

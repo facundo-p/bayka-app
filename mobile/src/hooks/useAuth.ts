@@ -135,7 +135,10 @@ export function useAuth() {
   async function signOut() {
     const currentEmail = await SecureStore.getItemAsync(EMAIL_KEY);
     try {
-      await supabase.auth.signOut();
+      // scope: 'local' clears local storage only — no network call.
+      // scope: 'global' (default) revokes the token server-side and requires
+      // an active connection. Offline it hangs for the full TCP timeout.
+      await supabase.auth.signOut({ scope: 'local' });
     } catch (e) {
       console.error('[Auth] signOut exception:', e);
     }

@@ -37,7 +37,7 @@ export default function CustomHeader({ title, subtitle, onBack, rightElement }: 
 
 const styles = StyleSheet.create({
   headerBar: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.plantationHeaderBg,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     flexDirection: 'row',
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerSubtitle: {
-    color: colors.primaryCountFaded,
+    color: colors.plantationCountFaded,
     fontFamily: fonts.regular,
     fontSize: fontSize.sm,
     marginTop: 2,

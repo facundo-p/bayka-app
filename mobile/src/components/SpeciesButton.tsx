@@ -41,17 +41,17 @@ const styles = StyleSheet.create({
   button: {
     minHeight: 60,
     flex: 1,
-    backgroundColor: colors.primaryBgLight,
+    backgroundColor: colors.plantationBgLight,
     borderRadius: borderRadius.lg,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.primaryBorder,
+    borderColor: colors.plantationBorder,
   },
   buttonPressed: {
-    backgroundColor: colors.primaryBgMuted,
-    borderColor: colors.primaryAccent,
+    backgroundColor: colors.plantationBgMuted,
+    borderColor: colors.plantationAccent,
   },
   buttonNN: {
     backgroundColor: colors.secondaryYellowLight,
@@ -62,8 +62,8 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryYellowDark,
   },
   buttonSelected: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryDark,
+    backgroundColor: colors.plantation,
+    borderColor: colors.plantationDark,
   },
   buttonDisabled: {
     opacity: 0.4,
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   code: {
     fontSize: fontSize.xxl,
     fontFamily: fonts.bold,
-    color: colors.primaryDark,
+    color: colors.plantationDark,
   },
   codeNN: {
     color: colors.secondary,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   name: {
     fontSize: fontSize.xs,
     fontFamily: fonts.regular,
-    color: colors.primaryMedium,
+    color: colors.plantationMedium,
     textAlign: 'center',
     marginTop: 2,
   },
