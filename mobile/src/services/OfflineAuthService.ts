@@ -9,6 +9,8 @@ type OfflineCredential = {
   hash: string;
   salt: string;
   role: string;
+  /** Encrypted by OS Keychain via SecureStore — powers 1-tap quick login */
+  password?: string;
 };
 
 async function getAll(): Promise<OfflineCredential[]> {
@@ -45,7 +47,7 @@ export async function cacheCredential(
 
   const all = await getAll();
   const idx = all.findIndex((c) => c.email === email);
-  const entry: OfflineCredential = { email, hash, salt, role };
+  const entry: OfflineCredential = { email, hash, salt, role, password };
 
   if (idx >= 0) {
     all[idx] = entry;
@@ -85,4 +87,9 @@ export async function getCachedEmails(): Promise<string[]> {
   // Lazy migration: delete old plaintext saved_accounts key
   await SecureStore.deleteItemAsync(SAVED_ACCOUNTS_KEY);
   return all.map((c) => c.email);
+}
+
+export async function getCachedPassword(email: string): Promise<string | null> {
+  const all = await getAll();
+  return all.find((c) => c.email === email)?.password ?? null;
 }

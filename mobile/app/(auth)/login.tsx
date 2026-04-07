@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, Pressable, StyleSheet, Keyboar
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useAuth } from '../../src/hooks/useAuth';
-import { getCachedEmails } from '../../src/services/OfflineAuthService';
+import { getCachedEmails, getCachedPassword } from '../../src/services/OfflineAuthService';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../../src/theme';
 
 export default function LoginScreen() {
@@ -19,10 +19,11 @@ export default function LoginScreen() {
     getCachedEmails().then(setCachedEmails);
   }, []);
 
-  function selectCachedEmail(emailValue: string) {
+  async function selectCachedEmail(emailValue: string) {
     setEmail(emailValue);
-    setPassword('');
     setError(null);
+    const cached = await getCachedPassword(emailValue);
+    setPassword(cached ?? '');
   }
 
   async function handleLogin() {

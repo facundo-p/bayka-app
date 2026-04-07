@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { clearSession, restoreSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { cacheCredential, verifyCredential, clearCredential } from '../services/OfflineAuthService';
+import { cacheCredential, verifyCredential } from '../services/OfflineAuthService';
 import type { Role } from '../types/domain';
 
 export function useAuth() {
@@ -133,21 +133,18 @@ export function useAuth() {
   }
 
   async function signOut() {
-    const currentEmail = await SecureStore.getItemAsync(EMAIL_KEY);
-    try {
-      // scope: 'local' clears local storage only — no network call.
-      // scope: 'global' (default) revokes the token server-side and requires
-      // an active connection. Offline it hangs for the full TCP timeout.
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (e) {
-      console.error('[Auth] signOut exception:', e);
-    }
+    // 1. Clear local auth state first — guarantees sign-out even offline
     await clearSession();
-    if (currentEmail) {
-      await clearCredential(currentEmail);
-    }
     setSession(null);
     setRole(null);
+
+    // 2. Best-effort Supabase cleanup (scope: 'local' avoids network calls)
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      console.error('[Auth] signOut exception (non-blocking):', e);
+    }
+    // NOTE: cached credentials are NOT cleared — they power quick-login chips
   }
 
   return { session, role, loading, signIn, signOut };

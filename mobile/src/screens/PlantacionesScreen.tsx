@@ -128,13 +128,17 @@ export default function PlantacionesScreen() {
             onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
             disabled={!isOnline}
             hitSlop={8}
-            style={{ opacity: isOnline ? 1 : 0.5 }}
-            accessibilityLabel="Abrir catalogo de plantaciones"
+            style={({ pressed }) => [
+              styles.catalogButton,
+              !isOnline && styles.catalogButtonDisabled,
+              pressed && isOnline && styles.catalogButtonPressed,
+            ]}
+            accessibilityLabel="Gestionar plantaciones descargadas"
           >
             <Ionicons
-              name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
-              size={20}
-              color={isOnline ? colors.online : colors.offline}
+              name="download-outline"
+              size={18}
+              color={isOnline ? colors.white : colors.offline}
             />
           </Pressable>
         }
@@ -241,4 +245,20 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
   listContent: { padding: spacing.xxl, gap: spacing.xl },
+  catalogButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catalogButtonDisabled: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.offline,
+  },
+  catalogButtonPressed: {
+    opacity: 0.7,
+  },
 });

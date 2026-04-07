@@ -500,7 +500,7 @@ export default function AdminScreen() {
             style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
             onPress={() => setShowCreateModal(true)}
           >
-            <Ionicons name="add" size={24} color={colors.primary} />
+            <Ionicons name="add" size={24} color={colors.plantation} />
           </Pressable>
         }
       />
