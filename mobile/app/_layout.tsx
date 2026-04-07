@@ -19,11 +19,7 @@ import {
   Poppins_600SemiBold,
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
-import {
-  Comfortaa_400Regular,
-  Comfortaa_600SemiBold,
-  Comfortaa_700Bold,
-} from '@expo-google-fonts/comfortaa';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep splash visible while fonts load
@@ -41,9 +37,11 @@ export default function RootLayout() {
     Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
-    Comfortaa_400Regular,
-    Comfortaa_600SemiBold,
-    Comfortaa_700Bold,
+    // Linux Biolinum — brand heading font (loaded from local assets)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    LinBiolinum_R: require('../assets/fonts/LinBiolinum_R.otf'),
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    LinBiolinum_RB: require('../assets/fonts/LinBiolinum_RB.otf'),
   });
 
   // Hide splash when fonts + migrations are ready
@@ -113,7 +111,11 @@ export default function RootLayout() {
   }
 
   // Always render Slot — navigation happens via router.replace in useEffect
-  return <Slot />;
+  return (
+    <SafeAreaProvider>
+      <Slot />
+    </SafeAreaProvider>
+  );
 }
 
 const styles = StyleSheet.create({

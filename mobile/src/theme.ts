@@ -1,24 +1,37 @@
 // Centralized theme: colors, spacing, typography, and common styles.
 
 export const colors = {
-  // ─── Primary (agriculture green, vibrant) ─────────────────────────────────
-  primary: '#15803D',
-  primaryDark: '#166534',
-  primaryLight: '#22C55E',
-  primaryMedium: '#16A34A',
-  headerBg: '#2D8A4E',
-  primaryBg: '#F0FDF4',
-  primaryBgLight: '#F0FDF4',
-  primaryBgMuted: '#86EFAC',
-  primaryBorder: '#BBF7D0',
-  primaryFaded: '#86EFAC',
-  primaryAccent: '#4ADE80',
-  primaryCountFaded: '#BBF7D0',
+  // ─── Primary (brand dark blue) ────────────────────────────────────────────
+  primary: '#0A3760',
+  primaryDark: '#072847',
+  primaryLight: '#1A5A8A',
+  primaryMedium: '#0E4573',
+  headerBg: '#0A3760',
+  primaryBg: '#EDF4F9',
+  primaryBgLight: '#F4F8FB',
+  primaryBgMuted: '#A3C4DB',
+  primaryBorder: '#C5DAE8',
+  primaryFaded: '#A3C4DB',
+  primaryAccent: '#3B7DB5',
+  primaryCountFaded: '#C5DAE8',
 
-  // ─── Secondary (warm orange) ──────────────────────────────────────────────
-  secondary: '#EA580C',
-  secondaryBg: '#FFF7ED',
-  secondaryBorder: '#FDBA74',
+  // ─── Secondary (brand olive green) ────────────────────────────────────────
+  secondary: '#99B95B',
+  secondaryBg: '#F6F9F0',
+  secondaryBorder: '#C5D89A',
+
+  // ─── Plantation screens (olive green accent) ──────────────────────────────
+  plantation: '#99B95B',
+  plantationDark: '#7A9A42',
+  plantationMedium: '#8AAA4E',
+  plantationLight: '#B3CF7E',
+  plantationHeaderBg: '#6B8F3C',
+  plantationBg: '#F6F9F0',
+  plantationBgLight: '#FAFCF5',
+  plantationBgMuted: '#C5D89A',
+  plantationBorder: '#D4E3B0',
+  plantationAccent: '#A8C465',
+  plantationCountFaded: '#D4E3B0',
 
   // ─── Beige/cream for recent trees chips ───────────────────────────────────
   recentBg: '#f5efe6',
@@ -41,7 +54,7 @@ export const colors = {
   infoBg: '#EFF6FF',
 
   // ─── Text (4-level hierarchy) ─────────────────────────────────────────────
-  textHeading: '#1E4D3A',   // deep forest green — harmonizes with primary palette
+  textHeading: '#0A3760',   // brand dark blue — harmonizes with primary palette
   textPrimary: '#1E293B',
   textSecondary: '#475569',
   textMuted: '#94A3B8',
@@ -76,9 +89,9 @@ export const colors = {
   overlay: 'rgba(0,0,0,0.6)',
 
   // ─── State chips ──────────────────────────────────────────────────────────
-  stateActiva: '#22C55E',
+  stateActiva: '#99B95B',
   stateFinalizada: '#F59E0B',
-  stateSincronizada: '#3B82F6',
+  stateSincronizada: '#0A3760',
 
   // ─── Other user ───────────────────────────────────────────────────────────
   otherUserBg: '#F5F5F4',
@@ -86,12 +99,12 @@ export const colors = {
 
   // ─── Semantic stat colors (consistent with estado) ──────────────────────
   statTotal: '#64748B',       // slate-500, neutral for totals
-  statSynced: '#3B82F6',      // blue — same as stateSincronizada, synced = blue
+  statSynced: '#0A3760',      // brand blue — same as stateSincronizada
   statToday: '#8B5CF6',       // violet-500, unique color for "today" that doesn't clash
-  statPending: '#EA580C',     // orange — same as secondary, pending/unsync = orange
+  statPending: '#99B95B',     // olive green — same as secondary, pending/unsync
 
   // ─── Connectivity ─────────────────────────────────────────────────────────
-  online: '#22C55E',
+  online: '#99B95B',
   offline: '#94A3B8',
 
 } as const;
@@ -141,15 +154,22 @@ export const fonts = {
   medium: 'Poppins_500Medium',
   semiBold: 'Poppins_600SemiBold',
   bold: 'Poppins_700Bold',
-  // Comfortaa — headings, titles
-  heading: 'Comfortaa_700Bold',
-  headingMedium: 'Comfortaa_600SemiBold',
-  headingRegular: 'Comfortaa_400Regular',
+  // Linux Biolinum — headings, titles (brand font)
+  heading: 'LinBiolinum_RB',
+  headingMedium: 'LinBiolinum_R',
+  headingRegular: 'LinBiolinum_R',
 } as const;
 
 // Common header style for Stack navigators
 export const headerStyle = {
-  headerStyle: { backgroundColor: '#2D8A4E' },
+  headerStyle: { backgroundColor: colors.headerBg },
+  headerTintColor: colors.white,
+  headerTitleStyle: { fontFamily: fonts.heading },
+} as const;
+
+// Plantation header style (olive green)
+export const plantationHeaderStyle = {
+  headerStyle: { backgroundColor: colors.plantationHeaderBg },
   headerTintColor: colors.white,
   headerTitleStyle: { fontFamily: fonts.heading },
 } as const;

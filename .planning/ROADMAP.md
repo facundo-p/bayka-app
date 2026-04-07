@@ -17,6 +17,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
 - [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
 - [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
+- [ ] **Phase 6: Plantation Catalog + Download** - Server plantation discovery, batch download to device, offline-first bootstrap for new devices
+- [ ] **Phase 7: Eliminar Plantación Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar
+- [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexión en campo (completed 2026-04-06)
 
 ## Phase Details
 
@@ -105,10 +108,59 @@ Plans:
 - [ ] 05-01-PLAN.md — Data/logic layer: useNetStatus hook, useProfileData hook with SecureStore cache, freshnessQueries with cooldown, theme colors
 - [ ] 05-02-PLAN.md — UI layer: PlantacionesScreen (contextual header, connectivity icon, freshness banner), PerfilScreen (profile card), visual verification checkpoint
 
+### Phase 6: Plantation Catalog + Download
+**Goal**: Users can discover server plantations via a catalog screen and batch-download them (plantation + subgroups + trees + species + users) for full offline access — enabling new device setup and cross-device plantation sharing
+**Depends on**: Phase 5
+**Requirements**: CATL-01, CATL-02, CATL-03, CATL-04, CATL-05, CATL-06
+**Success Criteria** (what must be TRUE):
+  1. User can tap the connectivity icon when online to open a catalog of server plantations
+  2. Catalog shows plantation details (lugar, periodo, estado, subgroup count, tree count) with role-gated visibility (admin: all org, tecnico: assigned only)
+  3. Already-downloaded plantations are visually distinct and not selectable
+  4. User can select and batch-download plantations with a progress modal showing per-plantation progress
+  5. Downloaded plantations appear immediately in the local plantation list with full offline data
+  6. Connectivity icon is disabled when offline
+**Plans**: 2 plans
+
+Plans:
+- [x] 06-01-PLAN.md — Data layer: catalogQueries (server catalog + local ID lookup), SyncService download extensions (downloadPlantation + batchDownload), unit tests (completed 2026-04-01)
+- [ ] 06-02-PLAN.md — UI layer: CatalogScreen, CatalogPlantationCard, DownloadProgressModal, route wrappers, PlantacionesScreen icon navigation (checkpoint)
+
+### Phase 7: Eliminar Plantación Local
+**Goal**: Users can delete downloaded plantations from their phone to manage local storage, with a warning when there is unsynced data that would be lost
+**Depends on**: Phase 6
+**Requirements**: TBD
+**Success Criteria** (what must be TRUE):
+  1. User can delete a downloaded plantation from the CatalogScreen via a trash icon on downloaded cards
+  2. Deleting removes ALL local data (plantation, subgroups, trees, plantation_species, plantation_users, user_species_order) in a single transaction
+  3. If the plantation has unsynced subgroups (activa or finalizada), a warning shows the count before confirming
+  4. Both admin and tecnico roles can delete local plantations
+  5. The delete is LOCAL ONLY — no data is removed from the server
+**Plans**: 2 plans
+
+Plans:
+- [x] 07-01-PLAN.md — Data layer: deletePlantationLocally (cascade delete transaction), getUnsyncedSubgroupSummary (unsynced detection query)
+- [x] 07-02-PLAN.md — UI layer: trash icon on CatalogPlantationCard, confirmation flow with unsynced warning, state refresh
+
+### Phase 8: Login Offline
+**Goal**: After a first successful online login, users can log in offline using cached credentials — critical for field use without connectivity
+**Depends on**: Phase 7
+**Requirements**: OFFL-01, OFFL-02, OFFL-03, OFFL-04, OFFL-05, OFFL-06, OFFL-07
+**Success Criteria** (what must be TRUE):
+  1. First login requires internet connectivity and validates against Supabase
+  2. After successful online login, credentials are cached securely on the device
+  3. Subsequent logins work fully offline using cached credentials
+  4. Cached credentials are invalidated on explicit logout
+  5. Multiple users can have cached credentials on the same device
+**Plans**: 2 plans
+
+Plans:
+- [x] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
+- [x] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -117,3 +169,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
 | 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
 | 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
+| 6. Plantation Catalog + Download | 1/2 | Executing | — |
+| 7. Eliminar Plantación Local | 0/2 | Not started | — |
+| 8. Login Offline | 2/2 | Complete   | 2026-04-06 |

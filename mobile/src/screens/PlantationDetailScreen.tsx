@@ -84,6 +84,7 @@ export default function PlantationDetailScreen() {
     [pid]
   );
   const plantacionEstado = estadoData?.[0]?.estado ?? '';
+  const estadoLoaded = estadoData !== undefined;
   const isFinalizada = plantacionEstado === 'finalizada';
 
   // Build maps
@@ -281,7 +282,7 @@ export default function PlantationDetailScreen() {
         )}
 
         {/* Finalization lockout banner — shown for all users when finalizada */}
-        {isFinalizada && (
+        {estadoLoaded && isFinalizada && (
           <View style={styles.finalizadaBanner}>
             <Ionicons name="lock-closed" size={16} color={colors.stateFinalizada} />
             <Text style={styles.finalizadaBannerText}>Plantacion finalizada</Text>
@@ -310,8 +311,8 @@ export default function PlantationDetailScreen() {
         }
         renderItem={renderSubGroup}
       />
-      {/* FAB — hidden when plantation is finalizada (Pitfall 8) */}
-      {!isFinalizada && (
+      {/* FAB — hidden when plantation is finalizada; hidden while estado loads to avoid flash */}
+      {estadoLoaded && !isFinalizada && (
         <View style={styles.fabContainer}>
           <Pressable
             style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
@@ -488,7 +489,7 @@ const styles = StyleSheet.create({
   },
   treeCountText: {
     fontSize: fontSize.base,
-    color: colors.primary,
+    color: colors.plantation,
     fontFamily: fonts.semiBold,
   },
   deleteCardButton: {
@@ -529,7 +530,7 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   fab: {
-    backgroundColor: colors.headerBg,
+    backgroundColor: colors.plantationHeaderBg,
     paddingVertical: spacing.xl,
     borderRadius: borderRadius.lg,
     alignItems: 'center',

@@ -47,7 +47,7 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 - [x] **SUBG-02**: SubGroup code must be unique within the plantation
 - [x] **SUBG-03**: System shows last created SubGroup name when creating a new one
 - [x] **SUBG-04**: Technician can view list of SubGroups with state indicators (activa/finalizada/sincronizada)
-- [x] **SUBG-05**: Technician can finalize a SubGroup (activa → finalizada)
+- [x] **SUBG-05**: Technician can finalize a SubGroup (activa -> finalizada)
 - [x] **SUBG-06**: Synced SubGroups are immutable (no edit allowed)
 - [x] **SUBG-07**: Technician can only edit SubGroups they created
 
@@ -98,6 +98,15 @@ Requirements for initial release (autumn 2026 planting season). Each maps to roa
 - [x] **EXPO-02**: Admin can export finalized plantation to Excel
 - [x] **EXPO-03**: Export includes: ID Global, ID Parcial, Zona, SubGrupo, SubID, Periodo, Especie
 
+### Plantation Catalog + Download
+
+- [ ] **CATL-01**: User can browse a catalog of server plantations (dedicated screen, role-gated)
+- [ ] **CATL-02**: Catalog access via tappable connectivity icon in PlantacionesScreen header (online only)
+- [ ] **CATL-03**: User can batch-select and download plantations with checkboxes and download button
+- [ ] **CATL-04**: Download includes full data (plantation + species + users + subgroups + trees) for offline access
+- [ ] **CATL-05**: Blocking progress modal shows per-plantation download progress with plantation name
+- [ ] **CATL-06**: Catalog visibility is role-gated (admin: all org plantations, tecnico: assigned only)
+
 ## v2 Requirements
 
 Deferred to future release. Tracked but not in current roadmap.
@@ -131,7 +140,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Automatic background sync | Fails silently in low-connectivity; breaks SubGroup atomicity |
 | Edit synced records | Immutability is a design principle for data integrity |
 | Real-time multi-user dashboard | Requires persistent connections incompatible with offline-first |
-| GPS per tree | GPS accuracy (±3-5m) meaningless at tree spacing (1-2m) |
+| GPS per tree | GPS accuracy (+-3-5m) meaningless at tree spacing (1-2m) |
 | Species management from app | Species codes embedded in SubIDs; changes corrupt existing records |
 | Confirmation dialogs on tree tap | Doubles registration time; unacceptable for field speed |
 | Complex conflict resolution UI | Low conflict rate doesn't justify complexity; manual rename sufficient |
@@ -201,12 +210,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXPO-01 | Phase 4 | Complete |
 | EXPO-02 | Phase 4 | Complete |
 | EXPO-03 | Phase 4 | Complete |
+| CATL-01 | Phase 6 | Planned |
+| CATL-02 | Phase 6 | Planned |
+| CATL-03 | Phase 6 | Planned |
+| CATL-04 | Phase 6 | Planned |
+| CATL-05 | Phase 6 | Planned |
+| CATL-06 | Phase 6 | Planned |
 
 **Coverage:**
-- v1 requirements: 57 total
-- Mapped to phases: 57
+- v1 requirements: 63 total
+- Mapped to phases: 63
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-16*
-*Last updated: 2026-03-16 after roadmap creation*
+*Last updated: 2026-03-31 after Phase 6 planning*

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: completed
-stopped_at: Completed 05-ux-improvements-02-PLAN.md
-last_updated: "2026-03-29T00:29:59.705Z"
-last_activity: 2026-03-19 — Phase 3 Plan 03 complete
+status: verifying
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-04-06T18:18:05.948Z"
+last_activity: 2026-04-06
 progress:
-  total_phases: 5
-  completed_phases: 5
-  total_plans: 15
-  completed_plans: 15
+  total_phases: 8
+  completed_phases: 7
+  total_plans: 21
+  completed_plans: 20
   percent: 100
 ---
 
@@ -21,20 +21,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 3 — Sync + Dashboard
+**Current focus:** Phase 08 — login-offline
 
 ## Current Position
 
-Phase: 3 of 4 (Sync + Dashboard) — COMPLETE
-Plan: 3 of 3 in current phase (Plan 03-03 complete)
-Status: Phase 3 complete — all plans done. Ready for Phase 4 (Polish)
-Last activity: 2026-03-19 — Phase 3 Plan 03 complete
+Phase: 08 (login-offline) — EXECUTING
+Plan: 2 of 2
+Status: Phase complete — ready for verification
+Last activity: 2026-04-06
 
 Progress: [██████████] 100%
 
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: -
 - Total execution time: -
@@ -46,6 +47,7 @@ Progress: [██████████] 100%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: -
 - Trend: -
 
@@ -65,6 +67,10 @@ Progress: [██████████] 100%
 | Phase 04-admin-export P03 | 6min | 2 tasks | 2 files |
 | Phase 05-ux-improvements P01 | 257s | 3 tasks | 7 files |
 | Phase 05-ux-improvements P02 | 10min | 3 tasks | 2 files |
+| Phase 07-eliminar-plantacion-local P01 | 190s | 2 tasks | 4 files |
+| Phase 07-eliminar-plantacion-local P02 | 93s | 3 tasks | 2 files |
+| Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
+| Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,6 +125,23 @@ Recent decisions affecting current work:
 - [Phase 05-ux-improvements]: freshnessQueries: module-level lastFreshnessCheck for 30s cooldown; _resetCooldown() for test isolation only
 - [Phase 05-ux-improvements]: PlantacionesScreen header title: isAdmin && org name present uses org name, otherwise 'Mis plantaciones'
 - [Phase 05-ux-improvements]: Freshness banner check in useFocusEffect — triggered on focus when online and plantationList populated
+- [Phase 06-admin-sync P01]: jest.resetAllMocks() in beforeEach (not clearAllMocks) — clearAllMocks does NOT clear mockReturnValueOnce queues; causes inter-test leakage
+- [Phase 06-admin-sync P01]: Plain JS object chain mocks (not jest.fn()) in supabase chain helpers — jest.fn() instances get cleared by resetAllMocks
+- [Phase 06-admin-sync P01]: batchDownload tests use db.insert mock directly — ES module closures prevent jest.spyOn from intercepting internal calls
+- [Phase 06-admin-sync P01]: subgroup and tree counts fetched in batch (one query each) and merged in memory — avoids N+1 per plantation
+- [Phase 07-eliminar-plantacion-local]: deletePlantationLocally uses IN subquery for trees (via subgroup IDs) — single SQL statement per table in transaction
+- [Phase 07-eliminar-plantacion-local]: getUnsyncedSubgroupSummary does NOT filter by usuarioCreador — counts ALL subgroups regardless of technician
+- [Phase 07-eliminar-plantacion-local]: Replaced Ya descargada badge with trash icon on downloaded cards - actionable delete button
+- [Phase 08-login-offline]: clearAllMocks (not resetAllMocks) in offlineAuth tests to preserve setup.ts mock implementations
+- [Phase 08-login-offline]: handleOfflineSignIn extracted as separate function to keep signIn under 20 lines (CLAUDE.md rule)
+- [Phase 08-login-offline]: Credential caching in useAuth.signIn not login screen (CLAUDE.md rule 9: no data logic in screens)
+- [Phase 08-login-offline]: rememberAccount toggle removed -- caching automatic on every online login success
+
+### Roadmap Evolution
+
+- Phase 6 added: Admin sync - subir plantaciones y finalizaciones al servidor
+- Phase 7 added: Eliminar plantación local - borrado local de plantaciones descargadas en el celular
+- Phase 8 added: Login offline - cachear credenciales para login sin conexión
 
 ### Pending Todos
 
@@ -130,6 +153,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-03-29T00:29:59.703Z
-Stopped at: Completed 05-ux-improvements-02-PLAN.md
+Last session: 2026-04-06T18:18:05.944Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

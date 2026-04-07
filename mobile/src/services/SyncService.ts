@@ -1,6 +1,6 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { subgroups, trees, plantationUsers, plantationSpecies } from '../database/schema';
+import { subgroups, trees, plantationUsers, plantationSpecies, plantations } from '../database/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
@@ -286,6 +286,103 @@ export async function syncPlantation(
   }
 
   // Step 5: Notify ONCE after the entire loop
+  notifyDataChanged();
+
+  return results;
+}
+
+// ─── Download types ───────────────────────────────────────────────────────────
+
+export interface DownloadProgress {
+  total: number;
+  completed: number;
+  currentName: string;
+}
+
+export type DownloadResult = {
+  success: boolean;
+  id: string;
+  nombre: string;
+};
+
+// ─── Download a single plantation from server ─────────────────────────────────
+
+/**
+ * Downloads a single plantation by upserting its row into local SQLite,
+ * then calling pullFromServer to sync subgroups, species, and users.
+ *
+ * Step 1: upsert the plantation row (onConflictDoUpdate to update estado)
+ * Step 2: pullFromServer for subgroups, plantation_users, plantation_species
+ */
+export async function downloadPlantation(serverPlantation: {
+  id: string;
+  organizacion_id: string;
+  lugar: string;
+  periodo: string;
+  estado: string;
+  creado_por: string;
+  created_at: string;
+}): Promise<void> {
+  // Step 1: Upsert plantation row using the same pattern as PlantationRepository
+  await db
+    .insert(plantations)
+    .values({
+      id: serverPlantation.id,
+      organizacionId: serverPlantation.organizacion_id,
+      lugar: serverPlantation.lugar,
+      periodo: serverPlantation.periodo,
+      estado: serverPlantation.estado,
+      creadoPor: serverPlantation.creado_por,
+      createdAt: serverPlantation.created_at,
+    })
+    .onConflictDoUpdate({
+      target: plantations.id,
+      set: { estado: sql`excluded.estado` },
+    });
+
+  // Step 2: Pull related data (subgroups, plantation_users, plantation_species, trees)
+  await pullFromServer(serverPlantation.id);
+}
+
+// ─── Batch download plantations ───────────────────────────────────────────────
+
+/**
+ * Downloads multiple plantations one by one, accumulating results.
+ * Continues on per-plantation error (does not abort the batch).
+ * Calls notifyDataChanged ONCE after the entire loop.
+ *
+ * @param selected - Array of server plantation objects to download
+ * @param onProgress - Optional progress callback called before each download
+ * @returns Array of DownloadResult with success/failure per plantation
+ */
+export async function batchDownload(
+  selected: Array<{
+    id: string;
+    organizacion_id: string;
+    lugar: string;
+    periodo: string;
+    estado: string;
+    creado_por: string;
+    created_at: string;
+  }>,
+  onProgress?: (progress: DownloadProgress) => void
+): Promise<DownloadResult[]> {
+  const results: DownloadResult[] = [];
+
+  for (let i = 0; i < selected.length; i++) {
+    const plantation = selected[i];
+    onProgress?.({ total: selected.length, completed: i, currentName: plantation.lugar });
+
+    try {
+      await downloadPlantation(plantation);
+      results.push({ success: true, id: plantation.id, nombre: plantation.lugar });
+    } catch (e) {
+      console.error(`[Download] Failed for plantation "${plantation.lugar}" (${plantation.id}):`, e);
+      results.push({ success: false, id: plantation.id, nombre: plantation.lugar });
+    }
+  }
+
+  // ONCE — not inside loop (per Phase 03 decision: prevent render storm)
   notifyDataChanged();
 
   return results;

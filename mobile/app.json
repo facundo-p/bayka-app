@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "Bayka App",
     "slug": "bayka",
     "scheme": "bayka",
     "version": "1.0.0",
@@ -10,15 +10,16 @@
     "splash": {
       "image": "./assets/splash-bayka.png",
       "resizeMode": "contain",
-      "backgroundColor": "#15803D"
+      "backgroundColor": "#0A3760"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.bayka.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-foreground-bayka.png",
-        "backgroundColor": "#15803D"
+        "backgroundColor": "#0A3760"
       }
     },
     "web": {
@@ -27,7 +28,8 @@
     "plugins": [
       "expo-sqlite",
       "expo-router",
-      "expo-asset"
+      "expo-asset",
+      "expo-updates"
     ]
   }
 }

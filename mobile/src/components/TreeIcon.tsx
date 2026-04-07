@@ -10,6 +10,6 @@ interface Props {
  * Centralized tree icon for inline use (cards, headers, badges).
  * Change here to update everywhere.
  */
-export default function TreeIcon({ size = 14, color = colors.primary }: Props) {
+export default function TreeIcon({ size = 14, color = colors.plantation }: Props) {
   return <MaterialCommunityIcons name="tree" size={size} color={color} />;
 }

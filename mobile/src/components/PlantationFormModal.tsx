@@ -153,13 +153,14 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
   },
   modalCard: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.round,
-    borderTopRightRadius: borderRadius.round,
+    borderBottomLeftRadius: borderRadius.round,
+    borderBottomRightRadius: borderRadius.round,
     padding: spacing['4xl'],
+    paddingTop: spacing['6xl'],
     gap: spacing.xl,
   },
   modalTitle: {

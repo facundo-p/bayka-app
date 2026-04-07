@@ -9,7 +9,7 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { plantations, trees, subgroups } from '../database/schema';
+import { plantations, trees, subgroups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
 import { eq, asc } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -237,5 +237,35 @@ export async function generateIds(plantacionId: string, seed: number): Promise<v
     }
   });
 
+  notifyDataChanged();
+}
+
+// --- deletePlantationLocally ------------------------------------------------
+
+/**
+ * Removes a plantation and ALL related data from local SQLite.
+ * Server data (Supabase) is NOT affected.
+ *
+ * Deletion order (manual cascade — SQLite does not enforce FK cascades):
+ * 1. trees (via subgroup IDs)
+ * 2. subgroups
+ * 3. plantation_species
+ * 4. plantation_users
+ * 5. user_species_order
+ * 6. plantations
+ *
+ * Wrapped in db.transaction() for atomicity.
+ */
+export async function deletePlantationLocally(plantacionId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.delete(trees).where(
+      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`
+    );
+    await tx.delete(subgroups).where(eq(subgroups.plantacionId, plantacionId));
+    await tx.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
+    await tx.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantacionId));
+    await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.plantacionId, plantacionId));
+    await tx.delete(plantations).where(eq(plantations.id, plantacionId));
+  });
   notifyDataChanged();
 }

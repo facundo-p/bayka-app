@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
 import { useState, useCallback } from 'react';
 import { useLiveData, notifyDataChanged } from '../database/liveQuery';
 import { useRouter } from 'expo-router';
@@ -124,11 +124,23 @@ export default function PlantacionesScreen() {
       <ScreenHeader
         title={headerTitle}
         rightElement={
-          <Ionicons
-            name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
-            size={20}
-            color={isOnline ? colors.online : colors.offline}
-          />
+          <Pressable
+            onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
+            disabled={!isOnline}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.catalogButton,
+              !isOnline && styles.catalogButtonDisabled,
+              pressed && isOnline && styles.catalogButtonPressed,
+            ]}
+            accessibilityLabel="Gestionar plantaciones descargadas"
+          >
+            <Ionicons
+              name="download-outline"
+              size={18}
+              color={isOnline ? colors.white : colors.offline}
+            />
+          </Pressable>
         }
       />
 
@@ -233,4 +245,20 @@ const styles = StyleSheet.create({
     color: colors.textLight,
   },
   listContent: { padding: spacing.xxl, gap: spacing.xl },
+  catalogButton: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.full,
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catalogButtonDisabled: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.offline,
+  },
+  catalogButtonPressed: {
+    opacity: 0.7,
+  },
 });

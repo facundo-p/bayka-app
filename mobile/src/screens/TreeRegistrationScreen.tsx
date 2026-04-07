@@ -95,7 +95,6 @@ export default function TreeRegistrationScreen() {
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroupEstado }, userId)
     : false;
   // Read-only when not owner OR when subgroup is not activa.
-  // Default to false while data is loading so the grid renders immediately.
   // Both subgroup AND userId must be loaded before we trust the isReadOnly decision
   // (userId loads async — if subgroup loads first, isOwner would be false → flash of tree list).
   const dataLoaded = subgroup !== null && userId !== '';
@@ -309,22 +308,22 @@ export default function TreeRegistrationScreen() {
       />
 
       {/* View all trees button — always visible in edit mode to reserve space */}
-      {!isReadOnly && (
+      {dataLoaded && !isReadOnly && (
         <Pressable
           style={({ pressed }) => [styles.viewAllRow, pressed && totalCount > 0 && { opacity: 0.7 }]}
           onPress={() => totalCount > 0 && setShowTreeList(true)}
           disabled={totalCount === 0}
         >
-          <Ionicons name="list-outline" size={16} color={totalCount > 0 ? colors.primary : colors.textLight} />
+          <Ionicons name="list-outline" size={16} color={totalCount > 0 ? colors.plantation : colors.textLight} />
           <Text style={[styles.viewAllText, totalCount === 0 && { color: colors.textLight }]}>
             {totalCount > 0 ? 'Ver todos los árboles' : 'Sin árboles cargados'}
           </Text>
-          {totalCount > 0 && <Ionicons name="chevron-forward" size={14} color={colors.primary} />}
+          {totalCount > 0 && <Ionicons name="chevron-forward" size={14} color={colors.plantation} />}
         </Pressable>
       )}
 
       {/* Last 3 trees — only in edit mode */}
-      {!isReadOnly && (
+      {dataLoaded && !isReadOnly && (
         <Animated.View entering={FadeInDown.duration(300)} style={styles.lastThreeSection}>
           <Text style={styles.lastThreeLabel}>Últimos ingresados</Text>
           <View style={styles.lastThreeRow}>
@@ -353,12 +352,16 @@ export default function TreeRegistrationScreen() {
         </Animated.View>
       )}
 
-      {/* Species button grid — show grid by default, tree list only when confirmed read-only */}
-      {!isReadOnly || !dataLoaded ? (
+      {/* Wait for subgroup data before deciding which view to show — avoids flash of wrong content */}
+      {!dataLoaded ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.plantation} />
+        </View>
+      ) : !isReadOnly ? (
         <>
           <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
             {speciesLoading ? (
-              <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+              <ActivityIndicator size="large" color={colors.plantation} style={styles.loader} />
             ) : (
               <Animated.View entering={FadeInDown.delay(100).duration(300)}>
                 <SpeciesButtonGrid
@@ -415,7 +418,7 @@ export default function TreeRegistrationScreen() {
           {canReactivate && (
             <View style={styles.reactivateBar}>
               <Pressable style={styles.reactivateButton} onPress={handleReactivate}>
-                <Ionicons name="refresh-outline" size={18} color={colors.primary} />
+                <Ionicons name="refresh-outline" size={18} color={colors.plantation} />
                 <Text style={styles.reactivateText}>Editar</Text>
               </Pressable>
             </View>
@@ -438,7 +441,7 @@ export default function TreeRegistrationScreen() {
                         hitSlop={8}
                         style={styles.treeRowBtn}
                       >
-                        <Ionicons name="image" size={18} color={colors.primary} />
+                        <Ionicons name="image" size={18} color={colors.plantation} />
                       </Pressable>
                     ) : null}
                   </View>
@@ -539,7 +542,7 @@ export default function TreeRegistrationScreen() {
                         hitSlop={8}
                         style={styles.treeRowBtn}
                       >
-                        <Ionicons name="image" size={18} color={colors.primary} />
+                        <Ionicons name="image" size={18} color={colors.plantation} />
                       </Pressable>
                     ) : (
                       <Pressable
@@ -644,6 +647,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -651,7 +659,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.md,
   },
   headerCount: {
-    color: colors.primaryCountFaded,
+    color: colors.plantationCountFaded,
     fontSize: fontSize.title,
     fontFamily: fonts.bold,
   },
@@ -669,7 +677,7 @@ const styles = StyleSheet.create({
   viewAllRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primaryBg,
+    backgroundColor: colors.plantationBg,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     gap: spacing.sm,
@@ -678,7 +686,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: fontSize.md,
     fontFamily: fonts.semiBold,
-    color: colors.primary,
+    color: colors.plantation,
   },
   lastThreeSection: {
     backgroundColor: colors.surface,
@@ -778,7 +786,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: spacing['4xl'],
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.plantationHeaderBg,
     alignItems: 'center',
   },
   finalizarButtonText: {
@@ -792,7 +800,7 @@ const styles = StyleSheet.create({
   reactivateBar: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
-    backgroundColor: colors.primaryBg,
+    backgroundColor: colors.plantationBg,
     alignItems: 'flex-start',
   },
   reactivateButton: {
@@ -804,10 +812,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: colors.plantation,
   },
   reactivateText: {
-    color: colors.primary,
+    color: colors.plantation,
     fontFamily: fonts.semiBold,
     fontSize: fontSize.base,
   },
@@ -870,7 +878,7 @@ const styles = StyleSheet.create({
   treeRowName: {
     fontSize: fontSize.md,
     fontFamily: fonts.semiBold,
-    color: colors.primary,
+    color: colors.plantation,
     flex: 1,
   },
   treeRowNameNN: {
@@ -1034,7 +1042,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing.xl,
     borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.plantationHeaderBg,
     gap: spacing.sm,
   },
   reorderSaveText: {
