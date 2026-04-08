@@ -1,0 +1,1 @@
+ALTER TABLE plantations ADD COLUMN pending_sync INTEGER NOT NULL DEFAULT 0;
