@@ -15,9 +15,14 @@ function withTimeout<T>(promiseOrThenable: PromiseLike<T>, ms: number): Promise<
   ]);
 }
 
-// Module-level signOut notification — ensures ALL useAuth instances update
-// when signOut is called from any component (e.g., PerfilScreen → _layout.tsx)
-const signOutListeners = new Set<() => void>();
+// Module-level auth state broadcast — ensures ALL useAuth instances stay in sync
+// Needed because each useAuth() call creates independent React state.
+// Online flows use onAuthStateChange (Supabase event). Offline flows use this.
+type AuthState = {
+  session: { access_token: string; refresh_token: string } | null;
+  role: Role | null;
+};
+const authChangeListeners = new Set<(state: AuthState) => void>();
 
 export function useAuth() {
   const [session, setSession] = useState<{ access_token: string; refresh_token: string } | null>(null);
@@ -25,14 +30,14 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const initializing = useRef(true);
 
-  // Subscribe to cross-instance signOut notifications
+  // Subscribe to cross-instance auth state changes
   useEffect(() => {
-    const listener = () => {
-      setSession(null);
-      setRole(null);
+    const listener = (state: AuthState) => {
+      setSession(state.session);
+      setRole(state.role);
     };
-    signOutListeners.add(listener);
-    return () => { signOutListeners.delete(listener); };
+    authChangeListeners.add(listener);
+    return () => { authChangeListeners.delete(listener); };
   }, []);
 
   useEffect(() => {
@@ -46,16 +51,13 @@ export function useAuth() {
 
     (async () => {
       try {
-        // getSession reads from AsyncStorage — no network call, safe offline
         const { data: { session: currentSession } } = await supabase.auth.getSession();
 
         if (mounted && currentSession) {
-          // Persist tokens to SecureStore for offline re-login
           await persistSession(currentSession);
 
           let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
 
-          // If no cached role, try fetching from server with timeout
           if (!cachedRole) {
             try {
               const { data: profile } = await withTimeout(
@@ -85,7 +87,6 @@ export function useAuth() {
       }
     })();
 
-    // Listen for auth state changes (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, supabaseSession) => {
         if (initializing.current) return;
@@ -147,13 +148,15 @@ export function useAuth() {
 
     const offlineSession = { access_token: accessToken, refresh_token: refreshToken };
     await SecureStore.setItemAsync(ROLE_KEY, cachedRole);
-    setSession(offlineSession);
-    setRole(cachedRole as Role);
+
+    // Broadcast to ALL useAuth instances (_layout.tsx needs this for navigation)
+    authChangeListeners.forEach(fn => fn({ session: offlineSession, role: cachedRole as Role }));
+
     return { data: { session: offlineSession, user: null }, error: null };
   }
 
   async function signIn(email: string, password: string) {
-    // Fast path: definitely offline → skip Supabase, go straight to cached credentials
+    // Fast path: definitely offline → instant offline login
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
       return handleOfflineSignIn(email, password);
@@ -189,14 +192,13 @@ export function useAuth() {
   }
 
   async function signOut() {
-    // 1. Notify ALL useAuth instances (including _layout.tsx) — immediate UI reset
-    signOutListeners.forEach(fn => fn());
+    // 1. Broadcast to ALL useAuth instances — immediate UI reset everywhere
+    authChangeListeners.forEach(fn => fn({ session: null, role: null }));
 
     // 2. Clear role from SecureStore (tokens + credentials stay for offline re-login)
     try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
 
     // 3. Clear Supabase session from AsyncStorage directly — no network calls
-    //    supabase.auth.signOut() can hang or fail offline, so we bypass it entirely
     try {
       const keys = await AsyncStorage.getAllKeys();
       const sbKeys = keys.filter(k => k.startsWith('sb-'));
