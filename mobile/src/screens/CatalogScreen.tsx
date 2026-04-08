@@ -1,6 +1,7 @@
 import { View, Text, FlatList, ActivityIndicator, Pressable, StyleSheet, SafeAreaView } from 'react-native';
 import { useState, useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { useProfileData } from '../hooks/useProfileData';
@@ -12,6 +13,7 @@ import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelper
 import { useConfirm } from '../hooks/useConfirm';
 import ScreenHeader from '../components/ScreenHeader';
 import CatalogPlantationCard from '../components/CatalogPlantationCard';
+import FilterCards from '../components/FilterCards';
 import DownloadProgressModal from '../components/DownloadProgressModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
@@ -29,6 +31,7 @@ export default function CatalogScreen() {
   const [catalogItems, setCatalogItems] = useState<ServerPlantation[]>([]);
   const [localIds, setLocalIds] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'done'>('idle');
@@ -48,6 +51,7 @@ export default function CatalogScreen() {
 
   async function loadCatalog() {
     if (!userId) return;
+    setActiveFilter(null);
     setLoadingCatalog(true);
     setCatalogError(null);
     try {
@@ -132,6 +136,22 @@ export default function CatalogScreen() {
     getLocalPlantationIds().then((ids) => setLocalIds(ids));
   }
 
+  const estadoCounts = { activa: 0, finalizada: 0 };
+  catalogItems.forEach((p) => {
+    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
+      estadoCounts[p.estado as keyof typeof estadoCounts]++;
+    }
+  });
+
+  const filterConfigs = [
+    { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+  ];
+
+  const filteredCatalog = catalogItems.filter(
+    (p) => !activeFilter || p.estado === activeFilter
+  );
+
   const renderContent = () => {
     if (loadingCatalog) {
       return (
@@ -169,20 +189,29 @@ export default function CatalogScreen() {
     }
 
     return (
-      <FlatList
-        data={catalogItems}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item }) => (
-          <CatalogPlantationCard
-            item={item}
-            isDownloaded={localIds.has(item.id)}
-            isSelected={selectedIds.has(item.id)}
-            onToggle={toggleSelection}
-            onDelete={handleDeletePlantation}
+      <>
+        <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+          <FilterCards
+            filters={filterConfigs}
+            activeFilter={activeFilter}
+            onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
           />
-        )}
-      />
+        </Animated.View>
+        <FlatList
+          data={filteredCatalog}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <CatalogPlantationCard
+              item={item}
+              isDownloaded={localIds.has(item.id)}
+              isSelected={selectedIds.has(item.id)}
+              onToggle={toggleSelection}
+              onDelete={handleDeletePlantation}
+            />
+          )}
+        />
+      </>
     );
   };
 
