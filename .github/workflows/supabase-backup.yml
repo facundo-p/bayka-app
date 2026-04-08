@@ -31,4 +31,6 @@ jobs:
           pip install --break-system-packages awscli
 
       - name: Run backup script
-        run: bash scripts/supabase-backup.sh
+        run: |
+          export PATH="/usr/lib/postgresql/17/bin:$PATH"
+          bash scripts/supabase-backup.sh
