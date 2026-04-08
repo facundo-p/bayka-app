@@ -69,8 +69,8 @@ export default function RootLayout() {
     const inAdminGroup = segments[0] === '(admin)';
     const inTecnicoGroup = segments[0] === '(tecnico)';
 
-    if (!session) {
-      // Not logged in → login screen
+    if (!session || !role) {
+      // Not logged in or no confirmed role → login screen
       if (!inAuthGroup) {
         router.replace('/(auth)/login');
       }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { persistSession, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired } from '../services/OfflineAuthService';
@@ -14,11 +15,25 @@ function withTimeout<T>(promiseOrThenable: PromiseLike<T>, ms: number): Promise<
   ]);
 }
 
+// Module-level signOut notification — ensures ALL useAuth instances update
+// when signOut is called from any component (e.g., PerfilScreen → _layout.tsx)
+const signOutListeners = new Set<() => void>();
+
 export function useAuth() {
   const [session, setSession] = useState<{ access_token: string; refresh_token: string } | null>(null);
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
   const initializing = useRef(true);
+
+  // Subscribe to cross-instance signOut notifications
+  useEffect(() => {
+    const listener = () => {
+      setSession(null);
+      setRole(null);
+    };
+    signOutListeners.add(listener);
+    return () => { signOutListeners.delete(listener); };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -76,7 +91,6 @@ export function useAuth() {
         if (initializing.current) return;
 
         if (event === 'SIGNED_IN' && supabaseSession) {
-          // Persist tokens on every sign-in / token refresh
           await persistSession(supabaseSession);
 
           try {
@@ -153,7 +167,6 @@ export function useAuth() {
       );
 
       if (!result.error && result.data.session) {
-        // Persist tokens to SecureStore for future offline use
         await persistSession(result.data.session);
 
         try {
@@ -176,16 +189,19 @@ export function useAuth() {
   }
 
   async function signOut() {
-    // 1. Immediate UI reset — synchronous, no network
-    setSession(null);
-    setRole(null);
+    // 1. Notify ALL useAuth instances (including _layout.tsx) — immediate UI reset
+    signOutListeners.forEach(fn => fn());
 
-    // 2. Clear role (tokens + credentials stay for offline re-login)
+    // 2. Clear role from SecureStore (tokens + credentials stay for offline re-login)
     try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
 
-    // 3. Clear Supabase internal state (AsyncStorage) — fire and forget
-    //    Do NOT await — prevents blocking if Supabase tries network calls
-    supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    // 3. Clear Supabase session from AsyncStorage directly — no network calls
+    //    supabase.auth.signOut() can hang or fail offline, so we bypass it entirely
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const sbKeys = keys.filter(k => k.startsWith('sb-'));
+      if (sbKeys.length > 0) await AsyncStorage.multiRemove(sbKeys);
+    } catch {}
   }
 
   return { session, role, loading, signIn, signOut };
