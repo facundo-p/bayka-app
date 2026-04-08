@@ -14,6 +14,7 @@ export type Plantation = {
   periodo: string;
   estado: string;
   createdAt: string;
+  pendingSync?: boolean;  // true for offline-created, not yet uploaded
 };
 
 type Props = {
@@ -59,6 +60,12 @@ export default function PlantationConfigCard({
           <Text style={styles.cardSubtitle}>{item.periodo}</Text>
         </View>
         <View style={styles.cardHeaderRight}>
+          {item.pendingSync === true && (
+            <View style={styles.pendingSyncBadge}>
+              <Ionicons name="cloud-upload-outline" size={11} color={colors.white} />
+              <Text style={styles.pendingSyncText}>Pendiente de sync</Text>
+            </View>
+          )}
           {item.estado === 'activa' && (
             <Pressable
               style={({ pressed }) => [styles.editIconBtn, pressed && { opacity: 0.7 }]}
@@ -259,6 +266,20 @@ const styles = StyleSheet.create({
   lockedText: {
     color: colors.stateFinalizada,
     fontSize: fontSize.sm,
+    fontFamily: fonts.semiBold,
+  },
+  pendingSyncBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.stateFinalizada,
+    borderRadius: borderRadius.full,
+  },
+  pendingSyncText: {
+    color: colors.white,
+    fontSize: fontSize.xs,
     fontFamily: fonts.semiBold,
   },
 });

@@ -25,16 +25,18 @@ import {
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
+import NetInfo from '@react-native-community/netinfo';
+
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { supabase, isSupabaseConfigured } from '../supabase/client';
+import { useProfileData } from '../hooks/useProfileData';
 import ConfirmModal from '../components/ConfirmModal';
 import { useConfirm } from '../hooks/useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
 import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
-import { createPlantation, updatePlantation, finalizePlantation, generateIds } from '../repositories/PlantationRepository';
+import { createPlantation, createPlantationLocally, updatePlantation, finalizePlantation, generateIds } from '../repositories/PlantationRepository';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
 
 import FilterCards from '../components/FilterCards';
@@ -112,8 +114,9 @@ function ActionItem({
 
 export default function AdminScreen() {
   const userId = useCurrentUserId();
+  const { profile } = useProfileData();
+  const organizacionId = profile?.organizacionId ?? null;
 
-  const [organizacionId, setOrganizacionId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   const { confirmProps, show: showConfirm } = useConfirm();
@@ -142,25 +145,6 @@ export default function AdminScreen() {
     if (Platform.OS === 'android') {
       UIManager.setLayoutAnimationEnabledExperimental?.(true);
     }
-  }, []);
-
-  // Fetch organizacionId from profiles on mount
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    supabase.auth
-      .getUser()
-      .then(async ({ data }) => {
-        if (!data?.user?.id) return;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('organizacion_id')
-          .eq('id', data.user.id)
-          .single();
-        if (profile?.organizacion_id) {
-          setOrganizacionId(profile.organizacion_id);
-        }
-      })
-      .catch(console.error);
   }, []);
 
   const { data: plantationList } = useLiveData(
@@ -248,6 +232,11 @@ export default function AdminScreen() {
 
   async function handleFinalize(plantacionId: string) {
     if (finalizing) return;
+    const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
+    if (plantation?.pendingSync) {
+      showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.stateFinalizada);
+      return;
+    }
     setFinalizing(true);
     try {
       const gate = await checkFinalizationGate(plantacionId);
@@ -367,8 +356,24 @@ export default function AdminScreen() {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
-    await createPlantation(lugar, periodo, organizacionId, userId);
+    const net = await NetInfo.fetch();
+    const isOnline = net.isConnected === true && net.isInternetReachable !== false;
+    if (isOnline) {
+      await createPlantation(lugar, periodo, organizacionId, userId);
+    } else {
+      await createPlantationLocally(lugar, periodo, organizacionId, userId);
+    }
     setShowCreateModal(false);
+  }
+
+  async function handleAssignTech(plantacionId: string) {
+    const net = await NetInfo.fetch();
+    const isOnline = net.isConnected === true && net.isInternetReachable !== false;
+    if (!isOnline) {
+      showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.stateFinalizada);
+      return;
+    }
+    setAssignTechPlantacionId(plantacionId);
   }
 
   async function handleEditSubmit(lugar: string, periodo: string) {
@@ -416,7 +421,7 @@ export default function AdminScreen() {
             <ActionItem
               icon="people-outline"
               label="Asignar técnicos"
-              onPress={() => setAssignTechPlantacionId(item.id)}
+              onPress={() => handleAssignTech(item.id)}
               color={colors.primary}
             />
             <ActionItem
@@ -658,6 +663,7 @@ export default function AdminScreen() {
             <ConfigureSpeciesScreen
               plantacionIdProp={configSpeciesPlantacionId}
               onClose={() => setConfigSpeciesPlantacionId(null)}
+              pendingSync={(plantationList as Plantation[] | null)?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
             />
           )}
         </AdminModalWrapper>

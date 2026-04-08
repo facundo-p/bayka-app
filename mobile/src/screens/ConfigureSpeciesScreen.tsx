@@ -28,7 +28,7 @@ import { showInfoDialog } from '../utils/alertHelpers';
 import { db } from '../database/client';
 import { species as speciesTable } from '../database/schema';
 import { getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
-import { saveSpeciesConfig } from '../repositories/PlantationRepository';
+import { saveSpeciesConfig, saveSpeciesConfigLocally } from '../repositories/PlantationRepository';
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
@@ -58,9 +58,10 @@ type SpeciesItem = {
 type Props = {
   plantacionIdProp?: string;
   onClose?: () => void;
+  pendingSync?: boolean;
 };
 
-export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Props = {}) {
+export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pendingSync }: Props = {}) {
   const params = useLocalSearchParams<{ plantacionId: string }>();
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
@@ -156,7 +157,11 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose }: Pr
       const enabledItems = items
         .filter((i) => i.enabled)
         .map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
-      await saveSpeciesConfig(plantacionId, enabledItems);
+      if (pendingSync) {
+        await saveSpeciesConfigLocally(plantacionId, enabledItems);
+      } else {
+        await saveSpeciesConfig(plantacionId, enabledItems);
+      }
       onClose ? onClose() : router.back();
     } catch (e: any) {
       showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron guardar las especies.', 'alert-circle-outline', colors.danger);
