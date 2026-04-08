@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 Phase: 08 (login-offline) — EXECUTING
 Plan: 2 of 2
 Status: Phase complete — ready for verification
-Last activity: 2026-04-08 - Completed quick task 260408-c1r: mostrar creador en subgroup cards
+Last activity: 2026-04-08 - Completed quick task 260408-cf3: offline login TTL configurable
 
 Progress: [██████████] 100%
 
@@ -161,6 +161,7 @@ None currently.
 | 260408-b35 | fix: unificar colores boton agregar plantacion en gestion | 2026-04-08 | 9cc3e7d | [260408-b35-fix-unificar-colores-boton-agregar-plant](./quick/260408-b35-fix-unificar-colores-boton-agregar-plant/) |
 | 260408-bgv | script: agregar usuarios seed a supabase | 2026-04-08 | be72939 | [260408-bgv-script-agregar-usuarios-seed-a-supabase](./quick/260408-bgv-script-agregar-usuarios-seed-a-supabase/) |
 | 260408-c1r | feat: mostrar creador en subgroup cards | 2026-04-08 | 3dd6520 | [260408-c1r-feat-mostrar-creador-en-subgroup-cards](./quick/260408-c1r-feat-mostrar-creador-en-subgroup-cards/) |
+| 260408-cf3 | feat: offline login TTL configurable independiente de supabase | 2026-04-08 | 1a77b60 | [260408-cf3-feat-offline-login-ttl-configurable-inde](./quick/260408-cf3-feat-offline-login-ttl-configurable-inde/) |
 
 ## Session Continuity
 
