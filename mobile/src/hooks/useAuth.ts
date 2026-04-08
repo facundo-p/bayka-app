@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import { persistSession, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired } from '../services/OfflineAuthService';
 import type { Role } from '../types/domain';
@@ -34,6 +35,9 @@ export function useAuth() {
         const { data: { session: currentSession } } = await supabase.auth.getSession();
 
         if (mounted && currentSession) {
+          // Persist tokens to SecureStore for offline re-login
+          await persistSession(currentSession);
+
           let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
 
           // If no cached role, try fetching from server with timeout
@@ -49,7 +53,7 @@ export function useAuth() {
                 await SecureStore.setItemAsync(EMAIL_KEY, currentSession.user.email ?? '');
               }
             } catch {
-              // Offline or timeout — continue without role, user will need to sign in
+              // Offline or timeout — continue without role
             }
           }
 
@@ -72,6 +76,9 @@ export function useAuth() {
         if (initializing.current) return;
 
         if (event === 'SIGNED_IN' && supabaseSession) {
+          // Persist tokens on every sign-in / token refresh
+          await persistSession(supabaseSession);
+
           try {
             const { data: profile } = await withTimeout(
               supabase.from('profiles').select('rol').eq('id', supabaseSession.user.id).single(),
@@ -83,7 +90,6 @@ export function useAuth() {
               if (mounted) setRole(profile.rol as Role);
             }
           } catch {
-            // Offline — use cached role if available
             const cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
             if (cachedRole && mounted) setRole(cachedRole as Role);
           }
@@ -119,7 +125,6 @@ export function useAuth() {
       return { data: { session: null, user: null }, error: { message: 'Credenciales incorrectas o no guardadas. Inicia sesion online primero.' } };
     }
 
-    // Read tokens from SecureStore — needed for session object
     const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
     const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
     if (!accessToken || !refreshToken) {
@@ -134,7 +139,13 @@ export function useAuth() {
   }
 
   async function signIn(email: string, password: string) {
-    // Always try online first with timeout — falls back to offline on any network failure
+    // Fast path: definitely offline → skip Supabase, go straight to cached credentials
+    const net = await NetInfo.fetch();
+    if (net.isConnected === false) {
+      return handleOfflineSignIn(email, password);
+    }
+
+    // Online or indeterminate → try Supabase with timeout, fallback to offline
     try {
       const result = await withTimeout(
         supabase.auth.signInWithPassword({ email, password }),
@@ -142,7 +153,9 @@ export function useAuth() {
       );
 
       if (!result.error && result.data.session) {
-        // Cache credentials for future offline login
+        // Persist tokens to SecureStore for future offline use
+        await persistSession(result.data.session);
+
         try {
           const { data: profile } = await withTimeout(
             supabase.from('profiles').select('rol').eq('id', result.data.session.user.id).single(),
@@ -152,36 +165,27 @@ export function useAuth() {
           await cacheCredential(email, password, userRole);
           await saveLastOnlineLogin();
         } catch {
-          // Profile fetch failed — cache with default role
           await cacheCredential(email, password, 'tecnico');
           await saveLastOnlineLogin();
         }
       }
       return result;
     } catch {
-      // Network failure or timeout — try offline
       return handleOfflineSignIn(email, password);
     }
   }
 
   async function signOut() {
-    // 1. Immediate UI reset — no awaits, no network
+    // 1. Immediate UI reset — synchronous, no network
     setSession(null);
     setRole(null);
 
-    // 2. Clear role from SecureStore (tokens stay for offline re-login)
-    try {
-      await SecureStore.deleteItemAsync(ROLE_KEY);
-    } catch {}
+    // 2. Clear role (tokens + credentials stay for offline re-login)
+    try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
 
-    // 3. Tell Supabase to clear its internal AsyncStorage session
-    //    scope:'local' should not make network calls
-    //    Wrapped in try/catch + timeout to guarantee it never blocks
-    try {
-      await withTimeout(supabase.auth.signOut({ scope: 'local' }), 3000);
-    } catch {
-      // Ignore — UI already reset, user is signed out visually
-    }
+    // 3. Clear Supabase internal state (AsyncStorage) — fire and forget
+    //    Do NOT await — prevents blocking if Supabase tries network calls
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {});
   }
 
   return { session, role, loading, signIn, signOut };
