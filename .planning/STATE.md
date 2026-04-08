@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 Phase: 08 (login-offline) — EXECUTING
 Plan: 2 of 2
 Status: Phase complete — ready for verification
-Last activity: 2026-04-06
+Last activity: 2026-04-08 - Completed quick task 260408-anx: fix header y filtros plantaciones descargadas
 
 Progress: [██████████] 100%
 
@@ -142,6 +142,7 @@ Recent decisions affecting current work:
 - Phase 6 added: Admin sync - subir plantaciones y finalizaciones al servidor
 - Phase 7 added: Eliminar plantación local - borrado local de plantaciones descargadas en el celular
 - Phase 8 added: Login offline - cachear credenciales para login sin conexión
+- Phase 9 added: Testing Strategy - tests abarcativos para funcionalidades críticas (offline, sync, data integrity, role-based access)
 
 ### Pending Todos
 
@@ -150,6 +151,12 @@ None yet.
 ### Blockers/Concerns
 
 None currently.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260408-anx | fix: header y filtros plantaciones descargadas | 2026-04-08 | 10bd106 | [260408-anx-fix-header-y-filtros-plantaciones-descar](./quick/260408-anx-fix-header-y-filtros-plantaciones-descar/) |
 
 ## Session Continuity
 
