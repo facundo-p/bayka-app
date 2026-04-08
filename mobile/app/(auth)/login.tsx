@@ -34,10 +34,15 @@ export default function LoginScreen() {
     setLoading(true);
     setError(null);
 
-    const { error: authError } = await signIn(email.trim(), password);
+    try {
+      const { error: authError } = await signIn(email.trim(), password);
 
-    if (authError) {
-      setError(authError.message || 'Email o contrasena incorrectos');
+      if (authError) {
+        setError(authError.message || 'Email o contrasena incorrectos');
+        setLoading(false);
+      }
+    } catch (e: any) {
+      setError(e?.message || 'Error inesperado al iniciar sesion');
       setLoading(false);
     }
   }
