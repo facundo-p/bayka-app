@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, borderRadius, spacing, fonts } from '../theme';
 import TexturedBackground from '../components/TexturedBackground';
+import React from 'react';
 
 interface Props {
   roleLabel: string;

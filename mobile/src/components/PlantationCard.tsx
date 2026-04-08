@@ -6,6 +6,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import React from 'react';
 
 const SIDEBAR_WIDTH = 48;
 

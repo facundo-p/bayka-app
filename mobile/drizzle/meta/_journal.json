@@ -43,6 +43,13 @@
       "when": 1774000000000,
       "tag": "0005_user_species_order",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1774100000000,
+      "tag": "0006_add_pending_sync",
+      "breakpoints": true
     }
   ]
 }

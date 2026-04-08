@@ -43,6 +43,7 @@ import { useNetStatus } from '../hooks/useNetStatus';
 import SyncProgressModal from '../components/SyncProgressModal';
 import FilterCards from '../components/FilterCards';
 import TexturedBackground from '../components/TexturedBackground';
+import React from 'react';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();

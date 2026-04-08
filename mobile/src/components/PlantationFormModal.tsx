@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import React from 'react';
 
 type Plantation = {
   id: string;
