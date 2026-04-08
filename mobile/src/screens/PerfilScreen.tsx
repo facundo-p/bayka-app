@@ -5,6 +5,7 @@ import { useNetStatus } from '../hooks/useNetStatus';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, borderRadius, spacing, fonts } from '../theme';
+import TexturedBackground from '../components/TexturedBackground';
 
 interface Props {
   roleLabel: string;
@@ -16,7 +17,8 @@ export default function PerfilScreen({ roleLabel }: Props) {
   const { isOnline } = useNetStatus();
 
   return (
-    <View style={styles.container}>
+    <TexturedBackground>
+      <View style={styles.innerContainer}>
       <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
         {/* Avatar placeholder: circle with initials */}
         <View style={styles.avatar}>
@@ -59,7 +61,8 @@ export default function PerfilScreen({ roleLabel }: Props) {
           <Text style={styles.logoutLinkText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </Animated.View>
-    </View>
+      </View>
+    </TexturedBackground>
   );
 }
 
@@ -78,9 +81,8 @@ function ProfileRow({ label, value, icon }: { label: string; value: string; icon
 }
 
 const styles = StyleSheet.create({
-  container: {
+  innerContainer: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: spacing['4xl'],
     justifyContent: 'center',
     alignItems: 'center',

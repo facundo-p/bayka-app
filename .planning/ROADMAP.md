@@ -17,9 +17,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Sync + Dashboard** - Manual sync with atomic SubGroup upload, conflict detection, plantation dashboard with stats (completed 2026-03-19)
 - [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
 - [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
-- [ ] **Phase 6: Plantation Catalog + Download** - Server plantation discovery, batch download to device, offline-first bootstrap for new devices
-- [ ] **Phase 7: Eliminar Plantación Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar
+- [x] **Phase 6: Plantation Catalog + Download** - Server plantation discovery, batch download to device, offline-first bootstrap for new devices (completed 2026-04-01)
+- [x] **Phase 7: Eliminar Plantación Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar (completed 2026-04-06)
 - [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexión en campo (completed 2026-04-06)
+- [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades críticas: offline, sync, data integrity, role-based access
 
 ## Phase Details
 
@@ -123,7 +124,7 @@ Plans:
 
 Plans:
 - [x] 06-01-PLAN.md — Data layer: catalogQueries (server catalog + local ID lookup), SyncService download extensions (downloadPlantation + batchDownload), unit tests (completed 2026-04-01)
-- [ ] 06-02-PLAN.md — UI layer: CatalogScreen, CatalogPlantationCard, DownloadProgressModal, route wrappers, PlantacionesScreen icon navigation (checkpoint)
+- [x] 06-02-PLAN.md — UI layer: CatalogScreen, CatalogPlantationCard, DownloadProgressModal, route wrappers, PlantacionesScreen icon navigation (completed 2026-04-01)
 
 ### Phase 7: Eliminar Plantación Local
 **Goal**: Users can delete downloaded plantations from their phone to manage local storage, with a warning when there is unsynced data that would be lost
@@ -160,7 +161,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -169,6 +170,17 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Sync + Dashboard | 2/3 | Complete    | 2026-03-19 |
 | 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
 | 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
-| 6. Plantation Catalog + Download | 1/2 | Executing | — |
-| 7. Eliminar Plantación Local | 0/2 | Not started | — |
+| 6. Plantation Catalog + Download | 2/2 | Complete | 2026-04-01 |
+| 7. Eliminar Plantación Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
+| 9. Testing Strategy | 0/0 | Not started | — |
+
+### Phase 9: Testing Strategy
+
+**Goal:** Comprehensive testing strategy covering critical business functionality — offline operations, sync flows, data integrity, and role-based access. Unit tests, integration tests, and E2E test foundations.
+**Requirements**: TBD
+**Depends on:** Phase 8
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 9 to break down)
