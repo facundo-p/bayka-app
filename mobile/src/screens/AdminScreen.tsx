@@ -357,8 +357,9 @@ export default function AdminScreen() {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
     const net = await NetInfo.fetch();
-    const isOnline = net.isConnected === true && net.isInternetReachable === true;
-    if (isOnline) {
+    if (net.isConnected === false) {
+      await createPlantationLocally(lugar, periodo, organizacionId, userId);
+    } else {
       try {
         await createPlantation(lugar, periodo, organizacionId, userId);
       } catch (e: any) {
@@ -368,16 +369,13 @@ export default function AdminScreen() {
           throw e;
         }
       }
-    } else {
-      await createPlantationLocally(lugar, periodo, organizacionId, userId);
     }
     setShowCreateModal(false);
   }
 
   async function handleAssignTech(plantacionId: string) {
     const net = await NetInfo.fetch();
-    const isOnline = net.isConnected === true && net.isInternetReachable === true;
-    if (!isOnline) {
+    if (net.isConnected === false) {
       showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.stateFinalizada);
       return;
     }

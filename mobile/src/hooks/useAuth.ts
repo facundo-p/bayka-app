@@ -29,20 +29,27 @@ export function useAuth() {
           // Fetch role from SecureStore cache first
           let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
 
-          // If no cached role, fetch from profiles (only if online — avoids hanging offline)
+          // If no cached role, fetch from profiles with timeout (avoids hanging offline)
           if (!cachedRole) {
-            const net = await NetInfo.fetch();
-            if (net.isConnected === true && net.isInternetReachable === true) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('rol')
-                .eq('id', currentSession.user.id)
-                .single();
+            try {
+              const timeout = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+              );
+              const { data: profile } = await Promise.race([
+                supabase
+                  .from('profiles')
+                  .select('rol')
+                  .eq('id', currentSession.user.id)
+                  .single(),
+                timeout,
+              ]);
               if (profile?.rol) {
                 cachedRole = profile.rol;
                 await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
                 await SecureStore.setItemAsync(EMAIL_KEY, currentSession.user.email ?? '');
               }
+            } catch {
+              // Offline or timeout — continue with null role
             }
           }
 
@@ -126,14 +133,21 @@ export function useAuth() {
 
   async function signIn(email: string, password: string) {
     const net = await NetInfo.fetch();
-    const isOnline = net.isConnected === true && net.isInternetReachable === true;
+    const isOffline = net.isConnected === false;
 
-    if (!isOnline) {
+    if (isOffline) {
       return handleOfflineSignIn(email, password);
     }
 
+    // Online or indeterminate — try Supabase with 10s timeout, fallback to offline
     try {
-      const result = await supabase.auth.signInWithPassword({ email, password });
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Login timeout')), 10000)
+      );
+      const result = await Promise.race([
+        supabase.auth.signInWithPassword({ email, password }),
+        timeout,
+      ]);
       if (!result.error && result.data.session) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -146,7 +160,7 @@ export function useAuth() {
       }
       return result;
     } catch (e: any) {
-      if (e?.message?.includes('Network request failed')) {
+      if (e?.message?.includes('Network request failed') || e?.message?.includes('Login timeout')) {
         return handleOfflineSignIn(email, password);
       }
       throw e;
