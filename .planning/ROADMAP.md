@@ -158,6 +158,25 @@ Plans:
 - [x] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
 - [x] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
 
+### Phase 10: Creación de plantación offline + sync catálogo de especies
+
+**Goal:** El admin puede crear una plantación estando offline, cargarle subgrupos y data, y sincronizarla al recuperar conexión. Las especies disponibles se sincronizan desde Supabase al SQLite local durante cada sync regular. La asignación de usuarios a plantaciones sigue siendo online-only. El UUID generado localmente se usa al insertar en Supabase (sin migración de IDs).
+**Requirements**: OFPL-01, OFPL-02, OFPL-03, OFPL-04, OFPL-05, OFPL-06, OFPL-07, OFPL-08
+**Depends on:** Phase 8
+**Success Criteria** (what must be TRUE):
+  1. Admin can create a plantation while offline — it appears immediately in the local list with a "Pendiente de sync" badge
+  2. Admin can configure species on an offline-created plantation (local-only save)
+  3. Subgroups and trees can be added to offline-created plantations (existing behavior)
+  4. When admin syncs, offline-created plantations are uploaded to Supabase using the locally-generated UUID
+  5. Species catalog in local SQLite is refreshed from Supabase during each sync
+  6. Technician assignment remains online-only
+  7. Admin cannot finalize a plantation until it has been synced to the server
+**Plans:** 2 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Schema migration (pendingSync column), data layer functions (createPlantationLocally, saveSpeciesConfigLocally, pullSpeciesFromServer, uploadOfflinePlantations), unit tests
+- [ ] 10-02-PLAN.md — UI wiring (AdminScreen offline-aware create, pending badge, finalization gate, ConfigureSpeciesScreen offline save, organizacionId caching), visual verification checkpoint
+
 ### Phase 9: Testing Strategy
 **Goal:** Refactor critical code for testability (eliminate duplication, decompose large screens), then implement comprehensive testing covering offline operations, sync flows, data integrity, and role-based access. Set up CI/CD pipeline in GitHub Actions.
 **Depends on:** Phase 8
@@ -182,7 +201,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 10 → 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -194,4 +213,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. Plantation Catalog + Download | 2/2 | Complete | 2026-04-01 |
 | 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
+| 10. Plantación offline + sync especies | 0/2 | Not started | — |
 | 9. Testing Strategy | 0/6 | Not started | — |
