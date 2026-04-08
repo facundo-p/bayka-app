@@ -18,9 +18,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: Admin + Export** - Admin plantation management, ID generation, CSV/Excel export (completed 2026-03-20)
 - [x] **Phase 5: UX Improvements** - Connectivity indicator, data freshness checks, profile screen, contextual headers (completed 2026-03-29)
 - [x] **Phase 6: Plantation Catalog + Download** - Server plantation discovery, batch download to device, offline-first bootstrap for new devices (completed 2026-04-01)
-- [x] **Phase 7: Eliminar Plantación Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar (completed 2026-04-06)
-- [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexión en campo (completed 2026-04-06)
-- [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades críticas: offline, sync, data integrity, role-based access
+- [x] **Phase 7: Eliminar Plantacion Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar (completed 2026-04-06)
+- [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexion en campo (completed 2026-04-06)
+- [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades criticas: offline, sync, data integrity, role-based access
 
 ## Phase Details
 
@@ -126,7 +126,7 @@ Plans:
 - [x] 06-01-PLAN.md — Data layer: catalogQueries (server catalog + local ID lookup), SyncService download extensions (downloadPlantation + batchDownload), unit tests (completed 2026-04-01)
 - [x] 06-02-PLAN.md — UI layer: CatalogScreen, CatalogPlantationCard, DownloadProgressModal, route wrappers, PlantacionesScreen icon navigation (completed 2026-04-01)
 
-### Phase 7: Eliminar Plantación Local
+### Phase 7: Eliminar Plantacion Local
 **Goal**: Users can delete downloaded plantations from their phone to manage local storage, with a warning when there is unsynced data that would be lost
 **Depends on**: Phase 6
 **Requirements**: TBD
@@ -158,10 +158,31 @@ Plans:
 - [x] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
 - [x] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
 
+### Phase 9: Testing Strategy
+**Goal:** Refactor critical code for testability (eliminate duplication, decompose large screens), then implement comprehensive testing covering offline operations, sync flows, data integrity, and role-based access. Set up CI/CD pipeline in GitHub Actions.
+**Depends on:** Phase 8
+**Requirements**: TEST-INFRA, TEST-REFACTOR, TEST-INTEGRATION, TEST-UNIT, TEST-E2E, TEST-CI, TEST-CI-E2E
+**Success Criteria** (what must be TRUE):
+  1. All screen files comply with CLAUDE.md rule 9 (no direct data imports)
+  2. TreeRegistrationScreen under 300 lines, AdminScreen under 350 lines
+  3. Integration tests pass against real in-memory SQLite for 5 critical flows
+  4. Unit tests cover all repositories, critical hooks (useAuth, useSync), and services
+  5. 3 Maestro E2E flows exist for critical user journeys
+  6. GitHub Actions CI runs lint + unit + integration on every push, E2E on PR to main
+**Plans**: 6 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
+- [ ] 09-02-PLAN.md — Refactor TreeRegistrationScreen: extract useTreeRegistration, useSpeciesOrder, useNNFlow hooks + SpeciesGrid, LastThreeTrees, TreeRegistrationHeader components
+- [ ] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
+- [ ] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite)
+- [ ] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth, useSync, useTreeRegistration
+- [ ] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -171,16 +192,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 4. Admin + Export | 3/3 | Complete    | 2026-03-20 |
 | 5. UX Improvements | 2/2 | Complete   | 2026-03-29 |
 | 6. Plantation Catalog + Download | 2/2 | Complete | 2026-04-01 |
-| 7. Eliminar Plantación Local | 2/2 | Complete | 2026-04-06 |
+| 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
-| 9. Testing Strategy | 0/0 | Not started | — |
-
-### Phase 9: Testing Strategy
-
-**Goal:** Comprehensive testing strategy covering critical business functionality — offline operations, sync flows, data integrity, and role-based access. Unit tests, integration tests, and E2E test foundations.
-**Requirements**: TBD
-**Depends on:** Phase 8
-**Plans:** 0 plans
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 9 to break down)
+| 9. Testing Strategy | 0/6 | Not started | — |
