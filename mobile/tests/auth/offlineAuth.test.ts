@@ -37,8 +37,8 @@ describe('OfflineAuthService', () => {
 
     const parsed = JSON.parse(raw!);
     expect(parsed).toHaveLength(1);
-    // No plaintext password field stored
-    expect(parsed[0]).not.toHaveProperty('password');
+    // Password stored for quick-login chips (encrypted by OS Keychain via SecureStore)
+    expect(parsed[0].password).toBe('pass123');
     expect(parsed[0].hash).toBeDefined();
     expect(parsed[0].hash).not.toBe('pass123');
     expect(parsed[0].salt).toBeDefined();
