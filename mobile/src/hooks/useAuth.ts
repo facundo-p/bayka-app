@@ -29,17 +29,20 @@ export function useAuth() {
           // Fetch role from SecureStore cache first
           let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
 
-          // If no cached role, fetch from profiles
+          // If no cached role, fetch from profiles (only if online — avoids hanging offline)
           if (!cachedRole) {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('rol')
-              .eq('id', currentSession.user.id)
-              .single();
-            if (profile?.rol) {
-              cachedRole = profile.rol;
-              await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
-              await SecureStore.setItemAsync(EMAIL_KEY, currentSession.user.email ?? '');
+            const net = await NetInfo.fetch();
+            if (net.isConnected === true && net.isInternetReachable === true) {
+              const { data: profile } = await supabase
+                .from('profiles')
+                .select('rol')
+                .eq('id', currentSession.user.id)
+                .single();
+              if (profile?.rol) {
+                cachedRole = profile.rol;
+                await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
+                await SecureStore.setItemAsync(EMAIL_KEY, currentSession.user.email ?? '');
+              }
             }
           }
 
@@ -123,24 +126,31 @@ export function useAuth() {
 
   async function signIn(email: string, password: string) {
     const net = await NetInfo.fetch();
-    const isOnline = net.isConnected === true && net.isInternetReachable !== false;
+    const isOnline = net.isConnected === true && net.isInternetReachable === true;
 
     if (!isOnline) {
       return handleOfflineSignIn(email, password);
     }
 
-    const result = await supabase.auth.signInWithPassword({ email, password });
-    if (!result.error && result.data.session) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('rol')
-        .eq('id', result.data.session.user.id)
-        .single();
-      const userRole = profile?.rol ?? 'tecnico';
-      await cacheCredential(email, password, userRole);
-      await saveLastOnlineLogin();
+    try {
+      const result = await supabase.auth.signInWithPassword({ email, password });
+      if (!result.error && result.data.session) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('rol')
+          .eq('id', result.data.session.user.id)
+          .single();
+        const userRole = profile?.rol ?? 'tecnico';
+        await cacheCredential(email, password, userRole);
+        await saveLastOnlineLogin();
+      }
+      return result;
+    } catch (e: any) {
+      if (e?.message?.includes('Network request failed')) {
+        return handleOfflineSignIn(email, password);
+      }
+      throw e;
     }
-    return result;
   }
 
   async function signOut() {
