@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Phase 9 context gathered
-last_updated: "2026-04-08T11:48:35.476Z"
-last_activity: "2026-04-08 - Completed quick task 260408-c1r: mostrar creador en subgroup cards"
+stopped_at: Completed 10-01-PLAN.md
+last_updated: "2026-04-08T14:18:59.528Z"
+last_activity: 2026-04-08
 progress:
   total_phases: 9
   completed_phases: 7
-  total_plans: 21
+  total_plans: 27
   completed_plans: 20
   percent: 100
 ---
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 Phase: 08 (login-offline) — EXECUTING
 Plan: 2 of 2
 Status: Phase complete — ready for verification
-Last activity: 2026-04-08 - Completed quick task 260408-cf3: offline login TTL configurable
+Last activity: 2026-04-08
 
 Progress: [██████████] 100%
 
@@ -71,6 +71,7 @@ Progress: [██████████] 100%
 | Phase 07-eliminar-plantacion-local P02 | 93s | 3 tasks | 2 files |
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 | Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
+| Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P01 | 5min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,9 @@ Recent decisions affecting current work:
 - [Phase 08-login-offline]: handleOfflineSignIn extracted as separate function to keep signIn under 20 lines (CLAUDE.md rule)
 - [Phase 08-login-offline]: Credential caching in useAuth.signIn not login screen (CLAUDE.md rule 9: no data logic in screens)
 - [Phase 08-login-offline]: rememberAccount toggle removed -- caching automatic on every online login success
+- [Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies]: pendingSync stored as INTEGER (0/1) in SQLite, mapped to Drizzle boolean — offline-first flag for admin-created plantations
+- [Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies]: uploadOfflinePlantations: 23505 duplicate key = idempotent re-upload, proceeds with species upsert and marks pendingSync=false
+- [Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies]: pullSpeciesFromServer: non-blocking, upsert-only (never delete) — species codes embedded in SubIDs, deletion would corrupt data
 
 ### Roadmap Evolution
 
@@ -165,6 +169,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-08T11:48:35.472Z
-Stopped at: Phase 9 context gathered
-Resume file: .planning/phases/09-testing-strategy/09-CONTEXT.md
+Last session: 2026-04-08T14:18:59.525Z
+Stopped at: Completed 10-01-PLAN.md
+Resume file: None
