@@ -14,6 +14,7 @@ import { eq, asc } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import { pullFromServer } from '../services/SyncService';
+import * as Crypto from 'expo-crypto';
 
 // ─── createPlantation ─────────────────────────────────────────────────────────
 
@@ -64,6 +65,36 @@ export async function createPlantation(
 
   notifyDataChanged();
   return data;
+}
+
+// ─── createPlantationLocally ──────────────────────────────────────────────────
+
+/**
+ * OFPL-01
+ * Creates a new plantation row in local SQLite only, with pendingSync=true.
+ * No Supabase call — works fully offline.
+ * Subgroups can immediately reference this plantation via FK because the row exists locally.
+ */
+export async function createPlantationLocally(
+  lugar: string,
+  periodo: string,
+  organizacionId: string,
+  creadoPor: string
+): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
+  const id = Crypto.randomUUID();
+  const now = new Date().toISOString();
+  await db.insert(plantations).values({
+    id,
+    organizacionId,
+    lugar,
+    periodo,
+    estado: 'activa',
+    creadoPor,
+    createdAt: now,
+    pendingSync: true,
+  });
+  notifyDataChanged();
+  return { id, lugar, periodo, estado: 'activa' };
 }
 
 // ─── updatePlantation ─────────────────────────────────────────────────────────
@@ -156,6 +187,32 @@ export async function saveSpeciesConfig(
 
   // Sync back to local SQLite (pullFromServer handles plantation_species upsert)
   await pullFromServer(plantacionId);
+  notifyDataChanged();
+}
+
+// ─── saveSpeciesConfigLocally ─────────────────────────────────────────────────
+
+/**
+ * OFPL-02
+ * Writes plantation_species rows to local SQLite only — no Supabase call.
+ * Replaces all existing species for the plantation atomically.
+ * Used for offline plantation species configuration.
+ */
+export async function saveSpeciesConfigLocally(
+  plantacionId: string,
+  items: Array<{ especieId: string; ordenVisual: number }>
+): Promise<void> {
+  await db.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
+  if (items.length > 0) {
+    await db.insert(plantationSpecies).values(
+      items.map((item) => ({
+        id: `ps-${plantacionId}-${item.especieId}`,
+        plantacionId,
+        especieId: item.especieId,
+        ordenVisual: item.ordenVisual,
+      }))
+    );
+  }
   notifyDataChanged();
 }
 
