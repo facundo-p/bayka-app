@@ -95,7 +95,7 @@ export default function PlantationFormModal({
             style={styles.textInput}
             value={lugar}
             onChangeText={setLugar}
-            placeholder="Ej: Finca Los Alamos"
+            placeholder="Nombre del lugar de plantación"
             placeholderTextColor={colors.textPlaceholder}
             editable={!loading}
           />
@@ -105,7 +105,7 @@ export default function PlantationFormModal({
             style={styles.textInput}
             value={periodo}
             onChangeText={setPeriodo}
-            placeholder="Ej: 2026-Otono"
+            placeholder="Periodo de plantación"
             placeholderTextColor={colors.textPlaceholder}
             editable={!loading}
           />
