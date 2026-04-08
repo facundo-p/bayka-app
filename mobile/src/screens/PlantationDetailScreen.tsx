@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
+import { useUserNames, getDisplayName } from '../hooks/useUserNames';
 import { showDoubleConfirmDialog, showConfirmDialog } from '../utils/alertHelpers';
 import { useSync } from '../hooks/useSync';
 import { useConfirm } from '../hooks/useConfirm';
@@ -41,6 +42,7 @@ import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useNetStatus } from '../hooks/useNetStatus';
 import SyncProgressModal from '../components/SyncProgressModal';
 import FilterCards from '../components/FilterCards';
+import TexturedBackground from '../components/TexturedBackground';
 
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
@@ -86,6 +88,13 @@ export default function PlantationDetailScreen() {
   const plantacionEstado = estadoData?.[0]?.estado ?? '';
   const estadoLoaded = estadoData !== undefined;
   const isFinalizada = plantacionEstado === 'finalizada';
+
+  // Resolve creator UUIDs to display names (cached for offline use)
+  const creatorIds = useMemo(() => {
+    const ids = (subgroupRows ?? []).map((sg: any) => sg.usuarioCreador).filter(Boolean);
+    return [...new Set(ids)] as string[];
+  }, [subgroupRows]);
+  const userNames = useUserNames(creatorIds);
 
   // Build maps
   const nnCountMap = new Map<string, number>();
@@ -174,6 +183,7 @@ export default function PlantationDetailScreen() {
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
     const showDelete = isOwner && item.estado === 'activa';
+    const creatorName = userNames[item.usuarioCreador];
 
     return (
       <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
@@ -211,13 +221,16 @@ export default function PlantationDetailScreen() {
             </Pressable>
           )}
         </View>
+        {creatorName && (
+          <Text style={styles.cardCreator}>{getDisplayName(creatorName)}</Text>
+        )}
       </Pressable>
       </Animated.View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <TexturedBackground>
       {/* Fixed header: buttons + N/N banner */}
       <View style={styles.fixedHeader}>
 
@@ -375,20 +388,15 @@ export default function PlantationDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </TexturedBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   fixedHeader: {
     paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
-    backgroundColor: colors.background,
   },
   listContent: {
     padding: spacing.xxl,
@@ -482,6 +490,12 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontFamily: fonts.medium,
   },
+  cardCreator: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
   cardTipo: {
     fontSize: fontSize.xs,
     color: colors.textLight,
@@ -525,7 +539,6 @@ const styles = StyleSheet.create({
   },
   fabContainer: {
     padding: spacing.xl,
-    backgroundColor: colors.background,
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },

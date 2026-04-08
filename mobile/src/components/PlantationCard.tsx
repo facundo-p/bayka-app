@@ -4,8 +4,10 @@
  */
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
-import TreeIcon from './TreeIcon';
+
+const SIDEBAR_WIDTH = 48;
 
 type Props = {
   lugar: string;
@@ -34,48 +36,43 @@ export default function PlantationCard({
       : estado === 'sincronizada'
         ? colors.stateSincronizada
         : colors.stateActiva;
+
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        { borderLeftWidth: 3, borderLeftColor: accentColor },
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
-      <View style={styles.cardInner}>
-        {/* Title row */}
-        <View style={styles.cardTitleRow}>
-          <View style={styles.cardTitleArea}>
-            <Text style={styles.cardTitle}>{lugar}</Text>
-            <Text style={styles.cardSubtitle}>{periodo}</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-        </View>
+      {/* Colored sidebar with leaf icon */}
+      <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
+        <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
+      </View>
+
+      {/* Content area — solid white background */}
+      <View style={styles.content}>
+        {/* Title */}
+        <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+        <Text style={styles.subtitle}>{periodo}</Text>
 
         {/* Stats row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <TreeIcon size={11} />
+            <Ionicons name="leaf-outline" size={14} color={colors.statTotal} />
             <Text style={[styles.statValue, { color: colors.statTotal }]}>{totalCount}</Text>
-            <Text style={styles.statLabel}>total</Text>
           </View>
           <View style={styles.statItem}>
-            <Ionicons name="cloud-done-outline" size={12} color={colors.statSynced} />
+            <Ionicons name="cloud-done-outline" size={14} color={colors.statSynced} />
             <Text style={[styles.statValue, { color: colors.statSynced }]}>{syncedCount}</Text>
-            <Text style={styles.statLabel}>sincronizados</Text>
           </View>
           <View style={styles.statItem}>
-            <Ionicons name="today-outline" size={12} color={colors.statToday} />
+            <Ionicons name="today-outline" size={14} color={colors.statToday} />
             <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
-            <Text style={styles.statLabel}>hoy</Text>
           </View>
         </View>
 
         {/* Pending sync banner */}
         {pendingSync > 0 && (
           <View style={styles.pendingSyncRow}>
-            <Ionicons name="cloud-upload-outline" size={14} color={colors.secondary} />
+            <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
             <Text style={styles.pendingSyncText}>
               {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
             </Text>
@@ -88,44 +85,75 @@ export default function PlantationCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    elevation: 2,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  cardPressed: { transform: [{ scale: 0.98 }] },
-  cardInner: { padding: spacing.xl },
-  cardTitleRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    backgroundColor: colors.surface,
+  },
+  cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.95 },
+
+  // Left colored strip
+  sidebar: {
+    width: SIDEBAR_WIDTH,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Main content area — solid surface color (white)
+  content: {
+    flex: 1,
+    padding: spacing.xxl,
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+
+  title: {
+    fontSize: fontSize.title,
+    fontFamily: fonts.bold,
+    color: colors.textHeading,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
     marginBottom: spacing.lg,
   },
-  cardTitleArea: { flex: 1, marginRight: spacing.md },
-  cardTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textHeading, marginBottom: 2 },
-  cardSubtitle: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textFaint },
+
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    gap: spacing.xxl,
   },
-  statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs },
-  statValue: { fontSize: fontSize.base, fontFamily: fonts.bold },
-  statLabel: { fontSize: fontSize.xs, fontFamily: fonts.regular, color: colors.textMuted },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  statValue: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.bold,
+    color: colors.textPrimary,
+  },
+
   pendingSyncRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.md,
-    backgroundColor: colors.secondaryBg,
+    marginTop: spacing.lg,
+    backgroundColor: colors.infoBg,
     borderRadius: borderRadius.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
   },
-  pendingSyncText: { fontSize: fontSize.sm, color: colors.secondary, fontFamily: fonts.semiBold },
+  pendingSyncText: {
+    fontSize: fontSize.sm,
+    color: colors.textPrimary,
+    fontFamily: fonts.semiBold,
+  },
 });

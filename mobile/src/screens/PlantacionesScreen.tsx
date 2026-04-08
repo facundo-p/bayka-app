@@ -22,6 +22,7 @@ import {
 import PlantationCard from '../components/PlantationCard';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
+import TexturedBackground from '../components/TexturedBackground';
 
 export default function PlantacionesScreen() {
   const router = useRouter();
@@ -107,20 +108,8 @@ export default function PlantacionesScreen() {
     { key: 'finalizada', label: 'Finalizadas', count: estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
   ];
 
-  if (!plantationList || plantationList.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons name="leaf-outline" size={48} color={colors.textMuted} />
-        <Text style={styles.emptyTitle}>No hay plantaciones disponibles</Text>
-        <Text style={styles.emptySubtext}>Las plantaciones asignadas apareceran aqui</Text>
-      </View>
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      {/* Subtle gradient background */}
-      <View style={styles.gradientBg} />
+    <TexturedBackground>
       <ScreenHeader
         title={headerTitle}
         rightElement={
@@ -159,48 +148,48 @@ export default function PlantacionesScreen() {
         </View>
       )}
 
-      <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
-        <FilterCards
-          filters={filterConfigs}
-          activeFilter={activeFilter}
-          onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
-        />
-      </Animated.View>
-
-      <FlatList
-        data={filteredList}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(index * 80).duration(300)}>
-            <PlantationCard
-              lugar={item.lugar}
-              periodo={item.periodo}
-              totalCount={totalCountMap.get(item.id) ?? 0}
-              syncedCount={syncedCountMap.get(item.id) ?? 0}
-              todayCount={todayCountMap.get(item.id) ?? 0}
-              pendingSync={pendingSyncMap.get(item.id) ?? 0}
-              estado={item.estado}
-              onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
+      {plantationList && plantationList.length > 0 ? (
+        <>
+          <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+            <FilterCards
+              filters={filterConfigs}
+              activeFilter={activeFilter}
+              onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
             />
           </Animated.View>
-        )}
-      />
-    </View>
+
+          <FlatList
+            data={filteredList}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item, index }) => (
+              <Animated.View entering={FadeInDown.delay(index * 80).duration(300)}>
+                <PlantationCard
+                  lugar={item.lugar}
+                  periodo={item.periodo}
+                  totalCount={totalCountMap.get(item.id) ?? 0}
+                  syncedCount={syncedCountMap.get(item.id) ?? 0}
+                  todayCount={todayCountMap.get(item.id) ?? 0}
+                  pendingSync={pendingSyncMap.get(item.id) ?? 0}
+                  estado={item.estado}
+                  onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
+                />
+              </Animated.View>
+            )}
+          />
+        </>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="leaf-outline" size={48} color={colors.textMuted} />
+          <Text style={styles.emptyTitle}>No hay plantaciones disponibles</Text>
+          <Text style={styles.emptySubtext}>Las plantaciones asignadas apareceran aqui</Text>
+        </View>
+      )}
+    </TexturedBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  gradientBg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 250,
-    backgroundColor: colors.stateActiva,
-    opacity: 0.12,
-  },
   freshnessBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,7 +221,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
     gap: spacing.md,
   },
   emptyTitle: {

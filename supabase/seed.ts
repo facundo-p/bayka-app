@@ -23,10 +23,11 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 const ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 const USERS = [
-  { email: 'admin1@bayka.org', password: 'BaykaAdmin1!', nombre: 'Admin 1', rol: 'admin' },
-  { email: 'admin2@bayka.org', password: 'BaykaAdmin2!', nombre: 'Admin 2', rol: 'admin' },
-  { email: 'tecnico1@bayka.org', password: 'BaykaTecnico1!', nombre: 'Técnico 1', rol: 'tecnico' },
-  { email: 'tecnico2@bayka.org', password: 'BaykaTecnico2!', nombre: 'Técnico 2', rol: 'tecnico' },
+  { email: 'mili@bayka.org', password: 'Bayka1!', nombre: 'Mili', rol: 'admin' },
+  { email: 'militec@bayka.org', password: 'Bayka1!', nombre: 'Mili Tec', rol: 'tecnico' },
+  { email: 'mati@bayka.org', password: 'Bayka1!', nombre: 'Mati', rol: 'admin' },
+  { email: 'facu@bayka.org', password: 'Bayka1!', nombre: 'Facu', rol: 'admin' },
+  { email: 'facutec@bayka.org', password: 'Bayka1!', nombre: 'Facu Tec', rol: 'tecnico' },
 ];
 
 async function seed() {

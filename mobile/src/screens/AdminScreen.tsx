@@ -40,6 +40,7 @@ import { exportToCSV, exportToExcel } from '../services/ExportService';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import AdminModalWrapper from '../components/AdminModalWrapper';
+import TexturedBackground from '../components/TexturedBackground';
 import type { Plantation } from '../components/PlantationConfigCard';
 import PlantationFormModal from '../components/PlantationFormModal';
 import ConfigureSpeciesScreen from './ConfigureSpeciesScreen';
@@ -489,9 +490,7 @@ export default function AdminScreen() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <View style={styles.container}>
-      {/* Subtle warm gradient background */}
-      <View style={styles.gradientBg} />
+    <TexturedBackground>
       {/* Header */}
       <ScreenHeader
         title="Gestión"
@@ -500,7 +499,7 @@ export default function AdminScreen() {
             style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
             onPress={() => setShowCreateModal(true)}
           >
-            <Ionicons name="add" size={24} color={colors.plantation} />
+            <Ionicons name="add" size={18} color={colors.white} />
           </Pressable>
         }
       />
@@ -682,33 +681,20 @@ export default function AdminScreen() {
           )}
         </AdminModalWrapper>
       </Modal>
-    </View>
+    </TexturedBackground>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  gradientBg: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 250,
-    backgroundColor: colors.stateFinalizada,
-    opacity: 0.10,
-  },
 
   // ─── Header ─────────────────────────────────────────────────────────────
   headerAddBtn: {
-    width: 40,
-    height: 40,
+    width: 34,
+    height: 34,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.primaryBg,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
