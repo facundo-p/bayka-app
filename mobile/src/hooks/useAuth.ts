@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { persistSession, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import { USER_ID_KEY } from './useCurrentUserId';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
@@ -55,6 +56,7 @@ export function useAuth() {
 
         if (mounted && currentSession) {
           await persistSession(currentSession);
+          await SecureStore.setItemAsync(USER_ID_KEY, currentSession.user.id);
 
           let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
 
@@ -93,6 +95,7 @@ export function useAuth() {
 
         if (event === 'SIGNED_IN' && supabaseSession) {
           await persistSession(supabaseSession);
+          await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
 
           try {
             const { data: profile } = await withTimeout(
@@ -171,6 +174,7 @@ export function useAuth() {
 
       if (!result.error && result.data.session) {
         await persistSession(result.data.session);
+        await SecureStore.setItemAsync(USER_ID_KEY, result.data.session.user.id);
 
         try {
           const { data: profile } = await withTimeout(
