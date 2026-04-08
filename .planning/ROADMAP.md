@@ -171,11 +171,11 @@ Plans:
   5. Species catalog in local SQLite is refreshed from Supabase during each sync
   6. Technician assignment remains online-only
   7. Admin cannot finalize a plantation until it has been synced to the server
-**Plans:** 2 plans
+**Plans:** 2/2 plans complete
 
 Plans:
-- [ ] 10-01-PLAN.md — Schema migration (pendingSync column), data layer functions (createPlantationLocally, saveSpeciesConfigLocally, pullSpeciesFromServer, uploadOfflinePlantations), unit tests
-- [ ] 10-02-PLAN.md — UI wiring (AdminScreen offline-aware create, pending badge, finalization gate, ConfigureSpeciesScreen offline save, organizacionId caching), visual verification checkpoint
+- [x] 10-01-PLAN.md — Schema migration (pendingSync column), data layer functions (createPlantationLocally, saveSpeciesConfigLocally, pullSpeciesFromServer, uploadOfflinePlantations), unit tests
+- [x] 10-02-PLAN.md — UI wiring (AdminScreen offline-aware create, pending badge, finalization gate, ConfigureSpeciesScreen offline save, organizacionId caching), visual verification checkpoint
 
 ### Phase 9: Testing Strategy
 **Goal:** Refactor critical code for testability (eliminate duplication, decompose large screens), then implement comprehensive testing covering offline operations, sync flows, data integrity, and role-based access. Set up CI/CD pipeline in GitHub Actions.
@@ -213,5 +213,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Plantation Catalog + Download | 2/2 | Complete | 2026-04-01 |
 | 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
-| 10. Plantación offline + sync especies | 0/2 | Not started | — |
+| 10. Plantación offline + sync especies | 2/2 | Complete   | 2026-04-08 |
 | 9. Testing Strategy | 0/6 | Not started | — |
