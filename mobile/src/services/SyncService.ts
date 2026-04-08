@@ -1,6 +1,6 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { subgroups, trees, plantationUsers, plantationSpecies, plantations } from '../database/schema';
+import { subgroups, trees, plantationUsers, plantationSpecies, plantations, species } from '../database/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
@@ -33,6 +33,102 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
 
 export function getErrorMessage(code: SyncErrorCode): string {
   return ERROR_MESSAGES[code];
+}
+
+// ─── Pull species catalog from server ────────────────────────────────────────
+
+/**
+ * OFPL-04
+ * Fetches all species from Supabase and upserts them into local SQLite.
+ * Non-blocking: if Supabase returns an error, silently returns (stale catalog is acceptable).
+ * CRITICAL: Does NOT delete species — codes are embedded in SubIDs; deletion would corrupt data.
+ */
+export async function pullSpeciesFromServer(): Promise<void> {
+  const { data, error } = await supabase.from('species').select('*');
+  if (error || !data) return; // non-blocking — stale catalog is acceptable
+  for (const s of data) {
+    await db.insert(species).values({
+      id: s.id,
+      codigo: s.codigo,
+      nombre: s.nombre,
+      nombreCientifico: s.nombre_cientifico ?? null,
+      createdAt: s.created_at,
+    }).onConflictDoUpdate({
+      target: species.id,
+      set: {
+        codigo: sql`excluded.codigo`,
+        nombre: sql`excluded.nombre`,
+        nombreCientifico: sql`excluded.nombre_cientifico`,
+      },
+    });
+  }
+}
+
+// ─── Upload offline-created plantations ───────────────────────────────────────
+
+/**
+ * OFPL-05 / OFPL-06
+ * Uploads locally-created plantations (pendingSync=true) to Supabase.
+ * For each pending plantation:
+ * 1. Inserts plantation row (idempotent — 23505 = already exists on server, continue)
+ * 2. Upserts plantation_species rows
+ * 3. Marks pendingSync=false locally
+ *
+ * Non-fatal: failed plantations are logged and skipped.
+ */
+export async function uploadOfflinePlantations(): Promise<void> {
+  const pending = await db
+    .select()
+    .from(plantations)
+    .where(eq(plantations.pendingSync, true));
+
+  for (const p of pending) {
+    // Step 1: Upload plantation row (idempotent)
+    const { error: plantError } = await supabase
+      .from('plantations')
+      .insert({
+        id: p.id,
+        organizacion_id: p.organizacionId,
+        lugar: p.lugar,
+        periodo: p.periodo,
+        estado: p.estado,
+        creado_por: p.creadoPor,
+        created_at: p.createdAt,
+      });
+
+    // 23505 = duplicate key = plantation already exists on server, proceed with species upload
+    if (plantError && plantError.code !== '23505') {
+      console.error('[Sync] Upload plantation failed:', p.id, plantError.message);
+      continue;
+    }
+
+    // Step 2: Upload plantation_species (upsert)
+    const localPs = await db
+      .select()
+      .from(plantationSpecies)
+      .where(eq(plantationSpecies.plantacionId, p.id));
+
+    if (localPs.length > 0) {
+      const { error: psError } = await supabase
+        .from('plantation_species')
+        .upsert(
+          localPs.map((ps) => ({
+            plantation_id: ps.plantacionId,
+            species_id: ps.especieId,
+            orden_visual: ps.ordenVisual,
+          }))
+        );
+      if (psError) {
+        console.error('[Sync] Upload plantation_species failed:', p.id, psError.message);
+      }
+    }
+
+    // Step 3: Mark as synced locally
+    await db
+      .update(plantations)
+      .set({ pendingSync: false })
+      .where(eq(plantations.id, p.id));
+  }
 }
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
@@ -241,6 +337,20 @@ export async function syncPlantation(
   // Step 1: Refresh auth token
   await supabase.auth.getSession();
 
+  // Step 1.5: Sync species catalog from server
+  try {
+    await pullSpeciesFromServer();
+  } catch (e) {
+    console.error('[Sync] Pull species failed:', e);
+  }
+
+  // Step 1.6: Upload offline-created plantations
+  try {
+    await uploadOfflinePlantations();
+  } catch (e) {
+    console.error('[Sync] Upload offline plantations failed:', e);
+  }
+
   // Step 2: PULL from server before uploading
   try {
     await pullFromServer(plantacionId);
@@ -334,10 +444,11 @@ export async function downloadPlantation(serverPlantation: {
       estado: serverPlantation.estado,
       creadoPor: serverPlantation.creado_por,
       createdAt: serverPlantation.created_at,
+      pendingSync: false,
     })
     .onConflictDoUpdate({
       target: plantations.id,
-      set: { estado: sql`excluded.estado` },
+      set: { estado: sql`excluded.estado`, pendingSync: false },
     });
 
   // Step 2: Pull related data (subgroups, plantation_users, plantation_species, trees)

@@ -57,6 +57,7 @@ export async function createPlantation(
       estado: data.estado,
       creadoPor: data.creado_por,
       createdAt: data.created_at,
+      pendingSync: false,
     })
     .onConflictDoUpdate({
       target: plantations.id,
