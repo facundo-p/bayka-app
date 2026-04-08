@@ -139,6 +139,12 @@ Recent decisions affecting current work:
 - [Phase 08-login-offline]: rememberAccount toggle removed -- caching automatic on every online login success
 - [Phase 10-02]: colors.stateFinalizada used for pendingSync badge — colors.warning does not exist in theme
 - [Phase 10-02]: useProfileData replaces manual Supabase profiles fetch in AdminScreen — organizacionId now works offline via SecureStore
+- [Phase 10-offline-fixes]: useAuth creates independent state per component — module-level authChangeListeners broadcasts signIn/signOut to all instances
+- [Phase 10-offline-fixes]: NetInfo.isInternetReachable unreliable in Android production APKs (null). Use isConnected===false for offline detection + timeout fallback
+- [Phase 10-offline-fixes]: supabase.auth.signOut hangs offline — bypass with direct AsyncStorage.multiRemove('sb-*') instead
+- [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
+- [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
+- [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
 
 ### Roadmap Evolution
 

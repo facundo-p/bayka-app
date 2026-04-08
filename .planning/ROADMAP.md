@@ -188,14 +188,15 @@ Plans:
   4. Unit tests cover all repositories, critical hooks (useAuth, useSync), and services
   5. 3 Maestro E2E flows exist for critical user journeys
   6. GitHub Actions CI runs lint + unit + integration on every push, E2E on PR to main
+  7. Offline auth cycle fully tested: online login caches credentials → offline signOut clears session (not tokens) → offline signIn restores session from cache → cross-instance broadcast works
 **Plans**: 6 plans
 
 Plans:
 - [ ] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
 - [ ] 09-02-PLAN.md — Refactor TreeRegistrationScreen: extract useTreeRegistration, useSpeciesOrder, useNNFlow hooks + SpeciesGrid, LastThreeTrees, TreeRegistrationHeader components
 - [ ] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
-- [ ] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite)
-- [ ] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth, useSync, useTreeRegistration
+- [ ] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login→signOut→signIn with cached creds)
+- [ ] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth (offline signIn/signOut, cross-instance broadcast, token persistence, timeout fallback), useSync, useTreeRegistration
 - [ ] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
 
 ## Progress
