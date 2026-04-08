@@ -8,7 +8,7 @@ const REFRESH_TOKEN_KEY = 'supabase_refresh_token';
 const ROLE_KEY = 'user_role';
 const EMAIL_KEY = 'last_email';
 
-export { ROLE_KEY, EMAIL_KEY };
+export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY };
 
 export async function persistSession(session: {
   access_token: string;

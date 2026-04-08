@@ -1,8 +1,10 @@
 import * as SecureStore from 'expo-secure-store';
 import * as Crypto from 'expo-crypto';
+import { OFFLINE_LOGIN_EXPIRE, OFFLINE_LOGIN_DURATION_HS } from '../config/offlineLogin';
 
 const OFFLINE_CREDENTIALS_KEY = 'offline_credentials';
 const SAVED_ACCOUNTS_KEY = 'saved_accounts';
+const LAST_ONLINE_LOGIN_KEY = 'last_online_login';
 
 type OfflineCredential = {
   email: string;
@@ -92,4 +94,20 @@ export async function getCachedEmails(): Promise<string[]> {
 export async function getCachedPassword(email: string): Promise<string | null> {
   const all = await getAll();
   return all.find((c) => c.email === email)?.password ?? null;
+}
+
+export async function saveLastOnlineLogin(): Promise<void> {
+  await SecureStore.setItemAsync(LAST_ONLINE_LOGIN_KEY, Date.now().toString());
+}
+
+export async function isOfflineLoginExpired(): Promise<boolean> {
+  if (!OFFLINE_LOGIN_EXPIRE) return false;
+
+  const raw = await SecureStore.getItemAsync(LAST_ONLINE_LOGIN_KEY);
+  if (!raw) return true; // never logged in online
+
+  const lastLogin = parseInt(raw, 10);
+  const elapsed = Date.now() - lastLogin;
+  const ttlMs = OFFLINE_LOGIN_DURATION_HS * 60 * 60 * 1000;
+  return elapsed > ttlMs;
 }

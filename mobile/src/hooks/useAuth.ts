@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { clearSession, restoreSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import { clearSession, restoreSession, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { cacheCredential, verifyCredential } from '../services/OfflineAuthService';
+import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired } from '../services/OfflineAuthService';
 import type { Role } from '../types/domain';
 
 export function useAuth() {
@@ -98,17 +98,27 @@ export function useAuth() {
   }, []);
 
   async function handleOfflineSignIn(email: string, password: string) {
+    const expired = await isOfflineLoginExpired();
+    if (expired) {
+      return { data: { session: null, user: null }, error: { message: 'Sesion offline expirada. Conectate a internet para iniciar sesion.' } };
+    }
+
     const cachedRole = await verifyCredential(email, password);
     if (!cachedRole) {
       return { data: { session: null, user: null }, error: { message: 'Sin conexion. Inicia sesion online primero.' } };
     }
-    const restoredSession = await restoreSession();
-    if (!restoredSession) {
+
+    // Read tokens directly from SecureStore — no Supabase JWT validation needed offline
+    const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+    const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+    if (!accessToken || !refreshToken) {
       return { data: { session: null, user: null }, error: { message: 'Sin conexion y sin sesion previa. Conectate al menos una vez.' } };
     }
-    setSession(restoredSession);
+
+    const offlineSession = { access_token: accessToken, refresh_token: refreshToken };
+    setSession(offlineSession);
     setRole(cachedRole as Role);
-    return { data: { session: restoredSession, user: null }, error: null };
+    return { data: { session: offlineSession, user: null }, error: null };
   }
 
   async function signIn(email: string, password: string) {
@@ -128,6 +138,7 @@ export function useAuth() {
         .single();
       const userRole = profile?.rol ?? 'tecnico';
       await cacheCredential(email, password, userRole);
+      await saveLastOnlineLogin();
     }
     return result;
   }
