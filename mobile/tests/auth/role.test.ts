@@ -1,31 +1,24 @@
 import * as SecureStore from 'expo-secure-store';
-import NetInfo from '@react-native-community/netinfo';
 
 jest.mock('expo-secure-store');
-jest.mock('@react-native-community/netinfo');
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
-    auth: {
-      setSession: jest.fn(),
-      onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
-    },
     from: jest.fn(),
   },
 }));
 
 describe('Role caching (offline-safe)', () => {
-  it('restoreSession does not query profiles table — role comes from SecureStore only', async () => {
+  it('readCachedSession does not query profiles table — ZERO supabase calls', async () => {
     (SecureStore.getItemAsync as jest.Mock)
       .mockResolvedValueOnce('token')
       .mockResolvedValueOnce('refresh');
-    (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: false });
 
-    const { restoreSession } = require('../../src/supabase/auth');
+    const { readCachedSession } = require('../../src/supabase/auth');
     const { supabase } = require('../../src/supabase/client');
 
-    await restoreSession();
+    await readCachedSession();
 
-    // profiles table must NOT be queried during session restore
+    // profiles table must NOT be queried during cached session read
     expect(supabase.from).not.toHaveBeenCalled();
   });
 });
