@@ -1,0 +1,72 @@
+# E2E Tests — Maestro on iOS Simulator
+#
+# NOTE: macOS runners cost 10x Ubuntu runners for private repos.
+# This workflow only runs on pull_request to main to keep costs reasonable.
+# Fast CI checks (lint, unit, integration) run on every push via ci.yml.
+
+name: E2E Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  e2e-ios:
+    name: E2E iOS (Maestro)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: npm ci
+
+      - name: Install Maestro CLI
+        run: |
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Install IDB companion (iOS simulator control)
+        run: |
+          brew tap facebook/fb
+          brew install facebook/fb/idb-companion
+
+      - name: Expo prebuild (iOS)
+        working-directory: mobile
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Build iOS simulator app
+        working-directory: mobile
+        run: |
+          xcodebuild \
+            -workspace ios/mobile.xcworkspace \
+            -scheme mobile \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ \
+            -quiet
+
+      - name: Boot iOS simulator and install app
+        run: |
+          SIMULATOR_ID=$(xcrun simctl list devices available -j | python3 -c "
+          import sys, json
+          devs = json.load(sys.stdin)['devices']
+          iphones = [d for v in devs.values() for d in v if 'iPhone' in d['name'] and d.get('isAvailable', False)]
+          print(iphones[0]['udid'])
+          ")
+          xcrun simctl boot $SIMULATOR_ID
+          xcrun simctl install $SIMULATOR_ID mobile/build/Build/Products/Release-iphonesimulator/mobile.app
+          echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
+
+      - name: Run Maestro E2E flows
+        run: maestro test mobile/.maestro/flows/
