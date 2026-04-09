@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-02-PLAN.md Task 1 — awaiting human verification at checkpoint Task 2
-last_updated: "2026-04-08T22:12:08.969Z"
-last_activity: 2026-04-09 - Completed quick task 260409-eby: agregar especies de árboles al catálogo
+stopped_at: Completed 09-testing-strategy-01-PLAN.md
+last_updated: "2026-04-09T19:29:59.538Z"
+last_activity: 2026-04-08
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 29
-  completed_plans: 22
+  completed_plans: 23
   percent: 100
 ---
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 | Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
+| Phase 09-testing-strategy P01 | 18min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,9 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
 - [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
+- [Phase 09-testing-strategy]: jest.integration.config.js extends base but overrides testMatch and setupFilesAfterEnv — no expo-sqlite mock in integration setup
+- [Phase 09-testing-strategy]: useProfileData.test.ts: hook uses single Supabase joined query — organizations nested in profiles response, use waitFor for async resolution
+- [Phase 09-testing-strategy]: CI integration job runs npm rebuild better-sqlite3 to compile native module for current Node version
 
 ### Roadmap Evolution
 
@@ -173,10 +177,9 @@ None currently.
 | 260408-c1r | feat: mostrar creador en subgroup cards | 2026-04-08 | 3dd6520 | [260408-c1r-feat-mostrar-creador-en-subgroup-cards](./quick/260408-c1r-feat-mostrar-creador-en-subgroup-cards/) |
 | 260408-cf3 | feat: offline login TTL configurable independiente de supabase | 2026-04-08 | 1a77b60 | [260408-cf3-feat-offline-login-ttl-configurable-inde](./quick/260408-cf3-feat-offline-login-ttl-configurable-inde/) |
 | 260408-qo4 | feat: github action backup diario supabase a cloudflare r2 | 2026-04-08 | ab106c8 | [260408-qo4-crear-github-action-backup-diario-supaba](./quick/260408-qo4-crear-github-action-backup-diario-supaba/) |
-| 260409-eby | feat: agregar 8 especies de árboles al catálogo | 2026-04-09 | 2264c64 | [260409-eby-agregar-especies-de-rboles-al-cat-logo](./quick/260409-eby-agregar-especies-de-rboles-al-cat-logo/) |
 
 ## Session Continuity
 
-Last session: 2026-04-08T14:25:56.267Z
-Stopped at: Completed 10-02-PLAN.md Task 1 — awaiting human verification at checkpoint Task 2
+Last session: 2026-04-09T19:29:59.535Z
+Stopped at: Completed 09-testing-strategy-01-PLAN.md
 Resume file: None

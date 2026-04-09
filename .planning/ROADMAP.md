@@ -192,7 +192,7 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
+- [x] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
 - [ ] 09-02-PLAN.md — Refactor TreeRegistrationScreen: extract useTreeRegistration, useSpeciesOrder, useNNFlow hooks + SpeciesGrid, LastThreeTrees, TreeRegistrationHeader components
 - [ ] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
 - [ ] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login→signOut→signIn with cached creds)
@@ -215,4 +215,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
 | 10. Plantación offline + sync especies | 2/2 | Complete    | 2026-04-08 |
-| 9. Testing Strategy | 0/6 | Not started | — |
+| 9. Testing Strategy | 1/6 | In Progress|  |

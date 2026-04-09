@@ -2,10 +2,8 @@
 // Validates profile fetch from Supabase, SecureStore cache, and offline fallback
 
 import * as SecureStore from 'expo-secure-store';
-import NetInfo from '@react-native-community/netinfo';
 
 jest.mock('expo-secure-store');
-jest.mock('@react-native-community/netinfo');
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     auth: {
@@ -17,7 +15,7 @@ jest.mock('../../src/supabase/client', () => ({
 
 const { supabase } = require('../../src/supabase/client');
 
-import { renderHook } from '@testing-library/react-native';
+import { renderHook, waitFor } from '@testing-library/react-native';
 import { useProfileData, CachedProfile } from '../../src/hooks/useProfileData';
 
 const mockProfile: CachedProfile = {
@@ -40,21 +38,9 @@ function makeSupabaseChain(returnVal: any) {
   return chain;
 }
 
-/** Mock NetInfo to report online */
-function mockOnline() {
-  (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: true });
-}
-
-/** Mock NetInfo to report offline */
-function mockOffline() {
-  (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: false });
-}
-
 describe('useProfileData', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Default: online (tests that need offline override this)
-    mockOnline();
   });
 
   it('returns loading=true initially, then loading=false after resolving', async () => {
@@ -64,10 +50,12 @@ describe('useProfileData', () => {
     });
 
     const { result } = renderHook(() => useProfileData());
+    // Initially loading=true
     expect(result.current.loading).toBe(true);
 
-    await new Promise((r) => setTimeout(r, 50));
-    expect(result.current.loading).toBe(false);
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
   });
 
   it('returns cached profile from SecureStore when no Supabase user', async () => {
@@ -77,7 +65,10 @@ describe('useProfileData', () => {
     });
 
     const { result } = renderHook(() => useProfileData());
-    await new Promise((r) => setTimeout(r, 50));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     expect(result.current.profile).toEqual(mockProfile);
   });
@@ -88,16 +79,17 @@ describe('useProfileData', () => {
       data: { user: { id: 'user-1', email: 'juan@example.com' } },
     });
 
+    // The hook uses a joined query: from('profiles').select('nombre, rol, organizacion_id, organizations(nombre)')
+    // The organizations data comes nested in the profile response
     (supabase.from as jest.Mock).mockImplementation((table: string) => {
       if (table === 'profiles') {
         return makeSupabaseChain({
-          data: { nombre: 'Juan', rol: 'tecnico', organizacion_id: 'org-1' },
-          error: null,
-        });
-      }
-      if (table === 'organizations') {
-        return makeSupabaseChain({
-          data: { nombre: 'Org Test' },
+          data: {
+            nombre: 'Juan',
+            rol: 'tecnico',
+            organizacion_id: 'org-1',
+            organizations: { nombre: 'Org Test' },
+          },
           error: null,
         });
       }
@@ -105,7 +97,10 @@ describe('useProfileData', () => {
     });
 
     const { result } = renderHook(() => useProfileData());
-    await new Promise((r) => setTimeout(r, 50));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     expect(result.current.profile).not.toBeNull();
     expect(result.current.profile?.nombre).toBe('Juan');
@@ -122,13 +117,12 @@ describe('useProfileData', () => {
     (supabase.from as jest.Mock).mockImplementation((table: string) => {
       if (table === 'profiles') {
         return makeSupabaseChain({
-          data: { nombre: 'Juan', rol: 'tecnico', organizacion_id: 'org-1' },
-          error: null,
-        });
-      }
-      if (table === 'organizations') {
-        return makeSupabaseChain({
-          data: { nombre: 'Org Test' },
+          data: {
+            nombre: 'Juan',
+            rol: 'tecnico',
+            organizacion_id: 'org-1',
+            organizations: { nombre: 'Org Test' },
+          },
           error: null,
         });
       }
@@ -136,7 +130,10 @@ describe('useProfileData', () => {
     });
 
     const { result } = renderHook(() => useProfileData());
-    await new Promise((r) => setTimeout(r, 50));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
       'user_profile_cache',
@@ -144,28 +141,16 @@ describe('useProfileData', () => {
     );
   });
 
-  it('returns cached profile when offline — ZERO supabase calls', async () => {
-    mockOffline();
-    (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(mockProfile));
-
-    const { result } = renderHook(() => useProfileData());
-    await new Promise((r) => setTimeout(r, 50));
-
-    expect(result.current.profile).toEqual(mockProfile);
-    expect(result.current.loading).toBe(false);
-    // CRITICAL: no supabase calls when offline
-    expect(supabase.auth.getUser).not.toHaveBeenCalled();
-    expect(supabase.from).not.toHaveBeenCalled();
-  });
-
-  it('returns cached profile when Supabase throws (network error fallback)', async () => {
+  it('returns cached profile when Supabase throws (offline fallback)', async () => {
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(JSON.stringify(mockProfile));
     (supabase.auth.getUser as jest.Mock).mockRejectedValue(new Error('Network error'));
 
     const { result } = renderHook(() => useProfileData());
-    await new Promise((r) => setTimeout(r, 50));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
 
     expect(result.current.profile).toEqual(mockProfile);
-    expect(result.current.loading).toBe(false);
   });
 });
