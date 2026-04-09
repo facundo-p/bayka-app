@@ -46,7 +46,7 @@ export default function LastThreeTrees({ trees, onUndo }: Props) {
                 {tree.posicion} {code}
               </Text>
               {isLast && (
-                <Pressable onPress={onUndo} hitSlop={8} style={styles.undoButton}>
+                <Pressable testID="undo-button" onPress={onUndo} hitSlop={8} style={styles.undoButton}>
                   <Ionicons name="trash-outline" size={14} color={colors.danger} />
                 </Pressable>
               )}

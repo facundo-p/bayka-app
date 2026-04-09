@@ -25,7 +25,7 @@ export default function TreeRegistrationHeader({
       onBack={onBack}
       rightElement={
         <View style={styles.right}>
-          <Text style={styles.count}>{treeCount}</Text>
+          <Text testID="tree-count" style={styles.count}>{treeCount}</Text>
           <TreeIcon size={14} />
           {unresolvedNN > 0 && (
             <View style={styles.nnBadge}>
