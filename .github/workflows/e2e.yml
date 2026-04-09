@@ -48,9 +48,12 @@ jobs:
       - name: Build iOS simulator app
         working-directory: mobile
         run: |
+          # Find workspace name dynamically (depends on app.json slug)
+          WORKSPACE=$(ls ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           xcodebuild \
-            -workspace ios/mobile.xcworkspace \
-            -scheme mobile \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
             -configuration Release \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build/ \
@@ -65,7 +68,8 @@ jobs:
           print(iphones[0]['udid'])
           ")
           xcrun simctl boot $SIMULATOR_ID
-          xcrun simctl install $SIMULATOR_ID mobile/build/Build/Products/Release-iphonesimulator/mobile.app
+          APP_PATH=$(find mobile/build/Build/Products/Release-iphonesimulator -name "*.app" -maxdepth 1 | head -1)
+          xcrun simctl install $SIMULATOR_ID "$APP_PATH"
           echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
 
       - name: Run Maestro E2E flows

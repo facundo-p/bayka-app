@@ -21,7 +21,7 @@ const mockState = {
 
 // Mock the new expo-file-system API using constructor functions so `new Directory()` works.
 jest.mock('expo-file-system', () => {
-  function MockDirectory(_base: string, _name?: string) {
+  function MockDirectory(this: any, _base: string, _name?: string) {
     Object.defineProperty(this, 'exists', {
       get: () => mockState.dirExists,
     });
@@ -30,7 +30,7 @@ jest.mock('expo-file-system', () => {
     };
   }
 
-  function MockFile(_pathOrDir: any, name?: string) {
+  function MockFile(this: any, _pathOrDir: any, name?: string) {
     this.uri = name ? `file://document/photos/${name}` : 'file://source/temp.jpg';
     this.copy = (_dest: any) => {
       mockState.fileCopyCalled++;

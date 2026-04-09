@@ -76,7 +76,7 @@ export type NewTree = {
   posicion: number;
   subId: string;
   fotoUrl: string | null;
-  plantacionId: string | null;
+  plantacionId: number | null;
   globalId: string | null;
   usuarioRegistro: string;
   createdAt: string;
