@@ -3,6 +3,7 @@ const baseConfig = require('./jest.config');
 module.exports = {
   ...baseConfig,
   testMatch: ['**/tests/integration/**/*.test.ts'],
+  testPathIgnorePatterns: ['/node_modules/'],
   setupFilesAfterEnv: ['./tests/setup.integration.ts'],
   // Remove expo-sqlite and drizzle-orm/expo-sqlite from transformIgnorePatterns
   // to allow real better-sqlite3 usage without native module mocking
