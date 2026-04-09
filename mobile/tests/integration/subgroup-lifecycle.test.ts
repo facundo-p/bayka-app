@@ -81,7 +81,19 @@ describe('SubGroup lifecycle', () => {
 
     const sg2 = createTestSubGroup({ plantacionId: plantation.id, codigo: 'LA', nombre: 'Linea B' });
 
-    await expect(db.insert(subgroups).values(sg2)).rejects.toThrow(/UNIQUE constraint failed/);
+    let threw = false;
+    try {
+      await db.insert(subgroups).values(sg2);
+    } catch (e: any) {
+      threw = true;
+      expect(e.message).toMatch(/UNIQUE constraint failed/);
+    }
+    expect(threw).toBe(true);
+
+    // Only sg1 exists
+    const rows = await db.select().from(subgroups).where(eq(subgroups.plantacionId, plantation.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].id).toBe(sg1.id);
   });
 
   test('allows same codigo in different plantations', async () => {
