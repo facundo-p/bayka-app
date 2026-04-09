@@ -2,19 +2,13 @@ import { useState, useCallback } from 'react';
 import { usePlantationSpecies } from './usePlantationSpecies';
 import { saveUserSpeciesOrder } from '../repositories/UserSpeciesOrderRepository';
 import type { PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
-
-export interface ReorderSpeciesItem {
-  especieId: string;
-  nombre: string;
-  codigo: string;
-  ordenVisual: number;
-}
+import type { ReorderItem } from '../components/SpeciesReorderList';
 
 export interface UseSpeciesOrderResult {
   orderedSpecies: PlantationSpeciesItem[];
   loading: boolean;
-  reorderItems: ReorderSpeciesItem[];
-  setReorderItems: (items: ReorderSpeciesItem[]) => void;
+  reorderItems: ReorderItem[];
+  setReorderItems: (items: ReorderItem[]) => void;
   initReorderFromCurrent: () => void;
   saveReorder: (userId: string, plantacionId: string) => Promise<void>;
   refreshSpecies: () => void;
@@ -22,11 +16,11 @@ export interface UseSpeciesOrderResult {
 
 export function useSpeciesOrder(plantacionId: string): UseSpeciesOrderResult {
   const { species: orderedSpecies, loading, refreshSpecies } = usePlantationSpecies(plantacionId);
-  const [reorderItems, setReorderItems] = useState<ReorderSpeciesItem[]>([]);
+  const [reorderItems, setReorderItems] = useState<ReorderItem[]>([]);
 
   const initReorderFromCurrent = useCallback(() => {
     setReorderItems(
-      orderedSpecies.map((s, i) => ({
+      orderedSpecies.map((s: PlantationSpeciesItem, i: number) => ({
         especieId: s.especieId,
         nombre: s.nombre,
         codigo: s.codigo,
@@ -40,7 +34,7 @@ export function useSpeciesOrder(plantacionId: string): UseSpeciesOrderResult {
     await saveUserSpeciesOrder(
       userId,
       plantacionId,
-      reorderItems.map((item) => ({ especieId: item.especieId, ordenVisual: item.ordenVisual }))
+      reorderItems.map((item: ReorderItem) => ({ especieId: item.especieId, ordenVisual: item.ordenVisual }))
     );
     refreshSpecies();
   }, [reorderItems, refreshSpecies]);
