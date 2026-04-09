@@ -6,7 +6,6 @@
  *
  * Covers requirements: PLAN-02, PLAN-04
  */
-import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -19,16 +18,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { asc } from 'drizzle-orm';
 
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
-import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
-import { showInfoDialog } from '../utils/alertHelpers';
-import { db } from '../database/client';
-import { species as speciesTable } from '../database/schema';
-import { getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
-import { saveSpeciesConfig, saveSpeciesConfigLocally } from '../repositories/PlantationRepository';
+import { useSpeciesConfig } from '../hooks/useSpeciesConfig';
 
 // ─── Checkbox ────────────────────────────────────────────────────────────────
 
@@ -46,15 +39,6 @@ function Checkbox({ checked, indeterminate, onPress }: { checked: boolean; indet
   );
 }
 
-type SpeciesItem = {
-  especieId: string;
-  nombre: string;
-  codigo: string;
-  ordenVisual: number;
-  enabled: boolean;
-  hasExistingTrees: boolean;
-};
-
 type Props = {
   plantacionIdProp?: string;
   onClose?: () => void;
@@ -66,113 +50,19 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const confirm = useConfirm();
 
-  const [items, setItems] = useState<SpeciesItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const loadData = useCallback(async () => {
-    if (!plantacionId) return;
-    setLoading(true);
-    try {
-      const allSpecies = await db
-        .select()
-        .from(speciesTable)
-        .orderBy(asc(speciesTable.nombre));
-
-      const currentConfig = await getPlantationSpeciesConfig(plantacionId);
-      const configMap = new Map(currentConfig.map((c) => [c.especieId, c.ordenVisual]));
-
-      const treeChecks = await Promise.all(
-        allSpecies.map((sp) => hasTreesForSpecies(plantacionId, sp.id))
-      );
-
-      const merged: SpeciesItem[] = allSpecies.map((sp, i) => ({
-        especieId: sp.id,
-        nombre: sp.nombre,
-        codigo: sp.codigo,
-        ordenVisual: configMap.has(sp.id) ? configMap.get(sp.id)! : 9999,
-        enabled: configMap.has(sp.id),
-        hasExistingTrees: treeChecks[i],
-      }));
-
-      // Enabled first (by ordenVisual), then disabled (alphabetical)
-      merged.sort((a, b) => {
-        if (a.enabled && !b.enabled) return -1;
-        if (!a.enabled && b.enabled) return 1;
-        if (a.enabled && b.enabled) return a.ordenVisual - b.ordenVisual;
-        return a.nombre.localeCompare(b.nombre);
-      });
-
-      let order = 0;
-      const normalized = merged.map((item) =>
-        item.enabled ? { ...item, ordenVisual: order++ } : item
-      );
-
-      setItems(normalized);
-    } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar las especies.', 'alert-circle-outline', colors.danger);
-    } finally {
-      setLoading(false);
-    }
-  }, [plantacionId]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  function handleToggle(especieId: string, newValue: boolean) {
-    setItems((prev) => {
-      const updated = prev.map((item) =>
-        item.especieId === especieId ? { ...item, enabled: newValue } : item
-      );
-      const enabled = updated.filter((i) => i.enabled).map((item, idx) => ({ ...item, ordenVisual: idx }));
-      const disabled = updated.filter((i) => !i.enabled).sort((a, b) => a.nombre.localeCompare(b.nombre));
-      return [...enabled, ...disabled];
-    });
-  }
-
-  function handleSelectAll() {
-    const allEnabled = items.every((i) => i.enabled);
-    if (allEnabled) {
-      // Uncheck all
-      setItems((prev) => {
-        const updated = prev.map((item) => ({ ...item, enabled: false }));
-        return updated.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      });
-    } else {
-      // Check all
-      setItems((prev) => {
-        const updated = prev.map((item, idx) => ({ ...item, enabled: true, ordenVisual: idx }));
-        return updated;
-      });
-    }
-  }
-
-  async function handleSave() {
-    if (!plantacionId) return;
-    setSaving(true);
-    try {
-      const enabledItems = items
-        .filter((i) => i.enabled)
-        .map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
-      if (pendingSync) {
-        await saveSpeciesConfigLocally(plantacionId, enabledItems);
-      } else {
-        await saveSpeciesConfig(plantacionId, enabledItems);
-      }
-      onClose ? onClose() : router.back();
-    } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron guardar las especies.', 'alert-circle-outline', colors.danger);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  const enabledCount = items.filter((i) => i.enabled).length;
-  const allEnabled = items.length > 0 && enabledCount === items.length;
-  const someEnabled = enabledCount > 0 && !allEnabled;
+  const {
+    items,
+    loading,
+    saving,
+    enabledCount,
+    allEnabled,
+    someEnabled,
+    confirmProps,
+    handleToggle,
+    handleSelectAll,
+    handleSave,
+  } = useSpeciesConfig(plantacionId, pendingSync);
 
   if (loading) {
     return (
@@ -206,22 +96,22 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
         }
         renderItem={({ item, index }) => (
           <Animated.View entering={FadeInDown.delay(index * 40).duration(250)}>
-          <Pressable
-            style={[styles.row, item.enabled && styles.rowEnabled]}
-            onPress={() => handleToggle(item.especieId, !item.enabled)}
-          >
-            <Checkbox
-              checked={item.enabled}
+            <Pressable
+              style={[styles.row, item.enabled && styles.rowEnabled]}
               onPress={() => handleToggle(item.especieId, !item.enabled)}
-            />
-            <Text style={[styles.rowCode, styles.rowCodeBold]}>{item.codigo}</Text>
-            <Text style={[styles.rowName, !item.enabled && styles.rowNameDisabled]} numberOfLines={1}>
-              {item.nombre}
-            </Text>
-            {item.hasExistingTrees && (
-              <Ionicons name="lock-closed" size={12} color={colors.textMuted} />
-            )}
-          </Pressable>
+            >
+              <Checkbox
+                checked={item.enabled}
+                onPress={() => handleToggle(item.especieId, !item.enabled)}
+              />
+              <Text style={[styles.rowCode, styles.rowCodeBold]}>{item.codigo}</Text>
+              <Text style={[styles.rowName, !item.enabled && styles.rowNameDisabled]} numberOfLines={1}>
+                {item.nombre}
+              </Text>
+              {item.hasExistingTrees && (
+                <Ionicons name="lock-closed" size={12} color={colors.textMuted} />
+              )}
+            </Pressable>
           </Animated.View>
         )}
       />
@@ -229,7 +119,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
       <View style={styles.footer}>
         <Pressable
           style={({ pressed }) => [styles.saveButton, pressed && { opacity: 0.8 }, saving && { opacity: 0.6 }]}
-          onPress={handleSave}
+          onPress={() => handleSave(onClose, () => router.back())}
           disabled={saving}
         >
           {saving ? (
@@ -243,7 +133,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
         </Pressable>
       </View>
 
-      <ConfirmModal {...confirm.confirmProps} />
+      <ConfirmModal {...confirmProps} />
     </View>
   );
 }

@@ -8,7 +8,7 @@
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { subgroups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
-import { eq, and, ne, isNotNull, sql, count } from 'drizzle-orm';
+import { eq, and, ne, isNotNull, sql, count, asc } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
 
@@ -170,6 +170,19 @@ export async function hasTreesForSpecies(
       )
     );
   return rows.length > 0;
+}
+
+// ─── getAllSpecies ────────────────────────────────────────────────────────────
+
+/**
+ * Returns all species in the local catalog, ordered alphabetically.
+ * Used by species configuration screens to avoid direct db access.
+ */
+export async function getAllSpecies(): Promise<Array<{ id: string; nombre: string; codigo: string }>> {
+  return db
+    .select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
+    .from(species)
+    .orderBy(asc(species.nombre));
 }
 
 // ─── hasIdsGenerated ─────────────────────────────────────────────────────────
