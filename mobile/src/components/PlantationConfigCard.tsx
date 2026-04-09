@@ -15,6 +15,7 @@ export type Plantation = {
   estado: string;
   createdAt: string;
   pendingSync?: boolean;  // true for offline-created, not yet uploaded
+  pendingEdit?: boolean;  // true for offline-edited lugar/periodo, not yet uploaded
 };
 
 type Props = {

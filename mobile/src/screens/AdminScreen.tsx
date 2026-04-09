@@ -36,7 +36,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
 import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
-import { createPlantation, createPlantationLocally, updatePlantation, finalizePlantation, generateIds } from '../repositories/PlantationRepository';
+import { createPlantation, createPlantationLocally, updatePlantation, finalizePlantation, generateIds, discardPlantationEdit } from '../repositories/PlantationRepository';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
 
 import FilterCards from '../components/FilterCards';
@@ -233,7 +233,7 @@ export default function AdminScreen() {
   async function handleFinalize(plantacionId: string) {
     if (finalizing) return;
     const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
-    if (plantation?.pendingSync) {
+    if (plantation?.pendingSync || plantation?.pendingEdit) {
       showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.stateFinalizada);
       return;
     }
@@ -388,6 +388,24 @@ export default function AdminScreen() {
     setEditingPlantation(null);
   }
 
+  function handleDiscardEdit(plantacionId: string) {
+    showConfirm({
+      icon: 'arrow-undo-outline',
+      iconColor: colors.secondary,
+      title: 'Descartar cambios',
+      message: 'Se restaurarán los datos originales del servidor. Los cambios locales se perderán.',
+      buttons: [
+        { label: 'Cancelar', style: 'cancel', onPress: () => {} },
+        {
+          label: 'Descartar',
+          style: 'danger',
+          icon: 'arrow-undo-outline',
+          onPress: async () => { await discardPlantationEdit(plantacionId); },
+        },
+      ],
+    });
+  }
+
   // ─── Render expanded content ──────────────────────────────────────────────
 
   function renderExpandedContent(item: Plantation) {
@@ -415,6 +433,26 @@ export default function AdminScreen() {
           )}
         </View>
 
+        {/* Pending sync / edit badges */}
+        {(item.pendingSync || item.pendingEdit) && (
+          <View style={styles.pendingEditBadge}>
+            <Ionicons name="cloud-upload-outline" size={14} color={colors.secondary} />
+            <Text style={styles.pendingEditText}>
+              {item.pendingSync ? 'Pendiente de sync' : 'Cambios sin sincronizar'}
+            </Text>
+            {item.pendingEdit && (
+              <Pressable
+                onPress={() => handleDiscardEdit(item.id)}
+                hitSlop={8}
+                style={({ pressed }) => [styles.discardButton, pressed && { opacity: 0.7 }]}
+              >
+                <Ionicons name="arrow-undo-outline" size={14} color={colors.danger} />
+                <Text style={styles.discardButtonText}>Descartar</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* Actions per estado */}
         {item.estado === 'activa' && (
           <View style={styles.actionList}>
@@ -434,12 +472,17 @@ export default function AdminScreen() {
               icon="lock-closed-outline"
               label="Finalizar"
               onPress={() => handleFinalize(item.id)}
-              color={expandedMeta.canFinalize ? colors.danger : colors.textMuted}
-              disabled={!expandedMeta.canFinalize}
+              color={expandedMeta.canFinalize && !item.pendingSync && !item.pendingEdit ? colors.danger : colors.textMuted}
+              disabled={!expandedMeta.canFinalize || !!item.pendingSync || !!item.pendingEdit}
             />
-            {!expandedMeta.canFinalize && (
+            {!expandedMeta.canFinalize && !item.pendingSync && !item.pendingEdit && (
               <Text style={styles.helperText}>
                 Para finalizar, todos los subgrupos deben estar sincronizados
+              </Text>
+            )}
+            {(item.pendingSync || item.pendingEdit) && (
+              <Text style={styles.helperText}>
+                Sincroniza la plantación antes de finalizar
               </Text>
             )}
           </View>
@@ -823,6 +866,39 @@ const styles = StyleSheet.create({
     fontSize: fontSize.base,
     fontFamily: fonts.medium,
     color: colors.textSecondary,
+  },
+
+  // ─── Pending edit badge ─────────────────────────────────────────────────
+  pendingEditBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.secondaryBg,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xxl,
+    borderWidth: 1,
+    borderColor: colors.secondaryBorder,
+  },
+  pendingEditText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    fontFamily: fonts.semiBold,
+    color: colors.secondary,
+  },
+  discardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.danger + '15',
+  },
+  discardButtonText: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.semiBold,
+    color: colors.danger,
   },
 
   // ─── Locked badge ──────────────────────────────────────────────────────

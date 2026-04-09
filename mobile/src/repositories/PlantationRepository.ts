@@ -15,6 +15,7 @@ import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
+import NetInfo from '@react-native-community/netinfo';
 
 // ─── createPlantation ─────────────────────────────────────────────────────────
 
@@ -58,6 +59,8 @@ export async function createPlantation(
       creadoPor: data.creado_por,
       createdAt: data.created_at,
       pendingSync: false,
+      lugarServer: data.lugar,
+      periodoServer: data.periodo,
     })
     .onConflictDoUpdate({
       target: plantations.id,
@@ -101,24 +104,123 @@ export async function createPlantationLocally(
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
 /**
- * Updates lugar and periodo for an existing plantation on Supabase + local SQLite.
+ * Updates lugar and periodo for an existing plantation.
+ *
+ * Online: pushes to Supabase first, then updates local SQLite + server columns.
+ * Offline: saves locally only, sets pendingEdit=true, and snapshots original
+ * server values (only on first offline edit — subsequent edits keep the original
+ * snapshot so discard always reverts to the last-known server state).
+ *
+ * pendingEdit is only meaningful when pendingSync=false (plantation already exists
+ * on server). For offline-created plantations (pendingSync=true), we just update
+ * the local fields directly.
  */
 export async function updatePlantation(
   plantacionId: string,
   lugar: string,
   periodo: string
 ): Promise<void> {
-  const { error } = await supabase
-    .from('plantations')
-    .update({ lugar, periodo })
-    .eq('id', plantacionId);
-  if (error) throw error;
+  // Check if this is an offline-created plantation (not yet on server)
+  const [row] = await db
+    .select({
+      pendingSync: plantations.pendingSync,
+      pendingEdit: plantations.pendingEdit,
+      lugarServer: plantations.lugarServer,
+      periodoServer: plantations.periodoServer,
+      lugarCurrent: plantations.lugar,
+      periodoCurrent: plantations.periodo,
+    })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+
+  if (!row) throw new Error('Plantación no encontrada');
+
+  // For offline-created plantations, just update local fields
+  if (row.pendingSync) {
+    await db
+      .update(plantations)
+      .set({ lugar, periodo })
+      .where(eq(plantations.id, plantacionId));
+    notifyDataChanged();
+    return;
+  }
+
+  // Try online update
+  const net = await NetInfo.fetch();
+  if (net.isConnected !== false) {
+    try {
+      const { error } = await supabase
+        .from('plantations')
+        .update({ lugar, periodo })
+        .eq('id', plantacionId);
+      if (error) throw error;
+
+      // Success: update local + server columns, clear pendingEdit
+      await db
+        .update(plantations)
+        .set({
+          lugar,
+          periodo,
+          lugarServer: lugar,
+          periodoServer: periodo,
+          pendingEdit: false,
+        })
+        .where(eq(plantations.id, plantacionId));
+      notifyDataChanged();
+      return;
+    } catch (e: any) {
+      // Network error → fall through to offline path
+      if (!e?.message?.includes('Network request failed')) throw e;
+    }
+  }
+
+  // Offline path: save locally + snapshot originals on first edit
+  const isFirstOfflineEdit = !row.pendingEdit;
+  await db
+    .update(plantations)
+    .set({
+      lugar,
+      periodo,
+      pendingEdit: true,
+      // Only snapshot server values on first offline edit
+      ...(isFirstOfflineEdit
+        ? {
+            lugarServer: row.lugarServer ?? row.lugarCurrent,
+            periodoServer: row.periodoServer ?? row.periodoCurrent,
+          }
+        : {}),
+    })
+    .where(eq(plantations.id, plantacionId));
+  notifyDataChanged();
+}
+
+// ─── discardPlantationEdit ───────────────────────────────────────────────────
+
+/**
+ * Reverts a pending offline edit: restores lugar/periodo from *Server columns
+ * and clears pendingEdit. Works fully offline — no network required.
+ */
+export async function discardPlantationEdit(plantacionId: string): Promise<void> {
+  const [row] = await db
+    .select({
+      lugarServer: plantations.lugarServer,
+      periodoServer: plantations.periodoServer,
+    })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+
+  if (!row || !row.lugarServer || !row.periodoServer) {
+    throw new Error('No hay datos del servidor para restaurar');
+  }
 
   await db
     .update(plantations)
-    .set({ lugar, periodo })
+    .set({
+      lugar: row.lugarServer,
+      periodo: row.periodoServer,
+      pendingEdit: false,
+    })
     .where(eq(plantations.id, plantacionId));
-
   notifyDataChanged();
 }
 

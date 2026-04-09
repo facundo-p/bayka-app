@@ -17,6 +17,9 @@ export const plantations = sqliteTable('plantations', {
   creadoPor: text('creado_por').notNull(),
   createdAt: text('created_at').notNull(),
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
+  pendingEdit: integer('pending_edit', { mode: 'boolean' }).notNull().default(false),
+  lugarServer: text('lugar_server'),
+  periodoServer: text('periodo_server'),
 });
 
 export const subgroups = sqliteTable('subgroups', {

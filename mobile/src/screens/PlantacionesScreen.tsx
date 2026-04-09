@@ -9,7 +9,7 @@ import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { useNetStatus } from '../hooks/useNetStatus';
 import { useProfileData } from '../hooks/useProfileData';
 import { checkFreshness } from '../queries/freshnessQueries';
-import { pullFromServer } from '../services/SyncService';
+import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
@@ -69,6 +69,8 @@ export default function PlantacionesScreen() {
     if (!plantationList) return;
     setRefreshing(true);
     try {
+      // Push any pending plantation edits before pulling
+      await uploadPendingEdits();
       for (const p of plantationList) {
         await pullFromServer(p.id);
       }

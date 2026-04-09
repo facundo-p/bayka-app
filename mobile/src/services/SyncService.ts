@@ -131,14 +131,90 @@ export async function uploadOfflinePlantations(): Promise<void> {
   }
 }
 
+// ─── Upload pending plantation edits ─────────────────────────────────────────
+
+/**
+ * Pushes locally-edited plantation metadata (lugar/periodo) to Supabase.
+ * For each plantation with pendingEdit=true:
+ * 1. Updates Supabase with current local lugar/periodo
+ * 2. Clears pendingEdit and updates *Server columns locally
+ *
+ * Non-fatal: failed uploads are logged and skipped.
+ */
+export async function uploadPendingEdits(): Promise<void> {
+  const pending = await db
+    .select()
+    .from(plantations)
+    .where(eq(plantations.pendingEdit, true));
+
+  for (const p of pending) {
+    try {
+      const { error } = await supabase
+        .from('plantations')
+        .update({ lugar: p.lugar, periodo: p.periodo })
+        .eq('id', p.id);
+
+      if (error) {
+        console.error('[Sync] Upload pending edit failed:', p.id, error.message);
+        continue;
+      }
+
+      await db
+        .update(plantations)
+        .set({
+          pendingEdit: false,
+          lugarServer: p.lugar,
+          periodoServer: p.periodo,
+        })
+        .where(eq(plantations.id, p.id));
+    } catch (e: any) {
+      console.error('[Sync] Upload pending edit exception:', p.id, e?.message);
+    }
+  }
+}
+
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
 /**
- * Downloads subgroups, plantation_users and plantation_species from Supabase
- * and upserts them into local SQLite. Does NOT pull trees (too large).
+ * Downloads plantation metadata, subgroups, plantation_users, plantation_species
+ * and trees from Supabase and upserts them into local SQLite.
  */
 export async function pullFromServer(plantacionId: string): Promise<void> {
   console.log('[Sync] Pull starting for plantation:', plantacionId);
+
+  // Pull plantation metadata (lugar, periodo, estado)
+  const { data: remotePlantation, error: plantError } = await supabase
+    .from('plantations')
+    .select('lugar, periodo, estado')
+    .eq('id', plantacionId)
+    .single();
+
+  if (plantError) {
+    console.error('[Sync] Pull plantation metadata error:', JSON.stringify(plantError));
+  } else if (remotePlantation) {
+    // Always update *Server columns with latest server values
+    const serverUpdate: Record<string, any> = {
+      lugarServer: remotePlantation.lugar,
+      periodoServer: remotePlantation.periodo,
+      estado: remotePlantation.estado,
+    };
+
+    // Only overwrite main fields if there's no pending local edit
+    const [local] = await db
+      .select({ pendingEdit: plantations.pendingEdit })
+      .from(plantations)
+      .where(eq(plantations.id, plantacionId));
+
+    if (!local?.pendingEdit) {
+      serverUpdate.lugar = remotePlantation.lugar;
+      serverUpdate.periodo = remotePlantation.periodo;
+    }
+
+    await db
+      .update(plantations)
+      .set(serverUpdate)
+      .where(eq(plantations.id, plantacionId));
+  }
 
   // Pull subgroups
   const { data: remoteSubgroups, error: sgError } = await supabase
@@ -351,6 +427,13 @@ export async function syncPlantation(
     console.error('[Sync] Upload offline plantations failed:', e);
   }
 
+  // Step 1.7: Upload pending plantation edits (lugar/periodo changed offline)
+  try {
+    await uploadPendingEdits();
+  } catch (e) {
+    console.error('[Sync] Upload pending edits failed:', e);
+  }
+
   // Step 2: PULL from server before uploading
   try {
     await pullFromServer(plantacionId);
@@ -445,10 +528,17 @@ export async function downloadPlantation(serverPlantation: {
       creadoPor: serverPlantation.creado_por,
       createdAt: serverPlantation.created_at,
       pendingSync: false,
+      lugarServer: serverPlantation.lugar,
+      periodoServer: serverPlantation.periodo,
     })
     .onConflictDoUpdate({
       target: plantations.id,
-      set: { estado: sql`excluded.estado`, pendingSync: false },
+      set: {
+        estado: sql`excluded.estado`,
+        pendingSync: false,
+        lugarServer: serverPlantation.lugar,
+        periodoServer: serverPlantation.periodo,
+      },
     });
 
   // Step 2: Pull related data (subgroups, plantation_users, plantation_species, trees)
