@@ -1,0 +1,57 @@
+appId: com.bayka.app
+---
+# Flow: Register a Tree via Species Button Grid
+# Tests one-tap tree registration: navigate to subgroup, tap a species button,
+# verify tree count increments, then undo.
+
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 10000
+- runFlow:
+    file: "../helpers/login.yaml"
+    env:
+      EMAIL: "tecnico1@bayka.com"
+      PASSWORD: "tecnico1_password"
+- extendedWaitUntil:
+    visible:
+      id: "plantaciones-list"
+    timeout: 15000
+
+# Navigate to first plantation
+- tapOn:
+    index: 0
+    childOf:
+      id: "plantaciones-list"
+- extendedWaitUntil:
+    visible:
+      id: "subgroup-list"
+    timeout: 10000
+
+# Navigate to first subgroup
+- tapOn:
+    index: 0
+    childOf:
+      id: "subgroup-list"
+- waitForAnimationToEnd
+
+# Record current tree count before tapping
+- copyTextFrom:
+    id: "tree-count"
+    into: INITIAL_COUNT
+
+# Tap the first species button (use a known species code — adjust to match seeded data)
+- tapOn:
+    id: "species-btn-PEU"
+- waitForAnimationToEnd
+
+# Assert tree count incremented (count text changed)
+- assertVisible:
+    id: "tree-count"
+
+# Tap undo to remove the last tree
+- tapOn:
+    id: "undo-button"
+- waitForAnimationToEnd

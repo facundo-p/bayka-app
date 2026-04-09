@@ -197,6 +197,7 @@ export default function PlantationDetailScreen() {
         ]}
         onPress={() => handleSubGroupPress(item)}
         onLongPress={() => handleLongPress(item)}
+        testID={`subgroup-card-${item.id}`}
       >
         <View style={styles.cardRow}>
           <Text style={[styles.cardName, !isOwner && styles.cardNameOther]} numberOfLines={1}>{item.nombre}</Text>
@@ -249,6 +250,7 @@ export default function PlantationDetailScreen() {
             {syncableCount > 0 && (
               <Pressable
                 style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+                testID="sync-button"
                 onPress={() => {
                   showConfirmDialog(
                     confirm.show,
@@ -317,6 +319,7 @@ export default function PlantationDetailScreen() {
         data={filteredSubgroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        testID="subgroup-list"
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>No hay subgrupos aun</Text>

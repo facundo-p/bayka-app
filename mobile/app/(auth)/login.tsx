@@ -74,6 +74,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoComplete="email"
             editable={!loading}
+            testID="email-input"
           />
         </Animated.View>
 
@@ -88,6 +89,7 @@ export default function LoginScreen() {
             secureTextEntry={!showPassword}
             autoCapitalize="none"
             editable={!loading}
+            testID="password-input"
           />
           <Pressable
             onPress={() => setShowPassword(!showPassword)}
@@ -111,6 +113,7 @@ export default function LoginScreen() {
             onPress={handleLogin}
             disabled={loading}
             activeOpacity={0.8}
+            testID="login-button"
           >
             <Text style={styles.buttonText}>
               {loading ? 'Iniciando sesion...' : 'Iniciar sesion'}
@@ -136,6 +139,7 @@ export default function LoginScreen() {
                   onPress={() => selectCachedEmail(emailItem)}
                   disabled={loading}
                   activeOpacity={0.7}
+                  testID={`email-chip-${emailItem}`}
                 >
                   <Text
                     numberOfLines={1}

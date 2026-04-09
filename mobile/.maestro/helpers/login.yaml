@@ -1,0 +1,10 @@
+appId: com.bayka.app
+---
+- tapOn:
+    id: "email-input"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "password-input"
+- inputText: ${PASSWORD}
+- tapOn:
+    id: "login-button"

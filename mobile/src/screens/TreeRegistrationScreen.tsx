@@ -296,7 +296,7 @@ export default function TreeRegistrationScreen() {
         onBack={() => router.back()}
         rightElement={
           <View style={styles.headerRight}>
-            <Text style={styles.headerCount}>{totalCount}</Text>
+            <Text style={styles.headerCount} testID="tree-count">{totalCount}</Text>
             <TreeIcon size={14} />
             {unresolvedNN > 0 && (
               <View style={styles.headerNNBadge}>
@@ -341,7 +341,7 @@ export default function TreeRegistrationScreen() {
                     {tree.posicion} {code}
                   </Text>
                   {isLast && (
-                    <Pressable onPress={handleUndo} hitSlop={8} style={styles.undoChipButton}>
+                    <Pressable onPress={handleUndo} hitSlop={8} style={styles.undoChipButton} testID="undo-button">
                       <Ionicons name="trash-outline" size={14} color={colors.danger} />
                     </Pressable>
                   )}
@@ -403,6 +403,7 @@ export default function TreeRegistrationScreen() {
               style={[styles.finalizarButton, finalizing && styles.buttonDisabled]}
               onPress={handleFinalizar}
               disabled={finalizing}
+              testID="finalize-button"
             >
               {finalizing ? (
                 <ActivityIndicator size="small" color={colors.white} />
