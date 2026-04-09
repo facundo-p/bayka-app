@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-03-PLAN.md — screen hook extraction, CLAUDE.md Rule 9 compliance
-last_updated: "2026-04-09T20:00:35.106Z"
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-04-09T19:52:59.049Z"
 last_activity: 2026-04-08
 progress:
   total_phases: 10
@@ -72,7 +72,6 @@ Progress: [██████████] 100%
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 | Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
-| Phase 09-testing-strategy P03 | 90min | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -146,8 +145,7 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
 - [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
-- [Phase 09-testing-strategy]: Hook extraction pattern: screens are thin orchestrators importing only from hooks/ and components/; all data access lives in hooks
-- [Phase 09-testing-strategy]: Re-export types from hooks to prevent type-only imports from repositories/ in screen files
+- [Phase 09-testing-strategy]: drizzle-orm/better-sqlite3 transactions are synchronous-only; use sqlite.transaction() or try/catch for constraint tests
 
 ### Roadmap Evolution
 
@@ -179,6 +177,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-09T20:00:35.102Z
-Stopped at: Completed 09-03-PLAN.md — screen hook extraction, CLAUDE.md Rule 9 compliance
+Last session: 2026-04-09T19:52:55.375Z
+Stopped at: Completed 09-04-PLAN.md
 Resume file: None
