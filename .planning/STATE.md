@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 10-02-PLAN.md Task 1 — awaiting human verification at checkpoint Task 2
-last_updated: "2026-04-08T22:12:08.969Z"
-last_activity: 2026-04-08 - Completed quick task 260408-qo4: github action backup diario supabase a cloudflare r2
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-04-09T19:52:59.049Z"
+last_activity: 2026-04-08
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 29
-  completed_plans: 22
+  completed_plans: 23
   percent: 100
 ---
 
@@ -145,6 +145,7 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
 - [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
+- [Phase 09-testing-strategy]: drizzle-orm/better-sqlite3 transactions are synchronous-only; use sqlite.transaction() or try/catch for constraint tests
 
 ### Roadmap Evolution
 
@@ -176,6 +177,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-08T14:25:56.267Z
-Stopped at: Completed 10-02-PLAN.md Task 1 — awaiting human verification at checkpoint Task 2
+Last session: 2026-04-09T19:52:55.375Z
+Stopped at: Completed 09-04-PLAN.md
 Resume file: None
