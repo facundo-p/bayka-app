@@ -87,8 +87,9 @@ export default function PlantacionesScreen() {
             data={filteredList}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
+            testID="plantaciones-list"
             renderItem={({ item, index }) => (
-              <Animated.View entering={FadeInDown.delay(index * 80).duration(300)}>
+              <Animated.View entering={FadeInDown.delay(index * 80).duration(300)} testID={`plantation-card-${item.id}`}>
                 <PlantationCard
                   lugar={item.lugar}
                   periodo={item.periodo}

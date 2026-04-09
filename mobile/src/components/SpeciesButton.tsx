@@ -9,9 +9,10 @@ interface Props {
   isNN?: boolean;
   selected?: boolean;
   disabled?: boolean;
+  testID?: string;
 }
 
-export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, selected = false, disabled = false }: Props) {
+export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, selected = false, disabled = false, testID }: Props) {
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -23,6 +24,7 @@ export default function SpeciesButton({ codigo, nombre, onPress, isNN = false, s
         onPress();
       }}
       disabled={disabled}
+      testID={testID}
       style={[
         styles.button,
         isNN && styles.buttonNN,

@@ -49,6 +49,7 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
                 onPress={onNNPress ?? (() => {})}
                 isNN
                 disabled={disabled}
+                testID="nn-button"
               />
             </View>
           );
@@ -62,6 +63,7 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
               onPress={() => onSelectSpecies({ especieId: speciesItem.especieId, especieCodigo: speciesItem.codigo })}
               disabled={disabled}
               selected={isSelectionMode && selectedId === speciesItem.especieId}
+              testID={`species-btn-${speciesItem.codigo}`}
             />
           </View>
         );

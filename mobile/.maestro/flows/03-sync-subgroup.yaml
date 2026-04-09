@@ -1,0 +1,76 @@
+appId: com.bayka.app
+---
+# Flow: Finalize and Sync a SubGroup
+# Tests the full subgroup lifecycle: register a tree, finalize the subgroup,
+# navigate back, and trigger sync.
+# Note: This flow requires internet connectivity to test actual sync.
+
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "email-input"
+    timeout: 10000
+- runFlow:
+    file: "../helpers/login.yaml"
+    env:
+      EMAIL: "tecnico1@bayka.com"
+      PASSWORD: "tecnico1_password"
+- extendedWaitUntil:
+    visible:
+      id: "plantaciones-list"
+    timeout: 15000
+
+# Navigate to first plantation
+- tapOn:
+    index: 0
+    childOf:
+      id: "plantaciones-list"
+- extendedWaitUntil:
+    visible:
+      id: "subgroup-list"
+    timeout: 10000
+
+# Navigate to first subgroup
+- tapOn:
+    index: 0
+    childOf:
+      id: "subgroup-list"
+- waitForAnimationToEnd
+
+# Register at least one tree so we can finalize
+- tapOn:
+    id: "species-btn-PEU"
+- waitForAnimationToEnd
+
+# Finalize the subgroup
+- tapOn:
+    id: "finalize-button"
+- waitForAnimationToEnd
+
+# Confirm finalization dialog (tap the confirm button in the modal)
+- tapOn:
+    text: "Finalizar"
+- waitForAnimationToEnd
+
+# App navigates back to plantation detail after finalization
+- extendedWaitUntil:
+    visible:
+      id: "subgroup-list"
+    timeout: 10000
+
+# Tap sync button (only visible when there are finalizada subgroups and online)
+- tapOn:
+    id: "sync-button"
+- waitForAnimationToEnd
+
+# Confirm sync dialog
+- tapOn:
+    text: "Sincronizar"
+- waitForAnimationToEnd
+
+# Assert sync progress modal appears
+- extendedWaitUntil:
+    visible:
+      text: "Sincronizar"
+    timeout: 15000
