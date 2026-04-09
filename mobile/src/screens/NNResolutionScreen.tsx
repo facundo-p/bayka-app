@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,32 +9,14 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
-import { useTrees } from '../hooks/useTrees';
-import { usePlantationSpecies } from '../hooks/usePlantationSpecies';
-import { resolveNNTree } from '../repositories/TreeRepository';
-import { useLiveData } from '../database/liveQuery';
-import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
-import ScreenContainer from '../components/ScreenContainer';
-import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
-import { showInfoDialog } from '../utils/alertHelpers';
-
-interface NNTree {
-  id: string;
-  posicion: number;
-  subId: string;
-  fotoUrl: string | null;
-  especieId: string | null;
-  subgrupoId: string;
-  subgrupoCodigo?: string;
-  subgrupoNombre?: string;
-}
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { useNNResolution } from '../hooks/useNNResolution';
 
 export default function NNResolutionScreen() {
   const { subgrupoId, subgrupoCodigo, plantacionId } = useLocalSearchParams<{
@@ -44,42 +26,26 @@ export default function NNResolutionScreen() {
   }>();
   const router = useRouter();
   const navigation = useNavigation();
-  const confirm = useConfirm();
 
-  // Determine mode: single subgroup or plantation-wide
-  const isPlantationMode = !subgrupoId;
+  const {
+    unresolvedTrees,
+    species,
+    speciesLoading,
+    currentTree,
+    currentSelectionId,
+    safeIndex,
+    total,
+    saving,
+    isPlantationMode,
+    zoomPhotoUri,
+    confirmProps,
+    handleSelectSpecies,
+    handleGuardar,
+    handleAnterior,
+    handleSiguiente,
+    setZoomPhotoUri,
+  } = useNNResolution({ plantacionId: plantacionId ?? '', subgrupoId, subgrupoCodigo });
 
-  // Single subgroup mode: use existing hook
-  const singleSubgroupTrees = useTrees(subgrupoId ?? '');
-
-  // Plantation-wide mode: query all N/N trees across subgroups
-  const { data: plantationNNTrees } = useLiveData(
-    () => {
-      if (!isPlantationMode) return Promise.resolve([]);
-      return getNNTreesForPlantation(plantacionId ?? '');
-    },
-    [plantacionId, isPlantationMode]
-  );
-
-  // Build unified unresolved list
-  let unresolvedTrees: NNTree[];
-  if (isPlantationMode) {
-    unresolvedTrees = (plantationNNTrees ?? []) as NNTree[];
-  } else {
-    unresolvedTrees = singleSubgroupTrees.allTrees
-      .filter((t) => t.especieId === null)
-      .map((t) => ({ ...t, subgrupoCodigo: subgrupoCodigo ?? '', subgrupoNombre: undefined }));
-  }
-
-  const { species, loading: speciesLoading } = usePlantationSpecies(plantacionId ?? '');
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  // Map of treeId -> selectedSpeciesId (persists across navigation)
-  const [selections, setSelections] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
-  const [zoomPhotoUri, setZoomPhotoUri] = useState<string | null>(null);
-
-  // Hide default header, use custom
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
@@ -95,81 +61,12 @@ export default function NNResolutionScreen() {
     );
   }
 
-  // Clamp currentIndex
-  const safeIndex = Math.min(currentIndex, unresolvedTrees.length - 1);
-  const currentTree = unresolvedTrees[safeIndex];
-  const total = unresolvedTrees.length;
-
-  // Determine the subgrupoCodigo for resolving
-  const currentSubgrupoCodigo = currentTree.subgrupoCodigo ?? subgrupoCodigo ?? '';
-
-  const currentSelectionId = selections[currentTree?.id] ?? null;
-
-  function handleSelectSpecies(especieId: string) {
-    if (!currentTree) return;
-    setSelections((prev) => {
-      if (prev[currentTree.id] === especieId) {
-        const next = { ...prev };
-        delete next[currentTree.id];
-        return next;
-      }
-      return { ...prev, [currentTree.id]: especieId };
-    });
-  }
-
-  async function handleGuardar() {
-    // Count how many have selections
-    const toResolve = unresolvedTrees.filter((t) => selections[t.id]);
-    if (toResolve.length === 0) {
-      showInfoDialog(confirm.show, 'Seleccionar especie', 'Selecciona una especie para al menos un árbol N/N.', 'leaf-outline', colors.secondary);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      for (const tree of toResolve) {
-        const speciesId = selections[tree.id];
-        const codigo = tree.subgrupoCodigo ?? subgrupoCodigo ?? '';
-        await resolveNNTree(tree.id, speciesId, codigo);
-      }
-      // Clear resolved from selections
-      const resolved = new Set(toResolve.map((t) => t.id));
-      setSelections((prev) => {
-        const next = { ...prev };
-        for (const id of resolved) delete next[id];
-        return next;
-      });
-      // If all resolved, go back
-      if (toResolve.length === unresolvedTrees.length) {
-        router.back();
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  function handleAnterior() {
-    if (safeIndex > 0) {
-      setCurrentIndex(safeIndex - 1);
-    }
-  }
-
-  function handleSiguiente() {
-    if (safeIndex < total - 1) {
-      setCurrentIndex(safeIndex + 1);
-    }
-  }
-
   return (
-    <ScreenContainer>
-      {/* Custom header */}
+    <View style={styles.container}>
       <CustomHeader title="Resolver N/N" onBack={() => router.back()} />
 
-      {/* Fixed info row */}
       <View style={styles.infoRow}>
-        <Text style={styles.counterText}>
-          N/N {safeIndex + 1} de {total}
-        </Text>
+        <Text style={styles.counterText}>N/N {safeIndex + 1} de {total}</Text>
         <View style={styles.infoRight}>
           {isPlantationMode && currentTree.subgrupoNombre && (
             <Text style={styles.subgrupoLabel}>{currentTree.subgrupoNombre}</Text>
@@ -181,29 +78,21 @@ export default function NNResolutionScreen() {
         </View>
       </View>
 
-      {/* Scrollable middle content */}
       <Animated.View entering={FadeInDown.duration(300)} style={styles.scrollWrapper}>
         <FlatList
           data={[currentTree]}
           keyExtractor={(item) => item.id}
           ListHeaderComponent={
             <>
-              {/* Photo — tap to zoom */}
               {currentTree.fotoUrl ? (
                 <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
-                  <Image
-                    source={{ uri: currentTree.fotoUrl }}
-                    style={styles.photo}
-                    resizeMode="cover"
-                  />
+                  <Image source={{ uri: currentTree.fotoUrl }} style={styles.photo} resizeMode="cover" />
                 </Pressable>
               ) : (
                 <View style={styles.photoPlaceholder}>
                   <Text style={styles.photoPlaceholderText}>Sin foto</Text>
                 </View>
               )}
-
-              {/* Species picker label */}
               <Text style={styles.pickerLabel}>Seleccionar especie:</Text>
             </>
           }
@@ -220,7 +109,6 @@ export default function NNResolutionScreen() {
                 />
               )}
 
-              {/* Navigation */}
               <View style={styles.navigationRow}>
                 <Pressable
                   style={[styles.navButton, safeIndex === 0 && styles.navButtonDisabled]}
@@ -229,7 +117,6 @@ export default function NNResolutionScreen() {
                 >
                   <Text style={styles.navButtonText}>Anterior</Text>
                 </Pressable>
-
                 <Pressable
                   style={[styles.navButton, safeIndex >= total - 1 && styles.navButtonDisabled]}
                   onPress={handleSiguiente}
@@ -243,172 +130,50 @@ export default function NNResolutionScreen() {
         />
       </Animated.View>
 
-      {/* Fixed bottom: Guardar button */}
       <View style={styles.fixedBottom}>
         <Pressable
           style={[styles.guardarButton, saving && styles.guardarButtonDisabled]}
-          onPress={handleGuardar}
+          onPress={() => handleGuardar(() => router.back())}
           disabled={saving}
         >
           {saving ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <Text style={styles.guardarButtonText}>
-              {Object.keys(selections).length > 0
-                ? `Guardar (${Object.keys(selections).length})`
-                : 'Guardar'}
-            </Text>
+            <Text style={styles.guardarButtonText}>Guardar</Text>
           )}
         </Pressable>
       </View>
-      {/* Zoom photo viewer */}
+
       <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
-      <ConfirmModal {...confirm.confirmProps} />
-    </ScreenContainer>
+      <ConfirmModal {...confirmProps} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.lg,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  infoRight: {
-    alignItems: 'flex-end',
-    gap: 2,
-  },
-  subgrupoLabel: {
-    fontSize: fontSize.md,
-    fontFamily: fonts.semiBold,
-    color: colors.textMedium,
-  },
-  subgrupoCodeLabel: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    fontFamily: 'monospace',
-  },
-  counterText: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
-    color: colors.secondary,
-  },
-  posicionText: {
-    fontSize: fontSize.base,
-    color: colors.textMuted,
-  },
-  scrollWrapper: {
-    flex: 1,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing['5xl'],
-  },
-  emptyText: {
-    fontSize: fontSize.xl,
-    color: colors.textSecondary,
-    marginBottom: spacing['4xl'],
-    textAlign: 'center',
-  },
-  backButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing['4xl'],
-    paddingVertical: spacing.xl,
-    borderRadius: borderRadius.lg,
-  },
-  backButtonText: {
-    color: colors.white,
-    fontFamily: fonts.bold,
-    fontSize: fontSize.lg,
-  },
-  photo: {
-    width: '100%',
-    height: 280,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.xxl,
-    marginTop: spacing.xxl,
-    marginHorizontal: 0,
-    backgroundColor: colors.border,
-  },
-  photoPlaceholder: {
-    width: '100%',
-    height: 280,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.xxl,
-    marginTop: spacing.xxl,
-    backgroundColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoPlaceholderText: {
-    color: colors.textMuted,
-    fontSize: fontSize.xl,
-  },
-  pickerLabel: {
-    fontSize: fontSize.lg,
-    fontFamily: fonts.semiBold,
-    color: colors.textMedium,
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.xxl,
-  },
-  loader: {
-    marginVertical: spacing['4xl'],
-  },
-  // Species grid uses shared SpeciesButtonGrid component
-  navigationRow: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginTop: spacing.xxl,
-    marginBottom: spacing.xl,
-    paddingHorizontal: spacing.xxl,
-  },
-  navButton: {
-    flex: 1,
-    paddingVertical: spacing.xl,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    alignItems: 'center',
-  },
-  navButtonDisabled: {
-    borderColor: colors.borderMuted,
-    opacity: 0.4,
-  },
-  navButtonText: {
-    color: colors.primary,
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.base,
-  },
-  fixedBottom: {
-    padding: spacing.xxl,
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  guardarButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.xxl,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-  },
-  guardarButtonDisabled: {
-    opacity: 0.5,
-  },
-  guardarButtonText: {
-    color: colors.white,
-    fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
-  },
-  // Zoom photo viewer uses shared PhotoViewer component
+  container: { flex: 1, backgroundColor: colors.background },
+  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  infoRight: { alignItems: 'flex-end', gap: 2 },
+  subgrupoLabel: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.textMedium },
+  subgrupoCodeLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontFamily: 'monospace' },
+  counterText: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.secondary },
+  posicionText: { fontSize: fontSize.base, color: colors.textMuted },
+  scrollWrapper: { flex: 1 },
+  emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing['5xl'] },
+  emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, marginBottom: spacing['4xl'], textAlign: 'center' },
+  backButton: { backgroundColor: colors.primary, paddingHorizontal: spacing['4xl'], paddingVertical: spacing.xl, borderRadius: borderRadius.lg },
+  backButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.lg },
+  photo: { width: '100%', height: 280, borderRadius: borderRadius.lg, marginBottom: spacing.xxl, marginTop: spacing.xxl, backgroundColor: colors.border },
+  photoPlaceholder: { width: '100%', height: 280, borderRadius: borderRadius.lg, marginBottom: spacing.xxl, marginTop: spacing.xxl, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  photoPlaceholderText: { color: colors.textMuted, fontSize: fontSize.xl },
+  pickerLabel: { fontSize: fontSize.lg, fontFamily: fonts.semiBold, color: colors.textMedium, marginBottom: spacing.lg, paddingHorizontal: spacing.xxl },
+  loader: { marginVertical: spacing['4xl'] },
+  navigationRow: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.xxl, marginBottom: spacing.xl, paddingHorizontal: spacing.xxl },
+  navButton: { flex: 1, paddingVertical: spacing.xl, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.primary, alignItems: 'center' },
+  navButtonDisabled: { borderColor: colors.borderMuted, opacity: 0.4 },
+  navButtonText: { color: colors.primary, fontFamily: fonts.semiBold, fontSize: fontSize.base },
+  fixedBottom: { padding: spacing.xxl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
+  guardarButton: { backgroundColor: colors.primary, paddingVertical: spacing.xxl, borderRadius: borderRadius.lg, alignItems: 'center' },
+  guardarButtonDisabled: { opacity: 0.5 },
+  guardarButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.xl },
 });

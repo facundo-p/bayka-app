@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,75 +7,45 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { createSubGroup, getLastSubGroupName } from '../repositories/SubGroupRepository';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, fonts } from '../theme';
-import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import SubgrupoForm from '../components/SubgrupoForm';
-import ScreenContainer from '../components/ScreenContainer';
+import { useNewSubgroup } from '../hooks/useNewSubgroup';
 
 export default function NuevoSubgrupoScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const router = useRouter();
-  const userId = useCurrentUserId();
 
-  const [lastSubGroupName, setLastSubGroupName] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!plantacionId) return;
-    getLastSubGroupName(plantacionId).then(setLastSubGroupName);
-  }, [plantacionId]);
+  const { lastSubGroupName, handleCreateSubgroup } = useNewSubgroup(plantacionId);
 
   return (
-    <ScreenContainer style={{ backgroundColor: colors.surface }}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Animated.View entering={FadeInDown.duration(400)}>
-        <Text style={styles.sectionTitle}>Datos del subgrupo</Text>
-
-        <SubgrupoForm
-          mode="create"
-          plantacionId={plantacionId ?? ''}
-          lastSubGroupName={lastSubGroupName}
-          onSubmit={async (values) => {
-            if (!userId) {
-              return { success: false as const, error: 'unknown' as const };
-            }
-            const result = await createSubGroup({
-              plantacionId: plantacionId ?? '',
-              nombre: values.nombre,
-              codigo: values.codigo,
-              tipo: values.tipo,
-              usuarioCreador: userId,
-            });
-            if (result.success) {
-              router.back();
-            }
-            return result;
-          }}
-        />
+          <Text style={styles.sectionTitle}>Datos del subgrupo</Text>
+          <SubgrupoForm
+            mode="create"
+            plantacionId={plantacionId ?? ''}
+            lastSubGroupName={lastSubGroupName}
+            onSubmit={async (values) => {
+              const result = await handleCreateSubgroup(values);
+              if (result.success) {
+                router.back();
+              }
+              return result;
+            }}
+          />
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
-    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  container: {
-    padding: spacing.xxxl,
-  },
-  sectionTitle: {
-    fontSize: fontSize.title,
-    fontFamily: fonts.heading,
-    color: colors.text,
-    marginBottom: spacing.xxxl,
-  },
+  flex: { flex: 1, backgroundColor: colors.surface },
+  container: { padding: spacing.xxxl },
+  sectionTitle: { fontSize: fontSize.title, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xxxl },
 });
