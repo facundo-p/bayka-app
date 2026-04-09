@@ -31,5 +31,13 @@
   { "id": "a0000000-0000-0000-0000-000000000030", "codigo": "UBA", "nombre": "Ubajay", "nombre_cientifico": null },
   { "id": "a0000000-0000-0000-0000-000000000031", "codigo": "CEI", "nombre": "Ceibo", "nombre_cientifico": null },
   { "id": "a0000000-0000-0000-0000-000000000032", "codigo": "YER", "nombre": "Yerba Mate", "nombre_cientifico": null },
-  { "id": "a0000000-0000-0000-0000-000000000033", "codigo": "ZOI", "nombre": "Zoita", "nombre_cientifico": null }
+  { "id": "a0000000-0000-0000-0000-000000000033", "codigo": "ZOI", "nombre": "Zoita", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000034", "codigo": "CBT", "nombre": "Cambota", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000035", "codigo": "CPT", "nombre": "Canela Palta", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000036", "codigo": "HUA", "nombre": "Huaica", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000037", "codigo": "ING", "nombre": "Ingá", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000038", "codigo": "LBA", "nombre": "Loro Blanco", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000039", "codigo": "PMI", "nombre": "Palmito", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000040", "codigo": "PPO", "nombre": "Palo Pólvora", "nombre_cientifico": null },
+  { "id": "a0000000-0000-0000-0000-000000000041", "codigo": "SCA", "nombre": "Siete Capotes", "nombre_cientifico": null }
 ]
