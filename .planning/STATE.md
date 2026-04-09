@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-04-09T19:52:59.049Z"
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-04-09T20:12:27.258Z"
 last_activity: 2026-04-08
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 29
-  completed_plans: 23
+  completed_plans: 26
   percent: 100
 ---
 
@@ -72,6 +72,8 @@ Progress: [██████████] 100%
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 | Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
+| Phase 09-testing-strategy P01 | 18min | 2 tasks | 9 files |
+| Phase 09-testing-strategy P05 | 35min | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -145,7 +147,10 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
 - [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
-- [Phase 09-testing-strategy]: drizzle-orm/better-sqlite3 transactions are synchronous-only; use sqlite.transaction() or try/catch for constraint tests
+- [Phase 09-testing-strategy]: jest.integration.config.js extends base but overrides testMatch and setupFilesAfterEnv — no expo-sqlite mock in integration setup
+- [Phase 09-testing-strategy]: useProfileData.test.ts: hook uses single Supabase joined query — organizations nested in profiles response, use waitFor for async resolution
+- [Phase 09-testing-strategy]: CI integration job runs npm rebuild better-sqlite3 to compile native module for current Node version
+- [Phase 09-testing-strategy]: PhotoService mock: use constructor functions (not jest.fn().mockImplementation) for expo-file-system File/Directory classes — required for 'new' operator to work in tests
 
 ### Roadmap Evolution
 
@@ -177,6 +182,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-09T19:52:55.375Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-04-09T20:12:27.253Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None
