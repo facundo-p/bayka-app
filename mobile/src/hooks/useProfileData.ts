@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
 import * as SecureStore from 'expo-secure-store';
+import NetInfo from '@react-native-community/netinfo';
 
 export type CachedProfile = {
   nombre: string;
@@ -20,7 +21,7 @@ export function useProfileData() {
     let mounted = true;
 
     (async () => {
-      // Step 1: Load cache immediately
+      // Step 1: Load cache immediately — always works
       try {
         const cached = await SecureStore.getItemAsync(PROFILE_CACHE_KEY);
         if (cached && mounted) {
@@ -28,7 +29,13 @@ export function useProfileData() {
         }
       } catch {}
 
-      // Step 2: Fetch fresh data from Supabase
+      // Step 2: Only fetch from Supabase if online
+      const net = await NetInfo.fetch();
+      if (net.isConnected === false) {
+        if (mounted) setLoading(false);
+        return;
+      }
+
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || !mounted) { setLoading(false); return; }

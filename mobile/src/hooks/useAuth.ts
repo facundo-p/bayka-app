@@ -3,7 +3,7 @@ import { supabase, isSupabaseConfigured } from '../supabase/client';
 import { persistSession, ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
 import { USER_ID_KEY } from './useCurrentUserId';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired } from '../services/OfflineAuthService';
 import type { Role } from '../types/domain';
@@ -24,6 +24,22 @@ type AuthState = {
   role: Role | null;
 };
 const authChangeListeners = new Set<(state: AuthState) => void>();
+
+// Track whether auto-refresh is currently running (module-level, shared across instances)
+let autoRefreshActive = false;
+
+/** Start auto-refresh if online; stop if offline. Idempotent. */
+async function syncAutoRefresh(isConnected: boolean | null) {
+  if (!isSupabaseConfigured) return;
+
+  if (isConnected !== false && !autoRefreshActive) {
+    await supabase.auth.startAutoRefresh();
+    autoRefreshActive = true;
+  } else if (isConnected === false && autoRefreshActive) {
+    await supabase.auth.stopAutoRefresh();
+    autoRefreshActive = false;
+  }
+}
 
 export function useAuth() {
   const [session, setSession] = useState<{ access_token: string; refresh_token: string } | null>(null);
@@ -52,43 +68,74 @@ export function useAuth() {
 
     (async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const net = await NetInfo.fetch();
+        const isOnline = net.isConnected !== false;
 
-        if (mounted && currentSession) {
-          await persistSession(currentSession);
-          await SecureStore.setItemAsync(USER_ID_KEY, currentSession.user.id);
+        // Start/stop auto-refresh based on connectivity
+        await syncAutoRefresh(isOnline);
 
-          let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
+        if (isOnline) {
+          // Online init: use Supabase getSession (reads from AsyncStorage, may refresh)
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
 
-          if (!cachedRole) {
-            try {
-              const { data: profile } = await withTimeout(
-                supabase.from('profiles').select('rol').eq('id', currentSession.user.id).single(),
-                5000,
-              );
-              if (profile?.rol) {
-                cachedRole = profile.rol;
-                await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
-                await SecureStore.setItemAsync(EMAIL_KEY, currentSession.user.email ?? '');
+          if (mounted && currentSession) {
+            await persistSession(currentSession);
+            await SecureStore.setItemAsync(USER_ID_KEY, currentSession.user.id);
+
+            let cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
+
+            if (!cachedRole) {
+              try {
+                const { data: profile } = await withTimeout(
+                  supabase.from('profiles').select('rol').eq('id', currentSession.user.id).single(),
+                  5000,
+                );
+                if (profile?.rol) {
+                  cachedRole = profile.rol;
+                  await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
+                  await SecureStore.setItemAsync(EMAIL_KEY, currentSession.user.email ?? '');
+                }
+              } catch {
+                // Timeout — continue without role
               }
-            } catch {
-              // Offline or timeout — continue without role
+            }
+
+            if (mounted) {
+              setSession(currentSession);
+              if (cachedRole) setRole(cachedRole as Role);
             }
           }
+        } else {
+          // Offline init: restore session from SecureStore — ZERO network calls
+          const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+          const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+          const cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
 
-          if (mounted) {
-            setSession(currentSession);
+          if (mounted && accessToken && refreshToken) {
+            const offlineSession = { access_token: accessToken, refresh_token: refreshToken };
+            setSession(offlineSession);
             if (cachedRole) setRole(cachedRole as Role);
           }
         }
       } catch (e) {
         console.error('[Auth] init failed:', e);
+        // Last resort: try SecureStore even if online init failed
+        try {
+          const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
+          const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
+          const cachedRole = await SecureStore.getItemAsync(ROLE_KEY);
+          if (mounted && accessToken && refreshToken) {
+            setSession({ access_token: accessToken, refresh_token: refreshToken });
+            if (cachedRole) setRole(cachedRole as Role);
+          }
+        } catch {}
       } finally {
         initializing.current = false;
         if (mounted) setLoading(false);
       }
     })();
 
+    // Listen for auth state changes — guard SIGNED_OUT when offline
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, supabaseSession) => {
         if (initializing.current) return;
@@ -117,6 +164,14 @@ export function useAuth() {
             setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
+          // CRITICAL: Only honor SIGNED_OUT when online.
+          // Offline SIGNED_OUT is a false positive from failed token refresh.
+          const net = await NetInfo.fetch();
+          if (net.isConnected === false) {
+            console.warn('[Auth] Ignoring SIGNED_OUT while offline — session preserved');
+            return;
+          }
+
           if (mounted) {
             setSession(null);
             setRole(null);
@@ -126,9 +181,15 @@ export function useAuth() {
       }
     );
 
+    // NetInfo listener: start/stop auto-refresh based on connectivity
+    const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
+      syncAutoRefresh(state.isConnected);
+    });
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      unsubscribeNetInfo();
     };
   }, []);
 
@@ -176,6 +237,9 @@ export function useAuth() {
         await persistSession(result.data.session);
         await SecureStore.setItemAsync(USER_ID_KEY, result.data.session.user.id);
 
+        // Ensure auto-refresh is running after successful online login
+        await syncAutoRefresh(true);
+
         try {
           const { data: profile } = await withTimeout(
             supabase.from('profiles').select('rol').eq('id', result.data.session.user.id).single(),
@@ -199,10 +263,14 @@ export function useAuth() {
     // 1. Broadcast to ALL useAuth instances — immediate UI reset everywhere
     authChangeListeners.forEach(fn => fn({ session: null, role: null }));
 
-    // 2. Clear role from SecureStore (tokens + credentials stay for offline re-login)
+    // 2. Stop auto-refresh (no point refreshing a logged-out session)
+    await supabase.auth.stopAutoRefresh();
+    autoRefreshActive = false;
+
+    // 3. Clear role from SecureStore (tokens + credentials stay for offline re-login)
     try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
 
-    // 3. Clear Supabase session from AsyncStorage directly — no network calls
+    // 4. Clear Supabase session from AsyncStorage directly — no network calls
     try {
       const keys = await AsyncStorage.getAllKeys();
       const sbKeys = keys.filter(k => k.startsWith('sb-'));
