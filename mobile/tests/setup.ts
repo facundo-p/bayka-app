@@ -22,7 +22,13 @@ jest.mock('expo-secure-store', () => ({
 
 // Mock @react-native-community/netinfo
 jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    fetch: jest.fn().mockResolvedValue({ isConnected: true }),
+    addEventListener: jest.fn().mockReturnValue(jest.fn()),
+  },
   fetch: jest.fn().mockResolvedValue({ isConnected: true }),
+  addEventListener: jest.fn().mockReturnValue(jest.fn()),
 }));
 
 // Mock expo-crypto

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-testing-strategy-06-PLAN.md
-last_updated: "2026-04-09T20:08:44.029Z"
-last_activity: 2026-04-08
+stopped_at: Completed 10-02-PLAN.md Task 1 — awaiting human verification at checkpoint Task 2
+last_updated: "2026-04-09T19:22:28.732Z"
+last_activity: 2026-04-09 -- Phase 09 execution started
 progress:
   total_phases: 10
   completed_phases: 8
   total_plans: 29
-  completed_plans: 23
+  completed_plans: 22
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 10 — creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies
+**Current focus:** Phase 09 — testing-strategy
 
 ## Current Position
 
-Phase: 10
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-08
+Phase: 09 (testing-strategy) — EXECUTING
+Plan: 1 of 6
+Status: Executing Phase 09
+Last activity: 2026-04-09 -- Phase 09 execution started
 
 Progress: [██████████] 100%
 
@@ -72,7 +72,6 @@ Progress: [██████████] 100%
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 | Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
-| Phase 09-testing-strategy P06 | 248s | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -146,8 +145,6 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
 - [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
-- [Phase 09-testing-strategy]: testID species-btn-{code} in SpeciesButtonGrid.tsx (not TreeRegistrationScreen) — consistent with 09-02 refactor
-- [Phase 09-testing-strategy]: Two-tier CI: macos-latest only on PR to main (e2e.yml) — manages 10x macOS runner cost vs Ubuntu
 
 ### Roadmap Evolution
 
@@ -176,9 +173,10 @@ None currently.
 | 260408-c1r | feat: mostrar creador en subgroup cards | 2026-04-08 | 3dd6520 | [260408-c1r-feat-mostrar-creador-en-subgroup-cards](./quick/260408-c1r-feat-mostrar-creador-en-subgroup-cards/) |
 | 260408-cf3 | feat: offline login TTL configurable independiente de supabase | 2026-04-08 | 1a77b60 | [260408-cf3-feat-offline-login-ttl-configurable-inde](./quick/260408-cf3-feat-offline-login-ttl-configurable-inde/) |
 | 260408-qo4 | feat: github action backup diario supabase a cloudflare r2 | 2026-04-08 | ab106c8 | [260408-qo4-crear-github-action-backup-diario-supaba](./quick/260408-qo4-crear-github-action-backup-diario-supaba/) |
+| 260409-eby | feat: agregar 8 especies de árboles al catálogo | 2026-04-09 | 2264c64 | [260409-eby-agregar-especies-de-rboles-al-cat-logo](./quick/260409-eby-agregar-especies-de-rboles-al-cat-logo/) |
 
 ## Session Continuity
 
-Last session: 2026-04-09T20:08:44.025Z
-Stopped at: Completed 09-testing-strategy-06-PLAN.md
+Last session: 2026-04-08T14:25:56.267Z
+Stopped at: Completed 10-02-PLAN.md Task 1 — awaiting human verification at checkpoint Task 2
 Resume file: None

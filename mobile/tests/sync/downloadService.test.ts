@@ -5,6 +5,8 @@ jest.mock('../../src/database/client', () => ({
   db: {
     insert: jest.fn(),
     select: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
   },
 }));
 
@@ -62,25 +64,50 @@ function setupDbInsertSuccess() {
 
 /**
  * Sets up supabase.from to return empty data (simulates empty pullFromServer).
+ * Handles all chain patterns used by pullFromServer:
+ * - .select().eq().single() (plantation metadata)
+ * - .select().eq() (subgroups, plantation_users, plantation_species)
+ * - .select().in() (trees)
+ *
+ * The eq() mock returns a thenable that resolves to { data: [], error: null }
+ * and also exposes .single() for the plantation metadata query.
  */
 function setupSupabaseFromEmpty() {
+  const eqResult = { data: [], error: null };
+  const eqMock = jest.fn().mockImplementation(() => {
+    const result = Promise.resolve(eqResult);
+    (result as any).single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return result;
+  });
   (supabase.from as jest.Mock).mockReturnValue({
     select: jest.fn().mockReturnValue({
-      eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+      eq: eqMock,
       in: jest.fn().mockResolvedValue({ data: [], error: null }),
     }),
   });
 }
 
 /**
- * Sets up db.select to return a chain used by pullFromServer.
- * pullFromServer calls db.select().from().where() for plantation_users.
+ * Sets up db.select, db.update, and db.delete chains used by pullFromServer.
+ * pullFromServer calls:
+ * - db.select({...}).from().where() for pendingEdit check and plantation_users
+ * - db.select().from().where() for plantation_users
+ * - db.update().set().where() for plantation metadata
+ * - db.delete().where() for removed plantation_users
  */
 function setupDbSelectEmpty() {
   (db.select as jest.Mock).mockReturnValue({
     from: jest.fn().mockReturnValue({
       where: jest.fn().mockResolvedValue([]),
     }),
+  });
+  (db.update as jest.Mock).mockReturnValue({
+    set: jest.fn().mockReturnValue({
+      where: jest.fn().mockResolvedValue(undefined),
+    }),
+  });
+  (db.delete as jest.Mock).mockReturnValue({
+    where: jest.fn().mockResolvedValue(undefined),
   });
 }
 

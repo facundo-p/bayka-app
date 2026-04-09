@@ -14,6 +14,8 @@ jest.mock('../../src/supabase/client', () => ({
       onAuthStateChange: jest.fn().mockReturnValue({
         data: { subscription: { unsubscribe: jest.fn() } },
       }),
+      startAutoRefresh: jest.fn().mockResolvedValue(undefined),
+      stopAutoRefresh: jest.fn().mockResolvedValue(undefined),
     },
     from: jest.fn(),
   },
@@ -22,6 +24,7 @@ jest.mock('../../src/supabase/client', () => ({
 
 jest.mock('../../src/supabase/auth', () => ({
   persistSession: jest.fn().mockResolvedValue(undefined),
+  readCachedSession: jest.fn().mockResolvedValue(null),
   ACCESS_TOKEN_KEY: 'access_token',
   REFRESH_TOKEN_KEY: 'refresh_token',
   ROLE_KEY: 'user_role',
@@ -41,6 +44,7 @@ jest.mock('../../src/hooks/useCurrentUserId', () => ({
 }));
 
 const { supabase } = require('../../src/supabase/client');
+const { readCachedSession } = require('../../src/supabase/auth');
 const { verifyCredential, isOfflineLoginExpired } = require('../../src/services/OfflineAuthService');
 
 import { renderHook, act } from '@testing-library/react-native';
@@ -56,10 +60,17 @@ describe('useAuth', () => {
     (supabase.auth.onAuthStateChange as jest.Mock).mockReturnValue({
       data: { subscription: { unsubscribe: jest.fn() } },
     });
+    (supabase.auth.startAutoRefresh as jest.Mock).mockResolvedValue(undefined);
+    (supabase.auth.stopAutoRefresh as jest.Mock).mockResolvedValue(undefined);
     (SecureStore.getItemAsync as jest.Mock).mockResolvedValue(null);
     (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
     (SecureStore.deleteItemAsync as jest.Mock).mockResolvedValue(undefined);
+    (readCachedSession as jest.Mock).mockResolvedValue(null);
     (isOfflineLoginExpired as jest.Mock).mockResolvedValue(false);
+
+    // AsyncStorage.getAllKeys must return an array for signOut
+    const AsyncStorage = require('@react-native-async-storage/async-storage');
+    (AsyncStorage.getAllKeys as jest.Mock).mockResolvedValue([]);
   });
 
   describe('signIn online', () => {
@@ -118,10 +129,9 @@ describe('useAuth', () => {
     it('calls verifyCredential when offline (NetInfo reports not connected)', async () => {
       setOffline();
       (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
-      (SecureStore.getItemAsync as jest.Mock).mockImplementation((key: string) => {
-        if (key === 'access_token') return Promise.resolve('cached-token');
-        if (key === 'refresh_token') return Promise.resolve('cached-refresh');
-        return Promise.resolve(null);
+      (readCachedSession as jest.Mock).mockResolvedValue({
+        access_token: 'cached-token',
+        refresh_token: 'cached-refresh',
       });
 
       const { result } = renderHook(() => useAuth());
@@ -191,9 +201,13 @@ describe('useAuth', () => {
 
   describe('role', () => {
     it('reads role from SecureStore cache when available during init', async () => {
-      (SecureStore.getItemAsync as jest.Mock).mockImplementation((key: string) => {
-        if (key === 'user_role') return Promise.resolve('admin');
-        return Promise.resolve(null);
+      // Mock profile fetch to return 'admin' role
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { rol: 'admin' }, error: null }),
+          }),
+        }),
       });
 
       const mockSession = { access_token: 'token', refresh_token: 'refresh', user: { id: 'u-1', email: 'a@a.com' } };
