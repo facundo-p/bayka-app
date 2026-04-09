@@ -215,4 +215,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
 | 10. Plantación offline + sync especies | 2/2 | Complete    | 2026-04-08 |
-| 9. Testing Strategy | 0/6 | Not started | — |
+| 9. Testing Strategy | 1/6 | In Progress|  |
