@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenContainer from '../components/ScreenContainer';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { asc } from 'drizzle-orm';
@@ -65,7 +65,6 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   const params = useLocalSearchParams<{ plantacionId: string }>();
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const confirm = useConfirm();
 
   const [items, setItems] = useState<SpeciesItem[]>([]);
@@ -184,7 +183,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ScreenContainer>
       <FlatList
         data={items}
         keyExtractor={(item) => item.especieId}
@@ -244,7 +243,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
       </View>
 
       <ConfirmModal {...confirm.confirmProps} />
-    </View>
+    </ScreenContainer>
   );
 }
 

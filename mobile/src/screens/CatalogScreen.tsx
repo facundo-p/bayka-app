@@ -1,4 +1,4 @@
-import { View, Text, FlatList, ActivityIndicator, Pressable, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import { useState, useEffect } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -6,6 +6,7 @@ import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { useProfileData } from '../hooks/useProfileData';
 import { useNetStatus } from '../hooks/useNetStatus';
+import { useLiveData } from '../database/liveQuery';
 import { getServerCatalog, getLocalPlantationIds, getUnsyncedSubgroupSummary, ServerPlantation } from '../queries/catalogQueries';
 import { deletePlantationLocally } from '../repositories/PlantationRepository';
 import { batchDownload, DownloadResult, DownloadProgress } from '../services/SyncService';
@@ -17,6 +18,7 @@ import FilterCards from '../components/FilterCards';
 import DownloadProgressModal from '../components/DownloadProgressModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 
 export default function CatalogScreen() {
   const routePrefix = useRoutePrefix();
@@ -29,7 +31,7 @@ export default function CatalogScreen() {
   const organizacionId = profile?.organizacionId ?? '';
 
   const [catalogItems, setCatalogItems] = useState<ServerPlantation[]>([]);
-  const [localIds, setLocalIds] = useState<Set<string>>(new Set());
+  const { data: localIds = new Set<string>() } = useLiveData(getLocalPlantationIds);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -55,12 +57,8 @@ export default function CatalogScreen() {
     setLoadingCatalog(true);
     setCatalogError(null);
     try {
-      const [items, ids] = await Promise.all([
-        getServerCatalog(isAdmin, userId, organizacionId),
-        getLocalPlantationIds(),
-      ]);
+      const items = await getServerCatalog(isAdmin, userId, organizacionId);
       setCatalogItems(items);
-      setLocalIds(ids);
     } catch {
       setCatalogError('No se pudo cargar el catalogo');
     } finally {
@@ -110,10 +108,7 @@ export default function CatalogScreen() {
         `Esta plantacion tiene ${totalUnsynced} subgrupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
         'Eliminar de todas formas',
         'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.',
-        async () => {
-          await deletePlantationLocally(plantationId);
-          getLocalPlantationIds().then((ids) => setLocalIds(ids));
-        },
+        async () => { await deletePlantationLocally(plantationId); },
       );
     } else {
       showConfirmDialog(
@@ -121,10 +116,7 @@ export default function CatalogScreen() {
         'Eliminar del dispositivo',
         `La plantacion "${item.lugar}" sera eliminada de tu celular. Podras volver a descargarla desde el catalogo.`,
         'Eliminar',
-        async () => {
-          await deletePlantationLocally(plantationId);
-          getLocalPlantationIds().then((ids) => setLocalIds(ids));
-        },
+        async () => { await deletePlantationLocally(plantationId); },
         { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' },
       );
     }
@@ -133,7 +125,6 @@ export default function CatalogScreen() {
   function handleDismiss() {
     setDownloadState('idle');
     setSelectedIds(new Set());
-    getLocalPlantationIds().then((ids) => setLocalIds(ids));
   }
 
   const estadoCounts = { activa: 0, finalizada: 0 };
@@ -221,16 +212,13 @@ export default function CatalogScreen() {
       : 'Descargar seleccion';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer>
       <ScreenHeader title="Catalogo de plantaciones" />
 
       {renderContent()}
 
       {/* Sticky bottom bar */}
       <View style={styles.bottomBar}>
-        <Text style={styles.selectionText}>
-          {selectedIds.size > 0 ? `${selectedIds.size} seleccionada(s)` : ''}
-        </Text>
         <Pressable
           onPress={handleBatchDownload}
           disabled={selectedIds.size === 0}
@@ -250,7 +238,7 @@ export default function CatalogScreen() {
         onDismiss={handleDismiss}
       />
       <ConfirmModal {...confirm.confirmProps} />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 

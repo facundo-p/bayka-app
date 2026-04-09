@@ -42,7 +42,7 @@ import { exportToCSV, exportToExcel } from '../services/ExportService';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import AdminModalWrapper from '../components/AdminModalWrapper';
-import TexturedBackground from '../components/TexturedBackground';
+import ScreenContainer from '../components/ScreenContainer';
 import type { Plantation } from '../components/PlantationConfigCard';
 import PlantationFormModal from '../components/PlantationFormModal';
 import ConfigureSpeciesScreen from './ConfigureSpeciesScreen';
@@ -501,7 +501,7 @@ export default function AdminScreen() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <TexturedBackground>
+    <ScreenContainer withTexture>
       {/* Header */}
       <ScreenHeader
         title="Gestión"
@@ -693,7 +693,7 @@ export default function AdminScreen() {
           )}
         </AdminModalWrapper>
       </Modal>
-    </TexturedBackground>
+    </ScreenContainer>
   );
 }
 

@@ -5,7 +5,7 @@ import { useNetStatus } from '../hooks/useNetStatus';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, borderRadius, spacing, fonts } from '../theme';
-import TexturedBackground from '../components/TexturedBackground';
+import ScreenContainer from '../components/ScreenContainer';
 import React from 'react';
 
 interface Props {
@@ -18,7 +18,7 @@ export default function PerfilScreen({ roleLabel }: Props) {
   const { isOnline } = useNetStatus();
 
   return (
-    <TexturedBackground>
+    <ScreenContainer withTexture>
       <View style={styles.innerContainer}>
       <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
         {/* Avatar placeholder: circle with initials */}
@@ -63,7 +63,7 @@ export default function PerfilScreen({ roleLabel }: Props) {
         </TouchableOpacity>
       </Animated.View>
       </View>
-    </TexturedBackground>
+    </ScreenContainer>
   );
 }
 

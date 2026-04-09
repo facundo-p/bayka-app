@@ -42,7 +42,7 @@ import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useNetStatus } from '../hooks/useNetStatus';
 import SyncProgressModal from '../components/SyncProgressModal';
 import FilterCards from '../components/FilterCards';
-import TexturedBackground from '../components/TexturedBackground';
+import ScreenContainer from '../components/ScreenContainer';
 import React from 'react';
 
 export default function PlantationDetailScreen() {
@@ -231,7 +231,7 @@ export default function PlantationDetailScreen() {
   }
 
   return (
-    <TexturedBackground>
+    <ScreenContainer withTexture>
       {/* Fixed header: buttons + N/N banner */}
       <View style={styles.fixedHeader}>
 
@@ -389,7 +389,7 @@ export default function PlantationDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </TexturedBackground>
+    </ScreenContainer>
   );
 }
 

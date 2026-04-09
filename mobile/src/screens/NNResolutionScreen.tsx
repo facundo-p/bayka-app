@@ -20,6 +20,7 @@ import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 import { showInfoDialog } from '../utils/alertHelpers';
@@ -160,7 +161,7 @@ export default function NNResolutionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScreenContainer>
       {/* Custom header */}
       <CustomHeader title="Resolver N/N" onBack={() => router.back()} />
 
@@ -263,7 +264,7 @@ export default function NNResolutionScreen() {
       {/* Zoom photo viewer */}
       <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
       <ConfirmModal {...confirm.confirmProps} />
-    </View>
+    </ScreenContainer>
   );
 }
 

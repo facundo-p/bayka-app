@@ -18,7 +18,7 @@ import {
   Switch,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenContainer from '../components/ScreenContainer';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import NetInfo from '@react-native-community/netinfo';
@@ -50,7 +50,6 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
   const params = useLocalSearchParams<{ plantacionId: string }>();
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const confirm = useConfirm();
 
@@ -194,7 +193,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
   const assignedCount = items.filter((i) => i.assigned).length;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ScreenContainer>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -257,7 +256,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
       </View>
 
       <ConfirmModal {...confirm.confirmProps} />
-    </View>
+    </ScreenContainer>
   );
 }
 

@@ -19,6 +19,7 @@ type Props = {
   pendingSync: number;
   estado?: string;
   onPress: () => void;
+  onDelete?: () => void;
 };
 
 export default function PlantationCard({
@@ -30,6 +31,7 @@ export default function PlantationCard({
   pendingSync,
   estado,
   onPress,
+  onDelete,
 }: Props) {
   const accentColor =
     estado === 'finalizada'
@@ -80,6 +82,18 @@ export default function PlantationCard({
           </View>
         )}
       </View>
+
+      {/* Delete button */}
+      {onDelete && (
+        <Pressable
+          onPress={(e) => { e.stopPropagation(); onDelete(); }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}
+          accessibilityLabel="Eliminar plantación del dispositivo"
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+        </Pressable>
+      )}
     </Pressable>
   );
 }
@@ -156,5 +170,15 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.textPrimary,
     fontFamily: fonts.semiBold,
+  },
+
+  deleteButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+  },
+  deleteButtonPressed: {
+    opacity: 0.5,
   },
 });

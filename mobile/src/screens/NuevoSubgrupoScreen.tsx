@@ -13,6 +13,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, fonts } from '../theme';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import SubgrupoForm from '../components/SubgrupoForm';
+import ScreenContainer from '../components/ScreenContainer';
 
 export default function NuevoSubgrupoScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
@@ -27,6 +28,7 @@ export default function NuevoSubgrupoScreen() {
   }, [plantacionId]);
 
   return (
+    <ScreenContainer style={{ backgroundColor: colors.surface }}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -59,6 +61,7 @@ export default function NuevoSubgrupoScreen() {
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </ScreenContainer>
   );
 }
 

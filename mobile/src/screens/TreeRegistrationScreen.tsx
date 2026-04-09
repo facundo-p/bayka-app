@@ -36,6 +36,7 @@ import CustomHeader from '../components/CustomHeader';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import TreeIcon from '../components/TreeIcon';
 import type { SubGroupEstado } from '../repositories/SubGroupRepository';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
@@ -288,7 +289,7 @@ export default function TreeRegistrationScreen() {
   const sortedTrees = [...allTrees].sort((a, b) => a.posicion - b.posicion);
 
   return (
-    <View style={styles.container}>
+    <ScreenContainer>
       {/* Custom header */}
       <CustomHeader
         title={subgrupoNombre ?? subgrupoCodigo ?? ''}
@@ -638,7 +639,7 @@ export default function TreeRegistrationScreen() {
           </View>
         </GestureHandlerRootView>
       </Modal>
-    </View>
+    </ScreenContainer>
   );
 }
 
