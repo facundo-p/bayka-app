@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 09-testing-strategy-01-PLAN.md
-last_updated: "2026-04-09T19:29:59.538Z"
+stopped_at: Completed 09-testing-strategy-02-PLAN.md
+last_updated: "2026-04-09T19:38:23.757Z"
 last_activity: 2026-04-08
 progress:
   total_phases: 10
@@ -72,7 +72,7 @@ Progress: [██████████] 100%
 | Phase 08-login-offline P01 | 133s | 1 tasks | 3 files |
 | Phase 08-login-offline P02 | 136s | 3 tasks | 2 files |
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
-| Phase 09-testing-strategy P01 | 18min | 2 tasks | 9 files |
+| Phase 09-testing-strategy P02 | 1500s | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -146,9 +146,8 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: Tokens must be persisted to SecureStore explicitly via persistSession() — Supabase uses AsyncStorage internally, offline login reads SecureStore
 - [Phase 10-offline-fixes]: _layout.tsx navigation guard: !session || !role → login (prevents null-role tecnico fallback)
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
-- [Phase 09-testing-strategy]: jest.integration.config.js extends base but overrides testMatch and setupFilesAfterEnv — no expo-sqlite mock in integration setup
-- [Phase 09-testing-strategy]: useProfileData.test.ts: hook uses single Supabase joined query — organizations nested in profiles response, use waitFor for async resolution
-- [Phase 09-testing-strategy]: CI integration job runs npm rebuild better-sqlite3 to compile native module for current Node version
+- [Phase 09-testing-strategy]: usePhotoCapture hook wraps PhotoService to remove service imports from screens (CLAUDE.md rule 9)
+- [Phase 09-testing-strategy]: TreeRegistrationScreen decomposed into 4 hooks + 7 components to achieve <300 line screen with zero data access imports
 
 ### Roadmap Evolution
 
@@ -180,6 +179,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-09T19:29:59.535Z
-Stopped at: Completed 09-testing-strategy-01-PLAN.md
+Last session: 2026-04-09T19:38:23.754Z
+Stopped at: Completed 09-testing-strategy-02-PLAN.md
 Resume file: None
