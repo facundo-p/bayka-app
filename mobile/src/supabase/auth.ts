@@ -1,6 +1,4 @@
 import * as SecureStore from 'expo-secure-store';
-import NetInfo from '@react-native-community/netinfo';
-import { supabase } from './client';
 
 // Separate keys to stay under expo-secure-store's 2048-byte limit (Pitfall 4)
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
@@ -25,33 +23,10 @@ export async function clearSession(): Promise<void> {
   // EMAIL_KEY is intentionally kept — pre-fills login screen after logout
 }
 
-export async function restoreSession(): Promise<{ access_token: string; refresh_token: string } | null> {
+/** Read cached session tokens from SecureStore. ZERO network calls. */
+export async function readCachedSession(): Promise<{ access_token: string; refresh_token: string } | null> {
   const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
   const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
-
   if (!accessToken || !refreshToken) return null;
-
-  const net = await NetInfo.fetch();
-
-  if (!net.isConnected) {
-    // Offline: return cached tokens without attempting network refresh (Pitfall 1)
-    // The Supabase client will use these tokens as-is for offline operation
-    return { access_token: accessToken, refresh_token: refreshToken };
-  }
-
-  // Online: validate and refresh via Supabase
-  const { data, error } = await supabase.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken,
-  });
-
-  if (error || !data.session) {
-    // Token unrecoverable — clear and force re-login
-    await clearSession();
-    return null;
-  }
-
-  // Persist refreshed tokens
-  await persistSession(data.session);
-  return data.session;
+  return { access_token: accessToken, refresh_token: refreshToken };
 }
