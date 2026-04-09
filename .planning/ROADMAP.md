@@ -189,18 +189,15 @@ Plans:
   5. 3 Maestro E2E flows exist for critical user journeys
   6. GitHub Actions CI runs lint + unit + integration on every push, E2E on PR to main
   7. Offline auth cycle fully tested: online login caches credentials → offline signOut clears session (not tokens) → offline signIn restores session from cache → cross-instance broadcast works
-**Plans**: 9 plans
+**Plans**: 6 plans
 
 Plans:
-- [x] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
-- [x] 09-02-PLAN.md — Refactor TreeRegistrationScreen: extract useTreeRegistration, useSpeciesOrder, useNNFlow hooks + SpeciesGrid, LastThreeTrees, TreeRegistrationHeader components
-- [x] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
-- [x] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login→signOut→signIn with cached creds)
-- [x] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth (offline signIn/signOut, cross-instance broadcast, token persistence, timeout fallback), useSync, useTreeRegistration
-- [x] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
-- [ ] 09-07-PLAN.md — Gap closure: restore TreeRegistrationScreen refactor (overwritten by 09-06 merge), add testIDs
-- [ ] 09-08-PLAN.md — Gap closure: restore PlantationDetailScreen refactor (overwritten by 09-06 merge), add testIDs
-- [x] 09-09-PLAN.md — Gap closure: offlineAuthCycle integration test + useAuth cross-instance broadcast unit test
+- [ ] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
+- [ ] 09-02-PLAN.md — Refactor TreeRegistrationScreen: extract useTreeRegistration, useSpeciesOrder, useNNFlow hooks + SpeciesGrid, LastThreeTrees, TreeRegistrationHeader components
+- [ ] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
+- [ ] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login→signOut→signIn with cached creds)
+- [ ] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth (offline signIn/signOut, cross-instance broadcast, token persistence, timeout fallback), useSync, useTreeRegistration
+- [ ] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
 
 ## Progress
 
@@ -218,4 +215,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
 | 10. Plantación offline + sync especies | 2/2 | Complete    | 2026-04-08 |
-| 9. Testing Strategy | 0/9 | Not started | — |
+| 9. Testing Strategy | 1/6 | In Progress|  |

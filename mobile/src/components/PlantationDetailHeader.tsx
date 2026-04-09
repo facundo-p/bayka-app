@@ -57,7 +57,11 @@ export default function PlantationDetailHeader({
           </Pressable>
 
           {syncableCount > 0 && (
-            <Pressable style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]} onPress={onStartSync}>
+            <Pressable
+              testID="sync-button"
+              style={({ pressed }) => [styles.syncButton, pressed && { opacity: 0.85 }]}
+              onPress={onStartSync}
+            >
               <Ionicons name="cloud-upload-outline" size={20} color={colors.white} />
               <Text style={styles.syncButtonText}>
                 Sincronizar {syncableCount} subgrupo{syncableCount > 1 ? 's' : ''}
