@@ -197,7 +197,7 @@ Plans:
 - [ ] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
 - [ ] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login→signOut→signIn with cached creds)
 - [ ] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth (offline signIn/signOut, cross-instance broadcast, token persistence, timeout fallback), useSync, useTreeRegistration
-- [ ] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
+- [x] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
 
 ## Progress
 
