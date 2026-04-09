@@ -225,4 +225,75 @@ describe('useAuth', () => {
       expect(result.current.role).toBe('admin');
     });
   });
+
+  describe('cross-instance broadcast', () => {
+    it('signIn on one instance updates session/role on another instance', async () => {
+      // Setup: mock successful offline signIn
+      setOffline();
+      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (readCachedSession as jest.Mock).mockResolvedValue({
+        access_token: 'cached-token',
+        refresh_token: 'cached-refresh',
+      });
+
+      // Render two hook instances (simulating two components)
+      const { result: instance1 } = renderHook(() => useAuth());
+      const { result: instance2 } = renderHook(() => useAuth());
+
+      // Both start with null session
+      expect(instance1.current.session).toBeNull();
+      expect(instance2.current.session).toBeNull();
+
+      // SignIn on instance1
+      await act(async () => {
+        await instance1.current.signIn('test@test.com', 'password');
+      });
+
+      // Wait for broadcast propagation
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 50));
+      });
+
+      // Instance2 should also have the session now (via broadcast)
+      expect(instance2.current.session).not.toBeNull();
+      expect(instance2.current.role).toBe('tecnico');
+    });
+
+    it('signOut on one instance clears session on another instance', async () => {
+      // First, sign in on instance1 so both have a session
+      setOffline();
+      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (readCachedSession as jest.Mock).mockResolvedValue({
+        access_token: 'cached-token',
+        refresh_token: 'cached-refresh',
+      });
+
+      const { result: instance1 } = renderHook(() => useAuth());
+      const { result: instance2 } = renderHook(() => useAuth());
+
+      await act(async () => {
+        await instance1.current.signIn('test@test.com', 'password');
+      });
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 50));
+      });
+
+      // Both should have session
+      expect(instance2.current.session).not.toBeNull();
+
+      // SignOut on instance1
+      await act(async () => {
+        await instance1.current.signOut();
+      });
+
+      await act(async () => {
+        await new Promise(r => setTimeout(r, 50));
+      });
+
+      // Instance2 should also be cleared
+      expect(instance2.current.session).toBeNull();
+      expect(instance2.current.role).toBeNull();
+    });
+  });
 });
