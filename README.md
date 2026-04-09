@@ -37,6 +37,12 @@ npx jest --no-coverage --testPathPattern="useAuth"
 npx jest --config jest.integration.config.js --no-coverage --testPathPattern="offlineAuthCycle"
 ```
 
+### Lint
+
+```bash
+npx expo lint
+```
+
 ### E2E tests (Maestro)
 
 Requiere un emulador/dispositivo con la app corriendo:

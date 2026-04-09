@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -28,8 +28,6 @@ import SyncProgressModal from '../components/SyncProgressModal';
 import TexturedBackground from '../components/TexturedBackground';
 import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
-import React from 'react';
-
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -134,7 +132,7 @@ export default function PlantationDetailScreen() {
         data={filteredSubgroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No hay subgrupos aun</Text><Text style={styles.emptySubtext}>Toca "+" para crear el primero</Text></View>}
+        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No hay subgrupos aun</Text><Text style={styles.emptySubtext}>Toca &quot;+&quot; para crear el primero</Text></View>}
         renderItem={renderSubGroup}
       />
 
