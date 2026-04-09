@@ -45,17 +45,20 @@ jobs:
         working-directory: mobile
         run: npx expo prebuild --platform ios --clean
 
+      - name: Install CocoaPods dependencies
+        working-directory: mobile/ios
+        run: pod install
+
       - name: Build iOS simulator app
         working-directory: mobile
         run: |
-          # Find workspace name dynamically (depends on app.json slug)
-          WORKSPACE=$(ls ios/*.xcworkspace | head -1)
+          WORKSPACE=$(find ios -name "*.xcworkspace" -maxdepth 1 | head -1)
           SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           xcodebuild \
             -workspace "$WORKSPACE" \
             -scheme "$SCHEME" \
+            -sdk iphonesimulator \
             -configuration Release \
-            -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath build/ \
             -quiet
 
@@ -68,7 +71,7 @@ jobs:
           print(iphones[0]['udid'])
           ")
           xcrun simctl boot $SIMULATOR_ID
-          APP_PATH=$(find mobile/build/Build/Products/Release-iphonesimulator -name "*.app" -maxdepth 1 | head -1)
+          APP_PATH=$(find mobile/build/Build/Products -name "*.app" -type d | head -1)
           xcrun simctl install $SIMULATOR_ID "$APP_PATH"
           echo "SIMULATOR_ID=$SIMULATOR_ID" >> $GITHUB_ENV
 
