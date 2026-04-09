@@ -1,107 +1,36 @@
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
-import { useState, useCallback } from 'react';
-import { useLiveData, notifyDataChanged } from '../database/liveQuery';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
-import { useCurrentUserId } from '../hooks/useCurrentUserId';
-import { useNetStatus } from '../hooks/useNetStatus';
-import { useProfileData } from '../hooks/useProfileData';
-import { checkFreshness } from '../queries/freshnessQueries';
-import { pullFromServer } from '../services/SyncService';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import {
-  getPlantationsForRole,
-  getSyncedTreeCounts,
-  getPendingSyncCounts,
-  getTodayTreeCounts,
-  getTotalTreeCounts,
-} from '../queries/dashboardQueries';
 import PlantationCard from '../components/PlantationCard';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import TexturedBackground from '../components/TexturedBackground';
+import { usePlantaciones } from '../hooks/usePlantaciones';
 
 export default function PlantacionesScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
-  const userId = useCurrentUserId();
 
-  const isAdmin = routePrefix === '(admin)';
-
-  const { isOnline } = useNetStatus();
-  const { profile } = useProfileData();
-
-  const [showFreshnessBanner, setShowFreshnessBanner] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-
-  const { data: plantationList } = useLiveData(
-    () => getPlantationsForRole(isAdmin, userId),
-    [userId, isAdmin]
-  );
-
-  const { data: syncedCounts } = useLiveData(() => getSyncedTreeCounts());
-  const { data: pendingSyncCounts } = useLiveData(() => getPendingSyncCounts());
-  const { data: todayCounts } = useLiveData(() => getTodayTreeCounts(userId), [userId]);
-  const { data: totalCounts } = useLiveData(() => getTotalTreeCounts());
-
-  // Check freshness on focus when online
-  useFocusEffect(
-    useCallback(() => {
-      if (!isOnline || !plantationList?.length) return;
-      checkFreshness(plantationList.map((p) => p.id)).then((hasNewData) => {
-        setShowFreshnessBanner(hasNewData);
-      });
-    }, [isOnline, plantationList])
-  );
-
-  const handleRefresh = async () => {
-    if (!plantationList) return;
-    setRefreshing(true);
-    try {
-      for (const p of plantationList) {
-        await pullFromServer(p.id);
-      }
-      notifyDataChanged();
-      setShowFreshnessBanner(false);
-    } catch (e) {
-      console.error('[Freshness] pull failed:', e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  // Derive contextual header title
-  const headerTitle =
-    isAdmin && profile?.organizacionNombre ? profile.organizacionNombre : 'Mis plantaciones';
-
-  // Build lookup maps
-  const syncedCountMap = new Map<string, number>();
-  if (syncedCounts) for (const row of syncedCounts) syncedCountMap.set(row.plantacionId, row.treeCount);
-
-  const pendingSyncMap = new Map<string, number>();
-  if (pendingSyncCounts) for (const row of pendingSyncCounts) pendingSyncMap.set(row.plantacionId, row.pendingCount);
-
-  const todayCountMap = new Map<string, number>();
-  if (todayCounts) for (const row of todayCounts) todayCountMap.set(row.plantacionId, row.treeCount);
-
-  const totalCountMap = new Map<string, number>();
-  if (totalCounts) for (const row of totalCounts) totalCountMap.set(row.plantacionId, row.treeCount);
-
-  // Count by estado for filter cards
-  const estadoCounts = { activa: 0, finalizada: 0 };
-  plantationList?.forEach((p: any) => {
-    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
-      estadoCounts[p.estado as keyof typeof estadoCounts]++;
-    }
-  });
-
-  const filteredList = plantationList?.filter(
-    (p: any) => !activeFilter || p.estado === activeFilter
-  ) ?? [];
+  const {
+    plantationList,
+    filteredList,
+    estadoCounts,
+    activeFilter,
+    setActiveFilter,
+    showFreshnessBanner,
+    refreshing,
+    headerTitle,
+    isOnline,
+    isAdmin,
+    syncedCountMap,
+    pendingSyncMap,
+    todayCountMap,
+    totalCountMap,
+    handleRefresh,
+  } = usePlantaciones();
 
   const filterConfigs = [
     { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
@@ -124,11 +53,7 @@ export default function PlantacionesScreen() {
             ]}
             accessibilityLabel="Gestionar plantaciones descargadas"
           >
-            <Ionicons
-              name="download-outline"
-              size={18}
-              color={isOnline ? colors.white : colors.offline}
-            />
+            <Ionicons name="download-outline" size={18} color={isOnline ? colors.white : colors.offline} />
           </Pressable>
         }
       />
@@ -190,63 +115,15 @@ export default function PlantacionesScreen() {
 }
 
 const styles = StyleSheet.create({
-  freshnessBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.infoBg,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.info + '30',
-  },
-  freshnessText: {
-    flex: 1,
-    fontSize: fontSize.sm,
-    color: colors.info,
-  },
-  freshnessButton: {
-    backgroundColor: colors.info,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-    marginLeft: spacing.md,
-  },
-  freshnessButtonText: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semiBold,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  emptyTitle: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
-    color: colors.textMuted,
-  },
-  emptySubtext: {
-    fontSize: fontSize.base,
-    color: colors.textLight,
-  },
+  freshnessBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.infoBg, paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.info + '30' },
+  freshnessText: { flex: 1, fontSize: fontSize.sm, color: colors.info },
+  freshnessButton: { backgroundColor: colors.info, paddingHorizontal: spacing.xxl, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, marginLeft: spacing.md },
+  freshnessButtonText: { color: colors.white, fontSize: fontSize.sm, fontFamily: fonts.semiBold },
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
+  emptySubtext: { fontSize: fontSize.base, color: colors.textLight },
   listContent: { padding: spacing.xxl, gap: spacing.xl },
-  catalogButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.full,
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  catalogButtonDisabled: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: colors.offline,
-  },
-  catalogButtonPressed: {
-    opacity: 0.7,
-  },
+  catalogButton: { backgroundColor: colors.primary, borderRadius: borderRadius.full, width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  catalogButtonDisabled: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.offline },
+  catalogButtonPressed: { opacity: 0.7 },
 });
