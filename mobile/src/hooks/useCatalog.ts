@@ -5,6 +5,7 @@
  * and local plantation deletion logic.
  */
 import { useState, useEffect } from 'react';
+import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
 import { useNetStatus } from './useNetStatus';
@@ -27,7 +28,8 @@ export function useCatalog() {
   const organizacionId = profile?.organizacionId ?? '';
 
   const [catalogItems, setCatalogItems] = useState<ServerPlantation[]>([]);
-  const [localIds, setLocalIds] = useState<Set<string>>(new Set());
+  const { data: liveLocalIds } = useLiveData(() => getLocalPlantationIds());
+  const localIds = liveLocalIds ?? new Set<string>();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
@@ -53,12 +55,8 @@ export function useCatalog() {
     setLoadingCatalog(true);
     setCatalogError(null);
     try {
-      const [items, ids] = await Promise.all([
-        getServerCatalog(isAdmin, userId, organizacionId),
-        getLocalPlantationIds(),
-      ]);
+      const items = await getServerCatalog(isAdmin, userId, organizacionId);
       setCatalogItems(items);
-      setLocalIds(ids);
     } catch {
       setCatalogError('No se pudo cargar el catalogo');
     } finally {
@@ -110,7 +108,6 @@ export function useCatalog() {
         'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.',
         async () => {
           await deletePlantationLocally(plantationId);
-          getLocalPlantationIds().then((ids) => setLocalIds(ids));
         },
       );
     } else {
@@ -121,7 +118,6 @@ export function useCatalog() {
         'Eliminar',
         async () => {
           await deletePlantationLocally(plantationId);
-          getLocalPlantationIds().then((ids) => setLocalIds(ids));
         },
         { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' },
       );
@@ -131,7 +127,6 @@ export function useCatalog() {
   function handleDismiss() {
     setDownloadState('idle');
     setSelectedIds(new Set());
-    getLocalPlantationIds().then((ids) => setLocalIds(ids));
   }
 
   const estadoCounts = { activa: 0, finalizada: 0 };

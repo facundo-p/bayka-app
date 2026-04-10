@@ -12,7 +12,7 @@ import { useProfileData } from './useProfileData';
 import { useRoutePrefix } from './useRoutePrefix';
 import { useConfirm } from './useConfirm';
 import { checkFreshness } from '../queries/freshnessQueries';
-import { pullFromServer } from '../services/SyncService';
+import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
 import { deletePlantationLocally } from '../repositories/PlantationRepository';
 import { getUnsyncedSubgroupSummary } from '../queries/catalogQueries';
 import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
@@ -60,6 +60,7 @@ export function usePlantaciones() {
     if (!plantationList) return;
     setRefreshing(true);
     try {
+      await uploadPendingEdits();
       for (const p of plantationList) {
         await pullFromServer(p.id);
       }

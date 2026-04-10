@@ -19,6 +19,7 @@ import {
   updatePlantation,
   finalizePlantation,
   generateIds,
+  discardPlantationEdit,
 } from '../repositories/PlantationRepository';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
 import { colors } from '../theme';
@@ -128,7 +129,7 @@ export function usePlantationAdmin() {
   async function handleFinalize(plantacionId: string) {
     if (finalizing) return;
     const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
-    if (plantation?.pendingSync) {
+    if (plantation?.pendingSync || plantation?.pendingEdit) {
       showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.stateFinalizada);
       return;
     }
@@ -279,6 +280,24 @@ export function usePlantationAdmin() {
     await updatePlantation(plantacionId, lugar, periodo);
   }
 
+  function handleDiscardEdit(plantacionId: string) {
+    showConfirm({
+      icon: 'arrow-undo-outline',
+      iconColor: colors.secondary,
+      title: 'Descartar cambios',
+      message: 'Se restaurarán los datos originales del servidor. Los cambios locales se perderán.',
+      buttons: [
+        { label: 'Cancelar', style: 'cancel', onPress: () => {} },
+        {
+          label: 'Descartar',
+          style: 'danger',
+          icon: 'arrow-undo-outline',
+          onPress: async () => { await discardPlantationEdit(plantacionId); },
+        },
+      ],
+    });
+  }
+
   return {
     // State
     plantationList: plantationList as Plantation[] | null,
@@ -305,5 +324,6 @@ export function usePlantationAdmin() {
     handleCreateSubmit,
     handleAssignTech,
     handleEditSubmit,
+    handleDiscardEdit,
   };
 }

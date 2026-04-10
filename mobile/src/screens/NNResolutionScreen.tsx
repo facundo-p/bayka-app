@@ -8,6 +8,7 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -27,12 +28,15 @@ export default function NNResolutionScreen() {
   const router = useRouter();
   const navigation = useNavigation();
 
+  const insets = useSafeAreaInsets();
+
   const {
     unresolvedTrees,
     species,
     speciesLoading,
     currentTree,
     currentSelectionId,
+    selections,
     safeIndex,
     total,
     saving,
@@ -62,7 +66,7 @@ export default function NNResolutionScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
       <CustomHeader title="Resolver N/N" onBack={() => router.back()} />
 
       <View style={styles.infoRow}>
@@ -139,7 +143,7 @@ export default function NNResolutionScreen() {
           {saving ? (
             <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <Text style={styles.guardarButtonText}>Guardar</Text>
+            <Text style={styles.guardarButtonText}>{`Guardar${Object.keys(selections).length > 0 ? ` (${Object.keys(selections).length})` : ''}`}</Text>
           )}
         </Pressable>
       </View>

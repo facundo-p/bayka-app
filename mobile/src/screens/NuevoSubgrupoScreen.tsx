@@ -6,6 +6,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, fonts } from '../theme';
@@ -15,12 +16,13 @@ import { useNewSubgroup } from '../hooks/useNewSubgroup';
 export default function NuevoSubgrupoScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const { lastSubGroupName, handleCreateSubgroup } = useNewSubgroup(plantacionId);
 
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={[styles.flex, { paddingBottom: insets.bottom }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">

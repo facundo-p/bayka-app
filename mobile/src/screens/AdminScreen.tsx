@@ -102,6 +102,7 @@ export default function AdminScreen() {
     handleCreateSubmit,
     handleAssignTech,
     handleEditSubmit,
+    handleDiscardEdit,
   } = usePlantationAdmin();
 
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -149,12 +150,32 @@ export default function AdminScreen() {
           {item.estado === 'sincronizada' && <Ionicons name="checkmark-circle" size={16} color={stateColor} />}
         </View>
 
+        {(item.pendingSync || item.pendingEdit) && (
+          <View style={styles.pendingEditBadge}>
+            <Ionicons name="cloud-upload-outline" size={14} color={colors.secondary} />
+            <Text style={styles.pendingEditText}>
+              {item.pendingSync ? 'Pendiente de sync' : 'Cambios sin sincronizar'}
+            </Text>
+            {item.pendingEdit && (
+              <Pressable
+                onPress={() => handleDiscardEdit(item.id)}
+                hitSlop={8}
+                style={({ pressed }) => [styles.discardButton, pressed && { opacity: 0.7 }]}
+              >
+                <Ionicons name="arrow-undo-outline" size={14} color={colors.danger} />
+                <Text style={styles.discardButtonText}>Descartar</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {item.estado === 'activa' && (
           <View style={styles.actionList}>
             <ActionItem icon="leaf-outline" label="Configurar especies" onPress={() => setConfigSpeciesPlantacionId(item.id)} color={colors.primary} />
             <ActionItem icon="people-outline" label="Asignar técnicos" onPress={() => onAssignTech(item.id)} color={colors.primary} />
-            <ActionItem icon="lock-closed-outline" label="Finalizar" onPress={() => handleFinalize(item.id)} color={expandedMeta.canFinalize ? colors.danger : colors.textMuted} disabled={!expandedMeta.canFinalize} />
-            {!expandedMeta.canFinalize && <Text style={styles.helperText}>Para finalizar, todos los subgrupos deben estar sincronizados</Text>}
+            <ActionItem icon="lock-closed-outline" label="Finalizar" onPress={() => handleFinalize(item.id)} color={expandedMeta.canFinalize && !item.pendingSync && !item.pendingEdit ? colors.danger : colors.textMuted} disabled={!expandedMeta.canFinalize || !!item.pendingSync || !!item.pendingEdit} />
+            {(item.pendingSync || item.pendingEdit) && <Text style={styles.helperText}>Sincroniza los cambios antes de finalizar</Text>}
+            {!expandedMeta.canFinalize && !item.pendingSync && !item.pendingEdit && <Text style={styles.helperText}>Para finalizar, todos los subgrupos deben estar sincronizados</Text>}
           </View>
         )}
 
@@ -330,4 +351,8 @@ const styles = StyleSheet.create({
   actionItemText: { fontSize: fontSize.base, fontFamily: fonts.medium, color: colors.textSecondary },
   lockedBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, paddingVertical: spacing.md, backgroundColor: colors.secondaryBg, borderRadius: borderRadius.lg },
   lockedText: { color: colors.stateFinalizada, fontSize: fontSize.sm, fontFamily: fonts.semiBold },
+  pendingEditBadge: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.secondaryBg, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm, borderRadius: borderRadius.lg },
+  pendingEditText: { fontSize: fontSize.sm, color: colors.secondary, flex: 1 },
+  discardButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  discardButtonText: { fontSize: fontSize.sm, color: colors.danger, fontFamily: fonts.semiBold },
 });

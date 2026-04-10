@@ -1,4 +1,5 @@
-import { View, Text, FlatList, ActivityIndicator, Pressable, StyleSheet, SafeAreaView } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import ScreenHeader from '../components/ScreenHeader';

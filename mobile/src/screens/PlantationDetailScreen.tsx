@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import type { SubGroup, SubGroupTipo } from '../hooks/usePlantationDetail';
 import SubGroupStateChip from '../components/SubGroupStateChip';
@@ -34,6 +35,7 @@ export default function PlantationDetailScreen() {
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
   const { isOnline } = useNetStatus();
+  const insets = useSafeAreaInsets();
   const pid = plantacionId ?? '';
 
   const {
@@ -111,7 +113,7 @@ export default function PlantationDetailScreen() {
   }
 
   return (
-    <TexturedBackground>
+    <TexturedBackground style={{ paddingBottom: insets.bottom }}>
       <PlantationDetailHeader
         isOnline={isOnline}
         syncableCount={syncableCount}

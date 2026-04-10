@@ -2,7 +2,7 @@
  * TexturedBackground — wraps children with the leaf texture background + overlay.
  * Single source of truth for the texture pattern used across screens.
  */
-import { StyleSheet } from 'react-native';
+import { StyleSheet, ViewStyle } from 'react-native';
 import { ImageBackground, View } from 'react-native';
 
 const cardTexture = require('../../assets/images/card-texture-default.jpg');
@@ -11,11 +11,12 @@ const OVERLAY_COLOR = 'rgba(250,250,249,0.9)';
 
 type Props = {
   children: React.ReactNode;
+  style?: ViewStyle;
 };
 
-export default function TexturedBackground({ children }: Props) {
+export default function TexturedBackground({ children, style }: Props) {
   return (
-    <ImageBackground source={cardTexture} style={styles.container} resizeMode="cover">
+    <ImageBackground source={cardTexture} style={[styles.container, style]} resizeMode="cover">
       <View style={styles.overlay} />
       {children}
     </ImageBackground>
