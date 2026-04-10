@@ -1,8 +1,6 @@
 appId: com.bayka.app
 ---
 # Flow: Finalize and Sync a SubGroup
-# Tests the full subgroup lifecycle: register a tree, finalize the subgroup,
-# navigate back, and trigger sync.
 
 - launchApp:
     clearState: true
@@ -18,15 +16,15 @@ appId: com.bayka.app
 
 # Navigate to first plantation
 - tapOn:
+    id: "plantaciones-list"
     index: 0
-    parentId: "plantaciones-list"
 - assertVisible:
     id: "subgroup-list"
 
 # Navigate to first subgroup
 - tapOn:
+    id: "subgroup-list"
     index: 0
-    parentId: "subgroup-list"
 
 # Register at least one tree so we can finalize
 - tapOn:
