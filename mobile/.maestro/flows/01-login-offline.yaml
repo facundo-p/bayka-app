@@ -1,34 +1,26 @@
 appId: com.bayka.app
 ---
 # Flow: Offline Login with Cached Credentials
-# Tests that a user can log in using previously cached credentials (offline-capable path).
-# Note: Full airplane-mode simulation is limited in Maestro on iOS simulator.
-# This flow tests the cached credential UI path after an initial online login.
+# Tests that a user can log in using previously cached credentials.
 
 # Step 1: Launch with clean state and perform first online login to cache credentials
 - launchApp:
     clearState: true
-- extendedWaitUntil:
-    visible:
-      id: "email-input"
-    timeout: 10000
+- assertVisible:
+    id: "email-input"
 - runFlow:
     file: "../helpers/login.yaml"
     env:
       EMAIL: "tecnico1@bayka.com"
       PASSWORD: "tecnico1_password"
-- extendedWaitUntil:
-    visible:
-      id: "plantaciones-list"
-    timeout: 15000
+- assertVisible:
+    id: "plantaciones-list"
 
 # Step 2: Re-launch app (simulates cached credentials path)
 - launchApp:
     clearState: false
-- extendedWaitUntil:
-    visible:
-      id: "email-input"
-    timeout: 10000
+- assertVisible:
+    id: "email-input"
 
 # Step 3: Login using email chip (cached credential quick-login)
 - tapOn:
@@ -37,7 +29,5 @@ appId: com.bayka.app
     id: "login-button"
 
 # Step 4: Assert plantaciones screen is visible (login succeeded with cached credentials)
-- extendedWaitUntil:
-    visible:
-      id: "plantaciones-list"
-    timeout: 15000
+- assertVisible:
+    id: "plantaciones-list"
