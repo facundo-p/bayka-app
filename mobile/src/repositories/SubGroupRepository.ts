@@ -271,7 +271,7 @@ export async function getFinalizadaSubGroups(plantacionId: string, userId?: stri
     conditions.push(eq(subgroups.usuarioCreador, userId));
   }
   return db.select().from(subgroups)
-    .where(and(...conditions));
+    .where(and(...conditions)) as unknown as SubGroup[];
 }
 
 // Returns finalizada subgroups that CAN be synced (no unresolved N/N trees).
