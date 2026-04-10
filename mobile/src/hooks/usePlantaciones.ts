@@ -10,8 +10,13 @@ import { useCurrentUserId } from './useCurrentUserId';
 import { useNetStatus } from './useNetStatus';
 import { useProfileData } from './useProfileData';
 import { useRoutePrefix } from './useRoutePrefix';
+import { useConfirm } from './useConfirm';
 import { checkFreshness } from '../queries/freshnessQueries';
 import { pullFromServer } from '../services/SyncService';
+import { deletePlantationLocally } from '../repositories/PlantationRepository';
+import { getUnsyncedSubgroupSummary } from '../queries/catalogQueries';
+import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
+import { colors } from '../theme';
 import {
   getPlantationsForRole,
   getSyncedTreeCounts,
@@ -26,6 +31,7 @@ export function usePlantaciones() {
   const isAdmin = routePrefix === '(admin)';
   const { isOnline } = useNetStatus();
   const { profile } = useProfileData();
+  const confirm = useConfirm();
 
   const [showFreshnessBanner, setShowFreshnessBanner] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -92,6 +98,41 @@ export function usePlantaciones() {
     (p: any) => !activeFilter || p.estado === activeFilter
   ) ?? [];
 
+  async function handleDeletePlantation(plantationId: string) {
+    const item = plantationList?.find((p: any) => p.id === plantationId);
+    if (!item) return;
+
+    const { activaCount, finalizadaCount } = await getUnsyncedSubgroupSummary(plantationId);
+    const hasUnsynced = activaCount + finalizadaCount > 0;
+
+    if (hasUnsynced) {
+      const totalUnsynced = activaCount + finalizadaCount;
+      showDoubleConfirmDialog(
+        confirm.show,
+        'Atencion: datos sin sincronizar',
+        `Esta plantacion tiene ${totalUnsynced} subgrupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
+        'Eliminar de todas formas',
+        'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.',
+        async () => {
+          await deletePlantationLocally(plantationId);
+          notifyDataChanged();
+        },
+      );
+    } else {
+      showConfirmDialog(
+        confirm.show,
+        'Eliminar del dispositivo',
+        `La plantacion "${item.lugar}" sera eliminada de tu celular. Podras volver a descargarla desde el catalogo.`,
+        'Eliminar',
+        async () => {
+          await deletePlantationLocally(plantationId);
+          notifyDataChanged();
+        },
+        { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' },
+      );
+    }
+  }
+
   return {
     plantationList,
     filteredList,
@@ -108,5 +149,7 @@ export function usePlantaciones() {
     todayCountMap,
     totalCountMap,
     handleRefresh,
+    handleDeletePlantation,
+    confirmProps: confirm.confirmProps,
   };
 }

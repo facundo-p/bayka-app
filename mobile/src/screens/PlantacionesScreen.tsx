@@ -8,6 +8,7 @@ import PlantationCard from '../components/PlantationCard';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import TexturedBackground from '../components/TexturedBackground';
+import ConfirmModal from '../components/ConfirmModal';
 import { usePlantaciones } from '../hooks/usePlantaciones';
 
 export default function PlantacionesScreen() {
@@ -30,6 +31,8 @@ export default function PlantacionesScreen() {
     todayCountMap,
     totalCountMap,
     handleRefresh,
+    handleDeletePlantation,
+    confirmProps,
   } = usePlantaciones();
 
   const filterConfigs = [
@@ -99,6 +102,7 @@ export default function PlantacionesScreen() {
                   pendingSync={pendingSyncMap.get(item.id) ?? 0}
                   estado={item.estado}
                   onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
+                  onDelete={() => handleDeletePlantation(item.id)}
                 />
               </Animated.View>
             )}
@@ -111,6 +115,7 @@ export default function PlantacionesScreen() {
           <Text style={styles.emptySubtext}>Las plantaciones asignadas apareceran aqui</Text>
         </View>
       )}
+      <ConfirmModal {...confirmProps} />
     </TexturedBackground>
   );
 }
