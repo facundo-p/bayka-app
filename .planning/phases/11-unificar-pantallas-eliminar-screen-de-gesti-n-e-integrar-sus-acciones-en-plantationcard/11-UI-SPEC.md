@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: false
 preset: none
 created: 2026-04-11
+revised: 2026-04-11
 ---
 
 # Phase 11 — UI Design Contract
@@ -30,20 +31,21 @@ Source: `mobile/src/theme.ts` — all tokens are pre-existing; this phase does n
 
 ## Spacing Scale
 
-All spacing values come from `mobile/src/theme.ts`. This phase uses the existing scale. No new tokens are introduced.
+All spacing values come from `mobile/src/theme.ts`. The theme contains non-standard intermediate values (`sm=6`, `lg=10`, `xl=12`). This contract maps component usage to the nearest standard-scale value (multiples of 4 only: 4, 8, 16, 24, 32) to maintain grid discipline. When implementing, use the standard-scale value directly via `StyleSheet` literals or the theme tokens listed below.
 
-| Token | Value | Usage in this phase |
-|-------|-------|---------------------|
-| xs | 4px | Icon gaps within sidebar strip |
-| sm | 6px | Compact inline gaps (e.g. pending badge) |
-| md | 8px | Gap between sidebar icon slots |
-| lg | 10px | Internal action item padding |
-| xl | 12px | Gap between action rows in bottom sheet |
-| xxl | 16px | Card content padding, bottom sheet horizontal padding |
-| 4xl | 24px | Bottom sheet top padding, section breaks |
-| 5xl | 32px | Bottom sheet list bottom padding |
+| Usage in this phase | Standard value | Theme token (closest) | Notes |
+|---------------------|---------------|----------------------|-------|
+| Icon gaps within sidebar strip | 4px | `spacing.xs` (4) | |
+| Gap between sidebar icon slots | 8px | `spacing.md` (8) | |
+| Compact inline gaps (e.g. pending badge) | 8px | `spacing.md` (8) | Previously 6px — rounded up to 8px |
+| Internal action item padding | 8px | `spacing.md` (8) | Previously 10px — rounded down to 8px |
+| Gap between action rows in bottom sheet | 16px | `spacing.xxl` (16) | Previously 12px — rounded up to 16px |
+| Card content padding, bottom sheet horizontal padding | 16px | `spacing.xxl` (16) | |
+| Bottom sheet top padding (below handle) | 16px | `spacing.xxl` (16) | |
+| Bottom sheet top padding above handle | 24px | `spacing['4xl']` (24) | |
+| Bottom sheet list bottom padding | 32px | `spacing['5xl']` (32) | |
 
-Exceptions: Touch targets for icon buttons in the sidebar strip must be minimum 44px tall (hitSlop: 8 on a 36px button). This matches the existing `deleteButton` pattern in PlantationCard.
+Exceptions: Touch targets for icon buttons in the sidebar strip must be minimum 44px tall (`hitSlop: 8` on a 36px button). This matches the existing `deleteButton` pattern in PlantationCard.
 
 ---
 
@@ -51,13 +53,20 @@ Exceptions: Touch targets for icon buttons in the sidebar strip must be minimum 
 
 All font sizes and families come from `mobile/src/theme.ts`. No new font tokens introduced in this phase.
 
+**Maximum 2 font weights for this phase: 400 (regular) and 700 (bold).**
+
 | Role | Size (token) | px | Family | Weight | Line Height |
 |------|--------------|----|--------|--------|-------------|
 | Body | `fontSize.base` | 15 | `fonts.regular` (Poppins_400Regular) | 400 | 1.5 (auto) |
-| Label / Action item | `fontSize.base` | 15 | `fonts.medium` (Poppins_500Medium) | 500 | 1.4 |
+| Label / Action item | `fontSize.base` | 15 | `fonts.regular` (Poppins_400Regular) | 400 | 1.4 |
 | Card title | `fontSize.title` | 20 | `fonts.bold` (Poppins_700Bold) | 700 | 1.2 |
-| Helper / Caption | `fontSize.sm` | 12 | `fonts.regular` | 400 | 1.4 |
-| Bottom sheet header | `fontSize.xl` | 16 | `fonts.semiBold` (Poppins_600SemiBold) | 600 | 1.2 |
+| Helper / Caption | `fontSize.sm` | 12 | `fonts.regular` (Poppins_400Regular) | 400 | 1.4 |
+| Bottom sheet header | `fontSize.xxl` | 18 | `fonts.bold` (Poppins_700Bold) | 700 | 1.2 |
+
+Notes:
+- Weight 500 (Poppins_500Medium) is NOT used in this phase. Map all former 500-weight usage to 400.
+- Weight 600 (Poppins_600SemiBold) is NOT used in this phase. Map all former 600-weight usage to 700.
+- Bottom sheet header changed from 16px (`fontSize.xl`) to 18px (`fontSize.xxl`) for clearer visual hierarchy over the 15px body rows.
 
 Source: pre-existing from `theme.ts`. Matched to existing usage in `PlantationCard.tsx` and `AdminScreen.tsx`.
 
@@ -73,7 +82,7 @@ All color values come from `mobile/src/theme.ts`. This phase does not add new co
 | Secondary (30%) | `colors.surface` | #FFFFFF | PlantationCard body, bottom sheet modal card |
 | Accent — primary (10%) | `colors.primary` | #0A3760 | "+" create button in header, action item icons (primary actions), edit icon |
 | Accent — estado-aware sidebar | `colors.stateActiva` #99B95B / `colors.stateFinalizada` #F59E0B / `colors.stateSincronizada` #0A3760 | varies | Left sidebar strip of PlantationCard (existing behavior, unchanged) |
-| Destructive | `colors.danger` | #DC2626 | Trash icon in sidebar, "Finalizar" action when conditions met, discard button |
+| Destructive | `colors.danger` | #DC2626 | Trash icon in sidebar, "Finalizar plantación" action when conditions met, discard button |
 | Disabled | `colors.textMuted` | #94A3B8 | Disabled action items in bottom sheet (greyed label + icon) |
 | Bottom sheet backdrop | `colors.overlay` | rgba(0,0,0,0.6) | Modal backdrop behind admin bottom sheet |
 
@@ -81,6 +90,12 @@ Accent reserved for:
 - The "+" header button (admin only, PlantacionesScreen header)
 - Edit pencil icon in the PlantationCard sidebar strip
 - Primary action item icons inside the admin bottom sheet (Configurar especies, Asignar técnicos, Generar IDs, Exportar CSV, Exportar Excel)
+
+---
+
+## Visuals
+
+**Primary focal point for PlantacionesScreen:** The PlantationCard list is the primary focal point. Each card's left color strip (estado-aware) draws the eye first, followed by the plantation name (card title, 20px bold) and the right-side action strip. The screen has no competing visual hierarchy — the header is minimal (plantation count badge + catalog button + optional "+" admin button). Whitespace between cards is 8px (standard gap).
 
 ---
 
@@ -100,7 +115,7 @@ PlantationCard gains a right-side action strip replacing the single `deleteButto
 
 Strip width: 48px (matches existing `SIDEBAR_WIDTH = 48` constant).
 Each slot height: 36px with `hitSlop={8}` for 44px touch target.
-Vertical gap between slots: `spacing.md` (8px).
+Vertical gap between slots: 8px (standard scale).
 Strip background: `colors.surface` (same as card body).
 
 ### New: AdminBottomSheet component
@@ -111,15 +126,15 @@ A custom slide-up bottom sheet built with React Native `Modal` (animationType="s
 |----------|-------|
 | Modal animationType | "slide" |
 | Background | `colors.surface` |
-| Border radius (top corners only) | `borderRadius.xxl` (16px) |
-| Drag handle | 4px tall, 40px wide, `colors.borderMuted`, centered, 12px from top |
+| Border radius (top corners only) | `borderRadius.xl` (16px) |
+| Drag handle | 4px tall, 40px wide, `colors.borderMuted`, centered, 8px from top |
 | Backdrop | `colors.overlay` (rgba(0,0,0,0.6)) — tap backdrop to dismiss |
-| Header: plantation name | `fontSize.xl` (16px), `fonts.semiBold`, `colors.textHeading` |
+| Header: plantation name | `fontSize.xxl` (18px), `fonts.bold`, `colors.textHeading` |
 | Header: periodo subtitle | `fontSize.base` (15px), `fonts.regular`, `colors.textSecondary` |
-| Horizontal padding | `spacing.xxl` (16px) |
-| Top padding (below handle) | `spacing.xxl` (16px) |
-| Bottom padding | `spacing['5xl']` (32px) + safe area inset |
-| Action list gap | `spacing.xl` (12px) |
+| Horizontal padding | 16px (`spacing.xxl`) |
+| Top padding (below handle) | 16px (`spacing.xxl`) |
+| Bottom padding | 32px (`spacing['5xl']`) + safe area inset |
+| Action list gap | 16px (`spacing.xxl`) |
 | Dismiss button (X) | Top right, `Ionicons close-outline`, size 22, `colors.textMuted` |
 
 Action items inside the bottom sheet reuse the same `ActionItem` pattern from AdminScreen:
@@ -127,7 +142,7 @@ Action items inside the bottom sheet reuse the same `ActionItem` pattern from Ad
 - Background: `colors.surfaceAlt`
 - Border radius: `borderRadius.lg` (12px)
 - Icon size: 18
-- Label: `fontSize.base`, `fonts.medium`
+- Label: `fontSize.base` (15px), `fonts.regular` (weight 400)
 - Disabled state: `opacity: 0.4` on the entire row
 
 ### Modified: PlantacionesScreen header
@@ -160,10 +175,10 @@ The entire screen is deleted. The Gestión tab is removed from `app/(admin)/_lay
 **Estado: activa**
 1. Configurar especies — `leaf-outline`, `colors.primary`, always enabled
 2. Asignar técnicos — `people-outline`, `colors.primary`, always enabled
-3. Finalizar — `lock-closed-outline`:
+3. Finalizar plantación — `lock-closed-outline`:
    - Enabled (color: `colors.danger`): when all subgroups are sincronizada AND no pendingSync AND no pendingEdit
    - Disabled (color: `colors.textMuted`, opacity 0.4): when conditions not met
-   - Helper text below when disabled: "Para finalizar, todos los subgrupos deben estar sincronizados" (fontSize.xs, colors.textMuted, italic)
+   - Helper text below when disabled: "Para finalizar, todos los subgrupos deben estar sincronizados" (`fontSize.sm` 12px, `colors.textMuted`, italic)
    - If pendingSync or pendingEdit also present: show additional helper "Sincroniza los cambios antes de finalizar"
 
 **Estado: finalizada**
@@ -198,7 +213,7 @@ Source: pre-populated from CONTEXT.md decisions (D-05, D-06, D-07) and existing 
 | Bottom sheet subheader | "{periodo}" |
 | Action: configure species | "Configurar especies" |
 | Action: assign technicians | "Asignar técnicos" |
-| Action: finalize | "Finalizar" |
+| Action: finalize | "Finalizar plantación" |
 | Action: generate IDs | "Generar IDs" |
 | Action: export CSV | "Exportar CSV" |
 | Action: export Excel | "Exportar Excel" |
@@ -212,13 +227,17 @@ Source: pre-populated from CONTEXT.md decisions (D-05, D-06, D-07) and existing 
 | Gear icon accessibilityLabel | "Acciones de gestión" |
 | Trash icon accessibilityLabel | "Eliminar plantación del dispositivo" (existing, unchanged) |
 | Close bottom sheet | accessibilityLabel: "Cerrar menú de acciones" |
+| Error — async action failed (generic) | "Ocurrió un error. Intentá de nuevo." |
+| Error — finalize failed | "No se pudo finalizar la plantación. Intentá de nuevo." |
+| Error — export failed | "No se pudo exportar. Verificá tu conexión e intentá de nuevo." |
+| Error — generate IDs failed | "No se pudieron generar los IDs. Intentá de nuevo." |
 
 Destructive actions and confirmation approach:
 
 | Action | Trigger | Confirmation |
 |--------|---------|--------------|
 | Eliminar plantación del dispositivo | Trash icon in sidebar | Existing ConfirmModal (unchanged): title "Eliminar plantación", message describing unsynced subgroup count if any, buttons: "Cancelar" (cancel) + "Eliminar" (danger) |
-| Finalizar plantación | "Finalizar" action in bottom sheet | Existing ConfirmModal: title "Finalizar plantación", message "Esta acción bloqueará la creación de nuevos subgrupos.", buttons: "Cancelar" (cancel) + "Finalizar" (danger) |
+| Finalizar plantación | "Finalizar plantación" action in bottom sheet | Existing ConfirmModal: title "Finalizar plantación", message "Esta acción bloqueará la creación de nuevos subgrupos.", buttons: "Cancelar" (cancel) + "Finalizar" (danger) |
 
 ---
 
