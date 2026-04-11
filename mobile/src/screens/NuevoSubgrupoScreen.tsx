@@ -6,23 +6,23 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import SubgrupoForm from '../components/SubgrupoForm';
 import { useNewSubgroup } from '../hooks/useNewSubgroup';
 
 export default function NuevoSubgrupoScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const { lastSubGroupName, handleCreateSubgroup } = useNewSubgroup(plantacionId);
 
   return (
+    <ScreenContainer style={{ backgroundColor: colors.surface }}>
     <KeyboardAvoidingView
-      style={[styles.flex, { paddingBottom: insets.bottom }]}
+      style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -43,11 +43,12 @@ export default function NuevoSubgrupoScreen() {
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1, backgroundColor: colors.surface },
+  flex: { flex: 1 },
   container: { padding: spacing.xxxl },
   sectionTitle: { fontSize: fontSize.title, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xxxl },
 });

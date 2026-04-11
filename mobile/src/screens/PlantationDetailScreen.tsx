@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import type { SubGroup, SubGroupTipo } from '../hooks/usePlantationDetail';
 import SubGroupStateChip from '../components/SubGroupStateChip';
@@ -26,7 +25,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useNetStatus } from '../hooks/useNetStatus';
 import SyncProgressModal from '../components/SyncProgressModal';
-import TexturedBackground from '../components/TexturedBackground';
+import ScreenContainer from '../components/ScreenContainer';
 import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
 export default function PlantationDetailScreen() {
@@ -35,7 +34,6 @@ export default function PlantationDetailScreen() {
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
   const { isOnline } = useNetStatus();
-  const insets = useSafeAreaInsets();
   const pid = plantacionId ?? '';
 
   const {
@@ -113,7 +111,7 @@ export default function PlantationDetailScreen() {
   }
 
   return (
-    <TexturedBackground style={{ paddingBottom: insets.bottom }}>
+    <ScreenContainer withTexture>
       <PlantationDetailHeader
         isOnline={isOnline}
         syncableCount={syncableCount}
@@ -169,7 +167,7 @@ export default function PlantationDetailScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </TexturedBackground>
+    </ScreenContainer>
   );
 }
 

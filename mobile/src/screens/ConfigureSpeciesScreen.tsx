@@ -15,11 +15,11 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import ConfirmModal from '../components/ConfirmModal';
 import { useSpeciesConfig } from '../hooks/useSpeciesConfig';
 
@@ -49,7 +49,6 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   const params = useLocalSearchParams<{ plantacionId: string }>();
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const {
     items,
@@ -74,7 +73,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ScreenContainer>
       <FlatList
         data={items}
         keyExtractor={(item) => item.especieId}
@@ -134,15 +133,14 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
       </View>
 
       <ConfirmModal {...confirmProps} />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, backgroundColor: colors.background },
   loadingText: { fontSize: fontSize.base, color: colors.textMuted },
-  listContent: { padding: spacing.xxl, paddingBottom: spacing['5xl'] },
+  listContent: { padding: spacing.xxl, paddingBottom: spacing.xxl },
   listHeaderContainer: { marginBottom: spacing.xxl, gap: spacing.xl },
   listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: fonts.medium },
   selectAllRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xl },

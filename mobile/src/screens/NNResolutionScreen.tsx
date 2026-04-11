@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ActivityIndicator,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -17,6 +16,7 @@ import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import { useNNResolution } from '../hooks/useNNResolution';
 
 export default function NNResolutionScreen() {
@@ -27,8 +27,6 @@ export default function NNResolutionScreen() {
   }>();
   const router = useRouter();
   const navigation = useNavigation();
-
-  const insets = useSafeAreaInsets();
 
   const {
     unresolvedTrees,
@@ -66,7 +64,7 @@ export default function NNResolutionScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ScreenContainer>
       <CustomHeader title="Resolver N/N" onBack={() => router.back()} />
 
       <View style={styles.infoRow}>
@@ -150,12 +148,11 @@ export default function NNResolutionScreen() {
 
       <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
       <ConfirmModal {...confirmProps} />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   infoRight: { alignItems: 'flex-end', gap: 2 },
   subgrupoLabel: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.textMedium },

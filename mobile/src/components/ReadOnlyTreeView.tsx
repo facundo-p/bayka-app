@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.plantation,
   },
   reactivateText: { color: colors.plantation, fontFamily: fonts.semiBold, fontSize: fontSize.base },
-  listContent: { padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing['6xl'] },
+  listContent: { padding: spacing.xl, gap: spacing.sm, paddingBottom: spacing.xl },
   row: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
     borderRadius: borderRadius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.md,

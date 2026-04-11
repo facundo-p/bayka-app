@@ -1,5 +1,4 @@
 import { View, Text, FlatList, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import ScreenHeader from '../components/ScreenHeader';
@@ -8,6 +7,7 @@ import FilterCards from '../components/FilterCards';
 import DownloadProgressModal from '../components/DownloadProgressModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import { useCatalog } from '../hooks/useCatalog';
 
 export default function CatalogScreen() {
@@ -103,7 +103,7 @@ export default function CatalogScreen() {
   const downloadButtonLabel = selectedIds.size >= 1 ? `Descargar ${selectedIds.size} seleccionada(s)` : 'Descargar seleccion';
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenContainer>
       <ScreenHeader title="Catalogo de plantaciones" />
       {renderContent()}
       <View style={styles.bottomBar}>
@@ -125,18 +125,17 @@ export default function CatalogScreen() {
         onDismiss={handleDismiss}
       />
       <ConfirmModal {...confirmProps} />
-    </SafeAreaView>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.md, paddingHorizontal: spacing.xxl },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted, textAlign: 'center' },
   emptySubtext: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textSecondary, textAlign: 'center' },
   retryButton: { marginTop: spacing.md, backgroundColor: colors.primary, paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, borderRadius: borderRadius.lg },
   retryText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.semiBold },
-  listContent: { paddingHorizontal: spacing.xxl, paddingTop: spacing.xl, gap: spacing.xl, paddingBottom: 96 },
+  listContent: { paddingHorizontal: spacing.xxl, paddingTop: spacing.xl, gap: spacing.xl, paddingBottom: spacing['5xl'] },
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, paddingHorizontal: spacing.xxl, paddingVertical: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   selectionText: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textSecondary },
   downloadButton: { paddingHorizontal: spacing.xxl, paddingVertical: spacing.xl, borderRadius: borderRadius.lg },

@@ -1,12 +1,12 @@
 /**
- * ScreenContainer — consistent bottom safe area wrapper for all screens.
+ * ScreenContainer — consistent container wrapper for all screens.
  *
- * Handles the system navigation bar / home indicator inset so individual
- * screens don't need to worry about it. Optionally renders with the
- * textured background used on dashboard-style screens.
+ * All screens in this app live inside the Tabs navigator, whose tab bar
+ * already handles the bottom safe-area inset. This component therefore
+ * does NOT add paddingBottom — it only provides a consistent flex container
+ * and optionally the textured background used on dashboard-style screens.
  */
 import { View, ViewStyle, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import TexturedBackground from './TexturedBackground';
 import { colors } from '../theme';
 
@@ -19,10 +19,8 @@ type Props = {
 };
 
 export default function ScreenContainer({ children, withTexture = false, style }: Props) {
-  const insets = useSafeAreaInsets();
-
   const content = (
-    <View style={[styles.container, { paddingBottom: insets.bottom }, style]}>
+    <View style={[styles.container, style]}>
       {children}
     </View>
   );

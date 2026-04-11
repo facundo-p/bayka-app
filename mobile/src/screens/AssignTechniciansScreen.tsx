@@ -17,11 +17,11 @@ import {
   Switch,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import ScreenContainer from '../components/ScreenContainer';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAssignTechnicians } from '../hooks/useAssignTechnicians';
 
@@ -34,7 +34,6 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
   const params = useLocalSearchParams<{ plantacionId: string }>();
   const plantacionId = plantacionIdProp ?? params.plantacionId;
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const {
     items,
@@ -72,7 +71,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ScreenContainer>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}
@@ -125,12 +124,11 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
       </View>
 
       <ConfirmModal {...confirmProps} />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, backgroundColor: colors.background },
   loadingText: { fontSize: fontSize.base, color: colors.textMuted },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, padding: spacing['4xl'], backgroundColor: colors.background },
@@ -138,7 +136,7 @@ const styles = StyleSheet.create({
   errorText: { fontSize: fontSize.base, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
   retryButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingVertical: spacing.xl, paddingHorizontal: spacing['4xl'], marginTop: spacing.md },
   retryButtonText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.semiBold },
-  listContent: { padding: spacing.xxl, paddingBottom: spacing['5xl'] },
+  listContent: { padding: spacing.xxl, paddingBottom: spacing.xxl },
   listHeader: { fontSize: fontSize.sm, color: colors.textMuted, marginBottom: spacing.xxl, fontFamily: fonts.medium },
   emptyContainer: { alignItems: 'center', gap: spacing.xl, paddingTop: spacing['5xl'] },
   emptyText: { fontSize: fontSize.base, color: colors.textMuted, textAlign: 'center' },

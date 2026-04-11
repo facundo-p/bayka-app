@@ -23,7 +23,7 @@ import ReadOnlyTreeView from '../components/ReadOnlyTreeView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import ScreenContainer from '../components/ScreenContainer';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
 import { useConfirm } from '../hooks/useConfirm';
@@ -39,7 +39,6 @@ export default function TreeRegistrationScreen() {
 
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const userId = useCurrentUserId() ?? '';
   const confirm = useConfirm();
   const { pickPhoto } = usePhotoCapture(confirm.show);
@@ -121,7 +120,7 @@ export default function TreeRegistrationScreen() {
     sortedTrees, lastThree, finalizing, deleting, deletingTreeId } = treeReg;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+    <ScreenContainer>
       <TreeRegistrationHeader
         title={subgrupoNombre ?? subgrupoCodigo ?? ''}
         subtitle={treeReg.subgroup
@@ -257,12 +256,11 @@ export default function TreeRegistrationScreen() {
           setShowReorderModal(false);
         }}
       />
-    </View>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   viewAllRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.plantationBg,
