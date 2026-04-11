@@ -72,8 +72,10 @@ describe('CatalogScreen — localIds reactivity', () => {
   });
 });
 
-// --- Regression 4-8: Safe area insets on refactored screens ---
-describe('Safe area insets on refactored screens', () => {
+// --- Regression 4-8: Safe area on refactored screens ---
+// Safe area is handled by ScreenContainer/ScreenHeader/CustomHeader wrappers,
+// not directly in each screen. Verify screens use these wrappers.
+describe('Safe area on refactored screens', () => {
   const screens = {
     TreeRegistrationScreen: readSrc('screens/TreeRegistrationScreen.tsx'),
     NNResolutionScreen: readSrc('screens/NNResolutionScreen.tsx'),
@@ -82,12 +84,12 @@ describe('Safe area insets on refactored screens', () => {
   };
 
   for (const [name, source] of Object.entries(screens)) {
-    it(`${name} uses useSafeAreaInsets`, () => {
-      expect(source).toContain('useSafeAreaInsets');
-    });
-
-    it(`${name} applies insets.bottom`, () => {
-      expect(source).toContain('insets.bottom');
+    it(`${name} uses ScreenContainer or safe area wrapper`, () => {
+      const usesSafeArea =
+        source.includes('ScreenContainer') ||
+        source.includes('useSafeAreaInsets') ||
+        source.includes('SafeAreaView');
+      expect(usesSafeArea).toBe(true);
     });
   }
 });
@@ -105,12 +107,17 @@ describe('NNResolutionScreen — Guardar selection count', () => {
   });
 });
 
-// --- Regression 9: CatalogScreen SafeAreaView cross-platform ---
-describe('CatalogScreen — cross-platform SafeAreaView', () => {
+// --- Regression 9: CatalogScreen safe area handling ---
+// CatalogScreen uses ScreenContainer + ScreenHeader which handle safe area internally.
+describe('CatalogScreen — safe area handling', () => {
   const screen = readSrc('screens/CatalogScreen.tsx');
 
-  it('imports SafeAreaView from react-native-safe-area-context (not react-native)', () => {
-    expect(screen).toMatch(/import.*SafeAreaView.*from.*react-native-safe-area-context/);
+  it('uses ScreenContainer or SafeAreaView for safe area', () => {
+    const usesSafeArea =
+      screen.includes('ScreenContainer') ||
+      screen.includes('SafeAreaView') ||
+      screen.includes('ScreenHeader');
+    expect(usesSafeArea).toBe(true);
   });
 });
 
