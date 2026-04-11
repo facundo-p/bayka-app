@@ -211,11 +211,12 @@ Plans:
   4. Admin sees "+" create button in PlantacionesScreen header
   5. Admin tab layout reduced to 2 tabs (Plantaciones, Perfil) — Gestion tab removed
   6. AdminScreen.tsx and admin.tsx route wrapper deleted from codebase
-**Plans:** 2 plans
+**Plans:** 3 plans
 
 Plans:
 - [ ] 11-01-PLAN.md — Refactor usePlantationAdmin (strip accordion state, add fetchPlantationMeta), create AdminBottomSheet component, enrich PlantationCard with 3-slot sidebar strip
-- [ ] 11-02-PLAN.md — Wire into PlantacionesScreen (admin actions, bottom sheet, header button, modals), remove Gestion tab + delete AdminScreen files, visual checkpoint
+- [ ] 11-02-PLAN.md — Unit tests for fetchPlantationMeta, rendering tests for AdminBottomSheet (estado-specific actions, disabled states), rendering tests for PlantationCard sidebar strip (admin vs tecnico)
+- [ ] 11-03-PLAN.md — Wire into PlantacionesScreen (admin actions, bottom sheet, header button, modals), remove Gestion tab + delete AdminScreen files, visual checkpoint
 
 ## Progress
 
@@ -234,4 +235,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
 | 10. Plantacion offline + sync especies | 2/2 | Complete    | 2026-04-08 |
 | 9. Testing Strategy | 1/6 | In Progress|  |
-| 11. Unificar pantallas | 0/2 | Planned |  |
+| 11. Unificar pantallas | 0/3 | Planned |  |
