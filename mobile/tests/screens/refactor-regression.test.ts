@@ -11,10 +11,10 @@ function readSrc(relativePath: string): string {
   return fs.readFileSync(path.resolve(__dirname, '../../src', relativePath), 'utf-8');
 }
 
-// --- Regression 1: AdminScreen pendingEdit workflow ---
-describe('AdminScreen — pendingEdit workflow', () => {
+// --- Regression 1: pendingEdit workflow (moved from AdminScreen to AdminBottomSheet in Phase 11) ---
+describe('AdminBottomSheet — pendingEdit workflow', () => {
   const hook = readSrc('hooks/usePlantationAdmin.ts');
-  const screen = readSrc('screens/AdminScreen.tsx');
+  const sheet = readSrc('components/AdminBottomSheet.tsx');
 
   it('hook imports discardPlantationEdit', () => {
     expect(hook).toContain('discardPlantationEdit');
@@ -28,18 +28,17 @@ describe('AdminScreen — pendingEdit workflow', () => {
     expect(hook).toMatch(/pendingEdit/);
   });
 
-  it('screen destructures handleDiscardEdit', () => {
-    expect(screen).toContain('handleDiscardEdit');
+  it('sheet accepts onDiscardEdit prop', () => {
+    expect(sheet).toContain('onDiscardEdit');
   });
 
-  it('screen renders pending edit badge', () => {
-    expect(screen).toContain('pendingEditBadge');
-    expect(screen).toContain('Pendiente de sync');
-    expect(screen).toContain('Cambios sin sincronizar');
+  it('sheet renders pending sync/edit badge', () => {
+    expect(sheet).toContain('Pendiente de sync');
+    expect(sheet).toContain('Cambios sin sincronizar');
   });
 
-  it('screen disables Finalize when pendingSync or pendingEdit', () => {
-    expect(screen).toMatch(/pendingSync.*pendingEdit|pendingEdit.*pendingSync/);
+  it('sheet disables Finalize when pendingSync or pendingEdit', () => {
+    expect(sheet).toMatch(/pendingSync.*pendingEdit|pendingEdit.*pendingSync/);
   });
 });
 
