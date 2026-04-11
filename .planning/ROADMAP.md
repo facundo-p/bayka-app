@@ -158,9 +158,9 @@ Plans:
 - [x] 08-01-PLAN.md — OfflineAuthService (salted SHA-256 credential cache in SecureStore), TDD with unit tests, expo-crypto mock extension
 - [x] 08-02-PLAN.md — Wire into useAuth (connectivity-aware signIn/signOut), update login.tsx (email-only chips, remove plaintext storage), end-to-end verification (checkpoint)
 
-### Phase 10: Creación de plantación offline + sync catálogo de especies
+### Phase 10: Creacion de plantacion offline + sync catalogo de especies
 
-**Goal:** El admin puede crear una plantación estando offline, cargarle subgrupos y data, y sincronizarla al recuperar conexión. Las especies disponibles se sincronizan desde Supabase al SQLite local durante cada sync regular. La asignación de usuarios a plantaciones sigue siendo online-only. El UUID generado localmente se usa al insertar en Supabase (sin migración de IDs).
+**Goal:** El admin puede crear una plantacion estando offline, cargarle subgrupos y data, y sincronizarla al recuperar conexion. Las especies disponibles se sincronizan desde Supabase al SQLite local durante cada sync regular. La asignacion de usuarios a plantaciones sigue siendo online-only. El UUID generado localmente se usa al insertar en Supabase (sin migracion de IDs).
 **Requirements**: OFPL-01, OFPL-02, OFPL-03, OFPL-04, OFPL-05, OFPL-06, OFPL-07, OFPL-08
 **Depends on:** Phase 8
 **Success Criteria** (what must be TRUE):
@@ -195,14 +195,32 @@ Plans:
 - [x] 09-01-PLAN.md — Test infrastructure: better-sqlite3, integration config, factories, network helper, fix failing tests, GitHub Actions CI
 - [x] 09-02-PLAN.md — Refactor TreeRegistrationScreen: extract useTreeRegistration, useSpeciesOrder, useNNFlow hooks + SpeciesGrid, LastThreeTrees, TreeRegistrationHeader components
 - [x] 09-03-PLAN.md — Refactor AdminScreen, PlantationDetailScreen + fix CLAUDE.md violations in 6 screens: extract 6 hooks
-- [x] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login→signOut→signIn with cached creds)
+- [x] 09-04-PLAN.md — Integration tests: SubGroup lifecycle, sync pipeline, cascade delete, tree registration, role-based access (real SQLite), offline auth full cycle (login->signOut->signIn with cached creds)
 - [x] 09-05-PLAN.md — Unit tests: TreeRepository, PlantationSpeciesRepository, UserSpeciesOrderRepository, PhotoService, useAuth (offline signIn/signOut, cross-instance broadcast, token persistence, timeout fallback), useSync, useTreeRegistration
 - [x] 09-06-PLAN.md — Maestro E2E flows (login offline, register tree, sync subgroup), testIDs, GitHub Actions E2E workflow
+
+### Phase 11: Unificar pantallas: eliminar screen de Gestion e integrar sus acciones en PlantationCard
+
+**Goal:** Eliminar la pantalla de "Gestion" (AdminScreen/tab) e integrar todas sus acciones en la PlantationCard de PlantacionesScreen. Edicion de lugar/periodo accesible a todos los roles via icono en la card. Opciones admin (configurar especies, asignar tecnicos, finalizar, exportar) accesibles via icono de engranaje solo visible para perfil admin. Resultado: una sola pantalla de plantaciones con cards enriquecidas que reemplazan el accordion de gestion.
+**Requirements**: UNIF-01, UNIF-02, UNIF-03, UNIF-04, UNIF-05, UNIF-06
+**Depends on:** Phase 10
+**Success Criteria** (what must be TRUE):
+  1. PlantationCard has a 3-slot right sidebar strip (edit, gear, trash) with role-aware visibility
+  2. Tapping gear opens an AdminBottomSheet with estado-specific actions (activa/finalizada/sincronizada)
+  3. Edit icon allows editing lugar/periodo for activa plantations, shows info for locked estados
+  4. Admin sees "+" create button in PlantacionesScreen header
+  5. Admin tab layout reduced to 2 tabs (Plantaciones, Perfil) — Gestion tab removed
+  6. AdminScreen.tsx and admin.tsx route wrapper deleted from codebase
+**Plans:** 2 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Refactor usePlantationAdmin (strip accordion state, add fetchPlantationMeta), create AdminBottomSheet component, enrich PlantationCard with 3-slot sidebar strip
+- [ ] 11-02-PLAN.md — Wire into PlantacionesScreen (admin actions, bottom sheet, header button, modals), remove Gestion tab + delete AdminScreen files, visual checkpoint
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 10 → 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9 -> 11
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -214,5 +232,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Plantation Catalog + Download | 2/2 | Complete | 2026-04-01 |
 | 7. Eliminar Plantacion Local | 2/2 | Complete | 2026-04-06 |
 | 8. Login Offline | 2/2 | Complete   | 2026-04-06 |
-| 10. Plantación offline + sync especies | 2/2 | Complete    | 2026-04-08 |
+| 10. Plantacion offline + sync especies | 2/2 | Complete    | 2026-04-08 |
 | 9. Testing Strategy | 1/6 | In Progress|  |
+| 11. Unificar pantallas | 0/2 | Planned |  |
