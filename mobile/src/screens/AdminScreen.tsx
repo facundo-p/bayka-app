@@ -6,9 +6,12 @@
  * Plantations as expandable rows — only one expanded at a time.
  * Allows creating new plantations via header "+" button.
  *
+ * NOTE: This screen will be eliminated in Phase 11 Plan 03.
+ * Its accordion/expand/filter logic is now handled locally (removed from usePlantationAdmin).
+ *
  * Covers requirements: PLAN-01, PLAN-02, PLAN-03, PLAN-06
  */
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,7 +31,7 @@ import ScreenHeader from '../components/ScreenHeader';
 import TexturedBackground from '../components/TexturedBackground';
 import AdminPlantationModals from '../components/AdminPlantationModals';
 import type { Plantation } from '../components/PlantationConfigCard';
-import { usePlantationAdmin } from '../hooks/usePlantationAdmin';
+import { usePlantationAdmin, fetchPlantationMeta, type ExpandedMeta } from '../hooks/usePlantationAdmin';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -80,19 +83,12 @@ function ActionItem({
 export default function AdminScreen() {
   const {
     plantationList,
-    filteredList,
-    counts,
-    activeFilter,
-    expandedId,
-    expandedMeta,
     seedModalPlantacionId,
     seedValue,
     setSeedValue,
     seedLoading,
     exportingId,
     confirmProps,
-    handleToggleFilter,
-    handleToggleExpand,
     handleFinalize,
     handleGenerateIds,
     confirmSeedAndGenerate,
@@ -105,10 +101,54 @@ export default function AdminScreen() {
     handleDiscardEdit,
   } = usePlantationAdmin();
 
+  // Local accordion/filter state (removed from hook in Phase 11)
+  const [activeFilter, setActiveFilter] = useState<EstadoFilter>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedMeta, setExpandedMeta] = useState<ExpandedMeta>({ canFinalize: false, idsGenerated: false });
+  const initialExpandDone = useRef(false);
+
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [configSpeciesPlantacionId, setConfigSpeciesPlantacionId] = useState<string | null>(null);
   const [assignTechPlantacionId, setAssignTechPlantacionId] = useState<string | null>(null);
   const [editingPlantation, setEditingPlantation] = useState<Plantation | null>(null);
+
+  // Set initial expanded to most recent plantation
+  useEffect(() => {
+    if (initialExpandDone.current || !plantationList || plantationList.length === 0) return;
+    const sorted = [...plantationList].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    initialExpandDone.current = true;
+    setExpandedId(sorted[0]?.id ?? null);
+  }, [plantationList]);
+
+  // Fetch metadata for expanded plantation
+  useEffect(() => {
+    if (!expandedId) {
+      setExpandedMeta({ canFinalize: false, idsGenerated: false });
+      return;
+    }
+    const item = plantationList?.find(p => p.id === expandedId);
+    if (!item) return;
+
+    let cancelled = false;
+    fetchPlantationMeta(item).then(meta => {
+      if (!cancelled) setExpandedMeta(meta);
+    }).catch(() => { /* ignore */ });
+    return () => { cancelled = true; };
+  }, [expandedId, plantationList]);
+
+  // Derived data
+  const counts = { activa: 0, finalizada: 0 };
+  plantationList?.forEach(p => {
+    if (counts[p.estado as keyof typeof counts] !== undefined) {
+      counts[p.estado as keyof typeof counts]++;
+    }
+  });
+
+  const filteredList = plantationList?.filter(
+    p => !activeFilter || p.estado === activeFilter
+  ) ?? [];
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -122,13 +162,13 @@ export default function AdminScreen() {
 
   const onToggleFilter = useCallback((estado: EstadoFilter) => {
     animateLayout();
-    handleToggleFilter(estado);
-  }, [animateLayout, handleToggleFilter]);
+    setActiveFilter(prev => prev === estado ? null : estado);
+  }, [animateLayout]);
 
   const onToggleExpand = useCallback((id: string) => {
     animateLayout();
-    handleToggleExpand(id);
-  }, [animateLayout, handleToggleExpand]);
+    setExpandedId(prev => prev === id ? null : id);
+  }, [animateLayout]);
 
   async function onAssignTech(plantacionId: string) {
     const ok = await handleAssignTech(plantacionId);
@@ -280,7 +320,7 @@ export default function AdminScreen() {
         exportingId={exportingId}
         configSpeciesPlantacionId={configSpeciesPlantacionId}
         onCloseConfigSpecies={() => setConfigSpeciesPlantacionId(null)}
-        pendingSyncForSpecies={(plantationList as Plantation[] | null)?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
+        pendingSyncForSpecies={plantationList?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
         assignTechPlantacionId={assignTechPlantacionId}
         onCloseAssignTech={() => setAssignTechPlantacionId(null)}
       />
