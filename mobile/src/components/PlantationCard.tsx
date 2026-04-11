@@ -20,6 +20,10 @@ type Props = {
   estado?: string;
   onPress: () => void;
   onDelete?: () => void;
+  // Role-aware action slots
+  isAdmin?: boolean;
+  onEdit?: () => void;
+  onGear?: () => void;
 };
 
 export default function PlantationCard({
@@ -32,6 +36,9 @@ export default function PlantationCard({
   estado,
   onPress,
   onDelete,
+  isAdmin,
+  onEdit,
+  onGear,
 }: Props) {
   const accentColor =
     estado === 'finalizada'
@@ -83,17 +90,46 @@ export default function PlantationCard({
         )}
       </View>
 
-      {/* Delete button */}
-      {onDelete && (
+      {/* Right sidebar strip — 3 action slots */}
+      <View style={styles.strip}>
+        {/* Slot 1: Edit (top) — visible for both roles per D-02 */}
         <Pressable
-          onPress={(e) => { e.stopPropagation(); onDelete(); }}
+          onPress={(e) => { e?.stopPropagation?.(); onEdit?.(); }}
           hitSlop={8}
-          style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}
-          accessibilityLabel="Eliminar plantación del dispositivo"
+          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+          accessibilityLabel="Editar lugar y periodo"
         >
-          <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+          <Ionicons name="create-outline" size={18} color={colors.primary} />
         </Pressable>
-      )}
+
+        {/* Slot 2: Gear (middle) — admin only per D-03, empty placeholder for tecnico per D-04 */}
+        {isAdmin ? (
+          <Pressable
+            onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
+            hitSlop={8}
+            style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+            accessibilityLabel="Acciones de gestion"
+          >
+            <Ionicons name="settings-outline" size={18} color={colors.primary} />
+          </Pressable>
+        ) : (
+          <View style={styles.stripSlot} testID="strip-slot-gear-placeholder" />
+        )}
+
+        {/* Slot 3: Trash (bottom) — existing delete behavior */}
+        {onDelete ? (
+          <Pressable
+            onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
+            hitSlop={8}
+            style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+            accessibilityLabel="Eliminar plantacion del dispositivo"
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+          </Pressable>
+        ) : (
+          <View style={styles.stripSlot} />
+        )}
+      </View>
     </Pressable>
   );
 }
@@ -172,13 +208,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
   },
 
-  deleteButton: {
+  // Right sidebar strip — 3 action slots
+  strip: {
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    backgroundColor: colors.surface,
+    width: SIDEBAR_WIDTH,
+    gap: spacing.md,
   },
-  deleteButtonPressed: {
-    opacity: 0.5,
+  stripSlot: {
+    height: 36,
+    width: SIDEBAR_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

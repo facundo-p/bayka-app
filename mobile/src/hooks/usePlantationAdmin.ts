@@ -4,7 +4,7 @@
  * Encapsulates plantation list, finalization, ID generation, and export.
  * Screens import this hook and pass callbacks to components.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
@@ -27,12 +27,32 @@ import type { Plantation } from '../components/PlantationConfigCard';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type EstadoFilter = 'activa' | 'finalizada' | null;
-
 export type ExpandedMeta = {
   canFinalize: boolean;
   idsGenerated: boolean;
 };
+
+// ─── Standalone utility ─────────────────────────────────────────────────────
+
+export async function fetchPlantationMeta(plantation: Plantation): Promise<ExpandedMeta> {
+  let canFinalize = false;
+  let idsGenerated = false;
+  if (plantation.estado === 'activa') {
+    try {
+      const gate = await checkFinalizationGate(plantation.id);
+      canFinalize = gate.canFinalize;
+    } catch { /* ignore */ }
+  }
+  if (plantation.estado === 'finalizada') {
+    try {
+      idsGenerated = await hasIdsGenerated(plantation.id);
+    } catch { /* ignore */ }
+  }
+  if (plantation.estado === 'sincronizada') {
+    idsGenerated = true;
+  }
+  return { canFinalize, idsGenerated };
+}
 
 export function usePlantationAdmin() {
   const userId = useCurrentUserId();
@@ -46,85 +66,12 @@ export function usePlantationAdmin() {
   const [seedLoading, setSeedLoading] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
-  const [activeFilter, setActiveFilter] = useState<EstadoFilter>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [expandedMeta, setExpandedMeta] = useState<ExpandedMeta>({ canFinalize: false, idsGenerated: false });
-  const initialExpandDone = useRef(false);
-
   const { data: plantationList } = useLiveData(
     () => getPlantationsForRole(true, userId),
     [userId]
   );
 
-  // Set initial expanded to most recent plantation
-  useEffect(() => {
-    if (initialExpandDone.current || !plantationList || plantationList.length === 0) return;
-    const sorted = [...plantationList].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-    initialExpandDone.current = true;
-    setExpandedId(sorted[0]?.id ?? null);
-  }, [plantationList]);
-
-  // Fetch metadata for expanded plantation
-  useEffect(() => {
-    if (!expandedId) {
-      setExpandedMeta({ canFinalize: false, idsGenerated: false });
-      return;
-    }
-    const item = (plantationList as Plantation[] | null)?.find(p => p.id === expandedId);
-    if (!item) return;
-
-    let cancelled = false;
-    const fetchMeta = async () => {
-      let canFinalize = false;
-      let idsGen = false;
-
-      if (item.estado === 'activa') {
-        try {
-          const gate = await checkFinalizationGate(item.id);
-          canFinalize = gate.canFinalize;
-        } catch { /* ignore */ }
-      }
-      if (item.estado === 'finalizada') {
-        try {
-          idsGen = await hasIdsGenerated(item.id);
-        } catch { /* ignore */ }
-      }
-      if (item.estado === 'sincronizada') {
-        idsGen = true;
-      }
-
-      if (!cancelled) {
-        setExpandedMeta({ canFinalize, idsGenerated: idsGen });
-      }
-    };
-    fetchMeta();
-    return () => { cancelled = true; };
-  }, [expandedId, plantationList]);
-
-  // ─── Derived data ─────────────────────────────────────────────────────────
-
-  const counts = { activa: 0, finalizada: 0 };
-  (plantationList as Plantation[] | null)?.forEach(p => {
-    if (counts[p.estado as keyof typeof counts] !== undefined) {
-      counts[p.estado as keyof typeof counts]++;
-    }
-  });
-
-  const filteredList = (plantationList as Plantation[] | null)?.filter(
-    p => !activeFilter || p.estado === activeFilter
-  ) ?? [];
-
   // ─── Handlers ─────────────────────────────────────────────────────────────
-
-  const handleToggleFilter = useCallback((estado: EstadoFilter) => {
-    setActiveFilter(prev => prev === estado ? null : estado);
-  }, []);
-
-  const handleToggleExpand = useCallback((id: string) => {
-    setExpandedId(prev => prev === id ? null : id);
-  }, []);
 
   async function handleFinalize(plantacionId: string) {
     if (finalizing) return;
@@ -301,11 +248,6 @@ export function usePlantationAdmin() {
   return {
     // State
     plantationList: plantationList as Plantation[] | null,
-    filteredList,
-    counts,
-    activeFilter,
-    expandedId,
-    expandedMeta,
     seedModalPlantacionId,
     seedValue,
     setSeedValue,
@@ -313,8 +255,6 @@ export function usePlantationAdmin() {
     exportingId,
     confirmProps,
     // Actions
-    handleToggleFilter,
-    handleToggleExpand,
     handleFinalize,
     handleGenerateIds,
     confirmSeedAndGenerate,
