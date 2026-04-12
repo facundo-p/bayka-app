@@ -1,24 +1,42 @@
 import { useState, useCallback } from 'react';
-import { syncPlantation, pullFromServer, SyncSubGroupResult, SyncProgress } from '../services/SyncService';
+import {
+  syncPlantation,
+  pullFromServer,
+  uploadPendingPhotos,
+  downloadPhotosForPlantation,
+  SyncSubGroupResult,
+  SyncProgress,
+  PhotoSyncProgress,
+} from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 import { supabase } from '../supabase/client';
 
-export type SyncState = 'idle' | 'syncing' | 'pulling' | 'done';
+export type SyncState = 'idle' | 'syncing' | 'pulling' | 'uploading-photos' | 'downloading-photos' | 'done';
 
 export function useSync(plantacionId: string) {
   const [state, setState] = useState<SyncState>('idle');
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [results, setResults] = useState<SyncSubGroupResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
+  const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
+  const [photoResult, setPhotoResult] = useState<{ uploaded?: number; failed?: number; downloaded?: number } | null>(null);
 
-  const startSync = useCallback(async () => {
+  const startSync = useCallback(async (incluirFotos: boolean = true) => {
     setState('syncing');
     setProgress(null);
     setResults([]);
     setPullSuccess(null);
+    setPhotoProgress(null);
+    setPhotoResult(null);
     try {
       const res = await syncPlantation(plantacionId, setProgress);
       setResults(res);
+
+      if (incluirFotos) {
+        setState('uploading-photos');
+        const photoRes = await uploadPendingPhotos(plantacionId, setPhotoProgress);
+        setPhotoResult({ uploaded: photoRes.uploaded, failed: photoRes.failed });
+      }
     } catch (err) {
       console.error('[Sync] Sync failed:', err);
     } finally {
@@ -27,13 +45,21 @@ export function useSync(plantacionId: string) {
     }
   }, [plantacionId]);
 
-  const startPull = useCallback(async () => {
+  const startPull = useCallback(async (incluirFotos: boolean = true) => {
     setState('pulling');
     setPullSuccess(null);
+    setPhotoProgress(null);
+    setPhotoResult(null);
     try {
       await supabase.auth.getSession();
       await pullFromServer(plantacionId);
       setPullSuccess(true);
+
+      if (incluirFotos) {
+        setState('downloading-photos');
+        const photoRes = await downloadPhotosForPlantation(plantacionId, setPhotoProgress);
+        setPhotoResult({ downloaded: photoRes.downloaded, failed: photoRes.failed });
+      }
     } catch (err) {
       console.error('[Sync] Pull failed:', err);
       setPullSuccess(false);
@@ -48,6 +74,8 @@ export function useSync(plantacionId: string) {
     setProgress(null);
     setResults([]);
     setPullSuccess(null);
+    setPhotoProgress(null);
+    setPhotoResult(null);
   }, []);
 
   const hasFailures = results.some((r) => !r.success);
@@ -65,5 +93,7 @@ export function useSync(plantacionId: string) {
     hasFailures,
     successCount,
     failureCount,
+    photoProgress,
+    photoResult,
   };
 }

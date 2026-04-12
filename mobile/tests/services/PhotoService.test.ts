@@ -1,5 +1,5 @@
 // Tests for PhotoService — unit tests using mocked expo-file-system (new API) and expo-image-picker
-// Covers: launchCamera, launchGallery (permission granted/denied, canceled, copyToDocument)
+// Covers: launchCamera, launchGallery (permission granted/denied, canceled, resizeAndSaveToDocument)
 
 // Mock expo-image-picker
 jest.mock('expo-image-picker', () => ({
@@ -8,6 +8,12 @@ jest.mock('expo-image-picker', () => ({
   launchCameraAsync: jest.fn(),
   launchImageLibraryAsync: jest.fn(),
   MediaTypeOptions: { Images: 'Images' },
+}));
+
+// Mock expo-image-manipulator
+jest.mock('expo-image-manipulator', () => ({
+  manipulateAsync: jest.fn().mockResolvedValue({ uri: 'file:///tmp/resized.jpg' }),
+  SaveFormat: { JPEG: 'jpeg' },
 }));
 
 // Shared state object — referenced inside jest.mock factory via closure.
@@ -45,6 +51,7 @@ jest.mock('expo-file-system', () => {
 });
 
 import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { launchCamera, launchGallery } from '../../src/services/PhotoService';
 
 describe('PhotoService', () => {
@@ -53,6 +60,8 @@ describe('PhotoService', () => {
     mockState.fileCopyCalled = 0;
     mockState.dirCreateCalled = 0;
     mockState.dirExists = true;
+    // Re-apply default manipulateAsync mock after clearAllMocks
+    (ImageManipulator.manipulateAsync as jest.Mock).mockResolvedValue({ uri: 'file:///tmp/resized.jpg' });
   });
 
   describe('launchCamera', () => {
@@ -74,11 +83,11 @@ describe('PhotoService', () => {
       expect(result).toBeNull();
     });
 
-    it('returns permanent URI after copying temp photo to document directory', async () => {
+    it('returns permanent URI after resizing and saving to document directory', async () => {
       (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
       (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
         canceled: false,
-        assets: [{ uri: 'file://temp/photo_temp.jpg' }],
+        assets: [{ uri: 'file://temp/photo_temp.jpg', width: 1920, height: 1080 }],
       });
 
       const result = await launchCamera();
@@ -92,13 +101,59 @@ describe('PhotoService', () => {
       (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
       (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
         canceled: false,
-        assets: [{ uri: 'file://temp/photo_temp.jpg' }],
+        assets: [{ uri: 'file://temp/photo_temp.jpg', width: 1920, height: 1080 }],
       });
       mockState.dirExists = false;
 
       await launchCamera();
 
       expect(mockState.dirCreateCalled).toBe(1);
+    });
+
+    it('calls manipulateAsync with width:1600 for landscape photo', async () => {
+      (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file:///tmp/photo.jpg', width: 3200, height: 2400 }],
+      });
+
+      await launchCamera();
+
+      expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+        'file:///tmp/photo.jpg',
+        [{ resize: { width: 1600 } }],
+        expect.objectContaining({ format: ImageManipulator.SaveFormat.JPEG })
+      );
+    });
+
+    it('calls manipulateAsync with height:1600 for portrait photo', async () => {
+      (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file:///tmp/photo.jpg', width: 2400, height: 3200 }],
+      });
+
+      await launchCamera();
+
+      expect(ImageManipulator.manipulateAsync).toHaveBeenCalledWith(
+        'file:///tmp/photo.jpg',
+        [{ resize: { height: 1600 } }],
+        expect.objectContaining({ format: ImageManipulator.SaveFormat.JPEG })
+      );
+    });
+
+    it('uses quality: 1 in picker options', async () => {
+      (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+      (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
+        canceled: false,
+        assets: [{ uri: 'file:///tmp/photo.jpg', width: 1920, height: 1080 }],
+      });
+
+      await launchCamera();
+
+      expect(ImagePicker.launchCameraAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ quality: 1 })
+      );
     });
   });
 
@@ -121,11 +176,11 @@ describe('PhotoService', () => {
       expect(result).toBeNull();
     });
 
-    it('returns permanent URI after copying selected gallery photo to document directory', async () => {
+    it('returns permanent URI after resizing and saving selected gallery photo', async () => {
       (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
       (ImagePicker.launchImageLibraryAsync as jest.Mock).mockResolvedValue({
         canceled: false,
-        assets: [{ uri: 'file://gallery/photo_gallery.jpg' }],
+        assets: [{ uri: 'file://gallery/photo_gallery.jpg', width: 1920, height: 1080 }],
       });
 
       const result = await launchGallery();

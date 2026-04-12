@@ -1,11 +1,14 @@
 // Tests for SyncService — implemented in Plan 03-02
-// Covers: SYNC-01, SYNC-04, SYNC-05, SYNC-06
+// Covers: SYNC-01, SYNC-04, SYNC-05, SYNC-06, photo upload/download
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     rpc: jest.fn(),
     from: jest.fn(),
     auth: { getSession: jest.fn(), getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+    storage: {
+      from: jest.fn(),
+    },
   },
   isSupabaseConfigured: true,
 }));
@@ -14,6 +17,7 @@ jest.mock('../../src/database/client', () => ({
   db: {
     select: jest.fn(),
     insert: jest.fn(),
+    update: jest.fn(),
   },
 }));
 
@@ -26,9 +30,42 @@ jest.mock('../../src/repositories/SubGroupRepository', () => ({
   getSyncableSubGroups: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/TreeRepository', () => ({
+  getTreesWithPendingPhotos: jest.fn(),
+  markPhotoSynced: jest.fn(),
+}));
+
+jest.mock('expo-file-system', () => {
+  const mockArrayBuffer = jest.fn().mockResolvedValue(new ArrayBuffer(8));
+  const mockDownloadFileAsync = jest.fn().mockResolvedValue(undefined);
+
+  function MockFile(this: any, pathOrDir: any, name?: string) {
+    this.uri = name
+      ? `file://document/photos/${name}`
+      : (typeof pathOrDir === 'string' ? pathOrDir : 'file://document/photos/photo.jpg');
+    this.arrayBuffer = mockArrayBuffer;
+  }
+  (MockFile as any).downloadFileAsync = mockDownloadFileAsync;
+
+  function MockDirectory(this: any, _base: string, _name?: string) {
+    Object.defineProperty(this, 'exists', { get: () => true });
+    this.create = jest.fn();
+  }
+
+  return {
+    File: MockFile,
+    Directory: MockDirectory,
+    Paths: { document: 'file://document' },
+    _mockArrayBuffer: mockArrayBuffer,
+    _mockDownloadFileAsync: mockDownloadFileAsync,
+  };
+});
+
 import {
   syncPlantation,
   uploadSubGroup,
+  uploadPendingPhotos,
+  downloadPhotosForPlantation,
   getErrorMessage,
   SyncSubGroupResult,
   SyncProgress,
@@ -37,6 +74,7 @@ import {
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { markAsSincronizada, getSyncableSubGroups } from '../../src/repositories/SubGroupRepository';
+import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
@@ -44,6 +82,8 @@ const mockGetFinalizadaSubGroups = getSyncableSubGroups as jest.Mock;
 const mockMarkAsSincronizada = markAsSincronizada as jest.Mock;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockDb = db as jest.Mocked<typeof db>;
+const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
+const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 
 const makeSg = (id: string, nombre = 'Línea A') => ({
   id,
@@ -81,6 +121,10 @@ describe('SyncService', () => {
     // Default: no pending subgroups
     mockGetFinalizadaSubGroups.mockResolvedValue([]);
 
+    // Default: no pending photos
+    mockGetTreesWithPendingPhotos.mockResolvedValue([]);
+    mockMarkPhotoSynced.mockResolvedValue(undefined);
+
     // Default: empty trees select
     (mockDb.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
@@ -93,6 +137,9 @@ describe('SyncService', () => {
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockResolvedValue({ data: [], error: null }),
       }),
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockResolvedValue({ error: null }),
+      }),
     });
 
     // Default: db.insert chain for upsert
@@ -100,6 +147,19 @@ describe('SyncService', () => {
       values: jest.fn().mockReturnValue({
         onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
       }),
+    });
+
+    // Default: db.update chain
+    (mockDb.update as jest.Mock).mockReturnValue({
+      set: jest.fn().mockReturnValue({
+        where: jest.fn().mockResolvedValue(undefined),
+      }),
+    });
+
+    // Default: supabase.storage chain
+    (mockSupabase.storage.from as jest.Mock).mockReturnValue({
+      upload: jest.fn().mockResolvedValue({ error: null }),
+      createSignedUrl: jest.fn().mockResolvedValue({ data: { signedUrl: 'https://example.com/photo.jpg' }, error: null }),
     });
   });
 
@@ -284,6 +344,143 @@ describe('SyncService', () => {
     it('Test 8: NETWORK returns Spanish message containing "conexion"', () => {
       const msg = getErrorMessage('NETWORK');
       expect(msg).toMatch(/conexion/i);
+    });
+  });
+
+  describe('uploadPendingPhotos — photo upload (IMG-03)', () => {
+    it('Test 9: uploads each pending photo and marks synced', async () => {
+      const pending = [
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', subgrupoId: 'sg-1', plantacionId: 'plantation-1' },
+        { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', subgrupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ];
+      mockGetTreesWithPendingPhotos.mockResolvedValue(pending);
+
+      const storageChain = {
+        upload: jest.fn().mockResolvedValue({ error: null }),
+        createSignedUrl: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: null }),
+        }),
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      });
+
+      const result = await uploadPendingPhotos('plantation-1');
+
+      expect(storageChain.upload).toHaveBeenCalledTimes(2);
+      expect(mockMarkPhotoSynced).toHaveBeenCalledTimes(2);
+      expect(result).toEqual({ uploaded: 2, failed: 0 });
+    });
+
+    it('Test 10: continues on single upload failure — returns { uploaded: 1, failed: 1 }', async () => {
+      const pending = [
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', subgrupoId: 'sg-1', plantacionId: 'plantation-1' },
+        { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', subgrupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ];
+      mockGetTreesWithPendingPhotos.mockResolvedValue(pending);
+
+      const storageChain = {
+        upload: jest.fn()
+          .mockResolvedValueOnce({ error: { message: 'Upload failed' } })
+          .mockResolvedValueOnce({ error: null }),
+        createSignedUrl: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: null }),
+        }),
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      });
+
+      const result = await uploadPendingPhotos('plantation-1');
+
+      expect(result).toEqual({ uploaded: 1, failed: 1 });
+    });
+
+    it('Test 11: returns { uploaded: 0, failed: 0 } when no pending photos', async () => {
+      mockGetTreesWithPendingPhotos.mockResolvedValue([]);
+
+      const result = await uploadPendingPhotos('plantation-1');
+
+      expect(result).toEqual({ uploaded: 0, failed: 0 });
+      expect(mockSupabase.storage.from).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('downloadPhotosForPlantation — photo download (IMG-04)', () => {
+    it('Test 12: downloads remote photos using signed URLs', async () => {
+      // Mock db.select for subgroups query
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ id: 'sg-1' }]),
+        }),
+      }).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([
+            { id: 'tree-1', fotoUrl: 'plantations/p-1/trees/tree-1.jpg', subgrupoId: 'sg-1' },
+          ]),
+        }),
+      });
+
+      const storageChain = {
+        upload: jest.fn(),
+        createSignedUrl: jest.fn().mockResolvedValue({
+          data: { signedUrl: 'https://example.com/photo.jpg' },
+          error: null,
+        }),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+
+      const result = await downloadPhotosForPlantation('plantation-1');
+
+      expect(storageChain.createSignedUrl).toHaveBeenCalledTimes(1);
+      expect(result.downloaded).toBe(1);
+      expect(result.failed).toBe(0);
+    });
+
+    it('Test 13: skips trees with local file:// fotoUrl', async () => {
+      // Mock db.select for subgroups then trees
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ id: 'sg-1' }]),
+        }),
+      }).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([
+            { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', subgrupoId: 'sg-1' },
+          ]),
+        }),
+      });
+
+      const storageChain = {
+        upload: jest.fn(),
+        createSignedUrl: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+
+      const result = await downloadPhotosForPlantation('plantation-1');
+
+      expect(storageChain.createSignedUrl).not.toHaveBeenCalled();
+      expect(result).toEqual({ downloaded: 0, failed: 0 });
+    });
+
+    it('Test 14: returns { downloaded: 0, failed: 0 } when plantation has no subgroups', async () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([]),
+        }),
+      });
+
+      const result = await downloadPhotosForPlantation('plantation-1');
+
+      expect(result).toEqual({ downloaded: 0, failed: 0 });
     });
   });
 });
