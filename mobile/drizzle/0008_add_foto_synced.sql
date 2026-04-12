@@ -1,1 +1,1 @@
-ALTER TABLE `trees` ADD `foto_synced` integer DEFAULT false NOT NULL;
+ALTER TABLE `trees` ADD `foto_synced` integer DEFAULT 0 NOT NULL;
