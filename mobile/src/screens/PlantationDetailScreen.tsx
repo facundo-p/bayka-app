@@ -60,7 +60,7 @@ export default function PlantationDetailScreen() {
   } = usePlantationDetail(pid);
 
   const { syncableCount, blockedByNN } = usePendingSyncCount(plantacionId);
-  const { state: syncState, progress, results, startSync, startPull, pullSuccess, reset: resetSync, successCount, failureCount } = useSync(pid);
+  const { state: syncState, progress, results, startSync, startPull, pullSuccess, reset: resetSync, successCount, failureCount, photoProgress, photoResult } = useSync(pid);
 
   const subgroupFilterConfigs = [
     { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
@@ -121,8 +121,8 @@ export default function PlantationDetailScreen() {
         isFinalizada={isFinalizada}
         subgroupFilter={subgroupFilter}
         subgroupFilterConfigs={subgroupFilterConfigs as any}
-        onStartPull={startPull}
-        onStartSync={() => showConfirmDialog(confirmShow, 'Sincronizar', `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`, 'Sincronizar', startSync, { icon: 'cloud-upload-outline', iconColor: colors.info })}
+        onStartPull={(incluirFotos: boolean) => startPull(incluirFotos)}
+        onStartSync={(incluirFotos: boolean) => showConfirmDialog(confirmShow, 'Sincronizar', `Se van a sincronizar ${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}. Necesitas conexión a internet.`, 'Sincronizar', () => startSync(incluirFotos), { icon: 'cloud-upload-outline', iconColor: colors.info })}
         onResolveAllNN={() => router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any)}
         onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
       />
@@ -147,7 +147,7 @@ export default function PlantationDetailScreen() {
         </View>
       )}
 
-      <SyncProgressModal state={syncState} progress={progress} results={results} successCount={successCount} failureCount={failureCount} pullSuccess={pullSuccess} onDismiss={resetSync} />
+      <SyncProgressModal state={syncState} progress={progress} results={results} successCount={successCount} failureCount={failureCount} pullSuccess={pullSuccess} photoProgress={photoProgress} photoResult={photoResult} onDismiss={resetSync} />
       <ConfirmModal {...confirmProps} />
 
       <Modal visible={!!editingSubGroup} animationType="slide" transparent onRequestClose={() => setEditingSubGroup(null)}>

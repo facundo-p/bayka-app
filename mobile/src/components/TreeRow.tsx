@@ -1,4 +1,5 @@
 import { Pressable, Text, View, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
@@ -6,12 +7,13 @@ interface Props {
   especieCodigo: string | null;
   subId: string;
   fotoUrl?: string | null;
+  fotoSynced?: boolean;
   isLast: boolean;
   onDelete?: () => void;
   onAttachPhoto?: () => void;
 }
 
-export default function TreeRow({ posicion, especieCodigo, subId, fotoUrl, isLast, onDelete, onAttachPhoto }: Props) {
+export default function TreeRow({ posicion, especieCodigo, subId, fotoUrl, fotoSynced, isLast, onDelete, onAttachPhoto }: Props) {
   const displayCode = especieCodigo ?? 'N/N';
 
   return (
@@ -20,8 +22,29 @@ export default function TreeRow({ posicion, especieCodigo, subId, fotoUrl, isLas
       <Text style={styles.code}>{displayCode}</Text>
       <Text style={styles.subId} numberOfLines={1}>{subId}</Text>
       {onAttachPhoto && (
-        <Pressable onPress={onAttachPhoto} style={styles.photoButton} hitSlop={12}>
-          <Text style={styles.photoIcon}>{fotoUrl ? '🖼' : '📷'}</Text>
+        <Pressable
+          onPress={onAttachPhoto}
+          style={styles.photoButton}
+          hitSlop={12}
+          accessibilityLabel={
+            !fotoUrl ? 'Sin foto' :
+            fotoSynced ? 'Foto sincronizada' :
+            'Foto pendiente de subida'
+          }
+        >
+          <View>
+            <Ionicons
+              name={fotoUrl ? 'image' : 'image-outline'}
+              size={18}
+              color={colors.primaryAccent}
+            />
+            {fotoUrl && !fotoSynced && (
+              <View style={[styles.syncDot, { backgroundColor: colors.stateFinalizada }]} />
+            )}
+            {fotoUrl && fotoSynced && (
+              <View style={[styles.syncDot, { backgroundColor: colors.statSynced }]} />
+            )}
+          </View>
         </Pressable>
       )}
       {isLast && onDelete && (
@@ -52,7 +75,14 @@ const styles = StyleSheet.create({
   code: { fontSize: fontSize.xl, fontFamily: fonts.semiBold, color: colors.primary, minWidth: 48 },
   subId: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textMuted, flex: 1 },
   photoButton: { padding: spacing.xs },
-  photoIcon: { fontSize: fontSize.xl },
+  syncDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   undoButton: { paddingHorizontal: spacing.md, paddingVertical: spacing.xs, backgroundColor: colors.dangerBg, borderRadius: borderRadius.sm },
   undoText: { fontSize: fontSize.sm, color: colors.danger, fontFamily: fonts.semiBold },
 });
