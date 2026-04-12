@@ -699,6 +699,14 @@ export async function downloadPlantation(serverPlantation: {
 
   // Step 2: Pull related data (subgroups, plantation_users, plantation_species, trees)
   await pullFromServer(serverPlantation.id);
+
+  // Step 3: Download photos from Storage to local device
+  try {
+    await downloadPhotosForPlantation(serverPlantation.id);
+  } catch (e) {
+    console.error('[Download] Photo download failed for plantation:', serverPlantation.id, e);
+    // Non-fatal — plantation data is available, photos can be retried via "Descargar"
+  }
 }
 
 // ─── Batch download plantations ───────────────────────────────────────────────
