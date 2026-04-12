@@ -22,6 +22,7 @@ type FilterConfig = {
 type Props = {
   isOnline: boolean;
   syncableCount: number;
+  pendingPhotosCount: number;
   blockedByNN: number;
   totalNN: number;
   estadoLoaded: boolean;
@@ -37,6 +38,7 @@ type Props = {
 export default function PlantationDetailHeader({
   isOnline,
   syncableCount,
+  pendingPhotosCount,
   blockedByNN,
   totalNN,
   estadoLoaded,
@@ -69,16 +71,18 @@ export default function PlantationDetailHeader({
               style={({ pressed }) => [
                 styles.syncButton,
                 pressed && { opacity: 0.85 },
-                syncableCount === 0 && styles.buttonDisabled,
+                syncableCount === 0 && pendingPhotosCount === 0 && styles.buttonDisabled,
               ]}
               onPress={() => onStartSync(incluirFotosPush)}
-              disabled={syncableCount === 0}
+              disabled={syncableCount === 0 && pendingPhotosCount === 0}
             >
               <Ionicons name="cloud-upload-outline" size={18} color={colors.white} />
               <Text style={styles.syncButtonText}>Subir</Text>
-              {syncableCount > 0 && (
+              {(syncableCount > 0 || pendingPhotosCount > 0) && (
                 <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>{syncableCount}</Text>
+                  <Text style={styles.countBadgeText}>
+                    {syncableCount > 0 ? syncableCount : pendingPhotosCount}
+                  </Text>
                 </View>
               )}
             </Pressable>
@@ -94,7 +98,7 @@ export default function PlantationDetailHeader({
               label="Incluir fotos"
               checked={incluirFotosPush}
               onToggle={() => setIncluirFotosPush(v => !v)}
-              disabled={syncableCount === 0}
+              disabled={syncableCount === 0 && pendingPhotosCount === 0}
             />
           </View>
         </View>
