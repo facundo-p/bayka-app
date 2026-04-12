@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import {
   syncPlantation,
   pullFromServer,
+  pullSpeciesFromServer,
   uploadPendingPhotos,
   downloadPhotosForPlantation,
   SyncSubGroupResult,
@@ -52,6 +53,7 @@ export function useSync(plantacionId: string) {
     setPhotoResult(null);
     try {
       await supabase.auth.getSession();
+      await pullSpeciesFromServer();
       await pullFromServer(plantacionId);
       setPullSuccess(true);
 
