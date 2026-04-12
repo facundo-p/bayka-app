@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 12-02-PLAN.md
-last_updated: "2026-04-12T14:45:00.000Z"
+status: verifying
+stopped_at: Completed 12-03-PLAN.md
+last_updated: "2026-04-12T14:41:54.113Z"
 last_activity: 2026-04-12
 progress:
   total_phases: 12
-  completed_phases: 11
+  completed_phases: 12
   total_plans: 38
-  completed_plans: 37
+  completed_plans: 38
   percent: 100
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 
 Phase: 12 (persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-12
 
 Progress: [██████████] 100%
@@ -76,6 +76,7 @@ Progress: [██████████] 100%
 | Phase 11-unificar-pantallas P02 | 2min | 3 tasks | 4 files |
 | Phase 12 P01 | 101 | 2 tasks | 7 files |
 | Phase 12 P02 | 15min | 2 tasks | 5 files |
+| Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P03 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -157,6 +158,8 @@ Recent decisions affecting current work:
 - [Phase 12-02]: uploadPendingPhotos stores relative path plantations/{id}/trees/{id}.jpg in Supabase trees.foto_url (D-12)
 - [Phase 12-02]: ExpoFile alias for expo-file-system File import — avoids potential global File conflict
 - [Phase 12-02]: useSync.startSync/startPull accept incluirFotos:boolean (default true) — backward compatible
+- [Phase 12]: TreeRow photo icon uses Ionicons image/image-outline with absolute-positioned 8px sync dot (amber=pending, dark blue=synced)
+- [Phase 12]: PlantationDetailHeader local useState(true) for photo toggle defaults — no persistence per D-08
 
 ### Roadmap Evolution
 
@@ -190,6 +193,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-12T14:45:00.000Z
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-04-12T14:41:54.109Z
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
