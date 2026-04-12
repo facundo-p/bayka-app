@@ -236,7 +236,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 10. Plantacion offline + sync especies | 2/2 | Complete    | 2026-04-08 |
 | 9. Testing Strategy | 1/6 | In Progress|  |
 | 11. Unificar pantallas | 2/3 | In Progress|  |
-| 12. Photo Storage + Sync | 4/4 | Complete   | 2026-04-12 |
+| 12. Photo Storage + Sync | 4/4 | Complete    | 2026-04-12 |
 
 ### Phase 12: Persistir imagenes de arboles en Supabase Storage con toggle, resize y sync
 
