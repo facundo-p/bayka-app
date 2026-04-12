@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-04-11T22:28:02.428Z"
+stopped_at: Phase 12 context gathered
+last_updated: "2026-04-12T12:44:21.189Z"
 last_activity: 2026-04-11
 progress:
-  total_phases: 11
-  completed_phases: 10
+  total_phases: 12
+  completed_phases: 11
   total_plans: 35
-  completed_plans: 34
+  completed_plans: 35
   percent: 100
 ---
 
@@ -158,6 +158,7 @@ Recent decisions affecting current work:
 - Phase 9 added: Testing Strategy - tests abarcativos para funcionalidades críticas (offline, sync, data integrity, role-based access)
 - Phase 10 added: Creación de plantación offline + sync catálogo de especies (ejecuta antes de fase 9)
 - Phase 11 added: Unificar pantallas — eliminar screen de Gestión e integrar acciones en PlantationCard
+- Phase 12 added: Persistir imágenes de árboles en Supabase Storage con toggle, resize y sync
 
 ### Pending Todos
 
@@ -181,6 +182,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-11T22:28:02.424Z
-Stopped at: Completed 11-02-PLAN.md
-Resume file: None
+Last session: 2026-04-12T12:44:21.179Z
+Stopped at: Phase 12 context gathered
+Resume file: .planning/phases/12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync/12-CONTEXT.md
