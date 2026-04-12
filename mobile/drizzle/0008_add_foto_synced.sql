@@ -1,0 +1,1 @@
+ALTER TABLE `trees` ADD `foto_synced` integer DEFAULT false NOT NULL;

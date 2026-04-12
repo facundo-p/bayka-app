@@ -43,6 +43,7 @@ export const trees = sqliteTable('trees', {
   posicion: integer('posicion').notNull(),
   subId: text('sub_id').notNull(),
   fotoUrl: text('foto_url'),
+  fotoSynced: integer('foto_synced', { mode: 'boolean' }).notNull().default(false),
   plantacionId: integer('plantacion_id'),
   globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
