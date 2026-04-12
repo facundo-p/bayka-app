@@ -481,13 +481,15 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     if (!treeError && remoteTrees && remoteTrees.length > 0) {
       console.log('[Sync] Sample tree created_at:', remoteTrees[0].created_at, '| localToday:', require('../utils/dateUtils').localToday());
       for (const t of remoteTrees) {
+        // Discard file:// URIs from server — they reference another device's local storage
+        const remoteFotoUrl = t.foto_url && !t.foto_url.startsWith('file://') ? t.foto_url : null;
         await db.insert(trees).values({
           id: t.id,
           subgrupoId: t.subgroup_id,
           especieId: t.species_id,
           posicion: t.posicion,
           subId: t.sub_id,
-          fotoUrl: t.foto_url,
+          fotoUrl: remoteFotoUrl,
           plantacionId: null,
           globalId: null,
           usuarioRegistro: t.usuario_registro,
