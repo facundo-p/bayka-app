@@ -481,15 +481,16 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     if (!treeError && remoteTrees && remoteTrees.length > 0) {
       console.log('[Sync] Sample tree created_at:', remoteTrees[0].created_at, '| localToday:', require('../utils/dateUtils').localToday());
       for (const t of remoteTrees) {
-        // Discard file:// URIs from server — they reference another device's local storage
-        const remoteFotoUrl = t.foto_url && !t.foto_url.startsWith('file://') ? t.foto_url : null;
+        // If server has a foto_url, the photo is already on the server → mark as synced
+        const hasFotoOnServer = !!t.foto_url;
         await db.insert(trees).values({
           id: t.id,
           subgrupoId: t.subgroup_id,
           especieId: t.species_id,
           posicion: t.posicion,
           subId: t.sub_id,
-          fotoUrl: remoteFotoUrl,
+          fotoUrl: t.foto_url,
+          fotoSynced: hasFotoOnServer,
           plantacionId: null,
           globalId: null,
           usuarioRegistro: t.usuario_registro,
@@ -501,6 +502,7 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
             posicion: sql`excluded.posicion`,
             subId: sql`excluded.sub_id`,
             fotoUrl: sql`excluded.foto_url`,
+            fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
           },
         });
       }
