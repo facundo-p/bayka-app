@@ -89,4 +89,4 @@ Reliable, fast tree registration in the field — every tree recorded, no data l
 | Users seeded, not self-registered | MVP simplification; only 4 users needed initially | — Pending |
 
 ---
-*Last updated: 2026-04-08 after Phase 10 completion (offline plantation creation + species catalog sync)*
+*Last updated: 2026-04-12 after Phase 12 completion (tree photo persistence to Supabase Storage with resize, sync toggles, and fotoSynced tracking)*

@@ -1,6 +1,6 @@
 import { db } from '../database/client';
-import { trees, species as speciesTable } from '../database/schema';
-import { eq, max, asc } from 'drizzle-orm';
+import { trees, species as speciesTable, subgroups } from '../database/schema';
+import { eq, max, asc, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -119,12 +119,60 @@ export async function resolveNNTree(
 /**
  * Attaches, replaces, or removes the photo for any tree.
  * Pass empty string to remove the photo.
+ * CRITICAL (Pitfall 6): Always reset fotoSynced to false on photo replacement —
+ * the new local file must be re-uploaded to Storage.
  */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
   await db.update(trees)
-    .set({ fotoUrl: fotoUrl || null })
+    .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
     .where(eq(trees.id, treeId));
   notifyDataChanged();
+}
+
+/**
+ * Returns trees with local photos not yet uploaded to Storage.
+ * Only includes trees in sincronizada subgroups for the given plantation (per Pitfall 7).
+ * Filters to file:// URIs only — remote paths from pull should not be re-uploaded (Pitfall 2).
+ */
+export async function getTreesWithPendingPhotos(plantacionId: string): Promise<Array<{
+  id: string;
+  fotoUrl: string;
+  subgrupoId: string;
+  plantacionId: string;
+}>> {
+  const rows = await db
+    .select({
+      id: trees.id,
+      fotoUrl: trees.fotoUrl,
+      subgrupoId: trees.subgrupoId,
+      plantacionId: subgroups.plantacionId,
+    })
+    .from(trees)
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .where(
+      and(
+        eq(subgroups.plantacionId, plantacionId),
+        eq(subgroups.estado, 'sincronizada'),
+        isNotNull(trees.fotoUrl),
+        eq(trees.fotoSynced, false)
+      )
+    );
+  // Filter to local files only (remote paths from pull should not be re-uploaded)
+  return rows.filter(r => r.fotoUrl?.startsWith('file://')) as Array<{
+    id: string;
+    fotoUrl: string;
+    subgrupoId: string;
+    plantacionId: string;
+  }>;
+}
+
+/**
+ * Marks a tree's photo as synced (uploaded to Supabase Storage).
+ */
+export async function markPhotoSynced(treeId: string): Promise<void> {
+  await db.update(trees)
+    .set({ fotoSynced: true })
+    .where(eq(trees.id, treeId));
 }
 
 /**

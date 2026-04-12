@@ -1,7 +1,7 @@
 import { useLiveData } from '../database/liveQuery';
 import { db } from '../database/client';
 import { subgroups, trees } from '../database/schema';
-import { eq, count, and, isNull, sql } from 'drizzle-orm';
+import { eq, count, and, isNull, isNotNull, sql } from 'drizzle-orm';
 import { useCurrentUserId } from './useCurrentUserId';
 
 /**
@@ -54,9 +54,33 @@ export function usePendingSyncCount(plantacionId?: string) {
     [plantacionId, userId]
   );
 
+  // Count trees with local photos not yet uploaded (in sincronizada subgroups)
+  const { data: pendingPhotosData } = useLiveData(
+    () => {
+      if (!plantacionId) {
+        return Promise.resolve([{ cnt: 0 }]);
+      }
+      return db
+        .select({ cnt: count() })
+        .from(trees)
+        .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+        .where(
+          and(
+            eq(subgroups.plantacionId, plantacionId),
+            eq(subgroups.estado, 'sincronizada'),
+            isNotNull(trees.fotoUrl),
+            eq(trees.fotoSynced, false),
+            sql`${trees.fotoUrl} LIKE 'file://%'`
+          )
+        );
+    },
+    [plantacionId]
+  );
+
   const pendingCount = pendingData?.[0]?.cnt ?? 0;
   const blockedByNN = nnBlockedData?.[0]?.cnt ?? 0;
   const syncableCount = pendingCount - blockedByNN;
+  const pendingPhotosCount = pendingPhotosData?.[0]?.cnt ?? 0;
 
-  return { pendingCount, syncableCount, blockedByNN };
+  return { pendingCount, syncableCount, blockedByNN, pendingPhotosCount };
 }

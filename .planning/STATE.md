@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 11-02-PLAN.md
-last_updated: "2026-04-11T22:28:02.428Z"
-last_activity: 2026-04-11
+status: verifying
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-04-12T15:06:49.214Z"
+last_activity: 2026-04-12
 progress:
-  total_phases: 11
-  completed_phases: 10
-  total_plans: 35
-  completed_plans: 34
+  total_phases: 12
+  completed_phases: 12
+  total_plans: 39
+  completed_plans: 39
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 11 — unificar-pantallas-eliminar-screen-de-gesti-n-e-integrar-sus-acciones-en-plantationcard
+**Current focus:** Phase 12 — persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync
 
 ## Current Position
 
-Phase: 11 (unificar-pantallas-eliminar-screen-de-gesti-n-e-integrar-sus-acciones-en-plantationcard) — EXECUTING
-Plan: 2 of 3
-Status: Ready to execute
-Last activity: 2026-04-11
+Phase: 12
+Plan: Not started
+Status: Phase complete — ready for verification
+Last activity: 2026-04-12
 
 Progress: [██████████] 100%
 
@@ -74,6 +74,10 @@ Progress: [██████████] 100%
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
 | Phase 09-testing-strategy P08 | 8min | 1 tasks | 3 files |
 | Phase 11-unificar-pantallas P02 | 2min | 3 tasks | 4 files |
+| Phase 12 P01 | 101 | 2 tasks | 7 files |
+| Phase 12 P02 | 15min | 2 tasks | 5 files |
+| Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P03 | 12min | 3 tasks | 5 files |
+| Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P04 | 300 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -149,6 +153,15 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
 - [Phase 11-02]: PlantationCard gear slot placeholder gets testID='strip-slot-gear-placeholder' for testability — minimal production code change
 - [Phase 11-02]: e.stopPropagation() -> e?.stopPropagation?.() optional chaining in PlantationCard Pressable handlers — testing-library fireEvent doesn't pass real event objects
+- [Phase 12]: Single-pass JPEG: quality:1 at capture + compress:0.85 in manipulateAsync (Pitfall 3 prevention)
+- [Phase 12]: fotoSynced reset to false in updateTreePhoto — new local file requires re-upload (Pitfall 6)
+- [Phase 12]: getTreesWithPendingPhotos filters sincronizada subgroups + file:// URIs only (Pitfall 2 + 7)
+- [Phase 12-02]: uploadPendingPhotos stores relative path plantations/{id}/trees/{id}.jpg in Supabase trees.foto_url (D-12)
+- [Phase 12-02]: ExpoFile alias for expo-file-system File import — avoids potential global File conflict
+- [Phase 12-02]: useSync.startSync/startPull accept incluirFotos:boolean (default true) — backward compatible
+- [Phase 12]: TreeRow photo icon uses Ionicons image/image-outline with absolute-positioned 8px sync dot (amber=pending, dark blue=synced)
+- [Phase 12]: PlantationDetailHeader local useState(true) for photo toggle defaults — no persistence per D-08
+- [Phase 12-04]: fotoSynced is optional in TreeListItem interface for backward-compatibility with call sites that construct tree objects without the field
 
 ### Roadmap Evolution
 
@@ -158,6 +171,7 @@ Recent decisions affecting current work:
 - Phase 9 added: Testing Strategy - tests abarcativos para funcionalidades críticas (offline, sync, data integrity, role-based access)
 - Phase 10 added: Creación de plantación offline + sync catálogo de especies (ejecuta antes de fase 9)
 - Phase 11 added: Unificar pantallas — eliminar screen de Gestión e integrar acciones en PlantationCard
+- Phase 12 added: Persistir imágenes de árboles en Supabase Storage con toggle, resize y sync
 
 ### Pending Todos
 
@@ -181,6 +195,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-11T22:28:02.424Z
-Stopped at: Completed 11-02-PLAN.md
+Last session: 2026-04-12T15:02:29.034Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None

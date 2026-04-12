@@ -269,6 +269,25 @@ describe('TreeRepository', () => {
 
       expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
     });
+
+    it('resets fotoSynced to false when updating photo', async () => {
+      let capturedSet: any = null;
+      mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      mockDb = {
+        ...buildMockDb([]),
+        update: jest.fn(() => ({
+          set: jest.fn((values: any) => {
+            capturedSet = values;
+            return { where: mockUpdateWhere };
+          }),
+        })),
+      };
+
+      await updateTreePhoto('tree-1', 'file://document/photos/photo_new.jpg');
+
+      expect(capturedSet).not.toBeNull();
+      expect(capturedSet.fotoSynced).toBe(false);
+    });
   });
 
   describe('deleteTreeAndRecalculate', () => {

@@ -2,7 +2,7 @@ import { Modal, View, Text, ActivityIndicator, Pressable, StyleSheet } from 'rea
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncSubGroupResult } from '../services/SyncService';
+import type { SyncProgress, SyncSubGroupResult, PhotoSyncProgress } from '../services/SyncService';
 import { getErrorMessage } from '../services/SyncService';
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   successCount: number;
   failureCount: number;
   pullSuccess: boolean | null;
+  photoProgress: PhotoSyncProgress | null;
+  photoResult: { uploaded?: number; failed?: number; downloaded?: number } | null;
   onDismiss: () => void;
 }
 
@@ -22,6 +24,8 @@ export default function SyncProgressModal({
   successCount,
   failureCount,
   pullSuccess,
+  photoProgress,
+  photoResult,
   onDismiss,
 }: Props) {
   if (state === 'idle') return null;
@@ -56,6 +60,30 @@ export default function SyncProgressModal({
             </>
           )}
 
+          {state === 'uploading-photos' && (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.title}>Subiendo fotos...</Text>
+              <Text style={styles.progressText}>
+                {photoProgress
+                  ? `${photoProgress.completed} de ${photoProgress.total} fotos`
+                  : 'Preparando...'}
+              </Text>
+            </>
+          )}
+
+          {state === 'downloading-photos' && (
+            <>
+              <ActivityIndicator size="large" color={colors.info} />
+              <Text style={styles.title}>Descargando fotos...</Text>
+              <Text style={styles.progressText}>
+                {photoProgress
+                  ? `${photoProgress.completed} de ${photoProgress.total} fotos`
+                  : 'Preparando...'}
+              </Text>
+            </>
+          )}
+
           {state === 'done' && pullSuccess !== null && results.length === 0 && (
             <>
               <Ionicons
@@ -71,6 +99,11 @@ export default function SyncProgressModal({
                   ? 'Se descargaron los ultimos datos del servidor.'
                   : 'No se pudo conectar con el servidor. Verifica tu conexión.'}
               </Text>
+              {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
+                <Text style={styles.successText}>
+                  {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
+                </Text>
+              )}
               <Pressable style={styles.dismissButton} onPress={onDismiss}>
                 <Text style={styles.dismissText}>Cerrar</Text>
               </Pressable>
@@ -91,6 +124,21 @@ export default function SyncProgressModal({
                 <Text style={styles.successText}>
                   {successCount} subgrupo{successCount > 1 ? 's' : ''} sincronizado
                   {successCount > 1 ? 's' : ''}
+                </Text>
+              )}
+              {photoResult?.uploaded != null && photoResult.uploaded > 0 && (
+                <Text style={styles.successText}>
+                  {photoResult.uploaded} foto{photoResult.uploaded > 1 ? 's' : ''} subida{photoResult.uploaded > 1 ? 's' : ''} correctamente
+                </Text>
+              )}
+              {photoResult?.failed != null && photoResult.failed > 0 && (
+                <Text style={styles.failureMessage}>
+                  {photoResult.failed} foto{photoResult.failed > 1 ? 's' : ''} no pudieron subirse. Podes reintentar en la proxima sincronizacion.
+                </Text>
+              )}
+              {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
+                <Text style={styles.successText}>
+                  {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
                 </Text>
               )}
               {failureCount > 0 && (
