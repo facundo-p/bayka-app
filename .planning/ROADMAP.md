@@ -236,14 +236,14 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 10. Plantacion offline + sync especies | 2/2 | Complete    | 2026-04-08 |
 | 9. Testing Strategy | 1/6 | In Progress|  |
 | 11. Unificar pantallas | 2/3 | In Progress|  |
-| 12. Photo Storage + Sync | 3/3 | Complete   | 2026-04-12 |
+| 12. Photo Storage + Sync | 4/4 | Complete   | 2026-04-12 |
 
 ### Phase 12: Persistir imagenes de arboles en Supabase Storage con toggle, resize y sync
 
 **Goal:** Upload tree photos from local device storage to Supabase Storage, with image resizing at capture time (1600px longest side), split Descargar/Subir sync buttons with independent "Incluir fotos" checkboxes, photo upload after SubGroup sync, photo download during pull, and fotoSynced tracking per tree.
 **Requirements**: IMG-01, IMG-02, IMG-03, IMG-04, IMG-05, IMG-06, IMG-07
 **Depends on:** Phase 11
-**Plans:** 3/3 plans complete
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 12-01-PLAN.md — Drizzle migration (fotoSynced column), schema update, install expo-image-manipulator, PhotoService resize at capture, TreeRepository photo sync helpers, Supabase Storage RLS migration

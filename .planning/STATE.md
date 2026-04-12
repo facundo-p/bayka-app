@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 12-03-PLAN.md
-last_updated: "2026-04-12T14:41:54.113Z"
+stopped_at: Completed 12-04-PLAN.md
+last_updated: "2026-04-12T15:02:29.037Z"
 last_activity: 2026-04-12
 progress:
   total_phases: 12
   completed_phases: 12
-  total_plans: 38
-  completed_plans: 38
+  total_plans: 39
+  completed_plans: 39
   percent: 100
 ---
 
@@ -77,6 +77,7 @@ Progress: [██████████] 100%
 | Phase 12 P01 | 101 | 2 tasks | 7 files |
 | Phase 12 P02 | 15min | 2 tasks | 5 files |
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P03 | 12min | 3 tasks | 5 files |
+| Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P04 | 300 | 1 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -160,6 +161,7 @@ Recent decisions affecting current work:
 - [Phase 12-02]: useSync.startSync/startPull accept incluirFotos:boolean (default true) — backward compatible
 - [Phase 12]: TreeRow photo icon uses Ionicons image/image-outline with absolute-positioned 8px sync dot (amber=pending, dark blue=synced)
 - [Phase 12]: PlantationDetailHeader local useState(true) for photo toggle defaults — no persistence per D-08
+- [Phase 12-04]: fotoSynced is optional in TreeListItem interface for backward-compatibility with call sites that construct tree objects without the field
 
 ### Roadmap Evolution
 
@@ -193,6 +195,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-12T14:41:54.109Z
-Stopped at: Completed 12-03-PLAN.md
+Last session: 2026-04-12T15:02:29.034Z
+Stopped at: Completed 12-04-PLAN.md
 Resume file: None
