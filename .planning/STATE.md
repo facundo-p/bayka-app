@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 12-01-PLAN.md
-last_updated: "2026-04-12T14:30:09.573Z"
+stopped_at: Completed 12-02-PLAN.md
+last_updated: "2026-04-12T14:45:00.000Z"
 last_activity: 2026-04-12
 progress:
   total_phases: 12
   completed_phases: 11
   total_plans: 38
-  completed_plans: 36
+  completed_plans: 37
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 12 (persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-12
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 09-testing-strategy P08 | 8min | 1 tasks | 3 files |
 | Phase 11-unificar-pantallas P02 | 2min | 3 tasks | 4 files |
 | Phase 12 P01 | 101 | 2 tasks | 7 files |
+| Phase 12 P02 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -153,6 +154,9 @@ Recent decisions affecting current work:
 - [Phase 12]: Single-pass JPEG: quality:1 at capture + compress:0.85 in manipulateAsync (Pitfall 3 prevention)
 - [Phase 12]: fotoSynced reset to false in updateTreePhoto — new local file requires re-upload (Pitfall 6)
 - [Phase 12]: getTreesWithPendingPhotos filters sincronizada subgroups + file:// URIs only (Pitfall 2 + 7)
+- [Phase 12-02]: uploadPendingPhotos stores relative path plantations/{id}/trees/{id}.jpg in Supabase trees.foto_url (D-12)
+- [Phase 12-02]: ExpoFile alias for expo-file-system File import — avoids potential global File conflict
+- [Phase 12-02]: useSync.startSync/startPull accept incluirFotos:boolean (default true) — backward compatible
 
 ### Roadmap Evolution
 
@@ -186,6 +190,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-12T14:30:09.569Z
-Stopped at: Completed 12-01-PLAN.md
+Last session: 2026-04-12T14:45:00.000Z
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
