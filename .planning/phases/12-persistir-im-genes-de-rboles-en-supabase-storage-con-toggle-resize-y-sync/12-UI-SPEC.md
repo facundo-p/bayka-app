@@ -46,8 +46,9 @@ This project uses a named scale (not strictly 8-point) defined in `mobile/src/th
 | 6xl | 40px | Bottom safe area padding |
 
 Exceptions:
-- Touch targets for checkboxes and photo buttons: minimum 44px tap area via `hitSlop={12}` (matches existing pattern in TreeRow)
-- Checkbox + label row: 44px minimum height to meet mobile accessibility guidelines
+- `sm=6px` and `lg=10px` are pre-existing theme tokens in `mobile/src/theme.ts` — they are not multiples of 4 by the 8-point standard, but changing them would require a theme-wide refactor that is out of scope for Phase 12. All phase 12 usage must go through these tokens, never hardcoded.
+- Touch targets for checkboxes and photo buttons: minimum 44px tap area via `hitSlop={12}` (matches existing pattern in TreeRow).
+- Checkbox + label row: 44px minimum height to meet mobile accessibility guidelines.
 
 ---
 
@@ -55,12 +56,16 @@ Exceptions:
 
 All sizes from `mobile/src/theme.ts` fontSize tokens. No hardcoded values.
 
+**Maximum 2 font weights in this phase: 400 (body/caption) and 600 (labels/buttons/modal titles).**
+
 | Role | Token | Size | Weight / Font | Line Height |
 |------|-------|------|---------------|-------------|
 | Body | `fontSize.base` | 15px | regular (400) / Poppins_400Regular | 1.5 |
 | Label / button | `fontSize.xl` | 16px | semiBold (600) / Poppins_600SemiBold | 1.4 |
 | Caption / subtext | `fontSize.sm` | 12px | regular (400) / Poppins_400Regular | 1.4 |
-| Modal title | `fontSize.xxl` | 18px | bold (700) / Poppins_700Bold | 1.2 |
+| Modal title | `fontSize.xxl` | 18px | semiBold (600) / Poppins_600SemiBold | 1.2 |
+
+Note: Modal title uses `semiBold (600)` — same as labels and buttons. Bold (700) is not used in this phase. This consolidates the scale to 2 weights.
 
 Source: derived from existing SyncProgressModal and PlantationDetailScreen patterns.
 
@@ -106,17 +111,23 @@ Accent (`colors.info`) reserved for:
 - `uploading-photos` state: ActivityIndicator with `colors.primary`, title "Subiendo fotos...", progress text "N de M fotos"
 - `downloading-photos` state: ActivityIndicator with `colors.info`, title "Descargando fotos...", progress text "N de M fotos"
 - Both photo states follow the identical layout as the existing `syncing` / `pulling` states
+- Modal title uses `semiBold (600) / Poppins_600SemiBold` at `fontSize.xxl` (18px)
 
 **PlantationDetailHeader** (`mobile/src/components/PlantationDetailHeader.tsx`)
 - Replace single sync CTA area with two-button row: **"Descargar"** (left) and **"Subir"** (right)
 - Each button occupies 50% width of the row with `gap: spacing.md` between them
 - Below each button: a `CheckboxRow` component with label "Incluir fotos"
 - Entire sync section is disabled when offline (same as current behavior)
+- Visual hierarchy: the two buttons carry equal visual weight — neither is primary over the other. They are differentiated by color only (`colors.info` for Descargar, `colors.primary` for Subir). No size, elevation, or shadow difference between them.
 
 **TreeRow** (`mobile/src/components/TreeRow.tsx`)
 - Photo indicator: replace emoji icons with Ionicons — `image-outline` (no photo) and `image` (has local photo)
 - Add sync badge: when `fotoUrl != null AND fotoSynced = false`, show a small amber dot (`colors.stateFinalizada`) overlaid on the photo icon (top-right corner, 8px circle)
 - When `fotoSynced = true`, show a small blue dot (`colors.statSynced`) overlaid on the photo icon
+- `accessibilityLabel` values for the photo icon touchable:
+  - No photo: `"Sin foto"`
+  - Has photo, not synced: `"Foto pendiente de subida"`
+  - Has photo, synced: `"Foto sincronizada"`
 
 ### New Components
 
@@ -143,6 +154,7 @@ Accent (`colors.info`) reserved for:
 - Both buttons: `flex: 1`, `paddingVertical: spacing.lg` (10px), `borderRadius: borderRadius.lg`
 - "Descargar" background: `colors.info` (#2563EB), text: `colors.white`
 - "Subir" background: `colors.primary` (#0A3760), text: `colors.white`
+- Equal visual weight: same size, same padding, same border radius, same font size and weight. Color alone distinguishes them.
 - Both disabled (opacity 0.5) when offline
 - "Subir" additionally disabled when `syncableCount === 0`
 - "Subir" shows count badge: `{syncableCount}` in a small circle (12px) top-right of button when count > 0
@@ -151,6 +163,10 @@ Accent (`colors.info`) reserved for:
 ### Photo Indicator on TreeRow
 
 - Icon: Ionicons `image-outline` (no local photo) or `image` (has local photo), size 18, color `colors.primaryAccent`
+- `accessibilityLabel` on the touchable wrapping the icon:
+  - `"Sin foto"` when no photo
+  - `"Foto pendiente de subida"` when `fotoUrl != null AND fotoSynced = false`
+  - `"Foto sincronizada"` when `fotoSynced = true`
 - Sync state dot: 8px circle, positioned absolute top-right of photo icon
   - Pending upload: `colors.stateFinalizada` (#F59E0B)
   - Synced: `colors.statSynced` (#0A3760)
@@ -198,11 +214,11 @@ No destructive actions introduced in this phase. Photo sync failures are recover
 
 ### TreeRow photo icon states
 
-| Condition | Icon | Dot color | Tap action |
-|-----------|------|-----------|------------|
-| No photo | `image-outline` | none | Open picker |
-| Has photo, not synced | `image` | `colors.stateFinalizada` (amber) | Open PhotoViewerModal |
-| Has photo, synced | `image` | `colors.statSynced` (dark blue) | Open PhotoViewerModal |
+| Condition | Icon | Dot color | Accessibility label | Tap action |
+|-----------|------|-----------|---------------------|------------|
+| No photo | `image-outline` | none | "Sin foto" | Open picker |
+| Has photo, not synced | `image` | `colors.stateFinalizada` (amber) | "Foto pendiente de subida" | Open PhotoViewerModal |
+| Has photo, synced | `image` | `colors.statSynced` (dark blue) | "Foto sincronizada" | Open PhotoViewerModal |
 
 ### Sync button states
 
