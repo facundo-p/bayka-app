@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 12 UI-SPEC approved
-last_updated: "2026-04-12T12:58:37.343Z"
-last_activity: 2026-04-11
+stopped_at: Completed 12-01-PLAN.md
+last_updated: "2026-04-12T14:30:09.573Z"
+last_activity: 2026-04-12
 progress:
   total_phases: 12
   completed_phases: 11
-  total_plans: 35
-  completed_plans: 35
+  total_plans: 38
+  completed_plans: 36
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 11 — unificar-pantallas-eliminar-screen-de-gesti-n-e-integrar-sus-acciones-en-plantationcard
+**Current focus:** Phase 12 — persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync
 
 ## Current Position
 
-Phase: 11 (unificar-pantallas-eliminar-screen-de-gesti-n-e-integrar-sus-acciones-en-plantationcard) — EXECUTING
+Phase: 12 (persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync) — EXECUTING
 Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-04-11
+Last activity: 2026-04-12
 
 Progress: [██████████] 100%
 
@@ -74,6 +74,7 @@ Progress: [██████████] 100%
 | Phase 10-creaci-n-de-plantaci-n-offline-sync-cat-logo-de-especies P02 | 168s | 1 tasks | 3 files |
 | Phase 09-testing-strategy P08 | 8min | 1 tasks | 3 files |
 | Phase 11-unificar-pantallas P02 | 2min | 3 tasks | 4 files |
+| Phase 12 P01 | 101 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -149,6 +150,9 @@ Recent decisions affecting current work:
 - [Phase 10-offline-fixes]: EAS local builds don't load dotenv from relative paths — use eas.json env block for Supabase credentials
 - [Phase 11-02]: PlantationCard gear slot placeholder gets testID='strip-slot-gear-placeholder' for testability — minimal production code change
 - [Phase 11-02]: e.stopPropagation() -> e?.stopPropagation?.() optional chaining in PlantationCard Pressable handlers — testing-library fireEvent doesn't pass real event objects
+- [Phase 12]: Single-pass JPEG: quality:1 at capture + compress:0.85 in manipulateAsync (Pitfall 3 prevention)
+- [Phase 12]: fotoSynced reset to false in updateTreePhoto — new local file requires re-upload (Pitfall 6)
+- [Phase 12]: getTreesWithPendingPhotos filters sincronizada subgroups + file:// URIs only (Pitfall 2 + 7)
 
 ### Roadmap Evolution
 
@@ -182,6 +186,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-12T12:58:37.336Z
-Stopped at: Phase 12 UI-SPEC approved
-Resume file: .planning/phases/12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync/12-UI-SPEC.md
+Last session: 2026-04-12T14:30:09.569Z
+Stopped at: Completed 12-01-PLAN.md
+Resume file: None
