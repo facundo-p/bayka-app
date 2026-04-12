@@ -501,7 +501,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
             especieId: sql`excluded.especie_id`,
             posicion: sql`excluded.posicion`,
             subId: sql`excluded.sub_id`,
-            fotoUrl: sql`excluded.foto_url`,
+            // Keep local file:// URI if it exists (photo is on this device).
+            // Only update from server if local has no photo or a remote path.
+            fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
             fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
           },
         });
