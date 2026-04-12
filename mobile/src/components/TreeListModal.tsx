@@ -11,6 +11,7 @@ export interface TreeListItem {
   especieNombre?: string | null;
   subId: string;
   fotoUrl?: string | null;
+  fotoSynced?: boolean;
   createdAt: string;
   subgrupoId: string;
   usuarioRegistro: string;
@@ -62,7 +63,15 @@ export default function TreeListModal({
                 <View style={styles.actions}>
                   {item.fotoUrl
                     ? <Pressable onPress={() => onViewPhoto(item.id, item.fotoUrl!)} hitSlop={8} style={styles.btn}>
-                        <Ionicons name="image" size={18} color={colors.plantation} />
+                        <View>
+                          <Ionicons name="image" size={18} color={colors.plantation} />
+                          {!item.fotoSynced && (
+                            <View style={styles.syncDot} />
+                          )}
+                          {item.fotoSynced && (
+                            <View style={[styles.syncDot, styles.syncDotSynced]} />
+                          )}
+                        </View>
                       </Pressable>
                     : <Pressable onPress={() => onAttachPhoto(item.id)} hitSlop={8} style={styles.btn}>
                         <Ionicons name="camera-outline" size={18} color={colors.textMuted} />
@@ -106,4 +115,16 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   btn: { padding: spacing.xs },
   empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing['6xl'], fontSize: fontSize.lg },
+  syncDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.stateFinalizada,
+  },
+  syncDotSynced: {
+    backgroundColor: colors.statSynced,
+  },
 });

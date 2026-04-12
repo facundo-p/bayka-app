@@ -12,6 +12,7 @@ export function useTrees(subgrupoId: string) {
       posicion: trees.posicion,
       subId: trees.subId,
       fotoUrl: trees.fotoUrl,
+      fotoSynced: trees.fotoSynced,
       usuarioRegistro: trees.usuarioRegistro,
       createdAt: trees.createdAt,
       especieCodigo: species.codigo,
