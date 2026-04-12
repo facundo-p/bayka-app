@@ -1,17 +1,24 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { subgroups, trees, plantationUsers, plantationSpecies, plantations, species } from '../database/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
   markAsSincronizada,
   getSyncableSubGroups,
   SubGroup,
 } from '../repositories/SubGroupRepository';
+import { getTreesWithPendingPhotos, markPhotoSynced } from '../repositories/TreeRepository';
+import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type SyncErrorCode = 'DUPLICATE_CODE' | 'NETWORK' | 'UNKNOWN';
+
+export interface PhotoSyncProgress {
+  total: number;
+  completed: number;
+}
 
 export type SyncSubGroupResult =
   | { success: true; subgroupId: string; nombre: string }
@@ -171,6 +178,152 @@ export async function uploadPendingEdits(): Promise<void> {
       console.error('[Sync] Upload pending edit exception:', p.id, e?.message);
     }
   }
+}
+
+// ─── Photo sync helpers ───────────────────────────────────────────────────────
+
+/**
+ * Uploads a single photo file to Supabase Storage.
+ * Returns { error: null } on success, { error: Error } on failure.
+ */
+async function uploadPhotoToStorage(
+  localUri: string,
+  storagePath: string
+): Promise<{ error: Error | null }> {
+  try {
+    const file = new ExpoFile(localUri);
+    const arrayBuffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+
+    const { error } = await supabase.storage
+      .from('tree-photos')
+      .upload(storagePath, bytes, {
+        contentType: 'image/jpeg',
+        upsert: true,
+      });
+
+    return { error: error ? new Error(error.message) : null };
+  } catch (e: any) {
+    return { error: e };
+  }
+}
+
+/**
+ * Uploads all pending photos for a plantation to Supabase Storage.
+ * Per D-15: runs after SubGroup sync. Continues on individual failures (batch-safe).
+ * Per D-12: stores relative storage path `plantations/{id}/trees/{id}.jpg` in Supabase trees table.
+ * Per D-13: marks fotoSynced=true locally on success.
+ */
+export async function uploadPendingPhotos(
+  plantacionId: string,
+  onProgress?: (p: PhotoSyncProgress) => void
+): Promise<{ uploaded: number; failed: number }> {
+  const pending = await getTreesWithPendingPhotos(plantacionId);
+  let uploaded = 0;
+  let failed = 0;
+
+  for (let i = 0; i < pending.length; i++) {
+    onProgress?.({ total: pending.length, completed: i });
+    const tree = pending[i];
+    const storagePath = `plantations/${tree.plantacionId}/trees/${tree.id}.jpg`;
+
+    const { error } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
+    if (error) {
+      console.error(`[Sync] Photo upload failed for tree ${tree.id}:`, error.message);
+      failed++;
+    } else {
+      // Update Supabase trees table with relative storage path (D-12)
+      const { error: updateError } = await supabase
+        .from('trees')
+        .update({ foto_url: storagePath })
+        .eq('id', tree.id);
+
+      if (updateError) {
+        console.error(`[Sync] foto_url update failed for tree ${tree.id}:`, updateError.message);
+        failed++;
+      } else {
+        await markPhotoSynced(tree.id);
+        uploaded++;
+      }
+    }
+  }
+
+  onProgress?.({ total: pending.length, completed: pending.length });
+  return { uploaded, failed };
+}
+
+/**
+ * Downloads remote photos for a plantation to local storage.
+ * Per D-16: runs during pull flow. Skips trees with local file:// URIs.
+ * Updates local fotoUrl to local path and sets fotoSynced=true on success.
+ */
+export async function downloadPhotosForPlantation(
+  plantacionId: string,
+  onProgress?: (p: PhotoSyncProgress) => void
+): Promise<{ downloaded: number; failed: number }> {
+  const allSubgroups = await db
+    .select({ id: subgroups.id })
+    .from(subgroups)
+    .where(eq(subgroups.plantacionId, plantacionId));
+
+  if (allSubgroups.length === 0) return { downloaded: 0, failed: 0 };
+
+  const sgIds = allSubgroups.map(sg => sg.id);
+
+  // Query trees with remote foto_url (not starting with file://)
+  const allTrees = await db
+    .select({ id: trees.id, fotoUrl: trees.fotoUrl, subgrupoId: trees.subgrupoId })
+    .from(trees)
+    .where(
+      and(
+        inArray(trees.subgrupoId, sgIds),
+        isNotNull(trees.fotoUrl)
+      )
+    );
+
+  // Filter to remote paths only (not starting with file://)
+  const remoteTrees = allTrees.filter(t => t.fotoUrl && !t.fotoUrl.startsWith('file://'));
+
+  if (remoteTrees.length === 0) return { downloaded: 0, failed: 0 };
+
+  let downloaded = 0;
+  let failed = 0;
+
+  const dir = new Directory(Paths.document, 'photos');
+  if (!dir.exists) dir.create({ intermediates: true });
+
+  for (let i = 0; i < remoteTrees.length; i++) {
+    onProgress?.({ total: remoteTrees.length, completed: i });
+    const tree = remoteTrees[i];
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('tree-photos')
+        .createSignedUrl(tree.fotoUrl!, 3600);
+
+      if (error || !data?.signedUrl) {
+        console.error(`[Sync] Signed URL failed for tree ${tree.id}:`, error?.message);
+        failed++;
+        continue;
+      }
+
+      const destFile = new ExpoFile(dir, `photo_${tree.id}.jpg`);
+      await ExpoFile.downloadFileAsync(data.signedUrl, destFile);
+
+      // Update local fotoUrl to local path + mark as synced
+      await db.update(trees)
+        .set({ fotoUrl: destFile.uri, fotoSynced: true })
+        .where(eq(trees.id, tree.id));
+
+      downloaded++;
+    } catch (e: any) {
+      console.error(`[Sync] Photo download failed for tree ${tree.id}:`, e?.message);
+      failed++;
+    }
+  }
+
+  onProgress?.({ total: remoteTrees.length, completed: remoteTrees.length });
+  return { downloaded, failed };
 }
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
@@ -345,6 +498,7 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
             especieId: sql`excluded.especie_id`,
             posicion: sql`excluded.posicion`,
             subId: sql`excluded.sub_id`,
+            fotoUrl: sql`excluded.foto_url`,
           },
         });
       }
