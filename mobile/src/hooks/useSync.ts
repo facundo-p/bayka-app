@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { syncPlantation, pullFromServer, SyncSubGroupResult, SyncProgress } from '../services/SyncService';
+import { syncPlantation, pullFromServer, pullSpeciesFromServer, SyncSubGroupResult, SyncProgress } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 import { supabase } from '../supabase/client';
 
@@ -32,6 +32,7 @@ export function useSync(plantacionId: string) {
     setPullSuccess(null);
     try {
       await supabase.auth.getSession();
+      await pullSpeciesFromServer();
       await pullFromServer(plantacionId);
       setPullSuccess(true);
     } catch (err) {

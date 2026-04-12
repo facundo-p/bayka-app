@@ -5,6 +5,7 @@
 jest.mock('../../src/services/SyncService', () => ({
   syncPlantation: jest.fn(),
   pullFromServer: jest.fn(),
+  pullSpeciesFromServer: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../src/database/liveQuery', () => ({
