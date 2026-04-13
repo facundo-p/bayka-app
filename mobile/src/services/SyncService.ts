@@ -4,7 +4,7 @@ import { subgroups, trees, plantationUsers, plantationSpecies, plantations, spec
 import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
-  markAsSincronizada,
+  markSubGroupSynced,
   getSyncableSubGroups,
   SubGroup,
 } from '../repositories/SubGroupRepository';
@@ -389,11 +389,13 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
         estado: sg.estado,
         usuarioCreador: sg.usuario_creador,
         createdAt: sg.created_at,
+        pendingSync: false,
       }).onConflictDoUpdate({
         target: subgroups.id,
         set: {
           estado: sql`excluded.estado`,
           nombre: sql`excluded.nombre`,
+          pendingSync: false,
         },
       });
     }
@@ -624,7 +626,7 @@ export async function syncPlantation(
         console.error(`[Sync] RPC error for "${sg.nombre}" (${sg.id}):`, JSON.stringify(error));
         results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
       } else if (data?.success === true) {
-        await markAsSincronizada(sg.id);
+        await markSubGroupSynced(sg.id);
         results.push({ success: true, subgroupId: sg.id, nombre: sg.nombre });
       } else {
         console.error(`[Sync] RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
@@ -642,6 +644,99 @@ export async function syncPlantation(
   notifyDataChanged();
 
   return results;
+}
+
+// ─── Global sync progress ─────────────────────────────────────────────────────
+
+export interface GlobalSyncProgress {
+  plantationName: string;
+  plantationDone: number;
+  plantationTotal: number;
+  subgroupProgress?: SyncProgress;
+}
+
+// ─── Global sync: all local plantations ──────────────────────────────────────
+
+/**
+ * Syncs all local plantations sequentially (pull+push per plantation).
+ * Global pre-steps: species catalog, offline plantations, pending edits.
+ * Optional photo sync across all plantations at the end.
+ */
+export async function syncAllPlantations(
+  onProgress?: (info: GlobalSyncProgress) => void,
+  incluirFotos: boolean = true
+): Promise<Array<{ plantationId: string; plantationName: string; results: SyncSubGroupResult[] }>> {
+  // Refresh auth
+  await supabase.auth.getSession();
+
+  // Global pre-steps: species + offline plantations + pending edits
+  try { await pullSpeciesFromServer(); } catch (e) { console.error('[Sync] Pull species failed:', e); }
+  try { await uploadOfflinePlantations(); } catch (e) { console.error('[Sync] Upload offline plantations failed:', e); }
+  try { await uploadPendingEdits(); } catch (e) { console.error('[Sync] Upload pending edits failed:', e); }
+
+  const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
+  const allResults: Array<{ plantationId: string; plantationName: string; results: SyncSubGroupResult[] }> = [];
+
+  for (let i = 0; i < localPlantations.length; i++) {
+    const p = localPlantations[i];
+    onProgress?.({ plantationName: p.lugar, plantationDone: i, plantationTotal: localPlantations.length });
+
+    try {
+      // Pull for this plantation
+      await pullFromServer(p.id);
+
+      // Push syncable subgroups
+      const { data: { user } } = await supabase.auth.getUser();
+      const pending = await getSyncableSubGroups(p.id, user?.id);
+      const results: SyncSubGroupResult[] = [];
+
+      for (let j = 0; j < pending.length; j++) {
+        const sg = pending[j];
+        onProgress?.({
+          plantationName: p.lugar,
+          plantationDone: i,
+          plantationTotal: localPlantations.length,
+          subgroupProgress: { total: pending.length, completed: j, currentName: sg.nombre },
+        });
+
+        const sgTrees = await db.select().from(trees).where(eq(trees.subgrupoId, sg.id));
+        try {
+          const { data, error } = await uploadSubGroup(sg, sgTrees);
+          if (error) {
+            results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
+          } else if (data?.success === true) {
+            await markSubGroupSynced(sg.id);
+            results.push({ success: true, subgroupId: sg.id, nombre: sg.nombre });
+          } else {
+            const errorCode: SyncErrorCode = data?.error === 'DUPLICATE_CODE' ? 'DUPLICATE_CODE' : 'UNKNOWN';
+            results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: errorCode });
+          }
+        } catch (e) {
+          results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
+        }
+      }
+
+      allResults.push({ plantationId: p.id, plantationName: p.lugar, results });
+    } catch (e) {
+      console.error(`[Sync] Failed for plantation "${p.lugar}":`, e);
+      allResults.push({ plantationId: p.id, plantationName: p.lugar, results: [] });
+    }
+  }
+
+  // Photo sync across all plantations
+  if (incluirFotos) {
+    for (const p of localPlantations) {
+      try {
+        await uploadPendingPhotos(p.id);
+        await downloadPhotosForPlantation(p.id);
+      } catch (e) {
+        console.error(`[Sync] Photo sync failed for "${p.lugar}":`, e);
+      }
+    }
+  }
+
+  notifyDataChanged();
+  return allResults;
 }
 
 // ─── Download types ───────────────────────────────────────────────────────────

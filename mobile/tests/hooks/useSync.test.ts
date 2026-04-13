@@ -1,11 +1,10 @@
 // Tests for useSync hook
-// Covers: startSync (calls syncPlantation), startPull (calls pullFromServer),
+// Covers: startBidirectionalSync (calls syncPlantation), startGlobalSync (calls syncAllPlantations),
 //         notifyDataChanged in finally, state transitions
 
 jest.mock('../../src/services/SyncService', () => ({
   syncPlantation: jest.fn(),
-  pullFromServer: jest.fn(),
-  pullSpeciesFromServer: jest.fn().mockResolvedValue(undefined),
+  syncAllPlantations: jest.fn(),
   uploadPendingPhotos: jest.fn().mockResolvedValue({ uploaded: 0, failed: 0 }),
   downloadPhotosForPlantation: jest.fn().mockResolvedValue({ downloaded: 0, failed: 0 }),
 }));
@@ -24,7 +23,7 @@ jest.mock('../../src/supabase/client', () => ({
   isSupabaseConfigured: true,
 }));
 
-const { syncPlantation, pullFromServer } = require('../../src/services/SyncService');
+const { syncPlantation, syncAllPlantations } = require('../../src/services/SyncService');
 const { notifyDataChanged } = require('../../src/database/liveQuery');
 
 import { renderHook, act } from '@testing-library/react-native';
@@ -35,20 +34,20 @@ describe('useSync', () => {
     jest.clearAllMocks();
   });
 
-  describe('startSync', () => {
+  describe('startBidirectionalSync', () => {
     it('calls syncPlantation with the correct plantacionId', async () => {
       (syncPlantation as jest.Mock).mockResolvedValue([]);
 
       const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startSync();
+        await result.current.startBidirectionalSync();
       });
 
       expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function));
     });
 
-    it('transitions state from idle → syncing → done', async () => {
+    it('transitions state from idle → pushing → done', async () => {
       let resolveSync: () => void;
       (syncPlantation as jest.Mock).mockImplementation(() =>
         new Promise<any[]>((resolve) => {
@@ -61,11 +60,11 @@ describe('useSync', () => {
       expect(result.current.state).toBe('idle');
 
       act(() => {
-        result.current.startSync();
+        result.current.startBidirectionalSync();
       });
 
-      // State should be 'syncing' while promise is pending
-      expect(result.current.state).toBe('syncing');
+      // State should be 'pushing' while promise is pending
+      expect(result.current.state).toBe('pushing');
 
       await act(async () => {
         resolveSync!();
@@ -81,7 +80,7 @@ describe('useSync', () => {
       const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startSync();
+        await result.current.startBidirectionalSync();
       });
 
       expect(notifyDataChanged).toHaveBeenCalledTimes(1);
@@ -98,7 +97,7 @@ describe('useSync', () => {
       const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startSync();
+        await result.current.startBidirectionalSync();
       });
 
       expect(result.current.results).toEqual(mockResults);
@@ -115,60 +114,79 @@ describe('useSync', () => {
       const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startSync();
+        await result.current.startBidirectionalSync();
       });
 
       expect(result.current.hasFailures).toBe(false);
     });
-  });
 
-  describe('startPull', () => {
-    it('calls pullFromServer with the correct plantacionId', async () => {
-      (pullFromServer as jest.Mock).mockResolvedValue(undefined);
+    it('sets pullSuccess=true on successful sync', async () => {
+      (syncPlantation as jest.Mock).mockResolvedValue([]);
 
-      const { result } = renderHook(() => useSync('plant-2'));
+      const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startPull();
-      });
-
-      expect(pullFromServer).toHaveBeenCalledWith('plant-2');
-    });
-
-    it('sets pullSuccess=true when pull succeeds', async () => {
-      (pullFromServer as jest.Mock).mockResolvedValue(undefined);
-
-      const { result } = renderHook(() => useSync('plant-2'));
-
-      await act(async () => {
-        await result.current.startPull();
+        await result.current.startBidirectionalSync();
       });
 
       expect(result.current.pullSuccess).toBe(true);
     });
 
-    it('sets pullSuccess=false when pull fails', async () => {
-      (pullFromServer as jest.Mock).mockRejectedValue(new Error('Network error'));
+    it('sets pullSuccess=false when sync throws', async () => {
+      (syncPlantation as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-      const { result } = renderHook(() => useSync('plant-2'));
+      const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startPull();
+        await result.current.startBidirectionalSync();
       });
 
       expect(result.current.pullSuccess).toBe(false);
     });
+  });
 
-    it('calls notifyDataChanged in finally block even on pull error', async () => {
-      (pullFromServer as jest.Mock).mockRejectedValue(new Error('Timeout'));
+  describe('startGlobalSync', () => {
+    it('calls syncAllPlantations', async () => {
+      (syncAllPlantations as jest.Mock).mockResolvedValue([]);
 
-      const { result } = renderHook(() => useSync('plant-2'));
+      const { result } = renderHook(() => useSync());
 
       await act(async () => {
-        await result.current.startPull();
+        await result.current.startGlobalSync();
+      });
+
+      expect(syncAllPlantations).toHaveBeenCalledWith(expect.any(Function), true);
+    });
+
+    it('flattens results from all plantations', async () => {
+      const mockAllResults = [
+        { plantationId: 'p-1', plantationName: 'Finca A', results: [{ success: true, subgroupId: 'sg-1', nombre: 'L1' }] },
+        { plantationId: 'p-2', plantationName: 'Finca B', results: [{ success: false, subgroupId: 'sg-2', nombre: 'L2', error: 'NETWORK' as const }] },
+      ];
+      (syncAllPlantations as jest.Mock).mockResolvedValue(mockAllResults);
+
+      const { result } = renderHook(() => useSync());
+
+      await act(async () => {
+        await result.current.startGlobalSync();
+      });
+
+      expect(result.current.results).toHaveLength(2);
+      expect(result.current.successCount).toBe(1);
+      expect(result.current.failureCount).toBe(1);
+    });
+
+    it('calls notifyDataChanged in finally block even on error', async () => {
+      (syncAllPlantations as jest.Mock).mockRejectedValue(new Error('Global sync failed'));
+
+      const { result } = renderHook(() => useSync());
+
+      await act(async () => {
+        await result.current.startGlobalSync();
       });
 
       expect(notifyDataChanged).toHaveBeenCalledTimes(1);
+      expect(result.current.state).toBe('done');
     });
   });
 
@@ -181,7 +199,7 @@ describe('useSync', () => {
       const { result } = renderHook(() => useSync('plant-1'));
 
       await act(async () => {
-        await result.current.startSync();
+        await result.current.startBidirectionalSync();
       });
 
       expect(result.current.state).toBe('done');

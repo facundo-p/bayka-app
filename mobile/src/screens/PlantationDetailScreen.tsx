@@ -60,12 +60,11 @@ export default function PlantationDetailScreen() {
   } = usePlantationDetail(pid);
 
   const { syncableCount, blockedByNN, pendingPhotosCount } = usePendingSyncCount(plantacionId);
-  const { state: syncState, progress, results, startSync, startPull, pullSuccess, reset: resetSync, successCount, failureCount, photoProgress, photoResult } = useSync(pid);
+  const { state: syncState, progress, results, startBidirectionalSync, pullSuccess, reset: resetSync, successCount, failureCount, photoProgress, photoResult } = useSync(pid);
 
   const subgroupFilterConfigs = [
     { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
     { key: 'finalizada', label: 'Finalizadas', count: subgroupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
-    { key: 'sincronizada', label: 'Sincronizadas', count: subgroupEstadoCounts.sincronizada, color: colors.stateSincronizada, icon: 'checkmark-circle-outline' },
   ];
 
   useEffect(() => {
@@ -122,13 +121,13 @@ export default function PlantationDetailScreen() {
         isFinalizada={isFinalizada}
         subgroupFilter={subgroupFilter}
         subgroupFilterConfigs={subgroupFilterConfigs as any}
-        onStartPull={(incluirFotos: boolean) => startPull(incluirFotos)}
+        onStartPull={(incluirFotos: boolean) => startBidirectionalSync(incluirFotos)}
         onStartSync={(incluirFotos: boolean) => {
           const parts: string[] = [];
           if (syncableCount > 0) parts.push(`${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}`);
           if (incluirFotos && pendingPhotosCount > 0) parts.push(`${pendingPhotosCount} foto${pendingPhotosCount > 1 ? 's' : ''} pendiente${pendingPhotosCount > 1 ? 's' : ''}`);
           const msg = parts.length > 0 ? `Se van a subir ${parts.join(' y ')}. Necesitas conexión a internet.` : 'Se van a subir los datos. Necesitas conexión a internet.';
-          showConfirmDialog(confirmShow, 'Subir', msg, 'Subir', () => startSync(incluirFotos), { icon: 'cloud-upload-outline', iconColor: colors.info });
+          showConfirmDialog(confirmShow, 'Sincronizar', msg, 'Sincronizar', () => startBidirectionalSync(incluirFotos), { icon: 'sync-outline', iconColor: colors.info });
         }}
         onResolveAllNN={() => router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any)}
         onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
