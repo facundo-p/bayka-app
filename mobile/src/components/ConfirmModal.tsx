@@ -1,6 +1,7 @@
-import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import BaseModal from './BaseModal';
 
 export type ConfirmModalButton = {
   label: string;
@@ -29,75 +30,56 @@ export default function ConfirmModal({
   onDismiss,
 }: Props) {
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDismiss}>
-      <View style={styles.overlay}>
-        <Pressable style={styles.backdrop} onPress={onDismiss} />
-        <View style={styles.card}>
-          {icon && (
-            <View style={[styles.iconCircle, { backgroundColor: (iconColor ?? colors.primary) + '18' }]}>
-              <Ionicons name={icon as any} size={28} color={iconColor ?? colors.primary} />
-            </View>
-          )}
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
-          <View style={styles.buttonGroup}>
-            {buttons.map((btn, i) => {
-              const btnStyle = btn.style ?? 'primary';
-              const isCancel = btnStyle === 'cancel';
-              return (
-                <Pressable
-                  key={i}
-                  style={({ pressed }) => [
-                    styles.button,
-                    isCancel ? styles.buttonCancel : btnStyle === 'danger' ? styles.buttonDanger : styles.buttonPrimary,
-                    pressed && { opacity: 0.8 },
-                  ]}
-                  onPress={btn.onPress}
-                >
-                  {btn.icon && (
-                    <Ionicons
-                      name={btn.icon as any}
-                      size={16}
-                      color={isCancel ? colors.textMuted : colors.white}
-                      style={{ marginRight: spacing.sm }}
-                    />
-                  )}
-                  <Text style={[styles.buttonText, isCancel && styles.buttonTextCancel]}>
-                    {btn.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+    <BaseModal
+      visible={visible}
+      onRequestClose={onDismiss}
+      dismissOnBackdrop
+      cardStyle={styles.card}
+    >
+      {icon && (
+        <View style={[styles.iconCircle, { backgroundColor: (iconColor ?? colors.primary) + '18' }]}>
+          <Ionicons name={icon as any} size={28} color={iconColor ?? colors.primary} />
         </View>
+      )}
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.message}>{message}</Text>
+      <View style={styles.buttonGroup}>
+        {buttons.map((btn, i) => {
+          const btnStyle = btn.style ?? 'primary';
+          const isCancel = btnStyle === 'cancel';
+          return (
+            <Pressable
+              key={i}
+              style={({ pressed }) => [
+                styles.button,
+                isCancel ? styles.buttonCancel : btnStyle === 'danger' ? styles.buttonDanger : styles.buttonPrimary,
+                pressed && { opacity: 0.8 },
+              ]}
+              onPress={btn.onPress}
+            >
+              {btn.icon && (
+                <Ionicons
+                  name={btn.icon as any}
+                  size={16}
+                  color={isCancel ? colors.textMuted : colors.white}
+                  style={{ marginRight: spacing.sm }}
+                />
+              )}
+              <Text style={[styles.buttonText, isCancel && styles.buttonTextCancel]}>
+                {btn.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
-    </Modal>
+    </BaseModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.overlay,
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.round,
-    padding: spacing['4xl'],
     marginHorizontal: spacing['5xl'],
-    alignItems: 'center',
-    elevation: 8,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
     maxWidth: 340,
-    width: '100%',
   },
   iconCircle: {
     width: 52,
