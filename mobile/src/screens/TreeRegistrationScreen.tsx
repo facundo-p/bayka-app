@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  StyleSheet,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
@@ -23,6 +22,7 @@ import ReadOnlyTreeView from '../components/ReadOnlyTreeView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { styles } from './TreeRegistrationScreen.styles';
 import ScreenContainer from '../components/ScreenContainer';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
@@ -260,32 +260,3 @@ export default function TreeRegistrationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  viewAllRow: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.plantationBg,
-    paddingHorizontal: spacing.xl, paddingVertical: spacing.md, gap: spacing.sm,
-  },
-  viewAllText: { flex: 1, fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.plantation },
-  gridScroll: { flex: 1 },
-  gridContent: { paddingTop: spacing.md, flexGrow: 1 },
-  loader: { marginTop: spacing['6xl'] },
-  actionBar: {
-    flexDirection: 'row', padding: spacing.xl, gap: spacing.lg,
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  deleteButton: {
-    paddingVertical: 14, paddingHorizontal: 14, borderRadius: borderRadius.lg,
-    borderWidth: 2, borderColor: colors.danger, alignItems: 'center', justifyContent: 'center',
-  },
-  configButton: {
-    paddingVertical: 14, paddingHorizontal: 14, borderRadius: borderRadius.lg,
-    borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
-  },
-  finalizarButton: {
-    paddingVertical: 14, paddingHorizontal: spacing['4xl'],
-    borderRadius: borderRadius.lg, backgroundColor: colors.plantationHeaderBg, alignItems: 'center',
-  },
-  finalizarButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.lg },
-  buttonDisabled: { opacity: 0.5 },
-});
