@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 13-01-PLAN.md
-last_updated: "2026-04-13T13:54:49.246Z"
+stopped_at: Completed 13-02-PLAN.md
+last_updated: "2026-04-13T14:01:49.882Z"
 last_activity: 2026-04-13
 progress:
   total_phases: 13
   completed_phases: 12
   total_plans: 42
-  completed_plans: 40
+  completed_plans: 41
   percent: 100
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 13 (unificar-sync-bidireccional) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-13
 
@@ -79,6 +79,7 @@ Progress: [██████████] 100%
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P03 | 12min | 3 tasks | 5 files |
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P04 | 300 | 1 tasks | 2 files |
 | Phase 13-unificar-sync-bidireccional P01 | 534s | 2 tasks | 20 files |
+| Phase 13-unificar-sync-bidireccional P02 | 300s | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Recent decisions affecting current work:
 - [Phase 13-unificar-sync-bidireccional]: pendingSync defaults to false on migration — existing server data is already synced (Research Pitfall 6)
 - [Phase 13-unificar-sync-bidireccional]: canEdit now checks plantacionEstado (not subgroup estado) — plantation finalizada = immutable, simpler logic
 - [Phase 13-unificar-sync-bidireccional]: SubGroupEstado simplified to activa|finalizada — sincronizada removed per D-07
+- [Phase 13-unificar-sync-bidireccional]: startBidirectionalSync replaces startSync+startPull — single entry point does pull-then-push via syncPlantation
+- [Phase 13-unificar-sync-bidireccional]: syncAllPlantations runs global pre-steps (species, offline plantations, pending edits) once then loops all local plantations
+- [Phase 13-unificar-sync-bidireccional]: pullFromServer sets pendingSync=false on all upserted subgroups — server data is always considered synced
 
 ### Roadmap Evolution
 
@@ -199,6 +203,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-13T13:54:49.242Z
-Stopped at: Completed 13-01-PLAN.md
+Last session: 2026-04-13T14:01:49.876Z
+Stopped at: Completed 13-02-PLAN.md
 Resume file: None
