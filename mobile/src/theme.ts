@@ -92,7 +92,7 @@ export const colors = {
 
   // ─── State chips ──────────────────────────────────────────────────────────
   stateActiva: '#99B95B',
-  stateFinalizada: '#F59E0B',
+  stateFinalizada: '#0A3760',
   stateSincronizada: '#0A3760',
 
   // ─── Other user ───────────────────────────────────────────────────────────
@@ -104,6 +104,9 @@ export const colors = {
   statSynced: '#0A3760',      // brand blue — same as stateSincronizada
   statToday: '#8B5CF6',       // violet-500, unique color for "today" that doesn't clash
   statPending: '#99B95B',     // olive green — same as secondary, pending/unsync
+
+  // ─── Photo sync indicator ───────────────────────────────────────────────
+  photoUnsyncDot: '#F59E0B',   // amber dot for unsynced photos (only remaining orange)
 
   // ─── Connectivity ─────────────────────────────────────────────────────────
   online: '#99B95B',

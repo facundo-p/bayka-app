@@ -77,7 +77,7 @@ export function usePlantationAdmin() {
     if (finalizing) return;
     const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
     if (plantation?.pendingSync || plantation?.pendingEdit) {
-      showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.stateFinalizada);
+      showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.info);
       return;
     }
     setFinalizing(true);
@@ -86,7 +86,7 @@ export function usePlantationAdmin() {
       if (gate.canFinalize) {
         showConfirm({
           icon: 'warning-outline',
-          iconColor: colors.stateFinalizada,
+          iconColor: colors.info,
           title: 'Finalizar plantacion',
           message: 'Esta acción no se puede deshacer. La plantacion quedara bloqueada y no se podran agregar nuevos subgrupos.',
           buttons: [
@@ -217,7 +217,7 @@ export function usePlantationAdmin() {
   async function handleAssignTech(plantacionId: string): Promise<boolean> {
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
-      showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.stateFinalizada);
+      showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.info);
       return false;
     }
     return true;
