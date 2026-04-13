@@ -14,6 +14,7 @@ interface Props {
   pullSuccess: boolean | null;
   photoProgress: PhotoSyncProgress | null;
   photoResult: { uploaded?: number; failed?: number; downloaded?: number } | null;
+  globalProgress?: { plantationName: string; done: number; total: number } | null;
   onDismiss: () => void;
 }
 
@@ -26,6 +27,7 @@ export default function SyncProgressModal({
   pullSuccess,
   photoProgress,
   photoResult,
+  globalProgress,
   onDismiss,
 }: Props) {
   if (state === 'idle') return null;
@@ -39,24 +41,34 @@ export default function SyncProgressModal({
     >
       <View style={styles.overlay}>
         <View style={styles.modal}>
-          {state === 'syncing' && (
+          {state === 'pulling' && (
+            <>
+              <ActivityIndicator size="large" color={colors.info} />
+              <Text style={styles.title}>Actualizando datos...</Text>
+              <Text style={styles.progressText}>Descargando novedades del servidor</Text>
+              {globalProgress && (
+                <Text style={styles.plantationProgress}>
+                  Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
+                </Text>
+              )}
+            </>
+          )}
+
+          {state === 'pushing' && (
             <>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.title}>Sincronizando...</Text>
+              <Text style={styles.title}>Subiendo subgrupos...</Text>
               <Text style={styles.progressText}>
                 {progress ? `${progress.completed} de ${progress.total}` : 'Preparando...'}
               </Text>
               {progress?.currentName ? (
                 <Text style={styles.currentName}>{progress.currentName}</Text>
               ) : null}
-            </>
-          )}
-
-          {state === 'pulling' && (
-            <>
-              <ActivityIndicator size="large" color={colors.info} />
-              <Text style={styles.title}>Actualizando datos...</Text>
-              <Text style={styles.progressText}>Descargando novedades del servidor</Text>
+              {globalProgress && (
+                <Text style={styles.plantationProgress}>
+                  Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
+                </Text>
+              )}
             </>
           )}
 
@@ -118,7 +130,7 @@ export default function SyncProgressModal({
                 color={failureCount > 0 ? colors.secondary : colors.primary}
               />
               <Text style={styles.title}>
-                {failureCount === 0 ? 'Sincronización completa' : 'Sincronización parcial'}
+                {failureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
               </Text>
               {successCount > 0 && (
                 <Text style={styles.successText}>
@@ -204,6 +216,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  plantationProgress: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
   successText: {
     fontSize: fontSize.base,
