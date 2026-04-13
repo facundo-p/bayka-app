@@ -137,7 +137,7 @@ export const styles = StyleSheet.create({
   treeRowCode: {
     fontSize: fontSize.sm,
     color: colors.textSecondary,
-    fontFamily: 'monospace',
+    fontFamily: fonts.monospace,
     minWidth: 40,
   },
   treeRowActions: {

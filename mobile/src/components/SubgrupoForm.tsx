@@ -141,7 +141,7 @@ export default function SubgrupoForm({
 const styles = StyleSheet.create({
   submitBtn: {
     backgroundColor: colors.primary,
-    paddingVertical: 14,
+    paddingVertical: spacing.button,
     borderRadius: borderRadius.lg,
     alignItems: 'center',
     marginTop: spacing.md,
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: spacing.button,
     borderRadius: borderRadius.lg,
     borderWidth: 2,
     borderColor: colors.borderMuted,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   editSubmitBtn: {
     flex: 2,
-    paddingVertical: 14,
+    paddingVertical: spacing.button,
     borderRadius: borderRadius.lg,
     backgroundColor: colors.primary,
     alignItems: 'center',

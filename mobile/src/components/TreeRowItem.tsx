@@ -70,7 +70,7 @@ export const treeRowStyles = StyleSheet.create({
   pos: { fontSize: fontSize.base, fontFamily: fonts.bold, color: colors.textMedium, width: 26, textAlign: 'center' },
   name: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.plantation, flex: 1 },
   nameNN: { color: colors.secondary },
-  code: { fontSize: fontSize.sm, color: colors.textSecondary, fontFamily: 'monospace', minWidth: 40 },
+  code: { fontSize: fontSize.sm, color: colors.textSecondary, fontFamily: fonts.monospace, minWidth: 40 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   btn: { padding: spacing.xs },
   syncDot: {

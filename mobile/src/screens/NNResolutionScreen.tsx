@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   infoRight: { alignItems: 'flex-end', gap: 2 },
   subgrupoLabel: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.textMedium },
-  subgrupoCodeLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontFamily: 'monospace' },
+  subgrupoCodeLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontFamily: fonts.monospace },
   counterText: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.secondary },
   posicionText: { fontSize: fontSize.base, color: colors.textMuted },
   scrollWrapper: { flex: 1 },

@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
     borderRadius: borderRadius.lg,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.button,
     paddingVertical: spacing.xl,
     fontSize: fontSize.xl,
     fontFamily: fonts.regular,

@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   },
   exportOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.xl,

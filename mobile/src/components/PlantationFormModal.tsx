@@ -153,7 +153,7 @@ export default function PlantationFormModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlayLight,
     justifyContent: 'flex-start',
   },
   modalCard: {
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.sm,
   },

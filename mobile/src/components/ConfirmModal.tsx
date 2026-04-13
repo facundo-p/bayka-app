@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.heading,
     color: colors.text,
     textAlign: 'center',
     marginBottom: spacing.md,

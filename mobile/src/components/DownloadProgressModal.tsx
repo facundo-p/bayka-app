@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
   },
   modal: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
+    borderRadius: borderRadius.round,
     padding: spacing['4xl'],
     alignItems: 'center',
     width: '100%',
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.heading,
     color: colors.text,
     textAlign: 'center',
   },
