@@ -71,7 +71,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer withTexture>
       <FlatList
         data={items}
         keyExtractor={(item) => item.id}

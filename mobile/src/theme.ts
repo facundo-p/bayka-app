@@ -87,10 +87,12 @@ export const colors = {
   white: '#FFFFFF',
   black: '#000000',
   overlay: 'rgba(0,0,0,0.6)',
+  overlayLight: 'rgba(0,0,0,0.4)',
+  overlayDark: 'rgba(0,0,0,0.9)',
 
   // ─── State chips ──────────────────────────────────────────────────────────
   stateActiva: '#99B95B',
-  stateFinalizada: '#F59E0B',
+  stateFinalizada: '#0A3760',
   stateSincronizada: '#0A3760',
   syncPending: '#F97316',         // orange-500 -- distinct from stateFinalizada amber
 
@@ -103,6 +105,9 @@ export const colors = {
   statSynced: '#0A3760',      // brand blue — same as stateSincronizada
   statToday: '#8B5CF6',       // violet-500, unique color for "today" that doesn't clash
   statPending: '#99B95B',     // olive green — same as secondary, pending/unsync
+
+  // ─── Photo sync indicator ───────────────────────────────────────────────
+  photoUnsyncDot: '#F59E0B',   // amber dot for unsynced photos (only remaining orange)
 
   // ─── Connectivity ─────────────────────────────────────────────────────────
   online: '#99B95B',
@@ -121,6 +126,7 @@ export const spacing = {
   '4xl': 24,
   '5xl': 32,
   '6xl': 40,
+  button: 14,
 } as const;
 
 export const fontSize = {
@@ -159,6 +165,8 @@ export const fonts = {
   heading: 'LinBiolinum_RB',
   headingMedium: 'LinBiolinum_R',
   headingRegular: 'LinBiolinum_R',
+  // Monospace — codes, IDs
+  monospace: 'monospace',
 } as const;
 
 // Common header style for Stack navigators
@@ -173,4 +181,95 @@ export const plantationHeaderStyle = {
   headerStyle: { backgroundColor: colors.plantationHeaderBg },
   headerTintColor: colors.white,
   headerTitleStyle: { fontFamily: fonts.heading },
+} as const;
+
+// ─── Icon size tokens ────────────────────────────────────────────────────────
+export const iconSizes = {
+  action: 18,
+  stat: 14,
+  checkbox: 20,
+  badge: 12,
+  header: 24,
+} as const;
+
+// ─── Chip size presets ───────────────────────────────────────────────────────
+export const chipSizes = {
+  sm: { paddingVertical: spacing.xs, paddingHorizontal: spacing.md },
+  md: { paddingVertical: spacing.sm, paddingHorizontal: spacing.xl },
+} as const;
+
+// ─── Modal style tokens ─────────────────────────────────────────────────────
+export const modalStyles = {
+  overlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+  },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.round,
+    padding: spacing['4xl'],
+    width: '100%' as const,
+    maxWidth: 380,
+    elevation: 8,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+  },
+  title: {
+    fontSize: fontSize.xxl,
+    fontFamily: fonts.heading,
+    color: colors.text,
+    textAlign: 'center' as const,
+  },
+} as const;
+
+// ─── Button presets ──────────────────────────────────────────────────────────
+export const buttonPresets = {
+  primary: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing['4xl'],
+    borderRadius: borderRadius.lg,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minHeight: 44,
+  },
+  primaryText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+  },
+  secondary: {
+    backgroundColor: colors.background,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing['4xl'],
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minHeight: 44,
+  },
+  secondaryText: {
+    color: colors.textMuted,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+  },
+  danger: {
+    backgroundColor: colors.danger,
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing['4xl'],
+    borderRadius: borderRadius.lg,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    minHeight: 44,
+  },
+  dangerText: {
+    color: colors.white,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+  },
 } as const;

@@ -134,6 +134,7 @@ export function useNNResolution(params: {
     handleGuardar,
     handleAnterior,
     handleSiguiente,
+    setCurrentIndex,
     setZoomPhotoUri,
   };
 }

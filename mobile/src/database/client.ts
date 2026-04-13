@@ -13,4 +13,11 @@ try {
   // Column already exists — expected after successful migration
 }
 
+// Safety net: ensure pending_sync column exists even if migration 0009 failed.
+try {
+  sqlite.execSync('ALTER TABLE subgroups ADD COLUMN pending_sync integer NOT NULL DEFAULT 0;');
+} catch (_) {
+  // Column already exists — expected after successful migration
+}
+
 export const db = drizzle(sqlite, { schema });

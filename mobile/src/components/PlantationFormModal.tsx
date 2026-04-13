@@ -4,12 +4,11 @@ import {
   Text,
   Pressable,
   StyleSheet,
-  Modal,
   TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
-import React from 'react';
+import BaseModal from './BaseModal';
 
 type Plantation = {
   id: string;
@@ -79,94 +78,92 @@ export default function PlantationFormModal({
   }
 
   return (
-    <Modal
+    <BaseModal
       visible={visible}
-      transparent
-      animationType="slide"
       onRequestClose={handleClose}
+      animationType="slide"
+      overlayStyle={styles.modalOverlay}
+      cardStyle={styles.modalCard}
     >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>
-            {isEdit ? 'Editar plantacion' : 'Nueva plantacion'}
-          </Text>
+      <Text style={styles.modalTitle}>
+        {isEdit ? 'Editar plantacion' : 'Nueva plantacion'}
+      </Text>
 
-          <Text style={styles.inputLabel}>Lugar</Text>
-          <TextInput
-            style={styles.textInput}
-            value={lugar}
-            onChangeText={setLugar}
-            placeholder="Nombre del lugar de plantación"
-            placeholderTextColor={colors.textPlaceholder}
-            editable={!loading}
-          />
+      <Text style={styles.inputLabel}>Lugar</Text>
+      <TextInput
+        style={styles.textInput}
+        value={lugar}
+        onChangeText={setLugar}
+        placeholder="Nombre del lugar de plantación"
+        placeholderTextColor={colors.textPlaceholder}
+        editable={!loading}
+      />
 
-          <Text style={styles.inputLabel}>Periodo</Text>
-          <TextInput
-            style={styles.textInput}
-            value={periodo}
-            onChangeText={setPeriodo}
-            placeholder="Periodo de plantación"
-            placeholderTextColor={colors.textPlaceholder}
-            editable={!loading}
-          />
+      <Text style={styles.inputLabel}>Periodo</Text>
+      <TextInput
+        style={styles.textInput}
+        value={periodo}
+        onChangeText={setPeriodo}
+        placeholder="Periodo de plantación"
+        placeholderTextColor={colors.textPlaceholder}
+        editable={!loading}
+      />
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          <View style={styles.modalButtons}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.modalBtn,
-                styles.modalBtnCancel,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={handleClose}
-              disabled={loading}
-            >
-              <Text style={styles.modalBtnCancelText}>Cancelar</Text>
-            </Pressable>
-            <Pressable
-              style={({ pressed }) => [
-                styles.modalBtn,
-                styles.modalBtnPrimary,
-                pressed && { opacity: 0.8 },
-                loading && { opacity: 0.6 },
-              ]}
-              onPress={handleSubmit}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Text style={styles.modalBtnPrimaryText}>
-                  {isEdit ? 'Guardar' : 'Crear'}
-                </Text>
-              )}
-            </Pressable>
-          </View>
-        </View>
+      <View style={styles.modalButtons}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.modalBtn,
+            styles.modalBtnCancel,
+            pressed && { opacity: 0.7 },
+          ]}
+          onPress={handleClose}
+          disabled={loading}
+        >
+          <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.modalBtn,
+            styles.modalBtnPrimary,
+            pressed && { opacity: 0.8 },
+            loading && { opacity: 0.6 },
+          ]}
+          onPress={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={colors.white} />
+          ) : (
+            <Text style={styles.modalBtnPrimaryText}>
+              {isEdit ? 'Guardar' : 'Crear'}
+            </Text>
+          )}
+        </Pressable>
       </View>
-    </Modal>
+    </BaseModal>
   );
 }
 
 const styles = StyleSheet.create({
   modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: colors.overlayLight,
     justifyContent: 'flex-start',
+    padding: 0,
   },
   modalCard: {
-    backgroundColor: colors.surface,
+    borderRadius: 0,
     borderBottomLeftRadius: borderRadius.round,
     borderBottomRightRadius: borderRadius.round,
-    padding: spacing['4xl'],
     paddingTop: spacing['6xl'],
-    gap: spacing.xl,
+    maxWidth: undefined,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   modalTitle: {
     fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.heading,
     color: colors.text,
     marginBottom: spacing.sm,
   },
@@ -186,6 +183,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.text,
     backgroundColor: colors.backgroundAlt,
+    width: '100%',
   },
   errorText: {
     fontSize: fontSize.sm,
@@ -197,6 +195,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.xl,
     marginTop: spacing.md,
+    width: '100%',
   },
   modalBtn: {
     flex: 1,

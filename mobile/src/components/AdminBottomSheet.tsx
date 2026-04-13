@@ -1,8 +1,8 @@
 /**
- * AdminBottomSheet — slide-up modal with estado-specific plantation management actions.
+ * AdminBottomSheet — slide-up modal with plantation actions.
  *
- * Opens when admin taps the gear icon on a PlantationCard.
- * Shows estado-specific actions: activa / finalizada.
+ * Opens when any user taps the gear icon on a PlantationCard.
+ * Shows sync options for ALL users, plus admin-only management actions.
  */
 import React from 'react';
 import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
@@ -18,8 +18,10 @@ type AdminBottomSheetProps = {
   visible: boolean;
   plantation: Plantation | null;
   meta: ExpandedMeta;
-  isOnline?: boolean;
+  isAdmin: boolean;
+  isOnline: boolean;
   onDismiss: () => void;
+  onSync: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
   onFinalize: () => void;
@@ -27,7 +29,6 @@ type AdminBottomSheetProps = {
   onExportCsv: () => void;
   onExportExcel: () => void;
   onDiscardEdit: () => void;
-  onSync?: () => void;
 };
 
 // ─── ActionItem ─────────────────────────────────────────────────────────────
@@ -85,8 +86,10 @@ export default function AdminBottomSheet({
   visible,
   plantation,
   meta,
-  isOnline = true,
+  isAdmin,
+  isOnline,
   onDismiss,
+  onSync,
   onConfigSpecies,
   onAssignTech,
   onFinalize,
@@ -94,7 +97,6 @@ export default function AdminBottomSheet({
   onExportCsv,
   onExportExcel,
   onDiscardEdit,
-  onSync,
 }: AdminBottomSheetProps) {
   const insets = useSafeAreaInsets();
 
@@ -167,8 +169,20 @@ export default function AdminBottomSheet({
 
           {/* Action list */}
           <View style={styles.actionList}>
-            {plantation.estado === 'activa' && (
+            {/* Sync — available for ALL users (bidirectional) */}
+            <ActionItem
+              icon="sync-outline"
+              label="Sincronizar"
+              color={colors.primary}
+              onPress={onSync}
+              disabled={!isOnline}
+              helperText={!isOnline ? 'Necesitas conexion a internet' : undefined}
+            />
+
+            {/* Admin-only actions */}
+            {isAdmin && plantation.estado === 'activa' && (
               <>
+                <View style={styles.divider} />
                 <ActionItem
                   icon="leaf-outline"
                   label="Configurar especies"
@@ -182,14 +196,6 @@ export default function AdminBottomSheet({
                   onPress={onAssignTech}
                 />
                 <ActionItem
-                  icon="sync-outline"
-                  label="Sincronizar"
-                  color={colors.primary}
-                  disabled={!isOnline}
-                  onPress={onSync ?? (() => {})}
-                  helperText="Sin conexion"
-                />
-                <ActionItem
                   icon="lock-closed-outline"
                   label="Finalizar plantacion"
                   color={finalizeColor}
@@ -200,8 +206,9 @@ export default function AdminBottomSheet({
               </>
             )}
 
-            {plantation.estado === 'finalizada' && (
+            {isAdmin && plantation.estado === 'finalizada' && (
               <>
+                <View style={styles.divider} />
                 {!meta.idsGenerated && (
                   <ActionItem
                     icon="key-outline"
@@ -337,6 +344,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.xs,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
   },
   lockedBadge: {
     flexDirection: 'row',

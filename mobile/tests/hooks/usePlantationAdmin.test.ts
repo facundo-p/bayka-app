@@ -79,7 +79,7 @@ describe('fetchPlantationMeta', () => {
   it('returns canFinalize=false for activa when gate fails', async () => {
     mockCheckGate.mockResolvedValue({
       canFinalize: false,
-      blocking: [{ nombre: 'SG1', estado: 'activa' }],
+      blocking: [{ nombre: 'SG1', estado: 'activa', pendingSync: false }],
       hasSubgroups: true,
     });
 

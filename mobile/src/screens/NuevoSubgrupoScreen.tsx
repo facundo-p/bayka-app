@@ -20,7 +20,7 @@ export default function NuevoSubgrupoScreen() {
   const { lastSubGroupName, handleCreateSubgroup } = useNewSubgroup(plantacionId);
 
   return (
-    <ScreenContainer style={{ backgroundColor: colors.surface }}>
+    <ScreenContainer withTexture>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
 import { getSubgroupById } from '../queries/plantationDetailQueries';
+import { getPlantationEstado } from '../queries/adminQueries';
 import {
   insertTree,
   deleteLastTree,
@@ -82,9 +83,16 @@ export function useTreeRegistration({
   );
   const subgroup = subgroupRows?.[0] ?? null;
   const subgroupEstado = (subgroup?.estado ?? 'activa') as SubGroupEstado;
+
+  const { data: plantationEstadoRows } = useLiveData(
+    () => getPlantationEstado(plantacionId),
+    [plantacionId]
+  );
+  const plantacionEstado = plantationEstadoRows ?? 'activa';
+
   const isCreator = subgroup && userId ? subgroup.usuarioCreador === userId : false;
   const isOwner = subgroup && userId
-    ? canEdit({ usuarioCreador: subgroup.usuarioCreador, estado: subgroupEstado }, userId)
+    ? canEdit({ usuarioCreador: subgroup.usuarioCreador }, userId, plantacionEstado)
     : false;
   const dataLoaded = subgroup !== null && userId !== '';
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== 'activa') : false;

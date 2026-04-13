@@ -118,7 +118,7 @@ export default function PhotoViewer({ uri, onClose }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.95)',
+    backgroundColor: colors.overlayDark,
     justifyContent: 'center',
     alignItems: 'center',
   },

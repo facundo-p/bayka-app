@@ -104,19 +104,15 @@ export default function PlantationCard({
           <Ionicons name="create-outline" size={18} color={colors.primary} />
         </Pressable>
 
-        {/* Slot 2: Gear (middle) — admin only per D-03, empty placeholder for tecnico per D-04 */}
-        {isAdmin ? (
-          <Pressable
-            onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
-            hitSlop={8}
-            style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-            accessibilityLabel="Acciones de gestion"
-          >
-            <Ionicons name="settings-outline" size={18} color={colors.primary} />
-          </Pressable>
-        ) : (
-          <View style={styles.stripSlot} testID="strip-slot-gear-placeholder" />
-        )}
+        {/* Slot 2: Gear (middle) — visible for all users */}
+        <Pressable
+          onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+          accessibilityLabel="Acciones de plantacion"
+        >
+          <Ionicons name="settings-outline" size={18} color={colors.primary} />
+        </Pressable>
 
         {/* Slot 3: Trash (bottom) — existing delete behavior */}
         {onDelete ? (

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
@@ -16,9 +16,10 @@ import AdminPlantationModals from '../components/AdminPlantationModals';
 import SyncProgressModal from '../components/SyncProgressModal';
 import { usePlantaciones } from '../hooks/usePlantaciones';
 import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
+import { useSync } from '../hooks/useSync';
+import { showConfirmDialog } from '../utils/alertHelpers';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
-import { useSync } from '../hooks/useSync';
 import { useSyncSetting } from '../hooks/useSyncSetting';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
@@ -33,8 +34,6 @@ export default function PlantacionesScreen() {
     estadoCounts,
     activeFilter,
     setActiveFilter,
-    showFreshnessBanner,
-    refreshing,
     headerTitle,
     isOnline,
     isAdmin,
@@ -42,12 +41,11 @@ export default function PlantacionesScreen() {
     pendingSyncMap,
     todayCountMap,
     totalCountMap,
-    handleRefresh,
     handleDeletePlantation,
     confirmProps,
   } = usePlantaciones();
 
-  // Always call the hook (React rules of hooks) -- handlers only used when isAdmin
+  // Always call the hook (React rules of hooks)
   const adminHook = usePlantationAdmin();
 
   // Global sync state
@@ -161,21 +159,6 @@ export default function PlantacionesScreen() {
         }
       />
 
-      {showFreshnessBanner && (
-        <View style={styles.freshnessBanner}>
-          <Text style={styles.freshnessText}>Hay datos nuevos disponibles</Text>
-          <TouchableOpacity
-            style={styles.freshnessButton}
-            onPress={handleRefresh}
-            disabled={refreshing}
-          >
-            <Text style={styles.freshnessButtonText}>
-              {refreshing ? 'Actualizando...' : 'Actualizar'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       {plantationList && plantationList.length > 0 ? (
         <>
           <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
@@ -235,23 +218,22 @@ export default function PlantacionesScreen() {
         onDismiss={resetSync}
       />
 
-      {isAdmin && (
-        <AdminBottomSheet
-          visible={bottomSheetVisible}
-          plantation={bottomSheetPlantation}
-          meta={bottomSheetMeta}
-          isOnline={isOnline}
-          onDismiss={() => setBottomSheetVisible(false)}
-          onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
-          onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
-          onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
-          onGenerateIds={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleGenerateIds(bottomSheetPlantation.id); })}
-          onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
-          onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
-          onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
-          onSync={handleBottomSheetSync}
-        />
-      )}
+      <AdminBottomSheet
+        visible={bottomSheetVisible}
+        plantation={bottomSheetPlantation}
+        meta={bottomSheetMeta}
+        isAdmin={isAdmin}
+        isOnline={isOnline}
+        onDismiss={() => setBottomSheetVisible(false)}
+        onSync={handleBottomSheetSync}
+        onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
+        onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
+        onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
+        onGenerateIds={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleGenerateIds(bottomSheetPlantation.id); })}
+        onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
+        onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
+        onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
+      />
 
       {isAdmin && (
         <AdminPlantationModals
@@ -301,14 +283,10 @@ const styles = StyleSheet.create({
     top: 0,
     right: 0,
   },
-  freshnessBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.infoBg, paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.info + '30' },
-  freshnessText: { flex: 1, fontSize: fontSize.sm, color: colors.info },
-  freshnessButton: { backgroundColor: colors.info, paddingHorizontal: spacing.xxl, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, marginLeft: spacing.md },
-  freshnessButtonText: { color: colors.white, fontSize: fontSize.sm, fontFamily: fonts.semiBold },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
   emptySubtext: { fontSize: fontSize.base, color: colors.textLight },
-  listContent: { padding: spacing.xxl, gap: spacing.xl },
+  listContent: { padding: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing['6xl'], gap: spacing.xl },
   catalogButton: { backgroundColor: colors.primary, borderRadius: borderRadius.full, width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   catalogButtonDisabled: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.offline },
   catalogButtonPressed: { opacity: 0.7 },
