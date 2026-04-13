@@ -22,7 +22,8 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
 
   return (
     <Pressable
-      onPress={() => onToggle(item.id)}
+      onPress={isDownloaded ? undefined : () => onToggle(item.id)}
+      disabled={isDownloaded}
       style={[
         styles.card,
         { borderLeftColor, opacity: isDownloaded ? 0.65 : 1 },
