@@ -56,13 +56,15 @@ export default function PlantationCard({
       {/* Colored sidebar with leaf icon */}
       <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
         <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
-        {hasPendingSync && <OrangeDot style={styles.dotOverlay} />}
       </View>
 
       {/* Content area — solid white background */}
       <View style={styles.content}>
         {/* Title */}
-        <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+        <View style={styles.titleRow}>
+          {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
+          <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+        </View>
         <Text style={styles.subtitle}>{periodo}</Text>
 
         {/* Stats row */}
@@ -151,12 +153,6 @@ const styles = StyleSheet.create({
     width: SIDEBAR_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
-  },
-  dotOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
   },
 
   // Main content area — solid surface color (white)
@@ -167,11 +163,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
 
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titleDot: {
+    marginRight: spacing.sm,
+  },
   title: {
     fontSize: fontSize.title,
     fontFamily: fonts.bold,
     color: colors.textHeading,
     marginBottom: 2,
+    flex: 1,
   },
   subtitle: {
     fontSize: fontSize.base,

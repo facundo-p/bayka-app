@@ -62,6 +62,41 @@ export function useSync(plantacionId?: string) {
     }
   }, [plantacionId]);
 
+  const startPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean = true) => {
+    setState('pulling');
+    setProgress(null);
+    setResults([]);
+    setPullSuccess(null);
+    setPhotoProgress(null);
+    setPhotoResult(null);
+    setGlobalProgress(null);
+
+    try {
+      setState('pushing');
+      const res = await syncPlantation(targetPlantacionId, setProgress);
+      setResults(res);
+      setPullSuccess(true);
+
+      if (incluirFotos) {
+        setState('uploading-photos');
+        const uploadRes = await uploadPendingPhotos(targetPlantacionId, setPhotoProgress);
+        setState('downloading-photos');
+        const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, setPhotoProgress);
+        setPhotoResult({
+          uploaded: uploadRes.uploaded,
+          failed: uploadRes.failed + downloadRes.failed,
+          downloaded: downloadRes.downloaded,
+        });
+      }
+    } catch (err) {
+      console.error('[Sync] Plantation sync failed:', err);
+      setPullSuccess(false);
+    } finally {
+      setState('done');
+      notifyDataChanged();
+    }
+  }, []);
+
   const startGlobalSync = useCallback(async (incluirFotos: boolean = true) => {
     setState('pulling');
     setProgress(null);
@@ -121,6 +156,7 @@ export function useSync(plantacionId?: string) {
     progress,
     results,
     startBidirectionalSync,
+    startPlantationSync,
     startGlobalSync,
     pullSuccess,
     reset,

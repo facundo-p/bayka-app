@@ -49,7 +49,7 @@ export default function PlantacionesScreen() {
   const adminHook = usePlantationAdmin();
 
   // Global sync state
-  const { state: syncState, startGlobalSync, globalProgress, progress, results, reset: resetSync, pullSuccess, successCount, failureCount, photoProgress, photoResult } = useSync();
+  const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, reset: resetSync, pullSuccess, successCount, failureCount, photoProgress, photoResult } = useSync();
   const { incluirFotos } = useSyncSetting();
   const { pendingCount: globalPendingCount } = usePendingSyncCount();
   const hasAnyPending = globalPendingCount > 0;
@@ -109,7 +109,7 @@ export default function PlantacionesScreen() {
   function handleBottomSheetSync() {
     if (bottomSheetPlantation) {
       setBottomSheetVisible(false);
-      startGlobalSync(incluirFotos);
+      startPlantationSync(bottomSheetPlantation.id, incluirFotos);
     }
   }
 
@@ -273,7 +273,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   syncIconButton: {
-    padding: spacing.xs,
+    width: 34,
+    height: 34,
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   syncIconWrapper: {
     position: 'relative',
