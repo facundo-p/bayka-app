@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
   emptySubtext: { fontSize: fontSize.base, color: colors.textLight },
-  listContent: { padding: spacing.xxl, gap: spacing.xl },
+  listContent: { padding: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing['6xl'], gap: spacing.xl },
   catalogButton: { backgroundColor: colors.primary, borderRadius: borderRadius.full, width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
   catalogButtonDisabled: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.offline },
   catalogButtonPressed: { opacity: 0.7 },
