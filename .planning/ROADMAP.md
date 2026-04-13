@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Eliminar Plantacion Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar (completed 2026-04-06)
 - [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexion en campo (completed 2026-04-06)
 - [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades criticas: offline, sync, data integrity, role-based access
-- [ ] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos
+- [x] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos (completed 2026-04-13)
 
 ## Phase Details
 
@@ -267,12 +267,12 @@ Plans:
   8. Photo inclusion setting persists across sessions via SecureStore
   9. 'sincronizada' subgroup estado removed — immutability determined by plantation estado
   10. Finalization gate requires all subgroups to be finalizada AND pendingSync=false
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 13-01-PLAN.md — Drizzle migration (pendingSync column), schema update, SubGroupRepository refactor (remove sincronizada, add dirty flag), TreeRepository mutation wiring, query/hook updates, theme syncPending color
 - [x] 13-02-PLAN.md — SyncService unification (syncAllPlantations, markSubGroupSynced, pullFromServer pendingSync), useSync hook (startBidirectionalSync, startGlobalSync), useSyncSetting hook, SyncProgressModal bidirectional display
-- [ ] 13-03-PLAN.md — UI layer: OrangeDot component, PlantationDetailHeader unified button, PlantationCard/SubGroupCard dots, PlantacionesScreen global sync, AdminBottomSheet sync action, visual checkpoint
+- [x] 13-03-PLAN.md — UI layer: OrangeDot component, PlantationDetailHeader unified button, PlantationCard/SubGroupCard dots, PlantacionesScreen global sync, AdminBottomSheet sync action, visual checkpoint
 
 Canonical refs:
 - mobile/src/services/SyncService.ts
