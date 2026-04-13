@@ -27,7 +27,6 @@ export default function PlantacionesScreen() {
     estadoCounts,
     activeFilter,
     setActiveFilter,
-    showFreshnessBanner,
     refreshing,
     headerTitle,
     isOnline,
@@ -119,21 +118,6 @@ export default function PlantacionesScreen() {
           </View>
         }
       />
-
-      {showFreshnessBanner && (
-        <View style={styles.freshnessBanner}>
-          <Text style={styles.freshnessText}>Hay datos nuevos disponibles</Text>
-          <TouchableOpacity
-            style={styles.freshnessButton}
-            onPress={handleRefresh}
-            disabled={refreshing}
-          >
-            <Text style={styles.freshnessButtonText}>
-              {refreshing ? 'Actualizando...' : 'Actualizar'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       {plantationList && plantationList.length > 0 ? (
         <>

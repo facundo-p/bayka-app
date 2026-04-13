@@ -8,10 +8,9 @@ interface Props {
   isDownloaded: boolean;
   isSelected: boolean;
   onToggle: (id: string) => void;
-  onDelete?: (id: string) => void;
 }
 
-export default function CatalogPlantationCard({ item, isDownloaded, isSelected, onToggle, onDelete }: Props) {
+export default function CatalogPlantationCard({ item, isDownloaded, isSelected, onToggle }: Props) {
   const stateColor =
     item.estado === 'activa'
       ? colors.stateActiva
@@ -59,17 +58,6 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
           <Text style={[styles.estadoText, { color: stateColor }]}>{item.estado}</Text>
         </View>
       </View>
-
-      {/* Right: delete action for downloaded cards */}
-      {isDownloaded && (
-        <Pressable
-          onPress={() => onDelete?.(item.id)}
-          hitSlop={8}
-          style={styles.deleteButton}
-        >
-          <Ionicons name="trash-outline" size={20} color={colors.danger} />
-        </Pressable>
-      )}
     </Pressable>
   );
 }
