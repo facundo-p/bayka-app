@@ -1,15 +1,16 @@
 /**
  * PlantationDetailHeader — fixed top section for PlantationDetailScreen.
  * Extracted to keep PlantationDetailScreen under 300 lines.
- * Renders sync buttons, N/N banner, finalization banner, and filter cards.
+ * Renders unified Sincronizar button, N/N banner, finalization banner, and filter cards.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import FilterCards from './FilterCards';
 import CheckboxRow from './CheckboxRow';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { useSyncSetting } from '../hooks/useSyncSetting';
 
 type FilterConfig = {
   key: string;
@@ -29,7 +30,6 @@ type Props = {
   isFinalizada: boolean;
   subgroupFilter: string | null;
   subgroupFilterConfigs: FilterConfig[];
-  onStartPull: (incluirFotos: boolean) => void;
   onStartSync: (incluirFotos: boolean) => void;
   onResolveAllNN: () => void;
   onToggleFilter: (key: string) => void;
@@ -45,60 +45,43 @@ export default function PlantationDetailHeader({
   isFinalizada,
   subgroupFilter,
   subgroupFilterConfigs,
-  onStartPull,
   onStartSync,
   onResolveAllNN,
   onToggleFilter,
 }: Props) {
-  const [incluirFotosPull, setIncluirFotosPull] = useState(true);
-  const [incluirFotosPush, setIncluirFotosPush] = useState(true);
+  const { incluirFotos, toggleIncluirFotos } = useSyncSetting();
 
   return (
     <View style={styles.fixedHeader}>
       {isOnline && (
         <View style={styles.syncSection}>
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
-              onPress={() => onStartPull(incluirFotosPull)}
-            >
-              <Ionicons name="cloud-download-outline" size={18} color={colors.white} />
-              <Text style={styles.pullButtonText}>Descargar</Text>
-            </Pressable>
-
-            <Pressable
-              testID="sync-button"
-              style={({ pressed }) => [
-                styles.syncButton,
-                pressed && { opacity: 0.85 },
-                syncableCount === 0 && pendingPhotosCount === 0 && styles.buttonDisabled,
-              ]}
-              onPress={() => onStartSync(incluirFotosPush)}
-              disabled={syncableCount === 0 && pendingPhotosCount === 0}
-            >
-              <Ionicons name="cloud-upload-outline" size={18} color={colors.white} />
-              <Text style={styles.syncButtonText}>Subir</Text>
-              {(syncableCount > 0 || pendingPhotosCount > 0) && (
-                <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>
-                    {syncableCount > 0 ? syncableCount : pendingPhotosCount}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
+          <Pressable
+            testID="sync-button"
+            style={({ pressed }) => [
+              styles.syncButton,
+              pressed && styles.syncButtonPressed,
+              syncableCount === 0 && pendingPhotosCount === 0 && styles.buttonDisabled,
+            ]}
+            onPress={() => onStartSync(incluirFotos)}
+            disabled={syncableCount === 0 && pendingPhotosCount === 0}
+          >
+            <Ionicons name="sync-outline" size={18} color={colors.white} />
+            <Text style={styles.syncButtonText}>Sincronizar</Text>
+            {(syncableCount > 0 || pendingPhotosCount > 0) && (
+              <View style={styles.countBadge}>
+                <Text style={styles.countBadgeText}>
+                  {syncableCount > 0 ? syncableCount : pendingPhotosCount}
+                </Text>
+              </View>
+            )}
+          </Pressable>
 
           <View style={styles.checkboxRow}>
             <CheckboxRow
               label="Incluir fotos"
-              checked={incluirFotosPull}
-              onToggle={() => setIncluirFotosPull(v => !v)}
-            />
-            <CheckboxRow
-              label="Incluir fotos"
-              checked={incluirFotosPush}
-              onToggle={() => setIncluirFotosPush(v => !v)}
-              disabled={syncableCount === 0 && pendingPhotosCount === 0}
+              checked={incluirFotos}
+              onToggle={() => toggleIncluirFotos(!incluirFotos)}
+              accessibilityLabel="Incluir fotos en la sincronizacion"
             />
           </View>
         </View>
@@ -146,27 +129,7 @@ const styles = StyleSheet.create({
   syncSection: {
     marginBottom: spacing.sm,
   },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  pullButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.info,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
-  },
-  pullButtonText: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontFamily: fonts.semiBold,
-  },
   syncButton: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -174,6 +137,9 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.lg,
     gap: spacing.md,
+  },
+  syncButtonPressed: {
+    opacity: 0.85,
   },
   syncButtonText: {
     color: colors.white,
@@ -198,8 +164,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   checkboxRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'center',
     paddingTop: spacing.xs,
   },
   resolveNNBanner: {

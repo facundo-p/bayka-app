@@ -28,6 +28,7 @@ import SyncProgressModal from '../components/SyncProgressModal';
 import ScreenContainer from '../components/ScreenContainer';
 import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
+import OrangeDot from '../components/OrangeDot';
 export default function PlantationDetailScreen() {
   const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -93,6 +94,7 @@ export default function PlantationDetailScreen() {
         >
           <View style={styles.cardRow}>
             <Text style={[styles.cardName, !isOwner && styles.cardNameOther]} numberOfLines={1}>{item.nombre}</Text>
+            {item.pendingSync && <OrangeDot style={styles.pendingSyncDot} />}
             {nnCount > 0 && <View style={styles.nnBadge}><Text style={styles.nnBadgeText}>{nnCount} N/N</Text></View>}
             <SubGroupStateChip estado={item.estado} />
             <Text style={styles.treeCountText}>{treeCount}</Text>
@@ -121,12 +123,11 @@ export default function PlantationDetailScreen() {
         isFinalizada={isFinalizada}
         subgroupFilter={subgroupFilter}
         subgroupFilterConfigs={subgroupFilterConfigs as any}
-        onStartPull={(incluirFotos: boolean) => startBidirectionalSync(incluirFotos)}
         onStartSync={(incluirFotos: boolean) => {
           const parts: string[] = [];
           if (syncableCount > 0) parts.push(`${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}`);
           if (incluirFotos && pendingPhotosCount > 0) parts.push(`${pendingPhotosCount} foto${pendingPhotosCount > 1 ? 's' : ''} pendiente${pendingPhotosCount > 1 ? 's' : ''}`);
-          const msg = parts.length > 0 ? `Se van a subir ${parts.join(' y ')}. Necesitas conexión a internet.` : 'Se van a subir los datos. Necesitas conexión a internet.';
+          const msg = parts.length > 0 ? `Se van a sincronizar ${parts.join(' y ')}. Necesitas conexion a internet.` : 'Se van a sincronizar los datos. Necesitas conexion a internet.';
           showConfirmDialog(confirmShow, 'Sincronizar', msg, 'Sincronizar', () => startBidirectionalSync(incluirFotos), { icon: 'sync-outline', iconColor: colors.info });
         }}
         onResolveAllNN={() => router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any)}
@@ -189,6 +190,7 @@ const styles = StyleSheet.create({
   cardCreator: { fontSize: fontSize.xs, fontFamily: fonts.regular, color: colors.textMuted, marginTop: spacing.xs },
   treeCountText: { fontSize: fontSize.base, color: colors.plantation, fontFamily: fonts.semiBold },
   deleteCardButton: { padding: 2 },
+  pendingSyncDot: { marginLeft: spacing.xs },
   nnBadge: { backgroundColor: colors.secondaryBg, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: borderRadius.xl, borderWidth: 1, borderColor: colors.secondaryBorder },
   nnBadgeText: { color: colors.secondary, fontSize: fontSize.xs, fontFamily: fonts.semiBold },
   emptyContainer: { flex: 1, alignItems: 'center', marginTop: 60 },

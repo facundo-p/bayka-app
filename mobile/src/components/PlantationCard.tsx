@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import React from 'react';
+import OrangeDot from './OrangeDot';
 
 const SIDEBAR_WIDTH = 48;
 
@@ -18,6 +19,7 @@ type Props = {
   todayCount: number;
   pendingSync: number;
   estado?: string;
+  hasPendingSync?: boolean;
   onPress: () => void;
   onDelete?: () => void;
   // Role-aware action slots
@@ -34,6 +36,7 @@ export default function PlantationCard({
   todayCount,
   pendingSync,
   estado,
+  hasPendingSync = false,
   onPress,
   onDelete,
   isAdmin,
@@ -43,9 +46,7 @@ export default function PlantationCard({
   const accentColor =
     estado === 'finalizada'
       ? colors.stateFinalizada
-      : estado === 'sincronizada'
-        ? colors.stateSincronizada
-        : colors.stateActiva;
+      : colors.stateActiva;
 
   return (
     <Pressable
@@ -55,6 +56,7 @@ export default function PlantationCard({
       {/* Colored sidebar with leaf icon */}
       <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
         <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
+        {hasPendingSync && <OrangeDot style={styles.dotOverlay} />}
       </View>
 
       {/* Content area — solid white background */}
@@ -153,6 +155,12 @@ const styles = StyleSheet.create({
     width: SIDEBAR_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
+  },
+  dotOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
   },
 
   // Main content area — solid surface color (white)
