@@ -21,6 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Eliminar Plantacion Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar (completed 2026-04-06)
 - [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexion en campo (completed 2026-04-06)
 - [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades criticas: offline, sync, data integrity, role-based access
+- [ ] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos
 
 ## Phase Details
 
@@ -249,3 +250,21 @@ Plans:
 - [x] 12-01-PLAN.md — Drizzle migration (fotoSynced column), schema update, install expo-image-manipulator, PhotoService resize at capture, TreeRepository photo sync helpers, Supabase Storage RLS migration
 - [x] 12-02-PLAN.md — SyncService photo upload/download functions, useSync hook extension (incluirFotos params, photo progress states), unit tests
 - [x] 12-03-PLAN.md — UI layer: PlantationDetailHeader two-button layout (Descargar/Subir) with CheckboxRow toggles, SyncProgressModal photo states, TreeRow Ionicons with sync dot, PlantationDetailScreen wiring, visual checkpoint
+
+### Phase 13: Unificar sync bidireccional
+
+**Goal:** Reemplazar los botones separados de Descargar/Subir por un unico boton "Sincronizar" que ejecuta pull+push bidireccional, introducir dirty flag (pendingSync) a nivel subgrupo para tracking de cambios locales, orange dot centralizado como indicador visual de pendiente, y setting persistente para incluir/excluir fotos en sync.
+**Requirements**: TBD
+**Depends on:** Phase 12
+**Plans:** 0 plans
+
+Canonical refs:
+- mobile/src/services/SyncService.ts
+- mobile/src/hooks/useSync.ts
+- mobile/src/components/SyncConfirmModal.tsx
+- mobile/src/components/SyncProgressModal.tsx
+- mobile/src/components/AdminBottomSheet.tsx
+- mobile/src/screens/PlantacionesScreen.tsx
+- mobile/src/repositories/SubGroupRepository.ts
+- mobile/src/database/schema.ts
+- mobile/src/theme.ts
