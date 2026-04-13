@@ -9,7 +9,6 @@ interface Props {
 const CHIP_CONFIG: Record<string, { label: string; color: string }> = {
   activa: { label: 'activa', color: colors.stateActiva },
   finalizada: { label: 'finalizada', color: colors.stateFinalizada },
-  sincronizada: { label: 'sincronizada', color: colors.stateSincronizada },
 };
 
 export default function StatusChip({ estado, size = 'md' }: Props) {

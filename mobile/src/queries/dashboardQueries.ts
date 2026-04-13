@@ -6,7 +6,7 @@
  */
 import { db } from '../database/client';
 import { plantations, plantationUsers, subgroups, trees } from '../database/schema';
-import { eq, and, count, desc, sql, ne, getTableColumns } from 'drizzle-orm';
+import { eq, and, count, desc, sql, getTableColumns } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
 /**
@@ -30,7 +30,7 @@ export async function getPlantationsForRole(isAdmin: boolean, userId: string | n
 
 /**
  * DASH-04
- * Returns tree count per plantation for trees that are NOT yet sincronizada,
+ * Returns tree count per plantation for trees in subgroups with pending local changes,
  * filtered by the current user's registrations.
  * Used to show "unsynced" tree count on each plantation card.
  */
@@ -46,7 +46,7 @@ export async function getUnsyncedTreeCounts(userId: string | null) {
     .where(
       and(
         eq(trees.usuarioRegistro, userId),
-        ne(subgroups.estado, 'sincronizada')
+        eq(subgroups.pendingSync, true)
       )
     )
     .groupBy(subgroups.plantacionId);
@@ -72,7 +72,7 @@ export async function getUserTotalTreeCounts(userId: string | null) {
 
 /**
  * SYNC-07
- * Returns count of SubGroups with estado = 'finalizada' per plantation.
+ * Returns count of SubGroups with pendingSync=true per plantation.
  * Used to show pending sync count on each plantation card.
  */
 export async function getPendingSyncCounts() {
@@ -82,7 +82,7 @@ export async function getPendingSyncCounts() {
       pendingCount: count(),
     })
     .from(subgroups)
-    .where(eq(subgroups.estado, 'finalizada'))
+    .where(eq(subgroups.pendingSync, true))
     .groupBy(subgroups.plantacionId);
 }
 
@@ -112,7 +112,7 @@ export async function getTodayTreeCounts(userId: string | null) {
 
 /**
  * DASH-03 (synced portion)
- * Returns tree count per plantation for trees in sincronizada SubGroups.
+ * Returns tree count per plantation for trees in synced SubGroups (pendingSync=false).
  */
 export async function getSyncedTreeCounts() {
   return db
@@ -122,7 +122,7 @@ export async function getSyncedTreeCounts() {
     })
     .from(trees)
     .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
-    .where(eq(subgroups.estado, 'sincronizada'))
+    .where(eq(subgroups.pendingSync, false))
     .groupBy(subgroups.plantacionId);
 }
 

@@ -48,9 +48,6 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
       idsGenerated = await hasIdsGenerated(plantation.id);
     } catch { /* ignore */ }
   }
-  if (plantation.estado === 'sincronizada') {
-    idsGenerated = true;
-  }
   return { canFinalize, idsGenerated };
 }
 

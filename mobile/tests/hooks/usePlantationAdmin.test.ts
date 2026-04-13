@@ -104,14 +104,6 @@ describe('fetchPlantationMeta', () => {
     expect(result).toEqual({ canFinalize: false, idsGenerated: false });
   });
 
-  it('returns idsGenerated=true for sincronizada always', async () => {
-    const result = await fetchPlantationMeta(makePlantation('sincronizada'));
-
-    expect(result).toEqual({ canFinalize: false, idsGenerated: true });
-    expect(mockCheckGate).not.toHaveBeenCalled();
-    expect(mockHasIds).not.toHaveBeenCalled();
-  });
-
   it('handles checkFinalizationGate error gracefully', async () => {
     mockCheckGate.mockRejectedValue(new Error('DB error'));
 

@@ -8,7 +8,7 @@
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { subgroups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
-import { eq, and, ne, isNotNull, sql, count, asc } from 'drizzle-orm';
+import { eq, and, isNotNull, sql, count, asc } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
 
@@ -16,22 +16,22 @@ import { eq, and, ne, isNotNull, sql, count, asc } from 'drizzle-orm';
  * PLAN-06
  * Checks whether a plantation can be finalized:
  * - Must have at least one subgroup
- * - All subgroups must be 'sincronizada'
+ * - All subgroups must be 'finalizada' AND pendingSync=false
  * Returns canFinalize: true if both conditions met, plus the list of blockers.
  */
 export async function checkFinalizationGate(
   plantacionId: string
-): Promise<{ canFinalize: boolean; blocking: Array<{ nombre: string; estado: string }>; hasSubgroups: boolean }> {
+): Promise<{ canFinalize: boolean; blocking: Array<{ nombre: string; estado: string; pendingSync: boolean }>; hasSubgroups: boolean }> {
   const allSubgroups = await db
-    .select({ nombre: subgroups.nombre, estado: subgroups.estado })
+    .select({ nombre: subgroups.nombre, estado: subgroups.estado, pendingSync: subgroups.pendingSync })
     .from(subgroups)
     .where(eq(subgroups.plantacionId, plantacionId));
 
-  const nonSynced = allSubgroups.filter((s) => s.estado !== 'sincronizada');
+  const blocking = allSubgroups.filter(s => s.estado !== 'finalizada' || s.pendingSync);
 
   return {
-    canFinalize: allSubgroups.length > 0 && nonSynced.length === 0,
-    blocking: nonSynced,
+    canFinalize: allSubgroups.length > 0 && blocking.length === 0,
+    blocking,
     hasSubgroups: allSubgroups.length > 0,
   };
 }
@@ -128,7 +128,7 @@ export async function getAssignedTechnicians(
 
 /**
  * Returns the count of subgroups in a plantation created by a specific user
- * that are NOT yet sincronizada (i.e. activa or finalizada).
+ * that have pending local changes (pendingSync=true).
  * Used to warn admins before unassigning a technician.
  */
 export async function getTechnicianUnsyncedSubgroupCount(
@@ -142,7 +142,7 @@ export async function getTechnicianUnsyncedSubgroupCount(
       and(
         eq(subgroups.plantacionId, plantacionId),
         eq(subgroups.usuarioCreador, userId),
-        ne(subgroups.estado, 'sincronizada')
+        eq(subgroups.pendingSync, true)
       )
     );
   return result[0]?.cnt ?? 0;

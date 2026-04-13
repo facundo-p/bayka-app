@@ -41,15 +41,15 @@ describe('adminQueries', () => {
   // ─── checkFinalizationGate ────────────────────────────────────────────────
 
   describe('checkFinalizationGate', () => {
-    it('Test 1: returns {canFinalize: true, blocking: []} when all subgroups are sincronizada', async () => {
-      // All subgroups are sincronizada → query returns only sincronizada rows
-      const syncedSubgroups = [
-        { nombre: 'Línea A', estado: 'sincronizada' },
-        { nombre: 'Línea B', estado: 'sincronizada' },
+    it('Test 1: returns {canFinalize: true, blocking: []} when all subgroups are finalizada and pendingSync=false', async () => {
+      // All subgroups finalizada and not pendingSync → can finalize
+      const readySubgroups = [
+        { nombre: 'Línea A', estado: 'finalizada', pendingSync: false },
+        { nombre: 'Línea B', estado: 'finalizada', pendingSync: false },
       ];
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(syncedSubgroups),
+          where: jest.fn().mockResolvedValue(readySubgroups),
         }),
       });
 
@@ -73,11 +73,11 @@ describe('adminQueries', () => {
       expect(result.hasSubgroups).toBe(false);
     });
 
-    it('Test 2: returns {canFinalize: false, blocking: [{nombre, estado}]} when some subgroups are not sincronizada', async () => {
+    it('Test 2: returns {canFinalize: false, blocking} when some subgroups are not finalizada or have pendingSync=true', async () => {
       const allSubgroups = [
-        { nombre: 'Línea A', estado: 'activa' },
-        { nombre: 'Línea B', estado: 'finalizada' },
-        { nombre: 'Línea C', estado: 'sincronizada' },
+        { nombre: 'Línea A', estado: 'activa', pendingSync: true },
+        { nombre: 'Línea B', estado: 'finalizada', pendingSync: true },
+        { nombre: 'Línea C', estado: 'finalizada', pendingSync: false },
       ];
 
       (mockDb.select as jest.Mock).mockReturnValue({

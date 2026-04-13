@@ -175,21 +175,14 @@ describe('SubGroupRepository', () => {
   });
 
   describe('finalizeSubGroup', () => {
-    it('sets estado to finalizada when no N/N trees (SUBG-05)', async () => {
-      // Mock db.select for count query (unresolvedNN = 0)
-      const { db } = require('../../src/database/client');
-      (db.select as jest.Mock).mockImplementationOnce(() => ({
-        from: jest.fn(() => ({
-          where: jest.fn().mockResolvedValue([{ count: 0 }]),
-        })),
-      }));
-
+    it('sets estado to finalizada and marks pendingSync (SUBG-05)', async () => {
       mockUpdateWhere.mockResolvedValue(undefined);
 
       const result = await finalizeSubGroup('subgroup-1');
 
       expect(result.success).toBe(true);
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+      // Called twice: once for estado update, once for markSubGroupPendingSync
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('allows finalization even with unresolved N/N trees (SUBG-05)', async () => {
@@ -202,34 +195,38 @@ describe('SubGroupRepository', () => {
   });
 
   describe('ownership', () => {
-    it('returns true when creator matches and estado is not sincronizada (SUBG-07)', () => {
+    it('returns true when creator matches and plantation is activa (SUBG-07)', () => {
       const result = canEdit(
-        { usuarioCreador: 'user-1', estado: 'activa' },
-        'user-1'
+        { usuarioCreador: 'user-1' },
+        'user-1',
+        'activa'
       );
       expect(result).toBe(true);
     });
 
-    it('returns false when estado is sincronizada (immutable)', () => {
+    it('returns false when plantation is finalizada (immutable)', () => {
       const result = canEdit(
-        { usuarioCreador: 'user-1', estado: 'sincronizada' },
-        'user-1'
+        { usuarioCreador: 'user-1' },
+        'user-1',
+        'finalizada'
       );
       expect(result).toBe(false);
     });
 
     it('returns false when userId does not match creator', () => {
       const result = canEdit(
-        { usuarioCreador: 'user-1', estado: 'activa' },
-        'user-2'
+        { usuarioCreador: 'user-1' },
+        'user-2',
+        'activa'
       );
       expect(result).toBe(false);
     });
 
-    it('returns false when finalizada but different user (SUBG-07)', () => {
+    it('returns false when finalizada plantation and different user (SUBG-07)', () => {
       const result = canEdit(
-        { usuarioCreador: 'user-1', estado: 'finalizada' },
-        'user-2'
+        { usuarioCreador: 'user-1' },
+        'user-2',
+        'finalizada'
       );
       expect(result).toBe(false);
     });

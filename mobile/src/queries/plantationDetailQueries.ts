@@ -80,13 +80,13 @@ export async function getTodayTreesForUser(plantacionId: string, userId: string 
   return result[0]?.total ?? 0;
 }
 
-/** Count unsynced trees for a user in a plantation (trees in non-sincronizada subgroups) */
+/** Count unsynced trees for a user in a plantation (trees in subgroups with pendingSync=true) */
 export async function getUnsyncedTreesForUser(plantacionId: string, userId: string | null) {
   if (!userId) return 0;
   const result = await db.select({ total: count() })
     .from(trees)
     .where(and(
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId} AND estado != 'sincronizada')`,
+      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId} AND pending_sync = 1)`,
       eq(trees.usuarioRegistro, userId)
     ));
   return result[0]?.total ?? 0;

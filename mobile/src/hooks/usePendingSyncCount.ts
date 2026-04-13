@@ -5,10 +5,10 @@ import { eq, count, and, isNull, isNotNull, sql } from 'drizzle-orm';
 import { useCurrentUserId } from './useCurrentUserId';
 
 /**
- * Returns live counts for SubGroups with estado = 'finalizada'.
+ * Returns live counts for SubGroups with pendingSync=true.
  * Filtered by current user — each user only sees their own pending subgroups.
- * - pendingCount: total finalizada (shown on badge/card)
- * - syncableCount: finalizada with no unresolved N/N (shown on sync CTA)
+ * - pendingCount: total with pendingSync=true (shown on badge/card)
+ * - syncableCount: pendingSync=true subgroups with no unresolved N/N (shown on sync CTA)
  * - blockedByNN: finalizada but blocked by unresolved N/N
  */
 export function usePendingSyncCount(plantacionId?: string) {
@@ -16,7 +16,7 @@ export function usePendingSyncCount(plantacionId?: string) {
 
   const { data: pendingData } = useLiveData(
     () => {
-      const conditions = [eq(subgroups.estado, 'finalizada')];
+      const conditions = [eq(subgroups.pendingSync, true)];
       if (plantacionId) {
         conditions.push(eq(subgroups.plantacionId, plantacionId));
       }
@@ -54,7 +54,7 @@ export function usePendingSyncCount(plantacionId?: string) {
     [plantacionId, userId]
   );
 
-  // Count trees with local photos not yet uploaded (in sincronizada subgroups)
+  // Count trees with local photos not yet uploaded (in synced subgroups, pendingSync=false)
   const { data: pendingPhotosData } = useLiveData(
     () => {
       if (!plantacionId) {
@@ -67,7 +67,7 @@ export function usePendingSyncCount(plantacionId?: string) {
         .where(
           and(
             eq(subgroups.plantacionId, plantacionId),
-            eq(subgroups.estado, 'sincronizada'),
+            eq(subgroups.pendingSync, false),
             isNotNull(trees.fotoUrl),
             eq(trees.fotoSynced, false),
             sql`${trees.fotoUrl} LIKE 'file://%'`

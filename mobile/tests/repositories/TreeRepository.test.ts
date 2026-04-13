@@ -210,7 +210,8 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(3);
+      // 3 updates inside transaction (one per tree) + 1 for markSubGroupPendingSync
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
     it('does nothing when subgroup is empty', async () => {
@@ -233,7 +234,7 @@ describe('TreeRepository', () => {
             where: jest.fn(() => {
               callCount++;
               if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]);
-              return Promise.resolve([{ posicion: 3 }]);
+              return Promise.resolve([{ posicion: 3, subgrupoId: 'sg-1' }]);
             }),
           })),
         })),
@@ -241,7 +242,8 @@ describe('TreeRepository', () => {
 
       await resolveNNTree('tree-1', 'esp-1', 'L1');
 
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+      // Called twice: once for tree update, once for markSubGroupPendingSync
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('does nothing if species or tree not found', async () => {
