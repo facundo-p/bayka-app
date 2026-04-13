@@ -254,9 +254,25 @@ Plans:
 ### Phase 13: Unificar sync bidireccional
 
 **Goal:** Reemplazar los botones separados de Descargar/Subir por un unico boton "Sincronizar" que ejecuta pull+push bidireccional, introducir dirty flag (pendingSync) a nivel subgrupo para tracking de cambios locales, orange dot centralizado como indicador visual de pendiente, y setting persistente para incluir/excluir fotos en sync.
-**Requirements**: TBD
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12
 **Depends on:** Phase 12
-**Plans:** 0 plans
+**Success Criteria** (what must be TRUE):
+  1. Single "Sincronizar" button replaces separate Descargar/Subir buttons everywhere
+  2. Sync executes pull+push bidirectionally in a single operation
+  3. Global sync in PlantacionesScreen header syncs ALL local plantations at once
+  4. Per-plantation sync available via PlantationDetailHeader and AdminBottomSheet gear menu
+  5. pendingSync dirty flag on subgroups tracks all local mutations (trees, finalization, edits)
+  6. Orange dot appears on PlantationCard, SubGroupCard, and global sync icon when data is pending
+  7. No dot when everything is synced (absence = synced, no "green synced" indicator)
+  8. Photo inclusion setting persists across sessions via SecureStore
+  9. 'sincronizada' subgroup estado removed — immutability determined by plantation estado
+  10. Finalization gate requires all subgroups to be finalizada AND pendingSync=false
+**Plans:** 3 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — Drizzle migration (pendingSync column), schema update, SubGroupRepository refactor (remove sincronizada, add dirty flag), TreeRepository mutation wiring, query/hook updates, theme syncPending color
+- [ ] 13-02-PLAN.md — SyncService unification (syncAllPlantations, markSubGroupSynced, pullFromServer pendingSync), useSync hook (startBidirectionalSync, startGlobalSync), useSyncSetting hook, SyncProgressModal bidirectional display
+- [ ] 13-03-PLAN.md — UI layer: OrangeDot component, PlantationDetailHeader unified button, PlantationCard/SubGroupCard dots, PlantacionesScreen global sync, AdminBottomSheet sync action, visual checkpoint
 
 Canonical refs:
 - mobile/src/services/SyncService.ts
