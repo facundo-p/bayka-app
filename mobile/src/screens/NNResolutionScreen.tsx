@@ -20,7 +20,8 @@ import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useNNResolution } from '../hooks/useNNResolution';
 
-const SWIPE_THRESHOLD = 60;
+const SWIPE_THRESHOLD = 40;
+const VELOCITY_THRESHOLD = 500;
 
 export default function NNResolutionScreen() {
   const { subgrupoId, subgrupoCodigo, plantacionId } = useLocalSearchParams<{
@@ -66,21 +67,27 @@ export default function NNResolutionScreen() {
   }
 
   const swipeGesture = Gesture.Pan()
-    .activeOffsetX([-20, 20])
+    .activeOffsetX([-15, 15])
     .onUpdate((e) => {
-      translateX.value = e.translationX;
+      translateX.value = e.translationX * 0.7;
     })
     .onEnd((e) => {
-      if (e.translationX < -SWIPE_THRESHOLD) {
+      const shouldNavigate =
+        Math.abs(e.translationX) > SWIPE_THRESHOLD ||
+        Math.abs(e.velocityX) > VELOCITY_THRESHOLD;
+
+      if (shouldNavigate && (e.translationX < 0 || e.velocityX < -VELOCITY_THRESHOLD)) {
+        translateX.value = withTiming(-screenWidth * 0.3, { duration: 150, easing: Easing.in(Easing.cubic) });
         runOnJS(goNext)();
-      } else if (e.translationX > SWIPE_THRESHOLD) {
+      } else if (shouldNavigate && (e.translationX > 0 || e.velocityX > VELOCITY_THRESHOLD)) {
+        translateX.value = withTiming(screenWidth * 0.3, { duration: 150, easing: Easing.in(Easing.cubic) });
         runOnJS(goPrev)();
       }
-      translateX.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
+      translateX.value = withTiming(0, { duration: 180, easing: Easing.out(Easing.cubic) });
     });
 
   const photoAnimStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value * 0.3 }],
+    transform: [{ translateX: translateX.value }],
   }));
 
   if (unresolvedTrees.length === 0) {
