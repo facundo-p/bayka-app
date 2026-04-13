@@ -10,7 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
@@ -113,17 +113,19 @@ export default function NNResolutionScreen() {
       />
 
       {/* Sticky photo with swipe */}
-      <GestureDetector gesture={swipeGesture}>
-        <Animated.View style={photoAnimStyle}>
-          <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
-            <Image
-              source={{ uri: currentTree.fotoUrl! }}
-              style={[styles.photo, { width: screenWidth }]}
-              resizeMode="cover"
-            />
-          </Pressable>
-        </Animated.View>
-      </GestureDetector>
+      <GestureHandlerRootView>
+        <GestureDetector gesture={swipeGesture}>
+          <Animated.View style={photoAnimStyle}>
+            <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
+              <Image
+                source={{ uri: currentTree.fotoUrl! }}
+                style={[styles.photo, { width: screenWidth }]}
+                resizeMode="cover"
+              />
+            </Pressable>
+          </Animated.View>
+        </GestureDetector>
+      </GestureHandlerRootView>
 
       {/* Scrollable species grid */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
