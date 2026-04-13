@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Pressable, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
@@ -12,8 +12,13 @@ import TexturedBackground from '../components/TexturedBackground';
 import ConfirmModal from '../components/ConfirmModal';
 import AdminBottomSheet from '../components/AdminBottomSheet';
 import AdminPlantationModals from '../components/AdminPlantationModals';
+import SyncConfirmModal from '../components/SyncConfirmModal';
+import SyncProgressModal from '../components/SyncProgressModal';
+import DownloadProgressModal from '../components/DownloadProgressModal';
 import { usePlantaciones } from '../hooks/usePlantaciones';
 import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
+import { useSync } from '../hooks/useSync';
+import { showConfirmDialog } from '../utils/alertHelpers';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
 
@@ -27,7 +32,6 @@ export default function PlantacionesScreen() {
     estadoCounts,
     activeFilter,
     setActiveFilter,
-    refreshing,
     headerTitle,
     isOnline,
     isAdmin,
@@ -35,12 +39,11 @@ export default function PlantacionesScreen() {
     pendingSyncMap,
     todayCountMap,
     totalCountMap,
-    handleRefresh,
     handleDeletePlantation,
     confirmProps,
   } = usePlantaciones();
 
-  // Always call the hook (React rules of hooks) -- handlers only used when isAdmin
+  // Always call the hook (React rules of hooks)
   const adminHook = usePlantationAdmin();
 
   // Bottom sheet state
@@ -53,6 +56,11 @@ export default function PlantacionesScreen() {
   const [configSpeciesPlantacionId, setConfigSpeciesPlantacionId] = useState<string | null>(null);
   const [assignTechPlantacionId, setAssignTechPlantacionId] = useState<string | null>(null);
   const [editingPlantation, setEditingPlantation] = useState<Plantation | null>(null);
+
+  // Sync/download state
+  const [syncPlantacionId, setSyncPlantacionId] = useState('');
+  const [syncConfirmMode, setSyncConfirmMode] = useState<'download' | 'upload' | null>(null);
+  const sync = useSync(syncPlantacionId);
 
   const filterConfigs = [
     { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
@@ -85,6 +93,29 @@ export default function PlantacionesScreen() {
     setBottomSheetVisible(false);
     const ok = await adminHook.handleAssignTech(plantacionId);
     if (ok) setAssignTechPlantacionId(plantacionId);
+  }
+
+  function handleDownloadFromSheet() {
+    if (!bottomSheetPlantation) return;
+    setSyncPlantacionId(bottomSheetPlantation.id);
+    setBottomSheetVisible(false);
+    setSyncConfirmMode('download');
+  }
+
+  function handleSyncFromSheet() {
+    if (!bottomSheetPlantation) return;
+    setSyncPlantacionId(bottomSheetPlantation.id);
+    setBottomSheetVisible(false);
+    setSyncConfirmMode('upload');
+  }
+
+  function handleSyncConfirm(incluirFotos: boolean) {
+    setSyncConfirmMode(null);
+    if (syncConfirmMode === 'download') {
+      sync.startPull(incluirFotos);
+    } else {
+      sync.startSync(incluirFotos);
+    }
   }
 
   return (
@@ -164,21 +195,42 @@ export default function PlantacionesScreen() {
 
       <ConfirmModal {...confirmProps} />
 
-      {isAdmin && (
-        <AdminBottomSheet
-          visible={bottomSheetVisible}
-          plantation={bottomSheetPlantation}
-          meta={bottomSheetMeta}
-          onDismiss={() => setBottomSheetVisible(false)}
-          onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
-          onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
-          onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
-          onGenerateIds={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleGenerateIds(bottomSheetPlantation.id); })}
-          onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
-          onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
-          onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
-        />
-      )}
+      <AdminBottomSheet
+        visible={bottomSheetVisible}
+        plantation={bottomSheetPlantation}
+        meta={bottomSheetMeta}
+        isAdmin={isAdmin}
+        isOnline={isOnline}
+        onDismiss={() => setBottomSheetVisible(false)}
+        onDownload={handleDownloadFromSheet}
+        onSync={handleSyncFromSheet}
+        onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
+        onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
+        onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
+        onGenerateIds={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleGenerateIds(bottomSheetPlantation.id); })}
+        onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
+        onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
+        onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
+      />
+
+      <SyncConfirmModal
+        visible={syncConfirmMode !== null}
+        mode={syncConfirmMode ?? 'download'}
+        onConfirm={handleSyncConfirm}
+        onClose={() => setSyncConfirmMode(null)}
+      />
+
+      <SyncProgressModal
+        state={sync.state}
+        progress={sync.progress}
+        results={sync.results}
+        successCount={sync.successCount}
+        failureCount={sync.failureCount}
+        pullSuccess={sync.pullSuccess}
+        photoProgress={sync.photoProgress}
+        photoResult={sync.photoResult}
+        onDismiss={sync.reset}
+      />
 
       {isAdmin && (
         <AdminPlantationModals
@@ -217,10 +269,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  freshnessBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.infoBg, paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.info + '30' },
-  freshnessText: { flex: 1, fontSize: fontSize.sm, color: colors.info },
-  freshnessButton: { backgroundColor: colors.info, paddingHorizontal: spacing.xxl, paddingVertical: spacing.sm, borderRadius: borderRadius.lg, marginLeft: spacing.md },
-  freshnessButtonText: { color: colors.white, fontSize: fontSize.sm, fontFamily: fonts.semiBold },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
   emptySubtext: { fontSize: fontSize.base, color: colors.textLight },

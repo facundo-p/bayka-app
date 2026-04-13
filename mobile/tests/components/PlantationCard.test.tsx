@@ -73,14 +73,8 @@ describe('PlantationCard sidebar strip', () => {
     );
 
     expect(getByLabelText('Editar lugar y periodo')).toBeTruthy();
-    expect(queryByLabelText('Acciones de gestion')).toBeNull();
+    expect(getByLabelText('Acciones de plantacion')).toBeTruthy();
     expect(getByLabelText('Eliminar plantacion del dispositivo')).toBeTruthy();
-  });
-
-  it('renders empty placeholder for tecnico gear slot', () => {
-    const { getByTestId } = render(<PlantationCard {...makeProps({ isAdmin: false })} />);
-
-    expect(getByTestId('strip-slot-gear-placeholder')).toBeTruthy();
   });
 
   it('calls onEdit when edit icon tapped', () => {
