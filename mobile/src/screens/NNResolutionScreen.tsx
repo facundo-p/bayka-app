@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
@@ -76,7 +76,7 @@ export default function NNResolutionScreen() {
       } else if (e.translationX > SWIPE_THRESHOLD) {
         runOnJS(goPrev)();
       }
-      translateX.value = withSpring(0, { damping: 20 });
+      translateX.value = withTiming(0, { duration: 200, easing: Easing.out(Easing.cubic) });
     });
 
   const photoAnimStyle = useAnimatedStyle(() => ({
