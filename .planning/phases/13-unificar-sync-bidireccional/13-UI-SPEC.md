@@ -57,18 +57,23 @@ Exceptions:
 
 All sizes reference `fontSize` tokens from `theme.ts`. All weights reference `fonts` tokens.
 
+**Declared weights for this phase: 2 — `fonts.regular` (400) and `fonts.semiBold` (600).**
+
 | Role | Token | Size | Weight Token | Weight | Line Height |
 |------|-------|------|-------------|--------|-------------|
 | Body / Label | `fontSize.base` | 15px | `fonts.regular` | 400 | 1.4 (implicit RN default) |
 | Secondary label | `fontSize.sm` | 12px | `fonts.regular` | 400 | 1.4 |
 | Button text | `fontSize.xl` | 16px | `fonts.semiBold` | 600 | 1.0 (button, no wrap) |
-| Modal title | `fontSize.xxl` | 18px | `fonts.bold` | 700 | 1.3 |
+| Modal title | `fontSize.xxl` | 18px | `fonts.semiBold` | 600 | 1.3 |
 
 Typography rules for this phase:
 - **OrangeDot** has no typography — it is a pure visual indicator
 - **Progress text in SyncProgressModal** uses `fontSize.xl` / `fonts.regular` / `colors.textMuted` (existing `progressText` style — do not change)
-- **Phase label in modal** ("Descargando..." / "Subiendo subgrupos...") uses `fontSize.xxl` / `fonts.bold` / `colors.text` (existing `title` style — extend, not replace)
+- **Phase label in modal** ("Descargando..." / "Subiendo subgrupos...") uses `fontSize.xxl` / `fonts.semiBold` / `colors.text` (existing `title` style — extend, not replace)
 - **Per-plantation progress line** ("Sincronizando [Lugar]... (2 de 5 plantaciones)") uses `fontSize.base` / `fonts.regular` / `colors.textSecondary` — new style, follows existing `currentName` pattern with italic removed
+
+Exceptions:
+- `fonts.bold` (700) is a pre-existing token in `theme.ts` used by other screens (e.g. existing heading styles). It is NOT introduced or actively used by this phase. If a future checker finds it in existing modal styles being extended, it must not be flagged as a new addition from this phase.
 
 ---
 
@@ -96,6 +101,16 @@ All values sourced from `mobile/src/theme.ts`. No new color constants are allowe
 **Color not to use:**
 - `colors.stateSincronizada` (#0A3760 — brand blue): This was the old "sincronizado" chip color. The chip is being removed (D-10). Do not add a new green/blue "synced" dot. Absence of orange dot = synced.
 - `colors.statPending` (#99B95B — olive green): Currently used for "pending" stats. Do not use this for the sync dot. It would clash with stateActiva (same green).
+
+---
+
+## Visuals
+
+**Primary focal point:** plantation list — this is the dominant information surface the user scans to assess sync state.
+
+**Secondary attention signal:** orange dot (`colors.syncPending`) on cards with pending sync. The dot is the only new visual element introduced. It must remain small (8px) and unobtrusive — it signals, it does not dominate.
+
+No new full-screen views, illustrations, or decorative elements are introduced in this phase. All visual changes are additive overlays on existing card and header patterns.
 
 ---
 
@@ -236,6 +251,8 @@ Button is visible for both admin and tecnico roles (D-03 implies global sync is 
 | Sync disabled helper (offline) | "Sin conexion" |
 | Sync disabled helper (no syncable) | none — button is disabled with opacity 0.5 only |
 | Dismiss button | "Cerrar" (existing, unchanged) |
+
+**Note on icon-only header button:** The global sync button in the `PlantacionesScreen` header uses no text label — icon only. This is an established project pattern: the connectivity icon in the same header row uses the same icon-only treatment. No accessibility regression; `accessibilityLabel="Sincronizar todas las plantaciones"` is declared for the new button.
 
 **No destructive actions in this phase.** The only deletions are subgroup/plantation deletes which are pre-existing and unchanged. No new confirmation dialogs are introduced.
 
