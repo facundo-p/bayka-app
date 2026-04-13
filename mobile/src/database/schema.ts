@@ -31,6 +31,7 @@ export const subgroups = sqliteTable('subgroups', {
   estado: text('estado').notNull().default('activa'),
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
+  pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
 }, (t) => ({
   uniqueCode: uniqueIndex('subgroups_plantation_code_unique').on(t.plantacionId, t.codigo),
   uniqueName: uniqueIndex('subgroups_plantation_name_unique').on(t.plantacionId, t.nombre),

@@ -92,6 +92,7 @@ export const colors = {
   stateActiva: '#99B95B',
   stateFinalizada: '#F59E0B',
   stateSincronizada: '#0A3760',
+  syncPending: '#F97316',         // orange-500 -- distinct from stateFinalizada amber
 
   // ─── Other user ───────────────────────────────────────────────────────────
   otherUserBg: '#F5F5F4',

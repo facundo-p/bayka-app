@@ -6,7 +6,7 @@ import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
 
-export type SubGroupEstado = 'activa' | 'finalizada' | 'sincronizada';
+export type SubGroupEstado = 'activa' | 'finalizada';
 export type SubGroupTipo = 'linea' | 'parcela';
 
 export interface SubGroup {
@@ -18,6 +18,7 @@ export interface SubGroup {
   estado: SubGroupEstado;
   usuarioCreador: string;
   createdAt: string;
+  pendingSync: boolean;
 }
 
 // Returns the nombre of the most recently created SubGroup for this plantation.
@@ -99,6 +100,7 @@ export async function createSubGroup(params: {
       estado: 'activa',
       usuarioCreador: params.usuarioCreador,
       createdAt: localNow(),
+      pendingSync: true,
     });
     notifyDataChanged();
     return { success: true, id };
@@ -110,6 +112,23 @@ export async function createSubGroup(params: {
   }
 }
 
+// Marks a subgroup as having pending local changes (dirty flag).
+// Called after any mutation that modifies subgroup or its trees.
+export async function markSubGroupPendingSync(subgrupoId: string): Promise<void> {
+  await db.update(subgroups)
+    .set({ pendingSync: true })
+    .where(eq(subgroups.id, subgrupoId));
+}
+
+// Marks a subgroup as synced after successful server sync.
+// Called by SyncService after RPC confirms the upload.
+export async function markSubGroupSynced(subgrupoId: string): Promise<void> {
+  await db.update(subgroups)
+    .set({ pendingSync: false })
+    .where(eq(subgroups.id, subgrupoId));
+  notifyDataChanged();
+}
+
 // Finalizes a SubGroup (activa → finalizada). N/N trees are allowed —
 // the sync gate (not finalization) blocks upload of unresolved N/N.
 export async function finalizeSubGroup(subgrupoId: string): Promise<{ success: true }> {
@@ -117,13 +136,19 @@ export async function finalizeSubGroup(subgrupoId: string): Promise<{ success: t
     .set({ estado: 'finalizada' })
     .where(eq(subgroups.id, subgrupoId));
 
+  await markSubGroupPendingSync(subgrupoId);
   notifyDataChanged();
   return { success: true };
 }
 
-// Ownership guard — inline in screens before showing edit UI
-export function canEdit(subgroup: { usuarioCreador: string; estado: SubGroupEstado }, userId: string): boolean {
-  if (subgroup.estado === 'sincronizada') return false;
+// Ownership guard — inline in screens before showing edit UI.
+// Checks plantation estado (finalizada = immutable) instead of subgroup estado.
+export function canEdit(
+  subgroup: { usuarioCreador: string },
+  userId: string,
+  plantacionEstado: string
+): boolean {
+  if (plantacionEstado === 'finalizada') return false;
   return subgroup.usuarioCreador === userId;
 }
 
@@ -156,6 +181,7 @@ export async function updateSubGroup(
       tipo: params.tipo,
     })
     .where(eq(subgroups.id, id));
+  await markSubGroupPendingSync(id);
   notifyDataChanged();
   return { success: true };
 }
@@ -212,6 +238,7 @@ export async function updateSubGroupCode(
           .where(eq(trees.id, tree.id));
       }
     });
+    await markSubGroupPendingSync(id);
     notifyDataChanged();
     return { success: true };
   } catch (e: any) {
@@ -227,12 +254,13 @@ export async function updateSubGroupCode(
 
 /**
  * Reactivates a finalized subgroup back to 'activa' state.
- * Only works for 'finalizada' state, not 'sincronizada'.
+ * Only works for 'finalizada' state.
  */
 export async function reactivateSubGroup(id: string): Promise<void> {
   await db.update(subgroups)
     .set({ estado: 'activa' })
     .where(eq(subgroups.id, id));
+  await markSubGroupPendingSync(id);
   notifyDataChanged();
 }
 
@@ -248,15 +276,6 @@ export async function deleteSubGroup(subgrupoId: string): Promise<{ deleted: boo
 
   notifyDataChanged();
   return { deleted: true, treeCount };
-}
-
-// Marks a subgroup as sincronizada after successful server sync.
-// Called by SyncService after RPC confirms the upload.
-export async function markAsSincronizada(subgrupoId: string): Promise<void> {
-  await db.update(subgroups)
-    .set({ estado: 'sincronizada' })
-    .where(eq(subgroups.id, subgrupoId));
-  notifyDataChanged();
 }
 
 // Returns all finalizada subgroups for a plantation (pending sync).
@@ -297,11 +316,11 @@ export async function getSyncableSubGroups(plantacionId: string, userId?: string
   return finalizada.filter(sg => (nnMap.get(sg.id) ?? 0) === 0);
 }
 
-// Returns total count of finalizada subgroups across all plantations.
+// Returns total count of subgroups with pendingSync=true across all plantations.
 // Used by dashboard badge to show total pending sync count.
 // When userId is provided, only counts subgroups created by that user.
 export async function getPendingSyncCount(userId?: string): Promise<number> {
-  const conditions = [eq(subgroups.estado, 'finalizada')];
+  const conditions = [eq(subgroups.pendingSync, true)];
   if (userId) {
     conditions.push(eq(subgroups.usuarioCreador, userId));
   }

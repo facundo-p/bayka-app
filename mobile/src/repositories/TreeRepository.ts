@@ -6,6 +6,7 @@ import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
+import { markSubGroupPendingSync } from './SubGroupRepository';
 
 export interface InsertTreeParams {
   subgrupoId: string;
@@ -44,6 +45,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
     createdAt: localNow(),
   });
 
+  await markSubGroupPendingSync(params.subgrupoId);
   notifyDataChanged();
   return { id, posicion: nextPosition, subId };
 }
@@ -57,6 +59,7 @@ export async function deleteLastTree(subgrupoId: string): Promise<{ deleted: boo
   if (maxResult?.id == null) return { deleted: false };
 
   await db.delete(trees).where(eq(trees.id, maxResult.id));
+  await markSubGroupPendingSync(subgrupoId);
   notifyDataChanged();
   return { deleted: true };
 }
@@ -90,6 +93,7 @@ export async function reverseTreeOrder(
         .where(eq(trees.id, id));
     }
   });
+  await markSubGroupPendingSync(subgrupoId);
   notifyDataChanged();
 }
 
@@ -102,7 +106,7 @@ export async function resolveNNTree(
     .from(speciesTable)
     .where(eq(speciesTable.id, especieId));
 
-  const [tree] = await db.select({ posicion: trees.posicion })
+  const [tree] = await db.select({ posicion: trees.posicion, subgrupoId: trees.subgrupoId })
     .from(trees)
     .where(eq(trees.id, treeId));
 
@@ -113,6 +117,7 @@ export async function resolveNNTree(
   await db.update(trees)
     .set({ especieId, subId: newSubId })
     .where(eq(trees.id, treeId));
+  await markSubGroupPendingSync(tree.subgrupoId);
   notifyDataChanged();
 }
 
@@ -126,12 +131,14 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   await db.update(trees)
     .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
     .where(eq(trees.id, treeId));
+  const [treeRow] = await db.select({ subgrupoId: trees.subgrupoId }).from(trees).where(eq(trees.id, treeId));
+  if (treeRow) await markSubGroupPendingSync(treeRow.subgrupoId);
   notifyDataChanged();
 }
 
 /**
  * Returns trees with local photos not yet uploaded to Storage.
- * Only includes trees in sincronizada subgroups for the given plantation (per Pitfall 7).
+ * Only includes trees in synced subgroups (pendingSync=false) for the given plantation.
  * Filters to file:// URIs only — remote paths from pull should not be re-uploaded (Pitfall 2).
  */
 export async function getTreesWithPendingPhotos(plantacionId: string): Promise<Array<{
@@ -152,7 +159,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
     .where(
       and(
         eq(subgroups.plantacionId, plantacionId),
-        eq(subgroups.estado, 'sincronizada'),
+        eq(subgroups.pendingSync, false),
         isNotNull(trees.fotoUrl),
         eq(trees.fotoSynced, false)
       )
@@ -212,5 +219,6 @@ export async function deleteTreeAndRecalculate(
     }
   });
 
+  await markSubGroupPendingSync(subgrupoId);
   notifyDataChanged();
 }
