@@ -1,14 +1,12 @@
 /**
  * PlantationDetailHeader — fixed top section for PlantationDetailScreen.
- * Extracted to keep PlantationDetailScreen under 300 lines.
- * Renders sync buttons, N/N banner, finalization banner, and filter cards.
+ * Renders N/N banner, finalization banner, and filter cards.
  */
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import FilterCards from './FilterCards';
-import CheckboxRow from './CheckboxRow';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 type FilterConfig = {
@@ -20,90 +18,28 @@ type FilterConfig = {
 };
 
 type Props = {
-  isOnline: boolean;
-  syncableCount: number;
-  pendingPhotosCount: number;
   blockedByNN: number;
   totalNN: number;
   estadoLoaded: boolean;
   isFinalizada: boolean;
   subgroupFilter: string | null;
   subgroupFilterConfigs: FilterConfig[];
-  onStartPull: (incluirFotos: boolean) => void;
-  onStartSync: (incluirFotos: boolean) => void;
   onResolveAllNN: () => void;
   onToggleFilter: (key: string) => void;
 };
 
 export default function PlantationDetailHeader({
-  isOnline,
-  syncableCount,
-  pendingPhotosCount,
   blockedByNN,
   totalNN,
   estadoLoaded,
   isFinalizada,
   subgroupFilter,
   subgroupFilterConfigs,
-  onStartPull,
-  onStartSync,
   onResolveAllNN,
   onToggleFilter,
 }: Props) {
-  const [incluirFotosPull, setIncluirFotosPull] = useState(true);
-  const [incluirFotosPush, setIncluirFotosPush] = useState(true);
-
   return (
     <View style={styles.fixedHeader}>
-      {isOnline && (
-        <View style={styles.syncSection}>
-          <View style={styles.buttonRow}>
-            <Pressable
-              style={({ pressed }) => [styles.pullButton, pressed && { opacity: 0.85 }]}
-              onPress={() => onStartPull(incluirFotosPull)}
-            >
-              <Ionicons name="cloud-download-outline" size={18} color={colors.white} />
-              <Text style={styles.pullButtonText}>Descargar</Text>
-            </Pressable>
-
-            <Pressable
-              testID="sync-button"
-              style={({ pressed }) => [
-                styles.syncButton,
-                pressed && { opacity: 0.85 },
-                syncableCount === 0 && pendingPhotosCount === 0 && styles.buttonDisabled,
-              ]}
-              onPress={() => onStartSync(incluirFotosPush)}
-              disabled={syncableCount === 0 && pendingPhotosCount === 0}
-            >
-              <Ionicons name="cloud-upload-outline" size={18} color={colors.white} />
-              <Text style={styles.syncButtonText}>Subir</Text>
-              {(syncableCount > 0 || pendingPhotosCount > 0) && (
-                <View style={styles.countBadge}>
-                  <Text style={styles.countBadgeText}>
-                    {syncableCount > 0 ? syncableCount : pendingPhotosCount}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
-          </View>
-
-          <View style={styles.checkboxRow}>
-            <CheckboxRow
-              label="Incluir fotos"
-              checked={incluirFotosPull}
-              onToggle={() => setIncluirFotosPull(v => !v)}
-            />
-            <CheckboxRow
-              label="Incluir fotos"
-              checked={incluirFotosPush}
-              onToggle={() => setIncluirFotosPush(v => !v)}
-              disabled={syncableCount === 0 && pendingPhotosCount === 0}
-            />
-          </View>
-        </View>
-      )}
-
       {(totalNN > 0 || blockedByNN > 0) && (
         <Pressable
           style={({ pressed }) => [styles.resolveNNBanner, totalNN > 0 && pressed && { opacity: 0.8 }]}
@@ -142,65 +78,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
-  },
-  syncSection: {
-    marginBottom: spacing.sm,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  pullButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.info,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
-  },
-  pullButtonText: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontFamily: fonts.semiBold,
-  },
-  syncButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    gap: spacing.md,
-  },
-  syncButtonText: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontFamily: fonts.semiBold,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  countBadge: {
-    backgroundColor: colors.white,
-    borderRadius: 6,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  countBadgeText: {
-    fontSize: fontSize.xxs,
-    fontFamily: fonts.bold,
-    color: colors.primary,
-  },
-  checkboxRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingTop: spacing.xs,
   },
   resolveNNBanner: {
     flexDirection: 'row',

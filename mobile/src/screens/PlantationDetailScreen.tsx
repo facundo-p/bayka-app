@@ -19,12 +19,8 @@ import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { getDisplayName } from '../hooks/useUserNames';
-import { showConfirmDialog } from '../utils/alertHelpers';
-import { useSync } from '../hooks/useSync';
 import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
-import { useNetStatus } from '../hooks/useNetStatus';
-import SyncProgressModal from '../components/SyncProgressModal';
 import ScreenContainer from '../components/ScreenContainer';
 import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
@@ -33,7 +29,6 @@ export default function PlantationDetailScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
-  const { isOnline } = useNetStatus();
   const pid = plantacionId ?? '';
 
   const {
@@ -59,8 +54,7 @@ export default function PlantationDetailScreen() {
     handleEditSubmit,
   } = usePlantationDetail(pid);
 
-  const { syncableCount, blockedByNN, pendingPhotosCount } = usePendingSyncCount(plantacionId);
-  const { state: syncState, progress, results, startSync, startPull, pullSuccess, reset: resetSync, successCount, failureCount, photoProgress, photoResult } = useSync(pid);
+  const { blockedByNN } = usePendingSyncCount(plantacionId);
 
   const subgroupFilterConfigs = [
     { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
@@ -113,23 +107,12 @@ export default function PlantationDetailScreen() {
   return (
     <ScreenContainer withTexture>
       <PlantationDetailHeader
-        isOnline={isOnline}
-        syncableCount={syncableCount}
-        pendingPhotosCount={pendingPhotosCount}
         blockedByNN={blockedByNN}
         totalNN={totalNN}
         estadoLoaded={estadoLoaded}
         isFinalizada={isFinalizada}
         subgroupFilter={subgroupFilter}
         subgroupFilterConfigs={subgroupFilterConfigs as any}
-        onStartPull={(incluirFotos: boolean) => startPull(incluirFotos)}
-        onStartSync={(incluirFotos: boolean) => {
-          const parts: string[] = [];
-          if (syncableCount > 0) parts.push(`${syncableCount} subgrupo${syncableCount > 1 ? 's' : ''} finalizado${syncableCount > 1 ? 's' : ''}`);
-          if (incluirFotos && pendingPhotosCount > 0) parts.push(`${pendingPhotosCount} foto${pendingPhotosCount > 1 ? 's' : ''} pendiente${pendingPhotosCount > 1 ? 's' : ''}`);
-          const msg = parts.length > 0 ? `Se van a subir ${parts.join(' y ')}. Necesitas conexión a internet.` : 'Se van a subir los datos. Necesitas conexión a internet.';
-          showConfirmDialog(confirmShow, 'Subir', msg, 'Subir', () => startSync(incluirFotos), { icon: 'cloud-upload-outline', iconColor: colors.info });
-        }}
         onResolveAllNN={() => router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any)}
         onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
       />
@@ -154,7 +137,6 @@ export default function PlantationDetailScreen() {
         </View>
       )}
 
-      <SyncProgressModal state={syncState} progress={progress} results={results} successCount={successCount} failureCount={failureCount} pullSuccess={pullSuccess} photoProgress={photoProgress} photoResult={photoResult} onDismiss={resetSync} />
       <ConfirmModal {...confirmProps} />
 
       <Modal visible={!!editingSubGroup} animationType="slide" transparent onRequestClose={() => setEditingSubGroup(null)}>
