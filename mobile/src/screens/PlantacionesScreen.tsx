@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
@@ -6,16 +6,22 @@ import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import PlantationCard from '../components/PlantationCard';
+import OrangeDot from '../components/OrangeDot';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import TexturedBackground from '../components/TexturedBackground';
 import ConfirmModal from '../components/ConfirmModal';
 import AdminBottomSheet from '../components/AdminBottomSheet';
 import AdminPlantationModals from '../components/AdminPlantationModals';
+import SyncProgressModal from '../components/SyncProgressModal';
 import { usePlantaciones } from '../hooks/usePlantaciones';
 import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
+import { useSync } from '../hooks/useSync';
+import { useSyncSetting } from '../hooks/useSyncSetting';
+import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
+import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
 
 export default function PlantacionesScreen() {
   const router = useRouter();
@@ -43,6 +49,20 @@ export default function PlantacionesScreen() {
 
   // Always call the hook (React rules of hooks) -- handlers only used when isAdmin
   const adminHook = usePlantationAdmin();
+
+  // Global sync state
+  const { state: syncState, startGlobalSync, globalProgress, progress, results, reset: resetSync, pullSuccess, successCount, failureCount, photoProgress, photoResult } = useSync();
+  const { incluirFotos } = useSyncSetting();
+  const { pendingCount: globalPendingCount } = usePendingSyncCount();
+  const hasAnyPending = globalPendingCount > 0;
+  const isSyncing = syncState !== 'idle' && syncState !== 'done';
+
+  // Per-plantation pending status for hasPendingSync prop
+  const pendingSyncBoolMap = usePendingSyncMap();
+
+  const handleGlobalSync = useCallback(async () => {
+    await startGlobalSync(incluirFotos);
+  }, [startGlobalSync, incluirFotos]);
 
   // Bottom sheet state
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
@@ -88,12 +108,33 @@ export default function PlantacionesScreen() {
     if (ok) setAssignTechPlantacionId(plantacionId);
   }
 
+  function handleBottomSheetSync() {
+    if (bottomSheetPlantation) {
+      setBottomSheetVisible(false);
+      startGlobalSync(incluirFotos);
+    }
+  }
+
   return (
     <TexturedBackground>
       <ScreenHeader
         title={headerTitle}
         rightElement={
           <View style={styles.headerButtons}>
+            {isOnline && (
+              <Pressable
+                onPress={handleGlobalSync}
+                style={styles.syncIconButton}
+                hitSlop={8}
+                accessibilityLabel="Sincronizar todas las plantaciones"
+                disabled={isSyncing}
+              >
+                <View style={styles.syncIconWrapper}>
+                  <Ionicons name="sync-outline" size={18} color={colors.white} />
+                  {hasAnyPending && <OrangeDot size={8} style={styles.syncDotOverlay} />}
+                </View>
+              </Pressable>
+            )}
             {isAdmin && (
               <Pressable
                 style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
@@ -160,6 +201,7 @@ export default function PlantacionesScreen() {
                   todayCount={todayCountMap.get(item.id) ?? 0}
                   pendingSync={pendingSyncMap.get(item.id) ?? 0}
                   estado={item.estado}
+                  hasPendingSync={(pendingSyncBoolMap.get(item.id) ?? 0) > 0}
                   onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
                   onDelete={() => handleDeletePlantation(item.id)}
                   isAdmin={isAdmin}
@@ -180,11 +222,25 @@ export default function PlantacionesScreen() {
 
       <ConfirmModal {...confirmProps} />
 
+      <SyncProgressModal
+        state={syncState}
+        progress={progress}
+        results={results}
+        successCount={successCount}
+        failureCount={failureCount}
+        pullSuccess={pullSuccess}
+        photoProgress={photoProgress}
+        photoResult={photoResult}
+        globalProgress={globalProgress}
+        onDismiss={resetSync}
+      />
+
       {isAdmin && (
         <AdminBottomSheet
           visible={bottomSheetVisible}
           plantation={bottomSheetPlantation}
           meta={bottomSheetMeta}
+          isOnline={isOnline}
           onDismiss={() => setBottomSheetVisible(false)}
           onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
           onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
@@ -193,6 +249,7 @@ export default function PlantacionesScreen() {
           onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
           onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
           onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
+          onSync={handleBottomSheetSync}
         />
       )}
 
@@ -232,6 +289,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  syncIconButton: {
+    padding: spacing.xs,
+  },
+  syncIconWrapper: {
+    position: 'relative',
+  },
+  syncDotOverlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
   },
   freshnessBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.infoBg, paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, borderTopWidth: 1, borderTopColor: colors.info + '30' },
   freshnessText: { flex: 1, fontSize: fontSize.sm, color: colors.info },

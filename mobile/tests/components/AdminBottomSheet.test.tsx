@@ -136,8 +136,8 @@ describe('AdminBottomSheet', () => {
     expect(getByText('Bloqueada')).toBeTruthy();
   });
 
-  it('renders only export options for sincronizada', () => {
-    const { getByText, queryByText } = render(
+  it('renders no actions for sincronizada (estado removed per D-07)', () => {
+    const { queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'sincronizada', createdAt: '2026-01-01' },
@@ -146,8 +146,9 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(getByText('Exportar CSV')).toBeTruthy();
-    expect(getByText('Exportar Excel')).toBeTruthy();
+    // sincronizada estado no longer exists — no actions rendered
+    expect(queryByText('Exportar CSV')).toBeNull();
+    expect(queryByText('Exportar Excel')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
     expect(queryByText('Generar IDs')).toBeNull();
   });

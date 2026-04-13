@@ -2,7 +2,7 @@
  * AdminBottomSheet — slide-up modal with estado-specific plantation management actions.
  *
  * Opens when admin taps the gear icon on a PlantationCard.
- * Shows estado-specific actions: activa / finalizada / sincronizada.
+ * Shows estado-specific actions: activa / finalizada.
  */
 import React from 'react';
 import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
@@ -18,6 +18,7 @@ type AdminBottomSheetProps = {
   visible: boolean;
   plantation: Plantation | null;
   meta: ExpandedMeta;
+  isOnline?: boolean;
   onDismiss: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
@@ -26,6 +27,7 @@ type AdminBottomSheetProps = {
   onExportCsv: () => void;
   onExportExcel: () => void;
   onDiscardEdit: () => void;
+  onSync?: () => void;
 };
 
 // ─── ActionItem ─────────────────────────────────────────────────────────────
@@ -83,6 +85,7 @@ export default function AdminBottomSheet({
   visible,
   plantation,
   meta,
+  isOnline = true,
   onDismiss,
   onConfigSpecies,
   onAssignTech,
@@ -91,6 +94,7 @@ export default function AdminBottomSheet({
   onExportCsv,
   onExportExcel,
   onDiscardEdit,
+  onSync,
 }: AdminBottomSheetProps) {
   const insets = useSafeAreaInsets();
 
@@ -178,6 +182,14 @@ export default function AdminBottomSheet({
                   onPress={onAssignTech}
                 />
                 <ActionItem
+                  icon="sync-outline"
+                  label="Sincronizar"
+                  color={colors.primary}
+                  disabled={!isOnline}
+                  onPress={onSync ?? (() => {})}
+                  helperText="Sin conexion"
+                />
+                <ActionItem
                   icon="lock-closed-outline"
                   label="Finalizar plantacion"
                   color={finalizeColor}
@@ -218,23 +230,6 @@ export default function AdminBottomSheet({
                   <Ionicons name="lock-closed" size={12} color={colors.stateFinalizada} />
                   <Text style={styles.lockedText}>Bloqueada</Text>
                 </View>
-              </>
-            )}
-
-            {plantation.estado === 'sincronizada' && (
-              <>
-                <ActionItem
-                  icon="document-text-outline"
-                  label="Exportar CSV"
-                  color={colors.primary}
-                  onPress={onExportCsv}
-                />
-                <ActionItem
-                  icon="grid-outline"
-                  label="Exportar Excel"
-                  color={colors.primary}
-                  onPress={onExportExcel}
-                />
               </>
             )}
           </View>
