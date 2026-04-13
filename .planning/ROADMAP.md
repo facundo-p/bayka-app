@@ -267,10 +267,10 @@ Plans:
   8. Photo inclusion setting persists across sessions via SecureStore
   9. 'sincronizada' subgroup estado removed — immutability determined by plantation estado
   10. Finalization gate requires all subgroups to be finalizada AND pendingSync=false
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 
 Plans:
-- [ ] 13-01-PLAN.md — Drizzle migration (pendingSync column), schema update, SubGroupRepository refactor (remove sincronizada, add dirty flag), TreeRepository mutation wiring, query/hook updates, theme syncPending color
+- [x] 13-01-PLAN.md — Drizzle migration (pendingSync column), schema update, SubGroupRepository refactor (remove sincronizada, add dirty flag), TreeRepository mutation wiring, query/hook updates, theme syncPending color
 - [ ] 13-02-PLAN.md — SyncService unification (syncAllPlantations, markSubGroupSynced, pullFromServer pendingSync), useSync hook (startBidirectionalSync, startGlobalSync), useSyncSetting hook, SyncProgressModal bidirectional display
 - [ ] 13-03-PLAN.md — UI layer: OrangeDot component, PlantationDetailHeader unified button, PlantationCard/SubGroupCard dots, PlantacionesScreen global sync, AdminBottomSheet sync action, visual checkpoint
 

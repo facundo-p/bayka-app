@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 12-04-PLAN.md
-last_updated: "2026-04-12T15:06:49.214Z"
-last_activity: 2026-04-12
+status: executing
+stopped_at: Completed 13-01-PLAN.md
+last_updated: "2026-04-13T13:54:49.246Z"
+last_activity: 2026-04-13
 progress:
-  total_phases: 12
+  total_phases: 13
   completed_phases: 12
-  total_plans: 39
-  completed_plans: 39
+  total_plans: 42
+  completed_plans: 40
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 12 — persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync
+**Current focus:** Phase 13 — unificar-sync-bidireccional
 
 ## Current Position
 
-Phase: 12
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-12
+Phase: 13 (unificar-sync-bidireccional) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-13
 
 Progress: [██████████] 100%
 
@@ -78,6 +78,7 @@ Progress: [██████████] 100%
 | Phase 12 P02 | 15min | 2 tasks | 5 files |
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P03 | 12min | 3 tasks | 5 files |
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P04 | 300 | 1 tasks | 2 files |
+| Phase 13-unificar-sync-bidireccional P01 | 534s | 2 tasks | 20 files |
 
 ## Accumulated Context
 
@@ -162,6 +163,9 @@ Recent decisions affecting current work:
 - [Phase 12]: TreeRow photo icon uses Ionicons image/image-outline with absolute-positioned 8px sync dot (amber=pending, dark blue=synced)
 - [Phase 12]: PlantationDetailHeader local useState(true) for photo toggle defaults — no persistence per D-08
 - [Phase 12-04]: fotoSynced is optional in TreeListItem interface for backward-compatibility with call sites that construct tree objects without the field
+- [Phase 13-unificar-sync-bidireccional]: pendingSync defaults to false on migration — existing server data is already synced (Research Pitfall 6)
+- [Phase 13-unificar-sync-bidireccional]: canEdit now checks plantacionEstado (not subgroup estado) — plantation finalizada = immutable, simpler logic
+- [Phase 13-unificar-sync-bidireccional]: SubGroupEstado simplified to activa|finalizada — sincronizada removed per D-07
 
 ### Roadmap Evolution
 
@@ -195,6 +199,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-12T15:02:29.034Z
-Stopped at: Completed 12-04-PLAN.md
+Last session: 2026-04-13T13:54:49.242Z
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
