@@ -37,9 +37,7 @@ The project uses a named (non-standard) scale in `theme.ts`. Declared values mus
 | Token | Value | Usage |
 |-------|-------|-------|
 | `spacing.xs` | 4 | Icon gaps, dot positioning |
-| `spacing.sm` | 6 | Compact element gaps |
 | `spacing.md` | 8 | Inner padding (badge, chip) |
-| `spacing.lg` | 10 | Button vertical padding, banner inner |
 | `spacing.xl` | 12 | Modal gap between elements |
 | `spacing.xxl` | 16 | Section padding, card horizontal |
 | `spacing.xxxl` | 20 | Modal overlay padding |
@@ -48,6 +46,7 @@ The project uses a named (non-standard) scale in `theme.ts`. Declared values mus
 | `spacing['6xl']` | 40 | Major breaks |
 
 Exceptions:
+- `spacing.sm = 6` and `spacing.lg = 10`: pre-existing tokens in `theme.ts` maintained for backward compat with existing components — not introduced by this phase. Not multiples of 4; not used in new components defined here.
 - Orange dot: 8px diameter (hardcoded in `OrangeDot` component as `size` prop default — this is a pixel value, not a spacing token, because it is a fixed visual indicator not a layout gap)
 - Count badge: 18px height (existing pattern from `PlantationDetailHeader` `countBadge` — maintain for visual consistency)
 - Touch targets: minimum 44px effective touch area via `hitSlop={8}` on small pressables (existing project pattern)
@@ -156,7 +155,7 @@ Button spec:
 - Label: "Sincronizar" with `sync-outline` Ionicons (size 18, white)
 - Background: `colors.primary` (#0A3760)
 - Border radius: `borderRadius.lg` (12px)
-- Padding vertical: `spacing.lg` (10px)
+- Padding vertical: `spacing.md` (8px)
 - Count badge: shows syncable count (subgroups with `estado='finalizada' AND pendingSync=true`) — badge style same as existing `countBadge` (white bg, 18px height, primary text)
 - Disabled state: `opacity: 0.5` when `syncableCount === 0 AND pendingPhotosCount === 0`
 - Photo toggle: single `CheckboxRow` with label "Incluir fotos" — reads/writes `useSyncSetting`
