@@ -20,7 +20,7 @@ type Props = {
 
 export default function ScreenContainer({ children, withTexture = false, style }: Props) {
   const content = (
-    <View style={[styles.container, style]}>
+    <View style={[styles.container, withTexture && styles.transparent, style]}>
       {children}
     </View>
   );
@@ -36,5 +36,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  transparent: {
+    backgroundColor: 'transparent',
   },
 });

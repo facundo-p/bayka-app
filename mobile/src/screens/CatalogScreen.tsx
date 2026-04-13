@@ -101,7 +101,7 @@ export default function CatalogScreen() {
   const downloadButtonLabel = selectedIds.size >= 1 ? `Descargar ${selectedIds.size} seleccionada(s)` : 'Descargar seleccion';
 
   return (
-    <ScreenContainer>
+    <ScreenContainer withTexture>
       {renderContent()}
       <View style={styles.bottomBar}>
         <Pressable

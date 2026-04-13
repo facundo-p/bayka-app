@@ -73,7 +73,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer withTexture>
       <FlatList
         data={items}
         keyExtractor={(item) => item.especieId}

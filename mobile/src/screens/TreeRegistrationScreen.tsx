@@ -120,7 +120,7 @@ export default function TreeRegistrationScreen() {
     sortedTrees, lastThree, finalizing, deleting, deletingTreeId } = treeReg;
 
   return (
-    <ScreenContainer>
+    <ScreenContainer withTexture>
       <TreeRegistrationHeader
         title={subgrupoNombre ?? subgrupoCodigo ?? ''}
         subtitle={treeReg.subgroup

@@ -110,7 +110,7 @@ export default function NNResolutionScreen() {
   const subtitle = subtitleParts.join(' · ');
 
   return (
-    <ScreenContainer>
+    <ScreenContainer withTexture>
       <CustomHeader
         title={`N/N ${safeIndex + 1} de ${total}`}
         onBack={() => router.back()}
