@@ -3,14 +3,15 @@ import {
   View,
   Text,
   Image,
-  FlatList,
+  ScrollView,
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { FadeInDown, useSharedValue, useAnimatedStyle, withSpring, runOnJS } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
 import CustomHeader from '../components/CustomHeader';
@@ -18,6 +19,8 @@ import ConfirmModal from '../components/ConfirmModal';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useNNResolution } from '../hooks/useNNResolution';
+
+const SWIPE_THRESHOLD = 60;
 
 export default function NNResolutionScreen() {
   const { subgrupoId, subgrupoCodigo, plantacionId } = useLocalSearchParams<{
@@ -27,6 +30,7 @@ export default function NNResolutionScreen() {
   }>();
   const router = useRouter();
   const navigation = useNavigation();
+  const { width: screenWidth } = useWindowDimensions();
 
   const {
     unresolvedTrees,
@@ -43,14 +47,41 @@ export default function NNResolutionScreen() {
     confirmProps,
     handleSelectSpecies,
     handleGuardar,
-    handleAnterior,
-    handleSiguiente,
+    setCurrentIndex,
     setZoomPhotoUri,
   } = useNNResolution({ plantacionId: plantacionId ?? '', subgrupoId, subgrupoCodigo });
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
+
+  // Swipe gesture for photo navigation
+  const translateX = useSharedValue(0);
+
+  function goNext() {
+    if (safeIndex < total - 1) setCurrentIndex(safeIndex + 1);
+  }
+  function goPrev() {
+    if (safeIndex > 0) setCurrentIndex(safeIndex - 1);
+  }
+
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-20, 20])
+    .onUpdate((e) => {
+      translateX.value = e.translationX;
+    })
+    .onEnd((e) => {
+      if (e.translationX < -SWIPE_THRESHOLD) {
+        runOnJS(goNext)();
+      } else if (e.translationX > SWIPE_THRESHOLD) {
+        runOnJS(goPrev)();
+      }
+      translateX.value = withSpring(0, { damping: 20 });
+    });
+
+  const photoAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value * 0.3 }],
+  }));
 
   if (unresolvedTrees.length === 0) {
     return (
@@ -63,75 +94,51 @@ export default function NNResolutionScreen() {
     );
   }
 
+  // Build subtitle for header
+  const subtitleParts: string[] = [];
+  if (isPlantationMode && currentTree.subgrupoNombre) {
+    subtitleParts.push(currentTree.subgrupoNombre);
+  }
+  subtitleParts.push(`Pos ${currentTree.posicion}`);
+  const subtitle = subtitleParts.join(' · ');
+
   return (
     <ScreenContainer>
-      <CustomHeader title="Resolver N/N" onBack={() => router.back()} />
+      <CustomHeader
+        title={`N/N ${safeIndex + 1} de ${total}`}
+        onBack={() => router.back()}
+        rightElement={
+          <Text style={styles.headerInfo}>{subtitle}</Text>
+        }
+      />
 
-      <View style={styles.infoRow}>
-        <Text style={styles.counterText}>N/N {safeIndex + 1} de {total}</Text>
-        <View style={styles.infoRight}>
-          {isPlantationMode && currentTree.subgrupoNombre && (
-            <Text style={styles.subgrupoLabel}>{currentTree.subgrupoNombre}</Text>
-          )}
-          {isPlantationMode && currentTree.subgrupoCodigo && (
-            <Text style={styles.subgrupoCodeLabel}>{currentTree.subgrupoCodigo}</Text>
-          )}
-          <Text style={styles.posicionText}>Posicion {currentTree.posicion}</Text>
-        </View>
-      </View>
+      {/* Sticky photo with swipe */}
+      <GestureDetector gesture={swipeGesture}>
+        <Animated.View style={photoAnimStyle}>
+          <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
+            <Image
+              source={{ uri: currentTree.fotoUrl! }}
+              style={[styles.photo, { width: screenWidth }]}
+              resizeMode="cover"
+            />
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
 
-      <Animated.View entering={FadeInDown.duration(300)} style={styles.scrollWrapper}>
-        <FlatList
-          data={[currentTree]}
-          keyExtractor={(item) => item.id}
-          ListHeaderComponent={
-            <>
-              {currentTree.fotoUrl ? (
-                <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
-                  <Image source={{ uri: currentTree.fotoUrl }} style={styles.photo} resizeMode="cover" />
-                </Pressable>
-              ) : (
-                <View style={styles.photoPlaceholder}>
-                  <Text style={styles.photoPlaceholderText}>Sin foto</Text>
-                </View>
-              )}
-              <Text style={styles.pickerLabel}>Seleccionar especie:</Text>
-            </>
-          }
-          renderItem={() => null}
-          ListFooterComponent={
-            <>
-              {speciesLoading ? (
-                <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-              ) : (
-                <SpeciesButtonGrid
-                  species={species}
-                  onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
-                  selectedId={currentSelectionId}
-                />
-              )}
+      {/* Scrollable species grid */}
+      <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
+        {speciesLoading ? (
+          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+        ) : (
+          <SpeciesButtonGrid
+            species={species}
+            onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
+            selectedId={currentSelectionId}
+          />
+        )}
+      </ScrollView>
 
-              <View style={styles.navigationRow}>
-                <Pressable
-                  style={[styles.navButton, safeIndex === 0 && styles.navButtonDisabled]}
-                  onPress={handleAnterior}
-                  disabled={safeIndex === 0}
-                >
-                  <Text style={styles.navButtonText}>Anterior</Text>
-                </Pressable>
-                <Pressable
-                  style={[styles.navButton, safeIndex >= total - 1 && styles.navButtonDisabled]}
-                  onPress={handleSiguiente}
-                  disabled={safeIndex >= total - 1}
-                >
-                  <Text style={styles.navButtonText}>Siguiente</Text>
-                </Pressable>
-              </View>
-            </>
-          }
-        />
-      </Animated.View>
-
+      {/* Fixed save button */}
       <View style={styles.fixedBottom}>
         <Pressable
           style={[styles.guardarButton, saving && styles.guardarButtonDisabled]}
@@ -153,26 +160,15 @@ export default function NNResolutionScreen() {
 }
 
 const styles = StyleSheet.create({
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  infoRight: { alignItems: 'flex-end', gap: 2 },
-  subgrupoLabel: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.textMedium },
-  subgrupoCodeLabel: { fontSize: fontSize.xs, color: colors.textMuted, fontFamily: fonts.monospace },
-  counterText: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.secondary },
-  posicionText: { fontSize: fontSize.base, color: colors.textMuted },
-  scrollWrapper: { flex: 1 },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing['5xl'] },
   emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, marginBottom: spacing['4xl'], textAlign: 'center' },
   backButton: { backgroundColor: colors.primary, paddingHorizontal: spacing['4xl'], paddingVertical: spacing.xl, borderRadius: borderRadius.lg },
   backButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.lg },
-  photo: { width: '100%', height: 280, borderRadius: borderRadius.lg, marginBottom: spacing.xxl, marginTop: spacing.xxl, backgroundColor: colors.border },
-  photoPlaceholder: { width: '100%', height: 280, borderRadius: borderRadius.lg, marginBottom: spacing.xxl, marginTop: spacing.xxl, backgroundColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  photoPlaceholderText: { color: colors.textMuted, fontSize: fontSize.xl },
-  pickerLabel: { fontSize: fontSize.lg, fontFamily: fonts.semiBold, color: colors.textMedium, marginBottom: spacing.lg, paddingHorizontal: spacing.xxl },
+  headerInfo: { color: colors.plantationCountFaded, fontSize: fontSize.sm, fontFamily: fonts.regular },
+  photo: { height: 260, backgroundColor: colors.border },
+  scrollArea: { flex: 1 },
+  scrollContent: { paddingTop: spacing.md, paddingBottom: spacing['4xl'] },
   loader: { marginVertical: spacing['4xl'] },
-  navigationRow: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.xxl, marginBottom: spacing.xl, paddingHorizontal: spacing.xxl },
-  navButton: { flex: 1, paddingVertical: spacing.xl, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.primary, alignItems: 'center' },
-  navButtonDisabled: { borderColor: colors.borderMuted, opacity: 0.4 },
-  navButtonText: { color: colors.primary, fontFamily: fonts.semiBold, fontSize: fontSize.base },
   fixedBottom: { padding: spacing.xxl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   guardarButton: { backgroundColor: colors.primary, paddingVertical: spacing.xxl, borderRadius: borderRadius.lg, alignItems: 'center' },
   guardarButtonDisabled: { opacity: 0.5 },
