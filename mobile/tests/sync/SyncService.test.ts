@@ -26,7 +26,7 @@ jest.mock('../../src/database/liveQuery', () => ({
 }));
 
 jest.mock('../../src/repositories/SubGroupRepository', () => ({
-  markAsSincronizada: jest.fn(),
+  markSubGroupSynced: jest.fn().mockResolvedValue(undefined),
   getSyncableSubGroups: jest.fn(),
 }));
 
@@ -73,13 +73,13 @@ import {
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
-import { markAsSincronizada, getSyncableSubGroups } from '../../src/repositories/SubGroupRepository';
+import { markSubGroupSynced, getSyncableSubGroups } from '../../src/repositories/SubGroupRepository';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableSubGroups as jest.Mock;
-const mockMarkAsSincronizada = markAsSincronizada as jest.Mock;
+const mockMarkSubGroupSynced = markSubGroupSynced as jest.Mock;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
@@ -244,8 +244,8 @@ describe('SyncService', () => {
     });
   });
 
-  describe('markAsSincronizada state transitions (SYNC-05)', () => {
-    it('Test 3: calls markAsSincronizada when RPC returns success: true', async () => {
+  describe('markSubGroupSynced state transitions (SYNC-05)', () => {
+    it('Test 3: calls markSubGroupSynced when RPC returns success: true', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -259,10 +259,10 @@ describe('SyncService', () => {
 
       await syncPlantation('plantation-1');
 
-      expect(mockMarkAsSincronizada).toHaveBeenCalledWith('sg-1');
+      expect(mockMarkSubGroupSynced).toHaveBeenCalledWith('sg-1');
     });
 
-    it('Test 4: does NOT call markAsSincronizada on DUPLICATE_CODE error', async () => {
+    it('Test 4: does NOT call markSubGroupSynced on DUPLICATE_CODE error', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -279,14 +279,14 @@ describe('SyncService', () => {
 
       const results = await syncPlantation('plantation-1');
 
-      expect(mockMarkAsSincronizada).not.toHaveBeenCalled();
+      expect(mockMarkSubGroupSynced).not.toHaveBeenCalled();
       expect(results[0].success).toBe(false);
       if (!results[0].success) {
         expect(results[0].error).toBe('DUPLICATE_CODE');
       }
     });
 
-    it('Test 5: does NOT call markAsSincronizada on network error', async () => {
+    it('Test 5: does NOT call markSubGroupSynced on network error', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -300,7 +300,7 @@ describe('SyncService', () => {
 
       const results = await syncPlantation('plantation-1');
 
-      expect(mockMarkAsSincronizada).not.toHaveBeenCalled();
+      expect(mockMarkSubGroupSynced).not.toHaveBeenCalled();
       expect(results[0].success).toBe(false);
       if (!results[0].success) {
         expect(results[0].error).toBe('NETWORK');
