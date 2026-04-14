@@ -18,6 +18,7 @@ import CustomHeader from '../components/CustomHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNNResolution } from '../hooks/useNNResolution';
 
 const SWIPE_THRESHOLD = 40;
