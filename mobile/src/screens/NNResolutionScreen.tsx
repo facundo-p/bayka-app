@@ -95,7 +95,7 @@ export default function NNResolutionScreen() {
     transform: [{ translateX: translateX.value }],
   }));
 
-  if (unresolvedTrees.length === 0) {
+  if (unresolvedTrees.length === 0 || !currentTree) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No hay árboles N/N pendientes</Text>
