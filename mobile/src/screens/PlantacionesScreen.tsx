@@ -40,6 +40,7 @@ export default function PlantacionesScreen() {
     pendingSyncMap,
     todayCountMap,
     totalCountMap,
+    nnCountMap,
     handleDeletePlantation,
     confirmProps,
   } = usePlantaciones();
@@ -196,6 +197,7 @@ export default function PlantacionesScreen() {
                   pendingSync={pendingSyncMap.get(item.id) ?? 0}
                   estado={item.estado}
                   hasPendingSync={(pendingSyncBoolMap.get(item.id) ?? 0) > 0}
+                  nnCount={nnCountMap.get(item.id) ?? 0}
                   onPress={() => router.push(`/${routePrefix}/plantation/${item.id}` as any)}
                   onDelete={() => handleDeletePlantation(item.id)}
                   isAdmin={isAdmin}

@@ -103,15 +103,18 @@ export default function AdminBottomSheet({
   if (!plantation) return null;
 
   const hasPendingIssues = !!(plantation.pendingSync || plantation.pendingEdit);
+  const hasUnresolvedNN = (meta.unresolvedNNCount ?? 0) > 0;
 
-  const finalizeDisabled = !meta.canFinalize || hasPendingIssues;
+  const finalizeDisabled = !meta.canFinalize || hasPendingIssues || hasUnresolvedNN;
   const finalizeColor =
-    meta.canFinalize && !hasPendingIssues ? colors.danger : colors.textMuted;
+    meta.canFinalize && !hasPendingIssues && !hasUnresolvedNN ? colors.danger : colors.textMuted;
   const finalizeHelperText = hasPendingIssues
     ? 'Sincroniza los cambios antes de finalizar'
-    : !meta.canFinalize
-      ? 'Para finalizar, todos los subgrupos deben estar sincronizados'
-      : undefined;
+    : hasUnresolvedNN
+      ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNSubgroups} subgrupo${meta.unresolvedNNSubgroups !== 1 ? 's' : ''}`
+      : !meta.canFinalize
+        ? 'Para finalizar, todos los subgrupos deben estar sincronizados'
+        : undefined;
 
   return (
     <Modal

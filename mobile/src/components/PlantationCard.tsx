@@ -22,6 +22,7 @@ type Props = {
   hasPendingSync?: boolean;
   onPress: () => void;
   onDelete?: () => void;
+  nnCount?: number;
   // Role-aware action slots
   isAdmin?: boolean;
   onEdit?: () => void;
@@ -37,6 +38,7 @@ export default function PlantationCard({
   pendingSync,
   estado,
   hasPendingSync = false,
+  nnCount,
   onPress,
   onDelete,
   isAdmin,
@@ -81,6 +83,12 @@ export default function PlantationCard({
             <Ionicons name="today-outline" size={14} color={colors.statToday} />
             <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
           </View>
+          {(nnCount ?? 0) > 0 && (
+            <View style={styles.statItem}>
+              <Ionicons name="help-circle-outline" size={14} color={colors.secondaryYellowDark} />
+              <Text style={[styles.statValue, { color: colors.secondaryYellowDark }]}>{nnCount}</Text>
+            </View>
+          )}
         </View>
 
         {/* Pending sync banner */}
