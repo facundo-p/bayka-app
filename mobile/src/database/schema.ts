@@ -49,6 +49,8 @@ export const trees = sqliteTable('trees', {
   globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
   createdAt: text('created_at').notNull(),
+  conflictEspecieId: text('conflict_especie_id'),
+  conflictEspecieNombre: text('conflict_especie_nombre'),
 });
 
 export const plantationSpecies = sqliteTable('plantation_species', {
