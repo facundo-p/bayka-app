@@ -240,7 +240,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 11. Unificar pantallas | 2/3 | In Progress|  |
 | 12. Photo Storage + Sync | 4/4 | Complete    | 2026-04-12 |
 | 13. Unificar sync bidireccional | 3/3 | Complete | 2026-04-13 |
-| 14. Sync N/N + conflict resolution | 1/3 | In Progress|  |
+| 14. Sync N/N + conflict resolution | 2/3 | In Progress|  |
 
 ### Phase 12: Persistir imagenes de arboles en Supabase Storage con toggle, resize y sync
 
@@ -302,9 +302,9 @@ Canonical refs:
   6. NNResolutionScreen muestra banner de conflicto con opciones "Aceptar del servidor" / "Mantener la mia"
   7. PlantationCard muestra stat de N/N sin resolver (icono amarillo)
   8. SubGroupCard muestra badge amarillo de N/N pendientes
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 14-01-PLAN.md — Drizzle migration (conflict columns on trees), Supabase RPC migration (DO UPDATE for trees), remove N/N filter from getSyncableSubGroups, extend checkFinalizationGate, dashboard NN query, role-filtered NN query
-- [ ] 14-02-PLAN.md — SyncService conflict detection in pullFromServer, useNNResolution role-based filtering + conflict state, usePlantationAdmin N/N gate, usePlantaciones NN data plumbing
+- [x] 14-02-PLAN.md — SyncService conflict detection in pullFromServer, useNNResolution role-based filtering + conflict state, usePlantationAdmin N/N gate, usePlantaciones NN data plumbing
 - [ ] 14-03-PLAN.md — UI: PlantationCard NN stat, AdminBottomSheet finalization gate, NNResolutionScreen conflict banner, PlantationDetailScreen badge verification, visual checkpoint
