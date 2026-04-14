@@ -6,7 +6,7 @@
  */
 import { db } from '../database/client';
 import { plantations, plantationUsers, subgroups, trees } from '../database/schema';
-import { eq, and, count, desc, sql, getTableColumns } from 'drizzle-orm';
+import { eq, and, count, desc, sql, getTableColumns, isNull } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
 /**
@@ -139,5 +139,22 @@ export async function getTotalTreeCounts() {
     })
     .from(trees)
     .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .groupBy(subgroups.plantacionId);
+}
+
+/**
+ * D-12
+ * Returns count of unresolved N/N trees per plantation.
+ * Used by dashboard to show N/N warning indicators on plantation cards.
+ */
+export async function getUnresolvedNNCountsPerPlantation() {
+  return db
+    .select({
+      plantacionId: subgroups.plantacionId,
+      nnCount: count(),
+    })
+    .from(trees)
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .where(isNull(trees.especieId))
     .groupBy(subgroups.plantacionId);
 }

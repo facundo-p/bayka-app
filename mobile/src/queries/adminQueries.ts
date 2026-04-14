@@ -8,7 +8,7 @@
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { subgroups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
-import { eq, and, isNotNull, sql, count, asc } from 'drizzle-orm';
+import { eq, and, isNotNull, isNull, sql, count, asc } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
 
@@ -21,7 +21,13 @@ import { eq, and, isNotNull, sql, count, asc } from 'drizzle-orm';
  */
 export async function checkFinalizationGate(
   plantacionId: string
-): Promise<{ canFinalize: boolean; blocking: Array<{ nombre: string; estado: string; pendingSync: boolean }>; hasSubgroups: boolean }> {
+): Promise<{
+  canFinalize: boolean;
+  blocking: Array<{ nombre: string; estado: string; pendingSync: boolean }>;
+  hasSubgroups: boolean;
+  unresolvedNNCount: number;
+  unresolvedNNSubgroups: number;
+}> {
   const allSubgroups = await db
     .select({ nombre: subgroups.nombre, estado: subgroups.estado, pendingSync: subgroups.pendingSync })
     .from(subgroups)
@@ -29,10 +35,27 @@ export async function checkFinalizationGate(
 
   const blocking = allSubgroups.filter(s => s.estado !== 'finalizada' || s.pendingSync);
 
+  // Count unresolved N/N trees per subgroup in this plantation
+  const nnRows = await db.select({
+    subgrupoId: trees.subgrupoId,
+    cnt: count(),
+  })
+    .from(trees)
+    .where(and(
+      isNull(trees.especieId),
+      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`
+    ))
+    .groupBy(trees.subgrupoId);
+
+  const unresolvedNNCount = nnRows.reduce((sum, r) => sum + r.cnt, 0);
+  const unresolvedNNSubgroups = nnRows.length;
+
   return {
-    canFinalize: allSubgroups.length > 0 && blocking.length === 0,
+    canFinalize: allSubgroups.length > 0 && blocking.length === 0 && unresolvedNNCount === 0,
     blocking,
     hasSubgroups: allSubgroups.length > 0,
+    unresolvedNNCount,
+    unresolvedNNSubgroups,
   };
 }
 

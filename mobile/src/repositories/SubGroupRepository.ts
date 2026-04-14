@@ -1,6 +1,6 @@
 import { db } from '../database/client';
 import { subgroups, trees, species as speciesTable } from '../database/schema';
-import { eq, and, desc, isNull, count, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
@@ -293,27 +293,20 @@ export async function getFinalizadaSubGroups(plantacionId: string, userId?: stri
     .where(and(...conditions)) as unknown as SubGroup[];
 }
 
-// Returns finalizada subgroups that CAN be synced (no unresolved N/N trees).
-// Per spec §4.10: N/N must be resolved before sync, but finalization is allowed with N/N.
+// Returns finalizada subgroups with pendingSync=true that are ready to sync.
+// Per D-01: N/N trees no longer block sync — subgroups with unresolved N/N ARE syncable.
+// The finalization gate (checkFinalizationGate) handles N/N visibility for admins.
 // When userId is provided, only returns subgroups created by that user.
 export async function getSyncableSubGroups(plantacionId: string, userId?: string): Promise<SubGroup[]> {
-  const finalizada = await getFinalizadaSubGroups(plantacionId, userId);
-  if (finalizada.length === 0) return [];
-
-  // Get N/N counts per subgroup
-  const nnCounts = await db.select({
-    subgrupoId: trees.subgrupoId,
-    nnCount: count(),
-  })
-    .from(trees)
-    .where(and(
-      isNull(trees.especieId),
-      sql`${trees.subgrupoId} IN (${sql.join(finalizada.map(sg => sql`${sg.id}`), sql`, `)})`
-    ))
-    .groupBy(trees.subgrupoId);
-
-  const nnMap = new Map(nnCounts.map(r => [r.subgrupoId, r.nnCount]));
-  return finalizada.filter(sg => (nnMap.get(sg.id) ?? 0) === 0);
+  const conditions = [
+    eq(subgroups.plantacionId, plantacionId),
+    eq(subgroups.estado, 'finalizada'),
+    eq(subgroups.pendingSync, true),
+  ];
+  if (userId) {
+    conditions.push(eq(subgroups.usuarioCreador, userId));
+  }
+  return db.select().from(subgroups).where(and(...conditions)) as unknown as SubGroup[];
 }
 
 // Returns total count of subgroups with pendingSync=true across all plantations.

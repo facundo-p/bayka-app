@@ -112,3 +112,29 @@ export async function getNNTreesForPlantation(plantacionId: string) {
     ))
     .orderBy(asc(subgroups.nombre), asc(trees.posicion));
 }
+
+/**
+ * D-07
+ * Get unresolved N/N trees filtered by the subgroup creator (tecnico view).
+ * Same shape as getNNTreesForPlantation but scoped to a single user's subgroups.
+ */
+export async function getNNTreesForPlantationByUser(plantacionId: string, userId: string) {
+  return db.select({
+    id: trees.id,
+    posicion: trees.posicion,
+    subId: trees.subId,
+    fotoUrl: trees.fotoUrl,
+    especieId: trees.especieId,
+    subgrupoId: trees.subgrupoId,
+    subgrupoCodigo: subgroups.codigo,
+    subgrupoNombre: subgroups.nombre,
+  })
+    .from(trees)
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .where(and(
+      isNull(trees.especieId),
+      eq(subgroups.plantacionId, plantacionId),
+      eq(subgroups.usuarioCreador, userId),
+    ))
+    .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+}
