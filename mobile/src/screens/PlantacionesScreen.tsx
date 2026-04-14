@@ -80,7 +80,7 @@ export default function PlantacionesScreen() {
   // Bottom sheet state
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [bottomSheetPlantation, setBottomSheetPlantation] = useState<Plantation | null>(null);
-  const [bottomSheetMeta, setBottomSheetMeta] = useState<ExpandedMeta>({ canFinalize: false, idsGenerated: false });
+  const [bottomSheetMeta, setBottomSheetMeta] = useState<ExpandedMeta>({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
 
   // Admin modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
