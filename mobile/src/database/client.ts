@@ -20,4 +20,16 @@ try {
   // Column already exists — expected after successful migration
 }
 
+// Safety net: ensure conflict columns exist even if migration 0010 failed.
+try {
+  sqlite.execSync('ALTER TABLE trees ADD COLUMN conflict_especie_id text;');
+} catch (_) {
+  // Column already exists — expected after successful migration
+}
+try {
+  sqlite.execSync('ALTER TABLE trees ADD COLUMN conflict_especie_nombre text;');
+} catch (_) {
+  // Column already exists — expected after successful migration
+}
+
 export const db = drizzle(sqlite, { schema });
