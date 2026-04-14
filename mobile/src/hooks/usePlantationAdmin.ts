@@ -47,12 +47,16 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
       canFinalize = gate.canFinalize;
       unresolvedNNCount = gate.unresolvedNNCount;
       unresolvedNNSubgroups = gate.unresolvedNNSubgroups;
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('[fetchPlantationMeta] checkFinalizationGate failed:', e);
+    }
   }
   if (plantation.estado === 'finalizada') {
     try {
       idsGenerated = await hasIdsGenerated(plantation.id);
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('[fetchPlantationMeta] hasIdsGenerated failed:', e);
+    }
   }
   return { canFinalize, idsGenerated, unresolvedNNCount, unresolvedNNSubgroups };
 }
