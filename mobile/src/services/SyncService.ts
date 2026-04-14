@@ -483,6 +483,21 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     if (!treeError && remoteTrees && remoteTrees.length > 0) {
       console.log('[Sync] Sample tree created_at:', remoteTrees[0].created_at, '| localToday:', require('../utils/dateUtils').localToday());
       for (const t of remoteTrees) {
+        // ── Conflict detection: check if local species differs from server species ──
+        if (t.species_id) {
+          const [localTree] = await db.select({ especieId: trees.especieId }).from(trees).where(eq(trees.id, t.id));
+          if (localTree && localTree.especieId !== null && localTree.especieId !== t.species_id) {
+            // Conflict: local has a different species than server
+            const [serverSpecies] = await db.select({ nombre: species.nombre }).from(species).where(eq(species.id, t.species_id));
+            await db.update(trees).set({
+              conflictEspecieId: t.species_id,
+              conflictEspecieNombre: serverSpecies?.nombre ?? 'Desconocida',
+            }).where(eq(trees.id, t.id));
+            console.log(`[Sync] Conflict detected for tree ${t.id}: local=${localTree.especieId}, server=${t.species_id}`);
+            continue; // Skip upsert — preserve local especieId
+          }
+        }
+
         // If server has a foto_url, the photo is already on the server → mark as synced
         const hasFotoOnServer = !!t.foto_url;
         await db.insert(trees).values({
@@ -507,6 +522,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
             // Only update from server if local has no photo or a remote path.
             fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
             fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
+            // Clear any previous conflict markers for non-conflicted trees
+            conflictEspecieId: sql`NULL`,
+            conflictEspecieNombre: sql`NULL`,
           },
         });
       }

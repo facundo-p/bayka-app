@@ -30,6 +30,8 @@ import type { Plantation } from '../components/PlantationConfigCard';
 export type ExpandedMeta = {
   canFinalize: boolean;
   idsGenerated: boolean;
+  unresolvedNNCount: number;
+  unresolvedNNSubgroups: number;
 };
 
 // ─── Standalone utility ─────────────────────────────────────────────────────
@@ -37,10 +39,14 @@ export type ExpandedMeta = {
 export async function fetchPlantationMeta(plantation: Plantation): Promise<ExpandedMeta> {
   let canFinalize = false;
   let idsGenerated = false;
+  let unresolvedNNCount = 0;
+  let unresolvedNNSubgroups = 0;
   if (plantation.estado === 'activa') {
     try {
       const gate = await checkFinalizationGate(plantation.id);
       canFinalize = gate.canFinalize;
+      unresolvedNNCount = gate.unresolvedNNCount;
+      unresolvedNNSubgroups = gate.unresolvedNNSubgroups;
     } catch { /* ignore */ }
   }
   if (plantation.estado === 'finalizada') {
@@ -48,7 +54,7 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
       idsGenerated = await hasIdsGenerated(plantation.id);
     } catch { /* ignore */ }
   }
-  return { canFinalize, idsGenerated };
+  return { canFinalize, idsGenerated, unresolvedNNCount, unresolvedNNSubgroups };
 }
 
 export function usePlantationAdmin() {
@@ -102,6 +108,15 @@ export function usePlantationAdmin() {
             },
           ],
         });
+      } else if (gate.unresolvedNNCount > 0) {
+        const plural = gate.unresolvedNNCount > 1 ? 'es' : '';
+        const sgPlural = gate.unresolvedNNSubgroups > 1 ? 's' : '';
+        showInfoDialog(showConfirm,
+          'No se puede finalizar',
+          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNSubgroups} subgrupo${sgPlural}.`,
+          'alert-circle-outline',
+          colors.danger
+        );
       } else {
         const blockingNames = gate.blocking.map((b) => `\u2022 ${b.nombre} (${b.estado})`).join('\n');
         showConfirm({
