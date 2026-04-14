@@ -28,12 +28,13 @@ decisions:
   - "AdminBottomSheet sincronizada section removed (D-07) — no more estado=sincronizada in UI"
   - "Helper text for canFinalize=false kept consistent with existing test expectation"
   - "AdminBottomSheet.test sincronizada test updated — now asserts no actions render for removed estado"
+  - "Global sync icon uses orange ring border (borderColor: syncPending) instead of dot overlay — cleaner at 18px icon size"
+  - "startPlantationSync added to useSync for targeted per-plantation sync from gear menu"
 metrics:
-  duration: "~15min"
-  completed_date: "2026-04-13"
-  tasks_completed: 2
-  files_modified: 8
-status: awaiting-checkpoint
+  duration: "~20min (including post-merge fixes)"
+  completed_date: "2026-04-14"
+  tasks_completed: 3
+  files_modified: 10
 ---
 
 # Phase 13 Plan 03: Sync UI Layer Summary
@@ -119,9 +120,17 @@ OrangeDot component + unified Sincronizar button + global sync header icon + per
 - **Files modified:** `mobile/tests/components/AdminBottomSheet.test.tsx`
 - **Commit:** 8de4b6d
 
-## Status: Awaiting Checkpoint (Task 3)
+## Post-Checkpoint Fixes (after human-verify approval)
 
-Task 3 is a `checkpoint:human-verify` — requires visual verification on device/emulator. Tasks 1 and 2 are fully committed. Test suite: 303 tests passing.
+**d2fe806** — Merge: integrated `refactor/UI-UX-details-and-reorder` branch. Resolved 5 conflicts. Fixed `canEdit` 3-arg call in `useTreeRegistration`.
+
+**db0eaeb** — Fixed 4 post-merge UI issues:
+1. Sync button in header missing green circle background
+2. Gear menu sync was triggering global sync instead of per-plantation — added `startPlantationSync(plantacionId, incluirFotos)` to `useSync`
+3. Orange dot position moved to left of "Lugar" text in PlantationCard
+4. Safety net for `pending_sync` column in `client.ts`
+
+**21be002** — Style: replaced orange dot overlay with ring border (`borderColor: colors.syncPending`) on global sync icon wrapper — cleaner visual at 18px icon size.
 
 ## Known Stubs
 
@@ -129,9 +138,11 @@ None — all functionality is wired. OrangeDot reads live data from pendingSync 
 
 ## Self-Check: PASSED
 
-Tasks 1 and 2 verified:
+All tasks and post-checkpoint fixes verified:
 - `mobile/src/components/OrangeDot.tsx` — FOUND
 - `mobile/src/hooks/usePendingSyncMap.ts` — FOUND
 - Commit `980f4df` (Task 1) — FOUND
 - Commit `8de4b6d` (Task 2) — FOUND
-- 303 tests passing
+- Commit `d2fe806` (post-merge) — FOUND
+- Commit `db0eaeb` (post-merge fixes) — FOUND
+- Commit `21be002` (ring border style) — FOUND
