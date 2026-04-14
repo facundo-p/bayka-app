@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 13-03-PLAN.md — Phase 13 (unificar-sync-bidireccional) fully complete
-last_updated: "2026-04-14T15:10:50.983Z"
+stopped_at: Phase 14 context gathered
+last_updated: "2026-04-14T17:27:57.549Z"
 last_activity: 2026-04-14
 progress:
-  total_phases: 13
+  total_phases: 14
   completed_phases: 13
   total_plans: 42
   completed_plans: 42
@@ -187,6 +187,7 @@ Recent decisions affecting current work:
 - Phase 10 added: Creación de plantación offline + sync catálogo de especies (ejecuta antes de fase 9)
 - Phase 11 added: Unificar pantallas — eliminar screen de Gestión e integrar acciones en PlantationCard
 - Phase 12 added: Persistir imágenes de árboles en Supabase Storage con toggle, resize y sync
+- Phase 14 added: Sincronizar subgrupos finalizados con N/Ns, resolver N/Ns, bloquear finalización sin N/Ns resueltos
 
 ### Pending Todos
 
@@ -210,6 +211,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-14T12:00:00.000Z
-Stopped at: Completed 13-03-PLAN.md — Phase 13 (unificar-sync-bidireccional) fully complete
-Resume file: None
+Last session: 2026-04-14T17:27:57.539Z
+Stopped at: Phase 14 context gathered
+Resume file: .planning/phases/14-sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo/14-CONTEXT.md
