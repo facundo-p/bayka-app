@@ -67,8 +67,6 @@ Weight declarations (exactly 2 weights used in this phase):
 - Regular: `fonts.regular` (Poppins_400Regular) — body, labels, helper text
 - Bold: `fonts.bold` (Poppins_700Bold) — card titles, stat values, modal titles
 
-SemiBold (`fonts.semiBold`) is permitted for badge text, chip text, and button text — pre-existing pattern in chip components.
-
 ---
 
 ## Color
@@ -113,7 +111,7 @@ Accent reserved for:
 - Existing nnBadge already present (line 93): `{nnCount > 0 && <View style={styles.nnBadge}><Text style={styles.nnBadgeText}>{nnCount} N/N</Text></View>}`
 - Verify existing `nnBadge` / `nnBadgeText` styles match this contract:
   - `nnBadge`: `backgroundColor: colors.secondaryYellowLight`, `borderRadius: borderRadius.full`, `borderWidth: 1`, `borderColor: colors.secondaryYellowMedium`, `paddingVertical: 2`, `paddingHorizontal: spacing.sm`
-  - `nnBadgeText`: `fontSize: fontSize.xs` (11px), `color: colors.secondaryYellowDark`, `fontFamily: fonts.semiBold`
+  - `nnBadgeText`: `fontSize: fontSize.xs` (11px), `color: colors.secondaryYellowDark`, `fontFamily: fonts.bold`
 - No layout change — badge must fit inline in the existing cardRow without adding height
 
 **AdminBottomSheet** (`mobile/src/components/AdminBottomSheet.tsx`)
