@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Phase 14 context gathered
-last_updated: "2026-04-14T17:27:57.549Z"
-last_activity: 2026-04-14
+status: executing
+stopped_at: Phase 14 UI-SPEC approved
+last_updated: "2026-04-14T18:50:06.260Z"
+last_activity: 2026-04-14 -- Phase 14 execution started
 progress:
   total_phases: 14
   completed_phases: 13
-  total_plans: 42
+  total_plans: 45
   completed_plans: 42
-  percent: 100
+  percent: 93
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 13 — unificar-sync-bidireccional
+**Current focus:** Phase 14 — sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-14
+Phase: 14 (sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 14
+Last activity: 2026-04-14 -- Phase 14 execution started
 
 Progress: [██████████] 100%
 
@@ -211,6 +211,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-14T17:27:57.539Z
-Stopped at: Phase 14 context gathered
-Resume file: .planning/phases/14-sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo/14-CONTEXT.md
+Last session: 2026-04-14T17:38:03.842Z
+Stopped at: Phase 14 UI-SPEC approved
+Resume file: .planning/phases/14-sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo/14-UI-SPEC.md
