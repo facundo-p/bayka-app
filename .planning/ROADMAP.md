@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexion en campo (completed 2026-04-06)
 - [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades criticas: offline, sync, data integrity, role-based access
 - [x] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos (completed 2026-04-13)
-- [ ] **Phase 14: Sync N/N + conflict resolution** - Sincronizar subgrupos con N/N, deteccion de conflictos, resolucion por rol, gate de finalizacion, indicadores visuales
+- [x] **Phase 14: Sync N/N + conflict resolution** - Sincronizar subgrupos con N/N, deteccion de conflictos, resolucion por rol, gate de finalizacion, indicadores visuales (completed 2026-04-14)
 
 ## Phase Details
 
@@ -240,7 +240,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 11. Unificar pantallas | 2/3 | In Progress|  |
 | 12. Photo Storage + Sync | 4/4 | Complete    | 2026-04-12 |
 | 13. Unificar sync bidireccional | 3/3 | Complete | 2026-04-13 |
-| 14. Sync N/N + conflict resolution | 2/3 | In Progress|  |
+| 14. Sync N/N + conflict resolution | 3/3 | Complete   | 2026-04-14 |
 
 ### Phase 12: Persistir imagenes de arboles en Supabase Storage con toggle, resize y sync
 
@@ -302,9 +302,9 @@ Canonical refs:
   6. NNResolutionScreen muestra banner de conflicto con opciones "Aceptar del servidor" / "Mantener la mia"
   7. PlantationCard muestra stat de N/N sin resolver (icono amarillo)
   8. SubGroupCard muestra badge amarillo de N/N pendientes
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 14-01-PLAN.md — Drizzle migration (conflict columns on trees), Supabase RPC migration (DO UPDATE for trees), remove N/N filter from getSyncableSubGroups, extend checkFinalizationGate, dashboard NN query, role-filtered NN query
 - [x] 14-02-PLAN.md — SyncService conflict detection in pullFromServer, useNNResolution role-based filtering + conflict state, usePlantationAdmin N/N gate, usePlantaciones NN data plumbing
-- [ ] 14-03-PLAN.md — UI: PlantationCard NN stat, AdminBottomSheet finalization gate, NNResolutionScreen conflict banner, PlantationDetailScreen badge verification, visual checkpoint
+- [x] 14-03-PLAN.md — UI: PlantationCard NN stat, AdminBottomSheet finalization gate, NNResolutionScreen conflict banner, PlantationDetailScreen badge verification, visual checkpoint
