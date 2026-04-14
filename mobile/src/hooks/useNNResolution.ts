@@ -120,7 +120,7 @@ export function useNNResolution(params: {
 
   // ─── Permission check ─────────────────────────────────────────────────────
   // Admin can always resolve. Tecnico can resolve trees in their own subgroups.
-  const canResolve = isAdmin || !subgrupoId || true; // plantation-mode: filtered by user already
+  const canResolve = isAdmin || !subgrupoId; // plantation-mode: filtered by user already
 
   // ─── Conflict helpers ────────────────────────────────────────────────────
   function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {
