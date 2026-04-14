@@ -13,13 +13,13 @@ import ConfirmModal from '../components/ConfirmModal';
 import AdminBottomSheet from '../components/AdminBottomSheet';
 import AdminPlantationModals from '../components/AdminPlantationModals';
 import SyncProgressModal from '../components/SyncProgressModal';
+import SyncConfirmModal from '../components/SyncConfirmModal';
 import { usePlantaciones } from '../hooks/usePlantaciones';
 import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
 import { useSync } from '../hooks/useSync';
 import { showConfirmDialog } from '../utils/alertHelpers';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
-import { useSyncSetting } from '../hooks/useSyncSetting';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
 
@@ -49,7 +49,6 @@ export default function PlantacionesScreen() {
 
   // Global sync state
   const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, reset: resetSync, pullSuccess, successCount, failureCount, photoProgress, photoResult } = useSync();
-  const { incluirFotos } = useSyncSetting();
   const { pendingCount: globalPendingCount } = usePendingSyncCount();
   const hasAnyPending = globalPendingCount > 0;
   const isSyncing = syncState !== 'idle' && syncState !== 'done';
@@ -57,9 +56,25 @@ export default function PlantacionesScreen() {
   // Per-plantation pending status for hasPendingSync prop
   const pendingSyncBoolMap = usePendingSyncMap();
 
-  const handleGlobalSync = useCallback(async () => {
-    await startGlobalSync(incluirFotos);
-  }, [startGlobalSync, incluirFotos]);
+  // Sync confirm dialog state
+  const [syncConfirmVisible, setSyncConfirmVisible] = useState(false);
+  const [syncConfirmMode, setSyncConfirmMode] = useState<'global' | 'plantation'>('global');
+  const [syncTargetPlantationId, setSyncTargetPlantationId] = useState<string | null>(null);
+
+  function showSyncConfirm(mode: 'global' | 'plantation', plantationId?: string) {
+    setSyncConfirmMode(mode);
+    setSyncTargetPlantationId(plantationId ?? null);
+    setSyncConfirmVisible(true);
+  }
+
+  function handleSyncConfirm(incluirFotos: boolean) {
+    setSyncConfirmVisible(false);
+    if (syncConfirmMode === 'global') {
+      startGlobalSync(incluirFotos);
+    } else if (syncTargetPlantationId) {
+      startPlantationSync(syncTargetPlantationId, incluirFotos);
+    }
+  }
 
   // Bottom sheet state
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
@@ -108,7 +123,7 @@ export default function PlantacionesScreen() {
   function handleBottomSheetSync() {
     if (bottomSheetPlantation) {
       setBottomSheetVisible(false);
-      startPlantationSync(bottomSheetPlantation.id, incluirFotos);
+      showSyncConfirm('plantation', bottomSheetPlantation.id);
     }
   }
 
@@ -120,7 +135,7 @@ export default function PlantacionesScreen() {
           <View style={styles.headerButtons}>
             {isOnline && (
               <Pressable
-                onPress={handleGlobalSync}
+                onPress={() => showSyncConfirm('global')}
                 style={[styles.syncIconButton, hasAnyPending && styles.syncIconPending]}
                 hitSlop={8}
                 accessibilityLabel="Sincronizar todas las plantaciones"
@@ -200,6 +215,13 @@ export default function PlantacionesScreen() {
       )}
 
       <ConfirmModal {...confirmProps} />
+
+      <SyncConfirmModal
+        visible={syncConfirmVisible}
+        title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantacion'}
+        onConfirm={handleSyncConfirm}
+        onClose={() => setSyncConfirmVisible(false)}
+      />
 
       <SyncProgressModal
         state={syncState}
