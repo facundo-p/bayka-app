@@ -1,5 +1,5 @@
 ---
-status: diagnosed
+status: complete
 phase: 13-unificar-sync-bidireccional
 source: [13-01-SUMMARY.md, 13-02-SUMMARY.md, 13-03-SUMMARY.md]
 started: 2026-04-14T12:00:00Z
@@ -46,9 +46,8 @@ result: pass
 
 ### 9. Persistent Photo Toggle
 expected: El toggle "Incluir fotos" recuerda su valor entre sesiones. Si lo desactivas, cierras la app, y volves a abrir, sigue desactivado.
-result: issue
-reported: "El checkbox de incluir fotos no aparece en la sincronizacion general (global sync desde header) ni en la sincronizacion por plantacion (desde gear menu). Solo existe en PlantationDetailHeader pero no se muestra en esos flujos."
-severity: major
+result: pass
+note: Fixed — added SyncConfirmModal with persistent photo toggle before both global and per-plantation sync flows.
 
 ### 10. SyncProgressModal Phases
 expected: Durante la sincronizacion, el modal muestra fases en orden: "Actualizando datos..." (pull), "Subiendo subgrupos..." (push), "Subiendo fotos..." / "Descargando fotos..." (si fotos habilitadas), "Sincronizacion completa" o "Sincronizacion parcial" al final.
@@ -69,18 +68,12 @@ result: pass
 ## Summary
 
 total: 13
-passed: 12
-issues: 1
+passed: 13
+issues: 0
 pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
 
-- truth: "El toggle 'Incluir fotos' debe estar visible y funcionar en la sincronizacion global (header) y en la sincronizacion por plantacion (gear menu)"
-  status: failed
-  reason: "User reported: El checkbox de incluir fotos no aparece en la sincronizacion general ni en la sincronizacion por plantacion. Solo existe en PlantationDetailHeader pero no se muestra en esos flujos."
-  severity: major
-  test: 9
-  artifacts: []
-  missing: []
+[none — all issues resolved]
