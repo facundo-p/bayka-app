@@ -11,7 +11,20 @@ CREATE OR REPLACE FUNCTION sync_subgroup(
 ) RETURNS JSONB
 LANGUAGE plpgsql SECURITY INVOKER AS $$
 BEGIN
-  -- 1. Insert SubGroup; ON CONFLICT (id) DO NOTHING for idempotent re-upload
+  -- 1. Check DUPLICATE_CODE before insert: a different UUID exists with same plantation_id + codigo.
+  --    This catches the race condition where another device already uploaded a SubGroup with
+  --    the same code, or the local UUID differs from the server record.
+  --    Must run BEFORE INSERT to return a meaningful error instead of a constraint violation.
+  IF EXISTS (
+    SELECT 1 FROM subgroups
+    WHERE plantation_id = (p_subgroup->>'plantation_id')::UUID
+      AND codigo = p_subgroup->>'codigo'
+      AND id <> (p_subgroup->>'id')::UUID
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'DUPLICATE_CODE');
+  END IF;
+
+  -- 2. Insert SubGroup; ON CONFLICT (id) DO NOTHING for idempotent re-upload
   --    Server is source of truth for estado: always set to 'sincronizada'.
   INSERT INTO subgroups (id, plantation_id, nombre, codigo, tipo, estado, usuario_creador, created_at)
   VALUES (
@@ -25,18 +38,6 @@ BEGIN
     (p_subgroup->>'created_at')::TIMESTAMPTZ
   )
   ON CONFLICT (id) DO NOTHING;
-
-  -- 2. Check DUPLICATE_CODE: a different UUID exists with same plantation_id + codigo.
-  --    This catches the case where another device already uploaded a SubGroup with
-  --    the same code (race condition) or the local UUID differs from the server record.
-  IF EXISTS (
-    SELECT 1 FROM subgroups
-    WHERE plantation_id = (p_subgroup->>'plantation_id')::UUID
-      AND codigo = p_subgroup->>'codigo'
-      AND id <> (p_subgroup->>'id')::UUID
-  ) THEN
-    RETURN jsonb_build_object('success', false, 'error', 'DUPLICATE_CODE');
-  END IF;
 
   -- 3. Insert trees; ON CONFLICT (id) DO UPDATE allows re-sync after N/N resolution
   --    to update species_id and sub_id on the server.
