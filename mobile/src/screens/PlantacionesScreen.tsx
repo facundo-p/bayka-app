@@ -6,7 +6,6 @@ import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import PlantationCard from '../components/PlantationCard';
-import OrangeDot from '../components/OrangeDot';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import TexturedBackground from '../components/TexturedBackground';
@@ -122,15 +121,12 @@ export default function PlantacionesScreen() {
             {isOnline && (
               <Pressable
                 onPress={handleGlobalSync}
-                style={styles.syncIconButton}
+                style={[styles.syncIconButton, hasAnyPending && styles.syncIconPending]}
                 hitSlop={8}
                 accessibilityLabel="Sincronizar todas las plantaciones"
                 disabled={isSyncing}
               >
-                <View style={styles.syncIconWrapper}>
-                  <Ionicons name="sync-outline" size={18} color={colors.white} />
-                  {hasAnyPending && <OrangeDot size={8} style={styles.syncDotOverlay} />}
-                </View>
+                <Ionicons name="sync-outline" size={18} color={colors.white} />
               </Pressable>
             )}
             {isAdmin && (
@@ -279,14 +275,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  syncIconWrapper: {
-    position: 'relative',
-  },
-  syncDotOverlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
+  syncIconPending: {
+    borderColor: colors.syncPending,
   },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
