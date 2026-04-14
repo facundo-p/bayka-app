@@ -46,8 +46,8 @@ result: pass
 
 ### 9. Offline Session Persistence
 expected: Force close + reopen without connectivity goes straight to dashboard.
-result: skipped
-reason: Cannot test offline with Expo Go — requires dev server connection. Code reviewed and correct (getSession from AsyncStorage, no network call). Will validate on production build.
+result: resolved
+reason: Stale — offline auth was fully rewritten in Phase 8 (login-offline) and Phase 10 (offline-fixes) using SecureStore + OfflineAuthService. Feature re-tested and validated in Phase 8 UAT.
 
 ### 10. Multi-User Same Device
 expected: Different users get correct role-based navigation, no leftover data.
