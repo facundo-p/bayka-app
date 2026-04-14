@@ -44,12 +44,16 @@ export default function NNResolutionScreen() {
     total,
     saving,
     isPlantationMode,
+    canResolve,
     zoomPhotoUri,
     confirmProps,
     handleSelectSpecies,
     handleGuardar,
     setCurrentIndex,
     setZoomPhotoUri,
+    getConflictForTree,
+    acceptServerResolution,
+    keepLocalResolution,
   } = useNNResolution({ plantacionId: plantacionId ?? '', subgrupoId, subgrupoCodigo });
 
   useEffect(() => {
@@ -136,14 +140,41 @@ export default function NNResolutionScreen() {
 
       {/* Scrollable species grid */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        {speciesLoading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-        ) : (
-          <SpeciesButtonGrid
-            species={species}
-            onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
-            selectedId={currentSelectionId}
-          />
+        {currentTree?.id && (() => {
+          const conflict = getConflictForTree(currentTree.id);
+          return conflict ? (
+            <View style={styles.conflictBanner}>
+              <View style={styles.conflictHeader}>
+                <Ionicons name="warning-outline" size={18} color={colors.danger} />
+                <Text style={styles.conflictTitle}>Conflicto detectado</Text>
+              </View>
+              <Text style={styles.conflictBody}>
+                Otro usuario resolvio este arbol como {conflict.serverEspecieNombre}.
+              </Text>
+              <View style={styles.conflictActions}>
+                <Pressable onPress={() => acceptServerResolution(currentTree.id)}>
+                  <Text style={styles.conflictAcceptText}>Aceptar del servidor</Text>
+                </Pressable>
+                <Pressable onPress={() => keepLocalResolution(currentTree.id)}>
+                  <Text style={styles.conflictKeepText}>Mantener la mia</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null;
+        })()}
+        {!canResolve && (
+          <Text style={styles.readOnlyLabel}>Resolucion pendiente</Text>
+        )}
+        {canResolve && (
+          speciesLoading ? (
+            <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
+          ) : (
+            <SpeciesButtonGrid
+              species={species}
+              onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
+              selectedId={currentSelectionId}
+            />
+          )
         )}
       </ScrollView>
 
@@ -182,4 +213,51 @@ const styles = StyleSheet.create({
   guardarButton: { backgroundColor: colors.primary, paddingVertical: spacing.xxl, borderRadius: borderRadius.lg, alignItems: 'center' },
   guardarButtonDisabled: { opacity: 0.5 },
   guardarButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.xl },
+  conflictBanner: {
+    backgroundColor: colors.dangerBg,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.danger,
+    padding: spacing.xxl,
+    marginHorizontal: spacing.xxl,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  conflictHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  conflictTitle: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.bold,
+    color: colors.danger,
+  },
+  conflictBody: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  conflictActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  conflictAcceptText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.bold,
+    color: colors.primary,
+  },
+  conflictKeepText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+  },
+  readOnlyLabel: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+    textAlign: 'center',
+    paddingVertical: spacing.xxl,
+  },
 });
