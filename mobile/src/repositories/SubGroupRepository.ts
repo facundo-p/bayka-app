@@ -295,19 +295,16 @@ export async function getFinalizadaSubGroups(plantacionId: string, userId?: stri
     .where(and(...conditions)) as unknown as SubGroup[];
 }
 
-// Returns finalizada subgroups with pendingSync=true that are ready to sync.
-// Per D-01: N/N trees no longer block sync — subgroups with unresolved N/N ARE syncable.
-// The finalization gate (checkFinalizationGate) handles N/N visibility for admins.
-// When userId is provided, only returns subgroups created by that user.
-export async function getSyncableSubGroups(plantacionId: string, userId?: string): Promise<SubGroup[]> {
+// Returns subgroups with pendingSync=true that are ready to sync.
+// Includes both 'finalizada' and 'sincronizada' — the latter have pending
+// changes (e.g., N/N resolution) that need to reach the server.
+// No userId filter: any user assigned to the plantation can sync changes
+// (e.g., resolving N/N on trees created by another user).
+export async function getSyncableSubGroups(plantacionId: string, _userId?: string): Promise<SubGroup[]> {
   const conditions = [
     eq(subgroups.plantacionId, plantacionId),
-    eq(subgroups.estado, 'finalizada'),
     eq(subgroups.pendingSync, true),
   ];
-  if (userId) {
-    conditions.push(eq(subgroups.usuarioCreador, userId));
-  }
   return db.select().from(subgroups).where(and(...conditions)) as unknown as SubGroup[];
 }
 
