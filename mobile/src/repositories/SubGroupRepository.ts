@@ -122,9 +122,11 @@ export async function markSubGroupPendingSync(subgrupoId: string): Promise<void>
 
 // Marks a subgroup as synced after successful server sync.
 // Called by SyncService after RPC confirms the upload.
+// Sets estado to 'sincronizada' to match server state immediately,
+// without waiting for the next pull to update it.
 export async function markSubGroupSynced(subgrupoId: string): Promise<void> {
   await db.update(subgroups)
-    .set({ pendingSync: false })
+    .set({ pendingSync: false, estado: 'sincronizada' })
     .where(eq(subgroups.id, subgrupoId));
   notifyDataChanged();
 }
