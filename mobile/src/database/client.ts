@@ -24,16 +24,22 @@ try {
   // Column already exists — expected after successful migration
 }
 
-// One-time fix (v1): mark finalized subgroups that were never synced as pending.
-// Covers the case where pending_sync column existed but DEFAULT 0 left
-// finalized subgroups unmarked. Uses user_version pragma to run only once.
+// One-time fixes using user_version pragma as migration counter.
 try {
   const [{ user_version }] = sqlite.getAllSync<{ user_version: number }>('PRAGMA user_version;');
-  if (user_version < 1) {
+
+  if (user_version < 2) {
+    // v1: Mark only truly-unsynced finalized subgroups as pending.
+    // Exclude 'sincronizada' — those already exist on the server.
     sqlite.execSync(
       "UPDATE subgroups SET pending_sync = 1 WHERE estado = 'finalizada' AND pending_sync = 0;"
     );
-    sqlite.execSync('PRAGMA user_version = 1;');
+    // v2: Clean up subgroups stuck with pendingSync=true but already synced.
+    // These were incorrectly marked by v1 before the estado filter was added.
+    sqlite.execSync(
+      "UPDATE subgroups SET pending_sync = 0 WHERE estado = 'sincronizada' AND pending_sync = 1;"
+    );
+    sqlite.execSync('PRAGMA user_version = 2;');
   }
 } catch (_) {
   // Table may not exist yet on fresh install — migrations will handle it
