@@ -101,9 +101,9 @@ export const colors = {
   otherUserBorder: '#94A3B8',
 
   // ─── Semantic stat colors (consistent with estado) ──────────────────────
-  statTotal: '#64748B',       // slate-500, neutral for totals
+  statTotal: '#99B95B',       // olive green — matches brand secondary
   statSynced: '#0A3760',      // brand blue — same as stateSincronizada
-  statToday: '#8B5CF6',       // violet-500, unique color for "today" that doesn't clash
+  statToday: '#64748B',       // slate-500, neutral gray for daily count
   statPending: '#99B95B',     // olive green — same as secondary, pending/unsync
 
   // ─── Photo sync indicator ───────────────────────────────────────────────
