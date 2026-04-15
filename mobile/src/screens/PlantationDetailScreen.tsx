@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   nnBadgeText: { color: colors.secondaryYellowDark, fontSize: fontSize.xs, fontFamily: fonts.bold },
   emptyContainer: { flex: 1, alignItems: 'center', marginTop: 60 },
   emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, fontFamily: fonts.semiBold },
-  emptySubtext: { fontSize: fontSize.base, color: colors.textMuted, marginTop: spacing.sm },
+  emptySubtext: { fontSize: fontSize.base, color: colors.textMuted, marginTop: spacing.sm, fontFamily: fonts.regular },
   fabContainer: { padding: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border },
   fab: { backgroundColor: colors.plantationHeaderBg, paddingVertical: spacing.xl, borderRadius: borderRadius.lg, alignItems: 'center', elevation: 4, shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
   fabPressed: { opacity: 0.85 },

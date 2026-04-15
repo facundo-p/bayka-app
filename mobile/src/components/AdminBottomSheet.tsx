@@ -312,6 +312,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     color: colors.secondary,
     flex: 1,
+    fontFamily: fonts.regular,
   },
   discardBtn: {
     flexDirection: 'row',
@@ -349,6 +350,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.xs,
+    fontFamily: fonts.regular,
   },
   divider: {
     height: 1,

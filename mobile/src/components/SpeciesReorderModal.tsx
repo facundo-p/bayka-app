@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing.lg, gap: spacing.xs },
   title: { fontSize: fontSize.xxl, fontFamily: fonts.heading, color: colors.text },
-  hint: { fontSize: fontSize.sm, color: colors.textMuted, fontStyle: 'italic' },
+  hint: { fontSize: fontSize.sm, color: colors.textMuted, fontStyle: 'italic', fontFamily: fonts.regular },
   footer: {
     flexDirection: 'row', gap: spacing.xl, padding: spacing.xxl,
     backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
