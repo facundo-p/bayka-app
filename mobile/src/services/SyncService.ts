@@ -501,15 +501,17 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
         }
 
         // If server has a storage-path foto_url (not a file:// URI from another device),
-        // the photo is already on the server → mark as synced
+        // the photo is already on the server → mark as synced.
+        // CRITICAL: Never store file:// paths from another device — they're meaningless locally.
         const hasFotoOnServer = !!t.foto_url && !t.foto_url.startsWith('file://');
+        const serverFotoUrl = hasFotoOnServer ? t.foto_url : null;
         await db.insert(trees).values({
           id: t.id,
           subgrupoId: t.subgroup_id,
           especieId: t.species_id,
           posicion: t.posicion,
           subId: t.sub_id,
-          fotoUrl: t.foto_url,
+          fotoUrl: serverFotoUrl,
           fotoSynced: hasFotoOnServer,
           plantacionId: null,
           globalId: null,
@@ -522,7 +524,7 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
             posicion: sql`excluded.posicion`,
             subId: sql`excluded.sub_id`,
             // Keep local file:// URI if it exists (photo is on this device).
-            // Only update from server if local has no photo or a remote path.
+            // excluded.foto_url is already sanitized (no file:// from server).
             fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
             fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
             // Clear any previous conflict markers for non-conflicted trees

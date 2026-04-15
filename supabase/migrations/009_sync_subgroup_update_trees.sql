@@ -9,7 +9,7 @@ CREATE OR REPLACE FUNCTION sync_subgroup(
   p_subgroup JSONB,
   p_trees    JSONB
 ) RETURNS JSONB
-LANGUAGE plpgsql SECURITY INVOKER AS $$
+LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
   -- 1. Check DUPLICATE_CODE before insert: a different UUID exists with same plantation_id + codigo.
   --    This catches the race condition where another device already uploaded a SubGroup with
