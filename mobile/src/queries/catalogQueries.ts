@@ -7,7 +7,7 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { plantations, subgroups } from '../database/schema';
-import { eq, and, sql, count } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -155,7 +155,7 @@ export type UnsyncedSummary = {
 };
 
 /**
- * Returns counts of non-synchronized subgroups for a plantation.
+ * Returns counts of subgroups with pending local changes for a plantation.
  * Used to determine whether to show a warning before local deletion.
  *
  * IMPORTANT: Does NOT filter by usuarioCreador — counts ALL subgroups
@@ -170,7 +170,7 @@ export async function getUnsyncedSubgroupSummary(
     .where(
       and(
         eq(subgroups.plantacionId, plantacionId),
-        sql`${subgroups.estado} != 'sincronizada'`
+        eq(subgroups.pendingSync, true)
       )
     )
     .groupBy(subgroups.estado);

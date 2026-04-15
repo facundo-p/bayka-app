@@ -8,11 +8,16 @@ import { useState } from 'react';
 import { useTrees } from './useTrees';
 import { usePlantationSpecies } from './usePlantationSpecies';
 import { resolveNNTree } from '../repositories/TreeRepository';
-import { useLiveData } from '../database/liveQuery';
-import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
+import { useLiveData, notifyDataChanged } from '../database/liveQuery';
+import { getNNTreesForPlantation, getNNTreesForPlantationByUser } from '../queries/plantationDetailQueries';
+import { useCurrentUserId } from './useCurrentUserId';
+import { useProfileData } from './useProfileData';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { colors } from '../theme';
+import { db } from '../database/client';
+import { trees } from '../database/schema';
+import { eq } from 'drizzle-orm';
 
 interface NNTree {
   id: string;
@@ -23,6 +28,8 @@ interface NNTree {
   subgrupoId: string;
   subgrupoCodigo?: string;
   subgrupoNombre?: string;
+  conflictEspecieId?: string | null;
+  conflictEspecieNombre?: string | null;
 }
 
 export function useNNResolution(params: {
@@ -33,15 +40,20 @@ export function useNNResolution(params: {
   const { plantacionId, subgrupoId, subgrupoCodigo } = params;
   const confirm = useConfirm();
   const isPlantationMode = !subgrupoId;
+  const userId = useCurrentUserId();
+  const { profile } = useProfileData();
+  const isAdmin = profile?.rol === 'admin';
 
   const singleSubgroupTrees = useTrees(subgrupoId ?? '');
 
   const { data: plantationNNTrees } = useLiveData(
     () => {
       if (!isPlantationMode) return Promise.resolve([]);
-      return getNNTreesForPlantation(plantacionId ?? '');
+      if (isAdmin) return getNNTreesForPlantation(plantacionId ?? '');
+      if (userId) return getNNTreesForPlantationByUser(plantacionId ?? '', userId);
+      return Promise.resolve([]);
     },
-    [plantacionId, isPlantationMode]
+    [plantacionId, isPlantationMode, isAdmin, userId]
   );
 
   let unresolvedTrees: NNTree[];
@@ -106,6 +118,44 @@ export function useNNResolution(params: {
     }
   }
 
+  // ─── Permission check ─────────────────────────────────────────────────────
+  // Admin can always resolve. Tecnico can resolve trees in their own subgroups.
+  const canResolve = isAdmin || !subgrupoId; // plantation-mode: filtered by user already
+
+  // ─── Conflict helpers ────────────────────────────────────────────────────
+  function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {
+    const tree = unresolvedTrees.find(t => t.id === treeId);
+    if (tree?.conflictEspecieId) {
+      return {
+        serverEspecieId: tree.conflictEspecieId,
+        serverEspecieNombre: tree.conflictEspecieNombre ?? 'Desconocida',
+      };
+    }
+    return null;
+  }
+
+  async function acceptServerResolution(treeId: string) {
+    const conflict = getConflictForTree(treeId);
+    if (!conflict) return;
+    // Resolve with server species
+    const tree = unresolvedTrees.find(t => t.id === treeId);
+    const codigo = tree?.subgrupoCodigo ?? subgrupoCodigo ?? '';
+    await resolveNNTree(treeId, conflict.serverEspecieId, codigo);
+    // Clear conflict columns
+    await db.update(trees)
+      .set({ conflictEspecieId: null, conflictEspecieNombre: null })
+      .where(eq(trees.id, treeId));
+    notifyDataChanged();
+  }
+
+  async function keepLocalResolution(treeId: string) {
+    // Just clear the conflict marker — local stays, next sync will overwrite server
+    await db.update(trees)
+      .set({ conflictEspecieId: null, conflictEspecieNombre: null })
+      .where(eq(trees.id, treeId));
+    notifyDataChanged();
+  }
+
   function handleAnterior() {
     if (safeIndex > 0) setCurrentIndex(safeIndex - 1);
   }
@@ -127,6 +177,8 @@ export function useNNResolution(params: {
     saving,
     selections,
     isPlantationMode,
+    isAdmin,
+    canResolve,
     zoomPhotoUri,
     confirmProps: confirm.confirmProps,
     // Actions
@@ -134,6 +186,10 @@ export function useNNResolution(params: {
     handleGuardar,
     handleAnterior,
     handleSiguiente,
+    setCurrentIndex,
     setZoomPhotoUri,
+    getConflictForTree,
+    acceptServerResolution,
+    keepLocalResolution,
   };
 }

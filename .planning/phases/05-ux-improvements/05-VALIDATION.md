@@ -1,10 +1,11 @@
 ---
 phase: 5
 slug: ux-improvements
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-28
+updated: 2026-04-13
 ---
 
 # Phase 5 — Validation Strategy
@@ -38,10 +39,10 @@ created: 2026-03-28
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 05-01-01 | 01 | 1 | UX-CONN | unit | `npm test -- useNetStatus` | ❌ W0 | ⬜ pending |
-| 05-01-02 | 01 | 1 | UX-PROF | unit | `npm test -- useProfileData` | ❌ W0 | ⬜ pending |
-| 05-02-01 | 02 | 2 | UX-FRESH | unit | `npm test -- freshnessCheck` | ❌ W0 | ⬜ pending |
-| 05-02-02 | 02 | 2 | UX-HEAD | manual | visual | N/A | ⬜ pending |
+| 05-01-01 | 01 | 1 | UX-CONN | unit | `cd mobile && npx jest tests/hooks/useNetStatus.test.ts` | ✅ | ✅ green |
+| 05-01-02 | 01 | 1 | UX-PROF | unit | `cd mobile && npx jest tests/hooks/useProfileData.test.ts` | ✅ | ✅ green |
+| 05-02-01 | 02 | 2 | UX-FRESH | unit | `cd mobile && npx jest tests/queries/freshnessQueries.test.ts` | ✅ | ✅ green |
+| 05-02-02 | 02 | 2 | UX-HEAD | manual | visual | N/A | ⬜ manual |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -49,10 +50,9 @@ created: 2026-03-28
 
 ## Wave 0 Requirements
 
-- [ ] `src/hooks/__tests__/useNetStatus.test.ts` — stubs for connectivity hook
-- [ ] `src/hooks/__tests__/useProfileData.test.ts` — stubs for profile data hook
-
-*Existing test infrastructure covers framework setup.*
+- [x] `mobile/tests/hooks/useNetStatus.test.ts` — connectivity hook tests
+- [x] `mobile/tests/hooks/useProfileData.test.ts` — profile data hook tests
+- [x] `mobile/tests/queries/freshnessQueries.test.ts` — freshness query tests
 
 ---
 
@@ -69,11 +69,11 @@ created: 2026-03-28
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 15s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verify or manual justification
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 complete
+- [x] No watch-mode flags
+- [x] Feedback latency < 15s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** green — 302 tests passing (2026-04-13)

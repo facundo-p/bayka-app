@@ -1,5 +1,6 @@
 // Tests for adminQueries — admin read queries for plantation management
-// Covers: PLAN-06, IDGN-04 and related query behaviors
+// Covers: checkFinalizationGate (all states including sincronizada),
+// getMaxGlobalId, hasIdsGenerated, hasTreesForSpecies
 
 jest.mock('../../src/database/client', () => ({
   db: {
@@ -33,6 +34,34 @@ import { supabase } from '../../src/supabase/client';
 const mockDb = db as jest.Mocked<typeof db>;
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 
+/**
+ * Helper: sets up mockDb.select to return different results on sequential calls.
+ * Call 1: subgroups query (used by checkFinalizationGate)
+ * Call 2: N/N trees query (used by checkFinalizationGate for unresolvedNNCount)
+ */
+function setupFinalizationMocks(subgroups: any[], nnRows: any[] = []) {
+  let callCount = 0;
+  (mockDb.select as jest.Mock).mockImplementation(() => {
+    callCount++;
+    if (callCount === 1) {
+      // Subgroups query
+      return {
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue(subgroups),
+        }),
+      };
+    }
+    // N/N trees query
+    return {
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          groupBy: jest.fn().mockResolvedValue(nnRows),
+        }),
+      }),
+    };
+  });
+}
+
 describe('adminQueries', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -41,31 +70,90 @@ describe('adminQueries', () => {
   // ─── checkFinalizationGate ────────────────────────────────────────────────
 
   describe('checkFinalizationGate', () => {
-    it('Test 1: returns {canFinalize: true, blocking: []} when all subgroups are sincronizada', async () => {
-      // All subgroups are sincronizada → query returns only sincronizada rows
-      const syncedSubgroups = [
-        { nombre: 'Línea A', estado: 'sincronizada' },
-        { nombre: 'Línea B', estado: 'sincronizada' },
-      ];
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(syncedSubgroups),
-        }),
-      });
+    it('canFinalize=true cuando todos los subgrupos están finalizada + pendingSync=false + sin N/N', async () => {
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'finalizada', pendingSync: false },
+          { nombre: 'Línea B', estado: 'finalizada', pendingSync: false },
+        ],
+        [] // no N/N trees
+      );
 
       const result = await checkFinalizationGate('plantation-1');
 
       expect(result.canFinalize).toBe(true);
       expect(result.blocking).toEqual([]);
       expect(result.hasSubgroups).toBe(true);
+      expect(result.unresolvedNNCount).toBe(0);
+      expect(result.unresolvedNNSubgroups).toBe(0);
     });
 
-    it('Test 1b: returns {canFinalize: false} when plantation has no subgroups', async () => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
-        }),
-      });
+    it('canFinalize=true cuando todos los subgrupos están sincronizada + pendingSync=false', async () => {
+      // After Phase 14: subgroups go finalizada → sincronizada on sync.
+      // sincronizada is a valid "done" state for plantation finalization.
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'sincronizada', pendingSync: false },
+          { nombre: 'Línea B', estado: 'sincronizada', pendingSync: false },
+        ],
+        []
+      );
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(true);
+      expect(result.blocking).toEqual([]);
+    });
+
+    it('canFinalize=true con mezcla de finalizada y sincronizada', async () => {
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'finalizada', pendingSync: false },
+          { nombre: 'Línea B', estado: 'sincronizada', pendingSync: false },
+        ],
+        []
+      );
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(true);
+      expect(result.blocking).toEqual([]);
+    });
+
+    it('canFinalize=false cuando hay subgrupos activa', async () => {
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'activa', pendingSync: false },
+          { nombre: 'Línea B', estado: 'finalizada', pendingSync: false },
+        ],
+        []
+      );
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(false);
+      expect(result.blocking).toHaveLength(1);
+      expect(result.blocking[0]).toMatchObject({ nombre: 'Línea A', estado: 'activa' });
+    });
+
+    it('canFinalize=false cuando hay subgrupos con pendingSync=true', async () => {
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'finalizada', pendingSync: true },
+          { nombre: 'Línea B', estado: 'sincronizada', pendingSync: false },
+        ],
+        []
+      );
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(false);
+      expect(result.blocking).toHaveLength(1);
+      expect(result.blocking[0]).toMatchObject({ nombre: 'Línea A', pendingSync: true });
+    });
+
+    it('canFinalize=false cuando no hay subgrupos', async () => {
+      setupFinalizationMocks([], []);
 
       const result = await checkFinalizationGate('plantation-1');
 
@@ -73,48 +161,78 @@ describe('adminQueries', () => {
       expect(result.hasSubgroups).toBe(false);
     });
 
-    it('Test 2: returns {canFinalize: false, blocking: [{nombre, estado}]} when some subgroups are not sincronizada', async () => {
-      const allSubgroups = [
-        { nombre: 'Línea A', estado: 'activa' },
-        { nombre: 'Línea B', estado: 'finalizada' },
-        { nombre: 'Línea C', estado: 'sincronizada' },
-      ];
-
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(allSubgroups),
-        }),
-      });
+    it('canFinalize=false cuando hay N/N sin resolver', async () => {
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'finalizada', pendingSync: false },
+        ],
+        [
+          { subgrupoId: 'sg-1', cnt: 3 }, // 3 unresolved N/N trees
+        ]
+      );
 
       const result = await checkFinalizationGate('plantation-1');
 
       expect(result.canFinalize).toBe(false);
-      expect(result.blocking).toHaveLength(2);
-      expect(result.blocking[0]).toMatchObject({ nombre: 'Línea A', estado: 'activa' });
-      expect(result.blocking[1]).toMatchObject({ nombre: 'Línea B', estado: 'finalizada' });
+      expect(result.blocking).toEqual([]); // subgroups are fine
+      expect(result.unresolvedNNCount).toBe(3);
+      expect(result.unresolvedNNSubgroups).toBe(1);
+    });
+
+    it('canFinalize=false con mezcla de blocking + N/N sin resolver', async () => {
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'activa', pendingSync: false },
+          { nombre: 'Línea B', estado: 'sincronizada', pendingSync: false },
+        ],
+        [
+          { subgrupoId: 'sg-b', cnt: 2 },
+        ]
+      );
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(false);
+      expect(result.blocking).toHaveLength(1); // Línea A is activa
+      expect(result.unresolvedNNCount).toBe(2);
+    });
+
+    it('sincronizada con pendingSync=true bloquea finalización', async () => {
+      // Edge case: subgroup was synced but then N/N was resolved locally
+      // (pendingSync=true, estado=sincronizada)
+      setupFinalizationMocks(
+        [
+          { nombre: 'Línea A', estado: 'sincronizada', pendingSync: true },
+        ],
+        []
+      );
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(result.canFinalize).toBe(false);
+      expect(result.blocking).toHaveLength(1);
+      expect(result.blocking[0]).toMatchObject({ nombre: 'Línea A', pendingSync: true });
     });
   });
 
   // ─── getMaxGlobalId ───────────────────────────────────────────────────────
 
   describe('getMaxGlobalId', () => {
-    it('Test 3: returns 0 when no trees have globalId', async () => {
+    it('retorna 0 cuando ningún árbol tiene globalId', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockResolvedValue([{ maxId: null }]),
       });
 
       const result = await getMaxGlobalId();
-
       expect(result).toBe(0);
     });
 
-    it('Test 4: returns the max globalId value when trees exist', async () => {
+    it('retorna el max globalId cuando existen árboles', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockResolvedValue([{ maxId: 42 }]),
       });
 
       const result = await getMaxGlobalId();
-
       expect(result).toBe(42);
     });
   });
@@ -122,7 +240,7 @@ describe('adminQueries', () => {
   // ─── hasIdsGenerated ─────────────────────────────────────────────────────
 
   describe('hasIdsGenerated', () => {
-    it('Test 5: returns false when no tree has globalId', async () => {
+    it('retorna false cuando ningún árbol tiene globalId', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
@@ -132,11 +250,10 @@ describe('adminQueries', () => {
       });
 
       const result = await hasIdsGenerated('plantation-1');
-
       expect(result).toBe(false);
     });
 
-    it('Test 6: returns true when at least one tree has globalId', async () => {
+    it('retorna true cuando al menos un árbol tiene globalId', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
@@ -146,7 +263,6 @@ describe('adminQueries', () => {
       });
 
       const result = await hasIdsGenerated('plantation-1');
-
       expect(result).toBe(true);
     });
   });
@@ -154,7 +270,7 @@ describe('adminQueries', () => {
   // ─── hasTreesForSpecies ───────────────────────────────────────────────────
 
   describe('hasTreesForSpecies', () => {
-    it('Test 7: returns true when trees reference that species in the plantation', async () => {
+    it('retorna true cuando hay árboles con esa especie en la plantación', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
@@ -164,11 +280,10 @@ describe('adminQueries', () => {
       });
 
       const result = await hasTreesForSpecies('plantation-1', 'species-1');
-
       expect(result).toBe(true);
     });
 
-    it('Test 8: returns false when no trees reference that species', async () => {
+    it('retorna false cuando no hay árboles con esa especie', async () => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
@@ -178,7 +293,6 @@ describe('adminQueries', () => {
       });
 
       const result = await hasTreesForSpecies('plantation-1', 'species-1');
-
       expect(result).toBe(false);
     });
   });

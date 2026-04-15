@@ -72,7 +72,7 @@ export function usePlantationDetail(plantacionId: string) {
 
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
 
-  const subgroupEstadoCounts = { activa: 0, finalizada: 0, sincronizada: 0 };
+  const subgroupEstadoCounts = { activa: 0, finalizada: 0 };
   (subgroupRows ?? []).forEach((sg: any) => {
     if (subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts] !== undefined) {
       subgroupEstadoCounts[sg.estado as keyof typeof subgroupEstadoCounts]++;

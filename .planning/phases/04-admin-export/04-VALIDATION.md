@@ -1,10 +1,11 @@
 ---
 phase: 4
 slug: admin-export
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: complete
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-03-19
+updated: 2026-04-13
 ---
 
 # Phase 4 — Validation Strategy
@@ -38,13 +39,13 @@ created: 2026-03-19
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
-| 04-01-01 | 01 | 1 | PLAN-01 | unit | `npx jest tests/repositories/PlantationRepository.test.ts -t "PLAN-01"` | ❌ W0 | ⬜ pending |
-| 04-01-02 | 01 | 1 | PLAN-02, PLAN-04, PLAN-05 | unit | `npx jest tests/repositories/PlantationRepository.test.ts -t "PLAN-02"` | ❌ W0 | ⬜ pending |
-| 04-01-03 | 01 | 1 | PLAN-03 | unit | `npx jest tests/repositories/PlantationRepository.test.ts -t "PLAN-03"` | ❌ W0 | ⬜ pending |
-| 04-01-04 | 01 | 1 | PLAN-06 | unit | `npx jest tests/queries/adminQueries.test.ts -t "PLAN-06"` | ❌ W0 | ⬜ pending |
-| 04-02-01 | 02 | 2 | IDGN-01, IDGN-02, IDGN-03 | unit | `npx jest tests/repositories/PlantationRepository.test.ts -t "IDGN"` | ❌ W0 | ⬜ pending |
-| 04-02-02 | 02 | 2 | IDGN-04 | unit | `npx jest tests/queries/adminQueries.test.ts -t "IDGN-04"` | ❌ W0 | ⬜ pending |
-| 04-03-01 | 03 | 2 | EXPO-01, EXPO-02, EXPO-03 | unit | `npx jest tests/services/exportService.test.ts` | ❌ W0 | ⬜ pending |
+| 04-01-01 | 01 | 1 | PLAN-01 | unit | `cd mobile && npx jest tests/admin/PlantationRepository.test.ts` | ✅ | ✅ green |
+| 04-01-02 | 01 | 1 | PLAN-02, PLAN-04, PLAN-05 | unit | `cd mobile && npx jest tests/admin/PlantationRepository.test.ts` | ✅ | ✅ green |
+| 04-01-03 | 01 | 1 | PLAN-03 | unit | `cd mobile && npx jest tests/admin/PlantationRepository.test.ts` | ✅ | ✅ green |
+| 04-01-04 | 01 | 1 | PLAN-06 | unit | `cd mobile && npx jest tests/admin/adminQueries.test.ts` | ✅ | ✅ green |
+| 04-02-01 | 02 | 2 | IDGN-01, IDGN-02, IDGN-03 | unit | `cd mobile && npx jest tests/admin/PlantationRepository.test.ts` | ✅ | ✅ green |
+| 04-02-02 | 02 | 2 | IDGN-04 | unit | `cd mobile && npx jest tests/admin/adminQueries.test.ts` | ✅ | ✅ green |
+| 04-03-01 | 03 | 2 | EXPO-01, EXPO-02, EXPO-03 | unit | `cd mobile && npx jest tests/admin/ExportService.test.ts` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -52,9 +53,9 @@ created: 2026-03-19
 
 ## Wave 0 Requirements
 
-- [ ] `mobile/tests/repositories/PlantationRepository.test.ts` — covers PLAN-01 through PLAN-06, IDGN-01 through IDGN-03
-- [ ] `mobile/tests/queries/adminQueries.test.ts` — covers PLAN-06, IDGN-04
-- [ ] `mobile/tests/services/exportService.test.ts` — covers EXPO-01, EXPO-02, EXPO-03
+- [x] `mobile/tests/admin/PlantationRepository.test.ts` — covers PLAN-01 through PLAN-06, IDGN-01 through IDGN-03
+- [x] `mobile/tests/admin/adminQueries.test.ts` — covers PLAN-06, IDGN-04
+- [x] `mobile/tests/admin/ExportService.test.ts` — covers EXPO-01, EXPO-02, EXPO-03
 
 ---
 
@@ -70,11 +71,11 @@ created: 2026-03-19
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 5s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All tasks have automated verify or manual justification
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 complete
+- [x] No watch-mode flags
+- [x] Feedback latency < 5s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** green — 302 tests passing (2026-04-13)

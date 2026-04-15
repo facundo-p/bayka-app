@@ -80,13 +80,13 @@ export async function getTodayTreesForUser(plantacionId: string, userId: string 
   return result[0]?.total ?? 0;
 }
 
-/** Count unsynced trees for a user in a plantation (trees in non-sincronizada subgroups) */
+/** Count unsynced trees for a user in a plantation (trees in subgroups with pendingSync=true) */
 export async function getUnsyncedTreesForUser(plantacionId: string, userId: string | null) {
   if (!userId) return 0;
   const result = await db.select({ total: count() })
     .from(trees)
     .where(and(
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId} AND estado != 'sincronizada')`,
+      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId} AND pending_sync = 1)`,
       eq(trees.usuarioRegistro, userId)
     ));
   return result[0]?.total ?? 0;
@@ -103,12 +103,42 @@ export async function getNNTreesForPlantation(plantacionId: string) {
     subgrupoId: trees.subgrupoId,
     subgrupoCodigo: subgroups.codigo,
     subgrupoNombre: subgroups.nombre,
+    conflictEspecieId: trees.conflictEspecieId,
+    conflictEspecieNombre: trees.conflictEspecieNombre,
   })
     .from(trees)
     .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
     .where(and(
       isNull(trees.especieId),
       eq(subgroups.plantacionId, plantacionId)
+    ))
+    .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+}
+
+/**
+ * D-07
+ * Get unresolved N/N trees filtered by the subgroup creator (tecnico view).
+ * Same shape as getNNTreesForPlantation but scoped to a single user's subgroups.
+ */
+export async function getNNTreesForPlantationByUser(plantacionId: string, userId: string) {
+  return db.select({
+    id: trees.id,
+    posicion: trees.posicion,
+    subId: trees.subId,
+    fotoUrl: trees.fotoUrl,
+    especieId: trees.especieId,
+    subgrupoId: trees.subgrupoId,
+    subgrupoCodigo: subgroups.codigo,
+    subgrupoNombre: subgroups.nombre,
+    conflictEspecieId: trees.conflictEspecieId,
+    conflictEspecieNombre: trees.conflictEspecieNombre,
+  })
+    .from(trees)
+    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .where(and(
+      isNull(trees.especieId),
+      eq(subgroups.plantacionId, plantacionId),
+      eq(subgroups.usuarioCreador, userId),
     ))
     .orderBy(asc(subgroups.nombre), asc(trees.posicion));
 }

@@ -4,7 +4,7 @@
 jest.mock('../../src/database/schema', () => ({
   plantations: { id: 'plantations.id', createdAt: 'plantations.created_at' },
   plantationUsers: { plantationId: 'pu.plantation_id', userId: 'pu.user_id' },
-  subgroups: { id: 'sg.id', plantacionId: 'sg.plantacion_id', estado: 'sg.estado' },
+  subgroups: { id: 'sg.id', plantacionId: 'sg.plantacion_id', estado: 'sg.estado', pendingSync: 'sg.pending_sync' },
   trees: {
     id: 'trees.id',
     subgrupoId: 'trees.subgrupo_id',
@@ -17,7 +17,6 @@ jest.mock('../../src/database/schema', () => ({
 jest.mock('drizzle-orm', () => ({
   eq: jest.fn((col: unknown, val: unknown) => ({ type: 'eq', col, val })),
   and: jest.fn((...args: unknown[]) => ({ type: 'and', args })),
-  ne: jest.fn((col: unknown, val: unknown) => ({ type: 'ne', col, val })),
   count: jest.fn(() => ({ type: 'count' })),
   desc: jest.fn((col: unknown) => ({ type: 'desc', col })),
   sql: Object.assign(
@@ -60,7 +59,7 @@ import {
   getTodayTreeCounts,
   getTotalTreeCounts,
 } from '../../src/queries/dashboardQueries';
-import { eq, ne } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 // Access the internal chain from the mocked module
 const mockDb = db as unknown as { select: jest.Mock; _chain: Record<string, jest.Mock> };
@@ -129,19 +128,16 @@ describe('dashboardQueries', () => {
   });
 
   describe('DASH-04: getUnsyncedTreeCounts — unsynced trees per plantation', () => {
-    it('filters by estado != sincronizada AND usuarioRegistro = userId', async () => {
+    it('filters by pendingSync=true AND usuarioRegistro = userId', async () => {
       await getUnsyncedTreeCounts('user-123');
 
-      // Must exclude sincronizada state
-      expect(ne).toHaveBeenCalledWith(
-        expect.anything(),
-        'sincronizada'
-      );
       // Must filter by userId
       expect(eq).toHaveBeenCalledWith(
         expect.anything(),
         'user-123'
       );
+      // Must use where clause (pendingSync + userId)
+      expect(getChain().where).toHaveBeenCalled();
     });
 
     it('returns empty array when userId is null', async () => {
@@ -158,8 +154,6 @@ describe('dashboardQueries', () => {
         expect.anything(),
         'user-123'
       );
-      // Does NOT filter by estado (no ne() call)
-      expect(ne).not.toHaveBeenCalled();
     });
 
     it('returns empty array when userId is null', async () => {
@@ -187,12 +181,12 @@ describe('dashboardQueries', () => {
   });
 
   describe('getPendingSyncCounts — pending sync per plantation (SYNC-07)', () => {
-    it('filters subgroups where estado = finalizada and groups by plantation', async () => {
+    it('filters subgroups where pendingSync=true and groups by plantation', async () => {
       await getPendingSyncCounts();
 
       expect(eq).toHaveBeenCalledWith(
         expect.anything(),
-        'finalizada'
+        true
       );
       expect(getChain().groupBy).toHaveBeenCalled();
     });

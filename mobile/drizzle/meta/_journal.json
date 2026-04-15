@@ -64,6 +64,20 @@
       "when": 1744500000000,
       "tag": "0008_add_foto_synced",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1744900000000,
+      "tag": "0009_add_subgroup_pending_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1745000000000,
+      "tag": "0010_add_tree_conflict_columns",
+      "breakpoints": true
     }
   ]
 }

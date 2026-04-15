@@ -23,6 +23,7 @@ import {
   getPendingSyncCounts,
   getTodayTreeCounts,
   getTotalTreeCounts,
+  getUnresolvedNNCountsPerPlantation,
 } from '../queries/dashboardQueries';
 
 export function usePlantaciones() {
@@ -46,6 +47,7 @@ export function usePlantaciones() {
   const { data: pendingSyncCounts } = useLiveData(() => getPendingSyncCounts());
   const { data: todayCounts } = useLiveData(() => getTodayTreeCounts(userId), [userId]);
   const { data: totalCounts } = useLiveData(() => getTotalTreeCounts());
+  const { data: nnCounts } = useLiveData(() => getUnresolvedNNCountsPerPlantation());
 
   useFocusEffect(
     useCallback(() => {
@@ -87,6 +89,9 @@ export function usePlantaciones() {
 
   const totalCountMap = new Map<string, number>();
   if (totalCounts) for (const row of totalCounts) totalCountMap.set(row.plantacionId, row.treeCount);
+
+  const nnCountMap = new Map<string, number>();
+  if (nnCounts) for (const row of nnCounts) nnCountMap.set(row.plantacionId, row.nnCount);
 
   const estadoCounts = { activa: 0, finalizada: 0 };
   plantationList?.forEach((p: any) => {
@@ -149,6 +154,7 @@ export function usePlantaciones() {
     pendingSyncMap,
     todayCountMap,
     totalCountMap,
+    nnCountMap,
     handleRefresh,
     handleDeletePlantation,
     confirmProps: confirm.confirmProps,

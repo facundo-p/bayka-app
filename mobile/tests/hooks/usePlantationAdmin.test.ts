@@ -69,23 +69,25 @@ describe('fetchPlantationMeta', () => {
   });
 
   it('returns canFinalize=true for activa when gate passes', async () => {
-    mockCheckGate.mockResolvedValue({ canFinalize: true, blocking: [], hasSubgroups: true });
+    mockCheckGate.mockResolvedValue({ canFinalize: true, blocking: [], hasSubgroups: true, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: true, idsGenerated: false });
+    expect(result).toEqual({ canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
   });
 
   it('returns canFinalize=false for activa when gate fails', async () => {
     mockCheckGate.mockResolvedValue({
       canFinalize: false,
-      blocking: [{ nombre: 'SG1', estado: 'activa' }],
+      blocking: [{ nombre: 'SG1', estado: 'activa', pendingSync: false }],
       hasSubgroups: true,
+      unresolvedNNCount: 0,
+      unresolvedNNSubgroups: 0,
     });
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false });
+    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
   });
 
   it('returns idsGenerated=true for finalizada with IDs', async () => {
@@ -93,7 +95,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('finalizada'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: true });
+    expect(result).toEqual({ canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
   });
 
   it('returns idsGenerated=false for finalizada without IDs', async () => {
@@ -101,15 +103,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('finalizada'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false });
-  });
-
-  it('returns idsGenerated=true for sincronizada always', async () => {
-    const result = await fetchPlantationMeta(makePlantation('sincronizada'));
-
-    expect(result).toEqual({ canFinalize: false, idsGenerated: true });
-    expect(mockCheckGate).not.toHaveBeenCalled();
-    expect(mockHasIds).not.toHaveBeenCalled();
+    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
   });
 
   it('handles checkFinalizationGate error gracefully', async () => {
@@ -117,7 +111,7 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('activa'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false });
+    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
   });
 
   it('handles hasIdsGenerated error gracefully', async () => {
@@ -125,6 +119,6 @@ describe('fetchPlantationMeta', () => {
 
     const result = await fetchPlantationMeta(makePlantation('finalizada'));
 
-    expect(result).toEqual({ canFinalize: false, idsGenerated: false });
+    expect(result).toEqual({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 });
   });
 });

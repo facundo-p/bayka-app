@@ -4,7 +4,7 @@ import { subgroups, trees, plantationUsers, plantationSpecies, plantations, spec
 import { eq, and, sql, inArray, isNotNull } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import {
-  markAsSincronizada,
+  markSubGroupSynced,
   getSyncableSubGroups,
   SubGroup,
 } from '../repositories/SubGroupRepository';
@@ -292,32 +292,44 @@ export async function downloadPhotosForPlantation(
   const dir = new Directory(Paths.document, 'photos');
   if (!dir.exists) dir.create({ intermediates: true });
 
+  console.log(`[Sync] Download photos: ${remoteTrees.length} remote trees found, dir=${dir.uri ?? 'unknown'}`);
+
   for (let i = 0; i < remoteTrees.length; i++) {
     onProgress?.({ total: remoteTrees.length, completed: i });
     const tree = remoteTrees[i];
 
     try {
+      console.log(`[Sync] Photo ${i + 1}/${remoteTrees.length}: tree=${tree.id}, storagePath=${tree.fotoUrl}`);
+
       const { data, error } = await supabase.storage
         .from('tree-photos')
         .createSignedUrl(tree.fotoUrl!, 3600);
 
       if (error || !data?.signedUrl) {
-        console.error(`[Sync] Signed URL failed for tree ${tree.id}:`, error?.message);
+        console.error(`[Sync] Signed URL FAILED for tree ${tree.id}: ${error?.message ?? 'no signedUrl returned'}`);
         failed++;
         continue;
       }
 
-      const destFile = new ExpoFile(dir, `photo_${tree.id}.jpg`);
-      await ExpoFile.downloadFileAsync(data.signedUrl, destFile);
+      console.log(`[Sync] Signed URL OK for tree ${tree.id}, downloading...`);
 
-      // Update local fotoUrl to local path + mark as synced
+      const destFile = new ExpoFile(dir, `photo_${tree.id}.jpg`);
+      const result = await ExpoFile.downloadFileAsync(data.signedUrl, destFile);
+
+      console.log(`[Sync] Download OK for tree ${tree.id}: destUri=${destFile.uri}, result=${JSON.stringify(result)}`);
+
+      // Update local fotoUrl to local path + mark as synced.
+      // Defensive: ensure URI starts with file:// — some Android devices
+      // return bare paths from expo-file-system, breaking the CASE WHEN
+      // in pullFromServer that preserves local photos.
+      const localUri = destFile.uri.startsWith('file://') ? destFile.uri : `file://${destFile.uri}`;
       await db.update(trees)
-        .set({ fotoUrl: destFile.uri, fotoSynced: true })
+        .set({ fotoUrl: localUri, fotoSynced: true })
         .where(eq(trees.id, tree.id));
 
       downloaded++;
     } catch (e: any) {
-      console.error(`[Sync] Photo download failed for tree ${tree.id}:`, e?.message);
+      console.error(`[Sync] Photo download EXCEPTION for tree ${tree.id}: ${e?.message}`, e?.stack?.slice(0, 200));
       failed++;
     }
   }
@@ -389,11 +401,15 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
         estado: sg.estado,
         usuarioCreador: sg.usuario_creador,
         createdAt: sg.created_at,
+        pendingSync: false,
       }).onConflictDoUpdate({
         target: subgroups.id,
         set: {
           estado: sql`excluded.estado`,
           nombre: sql`excluded.nombre`,
+          // Preserve local pendingSync flag — don't wipe dirty state during pull.
+          // Only clear if not already pending locally.
+          pendingSync: sql`CASE WHEN ${subgroups.pendingSync} = 1 THEN 1 ELSE 0 END`,
         },
       });
     }
@@ -481,15 +497,33 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
     if (!treeError && remoteTrees && remoteTrees.length > 0) {
       console.log('[Sync] Sample tree created_at:', remoteTrees[0].created_at, '| localToday:', require('../utils/dateUtils').localToday());
       for (const t of remoteTrees) {
-        // If server has a foto_url, the photo is already on the server → mark as synced
-        const hasFotoOnServer = !!t.foto_url;
+        // ── Conflict detection: check if local species differs from server species ──
+        if (t.species_id) {
+          const [localTree] = await db.select({ especieId: trees.especieId }).from(trees).where(eq(trees.id, t.id));
+          if (localTree && localTree.especieId !== null && localTree.especieId !== t.species_id) {
+            // Conflict: local has a different species than server
+            const [serverSpecies] = await db.select({ nombre: species.nombre }).from(species).where(eq(species.id, t.species_id));
+            await db.update(trees).set({
+              conflictEspecieId: t.species_id,
+              conflictEspecieNombre: serverSpecies?.nombre ?? 'Desconocida',
+            }).where(eq(trees.id, t.id));
+            console.log(`[Sync] Conflict detected for tree ${t.id}: local=${localTree.especieId}, server=${t.species_id}`);
+            continue; // Skip upsert — preserve local especieId
+          }
+        }
+
+        // If server has a storage-path foto_url (not a file:// URI from another device),
+        // the photo is already on the server → mark as synced.
+        // CRITICAL: Never store file:// paths from another device — they're meaningless locally.
+        const hasFotoOnServer = !!t.foto_url && !t.foto_url.startsWith('file://');
+        const serverFotoUrl = hasFotoOnServer ? t.foto_url : null;
         await db.insert(trees).values({
           id: t.id,
           subgrupoId: t.subgroup_id,
           especieId: t.species_id,
           posicion: t.posicion,
           subId: t.sub_id,
-          fotoUrl: t.foto_url,
+          fotoUrl: serverFotoUrl,
           fotoSynced: hasFotoOnServer,
           plantacionId: null,
           globalId: null,
@@ -498,13 +532,20 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
         }).onConflictDoUpdate({
           target: trees.id,
           set: {
-            especieId: sql`excluded.especie_id`,
+            // Preserve local especieId when it's not null (e.g., user resolved N/N locally).
+            // If local is null (unresolved), take server's value.
+            // Conflict case (both non-null and different) is already handled above and skips this upsert.
+            especieId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.especieId} ELSE excluded.especie_id END`,
             posicion: sql`excluded.posicion`,
-            subId: sql`excluded.sub_id`,
+            // Preserve local subId when local especieId is preserved (they go together after N/N resolution).
+            subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
             // Keep local file:// URI if it exists (photo is on this device).
-            // Only update from server if local has no photo or a remote path.
+            // excluded.foto_url is already sanitized (no file:// from server).
             fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
             fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
+            // Clear any previous conflict markers for non-conflicted trees
+            conflictEspecieId: sql`NULL`,
+            conflictEspecieNombre: sql`NULL`,
           },
         });
       }
@@ -515,7 +556,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
 // ─── Upload a single SubGroup ─────────────────────────────────────────────────
 
 /**
- * Maps local SubGroup + trees to RPC payload and calls sync_subgroup.
+ * Uploads photos to Storage first, then maps SubGroup + trees to RPC payload.
+ * This ensures foto_url in the RPC always contains the Storage path (never null
+ * or file://), so the server has the correct photo reference in a single atomic step.
  */
 export async function uploadSubGroup(
   sg: SubGroup,
@@ -526,12 +569,32 @@ export async function uploadSubGroup(
     posicion: number;
     subId: string;
     fotoUrl: string | null;
+    fotoSynced: boolean;
     plantacionId: number | null;
     globalId: number | null;
     usuarioRegistro: string;
     createdAt: string;
   }>
 ) {
+  // Step 1: Upload local photos to Storage BEFORE the RPC.
+  // Only upload photos that haven't been synced yet (fotoSynced=false).
+  // Photos already in Storage (fotoSynced=true, e.g., downloaded from another device)
+  // are NOT re-uploaded.
+  const photoMap = new Map<string, string>();
+  for (const t of sgTrees) {
+    if (t.fotoUrl && t.fotoUrl.startsWith('file://') && !t.fotoSynced) {
+      const storagePath = `plantations/${sg.plantacionId}/trees/${t.id}.jpg`;
+      const { error } = await uploadPhotoToStorage(t.fotoUrl, storagePath);
+      if (!error) {
+        photoMap.set(t.id, storagePath);
+        await markPhotoSynced(t.id);
+      } else {
+        console.error(`[Sync] Photo upload failed for tree ${t.id}:`, error.message);
+      }
+    }
+  }
+
+  // Step 2: Build RPC payload with Storage paths (not file:// URIs).
   const p_subgroup = {
     id: sg.id,
     plantation_id: sg.plantacionId,
@@ -548,7 +611,8 @@ export async function uploadSubGroup(
     species_id: t.especieId ?? null,
     posicion: t.posicion,
     sub_id: t.subId,
-    foto_url: t.fotoUrl ?? null,
+    foto_url: photoMap.get(t.id)  // Uploaded just now
+      ?? (t.fotoUrl && !t.fotoUrl.startsWith('file://') ? t.fotoUrl : null),  // Already a storage path, or null
     usuario_registro: t.usuarioRegistro,
     created_at: t.createdAt,
   }));
@@ -624,7 +688,7 @@ export async function syncPlantation(
         console.error(`[Sync] RPC error for "${sg.nombre}" (${sg.id}):`, JSON.stringify(error));
         results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
       } else if (data?.success === true) {
-        await markAsSincronizada(sg.id);
+        await markSubGroupSynced(sg.id);
         results.push({ success: true, subgroupId: sg.id, nombre: sg.nombre });
       } else {
         console.error(`[Sync] RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
@@ -642,6 +706,99 @@ export async function syncPlantation(
   notifyDataChanged();
 
   return results;
+}
+
+// ─── Global sync progress ─────────────────────────────────────────────────────
+
+export interface GlobalSyncProgress {
+  plantationName: string;
+  plantationDone: number;
+  plantationTotal: number;
+  subgroupProgress?: SyncProgress;
+}
+
+// ─── Global sync: all local plantations ──────────────────────────────────────
+
+/**
+ * Syncs all local plantations sequentially (pull+push per plantation).
+ * Global pre-steps: species catalog, offline plantations, pending edits.
+ * Optional photo sync across all plantations at the end.
+ */
+export async function syncAllPlantations(
+  onProgress?: (info: GlobalSyncProgress) => void,
+  incluirFotos: boolean = true
+): Promise<Array<{ plantationId: string; plantationName: string; results: SyncSubGroupResult[] }>> {
+  // Refresh auth
+  await supabase.auth.getSession();
+
+  // Global pre-steps: species + offline plantations + pending edits
+  try { await pullSpeciesFromServer(); } catch (e) { console.error('[Sync] Pull species failed:', e); }
+  try { await uploadOfflinePlantations(); } catch (e) { console.error('[Sync] Upload offline plantations failed:', e); }
+  try { await uploadPendingEdits(); } catch (e) { console.error('[Sync] Upload pending edits failed:', e); }
+
+  const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
+  const allResults: Array<{ plantationId: string; plantationName: string; results: SyncSubGroupResult[] }> = [];
+
+  for (let i = 0; i < localPlantations.length; i++) {
+    const p = localPlantations[i];
+    onProgress?.({ plantationName: p.lugar, plantationDone: i, plantationTotal: localPlantations.length });
+
+    try {
+      // Pull for this plantation
+      await pullFromServer(p.id);
+
+      // Push syncable subgroups
+      const { data: { user } } = await supabase.auth.getUser();
+      const pending = await getSyncableSubGroups(p.id, user?.id);
+      const results: SyncSubGroupResult[] = [];
+
+      for (let j = 0; j < pending.length; j++) {
+        const sg = pending[j];
+        onProgress?.({
+          plantationName: p.lugar,
+          plantationDone: i,
+          plantationTotal: localPlantations.length,
+          subgroupProgress: { total: pending.length, completed: j, currentName: sg.nombre },
+        });
+
+        const sgTrees = await db.select().from(trees).where(eq(trees.subgrupoId, sg.id));
+        try {
+          const { data, error } = await uploadSubGroup(sg, sgTrees);
+          if (error) {
+            results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
+          } else if (data?.success === true) {
+            await markSubGroupSynced(sg.id);
+            results.push({ success: true, subgroupId: sg.id, nombre: sg.nombre });
+          } else {
+            const errorCode: SyncErrorCode = data?.error === 'DUPLICATE_CODE' ? 'DUPLICATE_CODE' : 'UNKNOWN';
+            results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: errorCode });
+          }
+        } catch (e) {
+          results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
+        }
+      }
+
+      allResults.push({ plantationId: p.id, plantationName: p.lugar, results });
+    } catch (e) {
+      console.error(`[Sync] Failed for plantation "${p.lugar}":`, e);
+      allResults.push({ plantationId: p.id, plantationName: p.lugar, results: [] });
+    }
+  }
+
+  // Photo sync across all plantations
+  if (incluirFotos) {
+    for (const p of localPlantations) {
+      try {
+        await uploadPendingPhotos(p.id);
+        await downloadPhotosForPlantation(p.id);
+      } catch (e) {
+        console.error(`[Sync] Photo sync failed for "${p.lugar}":`, e);
+      }
+    }
+  }
+
+  notifyDataChanged();
+  return allResults;
 }
 
 // ─── Download types ───────────────────────────────────────────────────────────

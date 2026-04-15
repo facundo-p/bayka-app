@@ -1,8 +1,8 @@
 /**
- * AdminBottomSheet — slide-up modal with estado-specific plantation management actions.
+ * AdminBottomSheet — slide-up modal with plantation actions.
  *
- * Opens when admin taps the gear icon on a PlantationCard.
- * Shows estado-specific actions: activa / finalizada / sincronizada.
+ * Opens when any user taps the gear icon on a PlantationCard.
+ * Shows sync options for ALL users, plus admin-only management actions.
  */
 import React from 'react';
 import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
@@ -18,7 +18,10 @@ type AdminBottomSheetProps = {
   visible: boolean;
   plantation: Plantation | null;
   meta: ExpandedMeta;
+  isAdmin: boolean;
+  isOnline: boolean;
   onDismiss: () => void;
+  onSync: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
   onFinalize: () => void;
@@ -83,7 +86,10 @@ export default function AdminBottomSheet({
   visible,
   plantation,
   meta,
+  isAdmin,
+  isOnline,
   onDismiss,
+  onSync,
   onConfigSpecies,
   onAssignTech,
   onFinalize,
@@ -97,15 +103,18 @@ export default function AdminBottomSheet({
   if (!plantation) return null;
 
   const hasPendingIssues = !!(plantation.pendingSync || plantation.pendingEdit);
+  const hasUnresolvedNN = (meta.unresolvedNNCount ?? 0) > 0;
 
-  const finalizeDisabled = !meta.canFinalize || hasPendingIssues;
+  const finalizeDisabled = !meta.canFinalize || hasPendingIssues || hasUnresolvedNN;
   const finalizeColor =
-    meta.canFinalize && !hasPendingIssues ? colors.danger : colors.textMuted;
+    meta.canFinalize && !hasPendingIssues && !hasUnresolvedNN ? colors.danger : colors.textMuted;
   const finalizeHelperText = hasPendingIssues
     ? 'Sincroniza los cambios antes de finalizar'
-    : !meta.canFinalize
-      ? 'Para finalizar, todos los subgrupos deben estar sincronizados'
-      : undefined;
+    : hasUnresolvedNN
+      ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNSubgroups} subgrupo${meta.unresolvedNNSubgroups !== 1 ? 's' : ''}`
+      : !meta.canFinalize
+        ? 'Para finalizar, todos los subgrupos deben estar sincronizados'
+        : undefined;
 
   return (
     <Modal
@@ -130,6 +139,7 @@ export default function AdminBottomSheet({
           <Pressable
             style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
             onPress={onDismiss}
+            hitSlop={12}
             accessibilityLabel="Cerrar menu de acciones"
           >
             <Ionicons name="close-outline" size={22} color={colors.textMuted} />
@@ -163,8 +173,20 @@ export default function AdminBottomSheet({
 
           {/* Action list */}
           <View style={styles.actionList}>
-            {plantation.estado === 'activa' && (
+            {/* Sync — available for ALL users (bidirectional) */}
+            <ActionItem
+              icon="sync-outline"
+              label="Sincronizar"
+              color={colors.primary}
+              onPress={onSync}
+              disabled={!isOnline}
+              helperText={!isOnline ? 'Necesitas conexion a internet' : undefined}
+            />
+
+            {/* Admin-only actions */}
+            {isAdmin && plantation.estado === 'activa' && (
               <>
+                <View style={styles.divider} />
                 <ActionItem
                   icon="leaf-outline"
                   label="Configurar especies"
@@ -188,8 +210,9 @@ export default function AdminBottomSheet({
               </>
             )}
 
-            {plantation.estado === 'finalizada' && (
+            {isAdmin && plantation.estado === 'finalizada' && (
               <>
+                <View style={styles.divider} />
                 {!meta.idsGenerated && (
                   <ActionItem
                     icon="key-outline"
@@ -218,23 +241,6 @@ export default function AdminBottomSheet({
                   <Ionicons name="lock-closed" size={12} color={colors.stateFinalizada} />
                   <Text style={styles.lockedText}>Bloqueada</Text>
                 </View>
-              </>
-            )}
-
-            {plantation.estado === 'sincronizada' && (
-              <>
-                <ActionItem
-                  icon="document-text-outline"
-                  label="Exportar CSV"
-                  color={colors.primary}
-                  onPress={onExportCsv}
-                />
-                <ActionItem
-                  icon="grid-outline"
-                  label="Exportar Excel"
-                  color={colors.primary}
-                  onPress={onExportExcel}
-                />
               </>
             )}
           </View>
@@ -275,7 +281,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing['4xl'],
     right: spacing.xxl,
-    padding: spacing.xs,
+    padding: spacing.md,
+    zIndex: 1,
   },
   header: {
     marginBottom: spacing.xxl,
@@ -342,6 +349,11 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginTop: spacing.xs,
     paddingHorizontal: spacing.xs,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginVertical: spacing.xs,
   },
   lockedBadge: {
     flexDirection: 'row',

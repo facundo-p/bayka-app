@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import React from 'react';
+import OrangeDot from './OrangeDot';
 
 const SIDEBAR_WIDTH = 48;
 
@@ -18,8 +19,10 @@ type Props = {
   todayCount: number;
   pendingSync: number;
   estado?: string;
+  hasPendingSync?: boolean;
   onPress: () => void;
   onDelete?: () => void;
+  nnCount?: number;
   // Role-aware action slots
   isAdmin?: boolean;
   onEdit?: () => void;
@@ -34,6 +37,8 @@ export default function PlantationCard({
   todayCount,
   pendingSync,
   estado,
+  hasPendingSync = false,
+  nnCount,
   onPress,
   onDelete,
   isAdmin,
@@ -43,9 +48,7 @@ export default function PlantationCard({
   const accentColor =
     estado === 'finalizada'
       ? colors.stateFinalizada
-      : estado === 'sincronizada'
-        ? colors.stateSincronizada
-        : colors.stateActiva;
+      : colors.stateActiva;
 
   return (
     <Pressable
@@ -60,7 +63,10 @@ export default function PlantationCard({
       {/* Content area — solid white background */}
       <View style={styles.content}>
         {/* Title */}
-        <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+        <View style={styles.titleRow}>
+          {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
+          <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+        </View>
         <Text style={styles.subtitle}>{periodo}</Text>
 
         {/* Stats row */}
@@ -77,6 +83,12 @@ export default function PlantationCard({
             <Ionicons name="today-outline" size={14} color={colors.statToday} />
             <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
           </View>
+          {(nnCount ?? 0) > 0 && (
+            <View style={styles.statItem}>
+              <Ionicons name="help-circle-outline" size={14} color={colors.secondaryYellowDark} />
+              <Text style={[styles.statValue, { color: colors.secondaryYellowDark }]}>{nnCount}</Text>
+            </View>
+          )}
         </View>
 
         {/* Pending sync banner */}
@@ -102,19 +114,15 @@ export default function PlantationCard({
           <Ionicons name="create-outline" size={18} color={colors.primary} />
         </Pressable>
 
-        {/* Slot 2: Gear (middle) — admin only per D-03, empty placeholder for tecnico per D-04 */}
-        {isAdmin ? (
-          <Pressable
-            onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
-            hitSlop={8}
-            style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-            accessibilityLabel="Acciones de gestion"
-          >
-            <Ionicons name="settings-outline" size={18} color={colors.primary} />
-          </Pressable>
-        ) : (
-          <View style={styles.stripSlot} testID="strip-slot-gear-placeholder" />
-        )}
+        {/* Slot 2: Gear (middle) — visible for all users */}
+        <Pressable
+          onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+          accessibilityLabel="Acciones de plantacion"
+        >
+          <Ionicons name="settings-outline" size={18} color={colors.primary} />
+        </Pressable>
 
         {/* Slot 3: Trash (bottom) — existing delete behavior */}
         {onDelete ? (
@@ -163,11 +171,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
 
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  titleDot: {
+    marginRight: spacing.sm,
+  },
   title: {
     fontSize: fontSize.title,
     fontFamily: fonts.bold,
     color: colors.textHeading,
     marginBottom: 2,
+    flex: 1,
   },
   subtitle: {
     fontSize: fontSize.base,

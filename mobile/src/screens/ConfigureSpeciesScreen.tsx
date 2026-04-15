@@ -73,7 +73,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
   }
 
   return (
-    <ScreenContainer>
+    <ScreenContainer withTexture>
       <FlatList
         data={items}
         keyExtractor={(item) => item.especieId}
@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
   rowEnabled: { borderColor: colors.primaryBorder, backgroundColor: colors.primaryBgLight },
   rowName: { flex: 1, fontSize: fontSize.base, color: colors.text },
   rowNameDisabled: { color: colors.textMuted },
-  rowCode: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: 'monospace' },
+  rowCode: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: fonts.monospace },
   rowCodeBold: { fontFamily: fonts.bold, color: colors.text },
   footer: { padding: spacing.xxl, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingVertical: spacing.xl, gap: spacing.sm },

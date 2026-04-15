@@ -1,9 +1,10 @@
-import { Modal, View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncSubGroupResult, PhotoSyncProgress } from '../services/SyncService';
 import { getErrorMessage } from '../services/SyncService';
+import BaseModal from './BaseModal';
 
 interface Props {
   state: SyncState;
@@ -13,7 +14,8 @@ interface Props {
   failureCount: number;
   pullSuccess: boolean | null;
   photoProgress: PhotoSyncProgress | null;
-  photoResult: { uploaded?: number; failed?: number; downloaded?: number } | null;
+  photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
+  globalProgress?: { plantationName: string; done: number; total: number } | null;
   onDismiss: () => void;
 }
 
@@ -26,169 +28,163 @@ export default function SyncProgressModal({
   pullSuccess,
   photoProgress,
   photoResult,
+  globalProgress,
   onDismiss,
 }: Props) {
   if (state === 'idle') return null;
 
   return (
-    <Modal
+    <BaseModal
       visible
-      transparent
-      animationType="fade"
       onRequestClose={state === 'done' ? onDismiss : undefined}
     >
-      <View style={styles.overlay}>
-        <View style={styles.modal}>
-          {state === 'syncing' && (
-            <>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.title}>Sincronizando...</Text>
-              <Text style={styles.progressText}>
-                {progress ? `${progress.completed} de ${progress.total}` : 'Preparando...'}
-              </Text>
-              {progress?.currentName ? (
-                <Text style={styles.currentName}>{progress.currentName}</Text>
-              ) : null}
-            </>
+      {state === 'pulling' && (
+        <>
+          <ActivityIndicator size="large" color={colors.info} />
+          <Text style={styles.title}>Actualizando datos...</Text>
+          <Text style={styles.progressText}>Descargando novedades del servidor</Text>
+          {globalProgress && (
+            <Text style={styles.plantationProgress}>
+              Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
+            </Text>
           )}
+        </>
+      )}
 
-          {state === 'pulling' && (
-            <>
-              <ActivityIndicator size="large" color={colors.info} />
-              <Text style={styles.title}>Actualizando datos...</Text>
-              <Text style={styles.progressText}>Descargando novedades del servidor</Text>
-            </>
+      {state === 'pushing' && (
+        <>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.title}>Subiendo subgrupos...</Text>
+          <Text style={styles.progressText}>
+            {progress ? `${progress.completed} de ${progress.total}` : 'Preparando...'}
+          </Text>
+          {progress?.currentName ? (
+            <Text style={styles.currentName}>{progress.currentName}</Text>
+          ) : null}
+          {globalProgress && (
+            <Text style={styles.plantationProgress}>
+              Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
+            </Text>
           )}
+        </>
+      )}
 
-          {state === 'uploading-photos' && (
-            <>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={styles.title}>Subiendo fotos...</Text>
-              <Text style={styles.progressText}>
-                {photoProgress
-                  ? `${photoProgress.completed} de ${photoProgress.total} fotos`
-                  : 'Preparando...'}
-              </Text>
-            </>
-          )}
+      {state === 'uploading-photos' && (
+        <>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.title}>Subiendo fotos...</Text>
+          <Text style={styles.progressText}>
+            {photoProgress
+              ? `${photoProgress.completed} de ${photoProgress.total} fotos`
+              : 'Preparando...'}
+          </Text>
+        </>
+      )}
 
-          {state === 'downloading-photos' && (
-            <>
-              <ActivityIndicator size="large" color={colors.info} />
-              <Text style={styles.title}>Descargando fotos...</Text>
-              <Text style={styles.progressText}>
-                {photoProgress
-                  ? `${photoProgress.completed} de ${photoProgress.total} fotos`
-                  : 'Preparando...'}
-              </Text>
-            </>
-          )}
+      {state === 'downloading-photos' && (
+        <>
+          <ActivityIndicator size="large" color={colors.info} />
+          <Text style={styles.title}>Descargando fotos...</Text>
+          <Text style={styles.progressText}>
+            {photoProgress
+              ? `${photoProgress.completed} de ${photoProgress.total} fotos`
+              : 'Preparando...'}
+          </Text>
+        </>
+      )}
 
-          {state === 'done' && pullSuccess !== null && results.length === 0 && (
-            <>
-              <Ionicons
-                name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
-                size={48}
-                color={pullSuccess ? colors.primary : colors.secondary}
-              />
-              <Text style={styles.title}>
-                {pullSuccess ? 'Datos actualizados' : 'Error al actualizar'}
-              </Text>
-              <Text style={styles.progressText}>
-                {pullSuccess
-                  ? 'Se descargaron los ultimos datos del servidor.'
-                  : 'No se pudo conectar con el servidor. Verifica tu conexión.'}
-              </Text>
-              {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
-                <Text style={styles.successText}>
-                  {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
-                </Text>
-              )}
-              <Pressable style={styles.dismissButton} onPress={onDismiss}>
-                <Text style={styles.dismissText}>Cerrar</Text>
-              </Pressable>
-            </>
+      {state === 'done' && pullSuccess !== null && results.length === 0 && (
+        <>
+          <Ionicons
+            name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
+            size={48}
+            color={pullSuccess ? colors.primary : colors.secondary}
+          />
+          <Text style={styles.title}>
+            {pullSuccess ? 'Datos actualizados' : 'Error al actualizar'}
+          </Text>
+          <Text style={styles.progressText}>
+            {pullSuccess
+              ? 'Se descargaron los ultimos datos del servidor.'
+              : 'No se pudo conectar con el servidor. Verifica tu conexión.'}
+          </Text>
+          {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
+            <Text style={styles.successText}>
+              {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
+            </Text>
           )}
+          <Pressable style={styles.dismissButton} onPress={onDismiss}>
+            <Text style={styles.dismissText}>Cerrar</Text>
+          </Pressable>
+        </>
+      )}
 
-          {state === 'done' && (results.length > 0 || pullSuccess === null) && (
-            <>
-              <Ionicons
-                name={failureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
-                size={48}
-                color={failureCount > 0 ? colors.secondary : colors.primary}
-              />
-              <Text style={styles.title}>
-                {failureCount === 0 ? 'Sincronización completa' : 'Sincronización parcial'}
-              </Text>
-              {successCount > 0 && (
-                <Text style={styles.successText}>
-                  {successCount} subgrupo{successCount > 1 ? 's' : ''} sincronizado
-                  {successCount > 1 ? 's' : ''}
-                </Text>
-              )}
-              {photoResult?.uploaded != null && photoResult.uploaded > 0 && (
-                <Text style={styles.successText}>
-                  {photoResult.uploaded} foto{photoResult.uploaded > 1 ? 's' : ''} subida{photoResult.uploaded > 1 ? 's' : ''} correctamente
-                </Text>
-              )}
-              {photoResult?.failed != null && photoResult.failed > 0 && (
-                <Text style={styles.failureMessage}>
-                  {photoResult.failed} foto{photoResult.failed > 1 ? 's' : ''} no pudieron subirse. Podes reintentar en la proxima sincronizacion.
-                </Text>
-              )}
-              {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
-                <Text style={styles.successText}>
-                  {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
-                </Text>
-              )}
-              {failureCount > 0 && (
-                <View style={styles.failureSection}>
-                  <Text style={styles.failureTitle}>
-                    {failureCount} subgrupo{failureCount > 1 ? 's' : ''} con error:
-                  </Text>
-                  {results
-                    .filter((r) => !r.success)
-                    .map((r) => (
-                      <View key={r.subgroupId} style={styles.failureItem}>
-                        <Text style={styles.failureName}>{r.nombre}</Text>
-                        <Text style={styles.failureMessage}>
-                          {!r.success ? getErrorMessage(r.error) : ''}
-                        </Text>
-                      </View>
-                    ))}
-                </View>
-              )}
-              <Pressable style={styles.dismissButton} onPress={onDismiss}>
-                <Text style={styles.dismissText}>Cerrar</Text>
-              </Pressable>
-            </>
+      {state === 'done' && (results.length > 0 || pullSuccess === null) && (
+        <>
+          <Ionicons
+            name={failureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
+            size={48}
+            color={failureCount > 0 ? colors.secondary : colors.primary}
+          />
+          <Text style={styles.title}>
+            {failureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
+          </Text>
+          {successCount > 0 && (
+            <Text style={styles.successText}>
+              {successCount} subgrupo{successCount > 1 ? 's' : ''} sincronizado
+              {successCount > 1 ? 's' : ''}
+            </Text>
           )}
-        </View>
-      </View>
-    </Modal>
+          {photoResult?.uploaded != null && photoResult.uploaded > 0 && (
+            <Text style={styles.successText}>
+              {photoResult.uploaded} foto{photoResult.uploaded > 1 ? 's' : ''} subida{photoResult.uploaded > 1 ? 's' : ''} correctamente
+            </Text>
+          )}
+          {photoResult?.uploadFailed != null && photoResult.uploadFailed > 0 && (
+            <Text style={styles.failureMessage}>
+              {photoResult.uploadFailed} foto{photoResult.uploadFailed > 1 ? 's' : ''} no pudieron subirse.
+            </Text>
+          )}
+          {photoResult?.downloadFailed != null && photoResult.downloadFailed > 0 && (
+            <Text style={styles.failureMessage}>
+              {photoResult.downloadFailed} foto{photoResult.downloadFailed > 1 ? 's' : ''} no pudieron descargarse.
+            </Text>
+          )}
+          {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
+            <Text style={styles.successText}>
+              {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
+            </Text>
+          )}
+          {failureCount > 0 && (
+            <View style={styles.failureSection}>
+              <Text style={styles.failureTitle}>
+                {failureCount} subgrupo{failureCount > 1 ? 's' : ''} con error:
+              </Text>
+              {results
+                .filter((r) => !r.success)
+                .map((r) => (
+                  <View key={r.subgroupId} style={styles.failureItem}>
+                    <Text style={styles.failureName}>{r.nombre}</Text>
+                    <Text style={styles.failureMessage}>
+                      {!r.success ? getErrorMessage(r.error) : ''}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          )}
+          <Pressable style={styles.dismissButton} onPress={onDismiss}>
+            <Text style={styles.dismissText}>Cerrar</Text>
+          </Pressable>
+        </>
+      )}
+    </BaseModal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxxl,
-  },
-  modal: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xxl,
-    padding: spacing['4xl'],
-    alignItems: 'center',
-    width: '100%',
-    maxWidth: 380,
-    gap: spacing.xl,
-  },
   title: {
     fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.heading,
     color: colors.text,
     textAlign: 'center',
   },
@@ -204,6 +200,13 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  plantationProgress: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
   successText: {
     fontSize: fontSize.base,

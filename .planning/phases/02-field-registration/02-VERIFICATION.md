@@ -1,21 +1,11 @@
 ---
 phase: 02-field-registration
 verified: 2026-03-17T22:30:00Z
-status: gaps_found
-score: 22/23 must-haves verified
-re_verification: false
-gaps:
-  - truth: "Technician can attach optional photo to any tree (camera or gallery)"
-    status: partial
-    reason: "TREE-06 — handleAddPhotoToTree is implemented in the repository (updateTreePhoto) and defined in the screen, but it is never called from any UI element. TreeRow has no photo prop and the JSX in subgroup/[id].tsx never renders a button that invokes handleAddPhotoToTree."
-    artifacts:
-      - path: "mobile/app/(tecnico)/plantation/subgroup/[id].tsx"
-        issue: "handleAddPhotoToTree defined at line 92 but never rendered in JSX — dead code"
-      - path: "mobile/src/components/TreeRow.tsx"
-        issue: "No onAttachPhoto prop, no camera button in the component"
-    missing:
-      - "Add a camera icon/button to TreeRow that calls onAttachPhoto when pressed"
-      - "Pass handleAddPhotoToTree to TreeRow via onAttachPhoto prop in the screen"
+status: passed
+score: 23/23 must-haves verified
+re_verification: true
+gaps: []
+gap_resolution_note: "TREE-06 gap (photo attachment UI) resolved by Phase 12 — TreeRegistrationScreen now has usePhotoCapture + onAttachPhoto wired to TreeRowItem. Verified 2026-04-14."
 human_verification:
   - test: "Plantation list shows demo plantation"
     expected: "La Maluka - Zona Alta Lote 1 / Otoño 2026 visible in Plantaciones tab"

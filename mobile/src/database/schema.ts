@@ -31,6 +31,7 @@ export const subgroups = sqliteTable('subgroups', {
   estado: text('estado').notNull().default('activa'),
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
+  pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
 }, (t) => ({
   uniqueCode: uniqueIndex('subgroups_plantation_code_unique').on(t.plantacionId, t.codigo),
   uniqueName: uniqueIndex('subgroups_plantation_name_unique').on(t.plantacionId, t.nombre),
@@ -48,6 +49,8 @@ export const trees = sqliteTable('trees', {
   globalId: integer('global_id'),
   usuarioRegistro: text('usuario_registro').notNull(),
   createdAt: text('created_at').notNull(),
+  conflictEspecieId: text('conflict_especie_id'),
+  conflictEspecieNombre: text('conflict_especie_nombre'),
 });
 
 export const plantationSpecies = sqliteTable('plantation_species', {

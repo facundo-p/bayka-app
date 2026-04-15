@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 12-04-PLAN.md
-last_updated: "2026-04-12T15:06:49.214Z"
-last_activity: 2026-04-12
+status: executing
+stopped_at: Phase 14 UI-SPEC approved
+last_updated: "2026-04-14T19:17:42.676Z"
+last_activity: 2026-04-14
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 39
-  completed_plans: 39
+  total_phases: 14
+  completed_phases: 14
+  total_plans: 45
+  completed_plans: 45
   percent: 100
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 12 — persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync
+**Current focus:** Phase 14 — sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo
 
 ## Current Position
 
-Phase: 12
+Phase: 14
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-12
+Status: Executing Phase 14
+Last activity: 2026-04-14
 
 Progress: [██████████] 100%
 
@@ -36,7 +36,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 3
 - Average duration: -
 - Total execution time: -
 
@@ -44,7 +44,7 @@ Progress: [██████████] 100%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 14 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -78,6 +78,10 @@ Progress: [██████████] 100%
 | Phase 12 P02 | 15min | 2 tasks | 5 files |
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P03 | 12min | 3 tasks | 5 files |
 | Phase 12-persistir-im-genes-de-rboles-en-supabase-storage-con-toggle-resize-y-sync P04 | 300 | 1 tasks | 2 files |
+| Phase 13-unificar-sync-bidireccional P01 | 534s | 2 tasks | 20 files |
+| Phase 13-unificar-sync-bidireccional P02 | 300s | 2 tasks | 7 files |
+| Phase 13-unificar-sync-bidireccional P03 | 900s | 2 tasks | 8 files |
+| Phase 13-unificar-sync-bidireccional P03 | 1200 | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -162,6 +166,17 @@ Recent decisions affecting current work:
 - [Phase 12]: TreeRow photo icon uses Ionicons image/image-outline with absolute-positioned 8px sync dot (amber=pending, dark blue=synced)
 - [Phase 12]: PlantationDetailHeader local useState(true) for photo toggle defaults — no persistence per D-08
 - [Phase 12-04]: fotoSynced is optional in TreeListItem interface for backward-compatibility with call sites that construct tree objects without the field
+- [Phase 13-unificar-sync-bidireccional]: pendingSync defaults to false on migration — existing server data is already synced (Research Pitfall 6)
+- [Phase 13-unificar-sync-bidireccional]: canEdit now checks plantacionEstado (not subgroup estado) — plantation finalizada = immutable, simpler logic
+- [Phase 13-unificar-sync-bidireccional]: SubGroupEstado simplified to activa|finalizada — sincronizada removed per D-07
+- [Phase 13-unificar-sync-bidireccional]: startBidirectionalSync replaces startSync+startPull — single entry point does pull-then-push via syncPlantation
+- [Phase 13-unificar-sync-bidireccional]: syncAllPlantations runs global pre-steps (species, offline plantations, pending edits) once then loops all local plantations
+- [Phase 13-unificar-sync-bidireccional]: pullFromServer sets pendingSync=false on all upserted subgroups — server data is always considered synced
+- [Phase 13-unificar-sync-bidireccional]: OrangeDot backgroundColor in StyleSheet.create (not inline) — CLAUDE.md sin-inline-styling rule
+- [Phase 13-unificar-sync-bidireccional]: usePendingSyncMap wraps getPendingSyncCounts() via useLiveData — CLAUDE.md Rule 9 no query imports in screens
+- [Phase 13-unificar-sync-bidireccional]: AdminBottomSheet sincronizada section removed (D-07) — no more estado=sincronizada in UI
+- [Phase 13-unificar-sync-bidireccional]: Global sync icon uses orange ring border (borderColor: syncPending) instead of dot overlay — cleaner at 18px icon size
+- [Phase 13-unificar-sync-bidireccional]: startPlantationSync added to useSync for targeted per-plantation sync from gear menu
 
 ### Roadmap Evolution
 
@@ -172,6 +187,7 @@ Recent decisions affecting current work:
 - Phase 10 added: Creación de plantación offline + sync catálogo de especies (ejecuta antes de fase 9)
 - Phase 11 added: Unificar pantallas — eliminar screen de Gestión e integrar acciones en PlantationCard
 - Phase 12 added: Persistir imágenes de árboles en Supabase Storage con toggle, resize y sync
+- Phase 14 added: Sincronizar subgrupos finalizados con N/Ns, resolver N/Ns, bloquear finalización sin N/Ns resueltos
 
 ### Pending Todos
 
@@ -195,6 +211,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-12T15:02:29.034Z
-Stopped at: Completed 12-04-PLAN.md
-Resume file: None
+Last session: 2026-04-14T17:38:03.842Z
+Stopped at: Phase 14 UI-SPEC approved
+Resume file: .planning/phases/14-sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo/14-UI-SPEC.md

@@ -68,6 +68,3 @@ export async function launchGallery(): Promise<string | null> {
     isLandscape ? undefined : 1600
   );
 }
-
-// Test-only export (underscore convention for test-only exports)
-export { resizeAndSaveToDocument as _resizeForTest };

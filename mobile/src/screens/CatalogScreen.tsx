@@ -27,7 +27,6 @@ export default function CatalogScreen() {
     loadCatalog,
     toggleSelection,
     handleBatchDownload,
-    handleDeletePlantation,
     handleDismiss,
     setActiveFilter,
   } = useCatalog();
@@ -92,7 +91,6 @@ export default function CatalogScreen() {
               isDownloaded={localIds.has(item.id)}
               isSelected={selectedIds.has(item.id)}
               onToggle={toggleSelection}
-              onDelete={handleDeletePlantation}
             />
           )}
         />
@@ -103,13 +101,9 @@ export default function CatalogScreen() {
   const downloadButtonLabel = selectedIds.size >= 1 ? `Descargar ${selectedIds.size} seleccionada(s)` : 'Descargar seleccion';
 
   return (
-    <ScreenContainer>
-      <ScreenHeader title="Catalogo de plantaciones" />
+    <ScreenContainer withTexture>
       {renderContent()}
       <View style={styles.bottomBar}>
-        <Text style={styles.selectionText}>
-          {selectedIds.size > 0 ? `${selectedIds.size} seleccionada(s)` : ''}
-        </Text>
         <Pressable
           onPress={handleBatchDownload}
           disabled={selectedIds.size === 0}

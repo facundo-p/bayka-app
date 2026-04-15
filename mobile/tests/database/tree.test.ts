@@ -215,8 +215,8 @@ describe('TreeRepository', () => {
 
       // transaction should have been called
       expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-      // update called 3 times (once per tree)
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(3);
+      // update called at least 3 times (once per tree in tx) + 1 for markSubGroupPendingSync
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
     it('recalculates subId for each tree after reversal (REVR-02)', async () => {
@@ -231,8 +231,9 @@ describe('TreeRepository', () => {
       // Verify updates were called with recalculated subIds
       // tree-1 (pos=1) → newPosicion = 2-1+1 = 2 → 'L1NN2'
       // tree-2 (pos=2) → newPosicion = 2-2+1 = 1 → 'L1NN1'
+      // Plus 1 for markSubGroupPendingSync
       const allSets = mockUpdateWhere.mock.calls;
-      expect(allSets).toHaveLength(2);
+      expect(allSets).toHaveLength(3);
     });
 
     it('does nothing when subgroup is empty', async () => {
@@ -246,21 +247,22 @@ describe('TreeRepository', () => {
 
   describe('resolveNNTree', () => {
     it('sets especieId and recalculates subId (NN-04)', async () => {
-      // First call returns species row, second returns tree row
+      // First call returns species row, second returns tree row with posicion + subgrupoId
       let callCount = 0;
       mockDb.select = jest.fn(() => ({
         from: jest.fn(() => ({
           where: jest.fn(() => {
             callCount++;
             if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]);
-            return Promise.resolve([{ posicion: 3 }]);
+            return Promise.resolve([{ posicion: 3, subgrupoId: 'sg-1' }]);
           }),
         })),
       }));
 
       await resolveNNTree('tree-1', 'esp-1', 'L1');
 
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+      // Called twice: once for tree update, once for markSubGroupPendingSync
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('does nothing if tree or species not found', async () => {

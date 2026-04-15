@@ -30,6 +30,8 @@ import type { Plantation } from '../components/PlantationConfigCard';
 export type ExpandedMeta = {
   canFinalize: boolean;
   idsGenerated: boolean;
+  unresolvedNNCount: number;
+  unresolvedNNSubgroups: number;
 };
 
 // ─── Standalone utility ─────────────────────────────────────────────────────
@@ -37,21 +39,26 @@ export type ExpandedMeta = {
 export async function fetchPlantationMeta(plantation: Plantation): Promise<ExpandedMeta> {
   let canFinalize = false;
   let idsGenerated = false;
+  let unresolvedNNCount = 0;
+  let unresolvedNNSubgroups = 0;
   if (plantation.estado === 'activa') {
     try {
       const gate = await checkFinalizationGate(plantation.id);
       canFinalize = gate.canFinalize;
-    } catch { /* ignore */ }
+      unresolvedNNCount = gate.unresolvedNNCount;
+      unresolvedNNSubgroups = gate.unresolvedNNSubgroups;
+    } catch (e) {
+      console.error('[fetchPlantationMeta] checkFinalizationGate failed:', e);
+    }
   }
   if (plantation.estado === 'finalizada') {
     try {
       idsGenerated = await hasIdsGenerated(plantation.id);
-    } catch { /* ignore */ }
+    } catch (e) {
+      console.error('[fetchPlantationMeta] hasIdsGenerated failed:', e);
+    }
   }
-  if (plantation.estado === 'sincronizada') {
-    idsGenerated = true;
-  }
-  return { canFinalize, idsGenerated };
+  return { canFinalize, idsGenerated, unresolvedNNCount, unresolvedNNSubgroups };
 }
 
 export function usePlantationAdmin() {
@@ -77,7 +84,7 @@ export function usePlantationAdmin() {
     if (finalizing) return;
     const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
     if (plantation?.pendingSync || plantation?.pendingEdit) {
-      showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.stateFinalizada);
+      showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.info);
       return;
     }
     setFinalizing(true);
@@ -86,7 +93,7 @@ export function usePlantationAdmin() {
       if (gate.canFinalize) {
         showConfirm({
           icon: 'warning-outline',
-          iconColor: colors.stateFinalizada,
+          iconColor: colors.info,
           title: 'Finalizar plantacion',
           message: 'Esta acción no se puede deshacer. La plantacion quedara bloqueada y no se podran agregar nuevos subgrupos.',
           buttons: [
@@ -105,6 +112,15 @@ export function usePlantationAdmin() {
             },
           ],
         });
+      } else if (gate.unresolvedNNCount > 0) {
+        const plural = gate.unresolvedNNCount > 1 ? 'es' : '';
+        const sgPlural = gate.unresolvedNNSubgroups > 1 ? 's' : '';
+        showInfoDialog(showConfirm,
+          'No se puede finalizar',
+          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNSubgroups} subgrupo${sgPlural}.`,
+          'alert-circle-outline',
+          colors.danger
+        );
       } else {
         const blockingNames = gate.blocking.map((b) => `\u2022 ${b.nombre} (${b.estado})`).join('\n');
         showConfirm({
@@ -217,7 +233,7 @@ export function usePlantationAdmin() {
   async function handleAssignTech(plantacionId: string): Promise<boolean> {
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
-      showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.stateFinalizada);
+      showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.info);
       return false;
     }
     return true;

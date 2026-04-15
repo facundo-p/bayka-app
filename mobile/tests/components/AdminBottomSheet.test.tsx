@@ -24,6 +24,8 @@ jest.mock('../../src/theme', () => ({
     surfaceAlt: '#F1F5F9',
     secondaryBg: '#FFF7ED',
     secondary: '#F59E0B',
+    info: '#2563EB',
+    border: '#E2E8F0',
     white: '#FFFFFF',
   },
   spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
@@ -40,8 +42,11 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
   return {
     visible: true,
     plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01' },
-    meta: { canFinalize: false, idsGenerated: false },
+    meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
+    isAdmin: true,
+    isOnline: true,
     onDismiss: jest.fn(),
+    onSync: jest.fn(),
     onConfigSpecies: jest.fn(),
     onAssignTech: jest.fn(),
     onFinalize: jest.fn(),
@@ -68,7 +73,7 @@ describe('AdminBottomSheet', () => {
 
   it('shows disabled Finalizar helper when canFinalize=false', () => {
     const { getByText } = render(
-      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false } })} />
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 } })} />
     );
 
     expect(getByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeTruthy();
@@ -76,7 +81,7 @@ describe('AdminBottomSheet', () => {
 
   it('shows enabled Finalizar when canFinalize=true', () => {
     const { queryByText } = render(
-      <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false } })} />
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 } })} />
     );
 
     expect(queryByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeNull();
@@ -99,7 +104,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: false },
+          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
@@ -113,7 +118,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: true },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
@@ -128,7 +133,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: false },
+          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
@@ -136,18 +141,19 @@ describe('AdminBottomSheet', () => {
     expect(getByText('Bloqueada')).toBeTruthy();
   });
 
-  it('renders only export options for sincronizada', () => {
-    const { getByText, queryByText } = render(
+  it('renders no actions for sincronizada (estado removed per D-07)', () => {
+    const { queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'sincronizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: true },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
 
-    expect(getByText('Exportar CSV')).toBeTruthy();
-    expect(getByText('Exportar Excel')).toBeTruthy();
+    // sincronizada estado no longer exists — no actions rendered
+    expect(queryByText('Exportar CSV')).toBeNull();
+    expect(queryByText('Exportar Excel')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
     expect(queryByText('Generar IDs')).toBeNull();
   });

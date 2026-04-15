@@ -21,6 +21,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Eliminar Plantacion Local** - Borrado local de plantaciones descargadas en el celular, con advertencia de datos sin sincronizar (completed 2026-04-06)
 - [x] **Phase 8: Login Offline** - Primer login online para validar, luego cachear credenciales para login sin conexion en campo (completed 2026-04-06)
 - [ ] **Phase 9: Testing Strategy** - Estrategia de testing abarcativa para funcionalidades criticas: offline, sync, data integrity, role-based access
+- [x] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos (completed 2026-04-13)
+- [x] **Phase 14: Sync N/N + conflict resolution** - Sincronizar subgrupos con N/N, deteccion de conflictos, resolucion por rol, gate de finalizacion, indicadores visuales (completed 2026-04-14)
 
 ## Phase Details
 
@@ -221,7 +223,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9 -> 11 -> 12
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9 -> 11 -> 12 -> 13 -> 14
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -237,6 +239,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 9. Testing Strategy | 1/6 | In Progress|  |
 | 11. Unificar pantallas | 2/3 | In Progress|  |
 | 12. Photo Storage + Sync | 4/4 | Complete    | 2026-04-12 |
+| 13. Unificar sync bidireccional | 3/3 | Complete | 2026-04-13 |
+| 14. Sync N/N + conflict resolution | 3/3 | Complete    | 2026-04-14 |
 
 ### Phase 12: Persistir imagenes de arboles en Supabase Storage con toggle, resize y sync
 
@@ -249,3 +253,58 @@ Plans:
 - [x] 12-01-PLAN.md — Drizzle migration (fotoSynced column), schema update, install expo-image-manipulator, PhotoService resize at capture, TreeRepository photo sync helpers, Supabase Storage RLS migration
 - [x] 12-02-PLAN.md — SyncService photo upload/download functions, useSync hook extension (incluirFotos params, photo progress states), unit tests
 - [x] 12-03-PLAN.md — UI layer: PlantationDetailHeader two-button layout (Descargar/Subir) with CheckboxRow toggles, SyncProgressModal photo states, TreeRow Ionicons with sync dot, PlantationDetailScreen wiring, visual checkpoint
+
+### Phase 13: Unificar sync bidireccional
+
+**Goal:** Reemplazar los botones separados de Descargar/Subir por un unico boton "Sincronizar" que ejecuta pull+push bidireccional, introducir dirty flag (pendingSync) a nivel subgrupo para tracking de cambios locales, orange dot centralizado como indicador visual de pendiente, y setting persistente para incluir/excluir fotos en sync.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12
+**Depends on:** Phase 12
+**Success Criteria** (what must be TRUE):
+  1. Single "Sincronizar" button replaces separate Descargar/Subir buttons everywhere
+  2. Sync executes pull+push bidirectionally in a single operation
+  3. Global sync in PlantacionesScreen header syncs ALL local plantations at once
+  4. Per-plantation sync available via PlantationDetailHeader and AdminBottomSheet gear menu
+  5. pendingSync dirty flag on subgroups tracks all local mutations (trees, finalization, edits)
+  6. Orange dot appears on PlantationCard, SubGroupCard, and global sync icon when data is pending
+  7. No dot when everything is synced (absence = synced, no "green synced" indicator)
+  8. Photo inclusion setting persists across sessions via SecureStore
+  9. 'sincronizada' subgroup estado removed — immutability determined by plantation estado
+  10. Finalization gate requires all subgroups to be finalizada AND pendingSync=false
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 13-01-PLAN.md — Drizzle migration (pendingSync column), schema update, SubGroupRepository refactor (remove sincronizada, add dirty flag), TreeRepository mutation wiring, query/hook updates, theme syncPending color
+- [x] 13-02-PLAN.md — SyncService unification (syncAllPlantations, markSubGroupSynced, pullFromServer pendingSync), useSync hook (startBidirectionalSync, startGlobalSync), useSyncSetting hook, SyncProgressModal bidirectional display
+- [x] 13-03-PLAN.md — UI layer: OrangeDot component, PlantationDetailHeader unified button, PlantationCard/SubGroupCard dots, PlantacionesScreen global sync, AdminBottomSheet sync action, visual checkpoint
+
+Canonical refs:
+- mobile/src/services/SyncService.ts
+- mobile/src/hooks/useSync.ts
+- mobile/src/components/SyncConfirmModal.tsx
+- mobile/src/components/SyncProgressModal.tsx
+- mobile/src/components/AdminBottomSheet.tsx
+- mobile/src/screens/PlantacionesScreen.tsx
+- mobile/src/repositories/SubGroupRepository.ts
+- mobile/src/database/schema.ts
+- mobile/src/theme.ts
+
+### Phase 14: Sincronizar subgrupos finalizados con N/Ns, resolver N/Ns, bloquear finalización sin N/Ns resueltos
+
+**Goal:** Permitir sync de subgrupos finalizados con N/N sin resolver (arboles suben con especieId=null), habilitar resolucion remota de N/N con permisos por rol (admin=todos, tecnico=propios), detectar conflictos cuando un N/N fue resuelto por dos usuarios con especies diferentes, bloquear finalizacion de plantacion si hay N/N sin resolver, agregar indicadores visuales de N/N en cards.
+**Requirements**: D-01, D-02, D-03, D-04, D-05, D-06, D-07, D-08, D-09, D-10, D-11, D-12
+**Depends on:** Phase 13
+**Success Criteria** (what must be TRUE):
+  1. Subgrupos finalizados con N/N sin resolver se sincronizan normalmente (arboles suben con especieId=null)
+  2. RPC sync_subgroup usa ON CONFLICT DO UPDATE para arboles, permitiendo re-sync de N/N resueltos
+  3. Finalizacion de plantacion bloqueada si hay arboles N/N sin resolver en cualquier subgrupo
+  4. Admin puede resolver N/N de cualquier subgrupo; tecnico solo de los propios
+  5. Durante pull, conflictos de N/N detectados y almacenados para resolucion por el usuario
+  6. NNResolutionScreen muestra banner de conflicto con opciones "Aceptar del servidor" / "Mantener la mia"
+  7. PlantationCard muestra stat de N/N sin resolver (icono amarillo)
+  8. SubGroupCard muestra badge amarillo de N/N pendientes
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 14-01-PLAN.md — Drizzle migration (conflict columns on trees), Supabase RPC migration (DO UPDATE for trees), remove N/N filter from getSyncableSubGroups, extend checkFinalizationGate, dashboard NN query, role-filtered NN query
+- [x] 14-02-PLAN.md — SyncService conflict detection in pullFromServer, useNNResolution role-based filtering + conflict state, usePlantationAdmin N/N gate, usePlantaciones NN data plumbing
+- [x] 14-03-PLAN.md — UI: PlantationCard NN stat, AdminBottomSheet finalization gate, NNResolutionScreen conflict banner, PlantationDetailScreen badge verification, visual checkpoint
