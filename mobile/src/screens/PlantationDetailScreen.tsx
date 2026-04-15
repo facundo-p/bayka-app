@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   cardReadOnly: { opacity: 0.75 },
   cardPressed: { opacity: 0.7 },
   cardRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  cardName: { fontSize: fontSize.xl, fontFamily: fonts.bold, color: colors.text, flex: 1 },
+  cardName: { fontSize: fontSize.xl, fontFamily: fonts.heading, color: colors.text, flex: 1 },
   cardNameOther: { color: colors.textMuted, fontFamily: fonts.medium },
   cardCreator: { fontSize: fontSize.xs, fontFamily: fonts.regular, color: colors.textMuted, marginTop: spacing.xs },
   treeCountText: { fontSize: fontSize.base, color: colors.plantation, fontFamily: fonts.semiBold },
