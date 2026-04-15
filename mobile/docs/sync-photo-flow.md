@@ -93,9 +93,29 @@ Si un subgrupo tiene cambios locales pendientes, el pull no debe limpiar ese fla
 
 Despues de un sync exitoso, el estado local cambia de `finalizada` a `sincronizada` inmediatamente, sin esperar al proximo pull.
 
-### getTreesWithPendingPhotos requiere pendingSync=false
+### getTreesWithPendingPhotos NO filtra por pendingSync
 
-Solo se suben fotos de arboles cuyo subgrupo ya fue sincronizado al servidor. Esto evita intentar actualizar `foto_url` de un arbol que todavia no existe en la DB del servidor.
+Las fotos se suben independientemente del estado de sync del subgrupo. Si el subgrupo falló el RPC pero la foto existe localmente, debe poder subirse. La query solo requiere `fotoSynced = false` y `fotoUrl` con `file://`.
+
+### getSyncableSubGroups: solo pendingSync=true
+
+No filtra por `estado` ni por `userId`:
+- Subgrupos `sincronizada` con cambios pendientes (ej: resolución N/N) también deben sincronizarse
+- Cualquier miembro de la plantación puede sincronizar cambios, no solo el creador del subgrupo
+
+### uploadSubGroup nunca envía file:// al servidor
+
+```ts
+foto_url: (t.fotoUrl && !t.fotoUrl.startsWith('file://')) ? t.fotoUrl : null
+```
+
+Las rutas locales nunca llegan al servidor. `uploadPendingPhotos` se encarga de subir la foto a Storage y actualizar `foto_url` con la ruta de Storage.
+
+### RLS: plantation members can update trees
+
+La policy UPDATE en `trees` usa un join con `plantation_users` para verificar que el usuario pertenece a la plantación. Esto permite:
+- Actualizar `foto_url` después de subir a Storage (propio o ajeno)
+- Sincronizar resolución de N/N en árboles creados por otro usuario
 
 ---
 
@@ -141,6 +161,24 @@ Solo se suben fotos de arboles cuyo subgrupo ya fue sincronizado al servidor. Es
   sqlite.execSync("UPDATE subgroups SET pending_sync = 0;");
   sqlite.execSync('PRAGMA user_version = 4;');
   ```
+
+### Bug 6: uploadSubGroup enviaba file:// paths al servidor
+
+- **Sintoma**: `foto_url` en la tabla `trees` del servidor contiene rutas locales `file:///data/...` en vez de rutas de Storage
+- **Causa raiz**: `uploadSubGroup` enviaba `t.fotoUrl` directo al RPC, que contiene la URI local del dispositivo
+- **Fix**: enviar `null` en `foto_url` cuando es una ruta local. `uploadPendingPhotos` se encarga de subir la foto y actualizar la DB del servidor con la ruta de Storage
+
+### Bug 7: RLS bloqueaba UPDATE de foto_url silenciosamente
+
+- **Sintoma**: `uploadPendingPhotos` sube la foto a Storage exitosamente pero `foto_url` en la DB del servidor nunca se actualiza
+- **Causa raiz**: no existia policy UPDATE en la tabla `trees`. El `supabase.from('trees').update()` era bloqueado silenciosamente por RLS
+- **Fix**: migracion 010 agrega policy `"Plantation members can update trees"` que verifica pertenencia a la plantacion via `plantation_users`
+
+### Bug 8: getSyncableSubGroups filtraba por estado y userId
+
+- **Sintoma**: despues de resolver un N/N en un dispositivo B (descargado de otro usuario), la sincronizacion no se concreta y queda "pendiente"
+- **Causa raiz**: `getSyncableSubGroups` requeria `estado='finalizada'` (excluia subgrupos ya sincronizados con cambios pendientes) y `usuarioCreador = userId` (excluia subgrupos de otros usuarios)
+- **Fix**: solo filtrar por `pendingSync=true`. Cualquier subgrupo con cambios pendientes debe poder sincronizarse por cualquier miembro de la plantacion
 
 ---
 

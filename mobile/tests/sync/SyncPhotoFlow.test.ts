@@ -448,16 +448,15 @@ describe('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
   // ─── Test 5: getSyncableSubGroups filtra correctamente ──────────────────────
 
   describe('getSyncableSubGroups filtra correctamente', () => {
-    it('solo retorna subgrupos finalizada + pendingSync=true', async () => {
-      // Since getSyncableSubGroups is mocked, we test the filtering contract:
-      // syncPlantation should only process what getSyncableSubGroups returns
+    it('retorna subgrupos con pendingSync=true sin importar estado', async () => {
+      // getSyncableSubGroups returns ANY subgroup with pendingSync=true:
+      // - finalizada + pendingSync=true (first sync)
+      // - sincronizada + pendingSync=true (re-sync after N/N resolution)
+      // It does NOT filter by estado or userId — any plantation member can sync.
 
       const finalizadaPending = makeSg('sg-1', { estado: 'finalizada', pendingSync: true });
-      // These should NOT be returned by getSyncableSubGroups:
-      // - activa (wrong estado)
-      // - finalizada + pendingSync=false (already synced)
-      // - sincronizada (already done)
-      mockGetSyncableSubGroups.mockResolvedValue([finalizadaPending]);
+      const sincronizadaPending = makeSg('sg-2', { estado: 'sincronizada', pendingSync: true });
+      mockGetSyncableSubGroups.mockResolvedValue([finalizadaPending, sincronizadaPending]);
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
       (mockDb.select as jest.Mock).mockReturnValue({
@@ -468,11 +467,30 @@ describe('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
       const results = await syncPlantation('plantation-1');
 
-      // Only the one syncable subgroup should have been uploaded
-      expect(results).toHaveLength(1);
+      expect(results).toHaveLength(2);
       expect(results[0].subgroupId).toBe('sg-1');
+      expect(results[1].subgroupId).toBe('sg-2');
+      expect(results.every(r => r.success)).toBe(true);
+      expect(mockSupabase.rpc).toHaveBeenCalledTimes(2);
+    });
+
+    it('no filtra por userId — cualquier miembro puede sincronizar', async () => {
+      // Subgroup created by user-2, but sync is called by user-1 (different user)
+      // getSyncableSubGroups should still return it
+      const otherUserSg = makeSg('sg-other', { usuarioCreador: 'user-2', pendingSync: true });
+      mockGetSyncableSubGroups.mockResolvedValue([otherUserSg]);
+
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([]),
+        }),
+      });
+
+      const results = await syncPlantation('plantation-1');
+
+      expect(results).toHaveLength(1);
       expect(results[0].success).toBe(true);
-      expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
     });
   });
 
