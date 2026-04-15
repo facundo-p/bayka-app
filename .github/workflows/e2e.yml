@@ -1,5 +1,8 @@
 # E2E Tests — Maestro on iOS Simulator
 #
+# DISABLED: E2E infrastructure not yet configured (Supabase secrets, simulator setup).
+# Re-enable by removing the workflow_dispatch-only trigger below.
+#
 # NOTE: macOS runners cost 10x Ubuntu runners for private repos.
 # This workflow only runs on pull_request to main to keep costs reasonable.
 # Fast CI checks (lint, unit, integration) run on every push via ci.yml.
@@ -10,9 +13,7 @@
 name: E2E Tests
 
 on:
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch: # Manual trigger only until E2E infra is configured
 
 jobs:
   e2e-ios:
