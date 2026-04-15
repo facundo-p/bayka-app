@@ -159,7 +159,9 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
     .where(
       and(
         eq(subgroups.plantacionId, plantacionId),
-        eq(subgroups.pendingSync, false),
+        // Removed: eq(subgroups.pendingSync, false)
+        // Photo upload must work regardless of subgroup sync state.
+        // Trees from failed RPC calls also need their photos uploaded.
         isNotNull(trees.fotoUrl),
         eq(trees.fotoSynced, false)
       )

@@ -571,7 +571,9 @@ export async function uploadSubGroup(
     species_id: t.especieId ?? null,
     posicion: t.posicion,
     sub_id: t.subId,
-    foto_url: t.fotoUrl ?? null,
+    // Never send local file:// paths to server. uploadPendingPhotos
+    // handles photo upload + server DB update separately.
+    foto_url: (t.fotoUrl && !t.fotoUrl.startsWith('file://')) ? t.fotoUrl : null,
     usuario_registro: t.usuarioRegistro,
     created_at: t.createdAt,
   }));
