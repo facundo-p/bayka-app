@@ -210,19 +210,22 @@ export function usePlantationAdmin() {
     }
   }
 
-  async function handleCreateSubmit(lugar: string, periodo: string) {
+  async function handleCreateSubmit(lugar: string, periodo: string): Promise<string> {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
-      await createPlantationLocally(lugar, periodo, organizacionId, userId);
+      const result = await createPlantationLocally(lugar, periodo, organizacionId, userId);
+      return result.id;
     } else {
       try {
-        await createPlantation(lugar, periodo, organizacionId, userId);
+        const result = await createPlantation(lugar, periodo, organizacionId, userId);
+        return result.id;
       } catch (e: any) {
         if (e?.message?.includes('Network request failed')) {
-          await createPlantationLocally(lugar, periodo, organizacionId, userId);
+          const result = await createPlantationLocally(lugar, periodo, organizacionId, userId);
+          return result.id;
         } else {
           throw e;
         }

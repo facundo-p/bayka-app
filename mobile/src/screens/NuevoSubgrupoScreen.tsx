@@ -12,10 +12,12 @@ import { colors, fontSize, spacing, fonts } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import SubgrupoForm from '../components/SubgrupoForm';
 import { useNewSubgroup } from '../hooks/useNewSubgroup';
+import { useRoutePrefix } from '../hooks/useRoutePrefix';
 
 export default function NuevoSubgrupoScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const router = useRouter();
+  const routePrefix = useRoutePrefix();
 
   const { lastSubGroupName, handleCreateSubgroup } = useNewSubgroup(plantacionId);
 
@@ -35,7 +37,7 @@ export default function NuevoSubgrupoScreen() {
             onSubmit={async (values) => {
               const result = await handleCreateSubgroup(values);
               if (result.success) {
-                router.back();
+                router.replace(`/${routePrefix}/plantation/subgroup/${result.id}?plantacionId=${plantacionId}&subgrupoCodigo=${values.codigo.toUpperCase()}&subgrupoNombre=${encodeURIComponent(values.nombre)}` as any);
               }
               return result;
             }}

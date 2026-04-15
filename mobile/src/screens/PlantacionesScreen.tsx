@@ -259,7 +259,7 @@ export default function PlantacionesScreen() {
         <AdminPlantationModals
           showCreateModal={showCreateModal}
           onCloseCreate={() => setShowCreateModal(false)}
-          onCreateSubmit={async (lugar, periodo) => { await adminHook.handleCreateSubmit(lugar, periodo); setShowCreateModal(false); }}
+          onCreateSubmit={async (lugar, periodo) => { const id = await adminHook.handleCreateSubmit(lugar, periodo); setShowCreateModal(false); router.push(`/${routePrefix}/plantation/${id}` as any); }}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
           onEditSubmit={async (lugar, periodo) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo); setEditingPlantation(null); } }}
