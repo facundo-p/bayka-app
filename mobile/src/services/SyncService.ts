@@ -551,6 +551,7 @@ export async function uploadSubGroup(
     posicion: number;
     subId: string;
     fotoUrl: string | null;
+    fotoSynced: boolean;
     plantacionId: number | null;
     globalId: number | null;
     usuarioRegistro: string;
@@ -558,10 +559,12 @@ export async function uploadSubGroup(
   }>
 ) {
   // Step 1: Upload local photos to Storage BEFORE the RPC.
-  // Build a map of treeId → storagePath for trees with local photos.
+  // Only upload photos that haven't been synced yet (fotoSynced=false).
+  // Photos already in Storage (fotoSynced=true, e.g., downloaded from another device)
+  // are NOT re-uploaded.
   const photoMap = new Map<string, string>();
   for (const t of sgTrees) {
-    if (t.fotoUrl && t.fotoUrl.startsWith('file://')) {
+    if (t.fotoUrl && t.fotoUrl.startsWith('file://') && !t.fotoSynced) {
       const storagePath = `plantations/${sg.plantacionId}/trees/${t.id}.jpg`;
       const { error } = await uploadPhotoToStorage(t.fotoUrl, storagePath);
       if (!error) {
@@ -569,8 +572,6 @@ export async function uploadSubGroup(
         await markPhotoSynced(t.id);
       } else {
         console.error(`[Sync] Photo upload failed for tree ${t.id}:`, error.message);
-        // Photo upload failed — tree will be sent with foto_url: null.
-        // The photo remains locally (fotoSynced stays false) for retry on next sync.
       }
     }
   }

@@ -44,18 +44,19 @@ jest.mock('expo-file-system', () => {
   const mockArrayBuffer = jest.fn().mockResolvedValue(new ArrayBuffer(8));
   const mockDownloadFileAsync = jest.fn().mockResolvedValue(undefined);
 
-  function MockFile(this: any, pathOrDir: any, name?: string) {
-    this.uri = name
+  const MockFile = jest.fn().mockImplementation((pathOrDir, name) => ({
+    uri: name
       ? `file://document/photos/${name}`
-      : (typeof pathOrDir === 'string' ? pathOrDir : 'file://document/photos/photo.jpg');
-    this.arrayBuffer = mockArrayBuffer;
-  }
-  (MockFile as any).downloadFileAsync = mockDownloadFileAsync;
+      : (typeof pathOrDir === 'string' ? pathOrDir : 'file://document/photos/photo.jpg'),
+    arrayBuffer: mockArrayBuffer,
+  }));
+  MockFile.downloadFileAsync = mockDownloadFileAsync;
 
-  function MockDirectory(this: any, _base: string, _name?: string) {
-    Object.defineProperty(this, 'exists', { get: () => true });
-    this.create = jest.fn();
-  }
+  const MockDirectory = jest.fn().mockImplementation(() => {
+    const dir = { create: jest.fn() };
+    Object.defineProperty(dir, 'exists', { get: () => true });
+    return dir;
+  });
 
   return {
     File: MockFile,
@@ -107,6 +108,7 @@ const makeTree = (id: string, subgrupoId: string, overrides?: Record<string, any
   posicion: 1,
   subId: 'LA-SP-1',
   fotoUrl: null as string | null,
+  fotoSynced: false,
   plantacionId: null as number | null,
   globalId: null as number | null,
   usuarioRegistro: 'user-1',
