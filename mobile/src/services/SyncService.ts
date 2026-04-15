@@ -538,7 +538,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
 // ─── Upload a single SubGroup ─────────────────────────────────────────────────
 
 /**
- * Maps local SubGroup + trees to RPC payload and calls sync_subgroup.
+ * Uploads photos to Storage first, then maps SubGroup + trees to RPC payload.
+ * This ensures foto_url in the RPC always contains the Storage path (never null
+ * or file://), so the server has the correct photo reference in a single atomic step.
  */
 export async function uploadSubGroup(
   sg: SubGroup,
@@ -555,6 +557,25 @@ export async function uploadSubGroup(
     createdAt: string;
   }>
 ) {
+  // Step 1: Upload local photos to Storage BEFORE the RPC.
+  // Build a map of treeId → storagePath for trees with local photos.
+  const photoMap = new Map<string, string>();
+  for (const t of sgTrees) {
+    if (t.fotoUrl && t.fotoUrl.startsWith('file://')) {
+      const storagePath = `plantations/${sg.plantacionId}/trees/${t.id}.jpg`;
+      const { error } = await uploadPhotoToStorage(t.fotoUrl, storagePath);
+      if (!error) {
+        photoMap.set(t.id, storagePath);
+        await markPhotoSynced(t.id);
+      } else {
+        console.error(`[Sync] Photo upload failed for tree ${t.id}:`, error.message);
+        // Photo upload failed — tree will be sent with foto_url: null.
+        // The photo remains locally (fotoSynced stays false) for retry on next sync.
+      }
+    }
+  }
+
+  // Step 2: Build RPC payload with Storage paths (not file:// URIs).
   const p_subgroup = {
     id: sg.id,
     plantation_id: sg.plantacionId,
@@ -571,9 +592,8 @@ export async function uploadSubGroup(
     species_id: t.especieId ?? null,
     posicion: t.posicion,
     sub_id: t.subId,
-    // Never send local file:// paths to server. uploadPendingPhotos
-    // handles photo upload + server DB update separately.
-    foto_url: (t.fotoUrl && !t.fotoUrl.startsWith('file://')) ? t.fotoUrl : null,
+    foto_url: photoMap.get(t.id)  // Uploaded just now
+      ?? (t.fotoUrl && !t.fotoUrl.startsWith('file://') ? t.fotoUrl : null),  // Already a storage path, or null
     usuario_registro: t.usuarioRegistro,
     created_at: t.createdAt,
   }));

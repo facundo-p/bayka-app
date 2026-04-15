@@ -54,7 +54,10 @@ BEGIN
   FROM jsonb_array_elements(p_trees) AS t
   ON CONFLICT (id) DO UPDATE SET
     species_id = EXCLUDED.species_id,
-    sub_id = EXCLUDED.sub_id;
+    sub_id = EXCLUDED.sub_id,
+    -- Update foto_url only if the new value is not null (don't erase existing photos).
+    -- Covers: re-sync after photo upload, or re-sync after N/N resolution with photo.
+    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url);
 
   RETURN jsonb_build_object('success', true);
 EXCEPTION WHEN OTHERS THEN
