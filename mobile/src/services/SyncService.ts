@@ -520,9 +520,13 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
         }).onConflictDoUpdate({
           target: trees.id,
           set: {
-            especieId: sql`excluded.especie_id`,
+            // Preserve local especieId when it's not null (e.g., user resolved N/N locally).
+            // If local is null (unresolved), take server's value.
+            // Conflict case (both non-null and different) is already handled above and skips this upsert.
+            especieId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.especieId} ELSE excluded.especie_id END`,
             posicion: sql`excluded.posicion`,
-            subId: sql`excluded.sub_id`,
+            // Preserve local subId when local especieId is preserved (they go together after N/N resolution).
+            subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
             // Keep local file:// URI if it exists (photo is on this device).
             // excluded.foto_url is already sanitized (no file:// from server).
             fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
