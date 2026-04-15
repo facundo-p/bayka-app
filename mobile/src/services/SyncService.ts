@@ -395,7 +395,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
         set: {
           estado: sql`excluded.estado`,
           nombre: sql`excluded.nombre`,
-          pendingSync: false,
+          // Preserve local pendingSync flag — don't wipe dirty state during pull.
+          // Only clear if not already pending locally.
+          pendingSync: sql`CASE WHEN ${subgroups.pendingSync} = 1 THEN 1 ELSE 0 END`,
         },
       });
     }
