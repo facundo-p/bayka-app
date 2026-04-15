@@ -292,23 +292,31 @@ export async function downloadPhotosForPlantation(
   const dir = new Directory(Paths.document, 'photos');
   if (!dir.exists) dir.create({ intermediates: true });
 
+  console.log(`[Sync] Download photos: ${remoteTrees.length} remote trees found, dir=${dir.uri ?? 'unknown'}`);
+
   for (let i = 0; i < remoteTrees.length; i++) {
     onProgress?.({ total: remoteTrees.length, completed: i });
     const tree = remoteTrees[i];
 
     try {
+      console.log(`[Sync] Photo ${i + 1}/${remoteTrees.length}: tree=${tree.id}, storagePath=${tree.fotoUrl}`);
+
       const { data, error } = await supabase.storage
         .from('tree-photos')
         .createSignedUrl(tree.fotoUrl!, 3600);
 
       if (error || !data?.signedUrl) {
-        console.error(`[Sync] Signed URL failed for tree ${tree.id}:`, error?.message);
+        console.error(`[Sync] Signed URL FAILED for tree ${tree.id}: ${error?.message ?? 'no signedUrl returned'}`);
         failed++;
         continue;
       }
 
+      console.log(`[Sync] Signed URL OK for tree ${tree.id}, downloading...`);
+
       const destFile = new ExpoFile(dir, `photo_${tree.id}.jpg`);
-      await ExpoFile.downloadFileAsync(data.signedUrl, destFile);
+      const result = await ExpoFile.downloadFileAsync(data.signedUrl, destFile);
+
+      console.log(`[Sync] Download OK for tree ${tree.id}: destUri=${destFile.uri}, result=${JSON.stringify(result)}`);
 
       // Update local fotoUrl to local path + mark as synced
       await db.update(trees)
@@ -317,7 +325,7 @@ export async function downloadPhotosForPlantation(
 
       downloaded++;
     } catch (e: any) {
-      console.error(`[Sync] Photo download failed for tree ${tree.id}:`, e?.message);
+      console.error(`[Sync] Photo download EXCEPTION for tree ${tree.id}: ${e?.message}`, e?.stack?.slice(0, 200));
       failed++;
     }
   }
