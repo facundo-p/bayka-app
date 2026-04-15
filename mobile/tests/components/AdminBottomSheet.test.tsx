@@ -42,7 +42,7 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
   return {
     visible: true,
     plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01' },
-    meta: { canFinalize: false, idsGenerated: false },
+    meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
     isAdmin: true,
     isOnline: true,
     onDismiss: jest.fn(),
@@ -73,7 +73,7 @@ describe('AdminBottomSheet', () => {
 
   it('shows disabled Finalizar helper when canFinalize=false', () => {
     const { getByText } = render(
-      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false } })} />
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 } })} />
     );
 
     expect(getByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeTruthy();
@@ -81,7 +81,7 @@ describe('AdminBottomSheet', () => {
 
   it('shows enabled Finalizar when canFinalize=true', () => {
     const { queryByText } = render(
-      <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false } })} />
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 } })} />
     );
 
     expect(queryByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeNull();
@@ -104,7 +104,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: false },
+          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
@@ -118,7 +118,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: true },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
@@ -133,7 +133,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: false },
+          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );
@@ -146,7 +146,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'sincronizada', createdAt: '2026-01-01' },
-          meta: { canFinalize: false, idsGenerated: true },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNSubgroups: 0 },
         })}
       />
     );

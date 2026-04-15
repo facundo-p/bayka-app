@@ -50,7 +50,7 @@ jest.mock('expo-file-system', () => {
       : (typeof pathOrDir === 'string' ? pathOrDir : 'file://document/photos/photo.jpg'),
     arrayBuffer: mockArrayBuffer,
   }));
-  MockFile.downloadFileAsync = mockDownloadFileAsync;
+  (MockFile as any).downloadFileAsync = mockDownloadFileAsync;
 
   const MockDirectory = jest.fn().mockImplementation(() => {
     const dir = { create: jest.fn() };

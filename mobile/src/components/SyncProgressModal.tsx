@@ -14,7 +14,7 @@ interface Props {
   failureCount: number;
   pullSuccess: boolean | null;
   photoProgress: PhotoSyncProgress | null;
-  photoResult: { uploaded?: number; failed?: number; downloaded?: number } | null;
+  photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
   globalProgress?: { plantationName: string; done: number; total: number } | null;
   onDismiss: () => void;
 }
