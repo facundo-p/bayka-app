@@ -19,7 +19,7 @@ export function useSync(plantacionId?: string) {
   const [results, setResults] = useState<SyncSubGroupResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
-  const [photoResult, setPhotoResult] = useState<{ uploaded?: number; failed?: number; downloaded?: number } | null>(null);
+  const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
 
   const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
@@ -49,8 +49,9 @@ export function useSync(plantacionId?: string) {
         const downloadRes = await downloadPhotosForPlantation(plantacionId, setPhotoProgress);
         setPhotoResult({
           uploaded: uploadRes.uploaded,
-          failed: uploadRes.failed + downloadRes.failed,
+          uploadFailed: uploadRes.failed,
           downloaded: downloadRes.downloaded,
+          downloadFailed: downloadRes.failed,
         });
       }
     } catch (err) {
@@ -84,8 +85,9 @@ export function useSync(plantacionId?: string) {
         const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, setPhotoProgress);
         setPhotoResult({
           uploaded: uploadRes.uploaded,
-          failed: uploadRes.failed + downloadRes.failed,
+          uploadFailed: uploadRes.failed,
           downloaded: downloadRes.downloaded,
+          downloadFailed: downloadRes.failed,
         });
       }
     } catch (err) {

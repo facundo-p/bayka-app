@@ -140,9 +140,14 @@ export default function SyncProgressModal({
               {photoResult.uploaded} foto{photoResult.uploaded > 1 ? 's' : ''} subida{photoResult.uploaded > 1 ? 's' : ''} correctamente
             </Text>
           )}
-          {photoResult?.failed != null && photoResult.failed > 0 && (
+          {photoResult?.uploadFailed != null && photoResult.uploadFailed > 0 && (
             <Text style={styles.failureMessage}>
-              {photoResult.failed} foto{photoResult.failed > 1 ? 's' : ''} no pudieron subirse. Podes reintentar en la proxima sincronizacion.
+              {photoResult.uploadFailed} foto{photoResult.uploadFailed > 1 ? 's' : ''} no pudieron subirse.
+            </Text>
+          )}
+          {photoResult?.downloadFailed != null && photoResult.downloadFailed > 0 && (
+            <Text style={styles.failureMessage}>
+              {photoResult.downloadFailed} foto{photoResult.downloadFailed > 1 ? 's' : ''} no pudieron descargarse.
             </Text>
           )}
           {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
