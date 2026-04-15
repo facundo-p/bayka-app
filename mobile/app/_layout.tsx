@@ -19,6 +19,7 @@ import {
   Poppins_600SemiBold,
   Poppins_700Bold,
 } from '@expo-google-fonts/poppins';
+import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 
@@ -113,6 +114,7 @@ export default function RootLayout() {
   // Always render Slot — navigation happens via router.replace in useEffect
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" />
       <Slot />
     </SafeAreaProvider>
   );

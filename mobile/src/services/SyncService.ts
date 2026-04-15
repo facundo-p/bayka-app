@@ -500,8 +500,9 @@ export async function pullFromServer(plantacionId: string): Promise<void> {
           }
         }
 
-        // If server has a foto_url, the photo is already on the server → mark as synced
-        const hasFotoOnServer = !!t.foto_url;
+        // If server has a storage-path foto_url (not a file:// URI from another device),
+        // the photo is already on the server → mark as synced
+        const hasFotoOnServer = !!t.foto_url && !t.foto_url.startsWith('file://');
         await db.insert(trees).values({
           id: t.id,
           subgrupoId: t.subgroup_id,
