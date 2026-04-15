@@ -33,7 +33,11 @@ export async function checkFinalizationGate(
     .from(subgroups)
     .where(eq(subgroups.plantacionId, plantacionId));
 
-  const blocking = allSubgroups.filter(s => s.estado !== 'finalizada' || s.pendingSync);
+  // A subgroup is "done" if its estado is finalizada OR sincronizada.
+  // sincronizada = finalized + synced to server (Phase 14 lifecycle).
+  const blocking = allSubgroups.filter(s =>
+    (s.estado !== 'finalizada' && s.estado !== 'sincronizada') || s.pendingSync
+  );
 
   // Count unresolved N/N trees per subgroup in this plantation
   const nnRows = await db.select({

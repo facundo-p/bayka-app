@@ -318,9 +318,13 @@ export async function downloadPhotosForPlantation(
 
       console.log(`[Sync] Download OK for tree ${tree.id}: destUri=${destFile.uri}, result=${JSON.stringify(result)}`);
 
-      // Update local fotoUrl to local path + mark as synced
+      // Update local fotoUrl to local path + mark as synced.
+      // Defensive: ensure URI starts with file:// — some Android devices
+      // return bare paths from expo-file-system, breaking the CASE WHEN
+      // in pullFromServer that preserves local photos.
+      const localUri = destFile.uri.startsWith('file://') ? destFile.uri : `file://${destFile.uri}`;
       await db.update(trees)
-        .set({ fotoUrl: destFile.uri, fotoSynced: true })
+        .set({ fotoUrl: localUri, fotoSynced: true })
         .where(eq(trees.id, tree.id));
 
       downloaded++;
