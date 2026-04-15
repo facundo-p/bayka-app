@@ -139,6 +139,7 @@ export default function AdminBottomSheet({
           <Pressable
             style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
             onPress={onDismiss}
+            hitSlop={12}
             accessibilityLabel="Cerrar menu de acciones"
           >
             <Ionicons name="close-outline" size={22} color={colors.textMuted} />
@@ -280,7 +281,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing['4xl'],
     right: spacing.xxl,
-    padding: spacing.xs,
+    padding: spacing.md,
+    zIndex: 1,
   },
   header: {
     marginBottom: spacing.xxl,
