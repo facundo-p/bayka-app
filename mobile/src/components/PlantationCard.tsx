@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.title,
-    fontFamily: fonts.bold,
+    fontFamily: fonts.heading,
     color: colors.textHeading,
     marginBottom: 2,
     flex: 1,

@@ -163,6 +163,7 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: fontSize.base,
     color: colors.textSecondary,
+    fontFamily: fonts.regular,
   },
   statusValue: {
     flexDirection: 'row',

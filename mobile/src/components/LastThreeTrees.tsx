@@ -74,6 +74,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: spacing.xs,
     paddingHorizontal: spacing.xs,
+    fontFamily: fonts.medium,
   },
   row: {
     flexDirection: 'row',

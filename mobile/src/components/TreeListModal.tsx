@@ -66,5 +66,5 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: fontSize.xxl, fontFamily: fonts.heading, color: colors.text },
   listContent: { padding: spacing.xl, gap: spacing.sm },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing['6xl'], fontSize: fontSize.lg },
+  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing['6xl'], fontSize: fontSize.lg, fontFamily: fonts.regular },
 });

@@ -139,7 +139,7 @@ export default function ConfigureSpeciesScreen({ plantacionIdProp, onClose, pend
 
 const styles = StyleSheet.create({
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.xl, backgroundColor: colors.background },
-  loadingText: { fontSize: fontSize.base, color: colors.textMuted },
+  loadingText: { fontSize: fontSize.base, color: colors.textMuted, fontFamily: fonts.regular },
   listContent: { padding: spacing.xxl, paddingBottom: spacing.xxl },
   listHeaderContainer: { marginBottom: spacing.xxl, gap: spacing.xl },
   listHeader: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: fonts.medium },
@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md, borderWidth: 1, borderColor: colors.border, gap: spacing.xl,
   },
   rowEnabled: { borderColor: colors.primaryBorder, backgroundColor: colors.primaryBgLight },
-  rowName: { flex: 1, fontSize: fontSize.base, color: colors.text },
+  rowName: { flex: 1, fontSize: fontSize.base, color: colors.text, fontFamily: fonts.regular },
   rowNameDisabled: { color: colors.textMuted },
   rowCode: { fontSize: fontSize.sm, color: colors.textMuted, fontFamily: fonts.monospace },
   rowCodeBold: { fontFamily: fonts.bold, color: colors.text },

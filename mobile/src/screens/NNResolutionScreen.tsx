@@ -202,7 +202,7 @@ export default function NNResolutionScreen() {
 
 const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing['5xl'] },
-  emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, marginBottom: spacing['4xl'], textAlign: 'center' },
+  emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, marginBottom: spacing['4xl'], textAlign: 'center', fontFamily: fonts.regular },
   backButton: { backgroundColor: colors.primary, paddingHorizontal: spacing['4xl'], paddingVertical: spacing.xl, borderRadius: borderRadius.lg },
   backButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.lg },
   headerInfo: { color: colors.plantationCountFaded, fontSize: fontSize.sm, fontFamily: fonts.regular },
