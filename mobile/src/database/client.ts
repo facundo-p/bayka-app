@@ -28,20 +28,14 @@ try {
 try {
   const [{ user_version }] = sqlite.getAllSync<{ user_version: number }>('PRAGMA user_version;');
 
-  if (user_version < 3) {
-    // v3: Clean slate — undo v1/v2 damage.
-    // v1 incorrectly marked already-synced subgroups as pending because locally
-    // their estado was still 'finalizada' (markSubGroupSynced didn't update estado).
-    // Fix: clear ALL pendingSync, then re-mark only subgroups with N/N trees that
-    // are genuinely finalizada (not sincronizada on server).
+  if (user_version < 4) {
+    // v4: Clear ALL pendingSync flags. Period.
+    // Previous migrations (v1-v3) tried to guess which subgroups needed sync
+    // but kept re-marking already-synced ones. The natural flow handles it:
+    // finalizeSubGroup() sets pendingSync=true, markSubGroupSynced() clears it.
+    // No migration should try to re-mark anything.
     sqlite.execSync("UPDATE subgroups SET pending_sync = 0;");
-    // Re-mark only finalizada subgroups that have unresolved N/N trees —
-    // these are the ones phase 14 newly enables for sync.
-    sqlite.execSync(
-      "UPDATE subgroups SET pending_sync = 1 WHERE estado = 'finalizada' " +
-      "AND id IN (SELECT DISTINCT subgrupo_id FROM trees WHERE especie_id IS NULL);"
-    );
-    sqlite.execSync('PRAGMA user_version = 3;');
+    sqlite.execSync('PRAGMA user_version = 4;');
   }
 } catch (_) {
   // Table may not exist yet on fresh install — migrations will handle it
