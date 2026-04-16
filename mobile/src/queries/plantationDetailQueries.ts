@@ -5,7 +5,7 @@
  */
 import { db } from '../database/client';
 import { plantations, subgroups, trees } from '../database/schema';
-import { eq, and, count, desc, asc, isNull, sql } from 'drizzle-orm';
+import { eq, and, count, asc, isNull, sql } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
 /** Get plantation lugar (name) by ID */
@@ -15,11 +15,11 @@ export async function getPlantationLugar(plantacionId: string) {
     .where(eq(plantations.id, plantacionId));
 }
 
-/** Get all subgroups for a plantation, ordered by newest first */
+/** Get all subgroups for a plantation, ordered alphabetically by name */
 export async function getSubgroupsForPlantation(plantacionId: string) {
   return db.select().from(subgroups)
     .where(eq(subgroups.plantacionId, plantacionId))
-    .orderBy(desc(subgroups.createdAt));
+    .orderBy(asc(subgroups.nombre));
 }
 
 /** Get a single subgroup by ID */

@@ -48,13 +48,8 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
         hasExistingTrees: treeChecks[i],
       }));
 
-      // Enabled first (by ordenVisual), then disabled (alphabetical)
-      merged.sort((a, b) => {
-        if (a.enabled && !b.enabled) return -1;
-        if (!a.enabled && b.enabled) return 1;
-        if (a.enabled && b.enabled) return a.ordenVisual - b.ordenVisual;
-        return a.nombre.localeCompare(b.nombre);
-      });
+      // All species alphabetical by name — enabled/disabled stay in place
+      merged.sort((a, b) => a.nombre.localeCompare(b.nombre));
 
       let order = 0;
       const normalized = merged.map((item) =>
@@ -78,24 +73,22 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
       const updated = prev.map((item) =>
         item.especieId === especieId ? { ...item, enabled: newValue } : item
       );
-      const enabled = updated.filter((i) => i.enabled).map((item, idx) => ({ ...item, ordenVisual: idx }));
-      const disabled = updated.filter((i) => !i.enabled).sort((a, b) => a.nombre.localeCompare(b.nombre));
-      return [...enabled, ...disabled];
+      // Re-assign ordenVisual for enabled items while keeping alphabetical order
+      let order = 0;
+      return updated.map((item) =>
+        item.enabled ? { ...item, ordenVisual: order++ } : item
+      );
     });
   }
 
   function handleSelectAll() {
     const allEnabled = items.every((i) => i.enabled);
     if (allEnabled) {
-      setItems((prev) => {
-        const updated = prev.map((item) => ({ ...item, enabled: false }));
-        return updated.sort((a, b) => a.nombre.localeCompare(b.nombre));
-      });
+      // Deselect all — keep alphabetical order
+      setItems((prev) => prev.map((item) => ({ ...item, enabled: false })));
     } else {
-      setItems((prev) => {
-        const updated = prev.map((item, idx) => ({ ...item, enabled: true, ordenVisual: idx }));
-        return updated;
-      });
+      // Select all — assign ordenVisual sequentially (already alphabetical)
+      setItems((prev) => prev.map((item, idx) => ({ ...item, enabled: true, ordenVisual: idx })));
     }
   }
 

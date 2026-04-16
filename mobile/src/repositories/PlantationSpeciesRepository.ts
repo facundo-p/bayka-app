@@ -24,7 +24,7 @@ export async function getSpeciesForPlantation(plantacionId: string): Promise<Pla
     .from(plantationSpecies)
     .innerJoin(species, eq(plantationSpecies.especieId, species.id))
     .where(eq(plantationSpecies.plantacionId, plantacionId))
-    .orderBy(plantationSpecies.ordenVisual);
+    .orderBy(species.nombre);
 
   return rows;
 }
