@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
@@ -102,12 +102,7 @@ export default function PlantacionesScreen() {
   }
 
   function handleEditPress(item: any) {
-    const plantation = item as Plantation;
-    if (plantation.estado === 'activa') {
-      setEditingPlantation(plantation);
-    } else {
-      Alert.alert('No disponible', 'No se puede editar una plantacion finalizada');
-    }
+    setEditingPlantation(item as Plantation);
   }
 
   function handleBottomSheetAction(action: () => void | Promise<void>) {

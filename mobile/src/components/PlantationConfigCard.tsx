@@ -67,15 +67,13 @@ export default function PlantationConfigCard({
               <Text style={styles.pendingSyncText}>Pendiente de sync</Text>
             </View>
           )}
-          {item.estado === 'activa' && (
-            <Pressable
-              style={({ pressed }) => [styles.editIconBtn, pressed && { opacity: 0.7 }]}
-              onPress={() => onEdit(item)}
-              hitSlop={8}
-            >
-              <Ionicons name="create-outline" size={18} color={colors.primary} />
-            </Pressable>
-          )}
+          <Pressable
+            style={({ pressed }) => [styles.editIconBtn, pressed && { opacity: 0.7 }]}
+            onPress={() => onEdit(item)}
+            hitSlop={8}
+          >
+            <Ionicons name="create-outline" size={18} color={colors.primary} />
+          </Pressable>
           <PlantationEstadoChip estado={item.estado} />
         </View>
       </View>
