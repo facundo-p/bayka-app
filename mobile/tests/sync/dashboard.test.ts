@@ -2,7 +2,7 @@
 // Covers: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
 
 jest.mock('../../src/database/schema', () => ({
-  plantations: { id: 'plantations.id', createdAt: 'plantations.created_at' },
+  plantations: { id: 'plantations.id', createdAt: 'plantations.created_at', lugar: 'plantations.lugar' },
   plantationUsers: { plantationId: 'pu.plantation_id', userId: 'pu.user_id' },
   subgroups: { id: 'sg.id', plantacionId: 'sg.plantacion_id', estado: 'sg.estado', pendingSync: 'sg.pending_sync' },
   trees: {
@@ -19,11 +19,13 @@ jest.mock('drizzle-orm', () => ({
   and: jest.fn((...args: unknown[]) => ({ type: 'and', args })),
   count: jest.fn(() => ({ type: 'count' })),
   desc: jest.fn((col: unknown) => ({ type: 'desc', col })),
+  asc: jest.fn((col: unknown) => ({ type: 'asc', col })),
   sql: Object.assign(
     jest.fn((...args: unknown[]) => ({ type: 'sql', args })),
     { raw: jest.fn() }
   ),
   getTableColumns: jest.fn((table: unknown) => table),
+  isNull: jest.fn((col: unknown) => ({ type: 'isNull', col })),
 }));
 
 // db mock — creates a self-referential chain where all intermediate methods return
@@ -111,7 +113,7 @@ describe('dashboardQueries', () => {
       expect(getChain().innerJoin).not.toHaveBeenCalled();
     });
 
-    it('orders by createdAt descending', async () => {
+    it('orders by lugar alphabetically', async () => {
       await getPlantationsForRole(true, 'admin-user');
       expect(getChain().orderBy).toHaveBeenCalled();
     });
