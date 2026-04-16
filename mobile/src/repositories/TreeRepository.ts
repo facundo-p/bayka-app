@@ -7,6 +7,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markSubGroupPendingSync } from './SubGroupRepository';
+import { isLocalUri } from '../utils/photoUri';
 
 export interface InsertTreeParams {
   subgrupoId: string;
@@ -166,8 +167,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
         eq(trees.fotoSynced, false)
       )
     );
-  // Filter to local files only (remote paths from pull should not be re-uploaded)
-  return rows.filter(r => r.fotoUrl?.startsWith('file://')) as Array<{
+  return rows.filter(r => isLocalUri(r.fotoUrl)) as Array<{
     id: string;
     fotoUrl: string;
     subgrupoId: string;
