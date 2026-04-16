@@ -6,7 +6,7 @@
  */
 import { db } from '../database/client';
 import { plantations, plantationUsers, subgroups, trees } from '../database/schema';
-import { eq, and, count, desc, sql, getTableColumns, isNull } from 'drizzle-orm';
+import { eq, and, count, asc, sql, getTableColumns, isNull } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
 /**
@@ -17,7 +17,7 @@ import { localToday } from '../utils/dateUtils';
  */
 export async function getPlantationsForRole(isAdmin: boolean, userId: string | null) {
   if (isAdmin) {
-    return db.select().from(plantations).orderBy(desc(plantations.createdAt));
+    return db.select().from(plantations).orderBy(asc(plantations.lugar));
   }
   if (!userId) return [];
   return db
@@ -25,7 +25,7 @@ export async function getPlantationsForRole(isAdmin: boolean, userId: string | n
     .from(plantations)
     .innerJoin(plantationUsers, eq(plantationUsers.plantationId, plantations.id))
     .where(eq(plantationUsers.userId, userId))
-    .orderBy(desc(plantations.createdAt));
+    .orderBy(asc(plantations.lugar));
 }
 
 /**
