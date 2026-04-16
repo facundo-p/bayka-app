@@ -3,6 +3,7 @@ import { db } from '../database/client';
 import { subgroups, trees } from '../database/schema';
 import { eq, count, and, isNull, isNotNull, sql } from 'drizzle-orm';
 import { useCurrentUserId } from './useCurrentUserId';
+import { sqlIsLocalUri } from '../utils/photoUri';
 
 /**
  * Returns live counts for SubGroups with pendingSync=true.
@@ -70,7 +71,7 @@ export function usePendingSyncCount(plantacionId?: string) {
             eq(subgroups.pendingSync, false),
             isNotNull(trees.fotoUrl),
             eq(trees.fotoSynced, false),
-            sql`${trees.fotoUrl} LIKE 'file://%'`
+            sqlIsLocalUri(trees.fotoUrl)
           )
         );
     },
