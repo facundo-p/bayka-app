@@ -324,7 +324,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Future Requirements (Deferred)
 
-- Campos extra de Parcela: GPS, foto, color, área, descripción
+- **GPS / coordenadas geográficas de Parcela vía upload KML/KMZ** — futura iteración. Upload desde app móvil y desde la web (formato estándar de Google Earth/Maps). NO se agregan columnas/campos GPS al schema en v1.1.
+- **Captura manual punto-a-punto de GPS** — pendiente de evaluar (ver issue en GitHub). Posiblemente detrás de un setting toggle. Decisión depende de qué tan robusta resulte la captura automática vía KML/KMZ.
+- Otros campos extra de Parcela: foto, color, área, descripción
 - Re-asignación de Grupo a otra Parcela
 - Sub-parcelas (jerarquía deeper)
 - Sync atómico de Parcela completa
@@ -338,6 +340,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 - N/N resolution flow (sin cambios — ya en v1.0)
 - Nuevos roles o permisos (admin y tecnico siguen igual; ambos crean Parcelas y Grupos)
 - ID Global / ID Parcial generation (sin cambios)
+- **GPS de Parcela** (cualquier forma — KML/KMZ upload o captura manual): no se implementa en v1.1, no se agregan columnas al schema. Diferido a futura iteración.
 
 ### Traceability v1.1
 

@@ -76,7 +76,9 @@ Reliable, fast tree registration in the field — every tree recorded, no data l
 - GPS per tree — future phase
 - Photo upload to server — photos remain local in Phase 1
 - Real-time monitoring / analytics dashboards — future phase
-- **(v1.1) Campos extra de Parcela** (GPS, foto, color, área, descripción) — solo `nombre` + `codigo` en este milestone
+- **(v1.1) Campos extra de Parcela** (foto, color, área, descripción) — solo `nombre` + `codigo` en este milestone
+- **(v1.1) GPS / coordenadas geográficas de Parcela** — futura iteración, vía **upload de archivo KML/KMZ** (formato Google Earth/Maps) tanto desde la app móvil como desde la web. NO se agregan columnas/campos GPS al schema de `parcelas` en v1.1
+- **(v1.1) Captura manual punto-a-punto de GPS** — pendiente de evaluar (ver Issue de GitHub vinculado); posiblemente detrás de un setting toggle si se decide implementar
 - **(v1.1) Re-asignación de Grupo a otra Parcela** — Grupo nace dentro de una Parcela y queda ahí (admin puede borrar y recrear si necesario)
 - **(v1.1) Sub-parcelas** o jerarquías más profundas — Parcela es el único nivel intermedio
 - **(v1.1) Sync atómico de Parcela completa** — Grupo sigue siendo unidad atómica de sync
@@ -118,6 +120,7 @@ Reliable, fast tree registration in the field — every tree recorded, no data l
 | (v1.1) Feature flag para auto-Parcela "P1" | Trial: probamos si simplifica creación; debe ser removible si no aporta | — Pending |
 | (v1.1) Renombre `subgroup`→`group` end-to-end | Coherencia: el término "Subgrupo" deja de tener sentido cuando Parcela es el "grupo padre" | — Pending |
 | (v1.1) Tipos `linea | bosquete` | "parcela" como tipo confunde con la nueva entidad Parcela; "bosquete" es el término correcto del dominio | — Pending |
+| (v1.1) GPS de Parcela diferido a futura iteración vía KML/KMZ | No agregar campos schema ahora si no se implementa; KML/KMZ es estándar Google Maps/Earth y permite upload simple desde app y web; captura manual punto-a-punto queda como decisión separada (ver issue) | — Pending |
 
 ## Evolution
 
