@@ -231,14 +231,16 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Schema & Data Model (Parcelas + Renombre)
 
-- [ ] **PARC-01**: Tabla `parcelas` creada en SQLite local con columnas `id`, `plantacion_id` (FK), `nombre`, `codigo`, `pending_sync`, `created_at`, `updated_at`
-- [ ] **PARC-02**: Tabla `parcelas` creada en Supabase con FK a `plantations`, RLS para admin/tecnico
-- [ ] **PARC-03**: Constraint de unicidad: `(plantacion_id, nombre)` único y `(plantacion_id, codigo)` único — local y server
+- [ ] **PARC-01**: Tabla `parcelas` creada en SQLite local con columnas `id`, `plantacion_id` (FK), `nombre`, `codigo`, `descripcion` (text, opcional, max 10.000 caracteres), `pending_sync`, `created_at`, `updated_at`
+- [ ] **PARC-02**: Tabla `parcelas` creada en Supabase con FK a `plantations`, columna `descripcion` con CHECK `char_length(descripcion) <= 10000`, RLS para admin/tecnico
+- [ ] **PARC-03**: Constraint de unicidad de Parcela: `(plantacion_id, nombre)` único y `(plantacion_id, codigo)` único — local y server
 - [ ] **PARC-04**: Tabla `subgroups` renombrada a `groups` en SQLite local (con migración Drizzle versionada)
 - [ ] **PARC-05**: Tabla `subgroups` renombrada a `groups` en Supabase, columna `subgroup_id` de `trees` renombrada a `group_id`
 - [ ] **PARC-06**: Columna `groups.parcela_id` (FK) agregada — todo grupo pertenece a una parcela
 - [ ] **PARC-07**: Tipo de Grupo cambiado: valor `'parcela'` deprecado, `'bosquete'` agregado (constraint `tipo IN ('linea','bosquete')`)
-- [ ] **PARC-08**: SubID de árbol mantiene formato `GroupCode + SpeciesCode + Position` — la Parcela no se incluye en el SubID
+- [ ] **PARC-08**: SubID de árbol cambia a formato `ParcelaCode + GroupCode + SpeciesCode + Position` (era `GroupCode + SpeciesCode + Position`). El código de Parcela se prepende para garantizar unicidad cuando dos grupos en distintas parcelas comparten código (ahora posible — ver PARC-09)
+- [ ] **PARC-09**: Constraint de unicidad de Grupo cambia: `(parcela_id, nombre)` único y `(parcela_id, codigo)` único (antes era por plantación). Esto permite que dos parcelas distintas tengan grupos con el mismo código y es **prerequisito** para que la migración de datos pueda unificar 17 plantaciones bajo "San Sebastián de la Selva" sin colisión de códigos
+- [ ] **PARC-10**: `idGenerator` actualizado: `generateSubId(parcelaCode, groupCode, speciesCode, position)` — la firma rompe compatibilidad con la versión anterior; todos los call sites se actualizan en Phase 15-16
 
 ### Code Layer Rename (TypeScript / Repos / Hooks / Queries)
 
@@ -254,20 +256,21 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Parcelas — Data Layer
 
-- [ ] **PCRD-01**: `ParcelaRepository.ts` con métodos `create`, `update`, `delete`, `getByPlantacion`, `getById`
+- [ ] **PCRD-01**: `ParcelaRepository.ts` con métodos `create`, `update`, `delete`, `getByPlantacion`, `getById` — soporta los campos `nombre`, `codigo` y `descripcion`
 - [ ] **PCRD-02**: `parcelaQueries.ts` con queries para stats (cantidad de grupos y árboles por parcela)
 - [ ] **PCRD-03**: Hook `useParcelas(plantacionId)` con datos reactivos vía `useLiveData`
 - [ ] **PCRD-04**: Validación de unicidad de `nombre` y `codigo` por plantación al crear/editar (UI + repo)
 - [ ] **PCRD-05**: Borrar Parcela bloqueado si tiene grupos dentro; mensaje claro al usuario
 - [ ] **PCRD-06**: Soporte offline: parcelas creadas offline se marcan `pending_sync=true` y se suben en próximo sync
+- [ ] **PCRD-07**: Validación de longitud de `descripcion`: máximo 10.000 caracteres con feedback visual de caracteres restantes en el form (UI + repo + DB CHECK constraint)
 
 ### Parcelas — UI / Navegación
 
-- [ ] **PUI-01**: Pantalla nueva `ParcelasScreen` lista parcelas con `nombre`, `codigo`, conteo de grupos, conteo de árboles, OrangeDot si algún grupo dentro tiene `pending_sync`
+- [ ] **PUI-01**: Pantalla nueva `ParcelasScreen` lista parcelas con `nombre`, `codigo`, conteo de grupos, conteo de árboles, OrangeDot si algún grupo dentro tiene `pending_sync`. Si la parcela tiene `descripcion`, se muestra una preview truncada (~80 chars) debajo del nombre
 - [ ] **PUI-02**: Tap en `PlantationCard` navega a `ParcelasScreen` (antes navegaba directo a la pantalla de grupos)
 - [ ] **PUI-03**: Tap en una `ParcelaRow` navega a `GruposScreen` scoped a esa parcela (lista solo grupos de esa parcela)
 - [ ] **PUI-04**: Long-press en `ParcelaRow` abre modal de edición de Parcela
-- [ ] **PUI-05**: Header de `ParcelasScreen` tiene icono `+` a la derecha que abre form de crear Parcela
+- [ ] **PUI-05**: Header de `ParcelasScreen` tiene icono `+` a la derecha que abre form de crear Parcela (con campos `nombre`, `codigo`, `descripcion` opcional con contador de caracteres y soft-limit visual a 10.000)
 - [ ] **PUI-06**: Empty state en `ParcelasScreen` cuando no hay parcelas (mensaje + CTA grande "Crear primera parcela")
 - [ ] **PUI-07**: `PlantationCard` muestra fila inferior "Parcelas: N" con chevron como botón
 - [ ] **PUI-08**: Tap en la fila inferior expande sección inline con la lista de parcelas (reusa el mismo `ParcelaRow` que `ParcelasScreen`)
@@ -306,8 +309,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 - [ ] **MIGR-06**: **Cluster C** unificado bajo plantación nueva `"Pruebas - La Morita"` (Primavera 2026) con 2 parcelas: "La Morita" (código LM) y "Zona 1" (código Z1); 5 grupos, 341 árboles preservados
 - [ ] **MIGR-07**: 11 plantaciones eliminadas (cascade delete: plantación + grupos + árboles): `00000000` La Maluka, `e072775e` SSS-LOMA-P1 vacío, `80b85acd` Plantación Abril, `26e190db` Hfhj, `747981d3` Plantacion test 1, `0eea0006` Aa, `a536bd66` Plant 2, `09a315e2` Plant 3, `203beee5` Plant 4, `6d2e80b0` Plantación test 2, `7fea8850` Plant Test 4 — totalizando 44 grupos y 433 árboles eliminados
 - [ ] **MIGR-08**: Normalización de estados: 269 grupos con `estado='sincronizada'` en server → `estado='finalizada'` (alineado con Phase 13)
-- [ ] **MIGR-09**: Verificación post-migración: conteos esperados (3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles), referencias FK consistentes, nombres y códigos únicos por plantación, queries cargan correctamente
-- [ ] **MIGR-10**: SQLite local de cada usuario se sincroniza automáticamente con la nueva estructura en el siguiente pull (sin acción manual)
+- [ ] **MIGR-09**: **Re-cálculo de SubIDs** para los 6.776 árboles preservados con el nuevo formato `ParcelaCode + GroupCode + SpeciesCode + Position` (PARC-08). Operación batch dentro de la misma transacción que la consolidación; verificar que ningún SubID quede `NULL` y que todos sean únicos dentro de su plantación
+- [ ] **MIGR-10**: Verificación post-migración: conteos esperados (3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles), referencias FK consistentes, **nombres y códigos de Grupo únicos por parcela** (no por plantación), nombres y códigos de Parcela únicos por plantación, SubIDs únicos dentro de cada plantación, queries cargan correctamente
+- [ ] **MIGR-11**: SQLite local de cada usuario se sincroniza automáticamente con la nueva estructura (incluyendo SubIDs re-computados) en el siguiente pull (sin acción manual)
 
 ### Export
 
@@ -346,20 +350,20 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| PARC-01 to PARC-08 | Phase 15 | Planned |
+| PARC-01 to PARC-10 | Phase 15 | Planned |
 | GRPN-01 to GRPN-09 | Phase 15-16 | Planned |
-| PCRD-01 to PCRD-06 | Phase 16 | Planned |
+| PCRD-01 to PCRD-07 | Phase 16 | Planned |
 | PUI-01 to PUI-10 | Phase 17 | Planned |
 | GUI-01 to GUI-04 | Phase 17 | Planned |
 | PDEF-01 to PDEF-04 | Phase 18 | Planned |
 | SYNC-PARC-01 to SYNC-PARC-05 | Phase 16 | Planned |
-| MIGR-01 to MIGR-10 | Phase 15 | Planned |
+| MIGR-01 to MIGR-11 | Phase 15 | Planned |
 | EXPO-PARC-01 to EXPO-PARC-02 | Phase 18 | Planned |
 | TEST-PARC-01 to TEST-PARC-05 | Phase 16-17 | Planned |
 
 **Coverage v1.1:**
-- Total requirements: 49
-- Mapped to phases: 49
+- Total requirements: 53
+- Mapped to phases: 53
 - Unmapped: 0
 
 ---

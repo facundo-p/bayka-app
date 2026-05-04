@@ -326,33 +326,35 @@ Plans:
 
 ### Phase 15: Schema migration + data consolidation
 
-**Goal:** Establecer la nueva estructura de schema (tabla `parcelas`, rename `subgroups`→`groups`, tipo `linea | bosquete`) tanto en SQLite local como en Supabase, y ejecutar la consolidación de datos acordada (32 → 3 plantaciones; 6.321 árboles reales preservados bajo "San Sebastián de la Selva"; 2 plantaciones de prueba consolidadas; 11 plantaciones eliminadas).
+**Goal:** Establecer la nueva estructura de schema (tabla `parcelas` con `descripcion`, rename `subgroups`→`groups` con unicidad **per-parcela**, tipo `linea | bosquete`, SubID con prefijo de Parcela) tanto en SQLite local como en Supabase, y ejecutar la consolidación de datos acordada con re-cálculo batch de los 6.776 SubIDs preservados.
 **Depends on:** Phase 14
-**Requirements**: PARC-01, PARC-02, PARC-03, PARC-04, PARC-05, PARC-06, PARC-07, PARC-08, MIGR-01, MIGR-02, MIGR-03, MIGR-04, MIGR-05, MIGR-06, MIGR-07, MIGR-08, MIGR-09, MIGR-10
+**Requirements**: PARC-01, PARC-02, PARC-03, PARC-04, PARC-05, PARC-06, PARC-07, PARC-08, PARC-09, PARC-10, MIGR-01, MIGR-02, MIGR-03, MIGR-04, MIGR-05, MIGR-06, MIGR-07, MIGR-08, MIGR-09, MIGR-10, MIGR-11
 **Success Criteria** (what must be TRUE):
   1. Backup pre-migración existe en Supabase Storage (script `scripts/supabase-backup.sh`) con timestamp y restore documentado
-  2. Tabla `parcelas` existe en SQLite local y Supabase con FK a plantations, índices únicos `(plantacion_id, nombre)` y `(plantacion_id, codigo)`, RLS para admin/tecnico
-  3. Tabla `groups` reemplaza a `subgroups` en ambos sistemas; columna `trees.group_id` reemplaza a `trees.subgroup_id`; FK `groups.parcela_id` apunta a `parcelas.id`; constraint `tipo IN ('linea','bosquete')` activo
-  4. Plantación "San Sebastián de la Selva" (Otoño 2026) existe con exactamente 17 parcelas (Loma-P1..P13 + Medio-P1..P4) que contienen 215 grupos y 6.321 árboles preservados
-  5. Plantación "Pruebas - SSS" (Otoño 2026) y "Pruebas - La Morita" (Primavera 2026) existen con 2 parcelas cada una, conteo de grupos y árboles correcto (5 grupos / 114 árboles y 5 grupos / 341 árboles respectivamente)
-  6. Conteo final post-migración exacto: 3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles; FKs consistentes y sin huérfanos
-  7. Subgrupos con `estado='sincronizada'` actualizados a `estado='finalizada'` (server alineado con simplificación de Phase 13)
-  8. SQLite local de cada usuario sincroniza la nueva estructura en el siguiente pull (sin acción manual del usuario)
+  2. Tabla `parcelas` existe en SQLite local y Supabase con FK a plantations, columna `descripcion` (text opcional, CHECK `char_length <= 10000` en server), índices únicos `(plantacion_id, nombre)` y `(plantacion_id, codigo)`, RLS para admin/tecnico
+  3. Tabla `groups` reemplaza a `subgroups` en ambos sistemas; columna `trees.group_id` reemplaza a `trees.subgroup_id`; FK `groups.parcela_id` apunta a `parcelas.id`; constraint `tipo IN ('linea','bosquete')` activo; **índices únicos de Grupo cambian a `(parcela_id, nombre)` y `(parcela_id, codigo)`** (antes per-plantación)
+  4. `idGenerator.generateSubId(parcelaCode, groupCode, speciesCode, position)` activo; firma vieja eliminada o deprecated con warning
+  5. Plantación "San Sebastián de la Selva" (Otoño 2026) existe con exactamente 17 parcelas (Loma-P1..P13 + Medio-P1..P4) que contienen 215 grupos y 6.321 árboles preservados — verificable que dos parcelas distintas tienen un grupo con código "L1" sin colisión
+  6. Plantación "Pruebas - SSS" (Otoño 2026) y "Pruebas - La Morita" (Primavera 2026) existen con 2 parcelas cada una, conteo de grupos y árboles correcto (5/114 y 5/341 respectivamente)
+  7. Conteo final post-migración exacto: 3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles; FKs consistentes y sin huérfanos
+  8. **6.776 SubIDs re-computados** con formato `ParcelaCode + GroupCode + SpeciesCode + Position`; ningún SubID quedó NULL; SubIDs únicos dentro de cada plantación
+  9. Subgrupos con `estado='sincronizada'` actualizados a `estado='finalizada'` (server alineado con simplificación de Phase 13)
+ 10. SQLite local de cada usuario sincroniza la nueva estructura (incluyendo SubIDs nuevos) en el siguiente pull (sin acción manual del usuario)
 **Plans**: 3 plans
 
 Plans:
-- [ ] 15-01-PLAN.md — Drizzle migration local (parcelas table, rename subgroups→groups + columns, tipo enum bosquete, parcela_id FK), schema.ts update, migrations.js update
-- [ ] 15-02-PLAN.md — Supabase migration SQL (`012_parcelas_and_rename.sql`): backup → schema changes (rename tables, columns, types) → RLS policies para parcelas
-- [ ] 15-03-PLAN.md — Data consolidation SQL (`013_data_consolidation.sql`): crear 3 plantaciones nuevas + 21 parcelas + reasignar grupos a parcelas correctas + eliminar 11 plantaciones (cascade) + normalizar `sincronizada`→`finalizada`; verification script post-run
+- [ ] 15-01-PLAN.md — Drizzle migration local (parcelas table con `descripcion`, rename subgroups→groups, parcela_id FK, tipo enum bosquete, **swap unique indexes a per-parcela**), schema.ts update, migrations.js update, `idGenerator` con firma nueva
+- [ ] 15-02-PLAN.md — Supabase migration SQL (`012_parcelas_and_rename.sql`): backup → schema changes (rename tables, columns, types, **drop+recreate unique constraints de groups en per-parcela**) → CHECK constraint de descripcion → RLS policies para parcelas
+- [ ] 15-03-PLAN.md — Data consolidation SQL (`013_data_consolidation.sql`): crear 3 plantaciones nuevas + 21 parcelas + reasignar grupos a parcelas correctas + **batch UPDATE de SubIDs** con nuevo formato (single transaction con la consolidación) + eliminar 11 plantaciones (cascade) + normalizar `sincronizada`→`finalizada`; verification script post-run que confirma conteos, unicidad per-parcela y SubIDs no nulos
 
 ### Phase 16: Code layer rename + Parcelas data + Sync
 
-**Goal:** Alinear toda la capa de código TypeScript con el schema nuevo (`SubGroup`→`Group`, `subgrupo`→`grupo` en repos/hooks/queries/services), implementar `ParcelaRepository` con queries y hooks correspondientes, y extender `SyncService` para sincronizar parcelas (pull + push) sin romper el flujo atómico de Grupo como unidad de sync.
+**Goal:** Alinear toda la capa de código TypeScript con el schema nuevo (`SubGroup`→`Group`, `subgrupo`→`grupo` en repos/hooks/queries/services), implementar `ParcelaRepository` con queries y hooks correspondientes (incluyendo `descripcion`), y extender `SyncService` para sincronizar parcelas (pull + push) sin romper el flujo atómico de Grupo como unidad de sync.
 **Depends on:** Phase 15
-**Requirements**: GRPN-01, GRPN-02, GRPN-03, GRPN-04, GRPN-05, GRPN-06, GRPN-07, GRPN-08, GRPN-09, PCRD-01, PCRD-02, PCRD-03, PCRD-04, PCRD-05, PCRD-06, SYNC-PARC-01, SYNC-PARC-02, SYNC-PARC-03, SYNC-PARC-04, SYNC-PARC-05, TEST-PARC-01, TEST-PARC-02, TEST-PARC-03
+**Requirements**: GRPN-01, GRPN-02, GRPN-03, GRPN-04, GRPN-05, GRPN-06, GRPN-07, GRPN-08, GRPN-09, PCRD-01, PCRD-02, PCRD-03, PCRD-04, PCRD-05, PCRD-06, PCRD-07, SYNC-PARC-01, SYNC-PARC-02, SYNC-PARC-03, SYNC-PARC-04, SYNC-PARC-05, TEST-PARC-01, TEST-PARC-02, TEST-PARC-03
 **Success Criteria** (what must be TRUE):
   1. La app compila y arranca con todos los renames aplicados; no quedan referencias residuales `SubGroup`/`subgrupo` en código (excepto migraciones históricas y comentarios de evolución)
-  2. `ParcelaRepository` permite crear, editar, borrar parcelas con validación de unicidad de `nombre` y `codigo` por plantación; borrar bloqueado si hay grupos dentro
+  2. `ParcelaRepository` permite crear, editar, borrar parcelas con validación de unicidad de `nombre` y `codigo` por plantación + validación de `descripcion <= 10.000 chars`; borrar bloqueado si hay grupos dentro
   3. `parcelaQueries` exponen conteo de grupos y árboles por parcela; queries reutilizables fuera de pantallas (CLAUDE.md rule 9)
   4. Hook `useParcelas(plantacionId)` retorna datos reactivos vía `useLiveData`
   5. Sync de parcelas funciona online (pull trae parcelas del server; push sube `pending_sync=true`) y offline (parcela creada offline aparece tras volver online)
@@ -385,7 +387,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 17-01-PLAN.md — `ParcelasScreen` (lista, header `+`, empty state, long-press editar, OrangeDot), `ParcelaRow` component, `ParcelaFormModal` (crear/editar con validaciones), routing
+- [ ] 17-01-PLAN.md — `ParcelasScreen` (lista con preview de `descripcion` truncada, header `+`, empty state, long-press editar, OrangeDot), `ParcelaRow` component, `ParcelaFormModal` (crear/editar con validaciones de unicidad y contador de chars para descripcion), routing
 - [ ] 17-02-PLAN.md — `PlantationCard` con sección expandible de parcelas (reuso de `ParcelaRow`), animación expand/collapse, hook de estado expandido por card
 - [ ] 17-03-PLAN.md — `GruposScreen` refactor (header `+`, eliminar botón inferior, recibir `parcelaId`, filtrar grupos), actualizar textos visibles "Subgrupo"→"Grupo" en toda la app, visual checkpoint final
 
