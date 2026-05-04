@@ -24,6 +24,13 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos (completed 2026-04-13)
 - [x] **Phase 14: Sync N/N + conflict resolution** - Sincronizar subgrupos con N/N, deteccion de conflictos, resolucion por rol, gate de finalizacion, indicadores visuales (completed 2026-04-14)
 
+### Milestone v1.1 — Parcelas + Renombre Subgrupo→Grupo (planificado 2026-05-04)
+
+- [ ] **Phase 15: Schema migration + data consolidation** — Crear tabla `parcelas`, renombrar `subgroups`→`groups` (SQLite + Supabase), tipos `linea | bosquete`, ejecutar migración de data (32 → 3 plantaciones, 6.321 árboles reales preservados bajo "San Sebastián de la Selva")
+- [ ] **Phase 16: Code layer rename + ParcelaRepository + Sync** — Renombrar tipos/repos/hooks/queries/services a `Group`, implementar `ParcelaRepository` y queries, extender `SyncService` para parcelas (pull + push + conflict), tests unitarios + integración
+- [ ] **Phase 17: UI Parcelas + GruposScreen refactor + textos** — Nueva `ParcelasScreen` con `+` en header y empty state, `PlantationCard` con sección expandible, `GruposScreen` scoped por parcela con `+` en header (sin botón inferior), long-press para editar Parcela, todos los textos visibles "Subgrupo"→"Grupo"
+- [ ] **Phase 18: Default Parcela trial flag + Export** — Feature flag `AUTO_PARCELA_DEFAULT` aislado y removible, columna "Parcela" en export CSV/Excel
+
 ## Phase Details
 
 ### Phase 1: Foundation + Auth
@@ -223,7 +230,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9 -> 11 -> 12 -> 13 -> 14
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -241,6 +248,10 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 10 -> 9
 | 12. Photo Storage + Sync | 4/4 | Complete    | 2026-04-12 |
 | 13. Unificar sync bidireccional | 3/3 | Complete | 2026-04-13 |
 | 14. Sync N/N + conflict resolution | 3/3 | Complete    | 2026-04-14 |
+| **15. Schema migration + data consolidation** | 0/3 | **Planned (v1.1)** | |
+| **16. Code rename + ParcelaRepository + Sync** | 0/3 | **Planned (v1.1)** | |
+| **17. UI Parcelas + GruposScreen refactor** | 0/3 | **Planned (v1.1)** | |
+| **18. Default Parcela flag + Export** | 0/2 | **Planned (v1.1)** | |
 
 ### Phase 12: Persistir imagenes de arboles en Supabase Storage con toggle, resize y sync
 
@@ -308,3 +319,90 @@ Plans:
 - [x] 14-01-PLAN.md — Drizzle migration (conflict columns on trees), Supabase RPC migration (DO UPDATE for trees), remove N/N filter from getSyncableSubGroups, extend checkFinalizationGate, dashboard NN query, role-filtered NN query
 - [x] 14-02-PLAN.md — SyncService conflict detection in pullFromServer, useNNResolution role-based filtering + conflict state, usePlantationAdmin N/N gate, usePlantaciones NN data plumbing
 - [x] 14-03-PLAN.md — UI: PlantationCard NN stat, AdminBottomSheet finalization gate, NNResolutionScreen conflict banner, PlantationDetailScreen badge verification, visual checkpoint
+
+---
+
+## Milestone v1.1 — Parcelas + Renombre Subgrupo→Grupo
+
+### Phase 15: Schema migration + data consolidation
+
+**Goal:** Establecer la nueva estructura de schema (tabla `parcelas`, rename `subgroups`→`groups`, tipo `linea | bosquete`) tanto en SQLite local como en Supabase, y ejecutar la consolidación de datos acordada (32 → 3 plantaciones; 6.321 árboles reales preservados bajo "San Sebastián de la Selva"; 2 plantaciones de prueba consolidadas; 11 plantaciones eliminadas).
+**Depends on:** Phase 14
+**Requirements**: PARC-01, PARC-02, PARC-03, PARC-04, PARC-05, PARC-06, PARC-07, PARC-08, MIGR-01, MIGR-02, MIGR-03, MIGR-04, MIGR-05, MIGR-06, MIGR-07, MIGR-08, MIGR-09, MIGR-10
+**Success Criteria** (what must be TRUE):
+  1. Backup pre-migración existe en Supabase Storage (script `scripts/supabase-backup.sh`) con timestamp y restore documentado
+  2. Tabla `parcelas` existe en SQLite local y Supabase con FK a plantations, índices únicos `(plantacion_id, nombre)` y `(plantacion_id, codigo)`, RLS para admin/tecnico
+  3. Tabla `groups` reemplaza a `subgroups` en ambos sistemas; columna `trees.group_id` reemplaza a `trees.subgroup_id`; FK `groups.parcela_id` apunta a `parcelas.id`; constraint `tipo IN ('linea','bosquete')` activo
+  4. Plantación "San Sebastián de la Selva" (Otoño 2026) existe con exactamente 17 parcelas (Loma-P1..P13 + Medio-P1..P4) que contienen 215 grupos y 6.321 árboles preservados
+  5. Plantación "Pruebas - SSS" (Otoño 2026) y "Pruebas - La Morita" (Primavera 2026) existen con 2 parcelas cada una, conteo de grupos y árboles correcto (5 grupos / 114 árboles y 5 grupos / 341 árboles respectivamente)
+  6. Conteo final post-migración exacto: 3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles; FKs consistentes y sin huérfanos
+  7. Subgrupos con `estado='sincronizada'` actualizados a `estado='finalizada'` (server alineado con simplificación de Phase 13)
+  8. SQLite local de cada usuario sincroniza la nueva estructura en el siguiente pull (sin acción manual del usuario)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Drizzle migration local (parcelas table, rename subgroups→groups + columns, tipo enum bosquete, parcela_id FK), schema.ts update, migrations.js update
+- [ ] 15-02-PLAN.md — Supabase migration SQL (`012_parcelas_and_rename.sql`): backup → schema changes (rename tables, columns, types) → RLS policies para parcelas
+- [ ] 15-03-PLAN.md — Data consolidation SQL (`013_data_consolidation.sql`): crear 3 plantaciones nuevas + 21 parcelas + reasignar grupos a parcelas correctas + eliminar 11 plantaciones (cascade) + normalizar `sincronizada`→`finalizada`; verification script post-run
+
+### Phase 16: Code layer rename + Parcelas data + Sync
+
+**Goal:** Alinear toda la capa de código TypeScript con el schema nuevo (`SubGroup`→`Group`, `subgrupo`→`grupo` en repos/hooks/queries/services), implementar `ParcelaRepository` con queries y hooks correspondientes, y extender `SyncService` para sincronizar parcelas (pull + push) sin romper el flujo atómico de Grupo como unidad de sync.
+**Depends on:** Phase 15
+**Requirements**: GRPN-01, GRPN-02, GRPN-03, GRPN-04, GRPN-05, GRPN-06, GRPN-07, GRPN-08, GRPN-09, PCRD-01, PCRD-02, PCRD-03, PCRD-04, PCRD-05, PCRD-06, SYNC-PARC-01, SYNC-PARC-02, SYNC-PARC-03, SYNC-PARC-04, SYNC-PARC-05, TEST-PARC-01, TEST-PARC-02, TEST-PARC-03
+**Success Criteria** (what must be TRUE):
+  1. La app compila y arranca con todos los renames aplicados; no quedan referencias residuales `SubGroup`/`subgrupo` en código (excepto migraciones históricas y comentarios de evolución)
+  2. `ParcelaRepository` permite crear, editar, borrar parcelas con validación de unicidad de `nombre` y `codigo` por plantación; borrar bloqueado si hay grupos dentro
+  3. `parcelaQueries` exponen conteo de grupos y árboles por parcela; queries reutilizables fuera de pantallas (CLAUDE.md rule 9)
+  4. Hook `useParcelas(plantacionId)` retorna datos reactivos vía `useLiveData`
+  5. Sync de parcelas funciona online (pull trae parcelas del server; push sube `pending_sync=true`) y offline (parcela creada offline aparece tras volver online)
+  6. Conflict detection: nombre/código duplicado al subir devuelve error claro al usuario y deja parcela local con `pending_sync=true`
+  7. Tests pasan: unitarios de `ParcelaRepository`, `useParcelas`, integración de sync end-to-end con SQLite real
+  8. Tests existentes adaptados a los nombres nuevos sin perder cobertura (mismo número o mayor de assertions)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 16-01-PLAN.md — Rename masivo de tipos, repos, hooks, queries, services, components (`SubGroup`→`Group`, `subgrupo`→`grupo`); refactorizar tests existentes; renombrar archivos
+- [ ] 16-02-PLAN.md — `ParcelaRepository`, `parcelaQueries`, `useParcelas` hook, validaciones de unicidad, tests unitarios
+- [ ] 16-03-PLAN.md — `SyncService` extension (pull parcelas, push pending parcelas, conflict handling), tests de integración del sync, OrangeDot propagation logic
+
+### Phase 17: UI Parcelas + GruposScreen refactor + textos visibles
+
+**Goal:** Implementar la nueva navegación 4-niveles con `ParcelasScreen` (lista, crear, editar via long-press, header `+`), agregar la sección expandible de parcelas en `PlantationCard` como atajo, refactorizar `GruposScreen` para que reciba `parcelaId` y use `+` en header (eliminando botón inferior por consistencia), y actualizar todos los textos visibles "Subgrupo"→"Grupo".
+**Depends on:** Phase 16
+**Requirements**: PUI-01, PUI-02, PUI-03, PUI-04, PUI-05, PUI-06, PUI-07, PUI-08, PUI-09, PUI-10, GUI-01, GUI-02, GUI-03, GUI-04, TEST-PARC-04, TEST-PARC-05
+**Success Criteria** (what must be TRUE):
+  1. Tap en `PlantationCard` navega a `ParcelasScreen` (no a la pantalla de grupos como antes); tap en una `ParcelaRow` navega a `GruposScreen` scoped a esa parcela
+  2. `ParcelasScreen` muestra cada parcela con `nombre`, `codigo`, conteo de grupos, conteo de árboles, OrangeDot si hay pending_sync abajo
+  3. Header de `ParcelasScreen` tiene icono `+` a la derecha que abre form de crear Parcela; long-press abre form de editar Parcela
+  4. Empty state en `ParcelasScreen` cuando no hay parcelas (mensaje claro + CTA grande "Crear primera parcela")
+  5. `PlantationCard` muestra fila inferior "Parcelas: N" con chevron; tap expande inline una sección con la lista de parcelas (mismo `ParcelaRow`) que sirve de atajo
+  6. Tap en parcela inline navega a `GruposScreen` scoped (mismo flujo que la pantalla de Parcelas); long-press abre el mismo modal de edición
+  7. `GruposScreen` recibe `parcelaId`, filtra grupos solo de esa parcela, y al crear un grupo lo asocia automáticamente a esa parcela (sin selector adicional)
+  8. `GruposScreen` no tiene botón inferior "Agregar grupo"; en su lugar, icono `+` en el header (consistencia con Plantaciones y Parcelas)
+  9. Todos los textos visibles en español que decían "Subgrupo"/"subgrupo"/"subgrupos" ahora dicen "Grupo"/"grupo"/"grupos"
+ 10. Visual checkpoint: navegación 4-niveles funciona con guantes (target 44×44), atajo en card no degrada velocidad de registro respecto a v1.0
+**Plans**: 3 plans
+
+Plans:
+- [ ] 17-01-PLAN.md — `ParcelasScreen` (lista, header `+`, empty state, long-press editar, OrangeDot), `ParcelaRow` component, `ParcelaFormModal` (crear/editar con validaciones), routing
+- [ ] 17-02-PLAN.md — `PlantationCard` con sección expandible de parcelas (reuso de `ParcelaRow`), animación expand/collapse, hook de estado expandido por card
+- [ ] 17-03-PLAN.md — `GruposScreen` refactor (header `+`, eliminar botón inferior, recibir `parcelaId`, filtrar grupos), actualizar textos visibles "Subgrupo"→"Grupo" en toda la app, visual checkpoint final
+
+### Phase 18: Default Parcela trial flag + Export update
+
+**Goal:** Implementar el feature flag `AUTO_PARCELA_DEFAULT` que auto-crea "Parcela 1" / código "P1" al crear una plantación nueva (online u offline), aislado en una función única para que sea fácilmente removible si la prueba falla. Actualizar el export CSV/Excel para incluir la columna "Parcela".
+**Depends on:** Phase 17
+**Requirements**: PDEF-01, PDEF-02, PDEF-03, PDEF-04, EXPO-PARC-01, EXPO-PARC-02
+**Success Criteria** (what must be TRUE):
+  1. Existe `mobile/src/config/featureFlags.ts` (o equivalente) con la constante `AUTO_PARCELA_DEFAULT` documentada
+  2. Cuando el flag está en `true`, al crear una plantación se auto-crea inmediatamente una Parcela `nombre="Parcela 1"`, `codigo="P1"` vinculada a la plantación, tanto online como offline
+  3. La auto-creación está encapsulada en una función única (`createPlantationWithDefaultParcela()` o similar) marcada con comentario `// FEATURE: auto-parcela trial — remove block if dropped`; eliminar la feature requiere borrar 1 archivo + 1 import
+  4. Cuando el flag está en `false`, la creación de plantación NO crea parcela default (usuario debe crearla manualmente)
+  5. Export CSV/Excel incluye la nueva columna "Parcela" entre "Plantación" y "Grupo" (orden: ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie); valor mostrado es `nombre` de la parcela
+  6. Tests unitarios cubren flag on/off y la columna de export
+**Plans**: 2 plans
+
+Plans:
+- [ ] 18-01-PLAN.md — Feature flag infrastructure (`featureFlags.ts`), `createPlantationWithDefaultParcela()` aislado, integración en flujos online + offline, tests unitarios
+- [ ] 18-02-PLAN.md — Export CSV/Excel: agregar columna "Parcela" en `ExportService` y `exportQueries`, actualizar tests; visual checkpoint del export final
