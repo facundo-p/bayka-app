@@ -1,36 +1,36 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Phase 14 UI-SPEC approved
-last_updated: "2026-04-14T19:17:42.676Z"
-last_activity: 2026-04-14
+milestone: v1.1
+milestone_name: parcelas-renombre-grupos
+status: planning
+stopped_at: ""
+last_updated: "2026-05-04T00:00:00.000Z"
+last_activity: 2026-05-04
 progress:
-  total_phases: 14
-  completed_phases: 14
-  total_plans: 45
-  completed_plans: 45
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-16)
+See: .planning/PROJECT.md (updated 2026-05-04)
 
 **Core value:** Reliable, fast tree registration in the field — every tree recorded, no data lost, even without connectivity.
-**Current focus:** Phase 14 — sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo
+**Current focus:** Milestone v1.1 — Parcelas + Renombre Subgrupo→Grupo (defining requirements)
 
 ## Current Position
 
-Phase: 14
-Plan: Not started
-Status: Executing Phase 14
-Last activity: 2026-04-14
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-04 — Milestone v1.1 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -188,6 +188,7 @@ Recent decisions affecting current work:
 - Phase 11 added: Unificar pantallas — eliminar screen de Gestión e integrar acciones en PlantationCard
 - Phase 12 added: Persistir imágenes de árboles en Supabase Storage con toggle, resize y sync
 - Phase 14 added: Sincronizar subgrupos finalizados con N/Ns, resolver N/Ns, bloquear finalización sin N/Ns resueltos
+- **Milestone v1.1 (2026-05-04)**: Parcelas + Renombre Subgrupo→Grupo — fases 15-18 planeadas
 
 ### Pending Todos
 

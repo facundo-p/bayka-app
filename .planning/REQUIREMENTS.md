@@ -223,5 +223,149 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Unmapped: 0
 
 ---
-*Requirements defined: 2026-03-16*
-*Last updated: 2026-03-31 after Phase 6 planning*
+
+## Milestone v1.1 Requirements — Parcelas + Renombre Subgrupo→Grupo
+
+**Defined:** 2026-05-04
+**Goal:** Introducir Parcelas como nivel intermedio (Plantación → Parcela → Grupo → Árbol), renombrar Subgrupo→Grupo (tipos `linea | bosquete`), y migrar la data de campo existente a la nueva estructura.
+
+### Schema & Data Model (Parcelas + Renombre)
+
+- [ ] **PARC-01**: Tabla `parcelas` creada en SQLite local con columnas `id`, `plantacion_id` (FK), `nombre`, `codigo`, `descripcion` (text, opcional, max 10.000 caracteres), `pending_sync`, `created_at`, `updated_at`
+- [ ] **PARC-02**: Tabla `parcelas` creada en Supabase con FK a `plantations`, columna `descripcion` con CHECK `char_length(descripcion) <= 10000`, RLS para admin/tecnico
+- [ ] **PARC-03**: Constraint de unicidad de Parcela: `(plantacion_id, nombre)` único y `(plantacion_id, codigo)` único — local y server
+- [ ] **PARC-04**: Tabla `subgroups` renombrada a `groups` en SQLite local (con migración Drizzle versionada)
+- [ ] **PARC-05**: Tabla `subgroups` renombrada a `groups` en Supabase, columna `subgroup_id` de `trees` renombrada a `group_id`
+- [ ] **PARC-06**: Columna `groups.parcela_id` (FK) agregada — todo grupo pertenece a una parcela
+- [ ] **PARC-07**: Tipo de Grupo cambiado: valor `'parcela'` deprecado, `'bosquete'` agregado (constraint `tipo IN ('linea','bosquete')`)
+- [ ] **PARC-08**: SubID de árbol cambia a formato `ParcelaCode + GroupCode + SpeciesCode + Position` (era `GroupCode + SpeciesCode + Position`). El código de Parcela se prepende para garantizar unicidad cuando dos grupos en distintas parcelas comparten código (ahora posible — ver PARC-09)
+- [ ] **PARC-09**: Constraint de unicidad de Grupo cambia: `(parcela_id, nombre)` único y `(parcela_id, codigo)` único (antes era por plantación). Esto permite que dos parcelas distintas tengan grupos con el mismo código y es **prerequisito** para que la migración de datos pueda unificar 17 plantaciones bajo "San Sebastián de la Selva" sin colisión de códigos
+- [ ] **PARC-10**: `idGenerator` actualizado: `generateSubId(parcelaCode, groupCode, speciesCode, position)` — la firma rompe compatibilidad con la versión anterior; todos los call sites se actualizan en Phase 15-16
+
+### Code Layer Rename (TypeScript / Repos / Hooks / Queries)
+
+- [ ] **GRPN-01**: Tipos TS renombrados: `SubGroup`→`Group`, `SubGroupEstado`→`GroupEstado`, `SubGroupTipo`→`GroupTipo`
+- [ ] **GRPN-02**: `SubGroupRepository.ts` renombrado a `GroupRepository.ts` con todos sus métodos actualizados
+- [ ] **GRPN-03**: Hooks renombrados: `useSubGroups`→`useGroups`, `useSubGroupActions`→`useGroupActions`, etc.
+- [ ] **GRPN-04**: Queries: `subgroupQueries.ts`→`groupQueries.ts`; campos como `subgrupoId`, `subgrupoCodigo` → `grupoId`, `grupoCodigo`
+- [ ] **GRPN-05**: Servicios: `SyncService` actualizado con métodos para parcelas (pull/push) y rename de identificadores
+- [ ] **GRPN-06**: Componentes UI renombrados: `SubGroupCard`→`GroupCard`, `SubGroupStateChip`→`GroupStateChip`, `SubgrupoForm`→`GrupoForm`
+- [ ] **GRPN-07**: Pantalla `NuevoSubgrupoScreen.tsx` renombrada a `NuevoGrupoScreen.tsx`
+- [ ] **GRPN-08**: Todas las referencias en español de "Subgrupo"/"subgrupo"/"subgroups" en strings visibles cambiadas a "Grupo"/"grupo"/"grupos"
+- [ ] **GRPN-09**: Tests existentes actualizados para reflejar nombres nuevos (sin perder cobertura)
+
+### Parcelas — Data Layer
+
+- [ ] **PCRD-01**: `ParcelaRepository.ts` con métodos `create`, `update`, `delete`, `getByPlantacion`, `getById` — soporta los campos `nombre`, `codigo` y `descripcion`
+- [ ] **PCRD-02**: `parcelaQueries.ts` con queries para stats (cantidad de grupos y árboles por parcela)
+- [ ] **PCRD-03**: Hook `useParcelas(plantacionId)` con datos reactivos vía `useLiveData`
+- [ ] **PCRD-04**: Validación de unicidad de `nombre` y `codigo` por plantación al crear/editar (UI + repo)
+- [ ] **PCRD-05**: Borrar Parcela bloqueado si tiene grupos dentro; mensaje claro al usuario
+- [ ] **PCRD-06**: Soporte offline: parcelas creadas offline se marcan `pending_sync=true` y se suben en próximo sync
+- [ ] **PCRD-07**: Validación de longitud de `descripcion`: máximo 10.000 caracteres con feedback visual de caracteres restantes en el form (UI + repo + DB CHECK constraint)
+
+### Parcelas — UI / Navegación
+
+- [ ] **PUI-01**: Pantalla nueva `ParcelasScreen` lista parcelas con `nombre`, `codigo`, conteo de grupos, conteo de árboles, OrangeDot si algún grupo dentro tiene `pending_sync`. Si la parcela tiene `descripcion`, se muestra una preview truncada (~80 chars) debajo del nombre
+- [ ] **PUI-02**: Tap en `PlantationCard` navega a `ParcelasScreen` (antes navegaba directo a la pantalla de grupos)
+- [ ] **PUI-03**: Tap en una `ParcelaRow` navega a `GruposScreen` scoped a esa parcela (lista solo grupos de esa parcela)
+- [ ] **PUI-04**: Long-press en `ParcelaRow` abre modal de edición de Parcela
+- [ ] **PUI-05**: Header de `ParcelasScreen` tiene icono `+` a la derecha que abre form de crear Parcela (con campos `nombre`, `codigo`, `descripcion` opcional con contador de caracteres y soft-limit visual a 10.000)
+- [ ] **PUI-06**: Empty state en `ParcelasScreen` cuando no hay parcelas (mensaje + CTA grande "Crear primera parcela")
+- [ ] **PUI-07**: `PlantationCard` muestra fila inferior "Parcelas: N" con chevron como botón
+- [ ] **PUI-08**: Tap en la fila inferior expande sección inline con la lista de parcelas (reusa el mismo `ParcelaRow` que `ParcelasScreen`)
+- [ ] **PUI-09**: Tap en parcela dentro de la sección expandida navega a `GruposScreen` scoped (mismo flujo que la pantalla de Parcelas)
+- [ ] **PUI-10**: Long-press en parcela dentro de la sección expandida abre el mismo modal de edición
+
+### Group Screen — Refactor menor (consistencia con Parcelas/Plantaciones)
+
+- [ ] **GUI-01**: `GruposScreen` (ex pantalla de Subgrupos) elimina el botón inferior "Agregar grupo"
+- [ ] **GUI-02**: `GruposScreen` agrega icono `+` a la derecha del header (consistencia con Plantaciones y Parcelas)
+- [ ] **GUI-03**: `GruposScreen` recibe `parcelaId` y filtra grupos solo de esa parcela
+- [ ] **GUI-04**: Al crear un Grupo, se asocia automáticamente a la `parcelaId` de contexto (sin selector adicional)
+
+### Default Parcela (Feature Flag — Trial)
+
+- [ ] **PDEF-01**: Feature flag `AUTO_PARCELA_DEFAULT` en `mobile/src/config/featureFlags.ts` (o equivalente)
+- [ ] **PDEF-02**: Cuando el flag está activo, al crear una Plantación se auto-crea inmediatamente una Parcela con `nombre="Parcela 1"`, `codigo="P1"` vinculada a esa plantación
+- [ ] **PDEF-03**: La auto-creación está aislada en una función única (`createPlantationWithDefaultParcela()` o similar), comentada con `// FEATURE: auto-parcela trial — remove block if dropped`
+- [ ] **PDEF-04**: La feature funciona tanto online como offline (al sincronizar, la parcela default sube junto con la plantación)
+
+### Sync — Parcelas
+
+- [ ] **SYNC-PARC-01**: `SyncService.pullFromServer` incluye parcelas: trae todas las parcelas del servidor para las plantaciones del usuario
+- [ ] **SYNC-PARC-02**: `SyncService.pushToServer` sube parcelas locales con `pending_sync=true`
+- [ ] **SYNC-PARC-03**: Conflict detection: nombre/código duplicado al subir → error claro al usuario, parcela queda local con `pending_sync=true`
+- [ ] **SYNC-PARC-04**: La unidad atómica de sync sigue siendo el **Grupo** — la Parcela es metadata sincronizable independiente
+- [ ] **SYNC-PARC-05**: `pending_sync` propagación visual: PlantationCard muestra OrangeDot si CUALQUIER cosa adentro (parcela, grupo, árbol) está pendiente
+
+### Migración de Data en Supabase
+
+- [ ] **MIGR-01**: Backup completo de Supabase antes de la migración (script `scripts/supabase-backup.sh` ejecutado y verificado)
+- [ ] **MIGR-02**: Script SQL versionado en `supabase/migrations/012_parcelas_and_rename.sql` aplica el rename `subgroups`→`groups` y crea tabla `parcelas`
+- [ ] **MIGR-03**: Script SQL versionado en `supabase/migrations/013_data_consolidation.sql` consolida los clusters según el plan acordado
+- [ ] **MIGR-04**: **Cluster A** unificado bajo plantación nueva `"San Sebastián de la Selva"` (Otoño 2026) con 17 parcelas siguiendo el mapping: SSS-Loma-P1..P13 → Loma-P1..P13 (códigos LP1..LP13), SSS-Medio-P1..P4 → Medio-P1..P4 (códigos MP1..MP4); todos los grupos y árboles preservados (215 grupos, 6.321 árboles)
+- [ ] **MIGR-05**: **Cluster B** unificado bajo plantación nueva `"Pruebas - SSS"` (Otoño 2026) con 2 parcelas: "Selva Original" (código SO) y "P3 Vieja" (código P3V); 5 grupos, 114 árboles preservados
+- [ ] **MIGR-06**: **Cluster C** unificado bajo plantación nueva `"Pruebas - La Morita"` (Primavera 2026) con 2 parcelas: "La Morita" (código LM) y "Zona 1" (código Z1); 5 grupos, 341 árboles preservados
+- [ ] **MIGR-07**: 11 plantaciones eliminadas (cascade delete: plantación + grupos + árboles): `00000000` La Maluka, `e072775e` SSS-LOMA-P1 vacío, `80b85acd` Plantación Abril, `26e190db` Hfhj, `747981d3` Plantacion test 1, `0eea0006` Aa, `a536bd66` Plant 2, `09a315e2` Plant 3, `203beee5` Plant 4, `6d2e80b0` Plantación test 2, `7fea8850` Plant Test 4 — totalizando 44 grupos y 433 árboles eliminados
+- [ ] **MIGR-08**: Normalización de estados: 269 grupos con `estado='sincronizada'` en server → `estado='finalizada'` (alineado con Phase 13)
+- [ ] **MIGR-09**: **Re-cálculo de SubIDs** para los 6.776 árboles preservados con el nuevo formato `ParcelaCode + GroupCode + SpeciesCode + Position` (PARC-08). Operación batch dentro de la misma transacción que la consolidación; verificar que ningún SubID quede `NULL` y que todos sean únicos dentro de su plantación
+- [ ] **MIGR-10**: Verificación post-migración: conteos esperados (3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles), referencias FK consistentes, **nombres y códigos de Grupo únicos por parcela** (no por plantación), nombres y códigos de Parcela únicos por plantación, SubIDs únicos dentro de cada plantación, queries cargan correctamente
+- [ ] **MIGR-11**: SQLite local de cada usuario se sincroniza automáticamente con la nueva estructura (incluyendo SubIDs re-computados) en el siguiente pull (sin acción manual)
+
+### Export
+
+- [ ] **EXPO-PARC-01**: Export CSV/Excel agrega columna "Parcela" entre "Plantación" y "Grupo" (queda: ID Global, ID Parcial, Zona, Plantación, **Parcela**, Grupo, SubID, Periodo, Especie)
+- [ ] **EXPO-PARC-02**: La columna "Parcela" muestra `nombre` de la Parcela (no código)
+
+### Testing
+
+- [ ] **TEST-PARC-01**: Tests unitarios de `ParcelaRepository`: create, update, delete, validaciones de unicidad
+- [ ] **TEST-PARC-02**: Tests unitarios de `useParcelas` hook con mock de DB
+- [ ] **TEST-PARC-03**: Tests de integración del sync de parcelas (pull + push, conflict)
+- [ ] **TEST-PARC-04**: Tests de la migración SQL (idempotencia, conteos esperados, rollback funcional)
+- [ ] **TEST-PARC-05**: Tests del feature flag `AUTO_PARCELA_DEFAULT` (on/off)
+
+### Future Requirements (Deferred)
+
+- **GPS / coordenadas geográficas de Parcela vía upload KML/KMZ** — futura iteración. Upload desde app móvil y desde la web (formato estándar de Google Earth/Maps). NO se agregan columnas/campos GPS al schema en v1.1.
+- **Captura manual punto-a-punto de GPS** — pendiente de evaluar (ver issue en GitHub). Posiblemente detrás de un setting toggle. Decisión depende de qué tan robusta resulte la captura automática vía KML/KMZ.
+- Otros campos extra de Parcela: foto, color, área, descripción
+- Re-asignación de Grupo a otra Parcela
+- Sub-parcelas (jerarquía deeper)
+- Sync atómico de Parcela completa
+- Bulk operations (mover N grupos a otra parcela, eliminar N parcelas, etc.)
+- Estadísticas avanzadas por Parcela en dashboard
+
+### Out of Scope v1.1
+
+- Cambios al modelo de árboles (siguen igual)
+- Cambios a la pantalla de registro de árboles (solo recibe `grupoId` como antes, ahora `groupId`)
+- N/N resolution flow (sin cambios — ya en v1.0)
+- Nuevos roles o permisos (admin y tecnico siguen igual; ambos crean Parcelas y Grupos)
+- ID Global / ID Parcial generation (sin cambios)
+- **GPS de Parcela** (cualquier forma — KML/KMZ upload o captura manual): no se implementa en v1.1, no se agregan columnas al schema. Diferido a futura iteración.
+
+### Traceability v1.1
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| PARC-01 to PARC-10 | Phase 15 | Planned |
+| GRPN-01 to GRPN-09 | Phase 15-16 | Planned |
+| PCRD-01 to PCRD-07 | Phase 16 | Planned |
+| PUI-01 to PUI-10 | Phase 17 | Planned |
+| GUI-01 to GUI-04 | Phase 17 | Planned |
+| PDEF-01 to PDEF-04 | Phase 18 | Planned |
+| SYNC-PARC-01 to SYNC-PARC-05 | Phase 16 | Planned |
+| MIGR-01 to MIGR-11 | Phase 15 | Planned |
+| EXPO-PARC-01 to EXPO-PARC-02 | Phase 18 | Planned |
+| TEST-PARC-01 to TEST-PARC-05 | Phase 16-17 | Planned |
+
+**Coverage v1.1:**
+- Total requirements: 53
+- Mapped to phases: 53
+- Unmapped: 0
+
+---
+*Requirements defined: 2026-03-16 (v1.0), 2026-05-04 (v1.1)*
+*Last updated: 2026-05-04 — Milestone v1.1 requirements defined*
