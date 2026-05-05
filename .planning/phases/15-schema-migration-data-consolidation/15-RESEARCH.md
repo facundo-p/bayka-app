@@ -684,7 +684,12 @@ export const trees = sqliteTable('trees', {
 
 ---
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+> Resoluciones aplicadas durante /gsd-plan-phase:
+> - Q1 (RPC sync_subgroup): se actualiza en Phase 15 (15-02 Task 1 incluye `CREATE OR REPLACE FUNCTION sync_subgroup` con body sobre `groups`/`group_id`).
+> - Q2 (cómo ejecutar 012/013 en Supabase): vía Supabase Dashboard SQL Editor (documentado en `user_setup` de 15-02 y 15-03).
+> - Q3 (datos locales en dispositivos de técnicos): no es un problema — análisis inline + D-14/D-15 en CONTEXT.md.
 
 1. **¿Actualizar el RPC `sync_subgroup` en Phase 15 o Phase 16?**
    - Lo que sabemos: La función referencia `subgroups` y `subgroup_id` en su body (009_sync_subgroup_update_trees.sql). Después de 012, esos nombres no existen.
