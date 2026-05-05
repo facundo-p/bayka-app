@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: parcelas-renombre-grupos
-status: planning
-stopped_at: ""
-last_updated: "2026-05-04T00:00:00.000Z"
-last_activity: 2026-05-04
+milestone_name: — Parcelas + Renombre Subgrupo→Grupo
+status: Defining requirements
+stopped_at: Phase 15 context gathered
+last_updated: "2026-05-05T04:46:33.374Z"
+last_activity: 2026-05-04 — Milestone v1.1 started
 progress:
-  total_phases: 0
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  total_phases: 18
+  completed_phases: 14
+  total_plans: 45
+  completed_plans: 45
+  percent: 100
 ---
 
 # Project State
@@ -212,6 +212,6 @@ None currently.
 
 ## Session Continuity
 
-Last session: 2026-04-14T17:38:03.842Z
-Stopped at: Phase 14 UI-SPEC approved
-Resume file: .planning/phases/14-sincronizar-subgrupos-finalizados-con-n-ns-resolver-n-ns-blo/14-UI-SPEC.md
+Last session: 2026-05-05T04:46:33.362Z
+Stopped at: Phase 15 context gathered
+Resume file: .planning/phases/15-schema-migration-data-consolidation/15-CONTEXT.md
