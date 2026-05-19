@@ -22,9 +22,24 @@ export const plantations = sqliteTable('plantations', {
   periodoServer: text('periodo_server'),
 });
 
-export const subgroups = sqliteTable('subgroups', {
+export const parcelas = sqliteTable('parcelas', {
   id: text('id').primaryKey(),
   plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
+  nombre: text('nombre').notNull(),
+  codigo: text('codigo').notNull(),
+  descripcion: text('descripcion'),
+  pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull(),
+}, (t) => ({
+  uniqueCode: uniqueIndex('parcelas_plantation_code_unique').on(t.plantacionId, t.codigo),
+  uniqueName: uniqueIndex('parcelas_plantation_name_unique').on(t.plantacionId, t.nombre),
+}));
+
+export const groups = sqliteTable('groups', {
+  id: text('id').primaryKey(),
+  plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
+  parcelaId: text('parcela_id').references(() => parcelas.id),
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
   tipo: text('tipo').notNull().default('linea'),
@@ -33,13 +48,13 @@ export const subgroups = sqliteTable('subgroups', {
   createdAt: text('created_at').notNull(),
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
 }, (t) => ({
-  uniqueCode: uniqueIndex('subgroups_plantation_code_unique').on(t.plantacionId, t.codigo),
-  uniqueName: uniqueIndex('subgroups_plantation_name_unique').on(t.plantacionId, t.nombre),
+  uniqueCode: uniqueIndex('groups_parcela_code_unique').on(t.parcelaId, t.codigo),
+  uniqueName: uniqueIndex('groups_parcela_name_unique').on(t.parcelaId, t.nombre),
 }));
 
 export const trees = sqliteTable('trees', {
   id: text('id').primaryKey(),
-  subgrupoId: text('subgrupo_id').notNull().references(() => subgroups.id),
+  groupId: text('group_id').notNull().references(() => groups.id),
   especieId: text('especie_id').references(() => species.id),
   posicion: integer('posicion').notNull(),
   subId: text('sub_id').notNull(),

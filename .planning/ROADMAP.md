@@ -368,6 +368,20 @@ Plans:
 - [ ] 16-02-PLAN.md — `ParcelaRepository`, `parcelaQueries`, `useParcelas` hook, validaciones de unicidad, tests unitarios
 - [ ] 16-03-PLAN.md — `SyncService` extension (pull parcelas, push pending parcelas, conflict handling), tests de integración del sync, OrangeDot propagation logic
 
+**Scope D-16 (medido en Phase 15 execution — 131 errores tsc tras schema rename):**
+
+Plan 16-01 debe actualizar **estos archivos** (`subgroups`→`groups` import, `trees.subgrupoId`→`trees.groupId`, `generateSubId` 3-arg→4-arg incluyendo `parcelaCodigo`):
+
+- **Hooks (2):** `mobile/src/hooks/usePendingSyncCount.ts`, `mobile/src/hooks/useTrees.ts`
+- **Queries (6):** `mobile/src/queries/adminQueries.ts`, `catalogQueries.ts`, `dashboardQueries.ts`, `exportQueries.ts`, `freshnessQueries.ts`, `plantationDetailQueries.ts`
+- **Repositories (3):** `mobile/src/repositories/PlantationRepository.ts`, `SubGroupRepository.ts` (rename a `GroupRepository.ts`), `TreeRepository.ts`
+- **Services (3):** `mobile/src/services/sync/photoService.ts`, `pullService.ts`, `pushService.ts`
+- **Tests integración (5):** `mobile/tests/integration/cascade-delete.test.ts`, `role-based-access.test.ts`, `subgroup-lifecycle.test.ts` (rename a `group-lifecycle.test.ts`), `sync-pipeline.test.ts`, `tree-registration.test.ts`
+
+Total: 19 archivos · 131 errores tsc esperados pre-fix · post-fix `npx tsc --noEmit` debe quedar limpio.
+
+Nota: el plan 15-01 originalmente predijo solo `TreeRepository.ts` y `SubGroupRepository.ts` rotos por la firma nueva de `generateSubId`. La realidad incluyó todos los consumers de `subgroups`/`trees.subgrupoId` (rename directo per D-16, sin columna paralela). Phase 16 absorbe ese scope completo.
+
 ### Phase 17: UI Parcelas + GruposScreen refactor + textos visibles
 
 **Goal:** Implementar la nueva navegación 4-niveles con `ParcelasScreen` (lista, crear, editar via long-press, header `+`), agregar la sección expandible de parcelas en `PlantationCard` como atajo, refactorizar `GruposScreen` para que reciba `parcelaId` y use `+` en header (eliminando botón inferior por consistencia), y actualizar todos los textos visibles "Subgrupo"→"Grupo".
