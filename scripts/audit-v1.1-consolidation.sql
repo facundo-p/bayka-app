@@ -2,6 +2,8 @@
 -- Audit query: Phase 15 v1.1 consolidation — pre-migration count verification
 -- ============================================================================
 -- Run against Supabase production BEFORE writing 013_data_consolidation.sql.
+-- NOTE (post-012): tabla `subgroups` renombrada a `groups`; columna `trees.subgroup_id` renombrada a `trees.group_id`.
+-- Este script ya usa los nombres nuevos.
 -- Output is the source of truth for:
 --   - Mapping plantation.id → target Parcela (Loma-P1..P13, Medio-P1..P4, etc.)
 --   - Re-confirming the ~6.776 tree count vs the ~7000 figure from earlier analysis
@@ -27,8 +29,8 @@ SELECT
   COUNT(DISTINCT s.id) AS groups_count,
   COUNT(t.id)          AS trees_count
 FROM plantations p
-LEFT JOIN subgroups s ON s.plantacion_id = p.id
-LEFT JOIN trees     t ON t.subgrupo_id   = s.id
+LEFT JOIN groups s ON s.plantation_id = p.id
+LEFT JOIN trees     t ON t.group_id   = s.id
 GROUP BY p.id, p.lugar, p.periodo, p.estado
 ORDER BY p.lugar, p.periodo, p.id;
 
@@ -59,8 +61,8 @@ WITH classified AS (
     s.id  AS group_id,
     t.id  AS tree_id
   FROM plantations p
-  LEFT JOIN subgroups s ON s.plantacion_id = p.id
-  LEFT JOIN trees     t ON t.subgrupo_id   = s.id
+  LEFT JOIN groups s ON s.plantation_id = p.id
+  LEFT JOIN trees     t ON t.group_id   = s.id
 )
 SELECT
   cluster,
@@ -82,8 +84,8 @@ SELECT
   COUNT(DISTINCT s.id) AS groups_count,
   COUNT(t.id)          AS trees_count
 FROM plantations p
-LEFT JOIN subgroups s ON s.plantacion_id = p.id
-LEFT JOIN trees     t ON t.subgrupo_id   = s.id
+LEFT JOIN groups s ON s.plantation_id = p.id
+LEFT JOIN trees     t ON t.group_id   = s.id
 WHERE p.id::text LIKE '00000000%'  -- expand list with all 11 UUIDs from MIGR-07
    OR p.id::text LIKE 'e072775e%'
    OR p.id::text LIKE '80b85acd%'
@@ -104,7 +106,7 @@ ORDER BY p.lugar;
 SELECT
   estado,
   COUNT(*) AS groups_count
-FROM subgroups
+FROM groups
 GROUP BY estado
 ORDER BY estado;
 
@@ -113,35 +115,35 @@ ORDER BY estado;
 -- ---------------------------------------------------------------------------
 
 -- 5a. Subgroups with NULL or empty codigo
-SELECT id, plantacion_id, nombre, codigo
-FROM subgroups
+SELECT id, plantation_id, nombre, codigo
+FROM groups
 WHERE codigo IS NULL OR trim(codigo) = '';
 
 -- 5b. Trees without a parent subgroup (orphan FK)
-SELECT t.id, t.subgrupo_id
+SELECT t.id, t.group_id
 FROM trees t
-LEFT JOIN subgroups s ON s.id = t.subgrupo_id
+LEFT JOIN groups s ON s.id = t.group_id
 WHERE s.id IS NULL;
 
 -- 5c. Trees with NULL subId or empty
-SELECT id, subgrupo_id, sub_id, posicion
+SELECT id, group_id, sub_id, posicion
 FROM trees
 WHERE sub_id IS NULL OR trim(sub_id) = '';
 
 -- 5d. Existing rows with tipo='parcela' (REQUIREMENTS expects 0 — abort if any)
-SELECT id, plantacion_id, nombre, codigo, tipo
-FROM subgroups
+SELECT id, plantation_id, nombre, codigo, tipo
+FROM groups
 WHERE tipo = 'parcela';
 
--- 5e. Duplicate (plantacion_id, codigo) within current schema — should be 0
+-- 5e. Duplicate (plantation_id, codigo) within current schema — should be 0
 --     because of the existing per-plantation unique index
-SELECT plantacion_id, codigo, COUNT(*)
-FROM subgroups
-GROUP BY plantacion_id, codigo
+SELECT plantation_id, codigo, COUNT(*)
+FROM groups
+GROUP BY plantation_id, codigo
 HAVING COUNT(*) > 1;
 
 -- 5f. Grand totals (cross-check against MIGR-04..07)
 SELECT
   (SELECT COUNT(*) FROM plantations) AS total_plantations,
-  (SELECT COUNT(*) FROM subgroups)   AS total_groups,
+  (SELECT COUNT(*) FROM groups)   AS total_groups,
   (SELECT COUNT(*) FROM trees)       AS total_trees;
