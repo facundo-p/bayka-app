@@ -81,7 +81,7 @@ describe('Sync pipeline', () => {
       insertSg.run(sg.id, sg.plantacionId, sg.nombre, sg.codigo, sg.tipo, sg.estado, sg.usuarioCreador, sg.createdAt);
 
       const insertTree = sqlite.prepare(
-        'INSERT INTO trees (id, subgrupo_id, especie_id, posicion, sub_id, foto_url, plantacion_id, global_id, usuario_registro, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO trees (id, group_id, especie_id, posicion, sub_id, foto_url, plantacion_id, global_id, usuario_registro, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       );
       const now = new Date().toISOString();
       insertTree.run('tree-1', sg.id, null, 1, 'LA-NN-1', null, null, null, 'user1', now);
