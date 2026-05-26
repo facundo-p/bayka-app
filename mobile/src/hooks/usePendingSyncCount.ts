@@ -1,15 +1,15 @@
 import { useLiveData } from '../database/liveQuery';
 import { db } from '../database/client';
-import { subgroups, trees } from '../database/schema';
+import { groups, trees } from '../database/schema';
 import { eq, count, and, isNull, isNotNull, sql } from 'drizzle-orm';
 import { useCurrentUserId } from './useCurrentUserId';
 import { sqlIsLocalUri } from '../utils/photoUri';
 
 /**
- * Returns live counts for SubGroups with pendingSync=true.
- * Filtered by current user — each user only sees their own pending subgroups.
+ * Returns live counts for Groups with pendingSync=true.
+ * Filtered by current user — each user only sees their own pending groups.
  * - pendingCount: total with pendingSync=true (shown on badge/card)
- * - syncableCount: pendingSync=true subgroups with no unresolved N/N (shown on sync CTA)
+ * - syncableCount: pendingSync=true groups with no unresolved N/N (shown on sync CTA)
  * - blockedByNN: finalizada but blocked by unresolved N/N
  */
 export function usePendingSyncCount(plantacionId?: string) {
@@ -17,22 +17,22 @@ export function usePendingSyncCount(plantacionId?: string) {
 
   const { data: pendingData } = useLiveData(
     () => {
-      const conditions = [eq(subgroups.pendingSync, true)];
+      const conditions = [eq(groups.pendingSync, true)];
       if (plantacionId) {
-        conditions.push(eq(subgroups.plantacionId, plantacionId));
+        conditions.push(eq(groups.plantacionId, plantacionId));
       }
       if (userId) {
-        conditions.push(eq(subgroups.usuarioCreador, userId));
+        conditions.push(eq(groups.usuarioCreador, userId));
       }
       return db
         .select({ cnt: count() })
-        .from(subgroups)
+        .from(groups)
         .where(and(...conditions));
     },
     [plantacionId, userId]
   );
 
-  // Count finalizada SubGroups that have unresolved N/N trees
+  // Count finalizada Groups that have unresolved N/N trees
   const { data: nnBlockedData } = useLiveData(
     () => {
       if (!plantacionId) {
@@ -40,22 +40,22 @@ export function usePendingSyncCount(plantacionId?: string) {
         return Promise.resolve([{ cnt: 0 }]);
       }
       const conditions = [
-        eq(subgroups.plantacionId, plantacionId),
-        eq(subgroups.estado, 'finalizada'),
-        sql`EXISTS (SELECT 1 FROM trees WHERE trees.subgrupo_id = ${subgroups.id} AND trees.especie_id IS NULL)`,
+        eq(groups.plantacionId, plantacionId),
+        eq(groups.estado, 'finalizada'),
+        sql`EXISTS (SELECT 1 FROM trees WHERE trees.group_id = ${groups.id} AND trees.especie_id IS NULL)`,
       ];
       if (userId) {
-        conditions.push(eq(subgroups.usuarioCreador, userId));
+        conditions.push(eq(groups.usuarioCreador, userId));
       }
       return db
         .select({ cnt: count() })
-        .from(subgroups)
+        .from(groups)
         .where(and(...conditions));
     },
     [plantacionId, userId]
   );
 
-  // Count trees with local photos not yet uploaded (in synced subgroups, pendingSync=false)
+  // Count trees with local photos not yet uploaded (in synced groups, pendingSync=false)
   const { data: pendingPhotosData } = useLiveData(
     () => {
       if (!plantacionId) {
@@ -64,11 +64,11 @@ export function usePendingSyncCount(plantacionId?: string) {
       return db
         .select({ cnt: count() })
         .from(trees)
-        .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+        .innerJoin(groups, eq(trees.groupId, groups.id))
         .where(
           and(
-            eq(subgroups.plantacionId, plantacionId),
-            eq(subgroups.pendingSync, false),
+            eq(groups.plantacionId, plantacionId),
+            eq(groups.pendingSync, false),
             isNotNull(trees.fotoUrl),
             eq(trees.fotoSynced, false),
             sqlIsLocalUri(trees.fotoUrl)

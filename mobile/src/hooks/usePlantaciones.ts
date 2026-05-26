@@ -14,7 +14,7 @@ import { useConfirm } from './useConfirm';
 import { checkFreshness } from '../queries/freshnessQueries';
 import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
 import { deletePlantationLocally } from '../repositories/PlantationRepository';
-import { getUnsyncedSubgroupSummary } from '../queries/catalogQueries';
+import { getUnsyncedGroupSummary } from '../queries/catalogQueries';
 import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { colors } from '../theme';
 import {
@@ -108,7 +108,7 @@ export function usePlantaciones() {
     const item = plantationList?.find((p: any) => p.id === plantationId);
     if (!item) return;
 
-    const { activaCount, finalizadaCount } = await getUnsyncedSubgroupSummary(plantationId);
+    const { activaCount, finalizadaCount } = await getUnsyncedGroupSummary(plantationId);
     const hasUnsynced = activaCount + finalizadaCount > 0;
 
     if (hasUnsynced) {

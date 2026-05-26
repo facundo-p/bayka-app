@@ -31,7 +31,7 @@ export type ExpandedMeta = {
   canFinalize: boolean;
   idsGenerated: boolean;
   unresolvedNNCount: number;
-  unresolvedNNSubgroups: number;
+  unresolvedNNGroups: number;
 };
 
 // ─── Standalone utility ─────────────────────────────────────────────────────
@@ -40,13 +40,13 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
   let canFinalize = false;
   let idsGenerated = false;
   let unresolvedNNCount = 0;
-  let unresolvedNNSubgroups = 0;
+  let unresolvedNNGroups = 0;
   if (plantation.estado === 'activa') {
     try {
       const gate = await checkFinalizationGate(plantation.id);
       canFinalize = gate.canFinalize;
       unresolvedNNCount = gate.unresolvedNNCount;
-      unresolvedNNSubgroups = gate.unresolvedNNSubgroups;
+      unresolvedNNGroups = gate.unresolvedNNGroups;
     } catch (e) {
       console.error('[fetchPlantationMeta] checkFinalizationGate failed:', e);
     }
@@ -58,7 +58,7 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
       console.error('[fetchPlantationMeta] hasIdsGenerated failed:', e);
     }
   }
-  return { canFinalize, idsGenerated, unresolvedNNCount, unresolvedNNSubgroups };
+  return { canFinalize, idsGenerated, unresolvedNNCount, unresolvedNNGroups };
 }
 
 export function usePlantationAdmin() {
@@ -114,10 +114,10 @@ export function usePlantationAdmin() {
         });
       } else if (gate.unresolvedNNCount > 0) {
         const plural = gate.unresolvedNNCount > 1 ? 'es' : '';
-        const sgPlural = gate.unresolvedNNSubgroups > 1 ? 's' : '';
+        const sgPlural = gate.unresolvedNNGroups > 1 ? 's' : '';
         showInfoDialog(showConfirm,
           'No se puede finalizar',
-          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNSubgroups} subgrupo${sgPlural}.`,
+          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNGroups} subgrupo${sgPlural}.`,
           'alert-circle-outline',
           colors.danger
         );

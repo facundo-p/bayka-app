@@ -12,7 +12,7 @@ import { useNetStatus } from './useNetStatus';
 import { useRoutePrefix } from './useRoutePrefix';
 import { useConfirm } from './useConfirm';
 import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
-import { getServerCatalog, getLocalPlantationIds, getUnsyncedSubgroupSummary, ServerPlantation } from '../queries/catalogQueries';
+import { getServerCatalog, getLocalPlantationIds, getUnsyncedGroupSummary, ServerPlantation } from '../queries/catalogQueries';
 import { deletePlantationLocally } from '../repositories/PlantationRepository';
 import { batchDownload, DownloadResult, DownloadProgress } from '../services/SyncService';
 import { colors } from '../theme';
@@ -95,7 +95,7 @@ export function useCatalog() {
     const item = catalogItems.find((c) => c.id === plantationId);
     if (!item) return;
 
-    const { activaCount, finalizadaCount } = await getUnsyncedSubgroupSummary(plantationId);
+    const { activaCount, finalizadaCount } = await getUnsyncedGroupSummary(plantationId);
     const hasUnsynced = activaCount + finalizadaCount > 0;
 
     if (hasUnsynced) {
