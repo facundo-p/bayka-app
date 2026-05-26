@@ -25,9 +25,9 @@ const SWIPE_THRESHOLD = 40;
 const VELOCITY_THRESHOLD = 500;
 
 export default function NNResolutionScreen() {
-  const { subgrupoId, subgrupoCodigo, plantacionId } = useLocalSearchParams<{
-    subgrupoId?: string;
-    subgrupoCodigo?: string;
+  const { grupoId, grupoCodigo, plantacionId } = useLocalSearchParams<{
+    grupoId?: string;
+    grupoCodigo?: string;
     plantacionId: string;
   }>();
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function NNResolutionScreen() {
     getConflictForTree,
     acceptServerResolution,
     keepLocalResolution,
-  } = useNNResolution({ plantacionId: plantacionId ?? '', subgrupoId, subgrupoCodigo });
+  } = useNNResolution({ plantacionId: plantacionId ?? '', grupoId, grupoCodigo });
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -108,8 +108,8 @@ export default function NNResolutionScreen() {
 
   // Build subtitle for header
   const subtitleParts: string[] = [];
-  if (isPlantationMode && currentTree.subgrupoNombre) {
-    subtitleParts.push(currentTree.subgrupoNombre);
+  if (isPlantationMode && currentTree.grupoNombre) {
+    subtitleParts.push(currentTree.grupoNombre);
   }
   subtitleParts.push(`Pos ${currentTree.posicion}`);
   const subtitle = subtitleParts.join(' · ');

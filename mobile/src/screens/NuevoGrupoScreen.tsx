@@ -10,16 +10,16 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, fonts } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
-import SubgrupoForm from '../components/SubgrupoForm';
-import { useNewSubgroup } from '../hooks/useNewSubgroup';
+import GrupoForm from '../components/GrupoForm';
+import { useNewGroup } from '../hooks/useNewGroup';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 
-export default function NuevoSubgrupoScreen() {
+export default function NuevoGrupoScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const router = useRouter();
   const routePrefix = useRoutePrefix();
 
-  const { lastSubGroupName, handleCreateSubgroup } = useNewSubgroup(plantacionId);
+  const { lastGroupName, handleCreateGroup } = useNewGroup(plantacionId);
 
   return (
     <ScreenContainer withTexture>
@@ -30,14 +30,14 @@ export default function NuevoSubgrupoScreen() {
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Animated.View entering={FadeInDown.duration(400)}>
           <Text style={styles.sectionTitle}>Datos del subgrupo</Text>
-          <SubgrupoForm
+          <GrupoForm
             mode="create"
             plantacionId={plantacionId ?? ''}
-            lastSubGroupName={lastSubGroupName}
+            lastGroupName={lastGroupName}
             onSubmit={async (values) => {
-              const result = await handleCreateSubgroup(values);
+              const result = await handleCreateGroup(values);
               if (result.success) {
-                router.replace(`/${routePrefix}/plantation/subgroup/${result.id}?plantacionId=${plantacionId}&subgrupoCodigo=${values.codigo.toUpperCase()}&subgrupoNombre=${encodeURIComponent(values.nombre)}` as any);
+                router.replace(`/${routePrefix}/plantation/subgroup/${result.id}?plantacionId=${plantacionId}&grupoCodigo=${values.codigo.toUpperCase()}&grupoNombre=${encodeURIComponent(values.nombre)}` as any);
               }
               return result;
             }}

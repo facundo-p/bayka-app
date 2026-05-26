@@ -22,8 +22,8 @@ type Props = {
   totalNN: number;
   estadoLoaded: boolean;
   isFinalizada: boolean;
-  subgroupFilter: string | null;
-  subgroupFilterConfigs: FilterConfig[];
+  groupFilter: string | null;
+  groupFilterConfigs: FilterConfig[];
   onResolveAllNN: () => void;
   onToggleFilter: (key: string) => void;
 };
@@ -33,8 +33,8 @@ export default function PlantationDetailHeader({
   totalNN,
   estadoLoaded,
   isFinalizada,
-  subgroupFilter,
-  subgroupFilterConfigs,
+  groupFilter,
+  groupFilterConfigs,
   onResolveAllNN,
   onToggleFilter,
 }: Props) {
@@ -64,8 +64,8 @@ export default function PlantationDetailHeader({
 
       <Animated.View entering={FadeInDown.delay(100).duration(300)} style={{ paddingTop: spacing.md }}>
         <FilterCards
-          filters={subgroupFilterConfigs}
-          activeFilter={subgroupFilter}
+          filters={groupFilterConfigs}
+          activeFilter={groupFilter}
           onToggleFilter={onToggleFilter}
         />
       </Animated.View>

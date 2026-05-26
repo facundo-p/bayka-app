@@ -2,14 +2,14 @@ import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-nati
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncSubGroupResult, PhotoSyncProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, PhotoSyncProgress } from '../services/SyncService';
 import { getErrorMessage } from '../services/SyncService';
 import BaseModal from './BaseModal';
 
 interface Props {
   state: SyncState;
   progress: SyncProgress | null;
-  results: SyncSubGroupResult[];
+  results: SyncGroupResult[];
   successCount: number;
   failureCount: number;
   pullSuccess: boolean | null;
@@ -163,7 +163,7 @@ export default function SyncProgressModal({
               {results
                 .filter((r) => !r.success)
                 .map((r) => (
-                  <View key={r.subgroupId} style={styles.failureItem}>
+                  <View key={r.groupId} style={styles.failureItem}>
                     <Text style={styles.failureName}>{r.nombre}</Text>
                     <Text style={styles.failureMessage}>
                       {!r.success ? getErrorMessage(r.error) : ''}

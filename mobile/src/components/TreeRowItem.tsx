@@ -13,7 +13,7 @@ export interface TreeItemData {
   fotoUrl?: string | null;
   fotoSynced?: boolean;
   createdAt: string;
-  subgrupoId: string;
+  grupoId: string;
   usuarioRegistro: string;
 }
 

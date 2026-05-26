@@ -49,7 +49,7 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
 
         <View style={styles.statsRow}>
           <Ionicons name="layers-outline" size={12} color={colors.statTotal} />
-          <Text style={styles.statText}>{item.subgroup_count} subgrupos</Text>
+          <Text style={styles.statText}>{item.group_count} subgrupos</Text>
           <View style={styles.statSpacer} />
           <Ionicons name="leaf-outline" size={12} color={colors.statTotal} />
           <Text style={styles.statText}>{item.tree_count} arboles</Text>

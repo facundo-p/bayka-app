@@ -1,10 +1,10 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import type { SubGroupTipo } from '../repositories/SubGroupRepository';
+import type { GroupTipo } from '../repositories/GroupRepository';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
-  value: SubGroupTipo;
-  onChange: (tipo: SubGroupTipo) => void;
+  value: GroupTipo;
+  onChange: (tipo: GroupTipo) => void;
 }
 
 export default function TipoSegmentedControl({ value, onChange }: Props) {
