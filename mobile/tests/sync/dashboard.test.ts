@@ -4,10 +4,10 @@
 jest.mock('../../src/database/schema', () => ({
   plantations: { id: 'plantations.id', createdAt: 'plantations.created_at', lugar: 'plantations.lugar' },
   plantationUsers: { plantationId: 'pu.plantation_id', userId: 'pu.user_id' },
-  subgroups: { id: 'sg.id', plantacionId: 'sg.plantacion_id', estado: 'sg.estado', pendingSync: 'sg.pending_sync' },
+  groups: { id: 'sg.id', plantacionId: 'sg.plantacion_id', estado: 'sg.estado', pendingSync: 'sg.pending_sync' },
   trees: {
     id: 'trees.id',
-    subgrupoId: 'trees.subgrupo_id',
+    grupoId: 'trees.subgrupo_id',
     usuarioRegistro: 'trees.usuario_registro',
     createdAt: 'trees.created_at',
     plantacionId: 'trees.plantacion_id',
@@ -183,7 +183,7 @@ describe('dashboardQueries', () => {
   });
 
   describe('getPendingSyncCounts — pending sync per plantation (SYNC-07)', () => {
-    it('filters subgroups where pendingSync=true and groups by plantation', async () => {
+    it('filters groups where pendingSync=true and groups by plantation', async () => {
       await getPendingSyncCounts();
 
       expect(eq).toHaveBeenCalledWith(

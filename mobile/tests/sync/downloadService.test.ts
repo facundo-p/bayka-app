@@ -23,10 +23,10 @@ jest.mock('../../src/supabase/client', () => ({
   isSupabaseConfigured: true,
 }));
 
-// Mock SubGroupRepository (required by SyncService module)
-jest.mock('../../src/repositories/SubGroupRepository', () => ({
+// Mock GroupRepository (required by SyncService module)
+jest.mock('../../src/repositories/GroupRepository', () => ({
   markAsSincronizada: jest.fn(),
-  getSyncableSubGroups: jest.fn(),
+  getSyncableGroups: jest.fn(),
 }));
 
 const { db } = require('../../src/database/client');
@@ -66,7 +66,7 @@ function setupDbInsertSuccess() {
  * Sets up supabase.from to return empty data (simulates empty pullFromServer).
  * Handles all chain patterns used by pullFromServer:
  * - .select().eq().single() (plantation metadata)
- * - .select().eq() (subgroups, plantation_users, plantation_species)
+ * - .select().eq() (groups, plantation_users, plantation_species)
  * - .select().in() (trees)
  *
  * The eq() mock returns a thenable that resolves to { data: [], error: null }

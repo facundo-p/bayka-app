@@ -6,10 +6,10 @@
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestSubGroup, createTestTree, createTestSpecies } from '../helpers/factories';
+import { createTestPlantation, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
-  subgroups,
+  groups,
   trees,
   species,
   plantationSpecies,
@@ -39,7 +39,7 @@ afterAll(() => {
 beforeEach(async () => {
   // Clear data in FK order
   await db.delete(trees);
-  await db.delete(subgroups);
+  await db.delete(groups);
   await db.delete(plantationSpecies);
   await db.delete(plantationUsers);
   await db.delete(plantations);
@@ -152,36 +152,36 @@ describe('Role-based access', () => {
     expect(result).toHaveLength(0);
   });
 
-  test('admin sees all subgroups across all technicians', async () => {
+  test('admin sees all groups across all technicians', async () => {
     const plantation = createTestPlantation({ organizacionId: ORG_ID, creadoPor: ADMIN_USER_ID });
     await db.insert(plantations).values(plantation);
 
     // Two tecnicos each create a subgroup
-    const sg1 = createTestSubGroup({
+    const sg1 = createTestGroup({
       plantacionId: plantation.id,
       codigo: 'L01',
       nombre: 'Linea 01',
       usuarioCreador: TECNICO1_USER_ID,
     });
-    const sg2 = createTestSubGroup({
+    const sg2 = createTestGroup({
       plantacionId: plantation.id,
       codigo: 'L02',
       nombre: 'Linea 02',
       usuarioCreador: TECNICO2_USER_ID,
     });
-    await db.insert(subgroups).values(sg1);
-    await db.insert(subgroups).values(sg2);
+    await db.insert(groups).values(sg1);
+    await db.insert(groups).values(sg2);
 
-    // Admin query: get all subgroups for plantation (no user filter)
-    const allSubgroups = await db
+    // Admin query: get all groups for plantation (no user filter)
+    const allGroups = await db
       .select()
-      .from(subgroups)
-      .where(eq(subgroups.plantacionId, plantation.id));
+      .from(groups)
+      .where(eq(groups.plantacionId, plantation.id));
 
-    expect(allSubgroups).toHaveLength(2);
+    expect(allGroups).toHaveLength(2);
 
-    // Both tecnico subgroups visible
-    const creators = allSubgroups.map(sg => sg.usuarioCreador);
+    // Both tecnico groups visible
+    const creators = allGroups.map(sg => sg.usuarioCreador);
     expect(creators).toContain(TECNICO1_USER_ID);
     expect(creators).toContain(TECNICO2_USER_ID);
   });

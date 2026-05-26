@@ -63,7 +63,7 @@ function makeEqTerminalChain(resolvedValue: any) {
 
 /**
  * Build a Supabase chain where `in()` is the terminal (resolves).
- * Used for subgroups and trees count queries: select().in()
+ * Used for groups and trees count queries: select().in()
  */
 function makeInTerminalChain(resolvedValue: any) {
   const chain: any = {};
@@ -94,7 +94,7 @@ describe('catalogQueries', () => {
 
       (supabase.from as jest.Mock)
         .mockReturnValueOnce(plantationsChain)
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))  // subgroups
+        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))  // groups
         .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null })); // trees
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
@@ -172,11 +172,11 @@ describe('catalogQueries', () => {
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
       expect(results).toHaveLength(1);
-      expect(results[0].subgroup_count).toBe(2);
+      expect(results[0].group_count).toBe(2);
       expect(results[0].tree_count).toBe(3);
     });
 
-    it('Test 5b: defaults to 0 counts when no subgroups or trees for plantation', async () => {
+    it('Test 5b: defaults to 0 counts when no groups or trees for plantation', async () => {
       const remotePlantations = [makePlantation('p-empty')];
 
       (supabase.from as jest.Mock)
@@ -186,7 +186,7 @@ describe('catalogQueries', () => {
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
-      expect(results[0].subgroup_count).toBe(0);
+      expect(results[0].group_count).toBe(0);
       expect(results[0].tree_count).toBe(0);
     });
   });

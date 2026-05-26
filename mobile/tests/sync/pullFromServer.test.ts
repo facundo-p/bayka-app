@@ -23,9 +23,9 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/repositories/SubGroupRepository', () => ({
-  markSubGroupSynced: jest.fn().mockResolvedValue(undefined),
-  getSyncableSubGroups: jest.fn().mockResolvedValue([]),
+jest.mock('../../src/repositories/GroupRepository', () => ({
+  markGroupSynced: jest.fn().mockResolvedValue(undefined),
+  getSyncableGroups: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../src/repositories/TreeRepository', () => ({
@@ -177,11 +177,11 @@ describe('pullFromServer — plantation metadata', () => {
   });
 });
 
-// ─── Subgroups ───────────────────────────────────────────────────────────────
+// ─── Groups ───────────────────────────────────────────────────────────────
 
-describe('pullFromServer — subgroups', () => {
-  it('upserts remote subgroups into local db', async () => {
-    const remoteSubgroups = [
+describe('pullFromServer — groups', () => {
+  it('upserts remote groups into local db', async () => {
+    const remoteGroups = [
       { id: 'sg-1', plantation_id: 'p-1', nombre: 'A', codigo: 'C1', tipo: 'tipo', estado: 'activa', usuario_creador: 'u1', created_at: '2026-01-01' },
       { id: 'sg-2', plantation_id: 'p-1', nombre: 'B', codigo: 'C2', tipo: 'tipo', estado: 'activa', usuario_creador: 'u1', created_at: '2026-01-01' },
     ];
@@ -191,7 +191,7 @@ describe('pullFromServer — subgroups', () => {
         return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: jest.fn().mockResolvedValue({ data: null, error: null }) }) }) };
       }
       if (table === 'subgroups') {
-        return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: remoteSubgroups, error: null }) }) };
+        return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: remoteGroups, error: null }) }) };
       }
       return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }), in: jest.fn().mockResolvedValue({ data: [], error: null }) }) };
     });
@@ -203,7 +203,7 @@ describe('pullFromServer — subgroups', () => {
   });
 
   it('preserves local pendingSync flag during upsert (calls onConflictDoUpdate)', async () => {
-    const remoteSubgroups = [
+    const remoteGroups = [
       { id: 'sg-1', plantation_id: 'p-1', nombre: 'A', codigo: 'C1', tipo: 'tipo', estado: 'activa', usuario_creador: 'u1', created_at: '2026-01-01' },
     ];
 
@@ -214,7 +214,7 @@ describe('pullFromServer — subgroups', () => {
 
     (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
       if (table === 'subgroups') {
-        return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: remoteSubgroups, error: null }) }) };
+        return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: remoteGroups, error: null }) }) };
       }
       if (table === 'plantations') {
         return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: jest.fn().mockResolvedValue({ data: null, error: null }) }) }) };
@@ -266,7 +266,7 @@ describe('pullFromServer — plantation_users', () => {
 // ─── Tree conflict detection ─────────────────────────────────────────────────
 
 describe('pullFromServer — tree conflict detection', () => {
-  const remoteSubgroups = [{ id: 'sg-1', plantation_id: 'p-1', nombre: 'A', codigo: 'C1', tipo: 'tipo', estado: 'activa', usuario_creador: 'u1', created_at: '2026-01-01' }];
+  const remoteGroups = [{ id: 'sg-1', plantation_id: 'p-1', nombre: 'A', codigo: 'C1', tipo: 'tipo', estado: 'activa', usuario_creador: 'u1', created_at: '2026-01-01' }];
   const remoteTrees = [{ id: 'tree-1', subgroup_id: 'sg-1', species_id: 'sp-server', posicion: 1, sub_id: 'A1', foto_url: null, usuario_registro: 'u1', created_at: '2026-01-01' }];
 
   function setupTreeTest() {
@@ -275,7 +275,7 @@ describe('pullFromServer — tree conflict detection', () => {
         return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ single: jest.fn().mockResolvedValue({ data: null, error: null }) }) }) };
       }
       if (table === 'subgroups') {
-        return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: remoteSubgroups, error: null }) }) };
+        return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: remoteGroups, error: null }) }) };
       }
       if (table === 'trees') {
         return { select: jest.fn().mockReturnValue({ in: jest.fn().mockResolvedValue({ data: remoteTrees, error: null }) }) };
@@ -322,7 +322,7 @@ describe('pullFromServer — tree conflict detection', () => {
     // db.insert is called for subgroup upsert but NOT for tree upsert
     // subgroup insert = 1 call; tree insert should be skipped due to conflict
     const insertCalls = (mockDb.insert as jest.Mock).mock.calls;
-    // All insert calls should be for subgroups only (1 subgroup), not trees
+    // All insert calls should be for groups only (1 subgroup), not trees
     expect(insertCalls.length).toBe(1);
   });
 

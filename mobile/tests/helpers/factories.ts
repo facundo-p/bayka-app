@@ -40,9 +40,9 @@ export function createTestPlantation(overrides?: Partial<NewPlantation>): NewPla
   };
 }
 
-// ---- SubGroup ----
+// ---- Group ----
 
-export type NewSubgroup = {
+export type NewGroup = {
   id: string;
   plantacionId: string;
   nombre: string;
@@ -53,7 +53,7 @@ export type NewSubgroup = {
   createdAt: string;
 };
 
-export function createTestSubGroup(overrides?: Partial<NewSubgroup>): NewSubgroup {
+export function createTestGroup(overrides?: Partial<NewGroup>): NewGroup {
   return {
     id: randomId(),
     plantacionId: 'plantation-default',
@@ -71,7 +71,7 @@ export function createTestSubGroup(overrides?: Partial<NewSubgroup>): NewSubgrou
 
 export type NewTree = {
   id: string;
-  subgrupoId: string;
+  groupId: string;
   especieId: string | null;
   posicion: number;
   subId: string;
@@ -85,7 +85,7 @@ export type NewTree = {
 export function createTestTree(overrides?: Partial<NewTree>): NewTree {
   return {
     id: randomId(),
-    subgrupoId: 'sg-default',
+    groupId: 'sg-default',
     especieId: 'species-eucalyptus',
     posicion: 1,
     subId: 'LA-EUC-1',

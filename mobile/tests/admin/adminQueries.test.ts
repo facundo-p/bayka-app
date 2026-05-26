@@ -36,18 +36,18 @@ const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 
 /**
  * Helper: sets up mockDb.select to return different results on sequential calls.
- * Call 1: subgroups query (used by checkFinalizationGate)
+ * Call 1: groups query (used by checkFinalizationGate)
  * Call 2: N/N trees query (used by checkFinalizationGate for unresolvedNNCount)
  */
-function setupFinalizationMocks(subgroups: any[], nnRows: any[] = []) {
+function setupFinalizationMocks(groups: any[], nnRows: any[] = []) {
   let callCount = 0;
   (mockDb.select as jest.Mock).mockImplementation(() => {
     callCount++;
     if (callCount === 1) {
-      // Subgroups query
+      // Groups query
       return {
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(subgroups),
+          where: jest.fn().mockResolvedValue(groups),
         }),
       };
     }
@@ -83,13 +83,13 @@ describe('adminQueries', () => {
 
       expect(result.canFinalize).toBe(true);
       expect(result.blocking).toEqual([]);
-      expect(result.hasSubgroups).toBe(true);
+      expect(result.hasGroups).toBe(true);
       expect(result.unresolvedNNCount).toBe(0);
-      expect(result.unresolvedNNSubgroups).toBe(0);
+      expect(result.unresolvedNNGroups).toBe(0);
     });
 
     it('canFinalize=true cuando todos los subgrupos están sincronizada + pendingSync=false', async () => {
-      // After Phase 14: subgroups go finalizada → sincronizada on sync.
+      // After Phase 14: groups go finalizada → sincronizada on sync.
       // sincronizada is a valid "done" state for plantation finalization.
       setupFinalizationMocks(
         [
@@ -158,7 +158,7 @@ describe('adminQueries', () => {
       const result = await checkFinalizationGate('plantation-1');
 
       expect(result.canFinalize).toBe(false);
-      expect(result.hasSubgroups).toBe(false);
+      expect(result.hasGroups).toBe(false);
     });
 
     it('canFinalize=false cuando hay N/N sin resolver', async () => {
@@ -167,16 +167,16 @@ describe('adminQueries', () => {
           { nombre: 'Línea A', estado: 'finalizada', pendingSync: false },
         ],
         [
-          { subgrupoId: 'sg-1', cnt: 3 }, // 3 unresolved N/N trees
+          { grupoId: 'sg-1', cnt: 3 }, // 3 unresolved N/N trees
         ]
       );
 
       const result = await checkFinalizationGate('plantation-1');
 
       expect(result.canFinalize).toBe(false);
-      expect(result.blocking).toEqual([]); // subgroups are fine
+      expect(result.blocking).toEqual([]); // groups are fine
       expect(result.unresolvedNNCount).toBe(3);
-      expect(result.unresolvedNNSubgroups).toBe(1);
+      expect(result.unresolvedNNGroups).toBe(1);
     });
 
     it('canFinalize=false con mezcla de blocking + N/N sin resolver', async () => {
@@ -186,7 +186,7 @@ describe('adminQueries', () => {
           { nombre: 'Línea B', estado: 'sincronizada', pendingSync: false },
         ],
         [
-          { subgrupoId: 'sg-b', cnt: 2 },
+          { grupoId: 'sg-b', cnt: 2 },
         ]
       );
 

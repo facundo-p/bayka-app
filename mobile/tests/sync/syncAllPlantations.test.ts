@@ -21,9 +21,9 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/repositories/SubGroupRepository', () => ({
-  markSubGroupSynced: jest.fn().mockResolvedValue(undefined),
-  getSyncableSubGroups: jest.fn(),
+jest.mock('../../src/repositories/GroupRepository', () => ({
+  markGroupSynced: jest.fn().mockResolvedValue(undefined),
+  getSyncableGroups: jest.fn(),
 }));
 
 jest.mock('../../src/repositories/TreeRepository', () => ({
@@ -47,14 +47,14 @@ jest.mock('expo-file-system', () => ({
 import { syncAllPlantations } from '../../src/services/SyncService';
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
-import { getSyncableSubGroups, markSubGroupSynced } from '../../src/repositories/SubGroupRepository';
+import { getSyncableGroups, markGroupSynced } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
-const mockGetSyncableSubGroups = getSyncableSubGroups as jest.Mock;
-const mockMarkSubGroupSynced = markSubGroupSynced as jest.Mock;
+const mockGetSyncableGroups = getSyncableGroups as jest.Mock;
+const mockMarkGroupSynced = markGroupSynced as jest.Mock;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 
@@ -120,7 +120,7 @@ beforeEach(() => {
   // Default: no local plantations
   (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain([]));
 
-  mockGetSyncableSubGroups.mockResolvedValue([]);
+  mockGetSyncableGroups.mockResolvedValue([]);
   mockGetTreesWithPendingPhotos.mockResolvedValue([]);
 });
 
@@ -168,9 +168,9 @@ describe('syncAllPlantations', () => {
     );
   });
 
-  it('uploads syncable subgroups for each plantation', async () => {
+  it('uploads syncable groups for each plantation', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
-    mockGetSyncableSubGroups.mockResolvedValue([{
+    mockGetSyncableGroups.mockResolvedValue([{
       id: 'sg-1', plantacionId: 'p-1', nombre: 'Linea A', codigo: 'LA',
       tipo: 'linea', estado: 'finalizada', usuarioCreador: 'user-1', createdAt: '2026-01-01',
     }]);
@@ -179,7 +179,7 @@ describe('syncAllPlantations', () => {
     const result = await syncAllPlantations();
 
     expect(mockSupabase.rpc).toHaveBeenCalledWith('sync_subgroup', expect.anything());
-    expect(mockMarkSubGroupSynced).toHaveBeenCalledWith('sg-1');
+    expect(mockMarkGroupSynced).toHaveBeenCalledWith('sg-1');
     expect(result[0].results[0].success).toBe(true);
   });
 

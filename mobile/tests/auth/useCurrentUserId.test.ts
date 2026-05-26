@@ -3,8 +3,8 @@
  *
  * After offline re-login, the userId must be available from SecureStore
  * when supabase.auth.getSession() returns null. Without this fallback:
- * - SubGroups appear as "created by someone else" (grisadas)
- * - Creating new SubGroups fails (userId is null)
+ * - Groups appear as "created by someone else" (grisadas)
+ * - Creating new Groups fails (userId is null)
  */
 import * as SecureStore from 'expo-secure-store';
 

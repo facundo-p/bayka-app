@@ -32,10 +32,10 @@ const { __setPendingResult } = require('../../src/database/client');
 
 import {
   getPlantationLugar,
-  getSubgroupsForPlantation,
-  getSubgroupById,
-  getNNCountsPerSubgroup,
-  getTreeCountsPerSubgroup,
+  getGroupsForPlantation,
+  getGroupById,
+  getNNCountsPerGroup,
+  getTreeCountsPerGroup,
   getTotalTreesInPlantation,
   getTodayTreesForUser,
   getUnsyncedTreesForUser,
@@ -62,34 +62,34 @@ describe('plantationDetailQueries', () => {
     });
   });
 
-  describe('getSubgroupsForPlantation', () => {
-    it('returns subgroups array', async () => {
+  describe('getGroupsForPlantation', () => {
+    it('returns groups array', async () => {
       __setPendingResult([{ id: 'sg-1' }, { id: 'sg-2' }]);
-      const result = await getSubgroupsForPlantation('p-1');
+      const result = await getGroupsForPlantation('p-1');
       expect(result).toHaveLength(2);
     });
   });
 
-  describe('getSubgroupById', () => {
+  describe('getGroupById', () => {
     it('returns single subgroup in array', async () => {
       __setPendingResult([{ id: 'sg-1', nombre: 'Linea 1' }]);
-      const result = await getSubgroupById('sg-1');
+      const result = await getGroupById('sg-1');
       expect(result[0].nombre).toBe('Linea 1');
     });
   });
 
-  describe('getNNCountsPerSubgroup', () => {
+  describe('getNNCountsPerGroup', () => {
     it('returns N/N counts grouped by subgroup', async () => {
-      __setPendingResult([{ subgrupoId: 'sg-1', nnCount: 3 }]);
-      const result = await getNNCountsPerSubgroup('p-1');
+      __setPendingResult([{ grupoId: 'sg-1', nnCount: 3 }]);
+      const result = await getNNCountsPerGroup('p-1');
       expect(result[0].nnCount).toBe(3);
     });
   });
 
-  describe('getTreeCountsPerSubgroup', () => {
+  describe('getTreeCountsPerGroup', () => {
     it('returns tree counts grouped by subgroup', async () => {
-      __setPendingResult([{ subgrupoId: 'sg-1', treeCount: 15 }]);
-      const result = await getTreeCountsPerSubgroup('p-1');
+      __setPendingResult([{ grupoId: 'sg-1', treeCount: 15 }]);
+      const result = await getTreeCountsPerGroup('p-1');
       expect(result[0].treeCount).toBe(15);
     });
   });
@@ -151,13 +151,13 @@ describe('plantationDetailQueries', () => {
   describe('getNNTreesForPlantation', () => {
     it('returns N/N trees with subgroup info', async () => {
       const expected = [
-        { id: 't-1', posicion: 1, subgrupoNombre: 'Linea A' },
-        { id: 't-2', posicion: 3, subgrupoNombre: 'Linea B' },
+        { id: 't-1', posicion: 1, grupoNombre: 'Linea A' },
+        { id: 't-2', posicion: 3, grupoNombre: 'Linea B' },
       ];
       __setPendingResult(expected);
       const result = await getNNTreesForPlantation('p-1');
       expect(result).toHaveLength(2);
-      expect(result[0].subgrupoNombre).toBe('Linea A');
+      expect(result[0].grupoNombre).toBe('Linea A');
     });
 
     it('returns empty array when no N/N trees', async () => {
