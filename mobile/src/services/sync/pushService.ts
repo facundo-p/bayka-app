@@ -5,13 +5,13 @@ import { eq } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import {
-  markSubGroupSynced,
-  getSyncableSubGroups,
-  SubGroup,
-} from '../../repositories/SubGroupRepository';
+  markGroupSynced,
+  getSyncableGroups,
+  Group,
+} from '../../repositories/GroupRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
 import { File as ExpoFile } from 'expo-file-system';
-import { SyncErrorCode, SyncSubGroupResult, SyncProgress } from './types';
+import { SyncErrorCode, SyncGroupResult, SyncProgress } from './types';
 
 // ─── Photo upload helper (internal) ─────────────────────────────────────────
 
@@ -37,18 +37,18 @@ async function uploadPhotoToStorage(
   }
 }
 
-// ─── Upload a single SubGroup ─────────────────────────────────────────────────
+// ─── Upload a single Group ─────────────────────────────────────────────────
 
 /**
- * Uploads photos to Storage first, then maps SubGroup + trees to RPC payload.
+ * Uploads photos to Storage first, then maps Group + trees to RPC payload.
  * This ensures foto_url in the RPC always contains the Storage path (never null
  * or file://), so the server has the correct photo reference in a single atomic step.
  */
-export async function uploadSubGroup(
-  sg: SubGroup,
+export async function uploadGroup(
+  sg: Group,
   sgTrees: Array<{
     id: string;
-    subgrupoId: string;
+    groupId: string;
     especieId: string | null;
     posicion: number;
     subId: string;
@@ -91,7 +91,7 @@ export async function uploadSubGroup(
 
   const p_trees = sgTrees.map((t) => ({
     id: t.id,
-    subgroup_id: t.subgrupoId,
+    subgroup_id: t.groupId,
     species_id: t.especieId ?? null,
     posicion: t.posicion,
     sub_id: t.subId,
@@ -111,42 +111,42 @@ function classifyRpcResult(
   sgNombre: string,
   data: any,
   error: any
-): SyncSubGroupResult {
+): SyncGroupResult {
   if (error) {
     syncLog.error(`RPC error for "${sgNombre}" (${sgId}):`, JSON.stringify(error));
-    return { success: false, subgroupId: sgId, nombre: sgNombre, error: 'NETWORK' };
+    return { success: false, groupId: sgId, nombre: sgNombre, error: 'NETWORK' };
   }
   if (data?.success === true) {
-    return { success: true, subgroupId: sgId, nombre: sgNombre };
+    return { success: true, groupId: sgId, nombre: sgNombre };
   }
   syncLog.error(`RPC rejected "${sgNombre}" (${sgId}):`, JSON.stringify(data));
   const errorCode: SyncErrorCode = data?.error === 'DUPLICATE_CODE' ? 'DUPLICATE_CODE' : 'UNKNOWN';
-  return { success: false, subgroupId: sgId, nombre: sgNombre, error: errorCode };
+  return { success: false, groupId: sgId, nombre: sgNombre, error: errorCode };
 }
 
-// ─── Upload syncable subgroups ───────────────────────────────────────────────
+// ─── Upload syncable groups ───────────────────────────────────────────────
 
-export async function uploadSyncableSubGroups(
+export async function uploadSyncableGroups(
   plantacionId: string,
   onProgress?: (progress: SyncProgress) => void
-): Promise<SyncSubGroupResult[]> {
+): Promise<SyncGroupResult[]> {
   const { data: { user } } = await supabase.auth.getUser();
-  const pending = await getSyncableSubGroups(plantacionId, user?.id);
-  const results: SyncSubGroupResult[] = [];
+  const pending = await getSyncableGroups(plantacionId, user?.id);
+  const results: SyncGroupResult[] = [];
 
   for (let i = 0; i < pending.length; i++) {
     const sg = pending[i];
     onProgress?.({ total: pending.length, completed: i, currentName: sg.nombre });
 
-    const sgTrees = await db.select().from(trees).where(eq(trees.subgrupoId, sg.id));
+    const sgTrees = await db.select().from(trees).where(eq(trees.groupId, sg.id));
     try {
-      const { data, error } = await uploadSubGroup(sg, sgTrees);
+      const { data, error } = await uploadGroup(sg, sgTrees);
       const result = classifyRpcResult(sg.id, sg.nombre, data, error);
-      if (result.success) await markSubGroupSynced(sg.id);
+      if (result.success) await markGroupSynced(sg.id);
       results.push(result);
     } catch (e) {
       syncLog.error(`Exception for "${sg.nombre}" (${sg.id}):`, e);
-      results.push({ success: false, subgroupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
+      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
     }
   }
 

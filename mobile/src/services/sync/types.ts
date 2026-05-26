@@ -7,9 +7,9 @@ export interface PhotoSyncProgress {
   completed: number;
 }
 
-export type SyncSubGroupResult =
-  | { success: true; subgroupId: string; nombre: string }
-  | { success: false; subgroupId: string; nombre: string; error: SyncErrorCode };
+export type SyncGroupResult =
+  | { success: true; groupId: string; nombre: string }
+  | { success: false; groupId: string; nombre: string; error: SyncErrorCode };
 
 export interface SyncProgress {
   total: number;

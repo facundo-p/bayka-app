@@ -11,10 +11,10 @@ import { downloadPhotosForPlantation } from './photoService';
 
 /**
  * Downloads a single plantation by upserting its row into local SQLite,
- * then calling pullFromServer to sync subgroups, species, and users.
+ * then calling pullFromServer to sync groups, species, and users.
  *
  * Step 1: upsert the plantation row (onConflictDoUpdate to update estado)
- * Step 2: pullFromServer for subgroups, plantation_users, plantation_species
+ * Step 2: pullFromServer for groups, plantation_users, plantation_species
  */
 export async function downloadPlantation(serverPlantation: {
   id: string;
@@ -50,7 +50,7 @@ export async function downloadPlantation(serverPlantation: {
       },
     });
 
-  // Step 2: Pull related data (subgroups, plantation_users, plantation_species, trees)
+  // Step 2: Pull related data (groups, plantation_users, plantation_species, trees)
   await pullFromServer(serverPlantation.id);
 
   // Step 3: Download photos from Storage to local device
