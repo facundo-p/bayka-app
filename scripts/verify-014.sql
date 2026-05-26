@@ -1,11 +1,16 @@
 -- verify-014.sql — pegar en Supabase SQL Editor TRAS aplicar 014_data_consolidation.sql.
 -- Retorna 10 filas con (check, status, detail). Esperado: todas con status='OK'.
 
+-- Las 3 plantations nuevas son identificadas como "plantations que tienen
+-- al menos una parcela" — solo las consolidadas tienen parcelas. Esto evita
+-- el ambiguity con el source 67bfd338 que comparte lugar "San Sebastián de
+-- la Selva" con la nueva consolidada (deferred cleanup junto con sources).
 WITH new_plants AS (
-  SELECT id, lugar FROM plantations
-  WHERE lugar IN ('San Sebastián de la Selva', 'Pruebas - SSS', 'Pruebas - La Morita')
+  SELECT DISTINCT p.id, p.lugar FROM plantations p
+  JOIN parcelas par ON par.plantation_id = p.id
 ),
-sss_id AS (SELECT id FROM new_plants WHERE lugar = 'San Sebastián de la Selva'),
+sss_id AS (SELECT id FROM new_plants WHERE lugar = 'San Sebastián de la Selva'
+           AND id IN (SELECT plantation_id FROM parcelas WHERE codigo LIKE 'LP%' OR codigo LIKE 'MP%')),
 pss_id AS (SELECT id FROM new_plants WHERE lugar = 'Pruebas - SSS'),
 pms_id AS (SELECT id FROM new_plants WHERE lugar = 'Pruebas - La Morita'),
 checks AS (
