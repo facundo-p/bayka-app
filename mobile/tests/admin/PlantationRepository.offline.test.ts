@@ -111,7 +111,7 @@ describe('PlantationRepository — offline functions', () => {
 
     it('Test 4 (OFPL-03): local FK constraint satisfied — subgroup can reference offline plantation', async () => {
       // Simulates: createPlantationLocally inserts the plantation locally, then
-      // a SubGroup insert with that plantationId succeeds because the row exists in local SQLite.
+      // a Group insert with that plantationId succeeds because the row exists in local SQLite.
       // In real SQLite this is enforced by the FK constraint. Here we test that:
       // 1. createPlantationLocally returns a valid id
       // 2. db.insert is called with that id (plantation row exists locally)

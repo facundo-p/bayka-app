@@ -33,7 +33,7 @@ const { __setPendingDbResult: setPendingDbResult } = require('../../src/database
 const { supabase } = require('../../src/supabase/client');
 
 import {
-  getLocalMaxSubgroupCreatedAt,
+  getLocalMaxGroupCreatedAt,
   checkFreshness,
   _resetCooldown,
 } from '../../src/queries/freshnessQueries';
@@ -55,16 +55,16 @@ describe('freshnessQueries', () => {
     _resetCooldown();
   });
 
-  describe('getLocalMaxSubgroupCreatedAt', () => {
-    it('returns MAX(created_at) from local subgroups table', async () => {
+  describe('getLocalMaxGroupCreatedAt', () => {
+    it('returns MAX(created_at) from local groups table', async () => {
       setPendingDbResult([{ maxCreatedAt: '2026-03-20T10:00:00Z' }]);
-      const result = await getLocalMaxSubgroupCreatedAt();
+      const result = await getLocalMaxGroupCreatedAt();
       expect(result).toBe('2026-03-20T10:00:00Z');
     });
 
-    it('returns null when no subgroups exist', async () => {
+    it('returns null when no groups exist', async () => {
       setPendingDbResult([{ maxCreatedAt: null }]);
-      const result = await getLocalMaxSubgroupCreatedAt();
+      const result = await getLocalMaxGroupCreatedAt();
       expect(result).toBeNull();
     });
   });

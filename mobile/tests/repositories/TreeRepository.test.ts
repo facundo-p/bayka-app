@@ -82,8 +82,8 @@ describe('TreeRepository', () => {
       mockDb = buildMockDb([{ maxPos: null }]);
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -95,15 +95,15 @@ describe('TreeRepository', () => {
       const row = mockInsertValues.mock.calls[0][0];
       expect(row.posicion).toBe(1);
       expect(row.especieId).toBe('esp-1');
-      expect(row.subgrupoId).toBe('sg-1');
+      expect(row.groupId).toBe('sg-1');
     });
 
     it('inserts tree with auto-incremented position based on MAX(posicion)', async () => {
       mockDb = buildMockDb([{ maxPos: 3 }]);
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -113,12 +113,12 @@ describe('TreeRepository', () => {
       expect(result.subId).toBe('L1ANC4');
     });
 
-    it('generates correct subId as concatenation subgrupoCodigo+especieCodigo+posicion', async () => {
+    it('generates correct subId as concatenation grupoCodigo+especieCodigo+posicion', async () => {
       mockDb = buildMockDb([{ maxPos: 12 }]);
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L23B',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L23B',
         especieId: 'esp-2',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -131,8 +131,8 @@ describe('TreeRepository', () => {
       mockDb = buildMockDb([{ maxPos: 0 }]);
 
       await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: null,
         especieCodigo: 'NN',
         userId: 'user-1',
@@ -147,8 +147,8 @@ describe('TreeRepository', () => {
       const { notifyDataChanged } = require('../../src/database/liveQuery');
 
       await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -190,8 +190,8 @@ describe('TreeRepository', () => {
   describe('reverseTreeOrder', () => {
     it('runs in a transaction', async () => {
       const trees = [
-        { id: 'tree-1', subgrupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-2', subgrupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
       mockDb = buildMockDb(trees);
 
@@ -202,15 +202,15 @@ describe('TreeRepository', () => {
 
     it('updates all trees when reversing order', async () => {
       const trees = [
-        { id: 'tree-1', subgrupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-2', subgrupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-3', subgrupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
       mockDb = buildMockDb(trees);
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      // 3 updates inside transaction (one per tree) + 1 for markSubGroupPendingSync
+      // 3 updates inside transaction (one per tree) + 1 for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
@@ -234,7 +234,7 @@ describe('TreeRepository', () => {
             where: jest.fn(() => {
               callCount++;
               if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]);
-              return Promise.resolve([{ posicion: 3, subgrupoId: 'sg-1' }]);
+              return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]);
             }),
           })),
         })),
@@ -242,7 +242,7 @@ describe('TreeRepository', () => {
 
       await resolveNNTree('tree-1', 'esp-1', 'L1');
 
-      // Called twice: once for tree update, once for markSubGroupPendingSync
+      // Called twice: once for tree update, once for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
@@ -295,8 +295,8 @@ describe('TreeRepository', () => {
   describe('deleteTreeAndRecalculate', () => {
     it('deletes tree and runs transaction to recalculate positions', async () => {
       const remainingTrees = [
-        { id: 'tree-2', subgrupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-3', subgrupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 
       // Mock: delete then select remaining then transaction

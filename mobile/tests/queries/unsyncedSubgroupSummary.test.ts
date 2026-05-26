@@ -1,4 +1,4 @@
-// Tests for getUnsyncedSubgroupSummary — unsynced subgroup detection query
+// Tests for getUnsyncedGroupSummary — unsynced subgroup detection query
 // Covers: DEL-02-unsynced-detection
 
 jest.mock('../../src/supabase/client', () => ({
@@ -16,14 +16,14 @@ jest.mock('../../src/database/client', () => ({
 
 const { db } = require('../../src/database/client');
 
-import { getUnsyncedSubgroupSummary } from '../../src/queries/catalogQueries';
+import { getUnsyncedGroupSummary } from '../../src/queries/catalogQueries';
 
-describe('getUnsyncedSubgroupSummary', () => {
+describe('getUnsyncedGroupSummary', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
 
-  it('Test 1: returns {activaCount: 2, finalizadaCount: 1} when plantation has mixed subgroups', async () => {
+  it('Test 1: returns {activaCount: 2, finalizadaCount: 1} when plantation has mixed groups', async () => {
     // Mock: 2 activa + 1 finalizada (sincronizada are filtered out by the WHERE clause)
     const mockRows = [
       { estado: 'activa', cnt: 2 },
@@ -38,12 +38,12 @@ describe('getUnsyncedSubgroupSummary', () => {
       }),
     });
 
-    const result = await getUnsyncedSubgroupSummary('plant-1');
+    const result = await getUnsyncedGroupSummary('plant-1');
 
     expect(result).toEqual({ activaCount: 2, finalizadaCount: 1 });
   });
 
-  it('Test 2: returns {activaCount: 0, finalizadaCount: 0} when all subgroups are sincronizada', async () => {
+  it('Test 2: returns {activaCount: 0, finalizadaCount: 0} when all groups are sincronizada', async () => {
     // Mock: query returns empty (all sincronizada filtered out)
     (db.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
@@ -53,12 +53,12 @@ describe('getUnsyncedSubgroupSummary', () => {
       }),
     });
 
-    const result = await getUnsyncedSubgroupSummary('plant-1');
+    const result = await getUnsyncedGroupSummary('plant-1');
 
     expect(result).toEqual({ activaCount: 0, finalizadaCount: 0 });
   });
 
-  it('Test 3: returns {activaCount: 0, finalizadaCount: 0} when plantation has no subgroups', async () => {
+  it('Test 3: returns {activaCount: 0, finalizadaCount: 0} when plantation has no groups', async () => {
     (db.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
         where: jest.fn().mockReturnValue({
@@ -67,12 +67,12 @@ describe('getUnsyncedSubgroupSummary', () => {
       }),
     });
 
-    const result = await getUnsyncedSubgroupSummary('plant-empty');
+    const result = await getUnsyncedGroupSummary('plant-empty');
 
     expect(result).toEqual({ activaCount: 0, finalizadaCount: 0 });
   });
 
-  it('Test 4: does NOT filter by usuarioCreador — counts subgroups from all technicians', async () => {
+  it('Test 4: does NOT filter by usuarioCreador — counts groups from all technicians', async () => {
     // This test verifies the query shape by checking the select mock was called
     // and no usuario_creador filter is present
     const whereMock = jest.fn().mockReturnValue({
@@ -87,7 +87,7 @@ describe('getUnsyncedSubgroupSummary', () => {
       from: fromMock,
     });
 
-    const result = await getUnsyncedSubgroupSummary('plant-1');
+    const result = await getUnsyncedGroupSummary('plant-1');
 
     // The function should work and return counts without user filtering
     expect(result.activaCount).toBe(5);

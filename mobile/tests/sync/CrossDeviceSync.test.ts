@@ -1,6 +1,6 @@
 // Tests for cross-device sync scenarios found during Plant 3 testing.
 // Covers: file:// path rejection on pull, fotoSynced skip logic in upload,
-// cross-device N/N resolution, getSyncableSubGroups with sincronizada state,
+// cross-device N/N resolution, getSyncableGroups with sincronizada state,
 // and full foto_url lifecycle across devices.
 //
 // These tests MUST FAIL with current code and PASS after fixes.
@@ -32,9 +32,9 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/repositories/SubGroupRepository', () => ({
-  markSubGroupSynced: jest.fn().mockResolvedValue(undefined),
-  getSyncableSubGroups: jest.fn(),
+jest.mock('../../src/repositories/GroupRepository', () => ({
+  markGroupSynced: jest.fn().mockResolvedValue(undefined),
+  getSyncableGroups: jest.fn(),
 }));
 
 jest.mock('../../src/repositories/TreeRepository', () => ({
@@ -71,20 +71,20 @@ jest.mock('expo-file-system', () => {
 
 import {
   pullFromServer,
-  uploadSubGroup,
+  uploadGroup,
   syncPlantation,
   downloadPhotosForPlantation,
 } from '../../src/services/SyncService';
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
-import { markSubGroupSynced, getSyncableSubGroups } from '../../src/repositories/SubGroupRepository';
+import { markGroupSynced, getSyncableGroups } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
-const mockGetSyncableSubGroups = getSyncableSubGroups as jest.Mock;
-const mockMarkSubGroupSynced = markSubGroupSynced as jest.Mock;
+const mockGetSyncableGroups = getSyncableGroups as jest.Mock;
+const mockMarkGroupSynced = markGroupSynced as jest.Mock;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 
@@ -103,9 +103,9 @@ const makeSg = (id: string, overrides?: Record<string, any>) => ({
   ...overrides,
 });
 
-const makeTree = (id: string, subgrupoId: string, overrides?: Record<string, any>) => ({
+const makeTree = (id: string, groupId: string, overrides?: Record<string, any>) => ({
   id,
-  subgrupoId,
+  groupId,
   especieId: 'species-1',
   posicion: 1,
   subId: 'LA-SP-1',
@@ -123,12 +123,12 @@ const makeTree = (id: string, subgrupoId: string, overrides?: Record<string, any
  * Returns spies for tree insert values and onConflictDoUpdate.
  */
 function setupPullMocks(options: {
-  remoteSubgroups?: any[];
+  remoteGroups?: any[];
   remoteTrees?: any[];
   localTreeLookup?: any[];
 }) {
   const {
-    remoteSubgroups = [],
+    remoteGroups = [],
     remoteTrees = [],
     localTreeLookup = [],
   } = options;
@@ -150,7 +150,7 @@ function setupPullMocks(options: {
       return {
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockResolvedValue({
-            data: remoteSubgroups,
+            data: remoteGroups,
             error: null,
           }),
         }),
@@ -205,8 +205,8 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
     // Default auth session mock
     (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: {} }, error: null });
 
-    // Default: no pending subgroups
-    mockGetSyncableSubGroups.mockResolvedValue([]);
+    // Default: no pending groups
+    mockGetSyncableGroups.mockResolvedValue([]);
 
     // Default: no pending photos
     mockGetTreesWithPendingPhotos.mockResolvedValue([]);
@@ -287,7 +287,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       };
 
       const { insertValuesSpy } = setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
       });
 
@@ -332,7 +332,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       };
 
       const { insertValuesSpy } = setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
       });
 
@@ -373,7 +373,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       };
 
       const { insertValuesSpy } = setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
       });
 
@@ -390,9 +390,9 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
   });
 
-  // ─── Test Group 2: uploadSubGroup no re-sube fotos ya sincronizadas ───────
+  // ─── Test Group 2: uploadGroup no re-sube fotos ya sincronizadas ───────
 
-  describe('uploadSubGroup no re-sube fotos ya sincronizadas', () => {
+  describe('uploadGroup no re-sube fotos ya sincronizadas', () => {
     it('árbol con fotoSynced=true no intenta subir foto', async () => {
       // Arrange: tree has a local photo that was already synced (downloaded from server)
       const sg = makeSg('sg-1');
@@ -404,7 +404,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // Act
-      await uploadSubGroup(sg, [tree]);
+      await uploadGroup(sg, [tree]);
 
       // Assert: uploadPhotoToStorage should NOT be called (no storage.from('tree-photos').upload)
       // because the photo is already synced
@@ -432,7 +432,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // Act
-      await uploadSubGroup(sg, [tree]);
+      await uploadGroup(sg, [tree]);
 
       // Assert: uploadPhotoToStorage IS called
       expect(mockSupabase.storage.from).toHaveBeenCalledWith('tree-photos');
@@ -461,7 +461,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
         subId: 'LA-SR-1',
       });
 
-      mockGetSyncableSubGroups.mockResolvedValue([sg]);
+      mockGetSyncableGroups.mockResolvedValue([sg]);
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
@@ -500,7 +500,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // Act
-      await uploadSubGroup(sg, [resolvedTree]);
+      await uploadGroup(sg, [resolvedTree]);
 
       // Assert: RPC payload has species_id='species-xyz', sub_id regenerated
       const rpcPayload = (mockSupabase.rpc as jest.Mock).mock.calls[0][1];
@@ -526,7 +526,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // Act
-      await uploadSubGroup(sg, [downloadedAndResolvedTree]);
+      await uploadGroup(sg, [downloadedAndResolvedTree]);
 
       // Assert: photo should NOT be re-uploaded because fotoSynced=true
       const storageFromCalls = (mockSupabase.storage.from as jest.Mock).mock.calls;
@@ -540,16 +540,16 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
   });
 
-  // ─── Test Group 4: getSyncableSubGroups incluye sincronizada con cambios ──
+  // ─── Test Group 4: getSyncableGroups incluye sincronizada con cambios ──
 
-  describe('getSyncableSubGroups incluye sincronizada con cambios pendientes', () => {
+  describe('getSyncableGroups incluye sincronizada con cambios pendientes', () => {
     it('subgrupo sincronizada con pendingSync=true es retornado y procesado', async () => {
       // Arrange: a sincronizada subgroup with pending changes (e.g., N/N resolved)
       const syncedSg = makeSg('sg-synced', {
         estado: 'sincronizada',
         pendingSync: true,
       });
-      mockGetSyncableSubGroups.mockResolvedValue([syncedSg]);
+      mockGetSyncableGroups.mockResolvedValue([syncedSg]);
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
       (mockDb.select as jest.Mock).mockReturnValue({
@@ -563,19 +563,19 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       // Assert: syncPlantation processes the sincronizada subgroup
       expect(results).toHaveLength(1);
-      expect(results[0].subgroupId).toBe('sg-synced');
+      expect(results[0].groupId).toBe('sg-synced');
       expect(results[0].success).toBe(true);
       expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
-      expect(mockMarkSubGroupSynced).toHaveBeenCalledWith('sg-synced');
+      expect(mockMarkGroupSynced).toHaveBeenCalledWith('sg-synced');
     });
 
-    it('subgrupo activa con pendingSync=true NO es retornado por getSyncableSubGroups', async () => {
-      // Arrange: getSyncableSubGroups filters by pendingSync=true only,
-      // but activa subgroups should NOT appear because they haven't been finalized.
-      // The mock simulates the expected behavior: getSyncableSubGroups returns
-      // only subgroups with pendingSync=true (both finalizada and sincronizada).
+    it('subgrupo activa con pendingSync=true NO es retornado por getSyncableGroups', async () => {
+      // Arrange: getSyncableGroups filters by pendingSync=true only,
+      // but activa groups should NOT appear because they haven't been finalized.
+      // The mock simulates the expected behavior: getSyncableGroups returns
+      // only groups with pendingSync=true (both finalizada and sincronizada).
       // An activa subgroup with pendingSync=true WOULD be returned by the query
-      // since getSyncableSubGroups doesn't filter by estado — this is correct
+      // since getSyncableGroups doesn't filter by estado — this is correct
       // because the sync service handles whatever it receives.
       const activaSg = makeSg('sg-activa', {
         estado: 'activa',
@@ -586,8 +586,8 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
         pendingSync: true,
       });
 
-      // Simulating getSyncableSubGroups returning both (it only filters by pendingSync)
-      mockGetSyncableSubGroups.mockResolvedValue([activaSg, finalizadaSg]);
+      // Simulating getSyncableGroups returning both (it only filters by pendingSync)
+      mockGetSyncableGroups.mockResolvedValue([activaSg, finalizadaSg]);
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
       (mockDb.select as jest.Mock).mockReturnValue({
@@ -619,7 +619,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // Act
-      await uploadSubGroup(sg, [tree]);
+      await uploadGroup(sg, [tree]);
 
       // Assert: photo uploaded to storage
       expect(mockSupabase.storage.from).toHaveBeenCalledWith('tree-photos');
@@ -633,7 +633,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
     it('Device B: pull con storage path → download → file:// local', async () => {
       // Arrange: setup for downloadPhotosForPlantation
-      // First select: subgroups for this plantation
+      // First select: groups for this plantation
       // Second select: trees with remote fotoUrl
       (mockDb.select as jest.Mock)
         .mockReturnValueOnce({
@@ -647,7 +647,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
               {
                 id: 'tree-1',
                 fotoUrl: 'plantations/plantation-1/trees/tree-1.jpg',
-                subgrupoId: 'sg-1',
+                groupId: 'sg-1',
               },
             ]),
           }),
@@ -720,7 +720,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       // Now upload — should NOT re-upload the photo
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadSubGroup(sg, [treeAfterResolve]);
+      await uploadGroup(sg, [treeAfterResolve]);
 
       // Assert: no photo upload because fotoSynced=true
       expect(mockSupabase.storage.from).not.toHaveBeenCalled();
@@ -746,7 +746,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // Act
-      await uploadSubGroup(sg, [tree]);
+      await uploadGroup(sg, [tree]);
 
       // Assert: RPC called — foto_url in payload should be null (not file://)
       // because the photo is already on the server and file:// must never leak
@@ -754,7 +754,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       const treePayload = rpcPayload.p_trees[0];
 
       // BUG: Current code sends file:// to server when fotoSynced=true but fotoUrl is file://
-      // Fix: uploadSubGroup should map file:// + fotoSynced=true → null in payload
+      // Fix: uploadGroup should map file:// + fotoSynced=true → null in payload
       // (server COALESCE preserves existing value when null is sent)
       expect(treePayload.foto_url).toBeNull();
       expect(treePayload.foto_url === null || !treePayload.foto_url.startsWith('file://')).toBe(true);
@@ -791,7 +791,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       };
 
       const { onConflictSpy } = setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
         // Conflict detection: server species_id is null, so the if(t.species_id)
         // block is skipped entirely. The upsert runs with onConflictDoUpdate.
@@ -840,7 +840,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       // Local tree has file:// (already downloaded)
       const { insertValuesSpy, onConflictSpy } = setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
         localTreeLookup: [{ especieId: 'species-1' }], // Same species, no conflict
       });
@@ -883,7 +883,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
       };
 
       setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
       });
 
@@ -904,7 +904,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadSubGroup(sg, [resolvedTree]);
+      await uploadGroup(sg, [resolvedTree]);
 
       // Assert: RPC payload contains the resolved species
       expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
@@ -941,7 +941,7 @@ describe('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       // Local tree has a different species
       const { insertValuesSpy } = setupPullMocks({
-        remoteSubgroups: [remoteSg],
+        remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
         localTreeLookup: [{ especieId: 'species-local' }], // Different from server
       });

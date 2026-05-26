@@ -62,13 +62,13 @@ describe('deletePlantationLocally', () => {
     expect(txDeleteCalls).toContain('plantations');
   });
 
-  it('Test 2: deletes all subgroups with plantacionId = id', async () => {
+  it('Test 2: deletes all groups with plantacionId = id', async () => {
     await deletePlantationLocally('plant-1');
 
-    expect(txDeleteCalls).toContain('subgroups');
+    expect(txDeleteCalls).toContain('groups');
   });
 
-  it('Test 3: deletes all trees belonging to those subgroups', async () => {
+  it('Test 3: deletes all trees belonging to those groups', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('trees');
@@ -105,11 +105,11 @@ describe('deletePlantationLocally', () => {
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes trees before subgroups (correct order for FK safety)', async () => {
+  it('deletes trees before groups (correct order for FK safety)', async () => {
     await deletePlantationLocally('plant-1');
 
     const treesIdx = txDeleteCalls.indexOf('trees');
-    const subgroupsIdx = txDeleteCalls.indexOf('subgroups');
+    const subgroupsIdx = txDeleteCalls.indexOf('groups');
     expect(treesIdx).toBeLessThan(subgroupsIdx);
   });
 });
