@@ -6,7 +6,7 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { plantations, subgroups } from '../database/schema';
+import { plantations, groups } from '../database/schema';
 import { eq, and, count } from 'drizzle-orm';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -19,7 +19,7 @@ export type ServerPlantation = {
   estado: string;
   creado_por: string;
   created_at: string;
-  subgroup_count: number;
+  group_count: number;
   tree_count: number;
 };
 
@@ -77,7 +77,8 @@ export async function getServerCatalog(
   const plantationIds = remotePlantations.map((p: any) => p.id);
 
   // Fetch subgroup counts: select all subgroup rows for these plantations
-  const { data: subgroupRows, error: sgError } = await supabase
+  // COMPAT: shim 012b; Plan 16-03 renombra a 'groups'
+  const { data: groupRows, error: sgError } = await supabase
     .from('subgroups')
     .select('plantation_id, id')
     .in('plantation_id', plantationIds);
@@ -85,32 +86,32 @@ export async function getServerCatalog(
   if (sgError) throw sgError;
 
   // Build subgroup count map: plantation_id -> count
-  const subgroupCountMap: Record<string, number> = {};
-  const subgroupIdsByPlantation: Record<string, string[]> = {};
-  for (const sg of subgroupRows ?? []) {
-    subgroupCountMap[sg.plantation_id] = (subgroupCountMap[sg.plantation_id] ?? 0) + 1;
-    if (!subgroupIdsByPlantation[sg.plantation_id]) {
-      subgroupIdsByPlantation[sg.plantation_id] = [];
+  const groupCountMap: Record<string, number> = {};
+  const groupIdsByPlantation: Record<string, string[]> = {};
+  for (const sg of groupRows ?? []) {
+    groupCountMap[sg.plantation_id] = (groupCountMap[sg.plantation_id] ?? 0) + 1;
+    if (!groupIdsByPlantation[sg.plantation_id]) {
+      groupIdsByPlantation[sg.plantation_id] = [];
     }
-    subgroupIdsByPlantation[sg.plantation_id].push(sg.id);
+    groupIdsByPlantation[sg.plantation_id].push(sg.id);
   }
 
   // Build flat list of all subgroup IDs for tree count query
-  const allSubgroupIds = (subgroupRows ?? []).map((sg: any) => sg.id);
+  const allGroupIds = (groupRows ?? []).map((sg: any) => sg.id);
 
-  // Fetch tree counts: select subgroup_id for all trees in these subgroups
+  // Fetch tree counts: select subgroup_id for all trees in these groups
   const treeCountMap: Record<string, number> = {};
-  if (allSubgroupIds.length > 0) {
+  if (allGroupIds.length > 0) {
     const { data: treeRows, error: treeError } = await supabase
       .from('trees')
       .select('subgroup_id')
-      .in('subgroup_id', allSubgroupIds);
+      .in('subgroup_id', allGroupIds);
 
     if (treeError) throw treeError;
 
     // Build subgroup_id -> plantation_id lookup
     const sgToPlantation: Record<string, string> = {};
-    for (const sg of subgroupRows ?? []) {
+    for (const sg of groupRows ?? []) {
       sgToPlantation[sg.id] = sg.plantation_id;
     }
 
@@ -131,7 +132,7 @@ export async function getServerCatalog(
     estado: p.estado,
     creado_por: p.creado_por,
     created_at: p.created_at,
-    subgroup_count: subgroupCountMap[p.id] ?? 0,
+    group_count: groupCountMap[p.id] ?? 0,
     tree_count: treeCountMap[p.id] ?? 0,
   }));
 }
@@ -155,25 +156,25 @@ export type UnsyncedSummary = {
 };
 
 /**
- * Returns counts of subgroups with pending local changes for a plantation.
+ * Returns counts of groups with pending local changes for a plantation.
  * Used to determine whether to show a warning before local deletion.
  *
- * IMPORTANT: Does NOT filter by usuarioCreador — counts ALL subgroups
+ * IMPORTANT: Does NOT filter by usuarioCreador — counts ALL groups
  * regardless of which technician created them.
  */
-export async function getUnsyncedSubgroupSummary(
+export async function getUnsyncedGroupSummary(
   plantacionId: string
 ): Promise<UnsyncedSummary> {
   const rows = await db
-    .select({ estado: subgroups.estado, cnt: count() })
-    .from(subgroups)
+    .select({ estado: groups.estado, cnt: count() })
+    .from(groups)
     .where(
       and(
-        eq(subgroups.plantacionId, plantacionId),
-        eq(subgroups.pendingSync, true)
+        eq(groups.plantacionId, plantacionId),
+        eq(groups.pendingSync, true)
       )
     )
-    .groupBy(subgroups.estado);
+    .groupBy(groups.estado);
 
   return {
     activaCount: rows.find((r) => r.estado === 'activa')?.cnt ?? 0,

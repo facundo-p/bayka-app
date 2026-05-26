@@ -4,7 +4,7 @@
  * Screens import these — no inline db queries in screens.
  */
 import { db } from '../database/client';
-import { plantations, subgroups, trees } from '../database/schema';
+import { plantations, groups, trees } from '../database/schema';
 import { eq, and, count, asc, isNull, sql } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
@@ -15,49 +15,49 @@ export async function getPlantationLugar(plantacionId: string) {
     .where(eq(plantations.id, plantacionId));
 }
 
-/** Get all subgroups for a plantation, ordered alphabetically by name */
-export async function getSubgroupsForPlantation(plantacionId: string) {
-  return db.select().from(subgroups)
-    .where(eq(subgroups.plantacionId, plantacionId))
-    .orderBy(asc(subgroups.nombre));
+/** Get all groups for a plantation, ordered alphabetically by name */
+export async function getGroupsForPlantation(plantacionId: string) {
+  return db.select().from(groups)
+    .where(eq(groups.plantacionId, plantacionId))
+    .orderBy(asc(groups.nombre));
 }
 
 /** Get a single subgroup by ID */
-export async function getSubgroupById(subgrupoId: string) {
-  return db.select().from(subgroups)
-    .where(eq(subgroups.id, subgrupoId));
+export async function getGroupById(grupoId: string) {
+  return db.select().from(groups)
+    .where(eq(groups.id, grupoId));
 }
 
 /** Count N/N (unresolved species) trees per subgroup in a plantation */
-export async function getNNCountsPerSubgroup(plantacionId: string) {
+export async function getNNCountsPerGroup(plantacionId: string) {
   return db.select({
-    subgrupoId: trees.subgrupoId,
+    grupoId: trees.groupId,
     nnCount: count(),
   })
     .from(trees)
     .where(and(
       isNull(trees.especieId),
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`
+      sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
     ))
-    .groupBy(trees.subgrupoId);
+    .groupBy(trees.groupId);
 }
 
 /** Count total trees per subgroup in a plantation */
-export async function getTreeCountsPerSubgroup(plantacionId: string) {
+export async function getTreeCountsPerGroup(plantacionId: string) {
   return db.select({
-    subgrupoId: trees.subgrupoId,
+    grupoId: trees.groupId,
     treeCount: count(),
   })
     .from(trees)
-    .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`)
-    .groupBy(trees.subgrupoId);
+    .where(sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`)
+    .groupBy(trees.groupId);
 }
 
 /** Count total trees in a plantation (all users, all states) */
 export async function getTotalTreesInPlantation(plantacionId: string) {
   const result = await db.select({ total: count() })
     .from(trees)
-    .where(sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`);
+    .where(sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`);
   return result[0]?.total ?? 0;
 }
 
@@ -73,26 +73,26 @@ export async function getTodayTreesForUser(plantacionId: string, userId: string 
   const result = await db.select({ total: count() })
     .from(trees)
     .where(and(
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`,
+      sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`,
       eq(trees.usuarioRegistro, userId),
       sql`${trees.createdAt} LIKE ${todayPrefix + '%'}`
     ));
   return result[0]?.total ?? 0;
 }
 
-/** Count unsynced trees for a user in a plantation (trees in subgroups with pendingSync=true) */
+/** Count unsynced trees for a user in a plantation (trees in groups with pendingSync=true) */
 export async function getUnsyncedTreesForUser(plantacionId: string, userId: string | null) {
   if (!userId) return 0;
   const result = await db.select({ total: count() })
     .from(trees)
     .where(and(
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId} AND pending_sync = 1)`,
+      sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId} AND pending_sync = 1)`,
       eq(trees.usuarioRegistro, userId)
     ));
   return result[0]?.total ?? 0;
 }
 
-/** Get all unresolved N/N trees across subgroups in a plantation (for plantation-wide N/N resolution) */
+/** Get all unresolved N/N trees across groups in a plantation (for plantation-wide N/N resolution) */
 export async function getNNTreesForPlantation(plantacionId: string) {
   return db.select({
     id: trees.id,
@@ -100,25 +100,25 @@ export async function getNNTreesForPlantation(plantacionId: string) {
     subId: trees.subId,
     fotoUrl: trees.fotoUrl,
     especieId: trees.especieId,
-    subgrupoId: trees.subgrupoId,
-    subgrupoCodigo: subgroups.codigo,
-    subgrupoNombre: subgroups.nombre,
+    grupoId: trees.groupId,
+    grupoCodigo: groups.codigo,
+    grupoNombre: groups.nombre,
     conflictEspecieId: trees.conflictEspecieId,
     conflictEspecieNombre: trees.conflictEspecieNombre,
   })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(and(
       isNull(trees.especieId),
-      eq(subgroups.plantacionId, plantacionId)
+      eq(groups.plantacionId, plantacionId)
     ))
-    .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+    .orderBy(asc(groups.nombre), asc(trees.posicion));
 }
 
 /**
  * D-07
  * Get unresolved N/N trees filtered by the subgroup creator (tecnico view).
- * Same shape as getNNTreesForPlantation but scoped to a single user's subgroups.
+ * Same shape as getNNTreesForPlantation but scoped to a single user's groups.
  */
 export async function getNNTreesForPlantationByUser(plantacionId: string, userId: string) {
   return db.select({
@@ -127,18 +127,18 @@ export async function getNNTreesForPlantationByUser(plantacionId: string, userId
     subId: trees.subId,
     fotoUrl: trees.fotoUrl,
     especieId: trees.especieId,
-    subgrupoId: trees.subgrupoId,
-    subgrupoCodigo: subgroups.codigo,
-    subgrupoNombre: subgroups.nombre,
+    grupoId: trees.groupId,
+    grupoCodigo: groups.codigo,
+    grupoNombre: groups.nombre,
     conflictEspecieId: trees.conflictEspecieId,
     conflictEspecieNombre: trees.conflictEspecieNombre,
   })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(and(
       isNull(trees.especieId),
-      eq(subgroups.plantacionId, plantacionId),
-      eq(subgroups.usuarioCreador, userId),
+      eq(groups.plantacionId, plantacionId),
+      eq(groups.usuarioCreador, userId),
     ))
-    .orderBy(asc(subgroups.nombre), asc(trees.posicion));
+    .orderBy(asc(groups.nombre), asc(trees.posicion));
 }

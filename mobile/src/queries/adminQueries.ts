@@ -7,7 +7,7 @@
  */
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
-import { subgroups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
+import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
 import { eq, and, isNotNull, isNull, sql, count, asc } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
@@ -16,7 +16,7 @@ import { eq, and, isNotNull, isNull, sql, count, asc } from 'drizzle-orm';
  * PLAN-06
  * Checks whether a plantation can be finalized:
  * - Must have at least one subgroup
- * - All subgroups must be 'finalizada' AND pendingSync=false
+ * - All groups must be 'finalizada' AND pendingSync=false
  * Returns canFinalize: true if both conditions met, plus the list of blockers.
  */
 export async function checkFinalizationGate(
@@ -24,42 +24,42 @@ export async function checkFinalizationGate(
 ): Promise<{
   canFinalize: boolean;
   blocking: Array<{ nombre: string; estado: string; pendingSync: boolean }>;
-  hasSubgroups: boolean;
+  hasGroups: boolean;
   unresolvedNNCount: number;
-  unresolvedNNSubgroups: number;
+  unresolvedNNGroups: number;
 }> {
-  const allSubgroups = await db
-    .select({ nombre: subgroups.nombre, estado: subgroups.estado, pendingSync: subgroups.pendingSync })
-    .from(subgroups)
-    .where(eq(subgroups.plantacionId, plantacionId));
+  const allGroups = await db
+    .select({ nombre: groups.nombre, estado: groups.estado, pendingSync: groups.pendingSync })
+    .from(groups)
+    .where(eq(groups.plantacionId, plantacionId));
 
   // A subgroup is "done" if its estado is finalizada OR sincronizada.
   // sincronizada = finalized + synced to server (Phase 14 lifecycle).
-  const blocking = allSubgroups.filter(s =>
+  const blocking = allGroups.filter(s =>
     (s.estado !== 'finalizada' && s.estado !== 'sincronizada') || s.pendingSync
   );
 
   // Count unresolved N/N trees per subgroup in this plantation
   const nnRows = await db.select({
-    subgrupoId: trees.subgrupoId,
+    grupoId: trees.groupId,
     cnt: count(),
   })
     .from(trees)
     .where(and(
       isNull(trees.especieId),
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`
+      sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
     ))
-    .groupBy(trees.subgrupoId);
+    .groupBy(trees.groupId);
 
   const unresolvedNNCount = nnRows.reduce((sum, r) => sum + r.cnt, 0);
-  const unresolvedNNSubgroups = nnRows.length;
+  const unresolvedNNGroups = nnRows.length;
 
   return {
-    canFinalize: allSubgroups.length > 0 && blocking.length === 0 && unresolvedNNCount === 0,
+    canFinalize: allGroups.length > 0 && blocking.length === 0 && unresolvedNNCount === 0,
     blocking,
-    hasSubgroups: allSubgroups.length > 0,
+    hasGroups: allGroups.length > 0,
     unresolvedNNCount,
-    unresolvedNNSubgroups,
+    unresolvedNNGroups,
   };
 }
 
@@ -151,25 +151,25 @@ export async function getAssignedTechnicians(
     .where(eq(plantationUsers.plantationId, plantacionId));
 }
 
-// ─── getTechnicianUnsyncedSubgroupCount ───────────────────────────────────────
+// ─── getTechnicianUnsyncedGroupCount ───────────────────────────────────────
 
 /**
- * Returns the count of subgroups in a plantation created by a specific user
+ * Returns the count of groups in a plantation created by a specific user
  * that have pending local changes (pendingSync=true).
  * Used to warn admins before unassigning a technician.
  */
-export async function getTechnicianUnsyncedSubgroupCount(
+export async function getTechnicianUnsyncedGroupCount(
   plantacionId: string,
   userId: string
 ): Promise<number> {
   const result = await db
     .select({ cnt: count() })
-    .from(subgroups)
+    .from(groups)
     .where(
       and(
-        eq(subgroups.plantacionId, plantacionId),
-        eq(subgroups.usuarioCreador, userId),
-        eq(subgroups.pendingSync, true)
+        eq(groups.plantacionId, plantacionId),
+        eq(groups.usuarioCreador, userId),
+        eq(groups.pendingSync, true)
       )
     );
   return result[0]?.cnt ?? 0;
@@ -189,10 +189,10 @@ export async function hasTreesForSpecies(
   const rows = await db
     .select({ id: trees.id })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(
       and(
-        eq(subgroups.plantacionId, plantacionId),
+        eq(groups.plantacionId, plantacionId),
         eq(trees.especieId, especieId)
       )
     );
@@ -223,10 +223,10 @@ export async function hasIdsGenerated(plantacionId: string): Promise<boolean> {
   const rows = await db
     .select({ id: trees.id })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(
       and(
-        eq(subgroups.plantacionId, plantacionId),
+        eq(groups.plantacionId, plantacionId),
         isNotNull(trees.globalId)
       )
     );

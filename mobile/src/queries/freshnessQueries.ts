@@ -1,5 +1,5 @@
 import { db } from '../database/client';
-import { subgroups } from '../database/schema';
+import { groups } from '../database/schema';
 import { sql } from 'drizzle-orm';
 import { supabase } from '../supabase/client';
 
@@ -8,13 +8,13 @@ let lastFreshnessCheck = 0;
 const FRESHNESS_COOLDOWN_MS = 30_000;
 
 /**
- * Returns the newest created_at timestamp from local subgroups.
- * Returns null if no subgroups exist locally.
+ * Returns the newest created_at timestamp from local groups.
+ * Returns null if no groups exist locally.
  */
-export async function getLocalMaxSubgroupCreatedAt(): Promise<string | null> {
+export async function getLocalMaxGroupCreatedAt(): Promise<string | null> {
   const result = await db
-    .select({ maxCreatedAt: sql<string>`MAX(${subgroups.createdAt})` })
-    .from(subgroups);
+    .select({ maxCreatedAt: sql<string>`MAX(${groups.createdAt})` })
+    .from(groups);
   return result[0]?.maxCreatedAt ?? null;
 }
 
@@ -31,9 +31,10 @@ export async function checkFreshness(plantacionIds: string[]): Promise<boolean> 
   lastFreshnessCheck = now;
 
   try {
-    const localMax = await getLocalMaxSubgroupCreatedAt();
+    const localMax = await getLocalMaxGroupCreatedAt();
 
     const { data } = await supabase
+      // COMPAT: shim 012b; Plan 16-03 renombra a 'groups'
       .from('subgroups')
       .select('created_at')
       .in('plantation_id', plantacionIds)
