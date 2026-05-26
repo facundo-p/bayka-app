@@ -116,12 +116,18 @@ BEGIN
   -- ──────────────────────────────────────────────────────────────────────────
   -- 5. Recomputar trees.sub_id con formato nuevo
   --    sub_id = UPPER(parcela.codigo) || UPPER(group.codigo) || UPPER(species.codigo or 'NN') || posicion
+  --
+  --    NOTA Postgres: UPDATE...FROM no permite que un LEFT JOIN dentro de FROM
+  --    referencie la tabla target (trees t). Por eso species se resuelve via
+  --    correlated subquery, no JOIN.
   -- ──────────────────────────────────────────────────────────────────────────
   UPDATE trees t
-  SET sub_id = UPPER(p.codigo) || UPPER(g.codigo) || UPPER(COALESCE(s.codigo, 'NN')) || t.posicion::text
+  SET sub_id = UPPER(p.codigo)
+               || UPPER(g.codigo)
+               || UPPER(COALESCE((SELECT s.codigo FROM species s WHERE s.id = t.species_id), 'NN'))
+               || t.posicion::text
   FROM groups g
   JOIN parcelas p ON p.id = g.parcela_id
-  LEFT JOIN species s ON s.id = t.species_id
   WHERE g.id = t.group_id
     AND g.plantation_id IN (v_sss_id, v_pss_id, v_pms_id);
 
