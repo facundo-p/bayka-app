@@ -25,26 +25,26 @@ interface NNTree {
   subId: string;
   fotoUrl: string | null;
   especieId: string | null;
-  subgrupoId: string;
-  subgrupoCodigo?: string;
-  subgrupoNombre?: string;
+  grupoId: string;
+  grupoCodigo?: string;
+  grupoNombre?: string;
   conflictEspecieId?: string | null;
   conflictEspecieNombre?: string | null;
 }
 
 export function useNNResolution(params: {
   plantacionId: string;
-  subgrupoId?: string;
-  subgrupoCodigo?: string;
+  grupoId?: string;
+  grupoCodigo?: string;
 }) {
-  const { plantacionId, subgrupoId, subgrupoCodigo } = params;
+  const { plantacionId, grupoId, grupoCodigo } = params;
   const confirm = useConfirm();
-  const isPlantationMode = !subgrupoId;
+  const isPlantationMode = !grupoId;
   const userId = useCurrentUserId();
   const { profile } = useProfileData();
   const isAdmin = profile?.rol === 'admin';
 
-  const singleSubgroupTrees = useTrees(subgrupoId ?? '');
+  const singleGroupTrees = useTrees(grupoId ?? '');
 
   const { data: plantationNNTrees } = useLiveData(
     () => {
@@ -60,9 +60,9 @@ export function useNNResolution(params: {
   if (isPlantationMode) {
     unresolvedTrees = (plantationNNTrees ?? []) as NNTree[];
   } else {
-    unresolvedTrees = singleSubgroupTrees.allTrees
+    unresolvedTrees = singleGroupTrees.allTrees
       .filter((t) => t.especieId === null)
-      .map((t) => ({ ...t, subgrupoCodigo: subgrupoCodigo ?? '', subgrupoNombre: undefined }));
+      .map((t) => ({ ...t, grupoCodigo: grupoCodigo ?? '', grupoNombre: undefined }));
   }
 
   const { species, loading: speciesLoading } = usePlantationSpecies(plantacionId ?? '');
@@ -75,7 +75,7 @@ export function useNNResolution(params: {
   const safeIndex = Math.min(currentIndex, unresolvedTrees.length - 1);
   const currentTree = unresolvedTrees[safeIndex];
   const total = unresolvedTrees.length;
-  const currentSubgrupoCodigo = currentTree?.subgrupoCodigo ?? subgrupoCodigo ?? '';
+  const currentGrupoCodigo = currentTree?.grupoCodigo ?? grupoCodigo ?? '';
   const currentSelectionId = selections[currentTree?.id] ?? null;
 
   function handleSelectSpecies(especieId: string) {
@@ -101,7 +101,7 @@ export function useNNResolution(params: {
     try {
       for (const tree of toResolve) {
         const speciesId = selections[tree.id];
-        const codigo = tree.subgrupoCodigo ?? subgrupoCodigo ?? '';
+        const codigo = tree.grupoCodigo ?? grupoCodigo ?? '';
         await resolveNNTree(tree.id, speciesId, codigo);
       }
       const resolved = new Set(toResolve.map((t) => t.id));
@@ -119,8 +119,8 @@ export function useNNResolution(params: {
   }
 
   // ─── Permission check ─────────────────────────────────────────────────────
-  // Admin can always resolve. Tecnico can resolve trees in their own subgroups.
-  const canResolve = isAdmin || !subgrupoId; // plantation-mode: filtered by user already
+  // Admin can always resolve. Tecnico can resolve trees in their own groups.
+  const canResolve = isAdmin || !grupoId; // plantation-mode: filtered by user already
 
   // ─── Conflict helpers ────────────────────────────────────────────────────
   function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {
@@ -139,7 +139,7 @@ export function useNNResolution(params: {
     if (!conflict) return;
     // Resolve with server species
     const tree = unresolvedTrees.find(t => t.id === treeId);
-    const codigo = tree?.subgrupoCodigo ?? subgrupoCodigo ?? '';
+    const codigo = tree?.grupoCodigo ?? grupoCodigo ?? '';
     await resolveNNTree(treeId, conflict.serverEspecieId, codigo);
     // Clear conflict columns
     await db.update(trees)
@@ -170,7 +170,7 @@ export function useNNResolution(params: {
     species,
     speciesLoading,
     currentTree,
-    currentSubgrupoCodigo,
+    currentGrupoCodigo,
     currentSelectionId,
     safeIndex,
     total,

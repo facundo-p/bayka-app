@@ -9,7 +9,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog, showConfirmDialog } from '../utils/alertHelpers';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { getAllTechnicians, getAssignedTechnicians, getTechnicianUnsyncedSubgroupCount } from '../queries/adminQueries';
+import { getAllTechnicians, getAssignedTechnicians, getTechnicianUnsyncedGroupCount } from '../queries/adminQueries';
 import { assignTechnicians } from '../repositories/PlantationRepository';
 import { colors } from '../theme';
 
@@ -90,7 +90,7 @@ export function useAssignTechnicians(plantacionId: string | undefined) {
 
   async function handleToggle(id: string, newValue: boolean) {
     if (!newValue && plantacionId) {
-      const unsyncedCount = await getTechnicianUnsyncedSubgroupCount(plantacionId, id);
+      const unsyncedCount = await getTechnicianUnsyncedGroupCount(plantacionId, id);
       if (unsyncedCount > 0) {
         showConfirmDialog(
           confirm.show,
