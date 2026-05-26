@@ -13,6 +13,7 @@ import m0008 from './0008_add_foto_synced.sql';
 import m0009 from './0009_add_subgroup_pending_sync.sql';
 import m0010 from './0010_add_tree_conflict_columns.sql';
 import m0011 from './0011_groups_parcelas_migration.sql';
+import m0012 from './0012_parcelas_deleted_at.sql';
 
   export default {
     journal,
@@ -28,6 +29,7 @@ m0007,
 m0008,
 m0009,
 m0010,
-m0011
+m0011,
+m0012
     }
   }
