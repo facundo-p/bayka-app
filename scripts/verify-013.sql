@@ -2,11 +2,11 @@
 -- Retorna 4 filas con (check, status, detail). Esperado: todas con status='OK'.
 
 WITH checks AS (
-  SELECT 1 AS n, 'total plantations = 21' AS label,
-    ((SELECT COUNT(*) FROM plantations) = 21) AS pass,
+  SELECT 1 AS n, 'total plantations = 22 (21 productivas + 1 deprecated)' AS label,
+    ((SELECT COUNT(*) FROM plantations) = 22) AS pass,
     (SELECT COUNT(*)::text FROM plantations) AS detail
   UNION ALL
-  SELECT 2, 'none of the 11 test plantations exist',
+  SELECT 2, 'none of the 16 test plantations exist',
     NOT EXISTS (
       SELECT 1 FROM plantations
       WHERE id IN (
@@ -20,7 +20,12 @@ WITH checks AS (
         '09a315e2-0754-410b-81da-d3ff862cd8bb'::uuid,
         '203beee5-981f-4029-9cc5-9403d14ae0a5'::uuid,
         '6d2e80b0-7ede-4d24-a50a-210060c4465a'::uuid,
-        '7fea8850-ec03-4be9-86dc-0a4efc5ae7f0'::uuid
+        '7fea8850-ec03-4be9-86dc-0a4efc5ae7f0'::uuid,
+        '0dfa2ced-ab5a-46bc-8046-2549480d63d4'::uuid,
+        '58b43096-23c4-4820-8398-1b5d8640bb6d'::uuid,
+        '461a37c7-7d4d-47b4-b9d4-6e032fdbb42a'::uuid,
+        'ad648fab-4fc9-4a94-bbbf-0f9acdbb5d8b'::uuid,
+        '5ccc718b-e049-4b58-b2e6-ffb96df87a8f'::uuid
       )
     ),
     'cascade ok'
