@@ -1,6 +1,6 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
-import { subgroups, trees } from '../../database/schema';
+import { groups, trees } from '../../database/schema';
 import { eq, and, inArray, isNotNull } from 'drizzle-orm';
 import { isRemoteUri, ensureFileUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
@@ -36,7 +36,7 @@ async function uploadPhotoToStorage(
 
 /**
  * Uploads all pending photos for a plantation to Supabase Storage.
- * Per D-15: runs after SubGroup sync. Continues on individual failures (batch-safe).
+ * Per D-15: runs after Group sync. Continues on individual failures (batch-safe).
  * Per D-12: stores relative storage path `plantations/{id}/trees/{id}.jpg` in Supabase trees table.
  * Per D-13: marks fotoSynced=true locally on success.
  */
@@ -82,21 +82,21 @@ export async function uploadPendingPhotos(
 
 async function getRemoteTreesForPlantation(
   plantacionId: string
-): Promise<Array<{ id: string; fotoUrl: string; subgrupoId: string }>> {
-  const allSubgroups = await db
-    .select({ id: subgroups.id })
-    .from(subgroups)
-    .where(eq(subgroups.plantacionId, plantacionId));
+): Promise<Array<{ id: string; fotoUrl: string; grupoId: string }>> {
+  const allGroups = await db
+    .select({ id: groups.id })
+    .from(groups)
+    .where(eq(groups.plantacionId, plantacionId));
 
-  if (allSubgroups.length === 0) return [];
+  if (allGroups.length === 0) return [];
 
-  const sgIds = allSubgroups.map(sg => sg.id);
+  const sgIds = allGroups.map(sg => sg.id);
   const allTrees = await db
-    .select({ id: trees.id, fotoUrl: trees.fotoUrl, subgrupoId: trees.subgrupoId })
+    .select({ id: trees.id, fotoUrl: trees.fotoUrl, grupoId: trees.groupId })
     .from(trees)
-    .where(and(inArray(trees.subgrupoId, sgIds), isNotNull(trees.fotoUrl)));
+    .where(and(inArray(trees.groupId, sgIds), isNotNull(trees.fotoUrl)));
 
-  return allTrees.filter(t => isRemoteUri(t.fotoUrl)) as Array<{ id: string; fotoUrl: string; subgrupoId: string }>;
+  return allTrees.filter(t => isRemoteUri(t.fotoUrl)) as Array<{ id: string; fotoUrl: string; grupoId: string }>;
 }
 
 async function downloadSinglePhoto(

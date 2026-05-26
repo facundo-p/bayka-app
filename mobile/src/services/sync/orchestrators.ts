@@ -2,10 +2,10 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncSubGroupResult, SyncProgress, GlobalSyncProgress } from './types';
+import { SyncGroupResult, SyncProgress, GlobalSyncProgress } from './types';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
-import { uploadSyncableSubGroups } from './pushService';
+import { uploadSyncableGroups } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 
 // ─── Main orchestrator ────────────────────────────────────────────────────────
@@ -14,14 +14,14 @@ import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService
  * Orchestrates pull-then-push sync for a plantation.
  * 1. Refreshes auth session
  * 2. Pulls latest data from server
- * 3. Uploads each finalizada SubGroup one by one
+ * 3. Uploads each finalizada Group one by one
  * 4. Accumulates results (continues on failure)
  * 5. Notifies local data change once at the end
  */
 export async function syncPlantation(
   plantacionId: string,
   onProgress?: (progress: SyncProgress) => void
-): Promise<SyncSubGroupResult[]> {
+): Promise<SyncGroupResult[]> {
   await runGlobalPreSteps();
 
   try {
@@ -30,7 +30,7 @@ export async function syncPlantation(
     syncLog.error('Pull failed:', e);
   }
 
-  const results = await uploadSyncableSubGroups(plantacionId, onProgress);
+  const results = await uploadSyncableGroups(plantacionId, onProgress);
   notifyDataChanged();
   return results;
 }
@@ -45,11 +45,11 @@ export async function syncPlantation(
 export async function syncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
   incluirFotos: boolean = true
-): Promise<Array<{ plantationId: string; plantationName: string; results: SyncSubGroupResult[] }>> {
+): Promise<Array<{ plantationId: string; plantationName: string; results: SyncGroupResult[] }>> {
   await runGlobalPreSteps();
 
   const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
-  const allResults: Array<{ plantationId: string; plantationName: string; results: SyncSubGroupResult[] }> = [];
+  const allResults: Array<{ plantationId: string; plantationName: string; results: SyncGroupResult[] }> = [];
 
   for (let i = 0; i < localPlantations.length; i++) {
     const p = localPlantations[i];
@@ -57,7 +57,7 @@ export async function syncAllPlantations(
 
     try {
       await pullFromServer(p.id);
-      const results = await uploadSyncableSubGroups(p.id, (subProgress) => {
+      const results = await uploadSyncableGroups(p.id, (subProgress) => {
         onProgress?.({
           plantationName: p.lugar,
           plantationDone: i,

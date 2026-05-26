@@ -1,6 +1,6 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
-import { subgroups, trees, plantationUsers, plantationSpecies, plantations, species } from '../../database/schema';
+import { groups, trees, plantationUsers, plantationSpecies, plantations, species } from '../../database/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
@@ -39,22 +39,23 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   await db.update(plantations).set(serverUpdate).where(eq(plantations.id, plantacionId));
 }
 
-async function pullSubgroups(plantacionId: string): Promise<string[]> {
-  const { data: remoteSubgroups, error } = await supabase
+async function pullGroups(plantacionId: string): Promise<string[]> {
+  // COMPAT: shim 012b expone subgroups VIEW; Plan 16-03 renombra a 'groups'
+  const { data: remoteGroups, error } = await supabase
     .from('subgroups')
     .select('*')
     .eq('plantation_id', plantacionId);
 
   if (error) {
-    syncLog.error('Pull subgroups error:', JSON.stringify(error));
+    syncLog.error('Pull groups error:', JSON.stringify(error));
     return [];
   }
-  syncLog.info('Pull subgroups:', remoteSubgroups?.length ?? 0, 'rows');
+  syncLog.info('Pull groups:', remoteGroups?.length ?? 0, 'rows');
 
-  if (!remoteSubgroups || remoteSubgroups.length === 0) return [];
+  if (!remoteGroups || remoteGroups.length === 0) return [];
 
-  for (const sg of remoteSubgroups) {
-    await db.insert(subgroups).values({
+  for (const sg of remoteGroups) {
+    await db.insert(groups).values({
       id: sg.id,
       plantacionId: sg.plantation_id,
       nombre: sg.nombre,
@@ -65,16 +66,16 @@ async function pullSubgroups(plantacionId: string): Promise<string[]> {
       createdAt: sg.created_at,
       pendingSync: false,
     }).onConflictDoUpdate({
-      target: subgroups.id,
+      target: groups.id,
       set: {
         estado: sql`excluded.estado`,
         nombre: sql`excluded.nombre`,
-        pendingSync: sql`CASE WHEN ${subgroups.pendingSync} = 1 THEN 1 ELSE 0 END`,
+        pendingSync: sql`CASE WHEN ${groups.pendingSync} = 1 THEN 1 ELSE 0 END`,
       },
     });
   }
 
-  return remoteSubgroups.map((sg: any) => sg.id);
+  return remoteGroups.map((sg: any) => sg.id);
 }
 
 async function pullPlantationUsers(plantacionId: string): Promise<void> {
@@ -168,7 +169,7 @@ async function upsertTreeFromServer(t: any): Promise<void> {
 
   await db.insert(trees).values({
     id: t.id,
-    subgrupoId: t.subgroup_id,
+    groupId: t.subgroup_id,
     especieId: t.species_id,
     posicion: t.posicion,
     subId: t.sub_id,
@@ -192,11 +193,11 @@ async function upsertTreeFromServer(t: any): Promise<void> {
   });
 }
 
-async function pullTrees(remoteSubgroupIds: string[]): Promise<void> {
+async function pullTrees(remoteGroupIds: string[]): Promise<void> {
   const { data: remoteTrees, error } = await supabase
     .from('trees')
     .select('*')
-    .in('subgroup_id', remoteSubgroupIds);
+    .in('subgroup_id', remoteGroupIds);
 
   if (error) {
     syncLog.error('Pull trees error:', JSON.stringify(error));
@@ -217,14 +218,14 @@ async function pullTrees(remoteSubgroupIds: string[]): Promise<void> {
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
 /**
- * Downloads plantation metadata, subgroups, plantation_users, plantation_species
+ * Downloads plantation metadata, groups, plantation_users, plantation_species
  * and trees from Supabase and upserts them into local SQLite.
  */
 export async function pullFromServer(plantacionId: string): Promise<void> {
   syncLog.info('Pull starting for plantation:', plantacionId);
   await pullPlantationMetadata(plantacionId);
-  const remoteSubgroupIds = await pullSubgroups(plantacionId);
+  const remoteGroupIds = await pullGroups(plantacionId);
   await pullPlantationUsers(plantacionId);
   await pullPlantationSpecies(plantacionId);
-  if (remoteSubgroupIds.length > 0) await pullTrees(remoteSubgroupIds);
+  if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds);
 }
