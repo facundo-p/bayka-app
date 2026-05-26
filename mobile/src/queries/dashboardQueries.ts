@@ -5,7 +5,7 @@
  * Covers requirements: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
  */
 import { db } from '../database/client';
-import { plantations, plantationUsers, subgroups, trees } from '../database/schema';
+import { plantations, plantationUsers, groups, trees } from '../database/schema';
 import { eq, and, count, asc, sql, getTableColumns, isNull } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
@@ -30,7 +30,7 @@ export async function getPlantationsForRole(isAdmin: boolean, userId: string | n
 
 /**
  * DASH-04
- * Returns tree count per plantation for trees in subgroups with pending local changes,
+ * Returns tree count per plantation for trees in groups with pending local changes,
  * filtered by the current user's registrations.
  * Used to show "unsynced" tree count on each plantation card.
  */
@@ -38,18 +38,18 @@ export async function getUnsyncedTreeCounts(userId: string | null) {
   if (!userId) return [];
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(
       and(
         eq(trees.usuarioRegistro, userId),
-        eq(subgroups.pendingSync, true)
+        eq(groups.pendingSync, true)
       )
     )
-    .groupBy(subgroups.plantacionId);
+    .groupBy(groups.plantacionId);
 }
 
 /**
@@ -61,29 +61,29 @@ export async function getUserTotalTreeCounts(userId: string | null) {
   if (!userId) return [];
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(eq(trees.usuarioRegistro, userId))
-    .groupBy(subgroups.plantacionId);
+    .groupBy(groups.plantacionId);
 }
 
 /**
  * SYNC-07
- * Returns count of SubGroups with pendingSync=true per plantation.
+ * Returns count of Groups with pendingSync=true per plantation.
  * Used to show pending sync count on each plantation card.
  */
 export async function getPendingSyncCounts() {
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       pendingCount: count(),
     })
-    .from(subgroups)
-    .where(eq(subgroups.pendingSync, true))
-    .groupBy(subgroups.plantacionId);
+    .from(groups)
+    .where(eq(groups.pendingSync, true))
+    .groupBy(groups.plantacionId);
 }
 
 /**
@@ -96,50 +96,50 @@ export async function getTodayTreeCounts(userId: string | null) {
   const todayPrefix = localToday();
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(
       and(
         eq(trees.usuarioRegistro, userId),
         sql`${trees.createdAt} LIKE ${todayPrefix + '%'}`
       )
     )
-    .groupBy(subgroups.plantacionId);
+    .groupBy(groups.plantacionId);
 }
 
 /**
  * DASH-03 (synced portion)
- * Returns tree count per plantation for trees in synced SubGroups (pendingSync=false).
+ * Returns tree count per plantation for trees in synced Groups (pendingSync=false).
  */
 export async function getSyncedTreeCounts() {
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
-    .where(eq(subgroups.pendingSync, false))
-    .groupBy(subgroups.plantacionId);
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(eq(groups.pendingSync, false))
+    .groupBy(groups.plantacionId);
 }
 
 /**
  * DASH-03
  * Returns total tree count per plantation regardless of user.
- * JOINs through subgroups to get plantacionId (trees.plantacionId is unused/null).
+ * JOINs through groups to get plantacionId (trees.plantacionId is unused/null).
  */
 export async function getTotalTreeCounts() {
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       treeCount: count(),
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
-    .groupBy(subgroups.plantacionId);
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .groupBy(groups.plantacionId);
 }
 
 /**
@@ -150,11 +150,11 @@ export async function getTotalTreeCounts() {
 export async function getUnresolvedNNCountsPerPlantation() {
   return db
     .select({
-      plantacionId: subgroups.plantacionId,
+      plantacionId: groups.plantacionId,
       nnCount: count(),
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(isNull(trees.especieId))
-    .groupBy(subgroups.plantacionId);
+    .groupBy(groups.plantacionId);
 }

@@ -12,7 +12,7 @@ export type GroupTipo = 'linea' | 'parcela';
 export interface Group {
   id: string;
   plantacionId: string;
-  parcelaId: string | null;
+  parcelaId?: string | null;
   nombre: string;
   codigo: string;
   tipo: GroupTipo;

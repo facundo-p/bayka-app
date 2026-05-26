@@ -1,17 +1,17 @@
 import { db } from '../database/client';
-import { trees, species as speciesTable, subgroups } from '../database/schema';
+import { trees, species as speciesTable, groups } from '../database/schema';
 import { eq, max, asc, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
-import { markSubGroupPendingSync } from './SubGroupRepository';
+import { markGroupPendingSync } from './GroupRepository';
 import { isLocalUri } from '../utils/photoUri';
 
 export interface InsertTreeParams {
-  subgrupoId: string;
-  subgrupoCodigo: string;
+  grupoId: string;
+  grupoCodigo: string;
   especieId: string | null;  // null for N/N
   especieCodigo: string;     // 'NN' for N/N
   fotoUrl?: string | null;
@@ -29,15 +29,16 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
   const [maxResult] = await db
     .select({ maxPos: max(trees.posicion) })
     .from(trees)
-    .where(eq(trees.subgrupoId, params.subgrupoId));
+    .where(eq(trees.groupId, params.grupoId));
 
   const nextPosition = (maxResult?.maxPos ?? 0) + 1;
-  const subId = generateSubId(params.subgrupoCodigo, params.especieCodigo, nextPosition);
+  // PHASE-17: pasar codigo real de parcela (group.parcelaId lookup)
+  const subId = generateSubId('', params.grupoCodigo, params.especieCodigo, nextPosition);
 
   const id = Crypto.randomUUID();
   await db.insert(trees).values({
     id,
-    subgrupoId: params.subgrupoId,
+    groupId: params.grupoId,
     especieId: params.especieId,
     posicion: nextPosition,
     subId,
@@ -46,31 +47,31 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
     createdAt: localNow(),
   });
 
-  await markSubGroupPendingSync(params.subgrupoId);
+  await markGroupPendingSync(params.grupoId);
   notifyDataChanged();
   return { id, posicion: nextPosition, subId };
 }
 
-export async function deleteLastTree(subgrupoId: string): Promise<{ deleted: boolean }> {
+export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolean }> {
   const [maxResult] = await db
     .select({ maxPos: max(trees.posicion), id: trees.id })
     .from(trees)
-    .where(eq(trees.subgrupoId, subgrupoId));
+    .where(eq(trees.groupId, grupoId));
 
   if (maxResult?.id == null) return { deleted: false };
 
   await db.delete(trees).where(eq(trees.id, maxResult.id));
-  await markSubGroupPendingSync(subgrupoId);
+  await markGroupPendingSync(grupoId);
   notifyDataChanged();
   return { deleted: true };
 }
 
 export async function reverseTreeOrder(
-  subgrupoId: string,
-  subgrupoCodigo: string
+  grupoId: string,
+  grupoCodigo: string
 ): Promise<void> {
   const allTrees = await db.select().from(trees)
-    .where(eq(trees.subgrupoId, subgrupoId));
+    .where(eq(trees.groupId, grupoId));
 
   if (allTrees.length === 0) return;
 
@@ -88,37 +89,39 @@ export async function reverseTreeOrder(
         especieCodigo = sp?.codigo ?? 'NN';
       }
 
-      const newSubId = generateSubId(subgrupoCodigo, especieCodigo, newPosicion);
+      // PHASE-17: pasar codigo real de parcela
+      const newSubId = generateSubId('', grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
         .where(eq(trees.id, id));
     }
   });
-  await markSubGroupPendingSync(subgrupoId);
+  await markGroupPendingSync(grupoId);
   notifyDataChanged();
 }
 
 export async function resolveNNTree(
   treeId: string,
   especieId: string,
-  subgrupoCodigo: string
+  grupoCodigo: string
 ): Promise<void> {
   const [sp] = await db.select({ codigo: speciesTable.codigo })
     .from(speciesTable)
     .where(eq(speciesTable.id, especieId));
 
-  const [tree] = await db.select({ posicion: trees.posicion, subgrupoId: trees.subgrupoId })
+  const [tree] = await db.select({ posicion: trees.posicion, grupoId: trees.groupId })
     .from(trees)
     .where(eq(trees.id, treeId));
 
   if (!sp || !tree) return;
 
-  const newSubId = generateSubId(subgrupoCodigo, sp.codigo, tree.posicion);
+  // PHASE-17: pasar codigo real de parcela
+  const newSubId = generateSubId('', grupoCodigo, sp.codigo, tree.posicion);
 
   await db.update(trees)
     .set({ especieId, subId: newSubId })
     .where(eq(trees.id, treeId));
-  await markSubGroupPendingSync(tree.subgrupoId);
+  await markGroupPendingSync(tree.grupoId);
   notifyDataChanged();
 }
 
@@ -132,35 +135,35 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   await db.update(trees)
     .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
     .where(eq(trees.id, treeId));
-  const [treeRow] = await db.select({ subgrupoId: trees.subgrupoId }).from(trees).where(eq(trees.id, treeId));
-  if (treeRow) await markSubGroupPendingSync(treeRow.subgrupoId);
+  const [treeRow] = await db.select({ grupoId: trees.groupId }).from(trees).where(eq(trees.id, treeId));
+  if (treeRow) await markGroupPendingSync(treeRow.grupoId);
   notifyDataChanged();
 }
 
 /**
  * Returns trees with local photos not yet uploaded to Storage.
- * Only includes trees in synced subgroups (pendingSync=false) for the given plantation.
+ * Only includes trees in synced groups (pendingSync=false) for the given plantation.
  * Filters to file:// URIs only — remote paths from pull should not be re-uploaded (Pitfall 2).
  */
 export async function getTreesWithPendingPhotos(plantacionId: string): Promise<Array<{
   id: string;
   fotoUrl: string;
-  subgrupoId: string;
+  grupoId: string;
   plantacionId: string;
 }>> {
   const rows = await db
     .select({
       id: trees.id,
       fotoUrl: trees.fotoUrl,
-      subgrupoId: trees.subgrupoId,
-      plantacionId: subgroups.plantacionId,
+      grupoId: trees.groupId,
+      plantacionId: groups.plantacionId,
     })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(
       and(
-        eq(subgroups.plantacionId, plantacionId),
-        // Removed: eq(subgroups.pendingSync, false)
+        eq(groups.plantacionId, plantacionId),
+        // Removed: eq(groups.pendingSync, false)
         // Photo upload must work regardless of subgroup sync state.
         // Trees from failed RPC calls also need their photos uploaded.
         isNotNull(trees.fotoUrl),
@@ -170,7 +173,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
   return rows.filter(r => isLocalUri(r.fotoUrl)) as Array<{
     id: string;
     fotoUrl: string;
-    subgrupoId: string;
+    grupoId: string;
     plantacionId: string;
   }>;
 }
@@ -190,14 +193,14 @@ export async function markPhotoSynced(treeId: string): Promise<void> {
  */
 export async function deleteTreeAndRecalculate(
   treeId: string,
-  subgrupoId: string,
-  subgrupoCodigo: string
+  grupoId: string,
+  grupoCodigo: string
 ): Promise<void> {
   await db.delete(trees).where(eq(trees.id, treeId));
 
   // Fetch remaining trees ordered by current position
   const remaining = await db.select().from(trees)
-    .where(eq(trees.subgrupoId, subgrupoId))
+    .where(eq(trees.groupId, grupoId))
     .orderBy(asc(trees.posicion));
 
   // Recalculate positions and subIds
@@ -214,13 +217,14 @@ export async function deleteTreeAndRecalculate(
         especieCodigo = sp?.codigo ?? 'NN';
       }
 
-      const newSubId = generateSubId(subgrupoCodigo, especieCodigo, newPos);
+      // PHASE-17: pasar codigo real de parcela
+      const newSubId = generateSubId('', grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })
         .where(eq(trees.id, tree.id));
     }
   });
 
-  await markSubGroupPendingSync(subgrupoId);
+  await markGroupPendingSync(grupoId);
   notifyDataChanged();
 }
