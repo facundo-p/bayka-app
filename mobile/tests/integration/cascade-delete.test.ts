@@ -50,7 +50,7 @@ beforeEach(async () => {
  */
 function deletePlantationLocally(plantacionId: string): void {
   const deleteTrees = sqlite.prepare(
-    `DELETE FROM trees WHERE subgrupo_id IN (SELECT id FROM groups WHERE plantacion_id = ?)`
+    `DELETE FROM trees WHERE group_id IN (SELECT id FROM groups WHERE plantacion_id = ?)`
   );
   const deleteGroups = sqlite.prepare(`DELETE FROM groups WHERE plantacion_id = ?`);
   const deletePlantationSpecies = sqlite.prepare(`DELETE FROM plantation_species WHERE plantacion_id = ?`);
