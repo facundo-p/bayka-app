@@ -326,7 +326,7 @@ Plans:
 
 ### Phase 15: Schema migration + data consolidation
 
-**Goal:** Establecer la nueva estructura de schema (tabla `parcelas` con `descripcion`, rename `subgroups`→`groups` con unicidad **per-parcela**, tipo `linea | bosquete`, SubID con prefijo de Parcela) tanto en SQLite local como en Supabase, y ejecutar la consolidación de datos acordada con re-cálculo batch de los 6.776 SubIDs preservados.
+**Goal:** Establecer la nueva estructura de schema (tabla `parcelas` con `descripcion`, rename `subgroups`→`groups` con unicidad **per-parcela**, tipo `linea | bosquete`, SubID con prefijo de Parcela) tanto en SQLite local como en Supabase, y ejecutar la consolidación de datos acordada con re-cálculo batch de los 7.579 SubIDs preservados (números actualizados 2026-05-25 tras auditoría real + reemplazo Pp↔SSS-Medio-P4 via 012c).
 **Depends on:** Phase 14
 **Requirements**: PARC-01, PARC-02, PARC-03, PARC-04, PARC-05, PARC-06, PARC-07, PARC-08, PARC-09, PARC-10, MIGR-01, MIGR-02, MIGR-03, MIGR-04, MIGR-05, MIGR-06, MIGR-07, MIGR-08, MIGR-09, MIGR-10, MIGR-11
 **Success Criteria** (what must be TRUE):
@@ -334,10 +334,10 @@ Plans:
   2. Tabla `parcelas` existe en SQLite local y Supabase con FK a plantations, columna `descripcion` (text opcional, CHECK `char_length <= 10000` en server), índices únicos `(plantacion_id, nombre)` y `(plantacion_id, codigo)`, RLS para admin/tecnico
   3. Tabla `groups` reemplaza a `subgroups` en ambos sistemas; columna `trees.group_id` reemplaza a `trees.subgroup_id`; FK `groups.parcela_id` apunta a `parcelas.id`; constraint `tipo IN ('linea','bosquete')` activo; **índices únicos de Grupo cambian a `(parcela_id, nombre)` y `(parcela_id, codigo)`** (antes per-plantación)
   4. `idGenerator.generateSubId(parcelaCode, groupCode, speciesCode, position)` activo; firma vieja eliminada o deprecated con warning
-  5. Plantación "San Sebastián de la Selva" (Otoño 2026) existe con exactamente 17 parcelas (Loma-P1..P13 + Medio-P1..P4) que contienen 215 grupos y 6.321 árboles preservados — verificable que dos parcelas distintas tienen un grupo con código "L1" sin colisión
+  5. Plantación "San Sebastián de la Selva" (Otoño 2026) existe con exactamente 17 parcelas (Loma-P1..P13 + Medio-P1..P4) que contienen **233 grupos y 7.124 árboles** preservados — verificable que dos parcelas distintas tienen un grupo con código "L1" sin colisión
   6. Plantación "Pruebas - SSS" (Otoño 2026) y "Pruebas - La Morita" (Primavera 2026) existen con 2 parcelas cada una, conteo de grupos y árboles correcto (5/114 y 5/341 respectivamente)
-  7. Conteo final post-migración exacto: 3 plantaciones, 21 parcelas, 225 grupos, 6.776 árboles; FKs consistentes y sin huérfanos
-  8. **6.776 SubIDs re-computados** con formato `ParcelaCode + GroupCode + SpeciesCode + Position`; ningún SubID quedó NULL; SubIDs únicos dentro de cada plantación
+  7. Conteo final post-migración exacto: **3 plantaciones consolidadas, 21 parcelas, 243 grupos, 7.579 árboles** (más 1 plantación deprecated standalone con 2 grupos/117 árboles, deferred cleanup); FKs consistentes y sin huérfanos
+  8. **7.579 SubIDs re-computados** con formato `ParcelaCode + GroupCode + SpeciesCode + Position`; ningún SubID quedó NULL; SubIDs únicos dentro de cada plantación
   9. Subgrupos con `estado='sincronizada'` actualizados a `estado='finalizada'` (server alineado con simplificación de Phase 13)
  10. SQLite local de cada usuario sincroniza la nueva estructura (incluyendo SubIDs nuevos) en el siguiente pull (sin acción manual del usuario)
 **Plans**: 3 plans
