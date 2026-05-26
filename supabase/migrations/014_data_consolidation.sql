@@ -221,6 +221,10 @@ GRANT EXECUTE ON FUNCTION sync_subgroup(JSONB, JSONB) TO authenticated;
 
 -- ────────────────────────────────────────────────────────────────────────────
 -- 11. Post-checks atómicos.
+--     Identificamos las 3 plantations nuevas vía _mapping (sigue vivo en
+--     transacción hasta COMMIT). NO usamos `lugar` porque uno de los sources
+--     (67bfd338, Cluster B → SO) comparte el lugar "San Sebastián de la Selva"
+--     con la consolidada nueva.
 -- ────────────────────────────────────────────────────────────────────────────
 DO $$
 DECLARE
@@ -233,7 +237,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO v_new_plant_count
   FROM plantations
-  WHERE lugar IN ('San Sebastián de la Selva', 'Pruebas - SSS', 'Pruebas - La Morita');
+  WHERE id IN (SELECT DISTINCT target_plantation_id FROM _mapping);
   IF v_new_plant_count <> 3 THEN
     RAISE EXCEPTION 'Post-check: expected 3 new plantations, found %', v_new_plant_count;
   END IF;
@@ -245,8 +249,7 @@ BEGIN
 
   SELECT COUNT(*) INTO v_groups_in_new
   FROM groups g
-  JOIN plantations p ON p.id = g.plantation_id
-  WHERE p.lugar IN ('San Sebastián de la Selva', 'Pruebas - SSS', 'Pruebas - La Morita');
+  WHERE g.plantation_id IN (SELECT DISTINCT target_plantation_id FROM _mapping);
   IF v_groups_in_new <> 243 THEN
     RAISE EXCEPTION 'Post-check: expected 243 groups in new plantations, found %', v_groups_in_new;
   END IF;
@@ -254,8 +257,7 @@ BEGIN
   SELECT COUNT(*) INTO v_trees_in_new
   FROM trees t
   JOIN groups g ON g.id = t.group_id
-  JOIN plantations p ON p.id = g.plantation_id
-  WHERE p.lugar IN ('San Sebastián de la Selva', 'Pruebas - SSS', 'Pruebas - La Morita');
+  WHERE g.plantation_id IN (SELECT DISTINCT target_plantation_id FROM _mapping);
   IF v_trees_in_new <> 7579 THEN
     RAISE EXCEPTION 'Post-check: expected 7579 trees in new plantations, found %', v_trees_in_new;
   END IF;
@@ -263,8 +265,7 @@ BEGIN
   SELECT COUNT(*) INTO v_null_subid
   FROM trees t
   JOIN groups g ON g.id = t.group_id
-  JOIN plantations p ON p.id = g.plantation_id
-  WHERE p.lugar IN ('San Sebastián de la Selva', 'Pruebas - SSS', 'Pruebas - La Morita')
+  WHERE g.plantation_id IN (SELECT DISTINCT target_plantation_id FROM _mapping)
     AND (t.sub_id IS NULL OR trim(t.sub_id) = '');
   IF v_null_subid <> 0 THEN
     RAISE EXCEPTION 'Post-check: found % NULL/empty sub_ids in new plantations', v_null_subid;
