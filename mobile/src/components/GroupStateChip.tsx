@@ -1,5 +1,5 @@
 import StatusChip from './StatusChip';
 
-export default function SubGroupStateChip({ estado }: { estado: string }) {
+export default function GroupStateChip({ estado }: { estado: string }) {
   return <StatusChip estado={estado} size="sm" />;
 }
