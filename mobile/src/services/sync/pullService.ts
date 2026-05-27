@@ -42,22 +42,28 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
 
 // ─── Pull parcelas (BEFORE groups — D-16-12, FK ordering) ────────────────────
 
-/**
- * Upserts a remote parcela into local SQLite. Preserves pending_sync on local
- * rows (memory feedback_state_lifecycle_audit.md). Tombstone propagation: si
- * server tiene deleted_at, el upsert lo persiste local.
- */
-async function upsertParcelaFromServer(p: any): Promise<void> {
+interface RemoteParcela {
+  id: string;
+  plantation_id: string;
+  nombre: string;
+  codigo: string;
+  descripcion: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+async function upsertParcelaFromServer(remoteParcela: RemoteParcela): Promise<void> {
   await db.insert(parcelas).values({
-    id: p.id,
-    plantacionId: p.plantation_id,
-    nombre: p.nombre,
-    codigo: p.codigo,
-    descripcion: p.descripcion ?? null,
+    id: remoteParcela.id,
+    plantacionId: remoteParcela.plantation_id,
+    nombre: remoteParcela.nombre,
+    codigo: remoteParcela.codigo,
+    descripcion: remoteParcela.descripcion ?? null,
     pendingSync: false,
-    createdAt: p.created_at,
-    updatedAt: p.updated_at,
-    deletedAt: p.deleted_at ?? null,
+    createdAt: remoteParcela.created_at,
+    updatedAt: remoteParcela.updated_at,
+    deletedAt: remoteParcela.deleted_at ?? null,
   }).onConflictDoUpdate({
     target: parcelas.id,
     set: {
@@ -94,17 +100,17 @@ async function pullParcelas(plantacionId: string): Promise<string[]> {
 
   if (!remoteParcelas || remoteParcelas.length === 0) return [];
 
-  for (const p of remoteParcelas) {
+  for (const remoteParcela of remoteParcelas as RemoteParcela[]) {
     // Skip if local row has pending changes — push will win.
-    const local = await findParcelaById(p.id, { includeDeleted: true });
+    const local = await findParcelaById(remoteParcela.id, { includeDeleted: true });
     if (local?.pendingSync) {
-      syncLog.info(`pullParcelas: skipping ${p.id} — local has pending changes`);
+      syncLog.info(`pullParcelas: skipping ${remoteParcela.id} — local has pending changes`);
       continue;
     }
-    await upsertParcelaFromServer(p);
+    await upsertParcelaFromServer(remoteParcela);
   }
 
-  return remoteParcelas.map((p: any) => p.id);
+  return (remoteParcelas as RemoteParcela[]).map((remoteParcela) => remoteParcela.id);
 }
 
 async function pullGroups(plantacionId: string): Promise<string[]> {

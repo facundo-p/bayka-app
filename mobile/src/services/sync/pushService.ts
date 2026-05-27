@@ -70,19 +70,19 @@ async function uploadPhotoToStorage(
  * handles tombstone push (deletedAt != null) — Supabase recibe el upsert
  * con deleted_at y aplica el cambio.
  */
-async function uploadParcela(p: Parcela): Promise<{ data: any; error: any }> {
+async function uploadParcela(parcela: Parcela): Promise<{ data: any; error: any }> {
   return supabase
     .from('parcelas')
     .upsert(
       {
-        id: p.id,
-        plantation_id: p.plantacionId,
-        nombre: p.nombre,
-        codigo: p.codigo,
-        descripcion: p.descripcion,
-        deleted_at: p.deletedAt,
-        created_at: p.createdAt,
-        updated_at: p.updatedAt,
+        id: parcela.id,
+        plantation_id: parcela.plantacionId,
+        nombre: parcela.nombre,
+        codigo: parcela.codigo,
+        descripcion: parcela.descripcion,
+        deleted_at: parcela.deletedAt,
+        created_at: parcela.createdAt,
+        updated_at: parcela.updatedAt,
       },
       { onConflict: 'id' }
     );
@@ -93,40 +93,40 @@ async function uploadParcela(p: Parcela): Promise<{ data: any; error: any }> {
  * en el spike (3.3.0). NUNCA substring matching sobre error.message.
  */
 export function classifyParcelaRpcResult(
-  p: Pick<Parcela, 'id' | 'nombre'>,
+  parcela: Pick<Parcela, 'id' | 'nombre'>,
   _data: any,
   error: any
 ): SyncParcelaResult {
   if (error == null) {
-    return { success: true, parcelaId: p.id, nombre: p.nombre };
+    return { success: true, parcelaId: parcela.id, nombre: parcela.nombre };
   }
-  syncLog.error(`Parcela upload error for "${p.nombre}" (${p.id}):`, JSON.stringify(error));
+  syncLog.error(`Parcela upload error for "${parcela.nombre}" (${parcela.id}):`, JSON.stringify(error));
 
   if (error?.code === '23505') {
     const details: string | undefined = error?.details;
     if (!details) {
-      return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'GENERIC_CONFLICT' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
     }
     const match = details.match(/Key \(([^)]+)\)=/);
     if (!match) {
-      return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'GENERIC_CONFLICT' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
     }
     const cols = match[1].split(',').map(c => c.trim().toLowerCase());
     if (cols.includes('codigo')) {
-      return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'DUPLICATE_CODE' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'DUPLICATE_CODE' };
     }
     if (cols.includes('nombre')) {
-      return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'DUPLICATE_NAME' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'DUPLICATE_NAME' };
     }
-    return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'GENERIC_CONFLICT' };
+    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
   }
 
   // Network / fetch errors (no postgres code present)
   const msg = String(error?.message ?? '').toLowerCase();
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
-    return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'NETWORK' };
+    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'NETWORK' };
   }
-  return { success: false, parcelaId: p.id, nombre: p.nombre, error: 'UNKNOWN' };
+  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'UNKNOWN' };
 }
 
 /**
@@ -140,16 +140,16 @@ export async function uploadSyncableParcelas(
   const pending = await getSyncableParcelas(plantacionId);
   const results: SyncParcelaResult[] = [];
 
-  for (const p of pending) {
+  for (const parcela of pending) {
     try {
-      const { data, error } = await uploadParcela(p);
-      const result = classifyParcelaRpcResult(p, data, error);
-      if (result.success) await markParcelaSynced(p.id);
+      const { data, error } = await uploadParcela(parcela);
+      const result = classifyParcelaRpcResult(parcela, data, error);
+      if (result.success) await markParcelaSynced(parcela.id);
       // En cualquier error: NO markSynced — pending_sync queda en true.
       results.push(result);
     } catch (e: any) {
-      syncLog.error(`Parcela upload exception "${p.nombre}" (${p.id}):`, e);
-      results.push({ success: false, parcelaId: p.id, nombre: p.nombre, error: 'NETWORK' });
+      syncLog.error(`Parcela upload exception "${parcela.nombre}" (${parcela.id}):`, e);
+      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'NETWORK' });
     }
   }
 

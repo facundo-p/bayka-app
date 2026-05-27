@@ -63,39 +63,39 @@ export async function syncAllPlantations(
   const allResults: Array<{ plantationId: string; plantationName: string; results: SyncGroupResult[] }> = [];
 
   for (let i = 0; i < localPlantations.length; i++) {
-    const p = localPlantations[i];
-    onProgress?.({ plantationName: p.lugar, plantationDone: i, plantationTotal: localPlantations.length });
+    const plantation = localPlantations[i];
+    onProgress?.({ plantationName: plantation.lugar, plantationDone: i, plantationTotal: localPlantations.length });
 
     try {
-      await pullFromServer(p.id);
+      await pullFromServer(plantation.id);
       // D-16-13: push parcelas antes que groups (FK).
       try {
-        await uploadSyncableParcelas(p.id);
+        await uploadSyncableParcelas(plantation.id);
       } catch (e) {
-        syncLog.error(`Push parcelas failed for "${p.lugar}":`, e);
+        syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
       }
-      const results = await uploadSyncableGroups(p.id, (subProgress) => {
+      const results = await uploadSyncableGroups(plantation.id, (subProgress) => {
         onProgress?.({
-          plantationName: p.lugar,
+          plantationName: plantation.lugar,
           plantationDone: i,
           plantationTotal: localPlantations.length,
           subgroupProgress: subProgress,
         });
       });
-      allResults.push({ plantationId: p.id, plantationName: p.lugar, results });
+      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results });
     } catch (e) {
-      syncLog.error(`Failed for plantation "${p.lugar}":`, e);
-      allResults.push({ plantationId: p.id, plantationName: p.lugar, results: [] });
+      syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
+      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [] });
     }
   }
 
   if (incluirFotos) {
-    for (const p of localPlantations) {
+    for (const plantation of localPlantations) {
       try {
-        await uploadPendingPhotos(p.id);
-        await downloadPhotosForPlantation(p.id);
+        await uploadPendingPhotos(plantation.id);
+        await downloadPhotosForPlantation(plantation.id);
       } catch (e) {
-        syncLog.error(`Photo sync failed for "${p.lugar}":`, e);
+        syncLog.error(`Photo sync failed for "${plantation.lugar}":`, e);
       }
     }
   }
