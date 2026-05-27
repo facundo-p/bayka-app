@@ -27,7 +27,7 @@ import { usePlantationDetail } from '../hooks/usePlantationDetail';
 import OrangeDot from '../components/OrangeDot';
 
 export default function PlantationDetailScreen() {
-  const { id: plantacionId } = useLocalSearchParams<{ id: string }>();
+  const { id: plantacionId, parcelaId } = useLocalSearchParams<{ id: string; parcelaId?: string }>();
   const router = useRouter();
   const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
@@ -35,6 +35,7 @@ export default function PlantationDetailScreen() {
 
   const {
     plantationRows,
+    parcela,
     filteredGroups,
     nnCountMap,
     treeCountMap,
@@ -54,7 +55,7 @@ export default function PlantationDetailScreen() {
     handleLongPress,
     handleDeleteGroup,
     handleEditSubmit,
-  } = usePlantationDetail(pid);
+  } = usePlantationDetail(pid, parcelaId);
 
   const { blockedByNN } = usePendingSyncCount(plantacionId);
 
@@ -63,13 +64,45 @@ export default function PlantationDetailScreen() {
     { key: 'finalizada', label: 'Finalizadas', count: groupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
   ];
 
+  // D-17-15: defensive navigation — without parcelaId we cannot scope the screen.
+  // Redirect to ParcelasScreen so the user picks one explicitly.
+  useEffect(() => {
+    if (!parcelaId && pid) {
+      router.replace(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}` as any);
+    }
+  }, [parcelaId, pid, router, routePrefix]);
+
+  // D-17-19: title shows "{parcela.nombre} — Grupos"; fallback to plantation lugar.
   useEffect(() => {
     const lugar = plantationRows?.[0]?.lugar;
-    if (lugar) navigation.setOptions({ title: lugar, headerTitleAlign: 'center' });
-  }, [plantationRows, navigation]);
+    const title = parcela?.nombre ? `${parcela.nombre} — Grupos` : (lugar ?? 'Grupos');
+    navigation.setOptions({ title, headerTitleAlign: 'center' });
+  }, [plantationRows, parcela, navigation]);
+
+  // GUI-02: header `+` action navigates to NuevoGrupoScreen carrying parcelaId.
+  useEffect(() => {
+    if (!estadoLoaded || isFinalizada || !parcelaId) {
+      navigation.setOptions({ headerRight: () => null });
+      return;
+    }
+    navigation.setOptions({
+      headerRight: () => (
+        <Pressable
+          testID="grupos-header-add"
+          onPress={() => router.push(`/${routePrefix}/plantation/nuevo-grupo?plantacionId=${pid}&parcelaId=${parcelaId}` as any)}
+          hitSlop={12}
+          style={styles.headerAddBtn}
+        >
+          <Ionicons name="add" size={28} color={colors.white} />
+        </Pressable>
+      ),
+    });
+  }, [estadoLoaded, isFinalizada, parcelaId, pid, navigation, router, routePrefix]);
+
+  if (!parcelaId) return null;
 
   function handleGroupPress(subgroup: Group) {
-    router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&grupoCodigo=${subgroup.codigo}&grupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
+    router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&parcelaId=${parcelaId}&grupoCodigo=${subgroup.codigo}&grupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
   }
 
   function renderGroup({ item, index }: { item: Group; index: number }) {
@@ -124,20 +157,9 @@ export default function PlantationDetailScreen() {
         data={filteredGroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No hay subgrupos aun</Text><Text style={styles.emptySubtext}>Toca &quot;+&quot; para crear el primero</Text></View>}
+        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No hay grupos aún</Text><Text style={styles.emptySubtext}>Toca &quot;+&quot; para crear el primero</Text></View>}
         renderItem={renderGroup}
       />
-
-      {estadoLoaded && !isFinalizada && (
-        <View style={styles.fabContainer}>
-          <Pressable
-            style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-            onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
-          >
-            <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
-          </Pressable>
-        </View>
-      )}
 
       <ConfirmModal {...confirmProps} />
 
@@ -145,7 +167,7 @@ export default function PlantationDetailScreen() {
         <KeyboardAvoidingView style={styles.editModalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
           <Pressable style={styles.editModalDismiss} onPress={() => setEditingGroup(null)} />
           <View style={styles.editModalContent}>
-            <Text style={styles.editModalTitle}>Editar subgrupo</Text>
+            <Text style={styles.editModalTitle}>Editar grupo</Text>
             {editingGroup && (
               <GrupoForm
                 mode="edit"
@@ -180,10 +202,7 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', marginTop: 60 },
   emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, fontFamily: fonts.semiBold },
   emptySubtext: { fontSize: fontSize.base, color: colors.textMuted, marginTop: spacing.sm, fontFamily: fonts.regular },
-  fabContainer: { padding: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border },
-  fab: { backgroundColor: colors.plantationHeaderBg, paddingVertical: spacing.xl, borderRadius: borderRadius.lg, alignItems: 'center', elevation: 4, shadowColor: colors.black, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
-  fabPressed: { opacity: 0.85 },
-  fabLabel: { color: colors.white, fontSize: fontSize.xl, fontFamily: fonts.bold },
+  headerAddBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
   editModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
   editModalDismiss: { flex: 1 },
   editModalContent: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.round, borderTopRightRadius: borderRadius.round, padding: spacing.xxxl, paddingBottom: spacing['6xl'] },
