@@ -7,7 +7,9 @@
  */
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import OrangeDot from './OrangeDot';
+import TreeIcon from './TreeIcon';
 import { colors, iconSizes } from '../theme';
 import { parcelaRowStyles as styles } from './ParcelaRow.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
@@ -25,11 +27,11 @@ function ParcelaStats({ gruposCount, treesCount }: { gruposCount: number; treesC
   return (
     <View style={styles.statsLine}>
       <View style={styles.statItem}>
-        <Ionicons name="leaf-outline" size={iconSizes.stat} color={colors.plantationDark} />
+        <MaterialCommunityIcons name="format-list-numbered" size={iconSizes.stat} color={colors.plantationDark} />
         <Text style={styles.statText}>{gruposCount}</Text>
       </View>
       <View style={styles.statItem}>
-        <Ionicons name="git-branch-outline" size={iconSizes.stat} color={colors.textSecondary} />
+        <TreeIcon size={iconSizes.stat} color={colors.textSecondary} />
         <Text style={styles.statText}>{treesCount}</Text>
       </View>
     </View>

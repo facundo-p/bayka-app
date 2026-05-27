@@ -10,6 +10,7 @@ import { db } from '../database/client';
 import { parcelas, groups, trees } from '../database/schema';
 import { eq, and, asc, count, isNull, sql } from 'drizzle-orm';
 import type { Parcela } from '../repositories/ParcelaRepository';
+import { sqlIsLocalUri } from '../utils/photoUri';
 
 export type ParcelaStats = {
   gruposCount: number;
@@ -44,14 +45,24 @@ export async function countTreesByParcela(
   return rows.map((r) => ({ parcelaId: r.parcelaId ?? '', count: r.cnt }));
 }
 
-/** Build parcela ids that have any pending_sync=true child (group or tree). */
+/**
+ * Build parcela ids that have any pending child. Pending = group con
+ * pending_sync=true, o árbol con foto LOCAL aún no subida al server.
+ *
+ * Un árbol sin foto en el server (foto_url=null) NO es pending — fotoSynced=false
+ * en ese caso significa "no hay foto que sincronizar", no "foto pendiente".
+ */
 async function findParcelaIdsWithPendingChildren(plantacionId: string): Promise<Set<string>> {
   const groupRows = await db.select({ parcelaId: groups.parcelaId }).from(groups)
     .where(and(eq(groups.plantacionId, plantacionId), eq(groups.pendingSync, true)));
   const treeRows = await db.select({ parcelaId: groups.parcelaId })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(and(eq(groups.plantacionId, plantacionId), sql`${trees.fotoSynced} = 0`));
+    .where(and(
+      eq(groups.plantacionId, plantacionId),
+      sql`${trees.fotoSynced} = 0`,
+      sqlIsLocalUri(trees.fotoUrl),
+    ));
   const ids = new Set<string>();
   for (const r of groupRows) if (r.parcelaId) ids.add(r.parcelaId);
   for (const r of treeRows) if (r.parcelaId) ids.add(r.parcelaId);
