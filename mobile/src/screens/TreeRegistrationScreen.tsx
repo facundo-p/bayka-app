@@ -86,7 +86,7 @@ export default function TreeRegistrationScreen() {
     const nnWarn = treeReg.unresolvedNN > 0
       ? ` Hay ${treeReg.unresolvedNN} árbol${treeReg.unresolvedNN > 1 ? 'es' : ''} N/N sin resolver.\n      (deberan resolverse antes de sincronizar).`
       : '';
-    showConfirmDialog(confirm.show, 'Finalizar subgrupo',
+    showConfirmDialog(confirm.show, 'Finalizar grupo',
       `Confirmar finalización? \n      ${nnWarn}`, 'Finalizar',
       () => treeReg.executeFinalize(), { icon: 'checkmark-circle-outline', style: 'primary' });
   }
@@ -94,17 +94,17 @@ export default function TreeRegistrationScreen() {
   function handleDeleteGroup() {
     if (treeReg.isReadOnly) return;
     const warn = treeReg.totalCount > 0
-      ? `Este subgrupo tiene ${treeReg.totalCount} árbol${treeReg.totalCount > 1 ? 'es' : ''} cargado${treeReg.totalCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+      ? `Este grupo tiene ${treeReg.totalCount} árbol${treeReg.totalCount > 1 ? 'es' : ''} cargado${treeReg.totalCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
       : 'Esta acción no se puede deshacer.';
-    showDoubleConfirmDialog(confirm.show, 'Eliminar subgrupo', warn, 'Confirmar eliminación',
-      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
+    showDoubleConfirmDialog(confirm.show, 'Eliminar grupo', warn, 'Confirmar eliminación',
+      'Esta es la confirmación final. El grupo y todos sus árboles serán eliminados permanentemente.',
       () => treeReg.executeDeleteGroup());
   }
 
   function handleReactivate() {
     if (!grupoId || !treeReg.canReactivate) return;
-    showConfirmDialog(confirm.show, 'Reactivar subgrupo',
-      'Cambiar el estado del subgrupo a activa? Podrás registrar más árboles.',
+    showConfirmDialog(confirm.show, 'Reactivar grupo',
+      'Cambiar el estado del grupo a activa? Podrás registrar más árboles.',
       'Reactivar', () => treeReg.executeReactivate(), { icon: 'refresh-outline' });
   }
 
