@@ -49,10 +49,35 @@ export interface GlobalSyncProgress {
   subgroupProgress?: SyncProgress;
 }
 
+export type DownloadPhase =
+  | 'species'      // global catalog (runs once at batch start)
+  | 'parcelas'
+  | 'groups'
+  | 'usuarios'
+  | 'especies_plantacion'
+  | 'arboles'
+  | 'fotos'        // optional, only if includePhotos=true
+  | 'finalizando'; // post-loop cleanup / notify
+
+export interface DownloadPhaseProgress {
+  phase: DownloadPhase;
+  phaseDone: number;
+  phaseTotal: number;
+}
+
 export interface DownloadProgress {
+  /** 1-based index of the plantation currently being downloaded. */
+  plantationIndex: number;
+  /** Total plantations in this batch. */
+  plantationTotal: number;
+  /** Name of the plantation currently being downloaded (`currentName` legacy alias). */
+  currentName: string;
+  /** Per-phase progress within the current plantation. Null while between phases. */
+  phase: DownloadPhaseProgress | null;
+  // Legacy fields preserved for backwards-compat with callers that read them
+  // as a plantation-level counter (modal title etc).
   total: number;
   completed: number;
-  currentName: string;
 }
 
 export type DownloadResult = {

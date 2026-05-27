@@ -193,7 +193,7 @@ describe('batchDownload', () => {
     expect(db.insert).toHaveBeenCalledTimes(3);
   });
 
-  it('Test 4: calls onProgress with { total, completed, currentName } before each download', async () => {
+  it('Test 4: emits onProgress with plantation index and name as the batch advances', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -205,9 +205,23 @@ describe('batchDownload', () => {
 
     await batchDownload(plantations, onProgress);
 
-    expect(progressCalls).toHaveLength(2);
-    expect(progressCalls[0]).toEqual({ total: 2, completed: 0, currentName: 'Bosque Norte' });
-    expect(progressCalls[1]).toEqual({ total: 2, completed: 1, currentName: 'Sector Sur' });
+    // Multiple emissions per plantation (per-phase progress + start). Reduce
+    // to the first event for each plantation to verify they are emitted in
+    // the expected order with the right name + index.
+    const firstEventPerPlantation = progressCalls.filter(
+      (p, i, arr) => i === 0 || p.currentName !== arr[i - 1].currentName,
+    );
+    expect(firstEventPerPlantation).toHaveLength(2);
+    expect(firstEventPerPlantation[0]).toMatchObject({
+      plantationIndex: 1,
+      plantationTotal: 2,
+      currentName: 'Bosque Norte',
+    });
+    expect(firstEventPerPlantation[1]).toMatchObject({
+      plantationIndex: 2,
+      plantationTotal: 2,
+      currentName: 'Sector Sur',
+    });
   });
 
   it('Test 5: continues on per-plantation error and includes failure in results', async () => {

@@ -37,6 +37,7 @@ export function useCatalog() {
   const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'done'>('idle');
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [downloadResults, setDownloadResults] = useState<DownloadResult[]>([]);
+  const [includePhotos, setIncludePhotos] = useState(false);
 
   useEffect(() => {
     if (!isOnline) {
@@ -82,7 +83,7 @@ export function useCatalog() {
     setDownloadProgress(null);
     setDownloadResults([]);
     try {
-      const results = await batchDownload(selected, (p) => setDownloadProgress(p));
+      const results = await batchDownload(selected, (p) => setDownloadProgress(p), { includePhotos });
       setDownloadResults(results);
     } catch {
       setDownloadResults(selected.map((s) => ({ success: false, id: s.id, nombre: s.lugar })));
@@ -154,6 +155,7 @@ export function useCatalog() {
     downloadState,
     downloadProgress,
     downloadResults,
+    includePhotos,
     confirmProps: confirm.confirmProps,
     // Actions
     loadCatalog,
@@ -162,5 +164,6 @@ export function useCatalog() {
     handleDeletePlantation,
     handleDismiss,
     setActiveFilter,
+    setIncludePhotos,
   };
 }

@@ -1,11 +1,28 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
-import { findById as findParcelaById } from '../../repositories/ParcelaRepository';
-import { fetchAllRows } from './paginate';
+import { fetchAllRows, runInTransaction } from './paginate';
+import type { DownloadPhase, DownloadPhaseProgress } from './types';
+
+export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
+
+/**
+ * Emits progress every PROGRESS_EVERY rows to avoid React state churn on
+ * large pulls (a 7000-row tree pull would otherwise dispatch 7000 setState).
+ */
+const PROGRESS_EVERY = 100;
+
+function emitProgress(
+  onProgress: OnPhaseProgress | undefined,
+  phase: DownloadPhase,
+  done: number,
+  total: number,
+): void {
+  onProgress?.({ phase, phaseDone: done, phaseTotal: total });
+}
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
@@ -54,179 +71,235 @@ interface RemoteParcela {
   deleted_at: string | null;
 }
 
-async function upsertParcelaFromServer(remoteParcela: RemoteParcela): Promise<void> {
-  await db.insert(parcelas).values({
-    id: remoteParcela.id,
-    plantacionId: remoteParcela.plantation_id,
-    nombre: remoteParcela.nombre,
-    codigo: remoteParcela.codigo,
-    descripcion: remoteParcela.descripcion ?? null,
-    pendingSync: false,
-    createdAt: remoteParcela.created_at,
-    updatedAt: remoteParcela.updated_at,
-    deletedAt: remoteParcela.deleted_at ?? null,
-  }).onConflictDoUpdate({
-    target: parcelas.id,
-    set: {
-      nombre: sql`excluded.nombre`,
-      codigo: sql`excluded.codigo`,
-      descripcion: sql`excluded.descripcion`,
-      updatedAt: sql`excluded.updated_at`,
-      deletedAt: sql`excluded.deleted_at`,
-      // Preserve pending_sync if local already had it (memory: state-lifecycle).
-      pendingSync: sql`CASE WHEN ${parcelas.pendingSync} = 1 THEN 1 ELSE 0 END`,
-    },
-  });
-}
-
 /**
  * Pulls parcelas from the server and upserts them locally. Returns the list
  * of remote parcela IDs.
  *
- * D-16-19: si una fila local tiene pending_sync=true (cambio local pendiente
- * de subir, sea update o tombstone), NO se sobrescribe — el push subsiguiente
- * gana. Esto evita que un pull pise un tombstone local pendiente.
+ * Si una fila local tiene pending_sync=true (cambio local pendiente de subir,
+ * sea update o tombstone), NO se sobrescribe — el push subsiguiente gana.
+ * Esto evita que un pull pise un tombstone local pendiente.
  */
-async function pullParcelas(plantacionId: string): Promise<string[]> {
+async function pullParcelas(
+  plantacionId: string,
+  onProgress?: OnPhaseProgress,
+): Promise<string[]> {
   const { data: remoteParcelas, error } = await fetchAllRows<RemoteParcela>(() =>
     supabase.from('parcelas').select('*').eq('plantation_id', plantacionId)
   );
 
   if (error) {
     syncLog.error('Pull parcelas error:', JSON.stringify(error));
+    emitProgress(onProgress, 'parcelas', 0, 0);
     return [];
   }
-  syncLog.info('Pull parcelas:', remoteParcelas?.length ?? 0, 'rows');
 
-  if (!remoteParcelas || remoteParcelas.length === 0) return [];
+  const all = (remoteParcelas ?? []) as RemoteParcela[];
+  syncLog.info('Pull parcelas:', all.length, 'rows');
+  emitProgress(onProgress, 'parcelas', 0, all.length);
+  if (all.length === 0) return [];
 
-  for (const remoteParcela of remoteParcelas as RemoteParcela[]) {
-    // Skip if local row has pending changes — push will win.
-    const local = await findParcelaById(remoteParcela.id, { includeDeleted: true });
-    if (local?.pendingSync) {
-      syncLog.info(`pullParcelas: skipping ${remoteParcela.id} — local has pending changes`);
-      continue;
+  // Pre-fetch ids that have local pending changes to skip in one query
+  // (avoids one extra read per parcela inside the loop).
+  const localRows = await db
+    .select({ id: parcelas.id, pendingSync: parcelas.pendingSync })
+    .from(parcelas)
+    .where(eq(parcelas.plantacionId, plantacionId));
+  const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
+
+  await runInTransaction(db, async (tx: any) => {
+    let done = 0;
+    for (const remoteParcela of all) {
+      if (pendingLocally.has(remoteParcela.id)) {
+        // Local push wins — skip overwriting pending changes.
+        done++;
+        continue;
+      }
+      await tx.insert(parcelas).values({
+        id: remoteParcela.id,
+        plantacionId: remoteParcela.plantation_id,
+        nombre: remoteParcela.nombre,
+        codigo: remoteParcela.codigo,
+        descripcion: remoteParcela.descripcion ?? null,
+        pendingSync: false,
+        createdAt: remoteParcela.created_at,
+        updatedAt: remoteParcela.updated_at,
+        deletedAt: remoteParcela.deleted_at ?? null,
+      }).onConflictDoUpdate({
+        target: parcelas.id,
+        set: {
+          nombre: sql`excluded.nombre`,
+          codigo: sql`excluded.codigo`,
+          descripcion: sql`excluded.descripcion`,
+          updatedAt: sql`excluded.updated_at`,
+          deletedAt: sql`excluded.deleted_at`,
+          pendingSync: sql`CASE WHEN ${parcelas.pendingSync} = 1 THEN 1 ELSE 0 END`,
+        },
+      });
+      done++;
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'parcelas', done, all.length);
     }
-    await upsertParcelaFromServer(remoteParcela);
-  }
+  });
+  emitProgress(onProgress, 'parcelas', all.length, all.length);
 
-  return (remoteParcelas as RemoteParcela[]).map((remoteParcela) => remoteParcela.id);
+  return all.map((remoteParcela) => remoteParcela.id);
 }
 
-async function pullGroups(plantacionId: string): Promise<string[]> {
+async function pullGroups(
+  plantacionId: string,
+  onProgress?: OnPhaseProgress,
+): Promise<string[]> {
   const { data: remoteGroups, error } = await fetchAllRows<any>(() =>
     supabase.from('groups').select('*').eq('plantation_id', plantacionId)
   );
 
   if (error) {
     syncLog.error('Pull groups error:', JSON.stringify(error));
+    emitProgress(onProgress, 'groups', 0, 0);
     return [];
   }
-  syncLog.info('Pull groups:', remoteGroups?.length ?? 0, 'rows');
+  const all = remoteGroups ?? [];
+  syncLog.info('Pull groups:', all.length, 'rows');
+  emitProgress(onProgress, 'groups', 0, all.length);
+  if (all.length === 0) return [];
 
-  if (!remoteGroups || remoteGroups.length === 0) return [];
+  await runInTransaction(db, async (tx: any) => {
+    let done = 0;
+    for (const sg of all) {
+      await tx.insert(groups).values({
+        id: sg.id,
+        plantacionId: sg.plantation_id,
+        parcelaId: sg.parcela_id ?? null,
+        nombre: sg.nombre,
+        codigo: sg.codigo,
+        tipo: sg.tipo,
+        estado: sg.estado,
+        usuarioCreador: sg.usuario_creador,
+        createdAt: sg.created_at,
+        pendingSync: false,
+      }).onConflictDoUpdate({
+        target: groups.id,
+        set: {
+          parcelaId: sql`excluded.parcela_id`,
+          estado: sql`excluded.estado`,
+          nombre: sql`excluded.nombre`,
+          pendingSync: sql`CASE WHEN ${groups.pendingSync} = 1 THEN 1 ELSE 0 END`,
+        },
+      });
+      done++;
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'groups', done, all.length);
+    }
+  });
+  emitProgress(onProgress, 'groups', all.length, all.length);
 
-  for (const sg of remoteGroups) {
-    await db.insert(groups).values({
-      id: sg.id,
-      plantacionId: sg.plantation_id,
-      parcelaId: sg.parcela_id ?? null,
-      nombre: sg.nombre,
-      codigo: sg.codigo,
-      tipo: sg.tipo,
-      estado: sg.estado,
-      usuarioCreador: sg.usuario_creador,
-      createdAt: sg.created_at,
-      pendingSync: false,
-    }).onConflictDoUpdate({
-      target: groups.id,
-      set: {
-        parcelaId: sql`excluded.parcela_id`,
-        estado: sql`excluded.estado`,
-        nombre: sql`excluded.nombre`,
-        pendingSync: sql`CASE WHEN ${groups.pendingSync} = 1 THEN 1 ELSE 0 END`,
-      },
-    });
-  }
-
-  return remoteGroups.map((sg: any) => sg.id);
+  return all.map((sg: any) => sg.id);
 }
 
-async function pullPlantationUsers(plantacionId: string): Promise<void> {
+async function pullPlantationUsers(
+  plantacionId: string,
+  onProgress?: OnPhaseProgress,
+): Promise<void> {
   const { data: remotePu, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId)
   );
 
   if (error) {
     syncLog.error('Pull plantation_users error:', JSON.stringify(error));
+    emitProgress(onProgress, 'usuarios', 0, 0);
     return;
   }
-  syncLog.info('Pull plantation_users:', remotePu?.length ?? 0, 'rows');
-  if (!remotePu) return;
+  const all = remotePu ?? [];
+  syncLog.info('Pull plantation_users:', all.length, 'rows');
+  emitProgress(onProgress, 'usuarios', 0, all.length);
 
-  const remoteUserIds = new Set(remotePu.map((pu: any) => pu.user_id));
+  const remoteUserIds = new Set(all.map((pu: any) => pu.user_id));
   const localPu = await db.select().from(plantationUsers)
     .where(eq(plantationUsers.plantationId, plantacionId));
 
-  for (const local of localPu) {
-    if (!remoteUserIds.has(local.userId)) {
-      await db.delete(plantationUsers).where(
-        and(
-          eq(plantationUsers.plantationId, plantacionId),
-          eq(plantationUsers.userId, local.userId),
-        )
-      );
+  await runInTransaction(db, async (tx: any) => {
+    for (const local of localPu) {
+      if (!remoteUserIds.has(local.userId)) {
+        await tx.delete(plantationUsers).where(
+          and(
+            eq(plantationUsers.plantationId, plantacionId),
+            eq(plantationUsers.userId, local.userId),
+          )
+        );
+      }
     }
-  }
 
-  for (const pu of remotePu) {
-    await db.insert(plantationUsers).values({
-      plantationId: pu.plantation_id,
-      userId: pu.user_id,
-      rolEnPlantacion: pu.rol_en_plantacion,
-      assignedAt: pu.assigned_at,
-    }).onConflictDoUpdate({
-      target: [plantationUsers.plantationId, plantationUsers.userId],
-      set: { rolEnPlantacion: sql`excluded.rol_en_plantacion` },
-    });
-  }
+    let done = 0;
+    for (const pu of all) {
+      await tx.insert(plantationUsers).values({
+        plantationId: pu.plantation_id,
+        userId: pu.user_id,
+        rolEnPlantacion: pu.rol_en_plantacion,
+        assignedAt: pu.assigned_at,
+      }).onConflictDoUpdate({
+        target: [plantationUsers.plantationId, plantationUsers.userId],
+        set: { rolEnPlantacion: sql`excluded.rol_en_plantacion` },
+      });
+      done++;
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'usuarios', done, all.length);
+    }
+  });
+  emitProgress(onProgress, 'usuarios', all.length, all.length);
 }
 
-async function pullPlantationSpecies(plantacionId: string): Promise<void> {
+async function pullPlantationSpecies(
+  plantacionId: string,
+  onProgress?: OnPhaseProgress,
+): Promise<void> {
   const { data: remotePs, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_species').select('*').eq('plantation_id', plantacionId)
   );
 
   if (error) {
     syncLog.error('Pull plantation_species error:', JSON.stringify(error));
+    emitProgress(onProgress, 'especies_plantacion', 0, 0);
     return;
   }
-  syncLog.info('Pull plantation_species:', remotePs?.length ?? 0, 'rows');
+  const all = remotePs ?? [];
+  syncLog.info('Pull plantation_species:', all.length, 'rows');
+  emitProgress(onProgress, 'especies_plantacion', 0, all.length);
+  if (all.length === 0) return;
 
-  if (!remotePs || remotePs.length === 0) return;
-
-  for (const ps of remotePs) {
-    const localId = `ps-${ps.plantation_id}-${ps.species_id}`;
-    await db.insert(plantationSpecies).values({
-      id: localId,
-      plantacionId: ps.plantation_id,
-      especieId: ps.species_id,
-      ordenVisual: ps.orden_visual,
-    }).onConflictDoUpdate({
-      target: plantationSpecies.id,
-      set: { ordenVisual: sql`excluded.orden_visual` },
-    });
-  }
+  await runInTransaction(db, async (tx: any) => {
+    let done = 0;
+    for (const ps of all) {
+      const localId = `ps-${ps.plantation_id}-${ps.species_id}`;
+      await tx.insert(plantationSpecies).values({
+        id: localId,
+        plantacionId: ps.plantation_id,
+        especieId: ps.species_id,
+        ordenVisual: ps.orden_visual,
+      }).onConflictDoUpdate({
+        target: plantationSpecies.id,
+        set: { ordenVisual: sql`excluded.orden_visual` },
+      });
+      done++;
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'especies_plantacion', done, all.length);
+    }
+  });
+  emitProgress(onProgress, 'especies_plantacion', all.length, all.length);
 }
 
-async function hasTreeConflict(remoteTree: any): Promise<boolean> {
+type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
+
+/**
+ * Per-tree species conflict check: only runs when the row exists locally with
+ * a non-null especieId that differs from the server's. Marks the row with
+ * conflictEspecieId so the UI can prompt the user.
+ *
+ * Returns true if the remote tree must NOT be upserted (conflict captured).
+ */
+async function checkTreeConflict(tx: Tx, remoteTree: any): Promise<boolean> {
   if (!remoteTree.species_id) return false;
 
-  const [localTree] = await db.select({ especieId: trees.especieId }).from(trees).where(eq(trees.id, remoteTree.id));
+  const [localTree] = await tx.select({ especieId: trees.especieId }).from(trees).where(eq(trees.id, remoteTree.id));
   if (!localTree || localTree.especieId === null || localTree.especieId === remoteTree.species_id) return false;
 
-  const [serverSpecies] = await db.select({ nombre: species.nombre }).from(species).where(eq(species.id, remoteTree.species_id));
-  await db.update(trees).set({
+  const [serverSpecies] = await tx.select({ nombre: species.nombre }).from(species).where(eq(species.id, remoteTree.species_id));
+  await tx.update(trees).set({
     conflictEspecieId: remoteTree.species_id,
     conflictEspecieNombre: serverSpecies?.nombre ?? 'Desconocida',
   }).where(eq(trees.id, remoteTree.id));
@@ -235,14 +308,14 @@ async function hasTreeConflict(remoteTree: any): Promise<boolean> {
   return true;
 }
 
-async function upsertTreeFromServer(t: any): Promise<void> {
+async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
   const hasFotoOnServer = isRemoteUri(t.foto_url);
   const serverFotoUrl = hasFotoOnServer ? t.foto_url : null;
-  // Plan 16-03: server schema usa group_id directo (compat shim 012b mantiene
-  // subgroup_id como GENERATED column para APKs viejos).
+  // Server schema usa group_id directo; el compat shim 012b mantiene subgroup_id
+  // como GENERATED column para APKs viejos.
   const groupIdRemote = t.group_id ?? t.subgroup_id;
 
-  await db.insert(trees).values({
+  await tx.insert(trees).values({
     id: t.id,
     groupId: groupIdRemote,
     especieId: t.species_id,
@@ -268,25 +341,46 @@ async function upsertTreeFromServer(t: any): Promise<void> {
   });
 }
 
-async function pullTrees(remoteGroupIds: string[]): Promise<void> {
+async function pullTrees(
+  remoteGroupIds: string[],
+  onProgress?: OnPhaseProgress,
+): Promise<void> {
   const { data: remoteTrees, error } = await fetchAllRows<any>(() =>
     supabase.from('trees').select('*').in('group_id', remoteGroupIds)
   );
 
   if (error) {
     syncLog.error('Pull trees error:', JSON.stringify(error));
+    emitProgress(onProgress, 'arboles', 0, 0);
     return;
   }
-  syncLog.info('Pull trees:', remoteTrees?.length ?? 0, 'rows');
+  const all = remoteTrees ?? [];
+  syncLog.info('Pull trees:', all.length, 'rows');
+  emitProgress(onProgress, 'arboles', 0, all.length);
+  if (all.length === 0) return;
 
-  if (!remoteTrees || remoteTrees.length === 0) return;
+  // Fast path: if no local trees exist for these groups (fresh download), we
+  // can skip the per-row conflict check entirely. Saves 2 reads × N trees.
+  const [localCountRow] = await db
+    .select({ cnt: count() })
+    .from(trees)
+    .where(sql`${trees.groupId} IN (${sql.join(remoteGroupIds.map((id) => sql`${id}`), sql`,`)})`);
+  const isFreshDownload = (localCountRow?.cnt ?? 0) === 0;
+  if (isFreshDownload) syncLog.info('Pull trees: fresh download — skipping per-tree conflict checks');
 
-  syncLog.info('Sample tree created_at:', remoteTrees[0].created_at, '| localToday:', require('../../utils/dateUtils').localToday());
-
-  for (const t of remoteTrees) {
-    if (await hasTreeConflict(t)) continue;
-    await upsertTreeFromServer(t);
-  }
+  await runInTransaction(db, async (tx: any) => {
+    let done = 0;
+    for (const t of all) {
+      if (!isFreshDownload && await checkTreeConflict(tx, t)) {
+        done++;
+        continue;
+      }
+      await upsertTreeFromServerTx(tx, t);
+      done++;
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'arboles', done, all.length);
+    }
+  });
+  emitProgress(onProgress, 'arboles', all.length, all.length);
 }
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
@@ -296,14 +390,17 @@ async function pullTrees(remoteGroupIds: string[]): Promise<void> {
  * plantation_species and trees from Supabase and upserts them into local
  * SQLite.
  *
- * FK ordering (D-16-12): parcelas BEFORE groups (groups.parcela_id FK).
+ * FK ordering: parcelas BEFORE groups (groups.parcela_id FK).
  */
-export async function pullFromServer(plantacionId: string): Promise<void> {
+export async function pullFromServer(
+  plantacionId: string,
+  onProgress?: OnPhaseProgress,
+): Promise<void> {
   syncLog.info('Pull starting for plantation:', plantacionId);
   await pullPlantationMetadata(plantacionId);
-  await pullParcelas(plantacionId);                  // D-16-12: parcelas first
-  const remoteGroupIds = await pullGroups(plantacionId);
-  await pullPlantationUsers(plantacionId);
-  await pullPlantationSpecies(plantacionId);
-  if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds);
+  await pullParcelas(plantacionId, onProgress);
+  const remoteGroupIds = await pullGroups(plantacionId, onProgress);
+  await pullPlantationUsers(plantacionId, onProgress);
+  await pullPlantationSpecies(plantacionId, onProgress);
+  if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds, onProgress);
 }
