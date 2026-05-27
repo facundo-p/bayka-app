@@ -14,13 +14,13 @@ import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
 import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
 import {
-  createPlantation,
-  createPlantationLocally,
   updatePlantation,
   finalizePlantation,
   generateIds,
   discardPlantationEdit,
 } from '../repositories/PlantationRepository';
+// FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
+import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
 import { colors } from '../theme';
 import type { Plantation } from '../components/PlantationConfigCard';
@@ -210,21 +210,23 @@ export function usePlantationAdmin() {
     }
   }
 
+  // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
   async function handleCreateSubmit(lugar: string, periodo: string): Promise<string> {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
+    const base = { lugar, periodo, organizacionId, creadoPor: userId };
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
-      const result = await createPlantationLocally(lugar, periodo, organizacionId, userId);
+      const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
       return result.id;
     } else {
       try {
-        const result = await createPlantation(lugar, periodo, organizacionId, userId);
+        const result = await createPlantationWithDefaultParcela({ ...base, mode: 'online' });
         return result.id;
       } catch (e: any) {
         if (e?.message?.includes('Network request failed')) {
-          const result = await createPlantationLocally(lugar, periodo, organizacionId, userId);
+          const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
           return result.id;
         } else {
           throw e;
