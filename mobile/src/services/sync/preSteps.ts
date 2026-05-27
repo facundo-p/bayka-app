@@ -17,23 +17,38 @@ export async function pullSpeciesFromServer(): Promise<void> {
   const { data, error } = await fetchAllRows<any>(() =>
     supabase.from('species').select('*')
   );
-  if (error || !data) return; // non-blocking — stale catalog is acceptable
-  for (const s of data) {
-    await db.insert(species).values({
-      id: s.id,
-      codigo: s.codigo,
-      nombre: s.nombre,
-      nombreCientifico: s.nombre_cientifico ?? null,
-      createdAt: s.created_at,
-    }).onConflictDoUpdate({
-      target: species.id,
-      set: {
-        codigo: sql`excluded.codigo`,
-        nombre: sql`excluded.nombre`,
-        nombreCientifico: sql`excluded.nombre_cientifico`,
-      },
-    });
+  if (error || !data) {
+    syncLog.error('Pull species: fetchAllRows error:', JSON.stringify(error));
+    return;
   }
+  let inserted = 0;
+  let skipped = 0;
+  for (const s of data) {
+    try {
+      await db.insert(species).values({
+        id: s.id,
+        codigo: s.codigo,
+        nombre: s.nombre,
+        nombreCientifico: s.nombre_cientifico ?? null,
+        createdAt: s.created_at,
+      }).onConflictDoUpdate({
+        target: species.id,
+        set: {
+          codigo: sql`excluded.codigo`,
+          nombre: sql`excluded.nombre`,
+          nombreCientifico: sql`excluded.nombre_cientifico`,
+        },
+      });
+      inserted++;
+    } catch (e: any) {
+      // Most likely a UNIQUE constraint failure on codigo: another local row
+      // already holds this codigo. Skip this row so one bad pair doesn't abort
+      // the rest of the catalog pull.
+      skipped++;
+      syncLog.error(`Pull species: skipping ${s.id} (codigo=${s.codigo}):`, e?.message ?? e);
+    }
+  }
+  syncLog.info(`Pull species: ${inserted} upserted, ${skipped} skipped of ${data.length} total`);
 }
 
 // ─── Upload offline-created plantations ───────────────────────────────────────
