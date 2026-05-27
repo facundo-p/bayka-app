@@ -3,30 +3,38 @@ import { plantations } from '../../database/schema';
 import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { DownloadProgress, DownloadResult } from './types';
+import { DownloadProgress, DownloadResult, DownloadPhaseProgress } from './types';
 import { pullFromServer } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
 
 // ─── Download a single plantation from server ─────────────────────────────────
 
+interface DownloadOptions {
+  /** If true, download photos after data sync. Default false (data-only is fast). */
+  includePhotos?: boolean;
+  /** Per-phase progress callback. */
+  onPhase?: (p: DownloadPhaseProgress) => void;
+}
+
 /**
  * Downloads a single plantation by upserting its row into local SQLite,
  * then calling pullFromServer to sync groups, species, and users.
- *
- * Step 1: upsert the plantation row (onConflictDoUpdate to update estado)
- * Step 2: pullFromServer for groups, plantation_users, plantation_species
  */
-export async function downloadPlantation(serverPlantation: {
-  id: string;
-  organizacion_id: string;
-  lugar: string;
-  periodo: string;
-  estado: string;
-  creado_por: string;
-  created_at: string;
-}): Promise<void> {
-  // Step 1: Upsert plantation row using the same pattern as PlantationRepository
+export async function downloadPlantation(
+  serverPlantation: {
+    id: string;
+    organizacion_id: string;
+    lugar: string;
+    periodo: string;
+    estado: string;
+    creado_por: string;
+    created_at: string;
+  },
+  options: DownloadOptions = {},
+): Promise<void> {
+  const { includePhotos = false, onPhase } = options;
+
   await db
     .insert(plantations)
     .values({
@@ -51,28 +59,28 @@ export async function downloadPlantation(serverPlantation: {
       },
     });
 
-  // Step 2: Pull related data (groups, plantation_users, plantation_species, trees)
-  await pullFromServer(serverPlantation.id);
+  await pullFromServer(serverPlantation.id, onPhase);
 
-  // Step 3: Download photos from Storage to local device
-  try {
-    await downloadPhotosForPlantation(serverPlantation.id);
-  } catch (e) {
-    syncLog.error('Download: Photo download failed for plantation:', serverPlantation.id, e);
-    // Non-fatal — plantation data is available, photos can be retried via "Descargar"
+  if (includePhotos) {
+    try {
+      await downloadPhotosForPlantation(serverPlantation.id, (p) => {
+        onPhase?.({ phase: 'fotos', phaseDone: p.completed, phaseTotal: p.total });
+      });
+    } catch (e) {
+      syncLog.error('Download: Photo download failed for plantation:', serverPlantation.id, e);
+      // Non-fatal — plantation data is available, photos can be retried.
+    }
   }
 }
 
 // ─── Batch download plantations ───────────────────────────────────────────────
 
 /**
- * Downloads multiple plantations one by one, accumulating results.
- * Continues on per-plantation error (does not abort the batch).
- * Calls notifyDataChanged ONCE after the entire loop.
+ * Downloads multiple plantations sequentially. Calls notifyDataChanged once
+ * at the end to prevent render storms.
  *
- * @param selected - Array of server plantation objects to download
- * @param onProgress - Optional progress callback called before each download
- * @returns Array of DownloadResult with success/failure per plantation
+ * Species catalog is pulled once at the start (before the loop) — trees rely
+ * on local species rows for code/name resolution.
  */
 export async function batchDownload(
   selected: Array<{
@@ -84,13 +92,32 @@ export async function batchDownload(
     creado_por: string;
     created_at: string;
   }>,
-  onProgress?: (progress: DownloadProgress) => void
+  onProgress?: (progress: DownloadProgress) => void,
+  options: { includePhotos?: boolean } = {},
 ): Promise<DownloadResult[]> {
+  const { includePhotos = false } = options;
   const results: DownloadResult[] = [];
 
-  // Pull species catalog once at the start. Trees inserted by downloadPlantation
-  // carry especie_id values that must resolve to a local species row, otherwise
-  // their UI shows "??" instead of the species code/name.
+  const emitProgress = (
+    plantationIndex: number,
+    currentName: string,
+    phase: DownloadPhaseProgress | null,
+  ): void => {
+    onProgress?.({
+      plantationIndex,
+      plantationTotal: selected.length,
+      currentName,
+      phase,
+      total: selected.length,
+      completed: plantationIndex - 1,
+    });
+  };
+
+  // Initial event so the modal shows a state before the first plantation starts.
+  if (selected.length > 0) {
+    emitProgress(1, selected[0].lugar, { phase: 'species', phaseDone: 0, phaseTotal: 0 });
+  }
+
   try {
     await pullSpeciesFromServer();
   } catch (e) {
@@ -99,10 +126,14 @@ export async function batchDownload(
 
   for (let i = 0; i < selected.length; i++) {
     const plantation = selected[i];
-    onProgress?.({ total: selected.length, completed: i, currentName: plantation.lugar });
+    const plantationIndex = i + 1;
+    emitProgress(plantationIndex, plantation.lugar, null);
 
     try {
-      await downloadPlantation(plantation);
+      await downloadPlantation(plantation, {
+        includePhotos,
+        onPhase: (p) => emitProgress(plantationIndex, plantation.lugar, p),
+      });
       results.push({ success: true, id: plantation.id, nombre: plantation.lugar });
     } catch (e) {
       syncLog.error(`Download: Failed for plantation "${plantation.lugar}" (${plantation.id}):`, e);
@@ -110,7 +141,6 @@ export async function batchDownload(
     }
   }
 
-  // ONCE — not inside loop (per Phase 03 decision: prevent render storm)
   notifyDataChanged();
 
   return results;

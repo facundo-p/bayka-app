@@ -23,6 +23,10 @@ export async function pullSpeciesFromServer(): Promise<void> {
   }
   let inserted = 0;
   let skipped = 0;
+  // One transaction per species row: a UNIQUE constraint failure on codigo
+  // (two server species sharing a codigo, etc.) must not abort the rest of
+  // the catalog. Wrapping all rows in a single transaction would rollback
+  // everything; one-tx-per-row keeps inserted rows on conflict.
   for (const s of data) {
     try {
       await db.insert(species).values({
@@ -41,9 +45,6 @@ export async function pullSpeciesFromServer(): Promise<void> {
       });
       inserted++;
     } catch (e: any) {
-      // Most likely a UNIQUE constraint failure on codigo: another local row
-      // already holds this codigo. Skip this row so one bad pair doesn't abort
-      // the rest of the catalog pull.
       skipped++;
       syncLog.error(`Pull species: skipping ${s.id} (codigo=${s.codigo}):`, e?.message ?? e);
     }

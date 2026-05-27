@@ -23,12 +23,14 @@ export default function CatalogScreen() {
     downloadState,
     downloadProgress,
     downloadResults,
+    includePhotos,
     confirmProps,
     loadCatalog,
     toggleSelection,
     handleBatchDownload,
     handleDismiss,
     setActiveFilter,
+    setIncludePhotos,
   } = useCatalog();
 
   const filterConfigs = [
@@ -105,6 +107,19 @@ export default function CatalogScreen() {
       {renderContent()}
       <View style={styles.bottomBar}>
         <Pressable
+          onPress={() => setIncludePhotos(!includePhotos)}
+          style={styles.photosToggle}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: includePhotos }}
+        >
+          <Ionicons
+            name={includePhotos ? 'checkbox' : 'square-outline'}
+            size={22}
+            color={includePhotos ? colors.primary : colors.textMuted}
+          />
+          <Text style={styles.photosToggleLabel}>Incluir fotos</Text>
+        </Pressable>
+        <Pressable
           onPress={handleBatchDownload}
           disabled={selectedIds.size === 0}
           style={[styles.downloadButton, { backgroundColor: selectedIds.size > 0 ? colors.primary : colors.textDisabled }]}
@@ -130,7 +145,9 @@ const styles = StyleSheet.create({
   retryButton: { marginTop: spacing.md, backgroundColor: colors.primary, paddingHorizontal: spacing.xxl, paddingVertical: spacing.lg, borderRadius: borderRadius.lg },
   retryText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.semiBold },
   listContent: { paddingHorizontal: spacing.xxl, paddingTop: spacing.xl, gap: spacing.xl, paddingBottom: spacing['5xl'] },
-  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, paddingHorizontal: spacing.xxl, paddingVertical: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, paddingHorizontal: spacing.xxl, paddingVertical: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  photosToggle: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexShrink: 1 },
+  photosToggleLabel: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textPrimary },
   selectionText: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textSecondary },
   downloadButton: { paddingHorizontal: spacing.xxl, paddingVertical: spacing.xl, borderRadius: borderRadius.lg },
   downloadButtonText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.semiBold },
