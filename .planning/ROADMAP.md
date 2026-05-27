@@ -24,7 +24,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 13: Unificar sync bidireccional** - Boton unico "Sincronizar" que hace pull+push, dirty flag por subgrupo, orange dot como indicador de pendiente, setting persistente para fotos (completed 2026-04-13)
 - [x] **Phase 14: Sync N/N + conflict resolution** - Sincronizar subgrupos con N/N, deteccion de conflictos, resolucion por rol, gate de finalizacion, indicadores visuales (completed 2026-04-14)
 
-### Milestone v1.1 — Parcelas + Renombre Subgrupo→Grupo (planificado 2026-05-04)
+### Próximo: Parcelas + Renombre Subgrupo→Grupo (planificado 2026-05-04)
 
 - [ ] **Phase 15: Schema migration + data consolidation** — Crear tabla `parcelas`, renombrar `subgroups`→`groups` (SQLite + Supabase), tipos `linea | bosquete`, ejecutar migración de data (32 → 3 plantaciones, 6.321 árboles reales preservados bajo "San Sebastián de la Selva")
 - [ ] **Phase 16: Code layer rename + ParcelaRepository + Sync** — Renombrar tipos/repos/hooks/queries/services a `Group`, implementar `ParcelaRepository` y queries, extender `SyncService` para parcelas (pull + push + conflict), tests unitarios + integración
