@@ -76,7 +76,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 } })} />
     );
 
-    expect(getByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeTruthy();
+    expect(getByText('Para finalizar, todos los grupos deben estar sincronizados')).toBeTruthy();
   });
 
   it('shows enabled Finalizar when canFinalize=true', () => {
@@ -84,7 +84,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 } })} />
     );
 
-    expect(queryByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeNull();
+    expect(queryByText('Para finalizar, todos los grupos deben estar sincronizados')).toBeNull();
   });
 
   it('shows pendingSync helper when plantation has pendingSync', () => {
