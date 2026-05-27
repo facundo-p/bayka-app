@@ -51,7 +51,10 @@ export async function uploadPendingPhotos(
   for (let i = 0; i < pending.length; i++) {
     onProgress?.({ total: pending.length, completed: i });
     const tree = pending[i];
-    const storagePath = `plantations/${tree.plantacionId}/trees/${tree.id}.jpg`;
+    // Plan 16-03: include parcela segment when tree's group has parcelaId.
+    // Legacy groups (parcelaId=null) fall back to the pre-P16 path shape.
+    const parcelaSegment = tree.parcelaId ? `parcelas/${tree.parcelaId}/` : '';
+    const storagePath = `plantations/${tree.plantacionId}/${parcelaSegment}trees/${tree.id}.jpg`;
 
     const { error } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
     if (error) {

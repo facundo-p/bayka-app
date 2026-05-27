@@ -1,4 +1,5 @@
 import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
@@ -33,8 +34,15 @@ export const parcelas = sqliteTable('parcelas', {
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 }, (t) => ({
-  uniqueCode: uniqueIndex('parcelas_plantation_code_unique').on(t.plantacionId, t.codigo),
-  uniqueName: uniqueIndex('parcelas_plantation_name_unique').on(t.plantacionId, t.nombre),
+  // PARTIAL unique indexes: tombstones (deleted_at NOT NULL) están excluidos del
+  // uniqueness check para permitir reusar nombre/codigo de parcelas borradas.
+  // D-16-19: soft-delete + partial unique = espacio de nombres reciclable.
+  uniqueCode: uniqueIndex('parcelas_plantation_code_unique')
+    .on(t.plantacionId, t.codigo)
+    .where(sql`deleted_at IS NULL`),
+  uniqueName: uniqueIndex('parcelas_plantation_name_unique')
+    .on(t.plantacionId, t.nombre)
+    .where(sql`deleted_at IS NULL`),
 }));
 
 export const groups = sqliteTable('groups', {
