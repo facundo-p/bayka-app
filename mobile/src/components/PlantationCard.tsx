@@ -1,15 +1,28 @@
 /**
  * PlantationCard — displays a plantation with stats in the plantaciones list.
  * Used by PlantacionesScreen for both admin and tecnico roles.
+ *
+ * Plan 17-02: adds an inline expandable section with the parcelas list as a
+ * shortcut (D-17-10..14). The expand row uses `stopPropagation` so tapping
+ * the chevron does NOT trigger the card's main `onPress` (D-17-11).
+ * Animation via `LayoutAnimation` is driven by the parent (PlantacionesScreen
+ * calls `LayoutAnimation.configureNext` before flipping `expanded`).
  */
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, Platform, UIManager } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import React from 'react';
 import OrangeDot from './OrangeDot';
+import ParcelaRow from './ParcelaRow';
+import { plantationCardStyles as styles } from './PlantationCard.styles';
+import type { ParcelaWithStats } from '../queries/parcelaQueries';
 
-const SIDEBAR_WIDTH = 48;
+// D-17-14: enable LayoutAnimation on Android (project_android_only.md).
+// Idempotent — RN no-ops if already enabled.
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 type Props = {
   lugar: string;
@@ -27,7 +40,160 @@ type Props = {
   isAdmin?: boolean;
   onEdit?: () => void;
   onGear?: () => void;
+  // Plan 17-02: inline expansion (all optional; expand row only renders
+  // when `onToggleExpanded` is supplied by the parent wrapper).
+  parcelasCount?: number;
+  expanded?: boolean;
+  onToggleExpanded?: () => void;
+  parcelas?: ParcelaWithStats[];
+  onParcelaPress?: (parcelaId: string) => void;
+  onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
 };
+
+function ExpandRow({
+  parcelasCount,
+  expanded,
+  onToggle,
+}: {
+  parcelasCount: number;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={(e) => { e?.stopPropagation?.(); onToggle(); }}
+      hitSlop={8}
+      style={({ pressed }) => [styles.expandRow, pressed && styles.expandRowPressed]}
+      accessibilityLabel={expanded ? 'Ocultar parcelas' : 'Mostrar parcelas'}
+      accessibilityRole="button"
+    >
+      <Ionicons name="map-outline" size={16} color={colors.textPrimary} />
+      <Text style={styles.expandLabel}>Parcelas: {parcelasCount}</Text>
+      <Ionicons
+        name={expanded ? 'chevron-down' : 'chevron-forward'}
+        size={18}
+        color={colors.textPrimary}
+      />
+    </Pressable>
+  );
+}
+
+function ExpandedSection({
+  parcelas,
+  onParcelaPress,
+  onParcelaLongPress,
+}: {
+  parcelas: ParcelaWithStats[];
+  onParcelaPress?: (parcelaId: string) => void;
+  onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
+}) {
+  if (parcelas.length === 0) {
+    return (
+      <View style={styles.expandedSection}>
+        <Text style={styles.expandedEmptyText}>
+          Sin parcelas — toca + en la lista de parcelas para crear una.
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <View style={styles.expandedSection}>
+      {parcelas.map((p, idx) => (
+        <View key={p.id}>
+          <ParcelaRow
+            parcela={p}
+            variant="inline"
+            onPress={() => onParcelaPress?.(p.id)}
+            onLongPress={() => onParcelaLongPress?.(p)}
+          />
+          {idx < parcelas.length - 1 && <View style={styles.expandedDivider} />}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ActionStrip({
+  onEdit,
+  onGear,
+  onDelete,
+}: {
+  onEdit?: () => void;
+  onGear?: () => void;
+  onDelete?: () => void;
+}) {
+  return (
+    <View style={styles.strip}>
+      <Pressable
+        onPress={(e) => { e?.stopPropagation?.(); onEdit?.(); }}
+        hitSlop={8}
+        style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+        accessibilityLabel="Editar lugar y periodo"
+      >
+        <Ionicons name="create-outline" size={18} color={colors.primary} />
+      </Pressable>
+      <Pressable
+        onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
+        hitSlop={8}
+        style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+        accessibilityLabel="Acciones de plantacion"
+      >
+        <Ionicons name="settings-outline" size={18} color={colors.primary} />
+      </Pressable>
+      {onDelete ? (
+        <Pressable
+          onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+          accessibilityLabel="Eliminar plantacion del dispositivo"
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
+        </Pressable>
+      ) : (
+        <View style={styles.stripSlot} />
+      )}
+    </View>
+  );
+}
+
+function StatsRow({
+  totalCount,
+  syncedCount,
+  todayCount,
+  nnCount,
+  estado,
+}: {
+  totalCount: number;
+  syncedCount: number;
+  todayCount: number;
+  nnCount?: number;
+  estado?: string;
+}) {
+  return (
+    <View style={styles.statsRow}>
+      <View style={styles.statItem}>
+        <Ionicons name="leaf-outline" size={14} color={colors.statTotal} />
+        <Text style={[styles.statValue, { color: colors.statTotal }]}>{totalCount}</Text>
+      </View>
+      <View style={styles.statItem}>
+        <Ionicons name="cloud-done-outline" size={14} color={colors.statSynced} />
+        <Text style={[styles.statValue, { color: colors.statSynced }]}>{syncedCount}</Text>
+      </View>
+      {estado !== 'finalizada' && (
+        <View style={styles.statItem}>
+          <Ionicons name="today-outline" size={14} color={colors.statToday} />
+          <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
+        </View>
+      )}
+      {(nnCount ?? 0) > 0 && (
+        <View style={styles.statItem}>
+          <Ionicons name="help-circle-outline" size={14} color={colors.secondaryYellowDark} />
+          <Text style={[styles.statValue, { color: colors.secondaryYellowDark }]}>{nnCount}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function PlantationCard({
   lugar,
@@ -41,59 +207,42 @@ export default function PlantationCard({
   nnCount,
   onPress,
   onDelete,
-  isAdmin,
   onEdit,
   onGear,
+  parcelasCount = 0,
+  expanded = false,
+  onToggleExpanded,
+  parcelas,
+  onParcelaPress,
+  onParcelaLongPress,
 }: Props) {
   const accentColor =
-    estado === 'finalizada'
-      ? colors.stateFinalizada
-      : colors.stateActiva;
+    estado === 'finalizada' ? colors.stateFinalizada : colors.stateActiva;
 
   return (
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
-      {/* Colored sidebar with leaf icon */}
       <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
         <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
       </View>
 
-      {/* Content area — solid white background */}
       <View style={styles.content}>
-        {/* Title */}
         <View style={styles.titleRow}>
           {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
           <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
         </View>
         <Text style={styles.subtitle}>{periodo}</Text>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Ionicons name="leaf-outline" size={14} color={colors.statTotal} />
-            <Text style={[styles.statValue, { color: colors.statTotal }]}>{totalCount}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Ionicons name="cloud-done-outline" size={14} color={colors.statSynced} />
-            <Text style={[styles.statValue, { color: colors.statSynced }]}>{syncedCount}</Text>
-          </View>
-          {estado !== 'finalizada' && (
-            <View style={styles.statItem}>
-              <Ionicons name="today-outline" size={14} color={colors.statToday} />
-              <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
-            </View>
-          )}
-          {(nnCount ?? 0) > 0 && (
-            <View style={styles.statItem}>
-              <Ionicons name="help-circle-outline" size={14} color={colors.secondaryYellowDark} />
-              <Text style={[styles.statValue, { color: colors.secondaryYellowDark }]}>{nnCount}</Text>
-            </View>
-          )}
-        </View>
+        <StatsRow
+          totalCount={totalCount}
+          syncedCount={syncedCount}
+          todayCount={todayCount}
+          nnCount={nnCount}
+          estado={estado}
+        />
 
-        {/* Pending sync banner */}
         {pendingSync > 0 && (
           <View style={styles.pendingSyncRow}>
             <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
@@ -102,142 +251,25 @@ export default function PlantationCard({
             </Text>
           </View>
         )}
-      </View>
 
-      {/* Right sidebar strip — 3 action slots */}
-      <View style={styles.strip}>
-        {/* Slot 1: Edit (top) — visible for both roles per D-02 */}
-        <Pressable
-          onPress={(e) => { e?.stopPropagation?.(); onEdit?.(); }}
-          hitSlop={8}
-          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Editar lugar y periodo"
-        >
-          <Ionicons name="create-outline" size={18} color={colors.primary} />
-        </Pressable>
+        {onToggleExpanded && (
+          <ExpandRow
+            parcelasCount={parcelasCount}
+            expanded={expanded}
+            onToggle={onToggleExpanded}
+          />
+        )}
 
-        {/* Slot 2: Gear (middle) — visible for all users */}
-        <Pressable
-          onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
-          hitSlop={8}
-          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Acciones de plantacion"
-        >
-          <Ionicons name="settings-outline" size={18} color={colors.primary} />
-        </Pressable>
-
-        {/* Slot 3: Trash (bottom) — existing delete behavior */}
-        {onDelete ? (
-          <Pressable
-            onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
-            hitSlop={8}
-            style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-            accessibilityLabel="Eliminar plantacion del dispositivo"
-          >
-            <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
-          </Pressable>
-        ) : (
-          <View style={styles.stripSlot} />
+        {expanded && parcelas && (
+          <ExpandedSection
+            parcelas={parcelas}
+            onParcelaPress={onParcelaPress}
+            onParcelaLongPress={onParcelaLongPress}
+          />
         )}
       </View>
+
+      <ActionStrip onEdit={onEdit} onGear={onGear} onDelete={onDelete} />
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-    elevation: 4,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    backgroundColor: colors.surface,
-  },
-  cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.95 },
-
-  // Left colored strip
-  sidebar: {
-    width: SIDEBAR_WIDTH,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-
-  // Main content area — solid surface color (white)
-  content: {
-    flex: 1,
-    padding: spacing.xxl,
-    justifyContent: 'center',
-    backgroundColor: colors.surface,
-  },
-
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  titleDot: {
-    marginRight: spacing.sm,
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontFamily: fonts.heading,
-    color: colors.textHeading,
-    marginBottom: 2,
-    flex: 1,
-  },
-  subtitle: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    marginBottom: spacing.lg,
-  },
-
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xxl,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  statValue: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.bold,
-    color: colors.textPrimary,
-  },
-
-  pendingSyncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.lg,
-    backgroundColor: colors.infoBg,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  pendingSyncText: {
-    fontSize: fontSize.sm,
-    color: colors.textPrimary,
-    fontFamily: fonts.semiBold,
-  },
-
-  // Right sidebar strip — 3 action slots
-  strip: {
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: SIDEBAR_WIDTH,
-    gap: spacing.md,
-  },
-  stripSlot: {
-    height: 36,
-    width: SIDEBAR_WIDTH,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
