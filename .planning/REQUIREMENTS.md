@@ -266,7 +266,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ### Parcelas — UI / Navegación
 
-- [ ] **PUI-01**: Pantalla nueva `ParcelasScreen` lista parcelas con `nombre`, `codigo`, conteo de grupos, conteo de árboles, OrangeDot si algún grupo dentro tiene `pending_sync`. Si la parcela tiene `descripcion`, se muestra una preview truncada (~80 chars) debajo del nombre
+- [ ] **PUI-01**: Pantalla nueva `ParcelasScreen` lista parcelas con `nombre`, `codigo`, conteo de grupos, conteo de árboles, OrangeDot si algún grupo dentro tiene `pending_sync`. **`descripcion` NO se muestra en la lista** (D-17-05, decisión usuario 2026-05-27 — accesible solo en `ParcelaFormModal` modo editar). Decisión previa de mostrar preview truncada quedó overridden.
 - [ ] **PUI-02**: Tap en `PlantationCard` navega a `ParcelasScreen` (antes navegaba directo a la pantalla de grupos)
 - [ ] **PUI-03**: Tap en una `ParcelaRow` navega a `GruposScreen` scoped a esa parcela (lista solo grupos de esa parcela)
 - [ ] **PUI-04**: Long-press en `ParcelaRow` abre modal de edición de Parcela
