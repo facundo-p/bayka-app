@@ -5,7 +5,7 @@ import { syncLog } from '../../utils/syncLogger';
 import { SyncGroupResult, SyncProgress, GlobalSyncProgress } from './types';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
-import { uploadSyncableGroups } from './pushService';
+import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 
 // ─── Main orchestrator ────────────────────────────────────────────────────────
@@ -28,6 +28,17 @@ export async function syncPlantation(
     await pullFromServer(plantacionId);
   } catch (e) {
     syncLog.error('Pull failed:', e);
+  }
+
+  // D-16-13: push parcelas BEFORE groups (FK ordering).
+  try {
+    const parcelaResults = await uploadSyncableParcelas(plantacionId);
+    const failed = parcelaResults.filter(r => !r.success).length;
+    if (failed > 0) {
+      syncLog.info(`Push parcelas: ${failed}/${parcelaResults.length} failed; groups dependientes saltarán`);
+    }
+  } catch (e) {
+    syncLog.error('Push parcelas failed:', e);
   }
 
   const results = await uploadSyncableGroups(plantacionId, onProgress);
@@ -57,6 +68,12 @@ export async function syncAllPlantations(
 
     try {
       await pullFromServer(p.id);
+      // D-16-13: push parcelas antes que groups (FK).
+      try {
+        await uploadSyncableParcelas(p.id);
+      } catch (e) {
+        syncLog.error(`Push parcelas failed for "${p.lugar}":`, e);
+      }
       const results = await uploadSyncableGroups(p.id, (subProgress) => {
         onProgress?.({
           plantationName: p.lugar,

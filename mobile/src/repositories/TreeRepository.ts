@@ -150,6 +150,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
   fotoUrl: string;
   grupoId: string;
   plantacionId: string;
+  parcelaId: string | null;
 }>> {
   const rows = await db
     .select({
@@ -157,6 +158,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
       fotoUrl: trees.fotoUrl,
       grupoId: trees.groupId,
       plantacionId: groups.plantacionId,
+      parcelaId: groups.parcelaId,
     })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
@@ -175,6 +177,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
     fotoUrl: string;
     grupoId: string;
     plantacionId: string;
+    parcelaId: string | null;
   }>;
 }
 
