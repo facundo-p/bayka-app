@@ -66,6 +66,33 @@
 - CSS separado y reutilizable.
 - Parametrizar colores y variables comunes.
 
+### 8.1 Styles en archivo .styles.ts dedicado (OBLIGATORIO)
+
+Todo componente o pantalla con estilos DEBE tener un archivo sibling
+`<Name>.styles.ts` exportando `<camelCaseName>Styles`. **Prohibido** dejar
+`StyleSheet.create(...)` dentro del `.tsx`. Los tokens (`colors`, `fontSize`,
+`spacing`, `borderRadius`, `fonts`) siempre se importan desde `src/theme.ts`
+— nunca hex/px/strings hardcoded.
+
+Patrón canónico (ver `ParcelaRow.styles.ts`, `PlantationCard.styles.ts`,
+`CatalogScreen.styles.ts`):
+
+```ts
+// Foo.styles.ts
+import { StyleSheet } from 'react-native';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+
+export const fooStyles = StyleSheet.create({ /* ... */ });
+```
+
+```tsx
+// Foo.tsx
+import { fooStyles as styles } from './Foo.styles';
+```
+
+Regla práctica: si encontrás `StyleSheet.create` en un `.tsx`, refactorizalo
+al `.styles.ts` en el mismo PR.
+
 ### 8. Diseño centralizado y código compartido (OBLIGATORIO)
 
 **Colores, espaciado, tipografía y estilos comunes** DEBEN definirse en un único archivo de tema (`src/theme.ts`). Nunca hardcodear valores de color o tamaño directamente en los archivos de pantalla o componente. Si necesitás un color, importalo del tema.
