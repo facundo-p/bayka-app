@@ -1,17 +1,28 @@
 /**
  * Runs `cb(tx)` inside a database transaction when supported. Falls back to
- * `cb(db)` (no transaction) when `db.transaction` is undefined — this is the
- * case in unit-test mocks where db is a partial object. Real Drizzle clients
- * always expose .transaction().
+ * `cb(db)` (no transaction) in two cases:
+ *   1. `db.transaction` is undefined (unit-test mocks with partial db objects).
+ *   2. The driver throws "Transaction function cannot return a promise"
+ *      (better-sqlite3 sync API in integration tests — it doesn't allow async
+ *      callbacks even though drizzle/expo-sqlite in prod does).
+ * Prod expo-sqlite always supports async transactions, so this preserves
+ * the transactional speedup at runtime.
  */
 export async function runInTransaction<T>(
   database: any,
   cb: (tx: any) => Promise<T>,
 ): Promise<T> {
-  if (typeof database?.transaction === 'function') {
-    return database.transaction(cb);
+  if (typeof database?.transaction !== 'function') {
+    return cb(database);
   }
-  return cb(database);
+  try {
+    return await database.transaction(cb);
+  } catch (e: any) {
+    if (typeof e?.message === 'string' && e.message.includes('cannot return a promise')) {
+      return cb(database);
+    }
+    throw e;
+  }
 }
 
 /**
