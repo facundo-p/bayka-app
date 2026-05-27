@@ -73,7 +73,7 @@ export default function GrupoForm({
         } else {
           setCodigoError(
             mode === 'create'
-              ? 'Error al crear el subgrupo. Intentá de nuevo.'
+              ? 'Error al crear el grupo. Intentá de nuevo.'
               : 'Error al actualizar. Intentá de nuevo.',
           );
         }
@@ -83,7 +83,7 @@ export default function GrupoForm({
     }
   }
 
-  const submitLabel = mode === 'create' ? 'Crear subgrupo' : 'Guardar';
+  const submitLabel = mode === 'create' ? 'Crear grupo' : 'Guardar';
 
   return (
     <View>
@@ -96,7 +96,7 @@ export default function GrupoForm({
         autoCapitalize="words"
         helperText={
           mode === 'create' && lastGroupName
-            ? `Último subgrupo: ${lastGroupName}`
+            ? `Último grupo: ${lastGroupName}`
             : null
         }
       />
