@@ -8,7 +8,7 @@ import { createGroup, getLastGroupName } from '../repositories/GroupRepository';
 import type { GroupTipo } from '../repositories/GroupRepository';
 import { useCurrentUserId } from './useCurrentUserId';
 
-export function useNewGroup(plantacionId: string | undefined) {
+export function useNewGroup(plantacionId: string | undefined, parcelaId?: string) {
   const userId = useCurrentUserId();
   const [lastGroupName, setLastGroupName] = useState<string | null>(null);
 
@@ -23,6 +23,7 @@ export function useNewGroup(plantacionId: string | undefined) {
     }
     return createGroup({
       plantacionId: plantacionId ?? '',
+      parcelaId: parcelaId ?? null,
       nombre: values.nombre,
       codigo: values.codigo,
       tipo: values.tipo,
