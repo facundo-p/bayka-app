@@ -31,6 +31,7 @@ export const parcelas = sqliteTable('parcelas', {
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
+  deletedAt: text('deleted_at'),
 }, (t) => ({
   uniqueCode: uniqueIndex('parcelas_plantation_code_unique').on(t.plantacionId, t.codigo),
   uniqueName: uniqueIndex('parcelas_plantation_name_unique').on(t.plantacionId, t.nombre),
