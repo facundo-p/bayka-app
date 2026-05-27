@@ -94,6 +94,45 @@ export const plantationCardStyles = StyleSheet.create({
     fontFamily: fonts.semiBold,
   },
 
+  // Expand row — "Parcelas: N" + chevron (D-17-10)
+  expandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+    minHeight: 44, // D-17-22 touch target
+  },
+  expandRowPressed: {
+    opacity: 0.6,
+  },
+  expandLabel: {
+    flex: 1,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+    color: colors.textPrimary,
+  },
+  expandedSection: {
+    marginTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+    paddingTop: spacing.md,
+    gap: spacing.xs,
+  },
+  expandedDivider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginVertical: spacing.xs,
+  },
+  expandedEmptyText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xxl,
+    fontStyle: 'italic',
+  },
+
   // Right sidebar strip — 3 action slots
   strip: {
     backgroundColor: colors.surface,
