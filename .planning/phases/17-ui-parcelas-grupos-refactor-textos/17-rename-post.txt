@@ -1,0 +1,14 @@
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/database/migrations.test.ts:32:  it('replaces trees.subgrupo_id with trees.group_id', () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/database/migrations.test.ts:39:    expect(colNames).not.toContain('subgrupo_id');
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:73:    it('canFinalize=true cuando todos los subgrupos están finalizada + pendingSync=false + sin N/N', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:91:    it('canFinalize=true cuando todos los subgrupos están sincronizada + pendingSync=false', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:123:    it('canFinalize=false cuando hay subgrupos activa', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:139:    it('canFinalize=false cuando hay subgrupos con pendingSync=true', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:155:    it('canFinalize=false cuando no hay subgrupos', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/dashboard.test.ts:10:    grupoId: 'trees.subgrupo_id',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/CrossDeviceSync.test.ts:452:    it('device B puede sincronizar subgrupo creado por otro usuario', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/CrossDeviceSync.test.ts:546:    it('subgrupo sincronizada con pendingSync=true es retornado y procesado', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/CrossDeviceSync.test.ts:572:    it('subgrupo activa con pendingSync=true NO es retornado por getSyncableGroups', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/SyncPhotoFlow.test.ts:264:    it('subgrupo con pendingSync=true local no se resetea a false en pull', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/SyncPhotoFlow.test.ts:453:    it('retorna subgrupos con pendingSync=true sin importar estado', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/SyncPhotoFlow.test.ts:502:    it('solo retorna árboles con file:// URI y fotoSynced=false en subgrupos no-pending', async () => {

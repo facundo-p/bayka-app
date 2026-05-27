@@ -1,0 +1,52 @@
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/TreeRegistrationScreen.tsx:89:    showConfirmDialog(confirm.show, 'Finalizar subgrupo',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/TreeRegistrationScreen.tsx:97:      ? `Este subgrupo tiene ${treeReg.totalCount} árbol${treeReg.totalCount > 1 ? 'es' : ''} cargado${treeReg.totalCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/TreeRegistrationScreen.tsx:99:    showDoubleConfirmDialog(confirm.show, 'Eliminar subgrupo', warn, 'Confirmar eliminación',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/TreeRegistrationScreen.tsx:100:      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/TreeRegistrationScreen.tsx:106:    showConfirmDialog(confirm.show, 'Reactivar subgrupo',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/TreeRegistrationScreen.tsx:107:      'Cambiar el estado del subgrupo a activa? Podrás registrar más árboles.',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/PlantationDetailScreen.tsx:127:        ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No hay subgrupos aun</Text><Text style={styles.emptySubtext}>Toca &quot;+&quot; para crear el primero</Text></View>}
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/PlantationDetailScreen.tsx:135:            onPress={() => router.push(`/${routePrefix}/plantation/nuevo-subgrupo?plantacionId=${plantacionId}` as any)}
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/PlantationDetailScreen.tsx:137:            <Text style={styles.fabLabel}>+ Nuevo subgrupo</Text>
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/PlantationDetailScreen.tsx:148:            <Text style={styles.editModalTitle}>Editar subgrupo</Text>
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/screens/NuevoGrupoScreen.tsx:32:          <Text style={styles.sectionTitle}>Datos del subgrupo</Text>
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/CatalogPlantationCard.tsx:52:          <Text style={styles.statText}>{item.group_count} subgrupos</Text>
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/GrupoForm.tsx:76:              ? 'Error al crear el subgrupo. Intentá de nuevo.'
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/GrupoForm.tsx:86:  const submitLabel = mode === 'create' ? 'Crear subgrupo' : 'Guardar';
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/GrupoForm.tsx:99:            ? `Último subgrupo: ${lastGroupName}`
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/SyncProgressModal.tsx:57:          <Text style={styles.title}>Subiendo subgrupos...</Text>
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/SyncProgressModal.tsx:134:              {successCount} subgrupo{successCount > 1 ? 's' : ''} sincronizado
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/SyncProgressModal.tsx:161:                {failureCount} subgrupo{failureCount > 1 ? 's' : ''} con error:
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/AdminBottomSheet.tsx:114:      ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNGroups} subgrupo${meta.unresolvedNNGroups !== 1 ? 's' : ''}`
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/AdminBottomSheet.tsx:116:        ? 'Para finalizar, todos los subgrupos deben estar sincronizados'
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/PlantationDetailHeader.tsx:52:            {blockedByNN > 0 && <Text style={styles.nnSyncBlockedText}>{blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes</Text>}
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/components/PlantationCard.tsx:250:              {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantaciones.ts:119:        `Esta plantacion tiene ${totalUnsynced} subgrupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/useAssignTechnicians.ts:97:          'Tecnico con subgrupos pendientes',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/useAssignTechnicians.ts:98:          `Este tecnico tiene ${unsyncedCount} subgrupo${unsyncedCount > 1 ? 's' : ''} sin sincronizar. Si lo desasignas, solo el podra sincronizarlos. Continuar?`,
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantationAdmin.ts:98:          message: 'Esta acción no se puede deshacer. La plantacion quedara bloqueada y no se podran agregar nuevos subgrupos.',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantationAdmin.ts:120:          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNGroups} subgrupo${sgPlural}.`,
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantationAdmin.ts:130:          message: `Los siguientes subgrupos no estan sincronizados:\n\n${blockingNames}`,
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantationDetail.ts:95:      ? `Este subgrupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantationDetail.ts:100:      'Eliminar subgrupo',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/usePlantationDetail.ts:103:      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/src/hooks/useCatalog.ts:106:        `Esta plantacion tiene ${totalUnsynced} subgrupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/app/(admin)/plantation/_layout.tsx:7:      <Stack.Screen name="[id]" options={{ title: 'Subgrupos' }} />
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/app/(admin)/plantation/_layout.tsx:9:      <Stack.Screen name="nuevo-subgrupo" options={{ title: 'Nuevo subgrupo' }} />
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/app/(tecnico)/plantation/_layout.tsx:7:      <Stack.Screen name="[id]" options={{ title: 'Subgrupos' }} />
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/app/(tecnico)/plantation/_layout.tsx:9:      <Stack.Screen name="nuevo-subgrupo" options={{ title: 'Nuevo subgrupo' }} />
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/database/migrations.test.ts:32:  it('replaces trees.subgrupo_id with trees.group_id', () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/database/migrations.test.ts:39:    expect(colNames).not.toContain('subgrupo_id');
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:73:    it('canFinalize=true cuando todos los subgrupos están finalizada + pendingSync=false + sin N/N', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:91:    it('canFinalize=true cuando todos los subgrupos están sincronizada + pendingSync=false', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:123:    it('canFinalize=false cuando hay subgrupos activa', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:139:    it('canFinalize=false cuando hay subgrupos con pendingSync=true', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/admin/adminQueries.test.ts:155:    it('canFinalize=false cuando no hay subgrupos', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/components/AdminBottomSheet.test.tsx:79:    expect(getByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeTruthy();
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/components/AdminBottomSheet.test.tsx:87:    expect(queryByText('Para finalizar, todos los subgrupos deben estar sincronizados')).toBeNull();
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/dashboard.test.ts:10:    grupoId: 'trees.subgrupo_id',
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/SyncPhotoFlow.test.ts:264:    it('subgrupo con pendingSync=true local no se resetea a false en pull', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/SyncPhotoFlow.test.ts:453:    it('retorna subgrupos con pendingSync=true sin importar estado', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/SyncPhotoFlow.test.ts:502:    it('solo retorna árboles con file:// URI y fotoSynced=false en subgrupos no-pending', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/CrossDeviceSync.test.ts:452:    it('device B puede sincronizar subgrupo creado por otro usuario', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/CrossDeviceSync.test.ts:546:    it('subgrupo sincronizada con pendingSync=true es retornado y procesado', async () => {
+/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/tests/sync/CrossDeviceSync.test.ts:572:    it('subgrupo activa con pendingSync=true NO es retornado por getSyncableGroups', async () => {
