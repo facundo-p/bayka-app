@@ -52,7 +52,7 @@ async function validateGroupUniqueness(
   excludeId?: string,
 ): Promise<DuplicateError | null> {
   if (!parcelaId) {
-    console.warn('PHASE-17: grupo sin parcelaId — validación per-plantacion (fallback legacy)');
+    console.warn('grupo sin parcelaId — validación per-plantacion (fallback legacy)');
   }
   const scope = buildScopeConds(plantacionId, parcelaId);
   const nombreConds = [...scope, eq(groups.nombre, nombre)];
@@ -207,7 +207,7 @@ async function recalcTreesSubIds(
         .where(eq(speciesTable.id, tree.especieId));
       especieCodigo = sp?.codigo ?? 'NN';
     }
-    // PHASE-17: pasar codigo real de parcela (group.parcelaId lookup)
+    // TODO: pasar codigo real de parcela (group.parcelaId lookup).
     const newSubId = generateSubId('', newCodigo.toUpperCase(), especieCodigo, tree.posicion);
     await tx.update(trees)
       .set({ subId: newSubId })
