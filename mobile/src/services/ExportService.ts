@@ -2,7 +2,11 @@
  * ExportService — generates CSV and Excel files from plantation export data
  * and shares them via the native share sheet.
  *
- * Covers: EXPO-01 (CSV), EXPO-02 (Excel)
+ * Covers: EXPO-01 (CSV), EXPO-02 (Excel), EXPO-PARC-01 (Parcela column),
+ *         EXPO-PARC-02 (Parcela value = parcela.nombre).
+ *
+ * 9-column order (D-18-08):
+ *   ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie
  *
  * CRITICAL (Pitfall 4): Always use type: 'base64' in XLSX.write — Node Buffer
  * is not available in React Native.
@@ -11,7 +15,12 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
-import { getExportRows } from '../queries/exportQueries';
+import { getExportRows, type ExportRow } from '../queries/exportQueries';
+
+// ─── Header constant (D-18-08 — exact order) ────────────────────────────────
+
+const CSV_HEADER =
+  'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -27,6 +36,42 @@ function csvField(value: string | number | null | undefined): string {
   return str;
 }
 
+/**
+ * Build a single CSV row from an ExportRow (9 columns, D-18-08 order).
+ * Normalizes `parcelaNombre: null` → '' (D-18-10).
+ */
+function rowToCSV(r: ExportRow): string {
+  return [
+    csvField(r.globalId),
+    csvField(r.idParcial),
+    csvField(r.lugar),
+    csvField(r.plantacionLugar),
+    csvField(r.parcelaNombre ?? ''),
+    csvField(r.grupoNombre),
+    csvField(r.subId),
+    csvField(r.periodo),
+    csvField(r.especieNombre),
+  ].join(',');
+}
+
+/**
+ * Build an Excel sheetData entry (9 keys, D-18-08 order).
+ * Normalizes `parcelaNombre: null` → '' (D-18-10).
+ */
+function rowToExcel(r: ExportRow) {
+  return {
+    'ID Global': r.globalId,
+    'ID Parcial': r.idParcial,
+    'Zona': r.lugar,
+    'Plantación': r.plantacionLugar,
+    'Parcela': r.parcelaNombre ?? '',
+    'Grupo': r.grupoNombre,
+    'SubID': r.subId,
+    'Periodo': r.periodo,
+    'Especie': r.especieNombre,
+  };
+}
+
 // ─── exportToCSV ─────────────────────────────────────────────────────────────
 
 /**
@@ -35,24 +80,8 @@ function csvField(value: string | number | null | undefined): string {
  */
 export async function exportToCSV(plantacionId: string, plantationName: string): Promise<void> {
   const rows = await getExportRows(plantacionId);
+  const csv = CSV_HEADER + rows.map(rowToCSV).join('\n');
 
-  const header = 'ID Global,ID Parcial,Zona,SubGrupo,SubID,Periodo,Especie\n';
-  const body = rows
-    .map(
-      (r) =>
-        [
-          csvField(r.globalId),
-          csvField(r.idParcial),
-          csvField(r.lugar),
-          csvField(r.grupoNombre),
-          csvField(r.subId),
-          csvField(r.periodo),
-          csvField(r.especieNombre),
-        ].join(',')
-    )
-    .join('\n');
-
-  const csv = header + body;
   const file = new File(Paths.cache, `${plantationName}_export.csv`);
   file.write(csv, { encoding: 'utf8' });
 
@@ -71,16 +100,7 @@ export async function exportToCSV(plantacionId: string, plantationName: string):
  */
 export async function exportToExcel(plantacionId: string, plantationName: string): Promise<void> {
   const rows = await getExportRows(plantacionId);
-
-  const sheetData = rows.map((r) => ({
-    'ID Global': r.globalId,
-    'ID Parcial': r.idParcial,
-    'Zona': r.lugar,
-    'SubGrupo': r.grupoNombre,
-    'SubID': r.subId,
-    'Periodo': r.periodo,
-    'Especie': r.especieNombre,
-  }));
+  const sheetData = rows.map(rowToExcel);
 
   const ws = XLSX.utils.json_to_sheet(sheetData);
   const wb = XLSX.utils.book_new();
