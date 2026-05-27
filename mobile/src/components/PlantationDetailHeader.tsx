@@ -49,7 +49,7 @@ export default function PlantationDetailHeader({
           <Ionicons name="alert-circle-outline" size={18} color={colors.secondary} />
           <View style={styles.nnBannerContent}>
             {totalNN > 0 && <Text style={styles.resolveNNText}>Resolver {totalNN} N/N pendiente{totalNN > 1 ? 's' : ''}</Text>}
-            {blockedByNN > 0 && <Text style={styles.nnSyncBlockedText}>{blockedByNN} subgrupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes</Text>}
+            {blockedByNN > 0 && <Text style={styles.nnSyncBlockedText}>{blockedByNN} grupo{blockedByNN > 1 ? 's' : ''} finalizado{blockedByNN > 1 ? 's' : ''} con N/N pendientes</Text>}
           </View>
           {totalNN > 0 && <Ionicons name="chevron-forward" size={16} color={colors.secondary} />}
         </Pressable>

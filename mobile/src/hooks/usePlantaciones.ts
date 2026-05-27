@@ -116,7 +116,7 @@ export function usePlantaciones() {
       showDoubleConfirmDialog(
         confirm.show,
         'Atencion: datos sin sincronizar',
-        `Esta plantacion tiene ${totalUnsynced} subgrupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
+        `Esta plantacion tiene ${totalUnsynced} grupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
         'Eliminar de todas formas',
         'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.',
         async () => {

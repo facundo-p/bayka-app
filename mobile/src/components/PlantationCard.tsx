@@ -2,11 +2,11 @@
  * PlantationCard — displays a plantation with stats in the plantaciones list.
  * Used by PlantacionesScreen for both admin and tecnico roles.
  *
- * Plan 17-02: adds an inline expandable section with the parcelas list as a
- * shortcut (D-17-10..14). The expand row uses `stopPropagation` so tapping
- * the chevron does NOT trigger the card's main `onPress` (D-17-11).
- * Animation via `LayoutAnimation` is driven by the parent (PlantacionesScreen
- * calls `LayoutAnimation.configureNext` before flipping `expanded`).
+ * Includes an inline expandable section with the parcelas list as a shortcut.
+ * The expand row uses `stopPropagation` so tapping the chevron does NOT
+ * trigger the card's main `onPress`. Animation via `LayoutAnimation` is
+ * driven by the parent (PlantacionesScreen calls `LayoutAnimation.configureNext`
+ * before flipping `expanded`).
  */
 import { View, Text, Pressable, Platform, UIManager } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -18,8 +18,7 @@ import ParcelaRow from './ParcelaRow';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 
-// D-17-14: enable LayoutAnimation on Android (project_android_only.md).
-// Idempotent — RN no-ops if already enabled.
+// Enable LayoutAnimation on Android (idempotent — RN no-ops if already enabled).
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -40,8 +39,8 @@ type Props = {
   isAdmin?: boolean;
   onEdit?: () => void;
   onGear?: () => void;
-  // Plan 17-02: inline expansion (all optional; expand row only renders
-  // when `onToggleExpanded` is supplied by the parent wrapper).
+  // Inline expansion props (all optional; expand row only renders when
+  // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
   expanded?: boolean;
   onToggleExpanded?: () => void;
@@ -247,7 +246,7 @@ export default function PlantationCard({
           <View style={styles.pendingSyncRow}>
             <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
             <Text style={styles.pendingSyncText}>
-              {pendingSync} subgrupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
+              {pendingSync} grupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
             </Text>
           </View>
         )}

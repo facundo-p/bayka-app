@@ -54,7 +54,7 @@ export default function SyncProgressModal({
       {state === 'pushing' && (
         <>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.title}>Subiendo subgrupos...</Text>
+          <Text style={styles.title}>Subiendo grupos...</Text>
           <Text style={styles.progressText}>
             {progress ? `${progress.completed} de ${progress.total}` : 'Preparando...'}
           </Text>
@@ -131,7 +131,7 @@ export default function SyncProgressModal({
           </Text>
           {successCount > 0 && (
             <Text style={styles.successText}>
-              {successCount} subgrupo{successCount > 1 ? 's' : ''} sincronizado
+              {successCount} grupo{successCount > 1 ? 's' : ''} sincronizado
               {successCount > 1 ? 's' : ''}
             </Text>
           )}
@@ -158,7 +158,7 @@ export default function SyncProgressModal({
           {failureCount > 0 && (
             <View style={styles.failureSection}>
               <Text style={styles.failureTitle}>
-                {failureCount} subgrupo{failureCount > 1 ? 's' : ''} con error:
+                {failureCount} grupo{failureCount > 1 ? 's' : ''} con error:
               </Text>
               {results
                 .filter((r) => !r.success)
