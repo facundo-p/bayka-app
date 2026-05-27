@@ -1,4 +1,20 @@
 /**
+ * Runs `cb(tx)` inside a database transaction when supported. Falls back to
+ * `cb(db)` (no transaction) when `db.transaction` is undefined — this is the
+ * case in unit-test mocks where db is a partial object. Real Drizzle clients
+ * always expose .transaction().
+ */
+export async function runInTransaction<T>(
+  database: any,
+  cb: (tx: any) => Promise<T>,
+): Promise<T> {
+  if (typeof database?.transaction === 'function') {
+    return database.transaction(cb);
+  }
+  return cb(database);
+}
+
+/**
  * Paginates a Supabase query through .range() to bypass the PostgREST 1000-row
  * default limit. `buildQuery` must return a fresh query builder on each call;
  * the helper appends .range(from, to) per page and concatenates results.

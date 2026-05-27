@@ -4,7 +4,7 @@ import { groups, trees, plantationUsers, plantationSpecies, plantations, species
 import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
-import { fetchAllRows } from './paginate';
+import { fetchAllRows, runInTransaction } from './paginate';
 import type { DownloadPhase, DownloadPhaseProgress } from './types';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
@@ -106,7 +106,7 @@ async function pullParcelas(
     .where(eq(parcelas.plantacionId, plantacionId));
   const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
 
-  await db.transaction(async (tx) => {
+  await runInTransaction(db, async (tx: any) => {
     let done = 0;
     for (const remoteParcela of all) {
       if (pendingLocally.has(remoteParcela.id)) {
@@ -162,7 +162,7 @@ async function pullGroups(
   emitProgress(onProgress, 'groups', 0, all.length);
   if (all.length === 0) return [];
 
-  await db.transaction(async (tx) => {
+  await runInTransaction(db, async (tx: any) => {
     let done = 0;
     for (const sg of all) {
       await tx.insert(groups).values({
@@ -215,7 +215,7 @@ async function pullPlantationUsers(
   const localPu = await db.select().from(plantationUsers)
     .where(eq(plantationUsers.plantationId, plantacionId));
 
-  await db.transaction(async (tx) => {
+  await runInTransaction(db, async (tx: any) => {
     for (const local of localPu) {
       if (!remoteUserIds.has(local.userId)) {
         await tx.delete(plantationUsers).where(
@@ -263,7 +263,7 @@ async function pullPlantationSpecies(
   emitProgress(onProgress, 'especies_plantacion', 0, all.length);
   if (all.length === 0) return;
 
-  await db.transaction(async (tx) => {
+  await runInTransaction(db, async (tx: any) => {
     let done = 0;
     for (const ps of all) {
       const localId = `ps-${ps.plantation_id}-${ps.species_id}`;
@@ -283,7 +283,7 @@ async function pullPlantationSpecies(
   emitProgress(onProgress, 'especies_plantacion', all.length, all.length);
 }
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
 
 /**
  * Per-tree species conflict check: only runs when the row exists locally with
@@ -368,7 +368,7 @@ async function pullTrees(
   const isFreshDownload = (localCountRow?.cnt ?? 0) === 0;
   if (isFreshDownload) syncLog.info('Pull trees: fresh download — skipping per-tree conflict checks');
 
-  await db.transaction(async (tx) => {
+  await runInTransaction(db, async (tx: any) => {
     let done = 0;
     for (const t of all) {
       if (!isFreshDownload && await checkTreeConflict(tx, t)) {
