@@ -15,10 +15,13 @@ export async function getPlantationLugar(plantacionId: string) {
     .where(eq(plantations.id, plantacionId));
 }
 
-/** Get all groups for a plantation, ordered alphabetically by name */
-export async function getGroupsForPlantation(plantacionId: string) {
+/** Get all groups for a plantation, ordered alphabetically by name.
+ *  If `parcelaId` is provided, scopes results to that parcela (GUI-03). */
+export async function getGroupsForPlantation(plantacionId: string, parcelaId?: string) {
+  const conds = [eq(groups.plantacionId, plantacionId)];
+  if (parcelaId) conds.push(eq(groups.parcelaId, parcelaId));
   return db.select().from(groups)
-    .where(eq(groups.plantacionId, plantacionId))
+    .where(and(...conds))
     .orderBy(asc(groups.nombre));
 }
 

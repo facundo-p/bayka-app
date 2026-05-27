@@ -23,11 +23,13 @@ import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
+import { findById as findParcelaById } from '../repositories/ParcelaRepository';
+import type { Parcela } from '../repositories/ParcelaRepository';
 
 // Re-export types for consumers of this hook (avoids repository imports in screens)
 export type { Group, GroupTipo };
 
-export function usePlantationDetail(plantacionId: string) {
+export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const userId = useCurrentUserId();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
@@ -37,9 +39,17 @@ export function usePlantationDetail(plantacionId: string) {
   const pid = plantacionId ?? '';
 
   const { data: plantationRows } = useLiveData(() => getPlantationLugar(pid), [pid]);
-  const { data: groupRows } = useLiveData(() => getGroupsForPlantation(pid), [pid]);
+  const { data: groupRows } = useLiveData(
+    () => getGroupsForPlantation(pid, parcelaId),
+    [pid, parcelaId],
+  );
   const { data: nnCounts } = useLiveData(() => getNNCountsPerGroup(pid), [pid]);
   const { data: treeCounts } = useLiveData(() => getTreeCountsPerGroup(pid), [pid]);
+  const { data: parcelaRows } = useLiveData(
+    () => (parcelaId ? findParcelaById(parcelaId).then((p) => (p ? [p] : [])) : Promise.resolve([])),
+    [parcelaId],
+  );
+  const parcela: Parcela | null = (parcelaRows?.[0] as Parcela | undefined) ?? null;
 
   const { data: estadoData } = useLiveData(
     () => getPlantationEstado(pid).then((e) => [{ estado: e ?? '' }]),
@@ -127,6 +137,7 @@ export function usePlantationDetail(plantacionId: string) {
   return {
     // Data
     plantationRows,
+    parcela,
     groupRows,
     filteredGroups,
     nnCountMap,
