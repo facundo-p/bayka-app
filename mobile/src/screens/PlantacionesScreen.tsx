@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable, LayoutAnimation } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import PlantationCard from '../components/PlantationCard';
+import ParcelaFormModal from '../components/ParcelaFormModal';
 import FilterCards from '../components/FilterCards';
 import ScreenHeader from '../components/ScreenHeader';
 import TexturedBackground from '../components/TexturedBackground';
@@ -22,6 +23,54 @@ import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
+import { useParcelas } from '../hooks/useParcelas';
+import type { ParcelaWithStats } from '../queries/parcelaQueries';
+import type { Parcela } from '../repositories/ParcelaRepository';
+
+/**
+ * ExpandablePlantationCard — wrapper that pulls parcelas per plantation
+ * via `useParcelas` so `PlantationCard` can render "Parcelas: N" and the
+ * inline expanded list (Plan 17-02 Task 2.4, D-17-10..14).
+ *
+ * `useParcelas` is invoked unconditionally to honor the Rules of Hooks;
+ * the cost is one indexed query per card. The FPS gate (≥50 FPS over 3s
+ * scroll of 10 cards) is the merge criterion — if it regresses, pivot to
+ * a lightweight `useParcelasCount` hook for collapsed cards.
+ */
+type ExpandableCardProps = {
+  plantacionId: string;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  onParcelaPress: (parcelaId: string) => void;
+  onParcelaLongPress: (parcela: ParcelaWithStats) => void;
+  // Pass-through to PlantationCard
+  cardProps: Omit<
+    React.ComponentProps<typeof PlantationCard>,
+    'parcelasCount' | 'parcelas' | 'expanded' | 'onToggleExpanded' | 'onParcelaPress' | 'onParcelaLongPress'
+  >;
+};
+
+function ExpandablePlantationCard({
+  plantacionId,
+  expanded,
+  onToggleExpanded,
+  onParcelaPress,
+  onParcelaLongPress,
+  cardProps,
+}: ExpandableCardProps) {
+  const { parcelas } = useParcelas(plantacionId);
+  return (
+    <PlantationCard
+      {...cardProps}
+      parcelasCount={parcelas.length}
+      parcelas={expanded ? parcelas : undefined}
+      expanded={expanded}
+      onToggleExpanded={onToggleExpanded}
+      onParcelaPress={onParcelaPress}
+      onParcelaLongPress={onParcelaLongPress}
+    />
+  );
+}
 
 export default function PlantacionesScreen() {
   const router = useRouter();
@@ -81,6 +130,30 @@ export default function PlantacionesScreen() {
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [bottomSheetPlantation, setBottomSheetPlantation] = useState<Plantation | null>(null);
   const [bottomSheetMeta, setBottomSheetMeta] = useState<ExpandedMeta>({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 });
+
+  // Plan 17-02: single-card expansion + inline parcela edit modal
+  const [expandedPlantationId, setExpandedPlantationId] = useState<string | null>(null);
+  const [editingParcela, setEditingParcela] = useState<Parcela | null>(null);
+  const [editingParcelaPlantacionId, setEditingParcelaPlantacionId] = useState<string | null>(null);
+
+  const handleToggleExpand = useCallback((id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedPlantationId(prev => (prev === id ? null : id));
+  }, []);
+
+  const handleParcelaInlinePress = useCallback((plantacionId: string, parcelaId: string) => {
+    router.push(`/${routePrefix}/plantation/${plantacionId}?parcelaId=${parcelaId}` as any);
+  }, [router, routePrefix]);
+
+  const handleParcelaInlineLongPress = useCallback((plantacionId: string, parcela: ParcelaWithStats) => {
+    setEditingParcelaPlantacionId(plantacionId);
+    setEditingParcela(parcela);
+  }, []);
+
+  const closeEditParcela = useCallback(() => {
+    setEditingParcela(null);
+    setEditingParcelaPlantacionId(null);
+  }, []);
 
   // Admin modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -183,21 +256,28 @@ export default function PlantacionesScreen() {
             testID="plantaciones-list"
             renderItem={({ item, index }) => (
               <Animated.View entering={FadeInDown.delay(index * 80).duration(300)} testID={`plantation-card-${item.id}`}>
-                <PlantationCard
-                  lugar={item.lugar}
-                  periodo={item.periodo}
-                  totalCount={totalCountMap.get(item.id) ?? 0}
-                  syncedCount={syncedCountMap.get(item.id) ?? 0}
-                  todayCount={todayCountMap.get(item.id) ?? 0}
-                  pendingSync={pendingSyncMap.get(item.id) ?? 0}
-                  estado={item.estado}
-                  hasPendingSync={(pendingSyncBoolMap.get(item.id) ?? 0) > 0}
-                  nnCount={nnCountMap.get(item.id) ?? 0}
-                  onPress={() => router.push(`/${routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any)}
-                  onDelete={() => handleDeletePlantation(item.id)}
-                  isAdmin={isAdmin}
-                  onEdit={() => handleEditPress(item)}
-                  onGear={() => handleOpenGear(item)}
+                <ExpandablePlantationCard
+                  plantacionId={item.id}
+                  expanded={expandedPlantationId === item.id}
+                  onToggleExpanded={() => handleToggleExpand(item.id)}
+                  onParcelaPress={(parcelaId) => handleParcelaInlinePress(item.id, parcelaId)}
+                  onParcelaLongPress={(p) => handleParcelaInlineLongPress(item.id, p)}
+                  cardProps={{
+                    lugar: item.lugar,
+                    periodo: item.periodo,
+                    totalCount: totalCountMap.get(item.id) ?? 0,
+                    syncedCount: syncedCountMap.get(item.id) ?? 0,
+                    todayCount: todayCountMap.get(item.id) ?? 0,
+                    pendingSync: pendingSyncMap.get(item.id) ?? 0,
+                    estado: item.estado,
+                    hasPendingSync: (pendingSyncBoolMap.get(item.id) ?? 0) > 0,
+                    nnCount: nnCountMap.get(item.id) ?? 0,
+                    onPress: () => router.push(`/${routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
+                    onDelete: () => handleDeletePlantation(item.id),
+                    isAdmin,
+                    onEdit: () => handleEditPress(item),
+                    onGear: () => handleOpenGear(item),
+                  }}
                 />
               </Animated.View>
             )}
@@ -212,6 +292,16 @@ export default function PlantacionesScreen() {
       )}
 
       <ConfirmModal {...confirmProps} />
+
+      {editingParcela && editingParcelaPlantacionId && (
+        <ParcelaFormModal
+          visible
+          mode="edit"
+          plantacionId={editingParcelaPlantacionId}
+          parcela={editingParcela}
+          onClose={closeEditParcela}
+        />
+      )}
 
       <SyncConfirmModal
         visible={syncConfirmVisible}

@@ -127,7 +127,10 @@ describe('PlantacionesScreen — delete local', () => {
   const hook = readSrc('hooks/usePlantaciones.ts');
 
   it('passes onDelete prop to PlantationCard', () => {
-    expect(screen).toContain('onDelete=');
+    // Match both prop-style (`onDelete=`) and object-property-style (`onDelete:`)
+    // — Plan 17-02 wraps PlantationCard in ExpandablePlantationCard with a
+    // `cardProps` object, so onDelete now lives inside that object literal.
+    expect(screen).toMatch(/onDelete\s*[:=]/);
   });
 
   it('hook exports handleDeletePlantation', () => {
