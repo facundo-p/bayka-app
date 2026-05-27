@@ -6,6 +6,7 @@ import { syncLog } from '../../utils/syncLogger';
 import { DownloadProgress, DownloadResult } from './types';
 import { pullFromServer } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
+import { pullSpeciesFromServer } from './preSteps';
 
 // ─── Download a single plantation from server ─────────────────────────────────
 
@@ -86,6 +87,15 @@ export async function batchDownload(
   onProgress?: (progress: DownloadProgress) => void
 ): Promise<DownloadResult[]> {
   const results: DownloadResult[] = [];
+
+  // Pull species catalog once at the start. Trees inserted by downloadPlantation
+  // carry especie_id values that must resolve to a local species row, otherwise
+  // their UI shows "??" instead of the species code/name.
+  try {
+    await pullSpeciesFromServer();
+  } catch (e) {
+    syncLog.error('Download: species catalog pull failed:', e);
+  }
 
   for (let i = 0; i < selected.length; i++) {
     const plantation = selected[i];
