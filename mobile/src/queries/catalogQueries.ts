@@ -8,6 +8,7 @@ import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { plantations, groups } from '../database/schema';
 import { eq, and, count } from 'drizzle-orm';
+import { fetchAllRows } from '../services/sync/paginate';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,31 +43,34 @@ export async function getServerCatalog(
 
   if (isAdmin) {
     // Admin path: all plantations in the org
-    const { data, error } = await supabase
-      .from('plantations')
-      .select('*')
-      .eq('organizacion_id', organizacionId)
-      .order('created_at', { ascending: false });
+    const { data, error } = await fetchAllRows<any>(() =>
+      supabase
+        .from('plantations')
+        .select('*')
+        .eq('organizacion_id', organizacionId)
+        .order('created_at', { ascending: false })
+    );
 
     if (error) throw error;
     remotePlantations = data ?? [];
   } else {
     // Tecnico path: first find assigned plantation IDs
-    const { data: puData, error: puError } = await supabase
-      .from('plantation_users')
-      .select('plantation_id')
-      .eq('user_id', userId);
+    const { data: puData, error: puError } = await fetchAllRows<any>(() =>
+      supabase.from('plantation_users').select('plantation_id').eq('user_id', userId)
+    );
 
     if (puError) throw puError;
 
     const assignedIds = (puData ?? []).map((row: any) => row.plantation_id);
     if (assignedIds.length === 0) return [];
 
-    const { data, error } = await supabase
-      .from('plantations')
-      .select('*')
-      .in('id', assignedIds)
-      .order('created_at', { ascending: false });
+    const { data, error } = await fetchAllRows<any>(() =>
+      supabase
+        .from('plantations')
+        .select('*')
+        .in('id', assignedIds)
+        .order('created_at', { ascending: false })
+    );
 
     if (error) throw error;
     remotePlantations = data ?? [];
@@ -76,12 +80,10 @@ export async function getServerCatalog(
 
   const plantationIds = remotePlantations.map((p: any) => p.id);
 
-  // Fetch subgroup counts: select all subgroup rows for these plantations
-  // COMPAT: shim 012b; Plan 16-03 renombra a 'groups'
-  const { data: groupRows, error: sgError } = await supabase
-    .from('subgroups')
-    .select('plantation_id, id')
-    .in('plantation_id', plantationIds);
+  // Fetch group counts: select all group rows for these plantations.
+  const { data: groupRows, error: sgError } = await fetchAllRows<any>(() =>
+    supabase.from('groups').select('plantation_id, id').in('plantation_id', plantationIds)
+  );
 
   if (sgError) throw sgError;
 
@@ -99,24 +101,23 @@ export async function getServerCatalog(
   // Build flat list of all subgroup IDs for tree count query
   const allGroupIds = (groupRows ?? []).map((sg: any) => sg.id);
 
-  // Fetch tree counts: select subgroup_id for all trees in these groups
+  // Fetch tree counts: select group_id for all trees in these groups
   const treeCountMap: Record<string, number> = {};
   if (allGroupIds.length > 0) {
-    const { data: treeRows, error: treeError } = await supabase
-      .from('trees')
-      .select('subgroup_id')
-      .in('subgroup_id', allGroupIds);
+    const { data: treeRows, error: treeError } = await fetchAllRows<any>(() =>
+      supabase.from('trees').select('group_id').in('group_id', allGroupIds)
+    );
 
     if (treeError) throw treeError;
 
-    // Build subgroup_id -> plantation_id lookup
+    // Build group_id -> plantation_id lookup
     const sgToPlantation: Record<string, string> = {};
     for (const sg of groupRows ?? []) {
       sgToPlantation[sg.id] = sg.plantation_id;
     }
 
     for (const tree of treeRows ?? []) {
-      const plantationId = sgToPlantation[tree.subgroup_id];
+      const plantationId = sgToPlantation[tree.group_id];
       if (plantationId) {
         treeCountMap[plantationId] = (treeCountMap[plantationId] ?? 0) + 1;
       }

@@ -159,9 +159,9 @@ describe('catalogQueries', () => {
       ];
 
       const treesData = [
-        { subgroup_id: 'sg-1' },
-        { subgroup_id: 'sg-1' },
-        { subgroup_id: 'sg-2' },
+        { group_id: 'sg-1' },
+        { group_id: 'sg-1' },
+        { group_id: 'sg-2' },
       ];
 
       (supabase.from as jest.Mock)

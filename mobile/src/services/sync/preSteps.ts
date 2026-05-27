@@ -3,6 +3,7 @@ import { db } from '../../database/client';
 import { plantationSpecies, plantations, species } from '../../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
+import { fetchAllRows } from './paginate';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
 
@@ -13,7 +14,9 @@ import { syncLog } from '../../utils/syncLogger';
  * CRITICAL: Does NOT delete species — codes are embedded in SubIDs; deletion would corrupt data.
  */
 export async function pullSpeciesFromServer(): Promise<void> {
-  const { data, error } = await supabase.from('species').select('*');
+  const { data, error } = await fetchAllRows<any>(() =>
+    supabase.from('species').select('*')
+  );
   if (error || !data) return; // non-blocking — stale catalog is acceptable
   for (const s of data) {
     await db.insert(species).values({
