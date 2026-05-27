@@ -3,11 +3,11 @@ import { db } from '../database/client';
 import { trees, species } from '../database/schema';
 import { eq, desc } from 'drizzle-orm';
 
-export function useTrees(subgrupoId: string) {
+export function useTrees(grupoId: string) {
   const { data } = useLiveData(
     () => db.select({
       id: trees.id,
-      subgrupoId: trees.subgrupoId,
+      grupoId: trees.groupId,
       especieId: trees.especieId,
       posicion: trees.posicion,
       subId: trees.subId,
@@ -20,9 +20,9 @@ export function useTrees(subgrupoId: string) {
     })
       .from(trees)
       .leftJoin(species, eq(trees.especieId, species.id))
-      .where(eq(trees.subgrupoId, subgrupoId))
+      .where(eq(trees.groupId, grupoId))
       .orderBy(desc(trees.posicion)),
-    [subgrupoId]
+    [grupoId]
   );
   const allTrees = data ?? [];
   const lastThree = allTrees.slice(0, 3);

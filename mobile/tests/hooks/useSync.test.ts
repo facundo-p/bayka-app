@@ -89,8 +89,8 @@ describe('useSync', () => {
 
     it('stores sync results from syncPlantation in results state', async () => {
       const mockResults = [
-        { success: true, subgroupId: 'sg-1', nombre: 'Linea A' },
-        { success: false, subgroupId: 'sg-2', nombre: 'Linea B', error: 'NETWORK' as const },
+        { success: true, groupId: 'sg-1', nombre: 'Linea A' },
+        { success: false, groupId: 'sg-2', nombre: 'Linea B', error: 'NETWORK' as const },
       ];
       (syncPlantation as jest.Mock).mockResolvedValue(mockResults);
 
@@ -106,9 +106,9 @@ describe('useSync', () => {
       expect(result.current.failureCount).toBe(1);
     });
 
-    it('reports no failures when all subgroups sync successfully', async () => {
+    it('reports no failures when all groups sync successfully', async () => {
       (syncPlantation as jest.Mock).mockResolvedValue([
-        { success: true, subgroupId: 'sg-1', nombre: 'Linea A' },
+        { success: true, groupId: 'sg-1', nombre: 'Linea A' },
       ]);
 
       const { result } = renderHook(() => useSync('plant-1'));
@@ -160,8 +160,8 @@ describe('useSync', () => {
 
     it('flattens results from all plantations', async () => {
       const mockAllResults = [
-        { plantationId: 'p-1', plantationName: 'Finca A', results: [{ success: true, subgroupId: 'sg-1', nombre: 'L1' }] },
-        { plantationId: 'p-2', plantationName: 'Finca B', results: [{ success: false, subgroupId: 'sg-2', nombre: 'L2', error: 'NETWORK' as const }] },
+        { plantationId: 'p-1', plantationName: 'Finca A', results: [{ success: true, groupId: 'sg-1', nombre: 'L1' }] },
+        { plantationId: 'p-2', plantationName: 'Finca B', results: [{ success: false, groupId: 'sg-2', nombre: 'L2', error: 'NETWORK' as const }] },
       ];
       (syncAllPlantations as jest.Mock).mockResolvedValue(mockAllResults);
 
@@ -193,7 +193,7 @@ describe('useSync', () => {
   describe('reset', () => {
     it('resets state to idle and clears results', async () => {
       (syncPlantation as jest.Mock).mockResolvedValue([
-        { success: true, subgroupId: 'sg-1', nombre: 'Linea A' },
+        { success: true, groupId: 'sg-1', nombre: 'Linea A' },
       ]);
 
       const { result } = renderHook(() => useSync('plant-1'));

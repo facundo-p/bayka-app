@@ -111,7 +111,7 @@ export default function AdminBottomSheet({
   const finalizeHelperText = hasPendingIssues
     ? 'Sincroniza los cambios antes de finalizar'
     : hasUnresolvedNN
-      ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNSubgroups} subgrupo${meta.unresolvedNNSubgroups !== 1 ? 's' : ''}`
+      ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNGroups} subgrupo${meta.unresolvedNNGroups !== 1 ? 's' : ''}`
       : !meta.canFinalize
         ? 'Para finalizar, todos los subgrupos deben estar sincronizados'
         : undefined;

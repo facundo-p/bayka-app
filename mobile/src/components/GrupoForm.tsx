@@ -3,36 +3,36 @@ import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-nati
 import FormField from './FormField';
 import TipoSegmentedControl from './TipoSegmentedControl';
 import type {
-  SubGroupTipo,
-  CreateSubGroupResult,
-  UpdateSubGroupResult,
-} from '../repositories/SubGroupRepository';
+  GroupTipo,
+  CreateGroupResult,
+  UpdateGroupResult,
+} from '../repositories/GroupRepository';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
   mode: 'create' | 'edit';
   plantacionId: string;
-  initialValues?: { nombre: string; codigo: string; tipo: SubGroupTipo };
+  initialValues?: { nombre: string; codigo: string; tipo: GroupTipo };
   onSubmit: (values: {
     nombre: string;
     codigo: string;
-    tipo: SubGroupTipo;
-  }) => Promise<CreateSubGroupResult | UpdateSubGroupResult>;
+    tipo: GroupTipo;
+  }) => Promise<CreateGroupResult | UpdateGroupResult>;
   onCancel?: () => void;
-  lastSubGroupName?: string | null;
+  lastGroupName?: string | null;
 }
 
-export default function SubgrupoForm({
+export default function GrupoForm({
   mode,
   plantacionId,
   initialValues,
   onSubmit,
   onCancel,
-  lastSubGroupName,
+  lastGroupName,
 }: Props) {
   const [nombre, setNombre] = useState(initialValues?.nombre ?? '');
   const [codigo, setCodigo] = useState(initialValues?.codigo ?? '');
-  const [tipo, setTipo] = useState<SubGroupTipo>(initialValues?.tipo ?? 'linea');
+  const [tipo, setTipo] = useState<GroupTipo>(initialValues?.tipo ?? 'linea');
   const [loading, setLoading] = useState(false);
   const [nombreError, setNombreError] = useState<string | null>(null);
   const [codigoError, setCodigoError] = useState<string | null>(null);
@@ -95,8 +95,8 @@ export default function SubgrupoForm({
         error={nombreError}
         autoCapitalize="words"
         helperText={
-          mode === 'create' && lastSubGroupName
-            ? `Último subgrupo: ${lastSubGroupName}`
+          mode === 'create' && lastGroupName
+            ? `Último subgrupo: ${lastGroupName}`
             : null
         }
       />

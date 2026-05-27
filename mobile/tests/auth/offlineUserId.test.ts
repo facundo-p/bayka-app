@@ -3,9 +3,9 @@
  *
  * After offline re-login, useCurrentUserId must return the same userId
  * as the original online login. This is critical because:
- * - SubGroups are filtered by usuarioCreador === userId
- * - Creating SubGroups requires a non-null userId
- * - If userId is null or wrong after offline re-login, existing SubGroups
+ * - Groups are filtered by usuarioCreador === userId
+ * - Creating Groups requires a non-null userId
+ * - If userId is null or wrong after offline re-login, existing Groups
  *   appear as "created by someone else" and new ones fail to create.
  *
  * The userId is cached in SecureStore during online login and read back

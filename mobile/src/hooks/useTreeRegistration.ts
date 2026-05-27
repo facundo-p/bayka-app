@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
-import { getSubgroupById } from '../queries/plantationDetailQueries';
+import { getGroupById } from '../queries/plantationDetailQueries';
 import { getPlantationEstado } from '../queries/adminQueries';
 import {
   insertTree,
@@ -12,17 +12,17 @@ import {
   deleteTreeAndRecalculate,
 } from '../repositories/TreeRepository';
 import {
-  finalizeSubGroup,
+  finalizeGroup,
   canEdit,
-  deleteSubGroup,
-  reactivateSubGroup,
-} from '../repositories/SubGroupRepository';
-import type { SubGroupEstado } from '../repositories/SubGroupRepository';
+  deleteGroup,
+  reactivateGroup,
+} from '../repositories/GroupRepository';
+import type { GroupEstado } from '../repositories/GroupRepository';
 
 export interface UseTreeRegistrationParams {
-  subgrupoId: string;
+  grupoId: string;
   plantacionId: string;
-  subgrupoCodigo: string;
+  grupoCodigo: string;
   userId: string;
 }
 
@@ -34,7 +34,7 @@ export interface UseTreeRegistrationResult {
   unresolvedNN: number;
   sortedTrees: ReturnType<typeof useTrees>['allTrees'];
   subgroup: { id: string; codigo: string; tipo: string; estado: string; usuarioCreador: string } | null;
-  subgroupEstado: SubGroupEstado;
+  subgroupEstado: GroupEstado;
   isOwner: boolean;
   isCreator: boolean;
   dataLoaded: boolean;
@@ -52,21 +52,21 @@ export interface UseTreeRegistrationResult {
   updatePhoto: (treeId: string, newUri: string) => Promise<void>;
   removePhoto: (treeId: string) => Promise<void>;
   reverseOrder: (onConfirmed: () => void) => void;
-  finalizeSubgroup: (onSuccess: () => void) => void;
-  deleteSubgroup: (onConfirmed: () => void) => void;
+  confirmFinalize: (onSuccess: () => void) => void;
+  confirmDeleteGroup: (onConfirmed: () => void) => void;
   reactivate: (onConfirmed: () => void) => void;
   deleteTree: (treeId: string, posicion: number, onConfirmed: () => void) => void;
   executeReverseOrder: () => Promise<void>;
   executeFinalize: () => Promise<void>;
-  executeDeleteSubgroup: () => Promise<void>;
+  executeDeleteGroup: () => Promise<void>;
   executeReactivate: () => Promise<void>;
   executeDeleteTree: (treeId: string) => Promise<void>;
 }
 
 export function useTreeRegistration({
-  subgrupoId,
+  grupoId,
   plantacionId,
-  subgrupoCodigo,
+  grupoCodigo,
   userId,
 }: UseTreeRegistrationParams): UseTreeRegistrationResult {
   const router = useRouter();
@@ -75,14 +75,14 @@ export function useTreeRegistration({
   const [deleting, setDeleting] = useState(false);
   const [deletingTreeId, setDeletingTreeId] = useState<string | null>(null);
 
-  const { allTrees, lastThree, totalCount, unresolvedNN } = useTrees(subgrupoId);
+  const { allTrees, lastThree, totalCount, unresolvedNN } = useTrees(grupoId);
 
-  const { data: subgroupRows } = useLiveData(
-    () => getSubgroupById(subgrupoId),
-    [subgrupoId]
+  const { data: groupRows } = useLiveData(
+    () => getGroupById(grupoId),
+    [grupoId]
   );
-  const subgroup = subgroupRows?.[0] ?? null;
-  const subgroupEstado = (subgroup?.estado ?? 'activa') as SubGroupEstado;
+  const subgroup = groupRows?.[0] ?? null;
+  const subgroupEstado = (subgroup?.estado ?? 'activa') as GroupEstado;
 
   const { data: plantationEstadoRows } = useLiveData(
     () => getPlantationEstado(plantacionId),
@@ -103,18 +103,18 @@ export function useTreeRegistration({
   const registerTree = useCallback(async (especieId: string, especieCodigo: string) => {
     if (isReadOnly || !userId) return;
     await insertTree({
-      subgrupoId,
-      subgrupoCodigo,
+      grupoId,
+      grupoCodigo,
       especieId,
       especieCodigo,
       userId,
     });
-  }, [isReadOnly, userId, subgrupoId, subgrupoCodigo]);
+  }, [isReadOnly, userId, grupoId, grupoCodigo]);
 
   const undoLast = useCallback(async () => {
     if (isReadOnly) return;
-    await deleteLastTree(subgrupoId);
-  }, [isReadOnly, subgrupoId]);
+    await deleteLastTree(grupoId);
+  }, [isReadOnly, grupoId]);
 
   const addPhotoToTree = useCallback(async (
     treeId: string,
@@ -136,56 +136,56 @@ export function useTreeRegistration({
   const executeReverseOrder = useCallback(async () => {
     setReversing(true);
     try {
-      await reverseTreeOrder(subgrupoId, subgrupoCodigo);
+      await reverseTreeOrder(grupoId, grupoCodigo);
     } finally {
       setReversing(false);
     }
-  }, [subgrupoId, subgrupoCodigo]);
+  }, [grupoId, grupoCodigo]);
 
   const executeFinalize = useCallback(async () => {
     setFinalizing(true);
     try {
-      await finalizeSubGroup(subgrupoId);
+      await finalizeGroup(grupoId);
       router.back();
     } finally {
       setFinalizing(false);
     }
-  }, [subgrupoId, router]);
+  }, [grupoId, router]);
 
-  const executeDeleteSubgroup = useCallback(async () => {
+  const executeDeleteGroup = useCallback(async () => {
     setDeleting(true);
     try {
-      await deleteSubGroup(subgrupoId);
+      await deleteGroup(grupoId);
       router.back();
     } finally {
       setDeleting(false);
     }
-  }, [subgrupoId, router]);
+  }, [grupoId, router]);
 
   const executeReactivate = useCallback(async () => {
-    if (!subgrupoId || !canReactivate) return;
-    await reactivateSubGroup(subgrupoId);
-  }, [subgrupoId, canReactivate]);
+    if (!grupoId || !canReactivate) return;
+    await reactivateGroup(grupoId);
+  }, [grupoId, canReactivate]);
 
   const executeDeleteTree = useCallback(async (treeId: string) => {
     setDeletingTreeId(treeId);
     try {
-      await deleteTreeAndRecalculate(treeId, subgrupoId, subgrupoCodigo);
+      await deleteTreeAndRecalculate(treeId, grupoId, grupoCodigo);
     } finally {
       setDeletingTreeId(null);
     }
-  }, [subgrupoId, subgrupoCodigo]);
+  }, [grupoId, grupoCodigo]);
 
   // Placeholder action starters — actual confirm logic stays in screen using confirm hook
   const reverseOrder = useCallback((onConfirmed: () => void) => {
     onConfirmed();
   }, []);
 
-  const finalizeSubgroup = useCallback((onSuccess: () => void) => {
+  const confirmFinalize = useCallback((onSuccess: () => void) => {
     onSuccess();
   }, []);
 
-  const deleteSubgroup = useCallback((onConfirmed: () => void) => {
+  const confirmDeleteGroup = useCallback((onConfirmed: () => void) => {
     onConfirmed();
   }, []);
 
@@ -220,13 +220,13 @@ export function useTreeRegistration({
     updatePhoto,
     removePhoto,
     reverseOrder,
-    finalizeSubgroup,
-    deleteSubgroup,
+    confirmFinalize,
+    confirmDeleteGroup,
     reactivate,
     deleteTree,
     executeReverseOrder,
     executeFinalize,
-    executeDeleteSubgroup,
+    executeDeleteGroup,
     executeReactivate,
     executeDeleteTree,
   };

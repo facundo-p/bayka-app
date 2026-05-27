@@ -4,7 +4,7 @@ import {
   syncAllPlantations,
   uploadPendingPhotos,
   downloadPhotosForPlantation,
-  SyncSubGroupResult,
+  SyncGroupResult,
   SyncProgress,
   PhotoSyncProgress,
   GlobalSyncProgress,
@@ -16,7 +16,7 @@ export type SyncState = 'idle' | 'pulling' | 'pushing' | 'uploading-photos' | 'd
 export function useSync(plantacionId?: string) {
   const [state, setState] = useState<SyncState>('idle');
   const [progress, setProgress] = useState<SyncProgress | null>(null);
-  const [results, setResults] = useState<SyncSubGroupResult[]>([]);
+  const [results, setResults] = useState<SyncGroupResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);

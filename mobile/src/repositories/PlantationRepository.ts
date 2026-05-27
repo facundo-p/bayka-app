@@ -9,7 +9,7 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { plantations, trees, subgroups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
+import { plantations, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
 import { eq, asc } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -25,7 +25,7 @@ import NetInfo from '@react-native-community/netinfo';
  * local SQLite so it appears immediately in the admin list.
  *
  * CRITICAL (Pitfall 2): pullFromServer does NOT pull the plantation row itself —
- * only subgroups/species/users. We must upsert the returned row directly.
+ * only groups/species/users. We must upsert the returned row directly.
  */
 export async function createPlantation(
   lugar: string,
@@ -77,7 +77,7 @@ export async function createPlantation(
  * OFPL-01
  * Creates a new plantation row in local SQLite only, with pendingSync=true.
  * No Supabase call — works fully offline.
- * Subgroups can immediately reference this plantation via FK because the row exists locally.
+ * Groups can immediately reference this plantation via FK because the row exists locally.
  */
 export async function createPlantationLocally(
   lugar: string,
@@ -372,10 +372,10 @@ export async function assignTechnicians(
  * - plantacionId: 1..N (sequential within plantation)
  * - globalId: seed..(seed + N - 1) (sequential across org)
  *
- * Order is deterministic: subgroups.createdAt ASC, trees.posicion ASC.
+ * Order is deterministic: groups.createdAt ASC, trees.posicion ASC.
  * Uses a db.transaction() to ensure atomicity.
  *
- * CRITICAL (Pitfall 3): ORDER BY must be deterministic — subgroups.createdAt ASC,
+ * CRITICAL (Pitfall 3): ORDER BY must be deterministic — groups.createdAt ASC,
  * trees.posicion ASC. Both are immutable after sync.
  */
 export async function generateIds(plantacionId: string, seed: number): Promise<void> {
@@ -383,9 +383,9 @@ export async function generateIds(plantacionId: string, seed: number): Promise<v
   const orderedTrees = await db
     .select({ treeId: trees.id })
     .from(trees)
-    .innerJoin(subgroups, eq(trees.subgrupoId, subgroups.id))
-    .where(eq(subgroups.plantacionId, plantacionId))
-    .orderBy(asc(subgroups.createdAt), asc(trees.posicion));
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(eq(groups.plantacionId, plantacionId))
+    .orderBy(asc(groups.createdAt), asc(trees.posicion));
 
   // 2. Assign IDs in a transaction for atomicity
   await db.transaction(async (tx) => {
@@ -408,7 +408,7 @@ export async function generateIds(plantacionId: string, seed: number): Promise<v
  *
  * Deletion order (manual cascade — SQLite does not enforce FK cascades):
  * 1. trees (via subgroup IDs)
- * 2. subgroups
+ * 2. groups
  * 3. plantation_species
  * 4. plantation_users
  * 5. user_species_order
@@ -419,9 +419,9 @@ export async function generateIds(plantacionId: string, seed: number): Promise<v
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
   await db.transaction(async (tx) => {
     await tx.delete(trees).where(
-      sql`${trees.subgrupoId} IN (SELECT id FROM subgroups WHERE plantacion_id = ${plantacionId})`
+      sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
     );
-    await tx.delete(subgroups).where(eq(subgroups.plantacionId, plantacionId));
+    await tx.delete(groups).where(eq(groups.plantacionId, plantacionId));
     await tx.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
     await tx.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantacionId));
     await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.plantacionId, plantacionId));

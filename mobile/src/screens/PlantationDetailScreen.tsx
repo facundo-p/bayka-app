@@ -10,9 +10,9 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
-import type { SubGroup, SubGroupTipo } from '../hooks/usePlantationDetail';
-import SubGroupStateChip from '../components/SubGroupStateChip';
-import SubgrupoForm from '../components/SubgrupoForm';
+import type { Group, GroupTipo } from '../hooks/usePlantationDetail';
+import GroupStateChip from '../components/GroupStateChip';
+import GrupoForm from '../components/GrupoForm';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
@@ -35,32 +35,32 @@ export default function PlantationDetailScreen() {
 
   const {
     plantationRows,
-    filteredSubgroups,
+    filteredGroups,
     nnCountMap,
     treeCountMap,
     totalNN,
-    subgroupEstadoCounts,
+    groupEstadoCounts,
     estadoLoaded,
     isFinalizada,
     userNames,
     deletingId,
-    editingSubGroup,
-    subgroupFilter,
+    editingGroup,
+    groupFilter,
     confirmProps,
     confirmShow,
     userId,
-    setSubgroupFilter,
-    setEditingSubGroup,
+    setGroupFilter,
+    setEditingGroup,
     handleLongPress,
-    handleDeleteSubGroup,
+    handleDeleteGroup,
     handleEditSubmit,
   } = usePlantationDetail(pid);
 
   const { blockedByNN } = usePendingSyncCount(plantacionId);
 
-  const subgroupFilterConfigs = [
-    { key: 'activa', label: 'Activas', count: subgroupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
-    { key: 'finalizada', label: 'Finalizadas', count: subgroupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+  const groupFilterConfigs = [
+    { key: 'activa', label: 'Activas', count: groupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: groupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
   ];
 
   useEffect(() => {
@@ -68,11 +68,11 @@ export default function PlantationDetailScreen() {
     if (lugar) navigation.setOptions({ title: lugar, headerTitleAlign: 'center' });
   }, [plantationRows, navigation]);
 
-  function handleSubGroupPress(subgroup: SubGroup) {
-    router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&subgrupoCodigo=${subgroup.codigo}&subgrupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
+  function handleGroupPress(subgroup: Group) {
+    router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&grupoCodigo=${subgroup.codigo}&grupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
   }
 
-  function renderSubGroup({ item, index }: { item: SubGroup; index: number }) {
+  function renderGroup({ item, index }: { item: Group; index: number }) {
     const nnCount = nnCountMap.get(item.id) ?? 0;
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
@@ -84,18 +84,18 @@ export default function PlantationDetailScreen() {
         <Pressable
           testID={`subgroup-card-${item.id}`}
           style={({ pressed }) => [styles.card, !isOwner && styles.cardOtherUser, item.estado !== 'activa' && styles.cardReadOnly, pressed && styles.cardPressed]}
-          onPress={() => handleSubGroupPress(item)}
+          onPress={() => handleGroupPress(item)}
           onLongPress={() => handleLongPress(item)}
         >
           <View style={styles.cardRow}>
             <Text style={[styles.cardName, !isOwner && styles.cardNameOther]} numberOfLines={1}>{item.nombre}</Text>
             {item.pendingSync && <OrangeDot style={styles.pendingSyncDot} />}
             {nnCount > 0 && <View style={styles.nnBadge}><Text style={styles.nnBadgeText}>{nnCount} N/N</Text></View>}
-            <SubGroupStateChip estado={item.estado} />
+            <GroupStateChip estado={item.estado} />
             <Text style={styles.treeCountText}>{treeCount}</Text>
             <TreeIcon size={13} />
             {showDelete && (
-              <Pressable onPress={(e) => { e.stopPropagation(); handleDeleteSubGroup(item); }} hitSlop={8} style={styles.deleteCardButton} disabled={deletingId === item.id}>
+              <Pressable onPress={(e) => { e.stopPropagation(); handleDeleteGroup(item); }} hitSlop={8} style={styles.deleteCardButton} disabled={deletingId === item.id}>
                 <Ionicons name="trash-outline" size={14} color={colors.danger} />
               </Pressable>
             )}
@@ -113,19 +113,19 @@ export default function PlantationDetailScreen() {
         totalNN={totalNN}
         estadoLoaded={estadoLoaded}
         isFinalizada={isFinalizada}
-        subgroupFilter={subgroupFilter}
-        subgroupFilterConfigs={subgroupFilterConfigs as any}
+        groupFilter={groupFilter}
+        groupFilterConfigs={groupFilterConfigs as any}
         onResolveAllNN={() => router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any)}
-        onToggleFilter={(key) => setSubgroupFilter(prev => prev === key ? null : key)}
+        onToggleFilter={(key) => setGroupFilter(prev => prev === key ? null : key)}
       />
 
       <FlatList
         testID="subgroup-list"
-        data={filteredSubgroups}
+        data={filteredGroups}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={<View style={styles.emptyContainer}><Text style={styles.emptyText}>No hay subgrupos aun</Text><Text style={styles.emptySubtext}>Toca &quot;+&quot; para crear el primero</Text></View>}
-        renderItem={renderSubGroup}
+        renderItem={renderGroup}
       />
 
       {estadoLoaded && !isFinalizada && (
@@ -141,18 +141,18 @@ export default function PlantationDetailScreen() {
 
       <ConfirmModal {...confirmProps} />
 
-      <Modal visible={!!editingSubGroup} animationType="slide" transparent onRequestClose={() => setEditingSubGroup(null)}>
+      <Modal visible={!!editingGroup} animationType="slide" transparent onRequestClose={() => setEditingGroup(null)}>
         <KeyboardAvoidingView style={styles.editModalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={styles.editModalDismiss} onPress={() => setEditingSubGroup(null)} />
+          <Pressable style={styles.editModalDismiss} onPress={() => setEditingGroup(null)} />
           <View style={styles.editModalContent}>
             <Text style={styles.editModalTitle}>Editar subgrupo</Text>
-            {editingSubGroup && (
-              <SubgrupoForm
+            {editingGroup && (
+              <GrupoForm
                 mode="edit"
                 plantacionId={pid}
-                initialValues={{ nombre: editingSubGroup.nombre, codigo: editingSubGroup.codigo, tipo: editingSubGroup.tipo as SubGroupTipo }}
+                initialValues={{ nombre: editingGroup.nombre, codigo: editingGroup.codigo, tipo: editingGroup.tipo as GroupTipo }}
                 onSubmit={(values) => handleEditSubmit(values)}
-                onCancel={() => setEditingSubGroup(null)}
+                onCancel={() => setEditingGroup(null)}
               />
             )}
           </View>

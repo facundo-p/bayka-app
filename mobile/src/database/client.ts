@@ -15,11 +15,11 @@ try {
 
 // Safety net: ensure pending_sync column exists even if migration 0009 failed.
 try {
-  sqlite.execSync('ALTER TABLE subgroups ADD COLUMN pending_sync integer NOT NULL DEFAULT 0;');
-  // Column was just created — mark all finalized subgroups as pending sync.
-  // DEFAULT 0 leaves existing finalized subgroups (never synced) unmarked.
+  sqlite.execSync('ALTER TABLE groups ADD COLUMN pending_sync integer NOT NULL DEFAULT 0;');
+  // Column was just created — mark all finalized groups as pending sync.
+  // DEFAULT 0 leaves existing finalized groups (never synced) unmarked.
   // Re-uploading is idempotent (RPC uses ON CONFLICT DO UPDATE).
-  sqlite.execSync("UPDATE subgroups SET pending_sync = 1 WHERE estado = 'finalizada';");
+  sqlite.execSync("UPDATE groups SET pending_sync = 1 WHERE estado = 'finalizada';");
 } catch (_) {
   // Column already exists — expected after successful migration
 }
@@ -30,11 +30,11 @@ try {
 
   if (user_version < 4) {
     // v4: Clear ALL pendingSync flags. Period.
-    // Previous migrations (v1-v3) tried to guess which subgroups needed sync
+    // Previous migrations (v1-v3) tried to guess which groups needed sync
     // but kept re-marking already-synced ones. The natural flow handles it:
-    // finalizeSubGroup() sets pendingSync=true, markSubGroupSynced() clears it.
+    // finalizeGroup() sets pendingSync=true, markGroupSynced() clears it.
     // No migration should try to re-mark anything.
-    sqlite.execSync("UPDATE subgroups SET pending_sync = 0;");
+    sqlite.execSync("UPDATE groups SET pending_sync = 0;");
     sqlite.execSync('PRAGMA user_version = 4;');
   }
 } catch (_) {

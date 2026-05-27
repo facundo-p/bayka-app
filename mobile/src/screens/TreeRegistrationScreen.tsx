@@ -30,11 +30,11 @@ import { useConfirm } from '../hooks/useConfirm';
 import ConfirmModal from '../components/ConfirmModal';
 
 export default function TreeRegistrationScreen() {
-  const { id: subgrupoId } = useLocalSearchParams<{
-    id: string; plantacionId: string; subgrupoCodigo: string; subgrupoNombre: string;
+  const { id: grupoId } = useLocalSearchParams<{
+    id: string; plantacionId: string; grupoCodigo: string; grupoNombre: string;
   }>();
-  const { plantacionId, subgrupoCodigo, subgrupoNombre } = useLocalSearchParams<{
-    plantacionId: string; subgrupoCodigo: string; subgrupoNombre: string;
+  const { plantacionId, grupoCodigo, grupoNombre } = useLocalSearchParams<{
+    plantacionId: string; grupoCodigo: string; grupoNombre: string;
   }>();
 
   const router = useRouter();
@@ -49,15 +49,15 @@ export default function TreeRegistrationScreen() {
   const [showReorderModal, setShowReorderModal] = useState(false);
 
   const treeReg = useTreeRegistration({
-    subgrupoId: subgrupoId ?? '',
+    grupoId: grupoId ?? '',
     plantacionId: plantacionId ?? '',
-    subgrupoCodigo: subgrupoCodigo ?? '',
+    grupoCodigo: grupoCodigo ?? '',
     userId,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
   const nnFlow = useNNFlow({
-    subgrupoId: subgrupoId ?? '',
-    subgrupoCodigo: subgrupoCodigo ?? '',
+    grupoId: grupoId ?? '',
+    grupoCodigo: grupoCodigo ?? '',
     userId,
     isReadOnly: treeReg.isReadOnly,
     unresolvedNN: treeReg.unresolvedNN,
@@ -91,18 +91,18 @@ export default function TreeRegistrationScreen() {
       () => treeReg.executeFinalize(), { icon: 'checkmark-circle-outline', style: 'primary' });
   }
 
-  function handleDeleteSubGroup() {
+  function handleDeleteGroup() {
     if (treeReg.isReadOnly) return;
     const warn = treeReg.totalCount > 0
       ? `Este subgrupo tiene ${treeReg.totalCount} árbol${treeReg.totalCount > 1 ? 'es' : ''} cargado${treeReg.totalCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
       : 'Esta acción no se puede deshacer.';
     showDoubleConfirmDialog(confirm.show, 'Eliminar subgrupo', warn, 'Confirmar eliminación',
       'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
-      () => treeReg.executeDeleteSubgroup());
+      () => treeReg.executeDeleteGroup());
   }
 
   function handleReactivate() {
-    if (!subgrupoId || !treeReg.canReactivate) return;
+    if (!grupoId || !treeReg.canReactivate) return;
     showConfirmDialog(confirm.show, 'Reactivar subgrupo',
       'Cambiar el estado del subgrupo a activa? Podrás registrar más árboles.',
       'Reactivar', () => treeReg.executeReactivate(), { icon: 'refresh-outline' });
@@ -122,7 +122,7 @@ export default function TreeRegistrationScreen() {
   return (
     <ScreenContainer withTexture>
       <TreeRegistrationHeader
-        title={subgrupoNombre ?? subgrupoCodigo ?? ''}
+        title={grupoNombre ?? grupoCodigo ?? ''}
         subtitle={treeReg.subgroup
           ? `${treeReg.subgroup.codigo} · ${treeReg.subgroup.tipo === 'linea' ? 'Línea' : 'Parcela'}`
           : undefined}
@@ -174,7 +174,7 @@ export default function TreeRegistrationScreen() {
 
           <View style={styles.actionBar}>
             <Pressable style={[styles.deleteButton, deleting && styles.buttonDisabled]}
-              onPress={handleDeleteSubGroup} disabled={deleting}>
+              onPress={handleDeleteGroup} disabled={deleting}>
               {deleting ? <ActivityIndicator size="small" color={colors.danger} />
                 : <Ionicons name="trash-outline" size={20} color={colors.danger} />}
             </Pressable>

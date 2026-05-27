@@ -23,9 +23,9 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/repositories/SubGroupRepository', () => ({
+jest.mock('../../src/repositories/GroupRepository', () => ({
   markAsSincronizada: jest.fn(),
-  getSyncableSubGroups: jest.fn().mockResolvedValue([]),
+  getSyncableGroups: jest.fn().mockResolvedValue([]),
 }));
 
 import {

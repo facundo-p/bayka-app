@@ -18,7 +18,7 @@ export interface TreeChipItem {
   subId: string;
   fotoUrl?: string | null;
   createdAt: string;
-  subgrupoId: string;
+  grupoId: string;
   usuarioRegistro: string;
 }
 

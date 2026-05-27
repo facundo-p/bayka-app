@@ -107,8 +107,8 @@ describe('TreeRepository', () => {
       mockSelectResults = [{ maxPos: null }];
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -121,7 +121,7 @@ describe('TreeRepository', () => {
       expect(row.posicion).toBe(1);
       expect(row.subId).toBe('L1ANC1');
       expect(row.especieId).toBe('esp-1');
-      expect(row.subgrupoId).toBe('sg-1');
+      expect(row.groupId).toBe('sg-1');
     });
 
     it('inserts tree with auto-incremented position (TREE-02, TREE-03)', async () => {
@@ -129,8 +129,8 @@ describe('TreeRepository', () => {
       mockSelectResults = [{ maxPos: 3 }];
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -144,8 +144,8 @@ describe('TreeRepository', () => {
       mockSelectResults = [{ maxPos: 12 }];
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L23B',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L23B',
         especieId: 'esp-2',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -159,8 +159,8 @@ describe('TreeRepository', () => {
       mockSelectResults = [{ maxPos: 0 }];
 
       const result = await insertTree({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: null,
         especieCodigo: 'NN',
         userId: 'user-1',
@@ -195,8 +195,8 @@ describe('TreeRepository', () => {
   describe('reverseTreeOrder', () => {
     it('runs in a transaction (all updates or none)', async () => {
       mockSelectResults = [
-        { id: 'tree-1', subgrupoId: 'sg-1', posicion: 1, especieId: 'esp-1', subId: 'L1ANC1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-2', subgrupoId: 'sg-1', posicion: 2, especieId: 'esp-1', subId: 'L1ANC2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: 'esp-1', subId: 'L1ANC1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: 'esp-1', subId: 'L1ANC2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 
       await reverseTreeOrder('sg-1', 'L1');
@@ -206,24 +206,24 @@ describe('TreeRepository', () => {
 
     it('updates all posicion values using formula total-N+1 (REVR-01, REVR-02)', async () => {
       mockSelectResults = [
-        { id: 'tree-1', subgrupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-2', subgrupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-3', subgrupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 
       await reverseTreeOrder('sg-1', 'L1');
 
       // transaction should have been called
       expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-      // update called at least 3 times (once per tree in tx) + 1 for markSubGroupPendingSync
+      // update called at least 3 times (once per tree in tx) + 1 for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
     it('recalculates subId for each tree after reversal (REVR-02)', async () => {
       // 2 N/N trees — species code stays 'NN'
       mockSelectResults = [
-        { id: 'tree-1', subgrupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-        { id: 'tree-2', subgrupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 
       await reverseTreeOrder('sg-1', 'L1');
@@ -231,7 +231,7 @@ describe('TreeRepository', () => {
       // Verify updates were called with recalculated subIds
       // tree-1 (pos=1) → newPosicion = 2-1+1 = 2 → 'L1NN2'
       // tree-2 (pos=2) → newPosicion = 2-2+1 = 1 → 'L1NN1'
-      // Plus 1 for markSubGroupPendingSync
+      // Plus 1 for markGroupPendingSync
       const allSets = mockUpdateWhere.mock.calls;
       expect(allSets).toHaveLength(3);
     });
@@ -247,21 +247,21 @@ describe('TreeRepository', () => {
 
   describe('resolveNNTree', () => {
     it('sets especieId and recalculates subId (NN-04)', async () => {
-      // First call returns species row, second returns tree row with posicion + subgrupoId
+      // First call returns species row, second returns tree row with posicion + grupoId
       let callCount = 0;
       mockDb.select = jest.fn(() => ({
         from: jest.fn(() => ({
           where: jest.fn(() => {
             callCount++;
             if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]);
-            return Promise.resolve([{ posicion: 3, subgrupoId: 'sg-1' }]);
+            return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]);
           }),
         })),
       }));
 
       await resolveNNTree('tree-1', 'esp-1', 'L1');
 
-      // Called twice: once for tree update, once for markSubGroupPendingSync
+      // Called twice: once for tree update, once for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 

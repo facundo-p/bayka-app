@@ -13,11 +13,11 @@ jest.mock('../../src/repositories/TreeRepository', () => ({
   deleteTreeAndRecalculate: jest.fn(),
 }));
 
-jest.mock('../../src/repositories/SubGroupRepository', () => ({
-  finalizeSubGroup: jest.fn(),
+jest.mock('../../src/repositories/GroupRepository', () => ({
+  finalizeGroup: jest.fn(),
   canEdit: jest.fn(),
-  deleteSubGroup: jest.fn(),
-  reactivateSubGroup: jest.fn(),
+  deleteGroup: jest.fn(),
+  reactivateGroup: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useTrees', () => ({
@@ -35,11 +35,11 @@ jest.mock('../../src/database/liveQuery', () => ({
 }));
 
 jest.mock('../../src/queries/plantationDetailQueries', () => ({
-  getSubgroupById: jest.fn(),
+  getGroupById: jest.fn(),
 }));
 
 const { insertTree, deleteLastTree } = require('../../src/repositories/TreeRepository');
-const { finalizeSubGroup, canEdit } = require('../../src/repositories/SubGroupRepository');
+const { finalizeGroup, canEdit } = require('../../src/repositories/GroupRepository');
 const { useLiveData } = require('../../src/database/liveQuery');
 const { useTrees } = require('../../src/hooks/useTrees');
 
@@ -47,13 +47,13 @@ import { renderHook, act } from '@testing-library/react-native';
 import { useTreeRegistration } from '../../src/hooks/useTreeRegistration';
 
 const DEFAULT_PARAMS = {
-  subgrupoId: 'sg-1',
+  grupoId: 'sg-1',
   plantacionId: 'plant-1',
-  subgrupoCodigo: 'L1',
+  grupoCodigo: 'L1',
   userId: 'user-1',
 };
 
-const mockSubgroup = {
+const mockGroup = {
   id: 'sg-1',
   codigo: 'L1',
   tipo: 'linea',
@@ -66,7 +66,7 @@ describe('useTreeRegistration', () => {
     jest.clearAllMocks();
 
     // Default: subgroup is activa, user is owner
-    (useLiveData as jest.Mock).mockReturnValue({ data: [mockSubgroup] });
+    (useLiveData as jest.Mock).mockReturnValue({ data: [mockGroup] });
     (canEdit as jest.Mock).mockReturnValue(true);
     (useTrees as jest.Mock).mockReturnValue({
       allTrees: [],
@@ -76,7 +76,7 @@ describe('useTreeRegistration', () => {
     });
     (insertTree as jest.Mock).mockResolvedValue({ id: 'tree-new', posicion: 1, subId: 'L1ANC1' });
     (deleteLastTree as jest.Mock).mockResolvedValue({ deleted: true });
-    (finalizeSubGroup as jest.Mock).mockResolvedValue({ success: true });
+    (finalizeGroup as jest.Mock).mockResolvedValue({ success: true });
   });
 
   describe('registerTree', () => {
@@ -88,8 +88,8 @@ describe('useTreeRegistration', () => {
       });
 
       expect(insertTree).toHaveBeenCalledWith({
-        subgrupoId: 'sg-1',
-        subgrupoCodigo: 'L1',
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
         userId: 'user-1',
@@ -98,7 +98,7 @@ describe('useTreeRegistration', () => {
 
     it('does NOT call insertTree when subgroup is read-only (finalizada)', async () => {
       (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockSubgroup, estado: 'finalizada' }],
+        data: [{ ...mockGroup, estado: 'finalizada' }],
       });
       (canEdit as jest.Mock).mockReturnValue(false);
 
@@ -126,7 +126,7 @@ describe('useTreeRegistration', () => {
   });
 
   describe('undoLast', () => {
-    it('calls deleteLastTree with subgrupoId when subgroup is active', async () => {
+    it('calls deleteLastTree with grupoId when subgroup is active', async () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
 
       await act(async () => {
@@ -138,7 +138,7 @@ describe('useTreeRegistration', () => {
 
     it('does NOT call deleteLastTree when subgroup is read-only', async () => {
       (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockSubgroup, estado: 'sincronizada' }],
+        data: [{ ...mockGroup, estado: 'sincronizada' }],
       });
       (canEdit as jest.Mock).mockReturnValue(false);
 
@@ -153,14 +153,14 @@ describe('useTreeRegistration', () => {
   });
 
   describe('executeFinalize', () => {
-    it('calls finalizeSubGroup with subgrupoId', async () => {
+    it('calls finalizeGroup with grupoId', async () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
 
       await act(async () => {
         await result.current.executeFinalize();
       });
 
-      expect(finalizeSubGroup).toHaveBeenCalledWith('sg-1');
+      expect(finalizeGroup).toHaveBeenCalledWith('sg-1');
     });
 
     it('navigates back after successful finalization', async () => {
@@ -188,7 +188,7 @@ describe('useTreeRegistration', () => {
 
     it('isReadOnly is true when subgroup is finalizada', () => {
       (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockSubgroup, estado: 'finalizada' }],
+        data: [{ ...mockGroup, estado: 'finalizada' }],
       });
       (canEdit as jest.Mock).mockReturnValue(false);
 
@@ -199,7 +199,7 @@ describe('useTreeRegistration', () => {
 
     it('canReactivate is true when user is creator and state is finalizada', () => {
       (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockSubgroup, estado: 'finalizada', usuarioCreador: 'user-1' }],
+        data: [{ ...mockGroup, estado: 'finalizada', usuarioCreador: 'user-1' }],
       });
       (canEdit as jest.Mock).mockReturnValue(false);
 

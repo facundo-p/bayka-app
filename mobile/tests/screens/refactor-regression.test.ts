@@ -79,7 +79,7 @@ describe('Safe area on refactored screens', () => {
   const screens = {
     TreeRegistrationScreen: readSrc('screens/TreeRegistrationScreen.tsx'),
     NNResolutionScreen: readSrc('screens/NNResolutionScreen.tsx'),
-    NuevoSubgrupoScreen: readSrc('screens/NuevoSubgrupoScreen.tsx'),
+    NuevoGrupoScreen: readSrc('screens/NuevoGrupoScreen.tsx'),
     PlantationDetailScreen: readSrc('screens/PlantationDetailScreen.tsx'),
   };
 

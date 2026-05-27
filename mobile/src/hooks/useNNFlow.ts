@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { insertTree } from '../repositories/TreeRepository';
 
 export interface UseNNFlowParams {
-  subgrupoId: string;
-  subgrupoCodigo: string;
+  grupoId: string;
+  grupoCodigo: string;
   userId: string;
   isReadOnly: boolean;
   unresolvedNN: number;
@@ -17,8 +17,8 @@ export interface UseNNFlowResult {
 }
 
 export function useNNFlow({
-  subgrupoId,
-  subgrupoCodigo,
+  grupoId,
+  grupoCodigo,
   userId,
   isReadOnly,
   unresolvedNN,
@@ -30,14 +30,14 @@ export function useNNFlow({
     const photoUri = await pickPhoto();
     if (!photoUri) return;
     await insertTree({
-      subgrupoId,
-      subgrupoCodigo,
+      grupoId,
+      grupoCodigo,
       especieId: null,
       especieCodigo: 'NN',
       fotoUrl: photoUri,
       userId,
     });
-  }, [isReadOnly, userId, subgrupoId, subgrupoCodigo, pickPhoto]);
+  }, [isReadOnly, userId, grupoId, grupoCodigo, pickPhoto]);
 
   return {
     registerNN,

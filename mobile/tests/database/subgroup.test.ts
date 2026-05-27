@@ -1,7 +1,7 @@
-// Tests for SubGroupRepository — implemented in Plan 02-02
+// Tests for GroupRepository — implemented in Plan 02-02
 // Covers: SUBG-01, SUBG-02, SUBG-03, SUBG-05, SUBG-07
 
-// Mock drizzle-orm/expo-sqlite (used by useSubGroupsForPlantation)
+// Mock drizzle-orm/expo-sqlite (used by useGroupsForPlantation)
 jest.mock('drizzle-orm/expo-sqlite', () => ({
   useLiveQuery: jest.fn(),
 }));
@@ -37,13 +37,13 @@ jest.mock('../../src/database/client', () => ({
 }));
 
 import {
-  createSubGroup,
-  getLastSubGroupName,
-  finalizeSubGroup,
+  createGroup,
+  getLastGroupName,
+  finalizeGroup,
   canEdit,
-} from '../../src/repositories/SubGroupRepository';
+} from '../../src/repositories/GroupRepository';
 
-describe('SubGroupRepository', () => {
+describe('GroupRepository', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -70,11 +70,11 @@ describe('SubGroupRepository', () => {
     }));
   });
 
-  describe('createSubGroup', () => {
+  describe('createGroup', () => {
     it('inserts subgroup with correct fields (SUBG-01)', async () => {
       mockInsertValues.mockResolvedValue(undefined);
 
-      const result = await createSubGroup({
+      const result = await createGroup({
         plantacionId: 'plantation-1',
         nombre: 'Línea A',
         codigo: 'la',
@@ -98,10 +98,10 @@ describe('SubGroupRepository', () => {
 
     it('rejects duplicate codigo within same plantation (SUBG-02)', async () => {
       mockInsertValues.mockRejectedValue(
-        new Error('UNIQUE constraint failed: subgroups.plantacion_id, subgroups.codigo')
+        new Error('UNIQUE constraint failed: groups.plantacion_id, groups.codigo')
       );
 
-      const result = await createSubGroup({
+      const result = await createGroup({
         plantacionId: 'plantation-1',
         nombre: 'Línea B',
         codigo: 'LA',
@@ -118,7 +118,7 @@ describe('SubGroupRepository', () => {
     it('returns unknown error for non-UNIQUE DB errors', async () => {
       mockInsertValues.mockRejectedValue(new Error('disk I/O error'));
 
-      const result = await createSubGroup({
+      const result = await createGroup({
         plantacionId: 'plantation-1',
         nombre: 'Línea C',
         codigo: 'LC',
@@ -135,7 +135,7 @@ describe('SubGroupRepository', () => {
     it('allows same codigo in different plantation', async () => {
       mockInsertValues.mockResolvedValue(undefined);
 
-      const result1 = await createSubGroup({
+      const result1 = await createGroup({
         plantacionId: 'plantation-1',
         nombre: 'Línea A',
         codigo: 'LA',
@@ -143,7 +143,7 @@ describe('SubGroupRepository', () => {
         usuarioCreador: 'user-1',
       });
 
-      const result2 = await createSubGroup({
+      const result2 = await createGroup({
         plantacionId: 'plantation-2',
         nombre: 'Línea A',
         codigo: 'LA',
@@ -156,38 +156,38 @@ describe('SubGroupRepository', () => {
     });
   });
 
-  describe('getLastSubGroupName', () => {
+  describe('getLastGroupName', () => {
     it('returns nombre of most recently created subgroup (SUBG-03)', async () => {
       mockSelectLimit.mockResolvedValue([{ nombre: 'Línea 5' }]);
 
-      const result = await getLastSubGroupName('plantation-1');
+      const result = await getLastGroupName('plantation-1');
 
       expect(result).toBe('Línea 5');
     });
 
-    it('returns null when no subgroups exist', async () => {
+    it('returns null when no groups exist', async () => {
       mockSelectLimit.mockResolvedValue([]);
 
-      const result = await getLastSubGroupName('plantation-1');
+      const result = await getLastGroupName('plantation-1');
 
       expect(result).toBeNull();
     });
   });
 
-  describe('finalizeSubGroup', () => {
+  describe('finalizeGroup', () => {
     it('sets estado to finalizada and marks pendingSync (SUBG-05)', async () => {
       mockUpdateWhere.mockResolvedValue(undefined);
 
-      const result = await finalizeSubGroup('subgroup-1');
+      const result = await finalizeGroup('subgroup-1');
 
       expect(result.success).toBe(true);
-      // Called twice: once for estado update, once for markSubGroupPendingSync
+      // Called twice: once for estado update, once for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('allows finalization even with unresolved N/N trees (SUBG-05)', async () => {
       // Per spec §4.10: N/N blocks sync, not finalization
-      const result = await finalizeSubGroup('subgroup-1');
+      const result = await finalizeGroup('subgroup-1');
 
       expect(result.success).toBe(true);
       expect(mockUpdateWhere).toHaveBeenCalled();
