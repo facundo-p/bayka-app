@@ -5,6 +5,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { findById as findParcelaById } from '../../repositories/ParcelaRepository';
+import { fetchAllRows } from './paginate';
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
@@ -87,10 +88,9 @@ async function upsertParcelaFromServer(remoteParcela: RemoteParcela): Promise<vo
  * gana. Esto evita que un pull pise un tombstone local pendiente.
  */
 async function pullParcelas(plantacionId: string): Promise<string[]> {
-  const { data: remoteParcelas, error } = await supabase
-    .from('parcelas')
-    .select('*')
-    .eq('plantation_id', plantacionId);
+  const { data: remoteParcelas, error } = await fetchAllRows<RemoteParcela>(() =>
+    supabase.from('parcelas').select('*').eq('plantation_id', plantacionId)
+  );
 
   if (error) {
     syncLog.error('Pull parcelas error:', JSON.stringify(error));
@@ -114,13 +114,9 @@ async function pullParcelas(plantacionId: string): Promise<string[]> {
 }
 
 async function pullGroups(plantacionId: string): Promise<string[]> {
-  // Plan 16-03: REST call usa el nombre nuevo `groups` (compat shim 012b
-  // server-side sigue exponiendo VIEW `subgroups` para APKs viejos, pero el
-  // nuevo APK habla directo a groups).
-  const { data: remoteGroups, error } = await supabase
-    .from('groups')
-    .select('*')
-    .eq('plantation_id', plantacionId);
+  const { data: remoteGroups, error } = await fetchAllRows<any>(() =>
+    supabase.from('groups').select('*').eq('plantation_id', plantacionId)
+  );
 
   if (error) {
     syncLog.error('Pull groups error:', JSON.stringify(error));
@@ -157,10 +153,9 @@ async function pullGroups(plantacionId: string): Promise<string[]> {
 }
 
 async function pullPlantationUsers(plantacionId: string): Promise<void> {
-  const { data: remotePu, error } = await supabase
-    .from('plantation_users')
-    .select('*')
-    .eq('plantation_id', plantacionId);
+  const { data: remotePu, error } = await fetchAllRows<any>(() =>
+    supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId)
+  );
 
   if (error) {
     syncLog.error('Pull plantation_users error:', JSON.stringify(error));
@@ -198,10 +193,9 @@ async function pullPlantationUsers(plantacionId: string): Promise<void> {
 }
 
 async function pullPlantationSpecies(plantacionId: string): Promise<void> {
-  const { data: remotePs, error } = await supabase
-    .from('plantation_species')
-    .select('*')
-    .eq('plantation_id', plantacionId);
+  const { data: remotePs, error } = await fetchAllRows<any>(() =>
+    supabase.from('plantation_species').select('*').eq('plantation_id', plantacionId)
+  );
 
   if (error) {
     syncLog.error('Pull plantation_species error:', JSON.stringify(error));
@@ -275,11 +269,9 @@ async function upsertTreeFromServer(t: any): Promise<void> {
 }
 
 async function pullTrees(remoteGroupIds: string[]): Promise<void> {
-  // Plan 16-03: filtro por group_id (nombre nuevo).
-  const { data: remoteTrees, error } = await supabase
-    .from('trees')
-    .select('*')
-    .in('group_id', remoteGroupIds);
+  const { data: remoteTrees, error } = await fetchAllRows<any>(() =>
+    supabase.from('trees').select('*').in('group_id', remoteGroupIds)
+  );
 
   if (error) {
     syncLog.error('Pull trees error:', JSON.stringify(error));
