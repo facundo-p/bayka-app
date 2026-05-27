@@ -102,15 +102,15 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   function handleDeleteGroup(subgroup: Group) {
     const treeCount = treeCountMap.get(subgroup.id) ?? 0;
     const warningMessage = treeCount > 0
-      ? `Este subgrupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
+      ? `Este grupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
       : 'Esta acción no se puede deshacer.';
 
     showDoubleConfirmDialog(
       confirm.show,
-      'Eliminar subgrupo',
+      'Eliminar grupo',
       warningMessage,
       'Confirmar eliminación',
-      'Esta es la confirmación final. El subgrupo y todos sus árboles serán eliminados permanentemente.',
+      'Esta es la confirmación final. El grupo y todos sus árboles serán eliminados permanentemente.',
       async () => {
         setDeletingId(subgroup.id);
         try {

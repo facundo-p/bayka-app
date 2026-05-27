@@ -95,7 +95,7 @@ export function usePlantationAdmin() {
           icon: 'warning-outline',
           iconColor: colors.info,
           title: 'Finalizar plantacion',
-          message: 'Esta acción no se puede deshacer. La plantacion quedara bloqueada y no se podran agregar nuevos subgrupos.',
+          message: 'Esta acción no se puede deshacer. La plantacion quedara bloqueada y no se podran agregar nuevos grupos.',
           buttons: [
             { label: 'Cancelar', style: 'cancel', onPress: () => {} },
             {
@@ -117,7 +117,7 @@ export function usePlantationAdmin() {
         const sgPlural = gate.unresolvedNNGroups > 1 ? 's' : '';
         showInfoDialog(showConfirm,
           'No se puede finalizar',
-          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNGroups} subgrupo${sgPlural}.`,
+          `${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNGroups} grupo${sgPlural}.`,
           'alert-circle-outline',
           colors.danger
         );
@@ -127,7 +127,7 @@ export function usePlantationAdmin() {
           icon: 'close-circle-outline',
           iconColor: colors.danger,
           title: 'No se puede finalizar',
-          message: `Los siguientes subgrupos no estan sincronizados:\n\n${blockingNames}`,
+          message: `Los siguientes grupos no estan sincronizados:\n\n${blockingNames}`,
           buttons: [{ label: 'Entendido', style: 'primary', onPress: () => {} }],
         });
       }
