@@ -20,6 +20,8 @@
  * createPlantationLocally directly.
  */
 import { db } from '../database/client';
+import { plantations } from '../database/schema';
+import { eq } from 'drizzle-orm';
 import {
   createPlantation,
   createPlantationLocally,
@@ -70,15 +72,25 @@ async function insertDefaultParcela(plantacionId: string): Promise<void> {
 export async function createPlantationWithDefaultParcela(
   params: CreatePlantationParams,
 ): Promise<CreatePlantationResult> {
-  return db.transaction(async () => {
-    const plantation =
-      params.mode === 'online'
-        ? await createPlantation(params.lugar, params.periodo, params.organizacionId, params.creadoPor)
-        : await createPlantationLocally(params.lugar, params.periodo, params.organizacionId, params.creadoPor);
-    // FEATURE: auto-parcela trial — remove block if dropped
-    if (AUTO_PARCELA_DEFAULT) {
+  // NOTE: drizzle's better-sqlite3 driver runs `db.transaction` synchronously,
+  // so async work inside the callback does NOT participate in the SQLite
+  // transaction. We do manual cleanup on parcela failure to keep behavior
+  // consistent across runtimes (Plan 18-01 Risk #3, D-18-04 best-effort).
+  const plantation =
+    params.mode === 'online'
+      ? await createPlantation(params.lugar, params.periodo, params.organizacionId, params.creadoPor)
+      : await createPlantationLocally(params.lugar, params.periodo, params.organizacionId, params.creadoPor);
+  // FEATURE: auto-parcela trial — remove block if dropped
+  if (AUTO_PARCELA_DEFAULT) {
+    try {
       await insertDefaultParcela(plantation.id);
+    } catch (e) {
+      // Manual rollback: remove the local plantation row so we don't leave an
+      // orphan without its default parcela. Server row (online mode) cannot be
+      // rolled back from here — see Plan 18-01 Risk #3.
+      await db.delete(plantations).where(eq(plantations.id, plantation.id));
+      throw e;
     }
-    return plantation;
-  });
+  }
+  return plantation;
 }
