@@ -20,7 +20,7 @@ export default function NuevoGrupoScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
 
-  // D-17-15: cannot create grupo without parcelaId — bounce back to parcelas list.
+  // Cannot create grupo without parcelaId — bounce back to parcelas list.
   useEffect(() => {
     if (!parcelaId && plantacionId) {
       router.replace(`/${routePrefix}/plantation/parcelas?plantacionId=${plantacionId}` as any);

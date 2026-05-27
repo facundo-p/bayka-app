@@ -64,7 +64,7 @@ export default function PlantationDetailScreen() {
     { key: 'finalizada', label: 'Finalizadas', count: groupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
   ];
 
-  // D-17-15: defensive navigation — without parcelaId we cannot scope the screen.
+  // Defensive navigation — without parcelaId we cannot scope the screen.
   // Redirect to ParcelasScreen so the user picks one explicitly.
   useEffect(() => {
     if (!parcelaId && pid) {
@@ -72,14 +72,14 @@ export default function PlantationDetailScreen() {
     }
   }, [parcelaId, pid, router, routePrefix]);
 
-  // D-17-19: title shows "{parcela.nombre} — Grupos"; fallback to plantation lugar.
+  // Title shows "{parcela.nombre} — Grupos"; fallback to plantation lugar.
   useEffect(() => {
     const lugar = plantationRows?.[0]?.lugar;
     const title = parcela?.nombre ? `${parcela.nombre} — Grupos` : (lugar ?? 'Grupos');
     navigation.setOptions({ title, headerTitleAlign: 'center' });
   }, [plantationRows, parcela, navigation]);
 
-  // GUI-02: header `+` action navigates to NuevoGrupoScreen carrying parcelaId.
+  // Header `+` action navigates to NuevoGrupoScreen carrying parcelaId.
   useEffect(() => {
     if (!estadoLoaded || isFinalizada || !parcelaId) {
       navigation.setOptions({ headerRight: () => null });

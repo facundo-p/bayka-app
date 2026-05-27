@@ -36,10 +36,8 @@ type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate'
 
 /**
  * Validates that nombre and codigo are unique. Scope is per-parcela when
- * parcelaId is provided (Phase 15 schema PARC-09); falls back to per-plantacion
- * when parcelaId is null/undefined (legacy or transitional rows).
- *
- * Helper builds the scope predicate to keep this function ≤20 lines (CLAUDE.md §3).
+ * parcelaId is provided; falls back to per-plantacion when parcelaId is
+ * null/undefined (legacy or transitional rows).
  */
 function buildScopeConds(plantacionId: string, parcelaId: string | null | undefined) {
   if (parcelaId) return [eq(groups.parcelaId, parcelaId)];
@@ -191,7 +189,6 @@ export async function updateGroup(
 
 /**
  * Helper: recalculates all tree subIds for a group inside a tx.
- * Extracted to keep updateGroupCode atomic (CLAUDE.md §3).
  */
 async function recalcTreesSubIds(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
@@ -232,7 +229,7 @@ export async function updateGroupCode(
     .from(groups).where(eq(groups.id, id));
   if (!current) return { success: false, error: 'unknown' };
 
-  // Per-parcela uniqueness (PARC-09); fallback to per-plantacion if legacy row has no parcelaId.
+  // Per-parcela uniqueness; fallback to per-plantacion if legacy row has no parcelaId.
   const scopeCond = current.parcelaId
     ? eq(groups.parcelaId, current.parcelaId)
     : eq(groups.plantacionId, current.plantacionId);
