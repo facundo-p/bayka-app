@@ -410,11 +410,11 @@ async function assignSequentialIds(
   orderedTrees: Array<{ treeId: string }>,
   seed: number,
 ): Promise<void> {
-  for (let index = 0; index < orderedTrees.length; index++) {
+  for (let i = 0; i < orderedTrees.length; i++) {
     await transaction
       .update(trees)
-      .set({ plantacionId: index + 1, globalId: seed + index })
-      .where(eq(trees.id, orderedTrees[index].treeId));
+      .set({ plantacionId: i + 1, globalId: seed + i })
+      .where(eq(trees.id, orderedTrees[i].treeId));
   }
 }
 
