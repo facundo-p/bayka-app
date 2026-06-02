@@ -389,38 +389,42 @@ export async function generateIds(plantacionId: string, seed: number): Promise<v
 
   const affectedGroupIds = [...new Set(orderedTrees.map((t) => t.groupId))];
 
-  // 2. Assign IDs and re-flag affected groups, atomically. Flagging pendingSync
-  //    is what makes the just-generated IDs eligible for the next push — without
-  //    it the groups stay synced/clean and the IDs never reach the server.
-  await db.transaction(async (tx) => {
-    await assignSequentialIds(tx, orderedTrees, seed);
-    await flagGroupsForSync(tx, affectedGroupIds);
+  // 2. Assign IDs and re-flag affected groups in a SINGLE atomic transaction.
+  //    Atomicity importa: los IDs definitivos deben asignarse todo-o-nada (un
+  //    fallo a mitad dejaría la secuencia corrupta). Flaggear pendingSync es lo
+  //    que hace que los IDs recién generados sean elegibles para el próximo push.
+  await db.transaction(async (transaction) => {
+    await assignSequentialIds(transaction, orderedTrees, seed);
+    await flagGroupsForSync(transaction, affectedGroupIds);
   });
 
   notifyDataChanged();
 }
 
+/** Handle de la transacción local de SQLite (drizzle/expo-sqlite). */
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
 /** Writes plantacionId (1..N) and globalId (seed..seed+N-1) to each tree, in order. */
 async function assignSequentialIds(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  transaction: DbTransaction,
   orderedTrees: Array<{ treeId: string }>,
   seed: number,
 ): Promise<void> {
-  for (let i = 0; i < orderedTrees.length; i++) {
-    await tx
+  for (let index = 0; index < orderedTrees.length; index++) {
+    await transaction
       .update(trees)
-      .set({ plantacionId: i + 1, globalId: seed + i })
-      .where(eq(trees.id, orderedTrees[i].treeId));
+      .set({ plantacionId: index + 1, globalId: seed + index })
+      .where(eq(trees.id, orderedTrees[index].treeId));
   }
 }
 
 /** Re-marks groups as dirty so the regular sync flow re-uploads their trees with the new IDs. */
 async function flagGroupsForSync(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  transaction: DbTransaction,
   groupIds: string[],
 ): Promise<void> {
   for (const groupId of groupIds) {
-    await tx
+    await transaction
       .update(groups)
       .set({ pendingSync: true })
       .where(eq(groups.id, groupId));
