@@ -267,5 +267,42 @@ describe('PlantationRepository', () => {
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
+
+    it('Test 9: flags affected groups pendingSync=true (deduped) so generated IDs get pushed on next sync', async () => {
+      const orderedTrees = [
+        { treeId: 'tree-1', groupId: 'group-A' },
+        { treeId: 'tree-2', groupId: 'group-A' },
+        { treeId: 'tree-3', groupId: 'group-B' },
+      ];
+
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          innerJoin: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({
+              orderBy: jest.fn().mockResolvedValue(orderedTrees),
+            }),
+          }),
+        }),
+      });
+
+      const setValues: any[] = [];
+      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
+        const tx = {
+          update: jest.fn().mockImplementation(() => ({
+            set: jest.fn().mockImplementation((values) => {
+              setValues.push(values);
+              return { where: jest.fn().mockResolvedValue(undefined) };
+            }),
+          })),
+        };
+        await fn(tx);
+      });
+
+      await generateIds('plantation-1', 1);
+
+      // Two distinct groups (A, B) must be re-flagged for sync, exactly once each.
+      const pendingFlags = setValues.filter((v) => v.pendingSync === true);
+      expect(pendingFlags).toHaveLength(2);
+    });
   });
 });

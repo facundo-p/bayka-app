@@ -379,25 +379,52 @@ export async function assignTechnicians(
  * trees.posicion ASC. Both are immutable after sync.
  */
 export async function generateIds(plantacionId: string, seed: number): Promise<void> {
-  // 1. Fetch all trees ordered deterministically
+  // 1. Fetch all trees ordered deterministically (groupId needed to re-flag for sync)
   const orderedTrees = await db
-    .select({ treeId: trees.id })
+    .select({ treeId: trees.id, groupId: trees.groupId })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(groups.createdAt), asc(trees.posicion));
 
-  // 2. Assign IDs in a transaction for atomicity
+  const affectedGroupIds = [...new Set(orderedTrees.map((t) => t.groupId))];
+
+  // 2. Assign IDs and re-flag affected groups, atomically. Flagging pendingSync
+  //    is what makes the just-generated IDs eligible for the next push — without
+  //    it the groups stay synced/clean and the IDs never reach the server.
   await db.transaction(async (tx) => {
-    for (let i = 0; i < orderedTrees.length; i++) {
-      await tx
-        .update(trees)
-        .set({ plantacionId: i + 1, globalId: seed + i })
-        .where(eq(trees.id, orderedTrees[i].treeId));
-    }
+    await assignSequentialIds(tx, orderedTrees, seed);
+    await flagGroupsForSync(tx, affectedGroupIds);
   });
 
   notifyDataChanged();
+}
+
+/** Writes plantacionId (1..N) and globalId (seed..seed+N-1) to each tree, in order. */
+async function assignSequentialIds(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  orderedTrees: Array<{ treeId: string }>,
+  seed: number,
+): Promise<void> {
+  for (let i = 0; i < orderedTrees.length; i++) {
+    await tx
+      .update(trees)
+      .set({ plantacionId: i + 1, globalId: seed + i })
+      .where(eq(trees.id, orderedTrees[i].treeId));
+  }
+}
+
+/** Re-marks groups as dirty so the regular sync flow re-uploads their trees with the new IDs. */
+async function flagGroupsForSync(
+  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  groupIds: string[],
+): Promise<void> {
+  for (const groupId of groupIds) {
+    await tx
+      .update(groups)
+      .set({ pendingSync: true })
+      .where(eq(groups.id, groupId));
+  }
 }
 
 // --- deletePlantationLocally ------------------------------------------------

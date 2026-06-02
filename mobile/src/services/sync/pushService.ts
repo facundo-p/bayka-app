@@ -222,6 +222,10 @@ export async function uploadGroup(
     sub_id: t.subId,
     foto_url: photoMap.get(t.id)  // Uploaded just now
       ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null),
+    // IDs definitivos generados al finalizar (semilla). Se mandan para que el
+    // server los persista; null mientras la plantación no se finalizó.
+    plantacion_id: t.plantacionId,
+    global_id: t.globalId,
     usuario_registro: t.usuarioRegistro,
     created_at: t.createdAt,
   }));
