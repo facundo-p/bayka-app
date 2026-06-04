@@ -113,3 +113,19 @@ al `.styles.ts` en el mismo PR.
 **Queries reutilizables y testeables.** Si una query se usa en más de un lugar, DEBE estar en un archivo de queries. Si una query tiene lógica de negocio (filtros por rol, cálculos de fecha, estado), DEBE poder testearse unitariamente sin renderizar un componente.
 
 **Regla práctica:** Si necesitás importar `db` o tablas del schema en un archivo de `screens/` o `components/`, es un code smell. Extraé la query a `queries/` o `repositories/`.
+
+### 10. Revisión de flujos UX contra la guía (OBLIGATORIO)
+
+Antes de implementar o modificar **cualquier flujo de usuario** (no solo estilos),
+revisar el flujo contra `docs/ui-ux-guidelines.md` y levantar la mano si lo viola.
+
+Chequeo mínimo en cada feature/PR que toque un flujo:
+- **Tareas atómicas (§19):** ¿estoy pidiendo en N pasos manuales algo que es una
+  sola tarea? Si la separación no aporta una decisión/control de negocio real
+  (como la sincronización manual de §12), unificar en un solo paso o señalarlo.
+- **Mínimas interacciones (§1):** acciones principales en uno o dos toques.
+- **Acciones irreversibles (§15):** avisar qué se pierde y qué las dispara.
+
+Los problemas de UX conceptual no tienen test que los dispare: este chequeo
+manual contra la guía es la red de seguridad. Si detectás un olor de diseño,
+reportalo aunque no sea parte de la tarea pedida.

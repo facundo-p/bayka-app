@@ -373,3 +373,41 @@ el último email utilizado se precarga en el campo de email
 ```
 
 Este patrón reduce la necesidad de escribir credenciales repetidamente, lo cual es especialmente valioso en campo donde la escritura manual es lenta e incómoda.
+
+---
+
+# 19. Tareas atómicas: no fragmentar lo que es una sola acción
+
+**Principio:** evitar dividir en varios pasos manuales una tarea que **puede** —y
+por lógica de negocio **tiene sentido que**— realizarse en un solo paso.
+
+Si el usuario percibe "una acción" pero la interfaz le exige varios toques o
+pantallas encadenadas **cuya separación no aporta una decisión ni un control
+real**, es un olor de diseño. La pregunta de control es:
+
+```
+¿la separación le da al usuario una decisión o un control que de verdad
+necesita? → la separación es legítima
+¿es solo fricción / un detalle de implementación que se filtró a la UI? → unificar
+```
+
+## Separaciones legítimas (NO son olor)
+
+Algunos pasos el negocio los separa a propósito, y eso es correcto:
+
+- **Sincronización (ver §12):** es manual y deliberada. El técnico decide **qué**
+  y **cuándo** subir. La separación agrega control real → se mantiene.
+
+## Tareas que deben ser atómicas y autocontenidas
+
+- **Generar IDs** es una tarea completa en sí misma: asigna los IDs y **persiste
+  localmente**. Queda terminada sin depender de ningún paso posterior. La
+  sincronización es una tarea **distinta y posterior** (decisión del técnico), no
+  una continuación obligatoria de "generar IDs". La UI no debe dar a entender que
+  los IDs están "a medio hacer" hasta sincronizar — están hechos y guardados.
+
+## Regla práctica para el desarrollo
+
+Antes de implementar o modificar un flujo, preguntarse: *"¿esto que le estoy
+pidiendo al usuario en N pasos es en realidad una sola tarea?"* Si la separación
+no se justifica por una decisión de negocio (como §12), unificarla en un solo paso.
