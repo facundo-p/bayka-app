@@ -269,31 +269,36 @@ No debe requerir navegación compleja.
 
 La navegación debe ser simple.
 
-Flujo típico:
+Flujo típico (igual para admin y técnico):
 
 ```
-Dashboard
+Plantaciones (lista)
 ↓
-Plantación
+Parcelas (de la plantación)
 ↓
-SubGrupo
+Grupos (de la parcela)
 ↓
 Registro de árboles
 ```
 
-Evitar estructuras de navegación profundas.
+El nivel **Parcela** es obligatorio: no se llega a los Grupos sin seleccionar
+antes una parcela (la pantalla de grupos redirige a Parcelas si no hay parcela en
+contexto). Evitar estructuras más profundas que esta.
 
 ---
 
 # 11. Indicadores de Estado
 
-La aplicación debe mostrar claramente:
+La aplicación debe mostrar claramente el estado de cada Grupo:
 
 ```
-SubGrupo en registro
-SubGrupo finalizado
-SubGrupo sincronizado
+activa       (en registro)
+finalizada   (cerrado, listo para sincronizar)
 ```
+
+El Grupo tiene **dos** estados (`activa`, `finalizada`). La sincronización NO es
+un tercer estado: lo pendiente de subir se indica aparte con un punto naranja
+(OrangeDot, `pendingSync`) sobre la tarjeta del Grupo y de la Parcela.
 
 Los estados deben ser visibles en las listas.
 
@@ -324,7 +329,7 @@ Especialmente durante:
 
 ```
 registro de árboles
-cambio de SubGrupo
+cambio de Grupo
 navegación
 ```
 
@@ -337,7 +342,7 @@ Los errores deben mostrarse de forma clara.
 Ejemplos:
 
 ```
-SubGrupo ya existe
+Grupo ya existe (el código es único por parcela)
 NN sin resolver
 sin conexión
 ```
@@ -348,21 +353,17 @@ Los mensajes deben ser simples y comprensibles.
 
 # 15. Acciones irreversibles
 
-Las acciones irreversibles deben mostrarse claramente.
+Las acciones irreversibles o bloqueantes deben mostrarse claramente.
 
 Ejemplo:
 
 ```
-sincronizar SubGrupo
+sincronizar Grupo
 ```
 
-Una vez sincronizado:
-
-```
-no se puede editar
-```
-
-Esto debe comunicarse al usuario.
+Una vez sincronizado, el Grupo queda bloqueado para edición. Un admin o el
+creador puede **reactivarlo** explícitamente si necesita corregirlo; esa
+reactivación también debe comunicarse con claridad.
 
 ---
 
@@ -387,13 +388,16 @@ La interfaz debe permitir que un técnico registre árboles **sin tener que pens
 El flujo ideal es:
 
 ```
-abrir SubGrupo
+abrir plantación
+seleccionar parcela
+abrir grupo
 registrar árboles
 finalizar
 sincronizar
 ```
 
-La interfaz debe apoyar este flujo de forma natural.
+La interfaz debe apoyar este flujo de forma natural. La selección de Parcela es
+un paso real del flujo (ver §10), no opcional.
 
 ---
 
@@ -408,14 +412,12 @@ la pantalla de login muestra cuentas guardadas como chips tocables
 debajo del botón de inicio de sesión
 ```
 
-Comportamiento:
+Comportamiento (implementado):
 
 ```
-checkbox "Recordar cuenta" activado por defecto
-al iniciar sesión exitosamente, se guarda la cuenta
-las cuentas guardadas aparecen como chips bajo "Cuentas guardadas"
+al iniciar sesión exitosamente, la cuenta se guarda automáticamente (no hay checkbox)
+las cuentas guardadas aparecen como chips bajo el rótulo "Acceso rápido"
 tocar un chip autocompleta email y contraseña
-el último email utilizado se precarga en el campo de email
 ```
 
 Este patrón reduce la necesidad de escribir credenciales repetidamente, lo cual es especialmente valioso en campo donde la escritura manual es lenta e incómoda.
