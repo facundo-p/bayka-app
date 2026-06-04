@@ -216,19 +216,19 @@ export async function getAllSpecies(): Promise<Array<{ id: string; nombre: strin
 
 /**
  * IDGN-01 gate
- * Returns true if at least one tree in this plantation has globalId set.
+ * Returns true only when EVERY tree in the plantation has globalId set (and there
+ * is at least one tree). A partial set — e.g. a leftover from an incomplete sync —
+ * counts as NOT generated, so the UI keeps offering "Generar IDs" to complete it.
  * Used to gate export buttons and prevent re-generation of IDs.
  */
 export async function hasIdsGenerated(plantacionId: string): Promise<boolean> {
-  const rows = await db
-    .select({ id: trees.id })
+  const [row] = await db
+    .select({
+      total: count(),
+      conId: sql<number>`COUNT(${trees.globalId})`,
+    })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(
-      and(
-        eq(groups.plantacionId, plantacionId),
-        isNotNull(trees.globalId)
-      )
-    );
-  return rows.length > 0;
+    .where(eq(groups.plantacionId, plantacionId));
+  return row != null && row.total > 0 && row.total === row.conId;
 }
