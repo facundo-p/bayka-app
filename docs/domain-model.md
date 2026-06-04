@@ -271,32 +271,33 @@ id
 plantacion_id
 nombre
 codigo
-estado
-usuario_creador
-fecha_creacion
+descripcion (opcional)
+fecha_creacion / actualizacion
 deleted_at (soft-delete, NULL si está vigente)
 ```
+
+> La Parcela **no** tiene columna `estado` ni `usuario_creador`: la auditoría de
+> autoría es server-side (no se modela como atributo).
 
 ### Relaciones
 
 ```
 N:1 plantación
 1:N grupos
-N:1 usuario (creador)
 ```
 
 ### Restricciones
 
-Dentro de una misma plantación:
+Dentro de una misma plantación, vía **índices parciales únicos** `WHERE deleted_at IS NULL`:
 
 ```
-codigo de parcela debe ser único
+codigo de parcela único  → (plantation_id, codigo)
+nombre de parcela único  → (plantation_id, nombre)
 ```
 
 La parcela usa **soft-delete**: al eliminarla se marca `deleted_at` en lugar de
-borrar la fila. La unicidad del código se garantiza con un **índice parcial
-único** sobre `(plantation_id, codigo) WHERE deleted_at IS NULL`, de modo que
-una parcela eliminada no bloquea reutilizar su código.
+borrar la fila. Los índices parciales hacen que una parcela eliminada no bloquee
+reutilizar su código ni su nombre.
 
 ---
 

@@ -41,37 +41,29 @@ La sincronización ocurre cuando hay conectividad.
 
 ---
 
-### Unidad de sincronización: SubGrupo
+### Unidad de sincronización: Grupo
 
-Los SubGrupos se sincronizan completos.
+Los Grupos se sincronizan completos (Grupo + sus árboles). Antes de los grupos se
+sincronizan las Parcelas (orden de FK).
 
 Esto evita inconsistencias parciales.
 
 ---
 
-### Fotos solo locales
+### Fotos en Supabase Storage
 
-Las fotos se almacenan únicamente en el dispositivo.
-
-No se suben al servidor en la Fase 1.
-
-Esto simplifica:
-
-- sincronización
-- consumo de red
-- almacenamiento en servidor
+Las fotos se capturan localmente y se **suben a Supabase Storage** durante la
+sincronización (bucket `tree-photos`). Se descargan a otros dispositivos vía URLs
+firmadas. El flag `fotoSynced` controla qué falta subir. Ver §7.
 
 ---
 
-### Datos sincronizados inmutables
+### Datos sincronizados bloqueados
 
-Una vez sincronizado un SubGrupo:
+Una vez sincronizado un Grupo queda **bloqueado para edición**. Un admin o el
+creador puede reactivarlo explícitamente para corregirlo.
 
-```
-no puede modificarse
-```
-
-Esto garantiza consistencia del dataset.
+Esto preserva la consistencia del dataset por defecto.
 
 ---
 
@@ -98,7 +90,8 @@ SQLite
 Se utiliza para almacenar:
 
 - plantaciones
-- subgrupos
+- parcelas
+- grupos
 - árboles
 - especies
 - configuraciones
@@ -122,7 +115,8 @@ Se utiliza para:
 ## Autenticación
 
 ```
-Supabase Auth
+Supabase Auth (online)
+Auth offline (OfflineAuthService + SecureStore)
 ```
 
 Método:
@@ -130,6 +124,11 @@ Método:
 ```
 email + contraseña
 ```
+
+Para el uso en campo sin conexión, las credenciales se cachean en SecureStore
+(`OfflineAuthService`): hash + salt para verificar login offline, con un gate de
+expiración opcional. El login ofrece las cuentas guardadas como chips
+("Acceso rápido").
 
 ---
 
@@ -217,13 +216,13 @@ El backend almacena:
 
 ```
 organizaciones
-usuarios
+usuarios (auth.users + profiles)
 plantaciones
-subgrupos sincronizados
+parcelas
+grupos sincronizados
 árboles sincronizados
+fotos de árboles (Supabase Storage, bucket tree-photos)
 ```
-
-No almacena fotos en esta fase.
 
 ---
 
@@ -245,16 +244,16 @@ Se actualiza interfaz
 
 ---
 
-## Finalización de SubGrupo
+## Finalización de Grupo
 
 Flujo:
 
 ```
-Técnico presiona "Finalizar SubGrupo"
+Técnico presiona "Finalizar Grupo"
 ↓
 Estado cambia a finalizada
 ↓
-SubGrupo queda listo para sincronizar
+Grupo queda listo para sincronizar (pendingSync = true)
 ```
 
 ---
@@ -266,14 +265,17 @@ Flujo:
 ```
 Usuario inicia sincronización
 ↓
-Sistema detecta SubGrupos no sincronizados
+Sistema detecta grupos pendientes (pendingSync = true)
 ↓
-Sube SubGrupo + Árboles
+Sube Parcelas pendientes, luego Grupo + Árboles (RPC sync_subgroup)
 ↓
-Servidor valida datos
+Servidor valida datos (código de grupo único por parcela)
 ↓
-SubGrupo marcado como sincronizada
+Grupo marcado como sincronizado localmente (pendingSync = false)
 ```
+
+El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
+offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
 
 ---
 
@@ -284,13 +286,13 @@ La sincronización sigue estos principios.
 ## Unidad de sincronización
 
 ```
-SubGrupo completo
+Grupo completo
 ```
 
 Se sincronizan:
 
 ```
-SubGrupo
+Grupo
 Árboles asociados
 ```
 
@@ -298,11 +300,11 @@ SubGrupo
 
 ## Condiciones para sincronizar
 
-Un SubGrupo puede sincronizarse si:
+Un Grupo es elegible para sincronizar cuando:
 
 ```
-estado = finalizada
-no existen árboles NN
+pendingSync = true
+no existen árboles NN sin resolver
 ```
 
 ---
@@ -328,37 +330,32 @@ El usuario deberá resolver manualmente.
 
 # 7. Manejo de Fotos
 
-Las fotos se almacenan únicamente en el dispositivo.
+Las fotos se capturan localmente y se sincronizan con Supabase Storage.
 
-Ubicación:
-
-```
-filesystem local
-```
-
-En el registro del árbol se guarda:
+Local (en el dispositivo):
 
 ```
-ruta_local_foto
+Paths.document/photos/photo_<treeId>.jpg
 ```
 
-Ejemplo:
+Remoto (Supabase Storage, bucket `tree-photos`):
 
 ```
-/photos/subgrupo_L23B/tree_12.jpg
+plantations/<plantacionId>/parcelas/<parcelaId>/trees/<treeId>.jpg
 ```
+
+(Fotos previas a Parcela usan la ruta legacy
+`plantations/<plantacionId>/trees/<treeId>.jpg`.)
+
+El flag `fotoSynced` en `trees` indica si la foto ya está en Storage.
 
 ---
 
-## Motivo de almacenamiento local
+## Política
 
-Las fotos no se sincronizan porque:
-
-```
-las plantaciones pueden tener miles de árboles
-las fotos aumentarían demasiado el volumen de datos
-no siempre hay buena conectividad
-```
+Las fotos son opcionales para árboles normales y **obligatorias para N/N**. Para
+controlar volumen y red, solo se suben las pendientes y la subida se integra al
+flujo de sync manual (el técnico decide cuándo).
 
 ---
 
@@ -379,56 +376,48 @@ mobile/
 
         app/
 
+        app/                     (expo-router: rutas (admin)/(tecnico)/(auth))
+
         screens/
-            LoginScreen
-            DashboardScreen
-            PlantationScreen
-            SubGroupScreen
-            TreeRegisterScreen
-            NNReviewScreen
-            SyncScreen
+            PlantacionesScreen
+            ParcelasScreen
+            PlantationDetailScreen   (lista de grupos de la parcela)
+            NuevoGrupoScreen
+            TreeRegistrationScreen
+            NNResolutionScreen
+            CatalogScreen / PerfilScreen / ...
 
         components/
-            SpeciesButton
-            TreeRow
-            SubGroupCard
-
-        features/
-            auth
-            plantations
-            subgroups
-            trees
-            sync
+            SpeciesButton / SpeciesButtonGrid
+            TreeRowItem
+            PlantationCard / ParcelaRow / GroupStateChip / StatusChip
+            (modales de sync, descarga, etc.)
 
         services/
-            syncService
+            sync/  (pushService, pullService, orchestrators, downloadService)
+            ExportService
             photoService
-            exportService
+            OfflineAuthService
 
         repositories/
-            plantationRepository
-            subgroupRepository
-            treeRepository
-            speciesRepository
+            PlantationRepository
+            ParcelaRepository
+            GroupRepository
+            TreeRepository
+
+        queries/                 (lecturas/agregaciones: admin, catalog,
+                                  dashboard, export, parcela, freshness)
 
         database/
-            schema
+            schema  (Drizzle)
             migrations
-            seeds
 
         hooks/
-            useAuth
-            useSync
-            usePlantations
+            useAuth / useSync / usePlantationDetail / useTreeRegistration / ...
 
         utils/
             idGenerator
-            reverseOrder
-            dateUtils
-
-        types/
-            domain
-            api
+            ...
 ```
 
 ---
@@ -496,16 +485,20 @@ operación offline
 
 # 10. Generación de IDs
 
-Los IDs finales se generan al finalizar la plantación.
+Los IDs finales se generan al finalizar la plantación, **desde la app** (admin):
+`generateIds()` asigna en SQLite local, en una transacción atómica, el ID parcial
+(1..N por plantación) y el ID global (secuencial org-wide desde una semilla que el
+admin define; el sistema sugiere max + 1).
 
 Tipos de ID:
 
 ```
-ID parcial de plantación
-ID global Bayka
+ID parcial de plantación  (plantacion_id)
+ID global Bayka           (global_id)
 ```
 
-Esto ocurre desde el backend o desde una herramienta administrativa.
+Los IDs generados se persisten en el server en la siguiente sincronización (RPC
+sync_subgroup). El gate de export exige que TODOS los árboles tengan ID.
 
 ---
 
@@ -537,7 +530,6 @@ multi-organización
 regiones de especies
 GPS por árbol
 exportaciones GIS
-subida de fotos
 monitoreo temporal
 analytics
 ```
