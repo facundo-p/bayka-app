@@ -207,6 +207,7 @@ export async function uploadGroup(
   const p_subgroup = {
     id: sg.id,
     plantation_id: sg.plantacionId,
+    parcela_id: sg.parcelaId,
     nombre: sg.nombre,
     codigo: sg.codigo,
     tipo: sg.tipo,

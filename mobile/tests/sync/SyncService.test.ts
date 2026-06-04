@@ -89,6 +89,7 @@ const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 const makeSg = (id: string, nombre = 'Línea A') => ({
   id,
   plantacionId: 'plantation-1',
+  parcelaId: null,
   nombre,
   codigo: 'LA',
   tipo: 'linea' as const,
@@ -223,6 +224,7 @@ describe('SyncService', () => {
         p_subgroup: {
           id: 'sg-1',
           plantation_id: 'plantation-1',
+          parcela_id: null,
           nombre: 'Línea A',
           codigo: 'LA',
           tipo: 'linea',
