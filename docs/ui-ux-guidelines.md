@@ -25,7 +25,6 @@ Esto implica:
 ```
 usuarios caminando
 uso bajo luz solar fuerte
-manos sucias o con guantes
 poco tiempo para interactuar con la pantalla
 ```
 
@@ -45,7 +44,7 @@ El perfil técnico utiliza la aplicación principalmente para:
 
 ```
 registrar árboles
-cambiar de SubGrupo
+cambiar de Grupo
 resolver N/N
 sincronizar datos
 ```
@@ -64,7 +63,7 @@ Las pantallas del técnico deben mostrar **solo lo necesario para la tarea actua
 
 # 3. Perfil de Usuario Admin
 
-El usuario administrador utiliza la aplicación para:
+El usuario administrador utiliza la aplicación para todo lo que hace el perfíl técnico más:
 
 ```
 crear plantaciones
@@ -98,22 +97,20 @@ Evitar menús ocultos innecesarios.
 
 ## Botones grandes
 
-Los botones deben ser lo suficientemente grandes para usarse con guantes.
-
-Especialmente en la pantalla de registro de árboles.
+Los botones en la pantalla de registro de árboles deben ser lo suficientemente grandes para presionarse con facilidad.
 
 ---
 
 ## Feedback inmediato
 
-Cada acción del usuario debe generar una respuesta visible.
+Cada acción importante del usuario debe generar feedback.
 
 Ejemplos:
 
 ```
-animación de registro de árbol
+vibración al registrar un árbol
 contador que incrementa
-confirmación visual
+modals de confirmación + toast/mensaje de éxito/error
 ```
 
 ---
@@ -134,25 +131,75 @@ listas
 
 # 5. Paleta de Colores
 
-La paleta de colores definitiva **no está definida en esta fase**.
+La paleta está **definida según el manual de marca de Bayka** y centralizada en
+`mobile/src/theme.ts` (objeto `colors`). **Fuente única de verdad:** ningún color
+se hardcodea en pantallas o componentes — siempre se importa de `theme.ts`
+(ver regla 8 de `CLAUDE.md`).
 
-Por ahora se utilizará una paleta simple.
+## Colores de marca
 
-Posteriormente se definirá un diseño visual más específico.
+```
+primary    #0A3760  azul oscuro Bayka — acciones principales, headers,
+                    splash y fondo del ícono de Android
+secondary  #99B95B  verde oliva Bayka — estados activos, acentos,
+                    indicador "online" y conteos
+```
+
+## Roles semánticos
+
+```
+danger      #DC2626  acciones destructivas / errores
+info        #2563EB  información
+syncPending #F97316  pendiente de sincronización (OrangeDot)
+```
+
+## Jerarquía de texto
+
+```
+textHeading    #0A3760  títulos (azul de marca)
+textPrimary    #1E293B  cuerpo
+textSecondary  #475569  texto secundario
+textMuted      #94A3B8  placeholder / metadatos
+```
+
+## Chips de estado
+
+```
+activa      verde oliva (#99B95B)
+finalizada  azul de marca (#0A3760)
+```
+
+> El detalle completo de tokens (variantes de marca, superficies, bordes, chips,
+> stats, conectividad) vive en `theme.ts`. Este documento describe la intención;
+> `theme.ts` es la referencia normativa.
 
 ---
 
 # 6. Tipografía
 
-La tipografía debe ser:
+Las tipografías están **definidas por el manual de marca de Bayka** (sección
+"Fuentes"). Se cargan al inicio de la app (`useFonts` en `app/_layout.tsx`,
+bloqueando el splash hasta que estén listas). Tokens en `theme.ts` (objeto `fonts`).
+
+## Fuentes de marca
 
 ```
-legible
-clara
-sin estilos complejos
+Títulos / destacados   Linux Biolinum Regular   (LinBiolinum_R / _RB, .otf local)
+                        → headers de navegación, títulos de pantalla y de modales,
+                          nombres de tarjetas
+Cuerpo / bajada        Meta Plus Normal Roman   (tipografía complementaria del manual)
+Códigos / IDs          monospace del sistema    (código de especie, SubID)
 ```
 
-Priorizar tamaño suficiente para lectura en exteriores.
+> **Nota de implementación:** el cuerpo se renderiza hoy con **Poppins** (Google
+> Fonts, 5 pesos) como sustituto libre de Meta Plus Normal Roman, que es una fuente
+> comercial. Linux Biolinum (títulos) sí coincide con el manual. La alineación de la
+> fuente de cuerpo con la marca está registrada como issue aparte.
+
+## Escala de tamaños
+
+Definida en `theme.ts` (`fontSize`), de `xxs` (10) a `hero` (32). Priorizar tamaño
+suficiente para lectura en exteriores — el cuerpo base es 15.
 
 ---
 
@@ -165,7 +212,6 @@ Debe cumplir:
 ```
 botones grandes
 grid simple
-máximo 20 especies
 ```
 
 Cada botón debe mostrar:
