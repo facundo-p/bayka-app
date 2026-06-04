@@ -178,9 +178,29 @@ species
 plantations
 plantation_species
 plantation_users
-subgroups
+parcelas
+groups          (groups.parcela_id → parcelas)
 trees
 ```
+
+Modelo jerárquico (v1.1 / Fase 16):
+
+```
+Plantación → Parcela → Grupo → Árbol
+```
+
+La tabla `subgroups` se renombró a `groups` y se agregó la tabla
+`parcelas`. Cada `group` referencia su parcela vía `groups.parcela_id`.
+
+Reglas de unicidad:
+
+```
+código de parcela único por plantación  → (plantation_id, codigo)
+código de grupo   único por parcela      → (parcela_id, codigo)
+```
+
+Como cada parcela pertenece a una plantación, la combinación
+(parcela + grupo) resulta única dentro de cada plantación.
 
 También se almacenan:
 
@@ -289,11 +309,11 @@ no existen árboles NN
 
 ## Conflictos
 
-Si el servidor detecta:
+Si el servidor detecta dos grupos con:
 
 ```
-mismo codigo_subgrupo
-misma plantacion
+mismo codigo de grupo
+misma parcela        → scope (parcela_id, codigo)
 ```
 
 entonces:

@@ -8,7 +8,7 @@
 
 Este proyecto consiste en el desarrollo de una **aplicación móvil para el monitoreo de plantaciones de restauración ecológica**, diseñada para ser utilizada en campo, en contextos donde puede no haber conectividad a internet.
 
-La aplicación permitirá registrar árboles plantados durante actividades de restauración ecológica, organizando los registros en unidades llamadas **SubGrupos**, que representan normalmente **líneas de plantación o parcelas**.
+La aplicación permitirá registrar árboles plantados durante actividades de restauración ecológica, organizando los registros según la jerarquía **Plantación → Parcela → Grupo → Árbol**. Una plantación se divide en **Parcelas** (subdivisiones físicas del terreno), cada Parcela contiene **Grupos** (que representan normalmente **líneas de plantación**), y cada Grupo agrupa los registros de **Árboles**.
 
 El sistema está diseñado bajo el paradigma **offline-first**, lo que significa que toda la carga de datos ocurre localmente en el dispositivo y luego se sincroniza con una base de datos central cuando hay conectividad disponible.
 
@@ -27,9 +27,18 @@ Organización
 Usuario
 Especie
 Plantación
-SubGrupo
+Parcela
+Grupo
 Árbol
 ```
+
+La jerarquía de datos es:
+
+```
+Plantación → Parcela → Grupo → Árbol
+```
+
+> Nota histórica: hasta la v1.0 el nivel intermedio se llamaba **SubGrupo** y colgaba directamente de la Plantación (Plantación → SubGrupo → Árbol). En la v1.1 (Phase 16) el SubGrupo se renombró a **Grupo** y se incorporó el nivel intermedio **Parcela**, quedando el Grupo como hijo de la Parcela.
 
 ---
 
@@ -78,7 +87,8 @@ Puede:
 
 Puede:
 
-- Registrar SubGrupos
+- Registrar Parcelas
+- Registrar Grupos
 - Registrar árboles
 - Resolver árboles N/N
 - Sincronizar datos
@@ -128,36 +138,52 @@ Lugar: La Maluka - Zona Alta Lote 1
 Periodo: Otoño 2026
 ```
 
-Cada plantación contiene múltiples **SubGrupos**.
+Una plantación es un conjunto de **Parcelas**.
 
 Los administradores configuran qué especies estarán disponibles para registrar en campo.
 Se eligen especies al crear la plantación.
 Pueden habilitarse más especies luego durante el transcurso de la plantación.
 
-Los técnicos asignados a la plantación pueden registrar SubGrupos.
+Los técnicos asignados a la plantación pueden registrar Parcelas y Grupos.
 
 ---
 
-## SubGrupo
+## Parcela
 
-Un SubGrupo representa un subconjunto de árboles dentro de una plantación.
+Una **Parcela** es una subdivisión física de la plantación. Una plantación
+está compuesta por un conjunto de Parcelas, y cada Parcela contiene múltiples
+**Grupos**.
 
-Normalmente corresponde a:
+Cada Parcela tiene un **código** que debe ser **único dentro de la plantación**.
 
-- una línea de plantación
-- una parcela
+Ejemplos:
+
+```
+Parcela A
+Parcela B
+```
+
+---
+
+## Grupo
+
+Un **Grupo** representa un subconjunto de árboles dentro de una **Parcela**.
+Es el nivel hijo de la Parcela y normalmente corresponde a una **línea de
+plantación**.
 
 Ejemplos:
 
 ```
 Linea 23
 Linea 23B
-Parcela A
 ```
 
-Cada SubGrupo contiene múltiples registros de árboles.
+Cada Grupo contiene múltiples registros de árboles.
 
-Los SubGrupos son la **unidad de sincronización del sistema**.
+Los Grupos son la **unidad de sincronización del sistema**.
+
+> Anteriormente esta entidad se llamaba **SubGrupo** y colgaba directamente de
+> la Plantación. Desde la v1.1 se llama **Grupo** y es hijo de una Parcela.
 
 ---
 
@@ -171,7 +197,7 @@ Cada registro incluye:
 
 - especie
 - foto opcional
-- posición dentro del SubGrupo
+- posición dentro del Grupo
 - SubID
 - IdPlantacion -> id dentro de la plantación numérico incremental secuencial, generado automáticamente al finalizar la plantación
 - IdGeneral -> id dentro de la organización numérico incremental secuencial. Generado al finalizar la plantación a partir de un número seed (sugerir el ID n+1 como seed, basándose en el mayor ID registrado en el sistema)
@@ -195,15 +221,15 @@ El usuario decide cuándo sincronizar los datos.
 
 ---
 
-### Unidad de sincronización = SubGrupo
+### Unidad de sincronización = Grupo
 
-Los SubGrupos se sincronizan completos para evitar inconsistencias parciales.
+Los Grupos se sincronizan completos para evitar inconsistencias parciales.
 
 ---
 
 ### Datos sincronizados son inmutables
 
-Una vez sincronizado un SubGrupo:
+Una vez sincronizado un Grupo:
 
 - no puede editarse
 - no puede modificarse
@@ -235,9 +261,9 @@ Para simplificar el MVP, se pensó en generar los usuarios desde un seed incial.
 - Los usuarios del sistema tendrán una cuenta individual (email y contraseña).
 - En Fase 1, los usuarios serán creados desde la base de datos
 - Los usuarios podrán iniciar sesión desde la aplicación móvil.
-- Cada registro de SubGrupo y árbol quedará asociado al usuario que lo registró.
+- Cada registro de Grupo y árbol quedará asociado al usuario que lo registró.
 - Un mismo dispositivo puede ser utilizado por distintos usuarios iniciando sesión con diferentes cuentas.
-- Un usuario técnico solo podrá editar SubGrupos que él haya cargado
+- Un usuario técnico solo podrá editar Grupos que él haya cargado
 
 ## Cuentas guardadas
 
@@ -316,16 +342,17 @@ Solo los técnicos asignados verán la plantación en su dashboard.
 
 ---
 
-# 4.6 Gestión de SubGrupos
+# 4.6 Gestión de Parcelas y Grupos
 
-Los técnicos crean SubGrupos al comenzar a registrar una línea o parcela.
+Los técnicos crean Parcelas para subdividir la plantación, y dentro de cada
+Parcela crean Grupos al comenzar a registrar una línea.
 
-Cada SubGrupo contiene:
+Cada Grupo contiene:
 
 ```
 Nombre (ej "Linea 23)
 Código (ej L23)
-Tipo (Linea / Parcela) (linea por defecto)
+Parcela a la que pertenece
 Estado
 Usuario creador
 ```
@@ -333,19 +360,27 @@ Usuario creador
 Ejemplo:
 
 ```
+Parcela: A
 Nombre: Linea 23B
 Código: L23B
-Tipo: Linea
 ```
 
-Los códigos deben ser únicos dentro de la plantación.
-Al crear un nuevo SubGrupo, se debe mostrar al usuario el nombre del último SubGrupo que generó.
+Reglas de unicidad de códigos:
+
+- El **código de Parcela** debe ser **único por plantación**.
+- El **código de Grupo** debe ser **único por parcela** (un mismo código de
+  grupo puede repetirse en parcelas distintas de la misma plantación). No es
+  único a nivel plantación.
+- Lo que debe ser **único en toda la plantación** es la **combinación**
+  (código de parcela + código de grupo).
+
+Al crear un nuevo Grupo, se debe mostrar al usuario el nombre del último Grupo que generó.
 
 ---
 
-## Estados de SubGrupo
+## Estados de Grupo
 
-Los SubGrupos tienen los siguientes estados:
+Los Grupos tienen los siguientes estados:
 
 ```
 activa
@@ -357,7 +392,7 @@ sincronizada
 
 ### activa
 
-El SubGrupo se está registrando activamente.
+El Grupo se está registrando activamente.
 
 ---
 
@@ -369,7 +404,7 @@ El técnico finalizó el registro de árboles.
 
 ### sincronizada
 
-El SubGrupo fue sincronizado con el servidor.
+El Grupo fue sincronizado con el servidor.
 
 Una vez sincronizado:
 
@@ -411,7 +446,7 @@ Cada árbol contiene:
 ```
 Especie
 Foto opcional
-Posición dentro del SubGrupo
+Posición dentro del Grupo
 SubID
 IdPlantacion (se genera al finalizar plantación)
 IdGeneral (se genera al finalizar plantación)
@@ -427,19 +462,20 @@ Cada árbol genera un identificador llamado **SubID**.
 Formato:
 
 ```
-CodigoSubGrupo + CodigoEspecie + Posicion
+CodigoParcela + CodigoGrupo + CodigoEspecie + Posicion
 ```
 
 Ejemplo:
 
 ```
-L23BANC12
+AL23BANC12
 ```
 
 Significa:
 
 ```
-SubGrupo: L23B
+Parcela: A
+Grupo: L23B
 Especie: ANC
 Árbol número: 12
 ```
@@ -479,7 +515,7 @@ Guardar
 Pasar al siguiente NN
 ```
 
-Hasta que todos los N/N se resuelvan, el SubGrupo no puede sincronizarse.
+Hasta que todos los N/N se resuelvan, el Grupo no puede sincronizarse.
 
 ---
 
@@ -536,11 +572,11 @@ La sincronización es manual.
 Cuando el usuario la inicia se envía al servidor:
 
 ```
-SubGrupo
+Grupo
 Árboles
 ```
 
-Un SubGrupo solo puede sincronizarse si:
+Un Grupo solo puede sincronizarse si:
 
 ```
 estado = finalizada
@@ -551,7 +587,7 @@ y no existen N/N sin resolver
 
 ## Conflictos de sincronización
 
-Si ya existe un SubGrupo con el mismo código en la plantación:
+Si ya existe un Grupo con la misma combinación (código de parcela + código de grupo) en la plantación:
 
 ```
 la sincronización se rechaza
@@ -566,7 +602,8 @@ El usuario deberá resolver el conflicto manualmente.
 Durante la sincronización también se descargan datos actualizados:
 
 ```
-SubGrupos
+Parcelas
+Grupos
 Árboles
 Especies disponibles en la botonera
 ```
@@ -577,7 +614,7 @@ Esto permite ver registros cargados por otros técnicos.
 
 # 4.16 Finalización de Plantación
 
-Los administradores finalizan la plantación cuando todos los SubGrupos están sincronizados.
+Los administradores finalizan la plantación cuando todos los Grupos están sincronizados.
 
 Esto habilita la generación de IDs finales.
 
@@ -631,7 +668,8 @@ Columnas exportadas:
 ID Global
 ID Parcial
 Zona (Lugar)
-SubGrupo
+Parcela
+Grupo
 SubID
 Periodo
 Especie
@@ -641,13 +679,13 @@ Especie
 
 # 5. Reglas de Operación en Campo
 
-Cada SubGrupo es registrado por un único técnico.
+Cada Grupo es registrado por un único técnico.
 
 Múltiples técnicos pueden trabajar simultáneamente en una plantación.
 
-Cada técnico registra SubGrupos distintos.
+Cada técnico registra Grupos distintos.
 
-Los SubGrupos deben completarse antes de sincronizar.
+Los Grupos deben completarse antes de sincronizar.
 
 Una vez sincronizados, no pueden modificarse.
 
