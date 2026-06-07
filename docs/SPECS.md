@@ -12,8 +12,6 @@ La aplicación permitirá registrar árboles plantados durante actividades de re
 
 El sistema está diseñado bajo el paradigma **offline-first**, lo que significa que toda la carga de datos ocurre localmente en el dispositivo y luego se sincroniza con una base de datos central cuando hay conectividad disponible.
 
-La **Fase 1 (MVP)** será utilizada durante la **plantación de otoño 2026 de Bayka**, con el objetivo de validar el sistema en condiciones reales de campo.
-
 La arquitectura está preparada para soportar **múltiples organizaciones en el futuro**, aunque en esta fase inicial existirá una sola organización: **Bayka**.
 
 ---
@@ -52,15 +50,8 @@ Ejemplos posibles:
 - Otras ONGs de restauración ecológica
 - Proyectos de reforestación independientes
 
-En el MVP existirá una única organización:
-
-```
-Bayka
-```
-
 En el futuro el sistema podrá soportar múltiples organizaciones.
-En esta etapa Fase 1 (MVP), esto deberá ser transparente para el usuario.
-Todos los usuarios en el MVP estarán asociados a Bayka.
+En esta etapa Fase 1 (MVP), todos los usuarios en el MVP estarán asociados a una única organización: Bayka.
 
 ---
 
@@ -69,19 +60,6 @@ Todos los usuarios en el MVP estarán asociados a Bayka.
 Los usuarios pertenecen a una o más organizaciones.
 
 Existen dos tipos de usuario:
-
-### Admin
-
-Puede:
-
-- Crear plantaciones
-- Configurar las especies disponibles en una plantación
-- Asignar técnicos a plantaciones
-- Finalizar plantaciones
-- Generar IDs finales
-- Exportar datos de plantaciones
-
----
 
 ### Técnico
 
@@ -94,6 +72,19 @@ Puede:
 - Sincronizar datos
 
 Cada acción realizada queda asociada al usuario que la ejecutó.
+
+---
+
+### Admin
+
+Puede hacer todo lo que hace el usuario Técnico, más:
+
+- Crear plantaciones
+- Configurar las especies disponibles en una plantación
+- Asignar técnicos a plantaciones
+- Finalizar plantaciones
+- Generar IDs finales
+- Exportar datos de plantaciones
 
 ---
 
@@ -144,7 +135,7 @@ Los administradores configuran qué especies estarán disponibles para registrar
 Se eligen especies al crear la plantación.
 Pueden habilitarse más especies luego durante el transcurso de la plantación.
 
-Los técnicos asignados a la plantación pueden registrar Parcelas y Grupos.
+Los técnicos asignados a la plantación pueden registrar Parcelas, Grupos y Árboles.
 
 ---
 
@@ -169,7 +160,10 @@ Parcela B
 
 Un **Grupo** representa un subconjunto de árboles dentro de una **Parcela**.
 Es el nivel hijo de la Parcela y normalmente corresponde a una **línea de
-plantación**.
+plantación**, pero puede también ser un **bosquete**. 
+
+Linea y Bosquete son categorías conceptuales, tipos de grupo, pero
+a fines prácticos el registro de árboles funciona igual en los dos casos.
 
 Ejemplos:
 
@@ -255,7 +249,7 @@ La sesión se mantiene persistente entre aperturas de la aplicación.
 
 Un mismo dispositivo puede ser utilizado por distintos usuarios iniciando sesión.
 
-Para simplificar el MVP, se pensó en generar los usuarios desde un seed incial. Dos admin y dos técnicos. Es posible con Supabase Auth?
+Para simplificar el MVP, se pensó en generar los usuarios desde un seed incial. Dos admin y dos técnicos.
 
 ## Gestión de usuarios
 - Los usuarios del sistema tendrán una cuenta individual (email y contraseña).
@@ -263,7 +257,7 @@ Para simplificar el MVP, se pensó en generar los usuarios desde un seed incial.
 - Los usuarios podrán iniciar sesión desde la aplicación móvil.
 - Cada registro de Grupo y árbol quedará asociado al usuario que lo registró.
 - Un mismo dispositivo puede ser utilizado por distintos usuarios iniciando sesión con diferentes cuentas.
-- Un usuario técnico solo podrá editar Grupos que él haya cargado
+- Un usuario solo podrá editar Grupos que él haya cargado
 
 ## Cuentas guardadas
 
@@ -300,7 +294,7 @@ Para cada plantación el usuario podrá ver:
 - Cantidad de árboles totales registrados y sincronizados.
 - Cantidad de árboles registrados por él sin sincronizar.
 - Cantidad total de árboles registrados por él en la plantación.
-- Cantidad de árboles registrados por el en el día.
+- Cantidad de árboles registrados por él en el día.
 
 ---
 
@@ -328,7 +322,7 @@ El administrador selecciona especies del catálogo global.
 
 Estas especies aparecerán como botones en la interfaz de registro.
 
-Normalmente se mostrarán aprox **20 especies**.
+Normalmente se mostrarán aprox **20 especies**. Pueden ser más.
 
 El administrador también puede definir el **orden de los botones**. Por defecto tienen el orden en que fueron agregados.
 
@@ -511,11 +505,13 @@ Flujo:
 Mostrar registro NN
 Mostrar foto
 Seleccionar especie correcta
-Guardar
 Pasar al siguiente NN
 ```
+Al finalizar, click en Guardar
 
-Hasta que todos los N/N se resuelvan, el Grupo no puede sincronizarse.
+Un Grupo **puede sincronizarse aunque tenga N/N sin resolver**: así otro usuario
+(admin o técnico) puede descargarlos y resolverlos. Tener todos los N/N resueltos
+es requisito de la **finalización de la plantación** (ver # 4.16), no del sync.
 
 ---
 
@@ -561,7 +557,7 @@ Reglas:
 - obligatorias para N/N
 - opcionales para otras especies
 
-Las fotos se almacenan localmente.
+Las fotos se almacenan inicialmente de forma local.
 
 ---
 
@@ -572,15 +568,10 @@ La sincronización es manual.
 Cuando el usuario la inicia se envía al servidor:
 
 ```
-Grupo
+Parcelas
+Grupo,
 Árboles
-```
-
-Un Grupo solo puede sincronizarse si:
-
-```
-estado = finalizada
-y no existen N/N sin resolver
+Fotos (si se seleccionó la opción)
 ```
 
 ---
@@ -609,12 +600,14 @@ Especies disponibles en la botonera
 ```
 
 Esto permite ver registros cargados por otros técnicos.
+Cualquier usuario (admin o técnico) puede descargar árboles N/N subidos por otro
+usuario y resolverlos él mismo.
 
 ---
 
 # 4.16 Finalización de Plantación
 
-Los administradores finalizan la plantación cuando todos los Grupos están sincronizados.
+Los administradores finalizan la plantación cuando todos los Grupos están sincronizados, y todos los N/N resueltos.
 
 Esto habilita la generación de IDs finales.
 
@@ -685,9 +678,8 @@ Múltiples técnicos pueden trabajar simultáneamente en una plantación.
 
 Cada técnico registra Grupos distintos.
 
-Los Grupos deben completarse antes de sincronizar.
-
-Una vez sincronizados, no pueden modificarse.
+Los Grupos sincronizados quedan bloqueados para edición. El admin o el creador
+del Grupo puede reactivarlo explícitamente si necesita corregirlo.
 
 ---
 
