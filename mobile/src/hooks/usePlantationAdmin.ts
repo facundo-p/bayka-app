@@ -18,7 +18,7 @@ import {
   finalizePlantation,
   discardPlantationEdit,
 } from '../repositories/PlantationRepository';
-import { generateAndPersistIds } from '../services/idGenerationService';
+import { generateAndPersistIds, retryPersistIds, deferIdsToSync, type PersistIdsResult } from '../services/idGenerationService';
 // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
@@ -149,6 +149,39 @@ export function usePlantationAdmin() {
     }
   }
 
+  function promptPersistFailure(result: PersistIdsResult) {
+    showConfirm({
+      icon: 'cloud-offline-outline',
+      iconColor: colors.danger,
+      title: 'IDs sin subir',
+      message: 'Los IDs se generaron pero no se pudieron subir al servidor. ¿Qué querés hacer?',
+      buttons: [
+        {
+          label: 'Sincronizar luego',
+          style: 'cancel',
+          onPress: async () => {
+            await deferIdsToSync(result.affectedGroupIds);
+            showInfoDialog(showConfirm, 'Listo', 'Los IDs se subirán en la próxima sincronización.', 'cloud-upload-outline', colors.secondary);
+          },
+        },
+        {
+          label: 'Reintentar',
+          style: 'primary',
+          icon: 'refresh',
+          onPress: async () => {
+            setSeedLoading(true);
+            try {
+              const retry = await retryPersistIds(result.assignedIds, result.affectedGroupIds);
+              if (!retry.persisted) promptPersistFailure(retry);
+            } finally {
+              setSeedLoading(false);
+            }
+          },
+        },
+      ],
+    });
+  }
+
   async function confirmSeedAndGenerate() {
     if (!seedModalPlantacionId) return;
     const seed = parseInt(seedValue, 10);
@@ -173,9 +206,7 @@ export function usePlantationAdmin() {
             setSeedLoading(true);
             try {
               const result = await generateAndPersistIds(pid, seed);
-              if (!result.persisted) {
-                showInfoDialog(showConfirm, 'IDs generados', 'Los IDs se generaron pero no se pudieron subir al servidor. Se subirán en la próxima sincronización.', 'cloud-offline-outline', colors.secondary);
-              }
+              if (!result.persisted) promptPersistFailure(result);
             } catch (e: any) {
               showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
             } finally {

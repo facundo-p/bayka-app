@@ -268,7 +268,7 @@ describe('PlantationRepository', () => {
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
 
-    it('Test 9: flags affected groups pendingSync=true (deduped) so generated IDs get pushed on next sync', async () => {
+    it('Test 9: NO marca pendingSync (la persistencia la hace el RPC dedicado en idGenerationService)', async () => {
       const orderedTrees = [
         { treeId: 'tree-1', groupId: 'group-A' },
         { treeId: 'tree-2', groupId: 'group-A' },
@@ -298,11 +298,13 @@ describe('PlantationRepository', () => {
         await fn(tx);
       });
 
-      await generateIds('plantation-1', 1);
+      const result = await generateIds('plantation-1', 1);
 
-      // Two distinct groups (A, B) must be re-flagged for sync, exactly once each.
+      // No debe flaggear pendingSync: solo asigna IDs.
       const pendingFlags = setValues.filter((v) => v.pendingSync === true);
-      expect(pendingFlags).toHaveLength(2);
+      expect(pendingFlags).toHaveLength(0);
+      // Devuelve los grupos afectados (deduped) para el fallback que decide la UI.
+      expect(result.affectedGroupIds).toEqual(['group-A', 'group-B']);
     });
   });
 });

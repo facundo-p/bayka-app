@@ -399,14 +399,13 @@ export async function generateIds(plantacionId: string, seed: number): Promise<G
     globalId: seed + index,
   }));
 
-  // 2. Assign IDs and re-flag affected groups in a SINGLE atomic transaction.
-  //    Atomicity importa: los IDs definitivos deben asignarse todo-o-nada (un
-  //    fallo a mitad dejaría la secuencia corrupta). pendingSync queda como red
-  //    de seguridad: si el push inmediato (RPC dedicado) fallara, la próxima
-  //    sincronización persiste los IDs igual.
+  // 2. Asignación atómica de los IDs definitivos (todo-o-nada; un fallo a mitad
+  //    dejaría la secuencia corrupta). NO se marca pendingSync: la persistencia al
+  //    server la hace el RPC dedicado en el MISMO paso (idGenerationService). Si
+  //    ese push falla, el usuario decide reintentar o diferir (marcar pendingSync)
+  //    desde la UI.
   await db.transaction(async (transaction) => {
     await assignSequentialIds(transaction, assignedIds);
-    await flagGroupsForSync(transaction, affectedGroupIds);
   });
 
   notifyDataChanged();
@@ -426,19 +425,6 @@ async function assignSequentialIds(
       .update(trees)
       .set({ plantacionId, globalId })
       .where(eq(trees.id, id));
-  }
-}
-
-/** Re-marks groups as dirty so the regular sync flow re-uploads their trees with the new IDs. */
-async function flagGroupsForSync(
-  transaction: DbTransaction,
-  groupIds: string[],
-): Promise<void> {
-  for (const groupId of groupIds) {
-    await transaction
-      .update(groups)
-      .set({ pendingSync: true })
-      .where(eq(groups.id, groupId));
   }
 }
 
