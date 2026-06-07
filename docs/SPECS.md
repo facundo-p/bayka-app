@@ -657,6 +657,10 @@ servidor en el mismo paso**, mediante un RPC dedicado que actualiza solo
 `plantacion_id`/`global_id` (rápido, sin re-subir grupos ni árboles). No hace falta
 sincronizar aparte para que los IDs lleguen al servidor.
 
+Si la subida falla, los IDs se **revierten** y hay que volver a tocar "Generar IDs"
+(ese botón es el único que sube los IDs). La **exportación** solo se habilita cuando
+los IDs están confirmados en el servidor.
+
 ---
 
 # 4.18 Exportación de Datos

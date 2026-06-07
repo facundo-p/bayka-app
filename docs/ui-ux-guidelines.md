@@ -456,9 +456,11 @@ Algunos pasos el negocio los separa a propósito, y eso es correcto:
 - **Generar IDs** es una tarea atómica completa: asigna los IDs en local **y los
   persiste en el server en el mismo paso** (requiere conexión; usa un RPC dedicado).
   No hay que "generar y después sincronizar" — queda hecho y guardado en un solo
-  paso. La UI no debe dar a entender que los IDs están "a medio hacer". (Esto es,
-  además, una excepción legítima a §12: el push va dentro de una acción explícita
-  del admin, no es un sync automático de fondo.)
+  paso. (Esto es, además, una excepción legítima a §12: el push va dentro de una
+  acción explícita del admin, no es un sync automático de fondo.)
+  Si el push falla, los IDs **no** quedan "a medio subir": se revierten y el botón
+  vuelve a ofrecer "Generar IDs" (es el único mecanismo para subirlos). La
+  exportación (Excel/CSV) solo aparece cuando los IDs están confirmados en el server.
 
 ## Regla práctica para el desarrollo
 

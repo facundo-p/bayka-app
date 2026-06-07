@@ -497,10 +497,14 @@ ID global Bayka           (global_id)
 **Persistencia en el server en el mismo paso.** "Generar IDs" **requiere conexión**
 (se gatea en la UI). Tras asignar los IDs en local, se suben a Supabase de inmediato
 con un RPC dedicado y liviano (`update_tree_ids`, mig. 020): un bulk UPDATE de
-`plantacion_id`/`global_id` por id, sin re-subir grupos/árboles completos. Generar
-IDs **no** marca `pendingSync`. Si el push falla, la UI le ofrece al usuario
-**reintentar** o **diferir**; al diferir, recién ahí se marcan los grupos
-`pendingSync` para que la próxima sincronización los persista vía `sync_subgroup`.
+`plantacion_id`/`global_id` por id, sin re-subir grupos/árboles completos.
+
+**Invariante:** los IDs existen en local ⟺ están subidos al server. Si el push
+falla o queda parcial, se **revierten** los IDs locales (vuelven a NULL): la
+plantación queda como si nunca se hubieran generado, el botón **"Generar IDs"**
+vuelve a estar disponible (es el único mecanismo para subirlos) y el export queda
+oculto hasta que estén confirmados en el server. No se usa `pendingSync` ni la
+sincronización de toda la plantación (que ya está finalizada).
 
 El gate de export exige que TODOS los árboles tengan ID.
 

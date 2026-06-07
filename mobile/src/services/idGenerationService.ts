@@ -6,19 +6,15 @@
  * asigna los IDs en SQLite local y los sube al server de inmediato con un RPC
  * dedicado y liviano (update_tree_ids), sin re-subir grupos/árboles enteros.
  *
- * `generateIds` NO marca pendingSync. Si el push falla, la UI le ofrece al usuario
- * reintentar (`retryPersistIds`) o diferir (`deferIdsToSync`, que recién ahí marca
- * los grupos pendingSync para subirlos en la próxima sincronización).
+ * Invariante: los IDs existen en local ⟺ están subidos al server. Por eso, si el
+ * push falla (o queda parcial), se **revierten** los IDs locales: la plantación
+ * queda como si nunca se hubieran generado, el gate vuelve a ofrecer "Generar IDs"
+ * (ese botón es el único mecanismo para subir los IDs) y el export queda oculto
+ * hasta que estén confirmados en el server. No se usa pendingSync ni la sync de
+ * toda la plantación (que está finalizada).
  */
-import { generateIds } from '../repositories/PlantationRepository';
-import { markGroupPendingSync } from '../repositories/GroupRepository';
+import { generateIds, clearGeneratedIds } from '../repositories/PlantationRepository';
 import { persistGeneratedTreeIds } from './sync/pushService';
-
-export interface AssignedTreeId {
-  id: string;
-  plantacionId: number;
-  globalId: number;
-}
 
 export interface PersistIdsResult {
   /** Árboles a los que se asignó ID. */
@@ -27,45 +23,21 @@ export interface PersistIdsResult {
   updated: number;
   /** true solo si TODOS los IDs quedaron persistidos en el server. */
   persisted: boolean;
-  /** Tuplas asignadas (para reintentar el push sin re-generar). */
-  assignedIds: AssignedTreeId[];
-  /** Grupos afectados (para diferir/marcar pendingSync si el usuario elige). */
-  affectedGroupIds: string[];
 }
 
 export async function generateAndPersistIds(
   plantacionId: string,
   seed: number
 ): Promise<PersistIdsResult> {
-  const { assignedIds, affectedGroupIds } = await generateIds(plantacionId, seed);
-  return pushIds(assignedIds, affectedGroupIds);
-}
-
-/** Reintenta el push de IDs ya generados (no re-genera). */
-export async function retryPersistIds(
-  assignedIds: AssignedTreeId[],
-  affectedGroupIds: string[]
-): Promise<PersistIdsResult> {
-  return pushIds(assignedIds, affectedGroupIds);
-}
-
-/** Difiere la persistencia: marca los grupos pendingSync para la próxima sync. */
-export async function deferIdsToSync(affectedGroupIds: string[]): Promise<void> {
-  for (const groupId of affectedGroupIds) {
-    await markGroupPendingSync(groupId);
-  }
-}
-
-async function pushIds(
-  assignedIds: AssignedTreeId[],
-  affectedGroupIds: string[]
-): Promise<PersistIdsResult> {
+  const { assignedIds } = await generateIds(plantacionId, seed);
   const { success, updated } = await persistGeneratedTreeIds(assignedIds);
-  return {
-    total: assignedIds.length,
-    updated,
-    persisted: success && updated === assignedIds.length,
-    assignedIds,
-    affectedGroupIds,
-  };
+  const persisted = success && updated === assignedIds.length;
+
+  if (!persisted) {
+    // El push no quedó completo → revertir para que "Generar IDs" siga disponible
+    // y el export no aparezca hasta que los IDs estén realmente en el server.
+    await clearGeneratedIds(plantacionId);
+  }
+
+  return { total: assignedIds.length, updated, persisted };
 }

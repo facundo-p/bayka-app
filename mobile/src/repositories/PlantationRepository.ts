@@ -428,6 +428,20 @@ async function assignSequentialIds(
   }
 }
 
+/**
+ * Revierte los IDs generados (plantacion_id / global_id → NULL) de todos los
+ * árboles de la plantación. Se usa cuando el push al server falla: deja la
+ * plantación "como si nunca se hubieran generado" → el gate vuelve a ofrecer
+ * "Generar IDs" y oculta el export hasta que estén confirmados en el server.
+ */
+export async function clearGeneratedIds(plantacionId: string): Promise<void> {
+  await db
+    .update(trees)
+    .set({ plantacionId: null, globalId: null })
+    .where(sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`);
+  notifyDataChanged();
+}
+
 // --- deletePlantationLocally ------------------------------------------------
 
 /**
