@@ -157,34 +157,25 @@ export function usePlantationAdmin() {
       return;
     }
     const pid = seedModalPlantacionId;
-    setSeedModalPlantacionId(null);
-    showConfirm({
-      icon: 'key-outline',
-      iconColor: colors.primary,
-      title: 'Generar IDs',
-      message: 'Se van a generar IDs para todos los árboles de esta plantación. Esta acción no se puede deshacer.',
-      buttons: [
-        { label: 'Cancelar', style: 'cancel', onPress: () => {} },
-        {
-          label: 'Generar',
-          style: 'primary',
-          icon: 'key-outline',
-          onPress: async () => {
-            setSeedLoading(true);
-            try {
-              const result = await generateAndPersistIds(pid, seed);
-              if (!result.persisted) {
-                showInfoDialog(showConfirm, 'IDs no subidos', 'No se pudieron subir los IDs al servidor. Volvé a tocar "Generar IDs" para reintentar.', 'cloud-offline-outline', colors.danger);
-              }
-            } catch (e: any) {
-              showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
-            } finally {
-              setSeedLoading(false);
-            }
-          },
-        },
-      ],
-    });
+    // El modal de seed NO se cierra acá: queda abierto con el spinner durante toda
+    // la operación (generar + subir al server). Recién al terminar se cierra y se
+    // muestra el resultado (éxito/error), para no exponer un estado intermedio
+    // (ej. el export apareciendo antes de confirmar la subida).
+    setSeedLoading(true);
+    try {
+      const result = await generateAndPersistIds(pid, seed);
+      setSeedModalPlantacionId(null);
+      if (result.persisted) {
+        showInfoDialog(showConfirm, 'IDs generados', 'Los IDs se generaron y se subieron al servidor correctamente.', 'checkmark-circle-outline', colors.secondary);
+      } else {
+        showInfoDialog(showConfirm, 'IDs no subidos', 'No se pudieron subir los IDs al servidor. Volvé a tocar "Generar IDs" para reintentar.', 'cloud-offline-outline', colors.danger);
+      }
+    } catch (e: any) {
+      setSeedModalPlantacionId(null);
+      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
+    } finally {
+      setSeedLoading(false);
+    }
   }
 
   async function handleExportCsv(plantacionId: string) {
