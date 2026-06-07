@@ -311,11 +311,16 @@ La sincronización debe ser explícita.
 El usuario debe poder ver:
 
 ```
-SubGrupos pendientes de sincronización
+Grupos (y parcelas) pendientes de sincronización
 estado de sincronización
 ```
 
-La sincronización nunca debe iniciarse automáticamente.
+La sincronización general nunca debe iniciarse automáticamente (el técnico decide
+qué y cuándo subir).
+
+**Excepción puntual:** "Generar IDs" (acción explícita del admin, ver §19) sube sus
+IDs al server en el mismo paso. No es un sync de fondo automático, sino la
+persistencia inmediata de una acción que el usuario inició a propósito.
 
 ---
 
@@ -448,11 +453,12 @@ Algunos pasos el negocio los separa a propósito, y eso es correcto:
 
 ## Tareas que deben ser atómicas y autocontenidas
 
-- **Generar IDs** es una tarea completa en sí misma: asigna los IDs y **persiste
-  localmente**. Queda terminada sin depender de ningún paso posterior. La
-  sincronización es una tarea **distinta y posterior** (decisión del técnico), no
-  una continuación obligatoria de "generar IDs". La UI no debe dar a entender que
-  los IDs están "a medio hacer" hasta sincronizar — están hechos y guardados.
+- **Generar IDs** es una tarea atómica completa: asigna los IDs en local **y los
+  persiste en el server en el mismo paso** (requiere conexión; usa un RPC dedicado).
+  No hay que "generar y después sincronizar" — queda hecho y guardado en un solo
+  paso. La UI no debe dar a entender que los IDs están "a medio hacer". (Esto es,
+  además, una excepción legítima a §12: el push va dentro de una acción explícita
+  del admin, no es un sync automático de fondo.)
 
 ## Regla práctica para el desarrollo
 

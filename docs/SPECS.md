@@ -650,6 +650,15 @@ Los IDs incrementan desde ese valor.
 
 ---
 
+## Persistencia
+
+"Generar IDs" **requiere conexión**. Los IDs se asignan en local y se **suben al
+servidor en el mismo paso**, mediante un RPC dedicado que actualiza solo
+`plantacion_id`/`global_id` (rápido, sin re-subir grupos ni árboles). No hace falta
+sincronizar aparte para que los IDs lleguen al servidor.
+
+---
+
 # 4.18 Exportación de Datos
 
 Los administradores pueden exportar la plantación a CSV o Excel.

@@ -304,7 +304,6 @@ Un Grupo es elegible para sincronizar cuando:
 
 ```
 pendingSync = true
-no existen árboles NN sin resolver
 ```
 
 ---
@@ -373,8 +372,6 @@ docs/
 
 mobile/
     src/
-
-        app/
 
         app/                     (expo-router: rutas (admin)/(tecnico)/(auth))
 
@@ -497,8 +494,14 @@ ID parcial de plantación  (plantacion_id)
 ID global Bayka           (global_id)
 ```
 
-Los IDs generados se persisten en el server en la siguiente sincronización (RPC
-sync_subgroup). El gate de export exige que TODOS los árboles tengan ID.
+**Persistencia en el server en el mismo paso.** "Generar IDs" **requiere conexión**
+(se gatea en la UI). Tras asignar los IDs en local, se suben a Supabase de inmediato
+con un RPC dedicado y liviano (`update_tree_ids`, mig. 020): un bulk UPDATE de
+`plantacion_id`/`global_id` por id, sin re-subir grupos/árboles completos. Si el push
+fallara, los grupos quedan `pendingSync` (red de seguridad) y la próxima
+sincronización los persiste vía `sync_subgroup`.
+
+El gate de export exige que TODOS los árboles tengan ID.
 
 ---
 
