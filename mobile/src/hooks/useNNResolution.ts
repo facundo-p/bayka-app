@@ -9,8 +9,7 @@ import { useTrees } from './useTrees';
 import { usePlantationSpecies } from './usePlantationSpecies';
 import { resolveNNTree } from '../repositories/TreeRepository';
 import { useLiveData, notifyDataChanged } from '../database/liveQuery';
-import { getNNTreesForPlantation, getNNTreesForPlantationByUser } from '../queries/plantationDetailQueries';
-import { useCurrentUserId } from './useCurrentUserId';
+import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import { useProfileData } from './useProfileData';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
@@ -40,7 +39,6 @@ export function useNNResolution(params: {
   const { plantacionId, grupoId, grupoCodigo } = params;
   const confirm = useConfirm();
   const isPlantationMode = !grupoId;
-  const userId = useCurrentUserId();
   const { profile } = useProfileData();
   const isAdmin = profile?.rol === 'admin';
 
@@ -49,11 +47,11 @@ export function useNNResolution(params: {
   const { data: plantationNNTrees } = useLiveData(
     () => {
       if (!isPlantationMode) return Promise.resolve([]);
-      if (isAdmin) return getNNTreesForPlantation(plantacionId ?? '');
-      if (userId) return getNNTreesForPlantationByUser(plantacionId ?? '', userId);
-      return Promise.resolve([]);
+      // Cualquier usuario (admin o técnico) resuelve los N/N de TODA la
+      // plantación, incluidos los registrados por otros usuarios.
+      return getNNTreesForPlantation(plantacionId ?? '');
     },
-    [plantacionId, isPlantationMode, isAdmin, userId]
+    [plantacionId, isPlantationMode]
   );
 
   let unresolvedTrees: NNTree[];
@@ -119,8 +117,9 @@ export function useNNResolution(params: {
   }
 
   // ─── Permission check ─────────────────────────────────────────────────────
-  // Admin can always resolve. Tecnico can resolve trees in their own groups.
-  const canResolve = isAdmin || !grupoId; // plantation-mode: filtered by user already
+  // En modo plantación cualquier usuario puede resolver N/N (incluidos los de
+  // otros usuarios). En modo single-group, solo el admin (o el dueño del grupo).
+  const canResolve = isAdmin || !grupoId;
 
   // ─── Conflict helpers ────────────────────────────────────────────────────
   function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {

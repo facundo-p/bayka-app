@@ -130,8 +130,9 @@ export async function markGroupSynced(grupoId: string): Promise<void> {
   notifyDataChanged();
 }
 
-// Finalizes a Group (activa → finalizada). N/N trees are allowed —
-// the sync gate (not finalization) blocks upload of unresolved N/N.
+// Finalizes a Group (activa → finalizada). N/N trees are allowed: un grupo se
+// puede sincronizar con N/N sin resolver — los resuelve después cualquier
+// usuario (admin o técnico) tras descargarlo. NO hay gate de N/N en el sync.
 export async function finalizeGroup(grupoId: string): Promise<{ success: true }> {
   await db.update(groups)
     .set({ estado: 'finalizada' })
