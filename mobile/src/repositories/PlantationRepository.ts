@@ -378,7 +378,12 @@ export async function assignTechnicians(
  * CRITICAL (Pitfall 3): ORDER BY must be deterministic — groups.createdAt ASC,
  * trees.posicion ASC. Both are immutable after sync.
  */
-export async function generateIds(plantacionId: string, seed: number): Promise<void> {
+export interface GeneratedIds {
+  assignedIds: Array<{ id: string; plantacionId: number; globalId: number }>;
+  affectedGroupIds: string[];
+}
+
+export async function generateIds(plantacionId: string, seed: number): Promise<GeneratedIds> {
   // 1. Fetch all trees ordered deterministically (groupId needed to re-flag for sync)
   const orderedTrees = await db
     .select({ treeId: trees.id, groupId: trees.groupId })
@@ -388,33 +393,39 @@ export async function generateIds(plantacionId: string, seed: number): Promise<v
     .orderBy(asc(groups.createdAt), asc(trees.posicion));
 
   const affectedGroupIds = [...new Set(orderedTrees.map((t) => t.groupId))];
+  const assignedIds = orderedTrees.map((tree, index) => ({
+    id: tree.treeId,
+    plantacionId: index + 1,
+    globalId: seed + index,
+  }));
 
   // 2. Assign IDs and re-flag affected groups in a SINGLE atomic transaction.
   //    Atomicity importa: los IDs definitivos deben asignarse todo-o-nada (un
-  //    fallo a mitad dejaría la secuencia corrupta). Flaggear pendingSync es lo
-  //    que hace que los IDs recién generados sean elegibles para el próximo push.
+  //    fallo a mitad dejaría la secuencia corrupta). pendingSync queda como red
+  //    de seguridad: si el push inmediato (RPC dedicado) fallara, la próxima
+  //    sincronización persiste los IDs igual.
   await db.transaction(async (transaction) => {
-    await assignSequentialIds(transaction, orderedTrees, seed);
+    await assignSequentialIds(transaction, assignedIds);
     await flagGroupsForSync(transaction, affectedGroupIds);
   });
 
   notifyDataChanged();
+  return { assignedIds, affectedGroupIds };
 }
 
 /** Handle de la transacción local de SQLite (drizzle/expo-sqlite). */
 type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-/** Writes plantacionId (1..N) and globalId (seed..seed+N-1) to each tree, in order. */
+/** Writes the pre-computed plantacionId / globalId to each tree. */
 async function assignSequentialIds(
   transaction: DbTransaction,
-  orderedTrees: Array<{ treeId: string }>,
-  seed: number,
+  assignedIds: Array<{ id: string; plantacionId: number; globalId: number }>,
 ): Promise<void> {
-  for (let i = 0; i < orderedTrees.length; i++) {
+  for (const { id, plantacionId, globalId } of assignedIds) {
     await transaction
       .update(trees)
-      .set({ plantacionId: i + 1, globalId: seed + i })
-      .where(eq(trees.id, orderedTrees[i].treeId));
+      .set({ plantacionId, globalId })
+      .where(eq(trees.id, id));
   }
 }
 

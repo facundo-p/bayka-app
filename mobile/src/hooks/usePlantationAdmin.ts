@@ -16,9 +16,9 @@ import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queri
 import {
   updatePlantation,
   finalizePlantation,
-  generateIds,
   discardPlantationEdit,
 } from '../repositories/PlantationRepository';
+import { generateAndPersistIds } from '../services/idGenerationService';
 // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel } from '../services/ExportService';
@@ -172,7 +172,10 @@ export function usePlantationAdmin() {
           onPress: async () => {
             setSeedLoading(true);
             try {
-              await generateIds(pid, seed);
+              const result = await generateAndPersistIds(pid, seed);
+              if (!result.persisted) {
+                showInfoDialog(showConfirm, 'IDs generados', 'Los IDs se generaron pero no se pudieron subir al servidor. Se subirán en la próxima sincronización.', 'cloud-offline-outline', colors.secondary);
+              }
             } catch (e: any) {
               showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
             } finally {

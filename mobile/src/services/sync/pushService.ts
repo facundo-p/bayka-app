@@ -314,3 +314,30 @@ export async function uploadSyncableGroups(
 
   return results;
 }
+
+// ─── Persist generated tree IDs (RPC dedicado) ───────────────────────────────
+
+/**
+ * Persiste los IDs generados (plantacion_id / global_id) en el server con un RPC
+ * dedicado y liviano (bulk UPDATE), sin re-subir grupos/árboles completos.
+ * Requiere conexión. `updated` = cantidad de filas que el server realmente tocó
+ * (si es menor a las enviadas, algún árbol aún no estaba sincronizado).
+ */
+export async function persistGeneratedTreeIds(
+  rows: Array<{ id: string; plantacionId: number; globalId: number }>
+): Promise<{ success: boolean; updated: number }> {
+  if (rows.length === 0) return { success: true, updated: 0 };
+
+  const p_ids = rows.map((row) => ({
+    id: row.id,
+    plantacion_id: row.plantacionId,
+    global_id: row.globalId,
+  }));
+
+  const { data, error } = await supabase.rpc('update_tree_ids', { p_ids });
+  if (error || !data?.success) {
+    syncLog.error('update_tree_ids RPC failed:', JSON.stringify(error ?? data));
+    return { success: false, updated: 0 };
+  }
+  return { success: true, updated: data.updated ?? 0 };
+}
