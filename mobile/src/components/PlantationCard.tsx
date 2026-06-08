@@ -223,52 +223,59 @@ export default function PlantationCard({
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
-      <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
-        <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
+      {/* Fila superior: franja verde + contenido + acciones. La franja y los
+          íconos de acción solo cubren esta fila; la expansión de parcelas va
+          debajo (full-width), así los íconos no se desplazan al expandir. */}
+      <View style={styles.topRow}>
+        <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
+          <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
+        </View>
+
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
+            <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+          </View>
+          <Text style={styles.subtitle}>{periodo}</Text>
+
+          <StatsRow
+            totalCount={totalCount}
+            syncedCount={syncedCount}
+            todayCount={todayCount}
+            nnCount={nnCount}
+            estado={estado}
+          />
+
+          {pendingSync > 0 && (
+            <View style={styles.pendingSyncRow}>
+              <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
+              <Text style={styles.pendingSyncText}>
+                {pendingSync} grupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <ActionStrip onEdit={onEdit} onGear={onGear} onDelete={onDelete} />
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
-          {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
-          <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
-        </View>
-        <Text style={styles.subtitle}>{periodo}</Text>
-
-        <StatsRow
-          totalCount={totalCount}
-          syncedCount={syncedCount}
-          todayCount={todayCount}
-          nnCount={nnCount}
-          estado={estado}
-        />
-
-        {pendingSync > 0 && (
-          <View style={styles.pendingSyncRow}>
-            <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
-            <Text style={styles.pendingSyncText}>
-              {pendingSync} grupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
-            </Text>
-          </View>
-        )}
-
-        {onToggleExpanded && (
+      {onToggleExpanded && (
+        <View style={styles.parcelasSection}>
           <ExpandRow
             parcelasCount={parcelasCount}
             expanded={expanded}
             onToggle={onToggleExpanded}
           />
-        )}
 
-        {expanded && parcelas && (
-          <ExpandedSection
-            parcelas={parcelas}
-            onParcelaPress={onParcelaPress}
-            onParcelaLongPress={onParcelaLongPress}
-          />
-        )}
-      </View>
-
-      <ActionStrip onEdit={onEdit} onGear={onGear} onDelete={onDelete} />
+          {expanded && parcelas && (
+            <ExpandedSection
+              parcelas={parcelas}
+              onParcelaPress={onParcelaPress}
+              onParcelaLongPress={onParcelaLongPress}
+            />
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
