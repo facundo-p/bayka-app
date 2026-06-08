@@ -4,6 +4,7 @@ import { plantationSpecies, plantations, species } from '../../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
+import { SyncErrorCode, SyncPlantationResult } from './types';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
 
@@ -55,6 +56,20 @@ export async function pullSpeciesFromServer(): Promise<void> {
 // ─── Upload offline-created plantations ───────────────────────────────────────
 
 /**
+ * Classify a plantation push error into a SyncErrorCode + raw detail. The detail
+ * carries the postgres code/message so an otherwise-opaque failure (e.g. a FK
+ * violation because the org row is missing) is visible in the UI instead of
+ * surfacing only downstream as a parcela "Error inesperado".
+ */
+function classifyPlantationError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
+  const detail = `${error?.code ?? 'sin-codigo'}: ${error?.message ?? ''}`.trim();
+  if (error?.code === '42501') return { error: 'PERMISSION', detail };
+  const msg = String(error?.message ?? '').toLowerCase();
+  if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) return { error: 'NETWORK', detail };
+  return { error: 'UNKNOWN', detail };
+}
+
+/**
  * OFPL-05 / OFPL-06
  * Uploads locally-created plantations (pendingSync=true) to Supabase.
  * For each pending plantation:
@@ -62,13 +77,17 @@ export async function pullSpeciesFromServer(): Promise<void> {
  * 2. Upserts plantation_species rows
  * 3. Marks pendingSync=false locally
  *
- * Non-fatal: failed plantations are logged and skipped.
+ * Returns a result per plantation so the caller can surface failures: a failed
+ * plantation push silently blocks its parcelas/groups (FK), so the error must
+ * reach the user instead of being swallowed.
  */
-export async function uploadOfflinePlantations(): Promise<void> {
+export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
   const pending = await db
     .select()
     .from(plantations)
     .where(eq(plantations.pendingSync, true));
+
+  const results: SyncPlantationResult[] = [];
 
   for (const p of pending) {
     // Step 1: Upload plantation row (idempotent)
@@ -87,6 +106,8 @@ export async function uploadOfflinePlantations(): Promise<void> {
     // 23505 = duplicate key = plantation already exists on server, proceed with species upload
     if (plantError && plantError.code !== '23505') {
       syncLog.error('Upload plantation failed:', p.id, plantError.message);
+      const { error: code, detail } = classifyPlantationError(plantError);
+      results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });
       continue;
     }
 
@@ -116,7 +137,11 @@ export async function uploadOfflinePlantations(): Promise<void> {
       .update(plantations)
       .set({ pendingSync: false })
       .where(eq(plantations.id, p.id));
+
+    results.push({ success: true, plantacionId: p.id, nombre: p.lugar });
   }
+
+  return results;
 }
 
 // ─── Upload pending plantation edits ─────────────────────────────────────────
@@ -163,9 +188,11 @@ export async function uploadPendingEdits(): Promise<void> {
 
 // ─── Global pre-steps ────────────────────────────────────────────────────────
 
-export async function runGlobalPreSteps(): Promise<void> {
+export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   await supabase.auth.getSession();
   try { await pullSpeciesFromServer(); } catch (e) { syncLog.error('Pull species failed:', e); }
-  try { await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
+  let plantationResults: SyncPlantationResult[] = [];
+  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
   try { await uploadPendingEdits(); } catch (e) { syncLog.error('Upload pending edits failed:', e); }
+  return plantationResults;
 }

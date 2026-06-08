@@ -2,7 +2,7 @@ import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, SyncParcelaResult, PhotoSyncProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress } from '../services/SyncService';
 import BaseModal from './BaseModal';
 import FailureList from './FailureList';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
@@ -12,10 +12,13 @@ interface Props {
   progress: SyncProgress | null;
   results: SyncGroupResult[];
   parcelaResults: SyncParcelaResult[];
+  plantationResults: SyncPlantationResult[];
   successCount: number;
   failureCount: number;
   parcelaFailureCount: number;
+  plantationFailureCount: number;
   pullSuccess: boolean | null;
+  authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
   globalProgress?: { plantationName: string; done: number; total: number } | null;
@@ -27,16 +30,22 @@ export default function SyncProgressModal({
   progress,
   results,
   parcelaResults,
+  plantationResults,
   successCount,
   failureCount,
   parcelaFailureCount,
+  plantationFailureCount,
   pullSuccess,
+  authExpired,
   photoProgress,
   photoResult,
   globalProgress,
   onDismiss,
 }: Props) {
   if (state === 'idle') return null;
+  // Session expiry is surfaced by a dedicated ConfirmModal (re-login flow),
+  // not here — suppress this modal so the two don't overlap.
+  if (authExpired) return null;
 
   return (
     <BaseModal
@@ -98,7 +107,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && pullSuccess !== null && results.length === 0 && parcelaFailureCount === 0 && (
+      {state === 'done' && pullSuccess !== null && results.length === 0 && parcelaFailureCount === 0 && plantationFailureCount === 0 && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -124,15 +133,15 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && (results.length > 0 || parcelaFailureCount > 0 || pullSuccess === null) && (
+      {state === 'done' && (results.length > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0 || pullSuccess === null) && (
         <>
           <Ionicons
-            name={failureCount > 0 || parcelaFailureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
+            name={failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
             size={48}
-            color={failureCount > 0 || parcelaFailureCount > 0 ? colors.secondary : colors.primary}
+            color={failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0 ? colors.secondary : colors.primary}
           />
           <Text style={styles.title}>
-            {failureCount === 0 && parcelaFailureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
+            {failureCount === 0 && parcelaFailureCount === 0 && plantationFailureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
           </Text>
           {successCount > 0 && (
             <Text style={styles.successText}>
@@ -160,8 +169,10 @@ export default function SyncProgressModal({
               {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
             </Text>
           )}
-          {/* Parcela errors first: una parcela pendiente es la causa raíz que
-              bloquea a sus grupos (PARCELA_PENDING). */}
+          {/* Plantación primero: si no se subió, FK-bloquea sus parcelas y
+              grupos (la causa raíz más upstream). Luego parcela (bloquea grupos
+              con PARCELA_PENDING), luego grupos. */}
+          <FailureList label="plantacion" results={plantationResults} getKey={(r) => r.plantacionId} />
           <FailureList label="parcela" results={parcelaResults} getKey={(r) => r.parcelaId} />
           <FailureList label="grupo" results={results} getKey={(r) => r.groupId} />
           <Pressable style={styles.dismissButton} onPress={onDismiss}>

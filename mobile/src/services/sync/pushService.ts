@@ -132,7 +132,10 @@ export function classifyParcelaRpcResult(
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
     return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'NETWORK' };
   }
-  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'UNKNOWN' };
+  // Unexpected: carry the raw postgres code/message so the real cause is visible
+  // (e.g. 23503 FK violation when the parent plantation isn't on the server yet).
+  const detail = `${error?.code ?? 'sin-codigo'}: ${error?.message ?? ''}`.trim();
+  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'UNKNOWN', detail };
 }
 
 /**
@@ -215,6 +218,10 @@ export async function uploadGroup(
     nombre: sg.nombre,
     codigo: sg.codigo,
     tipo: sg.tipo,
+    // Estado REAL del grupo (antes el RPC lo hardcodeaba a 'finalizada'). El
+    // server solo acepta 'activa'|'finalizada'; 'sincronizada' es un flag
+    // solo-cliente que mapea a 'finalizada'.
+    estado: sg.estado === 'activa' ? 'activa' : 'finalizada',
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
   };

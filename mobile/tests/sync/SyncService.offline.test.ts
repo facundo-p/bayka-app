@@ -177,7 +177,10 @@ describe('SyncService — offline functions', () => {
         };
       });
 
-      await uploadOfflinePlantations();
+      const happyResults = await uploadOfflinePlantations();
+      expect(happyResults).toEqual([
+        { success: true, plantacionId: fakePendingPlantation.id, nombre: fakePendingPlantation.lugar },
+      ]);
 
       // Verify plantation was inserted to server
       const plantationFromCalls = (mockSupabase.from as jest.Mock).mock.calls;
@@ -254,13 +257,20 @@ describe('SyncService — offline functions', () => {
         return { select: jest.fn().mockResolvedValue({ data: [], error: null }) };
       });
 
-      await uploadOfflinePlantations();
+      const failResults = await uploadOfflinePlantations();
 
       // Species upsert must NOT be called (plantation upload failed with non-idempotent error)
       expect(speciesUpsertMock).not.toHaveBeenCalled();
 
       // pendingSync must NOT be updated to false (plantation was skipped)
       expect(mockDb.update).not.toHaveBeenCalled();
+
+      // The failure is surfaced with the raw postgres detail (no longer swallowed)
+      expect(failResults).toHaveLength(1);
+      expect(failResults[0].success).toBe(false);
+      if (failResults[0].success) return;
+      expect(failResults[0].error).toBe('UNKNOWN');
+      expect(failResults[0].detail).toContain('42P01');
     });
 
     it('Test 7: no pending plantations — no server calls made', async () => {

@@ -345,8 +345,12 @@ parcela
 ```
 activa
 finalizada
-sincronizada
 ```
+
+El estado real es `activa` | `finalizada` (lo que persiste el server y lo que
+sube el sync sin hardcodear). "Sincronizado" se representa con `pendingSync =
+false`, NO con un estado. `sincronizada` es un valor heredado/deprecado que ya no
+se escribe pero puede existir en filas locales viejas (ver issue #60 y SPECS.md).
 
 ### Relaciones
 

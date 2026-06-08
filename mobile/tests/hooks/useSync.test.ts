@@ -44,7 +44,7 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function));
     });
 
     it('transitions state from idle → pushing → done', async () => {
@@ -132,6 +132,29 @@ describe('useSync', () => {
       expect(result.current.hasFailures).toBe(true);
     });
 
+    it('surfaces plantation push failures from syncPlantation via onPlantationResults', async () => {
+      const plantationFailures = [
+        { success: false, plantacionId: 'pl-1', nombre: 'Finca X', error: 'UNKNOWN' as const, detail: '23503: foreign key' },
+      ];
+      // 4th callback arg delivers plantation push results.
+      (syncPlantation as jest.Mock).mockImplementation(
+        (_id: string, _onProgress: any, _onParcelas: any, onPlantationResults?: (p: any[]) => void) => {
+          onPlantationResults?.(plantationFailures);
+          return Promise.resolve([]);
+        }
+      );
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.plantationResults).toEqual(plantationFailures);
+      expect(result.current.plantationFailureCount).toBe(1);
+      expect(result.current.hasFailures).toBe(true);
+    });
+
     it('reports no failures when all groups sync successfully', async () => {
       (syncPlantation as jest.Mock).mockResolvedValue([
         { success: true, groupId: 'sg-1', nombre: 'Linea A' },
@@ -158,6 +181,32 @@ describe('useSync', () => {
       expect(result.current.pullSuccess).toBe(true);
     });
 
+    it('sets authExpired when syncPlantation throws SessionExpiredError', async () => {
+      const expiredErr = Object.assign(new Error('SESSION_EXPIRED'), { name: 'SessionExpiredError' });
+      (syncPlantation as jest.Mock).mockRejectedValue(expiredErr);
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.authExpired).toBe(true);
+      expect(result.current.state).toBe('done');
+    });
+
+    it('does NOT set authExpired for a generic sync error', async () => {
+      (syncPlantation as jest.Mock).mockRejectedValue(new Error('boom'));
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.authExpired).toBe(false);
+    });
+
     it('sets pullSuccess=false when sync throws', async () => {
       (syncPlantation as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -181,7 +230,7 @@ describe('useSync', () => {
         await result.current.startGlobalSync();
       });
 
-      expect(syncAllPlantations).toHaveBeenCalledWith(expect.any(Function), true);
+      expect(syncAllPlantations).toHaveBeenCalledWith(expect.any(Function), true, expect.any(Function));
     });
 
     it('flattens results from all plantations', async () => {

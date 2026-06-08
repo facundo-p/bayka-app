@@ -27,4 +27,9 @@ export const failureListStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.danger,
   },
+  failureDetail: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+  },
 });

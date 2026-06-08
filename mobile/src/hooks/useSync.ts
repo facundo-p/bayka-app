@@ -6,6 +6,7 @@ import {
   downloadPhotosForPlantation,
   SyncGroupResult,
   SyncParcelaResult,
+  SyncPlantationResult,
   SyncProgress,
   PhotoSyncProgress,
   GlobalSyncProgress,
@@ -19,7 +20,9 @@ export function useSync(plantacionId?: string) {
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [results, setResults] = useState<SyncGroupResult[]>([]);
   const [parcelaResults, setParcelaResults] = useState<SyncParcelaResult[]>([]);
+  const [plantationResults, setPlantationResults] = useState<SyncPlantationResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
+  const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
@@ -33,7 +36,9 @@ export function useSync(plantacionId?: string) {
     setProgress(null);
     setResults([]);
     setParcelaResults([]);
+    setPlantationResults([]);
     setPullSuccess(null);
+    setAuthExpired(false);
     setPhotoProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
@@ -41,7 +46,7 @@ export function useSync(plantacionId?: string) {
     try {
       // syncPlantation does pull-then-push internally
       setState('pushing');
-      const res = await syncPlantation(plantacionId, setProgress, setParcelaResults);
+      const res = await syncPlantation(plantacionId, setProgress, setParcelaResults, setPlantationResults);
       setResults(res);
       setPullSuccess(true);
 
@@ -60,6 +65,7 @@ export function useSync(plantacionId?: string) {
     } catch (err) {
       console.error('[Sync] Bidirectional sync failed:', err);
       setPullSuccess(false);
+      if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
     } finally {
       setState('done');
       notifyDataChanged();
@@ -71,14 +77,16 @@ export function useSync(plantacionId?: string) {
     setProgress(null);
     setResults([]);
     setParcelaResults([]);
+    setPlantationResults([]);
     setPullSuccess(null);
+    setAuthExpired(false);
     setPhotoProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
 
     try {
       setState('pushing');
-      const res = await syncPlantation(targetPlantacionId, setProgress, setParcelaResults);
+      const res = await syncPlantation(targetPlantacionId, setProgress, setParcelaResults, setPlantationResults);
       setResults(res);
       setPullSuccess(true);
 
@@ -97,6 +105,7 @@ export function useSync(plantacionId?: string) {
     } catch (err) {
       console.error('[Sync] Plantation sync failed:', err);
       setPullSuccess(false);
+      if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
     } finally {
       setState('done');
       notifyDataChanged();
@@ -108,7 +117,9 @@ export function useSync(plantacionId?: string) {
     setProgress(null);
     setResults([]);
     setParcelaResults([]);
+    setPlantationResults([]);
     setPullSuccess(null);
+    setAuthExpired(false);
     setPhotoProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
@@ -128,7 +139,8 @@ export function useSync(plantacionId?: string) {
             setState('pulling');
           }
         },
-        incluirFotos
+        incluirFotos,
+        setPlantationResults
       );
 
       // Flatten results from all plantations
@@ -139,6 +151,7 @@ export function useSync(plantacionId?: string) {
     } catch (err) {
       console.error('[Sync] Global sync failed:', err);
       setPullSuccess(false);
+      if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
     } finally {
       setState('done');
       notifyDataChanged();
@@ -150,14 +163,17 @@ export function useSync(plantacionId?: string) {
     setProgress(null);
     setResults([]);
     setParcelaResults([]);
+    setPlantationResults([]);
     setPullSuccess(null);
+    setAuthExpired(false);
     setPhotoProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
   }, []);
 
   const parcelaFailureCount = parcelaResults.filter((r) => !r.success).length;
-  const hasFailures = results.some((r) => !r.success) || parcelaFailureCount > 0;
+  const plantationFailureCount = plantationResults.filter((r) => !r.success).length;
+  const hasFailures = results.some((r) => !r.success) || parcelaFailureCount > 0 || plantationFailureCount > 0;
   const successCount = results.filter((r) => r.success).length;
   const failureCount = results.filter((r) => !r.success).length;
 
@@ -166,6 +182,8 @@ export function useSync(plantacionId?: string) {
     progress,
     results,
     parcelaResults,
+    plantationResults,
+    authExpired,
     startBidirectionalSync,
     startPlantationSync,
     startGlobalSync,
@@ -175,6 +193,7 @@ export function useSync(plantacionId?: string) {
     successCount,
     failureCount,
     parcelaFailureCount,
+    plantationFailureCount,
     photoProgress,
     photoResult,
     globalProgress,

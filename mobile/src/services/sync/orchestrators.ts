@@ -2,7 +2,8 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncGroupResult, SyncParcelaResult, SyncProgress, GlobalSyncProgress } from './types';
+import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress } from './types';
+import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
@@ -21,9 +22,16 @@ import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService
 export async function syncPlantation(
   plantacionId: string,
   onProgress?: (progress: SyncProgress) => void,
-  onParcelaResults?: (parcelas: SyncParcelaResult[]) => void
+  onParcelaResults?: (parcelas: SyncParcelaResult[]) => void,
+  onPlantationResults?: (plantations: SyncPlantationResult[]) => void
 ): Promise<SyncGroupResult[]> {
-  await runGlobalPreSteps();
+  // Abort early if the session can't authenticate server writes (avoids anon
+  // requests that RLS rejects as a misleading permission error).
+  await ensureServerSession();
+  // runGlobalPreSteps pushes offline-created plantations; surface those failures
+  // so a blocked plantation (which FK-blocks its parcelas/groups) is visible.
+  const plantationResults = await runGlobalPreSteps();
+  onPlantationResults?.(plantationResults);
 
   try {
     await pullFromServer(plantacionId);
@@ -62,9 +70,12 @@ export async function syncPlantation(
  */
 export async function syncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
-  incluirFotos: boolean = true
+  incluirFotos: boolean = true,
+  onPlantationResults?: (plantations: SyncPlantationResult[]) => void
 ): Promise<{ plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[]> {
-  await runGlobalPreSteps();
+  await ensureServerSession();
+  const plantationResults = await runGlobalPreSteps();
+  onPlantationResults?.(plantationResults);
 
   const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
   const allResults: { plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[] = [];

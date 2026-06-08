@@ -1,9 +1,9 @@
 import { View, Text } from 'react-native';
 import { getErrorMessage } from '../services/SyncService';
-import type { SyncGroupResult, SyncParcelaResult } from '../services/SyncService';
+import type { SyncGroupResult, SyncParcelaResult, SyncPlantationResult } from '../services/SyncService';
 import { failureListStyles as styles } from './FailureList.styles';
 
-type SyncFailable = SyncGroupResult | SyncParcelaResult;
+type SyncFailable = SyncGroupResult | SyncParcelaResult | SyncPlantationResult;
 type Failed<T extends SyncFailable> = Extract<T, { success: false }>;
 
 /** Type-guard that narrows a sync result to its failure variant. */
@@ -40,6 +40,7 @@ export default function FailureList<T extends SyncFailable>({
         <View key={getKey(failure)} style={styles.failureItem}>
           <Text style={styles.failureName}>{failure.nombre}</Text>
           <Text style={styles.failureMessage}>{getErrorMessage(failure.error)}</Text>
+          {failure.detail ? <Text style={styles.failureDetail}>{failure.detail}</Text> : null}
         </View>
       ))}
     </View>

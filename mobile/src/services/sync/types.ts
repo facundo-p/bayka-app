@@ -33,11 +33,16 @@ export interface PhotoSyncProgress {
 
 export type SyncGroupResult =
   | { success: true; groupId: string; nombre: string }
-  | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null };
+  | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null; detail?: string };
 
 export type SyncParcelaResult =
   | { success: true; parcelaId: string; nombre: string }
-  | { success: false; parcelaId: string; nombre: string; error: SyncErrorCode };
+  | { success: false; parcelaId: string; nombre: string; error: SyncErrorCode; detail?: string };
+
+/** Result of pushing an offline-created plantation row to the server. */
+export type SyncPlantationResult =
+  | { success: true; plantacionId: string; nombre: string }
+  | { success: false; plantacionId: string; nombre: string; error: SyncErrorCode; detail?: string };
 
 export interface SyncProgress {
   total: number;

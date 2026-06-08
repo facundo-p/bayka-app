@@ -124,8 +124,12 @@ export async function markGroupPendingSync(grupoId: string): Promise<void> {
 
 // Marks a group as synced after successful server sync.
 export async function markGroupSynced(grupoId: string): Promise<void> {
+  // Solo limpiamos pendingSync (la marca real de "sincronizado"). NO pisamos el
+  // estado: forzarlo a 'sincronizada' corrompía el estado real (un grupo 'activa'
+  // quedaba marcado como hecho y dejaba de bloquear la finalización) y divergía
+  // del server, que guarda el estado real ('activa'|'finalizada'). Ver issue #60.
   await db.update(groups)
-    .set({ pendingSync: false, estado: 'sincronizada' })
+    .set({ pendingSync: false })
     .where(eq(groups.id, grupoId));
   notifyDataChanged();
 }
