@@ -100,7 +100,7 @@ export default function CatalogScreen() {
     );
   };
 
-  const downloadButtonLabel = selectedIds.size >= 1 ? `Descargar ${selectedIds.size} seleccionada(s)` : 'Descargar seleccion';
+  const downloadButtonLabel = 'Descargar seleccion';
 
   return (
     <ScreenContainer withTexture>
