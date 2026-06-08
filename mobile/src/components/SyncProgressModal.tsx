@@ -1,10 +1,10 @@
-import { View, Text, ActivityIndicator, Pressable } from 'react-native';
+import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, PhotoSyncProgress } from '../services/SyncService';
-import { getErrorMessage } from '../services/SyncService';
 import BaseModal from './BaseModal';
+import FailureList from './FailureList';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
 
 interface Props {
@@ -160,40 +160,10 @@ export default function SyncProgressModal({
               {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
             </Text>
           )}
-          {parcelaFailureCount > 0 && (
-            <View style={styles.failureSection}>
-              <Text style={styles.failureTitle}>
-                {parcelaFailureCount} parcela{parcelaFailureCount > 1 ? 's' : ''} con error:
-              </Text>
-              {parcelaResults
-                .filter((r) => !r.success)
-                .map((r) => (
-                  <View key={r.parcelaId} style={styles.failureItem}>
-                    <Text style={styles.failureName}>{r.nombre}</Text>
-                    <Text style={styles.failureMessage}>
-                      {!r.success ? getErrorMessage(r.error) : ''}
-                    </Text>
-                  </View>
-                ))}
-            </View>
-          )}
-          {failureCount > 0 && (
-            <View style={styles.failureSection}>
-              <Text style={styles.failureTitle}>
-                {failureCount} grupo{failureCount > 1 ? 's' : ''} con error:
-              </Text>
-              {results
-                .filter((r) => !r.success)
-                .map((r) => (
-                  <View key={r.groupId} style={styles.failureItem}>
-                    <Text style={styles.failureName}>{r.nombre}</Text>
-                    <Text style={styles.failureMessage}>
-                      {!r.success ? getErrorMessage(r.error) : ''}
-                    </Text>
-                  </View>
-                ))}
-            </View>
-          )}
+          {/* Parcela errors first: una parcela pendiente es la causa raíz que
+              bloquea a sus grupos (PARCELA_PENDING). */}
+          <FailureList label="parcela" results={parcelaResults} getKey={(r) => r.parcelaId} />
+          <FailureList label="grupo" results={results} getKey={(r) => r.groupId} />
           <Pressable style={styles.dismissButton} onPress={onDismiss}>
             <Text style={styles.dismissText}>Cerrar</Text>
           </Pressable>

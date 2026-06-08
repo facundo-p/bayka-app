@@ -202,6 +202,28 @@ describe('useSync', () => {
       expect(result.current.failureCount).toBe(1);
     });
 
+    it('surfaces parcela failures flattened from all plantations', async () => {
+      const mockAllResults = [
+        { plantationId: 'p-1', plantationName: 'Finca A', results: [], parcelas: [
+          { success: false, parcelaId: 'parc-1', nombre: 'Lote A', error: 'PERMISSION' as const },
+        ] },
+        { plantationId: 'p-2', plantationName: 'Finca B', results: [], parcelas: [
+          { success: true, parcelaId: 'parc-2', nombre: 'Lote B' },
+        ] },
+      ];
+      (syncAllPlantations as jest.Mock).mockResolvedValue(mockAllResults);
+
+      const { result } = renderHook(() => useSync());
+
+      await act(async () => {
+        await result.current.startGlobalSync();
+      });
+
+      expect(result.current.parcelaResults).toHaveLength(2);
+      expect(result.current.parcelaFailureCount).toBe(1);
+      expect(result.current.hasFailures).toBe(true);
+    });
+
     it('calls notifyDataChanged in finally block even on error', async () => {
       (syncAllPlantations as jest.Mock).mockRejectedValue(new Error('Global sync failed'));
 

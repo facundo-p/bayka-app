@@ -34,26 +34,8 @@ export const syncProgressModalStyles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     textAlign: 'center',
   },
-  failureSection: {
-    width: '100%',
-    gap: spacing.sm,
-  },
-  failureTitle: {
-    fontSize: fontSize.base,
-    color: colors.secondary,
-    fontFamily: fonts.semiBold,
-  },
-  failureItem: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  failureName: {
-    fontSize: fontSize.base,
-    color: colors.text,
-    fontFamily: fonts.semiBold,
-  },
+  // Usado por los mensajes de fallo de fotos (la lista de errores de
+  // parcelas/grupos vive en FailureList).
   failureMessage: {
     fontSize: fontSize.sm,
     fontFamily: fonts.regular,

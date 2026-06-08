@@ -34,17 +34,19 @@ export async function syncPlantation(
   // D-16-13: push parcelas BEFORE groups (FK ordering).
   // Las fallas de parcela se surfacean vía onParcelaResults: de lo contrario el
   // único síntoma visible sería PARCELA_PENDING en los grupos, ocultando la
-  // causa real (RLS, conflicto, red).
+  // causa real (RLS, conflicto, red). El callback se invoca SIEMPRE (incluso si
+  // la lectura lanza) para mantener consistente el estado de la UI.
+  let parcelaResults: SyncParcelaResult[] = [];
   try {
-    const parcelaResults = await uploadSyncableParcelas(plantacionId);
+    parcelaResults = await uploadSyncableParcelas(plantacionId);
     const failed = parcelaResults.filter(r => !r.success).length;
     if (failed > 0) {
       syncLog.info(`Push parcelas: ${failed}/${parcelaResults.length} failed; groups dependientes saltarán`);
     }
-    onParcelaResults?.(parcelaResults);
   } catch (e) {
     syncLog.error('Push parcelas failed:', e);
   }
+  onParcelaResults?.(parcelaResults);
 
   const results = await uploadSyncableGroups(plantacionId, onProgress);
   notifyDataChanged();
