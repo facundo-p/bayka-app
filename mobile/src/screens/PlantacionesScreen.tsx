@@ -169,6 +169,28 @@ export default function PlantacionesScreen() {
   const [configSpeciesPlantacionId, setConfigSpeciesPlantacionId] = useState<string | null>(null);
   const [assignTechPlantacionId, setAssignTechPlantacionId] = useState<string | null>(null);
   const [editingPlantation, setEditingPlantation] = useState<Plantation | null>(null);
+  // Cuando se crea una plantación, encadenamos: selección de especies (tarea
+  // atómica del alta, ui-ux §19) y al cerrarla navegamos al detalle para crear
+  // subgrupos (issues #63 + #15). Guarda el id de la plantación a navegar.
+  const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
+
+  async function handleCreatePlantation(lugar: string, periodo: string) {
+    const id = await adminHook.handleCreateSubmit(lugar, periodo);
+    setShowCreateModal(false);
+    if (!id) return;
+    // Abre la selección de especies de la plantación recién creada y agenda la
+    // navegación al detalle para cuando se cierre esa pantalla.
+    setConfigSpeciesPlantacionId(id);
+    setPlantacionPendienteNav(id);
+  }
+
+  function handleCloseConfigSpecies() {
+    setConfigSpeciesPlantacionId(null);
+    if (!plantacionPendienteNav) return;
+    const navId = plantacionPendienteNav;
+    setPlantacionPendienteNav(null);
+    router.push(`/${routePrefix}/plantation/${navId}` as any);
+  }
 
   const filterConfigs = [
     { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
@@ -371,7 +393,7 @@ export default function PlantacionesScreen() {
         <AdminPlantationModals
           showCreateModal={showCreateModal}
           onCloseCreate={() => setShowCreateModal(false)}
-          onCreateSubmit={async (lugar, periodo) => { const id = await adminHook.handleCreateSubmit(lugar, periodo); setShowCreateModal(false); router.push(`/${routePrefix}/plantation/${id}` as any); }}
+          onCreateSubmit={handleCreatePlantation}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
           onEditSubmit={async (lugar, periodo) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo); setEditingPlantation(null); } }}
@@ -384,7 +406,7 @@ export default function PlantacionesScreen() {
           onConfirmSeed={adminHook.confirmSeedAndGenerate}
           exportingId={adminHook.exportingId}
           configSpeciesPlantacionId={configSpeciesPlantacionId}
-          onCloseConfigSpecies={() => setConfigSpeciesPlantacionId(null)}
+          onCloseConfigSpecies={handleCloseConfigSpecies}
           pendingSyncForSpecies={(adminHook.plantationList as Plantation[] | null)?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
           assignTechPlantacionId={assignTechPlantacionId}
           onCloseAssignTech={() => setAssignTechPlantacionId(null)}
