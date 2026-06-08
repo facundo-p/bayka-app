@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useAuth } from '../../src/hooks/useAuth';
 import { getCachedEmails, getCachedPassword } from '../../src/services/OfflineAuthService';
+import { AUTH_MESSAGES } from '../../src/supabase/authErrors';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../../src/theme';
 
 export default function LoginScreen() {
@@ -39,11 +40,13 @@ export default function LoginScreen() {
       const { error: authError } = await signIn(email.trim(), password);
 
       if (authError) {
-        setError(authError.message || 'Email o contrasena incorrectos');
+        // signIn always returns a user-friendly message (see authErrors.ts).
+        setError(authError.message || AUTH_MESSAGES.unknown);
         setLoading(false);
       }
-    } catch (e: any) {
-      setError(e?.message || 'Error inesperado al iniciar sesion');
+    } catch {
+      // signIn shouldn't throw, but never leak a raw error to the field user.
+      setError(AUTH_MESSAGES.unknown);
       setLoading(false);
     }
   }
