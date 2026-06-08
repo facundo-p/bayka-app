@@ -121,6 +121,12 @@ export function classifyParcelaRpcResult(
     return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
   }
 
+  // RLS denial (postgres 42501 insufficient_privilege): el usuario no está
+  // habilitado para escribir esta parcela. Contrato estable de PostgREST.
+  if (error?.code === '42501') {
+    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'PERMISSION' };
+  }
+
   // Network / fetch errors (no postgres code present)
   const msg = String(error?.message ?? '').toLowerCase();
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {

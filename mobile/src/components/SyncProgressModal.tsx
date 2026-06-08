@@ -1,17 +1,20 @@
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, PhotoSyncProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, PhotoSyncProgress } from '../services/SyncService';
 import { getErrorMessage } from '../services/SyncService';
 import BaseModal from './BaseModal';
+import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
 
 interface Props {
   state: SyncState;
   progress: SyncProgress | null;
   results: SyncGroupResult[];
+  parcelaResults: SyncParcelaResult[];
   successCount: number;
   failureCount: number;
+  parcelaFailureCount: number;
   pullSuccess: boolean | null;
   photoProgress: PhotoSyncProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
@@ -23,8 +26,10 @@ export default function SyncProgressModal({
   state,
   progress,
   results,
+  parcelaResults,
   successCount,
   failureCount,
+  parcelaFailureCount,
   pullSuccess,
   photoProgress,
   photoResult,
@@ -93,7 +98,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && pullSuccess !== null && results.length === 0 && (
+      {state === 'done' && pullSuccess !== null && results.length === 0 && parcelaFailureCount === 0 && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -119,15 +124,15 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && (results.length > 0 || pullSuccess === null) && (
+      {state === 'done' && (results.length > 0 || parcelaFailureCount > 0 || pullSuccess === null) && (
         <>
           <Ionicons
-            name={failureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
+            name={failureCount > 0 || parcelaFailureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
             size={48}
-            color={failureCount > 0 ? colors.secondary : colors.primary}
+            color={failureCount > 0 || parcelaFailureCount > 0 ? colors.secondary : colors.primary}
           />
           <Text style={styles.title}>
-            {failureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
+            {failureCount === 0 && parcelaFailureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
           </Text>
           {successCount > 0 && (
             <Text style={styles.successText}>
@@ -155,6 +160,23 @@ export default function SyncProgressModal({
               {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
             </Text>
           )}
+          {parcelaFailureCount > 0 && (
+            <View style={styles.failureSection}>
+              <Text style={styles.failureTitle}>
+                {parcelaFailureCount} parcela{parcelaFailureCount > 1 ? 's' : ''} con error:
+              </Text>
+              {parcelaResults
+                .filter((r) => !r.success)
+                .map((r) => (
+                  <View key={r.parcelaId} style={styles.failureItem}>
+                    <Text style={styles.failureName}>{r.nombre}</Text>
+                    <Text style={styles.failureMessage}>
+                      {!r.success ? getErrorMessage(r.error) : ''}
+                    </Text>
+                  </View>
+                ))}
+            </View>
+          )}
           {failureCount > 0 && (
             <View style={styles.failureSection}>
               <Text style={styles.failureTitle}>
@@ -180,75 +202,3 @@ export default function SyncProgressModal({
     </BaseModal>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.heading,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  progressText: {
-    fontSize: fontSize.xl,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  currentName: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  plantationProgress: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
-  successText: {
-    fontSize: fontSize.base,
-    color: colors.primary,
-    fontFamily: fonts.semiBold,
-    textAlign: 'center',
-  },
-  failureSection: {
-    width: '100%',
-    gap: spacing.sm,
-  },
-  failureTitle: {
-    fontSize: fontSize.base,
-    color: colors.secondary,
-    fontFamily: fonts.semiBold,
-  },
-  failureItem: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  failureName: {
-    fontSize: fontSize.base,
-    color: colors.text,
-    fontFamily: fonts.semiBold,
-  },
-  failureMessage: {
-    fontSize: fontSize.sm,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-  },
-  dismissButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing['4xl'],
-    marginTop: spacing.sm,
-  },
-  dismissText: {
-    color: colors.white,
-    fontSize: fontSize.base,
-    fontFamily: fonts.bold,
-  },
-});

@@ -348,6 +348,17 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(wrongCols.error).toBe('GENERIC_CONFLICT');
   });
 
+  test('PERMISSION: RLS denial (postgres 42501) se clasifica como permiso', async () => {
+    const denied = classifyParcelaRpcResult(
+      { id: 'p', nombre: 'P' },
+      null,
+      { code: '42501', message: 'new row violates row-level security policy for table "parcelas"' }
+    );
+    expect(denied.success).toBe(false);
+    if (denied.success) return;
+    expect(denied.error).toBe('PERMISSION');
+  });
+
   // 6.
   test('atomicidad: group dependiente de parcela pendiente reporta PARCELA_PENDING', async () => {
     const pid = await seedLocalPlantation();

@@ -44,7 +44,7 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function));
     });
 
     it('transitions state from idle → pushing → done', async () => {
@@ -104,6 +104,32 @@ describe('useSync', () => {
       expect(result.current.hasFailures).toBe(true);
       expect(result.current.successCount).toBe(1);
       expect(result.current.failureCount).toBe(1);
+    });
+
+    it('surfaces parcela failures from syncPlantation via onParcelaResults', async () => {
+      const parcelaFailures = [
+        { success: false, parcelaId: 'parc-1', nombre: 'Lote A', error: 'UNKNOWN' as const },
+      ];
+      // syncPlantation delivers parcela results through its 3rd callback arg, then
+      // returns the (blocked) group results.
+      (syncPlantation as jest.Mock).mockImplementation(
+        (_id: string, _onProgress: any, onParcelaResults?: (p: any[]) => void) => {
+          onParcelaResults?.(parcelaFailures);
+          return Promise.resolve([
+            { success: false, groupId: 'sg-1', nombre: 'Linea 1', error: 'PARCELA_PENDING' as const, parcelaId: 'parc-1' },
+          ]);
+        }
+      );
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.parcelaResults).toEqual(parcelaFailures);
+      expect(result.current.parcelaFailureCount).toBe(1);
+      expect(result.current.hasFailures).toBe(true);
     });
 
     it('reports no failures when all groups sync successfully', async () => {

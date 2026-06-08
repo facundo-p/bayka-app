@@ -13,6 +13,8 @@
  *    constraints esperados (fallback ante drift de versiones).
  *  - PARCELA_PENDING: grupo no se subió porque su parcela está aún pending_sync
  *    (D-16-16, atomicidad — orden FK).
+ *  - PERMISSION: el server rechazó por RLS (postgres 42501). Típicamente el
+ *    usuario no está habilitado para escribir en esa plantación.
  *  - NETWORK, UNKNOWN: legacy.
  */
 export type SyncErrorCode =
@@ -20,6 +22,7 @@ export type SyncErrorCode =
   | 'DUPLICATE_NAME'
   | 'GENERIC_CONFLICT'
   | 'PARCELA_PENDING'
+  | 'PERMISSION'
   | 'NETWORK'
   | 'UNKNOWN';
 
@@ -93,6 +96,7 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   DUPLICATE_NAME: 'El nombre de parcela ya existe en el servidor. Renombra la parcela e intenta de nuevo.',
   GENERIC_CONFLICT: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
   PARCELA_PENDING: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
+  PERMISSION: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
   NETWORK: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
   UNKNOWN: 'Error inesperado. Intenta de nuevo.',
 };

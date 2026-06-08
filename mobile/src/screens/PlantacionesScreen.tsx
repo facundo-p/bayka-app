@@ -98,7 +98,7 @@ export default function PlantacionesScreen() {
   const adminHook = usePlantationAdmin();
 
   // Global sync state
-  const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, reset: resetSync, pullSuccess, successCount, failureCount, photoProgress, photoResult } = useSync();
+  const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, parcelaResults, reset: resetSync, pullSuccess, successCount, failureCount, parcelaFailureCount, photoProgress, photoResult } = useSync();
   const { pendingCount: globalPendingCount } = usePendingSyncCount();
   const hasAnyPending = globalPendingCount > 0;
   const isSyncing = syncState !== 'idle' && syncState !== 'done';
@@ -314,8 +314,10 @@ export default function PlantacionesScreen() {
         state={syncState}
         progress={progress}
         results={results}
+        parcelaResults={parcelaResults}
         successCount={successCount}
         failureCount={failureCount}
+        parcelaFailureCount={parcelaFailureCount}
         pullSuccess={pullSuccess}
         photoProgress={photoProgress}
         photoResult={photoResult}
