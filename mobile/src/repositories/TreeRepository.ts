@@ -6,7 +6,7 @@ import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
-import { markGroupPendingSync } from './GroupRepository';
+import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { isLocalUri } from '../utils/photoUri';
 
 export interface InsertTreeParams {
@@ -32,8 +32,8 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
     .where(eq(trees.groupId, params.grupoId));
 
   const nextPosition = (maxResult?.maxPos ?? 0) + 1;
-  // PHASE-17: pasar codigo real de parcela (group.parcelaId lookup)
-  const subId = generateSubId('', params.grupoCodigo, params.especieCodigo, nextPosition);
+  const parcelaCodigo = await getGroupParcelaCodigo(params.grupoId);
+  const subId = generateSubId(parcelaCodigo, params.grupoCodigo, params.especieCodigo, nextPosition);
 
   const id = Crypto.randomUUID();
   await db.insert(trees).values({
@@ -76,6 +76,7 @@ export async function reverseTreeOrder(
   if (allTrees.length === 0) return;
 
   const reversed = computeReversedPositions(allTrees);
+  const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
   await db.transaction(async (tx) => {
     for (const { id, newPosicion } of reversed) {
@@ -89,8 +90,7 @@ export async function reverseTreeOrder(
         especieCodigo = sp?.codigo ?? 'NN';
       }
 
-      // PHASE-17: pasar codigo real de parcela
-      const newSubId = generateSubId('', grupoCodigo, especieCodigo, newPosicion);
+      const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
         .where(eq(trees.id, id));
@@ -115,8 +115,8 @@ export async function resolveNNTree(
 
   if (!sp || !tree) return;
 
-  // PHASE-17: pasar codigo real de parcela
-  const newSubId = generateSubId('', grupoCodigo, sp.codigo, tree.posicion);
+  const parcelaCodigo = await getGroupParcelaCodigo(tree.grupoId);
+  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, sp.codigo, tree.posicion);
 
   await db.update(trees)
     .set({ especieId, subId: newSubId })
@@ -206,6 +206,8 @@ export async function deleteTreeAndRecalculate(
     .where(eq(trees.groupId, grupoId))
     .orderBy(asc(trees.posicion));
 
+  const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
+
   // Recalculate positions and subIds
   await db.transaction(async (tx) => {
     for (let i = 0; i < remaining.length; i++) {
@@ -220,8 +222,7 @@ export async function deleteTreeAndRecalculate(
         especieCodigo = sp?.codigo ?? 'NN';
       }
 
-      // PHASE-17: pasar codigo real de parcela
-      const newSubId = generateSubId('', grupoCodigo, especieCodigo, newPos);
+      const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })
         .where(eq(trees.id, tree.id));

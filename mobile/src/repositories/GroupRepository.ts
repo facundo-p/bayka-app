@@ -1,5 +1,5 @@
 import { db } from '../database/client';
-import { groups, trees, species as speciesTable } from '../database/schema';
+import { groups, trees, parcelas, species as speciesTable } from '../database/schema';
 import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
@@ -20,6 +20,23 @@ export interface Group {
   usuarioCreador: string;
   createdAt: string;
   pendingSync: boolean;
+}
+
+/**
+ * Returns the parcela `codigo` of a group, used as the first segment of every
+ * tree SubID (formato `{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`,
+ * ver idGenerator). Devuelve '' cuando el grupo no tiene parcela (filas legacy /
+ * transicionales): preserva el formato previo de SubID para esas filas. Issue #59.
+ */
+export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
+  const [group] = await db.select({ parcelaId: groups.parcelaId })
+    .from(groups)
+    .where(eq(groups.id, grupoId));
+  if (!group?.parcelaId) return '';
+  const [parcela] = await db.select({ codigo: parcelas.codigo })
+    .from(parcelas)
+    .where(eq(parcelas.id, group.parcelaId));
+  return parcela?.codigo ?? '';
 }
 
 // Returns the nombre of the most recently created Group for this plantation.
@@ -198,7 +215,8 @@ export async function updateGroup(
 async function recalcTreesSubIds(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   grupoId: string,
-  newCodigo: string
+  newCodigo: string,
+  parcelaCodigo: string
 ): Promise<void> {
   const allTrees = await tx.select().from(trees)
     .where(eq(trees.groupId, grupoId))
@@ -212,8 +230,7 @@ async function recalcTreesSubIds(
         .where(eq(speciesTable.id, tree.especieId));
       especieCodigo = sp?.codigo ?? 'NN';
     }
-    // TODO: pasar codigo real de parcela (group.parcelaId lookup).
-    const newSubId = generateSubId('', newCodigo.toUpperCase(), especieCodigo, tree.posicion);
+    const newSubId = generateSubId(parcelaCodigo, newCodigo.toUpperCase(), especieCodigo, tree.posicion);
     await tx.update(trees)
       .set({ subId: newSubId })
       .where(eq(trees.id, tree.id));
@@ -244,12 +261,14 @@ export async function updateGroupCode(
     .limit(1);
   if (existingCodigo) return { success: false, error: 'codigo_duplicate' };
 
+  const parcelaCodigo = await getGroupParcelaCodigo(id);
+
   try {
     await db.transaction(async (tx) => {
       await tx.update(groups)
         .set({ codigo: upperCodigo })
         .where(eq(groups.id, id));
-      await recalcTreesSubIds(tx, id, newCodigo);
+      await recalcTreesSubIds(tx, id, newCodigo, parcelaCodigo);
     });
     await markGroupPendingSync(id);
     notifyDataChanged();

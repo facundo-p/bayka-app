@@ -307,11 +307,15 @@ describe('TreeRepository', () => {
         update: jest.fn(() => ({
           set: jest.fn(() => ({ where: mockUpdateWhere })),
         })),
+        // `where()` is both awaitable (array — used by getGroupParcelaCodigo's
+        // group/parcela lookup) and chainable via `.orderBy()` (remaining trees).
         select: jest.fn(() => ({
           from: jest.fn(() => ({
-            where: jest.fn(() => ({
-              orderBy: jest.fn(() => Promise.resolve(remainingTrees)),
-            })),
+            where: jest.fn(() => {
+              const result: any = Promise.resolve(remainingTrees);
+              result.orderBy = jest.fn(() => Promise.resolve(remainingTrees));
+              return result;
+            }),
           })),
         })),
         transaction: jest.fn(async (fn: (tx: any) => Promise<void>) => {
