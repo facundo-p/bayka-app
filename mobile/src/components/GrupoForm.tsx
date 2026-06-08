@@ -64,12 +64,12 @@ export default function GrupoForm({
 
       if (!result.success) {
         if (result.error === 'both_duplicate') {
-          setNombreError('Este nombre ya existe en la plantación');
-          setCodigoError('Este código ya existe en la plantación');
+          setNombreError('Este nombre ya existe en la parcela');
+          setCodigoError('Este código ya existe en la parcela');
         } else if (result.error === 'nombre_duplicate') {
-          setNombreError('Este nombre ya existe en la plantación');
+          setNombreError('Este nombre ya existe en la parcela');
         } else if (result.error === 'codigo_duplicate') {
-          setCodigoError('Este código ya existe en la plantación');
+          setCodigoError('Este código ya existe en la parcela');
         } else {
           setCodigoError(
             mode === 'create'
