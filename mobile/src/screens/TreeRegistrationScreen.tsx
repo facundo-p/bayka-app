@@ -124,7 +124,7 @@ export default function TreeRegistrationScreen() {
       <TreeRegistrationHeader
         title={grupoNombre ?? grupoCodigo ?? ''}
         subtitle={treeReg.subgroup
-          ? `${treeReg.subgroup.codigo} · ${treeReg.subgroup.tipo === 'linea' ? 'Línea' : 'Parcela'}`
+          ? `${treeReg.subgroup.codigo} · ${treeReg.subgroup.tipo === 'linea' ? 'Línea' : 'Bosquete'}`
           : undefined}
         treeCount={totalCount}
         unresolvedNN={unresolvedNN}

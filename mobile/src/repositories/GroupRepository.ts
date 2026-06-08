@@ -7,7 +7,7 @@ import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
 
 export type GroupEstado = 'activa' | 'finalizada' | 'sincronizada';
-export type GroupTipo = 'linea' | 'parcela';
+export type GroupTipo = 'linea' | 'bosquete';
 
 export interface Group {
   id: string;

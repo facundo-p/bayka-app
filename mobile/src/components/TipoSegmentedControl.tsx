@@ -21,11 +21,11 @@ export default function TipoSegmentedControl({ value, onChange }: Props) {
           </Text>
         </Pressable>
         <Pressable
-          style={[styles.segmentButton, value === 'parcela' && styles.segmentButtonActive]}
-          onPress={() => onChange('parcela')}
+          style={[styles.segmentButton, value === 'bosquete' && styles.segmentButtonActive]}
+          onPress={() => onChange('bosquete')}
         >
-          <Text style={[styles.segmentLabel, value === 'parcela' && styles.segmentLabelActive]}>
-            Parcela
+          <Text style={[styles.segmentLabel, value === 'bosquete' && styles.segmentLabelActive]}>
+            Bosquete
           </Text>
         </Pressable>
       </View>

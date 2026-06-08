@@ -99,6 +99,13 @@
       "when": 1747500000000,
       "tag": "0013_parcelas_partial_unique_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1748000000000,
+      "tag": "0014_groups_tipo_parcela_to_bosquete",
+      "breakpoints": true
     }
   ]
 }
