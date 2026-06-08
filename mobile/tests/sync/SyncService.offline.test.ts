@@ -35,6 +35,7 @@ import {
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
+import { PG_ERROR } from '../../src/supabase/postgresErrorCodes';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -214,7 +215,7 @@ describe('SyncService — offline functions', () => {
       (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
         if (table === 'plantations') {
           return {
-            insert: jest.fn().mockResolvedValue({ error: { code: '23505', message: 'duplicate key' } }),
+            insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNIQUE_VIOLATION, message: 'duplicate key' } }),
           };
         }
         if (table === 'plantation_species') {
@@ -248,7 +249,7 @@ describe('SyncService — offline functions', () => {
       (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
         if (table === 'plantations') {
           return {
-            insert: jest.fn().mockResolvedValue({ error: { code: '42P01', message: 'table not found' } }),
+            insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNDEFINED_TABLE, message: 'table not found' } }),
           };
         }
         if (table === 'plantation_species') {
@@ -270,7 +271,7 @@ describe('SyncService — offline functions', () => {
       expect(failResults[0].success).toBe(false);
       if (failResults[0].success) return;
       expect(failResults[0].error).toBe('UNKNOWN');
-      expect(failResults[0].detail).toContain('42P01');
+      expect(failResults[0].detail).toContain(PG_ERROR.UNDEFINED_TABLE);
     });
 
     it('Test 6b: el insert que LANZA (no devuelve {error}) se surfacea como NETWORK', async () => {

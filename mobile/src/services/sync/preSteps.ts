@@ -5,6 +5,7 @@ import { eq, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
 import { SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
+import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
 
@@ -93,8 +94,8 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
           created_at: p.createdAt,
         });
 
-      // 23505 = duplicate key = plantation already exists on server, proceed with species upload
-      if (plantError && plantError.code !== '23505') {
+      // unique_violation = la plantación ya existe en el server → seguimos con species
+      if (plantError && plantError.code !== PG_ERROR.UNIQUE_VIOLATION) {
         syncLog.error('Upload plantation failed:', p.id, plantError.message);
         const { error: code, detail } = classifyServerError(plantError);
         results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });

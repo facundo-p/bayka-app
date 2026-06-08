@@ -1,3 +1,5 @@
+import { PG_ERROR } from '../../supabase/postgresErrorCodes';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
@@ -126,7 +128,7 @@ export function rawErrorDetail(error: { code?: string; message?: string } | null
  */
 export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
   const detail = rawErrorDetail(error);
-  if (error?.code === '42501') return { error: 'PERMISSION', detail };
+  if (error?.code === PG_ERROR.INSUFFICIENT_PRIVILEGE) return { error: 'PERMISSION', detail };
   const msg = String(error?.message ?? '').toLowerCase();
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
     return { error: 'NETWORK', detail };
