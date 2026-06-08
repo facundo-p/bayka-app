@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired } from '../services/OfflineAuthService';
+import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
 
 const ROLE_FETCH_TIMEOUT = 5000;
@@ -224,6 +225,29 @@ export function useAuth() {
     return { data: { session: offlineSession, user: null }, error: null };
   }
 
+  /** Persist + cache everything after a successful online sign in. */
+  async function persistOnlineSession(email: string, password: string, session: any) {
+    await persistSession(session);
+    await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
+    await syncAutoRefresh(true);
+
+    const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '') ?? 'tecnico';
+    await cacheCredential(email, password, userRole);
+    await saveLastOnlineLogin();
+  }
+
+  /**
+   * Backend unreachable while the device has network (down/paused server, 5xx,
+   * non-JSON response, timeout). Try offline login with cached credentials; if
+   * that's not possible, surface a clear connectivity message instead of the
+   * offline "credenciales no guardadas" wording, which would mislead the user.
+   */
+  async function handleConnectivityFailure(email: string, password: string) {
+    const offline = await handleOfflineSignIn(email, password);
+    if (!offline.error) return offline;
+    return { data: { session: null, user: null }, error: { message: AUTH_MESSAGES.connectivity } };
+  }
+
   async function signIn(email: string, password: string) {
     // Fast path: definitely offline → instant offline login (ZERO supabase calls)
     const net = await NetInfo.fetch();
@@ -231,26 +255,29 @@ export function useAuth() {
       return handleOfflineSignIn(email, password);
     }
 
-    // Online or indeterminate → try Supabase, fallback to offline
+    let result;
     try {
-      const result = await withTimeout(
+      result = await withTimeout(
         supabase.auth.signInWithPassword({ email, password }),
         LOGIN_TIMEOUT,
       );
-
-      if (!result.error && result.data.session) {
-        await persistSession(result.data.session);
-        await SecureStore.setItemAsync(USER_ID_KEY, result.data.session.user.id);
-        await syncAutoRefresh(true);
-
-        const userRole = await fetchAndCacheRole(result.data.session.user.id, result.data.session.user.email ?? '') ?? 'tecnico';
-        await cacheCredential(email, password, userRole);
-        await saveLastOnlineLogin();
-      }
-      return result;
     } catch {
-      return handleOfflineSignIn(email, password);
+      // Thrown (network failure / timeout) → offline fallback or connectivity.
+      return handleConnectivityFailure(email, password);
     }
+
+    if (!result.error) {
+      if (result.data.session) await persistOnlineSession(email, password, result.data.session);
+      return result;
+    }
+
+    // Backend returned an error WITHOUT throwing. A down/paused backend yields a
+    // non-JSON parse error here — that's connectivity, not bad credentials.
+    if (classifyAuthError(result.error) === 'connectivity') {
+      return handleConnectivityFailure(email, password);
+    }
+    // Real credential / unknown error → friendly message, never the raw SDK one.
+    return { data: { session: null, user: null }, error: { message: authErrorMessage(result.error) } };
   }
 
   // ─── Sign Out ───────────────────────────────────────────────────────────

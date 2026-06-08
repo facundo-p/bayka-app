@@ -125,6 +125,69 @@ describe('useAuth', () => {
     });
   });
 
+  describe('signIn online — backend down / errors (issue #64)', () => {
+    it('never surfaces the raw parse error when backend is down and no cached creds', async () => {
+      // Online, but backend returns a non-JSON error WITHOUT throwing.
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+        data: { session: null },
+        error: { message: 'JSON Parse error: Unexpected character e' },
+      });
+      (verifyCredential as jest.Mock).mockResolvedValue(null); // no cached creds
+
+      const { result } = renderHook(() => useAuth());
+
+      let signInResult: any;
+      await act(async () => {
+        signInResult = await result.current.signIn('test@test.com', 'password');
+      });
+
+      expect(signInResult.error).not.toBeNull();
+      expect(signInResult.error.message).not.toContain('JSON Parse');
+      expect(signInResult.error.message).toContain('No se pudo conectar');
+      expect(signInResult.data.session).toBeNull();
+    });
+
+    it('falls back to offline login when backend is down but creds are cached', async () => {
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+        data: { session: null },
+        error: { message: 'JSON Parse error: Unexpected character e' },
+      });
+      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (readCachedSession as jest.Mock).mockResolvedValue({
+        access_token: 'cached-token',
+        refresh_token: 'cached-refresh',
+      });
+
+      const { result } = renderHook(() => useAuth());
+
+      let signInResult: any;
+      await act(async () => {
+        signInResult = await result.current.signIn('test@test.com', 'password');
+      });
+
+      expect(signInResult.error).toBeNull();
+      expect(signInResult.data.session).toBeTruthy();
+    });
+
+    it('shows the credentials message (not raw) for real invalid credentials', async () => {
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+        data: { session: null },
+        error: { status: 400, code: 'invalid_credentials', message: 'Invalid login credentials' },
+      });
+
+      const { result } = renderHook(() => useAuth());
+
+      let signInResult: any;
+      await act(async () => {
+        signInResult = await result.current.signIn('test@test.com', 'wrong');
+      });
+
+      expect(signInResult.error.message).toBe('Email o contraseña incorrectos.');
+      // Must NOT trigger the offline fallback for a real credential error.
+      expect(verifyCredential).not.toHaveBeenCalled();
+    });
+  });
+
   describe('signIn offline fallback', () => {
     it('calls verifyCredential when offline (NetInfo reports not connected)', async () => {
       setOffline();
