@@ -27,12 +27,8 @@ export function useSync(plantacionId?: string) {
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
 
-  const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
-    if (!plantacionId) {
-      console.warn('[Sync] startBidirectionalSync called without plantacionId');
-      return;
-    }
-    setState('pulling');
+  // Limpia todo el estado por-corrida (todo menos `state`, que fija cada caller).
+  const resetSyncState = useCallback(() => {
     setProgress(null);
     setResults([]);
     setParcelaResults([]);
@@ -42,6 +38,15 @@ export function useSync(plantacionId?: string) {
     setPhotoProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
+  }, []);
+
+  const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
+    if (!plantacionId) {
+      console.warn('[Sync] startBidirectionalSync called without plantacionId');
+      return;
+    }
+    setState('pulling');
+    resetSyncState();
 
     try {
       // syncPlantation does pull-then-push internally
@@ -70,19 +75,11 @@ export function useSync(plantacionId?: string) {
       setState('done');
       notifyDataChanged();
     }
-  }, [plantacionId]);
+  }, [plantacionId, resetSyncState]);
 
   const startPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean = true) => {
     setState('pulling');
-    setProgress(null);
-    setResults([]);
-    setParcelaResults([]);
-    setPlantationResults([]);
-    setPullSuccess(null);
-    setAuthExpired(false);
-    setPhotoProgress(null);
-    setPhotoResult(null);
-    setGlobalProgress(null);
+    resetSyncState();
 
     try {
       setState('pushing');
@@ -110,19 +107,11 @@ export function useSync(plantacionId?: string) {
       setState('done');
       notifyDataChanged();
     }
-  }, []);
+  }, [resetSyncState]);
 
   const startGlobalSync = useCallback(async (incluirFotos: boolean = true) => {
     setState('pulling');
-    setProgress(null);
-    setResults([]);
-    setParcelaResults([]);
-    setPlantationResults([]);
-    setPullSuccess(null);
-    setAuthExpired(false);
-    setPhotoProgress(null);
-    setPhotoResult(null);
-    setGlobalProgress(null);
+    resetSyncState();
 
     try {
       const allResults = await syncAllPlantations(
@@ -156,20 +145,12 @@ export function useSync(plantacionId?: string) {
       setState('done');
       notifyDataChanged();
     }
-  }, []);
+  }, [resetSyncState]);
 
   const reset = useCallback(() => {
     setState('idle');
-    setProgress(null);
-    setResults([]);
-    setParcelaResults([]);
-    setPlantationResults([]);
-    setPullSuccess(null);
-    setAuthExpired(false);
-    setPhotoProgress(null);
-    setPhotoResult(null);
-    setGlobalProgress(null);
-  }, []);
+    resetSyncState();
+  }, [resetSyncState]);
 
   const parcelaFailureCount = parcelaResults.filter((r) => !r.success).length;
   const plantationFailureCount = plantationResults.filter((r) => !r.success).length;

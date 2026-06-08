@@ -273,6 +273,29 @@ describe('SyncService — offline functions', () => {
       expect(failResults[0].detail).toContain('42P01');
     });
 
+    it('Test 6b: el insert que LANZA (no devuelve {error}) se surfacea como NETWORK', async () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([fakePendingPlantation]),
+        }),
+      });
+      // insert RECHAZA (fetch failure que se propaga como throw).
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'plantations') {
+          return { insert: jest.fn().mockRejectedValue(new Error('Network request failed')) };
+        }
+        return { upsert: jest.fn(), select: jest.fn().mockResolvedValue({ data: [], error: null }) };
+      });
+
+      const res = await uploadOfflinePlantations();
+
+      expect(res).toHaveLength(1);
+      expect(res[0].success).toBe(false);
+      if (res[0].success) return;
+      expect(res[0].error).toBe('NETWORK');
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
     it('Test 7: no pending plantations — no server calls made', async () => {
       // Return empty list — no pending plantations
       (mockDb.select as jest.Mock).mockReturnValueOnce({

@@ -47,6 +47,10 @@ export default function SyncProgressModal({
   // not here — suppress this modal so the two don't overlap.
   if (authExpired) return null;
 
+  // Hay errores de cualquier tipo (grupo / parcela / plantación) — única fuente
+  // de verdad para icono, color y título del resultado.
+  const anyFailure = failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0;
+
   return (
     <BaseModal
       visible
@@ -107,7 +111,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && pullSuccess !== null && results.length === 0 && parcelaFailureCount === 0 && plantationFailureCount === 0 && (
+      {state === 'done' && pullSuccess !== null && results.length === 0 && !anyFailure && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -133,15 +137,15 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && (results.length > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0 || pullSuccess === null) && (
+      {state === 'done' && (results.length > 0 || anyFailure || pullSuccess === null) && (
         <>
           <Ionicons
-            name={failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
+            name={anyFailure ? 'alert-circle' : 'checkmark-circle'}
             size={48}
-            color={failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0 ? colors.secondary : colors.primary}
+            color={anyFailure ? colors.secondary : colors.primary}
           />
           <Text style={styles.title}>
-            {failureCount === 0 && parcelaFailureCount === 0 && plantationFailureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
+            {anyFailure ? 'Sincronizacion parcial' : 'Sincronizacion completa'}
           </Text>
           {successCount > 0 && (
             <Text style={styles.successText}>

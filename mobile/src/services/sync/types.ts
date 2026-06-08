@@ -109,3 +109,27 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
 export function getErrorMessage(code: SyncErrorCode): string {
   return ERROR_MESSAGES[code];
 }
+
+// ─── Server error classification (shared) ─────────────────────────────────────
+
+/** Raw "code: message" del error, para mostrar la causa real en errores opacos. */
+export function rawErrorDetail(error: { code?: string; message?: string } | null | undefined): string {
+  return `${error?.code ?? 'sin-codigo'}: ${error?.message ?? ''}`.trim();
+}
+
+/**
+ * Clasifica un error de push (server/red) que NO es un conflicto de unicidad
+ * (23505). Tail compartido por la clasificación de parcela y de plantación:
+ *  - 42501 (RLS insufficient_privilege) → PERMISSION
+ *  - fetch/network sin código postgres → NETWORK
+ *  - resto → UNKNOWN (con el código/mensaje crudo en `detail`)
+ */
+export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
+  const detail = rawErrorDetail(error);
+  if (error?.code === '42501') return { error: 'PERMISSION', detail };
+  const msg = String(error?.message ?? '').toLowerCase();
+  if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
+    return { error: 'NETWORK', detail };
+  }
+  return { error: 'UNKNOWN', detail };
+}

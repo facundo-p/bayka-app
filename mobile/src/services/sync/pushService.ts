@@ -16,7 +16,7 @@ import {
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
 import { File as ExpoFile } from 'expo-file-system';
-import { SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress } from './types';
+import { SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress, classifyServerError } from './types';
 
 /*
  * Supabase unique-constraint error shape (capturado en spike 3.3.0, 2026-05-26):
@@ -121,21 +121,11 @@ export function classifyParcelaRpcResult(
     return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
   }
 
-  // RLS denial (postgres 42501 insufficient_privilege): el usuario no está
-  // habilitado para escribir esta parcela. Contrato estable de PostgREST.
-  if (error?.code === '42501') {
-    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'PERMISSION' };
-  }
-
-  // Network / fetch errors (no postgres code present)
-  const msg = String(error?.message ?? '').toLowerCase();
-  if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
-    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'NETWORK' };
-  }
-  // Unexpected: carry the raw postgres code/message so the real cause is visible
-  // (e.g. 23503 FK violation when the parent plantation isn't on the server yet).
-  const detail = `${error?.code ?? 'sin-codigo'}: ${error?.message ?? ''}`.trim();
-  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'UNKNOWN', detail };
+  // No-conflict (42501 PERMISSION / network / unknown). El detail lleva el código
+  // postgres crudo para errores opacos (p.ej. 23503 FK cuando la plantación padre
+  // todavía no está en el server).
+  const { error: code, detail } = classifyServerError(error);
+  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: code, detail };
 }
 
 /**
