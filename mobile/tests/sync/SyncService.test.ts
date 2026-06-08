@@ -239,8 +239,6 @@ describe('SyncService', () => {
             posicion: 1,
             sub_id: 'LA-SP-1',
             foto_url: null,
-            plantacion_id: 1,
-            global_id: 1,
             usuario_registro: 'user-1',
             created_at: '2026-01-01T00:00:00Z',
           },

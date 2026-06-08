@@ -173,8 +173,6 @@ export async function uploadGroup(
     subId: string;
     fotoUrl: string | null;
     fotoSynced: boolean;
-    plantacionId: number | null;
-    globalId: number | null;
     usuarioRegistro: string;
     createdAt: string;
   }>
@@ -215,6 +213,9 @@ export async function uploadGroup(
     created_at: sg.createdAt,
   };
 
+  // NOTA: el sync de grupos NO sube los IDs generados (plantacion_id/global_id).
+  // Esa persistencia la hace el RPC dedicado `update_tree_ids` en el paso de
+  // "Generar IDs". El `sync_subgroup` solo sincroniza el grupo y sus árboles.
   const p_trees = sgTrees.map((t) => ({
     id: t.id,
     subgroup_id: t.groupId,
@@ -223,10 +224,6 @@ export async function uploadGroup(
     sub_id: t.subId,
     foto_url: photoMap.get(t.id)  // Uploaded just now
       ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null),
-    // IDs definitivos generados al finalizar (semilla). Se mandan para que el
-    // server los persista; null mientras la plantación no se finalizó.
-    plantacion_id: t.plantacionId,
-    global_id: t.globalId,
     usuario_registro: t.usuarioRegistro,
     created_at: t.createdAt,
   }));
