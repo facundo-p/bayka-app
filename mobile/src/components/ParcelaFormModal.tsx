@@ -18,11 +18,12 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
 import { useNewParcela } from '../hooks/useNewParcela';
-import { colors, iconSizes } from '../theme';
+import { colors, iconSizes, spacing } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
 
@@ -107,6 +108,7 @@ function applyDuplicateError(error: string): ErrorState {
 }
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
+  const insets = useSafeAreaInsets();
   const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
@@ -218,7 +220,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
               </Pressable>
             )}
           </ScrollView>
-          <View style={styles.footer}>
+          <View style={[styles.footer, { paddingBottom: spacing.xxl + insets.bottom }]}>
             <Pressable style={styles.cancelBtn} onPress={clearAndClose} disabled={loading}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
