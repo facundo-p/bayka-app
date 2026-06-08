@@ -378,25 +378,67 @@ export async function assignTechnicians(
  * CRITICAL (Pitfall 3): ORDER BY must be deterministic — groups.createdAt ASC,
  * trees.posicion ASC. Both are immutable after sync.
  */
-export async function generateIds(plantacionId: string, seed: number): Promise<void> {
-  // 1. Fetch all trees ordered deterministically
+export interface GeneratedIds {
+  assignedIds: Array<{ id: string; plantacionId: number; globalId: number }>;
+  affectedGroupIds: string[];
+}
+
+export async function generateIds(plantacionId: string, seed: number): Promise<GeneratedIds> {
+  // 1. Fetch all trees ordered deterministically (groupId needed to re-flag for sync)
   const orderedTrees = await db
-    .select({ treeId: trees.id })
+    .select({ treeId: trees.id, groupId: trees.groupId })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(groups.createdAt), asc(trees.posicion));
 
-  // 2. Assign IDs in a transaction for atomicity
-  await db.transaction(async (tx) => {
-    for (let i = 0; i < orderedTrees.length; i++) {
-      await tx
-        .update(trees)
-        .set({ plantacionId: i + 1, globalId: seed + i })
-        .where(eq(trees.id, orderedTrees[i].treeId));
-    }
+  const affectedGroupIds = [...new Set(orderedTrees.map((t) => t.groupId))];
+  const assignedIds = orderedTrees.map((tree, index) => ({
+    id: tree.treeId,
+    plantacionId: index + 1,
+    globalId: seed + index,
+  }));
+
+  // 2. Asignación atómica de los IDs definitivos (todo-o-nada; un fallo a mitad
+  //    dejaría la secuencia corrupta). NO se marca pendingSync: la persistencia al
+  //    server la hace el RPC dedicado en el MISMO paso (idGenerationService). Si
+  //    ese push falla, el usuario decide reintentar o diferir (marcar pendingSync)
+  //    desde la UI.
+  await db.transaction(async (transaction) => {
+    await assignSequentialIds(transaction, assignedIds);
   });
 
+  notifyDataChanged();
+  return { assignedIds, affectedGroupIds };
+}
+
+/** Handle de la transacción local de SQLite (drizzle/expo-sqlite). */
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+/** Writes the pre-computed plantacionId / globalId to each tree. */
+async function assignSequentialIds(
+  transaction: DbTransaction,
+  assignedIds: Array<{ id: string; plantacionId: number; globalId: number }>,
+): Promise<void> {
+  for (const { id, plantacionId, globalId } of assignedIds) {
+    await transaction
+      .update(trees)
+      .set({ plantacionId, globalId })
+      .where(eq(trees.id, id));
+  }
+}
+
+/**
+ * Revierte los IDs generados (plantacion_id / global_id → NULL) de todos los
+ * árboles de la plantación. Se usa cuando el push al server falla: deja la
+ * plantación "como si nunca se hubieran generado" → el gate vuelve a ofrecer
+ * "Generar IDs" y oculta el export hasta que estén confirmados en el server.
+ */
+export async function clearGeneratedIds(plantacionId: string): Promise<void> {
+  await db
+    .update(trees)
+    .set({ plantacionId: null, globalId: null })
+    .where(sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`);
   notifyDataChanged();
 }
 

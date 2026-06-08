@@ -18,6 +18,7 @@ import PlantationFormModal from './PlantationFormModal';
 import AdminModalWrapper from './AdminModalWrapper';
 import ConfigureSpeciesScreen from '../screens/ConfigureSpeciesScreen';
 import AssignTechniciansScreen from '../screens/AssignTechniciansScreen';
+import Spinner from './Spinner';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import type { Plantation } from './PlantationConfigCard';
 
@@ -98,45 +99,41 @@ export default function AdminPlantationModals({
         visible={!!seedModalPlantacionId}
         transparent
         animationType="fade"
-        onRequestClose={onCloseSeed}
+        onRequestClose={() => { if (!seedLoading) onCloseSeed(); }}
       >
         <View style={styles.seedOverlay}>
           <View style={styles.seedCard}>
             <Text style={styles.seedTitle}>Semilla para ID Global</Text>
-            <Text style={styles.seedLabel}>Valor inicial del ID Global</Text>
-            <TextInput
-              style={styles.seedInput}
-              value={seedValue}
-              onChangeText={setSeedValue}
-              keyboardType="number-pad"
-              placeholder="Ej: 1001"
-              placeholderTextColor={colors.textPlaceholder}
-            />
-            <View style={styles.seedButtons}>
-              <Pressable
-                style={({ pressed }) => [styles.seedBtn, styles.seedBtnCancel, pressed && { opacity: 0.7 }]}
-                onPress={onCloseSeed}
-                disabled={seedLoading}
-              >
-                <Text style={styles.seedBtnCancelText}>Cancelar</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [
-                  styles.seedBtn,
-                  styles.seedBtnPrimary,
-                  pressed && { opacity: 0.8 },
-                  seedLoading && { opacity: 0.6 },
-                ]}
-                onPress={onConfirmSeed}
-                disabled={seedLoading}
-              >
-                {seedLoading ? (
-                  <ActivityIndicator size="small" color={colors.white} />
-                ) : (
-                  <Text style={styles.seedBtnPrimaryText}>Generar</Text>
-                )}
-              </Pressable>
-            </View>
+            {seedLoading ? (
+              <Spinner label="Generando y subiendo IDs…" />
+            ) : (
+              <>
+                <Text style={styles.seedLabel}>Valor inicial del ID Global</Text>
+                <TextInput
+                  style={styles.seedInput}
+                  value={seedValue}
+                  onChangeText={setSeedValue}
+                  keyboardType="number-pad"
+                  placeholder="Ej: 1001"
+                  placeholderTextColor={colors.textPlaceholder}
+                />
+                <Text style={styles.seedNote}>Esta acción no se puede deshacer.</Text>
+                <View style={styles.seedButtons}>
+                  <Pressable
+                    style={({ pressed }) => [styles.seedBtn, styles.seedBtnCancel, pressed && { opacity: 0.7 }]}
+                    onPress={onCloseSeed}
+                  >
+                    <Text style={styles.seedBtnCancelText}>Cancelar</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [styles.seedBtn, styles.seedBtnPrimary, pressed && { opacity: 0.8 }]}
+                    onPress={onConfirmSeed}
+                  >
+                    <Text style={styles.seedBtnPrimaryText}>Generar</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -212,6 +209,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
+  },
+  seedNote: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.regular,
+    color: colors.textMuted,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   seedInput: {
     borderWidth: 1,

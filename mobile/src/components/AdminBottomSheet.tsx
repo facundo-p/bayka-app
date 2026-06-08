@@ -219,6 +219,8 @@ export default function AdminBottomSheet({
                     label="Generar IDs"
                     color={colors.primary}
                     onPress={onGenerateIds}
+                    disabled={!isOnline}
+                    helperText={!isOnline ? 'Necesitas conexion a internet' : undefined}
                   />
                 )}
                 {meta.idsGenerated && (

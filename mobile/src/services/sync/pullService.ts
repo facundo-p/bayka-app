@@ -308,7 +308,7 @@ async function checkTreeConflict(tx: Tx, remoteTree: any): Promise<boolean> {
   return true;
 }
 
-async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
+export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
   const hasFotoOnServer = isRemoteUri(t.foto_url);
   const serverFotoUrl = hasFotoOnServer ? t.foto_url : null;
   // Server schema usa group_id directo; el compat shim 012b mantiene subgroup_id
@@ -323,8 +323,8 @@ async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
     subId: t.sub_id,
     fotoUrl: serverFotoUrl,
     fotoSynced: hasFotoOnServer,
-    plantacionId: null,
-    globalId: null,
+    plantacionId: t.plantacion_id ?? null,
+    globalId: t.global_id ?? null,
     usuarioRegistro: t.usuario_registro,
     createdAt: t.created_at,
   }).onConflictDoUpdate({
@@ -335,6 +335,10 @@ async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
       subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
       fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
       fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
+      // IDs definitivos: conservar el local si ya existe (generado y aún no pusheado),
+      // adoptar el del server cuando el local está vacío. Nunca pisar con NULL.
+      plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
+      globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
       conflictEspecieId: sql`NULL`,
       conflictEspecieNombre: sql`NULL`,
     },

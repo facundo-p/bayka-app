@@ -30,7 +30,8 @@ Organización
 Usuario
 Especie
 Plantación
-SubGrupo
+Parcela
+Grupo
 Árbol
 Asignación de usuarios a plantación
 Especies habilitadas por plantación
@@ -42,8 +43,9 @@ Representación simplificada:
 Organización
  ├── Usuarios
  └── Plantaciones
-        ├── SubGrupos
-        │      └── Árboles
+        ├── Parcelas
+        │      └── Grupos
+        │             └── Árboles
         └── Técnicos asignados
 ```
 
@@ -111,7 +113,7 @@ fecha_creacion
 ```
 N:M organizaciones
 N:M plantaciones (como técnico asignado)
-1:N subgrupos creados
+1:N grupos creados
 1:N árboles registrados
 ```
 
@@ -190,8 +192,11 @@ finalizada
 N:1 organización
 N:M usuarios técnicos
 N:M especies
-1:N subgrupos
+1:N parcelas
 ```
+
+Una plantación es un conjunto de parcelas. Cada parcela agrupa, a su vez,
+los grupos de árboles (ver # 8. Parcela y # 9. Grupo).
 
 ---
 
@@ -240,23 +245,23 @@ tecnico
 
 ---
 
-# 8. SubGrupo
+# 8. Parcela
 
-Un SubGrupo representa un subconjunto de árboles dentro de una plantación.
+Una Parcela es el **nivel intermedio** de la jerarquía: una plantación es un
+conjunto de parcelas, y cada parcela agrupa a su vez los grupos de árboles.
 
-Normalmente corresponde a:
+La jerarquía actual es:
 
 ```
-una línea de plantación
-una parcela
+Plantación → Parcela → Grupo → Árbol
 ```
 
 Ejemplos:
 
 ```
-Linea 23
-Linea 23B
 Parcela A
+Parcela Norte
+Lote 7
 ```
 
 ### Atributos
@@ -264,6 +269,62 @@ Parcela A
 ```
 id
 plantacion_id
+nombre
+codigo
+descripcion (opcional)
+fecha_creacion / actualizacion
+deleted_at (soft-delete, NULL si está vigente)
+```
+
+> La Parcela **no** tiene columna `estado` ni `usuario_creador`: la auditoría de
+> autoría es server-side (no se modela como atributo).
+
+### Relaciones
+
+```
+N:1 plantación
+1:N grupos
+```
+
+### Restricciones
+
+Dentro de una misma plantación, vía **índices parciales únicos** `WHERE deleted_at IS NULL`:
+
+```
+codigo de parcela único  → (plantation_id, codigo)
+nombre de parcela único  → (plantation_id, nombre)
+```
+
+La parcela usa **soft-delete**: al eliminarla se marca `deleted_at` en lugar de
+borrar la fila. Los índices parciales hacen que una parcela eliminada no bloquee
+reutilizar su código ni su nombre.
+
+---
+
+# 9. Grupo
+
+Un Grupo representa un subconjunto de árboles dentro de una **parcela**.
+Antiguamente esta entidad se llamaba **SubGrupo** (renombrada a "Grupo" en v1.1);
+además dependía directamente de la plantación, no de la parcela.
+
+Normalmente corresponde a:
+
+```
+una línea de plantación
+```
+
+Ejemplos:
+
+```
+Linea 23
+Linea 23B
+```
+
+### Atributos
+
+```
+id
+parcela_id
 nombre
 codigo
 tipo
@@ -290,39 +351,43 @@ sincronizada
 ### Relaciones
 
 ```
-N:1 plantación
+N:1 parcela
 1:N árboles
 N:1 usuario (creador)
 ```
 
 ### Restricciones
 
-Dentro de una misma plantación:
+El código de grupo es único **por parcela**, es decir sobre `(parcela_id,
+codigo)`. **Puede repetirse entre parcelas** de la misma plantación.
+
+Lo único dentro de la plantación es la **combinación** de código de parcela +
+código de grupo:
 
 ```
-Nombre de subgrupo debe ser único
-codigo de subgrupo debe ser único
+codigo de grupo único por parcela
+combinación (codigo_parcela + codigo_grupo) única por plantación
 ```
 
 ---
 
-# 9. Árbol
+# 10. Árbol
 
 Representa un árbol registrado en campo.
 
-Los árboles pertenecen a un SubGrupo.
+Los árboles pertenecen a un Grupo (que a su vez pertenece a una Parcela).
 
 ### Atributos
 
 ```
 id
-subgrupo_id
+grupo_id
 especie_id
 posicion
 foto_url (opcional)
 sub_id
-plantacion_id (ver # 17. ID Parcial de Plantación)
-global_id (ver # 18. ID Global Bayka)
+plantacion_id (ver # 18. ID Parcial de Plantación)
+global_id (ver # 19. ID Global Bayka)
 usuario_registro
 fecha_creacion
 ```
@@ -330,16 +395,16 @@ fecha_creacion
 ### Relaciones
 
 ```
-N:1 subgrupo
+N:1 grupo
 N:1 especie
 N:1 usuario
 ```
 
 ---
 
-# 10. Posición de árbol
+# 11. Posición de árbol
 
-Cada árbol tiene una posición dentro del SubGrupo.
+Cada árbol tiene una posición dentro del Grupo.
 
 La posición representa el orden de registro.
 
@@ -356,33 +421,34 @@ La posición se asigna automáticamente al registrar el árbol.
 
 ---
 
-# 11. SubID
+# 12. SubID
 
 Cada árbol genera un identificador interno llamado **SubID**.
 
 Formato:
 
 ```
-codigo_subgrupo + codigo_especie + posicion
+codigo_parcela + codigo_grupo + codigo_especie + posicion
 ```
 
 Ejemplo:
 
 ```
-L23BANC12
+PAL23BANC12
 ```
 
 Significa:
 
 ```
-SubGrupo: L23B
+Parcela: PA
+Grupo: L23B
 Especie: ANC
 Árbol número 12
 ```
 
 ---
 
-# 12. Árboles no identificados (N/N)
+# 13. Árboles no identificados (N/N)
 
 Cuando un técnico no puede identificar una especie, puede registrarla como:
 
@@ -399,7 +465,7 @@ no puede sincronizarse hasta resolverse
 
 ---
 
-# 13. Fotos
+# 14. Fotos
 
 Las fotos pueden asociarse a un árbol.
 
@@ -417,11 +483,11 @@ localmente (antes de sincronizar)
 
 ---
 
-# 14. Sincronización
+# 15. Sincronización
 
-La unidad de sincronización del sistema es el **SubGrupo**.
+La unidad de sincronización del sistema es el **Grupo**.
 
-Cuando un SubGrupo se sincroniza:
+Cuando un Grupo se sincroniza:
 
 ```
 se envían todos los árboles asociados
@@ -437,9 +503,9 @@ no existen árboles NN
 
 ---
 
-# 15. Inmutabilidad de datos sincronizados
+# 16. Inmutabilidad de datos sincronizados
 
-Una vez sincronizado un SubGrupo:
+Una vez sincronizado un Grupo:
 
 ```
 no puede editarse
@@ -450,19 +516,19 @@ Esto garantiza consistencia del dataset final.
 
 ---
 
-# 16. Finalización de plantación
+# 17. Finalización de plantación
 
 Una plantación puede finalizarse cuando:
 
 ```
-todos los subgrupos están sincronizados
+todos los grupos están sincronizados
 ```
 
 Luego se generan los IDs finales (de plantación y global).
 
 ---
 
-# 17. ID Parcial de Plantación
+# 18. ID Parcial de Plantación
 
 Secuencial dentro de la plantación.
 
@@ -477,7 +543,7 @@ Ejemplo:
 
 ---
 
-# 18. ID Global de Organización
+# 19. ID Global de Organización
 
 Secuencial entre todas las plantaciones.
 
@@ -493,31 +559,35 @@ Los IDs incrementan desde ese valor.
 
 ---
 
-# 19. Reglas de integridad
+# 20. Reglas de integridad
 
 Reglas críticas del sistema:
 
 ```
-SubGrupo.codigo único dentro de una plantación
-Árbol.posicion única dentro de un subgrupo
-SubGrupo sincronizado no puede editarse
+Parcela.codigo único dentro de una plantación
+Grupo.codigo único dentro de una parcela (puede repetirse entre parcelas)
+Combinación (codigo_parcela + codigo_grupo) única dentro de una plantación
+Árbol.posicion única dentro de un grupo
+Grupo sincronizado no puede editarse
 NN requiere foto
-SubGrupo con NN no puede sincronizar
+Grupo con NN no puede sincronizar
 ```
 
 ---
 
-# 20. Cardinalidades resumidas
+# 21. Cardinalidades resumidas
 
 ```
 Organización 1:N Usuarios
 Organización 1:N Plantaciones
 
-Plantación 1:N SubGrupos
+Plantación 1:N Parcelas
 Plantación N:M Usuarios
 Plantación N:M Especies
 
-SubGrupo 1:N Árboles
+Parcela 1:N Grupos
+
+Grupo 1:N Árboles
 
 Árbol N:1 Especie
 Árbol N:1 Usuario
@@ -525,7 +595,7 @@ SubGrupo 1:N Árboles
 
 ---
 
-# 21. Resumen del modelo
+# 22. Resumen del modelo
 
 Representación general:
 
@@ -535,8 +605,9 @@ Organización
  └── Plantaciones
         ├── Técnicos asignados
         ├── Especies habilitadas
-        └── SubGrupos
-               └── Árboles
+        └── Parcelas
+               └── Grupos
+                      └── Árboles
 ```
 
 ---

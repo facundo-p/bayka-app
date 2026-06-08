@@ -1,84 +1,118 @@
 ---
 name: build-apk-local
-description: Build an APK locally using EAS Build --local. Faster than remote builds (3-8 min vs queue wait). Requires Android SDK and Java 17.
+description: Build an installable Android APK locally for Bayka. Uses persistent expo prebuild + gradlew (single-ABI), which is reliable. Requires Android SDK, Java 17, and Node LTS (NOT v25). Use when the user wants a local APK, to avoid EAS queue, or to test a change on a device.
 trigger: Use when the user wants to build an APK locally, avoid EAS queue wait times, or do a quick local build.
 ---
 
-# Build APK Local
+# Build APK Local (Bayka)
 
-Generate an installable .apk locally using EAS Build with `--local` flag. No queue wait.
+Project root: `/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app`
+Mobile dir:   `/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile`
 
-## Process
+> **History:** The old EAS `--local` path (all 4 ABIs in one ephemeral build) started
+> failing in June 2026 with a `react-native-reanimated` ↔ `react-native-worklets`
+> native link error. Root cause was twofold (see Troubleshooting). The reliable
+> method below builds in a **persistent `android/` dir, single-ABI**, which sidesteps it.
 
-### 1. Verify local build prerequisites
-
-```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
-echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"
-java -version 2>&1 | head -1
-```
-
-Both are required:
-- `ANDROID_HOME` must point to Android SDK (expected: `/Users/facu/Library/Android/sdk`)
-- Java 17 must be installed
-
-If `ANDROID_HOME` is not set, tell the user to add it to their shell profile:
-```
-export ANDROID_HOME=$HOME/Library/Android/sdk
-```
-
-If Java is missing, tell the user: `brew install openjdk@17`
-
-### 2. Check EAS login status
+## 0. Prerequisites — verify ALL THREE before building
 
 ```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
-npx eas-cli whoami 2>&1
+echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"   # expect /Users/facu/Library/Android/sdk
+java -version 2>&1 | head -1                      # expect openjdk 17.x
+node --version                                    # MUST be an LTS (v20 or v22). NOT v25.
 ```
 
-If not logged in, tell the user to run: `! npx eas-cli login`
-
-### 3. Ask which build profile
-
-Use AskUserQuestion:
-- **Preview (Recommended)** — Standalone APK for field testing, no dev tools
-- **Development** — APK with dev tools (hot reload, inspector)
-- **Production** — Final production APK
-
-### 4. Run the local build
-
-```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
-npx eas-cli build --platform android --profile <selected_profile> --local --non-interactive --output ./build-output.apk 2>&1
-```
-
-Run with `run_in_background` and timeout of 600000ms (10 min). Local builds typically take 3-8 minutes.
-
-### 5. Show result
-
-When build completes:
-- Check the output APK exists:
+- **ANDROID_HOME** missing → tell user to add `export ANDROID_HOME=$HOME/Library/Android/sdk` to their shell profile.
+- **Java** missing → `brew install openjdk@17`.
+- **Node is v25 (or any non-LTS / odd major)** → STOP. This breaks the build (and Homebrew
+  may have left it linked against a missing `libsimdjson` dylib, so it crashes outright).
+  Fix:
   ```bash
-  ls -lh /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile/build-output.apk
+  brew install node@22 2>/dev/null
+  brew unlink node 2>/dev/null; brew link --overwrite node@22
+  node --version   # must now print v22.x
   ```
-- Show file size and path
-- Offer to install on connected device:
-  ```bash
-  cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
-  adb install build-output.apk
-  ```
+  Expo SDK 54 / RN 0.81 support Node 20 or 22 LTS only.
 
-### 6. Summary
+## 1. Generate the native project (expo prebuild)
+
+```bash
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile
+npx expo prebuild -p android --clean
+```
+
+This regenerates `mobile/android/` (a generated dir; it will show as git changes — that's expected).
+
+## 2. Build the APK (single-ABI, with a built-in retry)
+
+The build needs the Supabase public env vars (mirrors `eas.json` → build.preview.env).
+Single ABI `arm64-v8a` is what modern phones use and avoids the multi-ABI native-build race.
+
+```bash
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/android
+export EXPO_PUBLIC_SUPABASE_URL="https://apktttwrmhamfudjeklu.supabase.co"
+export EXPO_PUBLIC_SUPABASE_ANON_KEY="<copy from mobile/eas.json → build.preview.env>"
+
+# Pass 1 (usually succeeds). If it ever fails on the reanimated/worklets link,
+# Pass 2 finds the now-persisted libworklets.so and completes — that's the safety net.
+./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon \
+  || ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+```
+
+Run with `run_in_background: true` and a 600000ms timeout. Single-ABI build is ~2-3 min
+(longer the first time if the Gradle cache is cold). To build all ABIs (for distribution),
+drop the `-PreactNativeArchitectures` flag, but ALWAYS keep the `|| <retry>` build-twice.
+
+## 3. Locate, copy, and verify the APK
+
+```bash
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile
+cp android/app/build/outputs/apk/release/app-release.apk build-output.apk
+ls -lh build-output.apk
+# Optional: confirm signing (will be the Android DEBUG keystore — see note)
+"$(ls $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)" verify --print-certs build-output.apk 2>&1 | grep -i "certificate DN"
+```
+
+## 4. Result summary
 
 ```
-Build local complete!
+APK local listo!
+  APK:  mobile/build-output.apk
+  Size: <size>  (arm64-v8a only)
+  Firma: Android Debug keystore
 
-Profile: <profile>
-APK: mobile/build-output.apk
-Size: <size>
+Instalar en dispositivo conectado:
+  cd mobile && adb install -r build-output.apk
+```
 
-To install on a connected device:
-  cd mobile && adb install build-output.apk
+## Notes & gotchas
 
-Or transfer the APK file to your device manually.
+- **Signing:** `gradlew assembleRelease` signs with the **debug keystore** (the Expo template
+  default), NOT the EAS-managed release key. The APK is installable for testing, but if a
+  build signed with a DIFFERENT key is already on the device, Android refuses to install over
+  it — `adb uninstall com.bayka.app` first (this wipes local app data).
+- **ABIs:** the single-ABI APK only runs on arm64 devices (all modern phones). Add ABIs only
+  if you need armeabi-v7a (old devices) or emulators (x86_64).
+- **build-output.apk** is the canonical artifact location the team expects.
+
+## Troubleshooting
+
+### `ninja: error: '.../libworklets.so' ... missing and no known rule to make it`
+reanimated's CMake links worklets' `.so` from a path that isn't ready when reanimated's
+arm64 link runs. Triggered by building **multiple ABIs in one ephemeral pass** (EAS `--local`)
+where task scheduling loses the worklets→reanimated ordering. Fixes:
+1. Build a **single ABI** (`-PreactNativeArchitectures=arm64-v8a`), and/or
+2. **Build twice** in a persistent `android/` (pass 2 finds the persisted `.so`).
+Not caused by: caches, `org.gradle.parallel`, NDK, node_modules, or the Expo/reanimated
+versions — reproducing the last-good versions does NOT fix it; the build *method* is what matters.
+
+### `dyld: Library not loaded: .../libsimdjson.*.dylib ... Referenced from: .../node`
+Your Homebrew `node` is broken (linked against a simdjson version that was upgraded away).
+This is usually Node v25. Fix per Prerequisites: switch to `node@22` LTS.
+
+### EAS `--local` as an alternative
+EAS `--local` (`npx eas-cli build -p android --profile preview --local --output ./build-output.apk`)
+gives a release-keystore-signed, multi-ABI APK — better for distribution — but currently hits
+the worklets race because it's a single ephemeral multi-ABI pass. If you must use it, first
+pin the project to a single ABI, or expect to fall back to the gradlew method above.
 ```

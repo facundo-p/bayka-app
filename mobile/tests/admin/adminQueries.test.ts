@@ -240,30 +240,36 @@ describe('adminQueries', () => {
   // ─── hasIdsGenerated ─────────────────────────────────────────────────────
 
   describe('hasIdsGenerated', () => {
-    it('retorna false cuando ningún árbol tiene globalId', async () => {
+    const mockCounts = (total: number, conId: number) => {
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
           innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue([]),
+            where: jest.fn().mockResolvedValue([{ total, conId }]),
           }),
         }),
       });
+    };
 
-      const result = await hasIdsGenerated('plantation-1');
-      expect(result).toBe(false);
+    it('retorna false cuando ningún árbol tiene globalId', async () => {
+      mockCounts(5, 0);
+      expect(await hasIdsGenerated('plantation-1')).toBe(false);
     });
 
-    it('retorna true cuando al menos un árbol tiene globalId', async () => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockResolvedValue([{ id: 'tree-1' }]),
-          }),
-        }),
-      });
+    it('retorna true solo cuando TODOS los árboles tienen globalId', async () => {
+      mockCounts(5, 5);
+      expect(await hasIdsGenerated('plantation-1')).toBe(true);
+    });
 
-      const result = await hasIdsGenerated('plantation-1');
-      expect(result).toBe(true);
+    it('retorna false con un set PARCIAL de IDs (remanente de sync incompleto)', async () => {
+      // Regresión: 401/7124 árboles con globalId NO cuenta como "generado".
+      // El gate "al menos uno" ocultaba "Generar IDs" dejando el 94% sin ID.
+      mockCounts(7124, 401);
+      expect(await hasIdsGenerated('plantation-1')).toBe(false);
+    });
+
+    it('retorna false cuando la plantación no tiene árboles', async () => {
+      mockCounts(0, 0);
+      expect(await hasIdsGenerated('plantation-1')).toBe(false);
     });
   });
 

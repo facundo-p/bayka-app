@@ -25,7 +25,6 @@ Esto implica:
 ```
 usuarios caminando
 uso bajo luz solar fuerte
-manos sucias o con guantes
 poco tiempo para interactuar con la pantalla
 ```
 
@@ -45,7 +44,7 @@ El perfil técnico utiliza la aplicación principalmente para:
 
 ```
 registrar árboles
-cambiar de SubGrupo
+cambiar de Grupo
 resolver N/N
 sincronizar datos
 ```
@@ -64,7 +63,7 @@ Las pantallas del técnico deben mostrar **solo lo necesario para la tarea actua
 
 # 3. Perfil de Usuario Admin
 
-El usuario administrador utiliza la aplicación para:
+El usuario administrador utiliza la aplicación para todo lo que hace el perfíl técnico más:
 
 ```
 crear plantaciones
@@ -98,22 +97,20 @@ Evitar menús ocultos innecesarios.
 
 ## Botones grandes
 
-Los botones deben ser lo suficientemente grandes para usarse con guantes.
-
-Especialmente en la pantalla de registro de árboles.
+Los botones en la pantalla de registro de árboles deben ser lo suficientemente grandes para presionarse con facilidad.
 
 ---
 
 ## Feedback inmediato
 
-Cada acción del usuario debe generar una respuesta visible.
+Cada acción importante del usuario debe generar feedback.
 
 Ejemplos:
 
 ```
-animación de registro de árbol
+vibración al registrar un árbol
 contador que incrementa
-confirmación visual
+modals de confirmación + toast/mensaje de éxito/error
 ```
 
 ---
@@ -134,25 +131,75 @@ listas
 
 # 5. Paleta de Colores
 
-La paleta de colores definitiva **no está definida en esta fase**.
+La paleta está **definida según el manual de marca de Bayka** y centralizada en
+`mobile/src/theme.ts` (objeto `colors`). **Fuente única de verdad:** ningún color
+se hardcodea en pantallas o componentes — siempre se importa de `theme.ts`
+(ver regla 8 de `CLAUDE.md`).
 
-Por ahora se utilizará una paleta simple.
+## Colores de marca
 
-Posteriormente se definirá un diseño visual más específico.
+```
+primary    #0A3760  azul oscuro Bayka — acciones principales, headers,
+                    splash y fondo del ícono de Android
+secondary  #99B95B  verde oliva Bayka — estados activos, acentos,
+                    indicador "online" y conteos
+```
+
+## Roles semánticos
+
+```
+danger      #DC2626  acciones destructivas / errores
+info        #2563EB  información
+syncPending #F97316  pendiente de sincronización (OrangeDot)
+```
+
+## Jerarquía de texto
+
+```
+textHeading    #0A3760  títulos (azul de marca)
+textPrimary    #1E293B  cuerpo
+textSecondary  #475569  texto secundario
+textMuted      #94A3B8  placeholder / metadatos
+```
+
+## Chips de estado
+
+```
+activa      verde oliva (#99B95B)
+finalizada  azul de marca (#0A3760)
+```
+
+> El detalle completo de tokens (variantes de marca, superficies, bordes, chips,
+> stats, conectividad) vive en `theme.ts`. Este documento describe la intención;
+> `theme.ts` es la referencia normativa.
 
 ---
 
 # 6. Tipografía
 
-La tipografía debe ser:
+Las tipografías están **definidas por el manual de marca de Bayka** (sección
+"Fuentes"). Se cargan al inicio de la app (`useFonts` en `app/_layout.tsx`,
+bloqueando el splash hasta que estén listas). Tokens en `theme.ts` (objeto `fonts`).
+
+## Fuentes de marca
 
 ```
-legible
-clara
-sin estilos complejos
+Títulos / destacados   Linux Biolinum Regular   (LinBiolinum_R / _RB, .otf local)
+                        → headers de navegación, títulos de pantalla y de modales,
+                          nombres de tarjetas
+Cuerpo / bajada        Meta Plus Normal Roman   (tipografía complementaria del manual)
+Códigos / IDs          monospace del sistema    (código de especie, SubID)
 ```
 
-Priorizar tamaño suficiente para lectura en exteriores.
+> **Nota de implementación:** el cuerpo se renderiza hoy con **Poppins** (Google
+> Fonts, 5 pesos) como sustituto libre de Meta Plus Normal Roman, que es una fuente
+> comercial. Linux Biolinum (títulos) sí coincide con el manual. La alineación de la
+> fuente de cuerpo con la marca está registrada como issue aparte.
+
+## Escala de tamaños
+
+Definida en `theme.ts` (`fontSize`), de `xxs` (10) a `hero` (32). Priorizar tamaño
+suficiente para lectura en exteriores — el cuerpo base es 15.
 
 ---
 
@@ -165,7 +212,6 @@ Debe cumplir:
 ```
 botones grandes
 grid simple
-máximo 20 especies
 ```
 
 Cada botón debe mostrar:
@@ -223,31 +269,36 @@ No debe requerir navegación compleja.
 
 La navegación debe ser simple.
 
-Flujo típico:
+Flujo típico (igual para admin y técnico):
 
 ```
-Dashboard
+Plantaciones (lista)
 ↓
-Plantación
+Parcelas (de la plantación)
 ↓
-SubGrupo
+Grupos (de la parcela)
 ↓
 Registro de árboles
 ```
 
-Evitar estructuras de navegación profundas.
+El nivel **Parcela** es obligatorio: no se llega a los Grupos sin seleccionar
+antes una parcela (la pantalla de grupos redirige a Parcelas si no hay parcela en
+contexto). Evitar estructuras más profundas que esta.
 
 ---
 
 # 11. Indicadores de Estado
 
-La aplicación debe mostrar claramente:
+La aplicación debe mostrar claramente el estado de cada Grupo:
 
 ```
-SubGrupo en registro
-SubGrupo finalizado
-SubGrupo sincronizado
+activa       (en registro)
+finalizada   (cerrado, listo para sincronizar)
 ```
+
+El Grupo tiene **dos** estados (`activa`, `finalizada`). La sincronización NO es
+un tercer estado: lo pendiente de subir se indica aparte con un punto naranja
+(OrangeDot, `pendingSync`) sobre la tarjeta del Grupo y de la Parcela.
 
 Los estados deben ser visibles en las listas.
 
@@ -260,11 +311,16 @@ La sincronización debe ser explícita.
 El usuario debe poder ver:
 
 ```
-SubGrupos pendientes de sincronización
+Grupos (y parcelas) pendientes de sincronización
 estado de sincronización
 ```
 
-La sincronización nunca debe iniciarse automáticamente.
+La sincronización general nunca debe iniciarse automáticamente (el técnico decide
+qué y cuándo subir).
+
+**Excepción puntual:** "Generar IDs" (acción explícita del admin, ver §19) sube sus
+IDs al server en el mismo paso. No es un sync de fondo automático, sino la
+persistencia inmediata de una acción que el usuario inició a propósito.
 
 ---
 
@@ -278,7 +334,7 @@ Especialmente durante:
 
 ```
 registro de árboles
-cambio de SubGrupo
+cambio de Grupo
 navegación
 ```
 
@@ -291,7 +347,7 @@ Los errores deben mostrarse de forma clara.
 Ejemplos:
 
 ```
-SubGrupo ya existe
+Grupo ya existe (el código es único por parcela)
 NN sin resolver
 sin conexión
 ```
@@ -302,21 +358,17 @@ Los mensajes deben ser simples y comprensibles.
 
 # 15. Acciones irreversibles
 
-Las acciones irreversibles deben mostrarse claramente.
+Las acciones irreversibles o bloqueantes deben mostrarse claramente.
 
 Ejemplo:
 
 ```
-sincronizar SubGrupo
+sincronizar Grupo
 ```
 
-Una vez sincronizado:
-
-```
-no se puede editar
-```
-
-Esto debe comunicarse al usuario.
+Una vez sincronizado, el Grupo queda bloqueado para edición. Un admin o el
+creador puede **reactivarlo** explícitamente si necesita corregirlo; esa
+reactivación también debe comunicarse con claridad.
 
 ---
 
@@ -341,13 +393,16 @@ La interfaz debe permitir que un técnico registre árboles **sin tener que pens
 El flujo ideal es:
 
 ```
-abrir SubGrupo
+abrir plantación
+seleccionar parcela
+abrir grupo
 registrar árboles
 finalizar
 sincronizar
 ```
 
-La interfaz debe apoyar este flujo de forma natural.
+La interfaz debe apoyar este flujo de forma natural. La selección de Parcela es
+un paso real del flujo (ver §10), no opcional.
 
 ---
 
@@ -362,14 +417,53 @@ la pantalla de login muestra cuentas guardadas como chips tocables
 debajo del botón de inicio de sesión
 ```
 
-Comportamiento:
+Comportamiento (implementado):
 
 ```
-checkbox "Recordar cuenta" activado por defecto
-al iniciar sesión exitosamente, se guarda la cuenta
-las cuentas guardadas aparecen como chips bajo "Cuentas guardadas"
+al iniciar sesión exitosamente, la cuenta se guarda automáticamente (no hay checkbox)
+las cuentas guardadas aparecen como chips bajo el rótulo "Acceso rápido"
 tocar un chip autocompleta email y contraseña
-el último email utilizado se precarga en el campo de email
 ```
 
 Este patrón reduce la necesidad de escribir credenciales repetidamente, lo cual es especialmente valioso en campo donde la escritura manual es lenta e incómoda.
+
+---
+
+# 19. Tareas atómicas: no fragmentar lo que es una sola acción
+
+**Principio:** evitar dividir en varios pasos manuales una tarea que **puede** —y
+por lógica de negocio **tiene sentido que**— realizarse en un solo paso.
+
+Si el usuario percibe "una acción" pero la interfaz le exige varios toques o
+pantallas encadenadas **cuya separación no aporta una decisión ni un control
+real**, es un olor de diseño. La pregunta de control es:
+
+```
+¿la separación le da al usuario una decisión o un control que de verdad
+necesita? → la separación es legítima
+¿es solo fricción / un detalle de implementación que se filtró a la UI? → unificar
+```
+
+## Separaciones legítimas (NO son olor)
+
+Algunos pasos el negocio los separa a propósito, y eso es correcto:
+
+- **Sincronización (ver §12):** es manual y deliberada. El técnico decide **qué**
+  y **cuándo** subir. La separación agrega control real → se mantiene.
+
+## Tareas que deben ser atómicas y autocontenidas
+
+- **Generar IDs** es una tarea atómica completa: asigna los IDs en local **y los
+  persiste en el server en el mismo paso** (requiere conexión; usa un RPC dedicado).
+  No hay que "generar y después sincronizar" — queda hecho y guardado en un solo
+  paso. (Esto es, además, una excepción legítima a §12: el push va dentro de una
+  acción explícita del admin, no es un sync automático de fondo.)
+  Si el push falla, los IDs **no** quedan "a medio subir": se revierten y el botón
+  vuelve a ofrecer "Generar IDs" (es el único mecanismo para subirlos). La
+  exportación (Excel/CSV) solo aparece cuando los IDs están confirmados en el server.
+
+## Regla práctica para el desarrollo
+
+Antes de implementar o modificar un flujo, preguntarse: *"¿esto que le estoy
+pidiendo al usuario en N pasos es en realidad una sola tarea?"* Si la separación
+no se justifica por una decisión de negocio (como §12), unificarla en un solo paso.

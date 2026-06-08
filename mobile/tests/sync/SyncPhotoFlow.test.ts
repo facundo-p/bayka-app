@@ -93,6 +93,7 @@ const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 const makeSg = (id: string, overrides?: Record<string, any>) => ({
   id,
   plantacionId: 'plantation-1',
+  parcelaId: 'parcela-1',
   nombre: 'Línea A',
   codigo: 'LA',
   tipo: 'linea' as const,
@@ -552,6 +553,7 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
         p_subgroup: {
           id: 'sg-1',
           plantation_id: 'plantation-1',
+          parcela_id: 'parcela-1',
           nombre: 'Línea A',
           codigo: 'LA',
           tipo: 'linea',
