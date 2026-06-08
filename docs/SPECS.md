@@ -374,19 +374,26 @@ Al crear un nuevo Grupo, se debe mostrar al usuario el nombre del último Grupo 
 
 ## Estados de Grupo
 
-Los Grupos tienen los siguientes estados:
+El estado del Grupo es **`activa`** o **`finalizada`** — su estado real del
+dominio. Es el que se persiste en el servidor (el CHECK del server solo acepta
+esos dos valores) y el que sube el sync **sin hardcodear**.
 
 ```
 activa
 finalizada
-sincronizada
 ```
+
+El hecho de estar **sincronizado** NO es un estado: se representa con
+`pendingSync = false`. Sincronizar un grupo limpia ese flag pero **preserva su
+estado real** — un grupo `activa` sincronizado sigue `activa` (antes el RPC lo
+forzaba a `finalizada`, corrompiendo el estado; ver issue #60).
 
 ---
 
 ### activa
 
-El Grupo se está registrando activamente.
+El Grupo se está registrando activamente. Bloquea la finalización de la
+plantación aunque ya esté sincronizado.
 
 ---
 
@@ -396,14 +403,11 @@ El técnico finalizó el registro de árboles.
 
 ---
 
-### sincronizada
+### `sincronizada` (valor heredado / deprecado)
 
-El Grupo fue sincronizado con el servidor.
-
-Una vez sincronizado:
-
-- no puede editarse
-- no puede modificarse
+Hasta v1.1 el cliente marcaba `estado = 'sincronizada'` tras el push. Ya **no se
+escribe** (se usa `pendingSync = false`), pero filas locales viejas pueden
+tenerlo; el gate de finalización (`adminQueries`) lo sigue tratando como "hecho".
 
 ---
 

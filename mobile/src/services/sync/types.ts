@@ -1,3 +1,5 @@
+import { PG_ERROR } from '../../supabase/postgresErrorCodes';
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
@@ -13,6 +15,8 @@
  *    constraints esperados (fallback ante drift de versiones).
  *  - PARCELA_PENDING: grupo no se subió porque su parcela está aún pending_sync
  *    (D-16-16, atomicidad — orden FK).
+ *  - PERMISSION: el server rechazó por RLS (postgres 42501). Típicamente el
+ *    usuario no está habilitado para escribir en esa plantación.
  *  - NETWORK, UNKNOWN: legacy.
  */
 export type SyncErrorCode =
@@ -20,6 +24,7 @@ export type SyncErrorCode =
   | 'DUPLICATE_NAME'
   | 'GENERIC_CONFLICT'
   | 'PARCELA_PENDING'
+  | 'PERMISSION'
   | 'NETWORK'
   | 'UNKNOWN';
 
@@ -30,11 +35,16 @@ export interface PhotoSyncProgress {
 
 export type SyncGroupResult =
   | { success: true; groupId: string; nombre: string }
-  | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null };
+  | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null; detail?: string };
 
 export type SyncParcelaResult =
   | { success: true; parcelaId: string; nombre: string }
-  | { success: false; parcelaId: string; nombre: string; error: SyncErrorCode };
+  | { success: false; parcelaId: string; nombre: string; error: SyncErrorCode; detail?: string };
+
+/** Result of pushing an offline-created plantation row to the server. */
+export type SyncPlantationResult =
+  | { success: true; plantacionId: string; nombre: string }
+  | { success: false; plantacionId: string; nombre: string; error: SyncErrorCode; detail?: string };
 
 export interface SyncProgress {
   total: number;
@@ -93,10 +103,35 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   DUPLICATE_NAME: 'El nombre de parcela ya existe en el servidor. Renombra la parcela e intenta de nuevo.',
   GENERIC_CONFLICT: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
   PARCELA_PENDING: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
+  PERMISSION: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
   NETWORK: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
   UNKNOWN: 'Error inesperado. Intenta de nuevo.',
 };
 
 export function getErrorMessage(code: SyncErrorCode): string {
   return ERROR_MESSAGES[code];
+}
+
+// ─── Server error classification (shared) ─────────────────────────────────────
+
+/** Raw "code: message" del error, para mostrar la causa real en errores opacos. */
+export function rawErrorDetail(error: { code?: string; message?: string } | null | undefined): string {
+  return `${error?.code ?? 'sin-codigo'}: ${error?.message ?? ''}`.trim();
+}
+
+/**
+ * Clasifica un error de push (server/red) que NO es un conflicto de unicidad
+ * (23505). Tail compartido por la clasificación de parcela y de plantación:
+ *  - 42501 (RLS insufficient_privilege) → PERMISSION
+ *  - fetch/network sin código postgres → NETWORK
+ *  - resto → UNKNOWN (con el código/mensaje crudo en `detail`)
+ */
+export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
+  const detail = rawErrorDetail(error);
+  if (error?.code === PG_ERROR.INSUFFICIENT_PRIVILEGE) return { error: 'PERMISSION', detail };
+  const msg = String(error?.message ?? '').toLowerCase();
+  if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
+    return { error: 'NETWORK', detail };
+  }
+  return { error: 'UNKNOWN', detail };
 }

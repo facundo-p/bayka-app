@@ -1,18 +1,24 @@
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, PhotoSyncProgress } from '../services/SyncService';
-import { getErrorMessage } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress } from '../services/SyncService';
 import BaseModal from './BaseModal';
+import FailureList from './FailureList';
+import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
 
 interface Props {
   state: SyncState;
   progress: SyncProgress | null;
   results: SyncGroupResult[];
+  parcelaResults: SyncParcelaResult[];
+  plantationResults: SyncPlantationResult[];
   successCount: number;
   failureCount: number;
+  parcelaFailureCount: number;
+  plantationFailureCount: number;
   pullSuccess: boolean | null;
+  authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
   globalProgress?: { plantationName: string; done: number; total: number } | null;
@@ -23,15 +29,27 @@ export default function SyncProgressModal({
   state,
   progress,
   results,
+  parcelaResults,
+  plantationResults,
   successCount,
   failureCount,
+  parcelaFailureCount,
+  plantationFailureCount,
   pullSuccess,
+  authExpired,
   photoProgress,
   photoResult,
   globalProgress,
   onDismiss,
 }: Props) {
   if (state === 'idle') return null;
+  // Session expiry is surfaced by a dedicated ConfirmModal (re-login flow),
+  // not here — suppress this modal so the two don't overlap.
+  if (authExpired) return null;
+
+  // Hay errores de cualquier tipo (grupo / parcela / plantación) — única fuente
+  // de verdad para icono, color y título del resultado.
+  const anyFailure = failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0;
 
   return (
     <BaseModal
@@ -93,7 +111,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && pullSuccess !== null && results.length === 0 && (
+      {state === 'done' && pullSuccess !== null && results.length === 0 && !anyFailure && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -119,15 +137,15 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && (results.length > 0 || pullSuccess === null) && (
+      {state === 'done' && (results.length > 0 || anyFailure || pullSuccess === null) && (
         <>
           <Ionicons
-            name={failureCount > 0 ? 'alert-circle' : 'checkmark-circle'}
+            name={anyFailure ? 'alert-circle' : 'checkmark-circle'}
             size={48}
-            color={failureCount > 0 ? colors.secondary : colors.primary}
+            color={anyFailure ? colors.secondary : colors.primary}
           />
           <Text style={styles.title}>
-            {failureCount === 0 ? 'Sincronizacion completa' : 'Sincronizacion parcial'}
+            {anyFailure ? 'Sincronizacion parcial' : 'Sincronizacion completa'}
           </Text>
           {successCount > 0 && (
             <Text style={styles.successText}>
@@ -155,23 +173,12 @@ export default function SyncProgressModal({
               {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
             </Text>
           )}
-          {failureCount > 0 && (
-            <View style={styles.failureSection}>
-              <Text style={styles.failureTitle}>
-                {failureCount} grupo{failureCount > 1 ? 's' : ''} con error:
-              </Text>
-              {results
-                .filter((r) => !r.success)
-                .map((r) => (
-                  <View key={r.groupId} style={styles.failureItem}>
-                    <Text style={styles.failureName}>{r.nombre}</Text>
-                    <Text style={styles.failureMessage}>
-                      {!r.success ? getErrorMessage(r.error) : ''}
-                    </Text>
-                  </View>
-                ))}
-            </View>
-          )}
+          {/* Plantación primero: si no se subió, FK-bloquea sus parcelas y
+              grupos (la causa raíz más upstream). Luego parcela (bloquea grupos
+              con PARCELA_PENDING), luego grupos. */}
+          <FailureList label="plantacion" results={plantationResults} getKey={(r) => r.plantacionId} />
+          <FailureList label="parcela" results={parcelaResults} getKey={(r) => r.parcelaId} />
+          <FailureList label="grupo" results={results} getKey={(r) => r.groupId} />
           <Pressable style={styles.dismissButton} onPress={onDismiss}>
             <Text style={styles.dismissText}>Cerrar</Text>
           </Pressable>
@@ -180,75 +187,3 @@ export default function SyncProgressModal({
     </BaseModal>
   );
 }
-
-const styles = StyleSheet.create({
-  title: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.heading,
-    color: colors.text,
-    textAlign: 'center',
-  },
-  progressText: {
-    fontSize: fontSize.xl,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  currentName: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  plantationProgress: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginTop: spacing.md,
-  },
-  successText: {
-    fontSize: fontSize.base,
-    color: colors.primary,
-    fontFamily: fonts.semiBold,
-    textAlign: 'center',
-  },
-  failureSection: {
-    width: '100%',
-    gap: spacing.sm,
-  },
-  failureTitle: {
-    fontSize: fontSize.base,
-    color: colors.secondary,
-    fontFamily: fonts.semiBold,
-  },
-  failureItem: {
-    backgroundColor: colors.dangerBg,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  failureName: {
-    fontSize: fontSize.base,
-    color: colors.text,
-    fontFamily: fonts.semiBold,
-  },
-  failureMessage: {
-    fontSize: fontSize.sm,
-    fontFamily: fonts.regular,
-    color: colors.danger,
-  },
-  dismissButton: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing['4xl'],
-    marginTop: spacing.sm,
-  },
-  dismissText: {
-    color: colors.white,
-    fontSize: fontSize.base,
-    fontFamily: fonts.bold,
-  },
-});

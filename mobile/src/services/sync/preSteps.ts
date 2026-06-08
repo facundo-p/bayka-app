@@ -4,6 +4,8 @@ import { plantationSpecies, plantations, species } from '../../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
+import { SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
+import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
 
@@ -62,61 +64,82 @@ export async function pullSpeciesFromServer(): Promise<void> {
  * 2. Upserts plantation_species rows
  * 3. Marks pendingSync=false locally
  *
- * Non-fatal: failed plantations are logged and skipped.
+ * Returns a result per plantation so the caller can surface failures: a failed
+ * plantation push silently blocks its parcelas/groups (FK), so the error must
+ * reach the user instead of being swallowed.
  */
-export async function uploadOfflinePlantations(): Promise<void> {
+export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
   const pending = await db
     .select()
     .from(plantations)
     .where(eq(plantations.pendingSync, true));
 
+  const results: SyncPlantationResult[] = [];
+
   for (const p of pending) {
-    // Step 1: Upload plantation row (idempotent)
-    const { error: plantError } = await supabase
-      .from('plantations')
-      .insert({
-        id: p.id,
-        organizacion_id: p.organizacionId,
-        lugar: p.lugar,
-        periodo: p.periodo,
-        estado: p.estado,
-        creado_por: p.creadoPor,
-        created_at: p.createdAt,
-      });
+    // Todo el push por-plantación va en try/catch: un error que LANZA (fetch
+    // failure que se propaga, no `{ error }`) también debe surfacearse, no
+    // tragarse en runGlobalPreSteps dejando results vacío.
+    try {
+      // Step 1: Upload plantation row (idempotent)
+      const { error: plantError } = await supabase
+        .from('plantations')
+        .insert({
+          id: p.id,
+          organizacion_id: p.organizacionId,
+          lugar: p.lugar,
+          periodo: p.periodo,
+          estado: p.estado,
+          creado_por: p.creadoPor,
+          created_at: p.createdAt,
+        });
 
-    // 23505 = duplicate key = plantation already exists on server, proceed with species upload
-    if (plantError && plantError.code !== '23505') {
-      syncLog.error('Upload plantation failed:', p.id, plantError.message);
-      continue;
-    }
-
-    // Step 2: Upload plantation_species (upsert)
-    const localPs = await db
-      .select()
-      .from(plantationSpecies)
-      .where(eq(plantationSpecies.plantacionId, p.id));
-
-    if (localPs.length > 0) {
-      const { error: psError } = await supabase
-        .from('plantation_species')
-        .upsert(
-          localPs.map((ps) => ({
-            plantation_id: ps.plantacionId,
-            species_id: ps.especieId,
-            orden_visual: ps.ordenVisual,
-          }))
-        );
-      if (psError) {
-        syncLog.error('Upload plantation_species failed:', p.id, psError.message);
+      // unique_violation = la plantación ya existe en el server → seguimos con species
+      if (plantError && plantError.code !== PG_ERROR.UNIQUE_VIOLATION) {
+        syncLog.error('Upload plantation failed:', p.id, plantError.message);
+        const { error: code, detail } = classifyServerError(plantError);
+        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });
+        continue;
       }
-    }
 
-    // Step 3: Mark as synced locally
-    await db
-      .update(plantations)
-      .set({ pendingSync: false })
-      .where(eq(plantations.id, p.id));
+      // Step 2: Upload plantation_species (upsert)
+      const localPs = await db
+        .select()
+        .from(plantationSpecies)
+        .where(eq(plantationSpecies.plantacionId, p.id));
+
+      if (localPs.length > 0) {
+        const { error: psError } = await supabase
+          .from('plantation_species')
+          .upsert(
+            localPs.map((ps) => ({
+              plantation_id: ps.plantacionId,
+              species_id: ps.especieId,
+              orden_visual: ps.ordenVisual,
+            }))
+          );
+        if (psError) {
+          syncLog.error('Upload plantation_species failed:', p.id, psError.message);
+        }
+      }
+
+      // Step 3: Mark as synced locally
+      await db
+        .update(plantations)
+        .set({ pendingSync: false })
+        .where(eq(plantations.id, p.id));
+
+      results.push({ success: true, plantacionId: p.id, nombre: p.lugar });
+    } catch (e: any) {
+      syncLog.error('Upload plantation exception:', p.id, e?.message ?? e);
+      results.push({
+        success: false, plantacionId: p.id, nombre: p.lugar,
+        error: 'NETWORK', detail: rawErrorDetail({ message: String(e?.message ?? e) }),
+      });
+    }
   }
+
+  return results;
 }
 
 // ─── Upload pending plantation edits ─────────────────────────────────────────
@@ -163,9 +186,11 @@ export async function uploadPendingEdits(): Promise<void> {
 
 // ─── Global pre-steps ────────────────────────────────────────────────────────
 
-export async function runGlobalPreSteps(): Promise<void> {
+export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   await supabase.auth.getSession();
   try { await pullSpeciesFromServer(); } catch (e) { syncLog.error('Pull species failed:', e); }
-  try { await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
+  let plantationResults: SyncPlantationResult[] = [];
+  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
   try { await uploadPendingEdits(); } catch (e) { syncLog.error('Upload pending edits failed:', e); }
+  return plantationResults;
 }

@@ -162,9 +162,24 @@ async function pullGroups(
   emitProgress(onProgress, 'groups', 0, all.length);
   if (all.length === 0) return [];
 
+  // Pre-fetch ids con cambios locales pendientes para saltearlos (igual que
+  // pullParcelas). El pull NO debe pisar un grupo dirty: antes sobreescribía
+  // estado/nombre/parcela_id con el valor del server aunque hubiera un cambio
+  // local sin subir (p.ej. activa→finalizada), perdiendo la transición.
+  const localRows = await db
+    .select({ id: groups.id, pendingSync: groups.pendingSync })
+    .from(groups)
+    .where(eq(groups.plantacionId, plantacionId));
+  const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
+
   await runInTransaction(db, async (tx: any) => {
     let done = 0;
     for (const sg of all) {
+      if (pendingLocally.has(sg.id)) {
+        // Local push wins — skip overwriting pending changes.
+        done++;
+        continue;
+      }
       await tx.insert(groups).values({
         id: sg.id,
         plantacionId: sg.plantation_id,
@@ -182,7 +197,6 @@ async function pullGroups(
           parcelaId: sql`excluded.parcela_id`,
           estado: sql`excluded.estado`,
           nombre: sql`excluded.nombre`,
-          pendingSync: sql`CASE WHEN ${groups.pendingSync} = 1 THEN 1 ELSE 0 END`,
         },
       });
       done++;

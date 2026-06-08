@@ -348,6 +348,17 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(wrongCols.error).toBe('GENERIC_CONFLICT');
   });
 
+  test('PERMISSION: RLS denial (postgres 42501) se clasifica como permiso', async () => {
+    const denied = classifyParcelaRpcResult(
+      { id: 'p', nombre: 'P' },
+      null,
+      { code: '42501', message: 'new row violates row-level security policy for table "parcelas"' }
+    );
+    expect(denied.success).toBe(false);
+    if (denied.success) return;
+    expect(denied.error).toBe('PERMISSION');
+  });
+
   // 6.
   test('atomicidad: group dependiente de parcela pendiente reporta PARCELA_PENDING', async () => {
     const pid = await seedLocalPlantation();
@@ -457,6 +468,34 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     const [gRow] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-pull'));
     expect(gRow).toBeDefined();
     expect(gRow.parcelaId).toBe('srv-pull-fk');
+  });
+
+  test('pull NO pisa el estado de un grupo con cambios locales pendientes', async () => {
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    // Grupo DIRTY local: finalizada + pendingSync (transición sin subir aún).
+    await mockTestDb.insert(groups).values({
+      id: 'g-dirty', plantacionId: pid, parcelaId: null, nombre: 'Dirty', codigo: 'GD',
+      tipo: 'linea', estado: 'finalizada', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync: true,
+    });
+    // Grupo CLEAN local: sin cambios pendientes.
+    await mockTestDb.insert(groups).values({
+      id: 'g-clean', plantacionId: pid, parcelaId: null, nombre: 'Clean', codigo: 'GC',
+      tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync: false,
+    });
+    // El server tiene ambos con estado VIEJO 'activa' (dirty) / 'finalizada' (clean).
+    serverState.groups.set('g-dirty', { id: 'g-dirty', plantation_id: pid, parcela_id: null, nombre: 'Dirty', codigo: 'GD', tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now });
+    serverState.groups.set('g-clean', { id: 'g-clean', plantation_id: pid, parcela_id: null, nombre: 'Clean', codigo: 'GC', tipo: 'linea', estado: 'finalizada', usuario_creador: 'user-tecnico-1', created_at: now });
+
+    await pullFromServer(pid);
+
+    // Dirty: el estado local 'finalizada' se conserva (no lo pisa el server).
+    const [dirty] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-dirty'));
+    expect(dirty.estado).toBe('finalizada');
+    expect(dirty.pendingSync).toBe(true);
+    // Clean: toma el estado del server.
+    const [clean] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-clean'));
+    expect(clean.estado).toBe('finalizada');
   });
 
   // 9.

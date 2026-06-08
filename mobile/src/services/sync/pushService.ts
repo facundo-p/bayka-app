@@ -16,7 +16,8 @@ import {
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
 import { File as ExpoFile } from 'expo-file-system';
-import { SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress } from './types';
+import { SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress, classifyServerError } from './types';
+import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 /*
  * Supabase unique-constraint error shape (capturado en spike 3.3.0, 2026-05-26):
@@ -102,7 +103,7 @@ export function classifyParcelaRpcResult(
   }
   syncLog.error(`Parcela upload error for "${parcela.nombre}" (${parcela.id}):`, JSON.stringify(error));
 
-  if (error?.code === '23505') {
+  if (error?.code === PG_ERROR.UNIQUE_VIOLATION) {
     const details: string | undefined = error?.details;
     if (!details) {
       return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
@@ -121,12 +122,11 @@ export function classifyParcelaRpcResult(
     return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
   }
 
-  // Network / fetch errors (no postgres code present)
-  const msg = String(error?.message ?? '').toLowerCase();
-  if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
-    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'NETWORK' };
-  }
-  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'UNKNOWN' };
+  // No-conflict (42501 PERMISSION / network / unknown). El detail lleva el código
+  // postgres crudo para errores opacos (p.ej. 23503 FK cuando la plantación padre
+  // todavía no está en el server).
+  const { error: code, detail } = classifyServerError(error);
+  return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: code, detail };
 }
 
 /**
@@ -209,6 +209,10 @@ export async function uploadGroup(
     nombre: sg.nombre,
     codigo: sg.codigo,
     tipo: sg.tipo,
+    // Estado REAL del grupo (antes el RPC lo hardcodeaba a 'finalizada'). El
+    // server solo acepta 'activa'|'finalizada'; 'sincronizada' es un flag
+    // solo-cliente que mapea a 'finalizada'.
+    estado: sg.estado === 'activa' ? 'activa' : 'finalizada',
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
   };

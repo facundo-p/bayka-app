@@ -19,6 +19,16 @@
    - Refactor si función >20 líneas.
    - Separar lógica y presentación.
    - Actualizar archivos de documentación .md que hayan quedado desactualizados
+   - **Sin "magic constants".** Códigos de error / valores externos (p.ej. SQLSTATE
+     de Postgres `'23505'`/`'42501'`) van en un módulo de constantes nombradas y
+     documentadas (ver `mobile/src/supabase/postgresErrorCodes.ts`), NUNCA como
+     literal suelto comparado contra `error.code`. Un literal opaco no se
+     autodocumenta, no se grepea y nadie nota si cambia el contrato.
+     **Enforzado por eslint** (`no-restricted-syntax` en `mobile/eslint.config.js`:
+     falla ante un SQLSTATE literal en una comparación de igualdad).
+   - **En cada code-review** (skill `/code-review`): incluir explícitamente la
+     búsqueda de *magic constants / códigos de error hardcodeados* como dimensión
+     a chequear, además de bugs/reuse/simplificación.
 
 4. Eficiencia
    - Preguntar si algo es ambiguo.

@@ -228,6 +228,7 @@ describe('SyncService', () => {
           nombre: 'Línea A',
           codigo: 'LA',
           tipo: 'linea',
+          estado: 'finalizada',
           usuario_creador: 'user-1',
           created_at: '2026-01-01T00:00:00Z',
         },
@@ -244,6 +245,31 @@ describe('SyncService', () => {
           },
         ],
       });
+    });
+  });
+
+  describe('estado real en el payload (no hardcode)', () => {
+    async function rpcEstadoFor(estado: string): Promise<string> {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+      mockGetFinalizadaSubGroups.mockResolvedValue([{ ...makeSg('sg-1'), estado }]);
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+      });
+      await syncPlantation('plantation-1');
+      const call = (mockSupabase.rpc as jest.Mock).mock.calls.at(-1);
+      return call[1].p_subgroup.estado;
+    }
+
+    it("envía 'activa' tal cual (no lo hardcodea a finalizada)", async () => {
+      expect(await rpcEstadoFor('activa')).toBe('activa');
+    });
+
+    it("envía 'finalizada' tal cual", async () => {
+      expect(await rpcEstadoFor('finalizada')).toBe('finalizada');
+    });
+
+    it("mapea 'sincronizada' (flag solo-cliente) a 'finalizada'", async () => {
+      expect(await rpcEstadoFor('sincronizada')).toBe('finalizada');
     });
   });
 

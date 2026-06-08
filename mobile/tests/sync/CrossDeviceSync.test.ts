@@ -11,7 +11,7 @@ jest.mock('../../src/supabase/client', () => ({
   supabase: {
     rpc: jest.fn(),
     from: jest.fn(),
-    auth: { getSession: jest.fn(), getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
+    auth: { getSession: jest.fn().mockResolvedValue({ data: { session: {} }, error: null }), refreshSession: jest.fn(), getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
     storage: {
       from: jest.fn(),
     },

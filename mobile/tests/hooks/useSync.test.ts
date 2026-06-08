@@ -44,7 +44,7 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function));
     });
 
     it('transitions state from idle → pushing → done', async () => {
@@ -106,6 +106,55 @@ describe('useSync', () => {
       expect(result.current.failureCount).toBe(1);
     });
 
+    it('surfaces parcela failures from syncPlantation via onParcelaResults', async () => {
+      const parcelaFailures = [
+        { success: false, parcelaId: 'parc-1', nombre: 'Lote A', error: 'UNKNOWN' as const },
+      ];
+      // syncPlantation delivers parcela results through its 3rd callback arg, then
+      // returns the (blocked) group results.
+      (syncPlantation as jest.Mock).mockImplementation(
+        (_id: string, _onProgress: any, onParcelaResults?: (p: any[]) => void) => {
+          onParcelaResults?.(parcelaFailures);
+          return Promise.resolve([
+            { success: false, groupId: 'sg-1', nombre: 'Linea 1', error: 'PARCELA_PENDING' as const, parcelaId: 'parc-1' },
+          ]);
+        }
+      );
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.parcelaResults).toEqual(parcelaFailures);
+      expect(result.current.parcelaFailureCount).toBe(1);
+      expect(result.current.hasFailures).toBe(true);
+    });
+
+    it('surfaces plantation push failures from syncPlantation via onPlantationResults', async () => {
+      const plantationFailures = [
+        { success: false, plantacionId: 'pl-1', nombre: 'Finca X', error: 'UNKNOWN' as const, detail: '23503: foreign key' },
+      ];
+      // 4th callback arg delivers plantation push results.
+      (syncPlantation as jest.Mock).mockImplementation(
+        (_id: string, _onProgress: any, _onParcelas: any, onPlantationResults?: (p: any[]) => void) => {
+          onPlantationResults?.(plantationFailures);
+          return Promise.resolve([]);
+        }
+      );
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.plantationResults).toEqual(plantationFailures);
+      expect(result.current.plantationFailureCount).toBe(1);
+      expect(result.current.hasFailures).toBe(true);
+    });
+
     it('reports no failures when all groups sync successfully', async () => {
       (syncPlantation as jest.Mock).mockResolvedValue([
         { success: true, groupId: 'sg-1', nombre: 'Linea A' },
@@ -132,6 +181,32 @@ describe('useSync', () => {
       expect(result.current.pullSuccess).toBe(true);
     });
 
+    it('sets authExpired when syncPlantation throws SessionExpiredError', async () => {
+      const expiredErr = Object.assign(new Error('SESSION_EXPIRED'), { name: 'SessionExpiredError' });
+      (syncPlantation as jest.Mock).mockRejectedValue(expiredErr);
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.authExpired).toBe(true);
+      expect(result.current.state).toBe('done');
+    });
+
+    it('does NOT set authExpired for a generic sync error', async () => {
+      (syncPlantation as jest.Mock).mockRejectedValue(new Error('boom'));
+
+      const { result } = renderHook(() => useSync('plant-1'));
+
+      await act(async () => {
+        await result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.authExpired).toBe(false);
+    });
+
     it('sets pullSuccess=false when sync throws', async () => {
       (syncPlantation as jest.Mock).mockRejectedValue(new Error('Network error'));
 
@@ -155,7 +230,7 @@ describe('useSync', () => {
         await result.current.startGlobalSync();
       });
 
-      expect(syncAllPlantations).toHaveBeenCalledWith(expect.any(Function), true);
+      expect(syncAllPlantations).toHaveBeenCalledWith(expect.any(Function), true, expect.any(Function));
     });
 
     it('flattens results from all plantations', async () => {
@@ -174,6 +249,28 @@ describe('useSync', () => {
       expect(result.current.results).toHaveLength(2);
       expect(result.current.successCount).toBe(1);
       expect(result.current.failureCount).toBe(1);
+    });
+
+    it('surfaces parcela failures flattened from all plantations', async () => {
+      const mockAllResults = [
+        { plantationId: 'p-1', plantationName: 'Finca A', results: [], parcelas: [
+          { success: false, parcelaId: 'parc-1', nombre: 'Lote A', error: 'PERMISSION' as const },
+        ] },
+        { plantationId: 'p-2', plantationName: 'Finca B', results: [], parcelas: [
+          { success: true, parcelaId: 'parc-2', nombre: 'Lote B' },
+        ] },
+      ];
+      (syncAllPlantations as jest.Mock).mockResolvedValue(mockAllResults);
+
+      const { result } = renderHook(() => useSync());
+
+      await act(async () => {
+        await result.current.startGlobalSync();
+      });
+
+      expect(result.current.parcelaResults).toHaveLength(2);
+      expect(result.current.parcelaFailureCount).toBe(1);
+      expect(result.current.hasFailures).toBe(true);
     });
 
     it('calls notifyDataChanged in finally block even on error', async () => {

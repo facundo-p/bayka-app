@@ -18,6 +18,7 @@ import SyncConfirmModal from '../components/SyncConfirmModal';
 import { usePlantaciones } from '../hooks/usePlantaciones';
 import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
 import { useSync } from '../hooks/useSync';
+import { useAuth } from '../hooks/useAuth';
 import { showConfirmDialog } from '../utils/alertHelpers';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
@@ -98,7 +99,15 @@ export default function PlantacionesScreen() {
   const adminHook = usePlantationAdmin();
 
   // Global sync state
-  const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, reset: resetSync, pullSuccess, successCount, failureCount, photoProgress, photoResult } = useSync();
+  const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, parcelaResults, plantationResults, reset: resetSync, pullSuccess, authExpired, successCount, failureCount, parcelaFailureCount, plantationFailureCount, photoProgress, photoResult } = useSync();
+  const { signOut } = useAuth();
+
+  // Sesión expirada durante el sync: "Aceptar" cierra sesión (el root layout
+  // redirige a login); "Cancelar" solo descarta el aviso.
+  const handleSessionExpiredReauth = useCallback(() => {
+    resetSync();
+    signOut();
+  }, [resetSync, signOut]);
   const { pendingCount: globalPendingCount } = usePendingSyncCount();
   const hasAnyPending = globalPendingCount > 0;
   const isSyncing = syncState !== 'idle' && syncState !== 'done';
@@ -314,12 +323,30 @@ export default function PlantacionesScreen() {
         state={syncState}
         progress={progress}
         results={results}
+        parcelaResults={parcelaResults}
+        plantationResults={plantationResults}
         successCount={successCount}
         failureCount={failureCount}
+        parcelaFailureCount={parcelaFailureCount}
+        plantationFailureCount={plantationFailureCount}
         pullSuccess={pullSuccess}
+        authExpired={authExpired}
         photoProgress={photoProgress}
         photoResult={photoResult}
         globalProgress={globalProgress}
+        onDismiss={resetSync}
+      />
+
+      <ConfirmModal
+        visible={syncState === 'done' && authExpired}
+        icon="lock-closed"
+        iconColor={colors.secondary}
+        title="Sesion expirada"
+        message="Tu sesion expiro. Inicia sesion de nuevo para sincronizar."
+        buttons={[
+          { label: 'Cancelar', style: 'cancel', onPress: resetSync },
+          { label: 'Aceptar', style: 'primary', onPress: handleSessionExpiredReauth },
+        ]}
         onDismiss={resetSync}
       />
 

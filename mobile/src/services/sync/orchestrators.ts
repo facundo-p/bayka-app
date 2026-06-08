@@ -2,7 +2,8 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncGroupResult, SyncProgress, GlobalSyncProgress } from './types';
+import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress } from './types';
+import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
@@ -20,9 +21,17 @@ import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService
  */
 export async function syncPlantation(
   plantacionId: string,
-  onProgress?: (progress: SyncProgress) => void
+  onProgress?: (progress: SyncProgress) => void,
+  onParcelaResults?: (parcelas: SyncParcelaResult[]) => void,
+  onPlantationResults?: (plantations: SyncPlantationResult[]) => void
 ): Promise<SyncGroupResult[]> {
-  await runGlobalPreSteps();
+  // Abort early if the session can't authenticate server writes (avoids anon
+  // requests that RLS rejects as a misleading permission error).
+  await ensureServerSession();
+  // runGlobalPreSteps pushes offline-created plantations; surface those failures
+  // so a blocked plantation (which FK-blocks its parcelas/groups) is visible.
+  const plantationResults = await runGlobalPreSteps();
+  onPlantationResults?.(plantationResults);
 
   try {
     await pullFromServer(plantacionId);
@@ -31,8 +40,13 @@ export async function syncPlantation(
   }
 
   // D-16-13: push parcelas BEFORE groups (FK ordering).
+  // Las fallas de parcela se surfacean vía onParcelaResults: de lo contrario el
+  // único síntoma visible sería PARCELA_PENDING en los grupos, ocultando la
+  // causa real (RLS, conflicto, red). El callback se invoca SIEMPRE (incluso si
+  // la lectura lanza) para mantener consistente el estado de la UI.
+  let parcelaResults: SyncParcelaResult[] = [];
   try {
-    const parcelaResults = await uploadSyncableParcelas(plantacionId);
+    parcelaResults = await uploadSyncableParcelas(plantacionId);
     const failed = parcelaResults.filter(r => !r.success).length;
     if (failed > 0) {
       syncLog.info(`Push parcelas: ${failed}/${parcelaResults.length} failed; groups dependientes saltarán`);
@@ -40,6 +54,7 @@ export async function syncPlantation(
   } catch (e) {
     syncLog.error('Push parcelas failed:', e);
   }
+  onParcelaResults?.(parcelaResults);
 
   const results = await uploadSyncableGroups(plantacionId, onProgress);
   notifyDataChanged();
@@ -55,12 +70,15 @@ export async function syncPlantation(
  */
 export async function syncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
-  incluirFotos: boolean = true
-): Promise<Array<{ plantationId: string; plantationName: string; results: SyncGroupResult[] }>> {
-  await runGlobalPreSteps();
+  incluirFotos: boolean = true,
+  onPlantationResults?: (plantations: SyncPlantationResult[]) => void
+): Promise<{ plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[]> {
+  await ensureServerSession();
+  const plantationResults = await runGlobalPreSteps();
+  onPlantationResults?.(plantationResults);
 
   const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
-  const allResults: Array<{ plantationId: string; plantationName: string; results: SyncGroupResult[] }> = [];
+  const allResults: { plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[] = [];
 
   for (let i = 0; i < localPlantations.length; i++) {
     const plantation = localPlantations[i];
@@ -68,9 +86,10 @@ export async function syncAllPlantations(
 
     try {
       await pullFromServer(plantation.id);
-      // D-16-13: push parcelas antes que groups (FK).
+      // D-16-13: push parcelas antes que groups (FK). Surfaceamos sus fallas.
+      let parcelaResults: SyncParcelaResult[] = [];
       try {
-        await uploadSyncableParcelas(plantation.id);
+        parcelaResults = await uploadSyncableParcelas(plantation.id);
       } catch (e) {
         syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
       }
@@ -82,10 +101,10 @@ export async function syncAllPlantations(
           subgroupProgress: subProgress,
         });
       });
-      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results });
+      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results, parcelas: parcelaResults });
     } catch (e) {
       syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
-      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [] });
+      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [], parcelas: [] });
     }
   }
 
