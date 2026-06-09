@@ -13,8 +13,6 @@ import {
   Pressable,
   TextInput,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
@@ -23,7 +21,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
 import { useNewParcela } from '../hooks/useNewParcela';
-import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
+import { useKeyboardHeight } from '../hooks/useKeyboardVisible';
 import { colors, iconSizes, spacing } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
@@ -110,7 +108,8 @@ function applyDuplicateError(error: string): ErrorState {
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const keyboardVisible = useKeyboardVisible();
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardVisible = keyboardHeight > 0;
   const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
@@ -190,10 +189,10 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
     >
       <View style={styles.safeContainer}>
         <ModalHeader mode={mode} onClose={clearAndClose} topInset={insets.top} />
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        {/* En vez de KeyboardAvoidingView (deja franja residual al cerrar el
+            teclado con Fabric), empujamos el contenido con paddingBottom =
+            altura del teclado. Vuelve a 0 al cerrar → layout restaurado. */}
+        <View style={[styles.flex, { paddingBottom: keyboardHeight }]}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <FormField
               label="Nombre"
@@ -239,7 +238,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
                 : <Text style={styles.submitText}>{mode === 'create' ? 'Crear parcela' : 'Guardar'}</Text>}
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
       <ConfirmModal
         visible={hasChildrenError !== null}
