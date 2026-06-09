@@ -7,6 +7,7 @@ import type {
   CreateGroupResult,
   UpdateGroupResult,
 } from '../repositories/GroupRepository';
+import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
@@ -32,7 +33,7 @@ export default function GrupoForm({
 }: Props) {
   const [nombre, setNombre] = useState(initialValues?.nombre ?? '');
   const [codigo, setCodigo] = useState(initialValues?.codigo ?? '');
-  const [tipo, setTipo] = useState<GroupTipo>(initialValues?.tipo ?? 'linea');
+  const [tipo, setTipo] = useState<GroupTipo>(initialValues?.tipo ?? GROUP_TIPO_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [nombreError, setNombreError] = useState<string | null>(null);
   const [codigoError, setCodigoError] = useState<string | null>(null);

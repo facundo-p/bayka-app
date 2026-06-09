@@ -22,6 +22,7 @@ import ReadOnlyTreeView from '../components/ReadOnlyTreeView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { GROUP_TIPO_LABELS, type GroupTipo } from '../constants/groupTipo';
 import { styles } from './TreeRegistrationScreen.styles';
 import ScreenContainer from '../components/ScreenContainer';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
@@ -124,7 +125,7 @@ export default function TreeRegistrationScreen() {
       <TreeRegistrationHeader
         title={grupoNombre ?? grupoCodigo ?? ''}
         subtitle={treeReg.subgroup
-          ? `${treeReg.subgroup.codigo} · ${treeReg.subgroup.tipo === 'linea' ? 'Línea' : 'Parcela'}`
+          ? `${treeReg.subgroup.codigo} · ${GROUP_TIPO_LABELS[treeReg.subgroup.tipo as GroupTipo]}`
           : undefined}
         treeCount={totalCount}
         unresolvedNN={unresolvedNN}
