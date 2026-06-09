@@ -23,31 +23,23 @@ export interface Group {
 }
 
 /**
- * Returns the parcela `codigo` of a group, used as the first segment of every
- * tree SubID (formato `{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`,
- * ver idGenerator). Issue #59.
- *
- * Un grupo sin parcela (o con parcela sin código) NO debería existir, pero el
- * sync admite grupos legacy con `parcelaId=null` (pullService guarda
- * `parcela_id ?? null`; pushService maneja ese caso). Por eso se **notifica**
- * (console.error) para corregir el dato, pero se **degrada a ''** en vez de
- * tirar: tirar rompería el registro de árboles de esos grupos legacy en el
- * campo (insertTree/reverse/NN se invocan fire-and-forget). Feedback PR #79.
+ * Devuelve el `codigo` de parcela del grupo — primer segmento del SubID
+ * (`{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`). Todo grupo tiene
+ * parcela con código: la ausencia es un dato inválido, no un caso válido, así
+ * que se lanza error (no se degrada a ''). Issue #59.
  */
 export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
   const [group] = await db.select({ parcelaId: groups.parcelaId })
     .from(groups)
     .where(eq(groups.id, grupoId));
   if (!group?.parcelaId) {
-    console.error(`[getGroupParcelaCodigo] Grupo ${grupoId} sin parcela: SubID sin segmento de parcela (corregir el dato).`);
-    return '';
+    throw new Error(`Grupo ${grupoId} sin parcela: dato inválido, corregir antes de registrar árboles.`);
   }
   const [parcela] = await db.select({ codigo: parcelas.codigo })
     .from(parcelas)
     .where(eq(parcelas.id, group.parcelaId));
   if (!parcela?.codigo) {
-    console.error(`[getGroupParcelaCodigo] Parcela ${group.parcelaId} (grupo ${grupoId}) sin código: SubID sin segmento de parcela.`);
-    return '';
+    throw new Error(`Parcela ${group.parcelaId} (grupo ${grupoId}) sin código: dato inválido.`);
   }
   return parcela.codigo;
 }

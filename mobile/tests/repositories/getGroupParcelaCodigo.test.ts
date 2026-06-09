@@ -1,6 +1,6 @@
-// Issue #59 — getGroupParcelaCodigo resuelve el código de parcela que se usa
-// como primer segmento del SubID. La ausencia de parcela NO es soportada: se
-// notifica como error (throw) para corregir los datos (feedback PR #79).
+// Issue #59 — getGroupParcelaCodigo resuelve el código de parcela (primer
+// segmento del SubID). Todo grupo tiene parcela con código: la ausencia es un
+// dato inválido y se lanza error, no se degrada a '' (feedback PR #79).
 
 let selectQueue: any[][];
 
@@ -31,27 +31,18 @@ describe('getGroupParcelaCodigo', () => {
     expect(await getGroupParcelaCodigo('grupo-1')).toBe('AL');
   });
 
-  // Grupo legacy sin parcela (estado que el sync admite): notifica + degrada a ''
-  // en vez de tirar, para no romper el registro de árboles en el campo (PR #79).
-  it('devuelve "" y notifica cuando el grupo no tiene parcela', async () => {
-    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  it('lanza error cuando el grupo no tiene parcela', async () => {
     selectQueue = [[{ parcelaId: null }]];
-    expect(await getGroupParcelaCodigo('grupo-1')).toBe('');
-    expect(errSpy).toHaveBeenCalled();
-    errSpy.mockRestore();
+    await expect(getGroupParcelaCodigo('grupo-1')).rejects.toThrow(/sin parcela/);
   });
 
-  it('devuelve "" cuando el grupo no existe', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+  it('lanza error cuando el grupo no existe', async () => {
     selectQueue = [[]];
-    expect(await getGroupParcelaCodigo('inexistente')).toBe('');
-    (console.error as jest.Mock).mockRestore();
+    await expect(getGroupParcelaCodigo('inexistente')).rejects.toThrow(/sin parcela/);
   });
 
-  it('devuelve "" cuando la parcela referida no existe', async () => {
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+  it('lanza error cuando la parcela referida no existe', async () => {
     selectQueue = [[{ parcelaId: 'parcela-x' }], []];
-    expect(await getGroupParcelaCodigo('grupo-1')).toBe('');
-    (console.error as jest.Mock).mockRestore();
+    await expect(getGroupParcelaCodigo('grupo-1')).rejects.toThrow(/sin código/);
   });
 });
