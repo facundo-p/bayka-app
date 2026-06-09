@@ -21,7 +21,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
 import { useNewParcela } from '../hooks/useNewParcela';
-import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
+import { useKeyboardAwareModal } from '../hooks/useKeyboardAwareModal';
 import { colors, iconSizes, spacing } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
@@ -108,8 +108,7 @@ function applyDuplicateError(error: string): ErrorState {
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
   const insets = useSafeAreaInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const keyboardVisible = keyboardHeight > 0;
+  const keyboard = useKeyboardAwareModal();
   const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
@@ -189,10 +188,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
     >
       <View style={styles.safeContainer}>
         <ModalHeader mode={mode} onClose={clearAndClose} topInset={insets.top} />
-        {/* En vez de KeyboardAvoidingView (deja franja residual al cerrar el
-            teclado con Fabric), empujamos el contenido con paddingBottom =
-            altura del teclado. Vuelve a 0 al cerrar → layout restaurado. */}
-        <View style={[styles.flex, { paddingBottom: keyboardHeight }]}>
+        <View style={[styles.flex, keyboard.bodyPadding]}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <FormField
               label="Nombre"
@@ -221,10 +217,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
               </Pressable>
             )}
           </ScrollView>
-          {/* Con el teclado abierto NO sumamos insets.bottom: el teclado ya
-              cubre la nav bar, y sumarlo dejaba una franja sobrante encima del
-              teclado que persistía. Issue #74 (feedback PR #83). */}
-          <View style={[styles.footer, { paddingBottom: keyboardVisible ? spacing.xxl : spacing.xxl + insets.bottom }]}>
+          <View style={[styles.footer, keyboard.footerPadding]}>
             <Pressable style={styles.cancelBtn} onPress={clearAndClose} disabled={loading}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
