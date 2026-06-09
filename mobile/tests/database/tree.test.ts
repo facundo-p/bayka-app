@@ -103,8 +103,9 @@ import {
 describe('TreeRepository', () => {
   describe('insertTree', () => {
     it('first tree in subgroup gets posicion=1 (TREE-03)', async () => {
-      // MAX(posicion) returns null when no trees exist
-      mockSelectResults = [{ maxPos: null }];
+      // MAX(posicion) returns null when no trees exist. La fila también sirve para
+      // el lookup de parcela (getGroupParcelaCodigo): parcelaId + codigo 'PC'.
+      mockSelectResults = [{ maxPos: null, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -115,18 +116,18 @@ describe('TreeRepository', () => {
       });
 
       expect(result.posicion).toBe(1);
-      expect(result.subId).toBe('L1ANC1');
+      expect(result.subId).toBe('PCL1ANC1');
       expect(mockInsertValues).toHaveBeenCalledTimes(1);
       const row = mockInsertValues.mock.calls[0][0];
       expect(row.posicion).toBe(1);
-      expect(row.subId).toBe('L1ANC1');
+      expect(row.subId).toBe('PCL1ANC1');
       expect(row.especieId).toBe('esp-1');
       expect(row.groupId).toBe('sg-1');
     });
 
     it('inserts tree with auto-incremented position (TREE-02, TREE-03)', async () => {
       // Existing tree at posicion=3
-      mockSelectResults = [{ maxPos: 3 }];
+      mockSelectResults = [{ maxPos: 3, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -137,11 +138,11 @@ describe('TreeRepository', () => {
       });
 
       expect(result.posicion).toBe(4);
-      expect(result.subId).toBe('L1ANC4');
+      expect(result.subId).toBe('PCL1ANC4');
     });
 
     it('generates correct subId (TREE-04)', async () => {
-      mockSelectResults = [{ maxPos: 12 }];
+      mockSelectResults = [{ maxPos: 12, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -151,12 +152,12 @@ describe('TreeRepository', () => {
         userId: 'user-1',
       });
 
-      // generateSubId('L23B', 'ANC', 13) → 'L23BANC13'
-      expect(result.subId).toBe('L23BANC13');
+      // generateSubId('PC', 'L23B', 'ANC', 13) → 'PCL23BANC13'
+      expect(result.subId).toBe('PCL23BANC13');
     });
 
     it('stores null especieId for N/N trees (NN-01)', async () => {
-      mockSelectResults = [{ maxPos: 0 }];
+      mockSelectResults = [{ maxPos: 0, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -168,7 +169,7 @@ describe('TreeRepository', () => {
 
       const row = mockInsertValues.mock.calls[0][0];
       expect(row.especieId).toBeNull();
-      expect(result.subId).toBe('L1NN1');
+      expect(result.subId).toBe('PCL1NN1');
     });
   });
 
@@ -194,8 +195,9 @@ describe('TreeRepository', () => {
 
   describe('reverseTreeOrder', () => {
     it('runs in a transaction (all updates or none)', async () => {
+      // [0] lleva parcelaId + codigo para el lookup de getGroupParcelaCodigo.
       mockSelectResults = [
-        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: 'esp-1', subId: 'L1ANC1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: 'esp-1', subId: 'L1ANC1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: 'esp-1', subId: 'L1ANC2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 
@@ -206,7 +208,7 @@ describe('TreeRepository', () => {
 
     it('updates all posicion values using formula total-N+1 (REVR-01, REVR-02)', async () => {
       mockSelectResults = [
-        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
         { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
@@ -222,7 +224,7 @@ describe('TreeRepository', () => {
     it('recalculates subId for each tree after reversal (REVR-02)', async () => {
       // 2 N/N trees — species code stays 'NN'
       mockSelectResults = [
-        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 
@@ -253,8 +255,10 @@ describe('TreeRepository', () => {
         from: jest.fn(() => ({
           where: jest.fn(() => {
             callCount++;
-            if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]);
-            return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]);
+            if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]); // especie
+            if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]); // árbol
+            if (callCount === 3) return Promise.resolve([{ parcelaId: 'p1' }]); // grupo (getGroupParcelaCodigo)
+            return Promise.resolve([{ codigo: 'PC' }]); // parcela
           }),
         })),
       }));

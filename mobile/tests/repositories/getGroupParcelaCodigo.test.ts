@@ -1,5 +1,6 @@
 // Issue #59 — getGroupParcelaCodigo resuelve el código de parcela que se usa
-// como primer segmento del SubID. Devuelve '' cuando el grupo no tiene parcela.
+// como primer segmento del SubID. La ausencia de parcela NO es soportada: se
+// notifica como error (throw) para corregir los datos (feedback PR #79).
 
 let selectQueue: any[][];
 
@@ -30,18 +31,19 @@ describe('getGroupParcelaCodigo', () => {
     expect(await getGroupParcelaCodigo('grupo-1')).toBe('AL');
   });
 
-  it('devuelve "" cuando el grupo no tiene parcela (legacy)', async () => {
+  // Estado inválido (no soportado): se notifica como error en vez de degradar.
+  it('lanza error cuando el grupo no tiene parcela', async () => {
     selectQueue = [[{ parcelaId: null }]];
-    expect(await getGroupParcelaCodigo('grupo-1')).toBe('');
+    await expect(getGroupParcelaCodigo('grupo-1')).rejects.toThrow(/sin parcela/);
   });
 
-  it('devuelve "" cuando el grupo no existe', async () => {
+  it('lanza error cuando el grupo no existe', async () => {
     selectQueue = [[]];
-    expect(await getGroupParcelaCodigo('inexistente')).toBe('');
+    await expect(getGroupParcelaCodigo('inexistente')).rejects.toThrow(/sin parcela/);
   });
 
-  it('devuelve "" cuando la parcela referida no existe', async () => {
+  it('lanza error cuando la parcela referida no existe', async () => {
     selectQueue = [[{ parcelaId: 'parcela-x' }], []];
-    expect(await getGroupParcelaCodigo('grupo-1')).toBe('');
+    await expect(getGroupParcelaCodigo('grupo-1')).rejects.toThrow(/sin código/);
   });
 });

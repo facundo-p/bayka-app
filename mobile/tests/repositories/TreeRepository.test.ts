@@ -79,7 +79,8 @@ import {
 describe('TreeRepository', () => {
   describe('insertTree', () => {
     it('first tree in subgroup gets posicion=1 when MAX returns null', async () => {
-      mockDb = buildMockDb([{ maxPos: null }]);
+      // La fila del mock también sirve al lookup de parcela (parcelaId + codigo 'PC').
+      mockDb = buildMockDb([{ maxPos: null, parcelaId: 'p1', codigo: 'PC' }]);
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -90,7 +91,7 @@ describe('TreeRepository', () => {
       });
 
       expect(result.posicion).toBe(1);
-      expect(result.subId).toBe('L1ANC1');
+      expect(result.subId).toBe('PCL1ANC1');
       expect(mockInsertValues).toHaveBeenCalledTimes(1);
       const row = mockInsertValues.mock.calls[0][0];
       expect(row.posicion).toBe(1);
@@ -99,7 +100,7 @@ describe('TreeRepository', () => {
     });
 
     it('inserts tree with auto-incremented position based on MAX(posicion)', async () => {
-      mockDb = buildMockDb([{ maxPos: 3 }]);
+      mockDb = buildMockDb([{ maxPos: 3, parcelaId: 'p1', codigo: 'PC' }]);
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -110,11 +111,11 @@ describe('TreeRepository', () => {
       });
 
       expect(result.posicion).toBe(4);
-      expect(result.subId).toBe('L1ANC4');
+      expect(result.subId).toBe('PCL1ANC4');
     });
 
-    it('generates correct subId as concatenation grupoCodigo+especieCodigo+posicion', async () => {
-      mockDb = buildMockDb([{ maxPos: 12 }]);
+    it('generates correct subId as concatenation parcelaCodigo+grupoCodigo+especieCodigo+posicion', async () => {
+      mockDb = buildMockDb([{ maxPos: 12, parcelaId: 'p1', codigo: 'PC' }]);
 
       const result = await insertTree({
         grupoId: 'sg-1',
@@ -124,11 +125,11 @@ describe('TreeRepository', () => {
         userId: 'user-1',
       });
 
-      expect(result.subId).toBe('L23BANC13');
+      expect(result.subId).toBe('PCL23BANC13');
     });
 
     it('stores null especieId for N/N trees', async () => {
-      mockDb = buildMockDb([{ maxPos: 0 }]);
+      mockDb = buildMockDb([{ maxPos: 0, parcelaId: 'p1', codigo: 'PC' }]);
 
       await insertTree({
         grupoId: 'sg-1',
@@ -143,7 +144,7 @@ describe('TreeRepository', () => {
     });
 
     it('calls notifyDataChanged after insert', async () => {
-      mockDb = buildMockDb([{ maxPos: null }]);
+      mockDb = buildMockDb([{ maxPos: null, parcelaId: 'p1', codigo: 'PC' }]);
       const { notifyDataChanged } = require('../../src/database/liveQuery');
 
       await insertTree({
@@ -189,8 +190,9 @@ describe('TreeRepository', () => {
 
   describe('reverseTreeOrder', () => {
     it('runs in a transaction', async () => {
+      // [0] lleva parcelaId + codigo para el lookup de getGroupParcelaCodigo.
       const trees = [
-        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
       mockDb = buildMockDb(trees);
@@ -202,7 +204,7 @@ describe('TreeRepository', () => {
 
     it('updates all trees when reversing order', async () => {
       const trees = [
-        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
         { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
@@ -233,8 +235,10 @@ describe('TreeRepository', () => {
           from: jest.fn(() => ({
             where: jest.fn(() => {
               callCount++;
-              if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]);
-              return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]);
+              if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]); // especie
+              if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]); // árbol
+              if (callCount === 3) return Promise.resolve([{ parcelaId: 'p1' }]); // grupo (getGroupParcelaCodigo)
+              return Promise.resolve([{ codigo: 'PC' }]); // parcela
             }),
           })),
         })),
@@ -294,8 +298,9 @@ describe('TreeRepository', () => {
 
   describe('deleteTreeAndRecalculate', () => {
     it('deletes tree and runs transaction to recalculate positions', async () => {
+      // [0] lleva parcelaId + codigo para el lookup de getGroupParcelaCodigo.
       const remainingTrees = [
-        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
       ];
 

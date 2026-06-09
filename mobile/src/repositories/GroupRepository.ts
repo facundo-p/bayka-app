@@ -25,18 +25,31 @@ export interface Group {
 /**
  * Returns the parcela `codigo` of a group, used as the first segment of every
  * tree SubID (formato `{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`,
- * ver idGenerator). Devuelve '' cuando el grupo no tiene parcela (filas legacy /
- * transicionales): preserva el formato previo de SubID para esas filas. Issue #59.
+ * ver idGenerator). Issue #59.
+ *
+ * Todo grupo DEBE pertenecer a una parcela con código. La ausencia NO es un
+ * caso soportado (no hay datos legacy sin parcela): es estado inválido que
+ * generaría un SubID corrupto, así que se **notifica como error** (console.error
+ * + throw) para corregir los datos en vez de degradar silenciosamente.
  */
 export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
   const [group] = await db.select({ parcelaId: groups.parcelaId })
     .from(groups)
     .where(eq(groups.id, grupoId));
-  if (!group?.parcelaId) return '';
+  if (!group?.parcelaId) {
+    const msg = `Grupo ${grupoId} sin parcela: no se puede generar el SubID con código de parcela.`;
+    console.error(`[getGroupParcelaCodigo] ${msg}`);
+    throw new Error(msg);
+  }
   const [parcela] = await db.select({ codigo: parcelas.codigo })
     .from(parcelas)
     .where(eq(parcelas.id, group.parcelaId));
-  return parcela?.codigo ?? '';
+  if (!parcela?.codigo) {
+    const msg = `Parcela ${group.parcelaId} (grupo ${grupoId}) sin código: SubID inválido.`;
+    console.error(`[getGroupParcelaCodigo] ${msg}`);
+    throw new Error(msg);
+  }
+  return parcela.codigo;
 }
 
 // Returns the nombre of the most recently created Group for this plantation.
