@@ -221,13 +221,6 @@ export default function PlantacionesScreen() {
                 accessibilityLabel="Sincronizar todas las plantaciones"
               />
             )}
-            {isAdmin && (
-              <HeaderActionButton
-                icon="add"
-                onPress={() => setShowCreateModal(true)}
-                accessibilityLabel="Nueva plantacion"
-              />
-            )}
             <HeaderActionButton
               icon="download-outline"
               onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
@@ -235,6 +228,15 @@ export default function PlantacionesScreen() {
               disabled={!isOnline}
               accessibilityLabel="Gestionar plantaciones descargadas"
             />
+            {/* El "+" (crear plantación) va último/derecha para coincidir con la
+                posición del botón de acción en Parcelas y Grupos (#70 feedback). */}
+            {isAdmin && (
+              <HeaderActionButton
+                icon="add"
+                onPress={() => setShowCreateModal(true)}
+                accessibilityLabel="Nueva plantacion"
+              />
+            )}
           </View>
         }
       />
