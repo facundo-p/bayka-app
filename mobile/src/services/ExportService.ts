@@ -17,6 +17,10 @@ import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 import { getExportRows, type ExportRow } from '../queries/exportQueries';
 
+// BOM UTF-8: sin él, Excel (Windows) interpreta el CSV como ANSI y rompe los
+// acentos/ñ. El .xlsx no lo necesita (embebe la codificación). Issue CSV acentos.
+const UTF8_BOM = String.fromCharCode(0xFEFF);
+
 // ─── Header constant (D-18-08 — exact order) ────────────────────────────────
 
 const CSV_HEADER =
@@ -80,7 +84,7 @@ function rowToExcel(r: ExportRow) {
  */
 export async function exportToCSV(plantacionId: string, plantationName: string): Promise<void> {
   const rows = await getExportRows(plantacionId);
-  const csv = CSV_HEADER + rows.map(rowToCSV).join('\n');
+  const csv = UTF8_BOM + CSV_HEADER + rows.map(rowToCSV).join('\n');
 
   const file = new File(Paths.cache, `${plantationName}_export.csv`);
   file.write(csv, { encoding: 'utf8' });

@@ -85,7 +85,9 @@ describe('ExportService', () => {
 
       expect(mockWrite).toHaveBeenCalledTimes(1);
       const writtenContent: string = mockWrite.mock.calls[0][0];
-      expect(writtenContent.startsWith(EXPECTED_HEADER)).toBe(true);
+      // El CSV arranca con el BOM UTF-8 para que Excel respete los acentos.
+      expect(writtenContent.startsWith(String.fromCharCode(0xFEFF))).toBe(true);
+      expect(writtenContent.slice(1).startsWith(EXPECTED_HEADER)).toBe(true);
     });
 
     it('Test 2: calls Sharing.shareAsync with mimeType "text/csv"', async () => {
