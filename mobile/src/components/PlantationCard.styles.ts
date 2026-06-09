@@ -14,7 +14,7 @@ const SIDEBAR_WIDTH = 48;
 
 export const plantationCardStyles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     borderRadius: borderRadius.xl,
     overflow: 'hidden',
     elevation: 4,
@@ -26,7 +26,13 @@ export const plantationCardStyles = StyleSheet.create({
   },
   cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.95 },
 
-  // Left colored strip
+  // Fila superior: franja + contenido + acciones (la franja verde y los íconos
+  // solo cubren esta fila; el desplegable de parcelas va debajo, full-width).
+  topRow: {
+    flexDirection: 'row',
+  },
+
+  // Left colored strip — stretches to the top row height only.
   sidebar: {
     width: SIDEBAR_WIDTH,
     alignItems: 'center',
@@ -94,12 +100,21 @@ export const plantationCardStyles = StyleSheet.create({
     fontFamily: fonts.semiBold,
   },
 
+  // Sección de parcelas — full-width, debajo de la fila superior. Su propio
+  // padding horizontal reemplaza el de `content` (ya no está encajonada entre
+  // las dos franjas laterales).
+  parcelasSection: {
+    paddingHorizontal: spacing.xxl,
+    paddingBottom: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+
   // Expand row — "Parcelas: N" + chevron (D-17-10)
   expandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginTop: spacing.lg,
     paddingVertical: spacing.sm,
     minHeight: 44, // D-17-22 touch target
   },
@@ -133,13 +148,16 @@ export const plantationCardStyles = StyleSheet.create({
     fontStyle: 'italic',
   },
 
-  // Right sidebar strip — 3 action slots
+  // Right sidebar strip — 3 action slots. Anclados arriba (flex-start) para que
+  // NO se desplacen al expandir parcelas (antes 'center' los recentraba al
+  // crecer la card). El padding superior los alinea con el título.
   strip: {
     backgroundColor: colors.surface,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     width: SIDEBAR_WIDTH,
     gap: spacing.md,
+    paddingTop: spacing.lg,
   },
   stripSlot: {
     height: 36,

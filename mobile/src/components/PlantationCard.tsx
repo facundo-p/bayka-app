@@ -8,20 +8,16 @@
  * driven by the parent (PlantacionesScreen calls `LayoutAnimation.configureNext`
  * before flipping `expanded`).
  */
-import { View, Text, Pressable, Platform, UIManager } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors } from '../theme';
 import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
-
-// Enable LayoutAnimation on Android (idempotent — RN no-ops if already enabled).
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 type Props = {
   lugar: string;
@@ -223,52 +219,64 @@ export default function PlantationCard({
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
     >
-      <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
-        <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
+      {/* Fila superior: franja verde + contenido + acciones. La franja y los
+          íconos de acción solo cubren esta fila; la expansión de parcelas va
+          debajo (full-width), así los íconos no se desplazan al expandir. */}
+      <View style={styles.topRow}>
+        <View style={[styles.sidebar, { backgroundColor: accentColor }]}>
+          <MaterialCommunityIcons name="leaf" size={24} color={colors.white} />
+        </View>
+
+        <View style={styles.content}>
+          <View style={styles.titleRow}>
+            {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
+            <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
+          </View>
+          <Text style={styles.subtitle}>{periodo}</Text>
+
+          <StatsRow
+            totalCount={totalCount}
+            syncedCount={syncedCount}
+            todayCount={todayCount}
+            nnCount={nnCount}
+            estado={estado}
+          />
+
+          {pendingSync > 0 && (
+            <View style={styles.pendingSyncRow}>
+              <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
+              <Text style={styles.pendingSyncText}>
+                {pendingSync} grupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <ActionStrip onEdit={onEdit} onGear={onGear} onDelete={onDelete} />
       </View>
 
-      <View style={styles.content}>
-        <View style={styles.titleRow}>
-          {hasPendingSync && <OrangeDot size={10} style={styles.titleDot} />}
-          <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
-        </View>
-        <Text style={styles.subtitle}>{periodo}</Text>
-
-        <StatsRow
-          totalCount={totalCount}
-          syncedCount={syncedCount}
-          todayCount={todayCount}
-          nnCount={nnCount}
-          estado={estado}
-        />
-
-        {pendingSync > 0 && (
-          <View style={styles.pendingSyncRow}>
-            <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
-            <Text style={styles.pendingSyncText}>
-              {pendingSync} grupo{pendingSync > 1 ? 's' : ''} listo{pendingSync > 1 ? 's' : ''} para sincronizar
-            </Text>
-          </View>
-        )}
-
-        {onToggleExpanded && (
+      {onToggleExpanded && (
+        <View style={styles.parcelasSection}>
           <ExpandRow
             parcelasCount={parcelasCount}
             expanded={expanded}
             onToggle={onToggleExpanded}
           />
-        )}
 
-        {expanded && parcelas && (
-          <ExpandedSection
-            parcelas={parcelas}
-            onParcelaPress={onParcelaPress}
-            onParcelaLongPress={onParcelaLongPress}
-          />
-        )}
-      </View>
-
-      <ActionStrip onEdit={onEdit} onGear={onGear} onDelete={onDelete} />
+          {expanded && parcelas && (
+            <Animated.View
+              entering={FadeIn.duration(160)}
+              exiting={FadeOut.duration(120)}
+            >
+              <ExpandedSection
+                parcelas={parcelas}
+                onParcelaPress={onParcelaPress}
+                onParcelaLongPress={onParcelaLongPress}
+              />
+            </Animated.View>
+          )}
+        </View>
+      )}
     </Pressable>
   );
 }
