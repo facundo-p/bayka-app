@@ -99,8 +99,11 @@ export type DownloadResult = {
 // ─── Error messages (Spanish) ─────────────────────────────────────────────────
 
 const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
-  DUPLICATE_CODE: 'El codigo de parcela ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
-  DUPLICATE_NAME: 'El nombre de parcela ya existe en el servidor. Renombra la parcela e intenta de nuevo.',
+  // DUPLICATE_CODE/NAME los devuelve el RPC tanto para parcelas como para grupos;
+  // el mensaje es neutral para no nombrar la entidad equivocada (la unicidad de
+  // grupo es por parcela, no por plantacion). Ver issue #65.
+  DUPLICATE_CODE: 'El codigo ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
+  DUPLICATE_NAME: 'El nombre ya existe en el servidor. Renombra e intenta de nuevo.',
   GENERIC_CONFLICT: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
   PARCELA_PENDING: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
   PERMISSION: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
