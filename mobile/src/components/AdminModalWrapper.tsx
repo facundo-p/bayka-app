@@ -19,13 +19,19 @@ export default function AdminModalWrapper({ title, onClose, children }: Props) {
         </Pressable>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
-      {children}
+      {/* Reserva el inset inferior para los children: estos modales full-screen
+          tapan la tab bar, así que sin esto el footer ("Guardar") se solapa con
+          la barra del SO. Issue #73. */}
+      <View style={[styles.body, { paddingBottom: insets.bottom }]}>
+        {children}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  body: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

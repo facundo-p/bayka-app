@@ -13,16 +13,16 @@ import {
   Pressable,
   TextInput,
   Modal,
-  KeyboardAvoidingView,
-  Platform,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
 import { useNewParcela } from '../hooks/useNewParcela';
-import { colors, iconSizes } from '../theme';
+import { useKeyboardAwareModal } from '../hooks/useKeyboardAwareModal';
+import { colors, iconSizes, spacing } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
 
@@ -43,9 +43,9 @@ interface ErrorState {
   general: string | null;
 }
 
-function ModalHeader({ mode, onClose }: { mode: 'create' | 'edit'; onClose: () => void }) {
+function ModalHeader({ mode, onClose, topInset }: { mode: 'create' | 'edit'; onClose: () => void; topInset: number }) {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: topInset + spacing.xl }]}>
       <Text style={styles.headerTitle}>{mode === 'create' ? 'Nueva parcela' : 'Editar parcela'}</Text>
       <Pressable
         style={styles.headerCloseBtn}
@@ -107,6 +107,8 @@ function applyDuplicateError(error: string): ErrorState {
 }
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardAwareModal();
   const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
@@ -185,11 +187,8 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
       onRequestClose={clearAndClose}
     >
       <View style={styles.safeContainer}>
-        <ModalHeader mode={mode} onClose={clearAndClose} />
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
+        <ModalHeader mode={mode} onClose={clearAndClose} topInset={insets.top} />
+        <View style={[styles.flex, keyboard.bodyPadding]}>
           <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
             <FormField
               label="Nombre"
@@ -218,7 +217,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
               </Pressable>
             )}
           </ScrollView>
-          <View style={styles.footer}>
+          <View style={[styles.footer, keyboard.footerPadding]}>
             <Pressable style={styles.cancelBtn} onPress={clearAndClose} disabled={loading}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
@@ -232,7 +231,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
                 : <Text style={styles.submitText}>{mode === 'create' ? 'Crear parcela' : 'Guardar'}</Text>}
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </View>
       <ConfirmModal
         visible={hasChildrenError !== null}
