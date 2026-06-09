@@ -1,10 +1,10 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable, LayoutAnimation } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import PlantationCard from '../components/PlantationCard';
 import ParcelaFormModal from '../components/ParcelaFormModal';
 import FilterCards from '../components/FilterCards';
@@ -146,7 +146,9 @@ export default function PlantacionesScreen() {
   const [editingParcelaPlantacionId, setEditingParcelaPlantacionId] = useState<string | null>(null);
 
   const handleToggleExpand = useCallback((id: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // La animación de expansión la maneja reanimated (LinearTransition en el
+    // item + entering/exiting en la sección de parcelas). LayoutAnimation de RN
+    // es no-op con la New Architecture (Fabric), por eso se sentía abrupta.
     setExpandedPlantationId(prev => (prev === id ? null : id));
   }, []);
 
@@ -264,7 +266,11 @@ export default function PlantacionesScreen() {
             contentContainerStyle={styles.listContent}
             testID="plantaciones-list"
             renderItem={({ item, index }) => (
-              <Animated.View entering={FadeInDown.delay(index * 80).duration(300)} testID={`plantation-card-${item.id}`}>
+              <Animated.View
+                entering={FadeInDown.delay(index * 80).duration(300)}
+                layout={LinearTransition.duration(220)}
+                testID={`plantation-card-${item.id}`}
+              >
                 <ExpandablePlantationCard
                   plantacionId={item.id}
                   expanded={expandedPlantationId === item.id}

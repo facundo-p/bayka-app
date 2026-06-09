@@ -8,20 +8,16 @@
  * driven by the parent (PlantacionesScreen calls `LayoutAnimation.configureNext`
  * before flipping `expanded`).
  */
-import { View, Text, Pressable, Platform, UIManager } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { colors } from '../theme';
 import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
-
-// Enable LayoutAnimation on Android (idempotent — RN no-ops if already enabled).
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 
 type Props = {
   lugar: string;
@@ -268,11 +264,16 @@ export default function PlantationCard({
           />
 
           {expanded && parcelas && (
-            <ExpandedSection
-              parcelas={parcelas}
-              onParcelaPress={onParcelaPress}
-              onParcelaLongPress={onParcelaLongPress}
-            />
+            <Animated.View
+              entering={FadeIn.duration(160)}
+              exiting={FadeOut.duration(120)}
+            >
+              <ExpandedSection
+                parcelas={parcelas}
+                onParcelaPress={onParcelaPress}
+                onParcelaLongPress={onParcelaLongPress}
+              />
+            </Animated.View>
           )}
         </View>
       )}
