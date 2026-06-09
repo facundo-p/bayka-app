@@ -80,7 +80,8 @@ export default function PlantationDetailScreen() {
     ? `${parcela.nombre} — Grupos`
     : (plantationRows?.[0]?.lugar ?? 'Grupos');
   // El "+" para crear grupo solo se muestra si la plantación no está finalizada.
-  const canAddGroup = estadoLoaded && !isFinalizada && !!parcelaId;
+  // parcelaId ya es truthy acá (hay un early-return arriba si falta).
+  const canAddGroup = estadoLoaded && !isFinalizada;
 
   function handleGroupPress(subgroup: Group) {
     router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&parcelaId=${parcelaId}&grupoCodigo=${subgroup.codigo}&grupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
