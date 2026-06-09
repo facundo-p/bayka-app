@@ -1,5 +1,6 @@
 import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
@@ -51,7 +52,7 @@ export const groups = sqliteTable('groups', {
   parcelaId: text('parcela_id').references(() => parcelas.id),
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
-  tipo: text('tipo').notNull().default('linea'),
+  tipo: text('tipo').notNull().default(GROUP_TIPO_DEFAULT),
   estado: text('estado').notNull().default('activa'),
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),

@@ -5,9 +5,10 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
+import type { GroupTipo } from '../constants/groupTipo';
 
 export type GroupEstado = 'activa' | 'finalizada' | 'sincronizada';
-export type GroupTipo = 'linea' | 'bosquete';
+export type { GroupTipo };
 
 export interface Group {
   id: string;
