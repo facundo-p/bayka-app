@@ -11,6 +11,8 @@ import {
   TextInput,
   ActivityIndicator,
   Pressable,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
 } from 'react-native';
 import ConfirmModal from './ConfirmModal';
@@ -101,7 +103,11 @@ export default function AdminPlantationModals({
         animationType="fade"
         onRequestClose={() => { if (!seedLoading) onCloseSeed(); }}
       >
-        <View style={styles.seedOverlay}>
+        {/* KAV centra la card al abrir el teclado (input number-pad) — issue #74. */}
+        <KeyboardAvoidingView
+          style={styles.seedOverlay}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <View style={styles.seedCard}>
             <Text style={styles.seedTitle}>Semilla para ID Global</Text>
             {seedLoading ? (
@@ -135,7 +141,7 @@ export default function AdminPlantationModals({
               </>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {exportingId && (
