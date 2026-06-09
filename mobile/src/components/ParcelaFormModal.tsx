@@ -23,6 +23,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
 import { useNewParcela } from '../hooks/useNewParcela';
+import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { colors, iconSizes, spacing } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
@@ -44,9 +45,9 @@ interface ErrorState {
   general: string | null;
 }
 
-function ModalHeader({ mode, onClose }: { mode: 'create' | 'edit'; onClose: () => void }) {
+function ModalHeader({ mode, onClose, topInset }: { mode: 'create' | 'edit'; onClose: () => void; topInset: number }) {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: topInset + spacing.xl }]}>
       <Text style={styles.headerTitle}>{mode === 'create' ? 'Nueva parcela' : 'Editar parcela'}</Text>
       <Pressable
         style={styles.headerCloseBtn}
@@ -109,6 +110,7 @@ function applyDuplicateError(error: string): ErrorState {
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
@@ -187,7 +189,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
       onRequestClose={clearAndClose}
     >
       <View style={styles.safeContainer}>
-        <ModalHeader mode={mode} onClose={clearAndClose} />
+        <ModalHeader mode={mode} onClose={clearAndClose} topInset={insets.top} />
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -220,7 +222,10 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
               </Pressable>
             )}
           </ScrollView>
-          <View style={[styles.footer, { paddingBottom: spacing.xxl + insets.bottom }]}>
+          {/* Con el teclado abierto NO sumamos insets.bottom: el teclado ya
+              cubre la nav bar, y sumarlo dejaba una franja sobrante encima del
+              teclado que persistía. Issue #74 (feedback PR #83). */}
+          <View style={[styles.footer, { paddingBottom: keyboardVisible ? spacing.xxl : spacing.xxl + insets.bottom }]}>
             <Pressable style={styles.cancelBtn} onPress={clearAndClose} disabled={loading}>
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
