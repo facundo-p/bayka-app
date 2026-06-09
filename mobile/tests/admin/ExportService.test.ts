@@ -70,6 +70,16 @@ const sampleRows = [
 const EXPECTED_HEADER =
   'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
+// El CSV se escribe como bytes (BOM EF BB BF + UTF-8) cuando hay TextEncoder.
+// Decodifica el contenido escrito (Uint8Array o string) a string sin el BOM.
+function decodeWritten(arg: unknown): string {
+  if (arg instanceof Uint8Array) {
+    const noBom = arg[0] === 0xef && arg[1] === 0xbb && arg[2] === 0xbf ? arg.slice(3) : arg;
+    return new TextDecoder().decode(noBom);
+  }
+  return String(arg).replace(/^﻿/, '');
+}
+
 describe('ExportService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -84,10 +94,11 @@ describe('ExportService', () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       expect(mockWrite).toHaveBeenCalledTimes(1);
-      const writtenContent: string = mockWrite.mock.calls[0][0];
-      // El CSV arranca con el BOM UTF-8 para que Excel respete los acentos.
-      expect(writtenContent.startsWith(String.fromCharCode(0xFEFF))).toBe(true);
-      expect(writtenContent.slice(1).startsWith(EXPECTED_HEADER)).toBe(true);
+      const written = mockWrite.mock.calls[0][0];
+      // El CSV arranca con el BOM UTF-8 (EF BB BF) para que Excel respete acentos.
+      expect(written instanceof Uint8Array).toBe(true);
+      expect([written[0], written[1], written[2]]).toEqual([0xef, 0xbb, 0xbf]);
+      expect(decodeWritten(written).startsWith(EXPECTED_HEADER)).toBe(true);
     });
 
     it('Test 2: calls Sharing.shareAsync with mimeType "text/csv"', async () => {
@@ -103,7 +114,7 @@ describe('ExportService', () => {
     it('Test 3: body has parcelaNombre at position 5 (0-indexed 4) for rows with parcela', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
-      const writtenContent: string = mockWrite.mock.calls[0][0];
+      const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       const lines = writtenContent.split('\n');
       // Line 1 (index 1) = first data row
       const firstRowCols = lines[1].split(',');
@@ -115,7 +126,7 @@ describe('ExportService', () => {
     it('Test 4: null parcelaNombre is normalized to "" (D-18-10)', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
-      const writtenContent: string = mockWrite.mock.calls[0][0];
+      const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       // Second data row has parcelaNombre = null → must serialize as empty string
       expect(writtenContent).not.toContain('null');
       // Verify the second row's Parcela column (after Plantación "Zona, Sur" quoted)
@@ -132,7 +143,7 @@ describe('ExportService', () => {
     it('Test 5: quotes fields that contain commas', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
-      const writtenContent: string = mockWrite.mock.calls[0][0];
+      const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       expect(writtenContent).toContain('"Zona, Sur"');
       expect(writtenContent).toContain('"Eucalipto, blanco"');
     });

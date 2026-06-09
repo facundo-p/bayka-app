@@ -17,9 +17,29 @@ import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 import { getExportRows, type ExportRow } from '../queries/exportQueries';
 
-// BOM UTF-8: sin él, Excel (Windows) interpreta el CSV como ANSI y rompe los
-// acentos/ñ. El .xlsx no lo necesita (embebe la codificación). Issue CSV acentos.
+// BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y
+// rompe los acentos/ñ. El .xlsx no lo necesita (embebe la codificación). #87.
 const UTF8_BOM = String.fromCharCode(0xFEFF);
+
+/**
+ * Escribe el CSV con BOM UTF-8 garantizado a nivel de bytes (EF BB BF + cuerpo
+ * UTF-8) cuando `TextEncoder` está disponible — así Excel detecta la codificación
+ * sin ambigüedad. Si no lo está, cae al string con `encoding: 'utf8'` (también
+ * correcto, pero menos explícito).
+ */
+function writeCsvWithBom(file: File, csvBody: string): void {
+  if (typeof TextEncoder !== 'undefined') {
+    const body = new TextEncoder().encode(csvBody);
+    const bytes = new Uint8Array(body.length + 3);
+    bytes[0] = 0xef;
+    bytes[1] = 0xbb;
+    bytes[2] = 0xbf;
+    bytes.set(body, 3);
+    file.write(bytes);
+    return;
+  }
+  file.write(UTF8_BOM + csvBody, { encoding: 'utf8' });
+}
 
 // ─── Header constant (D-18-08 — exact order) ────────────────────────────────
 
@@ -84,10 +104,10 @@ function rowToExcel(r: ExportRow) {
  */
 export async function exportToCSV(plantacionId: string, plantationName: string): Promise<void> {
   const rows = await getExportRows(plantacionId);
-  const csv = UTF8_BOM + CSV_HEADER + rows.map(rowToCSV).join('\n');
+  const csvBody = CSV_HEADER + rows.map(rowToCSV).join('\n');
 
   const file = new File(Paths.cache, `${plantationName}_export.csv`);
-  file.write(csv, { encoding: 'utf8' });
+  writeCsvWithBom(file, csvBody);
 
   await Sharing.shareAsync(file.uri, {
     mimeType: 'text/csv',
