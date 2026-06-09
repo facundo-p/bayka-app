@@ -31,19 +31,27 @@ describe('getGroupParcelaCodigo', () => {
     expect(await getGroupParcelaCodigo('grupo-1')).toBe('AL');
   });
 
-  // Estado inválido (no soportado): se notifica como error en vez de degradar.
-  it('lanza error cuando el grupo no tiene parcela', async () => {
+  // Grupo legacy sin parcela (estado que el sync admite): notifica + degrada a ''
+  // en vez de tirar, para no romper el registro de árboles en el campo (PR #79).
+  it('devuelve "" y notifica cuando el grupo no tiene parcela', async () => {
+    const errSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     selectQueue = [[{ parcelaId: null }]];
-    await expect(getGroupParcelaCodigo('grupo-1')).rejects.toThrow(/sin parcela/);
+    expect(await getGroupParcelaCodigo('grupo-1')).toBe('');
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
   });
 
-  it('lanza error cuando el grupo no existe', async () => {
+  it('devuelve "" cuando el grupo no existe', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     selectQueue = [[]];
-    await expect(getGroupParcelaCodigo('inexistente')).rejects.toThrow(/sin parcela/);
+    expect(await getGroupParcelaCodigo('inexistente')).toBe('');
+    (console.error as jest.Mock).mockRestore();
   });
 
-  it('lanza error cuando la parcela referida no existe', async () => {
+  it('devuelve "" cuando la parcela referida no existe', async () => {
+    jest.spyOn(console, 'error').mockImplementation(() => {});
     selectQueue = [[{ parcelaId: 'parcela-x' }], []];
-    await expect(getGroupParcelaCodigo('grupo-1')).rejects.toThrow(/sin código/);
+    expect(await getGroupParcelaCodigo('grupo-1')).toBe('');
+    (console.error as jest.Mock).mockRestore();
   });
 });

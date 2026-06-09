@@ -27,27 +27,27 @@ export interface Group {
  * tree SubID (formato `{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`,
  * ver idGenerator). Issue #59.
  *
- * Todo grupo DEBE pertenecer a una parcela con código. La ausencia NO es un
- * caso soportado (no hay datos legacy sin parcela): es estado inválido que
- * generaría un SubID corrupto, así que se **notifica como error** (console.error
- * + throw) para corregir los datos en vez de degradar silenciosamente.
+ * Un grupo sin parcela (o con parcela sin código) NO debería existir, pero el
+ * sync admite grupos legacy con `parcelaId=null` (pullService guarda
+ * `parcela_id ?? null`; pushService maneja ese caso). Por eso se **notifica**
+ * (console.error) para corregir el dato, pero se **degrada a ''** en vez de
+ * tirar: tirar rompería el registro de árboles de esos grupos legacy en el
+ * campo (insertTree/reverse/NN se invocan fire-and-forget). Feedback PR #79.
  */
 export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
   const [group] = await db.select({ parcelaId: groups.parcelaId })
     .from(groups)
     .where(eq(groups.id, grupoId));
   if (!group?.parcelaId) {
-    const msg = `Grupo ${grupoId} sin parcela: no se puede generar el SubID con código de parcela.`;
-    console.error(`[getGroupParcelaCodigo] ${msg}`);
-    throw new Error(msg);
+    console.error(`[getGroupParcelaCodigo] Grupo ${grupoId} sin parcela: SubID sin segmento de parcela (corregir el dato).`);
+    return '';
   }
   const [parcela] = await db.select({ codigo: parcelas.codigo })
     .from(parcelas)
     .where(eq(parcelas.id, group.parcelaId));
   if (!parcela?.codigo) {
-    const msg = `Parcela ${group.parcelaId} (grupo ${grupoId}) sin código: SubID inválido.`;
-    console.error(`[getGroupParcelaCodigo] ${msg}`);
-    throw new Error(msg);
+    console.error(`[getGroupParcelaCodigo] Parcela ${group.parcelaId} (grupo ${grupoId}) sin código: SubID sin segmento de parcela.`);
+    return '';
   }
   return parcela.codigo;
 }
