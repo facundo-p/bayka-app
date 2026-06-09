@@ -21,7 +21,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
 import { useNewParcela } from '../hooks/useNewParcela';
-import { useKeyboardHeight } from '../hooks/useKeyboardVisible';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { colors, iconSizes, spacing } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';

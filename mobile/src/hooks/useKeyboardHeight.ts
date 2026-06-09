@@ -22,12 +22,3 @@ export function useKeyboardHeight(): number {
   }, []);
   return height;
 }
-
-/**
- * Devuelve `true` mientras el teclado del SO está visible. Se usa para no sumar
- * el inset inferior (safe-area de la nav bar) al footer cuando el teclado está
- * abierto: el teclado ya cubre esa zona. Issue #74/#73.
- */
-export function useKeyboardVisible(): boolean {
-  return useKeyboardHeight() > 0;
-}
