@@ -9,7 +9,7 @@ import CustomHeader from '../components/CustomHeader';
 import { colors, spacing } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
-import { useGoBack } from '../hooks/useGoBack';
+import { useScreenBack } from '../hooks/useScreenBack';
 import { useCatalog } from '../hooks/useCatalog';
 import { catalogScreenStyles as styles } from './CatalogScreen.styles';
 
@@ -105,7 +105,7 @@ export default function CatalogScreen() {
   };
 
   const downloadButtonLabel = 'Descargar seleccion';
-  const goBack = useGoBack(`/${routePrefix}/plantaciones`);
+  const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
 
   return (
     <ScreenContainer withTexture>

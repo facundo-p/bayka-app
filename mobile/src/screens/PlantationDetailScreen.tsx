@@ -20,7 +20,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
-import { useGoBack } from '../hooks/useGoBack';
+import { useScreenBack } from '../hooks/useScreenBack';
 import { getDisplayName } from '../hooks/useUserNames';
 import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
@@ -60,7 +60,7 @@ export default function PlantationDetailScreen() {
   } = usePlantationDetail(pid, parcelaId);
 
   const { blockedByNN } = usePendingSyncCount(plantacionId);
-  const goBack = useGoBack(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}`);
+  const goBack = useScreenBack(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}`);
 
   const groupFilterConfigs = [
     { key: 'activa', label: 'Activas', count: groupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
