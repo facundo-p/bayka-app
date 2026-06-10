@@ -20,6 +20,7 @@ import ParcelaFormModal from '../components/ParcelaFormModal';
 import { useParcelas } from '../hooks/useParcelas';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors, iconSizes } from '../theme';
 import { parcelasScreenStyles as styles } from './ParcelasScreen.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
@@ -62,6 +63,7 @@ export default function ParcelasScreen() {
   const { plantationRows, estadoLoaded, isFinalizada } = usePlantationDetail(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
   const canAddParcela = estadoLoaded && !isFinalizada;
+  const goBack = useGoBack(`/${routePrefix}/plantaciones`);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
   function openCreate() { setFormModalState({ mode: 'create', parcela: null }); }
@@ -88,7 +90,7 @@ export default function ParcelasScreen() {
     <ScreenContainer withTexture>
       <CustomHeader
         title={title}
-        onBack={() => router.navigate(`/${routePrefix}/plantaciones` as any)}
+        onBack={goBack}
         rightElement={
           canAddParcela ? (
             <HeaderActionButton

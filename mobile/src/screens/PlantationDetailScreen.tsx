@@ -20,6 +20,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import TreeIcon from '../components/TreeIcon';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
+import { useGoBack } from '../hooks/useGoBack';
 import { getDisplayName } from '../hooks/useUserNames';
 import ConfirmModal from '../components/ConfirmModal';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
@@ -59,6 +60,7 @@ export default function PlantationDetailScreen() {
   } = usePlantationDetail(pid, parcelaId);
 
   const { blockedByNN } = usePendingSyncCount(plantacionId);
+  const goBack = useGoBack(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}`);
 
   const groupFilterConfigs = [
     { key: 'activa', label: 'Activas', count: groupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
@@ -122,7 +124,7 @@ export default function PlantationDetailScreen() {
     <ScreenContainer withTexture>
       <CustomHeader
         title={headerTitle}
-        onBack={() => router.navigate(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}` as any)}
+        onBack={goBack}
         rightElement={
           canAddGroup ? (
             <HeaderActionButton
