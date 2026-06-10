@@ -11,8 +11,10 @@
 import { useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import ScreenContainer from '../components/ScreenContainer';
+import CustomHeader from '../components/CustomHeader';
+import HeaderActionButton from '../components/HeaderActionButton';
 import ParcelaRow from '../components/ParcelaRow';
 import ParcelaFormModal from '../components/ParcelaFormModal';
 import { useParcelas } from '../hooks/useParcelas';
@@ -25,7 +27,7 @@ import type { Parcela } from '../repositories/ParcelaRepository';
 
 type FormModalState = { mode: 'create'; parcela: null } | { mode: 'edit'; parcela: Parcela } | null;
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
+function EmptyState({ onCreate }: { onCreate: (() => void) | null }) {
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconWrap}>
@@ -33,30 +35,21 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
       </View>
       <Text style={styles.emptyTitle}>Esta plantación todavía no tiene parcelas</Text>
       <Text style={styles.emptySubtitle}>
-        Creá la primera parcela para empezar a organizar grupos y árboles.
+        {onCreate
+          ? 'Creá la primera parcela para empezar a organizar grupos y árboles.'
+          : 'La plantación está finalizada: no se pueden agregar parcelas.'}
       </Text>
-      <Pressable
-        style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.85 }]}
-        onPress={onCreate}
-        accessibilityLabel="Crear primera parcela"
-      >
-        <Ionicons name="add" size={iconSizes.action} color={colors.white} />
-        <Text style={styles.emptyCtaText}>Crear primera parcela</Text>
-      </Pressable>
+      {onCreate && (
+        <Pressable
+          style={({ pressed }) => [styles.emptyCta, pressed && { opacity: 0.85 }]}
+          onPress={onCreate}
+          accessibilityLabel="Crear primera parcela"
+        >
+          <Ionicons name="add" size={iconSizes.action} color={colors.white} />
+          <Text style={styles.emptyCtaText}>Crear primera parcela</Text>
+        </Pressable>
+      )}
     </View>
-  );
-}
-
-function HeaderAddButton({ onPress }: { onPress: () => void }) {
-  return (
-    <Pressable
-      style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
-      onPress={onPress}
-      accessibilityLabel="Nueva parcela"
-      hitSlop={8}
-    >
-      <Ionicons name="add" size={18} color={colors.white} />
-    </Pressable>
   );
 }
 
@@ -66,8 +59,9 @@ export default function ParcelasScreen() {
   const routePrefix = useRoutePrefix();
   const pid = plantacionId ?? '';
   const { parcelas } = useParcelas(pid);
-  const { plantationRows } = usePlantationDetail(pid);
+  const { plantationRows, estadoLoaded, isFinalizada } = usePlantationDetail(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
+  const canAddParcela = estadoLoaded && !isFinalizada;
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
   function openCreate() { setFormModalState({ mode: 'create', parcela: null }); }
@@ -92,14 +86,21 @@ export default function ParcelasScreen() {
 
   return (
     <ScreenContainer withTexture>
-      <Stack.Screen
-        options={{
-          title,
-          headerRight: () => <HeaderAddButton onPress={openCreate} />,
-        }}
+      <CustomHeader
+        title={title}
+        onBack={() => router.navigate(`/${routePrefix}/plantaciones` as any)}
+        rightElement={
+          canAddParcela ? (
+            <HeaderActionButton
+              icon="add"
+              onPress={openCreate}
+              accessibilityLabel="Nueva parcela"
+            />
+          ) : undefined
+        }
       />
       {parcelas.length === 0 ? (
-        <EmptyState onCreate={openCreate} />
+        <EmptyState onCreate={canAddParcela ? openCreate : null} />
       ) : (
         <FlatList
           data={parcelas}

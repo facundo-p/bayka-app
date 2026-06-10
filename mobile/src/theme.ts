@@ -176,11 +176,17 @@ export const headerStyle = {
   headerTitleStyle: { fontFamily: fonts.heading },
 } as const;
 
-// Plantation header style (olive green)
-export const plantationHeaderStyle = {
-  headerStyle: { backgroundColor: colors.plantationHeaderBg },
-  headerTintColor: colors.white,
-  headerTitleStyle: { fontFamily: fonts.heading },
+// ─── Header action button tokens ─────────────────────────────────────────────
+// Criterio único "Outline puro" para los botones de acción del header (lado
+// derecho) sobre la barra verde. Ver HeaderActionButton + issue #70.
+export const headerActionButton = {
+  size: 40,
+  borderWidth: 1.5,
+  borderColor: 'rgba(255,255,255,0.85)',
+  pressedFill: 'rgba(255,255,255,0.15)',
+  iconSize: 22,
+  hitSlop: 8, // 40 + 8*2 = 56 ≥ 44 (touch target)
+  gap: spacing.md,
 } as const;
 
 // ─── Icon size tokens ────────────────────────────────────────────────────────

@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, spacing, fonts } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
+import CustomHeader from '../components/CustomHeader';
 import GrupoForm from '../components/GrupoForm';
 import { useNewGroup } from '../hooks/useNewGroup';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
@@ -33,6 +34,7 @@ export default function NuevoGrupoScreen() {
 
   return (
     <ScreenContainer withTexture>
+    <CustomHeader title="Nuevo grupo" onBack={() => router.back()} />
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

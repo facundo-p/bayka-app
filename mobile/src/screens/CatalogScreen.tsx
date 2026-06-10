@@ -1,16 +1,21 @@
 import { View, Text, FlatList, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useRouter } from 'expo-router';
 import CatalogPlantationCard from '../components/CatalogPlantationCard';
 import FilterCards from '../components/FilterCards';
 import DownloadProgressModal from '../components/DownloadProgressModal';
 import ConfirmModal from '../components/ConfirmModal';
+import CustomHeader from '../components/CustomHeader';
 import { colors, spacing } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
+import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useCatalog } from '../hooks/useCatalog';
 import { catalogScreenStyles as styles } from './CatalogScreen.styles';
 
 export default function CatalogScreen() {
+  const router = useRouter();
+  const routePrefix = useRoutePrefix();
   const {
     filteredCatalog,
     localIds,
@@ -104,6 +109,10 @@ export default function CatalogScreen() {
 
   return (
     <ScreenContainer withTexture>
+      <CustomHeader
+        title="Catálogo de plantaciones"
+        onBack={() => router.navigate(`/${routePrefix}/plantaciones` as any)}
+      />
       {renderContent()}
       <View style={styles.bottomBar}>
         <Pressable

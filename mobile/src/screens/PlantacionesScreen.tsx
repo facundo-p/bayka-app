@@ -1,14 +1,15 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
+import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, fontSize, spacing, fonts } from '../theme';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import PlantationCard from '../components/PlantationCard';
 import ParcelaFormModal from '../components/ParcelaFormModal';
 import FilterCards from '../components/FilterCards';
-import ScreenHeader from '../components/ScreenHeader';
+import CustomHeader from '../components/CustomHeader';
+import HeaderActionButton from '../components/HeaderActionButton';
 import TexturedBackground from '../components/TexturedBackground';
 import ConfirmModal from '../components/ConfirmModal';
 import AdminBottomSheet from '../components/AdminBottomSheet';
@@ -231,43 +232,33 @@ export default function PlantacionesScreen() {
 
   return (
     <TexturedBackground>
-      <ScreenHeader
+      <CustomHeader
         title={headerTitle}
         rightElement={
           <View style={styles.headerButtons}>
             {isOnline && (
-              <Pressable
+              <HeaderActionButton
+                icon="sync-outline"
                 onPress={() => showSyncConfirm('global')}
-                style={[styles.syncIconButton, hasAnyPending && styles.syncIconPending]}
-                hitSlop={8}
-                accessibilityLabel="Sincronizar todas las plantaciones"
+                variant={hasAnyPending ? 'pending' : 'default'}
                 disabled={isSyncing}
-              >
-                <Ionicons name="sync-outline" size={18} color={colors.white} />
-              </Pressable>
+                accessibilityLabel="Sincronizar todas las plantaciones"
+              />
             )}
+            <HeaderActionButton
+              icon="download-outline"
+              onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
+              variant={isOnline ? 'default' : 'offline'}
+              disabled={!isOnline}
+              accessibilityLabel="Gestionar plantaciones descargadas"
+            />
             {isAdmin && (
-              <Pressable
-                style={({ pressed }) => [styles.headerAddBtn, pressed && { opacity: 0.7 }]}
+              <HeaderActionButton
+                icon="add"
                 onPress={() => setShowCreateModal(true)}
                 accessibilityLabel="Nueva plantacion"
-              >
-                <Ionicons name="add" size={18} color={colors.white} />
-              </Pressable>
+              />
             )}
-            <Pressable
-              onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
-              disabled={!isOnline}
-              hitSlop={8}
-              style={({ pressed }) => [
-                styles.catalogButton,
-                !isOnline && styles.catalogButtonDisabled,
-                pressed && isOnline && styles.catalogButtonPressed,
-              ]}
-              accessibilityLabel="Gestionar plantaciones descargadas"
-            >
-              <Ionicons name="download-outline" size={18} color={isOnline ? colors.white : colors.offline} />
-            </Pressable>
           </View>
         }
       />
@@ -424,32 +415,8 @@ export default function PlantacionesScreen() {
 
 const styles = StyleSheet.create({
   headerButtons: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  headerAddBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  syncIconButton: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  syncIconPending: {
-    borderColor: colors.syncPending,
-  },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
   emptySubtext: { fontSize: fontSize.base, color: colors.textLight, fontFamily: fonts.regular },
   listContent: { padding: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing['6xl'], gap: spacing.xl },
-  catalogButton: { backgroundColor: colors.primary, borderRadius: borderRadius.full, width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
-  catalogButtonDisabled: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.offline },
-  catalogButtonPressed: { opacity: 0.7 },
 });

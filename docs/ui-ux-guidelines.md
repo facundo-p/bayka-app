@@ -210,6 +210,27 @@ suficiente para lectura en exteriores — el cuerpo base es 15.
 
 ---
 
+# 6.1 Header unificado y botones de acción (OBLIGATORIO)
+
+**Un solo header para toda la app.** Todas las pantallas usan `CustomHeader`
+(barra **verde** `plantationHeaderBg`, título centrado en Linux Biolinum). El
+header nativo del Stack está deshabilitado (`headerShown: false`).
+
+- **Back centralizado:** la flecha de "atrás" se controla con la prop `onBack`.
+  Si `onBack` se omite, la flecha **no se muestra** (header raíz, p. ej.
+  Plantaciones). Cada pantalla pasa su destino explícito:
+  Parcelas → Plantaciones, Grupos → Parcelas, etc.
+- **Botones de acción (lado derecho):** SIEMPRE `HeaderActionButton` — criterio
+  único **"Outline puro"**: círculo transparente, borde blanco 1.5px, icono
+  blanco 22, fill `rgba(255,255,255,0.15)` al presionar, touch target ≥44 (hitSlop).
+  Tokens en `theme.ts` (`headerActionButton`). Variantes: `pending` (borde
+  naranja para sync con pendientes) y `offline` (borde/icono gris + disabled).
+- **Prohibido** definir botones de header a mano (círculos azules, "+" pelados) o
+  con `StyleSheet.create` inline. Cambiar el estilo de estos botones debe requerir
+  editar **un solo archivo** (`HeaderActionButton.styles.ts` / tokens). Issue #70.
+
+---
+
 # 7. Diseño de la Botonera de Especies
 
 La botonera es la interfaz más importante del sistema.

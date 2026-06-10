@@ -55,13 +55,4 @@ export const parcelasScreenStyles = StyleSheet.create({
     fontFamily: fonts.bold,
     fontSize: fontSize.lg,
   },
-  headerAddBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.md,
-  },
 });

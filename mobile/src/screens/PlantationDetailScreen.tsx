@@ -9,8 +9,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Group, GroupTipo } from '../hooks/usePlantationDetail';
+import CustomHeader from '../components/CustomHeader';
+import HeaderActionButton from '../components/HeaderActionButton';
 import GroupStateChip from '../components/GroupStateChip';
 import GrupoForm from '../components/GrupoForm';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -29,7 +31,6 @@ import OrangeDot from '../components/OrangeDot';
 export default function PlantationDetailScreen() {
   const { id: plantacionId, parcelaId } = useLocalSearchParams<{ id: string; parcelaId?: string }>();
   const router = useRouter();
-  const navigation = useNavigation();
   const routePrefix = useRoutePrefix();
   const pid = plantacionId ?? '';
 
@@ -72,34 +73,12 @@ export default function PlantationDetailScreen() {
     }
   }, [parcelaId, pid, router, routePrefix]);
 
-  // Title shows "{parcela.nombre} — Grupos"; fallback to plantation lugar.
-  useEffect(() => {
-    const lugar = plantationRows?.[0]?.lugar;
-    const title = parcela?.nombre ? `${parcela.nombre} — Grupos` : (lugar ?? 'Grupos');
-    navigation.setOptions({ title, headerTitleAlign: 'center' });
-  }, [plantationRows, parcela, navigation]);
-
-  // Header `+` action navigates to NuevoGrupoScreen carrying parcelaId.
-  useEffect(() => {
-    if (!estadoLoaded || isFinalizada || !parcelaId) {
-      navigation.setOptions({ headerRight: () => null });
-      return;
-    }
-    navigation.setOptions({
-      headerRight: () => (
-        <Pressable
-          testID="grupos-header-add"
-          onPress={() => router.push(`/${routePrefix}/plantation/nuevo-grupo?plantacionId=${pid}&parcelaId=${parcelaId}` as any)}
-          hitSlop={12}
-          style={styles.headerAddBtn}
-        >
-          <Ionicons name="add" size={28} color={colors.white} />
-        </Pressable>
-      ),
-    });
-  }, [estadoLoaded, isFinalizada, parcelaId, pid, navigation, router, routePrefix]);
-
   if (!parcelaId) return null;
+
+  const headerTitle = parcela?.nombre
+    ? `${parcela.nombre} — Grupos`
+    : (plantationRows?.[0]?.lugar ?? 'Grupos');
+  const canAddGroup = estadoLoaded && !isFinalizada;
 
   function handleGroupPress(subgroup: Group) {
     router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&parcelaId=${parcelaId}&grupoCodigo=${subgroup.codigo}&grupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
@@ -141,6 +120,21 @@ export default function PlantationDetailScreen() {
 
   return (
     <ScreenContainer withTexture>
+      <CustomHeader
+        title={headerTitle}
+        onBack={() => router.navigate(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}` as any)}
+        rightElement={
+          canAddGroup ? (
+            <HeaderActionButton
+              testID="grupos-header-add"
+              icon="add"
+              // Abre el alta de grupo arrastrando la plantación y parcela actuales por la URL
+              onPress={() => router.push(`/${routePrefix}/plantation/nuevo-grupo?plantacionId=${pid}&parcelaId=${parcelaId}` as any)}
+              accessibilityLabel="Nuevo grupo"
+            />
+          ) : undefined
+        }
+      />
       <PlantationDetailHeader
         blockedByNN={blockedByNN}
         totalNN={totalNN}
@@ -202,7 +196,6 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', marginTop: 60 },
   emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, fontFamily: fonts.semiBold },
   emptySubtext: { fontSize: fontSize.base, color: colors.textMuted, marginTop: spacing.sm, fontFamily: fonts.regular },
-  headerAddBtn: { paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
   editModalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: colors.overlay },
   editModalDismiss: { flex: 1 },
   editModalContent: { backgroundColor: colors.surface, borderTopLeftRadius: borderRadius.round, borderTopRightRadius: borderRadius.round, padding: spacing.xxxl, paddingBottom: spacing['6xl'] },
