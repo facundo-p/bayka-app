@@ -41,12 +41,23 @@ describe('Formularios de creación usan el template compartido', () => {
     expect(src).not.toMatch(/from '\.\/BaseModal'/);
   });
 
-  it('NuevoGrupoScreen pone la acción en un footer fijo keyboard-aware (arregla Guardar tapado)', () => {
+  it('NuevoGrupoScreen usa el mismo EntityFormModal full-screen que las otras', () => {
     const src = readSrc('screens/NuevoGrupoScreen.tsx');
-    expect(src).toContain('KeyboardAwareFormBody');
+    expect(src).toContain('EntityFormModal');
     expect(src).toMatch(/footer=\{[\s\S]*FormActions/);
-    // ya no envuelve en un ScrollView/KeyboardAvoidingView propio
+    // ya no es una pantalla con tab bar (que causaba el gap inferior extra)
+    expect(src).not.toContain('ScreenContainer');
     expect(src).not.toContain('KeyboardAvoidingView');
+  });
+
+  it('las tres creaciones tienen botón Cancelar (FormActions onCancel)', () => {
+    for (const file of [
+      'components/ParcelaFormModal.tsx',
+      'components/PlantationFormModal.tsx',
+      'screens/NuevoGrupoScreen.tsx',
+    ]) {
+      expect(readSrc(file)).toMatch(/onCancel=/);
+    }
   });
 });
 

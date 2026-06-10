@@ -88,7 +88,10 @@ describe('Safe area on refactored screens', () => {
       const usesSafeArea =
         source.includes('ScreenContainer') ||
         source.includes('useSafeAreaInsets') ||
-        source.includes('SafeAreaView');
+        source.includes('SafeAreaView') ||
+        // EntityFormModal encapsula el safe-area (ModalHeader insets.top +
+        // footer keyboard-aware) para las pantallas de creación (#89).
+        source.includes('EntityFormModal');
       expect(usesSafeArea).toBe(true);
     });
   }

@@ -1,16 +1,11 @@
-import { Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import ScreenContainer from '../components/ScreenContainer';
-import CustomHeader from '../components/CustomHeader';
-import KeyboardAwareFormBody from '../components/KeyboardAwareFormBody';
-import GrupoFields from '../components/GrupoFields';
+import EntityFormModal from '../components/EntityFormModal';
 import FormActions from '../components/FormActions';
+import GrupoFields from '../components/GrupoFields';
 import { useGrupoForm } from '../hooks/useGrupoForm';
 import { useNewGroup } from '../hooks/useNewGroup';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
-import { nuevoGrupoScreenStyles as styles } from './NuevoGrupoScreen.styles';
 
 export default function NuevoGrupoScreen() {
   const { plantacionId, parcelaId } = useLocalSearchParams<{ plantacionId: string; parcelaId?: string }>();
@@ -39,24 +34,26 @@ export default function NuevoGrupoScreen() {
 
   if (!parcelaId) return null;
 
+  // Mismo template full-screen que Parcela/Plantación (#89): header verde con X,
+  // cuerpo keyboard-aware y footer fijo con Cancelar + Crear. Al ser un Modal
+  // tapa el tab bar (sin gap extra). El back del SO cierra (router.back) igual
+  // que la flecha/X y el botón Cancelar.
   return (
-    <ScreenContainer withTexture>
-      <CustomHeader title="Nuevo grupo" onBack={() => router.back()} />
-      <KeyboardAwareFormBody
-        footer={
-          <FormActions
-            submitLabel="Crear grupo"
-            onSubmit={form.handleSubmit}
-            submitDisabled={!form.canSubmit}
-            loading={form.loading}
-          />
-        }
-      >
-        <Animated.View entering={FadeInDown.duration(400)}>
-          <Text style={styles.sectionTitle}>Datos del grupo</Text>
-          <GrupoFields form={form} lastGroupName={lastGroupName} />
-        </Animated.View>
-      </KeyboardAwareFormBody>
-    </ScreenContainer>
+    <EntityFormModal
+      visible
+      title="Nuevo grupo"
+      onClose={() => router.back()}
+      footer={
+        <FormActions
+          submitLabel="Crear grupo"
+          onSubmit={form.handleSubmit}
+          submitDisabled={!form.canSubmit}
+          loading={form.loading}
+          onCancel={() => router.back()}
+        />
+      }
+    >
+      <GrupoFields form={form} lastGroupName={lastGroupName} />
+    </EntityFormModal>
   );
 }

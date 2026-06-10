@@ -7,7 +7,9 @@ export default function PlantationLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="[id]" />
       <Stack.Screen name="parcelas" />
-      <Stack.Screen name="nuevo-grupo" />
+      {/* nuevo-grupo se presenta como modal full-screen (EntityFormModal): sin
+          animación de stack para que solo se vea el slide del modal (#89). */}
+      <Stack.Screen name="nuevo-grupo" options={{ animation: 'none' }} />
       <Stack.Screen name="subgroup" />
       <Stack.Screen name="catalog" />
     </Stack>
