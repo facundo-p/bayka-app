@@ -187,14 +187,21 @@ bloqueando el splash hasta que estén listas). Tokens en `theme.ts` (objeto `fon
 Títulos / destacados   Linux Biolinum Regular   (LinBiolinum_R / _RB, .otf local)
                         → headers de navegación, títulos de pantalla y de modales,
                           nombres de tarjetas
-Cuerpo / bajada        Meta Plus Normal Roman   (tipografía complementaria del manual)
+Cuerpo / bajada        Poppins                  (sustituto oficial de Meta Plus Normal Roman)
 Códigos / IDs          monospace del sistema    (código de especie, SubID)
 ```
 
-> **Nota de implementación:** el cuerpo se renderiza hoy con **Poppins** (Google
-> Fonts, 5 pesos) como sustituto libre de Meta Plus Normal Roman, que es una fuente
-> comercial. Linux Biolinum (títulos) sí coincide con el manual. La alineación de la
-> fuente de cuerpo con la marca está registrada como issue aparte.
+> **Decisión de marca (issue #62):** el manual de Identidad Corporativa Bayka
+> (pág. 19) define **Meta Plus Normal Roman** como tipografía de cuerpo/bajada,
+> pero es una fuente **comercial** (requiere licencia). Se adopta **Poppins**
+> (Google Fonts, libre, 5 pesos) como **sustituto oficial** para el cuerpo — es
+> la fuente que la app usa hoy y queda formalmente aceptada. Linux Biolinum
+> (títulos, pág. 18) sí coincide con el manual.
+>
+> Esta decisión es **reversible**: si más adelante se requiere fidelidad 100% al
+> manual, la alternativa es **licenciar e integrar Meta Plus Normal Roman**
+> (reemplazando Poppins en el token `fonts` de `theme.ts`). Mientras tanto,
+> Poppins es el estándar de cuerpo documentado.
 
 ## Escala de tamaños
 

@@ -1,4 +1,4 @@
-import { Modal, View, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Modal, View, Pressable, KeyboardAvoidingView, Platform, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { colors, spacing, borderRadius } from '../theme';
 
 type Props = {
@@ -22,14 +22,20 @@ export default function BaseModal({
 }: Props) {
   return (
     <Modal visible={visible} transparent animationType={animationType} onRequestClose={onRequestClose}>
-      <View style={[styles.overlay, overlayStyle]}>
+      {/* KeyboardAvoidingView centra la card en el espacio visible: al abrir el
+          teclado, la card se reposiciona hacia arriba y el botón inferior no
+          queda tapado (modales centrados, issue #74). */}
+      <KeyboardAvoidingView
+        style={[styles.overlay, overlayStyle]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         {dismissOnBackdrop && onRequestClose && (
           <Pressable style={styles.backdrop} onPress={onRequestClose} />
         )}
         <View style={[styles.card, cardStyle]}>
           {children}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

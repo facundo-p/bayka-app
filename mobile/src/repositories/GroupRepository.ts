@@ -1,13 +1,14 @@
 import { db } from '../database/client';
-import { groups, trees, species as speciesTable } from '../database/schema';
+import { groups, trees, parcelas, species as speciesTable } from '../database/schema';
 import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
+import type { GroupTipo } from '../constants/groupTipo';
 
 export type GroupEstado = 'activa' | 'finalizada' | 'sincronizada';
-export type GroupTipo = 'linea' | 'parcela';
+export type { GroupTipo };
 
 export interface Group {
   id: string;
@@ -20,6 +21,28 @@ export interface Group {
   usuarioCreador: string;
   createdAt: string;
   pendingSync: boolean;
+}
+
+/**
+ * Devuelve el `codigo` de parcela del grupo — primer segmento del SubID
+ * (`{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`). Todo grupo tiene
+ * parcela con código: la ausencia es un dato inválido, no un caso válido, así
+ * que se lanza error (no se degrada a ''). Issue #59.
+ */
+export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
+  const [group] = await db.select({ parcelaId: groups.parcelaId })
+    .from(groups)
+    .where(eq(groups.id, grupoId));
+  if (!group?.parcelaId) {
+    throw new Error(`Grupo ${grupoId} sin parcela: dato inválido, corregir antes de registrar árboles.`);
+  }
+  const [parcela] = await db.select({ codigo: parcelas.codigo })
+    .from(parcelas)
+    .where(eq(parcelas.id, group.parcelaId));
+  if (!parcela?.codigo) {
+    throw new Error(`Parcela ${group.parcelaId} (grupo ${grupoId}) sin código: dato inválido.`);
+  }
+  return parcela.codigo;
 }
 
 // Returns the nombre of the most recently created Group for this plantation.
@@ -198,7 +221,8 @@ export async function updateGroup(
 async function recalcTreesSubIds(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   grupoId: string,
-  newCodigo: string
+  newCodigo: string,
+  parcelaCodigo: string
 ): Promise<void> {
   const allTrees = await tx.select().from(trees)
     .where(eq(trees.groupId, grupoId))
@@ -212,8 +236,7 @@ async function recalcTreesSubIds(
         .where(eq(speciesTable.id, tree.especieId));
       especieCodigo = sp?.codigo ?? 'NN';
     }
-    // TODO: pasar codigo real de parcela (group.parcelaId lookup).
-    const newSubId = generateSubId('', newCodigo.toUpperCase(), especieCodigo, tree.posicion);
+    const newSubId = generateSubId(parcelaCodigo, newCodigo.toUpperCase(), especieCodigo, tree.posicion);
     await tx.update(trees)
       .set({ subId: newSubId })
       .where(eq(trees.id, tree.id));
@@ -244,12 +267,14 @@ export async function updateGroupCode(
     .limit(1);
   if (existingCodigo) return { success: false, error: 'codigo_duplicate' };
 
+  const parcelaCodigo = await getGroupParcelaCodigo(id);
+
   try {
     await db.transaction(async (tx) => {
       await tx.update(groups)
         .set({ codigo: upperCodigo })
         .where(eq(groups.id, id));
-      await recalcTreesSubIds(tx, id, newCodigo);
+      await recalcTreesSubIds(tx, id, newCodigo, parcelaCodigo);
     });
     await markGroupPendingSync(id);
     notifyDataChanged();
