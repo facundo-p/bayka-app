@@ -75,12 +75,9 @@ export default function PlantationDetailScreen() {
 
   if (!parcelaId) return null;
 
-  // Title shows "{parcela.nombre} — Grupos"; fallback to plantation lugar.
   const headerTitle = parcela?.nombre
     ? `${parcela.nombre} — Grupos`
     : (plantationRows?.[0]?.lugar ?? 'Grupos');
-  // El "+" para crear grupo solo se muestra si la plantación no está finalizada.
-  // parcelaId ya es truthy acá (hay un early-return arriba si falta).
   const canAddGroup = estadoLoaded && !isFinalizada;
 
   function handleGroupPress(subgroup: Group) {
@@ -131,6 +128,7 @@ export default function PlantationDetailScreen() {
             <HeaderActionButton
               testID="grupos-header-add"
               icon="add"
+              // Abre el alta de grupo arrastrando la plantación y parcela actuales por la URL
               onPress={() => router.push(`/${routePrefix}/plantation/nuevo-grupo?plantacionId=${pid}&parcelaId=${parcelaId}` as any)}
               accessibilityLabel="Nuevo grupo"
             />

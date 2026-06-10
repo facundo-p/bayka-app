@@ -228,8 +228,6 @@ export default function PlantacionesScreen() {
               disabled={!isOnline}
               accessibilityLabel="Gestionar plantaciones descargadas"
             />
-            {/* El "+" (crear plantación) va último/derecha para coincidir con la
-                posición del botón de acción en Parcelas y Grupos (#70 feedback). */}
             {isAdmin && (
               <HeaderActionButton
                 icon="add"
