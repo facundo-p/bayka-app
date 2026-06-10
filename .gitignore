@@ -29,6 +29,10 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+*.log
+
+# Locks de runtime locales
+.claude/scheduled_tasks.lock
 
 # Testing
 coverage/
