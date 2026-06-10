@@ -1,18 +1,9 @@
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { colors, fontSize, spacing, fonts } from '../theme';
-import ScreenContainer from '../components/ScreenContainer';
-import CustomHeader from '../components/CustomHeader';
-import GrupoForm from '../components/GrupoForm';
+import EntityFormModal from '../components/EntityFormModal';
+import FormActions from '../components/FormActions';
+import GrupoFields from '../components/GrupoFields';
+import { useGrupoForm } from '../hooks/useGrupoForm';
 import { useNewGroup } from '../hooks/useNewGroup';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 
@@ -30,39 +21,39 @@ export default function NuevoGrupoScreen() {
 
   const { lastGroupName, handleCreateGroup } = useNewGroup(plantacionId, parcelaId);
 
+  const form = useGrupoForm({
+    mode: 'create',
+    onSubmit: async (values) => {
+      const result = await handleCreateGroup(values);
+      if (result.success) {
+        router.replace(`/${routePrefix}/plantation/subgroup/${result.id}?plantacionId=${plantacionId}&parcelaId=${parcelaId}&grupoCodigo=${values.codigo.toUpperCase()}&grupoNombre=${encodeURIComponent(values.nombre)}` as any);
+      }
+      return result;
+    },
+  });
+
   if (!parcelaId) return null;
 
+  // Mismo template full-screen que Parcela/Plantación (#89): header verde con X,
+  // cuerpo keyboard-aware y footer fijo con Cancelar + Crear. Al ser un Modal
+  // tapa el tab bar (sin gap extra). El back del SO cierra (router.back) igual
+  // que la flecha/X y el botón Cancelar.
   return (
-    <ScreenContainer withTexture>
-    <CustomHeader title="Nuevo grupo" onBack={() => router.back()} />
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <EntityFormModal
+      visible
+      title="Nuevo grupo"
+      onClose={() => router.back()}
+      footer={
+        <FormActions
+          submitLabel="Crear grupo"
+          onSubmit={form.handleSubmit}
+          submitDisabled={!form.canSubmit}
+          loading={form.loading}
+          onCancel={() => router.back()}
+        />
+      }
     >
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Animated.View entering={FadeInDown.duration(400)}>
-          <Text style={styles.sectionTitle}>Datos del grupo</Text>
-          <GrupoForm
-            mode="create"
-            plantacionId={plantacionId ?? ''}
-            lastGroupName={lastGroupName}
-            onSubmit={async (values) => {
-              const result = await handleCreateGroup(values);
-              if (result.success) {
-                router.replace(`/${routePrefix}/plantation/subgroup/${result.id}?plantacionId=${plantacionId}&parcelaId=${parcelaId}&grupoCodigo=${values.codigo.toUpperCase()}&grupoNombre=${encodeURIComponent(values.nombre)}` as any);
-              }
-              return result;
-            }}
-          />
-        </Animated.View>
-      </ScrollView>
-    </KeyboardAvoidingView>
-    </ScreenContainer>
+      <GrupoFields form={form} lastGroupName={lastGroupName} />
+    </EntityFormModal>
   );
 }
-
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  container: { padding: spacing.xxxl },
-  sectionTitle: { fontSize: fontSize.title, fontFamily: fonts.heading, color: colors.text, marginBottom: spacing.xxxl },
-});

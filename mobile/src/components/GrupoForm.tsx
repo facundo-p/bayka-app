@@ -1,18 +1,18 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import FormField from './FormField';
-import TipoSegmentedControl from './TipoSegmentedControl';
+import { View } from 'react-native';
+import GrupoFields from './GrupoFields';
+import FormActions from './FormActions';
+import { useGrupoForm } from '../hooks/useGrupoForm';
+import { grupoFormStyles as styles } from './GrupoForm.styles';
 import type {
   GroupTipo,
   CreateGroupResult,
   UpdateGroupResult,
 } from '../repositories/GroupRepository';
-import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 interface Props {
   mode: 'create' | 'edit';
-  plantacionId: string;
+  /** Aceptado por compatibilidad con call sites; no se usa internamente. */
+  plantacionId?: string;
   initialValues?: { nombre: string; codigo: string; tipo: GroupTipo };
   onSubmit: (values: {
     nombre: string;
@@ -23,161 +23,26 @@ interface Props {
   lastGroupName?: string | null;
 }
 
-export default function GrupoForm({
-  mode,
-  plantacionId,
-  initialValues,
-  onSubmit,
-  onCancel,
-  lastGroupName,
-}: Props) {
-  const [nombre, setNombre] = useState(initialValues?.nombre ?? '');
-  const [codigo, setCodigo] = useState(initialValues?.codigo ?? '');
-  const [tipo, setTipo] = useState<GroupTipo>(initialValues?.tipo ?? GROUP_TIPO_DEFAULT);
-  const [loading, setLoading] = useState(false);
-  const [nombreError, setNombreError] = useState<string | null>(null);
-  const [codigoError, setCodigoError] = useState<string | null>(null);
-
-  const canSubmit = nombre.trim().length > 0 && codigo.trim().length > 0 && !loading;
-
-  function handleNombreChange(val: string) {
-    setNombre(val);
-    if (nombreError) setNombreError(null);
-  }
-
-  function handleCodigoChange(val: string) {
-    setCodigo(val.toUpperCase());
-    if (codigoError) setCodigoError(null);
-  }
-
-  async function handleSubmit() {
-    if (!canSubmit) return;
-    setNombreError(null);
-    setCodigoError(null);
-    setLoading(true);
-
-    try {
-      const result = await onSubmit({
-        nombre: nombre.trim(),
-        codigo: codigo.trim().toUpperCase(),
-        tipo,
-      });
-
-      if (!result.success) {
-        if (result.error === 'both_duplicate') {
-          setNombreError('Este nombre ya existe en la parcela');
-          setCodigoError('Este código ya existe en la parcela');
-        } else if (result.error === 'nombre_duplicate') {
-          setNombreError('Este nombre ya existe en la parcela');
-        } else if (result.error === 'codigo_duplicate') {
-          setCodigoError('Este código ya existe en la parcela');
-        } else {
-          setCodigoError(
-            mode === 'create'
-              ? 'Error al crear el grupo. Intentá de nuevo.'
-              : 'Error al actualizar. Intentá de nuevo.',
-          );
-        }
-      }
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const submitLabel = mode === 'create' ? 'Crear grupo' : 'Guardar';
-
+/**
+ * Formulario de grupo con botonera inline (bottom-sheet de edición de grupo).
+ * Para la creación, NuevoGrupoScreen compone useGrupoForm + GrupoFields con la
+ * botonera en un footer fijo (KeyboardAwareFormBody), para que "Crear grupo" no
+ * quede tapado por el teclado (#89). Ambos comparten estado vía useGrupoForm.
+ */
+export default function GrupoForm({ mode, initialValues, onSubmit, onCancel, lastGroupName }: Props) {
+  const form = useGrupoForm({ mode, initialValues, onSubmit });
   return (
     <View>
-      <FormField
-        label="Nombre"
-        value={nombre}
-        onChangeText={handleNombreChange}
-        placeholder="Ej: Linea 1"
-        error={nombreError}
-        autoCapitalize="words"
-        helperText={
-          mode === 'create' && lastGroupName
-            ? `Último grupo: ${lastGroupName}`
-            : null
-        }
-      />
-
-      <FormField
-        label="Código"
-        value={codigo}
-        onChangeText={handleCodigoChange}
-        placeholder="Ej: L1"
-        error={codigoError}
-        autoCapitalize="characters"
-        autoCorrect={false}
-      />
-
-      <TipoSegmentedControl value={tipo} onChange={setTipo} />
-
-      <View style={mode === 'edit' ? styles.editActions : undefined}>
-        {mode === 'edit' && onCancel && (
-          <Pressable style={styles.cancelBtn} onPress={onCancel}>
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </Pressable>
-        )}
-        <Pressable
-          style={[
-            mode === 'edit' ? styles.editSubmitBtn : styles.submitBtn,
-            !canSubmit && styles.submitBtnDisabled,
-          ]}
-          onPress={handleSubmit}
-          disabled={!canSubmit}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.white} size="small" />
-          ) : (
-            <Text style={styles.submitBtnText}>{submitLabel}</Text>
-          )}
-        </Pressable>
+      <GrupoFields form={form} lastGroupName={mode === 'create' ? lastGroupName : null} />
+      <View style={styles.actions}>
+        <FormActions
+          submitLabel={mode === 'create' ? 'Crear grupo' : 'Guardar'}
+          onSubmit={form.handleSubmit}
+          submitDisabled={!form.canSubmit}
+          loading={form.loading}
+          onCancel={mode === 'edit' ? onCancel : undefined}
+        />
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  submitBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.button,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginTop: spacing.md,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: spacing.button,
-    borderRadius: borderRadius.lg,
-    borderWidth: 2,
-    borderColor: colors.borderMuted,
-    alignItems: 'center',
-  },
-  cancelText: {
-    color: colors.textSecondary,
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.lg,
-  },
-  editSubmitBtn: {
-    flex: 2,
-    paddingVertical: spacing.button,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-  },
-  submitBtnDisabled: {
-    backgroundColor: colors.primaryFaded,
-  },
-  submitBtnText: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontFamily: fonts.bold,
-  },
-});

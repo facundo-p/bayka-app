@@ -1,41 +1,12 @@
 /**
- * Styles for ParcelaFormModal — full-screen modal (D-17-01).
- * Tokens from theme.ts (CLAUDE.md §8).
+ * Styles for ParcelaFormModal — solo lo específico de Parcela (#89).
+ * El chrome (header/footer/scroll) vive en EntityFormModal /
+ * KeyboardAwareFormBody / FormActions. Tokens from theme.ts (CLAUDE.md §8).
  */
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export const parcelaFormModalStyles = StyleSheet.create({
-  flex: { flex: 1 },
-  safeContainer: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.plantationHeaderBg,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.xl,
-  },
-  headerTitle: {
-    fontSize: fontSize.title,
-    fontFamily: fonts.heading,
-    color: colors.white,
-    flex: 1,
-  },
-  headerCloseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollContent: {
-    padding: spacing.xxxl,
-    paddingBottom: spacing['6xl'],
-  },
   descripcionLabel: {
     fontSize: fontSize.base,
     fontFamily: fonts.semiBold,
@@ -68,47 +39,6 @@ export const parcelaFormModalStyles = StyleSheet.create({
   },
   descripcionWrap: {
     marginBottom: spacing.xxxl,
-  },
-  footer: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    paddingHorizontal: spacing.xxxl,
-    paddingVertical: spacing.xxl,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  cancelBtn: {
-    flex: 1,
-    paddingVertical: spacing.button,
-    borderRadius: borderRadius.lg,
-    borderWidth: 2,
-    borderColor: colors.borderMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  cancelText: {
-    color: colors.textSecondary,
-    fontFamily: fonts.semiBold,
-    fontSize: fontSize.lg,
-  },
-  submitBtn: {
-    flex: 2,
-    paddingVertical: spacing.button,
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  submitBtnDisabled: {
-    backgroundColor: colors.primaryFaded,
-  },
-  submitText: {
-    color: colors.white,
-    fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
   },
   deleteBtn: {
     marginTop: spacing.xxl,
