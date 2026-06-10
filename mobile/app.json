@@ -29,7 +29,13 @@
       "expo-sqlite",
       "expo-router",
       "expo-asset",
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bayka usa tu ubicación para guardar las coordenadas de los árboles que registrás."
+        }
+      ]
     ]
   }
 }

@@ -1,3 +1,3 @@
 import { createTaggedLogger } from './taggedLogger';
 
-export const syncLog = createTaggedLogger('Sync');
+export const gpsLog = createTaggedLogger('GPS');
