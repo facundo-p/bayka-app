@@ -135,6 +135,11 @@ Chequeo mínimo en cada feature/PR que toque un flujo:
   (como la sincronización manual de §12), unificar en un solo paso o señalarlo.
 - **Mínimas interacciones (§1):** acciones principales en uno o dos toques.
 - **Acciones irreversibles (§15):** avisar qué se pierde y qué las dispara.
+- **Creación de entidades coherente (§20):** toda pantalla de creación/edición
+  (Plantación/Parcela/Grupo/…) usa los componentes compartidos
+  (`EntityFormModal` / `KeyboardAwareFormBody` / `FormActions`). El botón de
+  acción NUNCA queda tapado por el teclado. Si un formulario nuevo no calza en
+  el patrón o reimplementa el layout a mano, es un bug de arquitectura.
 
 Los problemas de UX conceptual no tienen test que los dispare: este chequeo
 manual contra la guía es la red de seguridad. Si detectás un olor de diseño,

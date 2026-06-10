@@ -495,3 +495,31 @@ Algunos pasos el negocio los separa a propósito, y eso es correcto:
 Antes de implementar o modificar un flujo, preguntarse: *"¿esto que le estoy
 pidiendo al usuario en N pasos es en realidad una sola tarea?"* Si la separación
 no se justifica por una decisión de negocio (como §12), unificarla en un solo paso.
+
+# 20. Pantallas de creación de entidades: coherencia obligatoria
+
+Las interfaces de **creación/edición de entidades** (Plantación, Parcela, Grupo y
+las que se agreguen) DEBEN verse y comportarse igual. El usuario no tiene que
+reaprender el formulario según la entidad.
+
+Patrón canónico (modelo: la creación de **Parcela**), encapsulado en componentes
+compartidos — **no reimplementar a mano**:
+
+- **`EntityFormModal`** — modal full-screen: header verde con safe-area superior
+  (`insets.top`) + cuerpo + footer. El back del SO cierra el modal.
+- **`ModalHeader`** — header verde con título y botón cerrar (X).
+- **`KeyboardAvoidingForm` / `KeyboardAwareFormBody`** — cuerpo scrolleable +
+  **footer fijo keyboard-aware**: con el teclado abierto el body sube y la
+  botonera flota por encima, siempre visible y tocable.
+- **`FormActions`** — botonera (Cancelar + Submit, o Submit a ancho completo),
+  botones con `minHeight: 44`.
+
+Reglas:
+- **Prohibido** que el botón de acción quede **tapado por el teclado**. Si un
+  formulario nuevo no usa el cuerpo keyboard-aware compartido, es un bug.
+- Header con el **mismo** tratamiento de safe-area en todos.
+- **Cero duplicación**: reusar los componentes compartidos; si falta una
+  variante, parametrizar el componente, no copiar el layout.
+- Estilos en `.styles.ts` con tokens de `theme.ts` (CLAUDE.md §8.1).
+
+Una pantalla de creación que no calce en este patrón se levanta en code-review.

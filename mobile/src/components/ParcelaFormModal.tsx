@@ -5,24 +5,18 @@
  * Live char counter for descripcion turns warning at >=9000 (D-17-02).
  * Uniqueness validated on submit (D-17-03).
  * Delete blocked by children with error modal (D-17-04).
+ *
+ * Chrome (header + cuerpo keyboard-aware + footer) delegado a EntityFormModal /
+ * FormActions, compartido con las demás pantallas de creación (#89).
  */
 import { useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { View, Text, Pressable, TextInput } from 'react-native';
 import FormField from './FormField';
 import ConfirmModal from './ConfirmModal';
+import EntityFormModal from './EntityFormModal';
+import FormActions from './FormActions';
 import { useNewParcela } from '../hooks/useNewParcela';
-import { useKeyboardAwareModal } from '../hooks/useKeyboardAwareModal';
-import { colors, iconSizes, spacing } from '../theme';
+import { colors } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
 
@@ -41,22 +35,6 @@ interface ErrorState {
   nombre: string | null;
   codigo: string | null;
   general: string | null;
-}
-
-function ModalHeader({ mode, onClose, topInset }: { mode: 'create' | 'edit'; onClose: () => void; topInset: number }) {
-  return (
-    <View style={[styles.header, { paddingTop: topInset + spacing.xl }]}>
-      <Text style={styles.headerTitle}>{mode === 'create' ? 'Nueva parcela' : 'Editar parcela'}</Text>
-      <Pressable
-        style={styles.headerCloseBtn}
-        onPress={onClose}
-        accessibilityLabel="Cerrar"
-        hitSlop={8}
-      >
-        <Ionicons name="close" size={iconSizes.header} color={colors.white} />
-      </Pressable>
-    </View>
-  );
 }
 
 function DescripcionField({
@@ -107,8 +85,6 @@ function applyDuplicateError(error: string): ErrorState {
 }
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
-  const insets = useSafeAreaInsets();
-  const keyboard = useKeyboardAwareModal();
   const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
@@ -180,68 +156,58 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
   }
 
   return (
-    <Modal
+    <EntityFormModal
       visible={visible}
-      animationType="slide"
-      presentationStyle="fullScreen"
-      onRequestClose={clearAndClose}
+      title={mode === 'create' ? 'Nueva parcela' : 'Editar parcela'}
+      onClose={clearAndClose}
+      extraContent={
+        <ConfirmModal
+          visible={hasChildrenError !== null}
+          icon="alert-circle"
+          iconColor={colors.danger}
+          title="No se puede eliminar"
+          message={`Esta parcela tiene ${hasChildrenError ?? 0} grupo${hasChildrenError === 1 ? '' : 's'} asociado${hasChildrenError === 1 ? '' : 's'}. Eliminá los grupos antes de borrar la parcela.`}
+          buttons={[{ label: 'Entendido', onPress: () => setHasChildrenError(null), style: 'primary' }]}
+          onDismiss={() => setHasChildrenError(null)}
+        />
+      }
+      footer={
+        <FormActions
+          submitLabel={mode === 'create' ? 'Crear parcela' : 'Guardar'}
+          onSubmit={handleSubmit}
+          submitDisabled={!canSubmit}
+          loading={loading}
+          onCancel={clearAndClose}
+          cancelDisabled={loading}
+        />
+      }
     >
-      <View style={styles.safeContainer}>
-        <ModalHeader mode={mode} onClose={clearAndClose} topInset={insets.top} />
-        <View style={[styles.flex, keyboard.bodyPadding]}>
-          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-            <FormField
-              label="Nombre"
-              value={nombre}
-              onChangeText={handleNombreChange}
-              placeholder="Ej: Lote Norte"
-              error={errors.nombre}
-              autoCapitalize="words"
-            />
-            <FormField
-              label="Código"
-              value={codigo}
-              onChangeText={handleCodigoChange}
-              placeholder="Ej: LN"
-              error={errors.codigo}
-              autoCapitalize="characters"
-              autoCorrect={false}
-            />
-            <DescripcionField value={descripcion} onChange={setDescripcion} />
-            {errors.general && (
-              <Text style={[styles.descripcionCounter, styles.descripcionCounterWarn]}>{errors.general}</Text>
-            )}
-            {mode === 'edit' && (
-              <Pressable style={styles.deleteBtn} onPress={handleDelete} disabled={loading}>
-                <Text style={styles.deleteText}>Eliminar parcela</Text>
-              </Pressable>
-            )}
-          </ScrollView>
-          <View style={[styles.footer, keyboard.footerPadding]}>
-            <Pressable style={styles.cancelBtn} onPress={clearAndClose} disabled={loading}>
-              <Text style={styles.cancelText}>Cancelar</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.submitBtn, !canSubmit && styles.submitBtnDisabled]}
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-            >
-              {loading
-                ? <ActivityIndicator color={colors.white} size="small" />
-                : <Text style={styles.submitText}>{mode === 'create' ? 'Crear parcela' : 'Guardar'}</Text>}
-            </Pressable>
-          </View>
-        </View>
-      </View>
-      <ConfirmModal
-        visible={hasChildrenError !== null}
-        icon="alert-circle"
-        iconColor={colors.danger}
-        title="No se puede eliminar"
-        message={`Esta parcela tiene ${hasChildrenError ?? 0} grupo${hasChildrenError === 1 ? '' : 's'} asociado${hasChildrenError === 1 ? '' : 's'}. Eliminá los grupos antes de borrar la parcela.`}
-        buttons={[{ label: 'Entendido', onPress: () => setHasChildrenError(null), style: 'primary' }]}
-        onDismiss={() => setHasChildrenError(null)}
+      <FormField
+        label="Nombre"
+        value={nombre}
+        onChangeText={handleNombreChange}
+        placeholder="Ej: Lote Norte"
+        error={errors.nombre}
+        autoCapitalize="words"
       />
-    </Modal>
+      <FormField
+        label="Código"
+        value={codigo}
+        onChangeText={handleCodigoChange}
+        placeholder="Ej: LN"
+        error={errors.codigo}
+        autoCapitalize="characters"
+        autoCorrect={false}
+      />
+      <DescripcionField value={descripcion} onChange={setDescripcion} />
+      {errors.general && (
+        <Text style={[styles.descripcionCounter, styles.descripcionCounterWarn]}>{errors.general}</Text>
+      )}
+      {mode === 'edit' && (
+        <Pressable style={styles.deleteBtn} onPress={handleDelete} disabled={loading}>
+          <Text style={styles.deleteText}>Eliminar parcela</Text>
+        </Pressable>
+      )}
+    </EntityFormModal>
   );
 }
