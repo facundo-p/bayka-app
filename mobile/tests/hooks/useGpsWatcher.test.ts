@@ -1,4 +1,5 @@
-// Tests de useGpsWatcher: ciclo de vida de la suscripción y estados de permiso.
+// Tests de useGpsWatcher: ciclo de vida de la suscripción, estados de permiso
+// y crash-safety (prompt único + no reiniciar watcher activo en resume — bug #115).
 
 const mockRemove = jest.fn();
 let capturedOnLocation: ((location: any) => void) | null = null;
@@ -7,6 +8,7 @@ jest.mock('expo-location', () => ({
   PermissionStatus: { GRANTED: 'granted', DENIED: 'denied' },
   Accuracy: { BestForNavigation: 1 },
   requestForegroundPermissionsAsync: jest.fn(),
+  getForegroundPermissionsAsync: jest.fn(),
   hasServicesEnabledAsync: jest.fn(),
   watchPositionAsync: jest.fn(async (_options: any, onLocation: (location: any) => void) => {
     capturedOnLocation = onLocation;
@@ -24,12 +26,16 @@ jest.mock('expo-router', () => ({
 
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import * as Location from 'expo-location';
+import { AppState } from 'react-native';
 
 import { useGpsWatcher } from '../../src/hooks/useGpsWatcher';
 
 const requestPermission = Location.requestForegroundPermissionsAsync as jest.Mock;
+const getPermission = Location.getForegroundPermissionsAsync as jest.Mock;
 const hasServices = Location.hasServicesEnabledAsync as jest.Mock;
 const watchPosition = Location.watchPositionAsync as jest.Mock;
+
+let appStateCb: ((state: string) => void) | null = null;
 
 function mockLocation(latitude: number, longitude: number, accuracy: number | null) {
   return { coords: { latitude, longitude, accuracy }, timestamp: 1700000000000 };
@@ -39,8 +45,18 @@ describe('useGpsWatcher', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     capturedOnLocation = null;
+    appStateCb = null;
     requestPermission.mockResolvedValue({ status: 'granted' });
+    getPermission.mockResolvedValue({ status: 'granted' });
     hasServices.mockResolvedValue(true);
+    jest.spyOn(AppState, 'addEventListener').mockImplementation(((_event: string, cb: any) => {
+      appStateCb = cb;
+      return { remove: jest.fn() };
+    }) as any);
+  });
+
+  afterEach(() => {
+    (AppState.addEventListener as jest.Mock).mockRestore();
   });
 
   it('con permiso otorgado arranca el watcher y entrega fixes', async () => {
@@ -104,5 +120,45 @@ describe('useGpsWatcher', () => {
     await act(async () => {});
     expect(result.current.permissionStatus).toBe('pendiente');
     expect(result.current.lastFix).toBeNull();
+  });
+
+  // ─── Crash-safety (#115) ────────────────────────────────────────────────────
+
+  it('el diálogo de permiso se pide UNA sola vez; en resume re-chequea SIN diálogo', async () => {
+    const { result } = renderHook(() => useGpsWatcher());
+    await waitFor(() => expect(watchPosition).toHaveBeenCalledTimes(1));
+    expect(requestPermission).toHaveBeenCalledTimes(1);
+
+    // Simula volver del background (la causa del titileo/crash en ráfaga).
+    await act(async () => {
+      appStateCb?.('active');
+    });
+
+    // No re-pide el permiso con diálogo y NO reinicia el watcher ya activo.
+    expect(requestPermission).toHaveBeenCalledTimes(1);
+    expect(getPermission).toHaveBeenCalled();
+    expect(watchPosition).toHaveBeenCalledTimes(1);
+    expect(mockRemove).not.toHaveBeenCalled();
+    expect(result.current.permissionStatus).toBe('otorgado');
+  });
+
+  it('resume tras habilitar permiso/GPS arranca el watcher sin re-promptear', async () => {
+    requestPermission.mockResolvedValue({ status: 'denied' });
+    getPermission.mockResolvedValue({ status: 'denied' });
+    hasServices.mockResolvedValue(false);
+    const { result } = renderHook(() => useGpsWatcher());
+
+    await waitFor(() => expect(result.current.servicesEnabled).toBe(false));
+    expect(watchPosition).not.toHaveBeenCalled();
+
+    // El usuario otorgó permiso y encendió el GPS desde Ajustes y volvió.
+    getPermission.mockResolvedValue({ status: 'granted' });
+    hasServices.mockResolvedValue(true);
+    await act(async () => {
+      appStateCb?.('active');
+    });
+
+    await waitFor(() => expect(watchPosition).toHaveBeenCalledTimes(1));
+    expect(requestPermission).toHaveBeenCalledTimes(1); // nunca se re-prompteó
   });
 });

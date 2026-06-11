@@ -33,6 +33,13 @@ export async function requestGpsPermission(): Promise<GpsPermissionStatus> {
   return status === Location.PermissionStatus.GRANTED ? 'otorgado' : 'denegado';
 }
 
+/** Lee el permiso actual SIN abrir diálogo (para re-chequear al volver del
+ *  background sin spamear prompts, que es lo que hacía titilar/crashear). */
+export async function getGpsPermission(): Promise<GpsPermissionStatus> {
+  const { status } = await Location.getForegroundPermissionsAsync();
+  return status === Location.PermissionStatus.GRANTED ? 'otorgado' : 'denegado';
+}
+
 export function hasLocationServicesEnabled(): Promise<boolean> {
   return Location.hasServicesEnabledAsync();
 }
