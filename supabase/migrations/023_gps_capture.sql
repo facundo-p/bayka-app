@@ -3,9 +3,11 @@
 -- 1. trees: columnas del punto capturado al registrar (nullable: árboles
 --    históricos quedan sin punto; no hay backfill).
 -- 2. plantations: configuración por plantación — frecuencia de captura
---    (default 10, duplicado de GPS_CAPTURE_FREQUENCY_DEFAULT en
---    mobile/src/constants/gpsCapture.ts) y obligatoriedad (default true:
---    las plantaciones pre-feature exigen GPS hasta que el admin lo desactive).
+--    (default 10, duplicado de GPS_CAPTURE_FREQUENCY_DEFAULT) y obligatoriedad
+--    (default true, duplicado de GPS_CAPTURE_REQUIRED_DEFAULT), ambos en
+--    mobile/src/constants/gpsCapture.ts (SQL no puede importar la constante).
+--    Obligatoria por default: las plantaciones pre-feature exigen GPS hasta que
+--    el admin lo desactive.
 -- 3. sync_subgroup: redefinido PARTIENDO DE LA VERSIÓN 022 (la vigente).
 --    El INSERT de árboles y el ON CONFLICT persisten las 4 columnas nuevas,
 --    con COALESCE para no pisar coordenadas ya guardadas con NULL (clientes
