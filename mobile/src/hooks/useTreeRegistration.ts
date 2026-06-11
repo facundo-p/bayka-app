@@ -46,6 +46,8 @@ export interface UseTreeRegistrationResult {
   canReactivate: boolean;
   /** Frecuencia de captura GPS vigente de la plantación (cada N árboles). */
   gpsCaptureFrequency: number;
+  /** Si la plantación exige GPS operativo para registrar árboles (#102). */
+  gpsCaptureRequired: boolean;
   // Loading states
   finalizing: boolean;
   reversing: boolean;
@@ -102,6 +104,7 @@ export function useTreeRegistration({
     [plantacionId]
   );
   const gpsCaptureFrequency = gpsConfig?.frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT;
+  const gpsCaptureRequired = gpsConfig?.required ?? true;
 
   const isCreator = subgroup && userId ? subgroup.usuarioCreador === userId : false;
   const isOwner = subgroup && userId
@@ -222,6 +225,7 @@ export function useTreeRegistration({
     isReadOnly,
     canReactivate,
     gpsCaptureFrequency,
+    gpsCaptureRequired,
     finalizing,
     reversing,
     deleting,

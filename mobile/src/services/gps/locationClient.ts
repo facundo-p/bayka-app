@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Linking } from 'react-native';
 
 import {
   GPS_FIX_REQUEST_TIMEOUT_MS,
@@ -34,6 +35,30 @@ export async function requestGpsPermission(): Promise<GpsPermissionStatus> {
 
 export function hasLocationServicesEnabled(): Promise<boolean> {
   return Location.hasServicesEnabledAsync();
+}
+
+/**
+ * Dispara el diálogo del SO que corresponde para destrabar el GPS:
+ * - Permiso de la app: re-pregunta; si quedó denegado permanente ("no volver a
+ *   preguntar"), salta a los Ajustes de la app.
+ * - GPS del dispositivo apagado: diálogo nativo de activación (Android); si el
+ *   usuario lo rechaza o falla, salta a los Ajustes.
+ */
+export async function openGpsUnblockDialog(
+  reason: 'permiso' | 'gps-apagado',
+): Promise<void> {
+  if (reason === 'permiso') {
+    const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
+    if (status !== Location.PermissionStatus.GRANTED && !canAskAgain) {
+      await Linking.openSettings();
+    }
+    return;
+  }
+  try {
+    await Location.enableNetworkProviderAsync();
+  } catch {
+    await Linking.openSettings();
+  }
 }
 
 /**
