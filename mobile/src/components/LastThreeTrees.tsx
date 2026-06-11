@@ -17,6 +17,8 @@ export interface TreeChipItem {
   createdAt: string;
   grupoId: string;
   usuarioRegistro: string;
+  /** Punto GPS capturado; null/ausente = árbol sin coordenadas. */
+  latitude?: number | null;
 }
 
 interface Props {
@@ -44,6 +46,14 @@ export default function LastThreeTrees({ trees, onUndo, headerAccessory }: Props
           const code = getSpeciesCode(tree);
           return (
             <View key={tree.id} style={[styles.chip, isLast && styles.chipLast]}>
+              {tree.latitude != null && (
+                <Ionicons
+                  testID={`chip-gps-pin-${tree.id}`}
+                  name="location"
+                  size={12}
+                  color={colors.plantation}
+                />
+              )}
               <Text style={[styles.chipText, isLast && styles.chipTextLast]}>
                 {tree.posicion} {code}
               </Text>

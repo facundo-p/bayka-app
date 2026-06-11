@@ -1,7 +1,8 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
+import { treeRowItemStyles as styles } from './TreeRowItem.styles';
 
 export interface TreeItemData {
   id: string;
@@ -15,6 +16,8 @@ export interface TreeItemData {
   createdAt: string;
   grupoId: string;
   usuarioRegistro: string;
+  /** Punto GPS capturado; null/ausente = árbol sin coordenadas. */
+  latitude?: number | null;
 }
 
 interface Props {
@@ -35,6 +38,11 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
       </Text>
       <Text style={styles.code} numberOfLines={1}>{getSpeciesCode(item)}</Text>
       <View style={styles.actions}>
+        {item.latitude != null && (
+          <View testID="gps-pin" style={styles.gpsPin}>
+            <Ionicons name="location" size={16} color={colors.plantation} />
+          </View>
+        )}
         {item.fotoUrl
           ? <Pressable onPress={() => onViewPhoto(item.id, item.fotoUrl!)} hitSlop={8} style={styles.btn}>
               <View>
@@ -62,26 +70,3 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
   );
 }
 
-export const treeRowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: borderRadius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.md,
-  },
-  pos: { fontSize: fontSize.base, fontFamily: fonts.bold, color: colors.textMedium, width: 26, textAlign: 'center' },
-  name: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.plantation, flex: 1 },
-  nameNN: { color: colors.secondary },
-  code: { fontSize: fontSize.sm, color: colors.textSecondary, fontFamily: fonts.monospace, minWidth: 40 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  btn: { padding: spacing.xs },
-  syncDot: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.photoUnsyncDot,
-  },
-});
-
-const styles = treeRowStyles;
