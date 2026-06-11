@@ -1,6 +1,7 @@
 import * as Location from 'expo-location';
 
 import {
+  GPS_FIX_REQUEST_TIMEOUT_MS,
   GPS_WATCHER_DISTANCE_INTERVAL_METERS,
   GPS_WATCHER_TIME_INTERVAL_MS,
 } from '../../constants/gpsCapture';
@@ -33,6 +34,31 @@ export async function requestGpsPermission(): Promise<GpsPermissionStatus> {
 
 export function hasLocationServicesEnabled(): Promise<boolean> {
   return Location.hasServicesEnabledAsync();
+}
+
+/**
+ * Pide un fix fresco en el momento (usado al tap cuando el último fix del
+ * watcher quedó viejo). Devuelve null si no resuelve dentro del timeout o
+ * si el provider falla: el llamador nunca se bloquea.
+ */
+export async function getCurrentGpsFix(
+  timeoutMs: number = GPS_FIX_REQUEST_TIMEOUT_MS,
+): Promise<GpsFix | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  try {
+    const location = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation }),
+      timeout,
+    ]);
+    return location ? toGpsFix(location) : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Arranca el watcher en máxima frecuencia/precisión (árboles a < 1 m entre sí). */

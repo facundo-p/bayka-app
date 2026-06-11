@@ -1,6 +1,6 @@
 import type { LocationSubscription } from 'expo-location';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import {
   GpsFix,
@@ -14,6 +14,8 @@ import { gpsLog } from '../utils/gpsLogger';
 export interface UseGpsWatcherResult {
   /** Último fix recibido del watcher; null hasta el primer fix. */
   lastFix: GpsFix | null;
+  /** Lectura estable del último fix (no re-renderiza): para usar en callbacks. */
+  getLastFix: () => GpsFix | null;
   permissionStatus: GpsPermissionStatus;
   /** null mientras no se chequeó; false = GPS del dispositivo apagado. */
   servicesEnabled: boolean | null;
@@ -33,6 +35,8 @@ export function useGpsWatcher(): UseGpsWatcherResult {
   const [lastFix, setLastFix] = useState<GpsFix | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<GpsPermissionStatus>('pendiente');
   const [servicesEnabled, setServicesEnabled] = useState<boolean | null>(null);
+  const lastFixRef = useRef<GpsFix | null>(null);
+  const getLastFix = useCallback(() => lastFixRef.current, []);
 
   const startSession = useCallback(async (session: WatcherSession) => {
     const permission = await requestGpsPermission();
@@ -45,7 +49,9 @@ export function useGpsWatcher(): UseGpsWatcherResult {
     if (permission !== 'otorgado' || !enabled) return;
 
     const subscription = await watchGpsPosition((fix) => {
-      if (!session.cancelled) setLastFix(fix);
+      if (session.cancelled) return;
+      lastFixRef.current = fix;
+      setLastFix(fix);
     });
     // El focus pudo perderse mientras el watcher arrancaba.
     if (session.cancelled) subscription.remove();
@@ -63,5 +69,5 @@ export function useGpsWatcher(): UseGpsWatcherResult {
     }, [startSession]),
   );
 
-  return { lastFix, permissionStatus, servicesEnabled };
+  return { lastFix, getLastFix, permissionStatus, servicesEnabled };
 }

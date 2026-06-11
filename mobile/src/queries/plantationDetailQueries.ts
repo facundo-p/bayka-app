@@ -31,6 +31,27 @@ export async function getGroupById(grupoId: string) {
     .where(eq(groups.id, grupoId));
 }
 
+export interface PlantationGpsConfig {
+  /** Capturar GPS cada N árboles. */
+  frequency: number;
+  /** Si la captura es obligatoria para registrar árboles. */
+  required: boolean;
+}
+
+/** Config GPS de la plantación (frecuencia de captura y obligatoriedad). */
+export async function getPlantationGpsConfig(
+  plantacionId: string,
+): Promise<PlantationGpsConfig | null> {
+  const rows = await db
+    .select({
+      frequency: plantations.gpsCaptureFrequency,
+      required: plantations.gpsCaptureRequired,
+    })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+  return rows[0] ?? null;
+}
+
 /** Count N/N (unresolved species) trees per subgroup in a plantation */
 export async function getNNCountsPerGroup(plantacionId: string) {
   return db.select({
