@@ -22,7 +22,7 @@ import {
 import { generateAndPersistIds } from '../services/idGenerationService';
 // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
-import { exportToCSV, exportToExcel } from '../services/ExportService';
+import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
 import type { Plantation } from '../components/PlantationConfigCard';
 
@@ -205,6 +205,19 @@ export function usePlantationAdmin() {
     }
   }
 
+  async function handleExportKml(plantacionId: string) {
+    const plantation = (plantationList as Plantation[] | null)?.find((p) => p.id === plantacionId);
+    if (!plantation) return;
+    setExportingId(plantacionId + '_kml');
+    try {
+      await exportToKML(plantacionId, plantation.lugar);
+    } catch (e: any) {
+      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo exportar el KML.', 'alert-circle-outline', colors.danger);
+    } finally {
+      setExportingId(null);
+    }
+  }
+
   // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
   async function handleCreateSubmit(
     lugar: string,
@@ -286,6 +299,7 @@ export function usePlantationAdmin() {
     setSeedModalPlantacionId,
     handleExportCsv,
     handleExportExcel,
+    handleExportKml,
     handleCreateSubmit,
     handleAssignTech,
     handleEditSubmit,

@@ -15,7 +15,8 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
-import { getExportRows, type ExportRow } from '../queries/exportQueries';
+import { getExportRows, getKmlExportRows, type ExportRow } from '../queries/exportQueries';
+import { buildKml } from './kml/kmlGenerator';
 
 // BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y
 // rompe los acentos/ñ. El .xlsx no lo necesita (embebe la codificación). #87.
@@ -140,5 +141,28 @@ export async function exportToExcel(plantacionId: string, plantationName: string
   await Sharing.shareAsync(file.uri, {
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     dialogTitle: 'Exportar Excel',
+  });
+}
+
+// ─── exportToKML ──────────────────────────────────────────────────────────────
+
+/**
+ * Exporta los puntos GPS de la plantación como KML (placemarks coloreados por
+ * especie, folders parcela → grupo). Solo árboles con coordenadas; sin puntos
+ * lanza un error con mensaje claro para el usuario.
+ */
+export async function exportToKML(plantacionId: string, plantationName: string): Promise<void> {
+  const rows = await getKmlExportRows(plantacionId);
+  if (rows.length === 0) {
+    throw new Error('La plantación no tiene árboles con punto GPS para exportar.');
+  }
+  const kml = buildKml(plantationName, rows);
+
+  const file = new File(Paths.cache, `${plantationName}_puntos.kml`);
+  file.write(kml);
+
+  await Sharing.shareAsync(file.uri, {
+    mimeType: 'application/vnd.google-earth.kml+xml',
+    dialogTitle: 'Exportar KML',
   });
 }

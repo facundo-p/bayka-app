@@ -53,6 +53,7 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
     onGenerateIds: jest.fn(),
     onExportCsv: jest.fn(),
     onExportExcel: jest.fn(),
+    onExportKml: jest.fn(),
     onDiscardEdit: jest.fn(),
     ...overrides,
   };
