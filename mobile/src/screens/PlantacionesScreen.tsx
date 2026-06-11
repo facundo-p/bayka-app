@@ -28,6 +28,7 @@ import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
 import { useParcelas } from '../hooks/useParcelas';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
+import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 
 /**
  * ExpandablePlantationCard — wrapper that pulls parcelas per plantation
@@ -177,8 +178,8 @@ export default function PlantacionesScreen() {
   // subgrupos (issues #63 + #15). Guarda el id de la plantación a navegar.
   const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
 
-  async function handleCreatePlantation(lugar: string, periodo: string) {
-    const id = await adminHook.handleCreateSubmit(lugar, periodo);
+  async function handleCreatePlantation(lugar: string, periodo: string, gps: PlantationGpsSettings) {
+    const id = await adminHook.handleCreateSubmit(lugar, periodo, gps);
     setShowCreateModal(false);
     if (!id) return;
     // Abre la selección de especies de la plantación recién creada y agenda la
@@ -393,7 +394,7 @@ export default function PlantacionesScreen() {
           onCreateSubmit={handleCreatePlantation}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
-          onEditSubmit={async (lugar, periodo) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo); setEditingPlantation(null); } }}
+          onEditSubmit={async (lugar, periodo, gps) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, gps); setEditingPlantation(null); } }}
           confirmProps={adminHook.confirmProps}
           seedModalPlantacionId={adminHook.seedModalPlantacionId}
           seedValue={adminHook.seedValue}
