@@ -7,7 +7,7 @@ exports[`buildKml snapshot de la estructura completa 1`] = `
     <name>Campo Norte</name>
     <Style id="especie-eucalipto">
       <IconStyle>
-        <color>ff00aaff</color>
+        <color>ff00ffff</color>
         <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
       </IconStyle>
     </Style>

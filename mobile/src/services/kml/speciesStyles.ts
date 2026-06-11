@@ -21,30 +21,36 @@ const KML_COLOR_PALETTE = [
 /** Ícono blanco tintable de Google Earth (el <color> del IconStyle lo pinta). */
 const PLACEMARK_ICON_HREF = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png';
 
-/** Hash determinístico simple: misma especie → mismo color en todo export. */
-function hashToPaletteIndex(especieNombre: string): number {
+/** Hash determinístico simple: mismo styleId → mismo color en todo export. */
+function hashToPaletteIndex(styleId: string): number {
   let hash = 0;
-  for (const char of especieNombre) hash = (hash * 31 + char.charCodeAt(0)) % 997;
+  for (const char of styleId) hash = (hash * 31 + char.charCodeAt(0)) % 997;
   return hash % KML_COLOR_PALETTE.length;
 }
 
-/** Id de <Style> válido y estable para la especie (sin espacios/acentos). */
+/** Id de <Style> válido y estable para la especie (sin espacios/acentos).
+ *  Nombres que slugifican igual (p.ej. "Pino A" / "Pino-A") comparten id, y
+ *  por eso el color se deriva del slug —no del nombre crudo— para que NUNCA
+ *  queden dos <Style> con el mismo id y distinto color. */
 export function getSpeciesStyleId(especieNombre: string): string {
   const slug = especieNombre
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-');
-  return `especie-${slug}`;
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return `especie-${slug || 'sin-nombre'}`;
 }
 
-/** Bloques <Style> compartidos (uno por especie, no uno por placemark). */
+/** Bloques <Style> compartidos: uno por styleId (no por nombre ni por
+ *  placemark), deduplicados para no emitir ids repetidos en el documento. */
 export function buildSpeciesStyles(especies: string[]): string {
-  return especies
-    .map((especie) => {
-      const color = KML_COLOR_PALETTE[hashToPaletteIndex(especie)];
+  const styleIds = [...new Set(especies.map(getSpeciesStyleId))];
+  return styleIds
+    .map((styleId) => {
+      const color = KML_COLOR_PALETTE[hashToPaletteIndex(styleId)];
       return [
-        `    <Style id="${getSpeciesStyleId(especie)}">`,
+        `    <Style id="${styleId}">`,
         '      <IconStyle>',
         `        <color>${color}</color>`,
         `        <Icon><href>${PLACEMARK_ICON_HREF}</href></Icon>`,

@@ -9,6 +9,12 @@
  *  Supabase (migración 023): si cambia acá, revisar esos defaults. */
 export const GPS_CAPTURE_FREQUENCY_DEFAULT = 10;
 
+/** Si una plantación exige captura GPS cuando no se definió lo contrario.
+ *  Mismo trato que la frecuencia: duplicado en los DEFAULT de schema local
+ *  (migración 0015: `1`) y Supabase (migración 023: `true`); si cambia acá,
+ *  revisar esos defaults. */
+export const GPS_CAPTURE_REQUIRED_DEFAULT = true;
+
 /** Umbrales del semáforo de precisión, en metros. */
 export const GPS_ACCURACY_GOOD_MAX_METERS = 3; // verde: precisión ≤ 3 m
 export const GPS_ACCURACY_REGULAR_MAX_METERS = 8; // amarillo: ≤ 8 m; rojo: > 8 m

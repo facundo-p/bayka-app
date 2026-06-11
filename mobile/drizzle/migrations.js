@@ -17,6 +17,7 @@ import m0012 from './0012_parcelas_deleted_at.sql';
 import m0013 from './0013_parcelas_partial_unique_indexes.sql';
 import m0014 from './0014_groups_tipo_parcela_to_bosquete.sql';
 import m0015 from './0015_gps_capture.sql';
+import m0016 from './0016_gps_config_server_snapshot.sql';
 
   export default {
     journal,
@@ -36,6 +37,7 @@ m0011,
 m0012,
 m0013,
 m0014,
-m0015
+m0015,
+m0016
     }
   }

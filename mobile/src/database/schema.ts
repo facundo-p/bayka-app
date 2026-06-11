@@ -1,6 +1,6 @@
 import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
-import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 
 export const species = sqliteTable('species', {
@@ -28,7 +28,14 @@ export const plantations = sqliteTable('plantations', {
   gpsCaptureFrequency: integer('gps_capture_frequency')
     .notNull()
     .default(GPS_CAPTURE_FREQUENCY_DEFAULT),
-  gpsCaptureRequired: integer('gps_capture_required', { mode: 'boolean' }).notNull().default(true),
+  gpsCaptureRequired: integer('gps_capture_required', { mode: 'boolean' })
+    .notNull()
+    .default(GPS_CAPTURE_REQUIRED_DEFAULT),
+  // Snapshot del último valor conocido del server (como lugarServer/periodoServer):
+  // permite que discardPlantationEdit revierta una edición offline de la config GPS.
+  // Nullable: null = sin snapshot todavía. Migración local 0016.
+  gpsCaptureFrequencyServer: integer('gps_capture_frequency_server'),
+  gpsCaptureRequiredServer: integer('gps_capture_required_server', { mode: 'boolean' }),
 });
 
 export const parcelas = sqliteTable('parcelas', {

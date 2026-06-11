@@ -45,13 +45,14 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     estado: remotePlantation.estado,
   };
 
-  // La config GPS del admin siempre se refresca desde el server (el pendingEdit
-  // local solo snapshotea lugar/periodo). Guard contra server sin migración 023.
+  // El snapshot *Server de la config GPS se refresca siempre (igual que
+  // lugarServer/periodoServer); las columnas vivas solo si no hay edición local
+  // pendiente. Guard contra server sin migración 023 (columnas ausentes).
   if (remotePlantation.gps_capture_frequency != null) {
-    serverUpdate.gpsCaptureFrequency = remotePlantation.gps_capture_frequency;
+    serverUpdate.gpsCaptureFrequencyServer = remotePlantation.gps_capture_frequency;
   }
   if (remotePlantation.gps_capture_required != null) {
-    serverUpdate.gpsCaptureRequired = remotePlantation.gps_capture_required;
+    serverUpdate.gpsCaptureRequiredServer = remotePlantation.gps_capture_required;
   }
 
   const [local] = await db
@@ -62,6 +63,12 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   if (!local?.pendingEdit) {
     serverUpdate.lugar = remotePlantation.lugar;
     serverUpdate.periodo = remotePlantation.periodo;
+    if (remotePlantation.gps_capture_frequency != null) {
+      serverUpdate.gpsCaptureFrequency = remotePlantation.gps_capture_frequency;
+    }
+    if (remotePlantation.gps_capture_required != null) {
+      serverUpdate.gpsCaptureRequired = remotePlantation.gps_capture_required;
+    }
   }
 
   await db.update(plantations).set(serverUpdate).where(eq(plantations.id, plantacionId));

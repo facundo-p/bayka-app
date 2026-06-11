@@ -124,16 +124,18 @@ export async function createPlantationLocally(
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
 /**
- * Updates lugar and periodo for an existing plantation.
+ * Updates lugar, periodo y config GPS de una plantación existente.
  *
- * Online: pushes to Supabase first, then updates local SQLite + server columns.
- * Offline: saves locally only, sets pendingEdit=true, and snapshots original
- * server values (only on first offline edit — subsequent edits keep the original
- * snapshot so discard always reverts to the last-known server state).
+ * Online: pushea a Supabase primero, luego actualiza SQLite local + columnas
+ * *Server (snapshot del último valor de server).
+ * Offline: guarda local, setea pendingEdit=true y snapshotea los valores
+ * originales (solo en la primera edición offline — ediciones siguientes
+ * conservan el snapshot para que discard revierta al último estado de server).
+ * La config GPS sigue el MISMO patrón de snapshot que lugar/periodo
+ * (gpsCaptureFrequencyServer/RequiredServer), así discardPlantationEdit la revierte.
  *
- * pendingEdit is only meaningful when pendingSync=false (plantation already exists
- * on server). For offline-created plantations (pendingSync=true), we just update
- * the local fields directly.
+ * pendingEdit solo aplica con pendingSync=false (plantación ya en server). Para
+ * plantaciones creadas offline (pendingSync=true) se actualizan campos directo.
  */
 export async function updatePlantation(
   plantacionId: string,
@@ -141,10 +143,14 @@ export async function updatePlantation(
   periodo: string,
   gps?: PlantationGpsSettings
 ): Promise<void> {
-  // La config GPS no tiene snapshot/discard propio: el pull siempre la
-  // refresca desde el server, así que un descarte queda autocorregido.
   const gpsLocal = gps ?? {};
-  // Check if this is an offline-created plantation (not yet on server)
+  // Snapshot de server tras un push exitoso (solo si se editó la config GPS).
+  const gpsServerSnapshot = gps
+    ? {
+        gpsCaptureFrequencyServer: gps.gpsCaptureFrequency,
+        gpsCaptureRequiredServer: gps.gpsCaptureRequired,
+      }
+    : {};
   const [row] = await db
     .select({
       pendingSync: plantations.pendingSync,
@@ -153,6 +159,10 @@ export async function updatePlantation(
       periodoServer: plantations.periodoServer,
       lugarCurrent: plantations.lugar,
       periodoCurrent: plantations.periodo,
+      gpsFreqServer: plantations.gpsCaptureFrequencyServer,
+      gpsReqServer: plantations.gpsCaptureRequiredServer,
+      gpsFreqCurrent: plantations.gpsCaptureFrequency,
+      gpsReqCurrent: plantations.gpsCaptureRequired,
     })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
@@ -189,6 +199,7 @@ export async function updatePlantation(
           periodoServer: periodo,
           pendingEdit: false,
           ...gpsLocal,
+          ...gpsServerSnapshot,
         })
         .where(eq(plantations.id, plantacionId));
       notifyDataChanged();
@@ -213,6 +224,8 @@ export async function updatePlantation(
         ? {
             lugarServer: row.lugarServer ?? row.lugarCurrent,
             periodoServer: row.periodoServer ?? row.periodoCurrent,
+            gpsCaptureFrequencyServer: row.gpsFreqServer ?? row.gpsFreqCurrent,
+            gpsCaptureRequiredServer: row.gpsReqServer ?? row.gpsReqCurrent,
           }
         : {}),
     })
@@ -223,14 +236,16 @@ export async function updatePlantation(
 // ─── discardPlantationEdit ───────────────────────────────────────────────────
 
 /**
- * Reverts a pending offline edit: restores lugar/periodo from *Server columns
- * and clears pendingEdit. Works fully offline — no network required.
+ * Reverts a pending offline edit: restores lugar/periodo y la config GPS desde
+ * las columnas *Server y limpia pendingEdit. Funciona 100% offline — sin red.
  */
 export async function discardPlantationEdit(plantacionId: string): Promise<void> {
   const [row] = await db
     .select({
       lugarServer: plantations.lugarServer,
       periodoServer: plantations.periodoServer,
+      gpsFreqServer: plantations.gpsCaptureFrequencyServer,
+      gpsReqServer: plantations.gpsCaptureRequiredServer,
     })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
@@ -245,6 +260,10 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
       lugar: row.lugarServer,
       periodo: row.periodoServer,
       pendingEdit: false,
+      // Revertir la config GPS solo si hay snapshot (plantaciones editadas antes
+      // de existir las columnas 0016 no lo tienen → se dejan como están).
+      ...(row.gpsFreqServer !== null ? { gpsCaptureFrequency: row.gpsFreqServer } : {}),
+      ...(row.gpsReqServer !== null ? { gpsCaptureRequired: row.gpsReqServer } : {}),
     })
     .where(eq(plantations.id, plantacionId));
   notifyDataChanged();

@@ -73,6 +73,22 @@ describe('buildKml', () => {
     expect(kml).not.toMatch(/<name>[^<]*<rojo>/);
   });
 
+  it('especies con nombres que slugifican igual comparten un único <Style> (sin id duplicado)', () => {
+    const kml = buildKml('Campo', [
+      row({ especieNombre: 'Pino A', subId: 'P1' }),
+      row({ especieNombre: 'Pino-A', subId: 'P2' }),
+    ]);
+    // Mismo styleId para ambos nombres.
+    expect(getSpeciesStyleId('Pino A')).toBe(getSpeciesStyleId('Pino-A'));
+    // Un solo <Style> con ese id (no dos con el mismo id y distinto color).
+    const styleCount = kml.split(`<Style id="${getSpeciesStyleId('Pino A')}">`).length - 1;
+    expect(styleCount).toBe(1);
+  });
+
+  it('nombre sin caracteres alfanuméricos no produce id vacío', () => {
+    expect(getSpeciesStyleId('—')).toBe('especie-sin-nombre');
+  });
+
   it('árbol N/N (sin especie resuelta) se incluye con etiqueta N/N', () => {
     const kml = buildKml('Campo', [row({ especieNombre: null })]);
     expect(kml).toContain('Especie: N/N');
