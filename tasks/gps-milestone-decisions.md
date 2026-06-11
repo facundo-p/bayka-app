@@ -14,10 +14,16 @@ issues no se repiten acá.
   `journalMonotonic` + `migrationIncremental` (reproduce y bloquea la regresión).
   **Regla nueva: toda migración futura debe tener `when` > el de todas las
   anteriores** (idealmente `Date.now()` real al crearla).
-- **#114 (a verificar):** semáforo GPS en "Sin señal". Medido sobre el build con
-  #113 roto (diagnóstico confundido). Re-testear sobre build corregido: permiso
-  de ubicación, GPS del device encendido, al aire libre. Mitigación: el admin
-  puede apagar "Captura GPS obligatoria" por plantación para desbloquear.
+- **#115 (crítico, FIXED en PR #112):** crash de inicio + titileo de la barra
+  de estado. `useGpsWatcher` re-pedía permiso y reiniciaba el watcher nativo en
+  CADA `AppState 'active'`; el diálogo de permiso causa active→background→active
+  → loop de reinicio en ráfaga → titileo del ícono de ubicación y crash. Fix:
+  permiso una sola vez (resume re-chequea sin diálogo), no reiniciar watcher
+  activo, guard de concurrencia, watcher a 1 s en vez de 0.
+- **#114 (probablemente resuelto por #115, a verificar):** semáforo GPS en "Sin
+  señal". El reinicio en ráfaga impedía que el watcher se estabilizara. Re-testear
+  sobre build corregido: permiso, GPS encendido, al aire libre. Mitigación: el
+  admin puede apagar "Captura GPS obligatoria" por plantación para desbloquear.
 
 ## Estrategia general
 
