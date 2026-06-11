@@ -36,18 +36,19 @@ export async function insertTreeWithGps(
  * - Si no hay fix (sin permiso/señal/timeout), el árbol queda sin coordenadas.
  *
  * `gpsCapturedAt` registra el momento del tap, no el de resolución del fix.
- * Se invoca fire-and-forget: cualquier error queda logueado, nunca lanzado.
+ * En el alta se invoca fire-and-forget; la re-captura usa el booleano de
+ * retorno (true = punto escrito) para dar feedback. Nunca lanza.
  */
 export async function attachGpsCapture(
   treeId: string,
   watcherFix: GpsFix | null,
   tapAtMs: number,
-): Promise<void> {
+): Promise<boolean> {
   try {
     const fix = isFixFresh(watcherFix, tapAtMs) ? watcherFix : await getCurrentGpsFix();
     if (!fix) {
       gpsLog.info(`árbol ${treeId} queda sin coordenadas (sin fix disponible)`);
-      return;
+      return false;
     }
     await updateTreeGps(treeId, {
       latitude: fix.latitude,
@@ -55,7 +56,21 @@ export async function attachGpsCapture(
       gpsAccuracy: fix.accuracy,
       gpsCapturedAt: localIsoFromMs(tapAtMs),
     });
+    return true;
   } catch (e) {
     gpsLog.error(`captura GPS falló para árbol ${treeId}`, e);
+    return false;
   }
+}
+
+/**
+ * Re-captura manual del punto del último árbol (o captura a demanda si por
+ * frecuencia no correspondió): reemplaza lat/lng/precisión/timestamp con un
+ * fix del momento. Si no hay fix, el punto anterior se conserva intacto.
+ */
+export function recaptureTreeGps(
+  treeId: string,
+  getLastFix?: () => GpsFix | null,
+): Promise<boolean> {
+  return attachGpsCapture(treeId, getLastFix?.() ?? null, Date.now());
 }

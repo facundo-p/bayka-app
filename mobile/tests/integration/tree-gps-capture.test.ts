@@ -196,7 +196,7 @@ describe('attachGpsCapture', () => {
     await seedTree('tree-1', 1);
     mockGetCurrentGpsFix.mockResolvedValue(null);
 
-    await expect(attachGpsCapture('tree-1', null, Date.now())).resolves.toBeUndefined();
+    await expect(attachGpsCapture('tree-1', null, Date.now())).resolves.toBe(false);
 
     const [tree] = await mockTestDb.select().from(trees).where(eq(trees.id, 'tree-1'));
     expect(tree.latitude).toBeNull();

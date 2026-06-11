@@ -5,7 +5,7 @@ import { useLiveData } from '../database/liveQuery';
 import { getGroupById, getPlantationGpsConfig } from '../queries/plantationDetailQueries';
 import { getPlantationEstado } from '../queries/adminQueries';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
-import { insertTreeWithGps } from '../services/gps/gpsCaptureService';
+import { insertTreeWithGps, recaptureTreeGps } from '../services/gps/gpsCaptureService';
 import type { GpsFix } from '../services/gps/locationClient';
 import {
   deleteLastTree,
@@ -48,6 +48,8 @@ export interface UseTreeRegistrationResult {
   gpsCaptureFrequency: number;
   /** Si la plantación exige GPS operativo para registrar árboles (#102). */
   gpsCaptureRequired: boolean;
+  /** true mientras la re-captura del último árbol resuelve (deshabilitar botón). */
+  recapturingGps: boolean;
   // Loading states
   finalizing: boolean;
   reversing: boolean;
@@ -69,6 +71,8 @@ export interface UseTreeRegistrationResult {
   executeDeleteGroup: () => Promise<void>;
   executeReactivate: () => Promise<void>;
   executeDeleteTree: (treeId: string) => Promise<void>;
+  /** Re-captura el punto GPS del último árbol; false si no hubo fix. */
+  recaptureLastGps: () => Promise<boolean>;
 }
 
 export function useTreeRegistration({
@@ -83,6 +87,7 @@ export function useTreeRegistration({
   const [reversing, setReversing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deletingTreeId, setDeletingTreeId] = useState<string | null>(null);
+  const [recapturingGps, setRecapturingGps] = useState(false);
 
   const { allTrees, lastThree, totalCount, unresolvedNN } = useTrees(grupoId);
 
@@ -124,6 +129,18 @@ export function useTreeRegistration({
       getLastGpsFix,
     );
   }, [isReadOnly, userId, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix]);
+
+  const recaptureLastGps = useCallback(async (): Promise<boolean> => {
+    // allTrees viene en orden descendente: [0] es el último registrado.
+    const lastTree = allTrees[0];
+    if (isReadOnly || recapturingGps || !lastTree) return false;
+    setRecapturingGps(true);
+    try {
+      return await recaptureTreeGps(lastTree.id, getLastGpsFix);
+    } finally {
+      setRecapturingGps(false);
+    }
+  }, [isReadOnly, recapturingGps, allTrees, getLastGpsFix]);
 
   const undoLast = useCallback(async () => {
     if (isReadOnly) return;
@@ -226,6 +243,7 @@ export function useTreeRegistration({
     canReactivate,
     gpsCaptureFrequency,
     gpsCaptureRequired,
+    recapturingGps,
     finalizing,
     reversing,
     deleting,
@@ -245,5 +263,6 @@ export function useTreeRegistration({
     executeDeleteGroup,
     executeReactivate,
     executeDeleteTree,
+    recaptureLastGps,
   };
 }

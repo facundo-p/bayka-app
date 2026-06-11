@@ -14,6 +14,13 @@ export interface GpsSignalParams {
   nowMs: number;
 }
 
+/** Nivel según precisión en metros (umbrales del semáforo). */
+export function getAccuracyLevel(accuracyMeters: number): 'buena' | 'regular' | 'mala' {
+  if (accuracyMeters <= GPS_ACCURACY_GOOD_MAX_METERS) return 'buena';
+  if (accuracyMeters <= GPS_ACCURACY_REGULAR_MAX_METERS) return 'regular';
+  return 'mala';
+}
+
 /**
  * Mapea el estado del watcher al nivel del semáforo. 'sin-senal' cubre:
  * permiso no otorgado, GPS apagado, sin fix aún, fix viejo (señal perdida)
@@ -24,7 +31,5 @@ export function getGpsSignalLevel(params: GpsSignalParams): GpsSignalLevel {
   if (permissionStatus !== 'otorgado' || servicesEnabled === false) return 'sin-senal';
   if (!fix || fix.accuracy === null) return 'sin-senal';
   if (nowMs - fix.timestamp > GPS_FIX_STALE_MS) return 'sin-senal';
-  if (fix.accuracy <= GPS_ACCURACY_GOOD_MAX_METERS) return 'buena';
-  if (fix.accuracy <= GPS_ACCURACY_REGULAR_MAX_METERS) return 'regular';
-  return 'mala';
+  return getAccuracyLevel(fix.accuracy);
 }
