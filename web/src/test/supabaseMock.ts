@@ -76,6 +76,12 @@ export const PERFIL_TECNICO: PerfilFilaMock = {
   rol: 'tecnico',
 };
 
+export const PERFIL_SUPERADMIN: PerfilFilaMock = {
+  ...PERFIL_ADMIN,
+  nombre: 'Sofía Súper',
+  rol: 'superadmin',
+};
+
 function emitir(evento: string): void {
   for (const oyente of oyentes) oyente(evento, estadoMock.sesion);
 }
@@ -113,11 +119,13 @@ export const supabaseMock = {
   },
 };
 
-/** El lookup del perfil de auth filtra `profiles` por id; los listados
- *  (listarPerfiles) consultan la tabla sin ese filtro. */
+/** El lookup del perfil de auth es un select de `profiles` filtrado por id;
+ *  los listados consultan sin ese filtro y las mutaciones (cambiarRol) no
+ *  son selects: ambos van al resolver del test. */
 function esPerfilDeAuth(consulta: ConsultaCapturada): boolean {
   return (
     consulta.tabla === 'profiles' &&
+    consulta.operacion === 'select' &&
     consulta.filtros.some((filtro) => filtro.metodo === 'eq' && filtro.columna === 'id')
   );
 }

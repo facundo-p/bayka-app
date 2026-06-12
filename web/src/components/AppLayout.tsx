@@ -4,16 +4,20 @@ import { Badge } from './Badge';
 import { Button } from './Button';
 import styles from './AppLayout.module.css';
 
-const NAV_ITEMS = [
+type NavItem = { to: string; label: string; soloSuperadmin?: boolean };
+
+const NAV_ITEMS: NavItem[] = [
   { to: '/plantaciones', label: 'Plantaciones' },
-  { to: '/usuarios', label: 'Usuarios' },
-] as const;
+  { to: '/usuarios', label: 'Usuarios', soloSuperadmin: true },
+];
 
 function navLinkClassName({ isActive }: { isActive: boolean }): string {
   return isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink;
 }
 
 function Sidebar() {
+  const { perfil } = useAuth();
+  const items = NAV_ITEMS.filter((item) => !item.soloSuperadmin || perfil?.rol === 'superadmin');
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
@@ -21,7 +25,7 @@ function Sidebar() {
         <span className={styles.brandSubtitle}>Gestión</span>
       </div>
       <nav className={styles.nav}>
-        {NAV_ITEMS.map(({ to, label }) => (
+        {items.map(({ to, label }) => (
           <NavLink key={to} to={to} className={navLinkClassName}>
             {label}
           </NavLink>

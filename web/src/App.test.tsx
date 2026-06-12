@@ -19,7 +19,8 @@ test('autenticado: muestra el wordmark BAYKA y los links de navegación', async 
   renderAt('/');
   expect(await screen.findByText('BAYKA')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Plantaciones' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
+  // El link de Usuarios es exclusivo del superadmin.
+  expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
 });
 
 test('autenticado: la ruta raíz redirige al listado de Plantaciones', async () => {
