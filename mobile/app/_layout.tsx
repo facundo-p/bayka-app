@@ -11,7 +11,7 @@ import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
 import { seedPlantationIfNeeded } from '../src/database/seeds/seedPlantation';
 import { seedPlantationSpeciesIfNeeded } from '../src/database/seeds/seedPlantationSpecies';
 import { fonts } from '../src/theme';
-import { rootLayoutStyles as styles } from './_layout.styles';
+import { rootLayoutStyles as styles } from '../src/styles/rootLayout.styles';
 import {
   useFonts,
   Poppins_300Light,
