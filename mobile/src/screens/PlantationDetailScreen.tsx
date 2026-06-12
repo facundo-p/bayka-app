@@ -35,7 +35,6 @@ export default function PlantationDetailScreen() {
   const pid = plantacionId ?? '';
 
   const {
-    plantationRows,
     parcela,
     filteredGroups,
     nnCountMap,
@@ -74,9 +73,7 @@ export default function PlantationDetailScreen() {
 
   if (!parcelaId) return null;
 
-  const headerTitle = parcela?.nombre
-    ? `${parcela.nombre} — Grupos`
-    : (plantationRows?.[0]?.lugar ?? 'Grupos');
+  const headerSubtitle = parcela?.nombre || undefined;
   const canAddGroup = estadoLoaded && !isFinalizada;
 
   function handleGroupPress(subgroup: Group) {
@@ -120,7 +117,8 @@ export default function PlantationDetailScreen() {
   return (
     <ScreenContainer withTexture>
       <CustomHeader
-        title={headerTitle}
+        title="Grupos"
+        subtitle={headerSubtitle}
         onBack={goBack}
         rightElement={
           canAddGroup ? (

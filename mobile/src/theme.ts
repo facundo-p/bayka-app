@@ -138,6 +138,8 @@ export const fontSize = {
   lg: 15,
   xl: 16,
   xxl: 18,
+  /** Título de los headers de navegación (CustomHeader). */
+  headerTitle: 22,
   title: 20,
   heading: 24,
   hero: 32,
