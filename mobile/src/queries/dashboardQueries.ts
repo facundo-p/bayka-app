@@ -12,8 +12,11 @@ import { localToday } from '../utils/dateUtils';
 /**
  * DASH-01 / DASH-02
  * Returns the list of plantations the user can access.
- * - Admin (isAdmin=true): all plantations ordered by newest first.
- * - Tecnico (isAdmin=false): only plantations the user is assigned to via plantation_users.
+ * - Admin (isAdmin=true): all plantations, incluidas las ocultas en la app
+ *   (la UI las marca con un badge).
+ * - Tecnico (isAdmin=false): only plantations the user is assigned to via
+ *   plantation_users, excluyendo las ocultas desde la web. El filtro es solo
+ *   de listado: los datos pendientes de una plantación oculta igual sincronizan.
  */
 export async function getPlantationsForRole(isAdmin: boolean, userId: string | null) {
   if (isAdmin) {
@@ -24,7 +27,12 @@ export async function getPlantationsForRole(isAdmin: boolean, userId: string | n
     .select(getTableColumns(plantations))
     .from(plantations)
     .innerJoin(plantationUsers, eq(plantationUsers.plantationId, plantations.id))
-    .where(eq(plantationUsers.userId, userId))
+    .where(
+      and(
+        eq(plantationUsers.userId, userId),
+        eq(plantations.visibleInApp, true),
+      )
+    )
     .orderBy(asc(plantations.lugar));
 }
 

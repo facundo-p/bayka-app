@@ -36,6 +36,9 @@ export const plantations = sqliteTable('plantations', {
   // Nullable: null = sin snapshot todavía. Migración local 0016.
   gpsCaptureFrequencyServer: integer('gps_capture_frequency_server'),
   gpsCaptureRequiredServer: integer('gps_capture_required_server', { mode: 'boolean' }),
+  // Visibilidad administrada desde la web de gestión: los técnicos no ven
+  // plantaciones ocultas en el listado; el sync no se ve afectado.
+  visibleInApp: integer('visible_in_app', { mode: 'boolean' }).notNull().default(true),
 });
 
 export const parcelas = sqliteTable('parcelas', {

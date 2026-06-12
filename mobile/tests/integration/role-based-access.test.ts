@@ -1,8 +1,9 @@
 /**
  * Integration tests: Role-based access control
  * Tests: Admin sees all plantations, Tecnico sees only assigned plantations
- * Verifies getPlantationsForRole filtering logic from dashboardQueries.ts
- * Uses real SQLite via better-sqlite3 + drizzle migrations
+ * and never the hidden ones (visible_in_app=false, configurado desde la web).
+ * Runs the REAL getPlantationsForRole from dashboardQueries.ts against
+ * SQLite via better-sqlite3 + drizzle migrations.
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
@@ -15,11 +16,22 @@ import {
   plantationSpecies,
   plantationUsers,
 } from '../../src/database/schema';
-import { eq, and, count, desc, getTableColumns, ne } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 
 let db: IntegrationDb;
+// Alias con prefijo mock-: jest solo permite referenciar variables `mock*`
+// dentro del factory de jest.mock.
+let mockTestDb: IntegrationDb;
 let sqlite: InstanceType<typeof Database>;
+
+jest.mock('../../src/database/client', () => ({
+  get db() {
+    return mockTestDb;
+  },
+}));
+
+import { getPlantationsForRole } from '../../src/queries/dashboardQueries';
 
 const ADMIN_USER_ID = 'user-admin-001';
 const TECNICO1_USER_ID = 'user-tecnico-001';
@@ -29,6 +41,7 @@ const ORG_ID = '00000000-0000-0000-0000-000000000001';
 beforeAll(() => {
   const result = createTestDb();
   db = result.db;
+  mockTestDb = result.db;
   sqlite = result.sqlite;
 });
 
@@ -45,23 +58,6 @@ beforeEach(async () => {
   await db.delete(plantations);
   await db.delete(species);
 });
-
-/**
- * Replicates getPlantationsForRole from dashboardQueries.ts
- * Tests the exact same query logic against real SQLite.
- */
-async function getPlantationsForRole(isAdmin: boolean, userId: string | null) {
-  if (isAdmin) {
-    return db.select().from(plantations).orderBy(desc(plantations.createdAt));
-  }
-  if (!userId) return [];
-  return db
-    .select(getTableColumns(plantations))
-    .from(plantations)
-    .innerJoin(plantationUsers, eq(plantationUsers.plantationId, plantations.id))
-    .where(eq(plantationUsers.userId, userId))
-    .orderBy(desc(plantations.createdAt));
-}
 
 /**
  * Helper: assign a user to a plantation via plantation_users
@@ -184,5 +180,33 @@ describe('Role-based access', () => {
     const creators = allGroups.map(sg => sg.usuarioCreador);
     expect(creators).toContain(TECNICO1_USER_ID);
     expect(creators).toContain(TECNICO2_USER_ID);
+  });
+
+  test('tecnico no ve plantaciones ocultas desde la web (visible_in_app=false)', async () => {
+    const visible = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo Visible', creadoPor: ADMIN_USER_ID });
+    const oculta = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo Oculto', creadoPor: ADMIN_USER_ID, visibleInApp: false });
+    await db.insert(plantations).values(visible);
+    await db.insert(plantations).values(oculta);
+
+    // Asignado a ambas: la oculta igual no debe aparecer en su listado.
+    await assignUserToPlantation(TECNICO1_USER_ID, visible.id);
+    await assignUserToPlantation(TECNICO1_USER_ID, oculta.id);
+
+    const result = await getPlantationsForRole(false, TECNICO1_USER_ID);
+    expect(result.map(r => r.id)).toEqual([visible.id]);
+  });
+
+  test('admin ve las plantaciones ocultas con el flag visibleInApp=false', async () => {
+    const visible = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo Visible', creadoPor: ADMIN_USER_ID });
+    const oculta = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo Oculto', creadoPor: ADMIN_USER_ID, visibleInApp: false });
+    await db.insert(plantations).values(visible);
+    await db.insert(plantations).values(oculta);
+
+    const result = await getPlantationsForRole(true, ADMIN_USER_ID);
+    expect(result).toHaveLength(2);
+
+    const byId = new Map(result.map(r => [r.id, r]));
+    expect(byId.get(oculta.id)?.visibleInApp).toBe(false);
+    expect(byId.get(visible.id)?.visibleInApp).toBe(true);
   });
 });

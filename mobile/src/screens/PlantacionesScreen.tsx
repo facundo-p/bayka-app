@@ -301,6 +301,7 @@ export default function PlantacionesScreen() {
                     estado: item.estado,
                     hasPendingSync: (pendingSyncBoolMap.get(item.id) ?? 0) > 0,
                     nnCount: nnCountMap.get(item.id) ?? 0,
+                    visibleInApp: item.visibleInApp,
                     onPress: () => router.push(`/${routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
                     onDelete: () => handleDeletePlantation(item.id),
                     isAdmin,

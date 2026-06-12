@@ -24,6 +24,8 @@ export type NewPlantation = {
   creadoPor: string;
   createdAt: string;
   pendingSync: boolean;
+  // Opcional: si no se pasa, aplica el default del schema (visible).
+  visibleInApp?: boolean;
 };
 
 export function createTestPlantation(overrides?: Partial<NewPlantation>): NewPlantation {
