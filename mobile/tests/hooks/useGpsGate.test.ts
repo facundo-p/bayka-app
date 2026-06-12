@@ -1,9 +1,14 @@
 // Tests del hook de gating: estados y los tres caminos de desbloqueo.
 
 const mockOpenGpsUnblockDialog = jest.fn();
+const mockSetGpsEnabled = jest.fn();
 
 jest.mock('../../src/services/gps/locationClient', () => ({
   openGpsUnblockDialog: (...args: any[]) => mockOpenGpsUnblockDialog(...args),
+}));
+
+jest.mock('../../src/services/settings/gpsEnabledStore', () => ({
+  setGpsEnabled: (...args: any[]) => mockSetGpsEnabled(...args),
 }));
 
 jest.mock('../../src/utils/gpsLogger', () => ({
@@ -17,6 +22,7 @@ import { useGpsGate, UseGpsGateParams } from '../../src/hooks/useGpsGate';
 function params(overrides: Partial<UseGpsGateParams> = {}): UseGpsGateParams {
   return {
     required: true,
+    gpsEnabled: true,
     permissionStatus: 'otorgado',
     servicesEnabled: true,
     refreshWatcher: jest.fn(),
@@ -28,12 +34,27 @@ describe('useGpsGate', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockOpenGpsUnblockDialog.mockResolvedValue(undefined);
+    mockSetGpsEnabled.mockResolvedValue(undefined);
   });
 
   it('GPS operativo: habilitada sin mensaje', () => {
     const { result } = renderHook(() => useGpsGate(params()));
     expect(result.current.blocked).toBe(false);
     expect(result.current.message).toBeNull();
+  });
+
+  it('medición desactivada: bloqueada; el desbloqueo activa la medición (no abre diálogo del SO)', async () => {
+    const p = params({ gpsEnabled: false });
+    const { result } = renderHook(() => useGpsGate(p));
+    expect(result.current.blocked).toBe(true);
+    expect(result.current.message).toMatch(/medición/);
+
+    await act(async () => {
+      await result.current.requestUnblock();
+    });
+    expect(mockSetGpsEnabled).toHaveBeenCalledWith(true);
+    expect(mockOpenGpsUnblockDialog).not.toHaveBeenCalled();
+    expect(p.refreshWatcher).toHaveBeenCalled();
   });
 
   it('permiso denegado: bloqueada con mensaje; el desbloqueo pide permiso y re-chequea', async () => {

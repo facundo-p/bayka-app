@@ -29,6 +29,7 @@ import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
 import { useConfirm } from '../hooks/useConfirm';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
+import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
 import GpsSignalIndicator from '../components/GpsSignalIndicator';
 import GpsGateBanner from '../components/GpsGateBanner';
@@ -54,7 +55,8 @@ export default function TreeRegistrationScreen() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
 
-  const gpsWatcher = useGpsWatcher();
+  const { gpsEnabled } = useGpsEnabledSetting();
+  const gpsWatcher = useGpsWatcher(gpsEnabled);
   const treeReg = useTreeRegistration({
     grupoId: grupoId ?? '',
     plantacionId: plantacionId ?? '',
@@ -64,6 +66,7 @@ export default function TreeRegistrationScreen() {
   });
   const gpsGate = useGpsGate({
     required: treeReg.gpsCaptureRequired,
+    gpsEnabled,
     permissionStatus: gpsWatcher.permissionStatus,
     servicesEnabled: gpsWatcher.servicesEnabled,
     refreshWatcher: gpsWatcher.refresh,
