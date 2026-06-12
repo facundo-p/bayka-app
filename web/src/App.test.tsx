@@ -1,8 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
-import { AuthProvider } from './hooks/useAuth';
+import { screen } from '@testing-library/react';
 import { PERFIL_ADMIN, PERFIL_TECNICO, estadoMock, resetEstadoMock } from './test/supabaseMock';
-import { AppRoutes } from './App';
+import { renderRutasEn as renderAt } from './test/renderConRutas';
 
 vi.mock('./lib/supabase', async () => {
   const { supabaseMock } = await import('./test/supabaseMock');
@@ -10,16 +8,6 @@ vi.mock('./lib/supabase', async () => {
 });
 
 beforeEach(resetEstadoMock);
-
-function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </MemoryRouter>,
-  );
-}
 
 function simularAdminLogueado() {
   estadoMock.sesion = { user: { id: 'user-1' } };
@@ -34,11 +22,12 @@ test('autenticado: muestra el wordmark BAYKA y los links de navegación', async 
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
 });
 
-test('autenticado: la ruta raíz redirige al placeholder de Plantaciones', async () => {
+test('autenticado: la ruta raíz redirige al listado de Plantaciones', async () => {
   simularAdminLogueado();
   renderAt('/');
   expect(await screen.findByRole('heading', { name: 'Plantaciones' })).toBeInTheDocument();
-  expect(screen.getByText('Sección en construcción.')).toBeInTheDocument();
+  // Sin datos configurados, el listado real muestra su estado vacío.
+  expect(await screen.findByText('Sin plantaciones')).toBeInTheDocument();
 });
 
 test('autenticado: el header muestra nombre, rol y botón Salir', async () => {
