@@ -75,8 +75,10 @@ export function usePlantaciones() {
     }
   };
 
-  const headerTitle =
-    isAdmin && profile?.organizacionNombre ? profile.organizacionNombre : 'Mis plantaciones';
+  // Título fijo para ambos roles; el nombre de la organización va de subtítulo
+  // (se oculta solo si el perfil aún no trae la organización).
+  const headerTitle = 'Plantaciones';
+  const headerSubtitle = profile?.organizacionNombre || undefined;
 
   const syncedCountMap = new Map<string, number>();
   if (syncedCounts) for (const row of syncedCounts) syncedCountMap.set(row.plantacionId, row.treeCount);
@@ -148,6 +150,7 @@ export function usePlantaciones() {
     showFreshnessBanner,
     refreshing,
     headerTitle,
+    headerSubtitle,
     isOnline,
     isAdmin,
     syncedCountMap,

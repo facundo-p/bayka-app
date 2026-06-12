@@ -86,6 +86,7 @@ export default function PlantacionesScreen() {
     activeFilter,
     setActiveFilter,
     headerTitle,
+    headerSubtitle,
     isOnline,
     isAdmin,
     syncedCountMap,
@@ -235,6 +236,7 @@ export default function PlantacionesScreen() {
     <TexturedBackground>
       <CustomHeader
         title={headerTitle}
+        subtitle={headerSubtitle}
         rightElement={
           <View style={styles.headerButtons}>
             {isOnline && (
