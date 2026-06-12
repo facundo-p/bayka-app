@@ -88,6 +88,14 @@ export function hayErrores(errores: ErroresValidacion): boolean {
   return Object.keys(errores).length > 0;
 }
 
+/** Frecuencia de captura GPS: entero ≥ 1. Se valida antes de tocar la base. */
+export function errorFrecuenciaGps(texto: string): string | undefined {
+  const valor = numeroDe(texto);
+  if (!Number.isInteger(valor) || valor < 1) {
+    return 'La frecuencia debe ser un número entero de al menos 1';
+  }
+}
+
 function textoOpcional(texto: string): string | undefined {
   const limpio = texto.trim();
   return limpio === '' ? undefined : limpio;

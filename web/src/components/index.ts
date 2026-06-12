@@ -1,6 +1,7 @@
 export { Badge } from './Badge';
 export { Button } from './Button';
 export { Card } from './Card';
+export { CheckboxField } from './CheckboxField';
 export { Cargando } from './Cargando';
 export { EmptyState } from './EmptyState';
 export { ErrorConReintento } from './ErrorConReintento';

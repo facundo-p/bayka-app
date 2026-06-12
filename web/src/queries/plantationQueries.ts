@@ -1,9 +1,14 @@
 import { supabase } from '../lib/supabase';
+import {
+  GPS_CAPTURE_FREQUENCY_DEFAULT,
+  GPS_CAPTURE_REQUIRED_DEFAULT,
+} from '../lib/gpsDefaults';
 
 export type EstadoPlantacion = 'activa' | 'finalizada';
 
-/** Fila cruda de `plantations`. Los campos opcionales llegan con la migración
- *  024, que puede no estar aplicada todavía: se tolera su ausencia. */
+/** Fila cruda de `plantations`. Los campos opcionales llegan con las
+ *  migraciones 023 (GPS) y 024, que pueden no estar aplicadas todavía:
+ *  se tolera su ausencia. */
 type FilaPlantacion = {
   id: string;
   lugar: string;
@@ -11,6 +16,8 @@ type FilaPlantacion = {
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app?: boolean | null;
+  gps_capture_frequency?: number | null;
+  gps_capture_required?: boolean | null;
   descripcion?: string | null;
   fecha_inicio?: string | null;
   superficie_ha?: number | null;
@@ -25,6 +32,8 @@ export type Plantacion = {
   periodo: string;
   estado: EstadoPlantacion;
   visibleInApp: boolean;
+  gpsCaptureFrequency: number;
+  gpsCaptureRequired: boolean;
   createdAt: string;
   descripcion: string | null;
   fechaInicio: string | null;
@@ -92,6 +101,8 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
     periodo: fila.periodo,
     estado: fila.estado,
     visibleInApp: fila.visible_in_app ?? true,
+    gpsCaptureFrequency: fila.gps_capture_frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT,
+    gpsCaptureRequired: fila.gps_capture_required ?? GPS_CAPTURE_REQUIRED_DEFAULT,
     createdAt: fila.created_at,
     ...camposFormulario(fila),
   };

@@ -3,9 +3,13 @@ import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMo
 import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import type { Perfil } from '../profileRepository';
 import {
+  actualizarConfigGps,
+  actualizarVisibilidad,
   crearPlantacion,
   editarPlantacion,
   existePlantacion,
+  MENSAJE_GPS_SIN_MIGRACION,
+  MENSAJE_VISIBILIDAD_SIN_MIGRACION,
   type PlantacionInput,
 } from '../plantationRepository';
 
@@ -157,6 +161,57 @@ describe('editarPlantacion', () => {
 
     expect(consultas).toHaveLength(2);
     expect(Object.keys(consultas[1].payload as object).sort()).toEqual(['lugar', 'periodo']);
+  });
+});
+
+describe('actualizarConfigGps', () => {
+  test('actualiza frecuencia y obligatoriedad de la plantación', async () => {
+    const consultas = capturarConsultas(() => ({ data: null }));
+    await actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: false });
+
+    const [update] = consultas;
+    expect(update.tabla).toBe('plantations');
+    expect(update.operacion).toBe('update');
+    expect(update.payload).toEqual({ gps_capture_frequency: 5, gps_capture_required: false });
+    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
+  });
+
+  test('columna inexistente (023 sin aplicar) lanza el mensaje de migración', async () => {
+    capturarConsultas(() => ({
+      error: { message: 'column "gps_capture_frequency" does not exist', code: PG_ERROR.UNDEFINED_COLUMN },
+    }));
+    await expect(
+      actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: true }),
+    ).rejects.toThrow(MENSAJE_GPS_SIN_MIGRACION);
+  });
+
+  test('otros errores propagan el mensaje original', async () => {
+    capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
+    await expect(
+      actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: true }),
+    ).rejects.toThrow('sin permisos');
+  });
+});
+
+describe('actualizarVisibilidad', () => {
+  test('actualiza visible_in_app de la plantación', async () => {
+    const consultas = capturarConsultas(() => ({ data: null }));
+    await actualizarVisibilidad('plant-1', false);
+
+    const [update] = consultas;
+    expect(update.tabla).toBe('plantations');
+    expect(update.operacion).toBe('update');
+    expect(update.payload).toEqual({ visible_in_app: false });
+    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
+  });
+
+  test('columna inexistente (024 sin aplicar) lanza el mensaje de migración', async () => {
+    capturarConsultas(() => ({
+      error: { message: 'column "visible_in_app" does not exist', code: PG_ERROR.UNDEFINED_COLUMN },
+    }));
+    await expect(actualizarVisibilidad('plant-1', false)).rejects.toThrow(
+      MENSAJE_VISIBILIDAD_SIN_MIGRACION,
+    );
   });
 });
 

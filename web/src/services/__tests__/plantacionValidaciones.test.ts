@@ -1,5 +1,6 @@
 import {
   aPlantacionInput,
+  errorFrecuenciaGps,
   hayErrores,
   validarPlantacion,
   type PlantacionFormValues,
@@ -87,4 +88,14 @@ test('aPlantacionInput recorta textos y convierte números; vacíos quedan undef
     ubicacionLng: -68.8,
     objetivoArboles: 500,
   });
+});
+
+test('errorFrecuenciaGps rechaza decimales, menores a 1, vacíos y no numéricos', () => {
+  const mensaje = 'La frecuencia debe ser un número entero de al menos 1';
+  expect(errorFrecuenciaGps('2.5')).toBe(mensaje);
+  expect(errorFrecuenciaGps('0')).toBe(mensaje);
+  expect(errorFrecuenciaGps('')).toBe(mensaje);
+  expect(errorFrecuenciaGps('x')).toBe(mensaje);
+  expect(errorFrecuenciaGps('10')).toBeUndefined();
+  expect(errorFrecuenciaGps(' 1 ')).toBeUndefined();
 });
