@@ -133,6 +133,14 @@
   --layout-sidebar-width: 220px;
   --border-thin: 1px;
   --border-accent: 3px;
+  /* Tokens de controles: alto táctil mínimo (espejo del minHeight 44 de
+     mobile), borde de foco/spinner, ancho de modal y capa del overlay. */
+  --border-medium: 2px;
+  --control-height: 44px;
+  --modal-max-width: 420px;
+  --spinner-size-sm: 16px;
+  --spinner-size-md: 24px;
+  --z-modal: 100;
 }
 
 /* ─── Reset mínimo + estilos base ────────────────────────────────────── */
