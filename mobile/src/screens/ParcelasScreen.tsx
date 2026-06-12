@@ -17,8 +17,10 @@ import CustomHeader from '../components/CustomHeader';
 import HeaderActionButton from '../components/HeaderActionButton';
 import ParcelaRow from '../components/ParcelaRow';
 import ParcelaFormModal from '../components/ParcelaFormModal';
+import NNResolutionBanner from '../components/NNResolutionBanner';
 import { useParcelas } from '../hooks/useParcelas';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
+import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
 import { colors, iconSizes } from '../theme';
@@ -60,7 +62,8 @@ export default function ParcelasScreen() {
   const routePrefix = useRoutePrefix();
   const pid = plantacionId ?? '';
   const { parcelas } = useParcelas(pid);
-  const { plantationRows, estadoLoaded, isFinalizada } = usePlantationDetail(pid);
+  const { plantationRows, estadoLoaded, isFinalizada, totalNN } = usePlantationDetail(pid);
+  const { blockedByNN } = usePendingSyncCount(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
   const canAddParcela = estadoLoaded && !isFinalizada;
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
@@ -72,6 +75,10 @@ export default function ParcelasScreen() {
 
   function navigateToGrupos(parcelaId: string) {
     router.push(`/${routePrefix}/plantation/${pid}?parcelaId=${parcelaId}` as any);
+  }
+
+  function openNNResolution() {
+    router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${pid}` as any);
   }
 
   function renderItem({ item }: { item: ParcelaWithStats }) {
@@ -101,6 +108,7 @@ export default function ParcelasScreen() {
           ) : undefined
         }
       />
+      <NNResolutionBanner totalNN={totalNN} blockedByNN={blockedByNN} onResolve={openNNResolution} />
       {parcelas.length === 0 ? (
         <EmptyState onCreate={canAddParcela ? openCreate : null} />
       ) : (

@@ -23,7 +23,6 @@ import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
 import { getDisplayName } from '../hooks/useUserNames';
 import ConfirmModal from '../components/ConfirmModal';
-import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import ScreenContainer from '../components/ScreenContainer';
 import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
@@ -41,7 +40,6 @@ export default function PlantationDetailScreen() {
     filteredGroups,
     nnCountMap,
     treeCountMap,
-    totalNN,
     groupEstadoCounts,
     estadoLoaded,
     isFinalizada,
@@ -59,7 +57,6 @@ export default function PlantationDetailScreen() {
     handleEditSubmit,
   } = usePlantationDetail(pid, parcelaId);
 
-  const { blockedByNN } = usePendingSyncCount(plantacionId);
   const goBack = useScreenBack(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}`);
 
   const groupFilterConfigs = [
@@ -138,13 +135,10 @@ export default function PlantationDetailScreen() {
         }
       />
       <PlantationDetailHeader
-        blockedByNN={blockedByNN}
-        totalNN={totalNN}
         estadoLoaded={estadoLoaded}
         isFinalizada={isFinalizada}
         groupFilter={groupFilter}
         groupFilterConfigs={groupFilterConfigs as any}
-        onResolveAllNN={() => router.push(`/${routePrefix}/plantation/subgroup/nn-resolution?plantacionId=${plantacionId}` as any)}
         onToggleFilter={(key) => setGroupFilter(prev => prev === key ? null : key)}
       />
 
