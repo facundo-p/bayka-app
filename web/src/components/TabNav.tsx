@@ -13,6 +13,8 @@ interface TabNavProps {
   tabs: TabItem[];
   /** Nombre accesible de la navegación. */
   label: string;
+  /** `secundaria`: versión compacta para sub-secciones dentro de una tab. */
+  variant?: 'principal' | 'secundaria';
 }
 
 function tabClassName({ isActive }: { isActive: boolean }): string {
@@ -20,9 +22,12 @@ function tabClassName({ isActive }: { isActive: boolean }): string {
 }
 
 /** Tabs de sub-rutas: subrayado azul en la activa. */
-export function TabNav({ tabs, label }: TabNavProps) {
+export function TabNav({ tabs, label, variant = 'principal' }: TabNavProps) {
   return (
-    <nav className={styles.nav} aria-label={label}>
+    <nav
+      className={cx(styles.nav, variant === 'secundaria' && styles.navSecundaria)}
+      aria-label={label}
+    >
       {tabs.map((tab) => (
         <NavLink key={tab.to} to={tab.to} end={tab.end} className={tabClassName}>
           {tab.label}

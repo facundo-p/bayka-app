@@ -3,6 +3,7 @@ import {
   GPS_CAPTURE_FREQUENCY_DEFAULT,
   GPS_CAPTURE_REQUIRED_DEFAULT,
 } from '../lib/gpsDefaults';
+import { contarOLanzar } from './conteo';
 
 export type EstadoPlantacion = 'activa' | 'finalizada';
 
@@ -59,11 +60,6 @@ function camposFormulario(fila: FilaPlantacion) {
     ubicacionLng: fila.ubicacion_lng ?? null,
     objetivoArboles: fila.objetivo_arboles ?? null,
   };
-}
-
-function contarOLanzar(count: number | null, error: { message: string } | null): number {
-  if (error) throw new Error(error.message);
-  return count ?? 0;
 }
 
 /** Árboles de la plantación: trees → groups (join interno por plantation_id). */

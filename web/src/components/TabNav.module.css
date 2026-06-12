@@ -25,3 +25,14 @@
   font-weight: 600;
   border-bottom-color: var(--color-primary-accent);
 }
+
+/* Variante secundaria: sub-tabs compactas dentro de una tab principal. */
+.navSecundaria {
+  gap: var(--space-sm);
+  margin-bottom: var(--space-3xl);
+}
+
+.navSecundaria .tab {
+  padding: var(--space-md) var(--space-xl);
+  font-size: var(--text-sm);
+}

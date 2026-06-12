@@ -91,7 +91,9 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('link', { name: 'Datos' }));
-  expect(screen.getByRole('heading', { name: 'Datos' })).toBeInTheDocument();
+  // La tab Datos redirige a sus sub-tabs (Parcelas activa por defecto).
+  expect(await screen.findByRole('link', { name: 'Parcelas' })).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Árboles' })).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('link', { name: 'Configuración' }));
   expect(await screen.findByRole('heading', { name: 'Usuarios asignados' })).toBeInTheDocument();

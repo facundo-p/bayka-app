@@ -9,6 +9,7 @@ export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';
 export { Input } from './Input';
 export { Modal } from './Modal';
 export { PageHeader } from './PageHeader';
+export { Paginacion } from './Paginacion';
 export { TabNav, type TabItem } from './TabNav';
 export { PlantacionFormModal, type PlantacionEditable } from './PlantacionFormModal';
 export { RequireAccess } from './RequireAccess';

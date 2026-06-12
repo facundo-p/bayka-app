@@ -1,5 +1,5 @@
-import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
+import { resetEstadoMock } from '../../test/supabaseMock';
+import { capturarConsultas } from '../../test/capturarConsultas';
 import {
   listarCatalogo,
   listarEspeciesConUso,
@@ -29,18 +29,6 @@ const FILA_ALGARROBO = {
 
 function filaAsignada(fila: typeof FILA_QUEBRACHO | typeof FILA_ALGARROBO, orden: number) {
   return { species_id: fila.id, orden_visual: orden, species: fila };
-}
-
-/** Captura todas las consultas y delega la respuesta en `responder`. */
-function capturarConsultas(
-  responder: (consulta: ConsultaCapturada) => RespuestaMock,
-): ConsultaCapturada[] {
-  const consultas: ConsultaCapturada[] = [];
-  estadoMock.resolverConsulta = (consulta) => {
-    consultas.push(consulta);
-    return responder(consulta);
-  };
-  return consultas;
 }
 
 describe('listarCatalogo', () => {

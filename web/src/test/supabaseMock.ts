@@ -27,6 +27,9 @@ type OyenteAuth = (evento: string, sesion: SesionMock | null) => void;
 
 const oyentes = new Set<OyenteAuth>();
 
+/** Llamada a `storage.createSignedUrl` capturada por el mock. */
+export type FirmaCapturada = { bucket: string; path: string; segundos: number };
+
 /** Estado mutable que cada test configura antes de renderizar. */
 export const estadoMock: {
   sesion: SesionMock | null;
@@ -35,12 +38,18 @@ export const estadoMock: {
   errorSignIn: { message: string } | null;
   /** Resolver para tablas distintas de `profiles` (listados, counts). */
   resolverConsulta: ResolverConsulta | null;
+  /** Error a devolver al firmar URLs de Storage (null = firma OK). */
+  errorFirma: { message: string } | null;
+  /** URLs firmadas pedidas durante el test. */
+  firmas: FirmaCapturada[];
 } = {
   sesion: null,
   perfilFila: null,
   errorPerfil: null,
   errorSignIn: null,
   resolverConsulta: null,
+  errorFirma: null,
+  firmas: [],
 };
 
 export function resetEstadoMock(): void {
@@ -49,6 +58,8 @@ export function resetEstadoMock(): void {
   estadoMock.errorPerfil = null;
   estadoMock.errorSignIn = null;
   estadoMock.resolverConsulta = null;
+  estadoMock.errorFirma = null;
+  estadoMock.firmas = [];
   oyentes.clear();
 }
 
@@ -91,6 +102,15 @@ export const supabaseMock = {
     }),
   },
   from: vi.fn((tabla: string) => crearConsultaMock(tabla, resolverPorDefecto)),
+  storage: {
+    from: vi.fn((bucket: string) => ({
+      createSignedUrl: vi.fn(async (path: string, segundos: number) => {
+        estadoMock.firmas.push({ bucket, path, segundos });
+        if (estadoMock.errorFirma) return { data: null, error: estadoMock.errorFirma };
+        return { data: { signedUrl: `https://firmada.test/${path}` }, error: null };
+      }),
+    })),
+  },
 };
 
 /** El lookup del perfil de auth filtra `profiles` por id; los listados
