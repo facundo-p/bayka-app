@@ -1,0 +1,9 @@
+/* Estilos mínimos del placeholder; el tema real llega con el issue #126. */
+.placeholder {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: sans-serif;
+}
