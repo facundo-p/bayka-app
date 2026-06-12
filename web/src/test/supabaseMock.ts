@@ -8,6 +8,11 @@
  *   });
  */
 import { vi } from 'vitest';
+import {
+  crearConsultaMock,
+  type ConsultaCapturada,
+  type ResolverConsulta,
+} from './queryBuilderMock';
 
 type SesionMock = { user: { id: string; email?: string } };
 
@@ -28,13 +33,22 @@ export const estadoMock: {
   perfilFila: PerfilFilaMock | null;
   errorPerfil: { message: string } | null;
   errorSignIn: { message: string } | null;
-} = { sesion: null, perfilFila: null, errorPerfil: null, errorSignIn: null };
+  /** Resolver para tablas distintas de `profiles` (listados, counts). */
+  resolverConsulta: ResolverConsulta | null;
+} = {
+  sesion: null,
+  perfilFila: null,
+  errorPerfil: null,
+  errorSignIn: null,
+  resolverConsulta: null,
+};
 
 export function resetEstadoMock(): void {
   estadoMock.sesion = null;
   estadoMock.perfilFila = null;
   estadoMock.errorPerfil = null;
   estadoMock.errorSignIn = null;
+  estadoMock.resolverConsulta = null;
   oyentes.clear();
 }
 
@@ -76,14 +90,17 @@ export const supabaseMock = {
       return { error: null };
     }),
   },
-  from: vi.fn(() => ({
-    select: () => ({
-      eq: () => ({
-        maybeSingle: async () =>
-          estadoMock.errorPerfil
-            ? { data: null, error: estadoMock.errorPerfil }
-            : { data: estadoMock.perfilFila, error: null },
-      }),
-    }),
-  })),
+  from: vi.fn((tabla: string) => crearConsultaMock(tabla, resolverPorDefecto)),
 };
+
+/** `profiles` se resuelve con el estado de auth; el resto delega en el
+ *  resolver configurado por el test (o devuelve vacío). */
+function resolverPorDefecto(consulta: ConsultaCapturada) {
+  if (consulta.tabla === 'profiles') {
+    return estadoMock.errorPerfil
+      ? { data: null, error: estadoMock.errorPerfil }
+      : { data: estadoMock.perfilFila, error: null };
+  }
+  if (estadoMock.resolverConsulta) return estadoMock.resolverConsulta(consulta);
+  return { data: [], error: null, count: 0 };
+}
