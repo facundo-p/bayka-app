@@ -1,10 +1,14 @@
 export { Badge } from './Badge';
 export { Button } from './Button';
 export { Card } from './Card';
+export { Cargando } from './Cargando';
 export { EmptyState } from './EmptyState';
+export { ErrorConReintento } from './ErrorConReintento';
+export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';
 export { Input } from './Input';
 export { Modal } from './Modal';
 export { PageHeader } from './PageHeader';
+export { TabNav, type TabItem } from './TabNav';
 export { PlantacionFormModal, type PlantacionEditable } from './PlantacionFormModal';
 export { RequireAccess } from './RequireAccess';
 export { Select } from './Select';

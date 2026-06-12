@@ -25,12 +25,25 @@ function resolverCount(
   return { count: stats ? stats[stat] : 0, error: null };
 }
 
+/** Con filtro por id (detalle, maybeSingle) responde la fila única; sin
+ *  filtro (listado) responde todas. */
+function resolverPlantations(
+  consulta: ConsultaCapturada,
+  filas: Array<Record<string, unknown>>,
+): RespuestaMock {
+  const filtroId = consulta.filtros.find(
+    (filtro) => filtro.metodo === 'eq' && filtro.columna === 'id',
+  );
+  if (!filtroId) return { data: filas, error: null };
+  return { data: filas.find((fila) => fila.id === filtroId.valor) ?? null, error: null };
+}
+
 export function configurarPlantacionesMock(
   filas: Array<Record<string, unknown>>,
   statsPorPlantacion: Record<string, StatsMock> = {},
 ): void {
   estadoMock.resolverConsulta = (consulta) =>
     consulta.tabla === 'plantations'
-      ? { data: filas, error: null }
+      ? resolverPlantations(consulta, filas)
       : resolverCount(consulta, statsPorPlantacion);
 }

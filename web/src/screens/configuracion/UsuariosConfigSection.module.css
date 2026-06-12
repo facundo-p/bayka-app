@@ -1,0 +1,40 @@
+.formAsignar {
+  margin-top: var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.filaAsignar {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2xl);
+  flex-wrap: wrap;
+}
+
+.filaAsignar > * {
+  flex: 1;
+  min-width: 160px;
+}
+
+.botonAsignar {
+  flex: 0 0 auto;
+  min-width: auto;
+}
+
+.errorAccion {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+}
+
+.textoConfirmacion {
+  margin: 0 0 var(--space-3xl);
+  color: var(--color-text-secondary);
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xl);
+}

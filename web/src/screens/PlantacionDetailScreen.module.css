@@ -1,0 +1,10 @@
+.volver {
+  display: inline-block;
+  margin-bottom: var(--space-2xl);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.volver:hover {
+  color: var(--color-primary);
+}

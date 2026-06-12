@@ -79,7 +79,7 @@ test('clic en una fila navega al detalle de la plantación', async () => {
 
   await usuario.click(await screen.findByText('Mendoza'));
   expect(
-    await screen.findByRole('heading', { name: 'Detalle de plantación' }),
+    await screen.findByRole('heading', { name: 'Mendoza — 2025-2026' }),
   ).toBeInTheDocument();
 });
 
@@ -105,7 +105,7 @@ test('"Editar" abre el modal precargado sin navegar al detalle', async () => {
 
   // Sigue en el listado (el stopPropagation evitó el click de la fila).
   expect(
-    screen.queryByRole('heading', { name: 'Detalle de plantación' }),
+    screen.queryByRole('heading', { name: 'Mendoza — 2025-2026' }),
   ).not.toBeInTheDocument();
   expect(screen.getByRole('dialog', { name: 'Editar plantación' })).toBeInTheDocument();
   expect(screen.getByLabelText('Lugar *')).toHaveValue('Mendoza');

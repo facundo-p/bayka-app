@@ -1,0 +1,60 @@
+import { supabase } from '../lib/supabase';
+import type { Rol } from '../repositories/profileRepository';
+
+/** Rol del usuario dentro de una plantación (columna `rol_en_plantacion`). */
+export type RolEnPlantacion = 'tecnico' | 'admin';
+
+export type PerfilResumen = {
+  id: string;
+  nombre: string;
+  rol: Rol;
+};
+
+export type UsuarioAsignado = {
+  userId: string;
+  nombre: string;
+  rolGlobal: Rol;
+  rolEnPlantacion: RolEnPlantacion;
+  assignedAt: string;
+};
+
+/** Fila del join plantation_users → profiles (embed de PostgREST). */
+type FilaAsignado = {
+  user_id: string;
+  rol_en_plantacion: RolEnPlantacion;
+  assigned_at: string;
+  profiles: { nombre: string | null; rol: Rol } | null;
+};
+
+/** Todos los perfiles visibles (la RLS acota a la organización), por nombre. */
+export async function listarPerfiles(): Promise<PerfilResumen[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, nombre, rol')
+    .order('nombre', { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as PerfilResumen[];
+}
+
+function mapearAsignado(fila: FilaAsignado): UsuarioAsignado {
+  return {
+    userId: fila.user_id,
+    nombre: fila.profiles?.nombre ?? '',
+    rolGlobal: fila.profiles?.rol ?? 'tecnico',
+    rolEnPlantacion: fila.rol_en_plantacion,
+    assignedAt: fila.assigned_at,
+  };
+}
+
+/** Usuarios asignados a la plantación con su perfil, por orden de asignación. */
+export async function listarAsignados(plantationId: string): Promise<UsuarioAsignado[]> {
+  const { data, error } = await supabase
+    .from('plantation_users')
+    .select('user_id, rol_en_plantacion, assigned_at, profiles(nombre, rol)')
+    .eq('plantation_id', plantationId)
+    .order('assigned_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  // El cliente sin typegen tipa el embed como array, pero la FK user_id →
+  // profiles es many-to-one: en runtime llega un objeto.
+  return ((data ?? []) as unknown as FilaAsignado[]).map(mapearAsignado);
+}

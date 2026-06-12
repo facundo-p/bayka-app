@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Badge,
   Button,
+  Cargando,
   EmptyState,
+  ErrorConReintento,
+  EstadoPlantacionBadge,
   PageHeader,
   PlantacionFormModal,
-  Spinner,
   Table,
   type TableColumn,
 } from '../components';
@@ -24,18 +26,13 @@ const FILTROS: Array<{ valor: FiltroEstado; etiqueta: string }> = [
   { valor: 'finalizada', etiqueta: 'Finalizadas' },
 ];
 
-const ETIQUETA_ESTADO: Record<PlantacionConStats['estado'], string> = {
-  activa: 'Activa',
-  finalizada: 'Finalizada',
-};
-
 const COLUMNAS: Array<TableColumn<PlantacionConStats>> = [
   { key: 'lugar', header: 'Lugar' },
   { key: 'periodo', header: 'Período' },
   {
     key: 'estado',
     header: 'Estado',
-    render: (p) => <Badge variant={p.estado}>{ETIQUETA_ESTADO[p.estado]}</Badge>,
+    render: (p) => <EstadoPlantacionBadge estado={p.estado} />,
   },
   {
     key: 'visibleInApp',
@@ -61,11 +58,7 @@ function columnaEditar(
     header: '',
     align: 'right',
     render: (plantacion) => (
-      <Button
-        variant="secondary"
-        className={styles.botonEditar}
-        onClick={(event) => editar(event, plantacion)}
-      >
+      <Button variant="secondary" size="sm" onClick={(event) => editar(event, plantacion)}>
         Editar
       </Button>
     ),
@@ -100,17 +93,6 @@ function FiltroChips({
           {etiqueta}
         </button>
       ))}
-    </div>
-  );
-}
-
-function ErrorConReintento({ onReintentar }: { onReintentar: () => void }) {
-  return (
-    <div className={styles.error} role="alert">
-      <p className={styles.errorTexto}>No se pudieron cargar las plantaciones.</p>
-      <Button variant="secondary" onClick={onReintentar}>
-        Reintentar
-      </Button>
     </div>
   );
 }
@@ -161,12 +143,13 @@ export function PlantacionesScreen() {
         <Button onClick={() => setModal({ plantacion: null })}>Nueva plantación</Button>
       </PageHeader>
       <FiltroChips filtro={filtro} onCambiar={setFiltro} />
-      {isPending && (
-        <div className={styles.cargando}>
-          <Spinner />
-        </div>
+      {isPending && <Cargando />}
+      {isError && !data && (
+        <ErrorConReintento
+          mensaje="No se pudieron cargar las plantaciones."
+          onReintentar={() => void refetch()}
+        />
       )}
-      {isError && !data && <ErrorConReintento onReintentar={() => void refetch()} />}
       {data && (
         <TablaPlantaciones
           plantaciones={filtrarPorEstado(data, filtro)}
