@@ -12,7 +12,7 @@ export { PageHeader } from './PageHeader';
 export { Paginacion } from './Paginacion';
 export { TabNav, type TabItem } from './TabNav';
 export { PlantacionFormModal, type PlantacionEditable } from './PlantacionFormModal';
-export { RequireAccess } from './RequireAccess';
+export { RequireAccess, RequireSuperadmin } from './RequireAccess';
 export { Select } from './Select';
 export { Spinner } from './Spinner';
 export { Table, type TableColumn } from './Table';

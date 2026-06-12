@@ -1,13 +1,13 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './components/AppLayout';
-import { RequireAccess } from './components/RequireAccess';
+import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { queryClient } from './lib/queryClient';
 import { LoginScreen } from './screens/LoginScreen';
-import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
+import { UsuariosScreen } from './screens/UsuariosScreen';
 import { ConfiguracionTab } from './screens/configuracion/ConfiguracionTab';
 import { DashboardTab } from './screens/dashboard/DashboardTab';
 import { ArbolesSection } from './screens/datos/ArbolesSection';
@@ -34,7 +34,9 @@ export function AppRoutes() {
             </Route>
             <Route path="configuracion" element={<ConfiguracionTab />} />
           </Route>
-          <Route path="/usuarios" element={<PlaceholderScreen title="Usuarios" />} />
+          <Route element={<RequireSuperadmin />}>
+            <Route path="/usuarios" element={<UsuariosScreen />} />
+          </Route>
         </Route>
       </Route>
     </Routes>
