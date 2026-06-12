@@ -9,6 +9,7 @@ import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
 import { ConfiguracionTab } from './screens/configuracion/ConfiguracionTab';
+import { DashboardTab } from './screens/dashboard/DashboardTab';
 import { ArbolesSection } from './screens/datos/ArbolesSection';
 import { DatosTab } from './screens/datos/DatosTab';
 import { GruposSection } from './screens/datos/GruposSection';
@@ -24,7 +25,7 @@ export function AppRoutes() {
           <Route path="/" element={<Navigate to="/plantaciones" replace />} />
           <Route path="/plantaciones" element={<PlantacionesScreen />} />
           <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
-            <Route index element={<PlaceholderScreen title="Dashboard" />} />
+            <Route index element={<DashboardTab />} />
             <Route path="datos" element={<DatosTab />}>
               <Route index element={<Navigate to="parcelas" replace />} />
               <Route path="parcelas" element={<ParcelasSection />} />

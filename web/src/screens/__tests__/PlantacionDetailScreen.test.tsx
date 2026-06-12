@@ -87,8 +87,8 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByRole('heading', { name: 'Mendoza — 2025-2026' })).toBeInTheDocument();
   expect(screen.getByText('Activa')).toBeInTheDocument();
   expect(screen.getByText('Oculta en app')).toBeInTheDocument();
-  // La tab index (Dashboard) es la activa por defecto.
-  expect(screen.getByRole('heading', { name: 'Dashboard' })).toBeInTheDocument();
+  // La tab index (Dashboard) es la activa por defecto: sin árboles muestra el vacío.
+  expect(await screen.findByText('Todavía no hay árboles registrados')).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('link', { name: 'Datos' }));
   // La tab Datos redirige a sus sub-tabs (Parcelas activa por defecto).
