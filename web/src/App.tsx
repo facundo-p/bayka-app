@@ -9,6 +9,10 @@ import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
 import { ConfiguracionTab } from './screens/configuracion/ConfiguracionTab';
+import { ArbolesSection } from './screens/datos/ArbolesSection';
+import { DatosTab } from './screens/datos/DatosTab';
+import { GruposSection } from './screens/datos/GruposSection';
+import { ParcelasSection } from './screens/datos/ParcelasSection';
 
 /** Rutas sin router: permite testearlas con MemoryRouter. */
 export function AppRoutes() {
@@ -21,7 +25,12 @@ export function AppRoutes() {
           <Route path="/plantaciones" element={<PlantacionesScreen />} />
           <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
             <Route index element={<PlaceholderScreen title="Dashboard" />} />
-            <Route path="datos" element={<PlaceholderScreen title="Datos" />} />
+            <Route path="datos" element={<DatosTab />}>
+              <Route index element={<Navigate to="parcelas" replace />} />
+              <Route path="parcelas" element={<ParcelasSection />} />
+              <Route path="grupos" element={<GruposSection />} />
+              <Route path="arboles" element={<ArbolesSection />} />
+            </Route>
             <Route path="configuracion" element={<ConfiguracionTab />} />
           </Route>
           <Route path="/usuarios" element={<PlaceholderScreen title="Usuarios" />} />

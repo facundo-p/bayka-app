@@ -1,5 +1,6 @@
-import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
+import { capturarConsultas } from '../../test/capturarConsultas';
 import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import type { Perfil } from '../profileRepository';
 import {
@@ -37,18 +38,6 @@ const ERROR_COLUMNA = {
   message: 'column "superficie_ha" does not exist',
   code: PG_ERROR.UNDEFINED_COLUMN,
 };
-
-/** Captura todas las consultas y delega la respuesta en `responder`. */
-function capturarConsultas(
-  responder: (consulta: ConsultaCapturada) => RespuestaMock,
-): ConsultaCapturada[] {
-  const consultas: ConsultaCapturada[] = [];
-  estadoMock.resolverConsulta = (consulta) => {
-    consultas.push(consulta);
-    return responder(consulta);
-  };
-  return consultas;
-}
 
 /** Responde OK: el insert de plantación devuelve el id; el resto, vacío. */
 function responderOk(consulta: ConsultaCapturada): RespuestaMock {

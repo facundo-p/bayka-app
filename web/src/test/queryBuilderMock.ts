@@ -5,7 +5,13 @@
  * `{ data, error, count }`.
  */
 
-type Filtro = { metodo: 'eq' | 'is' | 'ilike' | 'neq'; columna: string; valor: unknown };
+type Filtro = {
+  metodo: 'eq' | 'is' | 'ilike' | 'neq' | 'not';
+  columna: string;
+  valor: unknown;
+  /** Solo para `not`: el operador que se niega (p.ej. 'is'). */
+  operador?: string;
+};
 
 export type ConsultaCapturada = {
   tabla: string;
@@ -16,6 +22,8 @@ export type ConsultaCapturada = {
   opciones?: { count?: string; head?: boolean };
   filtros: Filtro[];
   orden?: { columna: string; ascending: boolean };
+  rango?: { desde: number; hasta: number };
+  limite?: number;
 };
 
 export type RespuestaMock = {
@@ -65,8 +73,20 @@ export function crearConsultaMock(tabla: string, resolver: ResolverConsulta) {
     is: agregarFiltro('is'),
     ilike: agregarFiltro('ilike'),
     neq: agregarFiltro('neq'),
+    not(columna: string, operador: string, valor: unknown) {
+      consulta.filtros.push({ metodo: 'not', columna, operador, valor });
+      return builder;
+    },
     order(columna: string, opciones?: { ascending?: boolean }) {
       consulta.orden = { columna, ascending: opciones?.ascending ?? true };
+      return builder;
+    },
+    range(desde: number, hasta: number) {
+      consulta.rango = { desde, hasta };
+      return builder;
+    },
+    limit(cantidad: number) {
+      consulta.limite = cantidad;
       return builder;
     },
     maybeSingle: async () => normalizar(resolver(consulta)),

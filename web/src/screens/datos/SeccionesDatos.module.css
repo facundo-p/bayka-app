@@ -1,0 +1,44 @@
+/*
+ * Estilos compartidos por las secciones de la tab Datos
+ * (Parcelas, Grupos, Árboles): fila de filtros y celdas especiales.
+ */
+
+/* Fila de filtros arriba de la tabla. */
+.filtros {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2xl);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3xl);
+}
+
+.filtros > * {
+  flex: 1;
+  min-width: 160px;
+  max-width: 240px;
+}
+
+.codigo {
+  font-family: var(--font-mono);
+}
+
+/* Descripción truncada a una línea; el title muestra el texto completo. */
+.descripcion {
+  display: inline-block;
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+  color: var(--color-text-secondary);
+}
+
+.gps {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.precision {
+  color: var(--color-text-muted);
+}
