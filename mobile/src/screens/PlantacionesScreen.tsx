@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, fontSize, spacing, fonts } from '../theme';
+import { colors } from '../theme';
+import { plantacionesScreenStyles as styles } from './PlantacionesScreen.styles';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -268,7 +269,7 @@ export default function PlantacionesScreen() {
 
       {plantationList && plantationList.length > 0 ? (
         <>
-          <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.filterBar}>
             <FilterCards
               filters={filterConfigs}
               activeFilter={activeFilter}
@@ -416,11 +417,3 @@ export default function PlantacionesScreen() {
     </TexturedBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
-  emptySubtext: { fontSize: fontSize.base, color: colors.textLight, fontFamily: fonts.regular },
-  listContent: { padding: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing['6xl'], gap: spacing.xl },
-});
