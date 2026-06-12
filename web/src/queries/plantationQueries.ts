@@ -19,22 +19,25 @@ type FilaPlantacion = {
   objetivo_arboles?: number | null;
 };
 
-export type PlantacionConStats = {
+export type Plantacion = {
   id: string;
   lugar: string;
   periodo: string;
   estado: EstadoPlantacion;
   visibleInApp: boolean;
   createdAt: string;
-  arboles: number;
-  parcelas: number;
-  usuarios: number;
   descripcion: string | null;
   fechaInicio: string | null;
   superficieHa: number | null;
   ubicacionLat: number | null;
   ubicacionLng: number | null;
   objetivoArboles: number | null;
+};
+
+export type PlantacionConStats = Plantacion & {
+  arboles: number;
+  parcelas: number;
+  usuarios: number;
 };
 
 /** Campos del formulario de edición: null si la 024 no está aplicada. */
@@ -82,12 +85,7 @@ async function contarUsuarios(plantationId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-async function conStats(fila: FilaPlantacion): Promise<PlantacionConStats> {
-  const [arboles, parcelas, usuarios] = await Promise.all([
-    contarArboles(fila.id),
-    contarParcelas(fila.id),
-    contarUsuarios(fila.id),
-  ]);
+function mapearPlantacion(fila: FilaPlantacion): Plantacion {
   return {
     id: fila.id,
     lugar: fila.lugar,
@@ -95,11 +93,17 @@ async function conStats(fila: FilaPlantacion): Promise<PlantacionConStats> {
     estado: fila.estado,
     visibleInApp: fila.visible_in_app ?? true,
     createdAt: fila.created_at,
-    arboles,
-    parcelas,
-    usuarios,
     ...camposFormulario(fila),
   };
+}
+
+async function conStats(fila: FilaPlantacion): Promise<PlantacionConStats> {
+  const [arboles, parcelas, usuarios] = await Promise.all([
+    contarArboles(fila.id),
+    contarParcelas(fila.id),
+    contarUsuarios(fila.id),
+  ]);
+  return { ...mapearPlantacion(fila), arboles, parcelas, usuarios };
 }
 
 /**
@@ -115,4 +119,15 @@ export async function listarPlantaciones(): Promise<PlantacionConStats[]> {
   if (error) throw new Error(error.message);
   const filas = (data ?? []) as FilaPlantacion[];
   return Promise.all(filas.map(conStats));
+}
+
+/** Carga una plantación por id; null si no existe (o la RLS no la deja ver). */
+export async function obtenerPlantacion(id: string): Promise<Plantacion | null> {
+  const { data, error } = await supabase
+    .from('plantations')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data ? mapearPlantacion(data as FilaPlantacion) : null;
 }

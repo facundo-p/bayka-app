@@ -14,6 +14,13 @@
   transition: background-color 0.15s ease;
 }
 
+/* Versión compacta para celdas de tabla y acciones secundarias. */
+.sm {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2xl);
+  font-size: var(--text-md);
+}
+
 .button:disabled {
   opacity: 0.6;
   cursor: not-allowed;

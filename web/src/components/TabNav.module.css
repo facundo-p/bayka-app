@@ -1,0 +1,27 @@
+.nav {
+  display: flex;
+  gap: var(--space-md);
+  border-bottom: var(--border-thin) solid var(--color-border);
+  margin-bottom: var(--space-4xl);
+}
+
+.tab {
+  padding: var(--space-lg) var(--space-2xl);
+  /* Pisa el borde inferior del nav para que el subrayado quede al ras. */
+  margin-bottom: calc(-1 * var(--border-thin));
+  border-bottom: var(--border-accent) solid transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
+  transition: color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--color-primary);
+  background-color: var(--color-primary-bg-light);
+}
+
+.tabActiva {
+  color: var(--color-primary);
+  font-weight: 600;
+  border-bottom-color: var(--color-primary-accent);
+}

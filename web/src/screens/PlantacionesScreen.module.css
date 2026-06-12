@@ -29,28 +29,3 @@
 .chipActivo:hover {
   background-color: var(--color-primary-medium);
 }
-
-.cargando {
-  display: flex;
-  justify-content: center;
-  padding: var(--space-6xl);
-}
-
-.error {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-xl);
-}
-
-.errorTexto {
-  color: var(--color-danger);
-  margin: 0;
-}
-
-/* Versión compacta del Button secondary para la celda de acciones. */
-.botonEditar {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-2xl);
-  font-size: var(--text-md);
-}

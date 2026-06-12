@@ -93,10 +93,19 @@ export const supabaseMock = {
   from: vi.fn((tabla: string) => crearConsultaMock(tabla, resolverPorDefecto)),
 };
 
-/** `profiles` se resuelve con el estado de auth; el resto delega en el
- *  resolver configurado por el test (o devuelve vacío). */
+/** El lookup del perfil de auth filtra `profiles` por id; los listados
+ *  (listarPerfiles) consultan la tabla sin ese filtro. */
+function esPerfilDeAuth(consulta: ConsultaCapturada): boolean {
+  return (
+    consulta.tabla === 'profiles' &&
+    consulta.filtros.some((filtro) => filtro.metodo === 'eq' && filtro.columna === 'id')
+  );
+}
+
+/** El perfil de auth se resuelve con el estado de sesión; el resto delega en
+ *  el resolver configurado por el test (o devuelve vacío). */
 function resolverPorDefecto(consulta: ConsultaCapturada) {
-  if (consulta.tabla === 'profiles') {
+  if (esPerfilDeAuth(consulta)) {
     return estadoMock.errorPerfil
       ? { data: null, error: estadoMock.errorPerfil }
       : { data: estadoMock.perfilFila, error: null };
