@@ -1,13 +1,17 @@
 /**
  * Builder encadenable que imita la API de consultas de Supabase
- * (`from().select().eq().order()` + thenable). Cada test define un resolver
- * que recibe la consulta capturada y devuelve `{ data, error, count }`.
+ * (`from().select().eq().order()`, `insert()/update()/delete()` + thenable).
+ * Cada test define un resolver que recibe la consulta capturada y devuelve
+ * `{ data, error, count }`.
  */
 
-type Filtro = { metodo: 'eq' | 'is'; columna: string; valor: unknown };
+type Filtro = { metodo: 'eq' | 'is' | 'ilike' | 'neq'; columna: string; valor: unknown };
 
 export type ConsultaCapturada = {
   tabla: string;
+  operacion: 'select' | 'insert' | 'update' | 'delete';
+  /** Filas/cambios pasados a insert/update. */
+  payload?: unknown;
   columnas?: string;
   opciones?: { count?: string; head?: boolean };
   filtros: Filtro[];
@@ -16,7 +20,7 @@ export type ConsultaCapturada = {
 
 export type RespuestaMock = {
   data?: unknown;
-  error?: { message: string } | null;
+  error?: { message: string; code?: string } | null;
   count?: number | null;
 };
 
@@ -32,26 +36,41 @@ function normalizar(respuesta: RespuestaMock): Required<RespuestaMock> {
 
 /** Crea el builder para una tabla; el resolver se evalúa recién al await. */
 export function crearConsultaMock(tabla: string, resolver: ResolverConsulta) {
-  const consulta: ConsultaCapturada = { tabla, filtros: [] };
+  const consulta: ConsultaCapturada = { tabla, operacion: 'select', filtros: [] };
+  const agregarFiltro = (metodo: Filtro['metodo']) => (columna: string, valor: unknown) => {
+    consulta.filtros.push({ metodo, columna, valor });
+    return builder;
+  };
   const builder = {
     select(columnas: string, opciones?: ConsultaCapturada['opciones']) {
       consulta.columnas = columnas;
       consulta.opciones = opciones;
       return builder;
     },
-    eq(columna: string, valor: unknown) {
-      consulta.filtros.push({ metodo: 'eq', columna, valor });
+    insert(payload: unknown) {
+      consulta.operacion = 'insert';
+      consulta.payload = payload;
       return builder;
     },
-    is(columna: string, valor: unknown) {
-      consulta.filtros.push({ metodo: 'is', columna, valor });
+    update(payload: unknown) {
+      consulta.operacion = 'update';
+      consulta.payload = payload;
       return builder;
     },
+    delete() {
+      consulta.operacion = 'delete';
+      return builder;
+    },
+    eq: agregarFiltro('eq'),
+    is: agregarFiltro('is'),
+    ilike: agregarFiltro('ilike'),
+    neq: agregarFiltro('neq'),
     order(columna: string, opciones?: { ascending?: boolean }) {
       consulta.orden = { columna, ascending: opciones?.ascending ?? true };
       return builder;
     },
     maybeSingle: async () => normalizar(resolver(consulta)),
+    single: async () => normalizar(resolver(consulta)),
     then(
       onFulfilled?: (valor: Required<RespuestaMock>) => unknown,
       onRejected?: (razon: unknown) => unknown,

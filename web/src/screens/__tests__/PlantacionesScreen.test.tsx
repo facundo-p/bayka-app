@@ -83,6 +83,35 @@ test('clic en una fila navega al detalle de la plantación', async () => {
   ).toBeInTheDocument();
 });
 
+test('"Nueva plantación" abre el modal de creación', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await screen.findByText('Mendoza');
+
+  await usuario.click(screen.getByRole('button', { name: 'Nueva plantación' }));
+  expect(screen.getByRole('dialog', { name: 'Nueva plantación' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Lugar *')).toHaveValue('');
+});
+
+test('"Editar" abre el modal precargado sin navegar al detalle', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await screen.findByText('Mendoza');
+
+  const [editarMendoza] = screen.getAllByRole('button', { name: 'Editar' });
+  await usuario.click(editarMendoza);
+
+  // Sigue en el listado (el stopPropagation evitó el click de la fila).
+  expect(
+    screen.queryByRole('heading', { name: 'Detalle de plantación' }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'Editar plantación' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Lugar *')).toHaveValue('Mendoza');
+  expect(screen.getByLabelText('Período *')).toHaveValue('2025-2026');
+});
+
 test('sin plantaciones muestra el estado vacío', async () => {
   configurarPlantacionesMock([]);
   renderRutasEn('/plantaciones');

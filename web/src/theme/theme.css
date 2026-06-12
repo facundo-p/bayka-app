@@ -137,6 +137,7 @@
      mobile), borde de foco/spinner, ancho de modal y capa del overlay. */
   --border-medium: 2px;
   --control-height: 44px;
+  --control-height-sm: 32px;
   --modal-max-width: 420px;
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;

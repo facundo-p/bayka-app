@@ -1,7 +1,16 @@
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Badge, Button, EmptyState, PageHeader, Spinner, Table, type TableColumn } from '../components';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  PageHeader,
+  PlantacionFormModal,
+  Spinner,
+  Table,
+  type TableColumn,
+} from '../components';
 import { cx } from '../lib/classNames';
 import { formatearFechaCorta } from '../lib/fechas';
 import { listarPlantaciones, type PlantacionConStats } from '../queries/plantationQueries';
@@ -38,6 +47,30 @@ const COLUMNAS: Array<TableColumn<PlantacionConStats>> = [
   { key: 'arboles', header: 'Árboles', align: 'right' },
   { key: 'createdAt', header: 'Creada', render: (p) => formatearFechaCorta(p.createdAt) },
 ];
+
+/** Columna de acciones: el stopPropagation evita la navegación de la fila. */
+function columnaEditar(
+  onEditar: (plantacion: PlantacionConStats) => void,
+): TableColumn<PlantacionConStats> {
+  const editar = (event: MouseEvent, plantacion: PlantacionConStats) => {
+    event.stopPropagation();
+    onEditar(plantacion);
+  };
+  return {
+    key: 'acciones',
+    header: '',
+    align: 'right',
+    render: (plantacion) => (
+      <Button
+        variant="secondary"
+        className={styles.botonEditar}
+        onClick={(event) => editar(event, plantacion)}
+      >
+        Editar
+      </Button>
+    ),
+  };
+}
 
 function filtrarPorEstado(
   plantaciones: PlantacionConStats[],
@@ -85,9 +118,11 @@ function ErrorConReintento({ onReintentar }: { onReintentar: () => void }) {
 function TablaPlantaciones({
   plantaciones,
   hayPlantaciones,
+  onEditar,
 }: {
   plantaciones: PlantacionConStats[];
   hayPlantaciones: boolean;
+  onEditar: (plantacion: PlantacionConStats) => void;
 }) {
   const navigate = useNavigate();
   if (!hayPlantaciones) {
@@ -100,7 +135,7 @@ function TablaPlantaciones({
   }
   return (
     <Table
-      columns={COLUMNAS}
+      columns={[...COLUMNAS, columnaEditar(onEditar)]}
       rows={plantaciones}
       getRowKey={(plantacion) => plantacion.id}
       onRowClick={(plantacion) => navigate(`/plantaciones/${plantacion.id}`)}
@@ -109,8 +144,12 @@ function TablaPlantaciones({
   );
 }
 
+/** Estado del modal: null cerrado; plantacion null = crear, con valor = editar. */
+type ModalForm = { plantacion: PlantacionConStats | null };
+
 export function PlantacionesScreen() {
   const [filtro, setFiltro] = useState<FiltroEstado>('todas');
+  const [modal, setModal] = useState<ModalForm | null>(null);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['plantaciones'],
     queryFn: listarPlantaciones,
@@ -118,7 +157,9 @@ export function PlantacionesScreen() {
 
   return (
     <section>
-      <PageHeader title="Plantaciones" />
+      <PageHeader title="Plantaciones">
+        <Button onClick={() => setModal({ plantacion: null })}>Nueva plantación</Button>
+      </PageHeader>
       <FiltroChips filtro={filtro} onCambiar={setFiltro} />
       {isPending && (
         <div className={styles.cargando}>
@@ -130,7 +171,11 @@ export function PlantacionesScreen() {
         <TablaPlantaciones
           plantaciones={filtrarPorEstado(data, filtro)}
           hayPlantaciones={data.length > 0}
+          onEditar={(plantacion) => setModal({ plantacion })}
         />
+      )}
+      {modal && (
+        <PlantacionFormModal plantacion={modal.plantacion} onClose={() => setModal(null)} />
       )}
     </section>
   );

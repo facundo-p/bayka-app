@@ -35,8 +35,24 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       arboles: 120,
       parcelas: 3,
       usuarios: 2,
+      descripcion: null,
+      fechaInicio: null,
+      superficieHa: null,
+      ubicacionLat: null,
+      ubicacionLng: null,
+      objetivoArboles: null,
     },
   ]);
+});
+
+test('mapea los campos del formulario cuando la 024 está aplicada', async () => {
+  configurarPlantacionesMock([
+    { ...FILA_MENDOZA, descripcion: 'Finca norte', superficie_ha: 12.5, objetivo_arboles: 500 },
+  ]);
+  const [plantacion] = await listarPlantaciones();
+  expect(plantacion.descripcion).toBe('Finca norte');
+  expect(plantacion.superficieHa).toBe(12.5);
+  expect(plantacion.objetivoArboles).toBe(500);
 });
 
 test('sin visible_in_app (migración 024 no aplicada) asume visible', async () => {
