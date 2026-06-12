@@ -8,7 +8,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { PlaceholderScreen } from './screens/PlaceholderScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
-import { UsuariosConfigSection } from './screens/configuracion/UsuariosConfigSection';
+import { ConfiguracionTab } from './screens/configuracion/ConfiguracionTab';
 
 /** Rutas sin router: permite testearlas con MemoryRouter. */
 export function AppRoutes() {
@@ -22,7 +22,7 @@ export function AppRoutes() {
           <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
             <Route index element={<PlaceholderScreen title="Dashboard" />} />
             <Route path="datos" element={<PlaceholderScreen title="Datos" />} />
-            <Route path="configuracion" element={<UsuariosConfigSection />} />
+            <Route path="configuracion" element={<ConfiguracionTab />} />
           </Route>
           <Route path="/usuarios" element={<PlaceholderScreen title="Usuarios" />} />
         </Route>

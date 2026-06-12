@@ -1,0 +1,82 @@
+/*
+ * Estilos compartidos por las secciones de la tab Configuración
+ * (Usuarios, Especies, GPS, Visibilidad). Un solo lugar para el layout
+ * de formularios de alta, textos de ayuda/confirmación y acciones.
+ */
+
+/* Form de alta debajo de la tabla (asignar usuario, agregar especie). */
+.formAlta {
+  margin-top: var(--space-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.fila {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2xl);
+  flex-wrap: wrap;
+}
+
+.fila > * {
+  flex: 1;
+  min-width: 160px;
+}
+
+.botonFila {
+  flex: 0 0 auto;
+  min-width: auto;
+}
+
+/* Form vertical de configuración (sección GPS). */
+.formConfig {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2xl);
+}
+
+.campoCorto {
+  width: 100%;
+  max-width: 320px;
+}
+
+.errorAccion {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+}
+
+.textoAyuda {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+.textoConfirmacion {
+  margin: 0 0 var(--space-3xl);
+  color: var(--color-text-secondary);
+}
+
+/* Botonera de un modal de confirmación. */
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xl);
+}
+
+/* Botonera compacta dentro de una celda de tabla (↑ / ↓ / Quitar). */
+.accionesCelda {
+  display: inline-flex;
+  gap: var(--space-sm);
+}
+
+.codigo {
+  font-family: var(--font-mono);
+}
+
+.cientifico {
+  color: var(--color-text-muted);
+  font-style: italic;
+}

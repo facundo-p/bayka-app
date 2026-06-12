@@ -25,7 +25,7 @@ import {
   desasignarUsuario,
   MENSAJE_USUARIO_YA_ASIGNADO,
 } from '../../repositories/plantationUserRepository';
-import styles from './UsuariosConfigSection.module.css';
+import styles from './SeccionesConfig.module.css';
 
 const ROLES_EN_PLANTACION: RolEnPlantacion[] = ['tecnico', 'admin'];
 
@@ -113,8 +113,8 @@ function FormAsignar({
   const mensajeError = mensajeErrorAsignar(mutacion.error);
 
   return (
-    <div className={styles.formAsignar}>
-      <div className={styles.filaAsignar}>
+    <div className={styles.formAlta}>
+      <div className={styles.fila}>
         <Select label="Usuario" value={userId} onChange={(event) => setUserId(event.target.value)}>
           <option value="">Elegí un usuario</option>
           {disponibles.map((perfil) => (
@@ -138,7 +138,7 @@ function FormAsignar({
           onClick={() => mutacion.mutate()}
           disabled={!userId}
           loading={mutacion.isPending}
-          className={styles.botonAsignar}
+          className={styles.botonFila}
         >
           Asignar
         </Button>

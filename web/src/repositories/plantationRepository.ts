@@ -19,7 +19,15 @@ export type PlantacionInput = {
  *  arranca con esta parcela default. */
 const PARCELA_DEFAULT = { codigo: 'P1', nombre: 'Parcela 1' } as const;
 
-type Payload = Record<string, string | number>;
+/** Migración 023 sin aplicar: faltan las columnas de captura GPS. */
+export const MENSAJE_GPS_SIN_MIGRACION =
+  'Configuración GPS no disponible: falta aplicar la migración 023';
+
+/** Migración 024 sin aplicar: falta la columna `visible_in_app`. */
+export const MENSAJE_VISIBILIDAD_SIN_MIGRACION =
+  'Visibilidad no disponible: falta aplicar la migración 024';
+
+type Payload = Record<string, string | number | boolean>;
 type ErrorSupabase = { message: string; code?: string } | null;
 type ResultadoSupabase = { data: unknown; error: ErrorSupabase };
 
@@ -110,6 +118,39 @@ export async function editarPlantacion(id: string, input: PlantacionInput): Prom
   const actualizar = (payload: Payload) =>
     supabase.from('plantations').update(payload).eq('id', id);
   await ejecutarConReintentoSin024(actualizar, camposBase(input), campos024(input));
+}
+
+/** Update chico y específico; si la columna no existe (migración sin aplicar)
+ *  lanza el mensaje dado en lugar del error crudo de PostgREST. */
+async function actualizarCampos(
+  id: string,
+  payload: Payload,
+  mensajeSinMigracion: string,
+): Promise<void> {
+  const { error } = await supabase.from('plantations').update(payload).eq('id', id);
+  if (!error) return;
+  throw new Error(esColumnaInexistente(error) ? mensajeSinMigracion : error.message);
+}
+
+export type ConfigGps = {
+  /** Cada cuántos árboles se captura GPS (entero ≥ 1, ya validado por la UI). */
+  frecuencia: number;
+  /** Si el registro exige coordenadas. */
+  obligatoria: boolean;
+};
+
+/** Guarda la configuración de captura GPS (afecta solo registros futuros). */
+export async function actualizarConfigGps(id: string, config: ConfigGps): Promise<void> {
+  await actualizarCampos(
+    id,
+    { gps_capture_frequency: config.frecuencia, gps_capture_required: config.obligatoria },
+    MENSAJE_GPS_SIN_MIGRACION,
+  );
+}
+
+/** Muestra u oculta la plantación para los técnicos en la app. */
+export async function actualizarVisibilidad(id: string, visible: boolean): Promise<void> {
+  await actualizarCampos(id, { visible_in_app: visible }, MENSAJE_VISIBILIDAD_SIN_MIGRACION);
 }
 
 /**
