@@ -1,0 +1,86 @@
+import { StyleSheet } from 'react-native';
+import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+
+export const treeDetailModalStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.xxl,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  title: { fontSize: fontSize.xxl, fontFamily: fonts.heading, color: colors.text },
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  body: { padding: spacing.xxl, gap: spacing.xxl },
+
+  section: {
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.xl,
+    gap: spacing.md,
+  },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.semiBold,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  speciesName: { fontSize: fontSize.xl, fontFamily: fonts.heading, color: colors.text },
+  speciesNN: { color: colors.secondary },
+  scientific: { fontSize: fontSize.base, fontFamily: fonts.regular, color: colors.textSecondary, fontStyle: 'italic' },
+  subId: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textMuted },
+
+  photo: { width: '100%', height: 220, borderRadius: borderRadius.md, backgroundColor: colors.background },
+  emptyBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.xxl,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
+  },
+  emptyText: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textLight },
+
+  actionsRow: { flexDirection: 'row', gap: spacing.md },
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.plantation,
+    backgroundColor: colors.surface,
+  },
+  btnText: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.plantation },
+  btnDanger: { borderColor: colors.danger },
+  btnTextDanger: { color: colors.danger },
+
+  gpsBox: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  gpsInfo: { flex: 1 },
+  gpsCoords: { fontSize: fontSize.base, fontFamily: fonts.medium, color: colors.text },
+  gpsAccuracy: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textMuted },
+  gpsError: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.danger },
+
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.danger,
+  },
+  deleteText: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.danger },
+});

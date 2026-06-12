@@ -15,6 +15,7 @@ interface Props {
   onViewPhoto: (treeId: string, uri: string) => void;
   onAttachPhoto: (treeId: string) => void;
   onDeleteTree: (treeId: string, posicion: number) => void;
+  onSelectTree: (treeId: string) => void;
 }
 
 export default function TreeListModal({
@@ -26,6 +27,7 @@ export default function TreeListModal({
   onViewPhoto,
   onAttachPhoto,
   onDeleteTree,
+  onSelectTree,
 }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -48,6 +50,7 @@ export default function TreeListModal({
               onViewPhoto={onViewPhoto}
               onAttachPhoto={onAttachPhoto}
               onDeleteTree={onDeleteTree}
+              onPress={onSelectTree}
             />
           )}
           ListEmptyComponent={<Text style={styles.empty}>No hay árboles</Text>}

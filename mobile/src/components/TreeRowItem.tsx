@@ -27,11 +27,13 @@ interface Props {
   onViewPhoto: (treeId: string, uri: string) => void;
   onAttachPhoto?: (treeId: string) => void;
   onDeleteTree?: (treeId: string, posicion: number) => void;
+  /** Si se pasa, la fila abre el detalle del árbol al tocarla. */
+  onPress?: (treeId: string) => void;
 }
 
-export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto, onAttachPhoto, onDeleteTree }: Props) {
-  return (
-    <View style={styles.row}>
+export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto, onAttachPhoto, onDeleteTree, onPress }: Props) {
+  const content = (
+    <>
       <Text style={styles.pos}>{item.posicion}</Text>
       <Text style={[styles.name, item.especieId === null && styles.nameNN]} numberOfLines={1}>
         {getSpeciesName(item)}
@@ -65,8 +67,21 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
               : <Ionicons name="trash-outline" size={18} color={colors.danger} />}
           </Pressable>
         )}
+        {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textLight} />}
       </View>
-    </View>
+    </>
   );
-}
 
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        onPress={() => onPress(item.id)}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.row}>{content}</View>;
+}
