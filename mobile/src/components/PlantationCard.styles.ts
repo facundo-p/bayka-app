@@ -8,7 +8,7 @@
  * changes (Plan 17-02).
  */
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts, chipSizes } from '../theme';
 
 const SIDEBAR_WIDTH = 48;
 
@@ -66,6 +66,25 @@ export const plantationCardStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
+  },
+
+  // Chip "Oculta en app" — solo admin, plantación con visible_in_app=false.
+  hiddenBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    backgroundColor: colors.backgroundAlt,
+    borderWidth: 1,
+    borderColor: colors.borderMuted,
+    borderRadius: borderRadius.full,
+    ...chipSizes.sm,
+    marginBottom: spacing.lg,
+  },
+  hiddenBadgeText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.semiBold,
+    color: colors.textMuted,
   },
 
   statsRow: {

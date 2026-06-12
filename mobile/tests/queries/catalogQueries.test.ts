@@ -191,6 +191,25 @@ describe('catalogQueries', () => {
     });
   });
 
+  describe('getServerCatalog — visible_in_app', () => {
+    it('mapea visible_in_app y defaultea true cuando el server no trae la columna', async () => {
+      const remotePlantations = [
+        { ...makePlantation('p-oculta'), visible_in_app: false },
+        makePlantation('p-sin-columna'), // server sin la migración → visible
+      ];
+
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
+        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+
+      const results = await getServerCatalog(true, 'user-admin', 'org-1');
+
+      expect(results.find((p) => p.id === 'p-oculta')?.visible_in_app).toBe(false);
+      expect(results.find((p) => p.id === 'p-sin-columna')?.visible_in_app).toBe(true);
+    });
+  });
+
   describe('getServerCatalog — error handling', () => {
     it('Test 6: throws error when supabase plantations query fails', async () => {
       const errorChain: any = {};

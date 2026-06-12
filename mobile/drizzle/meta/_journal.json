@@ -120,6 +120,13 @@
       "when": 1774400000000,
       "tag": "0016_gps_config_server_snapshot",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1774500000000,
+      "tag": "0017_plantations_visible_in_app",
+      "breakpoints": true
     }
   ]
 }

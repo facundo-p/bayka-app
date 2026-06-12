@@ -27,9 +27,12 @@ function emitProgress(
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
+  // select('*') en vez de columnas explícitas: tolera servers donde columnas
+  // nuevas (config GPS, visible_in_app) todavía no existen — pedirlas por
+  // nombre haría fallar el pull completo. Los guards != null hacen el resto.
   const { data: remotePlantation, error } = await supabase
     .from('plantations')
-    .select('lugar, periodo, estado, gps_capture_frequency, gps_capture_required')
+    .select('*')
     .eq('id', plantacionId)
     .single();
 
@@ -54,6 +57,10 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   if (remotePlantation.gps_capture_required != null) {
     serverUpdate.gpsCaptureRequiredServer = remotePlantation.gps_capture_required;
   }
+
+  // La visibilidad se administra solo desde la web: el server siempre gana.
+  // Columna ausente (server sin la migración) → visible.
+  serverUpdate.visibleInApp = remotePlantation.visible_in_app ?? true;
 
   const [local] = await db
     .select({ pendingEdit: plantations.pendingEdit })

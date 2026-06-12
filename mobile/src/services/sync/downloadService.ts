@@ -18,19 +18,26 @@ interface DownloadOptions {
 }
 
 /**
+ * Fila de plantations tal como llega del server (snake_case).
+ * visible_in_app es opcional: tolera servers sin la migración que la agrega.
+ */
+export type ServerPlantationRow = {
+  id: string;
+  organizacion_id: string;
+  lugar: string;
+  periodo: string;
+  estado: string;
+  creado_por: string;
+  created_at: string;
+  visible_in_app?: boolean | null;
+};
+
+/**
  * Downloads a single plantation by upserting its row into local SQLite,
  * then calling pullFromServer to sync groups, species, and users.
  */
 export async function downloadPlantation(
-  serverPlantation: {
-    id: string;
-    organizacion_id: string;
-    lugar: string;
-    periodo: string;
-    estado: string;
-    creado_por: string;
-    created_at: string;
-  },
+  serverPlantation: ServerPlantationRow,
   options: DownloadOptions = {},
 ): Promise<void> {
   const { includePhotos = false, onPhase } = options;
@@ -48,6 +55,8 @@ export async function downloadPlantation(
       pendingSync: false,
       lugarServer: serverPlantation.lugar,
       periodoServer: serverPlantation.periodo,
+      // Ausente en la respuesta (server sin la columna) → visible.
+      visibleInApp: serverPlantation.visible_in_app ?? true,
     })
     .onConflictDoUpdate({
       target: plantations.id,
@@ -56,6 +65,7 @@ export async function downloadPlantation(
         pendingSync: false,
         lugarServer: serverPlantation.lugar,
         periodoServer: serverPlantation.periodo,
+        visibleInApp: serverPlantation.visible_in_app ?? true,
       },
     });
 
@@ -83,15 +93,7 @@ export async function downloadPlantation(
  * on local species rows for code/name resolution.
  */
 export async function batchDownload(
-  selected: Array<{
-    id: string;
-    organizacion_id: string;
-    lugar: string;
-    periodo: string;
-    estado: string;
-    creado_por: string;
-    created_at: string;
-  }>,
+  selected: ServerPlantationRow[],
   onProgress?: (progress: DownloadProgress) => void,
   options: { includePhotos?: boolean } = {},
 ): Promise<DownloadResult[]> {
