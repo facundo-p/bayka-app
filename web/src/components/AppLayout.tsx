@@ -1,4 +1,7 @@
 import { NavLink, Outlet } from 'react-router';
+import { useAuth } from '../hooks/useAuth';
+import { Badge } from './Badge';
+import { Button } from './Button';
 import styles from './AppLayout.module.css';
 
 const NAV_ITEMS = [
@@ -24,9 +27,22 @@ function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      {/* Footer vacío: el bloque de usuario/logout llega con el issue de auth */}
       <div className={styles.sidebarFooter} />
     </aside>
+  );
+}
+
+function HeaderUsuario() {
+  const { perfil, signOut } = useAuth();
+  if (!perfil) return null;
+  return (
+    <div className={styles.headerUsuario}>
+      <span className={styles.headerNombre}>{perfil.nombre}</span>
+      <Badge>{perfil.rol}</Badge>
+      <Button variant="secondary" onClick={() => void signOut()}>
+        Salir
+      </Button>
+    </div>
   );
 }
 
@@ -35,8 +51,9 @@ export function AppLayout() {
     <div className={styles.shell}>
       <Sidebar />
       <div className={styles.content}>
-        {/* Header vacío: reserva espacio para acciones contextuales futuras */}
-        <header className={styles.header} />
+        <header className={styles.header}>
+          <HeaderUsuario />
+        </header>
         <main className={styles.main}>
           <Outlet />
         </main>
