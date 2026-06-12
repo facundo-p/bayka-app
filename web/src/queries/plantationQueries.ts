@@ -2,8 +2,8 @@ import { supabase } from '../lib/supabase';
 
 export type EstadoPlantacion = 'activa' | 'finalizada';
 
-/** Fila cruda de `plantations`. `visible_in_app` llega con la migración 024,
- *  que puede no estar aplicada todavía: se tolera su ausencia. */
+/** Fila cruda de `plantations`. Los campos opcionales llegan con la migración
+ *  024, que puede no estar aplicada todavía: se tolera su ausencia. */
 type FilaPlantacion = {
   id: string;
   lugar: string;
@@ -11,6 +11,12 @@ type FilaPlantacion = {
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app?: boolean | null;
+  descripcion?: string | null;
+  fecha_inicio?: string | null;
+  superficie_ha?: number | null;
+  ubicacion_lat?: number | null;
+  ubicacion_lng?: number | null;
+  objetivo_arboles?: number | null;
 };
 
 export type PlantacionConStats = {
@@ -23,7 +29,25 @@ export type PlantacionConStats = {
   arboles: number;
   parcelas: number;
   usuarios: number;
+  descripcion: string | null;
+  fechaInicio: string | null;
+  superficieHa: number | null;
+  ubicacionLat: number | null;
+  ubicacionLng: number | null;
+  objetivoArboles: number | null;
 };
+
+/** Campos del formulario de edición: null si la 024 no está aplicada. */
+function camposFormulario(fila: FilaPlantacion) {
+  return {
+    descripcion: fila.descripcion ?? null,
+    fechaInicio: fila.fecha_inicio ?? null,
+    superficieHa: fila.superficie_ha ?? null,
+    ubicacionLat: fila.ubicacion_lat ?? null,
+    ubicacionLng: fila.ubicacion_lng ?? null,
+    objetivoArboles: fila.objetivo_arboles ?? null,
+  };
+}
 
 function contarOLanzar(count: number | null, error: { message: string } | null): number {
   if (error) throw new Error(error.message);
@@ -74,6 +98,7 @@ async function conStats(fila: FilaPlantacion): Promise<PlantacionConStats> {
     arboles,
     parcelas,
     usuarios,
+    ...camposFormulario(fila),
   };
 }
 

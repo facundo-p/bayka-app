@@ -47,3 +47,10 @@
   color: var(--color-danger);
   margin: 0;
 }
+
+/* Versión compacta del Button secondary para la celda de acciones. */
+.botonEditar {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-2xl);
+  font-size: var(--text-md);
+}
