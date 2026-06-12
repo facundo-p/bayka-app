@@ -5,6 +5,7 @@ export { EmptyState } from './EmptyState';
 export { Input } from './Input';
 export { Modal } from './Modal';
 export { PageHeader } from './PageHeader';
+export { RequireAccess } from './RequireAccess';
 export { Select } from './Select';
 export { Spinner } from './Spinner';
 export { Table, type TableColumn } from './Table';
