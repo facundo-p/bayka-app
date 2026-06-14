@@ -21,6 +21,7 @@ import {
 } from '@expo-google-fonts/poppins';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { PhotoCropProvider } from '../src/components/PhotoCropProvider';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep splash visible while fonts load
@@ -115,7 +116,9 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <Slot />
+      <PhotoCropProvider>
+        <Slot />
+      </PhotoCropProvider>
     </SafeAreaProvider>
   );
 }
