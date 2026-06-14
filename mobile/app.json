@@ -29,7 +29,13 @@
       "expo-sqlite",
       "expo-router",
       "expo-asset",
-      "expo-updates"
+      "expo-updates",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Bayka usa la cámara para tomar fotos de los árboles."
+        }
+      ]
     ]
   }
 }

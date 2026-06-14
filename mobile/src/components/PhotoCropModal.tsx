@@ -23,9 +23,11 @@ interface Props {
   raw: RawPhoto | null;
   onCancel: () => void;
   onSave: (uri: string) => void;
+  /** Si se pasa, muestra "Reintentar" (reabre cámara/galería según el origen). */
+  onRetry?: () => void;
 }
 
-export default function PhotoCropModal({ raw, onCancel, onSave }: Props) {
+export default function PhotoCropModal({ raw, onCancel, onSave, onRetry }: Props) {
   const insets = useSafeAreaInsets();
   const [stage, setStage] = useState<{ w: number; h: number } | null>(null);
   const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
@@ -103,6 +105,9 @@ export default function PhotoCropModal({ raw, onCancel, onSave }: Props) {
   return (
     <Modal visible={!!raw} animationType="fade" onRequestClose={onCancel}>
       <View style={styles.container}>
+        <Pressable style={[styles.closeBtn, { top: insets.top + spacing.md }]} onPress={onCancel} hitSlop={12} accessibilityLabel="Cancelar">
+          <Ionicons name="close" size={26} color={colors.white} />
+        </Pressable>
         <View style={styles.stage} onLayout={(e) => setStage({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
           {raw && disp && (
             <Image source={{ uri: raw.uri }} style={{ position: 'absolute', left: disp.x, top: disp.y, width: disp.w, height: disp.h }} resizeMode="cover" />
@@ -127,10 +132,17 @@ export default function PhotoCropModal({ raw, onCancel, onSave }: Props) {
         </View>
 
         <View style={[styles.actionBar, { paddingBottom: insets.bottom + spacing.md }]}>
-          <Pressable style={styles.cancelBtn} onPress={onCancel} disabled={saving}>
-            <Ionicons name="close" size={20} color={colors.white} />
-            <Text style={styles.cancelText}>Cancelar</Text>
-          </Pressable>
+          {onRetry ? (
+            <Pressable style={styles.cancelBtn} onPress={onRetry} disabled={saving}>
+              <Ionicons name="refresh" size={20} color={colors.white} />
+              <Text style={styles.cancelText}>Reintentar</Text>
+            </Pressable>
+          ) : (
+            <Pressable style={styles.cancelBtn} onPress={onCancel} disabled={saving}>
+              <Ionicons name="close" size={20} color={colors.white} />
+              <Text style={styles.cancelText}>Cancelar</Text>
+            </Pressable>
+          )}
           <Text style={styles.hint}>Arrastrá las esquinas para recortar (opcional)</Text>
           <Pressable style={styles.saveBtn} onPress={handleSave} disabled={saving}>
             {saving ? <ActivityIndicator size="small" color={colors.white} />
