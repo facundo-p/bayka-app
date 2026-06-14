@@ -192,3 +192,27 @@ Reglas para hooks de geolocalización con AppState:
    pueden solaparse.
 4. `timeInterval` del watcher en un valor sano (p.ej. 1 s), no 0; la precisión
    al instante se resuelve con `getCurrentPositionAsync` puntual.
+
+## Safe-area en headers de modales/pantallas full-screen (Android)
+
+Caso real (issue #166): el header de `TreeDetailModal` quedaba **pegado a la barra
+de estado** del SO. Los RN `Modal` (sobre todo `presentationStyle="pageSheet"`) y
+las pantallas full-screen **no heredan el top inset** automáticamente — su
+contenido arranca en `y=0`, debajo de la status bar.
+
+Reglas:
+1. **Todo header de un `Modal` full-screen o pantalla sin `CustomHeader` debe
+   aplicar el top inset.** Usar `useSafeAreaInsets()` y sumar `insets.top` al
+   `paddingTop` del header (`paddingTop: insets.top + spacing.md`).
+2. **No hardcodear** `top: 50` ni paddings mágicos para "esquivar" la barra
+   (rompe en devices con notch/altura distinta). Siempre `insets.top`.
+3. Las pantallas que ya usan `CustomHeader` están cubiertas (CustomHeader aplica
+   `insets.top`). El problema aparece en **modales propios** con header a mano
+   (TreeDetailModal, TreeListModal, etc.).
+4. Para el inset **inferior** en modales que tapan la tab bar, ver
+   `feedback_safearea_audit_by_presentation` (clasificar por contexto de
+   presentación: Tabs vs Stack vs Modal full-screen).
+
+Checklist al crear un modal/pantalla nueva: ¿tiene header propio? → ¿aplica
+`insets.top`? ¿tiene acciones abajo? → ¿aplica `insets.bottom`? Ver skill
+`safe-area-screens`.
