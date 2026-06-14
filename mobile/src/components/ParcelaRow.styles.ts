@@ -73,6 +73,19 @@ export const parcelaRowStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
   },
+  nnBadge: {
+    backgroundColor: colors.secondaryYellowLight,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.secondaryYellowMedium,
+  },
+  nnBadgeText: {
+    color: colors.secondaryYellowDark,
+    fontSize: fontSize.xs,
+    fontFamily: fonts.bold,
+  },
   rightContent: {
     flexDirection: 'row',
     alignItems: 'center',

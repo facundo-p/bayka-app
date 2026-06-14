@@ -108,6 +108,9 @@ export default function NNResolutionScreen() {
 
   // Build subtitle for header
   const subtitleParts: string[] = [];
+  if (isPlantationMode && currentTree.parcelaNombre) {
+    subtitleParts.push(currentTree.parcelaNombre);
+  }
   if (isPlantationMode && currentTree.grupoNombre) {
     subtitleParts.push(currentTree.grupoNombre);
   }
