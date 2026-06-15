@@ -5,12 +5,13 @@ import migrations from '../drizzle/migrations';
 import { db } from '../src/database/client';
 import { useAuth } from '../src/hooks/useAuth';
 import { Slot, useRouter, useSegments } from 'expo-router';
-import { Text, View, StyleSheet } from 'react-native';
+import { Text, View, Image } from 'react-native';
 import { useEffect } from 'react';
 import { seedSpeciesIfNeeded } from '../src/database/seeds/seedSpecies';
 import { seedPlantationIfNeeded } from '../src/database/seeds/seedPlantation';
 import { seedPlantationSpeciesIfNeeded } from '../src/database/seeds/seedPlantationSpecies';
-import { colors, fontSize, spacing, fonts } from '../src/theme';
+import { fonts } from '../src/theme';
+import { rootLayoutStyles as styles } from '../src/styles/rootLayout.styles';
 import {
   useFonts,
   Poppins_300Light,
@@ -105,7 +106,8 @@ export default function RootLayout() {
   // Auth loading
   if (loading) {
     return (
-      <View style={styles.center}>
+      <View style={styles.loadingContainer}>
+        <Image source={require('../assets/icon-bayka.png')} style={styles.loadingLogo} accessibilityLabel="Bayka" />
         <Text style={[styles.loadingText, { fontFamily: fonts.regular }]}>Iniciando sesión...</Text>
       </View>
     );
@@ -119,32 +121,3 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    padding: spacing['4xl'],
-  },
-  loadingText: {
-    fontSize: fontSize.xl,
-    color: colors.textSecondary,
-  },
-  errorTitle: {
-    fontSize: fontSize.xxl,
-    color: colors.dangerText,
-    marginBottom: spacing.md,
-  },
-  errorBody: {
-    fontSize: fontSize.lg,
-    color: colors.textMedium,
-    marginBottom: spacing.xxl,
-  },
-  errorDetail: {
-    fontSize: fontSize.sm,
-    color: colors.textPlaceholder,
-    textAlign: 'center',
-  },
-});
