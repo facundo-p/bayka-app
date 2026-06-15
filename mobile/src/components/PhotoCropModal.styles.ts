@@ -37,7 +37,6 @@ export const photoCropModalStyles = StyleSheet.create({
     backgroundColor: colors.overlayDark,
     gap: spacing.md,
   },
-  hint: { flex: 1, color: colors.white, fontSize: fontSize.xs, fontFamily: fonts.regular, textAlign: 'center', opacity: 0.85 },
   cancelBtn: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, padding: spacing.md },
   cancelText: { color: colors.white, fontSize: fontSize.sm, fontFamily: fonts.medium },
   saveBtn: {

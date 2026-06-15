@@ -143,7 +143,6 @@ export default function PhotoCropModal({ raw, onCancel, onSave, onRetry }: Props
               <Text style={styles.cancelText}>Cancelar</Text>
             </Pressable>
           )}
-          <Text style={styles.hint}>Arrastrá las esquinas para recortar (opcional)</Text>
           <Pressable style={styles.saveBtn} onPress={handleSave} disabled={saving}>
             {saving ? <ActivityIndicator size="small" color={colors.white} />
               : <><Ionicons name="checkmark" size={20} color={colors.white} /><Text style={styles.saveText}>Guardar</Text></>}
