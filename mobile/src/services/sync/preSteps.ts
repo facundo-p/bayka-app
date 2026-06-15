@@ -1,22 +1,95 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
-import { plantationSpecies, plantations, species } from '../../database/schema';
-import { eq, sql } from 'drizzle-orm';
+import {
+  plantationSpecies,
+  plantations,
+  species,
+  trees,
+  userSpeciesOrder,
+} from '../../database/schema';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
-import { fetchAllRows } from './paginate';
+import { fetchAllRows, runInTransaction } from './paginate';
 import { SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
 
+/** Fila de especie del server, normalizada a los nombres del schema local. */
+type ServerSpecies = { id: string; codigo: string; nombre: string; nombre_cientifico?: string | null; created_at: string };
+
+/** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
+type DbExecutor = Pick<typeof db, 'insert' | 'update' | 'delete' | 'select'>;
+
+/**
+ * Upsert de una especie del server por `id` (la clave estable entre dispositivos).
+ * Actualiza codigo/nombre/cientifico ante conflicto de `id`.
+ */
+async function upsertSpeciesById(exec: DbExecutor, s: ServerSpecies): Promise<void> {
+  await exec.insert(species).values({
+    id: s.id,
+    codigo: s.codigo,
+    nombre: s.nombre,
+    nombreCientifico: s.nombre_cientifico ?? null,
+    createdAt: s.created_at,
+  }).onConflictDoUpdate({
+    target: species.id,
+    set: {
+      codigo: sql`excluded.codigo`,
+      nombre: sql`excluded.nombre`,
+      nombreCientifico: sql`excluded.nombre_cientifico`,
+    },
+  });
+}
+
+/**
+ * Reconcilia una colisión por `UNIQUE(codigo)`: el server trae la especie con un
+ * `id` distinto al de una fila local que ya usa ese `codigo` (típico: catálogo
+ * embebido con `id` sintético vs. UUID del server). Con el INNER JOIN viejo, los
+ * árboles que apuntaban al `id` del server quedaban huérfanos y se caían del
+ * export; salteándola en el upsert, nunca se arreglaba.
+ *
+ * Re-apunta TODAS las referencias del `id` local duplicado al `id` del server y
+ * elimina la fila duplicada, dentro de una transacción (atómico: ante cualquier
+ * error revierte y el caller la cuenta como salteada). El `codigo` se preserva
+ * (es el mismo), así que los SubID — que embeben el codigo, no el id — siguen
+ * siendo válidos.
+ *
+ * Devuelve true si reconcilió; false si no había duplicado por codigo (el error
+ * original era otro y debe propagarse al log de salteadas).
+ */
+async function reconcileSpeciesCodigoCollision(s: ServerSpecies): Promise<boolean> {
+  return runInTransaction(db, async (tx) => {
+    const [dup] = await tx
+      .select({ id: species.id })
+      .from(species)
+      .where(and(eq(species.codigo, s.codigo), ne(species.id, s.id)));
+    if (!dup) return false;
+
+    // Re-apuntar referencias del id duplicado al id del server.
+    await tx.update(trees).set({ especieId: s.id }).where(eq(trees.especieId, dup.id));
+    await tx.update(trees).set({ conflictEspecieId: s.id }).where(eq(trees.conflictEspecieId, dup.id));
+    await tx.update(plantationSpecies).set({ especieId: s.id }).where(eq(plantationSpecies.especieId, dup.id));
+    // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría
+    // colisionar. Es solo orden visual (cosmético) → se borra la referencia vieja.
+    await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, dup.id));
+
+    await tx.delete(species).where(eq(species.id, dup.id));
+    await upsertSpeciesById(tx, s);
+    return true;
+  });
+}
+
 /**
  * OFPL-04
  * Fetches all species from Supabase and upserts them into local SQLite.
  * Non-blocking: if Supabase returns an error, silently returns (stale catalog is acceptable).
- * CRITICAL: Does NOT delete species — codes are embedded in SubIDs; deletion would corrupt data.
+ * CRITICAL: Solo elimina filas de especie al RECONCILIAR un duplicado por codigo
+ * (re-apuntando antes todas sus referencias); el codigo se preserva, así que los
+ * SubID no se corrompen.
  */
 export async function pullSpeciesFromServer(): Promise<void> {
-  const { data, error } = await fetchAllRows<any>(() =>
+  const { data, error } = await fetchAllRows<ServerSpecies>(() =>
     supabase.from('species').select('*')
   );
   if (error || !data) {
@@ -24,34 +97,30 @@ export async function pullSpeciesFromServer(): Promise<void> {
     return;
   }
   let inserted = 0;
+  let reconciled = 0;
   let skipped = 0;
-  // One transaction per species row: a UNIQUE constraint failure on codigo
-  // (two server species sharing a codigo, etc.) must not abort the rest of
-  // the catalog. Wrapping all rows in a single transaction would rollback
-  // everything; one-tx-per-row keeps inserted rows on conflict.
+  // Un upsert por fila: un fallo en una especie no debe abortar el resto del
+  // catálogo (envolver todo en una sola transacción haría rollback de todo).
   for (const s of data) {
     try {
-      await db.insert(species).values({
-        id: s.id,
-        codigo: s.codigo,
-        nombre: s.nombre,
-        nombreCientifico: s.nombre_cientifico ?? null,
-        createdAt: s.created_at,
-      }).onConflictDoUpdate({
-        target: species.id,
-        set: {
-          codigo: sql`excluded.codigo`,
-          nombre: sql`excluded.nombre`,
-          nombreCientifico: sql`excluded.nombre_cientifico`,
-        },
-      });
+      await upsertSpeciesById(db, s);
       inserted++;
     } catch (e: any) {
-      skipped++;
-      syncLog.error(`Pull species: skipping ${s.id} (codigo=${s.codigo}):`, e?.message ?? e);
+      // Probable choque por UNIQUE(codigo) con una especie local de distinto id.
+      try {
+        if (await reconcileSpeciesCodigoCollision(s)) {
+          reconciled++;
+        } else {
+          skipped++;
+          syncLog.error(`Pull species: skipping ${s.id} (codigo=${s.codigo}):`, e?.message ?? e);
+        }
+      } catch (e2: any) {
+        skipped++;
+        syncLog.error(`Pull species: reconcile falló ${s.id} (codigo=${s.codigo}):`, e2?.message ?? e2);
+      }
     }
   }
-  syncLog.info(`Pull species: ${inserted} upserted, ${skipped} skipped of ${data.length} total`);
+  syncLog.info(`Pull species: ${inserted} upserted, ${reconciled} reconciled, ${skipped} skipped of ${data.length} total`);
 }
 
 // ─── Upload offline-created plantations ───────────────────────────────────────
