@@ -1,5 +1,6 @@
-import { sqliteTable, text, integer, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 
 export const species = sqliteTable('species', {
@@ -22,6 +23,12 @@ export const plantations = sqliteTable('plantations', {
   pendingEdit: integer('pending_edit', { mode: 'boolean' }).notNull().default(false),
   lugarServer: text('lugar_server'),
   periodoServer: text('periodo_server'),
+  // Config GPS por plantación (default también duplicado en las migraciones
+  // 0015 local y 023 de Supabase; si cambia, revisar los tres lugares).
+  gpsCaptureFrequency: integer('gps_capture_frequency')
+    .notNull()
+    .default(GPS_CAPTURE_FREQUENCY_DEFAULT),
+  gpsCaptureRequired: integer('gps_capture_required', { mode: 'boolean' }).notNull().default(true),
 });
 
 export const parcelas = sqliteTable('parcelas', {
@@ -76,6 +83,12 @@ export const trees = sqliteTable('trees', {
   createdAt: text('created_at').notNull(),
   conflictEspecieId: text('conflict_especie_id'),
   conflictEspecieNombre: text('conflict_especie_nombre'),
+  // Punto GPS capturado al registrar el árbol; null en árboles históricos o
+  // cuando por frecuencia/señal no correspondió capturar.
+  latitude: real('latitude'),
+  longitude: real('longitude'),
+  gpsAccuracy: real('gps_accuracy'),
+  gpsCapturedAt: text('gps_captured_at'),
 });
 
 export const plantationSpecies = sqliteTable('plantation_species', {

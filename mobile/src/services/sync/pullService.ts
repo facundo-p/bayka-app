@@ -29,7 +29,7 @@ function emitProgress(
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   const { data: remotePlantation, error } = await supabase
     .from('plantations')
-    .select('lugar, periodo, estado')
+    .select('lugar, periodo, estado, gps_capture_frequency, gps_capture_required')
     .eq('id', plantacionId)
     .single();
 
@@ -44,6 +44,15 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     periodoServer: remotePlantation.periodo,
     estado: remotePlantation.estado,
   };
+
+  // La config GPS del admin siempre se refresca desde el server (el pendingEdit
+  // local solo snapshotea lugar/periodo). Guard contra server sin migración 023.
+  if (remotePlantation.gps_capture_frequency != null) {
+    serverUpdate.gpsCaptureFrequency = remotePlantation.gps_capture_frequency;
+  }
+  if (remotePlantation.gps_capture_required != null) {
+    serverUpdate.gpsCaptureRequired = remotePlantation.gps_capture_required;
+  }
 
   const [local] = await db
     .select({ pendingEdit: plantations.pendingEdit })
@@ -341,6 +350,10 @@ export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
     globalId: t.global_id ?? null,
     usuarioRegistro: t.usuario_registro,
     createdAt: t.created_at,
+    latitude: t.latitude ?? null,
+    longitude: t.longitude ?? null,
+    gpsAccuracy: t.gps_accuracy ?? null,
+    gpsCapturedAt: t.gps_captured_at ?? null,
   }).onConflictDoUpdate({
     target: trees.id,
     set: {
@@ -353,6 +366,13 @@ export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
       // adoptar el del server cuando el local está vacío. Nunca pisar con NULL.
       plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
       globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
+      // Punto GPS: el local no-null gana (captura/re-captura pendiente de push);
+      // recién se adopta el del server cuando no hay punto local. Las 4 columnas
+      // se deciden juntas por latitude para no mezclar campos de fixes distintos.
+      latitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.latitude} ELSE excluded.latitude END`,
+      longitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.longitude} ELSE excluded.longitude END`,
+      gpsAccuracy: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,
+      gpsCapturedAt: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsCapturedAt} ELSE excluded.gps_captured_at END`,
       conflictEspecieId: sql`NULL`,
       conflictEspecieNombre: sql`NULL`,
     },
