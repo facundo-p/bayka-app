@@ -28,6 +28,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
 import { useConfirm } from '../hooks/useConfirm';
+import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import ConfirmModal from '../components/ConfirmModal';
 
 export default function TreeRegistrationScreen() {
@@ -49,11 +50,13 @@ export default function TreeRegistrationScreen() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
 
+  const gpsWatcher = useGpsWatcher();
   const treeReg = useTreeRegistration({
     grupoId: grupoId ?? '',
     plantacionId: plantacionId ?? '',
     grupoCodigo: grupoCodigo ?? '',
     userId,
+    getLastGpsFix: gpsWatcher.getLastFix,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
   const nnFlow = useNNFlow({
@@ -63,6 +66,8 @@ export default function TreeRegistrationScreen() {
     isReadOnly: treeReg.isReadOnly,
     unresolvedNN: treeReg.unresolvedNN,
     pickPhoto,
+    gpsCaptureFrequency: treeReg.gpsCaptureFrequency,
+    getLastGpsFix: gpsWatcher.getLastFix,
   });
 
   useEffect(() => {
