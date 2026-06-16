@@ -4,7 +4,7 @@
  * Screens import these — no inline db queries in screens.
  */
 import { db } from '../database/client';
-import { plantations, groups, trees } from '../database/schema';
+import { plantations, parcelas, groups, trees } from '../database/schema';
 import { eq, and, count, asc, isNull, sql } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
@@ -127,14 +127,16 @@ export async function getNNTreesForPlantation(plantacionId: string) {
     grupoId: trees.groupId,
     grupoCodigo: groups.codigo,
     grupoNombre: groups.nombre,
+    parcelaNombre: parcelas.nombre,
     conflictEspecieId: trees.conflictEspecieId,
     conflictEspecieNombre: trees.conflictEspecieNombre,
   })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
+    .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .where(and(
       isNull(trees.especieId),
       eq(groups.plantacionId, plantacionId)
     ))
-    .orderBy(asc(groups.nombre), asc(trees.posicion));
+    .orderBy(asc(parcelas.nombre), asc(groups.nombre), asc(trees.posicion));
 }

@@ -25,6 +25,7 @@ import {
   listByPlantacionWithStats,
   countGroupsByParcela,
   countTreesByParcela,
+  countNNByParcela,
   getParcelaStats,
 } from '../../src/queries/parcelaQueries';
 import { createParcela, deleteParcela } from '../../src/repositories/ParcelaRepository';
@@ -191,6 +192,22 @@ describe('parcelaQueries', () => {
     await seedTree(g, 1);
     await seedTree(g, 2);
     const stats = await getParcelaStats(c.id);
-    expect(stats).toEqual({ gruposCount: 1, treesCount: 2, pendingSyncBelow: false });
+    // seedTree inserta árboles con especieId null → ambos son N/N.
+    expect(stats).toEqual({ gruposCount: 1, treesCount: 2, nnCount: 2, pendingSyncBelow: false });
+  });
+
+  test('countNNByParcela cuenta solo árboles N/N (especieId null) por parcela', async () => {
+    const plantacionId = await seedPlantation();
+    const p = await createParcela({ plantacionId, nombre: 'P', codigo: 'P' });
+    if (!p.success) throw new Error('seed failed');
+    const g = await seedGroup(plantacionId, p.id, 'G1');
+    await seedTree(g, 1);
+    await seedTree(g, 2);
+    const counts = await countNNByParcela(plantacionId);
+    const row = counts.find((c) => c.parcelaId === p.id);
+    expect(row?.count).toBe(2);
+    // En listByPlantacionWithStats el badge sale de nnCount.
+    const list = await listByPlantacionWithStats(plantacionId);
+    expect(list.find((x) => x.id === p.id)?.nnCount).toBe(2);
   });
 });

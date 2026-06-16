@@ -23,7 +23,7 @@ interface Props {
   variant?: ParcelaRowVariant;
 }
 
-function ParcelaStats({ gruposCount, treesCount }: { gruposCount: number; treesCount: number }) {
+function ParcelaStats({ gruposCount, treesCount, nnCount }: { gruposCount: number; treesCount: number; nnCount: number }) {
   return (
     <View style={styles.statsLine}>
       <View style={styles.statItem}>
@@ -34,6 +34,11 @@ function ParcelaStats({ gruposCount, treesCount }: { gruposCount: number; treesC
         <TreeIcon size={iconSizes.stat} color={colors.textSecondary} />
         <Text style={styles.statText}>{treesCount}</Text>
       </View>
+      {nnCount > 0 && (
+        <View style={styles.nnBadge}>
+          <Text style={styles.nnBadgeText}>{nnCount} N/N</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -62,7 +67,7 @@ export default function ParcelaRow({ parcela, onPress, onLongPress, variant = 's
     >
       <View style={styles.leftContent}>
         <ParcelaHeading nombre={parcela.nombre} codigo={parcela.codigo} />
-        <ParcelaStats gruposCount={parcela.gruposCount} treesCount={parcela.treesCount} />
+        <ParcelaStats gruposCount={parcela.gruposCount} treesCount={parcela.treesCount} nnCount={parcela.nnCount} />
       </View>
       <View style={styles.rightContent}>
         {showDot && <OrangeDot />}

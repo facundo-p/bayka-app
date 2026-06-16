@@ -15,6 +15,7 @@ import { sqlIsLocalUri } from '../utils/photoUri';
 export type ParcelaStats = {
   gruposCount: number;
   treesCount: number;
+  nnCount: number;
   pendingSyncBelow: boolean;
 };
 
@@ -41,6 +42,23 @@ export async function countTreesByParcela(
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .where(and(eq(parcelas.plantacionId, plantacionId), isNull(parcelas.deletedAt)))
+    .groupBy(groups.parcelaId);
+  return rows.map((r) => ({ parcelaId: r.parcelaId ?? '', count: r.cnt }));
+}
+
+/** Count N/N (trees con especieId NULL) per parcela for one plantation. */
+export async function countNNByParcela(
+  plantacionId: string,
+): Promise<Array<{ parcelaId: string; count: number }>> {
+  const rows = await db.select({ parcelaId: groups.parcelaId, cnt: count() })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
+    .where(and(
+      eq(parcelas.plantacionId, plantacionId),
+      isNull(parcelas.deletedAt),
+      isNull(trees.especieId),
+    ))
     .groupBy(groups.parcelaId);
   return rows.map((r) => ({ parcelaId: r.parcelaId ?? '', count: r.cnt }));
 }
@@ -82,13 +100,16 @@ export async function listByPlantacionWithStats(
     .orderBy(asc(parcelas.createdAt));
   const grupos = await countGroupsByParcela(plantacionId);
   const trees = await countTreesByParcela(plantacionId);
+  const nn = await countNNByParcela(plantacionId);
   const pendingIds = await findParcelaIdsWithPendingChildren(plantacionId);
   const gMap = new Map(grupos.map((g) => [g.parcelaId, g.count]));
   const tMap = new Map(trees.map((t) => [t.parcelaId, t.count]));
+  const nnMap = new Map(nn.map((n) => [n.parcelaId, n.count]));
   return (rows as unknown as Parcela[]).map((p) => ({
     ...p,
     gruposCount: gMap.get(p.id) ?? 0,
     treesCount: tMap.get(p.id) ?? 0,
+    nnCount: nnMap.get(p.id) ?? 0,
     pendingSyncBelow: pendingIds.has(p.id),
   }));
 }
@@ -108,10 +129,14 @@ export async function getParcelaStats(parcelaId: string): Promise<ParcelaStats |
   const [tRow] = await db.select({ cnt: count() }).from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .where(eq(groups.parcelaId, parcelaId));
+  const [nnRow] = await db.select({ cnt: count() }).from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(and(eq(groups.parcelaId, parcelaId), isNull(trees.especieId)));
   const pendingIds = await findParcelaIdsWithPendingChildren(parcela.plantacionId);
   return {
     gruposCount: gRow?.cnt ?? 0,
     treesCount: tRow?.cnt ?? 0,
+    nnCount: nnRow?.cnt ?? 0,
     pendingSyncBelow: pendingIds.has(parcelaId),
   };
 }

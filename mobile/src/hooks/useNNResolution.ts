@@ -27,6 +27,7 @@ interface NNTree {
   grupoId: string;
   grupoCodigo?: string;
   grupoNombre?: string;
+  parcelaNombre?: string | null;
   conflictEspecieId?: string | null;
   conflictEspecieNombre?: string | null;
 }
