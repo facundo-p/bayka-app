@@ -4,7 +4,7 @@ import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
 import { getGroupById, getPlantationGpsConfig } from '../queries/plantationDetailQueries';
 import { getPlantationEstado } from '../queries/adminQueries';
-import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { insertTreeWithGps, recaptureTreeGps } from '../services/gps/gpsCaptureService';
 import type { GpsFix } from '../services/gps/locationClient';
 import {
@@ -109,7 +109,7 @@ export function useTreeRegistration({
     [plantacionId]
   );
   const gpsCaptureFrequency = gpsConfig?.frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT;
-  const gpsCaptureRequired = gpsConfig?.required ?? true;
+  const gpsCaptureRequired = gpsConfig?.required ?? GPS_CAPTURE_REQUIRED_DEFAULT;
 
   const isCreator = subgroup && userId ? subgroup.usuarioCreador === userId : false;
   const isOwner = subgroup && userId

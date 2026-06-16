@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Switch, Text, View } from 'react-native';
-import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 import { colors } from '../theme';
 import FormField from './FormField';
@@ -49,7 +49,7 @@ export default function PlantationFormModal({
   const [lugar, setLugar] = useState('');
   const [periodo, setPeriodo] = useState('');
   const [gpsFrequency, setGpsFrequency] = useState(String(GPS_CAPTURE_FREQUENCY_DEFAULT));
-  const [gpsRequired, setGpsRequired] = useState(true);
+  const [gpsRequired, setGpsRequired] = useState(GPS_CAPTURE_REQUIRED_DEFAULT);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +58,7 @@ export default function PlantationFormModal({
       setLugar(editingPlantation?.lugar ?? '');
       setPeriodo(editingPlantation?.periodo ?? '');
       setGpsFrequency(String(editingPlantation?.gpsCaptureFrequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT));
-      setGpsRequired(editingPlantation?.gpsCaptureRequired ?? true);
+      setGpsRequired(editingPlantation?.gpsCaptureRequired ?? GPS_CAPTURE_REQUIRED_DEFAULT);
       setError(null);
       setLoading(false);
     }

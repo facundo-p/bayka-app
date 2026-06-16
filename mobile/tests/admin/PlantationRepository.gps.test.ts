@@ -34,6 +34,7 @@ jest.mock('expo-crypto', () => ({
 
 import {
   createPlantationLocally,
+  discardPlantationEdit,
   updatePlantation,
 } from '../../src/repositories/PlantationRepository';
 import { db } from '../../src/database/client';
@@ -127,6 +128,51 @@ describe('config GPS por plantación', () => {
       gpsCaptureFrequency: 5,
       gpsCaptureRequired: false,
       pendingEdit: true,
+    });
+  });
+
+  it('updatePlantation offline (primera edición) snapshotea la config GPS de server', async () => {
+    mockDbChains({
+      pendingSync: false,
+      pendingEdit: false,
+      lugarServer: null,
+      periodoServer: null,
+      lugarCurrent: 'Viejo',
+      periodoCurrent: '2025',
+      gpsFreqServer: null,
+      gpsReqServer: null,
+      gpsFreqCurrent: 10,
+      gpsReqCurrent: true,
+    });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: false });
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    // Snapshotea el valor PRE-edición (10/true) para que discard pueda revertir.
+    expect(updatedSet).toMatchObject({
+      gpsCaptureFrequency: 5,
+      gpsCaptureFrequencyServer: 10,
+      gpsCaptureRequiredServer: true,
+      pendingEdit: true,
+    });
+  });
+
+  it('discardPlantationEdit revierte la config GPS al snapshot de server', async () => {
+    mockDbChains({
+      lugarServer: 'Campo Server',
+      periodoServer: '2026',
+      gpsFreqServer: 10,
+      gpsReqServer: true,
+    });
+
+    await discardPlantationEdit('plant-1');
+
+    expect(updatedSet).toMatchObject({
+      lugar: 'Campo Server',
+      periodo: '2026',
+      gpsCaptureFrequency: 10,
+      gpsCaptureRequired: true,
+      pendingEdit: false,
     });
   });
 

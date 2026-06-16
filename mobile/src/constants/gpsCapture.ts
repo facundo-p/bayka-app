@@ -9,6 +9,12 @@
  *  Supabase (migración 023): si cambia acá, revisar esos defaults. */
 export const GPS_CAPTURE_FREQUENCY_DEFAULT = 10;
 
+/** Si una plantación exige captura GPS cuando no se definió lo contrario.
+ *  Mismo trato que la frecuencia: duplicado en los DEFAULT de schema local
+ *  (migración 0015: `1`) y Supabase (migración 023: `true`); si cambia acá,
+ *  revisar esos defaults. */
+export const GPS_CAPTURE_REQUIRED_DEFAULT = true;
+
 /** Umbrales del semáforo de precisión, en metros. */
 export const GPS_ACCURACY_GOOD_MAX_METERS = 3; // verde: precisión ≤ 3 m
 export const GPS_ACCURACY_REGULAR_MAX_METERS = 8; // amarillo: ≤ 8 m; rojo: > 8 m
@@ -29,7 +35,9 @@ export const GPS_FIX_STALE_MS = 10_000;
  *  llegar fixes, nada re-renderiza y el semáforo quedaría verde para siempre). */
 export const GPS_SIGNAL_UI_REFRESH_MS = 1_000;
 
-/** Configuración del watcher: máxima frecuencia y precisión posibles, porque
- *  en plantaciones densas los árboles distan menos de 1 m entre sí. */
-export const GPS_WATCHER_TIME_INTERVAL_MS = 0;
+/** Configuración del watcher. Mantiene el GPS caliente y alimenta el semáforo;
+ *  la precisión al instante del tap la resuelve `getCurrentGpsFix`, así que el
+ *  watcher NO necesita frecuencia 0 (eso inundaba el bridge de fixes y, junto
+ *  al reinicio en ráfaga, contribuía al crash de inicio — bug #115). 1 s alcanza. */
+export const GPS_WATCHER_TIME_INTERVAL_MS = 1_000;
 export const GPS_WATCHER_DISTANCE_INTERVAL_METERS = 0;

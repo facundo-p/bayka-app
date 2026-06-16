@@ -335,7 +335,7 @@ describe('GPS — pull de árboles', () => {
 });
 
 describe('GPS — pull de config de plantación (fix del gap de metadata)', () => {
-  test('cambio de frecuencia/obligatoriedad del admin llega por pull', async () => {
+  test('cambio de frecuencia/obligatoriedad del admin llega por pull (sin edición local)', async () => {
     await seedLocalPlantation();
     serverPlantation({ gps_capture_frequency: 5, gps_capture_required: false });
 
@@ -344,18 +344,29 @@ describe('GPS — pull de config de plantación (fix del gap de metadata)', () =
     const [row] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTATION_ID));
     expect(row.gpsCaptureFrequency).toBe(5);
     expect(row.gpsCaptureRequired).toBe(false);
+    // El snapshot de server también se refresca.
+    expect(row.gpsCaptureFrequencyServer).toBe(5);
+    expect(row.gpsCaptureRequiredServer).toBe(false);
   });
 
-  test('con pendingEdit=true refresca config GPS pero NO pisa lugar/periodo locales', async () => {
-    await seedLocalPlantation({ pendingEdit: true, lugar: 'Editado Offline', periodo: '2027' });
+  test('con pendingEdit=true preserva la config GPS local pero refresca el snapshot de server', async () => {
+    await seedLocalPlantation({
+      pendingEdit: true,
+      lugar: 'Editado Offline',
+      periodo: '2027',
+      gpsCaptureFrequency: 2,
+    });
     serverPlantation({ lugar: 'Campo Server', periodo: '2026', gps_capture_frequency: 3 });
 
     await pullFromServer(PLANTATION_ID);
 
     const [row] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTATION_ID));
-    expect(row.gpsCaptureFrequency).toBe(3);
+    // Columna viva: se conserva la edición offline (igual que lugar/periodo).
+    expect(row.gpsCaptureFrequency).toBe(2);
     expect(row.lugar).toBe('Editado Offline');
     expect(row.periodo).toBe('2027');
+    // Snapshot de server: sí se refresca (para que discard pueda revertir).
+    expect(row.gpsCaptureFrequencyServer).toBe(3);
   });
 
   test('server sin migración 023 (columnas ausentes) no rompe ni escribe NULL', async () => {
