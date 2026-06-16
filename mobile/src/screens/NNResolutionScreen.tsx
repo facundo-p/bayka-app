@@ -121,10 +121,8 @@ export default function NNResolutionScreen() {
     <ScreenContainer withTexture>
       <CustomHeader
         title={`N/N ${safeIndex + 1} de ${total}`}
+        subtitle={subtitle || undefined}
         onBack={() => router.back()}
-        rightElement={
-          <Text style={styles.headerInfo}>{subtitle}</Text>
-        }
       />
 
       {/* Sticky photo with swipe */}
@@ -208,7 +206,6 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: fontSize.xl, color: colors.textSecondary, marginBottom: spacing['4xl'], textAlign: 'center', fontFamily: fonts.regular },
   backButton: { backgroundColor: colors.primary, paddingHorizontal: spacing['4xl'], paddingVertical: spacing.xl, borderRadius: borderRadius.lg },
   backButtonText: { color: colors.white, fontFamily: fonts.bold, fontSize: fontSize.lg },
-  headerInfo: { color: colors.plantationCountFaded, fontSize: fontSize.sm, fontFamily: fonts.regular },
   photo: { height: 260, backgroundColor: colors.border },
   scrollArea: { flex: 1 },
   scrollContent: { paddingTop: spacing.md, paddingBottom: spacing['4xl'] },
