@@ -1,7 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 import { useProfileData } from '../hooks/useProfileData';
-import { useNetStatus } from '../hooks/useNetStatus';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors, fontSize, borderRadius, spacing, fonts } from '../theme';
@@ -15,7 +14,6 @@ interface Props {
 export default function PerfilScreen({ roleLabel }: Props) {
   const { signOut } = useAuth();
   const { profile, loading } = useProfileData();
-  const { isOnline } = useNetStatus();
 
   return (
     <ScreenContainer withTexture>
@@ -41,20 +39,6 @@ export default function PerfilScreen({ roleLabel }: Props) {
           value={profile?.organizacionNombre ?? (loading ? 'Cargando...' : '-')}
           icon="business-outline"
         />
-
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Conexión</Text>
-          <View style={styles.statusValue}>
-            <Ionicons
-              name={isOnline ? 'cloud-done-outline' : 'cloud-offline-outline'}
-              size={16}
-              color={isOnline ? colors.online : colors.offline}
-            />
-            <Text style={[styles.statusText, { color: isOnline ? colors.online : colors.offline }]}>
-              {isOnline ? 'En línea' : 'Sin conexión'}
-            </Text>
-          </View>
-        </View>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.delay(200).duration(400)}>
@@ -153,26 +137,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingVertical: spacing.md,
-  },
-  statusLabel: {
-    fontSize: fontSize.base,
-    color: colors.textSecondary,
-    fontFamily: fonts.regular,
-  },
-  statusValue: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  statusText: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.medium,
   },
   logoutLink: {
     marginTop: spacing['5xl'],
