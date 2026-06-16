@@ -31,6 +31,8 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import ConfirmModal from '../components/ConfirmModal';
 import GpsSignalIndicator from '../components/GpsSignalIndicator';
+import GpsGateBanner from '../components/GpsGateBanner';
+import { useGpsGate } from '../hooks/useGpsGate';
 
 export default function TreeRegistrationScreen() {
   const { id: grupoId } = useLocalSearchParams<{
@@ -58,6 +60,12 @@ export default function TreeRegistrationScreen() {
     grupoCodigo: grupoCodigo ?? '',
     userId,
     getLastGpsFix: gpsWatcher.getLastFix,
+  });
+  const gpsGate = useGpsGate({
+    required: treeReg.gpsCaptureRequired,
+    permissionStatus: gpsWatcher.permissionStatus,
+    servicesEnabled: gpsWatcher.servicesEnabled,
+    refreshWatcher: gpsWatcher.refresh,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
   const nnFlow = useNNFlow({
@@ -172,6 +180,13 @@ export default function TreeRegistrationScreen() {
         </View>
       ) : !isReadOnly ? (
         <>
+          {gpsGate.blocked && (
+            <GpsGateBanner
+              message={gpsGate.message!}
+              unblocking={gpsGate.unblocking}
+              onRequestUnblock={gpsGate.requestUnblock}
+            />
+          )}
           <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
             {speciesOrder.loading ? (
               <ActivityIndicator size="large" color={colors.plantation} style={styles.loader} />
@@ -183,7 +198,7 @@ export default function TreeRegistrationScreen() {
                     treeReg.registerTree(especieId, especieCodigo)
                   }
                   onNNPress={() => nnFlow.registerNN()}
-                  disabled={isReadOnly}
+                  disabled={isReadOnly || gpsGate.blocked}
                 />
               </Animated.View>
             )}
