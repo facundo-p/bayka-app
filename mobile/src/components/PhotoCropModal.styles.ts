@@ -5,6 +5,7 @@ export const HANDLE_SIZE = 28;
 
 export const photoCropModalStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.overlayDark },
+  closeBtn: { position: 'absolute', left: spacing.xxl, padding: spacing.md, zIndex: 10 },
   stage: { flex: 1 },
   dim: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.55)' },
   frame: {

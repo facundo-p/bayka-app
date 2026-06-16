@@ -1,5 +1,4 @@
 import { usePhotoPicker } from './usePhotoPicker';
-import { launchCameraRaw, launchGalleryRaw } from '../services/PhotoService';
 import type { ConfirmModalButton } from '../components/ConfirmModal';
 
 type ShowFn = (config: {
@@ -11,9 +10,9 @@ type ShowFn = (config: {
 }) => void;
 
 /**
- * Wraps usePhotoPicker + PhotoService into a single hook.
- * Screens use this instead of importing PhotoService directly.
+ * Punto de entrada de captura de foto para las pantallas: muestra el selector
+ * (cámara in-app / galería) y devuelve la URI final tras el recorte (#172).
  */
 export function usePhotoCapture(show: ShowFn) {
-  return usePhotoPicker(show, launchCameraRaw, launchGalleryRaw);
+  return usePhotoPicker(show);
 }

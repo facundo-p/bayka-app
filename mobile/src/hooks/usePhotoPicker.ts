@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import type { ConfirmModalButton } from '../components/ConfirmModal';
-import type { RawPhoto } from '../services/PhotoService';
-import { usePhotoCrop } from '../components/PhotoCropProvider';
+import { usePhotoCaptureFlow } from '../components/PhotoCropProvider';
 
 type ShowFn = (config: {
   icon?: string;
@@ -11,35 +10,29 @@ type ShowFn = (config: {
   buttons: ConfirmModalButton[];
 }) => void;
 
-type LaunchRawFn = () => Promise<RawPhoto | null>;
-
 /**
- * Photo picker: elige cámara/galería (ConfirmModal) y luego pasa por el paso de
- * recorte opcional (#167) antes de resolver con la URI final. Devuelve null si
- * se cancela en cualquier punto.
+ * Photo picker: elige cámara (in-app) o galería y delega en el flujo de captura
+ * (#172) que incluye recorte opcional + reintentar. Devuelve la URI final o null.
+ * Las firmas `launchCameraRaw`/`launchGalleryRaw` ya no se inyectan: el origen
+ * lo resuelve `requestPhoto(source)`.
  */
-export function usePhotoPicker(show: ShowFn, launchCameraRaw: LaunchRawFn, launchGalleryRaw: LaunchRawFn) {
-  const { requestCrop } = usePhotoCrop();
+export function usePhotoPicker(show: ShowFn) {
+  const { requestPhoto } = usePhotoCaptureFlow();
 
   const pickPhoto = useCallback((): Promise<string | null> => {
     return new Promise((resolve) => {
-      const pick = async (launch: LaunchRawFn) => {
-        const raw = await launch();
-        if (!raw) { resolve(null); return; }
-        resolve(await requestCrop(raw));
-      };
       show({
         icon: 'camera-outline' as any,
         title: 'Agregar foto',
         message: 'Como queres agregar la foto?',
         buttons: [
-          { label: 'Camara', icon: 'camera-outline' as any, onPress: () => { void pick(launchCameraRaw); }, style: 'primary' },
-          { label: 'Galeria', icon: 'images-outline' as any, onPress: () => { void pick(launchGalleryRaw); }, style: 'primary' },
+          { label: 'Camara', icon: 'camera-outline' as any, onPress: () => { requestPhoto('camera').then(resolve); }, style: 'primary' },
+          { label: 'Galeria', icon: 'images-outline' as any, onPress: () => { requestPhoto('gallery').then(resolve); }, style: 'primary' },
           { label: 'Cancelar', onPress: () => { resolve(null); }, style: 'cancel' },
         ],
       });
     });
-  }, [show, launchCameraRaw, launchGalleryRaw, requestCrop]);
+  }, [show, requestPhoto]);
 
   return { pickPhoto };
 }

@@ -1,46 +1,86 @@
 /**
- * PhotoCropProvider — hospeda el paso de recorte (#167) a nivel app.
- * Expone `requestCrop(raw)` que muestra el PhotoCropModal y resuelve con la URI
- * final (recortada o completa) o null si se cancela. Así cualquier captura de
- * foto inserta el recorte en un solo paso, sin acoplar el modal a cada pantalla.
+ * PhotoCropProvider — hospeda el flujo de captura de foto en UN solo paso (#167/#172).
+ * Expone `requestPhoto(source)`:
+ *  - 'camera'  → cámara in-app → recorte opcional → URI final.
+ *  - 'gallery' → selector de galería → recorte opcional → URI final.
+ * El recorte permite "Reintentar" (reabre cámara o galería según el origen).
+ * Resuelve con la URI final (recortada o completa) o null si se cancela.
  */
-import { createContext, useCallback, useContext, useState } from 'react';
+import { createContext, useContext, useState } from 'react';
+import CameraCaptureView from './CameraCaptureView';
 import PhotoCropModal from './PhotoCropModal';
-import type { RawPhoto } from '../services/PhotoService';
+import { launchGalleryRaw, type RawPhoto } from '../services/PhotoService';
+
+export type PhotoSource = 'camera' | 'gallery';
 
 interface PhotoCropContextValue {
-  requestCrop: (raw: RawPhoto) => Promise<string | null>;
+  requestPhoto: (source: PhotoSource) => Promise<string | null>;
 }
 
 const PhotoCropContext = createContext<PhotoCropContextValue | null>(null);
 
-export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
-  const [pending, setPending] = useState<{ raw: RawPhoto; resolve: (v: string | null) => void } | null>(null);
+type Resolve = (value: string | null) => void;
+type Flow =
+  | { stage: 'camera'; resolve: Resolve }
+  | { stage: 'crop'; raw: RawPhoto; source: PhotoSource; resolve: Resolve }
+  | null;
 
-  const requestCrop = useCallback(
-    (raw: RawPhoto) => new Promise<string | null>((resolve) => setPending({ raw, resolve })),
-    [],
-  );
+export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
+  const [flow, setFlow] = useState<Flow>(null);
+
+  function requestPhoto(source: PhotoSource): Promise<string | null> {
+    return new Promise<string | null>((resolve) => {
+      if (source === 'camera') {
+        setFlow({ stage: 'camera', resolve });
+      } else {
+        launchGalleryRaw().then((raw) => {
+          if (raw) setFlow({ stage: 'crop', raw, source: 'gallery', resolve });
+          else resolve(null);
+        });
+      }
+    });
+  }
 
   function finish(value: string | null) {
-    pending?.resolve(value);
-    setPending(null);
+    flow?.resolve(value);
+    setFlow(null);
+  }
+
+  function retry() {
+    if (!flow || flow.stage !== 'crop') return;
+    const { resolve, source } = flow;
+    if (source === 'camera') {
+      setFlow({ stage: 'camera', resolve });
+    } else {
+      launchGalleryRaw().then((raw) => {
+        if (raw) setFlow({ stage: 'crop', raw, source: 'gallery', resolve });
+        // Si cancela la galería, se mantiene el recorte actual.
+      });
+    }
   }
 
   return (
-    <PhotoCropContext.Provider value={{ requestCrop }}>
+    <PhotoCropContext.Provider value={{ requestPhoto }}>
       {children}
+      <CameraCaptureView
+        visible={flow?.stage === 'camera'}
+        onCapture={(raw) =>
+          setFlow((f) => (f && f.stage === 'camera' ? { stage: 'crop', raw, source: 'camera', resolve: f.resolve } : f))
+        }
+        onCancel={() => finish(null)}
+      />
       <PhotoCropModal
-        raw={pending?.raw ?? null}
+        raw={flow?.stage === 'crop' ? flow.raw : null}
         onCancel={() => finish(null)}
         onSave={(uri) => finish(uri)}
+        onRetry={flow?.stage === 'crop' ? retry : undefined}
       />
     </PhotoCropContext.Provider>
   );
 }
 
-export function usePhotoCrop(): PhotoCropContextValue {
+export function usePhotoCaptureFlow(): PhotoCropContextValue {
   const ctx = useContext(PhotoCropContext);
-  if (!ctx) throw new Error('usePhotoCrop debe usarse dentro de PhotoCropProvider');
+  if (!ctx) throw new Error('usePhotoCaptureFlow debe usarse dentro de PhotoCropProvider');
   return ctx;
 }
