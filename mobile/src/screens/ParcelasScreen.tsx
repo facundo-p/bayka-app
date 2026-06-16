@@ -91,12 +91,11 @@ export default function ParcelasScreen() {
     );
   }
 
-  const title = lugar ? `Parcelas — ${lugar}` : 'Parcelas';
-
   return (
     <ScreenContainer withTexture>
       <CustomHeader
-        title={title}
+        title="Parcelas"
+        subtitle={lugar || undefined}
         onBack={goBack}
         rightElement={
           canAddParcela ? (
