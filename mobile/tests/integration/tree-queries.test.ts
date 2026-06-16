@@ -16,7 +16,7 @@ jest.mock('../../src/database/client', () => ({
   },
 }));
 
-import { getTreesForGroup } from '../../src/queries/treeQueries';
+import { getTreesForGroup, getTreeDetail } from '../../src/queries/treeQueries';
 
 const NOW = '2026-06-10T12:00:00';
 
@@ -68,4 +68,30 @@ test('expone latitude/longitude/gpsAccuracy y especie resuelta, orden desc', asy
   expect(conGps.especieCodigo).toBe('EUC');
   expect(sinGps.latitude).toBeNull();
   expect(sinGps.gpsAccuracy).toBeNull();
+});
+
+test('getTreeDetail incluye nombre científico y punto GPS completo (#155)', async () => {
+  await mockTestDb.insert(species).values({
+    id: 'esp-2', codigo: 'ALG', nombre: 'Algarrobo',
+    nombreCientifico: 'Prosopis alba', createdAt: NOW,
+  });
+  await mockTestDb.insert(trees).values({
+    id: 't-3', groupId: 'g-1', especieId: 'esp-2', posicion: 3, subId: 'PL1ALG3',
+    usuarioRegistro: 'u-1', createdAt: NOW,
+    latitude: -32.1, longitude: -61.2, gpsAccuracy: 4, gpsCapturedAt: NOW,
+  });
+
+  const [row] = await getTreeDetail('t-3');
+  expect(row.especieNombre).toBe('Algarrobo');
+  expect(row.especieNombreCientifico).toBe('Prosopis alba');
+  expect(row.latitude).toBeCloseTo(-32.1);
+  expect(row.longitude).toBeCloseTo(-61.2);
+  expect(row.gpsAccuracy).toBeCloseTo(4);
+});
+
+test('getTreeDetail de un N/N devuelve especie nula (#155)', async () => {
+  const [row] = await getTreeDetail('t-2');
+  expect(row.especieId).toBeNull();
+  expect(row.especieNombre).toBeNull();
+  expect(row.especieNombreCientifico).toBeNull();
 });

@@ -17,6 +17,7 @@ import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
 import PhotoViewerModal from '../components/PhotoViewerModal';
 import TreeListModal from '../components/TreeListModal';
+import TreeDetailModal from '../components/TreeDetailModal';
 import TreeConfigModal from '../components/TreeConfigModal';
 import ReadOnlyTreeView from '../components/ReadOnlyTreeView';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -35,6 +36,7 @@ import GpsSignalIndicator from '../components/GpsSignalIndicator';
 import GpsGateBanner from '../components/GpsGateBanner';
 import LastTreeGpsRow from '../components/LastTreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
+import { getTreeEditGating } from '../utils/treeEditGating';
 
 export default function TreeRegistrationScreen() {
   const { id: grupoId } = useLocalSearchParams<{
@@ -52,6 +54,7 @@ export default function TreeRegistrationScreen() {
 
   const [viewingPhoto, setViewingPhoto] = useState<{ uri: string; treeId: string } | null>(null);
   const [showTreeList, setShowTreeList] = useState(false);
+  const [editingTreeId, setEditingTreeId] = useState<string | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
 
@@ -146,6 +149,13 @@ export default function TreeRegistrationScreen() {
 
   const { dataLoaded, isReadOnly, canReactivate, totalCount, unresolvedNN,
     sortedTrees, lastThree, finalizing, deleting, deletingTreeId } = treeReg;
+
+  // Gating del detalle de árbol (issue #155) — ver getTreeEditGating.
+  const { canEdit: canEditTree, canDelete: canDeleteTree } = getTreeEditGating({
+    plantacionEstado: treeReg.plantacionEstado,
+    subgroupEstado: treeReg.subgroupEstado,
+    isCreator: treeReg.isCreator,
+  });
 
   return (
     <ScreenContainer withTexture>
@@ -254,6 +264,7 @@ export default function TreeRegistrationScreen() {
           canReactivate={canReactivate}
           onReactivate={handleReactivate}
           onViewPhoto={(treeId, uri) => setViewingPhoto({ uri, treeId })}
+          onSelectTree={setEditingTreeId}
         />
       )}
 
@@ -266,6 +277,22 @@ export default function TreeRegistrationScreen() {
         onViewPhoto={(treeId, uri) => setViewingPhoto({ uri, treeId })}
         onAttachPhoto={(treeId) => treeReg.addPhotoToTree(treeId, pickPhoto)}
         onDeleteTree={handleDeleteTree}
+        onSelectTree={(treeId) => { setShowTreeList(false); setEditingTreeId(treeId); }}
+      />
+
+      <TreeDetailModal
+        visible={editingTreeId !== null}
+        treeId={editingTreeId}
+        canEdit={canEditTree}
+        canDelete={canDeleteTree}
+        onClose={() => setEditingTreeId(null)}
+        onCapturePhoto={(treeId) => treeReg.addPhotoToTree(treeId, pickPhoto)}
+        onRemovePhoto={(treeId) => treeReg.removePhoto(treeId)}
+        onCaptureGps={(treeId) => treeReg.captureTreeGps(treeId)}
+        onDelete={(treeId, posicion) => {
+          setEditingTreeId(null);
+          handleDeleteTree(treeId, posicion);
+        }}
       />
 
       <PhotoViewerModal

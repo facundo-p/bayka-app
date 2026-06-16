@@ -11,9 +11,10 @@ interface Props {
   canReactivate: boolean;
   onReactivate: () => void;
   onViewPhoto: (treeId: string, uri: string) => void;
+  onSelectTree: (treeId: string) => void;
 }
 
-export default function ReadOnlyTreeView({ trees, canReactivate, onReactivate, onViewPhoto }: Props) {
+export default function ReadOnlyTreeView({ trees, canReactivate, onReactivate, onViewPhoto, onSelectTree }: Props) {
   return (
     <>
       {canReactivate && (
@@ -33,6 +34,7 @@ export default function ReadOnlyTreeView({ trees, canReactivate, onReactivate, o
             item={item}
             isReadOnly={true}
             onViewPhoto={onViewPhoto}
+            onPress={onSelectTree}
           />
         )}
         ListEmptyComponent={<Text style={styles.empty}>No hay árboles</Text>}
