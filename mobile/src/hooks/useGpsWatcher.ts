@@ -1,6 +1,6 @@
 import type { LocationSubscription } from 'expo-location';
 import { useFocusEffect } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import {
@@ -37,8 +37,12 @@ export interface UseGpsWatcherResult {
  * que ya está corriendo. Sin esto, cada transición a 'active' (incluida la que
  * dispara el propio diálogo de permiso) reiniciaba el watcher y re-pedía el
  * permiso en ráfaga → titileo del ícono de ubicación y crash al inicio.
+ *
+ * `enabled` (toggle de medición de GPS, #120/#121): con la medición desactivada
+ * el watcher no corre ni pide permiso (ahorro de batería). Al re-activarla
+ * estando la pantalla enfocada, arranca y vuelve a pedir permiso una vez.
  */
-export function useGpsWatcher(): UseGpsWatcherResult {
+export function useGpsWatcher(enabled: boolean = true): UseGpsWatcherResult {
   const [lastFix, setLastFix] = useState<GpsFix | null>(null);
   const [permissionStatus, setPermissionStatus] = useState<GpsPermissionStatus>('pendiente');
   const [servicesEnabled, setServicesEnabled] = useState<boolean | null>(null);
@@ -48,6 +52,7 @@ export function useGpsWatcher(): UseGpsWatcherResult {
   const focusedRef = useRef(false);
   const startingRef = useRef(false); // evita ejecuciones concurrentes (AppState + refresh)
   const promptedRef = useRef(false); // el diálogo de permiso se muestra una sola vez
+  const enabledRef = useRef(enabled); // lectura del valor vigente dentro de ensureWatching
 
   const getLastFix = useCallback(() => lastFixRef.current, []);
 
@@ -62,6 +67,10 @@ export function useGpsWatcher(): UseGpsWatcherResult {
    * en resume es false (lee el permiso sin abrir diálogo).
    */
   const ensureWatching = useCallback(async (prompt: boolean) => {
+    if (!enabledRef.current) {
+      stopWatching();
+      return;
+    }
     if (startingRef.current) return;
     startingRef.current = true;
     try {
@@ -113,6 +122,23 @@ export function useGpsWatcher(): UseGpsWatcherResult {
       };
     }, [ensureWatching, stopWatching]),
   );
+
+  // Reacciona al toggle de medición de GPS (useFocusEffect no re-corre por
+  // cambio de prop). Al desactivar: detiene y limpia el estado. Al re-activar
+  // con la pantalla enfocada: re-arranca pidiendo permiso una vez.
+  useEffect(() => {
+    enabledRef.current = enabled;
+    if (!enabled) {
+      stopWatching();
+      lastFixRef.current = null;
+      setLastFix(null);
+      setPermissionStatus('pendiente');
+      setServicesEnabled(null);
+      promptedRef.current = false;
+    } else if (focusedRef.current) {
+      void ensureWatching(true);
+    }
+  }, [enabled, stopWatching, ensureWatching]);
 
   return { lastFix, getLastFix, permissionStatus, servicesEnabled, refresh };
 }

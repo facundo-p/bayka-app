@@ -6,6 +6,7 @@ import {
 } from '../../repositories/TreeRepository';
 import { localIsoFromMs } from '../../utils/dateUtils';
 import { gpsLog } from '../../utils/gpsLogger';
+import { getGpsEnabled } from '../settings/gpsEnabledStore';
 import { isFixFresh, shouldCaptureGps } from './captureRules';
 import { getCurrentGpsFix, GpsFix } from './locationClient';
 
@@ -38,12 +39,19 @@ export async function insertTreeWithGps(
  * `gpsCapturedAt` registra el momento del tap, no el de resolución del fix.
  * En el alta se invoca fire-and-forget; la re-captura usa el booleano de
  * retorno (true = punto escrito) para dar feedback. Nunca lanza.
+ *
+ * Con la medición de GPS desactivada (toggle de Ajustes, #121) no se captura ni
+ * se pide un fix fresco: el árbol queda sin coordenadas y no se prende el GPS.
  */
 export async function attachGpsCapture(
   treeId: string,
   watcherFix: GpsFix | null,
   tapAtMs: number,
 ): Promise<boolean> {
+  if (!getGpsEnabled()) {
+    gpsLog.info(`árbol ${treeId}: captura GPS omitida (medición desactivada)`);
+    return false;
+  }
   try {
     const fix = isFixFresh(watcherFix, tapAtMs) ? watcherFix : await getCurrentGpsFix();
     if (!fix) {
