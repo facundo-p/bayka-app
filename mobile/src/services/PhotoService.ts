@@ -36,7 +36,9 @@ export async function launchCamera(): Promise<string | null> {
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     quality: 1,
-    allowsEditing: false,
+    // allowsEditing: paso de recorte nativo tras capturar (#161). En Android el
+    // recorte es libre; lo recortado es lo que se guarda. Cancelar degrada sin crash.
+    allowsEditing: true,
   });
 
   if (result.canceled || !result.assets?.[0]) return null;
@@ -56,7 +58,8 @@ export async function launchGallery(): Promise<string | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.Images,
     quality: 1,
-    allowsEditing: false,
+    // allowsEditing: permite recortar la imagen elegida antes de guardarla (#161).
+    allowsEditing: true,
   });
 
   if (result.canceled || !result.assets?.[0]) return null;
