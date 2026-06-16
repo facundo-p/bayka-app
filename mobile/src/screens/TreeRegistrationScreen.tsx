@@ -30,6 +30,7 @@ import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../u
 import { useConfirm } from '../hooks/useConfirm';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import ConfirmModal from '../components/ConfirmModal';
+import GpsSignalIndicator from '../components/GpsSignalIndicator';
 
 export default function TreeRegistrationScreen() {
   const { id: grupoId } = useLocalSearchParams<{
@@ -152,7 +153,17 @@ export default function TreeRegistrationScreen() {
       )}
 
       {dataLoaded && !isReadOnly && (
-        <LastThreeTrees trees={lastThree} onUndo={() => treeReg.undoLast()} />
+        <LastThreeTrees
+          trees={lastThree}
+          onUndo={() => treeReg.undoLast()}
+          headerAccessory={
+            <GpsSignalIndicator
+              lastFix={gpsWatcher.lastFix}
+              permissionStatus={gpsWatcher.permissionStatus}
+              servicesEnabled={gpsWatcher.servicesEnabled}
+            />
+          }
+        />
       )}
 
       {!dataLoaded ? (

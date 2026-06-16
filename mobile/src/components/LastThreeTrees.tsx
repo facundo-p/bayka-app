@@ -1,13 +1,10 @@
-import { View, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
+import type { ReactNode } from 'react';
+import { View, Text, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import { getSpeciesCode } from '../utils/speciesHelpers';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CHIP_GAP = 6;
-const CHIP_PADDING = 8;
-const CHIP_WIDTH = (SCREEN_WIDTH - CHIP_PADDING * 2 - CHIP_GAP * 2) / 3;
+import { lastThreeTreesStyles as styles } from './LastThreeTrees.styles';
 
 export interface TreeChipItem {
   id: string;
@@ -25,12 +22,17 @@ export interface TreeChipItem {
 interface Props {
   trees: TreeChipItem[];
   onUndo: () => void;
+  /** Accesorio a la derecha del label (ej. semáforo de señal GPS). */
+  headerAccessory?: ReactNode;
 }
 
-export default function LastThreeTrees({ trees, onUndo }: Props) {
+export default function LastThreeTrees({ trees, onUndo, headerAccessory }: Props) {
   return (
     <Animated.View entering={FadeInDown.duration(300)} style={styles.container}>
-      <Text style={styles.label}>Últimos ingresados</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>Últimos ingresados</Text>
+        {headerAccessory}
+      </View>
       <View style={styles.row}>
         {[0, 1, 2].map((slotIndex) => {
           const reversedTrees = [...trees].reverse();
@@ -57,65 +59,3 @@ export default function LastThreeTrees({ trees, onUndo }: Props) {
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  label: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    fontFamily: fonts.medium,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.recentBg,
-    borderRadius: borderRadius.round,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: colors.recentBorder,
-    gap: spacing.sm,
-    width: CHIP_WIDTH,
-  },
-  chipEmpty: {
-    backgroundColor: 'transparent',
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-  },
-  chipLast: {
-    backgroundColor: colors.recentBgActive,
-    borderColor: colors.recentText,
-    borderWidth: 2,
-  },
-  chipText: {
-    fontSize: fontSize.lg,
-    fontFamily: fonts.semiBold,
-    color: colors.recentText,
-  },
-  chipTextLast: {
-    fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
-  },
-  undoButton: {
-    padding: spacing.xs,
-  },
-});
