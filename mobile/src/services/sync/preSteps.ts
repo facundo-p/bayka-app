@@ -92,6 +92,8 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
           estado: p.estado,
           creado_por: p.creadoPor,
           created_at: p.createdAt,
+          gps_capture_frequency: p.gpsCaptureFrequency,
+          gps_capture_required: p.gpsCaptureRequired,
         });
 
       // unique_violation = la plantación ya existe en el server → seguimos con species
@@ -162,7 +164,14 @@ export async function uploadPendingEdits(): Promise<void> {
     try {
       const { error } = await supabase
         .from('plantations')
-        .update({ lugar: p.lugar, periodo: p.periodo })
+        .update({
+          lugar: p.lugar,
+          periodo: p.periodo,
+          // La edición offline puede incluir config GPS; subir el valor local
+          // vigente es idempotente cuando no se editó (espeja al server).
+          gps_capture_frequency: p.gpsCaptureFrequency,
+          gps_capture_required: p.gpsCaptureRequired,
+        })
         .eq('id', p.id);
 
       if (error) {

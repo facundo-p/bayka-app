@@ -17,6 +17,7 @@ import {
   updatePlantation,
   finalizePlantation,
   discardPlantationEdit,
+  PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
 import { generateAndPersistIds } from '../services/idGenerationService';
 // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
@@ -205,11 +206,15 @@ export function usePlantationAdmin() {
   }
 
   // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
-  async function handleCreateSubmit(lugar: string, periodo: string): Promise<string> {
+  async function handleCreateSubmit(
+    lugar: string,
+    periodo: string,
+    gps?: PlantationGpsSettings
+  ): Promise<string> {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
-    const base = { lugar, periodo, organizacionId, creadoPor: userId };
+    const base = { lugar, periodo, organizacionId, creadoPor: userId, gps };
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
       const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
@@ -238,8 +243,13 @@ export function usePlantationAdmin() {
     return true;
   }
 
-  async function handleEditSubmit(plantacionId: string, lugar: string, periodo: string) {
-    await updatePlantation(plantacionId, lugar, periodo);
+  async function handleEditSubmit(
+    plantacionId: string,
+    lugar: string,
+    periodo: string,
+    gps?: PlantationGpsSettings
+  ) {
+    await updatePlantation(plantacionId, lugar, periodo, gps);
   }
 
   function handleDiscardEdit(plantacionId: string) {

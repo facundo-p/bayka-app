@@ -27,11 +27,27 @@ import NetInfo from '@react-native-community/netinfo';
  * CRITICAL (Pitfall 2): pullFromServer does NOT pull the plantation row itself —
  * only groups/species/users. We must upsert the returned row directly.
  */
+/** Config GPS por plantación que el admin puede definir en el form. */
+export interface PlantationGpsSettings {
+  gpsCaptureFrequency: number;
+  gpsCaptureRequired: boolean;
+}
+
+/** Mapea la config GPS a las columnas del server; vacío si no se pasó. */
+function gpsToRemoteColumns(gps?: PlantationGpsSettings) {
+  if (!gps) return {};
+  return {
+    gps_capture_frequency: gps.gpsCaptureFrequency,
+    gps_capture_required: gps.gpsCaptureRequired,
+  };
+}
+
 export async function createPlantation(
   lugar: string,
   periodo: string,
   organizacionId: string,
-  creadoPor: string
+  creadoPor: string,
+  gps?: PlantationGpsSettings
 ): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
   const { data, error } = await supabase
     .from('plantations')
@@ -41,6 +57,7 @@ export async function createPlantation(
       organizacion_id: organizacionId,
       creado_por: creadoPor,
       estado: 'activa',
+      ...gpsToRemoteColumns(gps),
     })
     .select()
     .single();
@@ -61,6 +78,7 @@ export async function createPlantation(
       pendingSync: false,
       lugarServer: data.lugar,
       periodoServer: data.periodo,
+      ...(gps ?? {}),
     })
     .onConflictDoUpdate({
       target: plantations.id,
@@ -83,7 +101,8 @@ export async function createPlantationLocally(
   lugar: string,
   periodo: string,
   organizacionId: string,
-  creadoPor: string
+  creadoPor: string,
+  gps?: PlantationGpsSettings
 ): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
@@ -96,6 +115,7 @@ export async function createPlantationLocally(
     creadoPor,
     createdAt: now,
     pendingSync: true,
+    ...(gps ?? {}),
   });
   notifyDataChanged();
   return { id, lugar, periodo, estado: 'activa' };
@@ -118,8 +138,12 @@ export async function createPlantationLocally(
 export async function updatePlantation(
   plantacionId: string,
   lugar: string,
-  periodo: string
+  periodo: string,
+  gps?: PlantationGpsSettings
 ): Promise<void> {
+  // La config GPS no tiene snapshot/discard propio: el pull siempre la
+  // refresca desde el server, así que un descarte queda autocorregido.
+  const gpsLocal = gps ?? {};
   // Check if this is an offline-created plantation (not yet on server)
   const [row] = await db
     .select({
@@ -139,7 +163,7 @@ export async function updatePlantation(
   if (row.pendingSync) {
     await db
       .update(plantations)
-      .set({ lugar, periodo })
+      .set({ lugar, periodo, ...gpsLocal })
       .where(eq(plantations.id, plantacionId));
     notifyDataChanged();
     return;
@@ -151,7 +175,7 @@ export async function updatePlantation(
     try {
       const { error } = await supabase
         .from('plantations')
-        .update({ lugar, periodo })
+        .update({ lugar, periodo, ...gpsToRemoteColumns(gps) })
         .eq('id', plantacionId);
       if (error) throw error;
 
@@ -164,6 +188,7 @@ export async function updatePlantation(
           lugarServer: lugar,
           periodoServer: periodo,
           pendingEdit: false,
+          ...gpsLocal,
         })
         .where(eq(plantations.id, plantacionId));
       notifyDataChanged();
@@ -181,6 +206,7 @@ export async function updatePlantation(
     .set({
       lugar,
       periodo,
+      ...gpsLocal,
       pendingEdit: true,
       // Only snapshot server values on first offline edit
       ...(isFirstOfflineEdit
