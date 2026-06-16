@@ -5,6 +5,11 @@ jest.mock('../../src/queries/exportQueries', () => ({
   getExportRows: jest.fn(),
 }));
 
+// Refresco de especies previo al export: mockeado para no cargar supabase real.
+jest.mock('../../src/services/sync/preSteps', () => ({
+  pullSpeciesFromServer: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockWrite = jest.fn();
 
 jest.mock('expo-file-system', () => {
@@ -36,11 +41,13 @@ jest.mock('xlsx', () => ({
 
 import { exportToCSV, exportToExcel } from '../../src/services/ExportService';
 import { getExportRows } from '../../src/queries/exportQueries';
+import { pullSpeciesFromServer } from '../../src/services/sync/preSteps';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 
 const mockGetExportRows = getExportRows as jest.Mock;
 const mockShareAsync = Sharing.shareAsync as jest.Mock;
+const mockPullSpecies = pullSpeciesFromServer as jest.Mock;
 
 const sampleRows = [
   {
@@ -203,6 +210,70 @@ describe('ExportService', () => {
           mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         })
       );
+    });
+  });
+
+  // ─── Especie no resuelta (N/N) ──────────────────────────────────────────────
+
+  describe('especie no resuelta → "N/N"', () => {
+    const nnRow = {
+      globalId: 5870,
+      idParcial: 5870,
+      lugar: 'Zona Norte',
+      plantacionLugar: 'Zona Norte',
+      parcelaNombre: 'Parcela 1',
+      grupoNombre: 'Linea 14',
+      subId: 'MP3L14ZZZ25',
+      periodo: '2026',
+      especieNombre: null, // especieId null o huérfano → LEFT JOIN devuelve null
+    };
+
+    it('Excel: especieNombre null se serializa como "N/N"', async () => {
+      mockGetExportRows.mockResolvedValueOnce([nnRow]);
+
+      await exportToExcel('plantation-1', 'ZonaNorte');
+
+      const sheetArg = (XLSX.utils.json_to_sheet as jest.Mock).mock.calls[0][0];
+      expect(sheetArg[0]['Especie']).toBe('N/N');
+    });
+
+    it('CSV: especieNombre null se serializa como "N/N"', async () => {
+      mockGetExportRows.mockResolvedValueOnce([nnRow]);
+
+      await exportToCSV('plantation-1', 'ZonaNorte');
+
+      const written: string = decodeWritten(mockWrite.mock.calls[0][0]);
+      const dataRow = written.split('\n')[1].split(',');
+      // index 8 = columna Especie
+      expect(dataRow[8]).toBe('N/N');
+    });
+  });
+
+  // ─── Refresco de especies previo al export ──────────────────────────────────
+
+  describe('sync de especies previa', () => {
+    it('Excel: refresca el catálogo de especies antes de leer las filas', async () => {
+      await exportToExcel('plantation-1', 'ZonaNorte');
+
+      expect(mockPullSpecies).toHaveBeenCalledTimes(1);
+      // El refresco debe ocurrir antes de getExportRows.
+      expect(mockPullSpecies.mock.invocationCallOrder[0])
+        .toBeLessThan(mockGetExportRows.mock.invocationCallOrder[0]);
+    });
+
+    it('CSV: refresca el catálogo de especies antes de leer las filas', async () => {
+      await exportToCSV('plantation-1', 'ZonaNorte');
+
+      expect(mockPullSpecies).toHaveBeenCalledTimes(1);
+      expect(mockPullSpecies.mock.invocationCallOrder[0])
+        .toBeLessThan(mockGetExportRows.mock.invocationCallOrder[0]);
+    });
+
+    it('no bloquea el export si el refresco de especies falla', async () => {
+      mockPullSpecies.mockRejectedValueOnce(new Error('sin red'));
+
+      await expect(exportToExcel('plantation-1', 'ZonaNorte')).resolves.toBeUndefined();
+      expect(mockGetExportRows).toHaveBeenCalledTimes(1);
     });
   });
 });

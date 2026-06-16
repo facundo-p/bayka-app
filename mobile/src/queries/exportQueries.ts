@@ -18,6 +18,12 @@ import { eq, and, asc, isNotNull } from 'drizzle-orm';
  *
  * `parcelaNombre` is nullable because LEFT JOIN to `parcelas`: legacy groups
  * without `parcelaId` produce `null`. Consumer normalizes `?? ''` (D-18-10).
+ *
+ * `especieNombre` es nullable por el LEFT JOIN a `species`: un árbol cuya
+ * `especieId` es null o apunta a una especie ausente del catálogo local (especie
+ * huérfana por sync incompleto) NO debe desaparecer del export — el INNER JOIN
+ * previo lo descartaba en silencio. El consumidor lo etiqueta "N/N" para que el
+ * problema sea visible en la planilla en vez de perder el árbol.
  */
 export interface ExportRow {
   globalId: number | null;
@@ -28,13 +34,18 @@ export interface ExportRow {
   grupoNombre: string;
   subId: string;
   periodo: string;
-  especieNombre: string;
+  especieNombre: string | null;
 }
 
 /**
  * EXPO-03 / EXPO-PARC-01 / EXPO-PARC-02
  * Returns all tree rows with required export columns, ordered by globalId ASC.
- * JOIN: trees → groups → plantations, trees → species, groups LEFT JOIN parcelas.
+ * JOIN: trees → groups → plantations; LEFT JOIN a parcelas y a species.
+ *
+ * `species` va por LEFT JOIN a propósito: con INNER JOIN, un árbol con
+ * `especieId` null o huérfano (especie no presente en el catálogo local) se
+ * caía del export sin aviso. Con LEFT JOIN el árbol siempre sale y el consumidor
+ * lo marca "N/N".
  */
 export async function getExportRows(plantacionId: string): Promise<ExportRow[]> {
   return db
@@ -53,7 +64,7 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
-    .innerJoin(species, eq(trees.especieId, species.id))
+    .leftJoin(species, eq(trees.especieId, species.id))
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(trees.globalId));
 }
