@@ -6,8 +6,9 @@
  */
 import { useState } from 'react';
 import { Modal, View, Text, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors } from '../theme';
+import { colors, spacing } from '../theme';
 import { useTreeDetail } from '../hooks/useTreeDetail';
 import { getSpeciesName } from '../utils/speciesHelpers';
 import PhotoViewer from './PhotoViewer';
@@ -36,6 +37,7 @@ export default function TreeDetailModal({
   onCaptureGps,
   onDelete,
 }: Props) {
+  const insets = useSafeAreaInsets();
   const tree = useTreeDetail(treeId);
   const [busyPhoto, setBusyPhoto] = useState(false);
   const [busyGps, setBusyGps] = useState(false);
@@ -72,7 +74,7 @@ export default function TreeDetailModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
           <Text style={styles.title}>{tree ? `Árbol ${tree.posicion}` : 'Árbol'}</Text>
           <Pressable onPress={onClose} hitSlop={12} accessibilityLabel="Cerrar">
             <Ionicons name="close" size={24} color={colors.textMedium} />
