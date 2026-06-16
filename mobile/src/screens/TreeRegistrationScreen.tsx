@@ -15,7 +15,7 @@ import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
 import LastThreeTrees from '../components/LastThreeTrees';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
-import PhotoViewerModal from '../components/PhotoViewerModal';
+import PhotoViewer from '../components/PhotoViewer';
 import TreeListModal from '../components/TreeListModal';
 import TreeDetailModal from '../components/TreeDetailModal';
 import TreeConfigModal from '../components/TreeConfigModal';
@@ -295,21 +295,21 @@ export default function TreeRegistrationScreen() {
         }}
       />
 
-      <PhotoViewerModal
-        visible={!!viewingPhoto}
-        photoUri={viewingPhoto?.uri ?? null}
+      <PhotoViewer
+        uri={viewingPhoto?.uri ?? null}
         onClose={() => setViewingPhoto(null)}
-        onReplace={async () => {
+        onReplace={() => {
           if (!viewingPhoto) return;
-          const newUri = await pickPhoto();
-          if (newUri) {
-            await treeReg.updatePhoto(viewingPhoto.treeId, newUri);
-            setViewingPhoto({ uri: newUri, treeId: viewingPhoto.treeId });
-          }
+          void pickPhoto().then((newUri) => {
+            if (newUri) {
+              void treeReg.updatePhoto(viewingPhoto.treeId, newUri);
+              setViewingPhoto({ uri: newUri, treeId: viewingPhoto.treeId });
+            }
+          });
         }}
-        onRemove={async () => {
+        onRemove={() => {
           if (!viewingPhoto) return;
-          await treeReg.removePhoto(viewingPhoto.treeId);
+          void treeReg.removePhoto(viewingPhoto.treeId);
           setViewingPhoto(null);
         }}
       />

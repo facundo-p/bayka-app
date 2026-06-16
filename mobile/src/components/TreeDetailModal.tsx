@@ -10,6 +10,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { useTreeDetail } from '../hooks/useTreeDetail';
 import { getSpeciesName } from '../utils/speciesHelpers';
+import PhotoViewer from './PhotoViewer';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
 
 interface Props {
@@ -39,6 +40,7 @@ export default function TreeDetailModal({
   const [busyPhoto, setBusyPhoto] = useState(false);
   const [busyGps, setBusyGps] = useState(false);
   const [gpsFailed, setGpsFailed] = useState(false);
+  const [zoomUri, setZoomUri] = useState<string | null>(null);
 
   async function handleCapturePhoto() {
     if (!tree) return;
@@ -97,7 +99,9 @@ export default function TreeDetailModal({
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Foto</Text>
               {hasPhoto ? (
-                <Image source={{ uri: tree.fotoUrl! }} style={styles.photo} resizeMode="cover" />
+                <Pressable onPress={() => setZoomUri(tree.fotoUrl!)} accessibilityLabel="Ampliar foto">
+                  <Image source={{ uri: tree.fotoUrl! }} style={styles.photo} resizeMode="cover" />
+                </Pressable>
               ) : (
                 <View style={styles.emptyBox}>
                   <Ionicons name="image-outline" size={28} color={colors.textLight} />
@@ -175,6 +179,7 @@ export default function TreeDetailModal({
             )}
           </ScrollView>
         )}
+        <PhotoViewer uri={zoomUri} onClose={() => setZoomUri(null)} />
       </View>
     </Modal>
   );
