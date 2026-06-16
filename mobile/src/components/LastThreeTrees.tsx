@@ -19,6 +19,7 @@ export interface TreeChipItem {
   usuarioRegistro: string;
   /** Punto GPS capturado; null/ausente = árbol sin coordenadas. */
   latitude?: number | null;
+  gpsAccuracy?: number | null;
 }
 
 interface Props {
@@ -26,9 +27,11 @@ interface Props {
   onUndo: () => void;
   /** Accesorio a la derecha del label (ej. semáforo de señal GPS). */
   headerAccessory?: ReactNode;
+  /** Fila extra bajo los chips (ej. precisión + re-captura del último árbol). */
+  footerAccessory?: ReactNode;
 }
 
-export default function LastThreeTrees({ trees, onUndo, headerAccessory }: Props) {
+export default function LastThreeTrees({ trees, onUndo, headerAccessory, footerAccessory }: Props) {
   return (
     <Animated.View entering={FadeInDown.duration(300)} style={styles.container}>
       <View style={styles.labelRow}>
@@ -66,6 +69,7 @@ export default function LastThreeTrees({ trees, onUndo, headerAccessory }: Props
           );
         })}
       </View>
+      {footerAccessory}
     </Animated.View>
   );
 }

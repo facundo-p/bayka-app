@@ -32,6 +32,7 @@ import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import ConfirmModal from '../components/ConfirmModal';
 import GpsSignalIndicator from '../components/GpsSignalIndicator';
 import GpsGateBanner from '../components/GpsGateBanner';
+import LastTreeGpsRow from '../components/LastTreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
 
 export default function TreeRegistrationScreen() {
@@ -123,6 +124,15 @@ export default function TreeRegistrationScreen() {
       'Reactivar', () => treeReg.executeReactivate(), { icon: 'refresh-outline' });
   }
 
+  async function handleRecaptureGps() {
+    const captured = await treeReg.recaptureLastGps();
+    if (!captured) {
+      showInfoDialog(confirm.show, 'Sin señal GPS',
+        'No se pudo obtener un punto. El punto anterior se conserva; probá de nuevo cuando mejore la señal.',
+        'locate-outline', colors.secondary);
+    }
+  }
+
   function handleDeleteTree(treeId: string, posicion: number) {
     if (treeReg.isReadOnly) return;
     showConfirmDialog(confirm.show, 'Eliminar árbol',
@@ -170,6 +180,16 @@ export default function TreeRegistrationScreen() {
               permissionStatus={gpsWatcher.permissionStatus}
               servicesEnabled={gpsWatcher.servicesEnabled}
             />
+          }
+          footerAccessory={
+            lastThree.length > 0 ? (
+              <LastTreeGpsRow
+                hasPoint={lastThree[0].latitude != null}
+                gpsAccuracy={lastThree[0].gpsAccuracy ?? null}
+                recapturing={treeReg.recapturingGps}
+                onRecapture={handleRecaptureGps}
+              />
+            ) : undefined
           }
         />
       )}
