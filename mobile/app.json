@@ -31,6 +31,12 @@
       "expo-asset",
       "expo-updates",
       [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Bayka usa tu ubicación para guardar las coordenadas de los árboles que registrás."
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "Bayka usa la cámara para tomar fotos de los árboles."

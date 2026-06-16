@@ -15,11 +15,33 @@
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
-import { getExportRows, type ExportRow } from '../queries/exportQueries';
+import { getExportRows, getKmlExportRows, type ExportRow } from '../queries/exportQueries';
+import { pullSpeciesFromServer } from './sync/preSteps';
+import { syncLog } from '../utils/syncLogger';
+import { buildKml } from './kml/kmlGenerator';
 
 // BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y
 // rompe los acentos/ñ. El .xlsx no lo necesita (embebe la codificación). #87.
 const UTF8_BOM = String.fromCharCode(0xFEFF);
+
+// Etiqueta para árboles cuya especie no se pudo resolver (especieId null o
+// huérfano). Se muestra en la planilla en vez de perder la fila, así el problema
+// queda visible.
+const ESPECIE_NO_RESUELTA = 'N/N';
+
+/**
+ * Refresca el catálogo de especies desde el server antes de generar el export.
+ * Best-effort: si no hay red o falla, seguimos con el catálogo local — el LEFT
+ * JOIN garantiza que ningún árbol se pierda (a lo sumo sale como "N/N"). Cubre
+ * el caso de especies del server que aún no bajaron a este dispositivo.
+ */
+async function refreshSpeciesCatalogBeforeExport(): Promise<void> {
+  try {
+    await pullSpeciesFromServer();
+  } catch (e) {
+    syncLog.error('Export: refresco de especies falló, se usa catálogo local:', e);
+  }
+}
 
 /**
  * Escribe el CSV con BOM UTF-8 garantizado a nivel de bytes (EF BB BF + cuerpo
@@ -62,7 +84,7 @@ function csvField(value: string | number | null | undefined): string {
 
 /**
  * Build a single CSV row from an ExportRow (9 columns, D-18-08 order).
- * Normalizes `parcelaNombre: null` → '' (D-18-10).
+ * Normalizes `parcelaNombre: null` → '' (D-18-10) y `especieNombre: null` → 'N/N'.
  */
 function rowToCSV(r: ExportRow): string {
   return [
@@ -74,13 +96,13 @@ function rowToCSV(r: ExportRow): string {
     csvField(r.grupoNombre),
     csvField(r.subId),
     csvField(r.periodo),
-    csvField(r.especieNombre),
+    csvField(r.especieNombre ?? ESPECIE_NO_RESUELTA),
   ].join(',');
 }
 
 /**
  * Build an Excel sheetData entry (9 keys, D-18-08 order).
- * Normalizes `parcelaNombre: null` → '' (D-18-10).
+ * Normalizes `parcelaNombre: null` → '' (D-18-10) y `especieNombre: null` → 'N/N'.
  */
 function rowToExcel(r: ExportRow) {
   return {
@@ -92,7 +114,7 @@ function rowToExcel(r: ExportRow) {
     'Grupo': r.grupoNombre,
     'SubID': r.subId,
     'Periodo': r.periodo,
-    'Especie': r.especieNombre,
+    'Especie': r.especieNombre ?? ESPECIE_NO_RESUELTA,
   };
 }
 
@@ -103,6 +125,7 @@ function rowToExcel(r: ExportRow) {
  * Fetches all export rows, builds a CSV string, writes to cache, and shares.
  */
 export async function exportToCSV(plantacionId: string, plantationName: string): Promise<void> {
+  await refreshSpeciesCatalogBeforeExport();
   const rows = await getExportRows(plantacionId);
   const csvBody = CSV_HEADER + rows.map(rowToCSV).join('\n');
 
@@ -123,6 +146,7 @@ export async function exportToCSV(plantacionId: string, plantationName: string):
  * writes as base64 to cache, and shares.
  */
 export async function exportToExcel(plantacionId: string, plantationName: string): Promise<void> {
+  await refreshSpeciesCatalogBeforeExport();
   const rows = await getExportRows(plantacionId);
   const sheetData = rows.map(rowToExcel);
 
@@ -140,5 +164,28 @@ export async function exportToExcel(plantacionId: string, plantationName: string
   await Sharing.shareAsync(file.uri, {
     mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     dialogTitle: 'Exportar Excel',
+  });
+}
+
+// ─── exportToKML ──────────────────────────────────────────────────────────────
+
+/**
+ * Exporta los puntos GPS de la plantación como KML (placemarks coloreados por
+ * especie, folders parcela → grupo). Solo árboles con coordenadas; sin puntos
+ * lanza un error con mensaje claro para el usuario.
+ */
+export async function exportToKML(plantacionId: string, plantationName: string): Promise<void> {
+  const rows = await getKmlExportRows(plantacionId);
+  if (rows.length === 0) {
+    throw new Error('La plantación no tiene árboles con punto GPS para exportar.');
+  }
+  const kml = buildKml(plantationName, rows);
+
+  const file = new File(Paths.cache, `${plantationName}_puntos.kml`);
+  file.write(kml);
+
+  await Sharing.shareAsync(file.uri, {
+    mimeType: 'application/vnd.google-earth.kml+xml',
+    dialogTitle: 'Exportar KML',
   });
 }

@@ -35,6 +35,9 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  // Prod (expo-sqlite) no activa PRAGMA foreign_keys → árboles con especieId
+  // huérfano pueden existir. Reproducimos ese estado en el test.
+  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {
@@ -191,5 +194,72 @@ describe('exportQueries.getExportRows', () => {
     const rows = await getExportRows(plantation.id);
 
     expect(rows.map((r) => r.globalId)).toEqual([10, 20, 30]);
+  });
+
+  // ─── LEFT JOIN a species: el árbol NUNCA debe perderse ──────────────────────
+  // Antes el INNER JOIN descartaba en silencio árboles con especie null/huérfana.
+
+  async function seedPlantationWithGroup(lugar: string): Promise<string> {
+    const plantation = createTestPlantation({ lugar });
+    await mockTestDb.insert(plantations).values(plantation);
+    await mockTestDb.insert(groups).values({
+      id: `g-${plantation.id}`,
+      plantacionId: plantation.id,
+      parcelaId: null,
+      nombre: 'Linea X',
+      codigo: 'LX',
+      tipo: 'linea',
+      estado: 'activa',
+      usuarioCreador: 'u1',
+      createdAt: localNow(),
+      pendingSync: false,
+    });
+    return plantation.id;
+  }
+
+  it('incluye el árbol con especieId = null y devuelve especieNombre null', async () => {
+    const plantacionId = await seedPlantationWithGroup('Campo NN');
+    await mockTestDb.insert(trees).values({
+      id: 't-nn',
+      groupId: `g-${plantacionId}`,
+      especieId: null,
+      posicion: 1,
+      subId: 'LX-NN-1',
+      fotoUrl: null,
+      fotoSynced: false,
+      plantacionId: 1,
+      globalId: 100,
+      usuarioRegistro: 'u1',
+      createdAt: localNow(),
+    });
+
+    const rows = await getExportRows(plantacionId);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].globalId).toBe(100);
+    expect(rows[0].especieNombre).toBeNull();
+  });
+
+  it('incluye el árbol con especieId huérfano (especie ausente del catálogo)', async () => {
+    const plantacionId = await seedPlantationWithGroup('Campo Huerfano');
+    await mockTestDb.insert(trees).values({
+      id: 't-orphan',
+      groupId: `g-${plantacionId}`,
+      especieId: 'especie-inexistente-uuid',
+      posicion: 1,
+      subId: 'LX-ZZZ-1',
+      fotoUrl: null,
+      fotoSynced: false,
+      plantacionId: 1,
+      globalId: 200,
+      usuarioRegistro: 'u1',
+      createdAt: localNow(),
+    });
+
+    const rows = await getExportRows(plantacionId);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].globalId).toBe(200);
+    expect(rows[0].especieNombre).toBeNull();
   });
 });

@@ -175,6 +175,10 @@ export async function uploadGroup(
     fotoSynced: boolean;
     usuarioRegistro: string;
     createdAt: string;
+    latitude?: number | null;
+    longitude?: number | null;
+    gpsAccuracy?: number | null;
+    gpsCapturedAt?: string | null;
   }>
 ) {
   // Step 1: Upload local photos to Storage BEFORE the RPC.
@@ -230,6 +234,10 @@ export async function uploadGroup(
       ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null),
     usuario_registro: t.usuarioRegistro,
     created_at: t.createdAt,
+    latitude: t.latitude ?? null,
+    longitude: t.longitude ?? null,
+    gps_accuracy: t.gpsAccuracy ?? null,
+    gps_captured_at: t.gpsCapturedAt ?? null,
   }));
 
   return supabase.rpc('sync_subgroup', { p_subgroup, p_trees });

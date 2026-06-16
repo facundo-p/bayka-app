@@ -1,0 +1,65 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`buildKml snapshot de la estructura completa 1`] = `
+"<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Campo Norte</name>
+    <Style id="especie-eucalipto">
+      <IconStyle>
+        <color>ff00aa00</color>
+        <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+      </IconStyle>
+    </Style>
+    <Style id="especie-n-n">
+      <IconStyle>
+        <color>ff88ff00</color>
+        <Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon>
+      </IconStyle>
+    </Style>
+    <Folder>
+      <name>Lote A</name>
+      <Folder>
+        <name>Línea 1</name>
+        <Placemark>
+          <name>PL1EUC1</name>
+          <styleUrl>#especie-eucalipto</styleUrl>
+          <description>Especie: Eucalipto
+Grupo: Línea 1
+Parcela: Lote A
+Posición: 1
+Precisión: ± 2 m
+Capturado: 2026-06-10T12:00:00</description>
+          <Point><coordinates>-60.7,-31.5</coordinates></Point>
+        </Placemark>
+        <Placemark>
+          <name>PL1NN2</name>
+          <styleUrl>#especie-n-n</styleUrl>
+          <description>Especie: N/N
+Grupo: Línea 1
+Parcela: Lote A
+Posición: 2
+Precisión: s/d
+Capturado: 2026-06-10T12:00:00</description>
+          <Point><coordinates>-60.7,-31.5</coordinates></Point>
+        </Placemark>
+      </Folder>
+      <Folder>
+        <name>Línea 2</name>
+        <Placemark>
+          <name>PL2EUC1</name>
+          <styleUrl>#especie-eucalipto</styleUrl>
+          <description>Especie: Eucalipto
+Grupo: Línea 2
+Parcela: Lote A
+Posición: 1
+Precisión: ± 2 m
+Capturado: 2026-06-10T12:00:00</description>
+          <Point><coordinates>-60.7,-31.6</coordinates></Point>
+        </Placemark>
+      </Folder>
+    </Folder>
+  </Document>
+</kml>
+"
+`;

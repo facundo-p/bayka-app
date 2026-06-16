@@ -25,6 +25,7 @@ import { eq } from 'drizzle-orm';
 import {
   createPlantation,
   createPlantationLocally,
+  PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
 import { createParcela } from '../repositories/ParcelaRepository';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
@@ -37,6 +38,8 @@ export interface CreatePlantationParams {
   organizacionId: string;
   creadoPor: string;
   mode: CreatePlantationMode;
+  /** Config GPS elegida por el admin en el form (defaults del schema si falta). */
+  gps?: PlantationGpsSettings;
 }
 
 export interface CreatePlantationResult {
@@ -78,8 +81,8 @@ export async function createPlantationWithDefaultParcela(
   // consistent across runtimes (Plan 18-01 Risk #3, D-18-04 best-effort).
   const plantation =
     params.mode === 'online'
-      ? await createPlantation(params.lugar, params.periodo, params.organizacionId, params.creadoPor)
-      : await createPlantationLocally(params.lugar, params.periodo, params.organizacionId, params.creadoPor);
+      ? await createPlantation(params.lugar, params.periodo, params.organizacionId, params.creadoPor, params.gps)
+      : await createPlantationLocally(params.lugar, params.periodo, params.organizacionId, params.creadoPor, params.gps);
   // FEATURE: auto-parcela trial — remove block if dropped
   if (AUTO_PARCELA_DEFAULT) {
     try {

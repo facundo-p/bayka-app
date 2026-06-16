@@ -1,4 +1,12 @@
-import { Modal, View, StyleSheet, Dimensions, Pressable } from 'react-native';
+/**
+ * PhotoViewer — visor de fotos full-screen con zoom (pinch / pan / doble-tap).
+ * Componente único reutilizado en toda la app donde se visualiza una foto:
+ * resolución de N/N, detalle de árbol y registro de árboles.
+ *
+ * Acciones opcionales (`onReplace`/`onRemove`): si se pasan, muestra una barra
+ * inferior para reemplazar/eliminar la foto (modo edición). Si no, es solo lectura.
+ */
+import { Modal, View, Text, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,16 +18,17 @@ import {
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, spacing } from '../theme';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { colors } from '../theme';
+import { photoViewerStyles as styles } from './PhotoViewer.styles';
 
 interface Props {
   uri: string | null;
   onClose: () => void;
+  onReplace?: () => void;
+  onRemove?: () => void;
 }
 
-export default function PhotoViewer({ uri, onClose }: Props) {
+export default function PhotoViewer({ uri, onClose, onReplace, onRemove }: Props) {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -100,7 +109,7 @@ export default function PhotoViewer({ uri, onClose }: Props) {
       onRequestClose={handleClose}
     >
       <GestureHandlerRootView style={styles.container}>
-        <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12}>
+        <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12} accessibilityLabel="Cerrar">
           <Ionicons name="close" size={28} color={colors.white} />
         </Pressable>
         <GestureDetector gesture={composedGesture}>
@@ -110,27 +119,23 @@ export default function PhotoViewer({ uri, onClose }: Props) {
             resizeMode="contain"
           />
         </GestureDetector>
+        {(onReplace || onRemove) && (
+          <View style={styles.actions}>
+            {onReplace && (
+              <Pressable style={styles.actionBtn} onPress={onReplace}>
+                <Ionicons name="camera-outline" size={20} color={colors.white} />
+                <Text style={styles.actionText}>Reemplazar</Text>
+              </Pressable>
+            )}
+            {onRemove && (
+              <Pressable style={styles.actionBtn} onPress={onRemove}>
+                <Ionicons name="trash-outline" size={20} color={colors.white} />
+                <Text style={styles.actionText}>Eliminar foto</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
       </GestureHandlerRootView>
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.overlayDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: spacing.xxl,
-    zIndex: 10,
-    padding: spacing.md,
-  },
-  image: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT * 0.8,
-  },
-});

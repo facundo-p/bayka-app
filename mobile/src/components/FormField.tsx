@@ -12,6 +12,7 @@ interface Props {
   autoCorrect?: boolean;
   editable?: boolean;
   helperText?: string | null;
+  keyboardType?: 'default' | 'numeric';
 }
 
 export default function FormField({
@@ -24,6 +25,7 @@ export default function FormField({
   autoCorrect,
   editable,
   helperText,
+  keyboardType,
 }: Props) {
   const [focused, setFocused] = useState(false);
   return (
@@ -38,6 +40,7 @@ export default function FormField({
         autoCapitalize={autoCapitalize}
         autoCorrect={autoCorrect}
         editable={editable}
+        keyboardType={keyboardType}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />

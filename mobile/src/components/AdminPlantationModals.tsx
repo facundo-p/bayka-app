@@ -23,17 +23,18 @@ import AssignTechniciansScreen from '../screens/AssignTechniciansScreen';
 import Spinner from './Spinner';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 import type { Plantation } from './PlantationConfigCard';
+import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 
 type Props = {
   // Create modal
   showCreateModal: boolean;
   onCloseCreate: () => void;
-  onCreateSubmit: (lugar: string, periodo: string) => Promise<void>;
+  onCreateSubmit: (lugar: string, periodo: string, gps: PlantationGpsSettings) => Promise<void>;
 
   // Edit modal
   editingPlantation: Plantation | null;
   onCloseEdit: () => void;
-  onEditSubmit: (lugar: string, periodo: string) => Promise<void>;
+  onEditSubmit: (lugar: string, periodo: string, gps: PlantationGpsSettings) => Promise<void>;
 
   // Confirm modal
   confirmProps: any;
