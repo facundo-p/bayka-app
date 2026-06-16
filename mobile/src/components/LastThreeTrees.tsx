@@ -1,13 +1,10 @@
-import { View, Text, Pressable, Dimensions, StyleSheet } from 'react-native';
+import type { ReactNode } from 'react';
+import { View, Text, Pressable } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import { getSpeciesCode } from '../utils/speciesHelpers';
-
-const SCREEN_WIDTH = Dimensions.get('window').width;
-const CHIP_GAP = 6;
-const CHIP_PADDING = 8;
-const CHIP_WIDTH = (SCREEN_WIDTH - CHIP_PADDING * 2 - CHIP_GAP * 2) / 3;
+import { lastThreeTreesStyles as styles } from './LastThreeTrees.styles';
 
 export interface TreeChipItem {
   id: string;
@@ -20,17 +17,27 @@ export interface TreeChipItem {
   createdAt: string;
   grupoId: string;
   usuarioRegistro: string;
+  /** Punto GPS capturado; null/ausente = árbol sin coordenadas. */
+  latitude?: number | null;
+  gpsAccuracy?: number | null;
 }
 
 interface Props {
   trees: TreeChipItem[];
   onUndo: () => void;
+  /** Accesorio a la derecha del label (ej. semáforo de señal GPS). */
+  headerAccessory?: ReactNode;
+  /** Fila extra bajo los chips (ej. precisión + re-captura del último árbol). */
+  footerAccessory?: ReactNode;
 }
 
-export default function LastThreeTrees({ trees, onUndo }: Props) {
+export default function LastThreeTrees({ trees, onUndo, headerAccessory, footerAccessory }: Props) {
   return (
     <Animated.View entering={FadeInDown.duration(300)} style={styles.container}>
-      <Text style={styles.label}>Últimos ingresados</Text>
+      <View style={styles.labelRow}>
+        <Text style={styles.label}>Últimos ingresados</Text>
+        {headerAccessory}
+      </View>
       <View style={styles.row}>
         {[0, 1, 2].map((slotIndex) => {
           const reversedTrees = [...trees].reverse();
@@ -42,6 +49,14 @@ export default function LastThreeTrees({ trees, onUndo }: Props) {
           const code = getSpeciesCode(tree);
           return (
             <View key={tree.id} style={[styles.chip, isLast && styles.chipLast]}>
+              {tree.latitude != null && (
+                <Ionicons
+                  testID={`chip-gps-pin-${tree.id}`}
+                  name="location"
+                  size={12}
+                  color={colors.plantation}
+                />
+              )}
               <Text style={[styles.chipText, isLast && styles.chipTextLast]}>
                 {tree.posicion} {code}
               </Text>
@@ -54,68 +69,7 @@ export default function LastThreeTrees({ trees, onUndo }: Props) {
           );
         })}
       </View>
+      {footerAccessory}
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.md,
-  },
-  label: {
-    fontSize: fontSize.xs,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    fontFamily: fonts.medium,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.recentBg,
-    borderRadius: borderRadius.round,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    minHeight: 44,
-    borderWidth: 1,
-    borderColor: colors.recentBorder,
-    gap: spacing.sm,
-    width: CHIP_WIDTH,
-  },
-  chipEmpty: {
-    backgroundColor: 'transparent',
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-  },
-  chipLast: {
-    backgroundColor: colors.recentBgActive,
-    borderColor: colors.recentText,
-    borderWidth: 2,
-  },
-  chipText: {
-    fontSize: fontSize.lg,
-    fontFamily: fonts.semiBold,
-    color: colors.recentText,
-  },
-  chipTextLast: {
-    fontFamily: fonts.bold,
-    fontSize: fontSize.xl,
-  },
-  undoButton: {
-    padding: spacing.xs,
-  },
-});

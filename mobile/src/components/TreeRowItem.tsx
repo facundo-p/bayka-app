@@ -1,7 +1,8 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
+import { treeRowItemStyles as styles } from './TreeRowItem.styles';
 
 export interface TreeItemData {
   id: string;
@@ -15,6 +16,8 @@ export interface TreeItemData {
   createdAt: string;
   grupoId: string;
   usuarioRegistro: string;
+  /** Punto GPS capturado; null/ausente = árbol sin coordenadas. */
+  latitude?: number | null;
 }
 
 interface Props {
@@ -24,17 +27,24 @@ interface Props {
   onViewPhoto: (treeId: string, uri: string) => void;
   onAttachPhoto?: (treeId: string) => void;
   onDeleteTree?: (treeId: string, posicion: number) => void;
+  /** Si se pasa, la fila abre el detalle del árbol al tocarla. */
+  onPress?: (treeId: string) => void;
 }
 
-export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto, onAttachPhoto, onDeleteTree }: Props) {
-  return (
-    <View style={styles.row}>
+export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto, onAttachPhoto, onDeleteTree, onPress }: Props) {
+  const content = (
+    <>
       <Text style={styles.pos}>{item.posicion}</Text>
       <Text style={[styles.name, item.especieId === null && styles.nameNN]} numberOfLines={1}>
         {getSpeciesName(item)}
       </Text>
       <Text style={styles.code} numberOfLines={1}>{getSpeciesCode(item)}</Text>
       <View style={styles.actions}>
+        {item.latitude != null && (
+          <View testID="gps-pin" style={styles.gpsPin}>
+            <Ionicons name="location" size={16} color={colors.plantation} />
+          </View>
+        )}
         {item.fotoUrl
           ? <Pressable onPress={() => onViewPhoto(item.id, item.fotoUrl!)} hitSlop={8} style={styles.btn}>
               <View>
@@ -57,31 +67,21 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
               : <Ionicons name="trash-outline" size={18} color={colors.danger} />}
           </Pressable>
         )}
+        {onPress && <Ionicons name="chevron-forward" size={16} color={colors.textLight} />}
       </View>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+        onPress={() => onPress(item.id)}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.row}>{content}</View>;
 }
-
-export const treeRowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: borderRadius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.lg, gap: spacing.md,
-  },
-  pos: { fontSize: fontSize.base, fontFamily: fonts.bold, color: colors.textMedium, width: 26, textAlign: 'center' },
-  name: { fontSize: fontSize.md, fontFamily: fonts.semiBold, color: colors.plantation, flex: 1 },
-  nameNN: { color: colors.secondary },
-  code: { fontSize: fontSize.sm, color: colors.textSecondary, fontFamily: fonts.monospace, minWidth: 40 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  btn: { padding: spacing.xs },
-  syncDot: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.photoUnsyncDot,
-  },
-});
-
-const styles = treeRowStyles;

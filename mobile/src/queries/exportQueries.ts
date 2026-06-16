@@ -5,7 +5,7 @@
  */
 import { db } from '../database/client';
 import { trees, groups, plantations, parcelas, species } from '../database/schema';
-import { eq, asc } from 'drizzle-orm';
+import { eq, and, asc, isNotNull } from 'drizzle-orm';
 
 /**
  * Row shape for the CSV/Excel export.
@@ -67,4 +67,50 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .leftJoin(species, eq(trees.especieId, species.id))
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(trees.globalId));
+}
+
+/**
+ * Row del export KML: solo árboles CON coordenadas. `especieNombre` nullable
+ * (N/N sin resolver se exporta con etiqueta "N/N").
+ */
+export interface KmlExportRow {
+  subId: string;
+  posicion: number;
+  especieNombre: string | null;
+  grupoNombre: string;
+  parcelaNombre: string | null;
+  latitude: number;
+  longitude: number;
+  gpsAccuracy: number | null;
+  gpsCapturedAt: string | null;
+}
+
+/**
+ * Árboles con punto GPS de la plantación, ordenados por parcela → grupo →
+ * posición (el generador KML agrupa en folders preservando este orden).
+ */
+export async function getKmlExportRows(plantacionId: string): Promise<KmlExportRow[]> {
+  const rows = await db
+    .select({
+      subId: trees.subId,
+      posicion: trees.posicion,
+      especieNombre: species.nombre,
+      grupoNombre: groups.nombre,
+      parcelaNombre: parcelas.nombre,
+      latitude: trees.latitude,
+      longitude: trees.longitude,
+      gpsAccuracy: trees.gpsAccuracy,
+      gpsCapturedAt: trees.gpsCapturedAt,
+    })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
+    .leftJoin(species, eq(trees.especieId, species.id))
+    .where(and(
+      eq(groups.plantacionId, plantacionId),
+      isNotNull(trees.latitude),
+      isNotNull(trees.longitude),
+    ))
+    .orderBy(asc(parcelas.nombre), asc(groups.nombre), asc(trees.posicion));
+  return rows as KmlExportRow[];
 }

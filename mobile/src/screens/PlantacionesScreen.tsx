@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors, fontSize, spacing, fonts } from '../theme';
+import { colors } from '../theme';
+import { plantacionesScreenStyles as styles } from './PlantacionesScreen.styles';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -28,6 +29,7 @@ import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
 import { useParcelas } from '../hooks/useParcelas';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
+import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 
 /**
  * ExpandablePlantationCard — wrapper that pulls parcelas per plantation
@@ -85,6 +87,7 @@ export default function PlantacionesScreen() {
     activeFilter,
     setActiveFilter,
     headerTitle,
+    headerSubtitle,
     isOnline,
     isAdmin,
     syncedCountMap,
@@ -177,8 +180,8 @@ export default function PlantacionesScreen() {
   // subgrupos (issues #63 + #15). Guarda el id de la plantación a navegar.
   const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
 
-  async function handleCreatePlantation(lugar: string, periodo: string) {
-    const id = await adminHook.handleCreateSubmit(lugar, periodo);
+  async function handleCreatePlantation(lugar: string, periodo: string, gps: PlantationGpsSettings) {
+    const id = await adminHook.handleCreateSubmit(lugar, periodo, gps);
     setShowCreateModal(false);
     if (!id) return;
     // Abre la selección de especies de la plantación recién creada y agenda la
@@ -234,6 +237,7 @@ export default function PlantacionesScreen() {
     <TexturedBackground>
       <CustomHeader
         title={headerTitle}
+        subtitle={headerSubtitle}
         rightElement={
           <View style={styles.headerButtons}>
             {isOnline && (
@@ -265,7 +269,7 @@ export default function PlantacionesScreen() {
 
       {plantationList && plantationList.length > 0 ? (
         <>
-          <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.filterBar}>
             <FilterCards
               filters={filterConfigs}
               activeFilter={activeFilter}
@@ -383,6 +387,7 @@ export default function PlantacionesScreen() {
         onGenerateIds={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleGenerateIds(bottomSheetPlantation.id); })}
         onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
         onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
+        onExportKml={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportKml(bottomSheetPlantation.id); })}
         onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
       />
 
@@ -393,7 +398,7 @@ export default function PlantacionesScreen() {
           onCreateSubmit={handleCreatePlantation}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
-          onEditSubmit={async (lugar, periodo) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo); setEditingPlantation(null); } }}
+          onEditSubmit={async (lugar, periodo, gps) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, gps); setEditingPlantation(null); } }}
           confirmProps={adminHook.confirmProps}
           seedModalPlantacionId={adminHook.seedModalPlantacionId}
           seedValue={adminHook.seedValue}
@@ -412,11 +417,3 @@ export default function PlantacionesScreen() {
     </TexturedBackground>
   );
 }
-
-const styles = StyleSheet.create({
-  headerButtons: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
-  emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
-  emptySubtext: { fontSize: fontSize.base, color: colors.textLight, fontFamily: fonts.regular },
-  listContent: { padding: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing['6xl'], gap: spacing.xl },
-});

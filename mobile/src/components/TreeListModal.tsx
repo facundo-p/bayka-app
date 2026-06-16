@@ -1,4 +1,5 @@
 import { Modal, View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, fontSize, spacing, fonts } from '../theme';
 import TreeRowItem from './TreeRowItem';
@@ -15,6 +16,7 @@ interface Props {
   onViewPhoto: (treeId: string, uri: string) => void;
   onAttachPhoto: (treeId: string) => void;
   onDeleteTree: (treeId: string, posicion: number) => void;
+  onSelectTree: (treeId: string) => void;
 }
 
 export default function TreeListModal({
@@ -26,11 +28,13 @@ export default function TreeListModal({
   onViewPhoto,
   onAttachPhoto,
   onDeleteTree,
+  onSelectTree,
 }: Props) {
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
           <Text style={styles.title}>Árboles ({trees.length})</Text>
           <Pressable onPress={onClose} hitSlop={12}>
             <Ionicons name="close" size={24} color={colors.textMedium} />
@@ -48,6 +52,7 @@ export default function TreeListModal({
               onViewPhoto={onViewPhoto}
               onAttachPhoto={onAttachPhoto}
               onDeleteTree={onDeleteTree}
+              onPress={onSelectTree}
             />
           )}
           ListEmptyComponent={<Text style={styles.empty}>No hay árboles</Text>}

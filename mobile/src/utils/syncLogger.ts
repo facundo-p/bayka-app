@@ -1,6 +1,3 @@
-const TAG = '[Sync]';
+import { createTaggedLogger } from './taggedLogger';
 
-export const syncLog = {
-  info: (msg: string, ...args: any[]) => console.log(`${TAG} ${msg}`, ...args),
-  error: (msg: string, ...args: any[]) => console.error(`${TAG} ${msg}`, ...args),
-};
+export const syncLog = createTaggedLogger('Sync');

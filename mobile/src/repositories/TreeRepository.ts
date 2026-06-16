@@ -125,6 +125,28 @@ export async function resolveNNTree(
   notifyDataChanged();
 }
 
+export interface TreeGpsPoint {
+  latitude: number;
+  longitude: number;
+  gpsAccuracy: number | null;
+  /** Momento del tap de registro (ISO local), no el momento en que resolvió el fix. */
+  gpsCapturedAt: string;
+}
+
+/**
+ * Adjunta (o reemplaza) el punto GPS de un árbol. Llega async después del alta
+ * (el fix puede resolver cuando el técnico ya registró el siguiente árbol).
+ * Re-marca el grupo pendiente de sync: si el fix resuelve después de un push
+ * (o el grupo ya estaba sincronizado, caso re-captura), nada más lo re-subiría.
+ */
+export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promise<void> {
+  const [treeRow] = await db.select({ grupoId: trees.groupId }).from(trees).where(eq(trees.id, treeId));
+  if (!treeRow) return; // árbol deshecho antes de que llegara el fix
+  await db.update(trees).set(point).where(eq(trees.id, treeId));
+  await markGroupPendingSync(treeRow.grupoId);
+  notifyDataChanged();
+}
+
 /**
  * Attaches, replaces, or removes the photo for any tree.
  * Pass empty string to remove the photo.

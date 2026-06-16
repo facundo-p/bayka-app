@@ -96,6 +96,14 @@ export const colors = {
   stateSincronizada: '#0A3760',
   syncPending: '#F97316',         // orange-500 -- distinct from stateFinalizada amber
 
+  // ─── Semáforo de señal GPS ────────────────────────────────────────────────
+  // Tokens semánticos propios: cambiar el semáforo no debe tocar los chips de
+  // estado aunque hoy compartan valores (verde oliva / amarillo N/N / danger).
+  gpsGood: '#99B95B',
+  gpsRegular: '#ffb300',
+  gpsBad: '#DC2626',
+  gpsNone: '#94A3B8',
+
   // ─── Other user ───────────────────────────────────────────────────────────
   otherUserBg: '#F5F5F4',
   otherUserBorder: '#94A3B8',

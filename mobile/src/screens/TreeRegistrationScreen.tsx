@@ -15,8 +15,9 @@ import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
 import LastThreeTrees from '../components/LastThreeTrees';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
-import PhotoViewerModal from '../components/PhotoViewerModal';
+import PhotoViewer from '../components/PhotoViewer';
 import TreeListModal from '../components/TreeListModal';
+import TreeDetailModal from '../components/TreeDetailModal';
 import TreeConfigModal from '../components/TreeConfigModal';
 import ReadOnlyTreeView from '../components/ReadOnlyTreeView';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -28,7 +29,14 @@ import ScreenContainer from '../components/ScreenContainer';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { showConfirmDialog, showDoubleConfirmDialog, showInfoDialog } from '../utils/alertHelpers';
 import { useConfirm } from '../hooks/useConfirm';
+import { useGpsWatcher } from '../hooks/useGpsWatcher';
+import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
+import GpsSignalIndicator from '../components/GpsSignalIndicator';
+import GpsGateBanner from '../components/GpsGateBanner';
+import LastTreeGpsRow from '../components/LastTreeGpsRow';
+import { useGpsGate } from '../hooks/useGpsGate';
+import { getTreeEditGating } from '../utils/treeEditGating';
 
 export default function TreeRegistrationScreen() {
   const { id: grupoId } = useLocalSearchParams<{
@@ -46,14 +54,25 @@ export default function TreeRegistrationScreen() {
 
   const [viewingPhoto, setViewingPhoto] = useState<{ uri: string; treeId: string } | null>(null);
   const [showTreeList, setShowTreeList] = useState(false);
+  const [editingTreeId, setEditingTreeId] = useState<string | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showReorderModal, setShowReorderModal] = useState(false);
 
+  const { gpsEnabled } = useGpsEnabledSetting();
+  const gpsWatcher = useGpsWatcher(gpsEnabled);
   const treeReg = useTreeRegistration({
     grupoId: grupoId ?? '',
     plantacionId: plantacionId ?? '',
     grupoCodigo: grupoCodigo ?? '',
     userId,
+    getLastGpsFix: gpsWatcher.getLastFix,
+  });
+  const gpsGate = useGpsGate({
+    required: treeReg.gpsCaptureRequired,
+    gpsEnabled,
+    permissionStatus: gpsWatcher.permissionStatus,
+    servicesEnabled: gpsWatcher.servicesEnabled,
+    refreshWatcher: gpsWatcher.refresh,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
   const nnFlow = useNNFlow({
@@ -63,6 +82,8 @@ export default function TreeRegistrationScreen() {
     isReadOnly: treeReg.isReadOnly,
     unresolvedNN: treeReg.unresolvedNN,
     pickPhoto,
+    gpsCaptureFrequency: treeReg.gpsCaptureFrequency,
+    getLastGpsFix: gpsWatcher.getLastFix,
   });
 
   useEffect(() => {
@@ -109,6 +130,15 @@ export default function TreeRegistrationScreen() {
       'Reactivar', () => treeReg.executeReactivate(), { icon: 'refresh-outline' });
   }
 
+  async function handleRecaptureGps() {
+    const captured = await treeReg.recaptureLastGps();
+    if (!captured) {
+      showInfoDialog(confirm.show, 'Sin señal GPS',
+        'No se pudo obtener un punto. El punto anterior se conserva; probá de nuevo cuando mejore la señal.',
+        'locate-outline', colors.secondary);
+    }
+  }
+
   function handleDeleteTree(treeId: string, posicion: number) {
     if (treeReg.isReadOnly) return;
     showConfirmDialog(confirm.show, 'Eliminar árbol',
@@ -119,6 +149,13 @@ export default function TreeRegistrationScreen() {
 
   const { dataLoaded, isReadOnly, canReactivate, totalCount, unresolvedNN,
     sortedTrees, lastThree, finalizing, deleting, deletingTreeId } = treeReg;
+
+  // Gating del detalle de árbol (issue #155) — ver getTreeEditGating.
+  const { canEdit: canEditTree, canDelete: canDeleteTree } = getTreeEditGating({
+    plantacionEstado: treeReg.plantacionEstado,
+    subgroupEstado: treeReg.subgroupEstado,
+    isCreator: treeReg.isCreator,
+  });
 
   return (
     <ScreenContainer withTexture>
@@ -147,7 +184,27 @@ export default function TreeRegistrationScreen() {
       )}
 
       {dataLoaded && !isReadOnly && (
-        <LastThreeTrees trees={lastThree} onUndo={() => treeReg.undoLast()} />
+        <LastThreeTrees
+          trees={lastThree}
+          onUndo={() => treeReg.undoLast()}
+          headerAccessory={
+            <GpsSignalIndicator
+              lastFix={gpsWatcher.lastFix}
+              permissionStatus={gpsWatcher.permissionStatus}
+              servicesEnabled={gpsWatcher.servicesEnabled}
+            />
+          }
+          footerAccessory={
+            lastThree.length > 0 ? (
+              <LastTreeGpsRow
+                hasPoint={lastThree[0].latitude != null}
+                gpsAccuracy={lastThree[0].gpsAccuracy ?? null}
+                recapturing={treeReg.recapturingGps}
+                onRecapture={handleRecaptureGps}
+              />
+            ) : undefined
+          }
+        />
       )}
 
       {!dataLoaded ? (
@@ -156,6 +213,13 @@ export default function TreeRegistrationScreen() {
         </View>
       ) : !isReadOnly ? (
         <>
+          {gpsGate.blocked && (
+            <GpsGateBanner
+              message={gpsGate.message!}
+              unblocking={gpsGate.unblocking}
+              onRequestUnblock={gpsGate.requestUnblock}
+            />
+          )}
           <ScrollView style={styles.gridScroll} contentContainerStyle={styles.gridContent}>
             {speciesOrder.loading ? (
               <ActivityIndicator size="large" color={colors.plantation} style={styles.loader} />
@@ -167,7 +231,7 @@ export default function TreeRegistrationScreen() {
                     treeReg.registerTree(especieId, especieCodigo)
                   }
                   onNNPress={() => nnFlow.registerNN()}
-                  disabled={isReadOnly}
+                  disabled={isReadOnly || gpsGate.blocked}
                 />
               </Animated.View>
             )}
@@ -200,6 +264,7 @@ export default function TreeRegistrationScreen() {
           canReactivate={canReactivate}
           onReactivate={handleReactivate}
           onViewPhoto={(treeId, uri) => setViewingPhoto({ uri, treeId })}
+          onSelectTree={setEditingTreeId}
         />
       )}
 
@@ -212,23 +277,39 @@ export default function TreeRegistrationScreen() {
         onViewPhoto={(treeId, uri) => setViewingPhoto({ uri, treeId })}
         onAttachPhoto={(treeId) => treeReg.addPhotoToTree(treeId, pickPhoto)}
         onDeleteTree={handleDeleteTree}
+        onSelectTree={(treeId) => { setShowTreeList(false); setEditingTreeId(treeId); }}
       />
 
-      <PhotoViewerModal
-        visible={!!viewingPhoto}
-        photoUri={viewingPhoto?.uri ?? null}
-        onClose={() => setViewingPhoto(null)}
-        onReplace={async () => {
-          if (!viewingPhoto) return;
-          const newUri = await pickPhoto();
-          if (newUri) {
-            await treeReg.updatePhoto(viewingPhoto.treeId, newUri);
-            setViewingPhoto({ uri: newUri, treeId: viewingPhoto.treeId });
-          }
+      <TreeDetailModal
+        visible={editingTreeId !== null}
+        treeId={editingTreeId}
+        canEdit={canEditTree}
+        canDelete={canDeleteTree}
+        onClose={() => setEditingTreeId(null)}
+        onCapturePhoto={(treeId) => treeReg.addPhotoToTree(treeId, pickPhoto)}
+        onRemovePhoto={(treeId) => treeReg.removePhoto(treeId)}
+        onCaptureGps={(treeId) => treeReg.captureTreeGps(treeId)}
+        onDelete={(treeId, posicion) => {
+          setEditingTreeId(null);
+          handleDeleteTree(treeId, posicion);
         }}
-        onRemove={async () => {
+      />
+
+      <PhotoViewer
+        uri={viewingPhoto?.uri ?? null}
+        onClose={() => setViewingPhoto(null)}
+        onReplace={() => {
           if (!viewingPhoto) return;
-          await treeReg.removePhoto(viewingPhoto.treeId);
+          void pickPhoto().then((newUri) => {
+            if (newUri) {
+              void treeReg.updatePhoto(viewingPhoto.treeId, newUri);
+              setViewingPhoto({ uri: newUri, treeId: viewingPhoto.treeId });
+            }
+          });
+        }}
+        onRemove={() => {
+          if (!viewingPhoto) return;
+          void treeReg.removePhoto(viewingPhoto.treeId);
           setViewingPhoto(null);
         }}
       />

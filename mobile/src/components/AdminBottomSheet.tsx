@@ -28,6 +28,7 @@ type AdminBottomSheetProps = {
   onGenerateIds: () => void;
   onExportCsv: () => void;
   onExportExcel: () => void;
+  onExportKml: () => void;
   onDiscardEdit: () => void;
 };
 
@@ -96,6 +97,7 @@ export default function AdminBottomSheet({
   onGenerateIds,
   onExportCsv,
   onExportExcel,
+  onExportKml,
   onDiscardEdit,
 }: AdminBottomSheetProps) {
   const insets = useSafeAreaInsets();
@@ -236,6 +238,12 @@ export default function AdminBottomSheet({
                       label="Exportar Excel"
                       color={colors.primary}
                       onPress={onExportExcel}
+                    />
+                    <ActionItem
+                      icon="location-outline"
+                      label="Exportar KML"
+                      color={colors.primary}
+                      onPress={onExportKml}
                     />
                   </>
                 )}

@@ -1,12 +1,19 @@
 /**
- * Returns current timestamp in local timezone as ISO-like string.
- * Format: YYYY-MM-DDTHH:MM:SS (no Z suffix — local time)
- * Used for createdAt fields so "today" filters work correctly.
+ * Formatea un epoch ms como ISO-like en zona horaria local.
+ * Formato: YYYY-MM-DDTHH:MM:SS (sin sufijo Z — hora local).
  */
-export function localNow(): string {
-  const d = new Date();
+export function localIsoFromMs(epochMs: number): string {
+  const d = new Date(epochMs);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+/**
+ * Timestamp actual en zona local (ISO-like, sin Z).
+ * Usado en createdAt para que los filtros de "hoy" funcionen bien.
+ */
+export function localNow(): string {
+  return localIsoFromMs(Date.now());
 }
 
 /**
