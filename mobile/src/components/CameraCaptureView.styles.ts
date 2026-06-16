@@ -3,7 +3,10 @@ import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export const cameraCaptureStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.overlayDark },
-  camera: { flex: 1, justifyContent: 'space-between' },
+  // flex-end: la barra del obturador (único hijo en flujo) va abajo. El botón
+  // de cerrar es absoluto arriba. Con space-between, al haber un solo hijo en
+  // flujo, quedaba arriba.
+  camera: { flex: 1, justifyContent: 'flex-end' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing['4xl'], backgroundColor: colors.overlayDark },
   permText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.regular, textAlign: 'center' },
   permBtn: { backgroundColor: colors.plantation, paddingVertical: spacing.md, paddingHorizontal: spacing.xxl, borderRadius: borderRadius.lg },
