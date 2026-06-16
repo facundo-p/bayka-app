@@ -21,11 +21,17 @@ const KML_COLOR_PALETTE = [
 /** Ícono blanco tintable de Google Earth (el <color> del IconStyle lo pinta). */
 const PLACEMARK_ICON_HREF = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png';
 
-/** Hash determinístico simple: mismo styleId → mismo color en todo export. */
+/** Multiplicador del hash polinómico (el clásico de String.hashCode de Java:
+ *  primo impar, buena dispersión, barato). El valor exacto no es de dominio. */
+const HASH_MULTIPLIER = 31;
+
+/** Hash determinístico: mismo styleId → mismo color en todo el export.
+ *  `| 0` trunca a entero de 32 bits (evita perder precisión en slugs largos);
+ *  `Math.abs` porque ese truncado puede dar negativo. */
 function hashToPaletteIndex(styleId: string): number {
   let hash = 0;
-  for (const char of styleId) hash = (hash * 31 + char.charCodeAt(0)) % 997;
-  return hash % KML_COLOR_PALETTE.length;
+  for (const char of styleId) hash = (hash * HASH_MULTIPLIER + char.charCodeAt(0)) | 0;
+  return Math.abs(hash) % KML_COLOR_PALETTE.length;
 }
 
 /** Id de <Style> válido y estable para la especie (sin espacios/acentos).
