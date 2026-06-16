@@ -11,13 +11,15 @@ interface Props {
    *  Plantaciones). Si se pasa, la flecha navega con este callback. Issue #70. */
   onBack?: () => void;
   rightElement?: React.ReactNode;
+  /** Color de fondo del header. Por defecto el azul de marca (`colors.headerBg`). */
+  backgroundColor?: string;
 }
 
-export default function CustomHeader({ title, subtitle, onBack, rightElement }: Props) {
+export default function CustomHeader({ title, subtitle, onBack, rightElement, backgroundColor = colors.headerBg }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.headerBar, { paddingTop: insets.top + spacing.sm }]}>
+    <View style={[styles.headerBar, { backgroundColor, paddingTop: insets.top + spacing.sm }]}>
       {onBack ? (
         <Pressable onPress={onBack} style={styles.headerBackButton} hitSlop={12} accessibilityRole="button" accessibilityLabel="Volver">
           <Ionicons name="arrow-back" size={24} color={colors.white} />

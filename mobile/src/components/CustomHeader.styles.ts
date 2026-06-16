@@ -3,7 +3,7 @@ import { colors, fontSize, spacing, fonts } from '../theme';
 
 export const customHeaderStyles = StyleSheet.create({
   headerBar: {
-    backgroundColor: colors.plantationHeaderBg,
+    // backgroundColor se pasa por prop (default colors.headerBg, azul de marca).
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.sm,
     flexDirection: 'row',
