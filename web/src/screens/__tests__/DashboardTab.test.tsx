@@ -100,8 +100,8 @@ describe('DashboardTab', () => {
     expect(screen.getByText('60%')).toBeInTheDocument(); // con GPS
     expect(screen.getByText('40%')).toBeInTheDocument(); // con foto
     expect(screen.getByText('1')).toBeInTheDocument(); // N/N pendientes
-    // Progreso hacia el objetivo de la migración 024.
-    expect(screen.getByText('5 de 10 (50%)')).toBeInTheDocument();
+    // Progreso hacia el objetivo de la migración 024 (en la tarjeta hero).
+    expect(screen.getByText('Objetivo: 5 de 10 (50%)')).toBeInTheDocument();
     // Los tres gráficos presentes, cada uno en su card con título.
     expect(screen.getByText('Árboles por especie')).toBeInTheDocument();
     expect(screen.getByText('Árboles por parcela')).toBeInTheDocument();

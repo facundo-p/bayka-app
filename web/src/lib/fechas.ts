@@ -6,3 +6,17 @@ export function formatearFechaCorta(iso: string): string {
     year: 'numeric',
   });
 }
+
+/**
+ * Formatea un mes 'YYYY-MM' como etiqueta es-AR amigable, ej. "jun 2026".
+ * Ancla la fecha al día 1 en UTC para que el huso horario no corra el mes.
+ */
+export function formatearMes(mes: string): string {
+  const [anio, mesNumero] = mes.split('-').map(Number);
+  const fecha = new Date(Date.UTC(anio, mesNumero - 1, 1));
+  return fecha.toLocaleDateString('es-AR', {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}

@@ -1,11 +1,12 @@
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
+import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 
 export type TipoGrupo = 'linea' | 'bosquete';
 export type EstadoGrupo = 'activa' | 'finalizada';
 
 /** Valor especial del filtro de especie: árboles sin identificar (species_id null). */
-export const ESPECIE_SIN_IDENTIFICAR = 'NN';
+export { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 
 /** Tamaño de página del listado de árboles. */
 export const ARBOLES_POR_PAGINA = 50;

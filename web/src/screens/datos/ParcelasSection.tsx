@@ -1,7 +1,9 @@
-import { useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Cargando, ErrorConReintento, Table, type TableColumn } from '../../components';
 import { formatearFechaCorta } from '../../lib/fechas';
+import { formatearEntero } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
+import { filtrosAParams } from './filtrosUrl';
 import { useParcelasDatos } from './useDatosQueries';
 import styles from './SeccionesDatos.module.css';
 
@@ -26,8 +28,18 @@ const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
     header: 'Descripción',
     render: (parcela) => <CeldaDescripcion descripcion={parcela.descripcion} />,
   },
-  { key: 'grupos', header: 'Grupos', align: 'right' },
-  { key: 'arboles', header: 'Árboles', align: 'right' },
+  {
+    key: 'grupos',
+    header: 'Grupos',
+    align: 'right',
+    render: (parcela) => <span className={styles.numero}>{formatearEntero(parcela.grupos)}</span>,
+  },
+  {
+    key: 'arboles',
+    header: 'Árboles',
+    align: 'right',
+    render: (parcela) => <span className={styles.numero}>{formatearEntero(parcela.arboles)}</span>,
+  },
   {
     key: 'createdAt',
     header: 'Creada',
@@ -38,9 +50,16 @@ const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
 /** Sección Parcelas de la tab Datos: tabla de parcelas activas con counts. */
 export function ParcelasSection() {
   const { id = '' } = useParams();
+  const navigate = useNavigate();
   const { data, isPending, isError, refetch } = useParcelasDatos(id);
 
-  if (isPending) return <Cargando />;
+  /** Drill-down: abrir los grupos de la parcela pre-filtrados por ella. */
+  const verGrupos = (parcela: ParcelaConStats) => {
+    const params = filtrosAParams({ parcelaId: parcela.id });
+    void navigate(`../grupos?${params.toString()}`);
+  };
+
+  if (isPending) return <Cargando label="Cargando parcelas…" />;
   if (isError) {
     return (
       <ErrorConReintento
@@ -54,6 +73,7 @@ export function ParcelasSection() {
       columns={COLUMNAS}
       rows={data}
       getRowKey={(parcela) => parcela.id}
+      onRowClick={verGrupos}
       emptyMessage="La plantación todavía no tiene parcelas"
     />
   );

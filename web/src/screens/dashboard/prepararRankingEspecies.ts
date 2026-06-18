@@ -1,8 +1,8 @@
-import { ESPECIE_SIN_IDENTIFICAR } from '../../queries/dataExplorerQueries';
+import type { DistribucionEspecie } from '../../queries/dashboardQueries';
 import {
+  ESPECIE_SIN_IDENTIFICAR,
   NOMBRE_SIN_IDENTIFICAR,
-  type DistribucionEspecie,
-} from '../../queries/dashboardQueries';
+} from '../../queries/especiesConstantes';
 import {
   COLOR_GRAFICO_NN,
   COLOR_GRAFICO_OTRAS,
@@ -15,7 +15,7 @@ const UMBRAL_OTRAS = 0.03;
 /** Nombre visible del segmento que agrupa las especies minoritarias. */
 export const NOMBRE_OTRAS = 'Otras';
 
-export type SegmentoTorta = { nombre: string; cantidad: number; color: string };
+export type BarraEspecie = { nombre: string; cantidad: number; color: string };
 
 function sumarCantidades(distribucion: DistribucionEspecie[]): number {
   return distribucion.reduce((suma, especie) => suma + especie.cantidad, 0);
@@ -26,7 +26,7 @@ function esSinIdentificar(especie: DistribucionEspecie): boolean {
 }
 
 /** Un color de marca por especie, ciclando la paleta si hay más de diez. */
-function segmentosPrincipales(principales: DistribucionEspecie[]): SegmentoTorta[] {
+function barrasPrincipales(principales: DistribucionEspecie[]): BarraEspecie[] {
   return principales.map((especie, indice) => ({
     nombre: especie.nombre,
     cantidad: especie.cantidad,
@@ -35,11 +35,12 @@ function segmentosPrincipales(principales: DistribucionEspecie[]): SegmentoTorta
 }
 
 /**
- * Segmentos de la torta por especie: las especies con menos del 3% del total
- * se agrupan en "Otras" (gris) y los árboles sin especie van como
- * "Sin identificar" (amarillo N/N), siempre al final.
+ * Ranking de árboles por especie para el gráfico de barras horizontales.
+ * La distribución llega ordenada descendente; las especies con menos del 3%
+ * del total se agrupan en "Otras" (gris de dato) y los árboles sin especie van
+ * como "Sin identificar" (amarillo N/N), ambos al final del ranking.
  */
-export function prepararTorta(distribucion: DistribucionEspecie[]): SegmentoTorta[] {
+export function prepararRankingEspecies(distribucion: DistribucionEspecie[]): BarraEspecie[] {
   const total = sumarCantidades(distribucion);
   if (total === 0) return [];
   const identificadas = distribucion.filter((especie) => !esSinIdentificar(especie));
@@ -48,10 +49,10 @@ export function prepararTorta(distribucion: DistribucionEspecie[]): SegmentoTort
     identificadas.filter((especie) => especie.cantidad / total < UMBRAL_OTRAS),
   );
   const sinIdentificar = sumarCantidades(distribucion.filter(esSinIdentificar));
-  const segmentos = segmentosPrincipales(principales);
-  if (otras > 0) segmentos.push({ nombre: NOMBRE_OTRAS, cantidad: otras, color: COLOR_GRAFICO_OTRAS });
+  const barras = barrasPrincipales(principales);
+  if (otras > 0) barras.push({ nombre: NOMBRE_OTRAS, cantidad: otras, color: COLOR_GRAFICO_OTRAS });
   if (sinIdentificar > 0) {
-    segmentos.push({ nombre: NOMBRE_SIN_IDENTIFICAR, cantidad: sinIdentificar, color: COLOR_GRAFICO_NN });
+    barras.push({ nombre: NOMBRE_SIN_IDENTIFICAR, cantidad: sinIdentificar, color: COLOR_GRAFICO_NN });
   }
-  return segmentos;
+  return barras;
 }

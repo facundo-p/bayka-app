@@ -78,6 +78,11 @@
   --color-estado-finalizada: #0a3760;
   --color-estado-pending: #f97316;
 
+  /* ─── Datos neutros (segmento "Otras" de gráficos) ─────────────────── */
+  /* Gris de DATO propio (no el de texto muted): distingue "Otras" como una
+     categoría real, no como un elemento deshabilitado/placeholder. */
+  --color-data-neutral: #64748b;
+
   /* ─── Amarillo (especies N/N) ──────────────────────────────────────── */
   --color-yellow: #ffca28;
   --color-yellow-light: #fff8e1;

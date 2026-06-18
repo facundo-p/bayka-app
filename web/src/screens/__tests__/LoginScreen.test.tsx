@@ -22,9 +22,9 @@ function renderLogin() {
   );
 }
 
-test('muestra el wordmark y el formulario de ingreso', async () => {
+test('muestra el logo de marca y el formulario de ingreso', async () => {
   renderLogin();
-  expect(screen.getByText('BAYKA')).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: 'Bayka' })).toBeInTheDocument();
   expect(screen.getByLabelText('Email')).toBeInTheDocument();
   expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
   expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeEnabled();

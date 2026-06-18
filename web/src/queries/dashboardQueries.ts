@@ -11,7 +11,7 @@ import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
 import { tieneFotoSubida } from '../services/fotoService';
 import { contarOLanzar } from './conteo';
-import { ESPECIE_SIN_IDENTIFICAR } from './dataExplorerQueries';
+import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { listarCatalogo, type EspecieCatalogo } from './especieQueries';
 
 /** Tope de filas de la lectura de árboles (holgado sobre los ~7600 reales). */
@@ -21,7 +21,7 @@ const LIMITE_ARBOLES_DASHBOARD = 15000;
 const LARGO_MES_ISO = 7;
 
 /** Nombre visible del segmento de árboles sin especie. */
-export const NOMBRE_SIN_IDENTIFICAR = 'Sin identificar';
+export { NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 
 /** Proyección mínima de un árbol para agregar en cliente. */
 export type ArbolDashboard = {

@@ -14,10 +14,10 @@ function simularAdminLogueado() {
   estadoMock.perfilFila = PERFIL_ADMIN;
 }
 
-test('autenticado: muestra el wordmark BAYKA y los links de navegación', async () => {
+test('autenticado: muestra el logo de marca y los links de navegación', async () => {
   simularAdminLogueado();
   renderAt('/');
-  expect(await screen.findByText('BAYKA')).toBeInTheDocument();
+  expect(await screen.findByRole('img', { name: 'Bayka' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Plantaciones' })).toBeInTheDocument();
   // El link de Usuarios es exclusivo del superadmin.
   expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();

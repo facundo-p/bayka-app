@@ -3,9 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Cargando, EmptyState, ErrorConReintento } from '../../components';
 import { obtenerDashboard, type DashboardData } from '../../queries/dashboardQueries';
 import { obtenerPlantacion } from '../../queries/plantationQueries';
+import { GraficoBarrasEspecies } from './GraficoBarrasEspecies';
 import { GraficoBarrasParcelas } from './GraficoBarrasParcelas';
 import { GraficoLineaMensual } from './GraficoLineaMensual';
-import { GraficoTortaEspecies } from './GraficoTortaEspecies';
 import { KpiCards } from './KpiCards';
 import styles from './DashboardTab.module.css';
 
@@ -30,7 +30,7 @@ function ContenidoDashboard({ datos, objetivoArboles }: ContenidoDashboardProps)
     <div className={styles.dashboard}>
       <KpiCards datos={datos} objetivoArboles={objetivoArboles} />
       <div className={styles.graficos}>
-        <GraficoTortaEspecies distribucion={datos.porEspecie} />
+        <GraficoBarrasEspecies distribucion={datos.porEspecie} />
         <GraficoBarrasParcelas distribucion={datos.porParcela} />
         <GraficoLineaMensual registros={datos.porMes} />
       </div>

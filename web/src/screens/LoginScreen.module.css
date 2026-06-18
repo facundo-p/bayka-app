@@ -20,18 +20,20 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: var(--space-sm);
 }
 
-.wordmark {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: var(--text-hero);
-  letter-spacing: 0.12em;
-  color: var(--color-primary);
+/* Logo carpincho de marca (versión oscura sobre el panel blanco). */
+.logo {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  display: block;
 }
 
 .subtitulo {
   font-size: var(--text-md);
+  letter-spacing: 0.08em;
   color: var(--color-text-muted);
 }
 

@@ -19,18 +19,21 @@
 .brand {
   display: flex;
   flex-direction: column;
+  gap: var(--space-xs);
   padding: 0 var(--space-md);
 }
 
-.wordmark {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: var(--text-heading);
-  letter-spacing: 0.12em;
+/* Logo carpincho de marca (versión blanca sobre el sidebar azul). */
+.logo {
+  width: 100%;
+  max-width: 168px;
+  height: auto;
+  display: block;
 }
 
 .brandSubtitle {
   font-size: var(--text-sm);
+  letter-spacing: 0.08em;
   color: var(--color-primary-bg-muted);
 }
 

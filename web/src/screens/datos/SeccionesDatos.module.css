@@ -22,6 +22,16 @@
   font-family: var(--font-mono);
 }
 
+/* Conteos numéricos alineados a la derecha: dígitos de ancho fijo. */
+.numero {
+  font-variant-numeric: tabular-nums;
+}
+
+/* La tabla de árboles tiene 9 columnas: scroll horizontal en pantallas angostas. */
+.tablaAncha {
+  overflow-x: auto;
+}
+
 /* Descripción truncada a una línea; el title muestra el texto completo. */
 .descripcion {
   display: inline-block;

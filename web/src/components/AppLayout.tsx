@@ -21,7 +21,7 @@ function Sidebar() {
   return (
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
-        <span className={styles.wordmark}>BAYKA</span>
+        <img src="/logo-bayka-white.png" alt="Bayka" className={styles.logo} />
         <span className={styles.brandSubtitle}>Gestión</span>
       </div>
       <nav className={styles.nav}>

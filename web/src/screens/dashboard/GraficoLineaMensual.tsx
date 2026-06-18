@@ -1,4 +1,5 @@
 import { CartesianGrid, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts';
+import { formatearMes } from '../../lib/fechas';
 import type { RegistrosMes } from '../../queries/dashboardQueries';
 import { COLOR_GRAFICO_GRILLA, COLOR_GRAFICO_LINEA } from '../../theme/chartColors';
 import { GraficoCard } from './GraficoCard';
@@ -11,9 +12,9 @@ export function GraficoLineaMensual({ registros }: { registros: RegistrosMes[] }
     <GraficoCard titulo="Registros por mes" ancho>
       <LineChart data={registros}>
         <CartesianGrid stroke={COLOR_GRAFICO_GRILLA} vertical={false} />
-        <XAxis dataKey="mes" />
+        <XAxis dataKey="mes" tickFormatter={formatearMes} />
         <YAxis allowDecimals={false} />
-        <Tooltip />
+        <Tooltip labelFormatter={(mes) => formatearMes(String(mes))} />
         <Line
           type="monotone"
           dataKey="cantidad"

@@ -7,7 +7,7 @@ import styles from './LoginScreen.module.css';
 function MarcaBayka() {
   return (
     <div className={styles.marca}>
-      <span className={styles.wordmark}>BAYKA</span>
+      <img src="/logo-bayka.png" alt="Bayka" className={styles.logo} />
       <span className={styles.subtitulo}>Gestión</span>
     </div>
   );
