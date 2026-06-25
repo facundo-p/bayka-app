@@ -2,8 +2,16 @@ import type { ReactNode } from 'react';
 import { cx } from '../lib/classNames';
 import styles from './Badge.module.css';
 
-/* Estados de dominio en español (activa/finalizada/pendiente) + genéricos. */
-type BadgeVariant = 'activa' | 'finalizada' | 'pendiente' | 'warning' | 'neutral';
+/* Estados de dominio en español (activa/finalizada/pendiente) + roles + genéricos. */
+type BadgeVariant =
+  | 'activa'
+  | 'finalizada'
+  | 'pendiente'
+  | 'warning'
+  | 'neutral'
+  | 'superadmin'
+  | 'admin'
+  | 'tecnico';
 
 interface BadgeProps {
   variant?: BadgeVariant;

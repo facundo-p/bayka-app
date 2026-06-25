@@ -5,6 +5,7 @@ import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { queryClient } from './lib/queryClient';
 import { LoginScreen } from './screens/LoginScreen';
+import { EspeciesScreen } from './screens/EspeciesScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
 import { UsuariosScreen } from './screens/UsuariosScreen';
@@ -34,6 +35,7 @@ export function AppRoutes() {
             </Route>
             <Route path="configuracion" element={<ConfiguracionTab />} />
           </Route>
+          <Route path="/especies" element={<EspeciesScreen />} />
           <Route element={<RequireSuperadmin />}>
             <Route path="/usuarios" element={<UsuariosScreen />} />
           </Route>
