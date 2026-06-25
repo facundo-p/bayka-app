@@ -1,0 +1,99 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+  padding: var(--space-3xl);
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border-card);
+  border-radius: var(--radius-card-sm);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2xl);
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-title);
+  line-height: 1.1;
+  color: var(--color-text-heading);
+}
+
+.subtitulo {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+  padding: var(--space-sm) var(--space-xl);
+  background-color: var(--color-surface-tint);
+  color: var(--color-plantation-dark);
+  border-radius: var(--radius-pill);
+  font-size: var(--text-sm);
+}
+
+.chipNumero {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+/* `position:relative; z-index:0` atrapa los z-index internos de Leaflet para
+ * que no se monten sobre la topbar sticky. */
+.mapa {
+  position: relative;
+  z-index: 0;
+  height: 360px;
+  overflow: hidden;
+  border: var(--border-thin) solid var(--color-border-card);
+  border-radius: var(--radius-card-sm);
+}
+
+.mapa :global(.leaflet-container) {
+  height: 100%;
+  width: 100%;
+  background-color: var(--color-surface-sunken);
+}
+
+.vacio {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 360px;
+  border: var(--border-thin) dashed var(--color-border-strong);
+  border-radius: var(--radius-card-sm);
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+}
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg) var(--space-2xl);
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.punto {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  border: var(--border-thin) solid var(--color-surface);
+  box-shadow: 0 0 0 1px var(--color-border);
+  flex-shrink: 0;
+}

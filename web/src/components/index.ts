@@ -13,6 +13,7 @@ export { Input } from './Input';
 export { Modal } from './Modal';
 export { NavItem } from './NavItem';
 export { PageHeader } from './PageHeader';
+export { PlantationMap } from './PlantationMap';
 export { Paginacion } from './Paginacion';
 export { SeasonCard } from './SeasonCard';
 export { SegmentedControl } from './SegmentedControl';
