@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Card, Cargando, CheckboxField, ErrorConReintento } from '../../components';
+import { Card, Cargando, ErrorConReintento, Toggle } from '../../components';
 import { obtenerPlantacion, type Plantacion } from '../../queries/plantationQueries';
 import {
   actualizarVisibilidad,
   MENSAJE_VISIBILIDAD_SIN_MIGRACION,
 } from '../../repositories/plantationRepository';
+import { CabeceraConfig } from './CabeceraConfig';
 import { useInvalidarPlantacion } from './useInvalidarPlantacion';
 import styles from './SeccionesConfig.module.css';
 
@@ -34,17 +35,22 @@ function ToggleVisibilidad({ plantacion }: { plantacion: Plantacion }) {
   };
 
   return (
-    <div className={styles.formConfig}>
-      <CheckboxField
-        label="Visible para técnicos en la app"
-        checked={visible}
-        disabled={mutacion.isPending}
-        onChange={(event) => cambiar(event.target.checked)}
-      />
-      <p className={styles.textoAyuda}>
-        Si se desactiva, los técnicos no verán esta plantación en la app; sus datos pendientes
-        igual sincronizan.
-      </p>
+    <div className={styles.formGps}>
+      <div className={styles.filaToggle}>
+        <div>
+          <p className={styles.etiqueta}>Visible para técnicos en la app</p>
+          <p className={styles.textoAyuda}>
+            Si se desactiva, los técnicos no verán esta plantación en la app; sus datos pendientes
+            igual sincronizan.
+          </p>
+        </div>
+        <Toggle
+          aria-label="Visible para técnicos en la app"
+          checked={visible}
+          disabled={mutacion.isPending}
+          onChange={cambiar}
+        />
+      </div>
       {mutacion.isError && (
         <p className={styles.errorAccion} role="alert">
           {mensajeErrorVisibilidad(mutacion.error)}
@@ -63,7 +69,8 @@ export function VisibilidadConfigSection() {
   });
 
   return (
-    <Card title="Visibilidad en Bayka App">
+    <Card>
+      <CabeceraConfig titulo="Visibilidad en la app" subtitulo="Quién ve esta plantación en Bayka App" />
       {plantacion.isPending && <Cargando />}
       {plantacion.isError && (
         <ErrorConReintento

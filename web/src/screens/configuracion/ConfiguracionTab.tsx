@@ -4,14 +4,21 @@ import { UsuariosConfigSection } from './UsuariosConfigSection';
 import { VisibilidadConfigSection } from './VisibilidadConfigSection';
 import styles from './ConfiguracionTab.module.css';
 
-/** Tab Configuración del detalle de plantación: las cuatro secciones apiladas. */
+/**
+ * Tab Configuración: especies (checklist) a la izquierda; GPS, técnicos y
+ * visibilidad apilados a la derecha. Colapsa a una columna en angosto.
+ */
 export function ConfiguracionTab() {
   return (
-    <div className={styles.secciones}>
-      <UsuariosConfigSection />
-      <EspeciesConfigSection />
-      <GpsConfigSection />
-      <VisibilidadConfigSection />
+    <div className={styles.grilla}>
+      <div className={styles.columnaIzquierda}>
+        <EspeciesConfigSection />
+      </div>
+      <div className={styles.columnaDerecha}>
+        <GpsConfigSection />
+        <UsuariosConfigSection />
+        <VisibilidadConfigSection />
+      </div>
     </div>
   );
 }

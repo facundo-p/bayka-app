@@ -1,47 +1,171 @@
 /*
  * Estilos compartidos por las secciones de la tab Configuración
- * (Usuarios, Especies, GPS, Visibilidad). Un solo lugar para el layout
- * de formularios de alta, textos de ayuda/confirmación y acciones.
+ * (Especies, GPS, Técnicos, Visibilidad). Un solo lugar para cabeceras de
+ * card, formularios de toggle/frecuencia, lista de técnicos y modales.
  */
 
-/* Form de alta debajo de la tabla (asignar usuario, agregar especie). */
-.formAlta {
-  margin-top: var(--space-3xl);
+/* ─── Cabecera de card (título serif + chip + subtítulo) ─────────────── */
+.cabecera {
+  margin-bottom: var(--space-3xl);
+}
+
+.cabeceraFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2xl);
+}
+
+.titulo {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-title);
+  line-height: 1.1;
+  color: var(--color-text-heading);
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: var(--space-xs) var(--space-xl);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-secondary-bg);
+  border: var(--border-thin) solid var(--color-secondary-border);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+.subtitulo {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+/* ─── Form de GPS / Visibilidad (toggles + frecuencia) ───────────────── */
+.formGps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3xl);
+}
+
+.filaToggle {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2xl);
+}
+
+.etiqueta {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  color: var(--color-text-body);
+}
+
+.bloqueFrecuencia {
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
+  padding-top: var(--space-3xl);
+  border-top: var(--border-thin) solid var(--color-divider);
 }
 
-.fila {
-  display: flex;
-  align-items: flex-end;
-  gap: var(--space-2xl);
-  flex-wrap: wrap;
+.campoExacto {
+  max-width: 240px;
 }
 
-.fila > * {
-  flex: 1;
-  min-width: 160px;
+/* La frecuencia no cae en ningún preset: el input es el control vigente. */
+.campoExactoActivo input {
+  border-color: var(--color-secondary);
 }
 
-.botonFila {
-  flex: 0 0 auto;
-  min-width: auto;
-}
-
-/* Form vertical de configuración (sección GPS). */
-.formConfig {
+/* ─── Lista de técnicos asignados ────────────────────────────────────── */
+.listaTecnicos {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filaTecnico {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-lg) 0;
+  border-bottom: var(--border-thin) solid var(--color-divider);
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.nombreTecnico {
+  flex: 1;
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.quitarTecnico {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-control);
+  background-color: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.quitarTecnico:hover {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-danger);
+}
+
+.botonAsignar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-top: var(--space-2xl);
+  padding: var(--space-xl);
+  border: var(--border-thin) dashed var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background-color: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.botonAsignar:hover {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-primary);
+}
+
+/* ─── Form dentro de modal (asignar técnico) ─────────────────────────── */
+.formModal {
+  display: flex;
+  flex-direction: column;
   gap: var(--space-2xl);
+  margin-bottom: var(--space-3xl);
 }
 
-.campoCorto {
-  width: 100%;
-  max-width: 320px;
-}
-
+/* ─── Compartidos (errores, ayudas, modales de confirmación) ─────────── */
 .errorAccion {
   margin: 0;
   font-size: var(--text-md);
@@ -49,7 +173,7 @@
 }
 
 .textoAyuda {
-  margin: 0;
+  margin: var(--space-xs) 0 0;
   font-size: var(--text-md);
   color: var(--color-text-muted);
 }
@@ -59,24 +183,8 @@
   color: var(--color-text-secondary);
 }
 
-/* Botonera de un modal de confirmación. */
 .acciones {
   display: flex;
   justify-content: flex-end;
   gap: var(--space-xl);
-}
-
-/* Botonera compacta dentro de una celda de tabla (↑ / ↓ / Quitar). */
-.accionesCelda {
-  display: inline-flex;
-  gap: var(--space-sm);
-}
-
-.codigo {
-  font-family: var(--font-mono);
-}
-
-.cientifico {
-  color: var(--color-text-muted);
-  font-style: italic;
 }

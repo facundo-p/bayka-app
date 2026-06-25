@@ -7,13 +7,15 @@ type SelectProps = ComponentProps<'select'> & {
   label: string;
   error?: string;
   hint?: string;
+  /** Oculta el label visualmente (toolbars densas); sigue accesible. */
+  labelOculto?: boolean;
 };
 
-export function Select({ label, error, hint, id, className, ...rest }: SelectProps) {
+export function Select({ label, error, hint, labelOculto, id, className, ...rest }: SelectProps) {
   const autoId = useId();
   const selectId = id ?? autoId;
   return (
-    <FormField id={selectId} label={label} hint={hint} error={error}>
+    <FormField id={selectId} label={label} hint={hint} error={error} labelOculto={labelOculto}>
       <select
         id={selectId}
         aria-invalid={error ? true : undefined}

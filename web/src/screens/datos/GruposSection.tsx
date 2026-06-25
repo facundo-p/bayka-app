@@ -9,6 +9,7 @@ import {
 import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { GrupoConDetalle, TipoGrupo } from '../../queries/dataExplorerQueries';
+import { DatosToolbar } from './DatosToolbar';
 import { ScopeChips } from './ScopeChips';
 import { SelectParcela } from './SelectParcela';
 import { VacioConFiltros } from './VacioConFiltros';
@@ -78,15 +79,17 @@ export function GruposSection() {
       <ErrorConReintento mensaje="No se pudieron cargar los grupos." onReintentar={reintentar} />
     );
   }
+  const recuento = grupos.data ? `${formatearEntero(grupos.data.length)} grupos` : undefined;
   return (
     <>
-      <div className={styles.filtros}>
+      <DatosToolbar segmento="grupos" recuento={recuento}>
         <SelectParcela
           parcelas={parcelas.data ?? []}
           value={filtros.parcelaId}
           onChange={(valor) => setFiltro('parcelaId', valor)}
+          labelOculto
         />
-      </div>
+      </DatosToolbar>
       <ScopeChips chips={chips} />
       {grupos.isPending ? (
         <Cargando label="Cargando grupos…" />

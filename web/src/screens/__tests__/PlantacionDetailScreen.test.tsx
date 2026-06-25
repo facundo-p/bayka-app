@@ -92,12 +92,13 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByText('Todavía no hay árboles registrados')).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('link', { name: 'Datos' }));
-  // La tab Datos redirige a sus sub-tabs (Parcelas activa por defecto).
-  expect(await screen.findByRole('link', { name: 'Parcelas' })).toBeInTheDocument();
-  expect(screen.getByRole('link', { name: 'Árboles' })).toBeInTheDocument();
+  // La tab Datos redirige a Árboles, cuyo selector de sección (toolbar única)
+  // expone las secciones como radios.
+  expect(await screen.findByRole('radio', { name: 'Parcelas' })).toBeInTheDocument();
+  expect(screen.getByRole('radio', { name: 'Árboles' })).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('link', { name: 'Configuración' }));
-  expect(await screen.findByRole('heading', { name: 'Usuarios asignados' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Técnicos asignados' })).toBeInTheDocument();
 });
 
 test('plantación inexistente muestra el estado vacío con link al listado', async () => {
@@ -108,15 +109,18 @@ test('plantación inexistente muestra el estado vacío con link al listado', asy
   expect(volver).toHaveAttribute('href', '/plantaciones');
 });
 
-test('asigna un usuario disponible y la tabla se actualiza', async () => {
+test('asigna un usuario disponible y la lista se actualiza', async () => {
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones/plant-1/configuracion');
 
-  expect(await screen.findByRole('cell', { name: 'Beto Técnico' })).toBeInTheDocument();
-  await usuario.selectOptions(screen.getByLabelText('Usuario'), 'user-3');
-  await usuario.click(screen.getByRole('button', { name: 'Asignar' }));
+  expect(await screen.findByText('Beto Técnico')).toBeInTheDocument();
+  // Asignar es un modal disparado por el botón punteado.
+  await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+  const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
+  await usuario.selectOptions(within(dialogo).getByLabelText('Usuario'), 'user-3');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Asignar' }));
 
-  expect(await screen.findByRole('cell', { name: 'Carla Campo' })).toBeInTheDocument();
+  expect(await screen.findByText('Carla Campo')).toBeInTheDocument();
   const insercion = consultas.find((consulta) => consulta.operacion === 'insert');
   expect(insercion?.tabla).toBe('plantation_users');
   expect(insercion?.payload).toEqual({
@@ -124,14 +128,15 @@ test('asigna un usuario disponible y la tabla se actualiza', async () => {
     user_id: 'user-3',
     rol_en_plantacion: 'tecnico',
   });
-  // El select vuelve al placeholder: el botón queda deshabilitado.
-  expect(screen.getByRole('button', { name: 'Asignar' })).toBeDisabled();
 });
 
-test('el select de usuarios no lista a los ya asignados', async () => {
+test('el select del modal no lista a los ya asignados', async () => {
+  const usuario = userEvent.setup();
   renderRutasEn('/plantaciones/plant-1/configuracion');
+  await screen.findByText('Beto Técnico');
 
-  const select = await screen.findByLabelText('Usuario');
+  await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+  const select = within(screen.getByRole('dialog')).getByLabelText('Usuario');
   expect(within(select).getByRole('option', { name: 'Carla Campo' })).toBeInTheDocument();
   expect(within(select).queryByRole('option', { name: 'Beto Técnico' })).not.toBeInTheDocument();
 });
@@ -139,10 +144,10 @@ test('el select de usuarios no lista a los ya asignados', async () => {
 test('quitar pide confirmación, cancela sin borrar y confirma borrando', async () => {
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones/plant-1/configuracion');
-  await screen.findByRole('cell', { name: 'Beto Técnico' });
+  await screen.findByText('Beto Técnico');
 
   // Cancelar: la fila sigue y no hubo delete.
-  await usuario.click(screen.getByRole('button', { name: 'Quitar' }));
+  await usuario.click(screen.getByRole('button', { name: 'Quitar Beto Técnico' }));
   let dialogo = screen.getByRole('dialog', { name: 'Quitar usuario' });
   expect(dialogo).toHaveTextContent('Beto Técnico dejará de ver esta plantación en la app.');
   expect(dialogo).toHaveTextContent('Sus árboles registrados se conservan.');
@@ -150,12 +155,12 @@ test('quitar pide confirmación, cancela sin borrar y confirma borrando', async 
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(consultas.some((consulta) => consulta.operacion === 'delete')).toBe(false);
 
-  // Confirmar: borra la fila y la tabla queda vacía.
-  await usuario.click(screen.getByRole('button', { name: 'Quitar' }));
+  // Confirmar: borra la fila y la lista queda vacía.
+  await usuario.click(screen.getByRole('button', { name: 'Quitar Beto Técnico' }));
   dialogo = screen.getByRole('dialog', { name: 'Quitar usuario' });
   await usuario.click(within(dialogo).getByRole('button', { name: 'Quitar' }));
 
-  expect(await screen.findByText(/Sin usuarios asignados/)).toBeInTheDocument();
+  expect(await screen.findByText(/Sin técnicos asignados/)).toBeInTheDocument();
   const borrado = consultas.find((consulta) => consulta.operacion === 'delete');
   expect(borrado?.tabla).toBe('plantation_users');
   expect(borrado?.filtros).toEqual([
