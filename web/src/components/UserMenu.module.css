@@ -1,0 +1,61 @@
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  padding-top: var(--space-2xl);
+  border-top: var(--border-thin) solid var(--color-border);
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--space-6xl);
+  height: var(--space-6xl);
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-size: var(--text-md);
+  font-weight: 500;
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.nombre {
+  font-weight: 500;
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rol {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+.salir {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--space-sm);
+  background: none;
+  border: none;
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.salir:hover {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}

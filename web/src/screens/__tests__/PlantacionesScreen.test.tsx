@@ -1,8 +1,15 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+
+/** El contenido de la pantalla vive en <main>; el sidebar (con la card de
+ *  temporada activa, que también muestra el lugar de una plantación) queda
+ *  fuera. Acotamos las aserciones de la tabla a <main> para no chocar con él. */
+function enMain() {
+  return within(screen.getByRole('main'));
+}
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -43,33 +50,37 @@ test('renderiza las filas con stats, estado, visibilidad y fecha', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   renderRutasEn('/plantaciones');
 
-  expect(await screen.findByText('Mendoza')).toBeInTheDocument();
-  expect(screen.getByText('Salta')).toBeInTheDocument();
-  expect(screen.getByText('Activa')).toBeInTheDocument();
-  expect(screen.getByText('Finalizada')).toBeInTheDocument();
-  expect(screen.getByText('120')).toBeInTheDocument();
-  expect(screen.getByText('15/01/2025')).toBeInTheDocument();
+  // La celda "Salta" (plantación finalizada) solo existe en la tabla, no en
+  // la card del sidebar: sirve para esperar a que la tabla cargue.
+  await screen.findByText('Salta');
+  const main = enMain();
+  expect(main.getByText('Mendoza')).toBeInTheDocument();
+  expect(main.getByText('Salta')).toBeInTheDocument();
+  expect(main.getByText('Activa')).toBeInTheDocument();
+  expect(main.getByText('Finalizada')).toBeInTheDocument();
+  expect(main.getByText('120')).toBeInTheDocument();
+  expect(main.getByText('15/01/2025')).toBeInTheDocument();
   // "Oculta" aparece una sola vez: solo la plantación con visible_in_app=false.
-  expect(screen.getAllByText('Oculta')).toHaveLength(1);
+  expect(main.getAllByText('Oculta')).toHaveLength(1);
 });
 
 test('los chips filtran por estado', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
-  await screen.findByText('Mendoza');
+  await screen.findByText('Salta');
 
   await usuario.click(screen.getByRole('button', { name: 'Activas' }));
-  expect(screen.getByText('Mendoza')).toBeInTheDocument();
-  expect(screen.queryByText('Salta')).not.toBeInTheDocument();
+  expect(enMain().getByText('Mendoza')).toBeInTheDocument();
+  expect(enMain().queryByText('Salta')).not.toBeInTheDocument();
 
   await usuario.click(screen.getByRole('button', { name: 'Finalizadas' }));
-  expect(screen.queryByText('Mendoza')).not.toBeInTheDocument();
-  expect(screen.getByText('Salta')).toBeInTheDocument();
+  expect(enMain().queryByText('Mendoza')).not.toBeInTheDocument();
+  expect(enMain().getByText('Salta')).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('button', { name: 'Todas' }));
-  expect(screen.getByText('Mendoza')).toBeInTheDocument();
-  expect(screen.getByText('Salta')).toBeInTheDocument();
+  expect(enMain().getByText('Mendoza')).toBeInTheDocument();
+  expect(enMain().getByText('Salta')).toBeInTheDocument();
 });
 
 test('clic en una fila navega al detalle de la plantación', async () => {
@@ -77,7 +88,8 @@ test('clic en una fila navega al detalle de la plantación', async () => {
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
 
-  await usuario.click(await screen.findByText('Mendoza'));
+  await screen.findByText('Salta');
+  await usuario.click(enMain().getByText('Mendoza'));
   expect(
     await screen.findByRole('heading', { name: 'Mendoza — 2025-2026' }),
   ).toBeInTheDocument();
@@ -87,7 +99,7 @@ test('"Nueva plantación" abre el modal de creación', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
-  await screen.findByText('Mendoza');
+  await screen.findByText('Salta');
 
   await usuario.click(screen.getByRole('button', { name: 'Nueva plantación' }));
   expect(screen.getByRole('dialog', { name: 'Nueva plantación' })).toBeInTheDocument();
@@ -98,7 +110,7 @@ test('"Editar" abre el modal precargado sin navegar al detalle', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
-  await screen.findByText('Mendoza');
+  await screen.findByText('Salta');
 
   const [editarMendoza] = screen.getAllByRole('button', { name: 'Editar' });
   await usuario.click(editarMendoza);
