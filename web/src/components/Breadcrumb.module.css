@@ -1,0 +1,28 @@
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--text-base);
+}
+
+.separador {
+  color: var(--color-text-faint);
+}
+
+.item {
+  color: var(--color-text-secondary);
+}
+
+.link {
+  color: var(--color-text-secondary);
+  transition: color 0.15s ease;
+}
+
+.link:hover {
+  color: var(--color-primary);
+}
+
+.current {
+  color: var(--color-text-heading);
+  font-weight: 500;
+}
