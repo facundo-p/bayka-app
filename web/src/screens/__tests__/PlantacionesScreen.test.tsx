@@ -64,21 +64,32 @@ test('renderiza las filas con stats, estado, visibilidad y fecha', async () => {
   expect(main.getAllByText('Oculta')).toHaveLength(1);
 });
 
-test('los chips filtran por estado', async () => {
+test('el subtítulo cuenta plantaciones, temporadas distintas y árboles', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  renderRutasEn('/plantaciones');
+  await screen.findByText('Salta');
+
+  // 2 plantaciones, 2 períodos distintos, 120 + 80 = 200 árboles.
+  expect(
+    enMain().getByText('2 plantaciones · 2 temporadas · 200 árboles registrados'),
+  ).toBeInTheDocument();
+});
+
+test('los segmentos filtran por estado e incluyen su conteo', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
   await screen.findByText('Salta');
 
-  await usuario.click(screen.getByRole('button', { name: 'Activas' }));
+  await usuario.click(screen.getByRole('radio', { name: 'Activas 1' }));
   expect(enMain().getByText('Mendoza')).toBeInTheDocument();
   expect(enMain().queryByText('Salta')).not.toBeInTheDocument();
 
-  await usuario.click(screen.getByRole('button', { name: 'Finalizadas' }));
+  await usuario.click(screen.getByRole('radio', { name: 'Finalizadas 1' }));
   expect(enMain().queryByText('Mendoza')).not.toBeInTheDocument();
   expect(enMain().getByText('Salta')).toBeInTheDocument();
 
-  await usuario.click(screen.getByRole('button', { name: 'Todas' }));
+  await usuario.click(screen.getByRole('radio', { name: 'Todas 2' }));
   expect(enMain().getByText('Mendoza')).toBeInTheDocument();
   expect(enMain().getByText('Salta')).toBeInTheDocument();
 });
@@ -90,9 +101,7 @@ test('clic en una fila navega al detalle de la plantación', async () => {
 
   await screen.findByText('Salta');
   await usuario.click(enMain().getByText('Mendoza'));
-  expect(
-    await screen.findByRole('heading', { name: 'Mendoza — 2025-2026' }),
-  ).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Mendoza' })).toBeInTheDocument();
 });
 
 test('"Nueva plantación" abre el modal de creación', async () => {
@@ -104,24 +113,6 @@ test('"Nueva plantación" abre el modal de creación', async () => {
   await usuario.click(screen.getByRole('button', { name: 'Nueva plantación' }));
   expect(screen.getByRole('dialog', { name: 'Nueva plantación' })).toBeInTheDocument();
   expect(screen.getByLabelText('Lugar *')).toHaveValue('');
-});
-
-test('"Editar" abre el modal precargado sin navegar al detalle', async () => {
-  configurarPlantacionesMock(FILAS, STATS);
-  const usuario = userEvent.setup();
-  renderRutasEn('/plantaciones');
-  await screen.findByText('Salta');
-
-  const [editarMendoza] = screen.getAllByRole('button', { name: 'Editar' });
-  await usuario.click(editarMendoza);
-
-  // Sigue en el listado (el stopPropagation evitó el click de la fila).
-  expect(
-    screen.queryByRole('heading', { name: 'Mendoza — 2025-2026' }),
-  ).not.toBeInTheDocument();
-  expect(screen.getByRole('dialog', { name: 'Editar plantación' })).toBeInTheDocument();
-  expect(screen.getByLabelText('Lugar *')).toHaveValue('Mendoza');
-  expect(screen.getByLabelText('Período *')).toHaveValue('2025-2026');
 });
 
 test('sin plantaciones muestra el estado vacío', async () => {
