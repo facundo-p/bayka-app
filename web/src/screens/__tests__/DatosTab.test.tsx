@@ -147,10 +147,10 @@ describe('sección Parcelas', () => {
     expect(screen.getByRole('radio', { name: 'Árboles' })).toBeInTheDocument();
   });
 
-  test('la tab Datos redirige a Árboles por defecto', async () => {
+  test('la tab Datos redirige a Parcelas por defecto', async () => {
     renderRutasEn('/plantaciones/plant-1/datos');
-    // Árboles es la sección por defecto: su columna SubID confirma el redirect.
-    expect(await screen.findByRole('cell', { name: 'A-001' })).toBeInTheDocument();
+    // Parcelas es la sección por defecto: su parcela "Norte" confirma el redirect.
+    expect(await screen.findByRole('cell', { name: 'Norte' })).toBeInTheDocument();
   });
 });
 

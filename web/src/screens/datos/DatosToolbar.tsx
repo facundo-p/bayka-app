@@ -7,9 +7,9 @@ import styles from './SeccionesDatos.module.css';
 export type SegmentoDatos = 'arboles' | 'grupos' | 'parcelas';
 
 const OPCIONES: Array<{ value: SegmentoDatos; label: string }> = [
-  { value: 'arboles', label: 'Árboles' },
-  { value: 'grupos', label: 'Grupos' },
   { value: 'parcelas', label: 'Parcelas' },
+  { value: 'grupos', label: 'Grupos' },
+  { value: 'arboles', label: 'Árboles' },
 ];
 
 interface DatosToolbarProps {
