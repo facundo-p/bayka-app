@@ -16,6 +16,7 @@ import {
 } from '../components';
 import { formatearFechaCorta } from '../lib/fechas';
 import { obtenerPlantacion, type Plantacion } from '../queries/plantationQueries';
+import { idsGenerados } from '../queries/idsQueries';
 import styles from './PlantacionDetailScreen.module.css';
 
 const TAMANO_ICONO = 16;
@@ -55,18 +56,26 @@ function lineaMeta(plantacion: Plantacion): string {
   return partes.join(' · ');
 }
 
-/** Acciones de la topbar: aún sin backend (placeholders no-op). */
-function AccionesDetalle() {
-  return (
-    <>
-      <Button variant="secondary" onClick={() => {}}>
-        Exportar
-      </Button>
-      <Button variant="primary" onClick={() => {}}>
-        <Plus size={TAMANO_ICONO} />
-        Generar IDs
-      </Button>
-    </>
+/**
+ * Acciones de la topbar según el estado de IDs (regla de negocio de mobile):
+ * "Generar IDs" hasta que estén generados; "Exportar" sólo después. Ambas aún
+ * sin backend en la web (placeholders no-op). Mientras carga, no muestra nada.
+ */
+function AccionesDetalle({ plantationId }: { plantationId: string }) {
+  const { data: generados } = useQuery({
+    queryKey: ['ids-generados', plantationId],
+    queryFn: () => idsGenerados(plantationId),
+  });
+  if (generados === undefined) return null;
+  return generados ? (
+    <Button variant="secondary" onClick={() => {}}>
+      Exportar
+    </Button>
+  ) : (
+    <Button variant="primary" onClick={() => {}}>
+      <Plus size={TAMANO_ICONO} />
+      Generar IDs
+    </Button>
   );
 }
 
@@ -113,7 +122,7 @@ export function PlantacionDetailScreen() {
             items={[{ label: 'Plantaciones', to: '/plantaciones' }, { label: data.lugar }]}
           />
         }
-        right={<AccionesDetalle />}
+        right={<AccionesDetalle plantationId={data.id} />}
       />
       <BloqueTitulo plantacion={data} onEditar={() => setEditando(true)} />
       <div className={styles.tabs}>
