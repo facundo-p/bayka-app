@@ -49,12 +49,12 @@ test('crear feliz: valida, llama al repository con el perfil y cierra', async ()
   const onClose = renderModal();
 
   await completarObligatorios(usuario);
-  await usuario.type(screen.getByLabelText('Superficie (ha)'), '12.5');
+  await usuario.type(screen.getByLabelText('Objetivo de árboles'), '1000');
   await usuario.click(screen.getByRole('button', { name: 'Crear' }));
 
   await waitFor(() => expect(onClose).toHaveBeenCalled());
   expect(vi.mocked(crearPlantacion)).toHaveBeenCalledWith(
-    expect.objectContaining({ lugar: 'Mendoza', periodo: '2025-2026', superficieHa: 12.5 }),
+    expect.objectContaining({ lugar: 'Mendoza', periodo: '2025-2026', objetivoArboles: 1000 }),
     PERFIL,
   );
 });
@@ -63,13 +63,14 @@ test('con campos inválidos muestra errores por campo y no guarda', async () => 
   const usuario = userEvent.setup();
   renderModal();
 
-  await usuario.type(screen.getByLabelText('Ubicación: latitud'), '95');
+  await usuario.type(screen.getByLabelText('Objetivo de árboles'), '0');
   await usuario.click(screen.getByRole('button', { name: 'Crear' }));
 
   expect(await screen.findByText('El lugar es obligatorio')).toBeInTheDocument();
   expect(screen.getByText('El período es obligatorio')).toBeInTheDocument();
-  expect(screen.getByText('La latitud debe ser un número entre -90 y 90')).toBeInTheDocument();
-  expect(screen.getByText('Completá la longitud: va junto con la latitud')).toBeInTheDocument();
+  expect(
+    screen.getByText('El objetivo debe ser un número entero de al menos 1 árbol'),
+  ).toBeInTheDocument();
   expect(vi.mocked(crearPlantacion)).not.toHaveBeenCalled();
 });
 
@@ -99,22 +100,18 @@ test('editar: precarga los valores (nulls de la 024 → vacíos) y llama a edita
     periodo: '2024-2025',
     descripcion: 'Finca sur',
     fechaInicio: null,
-    superficieHa: 8,
-    ubicacionLat: null,
-    ubicacionLng: null,
     objetivoArboles: null,
   });
 
   expect(screen.getByLabelText('Lugar *')).toHaveValue('Salta');
   expect(screen.getByLabelText('Descripción')).toHaveValue('Finca sur');
-  expect(screen.getByLabelText('Superficie (ha)')).toHaveValue(8);
   expect(screen.getByLabelText('Objetivo de árboles')).toHaveValue(null);
 
   await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
   await waitFor(() => expect(onClose).toHaveBeenCalled());
   expect(vi.mocked(editarPlantacion)).toHaveBeenCalledWith(
     'plant-1',
-    expect.objectContaining({ lugar: 'Salta', superficieHa: 8 }),
+    expect.objectContaining({ lugar: 'Salta', descripcion: 'Finca sur' }),
   );
   expect(vi.mocked(existePlantacion)).toHaveBeenCalledWith('Salta', '2024-2025', 'plant-1');
 });
