@@ -32,23 +32,27 @@ function FilaEspecie({ especie, maximo }: { especie: EspecieColoreada; maximo: n
 /** Panel "Por especie": conteo de especies + barras horizontales por especie. */
 export function SpeciesDistribution({ especies, totalEspecies }: SpeciesDistributionProps) {
   const maximo = maximoCantidad(especies);
+  // El contenido va en una capa absoluta para que el panel NO crezca con la
+  // lista: así el alto de la fila lo fija el mapa y la lista scrollea adentro.
   return (
     <div className={styles.panel}>
-      <div className={styles.header}>
-        <div>
-          <h3 className={styles.titulo}>Por especie</h3>
-          <p className={styles.subtitulo}>Composición del rodal</p>
+      <div className={styles.contenido}>
+        <div className={styles.header}>
+          <div>
+            <h3 className={styles.titulo}>Por especie</h3>
+            <p className={styles.subtitulo}>Composición del rodal</p>
+          </div>
+          <div className={styles.conteo}>
+            <span className={styles.conteoNumero}>{totalEspecies}</span>
+            <span className={styles.conteoLabel}>especies</span>
+          </div>
         </div>
-        <div className={styles.conteo}>
-          <span className={styles.conteoNumero}>{totalEspecies}</span>
-          <span className={styles.conteoLabel}>especies</span>
-        </div>
+        <ul className={styles.lista}>
+          {especies.map((especie) => (
+            <FilaEspecie key={especie.codigo} especie={especie} maximo={maximo} />
+          ))}
+        </ul>
       </div>
-      <ul className={styles.lista}>
-        {especies.map((especie) => (
-          <FilaEspecie key={especie.codigo} especie={especie} maximo={maximo} />
-        ))}
-      </ul>
     </div>
   );
 }

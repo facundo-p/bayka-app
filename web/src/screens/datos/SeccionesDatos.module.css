@@ -39,6 +39,16 @@
   min-width: 130px;
 }
 
+/* Achica los inputs/selects: control más bajo y texto a la par del entorno
+   (antes el texto del filtro era más grande que el resto de la toolbar). */
+.filtrosCompactos input,
+.filtrosCompactos select {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+}
+
 .busqueda {
   min-width: 220px;
 }
