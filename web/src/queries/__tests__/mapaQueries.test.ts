@@ -26,14 +26,16 @@ const FILA_SIN_ESPECIE = {
 };
 
 describe('listarPuntosGps', () => {
-  test('lee acotando por plantación, filtrando lat/lng no nulos y con tope', async () => {
+  test('lee acotando por plantación, filtrando lat/lng no nulos y paginando', async () => {
     const consultas = capturarConsultas(() => ({ data: [FILA_CON_ESPECIE] }));
 
     await listarPuntosGps('plant-1');
 
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
+    // Mock con < 1000 filas: una sola página (range 0–999) y corta.
     expect(deArboles).toHaveLength(1);
-    expect(deArboles[0].limite).toBe(20000);
+    expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
+    expect(deArboles[0].limite).toBeUndefined();
     expect(deArboles[0].filtros).toContainEqual({
       metodo: 'eq',
       columna: 'groups.plantation_id',

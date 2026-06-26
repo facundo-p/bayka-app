@@ -38,7 +38,9 @@
   display: grid;
   grid-template-columns: 1.55fr 1fr;
   gap: var(--space-3xl);
-  align-items: start;
+  /* stretch: el panel "Por especie" iguala el alto de la sección del mapa
+     (su lista scrollea si es más larga). */
+  align-items: stretch;
 }
 
 @media (max-width: 900px) {
