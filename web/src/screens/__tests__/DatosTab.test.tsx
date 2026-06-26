@@ -10,6 +10,12 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
+// Leaflet usa APIs de layout que jsdom no implementa: el mapa del detalle se
+// reemplaza por un contenedor tonto. El mapa real se valida en el navegador.
+vi.mock('../../components/MapaPuntos', () => ({
+  MapaPuntos: () => <div>Mapa del árbol</div>,
+}));
+
 const FILA_PLANTACION = {
   id: 'plant-1',
   lugar: 'Mendoza',
@@ -195,14 +201,15 @@ describe('sección Árboles', () => {
     expect(within(filaCompleta).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/±5m/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText('Teo Técnico')).toBeInTheDocument();
-    expect(within(filaCompleta).getByRole('button', { name: 'Ver foto' })).toBeInTheDocument();
+    // Foto subida → check no interactivo (la foto se ve en el detalle de la fila).
+    expect(within(filaCompleta).getByLabelText('Con foto')).toBeInTheDocument();
 
     const filaVacia = filaDe('A-002');
     expect(within(filaVacia).getByText('N/N · Sin identificar')).toBeInTheDocument();
     // Sin coordenadas la celda GPS muestra "—" (nunca "0,0").
     expect(within(filaVacia).queryByText(/-?\d+\.\d{5}/)).not.toBeInTheDocument();
-    // La foto local de mobile no cuenta como subida: sin ícono de foto.
-    expect(within(filaVacia).queryByRole('button', { name: 'Ver foto' })).not.toBeInTheDocument();
+    // La foto local de mobile no cuenta como subida: sin indicador de foto.
+    expect(within(filaVacia).queryByLabelText('Con foto')).not.toBeInTheDocument();
   });
 
   test('el filtro por especie aplica eq server-side (y N/N aplica is null)', async () => {
@@ -241,22 +248,18 @@ describe('sección Árboles', () => {
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 50, hasta: 99 });
   });
 
-  test('el ícono de foto abre la foto firmada en una pestaña nueva', async () => {
+  test('al hacer click en una fila se abre el detalle con especie y coordenadas', async () => {
     const usuario = userEvent.setup();
-    const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
-    await usuario.click(screen.getByRole('button', { name: 'Ver foto' }));
+    await usuario.click(filaDe('A-001'));
 
-    expect(estadoMock.firmas).toEqual([
-      { bucket: 'tree-photos', path: 'plantations/p1/trees/tree-1.jpg', segundos: 3600 },
-    ]);
-    expect(abrir).toHaveBeenCalledWith(
-      'https://firmada.test/plantations/p1/trees/tree-1.jpg',
-      '_blank',
-      'noopener',
-    );
-    abrir.mockRestore();
+    const dialogo = await screen.findByRole('dialog', { name: 'A-001' });
+    expect(within(dialogo).getByText('QB · Quebracho')).toBeInTheDocument();
+    expect(within(dialogo).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/±5m/)).toBeInTheDocument();
+    // El mapa real está mockeado; basta su placeholder.
+    expect(within(dialogo).getByText('Mapa del árbol')).toBeInTheDocument();
   });
 });

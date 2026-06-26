@@ -10,6 +10,7 @@ export { ErrorConReintento } from './ErrorConReintento';
 export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';
 export { HeroMetric } from './HeroMetric';
 export { Input } from './Input';
+export { MapaPuntos } from './MapaPuntos';
 export { Modal } from './Modal';
 export { NavItem } from './NavItem';
 export { PageHeader } from './PageHeader';

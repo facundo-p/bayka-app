@@ -1,0 +1,23 @@
+/* `position:relative; z-index:0` atrapa los z-index internos de Leaflet para
+ * que no se monten sobre la topbar sticky. */
+.contenedor {
+  position: relative;
+  z-index: 0;
+  overflow: hidden;
+  border: var(--border-thin) solid var(--color-border-card);
+  border-radius: var(--radius-card-sm);
+}
+
+.panel {
+  height: 360px;
+}
+
+.compacto {
+  height: 220px;
+}
+
+.contenedor :global(.leaflet-container) {
+  height: 100%;
+  width: 100%;
+  background-color: var(--color-surface-sunken);
+}

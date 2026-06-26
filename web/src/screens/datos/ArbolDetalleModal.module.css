@@ -1,0 +1,78 @@
+.cuerpo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Etiqueta tenue que encabeza cada bloque/dato (overline metadata). */
+.etiqueta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Especie: punto de color + "código · nombre" en una línea. */
+.especie {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+/* Punto de color que precede a la especie. El color es data-driven (inline). */
+.puntoEspecie {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.foto {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius-card-sm);
+}
+
+/* Coordenadas GPS en mono bajo el mapa del detalle. */
+.coordenadas {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.precision {
+  color: var(--color-text-muted);
+}
+
+/* Texto tenue de ausencia (sin foto / sin GPS). */
+.tenue {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+/* Grilla de metadatos: etiqueta tenue arriba, valor debajo. */
+.meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-xl) var(--space-2xl);
+  margin: 0;
+}
+
+.metaDato {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.metaValor {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
