@@ -138,3 +138,21 @@ export async function obtenerPlantacion(id: string): Promise<Plantacion | null> 
   if (error) throw new Error(error.message);
   return data ? mapearPlantacion(data as FilaPlantacion) : null;
 }
+
+/**
+ * Id de la plantación 'activa' con el registro de árbol MÁS RECIENTE (la última
+ * temporada en la que se cargaron árboles), o null si ninguna activa tiene
+ * árboles. Define la "Temporada activa" del sidebar.
+ */
+export async function obtenerTemporadaActivaId(): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('trees')
+    .select('created_at, groups!inner(plantation_id, plantations!inner(estado))')
+    .eq('groups.plantations.estado', 'activa')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(error.message);
+  // El embed many-to-one llega como objeto en runtime (el cliente lo tipa array).
+  const fila = ((data ?? []) as unknown as Array<{ groups: { plantation_id: string } | null }>)[0];
+  return fila?.groups?.plantation_id ?? null;
+}

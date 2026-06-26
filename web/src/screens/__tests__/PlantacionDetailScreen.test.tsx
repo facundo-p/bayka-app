@@ -101,6 +101,17 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByRole('heading', { name: 'Técnicos asignados' })).toBeInTheDocument();
 });
 
+test('el botón Editar abre el formulario de la plantación con los datos cargados', async () => {
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones/plant-1');
+  await screen.findByRole('heading', { name: 'Mendoza' });
+
+  await usuario.click(screen.getByRole('button', { name: /Editar/ }));
+  const dialogo = await screen.findByRole('dialog');
+  expect(within(dialogo).getByLabelText(/Lugar/)).toHaveValue('Mendoza');
+  expect(within(dialogo).getByLabelText(/Período/)).toHaveValue('2025-2026');
+});
+
 test('plantación inexistente muestra el estado vacío con link al listado', async () => {
   renderRutasEn('/plantaciones/no-existe');
 

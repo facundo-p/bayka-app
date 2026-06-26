@@ -1,7 +1,7 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
-import { listarPlantaciones } from '../plantationQueries';
+import { listarPlantaciones, obtenerTemporadaActivaId } from '../plantationQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -106,4 +106,20 @@ test('los counts filtran por plantación y excluyen parcelas borradas', async ()
 test('propaga el error de Supabase', async () => {
   estadoMock.resolverConsulta = () => ({ data: null, error: { message: 'sin permisos' } });
   await expect(listarPlantaciones()).rejects.toThrow('sin permisos');
+});
+
+test('temporada activa: id de la plantación activa con el árbol más reciente', async () => {
+  const consultas: ConsultaCapturada[] = [];
+  estadoMock.resolverConsulta = (consulta) => {
+    consultas.push(consulta);
+    return { data: [{ created_at: '2026-06-20T10:00:00Z', groups: { plantation_id: 'plant-9' } }], error: null };
+  };
+  await expect(obtenerTemporadaActivaId()).resolves.toBe('plant-9');
+  const trees = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(trees?.filtros).toContainEqual({ metodo: 'eq', columna: 'groups.plantations.estado', valor: 'activa' });
+});
+
+test('temporada activa: null si ninguna activa tiene árboles', async () => {
+  estadoMock.resolverConsulta = () => ({ data: [], error: null });
+  await expect(obtenerTemporadaActivaId()).resolves.toBeNull();
 });
