@@ -43,6 +43,14 @@
   align-items: start;
 }
 
+/* min-width:0 imprescindible: sin esto, el contenedor de Leaflet (ancho
+   intrínseco grande) no deja achicar su celda y se come la columna de
+   "Por especie", reventando la proporción 1.55fr/1fr. */
+.filaA > *,
+.filaB > * {
+  min-width: 0;
+}
+
 @media (max-width: 900px) {
   .filaB {
     grid-template-columns: 1fr;
