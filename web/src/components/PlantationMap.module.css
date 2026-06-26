@@ -6,6 +6,8 @@
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border-card);
   border-radius: var(--radius-card-sm);
+  /* Alto fijo: el área del mapa llena el resto; la card de especies iguala. */
+  height: var(--alto-panel-dashboard);
 }
 
 .header {
@@ -13,6 +15,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2xl);
+  flex-shrink: 0;
 }
 
 .titulo {
@@ -50,7 +53,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 360px;
+  flex: 1;
   border: var(--border-thin) dashed var(--color-border-strong);
   border-radius: var(--radius-card-sm);
   background-color: var(--color-surface-sunken);
@@ -62,6 +65,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-lg) var(--space-2xl);
+  flex-shrink: 0;
 }
 
 .item {
