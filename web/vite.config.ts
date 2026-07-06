@@ -8,5 +8,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
     globals: true,
+    // Config dummy de Supabase para los tests: sin web/.env (p.ej. en CI) el
+    // cliente lanzaría al importarse. Los tests mockean las llamadas reales.
+    env: { VITE_SUPABASE_URL: 'http://localhost', VITE_SUPABASE_ANON_KEY: 'anon-test' },
   },
 });
