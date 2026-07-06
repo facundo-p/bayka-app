@@ -1,0 +1,107 @@
+/*
+ * Estilos del dashboard de plantación: grilla de KPIs y grilla de gráficos.
+ */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xl);
+}
+
+/* ─── KPIs ─────────────────────────────────────────────────────────── */
+
+/* Hero a la izquierda, bloque denso de KPIs secundarios a la derecha;
+   en pantallas angostas (≤900px) se apilan. */
+.kpis {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: var(--space-2xl);
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .kpis {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Conteos | tasas | alertas: grilla propia que se ata al contenido y evita
+   la última fila despareja del muro de tarjetas iguales. */
+.kpisSecundarios {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2xl);
+}
+
+@media (max-width: 600px) {
+  .kpisSecundarios {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Tarjeta hero: la métrica protagonista, ocupa la columna izquierda entera. */
+.kpiHero {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-4xl);
+}
+
+.kpiHeroValor {
+  font-family: var(--font-heading);
+  font-size: var(--text-hero);
+  font-weight: 700;
+  color: var(--color-text-heading);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.kpiHeroObjetivo {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+  margin: var(--space-md) 0 0;
+}
+
+.kpiCard {
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.kpiValor {
+  font-family: var(--font-heading);
+  font-size: var(--text-heading);
+  font-weight: 700;
+  color: var(--color-text-heading);
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.kpiLabel {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: var(--space-xs) 0 0;
+}
+
+/* N/N pendientes en naranja cuando hay árboles por identificar. */
+.kpiAlerta {
+  color: var(--color-estado-pending);
+}
+
+/* ─── Gráficos ─────────────────────────────────────────────────────── */
+
+.graficos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--space-4xl);
+}
+
+/* La línea mensual ocupa todo el ancho disponible. */
+.graficoAncho {
+  grid-column: 1 / -1;
+}
+
+/* Altura fija del área de dibujo: la necesita ResponsiveContainer. */
+.grafico {
+  height: 280px;
+}

@@ -1,0 +1,47 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.label {
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.hint {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-danger);
+}
+
+/* Control base compartido: Input y Select lo composen desde sus módulos. */
+.control {
+  min-height: var(--control-height);
+  width: 100%;
+  padding: 0 var(--space-2xl);
+  border: var(--border-thin) solid var(--color-border-muted);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--color-text-primary);
+}
+
+.control:focus {
+  outline: var(--border-medium) solid var(--color-primary-accent);
+  border-color: var(--color-primary-accent);
+}
+
+.controlError {
+  border-color: var(--color-danger);
+}
+
+.controlError:focus {
+  outline-color: var(--color-danger);
+}

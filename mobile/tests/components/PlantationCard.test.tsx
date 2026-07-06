@@ -29,11 +29,15 @@ jest.mock('../../src/theme', () => ({
     statToday: '#8B5CF6',
     textHeading: '#0A3760',
     textPrimary: '#1E293B',
+    backgroundAlt: '#F5F5F4',
+    borderMuted: '#CBD5E1',
   },
   spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
   fontSize: { xs: 10, sm: 12, base: 15, xl: 16, xxl: 18, title: 20 },
   fonts: { regular: 'System', bold: 'System', semiBold: 'System', medium: 'System', heading: 'System' },
+  iconSizes: { badge: 12 },
+  chipSizes: { sm: { paddingVertical: 4, paddingHorizontal: 8 } },
 }));
 
 function makeProps(overrides?: Partial<React.ComponentProps<typeof PlantationCard>>) {
@@ -112,5 +116,28 @@ describe('PlantationCard sidebar strip', () => {
     );
 
     expect(queryByLabelText('Eliminar plantacion del dispositivo')).toBeNull();
+  });
+});
+
+describe('PlantationCard badge "Oculta en app"', () => {
+  it('lo muestra para admin cuando visibleInApp=false', () => {
+    const { getByText } = render(
+      <PlantationCard {...makeProps({ isAdmin: true, visibleInApp: false })} />
+    );
+    expect(getByText('Oculta en app')).toBeTruthy();
+  });
+
+  it('NO lo muestra para admin cuando la plantación es visible', () => {
+    const { queryByText } = render(
+      <PlantationCard {...makeProps({ isAdmin: true, visibleInApp: true })} />
+    );
+    expect(queryByText('Oculta en app')).toBeNull();
+  });
+
+  it('NO lo muestra para tecnico aunque visibleInApp=false', () => {
+    const { queryByText } = render(
+      <PlantationCard {...makeProps({ isAdmin: false, visibleInApp: false })} />
+    );
+    expect(queryByText('Oculta en app')).toBeNull();
   });
 });

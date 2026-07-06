@@ -1,0 +1,12 @@
+.cargando {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.enlace {
+  color: var(--color-info);
+  font-size: var(--text-md);
+  text-decoration: underline;
+}

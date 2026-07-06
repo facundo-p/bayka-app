@@ -1,0 +1,31 @@
+.filtros {
+  display: flex;
+  gap: var(--space-md);
+  margin-bottom: var(--space-3xl);
+}
+
+.chip {
+  padding: var(--space-sm) var(--space-2xl);
+  border: var(--border-thin) solid var(--color-primary-border);
+  border-radius: var(--radius-full);
+  background-color: var(--color-surface);
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.chip:hover {
+  background-color: var(--color-primary-bg);
+}
+
+.chipActivo {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.chipActivo:hover {
+  background-color: var(--color-primary-medium);
+}

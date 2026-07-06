@@ -1,0 +1,23 @@
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.checkbox {
+  width: var(--space-3xl);
+  height: var(--space-3xl);
+  margin: 0;
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.checkbox:disabled {
+  cursor: not-allowed;
+}
+
+/* Mismo estilo de label que Input/Select (FormField). */
+.label {
+  composes: label from './FormField.module.css';
+  cursor: pointer;
+}

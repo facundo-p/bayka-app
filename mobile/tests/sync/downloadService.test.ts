@@ -169,6 +169,26 @@ describe('downloadPlantation', () => {
     expect(conflictArgs).toHaveProperty('set');
     expect(conflictArgs.set).toHaveProperty('estado');
   });
+
+  it('mapea visible_in_app del server al campo local visibleInApp', async () => {
+    const sp = { ...makeServerPlantation('p-oculta'), visible_in_app: false };
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: false }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ visibleInApp: false });
+  });
+
+  it('defaultea visibleInApp=true cuando el server no trae la columna (migración sin aplicar)', async () => {
+    const sp = makeServerPlantation('p-sin-columna'); // sin visible_in_app
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: true }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ visibleInApp: true });
+  });
 });
 
 describe('batchDownload', () => {

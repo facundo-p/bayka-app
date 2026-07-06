@@ -1,0 +1,14 @@
+.contenedor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xl);
+  padding: var(--space-6xl);
+}
+
+.label {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}

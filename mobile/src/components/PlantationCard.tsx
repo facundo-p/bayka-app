@@ -12,7 +12,7 @@ import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
-import { colors } from '../theme';
+import { colors, iconSizes } from '../theme';
 import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
@@ -35,6 +35,9 @@ type Props = {
   isAdmin?: boolean;
   onEdit?: () => void;
   onGear?: () => void;
+  // Visibilidad configurada desde la web; el badge "Oculta en app" solo lo ve
+  // el admin (los técnicos directamente no reciben plantaciones ocultas).
+  visibleInApp?: boolean;
   // Inline expansion props (all optional; expand row only renders when
   // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
@@ -202,8 +205,10 @@ export default function PlantationCard({
   nnCount,
   onPress,
   onDelete,
+  isAdmin = false,
   onEdit,
   onGear,
+  visibleInApp = true,
   parcelasCount = 0,
   expanded = false,
   onToggleExpanded,
@@ -233,6 +238,13 @@ export default function PlantationCard({
             <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
           </View>
           <Text style={styles.subtitle}>{periodo}</Text>
+
+          {isAdmin && !visibleInApp && (
+            <View style={styles.hiddenBadge}>
+              <Ionicons name="eye-off-outline" size={iconSizes.badge} color={colors.textMuted} />
+              <Text style={styles.hiddenBadgeText}>Oculta en app</Text>
+            </View>
+          )}
 
           <StatsRow
             totalCount={totalCount}

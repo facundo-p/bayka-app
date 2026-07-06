@@ -1,0 +1,51 @@
+.fondo {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4xl);
+  background-color: var(--color-primary);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xl);
+  width: 100%;
+  max-width: var(--modal-max-width);
+  padding: var(--space-5xl);
+}
+
+.marca {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* Logo carpincho de marca (versión oscura sobre el panel blanco). */
+.logo {
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  display: block;
+}
+
+.subtitulo {
+  font-size: var(--text-md);
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+  text-align: center;
+}

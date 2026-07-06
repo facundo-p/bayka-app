@@ -1,0 +1,8 @@
+/* El estilo real del control vive en FormField.module.css (compartido con Select). */
+.input {
+  composes: control from './FormField.module.css';
+}
+
+.inputError {
+  composes: controlError from './FormField.module.css';
+}

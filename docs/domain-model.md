@@ -90,12 +90,17 @@ Los usuarios pertenecen a una o más organizaciones.
 
 ### Roles
 
-Existen dos roles:
+Existen tres roles:
 
 ```
+superadmin
 admin
 tecnico
 ```
+
+`superadmin` (migración 024) es el único que puede gestionar usuarios y roles
+desde la web de gestión; en el resto del sistema opera igual que `admin`.
+`tecnico` no tiene acceso a la web de gestión.
 
 ### Atributos
 
@@ -177,7 +182,17 @@ periodo
 estado
 fecha_creacion
 creado_por
+descripcion (opcional)
+fecha_inicio (opcional)
+superficie_ha (opcional)
+ubicacion_lat / ubicacion_lng (opcional, centroide aproximado)
+objetivo_arboles (opcional, meta para dashboard)
+visible_in_app (default true: si los técnicos la ven en la Bayka App)
+gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
 ```
+
+Los campos opcionales y la visibilidad se gestionan desde la web de gestión
+(migración 024).
 
 ### Estados posibles
 

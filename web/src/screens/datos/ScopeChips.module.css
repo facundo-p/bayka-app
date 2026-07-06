@@ -1,0 +1,41 @@
+/* Fila de chips que muestra el scope (parcela/grupo) heredado por drill-down. */
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-lg);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  background-color: var(--color-primary-bg);
+  border: var(--border-thin) solid var(--color-primary-border);
+  border-radius: var(--radius-full);
+}
+
+.quitar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  width: var(--space-3xl);
+  height: var(--space-3xl);
+  font-size: var(--text-xl);
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.quitar:hover {
+  color: var(--color-text-primary);
+  background-color: var(--color-primary-border);
+}

@@ -20,6 +20,8 @@ export type ServerPlantation = {
   estado: string;
   creado_por: string;
   created_at: string;
+  // Visibilidad administrada desde la web; true si el server no trae la columna.
+  visible_in_app: boolean;
   group_count: number;
   tree_count: number;
 };
@@ -133,6 +135,7 @@ export async function getServerCatalog(
     estado: p.estado,
     creado_por: p.creado_por,
     created_at: p.created_at,
+    visible_in_app: p.visible_in_app ?? true,
     group_count: groupCountMap[p.id] ?? 0,
     tree_count: treeCountMap[p.id] ?? 0,
   }));
