@@ -21,6 +21,12 @@
 }
 
 :root {
+  /* ════════════════════════════════════════════════════════════════════
+   * Rediseño "cuaderno de naturalista" (handoff Claude Design).
+   * Cambio conceptual: neutros FRÍOS (slate) → sistema de papel CÁLIDO
+   * (arena/oliva desaturado). Los colores de marca (azul/oliva) no cambian.
+   * ════════════════════════════════════════════════════════════════════ */
+
   /* ─── Primario (azul de marca) ─────────────────────────────────────── */
   --color-primary: #0a3760;
   --color-primary-dark: #072847;
@@ -30,7 +36,7 @@
   --color-primary-bg-light: #f4f8fb;
   --color-primary-bg-muted: #a3c4db;
   --color-primary-border: #c5dae8;
-  --color-primary-accent: #3b7db5;
+  --color-primary-accent: #3b7db5;     /* azul medio — enlaces, serie, barra foto */
 
   /* ─── Secundario (verde oliva de marca) ────────────────────────────── */
   --color-secondary: #99b95b;
@@ -39,7 +45,7 @@
 
   /* ─── Plantaciones (acento verde oliva) ────────────────────────────── */
   --color-plantation: #99b95b;
-  --color-plantation-dark: #7a9a42;
+  --color-plantation-dark: #6b8f3c;    /* oliva oscuro — números de acento, dato */
   --color-plantation-medium: #8aaa4e;
   --color-plantation-light: #b3cf7e;
   --color-plantation-header-bg: #6b8f3c;
@@ -48,23 +54,31 @@
   --color-plantation-border: #d4e3b0;
   --color-plantation-accent: #a8c465;
 
-  /* ─── Texto (jerarquía de 4 niveles + heading) ─────────────────────── */
-  --color-text-heading: #0a3760;
-  --color-text-primary: #1e293b;
-  --color-text-secondary: #475569;
-  --color-text-muted: #94a3b8;
-  --color-text-disabled: #cbd5e1;
+  /* ─── Texto (jerarquía cálida) ─────────────────────────────────────── */
+  --color-text-heading: #0a3760;       /* títulos (azul de marca) */
+  --color-text-primary: #2a2d27;       /* cuerpo (cálido) */
+  --color-text-body: #3a3d36;          /* celdas de tabla */
+  --color-text-secondary: #6e6a5e;     /* secundario cálido */
+  --color-text-muted: #9a927e;         /* metadatos */
+  --color-text-faint: #a79f8c;         /* overlines, sublabels */
+  --color-text-disabled: #bdb49d;      /* placeholders, paginación inactiva */
 
-  /* ─── Superficies ──────────────────────────────────────────────────── */
-  --color-background: #fafaf9;
+  /* ─── Superficies cálidas ──────────────────────────────────────────── */
+  --color-background: #f4f2ea;         /* lienzo de la app */
   --color-background-alt: #f5f5f4;
-  --color-surface: #ffffff;
+  --color-sidebar-bg: #fbfaf5;         /* fondo del sidebar */
+  --color-surface: #ffffff;            /* cards, modales */
+  --color-surface-sunken: #faf8f1;     /* head de tabla, inputs suaves, footers */
+  --color-surface-tint: #eef3ee;       /* item de nav activo, chip de código */
   --color-surface-pressed: #f5f5f4;
   --color-white: #ffffff;
 
-  /* ─── Bordes ───────────────────────────────────────────────────────── */
-  --color-border: #e2e8f0;
+  /* ─── Bordes / divisores cálidos ───────────────────────────────────── */
+  --color-border: #e7e1d4;             /* hairline general */
+  --color-border-card: #e9e3d6;        /* borde de cards */
+  --color-border-strong: #cfc7b2;      /* hover de inputs, borde punteado */
   --color-border-muted: #cbd5e1;
+  --color-divider: #f4f1e8;            /* divisor de filas en listas */
 
   /* ─── Semánticos ───────────────────────────────────────────────────── */
   --color-danger: #dc2626;
@@ -74,16 +88,53 @@
   --color-info-bg: #eff6ff;
 
   /* ─── Estados de dominio (chips activa/finalizada/pendiente) ───────── */
+  /* Valor simple (compat) + triplete fg/bg/border del rediseño. */
   --color-estado-activa: #99b95b;
   --color-estado-finalizada: #0a3760;
   --color-estado-pending: #f97316;
+  --color-estado-activa-fg: #5d7d2f;
+  --color-estado-activa-bg: #eef3e2;
+  --color-estado-activa-border: #d3e0b4;
+  --color-estado-finalizada-fg: #0a3760;
+  --color-estado-finalizada-bg: #e9eff5;
+  --color-estado-finalizada-border: #c5dae8;
+
+  /* ─── N/N — sin resolver / pendiente (ámbar) ───────────────────────── */
+  --color-warn-dot: #e0a83b;           /* punto N/N en mapa, leyenda */
+  --color-warn-fg: #c79a3e;            /* texto de alerta */
+  --color-warn-fg-strong: #b97f1e;     /* número de alerta */
+  --color-warn-bg: #fffaf0;
+  --color-warn-border: #f0e0b8;
+
+  /* ─── Rol de usuario (badges Usuarios) ─────────────────────────────── */
+  --color-rol-superadmin-fg: #0a3760;
+  --color-rol-superadmin-bg: #e9eff5;
+  --color-rol-superadmin-border: #c5dae8;
+  --color-rol-admin-fg: #2f6fb0;
+  --color-rol-admin-bg: #eaf2fb;
+  --color-rol-admin-border: #cfe0f2;
+  --color-rol-tecnico-fg: #5d7d2f;
+  --color-rol-tecnico-bg: #eef3e2;
+  --color-rol-tecnico-border: #d3e0b4;
 
   /* ─── Datos neutros (segmento "Otras" de gráficos) ─────────────────── */
   /* Gris de DATO propio (no el de texto muted): distingue "Otras" como una
      categoría real, no como un elemento deshabilitado/placeholder. */
   --color-data-neutral: #64748b;
 
-  /* ─── Amarillo (especies N/N) ──────────────────────────────────────── */
+  /* ─── Paleta categórica de especies (gráficos y puntos de mapa) ────── */
+  /* Alterna azules/olivas de marca para máximo contraste entre vecinos. */
+  --chart-1: #0a3760;
+  --chart-2: #99b95b;
+  --chart-3: #3b7db5;
+  --chart-4: #6b8f3c;
+  --chart-5: #1a5a8a;
+  --chart-6: #b3cf7e;
+  --chart-7: #0e4573;
+  --chart-8: #a8c465;
+  --chart-nn: #e0a83b;                 /* "Sin identificar" / N/N */
+
+  /* ─── Amarillo (legacy especies N/N — usar --color-warn-* en rediseño) ─ */
   --color-yellow: #ffca28;
   --color-yellow-light: #fff8e1;
   --color-yellow-medium: #ffe082;
@@ -93,9 +144,9 @@
   --color-overlay: rgba(0, 0, 0, 0.6);
 
   /* ─── Tipografías ──────────────────────────────────────────────────── */
-  --font-heading: 'Linux Biolinum', Georgia, serif;
-  --font-body: 'Poppins', system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-heading: 'Linux Biolinum', Georgia, serif;   /* títulos + números grandes */
+  --font-body: 'Poppins', system-ui, sans-serif;      /* cuerpo, labels, botones */
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace; /* IDs, códigos, GPS */
 
   /* ─── Escala de espaciado ──────────────────────────────────────────── */
   --space-xs: 4px;
@@ -127,15 +178,30 @@
   --text-title: 20px;
   --text-heading: 24px;
   --text-hero: 32px;
+  /* Escala grande del rediseño (serif): número hero del dashboard, KPI, título de página. */
+  --text-kpi: 32px;
+  --text-page-title: 38px;
+  --text-hero-num: 72px;
 
   /* ─── Sombras ──────────────────────────────────────────────────────── */
   --shadow-card: 0 1px 3px rgba(10, 55, 96, 0.08);
-  --shadow-modal: 0 4px 12px rgba(0, 0, 0, 0.2);
+  --shadow-modal: 0 24px 60px rgba(10, 30, 55, 0.28);   /* overlay ⌘K + modales */
+
+  /* ─── Radios ───────────────────────────────────────────────────────── */
+  /* (los --radius-sm/md/lg/xl/round/full siguen arriba; estos son semánticos) */
+  --radius-control: 9px;   /* botones, inputs, chips de filtro */
+  --radius-card: 16px;     /* cards de panel */
+  --radius-card-sm: 14px;  /* cards de KPI / tabla */
+  --radius-pill: 20px;     /* badges de estado/rol */
+  --radius-code: 6px;      /* chip de código mono */
 
   /* ─── Layout ───────────────────────────────────────────────────────── */
   /* Breakpoint responsive: 900px, literal en media queries porque las
      custom properties no aplican ahí. */
   --layout-sidebar-width: 220px;
+  --sidebar-width: 252px;          /* sidebar del rediseño */
+  --page-pad-x: 38px;              /* padding horizontal del contenido principal */
+  --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
   /* Tokens de controles: alto táctil mínimo (espejo del minHeight 44 de
