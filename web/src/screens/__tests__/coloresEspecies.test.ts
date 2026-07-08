@@ -1,5 +1,7 @@
+import { describe, expect, test } from 'vitest';
 import type { DistribucionEspecie } from '../../queries/dashboardQueries';
-import { COLOR_GRAFICO_NN, colorEspeciePorIndice } from '../../theme/chartColors';
+import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
+import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { asignarColoresEspecies, mapaColorPorCodigo } from '../dashboard/coloresEspecies';
 
 const NN: DistribucionEspecie = { codigo: 'NN', nombre: 'Sin identificar', cantidad: 10 };
@@ -7,10 +9,10 @@ const QB: DistribucionEspecie = { codigo: 'QB', nombre: 'Quebracho', cantidad: 3
 const AL: DistribucionEspecie = { codigo: 'AL', nombre: 'Algarrobo', cantidad: 20 };
 
 describe('asignarColoresEspecies', () => {
-  test('la primera especie identificada toma el primer color de la paleta', () => {
+  test('cada especie toma su color estable por código', () => {
     const coloreadas = asignarColoresEspecies([QB, AL]);
-    expect(coloreadas[0].color).toBe(colorEspeciePorIndice(0));
-    expect(coloreadas[1].color).toBe(colorEspeciePorIndice(1));
+    expect(coloreadas[0].color).toBe(colorEspeciePorCodigo('QB'));
+    expect(coloreadas[1].color).toBe(colorEspeciePorCodigo('AL'));
   });
 
   test('N/N siempre es ámbar', () => {
@@ -18,20 +20,22 @@ describe('asignarColoresEspecies', () => {
     expect(coloreada.color).toBe(COLOR_GRAFICO_NN);
   });
 
-  test('N/N no desplaza el índice de paleta de las demás', () => {
-    const coloreadas = asignarColoresEspecies([QB, NN, AL]);
-    expect(coloreadas[0].color).toBe(colorEspeciePorIndice(0)); // QB
-    expect(coloreadas[1].color).toBe(COLOR_GRAFICO_NN); // NN
-    expect(coloreadas[2].color).toBe(colorEspeciePorIndice(1)); // AL conserva índice 1
+  test('el color de una especie no depende del orden ni de la presencia de N/N', () => {
+    const conNN = asignarColoresEspecies([QB, NN, AL]);
+    const otroOrden = asignarColoresEspecies([AL, QB]);
+    expect(conNN.find((especie) => especie.codigo === 'QB')?.color).toBe(colorEspeciePorCodigo('QB'));
+    expect(conNN.find((especie) => especie.codigo === 'AL')?.color).toBe(colorEspeciePorCodigo('AL'));
+    expect(otroOrden.find((especie) => especie.codigo === 'QB')?.color).toBe(colorEspeciePorCodigo('QB'));
+    expect(otroOrden.find((especie) => especie.codigo === 'AL')?.color).toBe(colorEspeciePorCodigo('AL'));
   });
 });
 
 describe('mapaColorPorCodigo', () => {
-  test('indexa codigo → color preservando el orden de inserción', () => {
+  test('indexa codigo → color estable por código', () => {
     const mapa = mapaColorPorCodigo(asignarColoresEspecies([QB, NN, AL]));
-    expect(mapa.get('QB')).toBe(colorEspeciePorIndice(0));
+    expect(mapa.get('QB')).toBe(colorEspeciePorCodigo('QB'));
     expect(mapa.get('NN')).toBe(COLOR_GRAFICO_NN);
-    expect(mapa.get('AL')).toBe(colorEspeciePorIndice(1));
+    expect(mapa.get('AL')).toBe(colorEspeciePorCodigo('AL'));
     expect([...mapa.keys()]).toEqual(['QB', 'NN', 'AL']);
   });
 });

@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react';
 import { Input } from './Input';
 import { cx } from '../lib/classNames';
-import { colorPuntoEspecie } from '../screens/datos/coloresEspecie';
+import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
 import type { EspecieCatalogo } from '../queries/especieQueries';
 import styles from './SpeciesChecklist.module.css';
 
@@ -61,7 +61,7 @@ function FilaEspecie({
         </span>
         <span
           className={styles.punto}
-          style={{ backgroundColor: colorPuntoEspecie(especie.codigo) }}
+          style={{ backgroundColor: colorEspeciePorCodigo(especie.codigo) }}
           aria-hidden
         />
         <span className={styles.codigo}>{especie.codigo}</span>

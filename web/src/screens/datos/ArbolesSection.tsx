@@ -15,10 +15,10 @@ import { ArbolesFiltros } from './ArbolesFiltros';
 import { DatosToolbar } from './DatosToolbar';
 import { ScopeChips, type ScopeChip } from './ScopeChips';
 import { VacioConFiltros } from './VacioConFiltros';
-import { colorPuntoEspecie } from './coloresEspecie';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
+import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import styles from './SeccionesDatos.module.css';
 
 /** Redondeo de coordenadas para mostrar (~1 m de precisión). */
@@ -49,7 +49,7 @@ function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
   const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
   return (
     <span className={styles.especie}>
-      <span className={styles.puntoEspecie} style={{ backgroundColor: colorPuntoEspecie(arbol.especieCodigo) }} />
+      <span className={styles.puntoEspecie} style={{ backgroundColor: colorEspeciePorCodigo(arbol.especieCodigo) }} />
       {`${codigo} · ${nombre}`}
     </span>
   );
