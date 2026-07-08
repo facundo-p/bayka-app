@@ -1,21 +1,13 @@
-/* Card: la celda se estira al alto del mapa (grid stretch). El contenido va en
-   una capa absoluta para no inflar la fila; por eso el panel sólo aporta marco. */
+/* Card de alto fijo (igual al mapa); la lista scrollea adentro. */
 .panel {
-  position: relative;
-  min-height: 0;
-  overflow: hidden;
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
-}
-
-.contenido {
-  position: absolute;
-  inset: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3xl);
   padding: var(--space-3xl);
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border-card);
+  border-radius: var(--radius-card-sm);
+  height: var(--alto-panel-dashboard);
 }
 
 .header {

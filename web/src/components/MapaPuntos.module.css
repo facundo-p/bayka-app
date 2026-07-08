@@ -8,10 +8,13 @@
   border-radius: var(--radius-card-sm);
 }
 
+/* En el dashboard llena el alto restante de la card (alto fijo del panel). */
 .panel {
-  height: 360px;
+  flex: 1;
+  min-height: 0;
 }
 
+/* En el modal de detalle de árbol, alto fijo compacto. */
 .compacto {
   height: 220px;
 }

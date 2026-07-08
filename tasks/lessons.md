@@ -216,3 +216,59 @@ Reglas:
 Checklist al crear un modal/pantalla nueva: ¿tiene header propio? → ¿aplica
 `insets.top`? ¿tiene acciones abajo? → ¿aplica `insets.bottom`? Ver skill
 `safe-area-screens`.
+
+## Verificación visual de CSS/layout: contra los COMPONENTES REALES, no una aproximación
+(Rediseño web — dashboard mapa + "Por especie", 3 intentos fallidos seguidos)
+
+No tengo acceso visual a la app corriendo (sin credenciales Supabase), y rompí el
+layout del dashboard tres veces adivinando CSS:
+1. `align-items: stretch` + panel `height:100%`: la lista larga de especies inflaba
+   la fila y **estiraba el mapa**.
+2. Contenido en **capa absoluta** (`position:absolute; inset:0`) para no inflar: el
+   panel colapsó a **0 de alto** (especies invisible, mapa "expandido").
+3. Alto fijo compartido: lo "verifiqué" con un screenshot headless de un HTML
+   **rebuildeado a mano**… que pasó, pero la app real seguía mal.
+
+Reglas:
+1. **Nunca declarar "verificado" un cambio de layout con una aproximación.** El
+   harness a mano replica MI idea del CSS, no el CSS/estructura reales → esconde el
+   bug. Si voy a screenshot-ear, tiene que renderizar los **componentes reales**
+   (CSS Modules reales) con data mockeada: entry/route temporal + `vite build` +
+   Chrome headless `--screenshot`. Leaflet no necesita tiles para validar tamaños.
+2. Patrón robusto para "dos columnas de igual alto, una scrollea": **alto fijo en
+   ambas cards** + hijo scrollable `flex:1; min-height:0; overflow-y:auto`. El
+   `stretch` con contenido en flujo y la capa absoluta son frágiles.
+3. Si no puedo renderizar lo real, **pedir un screenshot al usuario** antes de
+   iterar a ciegas, en vez de shippear y que lo cace él.
+
+## "Se topea en N" = hay un tope a ELIMINAR (no a agregar)
+El usuario dijo "la cantidad de árboles se topea en 1000". Lo leí como "agregá un
+tope" cuando quería "sacá el tope que ya hay". Cuando el usuario describe un
+comportamiento ACTUAL como problema, aclarar **agregar vs quitar** antes de tocar
+código.
+
+## Supabase/PostgREST: max-rows = 1000 por defecto → paginar con .range()
+La causa real del "tope en 1000": PostgREST limita la respuesta a `max-rows` (1000
+por defecto); un `.limit(15000)` igual devuelve 1000 filas. Toda agregación en
+cliente sobre datasets grandes (~7600 árboles/plantación) DEBE leer **paginando con
+`.range(desde, hasta)`** hasta agotar (ver `web/src/queries/leerPaginado.ts`), no
+confiar en un `.limit` grande. Afecta conteos Y agregaciones (KPIs, puntos del mapa).
+
+## El tool Write deja a veces un `</content>` espurio al final del archivo
+Apareció varias veces esta sesión (chartColors.ts, leerPaginado.ts, tests), rompiendo
+el parseo (`TS1110 Type expected`). Tras un Write, chequear el tail y stripear la
+línea `</content>` si quedó (`tail -1 … | grep` + `sed -i '' '/^<\/content>$/d'`).
+
+## Quitar un campo editable del form ≠ borrar el dato (si el repo filtra por `!== undefined`)
+`campos024` en `plantationRepository` sólo agrega un campo al UPDATE si está definido.
+Al sacar Superficie/Lat/Lng del form (quedan `undefined` en el input),
+`editarPlantacion` NO toca esas columnas → conserva lo que haya en la base. Patrón:
+para "ocultar un campo editable" sin perder datos, **dejar de enviarlo (undefined)**,
+no mandar `null`.
+
+## Regla de negocio: "Generar IDs" vs "Exportar"
+"Generar IDs" se ofrece hasta que TODOS los árboles de la plantación tienen
+`global_id` (id final confirmado en server); recién ahí aparece "Exportar". Un set
+parcial cuenta como NO generado. Espejo de `hasIdsGenerated` de mobile
+(`mobile/src/queries/adminQueries.ts`) y `docs/SPECS.md §4.17`. Web:
+`web/src/queries/idsQueries.ts`.

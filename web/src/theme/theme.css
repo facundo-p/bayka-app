@@ -204,6 +204,7 @@
   --layout-sidebar-width: 220px;
   --sidebar-width: 252px;          /* sidebar del rediseño */
   --page-pad-x: 38px;              /* padding horizontal del contenido principal */
+  --alto-panel-dashboard: 500px;  /* alto compartido de las cards mapa + especies */
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
