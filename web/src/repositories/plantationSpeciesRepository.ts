@@ -30,6 +30,38 @@ export async function quitarEspecie(plantationId: string, speciesId: string): Pr
   if (error) throw new Error(error.message);
 }
 
+/**
+ * Aplica una acción masiva del checklist en dos batches: inserta las especies
+ * a habilitar (orden_visual correlativo desde `ordenInicial`) y borra las que
+ * se quitan en un solo delete. La decisión de qué habilitar/quitar (respetando
+ * las bloqueadas por árboles) vive en `speciesChecklistSelection`, no acá: este
+ * repo solo ejecuta, sin leer estado ni lógica de negocio.
+ */
+export async function sincronizarEspecies(
+  plantationId: string,
+  idsHabilitar: string[],
+  idsQuitar: string[],
+  ordenInicial: number,
+): Promise<void> {
+  if (idsHabilitar.length > 0) {
+    const filas = idsHabilitar.map((speciesId, indice) => ({
+      plantation_id: plantationId,
+      species_id: speciesId,
+      orden_visual: ordenInicial + indice,
+    }));
+    const { error } = await supabase.from('plantation_species').insert(filas);
+    if (error) throw new Error(error.message);
+  }
+  if (idsQuitar.length > 0) {
+    const { error } = await supabase
+      .from('plantation_species')
+      .delete()
+      .eq('plantation_id', plantationId)
+      .in('species_id', idsQuitar);
+    if (error) throw new Error(error.message);
+  }
+}
+
 async function actualizarOrden(
   plantationId: string,
   speciesId: string,

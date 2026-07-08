@@ -1,7 +1,8 @@
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 import { Input } from './Input';
 import { cx } from '../lib/classNames';
 import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
+import { filtrarCatalogo, type EstadoMaestro } from '../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../queries/especieQueries';
 import styles from './SpeciesChecklist.module.css';
 
@@ -12,21 +13,51 @@ interface SpeciesChecklistProps {
   /** Habilitadas que no se pueden desmarcar (tienen árboles registrados). */
   bloqueadas?: Set<string>;
   onToggle: (speciesId: string, habilitar: boolean) => void;
+  /** Tri-estado del maestro sobre las filas visibles (lo calcula el contenedor). */
+  estadoMaestro: EstadoMaestro;
+  /** Marca/desmarca todas las filas visibles. */
+  onMaestro: () => void;
   busqueda: string;
   onBuscar: (texto: string) => void;
 }
 
 const TITULO_BLOQUEADA = 'Tiene árboles registrados';
+const LABEL_MAESTRO = 'Todas las especies';
 
-/** Filtra el catálogo por nombre/código/científico, sin distinguir mayúsculas. */
-function filtrarCatalogo(catalogo: EspecieCatalogo[], busqueda: string): EspecieCatalogo[] {
-  const texto = busqueda.trim().toLowerCase();
-  if (!texto) return catalogo;
-  return catalogo.filter((especie) =>
-    [especie.nombre, especie.codigo, especie.nombreCientifico ?? '']
-      .join(' ')
-      .toLowerCase()
-      .includes(texto),
+/** Checkbox maestro tri-estado: marca/desmarca todas las visibles a la vez. */
+function MaestroTodas({
+  estado,
+  deshabilitado,
+  onMaestro,
+}: {
+  estado: EstadoMaestro;
+  deshabilitado: boolean;
+  onMaestro: () => void;
+}) {
+  const marcada = estado === 'todas';
+  const parcial = estado === 'parcial';
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={parcial ? 'mixed' : marcada}
+      aria-label={LABEL_MAESTRO}
+      disabled={deshabilitado}
+      className={cx(styles.fila, styles.filaMaestra)}
+      onClick={onMaestro}
+    >
+      <span
+        className={cx(styles.checkbox, (marcada || parcial) && styles.checkboxMarcado)}
+        aria-hidden
+      >
+        {parcial ? (
+          <Minus size={14} strokeWidth={3} />
+        ) : (
+          marcada && <Check size={14} strokeWidth={3} />
+        )}
+      </span>
+      <span className={styles.nombreMaestra}>{LABEL_MAESTRO}</span>
+    </button>
   );
 }
 
@@ -80,6 +111,8 @@ export function SpeciesChecklist({
   habilitadas,
   bloqueadas,
   onToggle,
+  estadoMaestro,
+  onMaestro,
   busqueda,
   onBuscar,
 }: SpeciesChecklistProps) {
@@ -92,6 +125,11 @@ export function SpeciesChecklist({
         placeholder="Buscar especie por nombre o código…"
         value={busqueda}
         onChange={(event) => onBuscar(event.target.value)}
+      />
+      <MaestroTodas
+        estado={estadoMaestro}
+        deshabilitado={filtrado.length === 0}
+        onMaestro={onMaestro}
       />
       <ul className={styles.lista}>
         {filtrado.map((especie) => (

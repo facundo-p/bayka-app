@@ -6,7 +6,7 @@
  */
 
 type Filtro = {
-  metodo: 'eq' | 'is' | 'ilike' | 'neq' | 'not' | 'or';
+  metodo: 'eq' | 'is' | 'ilike' | 'neq' | 'not' | 'or' | 'in';
   columna: string;
   valor: unknown;
   /** Solo para `not`: el operador que se niega (p.ej. 'is'). */
@@ -70,6 +70,7 @@ export function crearConsultaMock(tabla: string, resolver: ResolverConsulta) {
       return builder;
     },
     eq: agregarFiltro('eq'),
+    in: agregarFiltro('in'),
     is: agregarFiltro('is'),
     ilike: agregarFiltro('ilike'),
     neq: agregarFiltro('neq'),

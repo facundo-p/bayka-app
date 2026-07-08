@@ -13,7 +13,9 @@ function renderChecklist(overrides?: {
   habilitadas?: Set<string>;
   bloqueadas?: Set<string>;
   busqueda?: string;
+  estadoMaestro?: 'todas' | 'ninguna' | 'parcial';
   onToggle?: (id: string, habilitar: boolean) => void;
+  onMaestro?: () => void;
 }) {
   const onToggle = overrides?.onToggle ?? vi.fn();
   render(
@@ -22,6 +24,8 @@ function renderChecklist(overrides?: {
       habilitadas={overrides?.habilitadas ?? new Set(['sp-1'])}
       bloqueadas={overrides?.bloqueadas}
       onToggle={onToggle}
+      estadoMaestro={overrides?.estadoMaestro ?? 'parcial'}
+      onMaestro={overrides?.onMaestro ?? vi.fn()}
       busqueda={overrides?.busqueda ?? ''}
       onBuscar={vi.fn()}
     />,
@@ -66,4 +70,56 @@ test('filtra el catálogo por la búsqueda (nombre/código/científico)', () => 
   renderChecklist({ busqueda: 'erythrina' });
   expect(screen.getByRole('checkbox', { name: 'Ceibo' })).toBeInTheDocument();
   expect(screen.queryByRole('checkbox', { name: 'Algarrobo' })).not.toBeInTheDocument();
+});
+
+test('el maestro refleja el tri-estado con aria-checked (mixed/true/false)', () => {
+  const { rerender } = render(
+    <SpeciesChecklist
+      catalogo={CATALOGO}
+      habilitadas={new Set(['sp-1'])}
+      onToggle={vi.fn()}
+      estadoMaestro="parcial"
+      onMaestro={vi.fn()}
+      busqueda=""
+      onBuscar={vi.fn()}
+    />,
+  );
+  const maestro = () => screen.getByRole('checkbox', { name: 'Todas las especies' });
+  expect(maestro()).toHaveAttribute('aria-checked', 'mixed');
+
+  const props = {
+    catalogo: CATALOGO,
+    habilitadas: new Set(['sp-1']),
+    onToggle: vi.fn(),
+    onMaestro: vi.fn(),
+    busqueda: '',
+    onBuscar: vi.fn(),
+  };
+  rerender(<SpeciesChecklist {...props} estadoMaestro="todas" />);
+  expect(maestro()).toHaveAttribute('aria-checked', 'true');
+  rerender(<SpeciesChecklist {...props} estadoMaestro="ninguna" />);
+  expect(maestro()).toHaveAttribute('aria-checked', 'false');
+});
+
+test('el maestro llama onMaestro al hacer click', async () => {
+  const usuario = userEvent.setup();
+  const onMaestro = vi.fn();
+  renderChecklist({ onMaestro });
+  await usuario.click(screen.getByRole('checkbox', { name: 'Todas las especies' }));
+  expect(onMaestro).toHaveBeenCalledTimes(1);
+});
+
+test('el maestro queda deshabilitado con el catálogo vacío', () => {
+  render(
+    <SpeciesChecklist
+      catalogo={[]}
+      habilitadas={new Set()}
+      onToggle={vi.fn()}
+      estadoMaestro="ninguna"
+      onMaestro={vi.fn()}
+      busqueda=""
+      onBuscar={vi.fn()}
+    />,
+  );
+  expect(screen.getByRole('checkbox', { name: 'Todas las especies' })).toBeDisabled();
 });
