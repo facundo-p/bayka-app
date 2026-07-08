@@ -1,7 +1,9 @@
 import { Leaf, Sprout, Users } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { useCommandMenu } from '../hooks/useCommandMenu';
 import { ROL } from '../repositories/profileRepository';
+import { CommandMenu } from './CommandMenu/CommandMenu';
 import { CommandMenuTrigger } from './CommandMenuTrigger';
 import { NavItem } from './NavItem';
 import { SeasonCard } from './SeasonCard';
@@ -12,6 +14,7 @@ const TAMANO_ICONO = 18;
 
 function Sidebar() {
   const { perfil } = useAuth();
+  const { abrir } = useCommandMenu();
   const esSuperadmin = perfil?.rol === ROL.SUPERADMIN;
 
   return (
@@ -21,7 +24,7 @@ function Sidebar() {
         <span className={styles.brandOverline}>Plataforma de Gestión</span>
       </Link>
 
-      <CommandMenuTrigger disabled />
+      <CommandMenuTrigger onClick={abrir} />
 
       <nav className={styles.nav}>
         <span className={styles.navOverline}>Organización</span>
@@ -55,6 +58,7 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+      <CommandMenu />
     </div>
   );
 }

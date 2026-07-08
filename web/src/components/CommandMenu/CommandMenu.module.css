@@ -1,0 +1,121 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  padding-left: var(--space-4xl);
+  padding-right: var(--space-4xl);
+  background-color: var(--color-overlay);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  width: 100%;
+  max-width: 560px;
+  max-height: 70vh;
+  padding: var(--space-3xl);
+  border-radius: var(--radius-card);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-modal);
+}
+
+.dialog:focus {
+  outline: none;
+}
+
+.cabecera {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.chipScope {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  align-self: flex-start;
+  padding: var(--space-xs) var(--space-lg);
+  background-color: var(--color-surface-tint);
+  border: var(--border-thin) solid var(--color-plantation-border);
+  border-radius: var(--radius-pill);
+  color: var(--color-plantation-dark);
+  font-family: var(--font-body);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.chipScope:hover {
+  border-color: var(--color-border-strong);
+}
+
+.lista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  overflow-y: auto;
+}
+
+.seccion {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.overline {
+  margin: 0;
+  padding: 0 var(--space-md);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-text-faint);
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  width: 100%;
+  padding: var(--space-md) var(--space-md);
+  border: none;
+  border-radius: var(--radius-control);
+  background-color: transparent;
+  color: var(--color-text-primary);
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  text-align: left;
+  cursor: pointer;
+}
+
+.filaResaltada {
+  background-color: var(--color-surface-tint);
+}
+
+.filaIcono {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.filaTitulo {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filaMeta {
+  flex-shrink: 0;
+  color: var(--color-text-faint);
+  font-size: var(--text-sm);
+}
+
+.vacio {
+  margin: 0;
+  padding: var(--space-2xl) var(--space-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+}

@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './components/AppLayout';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
+import { CommandMenuProvider } from './hooks/useCommandMenu';
 import { queryClient } from './lib/queryClient';
 import { LoginScreen } from './screens/LoginScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
@@ -50,7 +51,9 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <AppRoutes />
+          <CommandMenuProvider>
+            <AppRoutes />
+          </CommandMenuProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
