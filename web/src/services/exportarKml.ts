@@ -111,7 +111,7 @@ ${carpetas}
 }
 
 /** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */
-function aSlug(texto: string): string {
+export function aSlug(texto: string): string {
   return texto
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')

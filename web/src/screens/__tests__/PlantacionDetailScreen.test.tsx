@@ -46,6 +46,24 @@ let consultas: ConsultaCapturada[];
 /** Conteos de árboles para el gate de "Generar IDs" / "Exportar". */
 let totalArboles: number;
 let conIdArboles: number;
+/** Filas que devuelve la query de exportación (select con `plantacion_id`). */
+let filasExport: unknown[];
+
+/** Fila cruda del embed de exportación (trees → groups → plantations/…). */
+function filaExport(subId: string) {
+  return {
+    global_id: 1001,
+    plantacion_id: 12,
+    sub_id: subId,
+    species: { nombre: 'Quebracho' },
+    groups: {
+      nombre: 'Línea 1',
+      plantation_id: 'plant-1',
+      plantations: { lugar: 'Mendoza', periodo: '2025-2026' },
+      parcelas: { nombre: 'Norte' },
+    },
+  };
+}
 
 function resolverPlantationUsers(consulta: ConsultaCapturada): RespuestaMock {
   if (consulta.operacion === 'insert') {
@@ -71,6 +89,8 @@ function configurarDetalleMock(): void {
     if (consulta.tabla === 'profiles') return { data: PERFILES };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
     if (consulta.tabla === 'trees') {
+      // La query de exportación se distingue por seleccionar `plantacion_id`.
+      if (consulta.columnas?.includes('plantacion_id')) return { data: filasExport };
       // El conteo "sólo con id" se distingue por el filtro sobre global_id.
       const soloConId = consulta.filtros.some((filtro) => filtro.columna === 'global_id');
       return { data: [], count: soloConId ? conIdArboles : totalArboles };
@@ -87,6 +107,7 @@ beforeEach(() => {
   consultas = [];
   totalArboles = 0;
   conIdArboles = 0;
+  filasExport = [];
   configurarDetalleMock();
 });
 
@@ -111,22 +132,56 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByRole('heading', { name: 'Técnicos asignados' })).toBeInTheDocument();
 });
 
-test('ofrece "Generar IDs" (y no "Exportar") mientras los IDs no están generados', async () => {
+test('"Generar IDs" queda informativo (deshabilitado + tooltip) mientras no están generados', async () => {
   totalArboles = 5;
   conIdArboles = 3; // set parcial → todavía no generado
   renderRutasEn('/plantaciones/plant-1');
 
-  expect(await screen.findByRole('button', { name: /Generar IDs/ })).toBeInTheDocument();
+  const boton = await screen.findByRole('button', { name: /Generar IDs/ });
+  // La generación es exclusiva de la app: en la web el botón es solo informativo.
+  expect(boton).toBeDisabled();
+  expect(boton).toHaveAttribute('title', 'Los IDs finales se generan desde la Bayka App.');
   expect(screen.queryByRole('button', { name: 'Exportar' })).not.toBeInTheDocument();
 });
 
-test('ofrece "Exportar" (y oculta "Generar IDs") cuando los IDs están generados', async () => {
+test('ofrece "Exportar" habilitado (y oculta "Generar IDs") cuando los IDs están generados', async () => {
   totalArboles = 5;
   conIdArboles = 5; // todos con global_id → generado
   renderRutasEn('/plantaciones/plant-1');
 
-  expect(await screen.findByRole('button', { name: 'Exportar' })).toBeInTheDocument();
+  const boton = await screen.findByRole('button', { name: 'Exportar' });
+  expect(boton).toBeEnabled();
   expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
+});
+
+test('"Exportar" sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
+  const usuario = userEvent.setup();
+  totalArboles = 5;
+  conIdArboles = 5;
+  filasExport = []; // la query de exportación no devuelve filas
+  renderRutasEn('/plantaciones/plant-1');
+
+  await usuario.click(await screen.findByRole('button', { name: 'Exportar' }));
+  expect(
+    await screen.findByText('Esta plantación no tiene árboles para exportar.'),
+  ).toBeInTheDocument();
+});
+
+test('"Exportar" con árboles dispara la descarga del CSV', async () => {
+  const usuario = userEvent.setup();
+  const crearUrl = vi.fn(() => 'blob:export');
+  const revocarUrl = vi.fn();
+  vi.stubGlobal('URL', { ...URL, createObjectURL: crearUrl, revokeObjectURL: revocarUrl });
+  totalArboles = 5;
+  conIdArboles = 5;
+  filasExport = [filaExport('A-001'), filaExport('A-002')];
+  renderRutasEn('/plantaciones/plant-1');
+
+  await usuario.click(await screen.findByRole('button', { name: 'Exportar' }));
+
+  await vi.waitFor(() => expect(crearUrl).toHaveBeenCalledTimes(1));
+  expect(revocarUrl).toHaveBeenCalledTimes(1);
+  vi.unstubAllGlobals();
 });
 
 test('el botón Editar abre el formulario de la plantación con los datos cargados', async () => {
