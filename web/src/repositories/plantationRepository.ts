@@ -148,7 +148,12 @@ export async function actualizarConfigGps(id: string, config: ConfigGps): Promis
   );
 }
 
-/** Muestra u oculta la plantación para los técnicos en la app. */
+/**
+ * Muestra u oculta la plantación para los técnicos en la app.
+ * Es un toggle de UX (descongestionar el listado), NO una frontera de
+ * seguridad: el filtrado es client-side y la lectura de plantations es
+ * `using (true)`. Ver docs/decisiones/visibilidad-plantaciones.md.
+ */
 export async function actualizarVisibilidad(id: string, visible: boolean): Promise<void> {
   await actualizarCampos(id, { visible_in_app: visible }, MENSAJE_VISIBILIDAD_SIN_MIGRACION);
 }
