@@ -45,3 +45,22 @@
   border: var(--border-thin) solid var(--color-border-muted);
   color: var(--color-text-secondary);
 }
+
+/* Roles del sistema: triplete fg/bg/border por rol (tokens --color-rol-*). */
+.superadmin {
+  background-color: var(--color-rol-superadmin-bg);
+  color: var(--color-rol-superadmin-fg);
+  border: var(--border-thin) solid var(--color-rol-superadmin-border);
+}
+
+.admin {
+  background-color: var(--color-rol-admin-bg);
+  color: var(--color-rol-admin-fg);
+  border: var(--border-thin) solid var(--color-rol-admin-border);
+}
+
+.tecnico {
+  background-color: var(--color-rol-tecnico-bg);
+  color: var(--color-rol-tecnico-fg);
+  border: var(--border-thin) solid var(--color-rol-tecnico-border);
+}

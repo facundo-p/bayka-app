@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { contarOLanzar } from './conteo';
 
 /** Especie del catálogo global (tabla `species`). */
 export type EspecieCatalogo = {
@@ -6,6 +7,12 @@ export type EspecieCatalogo = {
   codigo: string;
   nombre: string;
   nombreCientifico: string | null;
+};
+
+/** Especie del catálogo + uso agregado a nivel organización. */
+export type EspecieConCatalogoUso = EspecieCatalogo & {
+  plantaciones: number;
+  arboles: number;
 };
 
 /** Especie habilitada en una plantación, con su orden de aparición en la app. */
@@ -94,4 +101,52 @@ export async function listarEspeciesConUso(plantationId: string): Promise<Especi
     especies.map((especie) => tieneArbolesEspecie(plantationId, especie.id)),
   );
   return especies.map((especie, indice) => ({ ...especie, tieneArboles: usos[indice] }));
+}
+
+/**
+ * Cuántas plantaciones habilitan cada especie (clave = species_id).
+ *
+ * Criterio de "se usa": especie HABILITADA en N plantaciones (una fila en
+ * plantation_species por par plantación-especie). Es la lectura barata y
+ * RLS-safe: leemos todas las filas visibles y contamos en cliente, sin
+ * count-por-especie en el servidor.
+ */
+async function contarPlantacionesPorEspecie(): Promise<Map<string, number>> {
+  const { data, error } = await supabase.from('plantation_species').select('species_id');
+  if (error) throw new Error(error.message);
+  const conteos = new Map<string, number>();
+  for (const fila of (data ?? []) as Array<{ species_id: string }>) {
+    conteos.set(fila.species_id, (conteos.get(fila.species_id) ?? 0) + 1);
+  }
+  return conteos;
+}
+
+/** Total de árboles de una especie (count head, scope por RLS). */
+async function contarArbolesDeEspecie(speciesId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('trees')
+    .select('id', { count: 'exact', head: true })
+    .eq('species_id', speciesId);
+  return contarOLanzar(count, error);
+}
+
+/**
+ * Catálogo global + uso por especie. Un count head de árboles por especie en
+ * paralelo: el catálogo son ~14 especies, así que el costo es marginal (mismo
+ * criterio que los counts del listado de plantaciones). Mantiene el orden por
+ * código de `listarCatalogo`.
+ */
+export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
+  const [catalogo, plantacionesPorEspecie] = await Promise.all([
+    listarCatalogo(),
+    contarPlantacionesPorEspecie(),
+  ]);
+  const arboles = await Promise.all(
+    catalogo.map((especie) => contarArbolesDeEspecie(especie.id)),
+  );
+  return catalogo.map((especie, indice) => ({
+    ...especie,
+    plantaciones: plantacionesPorEspecie.get(especie.id) ?? 0,
+    arboles: arboles[indice] ?? 0,
+  }));
 }

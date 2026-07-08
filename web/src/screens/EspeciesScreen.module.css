@@ -1,0 +1,84 @@
+/* Rótulo tenue de la izquierda de la topbar (Organización · Catálogo global). */
+.rotulo {
+  font-size: var(--text-md);
+  color: var(--color-text-faint);
+}
+
+/* Cuerpo de la página: padding horizontal de contenido + aire arriba. */
+.body {
+  padding: var(--space-4xl) var(--page-pad-x) var(--space-6xl);
+}
+
+.titulo {
+  font-size: var(--text-page-title);
+  color: var(--color-text-heading);
+  line-height: 1.1;
+}
+
+.subtitulo {
+  margin: var(--space-md) 0 0;
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}
+
+/* Buscador del catálogo. */
+.busqueda {
+  margin: var(--space-4xl) 0 var(--space-3xl);
+  max-width: 420px;
+}
+
+/* Envoltura con scroll horizontal en pantallas angostas. */
+.tablaScroll {
+  overflow-x: auto;
+}
+
+.tablaScroll table {
+  min-width: 760px;
+}
+
+/* Celda de código: punto de color (data-driven) + código en mono. */
+.codigoCelda {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  white-space: nowrap;
+}
+
+.puntoEspecie {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.codigo {
+  font-family: var(--font-mono);
+}
+
+/* Nombre científico: itálica, color tenue. '—' cuando es null. */
+.cientifico {
+  font-style: italic;
+  color: var(--color-text-faint);
+}
+
+/* Conteos numéricos alineados a la derecha: dígitos de ancho fijo. */
+.numero {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Total de árboles: mono, dígitos tabulares. */
+.arboles {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fila sin uso (0 plantaciones y 0 árboles): texto atenuado. */
+.filaSinUso {
+  color: var(--color-text-muted);
+}
+
+/* Chevron tenue al final de la fila. */
+.chevron {
+  color: var(--color-text-faint);
+}

@@ -2,6 +2,7 @@ import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import {
   listarCatalogo,
+  listarCatalogoConUso,
   listarEspeciesConUso,
   listarEspeciesDePlantacion,
 } from '../especieQueries';
@@ -111,5 +112,50 @@ describe('listarEspeciesConUso', () => {
         : { error: { message: 'falló el count' } },
     );
     await expect(listarEspeciesConUso('plant-1')).rejects.toThrow('falló el count');
+  });
+});
+
+describe('listarCatalogoConUso', () => {
+  test('cuenta plantaciones por especie y árboles totales, manteniendo el orden del catálogo', async () => {
+    capturarConsultas((consulta) => {
+      if (consulta.tabla === 'species') return { data: [FILA_QUEBRACHO, FILA_ALGARROBO] };
+      if (consulta.tabla === 'plantation_species') {
+        // Quebracho habilitado en 2 plantaciones; Algarrobo en ninguna.
+        return { data: [{ species_id: 'sp-1' }, { species_id: 'sp-1' }] };
+      }
+      // trees: count head por especie.
+      const especieId = consulta.filtros.find((filtro) => filtro.columna === 'species_id')?.valor;
+      return { count: especieId === 'sp-1' ? 42 : 0 };
+    });
+
+    const catalogo = await listarCatalogoConUso();
+
+    expect(catalogo).toEqual([
+      {
+        id: 'sp-1',
+        codigo: 'QB',
+        nombre: 'Quebracho',
+        nombreCientifico: 'Schinopsis balansae',
+        plantaciones: 2,
+        arboles: 42,
+      },
+      {
+        id: 'sp-2',
+        codigo: 'AL',
+        nombre: 'Algarrobo',
+        nombreCientifico: null,
+        plantaciones: 0,
+        arboles: 0,
+      },
+    ]);
+  });
+
+  test('propaga el error de la lectura de plantation_species', async () => {
+    capturarConsultas((consulta) => {
+      if (consulta.tabla === 'species') return { data: [FILA_QUEBRACHO] };
+      if (consulta.tabla === 'plantation_species') return { error: { message: 'sin permisos' } };
+      return { count: 0 };
+    });
+    await expect(listarCatalogoConUso()).rejects.toThrow('sin permisos');
   });
 });

@@ -64,6 +64,16 @@ function configurarUsuariosMock(usuarios = USUARIOS, errorUpdate?: string): Cons
   return consultas;
 }
 
+/** El menú "⋯" de cada fila lleva un aria-label "Cambiar rol de <nombre>". */
+function botonesMenu() {
+  return screen.getAllByRole('button', { name: /^Cambiar rol de / });
+}
+
+/** La tabla de usuarios (el sidebar también muestra al usuario logueado). */
+function tablaUsuarios() {
+  return within(screen.getByRole('table'));
+}
+
 test('un admin no ve el link Usuarios y la sección le muestra el aviso de superadmin', async () => {
   estadoMock.perfilFila = PERFIL_ADMIN;
   configurarUsuariosMock();
@@ -76,25 +86,53 @@ test('un admin no ve el link Usuarios y la sección le muestra el aviso de super
   expect(screen.getByRole('link', { name: 'Ir a Plantaciones' })).toBeInTheDocument();
   // No hay tabla: la pantalla de usuarios no se montó.
   expect(screen.queryByText('Teo Técnico')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Cambiar rol' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Cambiar rol de / })).not.toBeInTheDocument();
 });
 
-test('un superadmin ve el link, la nota de alta y la tabla con datos', async () => {
+test('un superadmin ve el link, el subtítulo con conteos y la tabla con roles', async () => {
   configurarUsuariosMock();
   renderRutasEn('/usuarios');
 
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
+  // Subtítulo computado por rol (1 superadmin, 1 admin, 1 técnico).
   expect(
-    screen.getByText('El alta de usuarios se hace desde el dashboard de Supabase.'),
+    screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico'),
   ).toBeInTheDocument();
-  expect(screen.getByText('Teo Técnico')).toBeInTheDocument();
-  // Organización resuelta por id y fecha de alta corta.
-  expect(screen.getAllByText('Bayka')).toHaveLength(3);
-  expect(screen.getByText('20/02/2026')).toBeInTheDocument();
-  // Ana tiene 2 plantaciones asignadas; el resto 0.
-  expect(screen.getByText('2')).toBeInTheDocument();
-  expect(screen.getAllByText('0')).toHaveLength(2);
+  const tabla = tablaUsuarios();
+  expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
+  // Badges de rol con etiqueta en español (dentro de la tabla).
+  expect(tabla.getByText('Superadmin')).toBeInTheDocument();
+  expect(tabla.getByText('Admin')).toBeInTheDocument();
+  expect(tabla.getByText('Técnico')).toBeInTheDocument();
+  // Plantaciones: superadmin "Todas"; Ana tiene 2; el resto "Sin plantaciones".
+  expect(tabla.getByText('Todas')).toBeInTheDocument();
+  expect(tabla.getByText('2 plantaciones')).toBeInTheDocument();
+  expect(tabla.getByText('Sin plantaciones')).toBeInTheDocument();
+});
+
+test('el filtro Técnicos deja sólo a los técnicos', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  await usuario.click(screen.getByRole('radio', { name: 'Técnicos' }));
+  const tabla = tablaUsuarios();
+  expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
+  expect(tabla.queryByText('Ana Admin')).not.toBeInTheDocument();
+  expect(tabla.queryByText('Sofía Súper')).not.toBeInTheDocument();
+});
+
+test('"Agregar usuario" abre un aviso: el alta se hace desde Supabase', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  await usuario.click(screen.getByRole('button', { name: 'Agregar usuario' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Agregar usuario' });
+  expect(within(dialogo).getByText(/se dan de alta desde el dashboard de Supabase/)).toBeInTheDocument();
 });
 
 test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida la lista', async () => {
@@ -104,8 +142,7 @@ test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida
   await screen.findByText('Ana Admin');
 
   // Las filas conservan el orden del fixture: [Sofía, Ana, Teo].
-  const botones = screen.getAllByRole('button', { name: 'Cambiar rol' });
-  await usuario.click(botones[1]);
+  await usuario.click(botonesMenu()[1]);
   const dialogo = screen.getByRole('dialog', { name: 'Cambiar rol de Ana Admin' });
 
   // Sin cambio de rol no hay nada que confirmar.
@@ -135,7 +172,7 @@ test('la acción está deshabilitada para la propia fila del superadmin', async 
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const [botonPropio, botonAna] = screen.getAllByRole('button', { name: 'Cambiar rol' });
+  const [botonPropio, botonAna] = botonesMenu();
   expect(botonPropio).toBeDisabled();
   expect(botonPropio).toHaveAttribute(
     'title',
@@ -158,7 +195,7 @@ test('el único superadmin del sistema no es degradable', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Selva Súper');
 
-  const [botonSelva] = screen.getAllByRole('button', { name: 'Cambiar rol' });
+  const [botonSelva] = botonesMenu();
   expect(botonSelva).toBeDisabled();
   expect(botonSelva).toHaveAttribute(
     'title',
@@ -172,8 +209,7 @@ test('un error del trigger del server se muestra legible en el modal', async () 
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const botones = screen.getAllByRole('button', { name: 'Cambiar rol' });
-  await usuario.click(botones[1]);
+  await usuario.click(botonesMenu()[1]);
   const dialogo = screen.getByRole('dialog', { name: 'Cambiar rol de Ana Admin' });
   await usuario.selectOptions(within(dialogo).getByLabelText('Nuevo rol'), 'tecnico');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar' }));
