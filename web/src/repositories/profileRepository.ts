@@ -1,6 +1,14 @@
 import { supabase } from '../lib/supabase';
 
-export type Rol = 'admin' | 'tecnico' | 'superadmin';
+/** Valores de rol global (columna `profiles.rol`). Fuente única de verdad:
+ *  todo comparación/asignación de rol usa estas constantes, no literales. */
+export const ROL = {
+  ADMIN: 'admin',
+  TECNICO: 'tecnico',
+  SUPERADMIN: 'superadmin',
+} as const;
+
+export type Rol = (typeof ROL)[keyof typeof ROL];
 
 export type Perfil = {
   id: string;

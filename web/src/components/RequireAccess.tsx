@@ -1,5 +1,6 @@
 import { Link, Navigate, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { ROL } from '../repositories/profileRepository';
 import { SinAccesoScreen } from '../screens/SinAccesoScreen';
 import { EmptyState } from './EmptyState';
 import { Spinner } from './Spinner';
@@ -24,7 +25,7 @@ export function RequireAccess() {
  *  Sin redirect silencioso: un admin que navega a mano ve el porqué. */
 export function RequireSuperadmin() {
   const { perfil } = useAuth();
-  if (perfil?.rol !== 'superadmin') {
+  if (perfil?.rol !== ROL.SUPERADMIN) {
     return (
       <EmptyState
         icon="🔒"

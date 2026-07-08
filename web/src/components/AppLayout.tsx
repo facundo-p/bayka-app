@@ -1,6 +1,7 @@
 import { Leaf, Sprout, Users } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { ROL } from '../repositories/profileRepository';
 import { CommandMenuTrigger } from './CommandMenuTrigger';
 import { NavItem } from './NavItem';
 import { SeasonCard } from './SeasonCard';
@@ -11,7 +12,7 @@ const TAMANO_ICONO = 18;
 
 function Sidebar() {
   const { perfil } = useAuth();
-  const esSuperadmin = perfil?.rol === 'superadmin';
+  const esSuperadmin = perfil?.rol === ROL.SUPERADMIN;
 
   return (
     <aside className={styles.sidebar}>

@@ -25,15 +25,16 @@ import {
   desasignarUsuario,
   MENSAJE_USUARIO_YA_ASIGNADO,
 } from '../../repositories/plantationUserRepository';
+import { ROL } from '../../repositories/profileRepository';
 import styles from './SeccionesConfig.module.css';
 
-const ROLES_EN_PLANTACION: RolEnPlantacion[] = ['tecnico', 'admin'];
+const ROLES_EN_PLANTACION: RolEnPlantacion[] = [ROL.TECNICO, ROL.ADMIN];
 
 /** Etiquetas en español de los roles (globales y en plantación). */
 const ETIQUETA_ROL: Record<string, string> = {
-  tecnico: 'Técnico',
-  admin: 'Admin',
-  superadmin: 'Superadmin',
+  [ROL.TECNICO]: 'Técnico',
+  [ROL.ADMIN]: 'Admin',
+  [ROL.SUPERADMIN]: 'Superadmin',
 };
 
 const LARGO_ID_CORTO = 8;
@@ -101,7 +102,7 @@ function FormAsignar({
   disponibles: PerfilResumen[];
 }) {
   const [userId, setUserId] = useState('');
-  const [rol, setRol] = useState<RolEnPlantacion>('tecnico');
+  const [rol, setRol] = useState<RolEnPlantacion>(ROL.TECNICO);
   const invalidar = useInvalidarUsuarios(plantationId);
   const mutacion = useMutation({
     mutationFn: () => asignarUsuario(plantationId, userId, rol),

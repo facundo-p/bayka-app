@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { AuthError, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import { getPerfil, type Perfil } from '../repositories/profileRepository';
+import { getPerfil, ROL, type Perfil } from '../repositories/profileRepository';
 
 export type EstadoAuth = 'cargando' | 'anonimo' | 'sin-acceso' | 'autenticado';
 
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const perfilCargado = await cargarPerfil(session.user.id);
     setPerfil(perfilCargado);
-    setEstado(perfilCargado && perfilCargado.rol !== 'tecnico' ? 'autenticado' : 'sin-acceso');
+    setEstado(perfilCargado && perfilCargado.rol !== ROL.TECNICO ? 'autenticado' : 'sin-acceso');
   }, []);
 
   useEffect(() => {

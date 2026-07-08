@@ -1,8 +1,9 @@
 import { supabase } from '../lib/supabase';
-import type { Rol } from '../repositories/profileRepository';
+import { ROL, type Rol } from '../repositories/profileRepository';
 
-/** Rol del usuario dentro de una plantación (columna `rol_en_plantacion`). */
-export type RolEnPlantacion = 'tecnico' | 'admin';
+/** Rol del usuario dentro de una plantación (columna `rol_en_plantacion`):
+ *  los roles globales salvo superadmin (que no aplica a nivel plantación). */
+export type RolEnPlantacion = Exclude<Rol, typeof ROL.SUPERADMIN>;
 
 export type PerfilResumen = {
   id: string;
@@ -115,7 +116,7 @@ function mapearAsignado(fila: FilaAsignado): UsuarioAsignado {
   return {
     userId: fila.user_id,
     nombre: fila.profiles?.nombre ?? '',
-    rolGlobal: fila.profiles?.rol ?? 'tecnico',
+    rolGlobal: fila.profiles?.rol ?? ROL.TECNICO,
     rolEnPlantacion: fila.rol_en_plantacion,
     assignedAt: fila.assigned_at,
   };
