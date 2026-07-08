@@ -13,6 +13,11 @@
   min-width: 0;
 }
 
+/* Ocupa las dos columnas (ancho completo) en la fila inferior. */
+.anchoCompleto {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 900px) {
   .grilla {
     grid-template-columns: 1fr;
