@@ -176,6 +176,10 @@ export function PlantacionFormModal({ plantacion, onClose }: PlantacionFormModal
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['plantaciones'] });
+      // En edición, refrescar también el detalle abierto de esa plantación.
+      if (plantacion) {
+        await queryClient.invalidateQueries({ queryKey: ['plantacion', plantacion.id] });
+      }
       onClose();
     },
     onError: () => setErrorEnvio(MENSAJE_ERROR_GUARDADO),

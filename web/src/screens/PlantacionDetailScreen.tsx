@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import {
   Breadcrumb,
   Button,
@@ -8,6 +9,7 @@ import {
   EmptyState,
   ErrorConReintento,
   EstadoPlantacionBadge,
+  PlantacionFormModal,
   TabNav,
   Topbar,
   type TabItem,
@@ -68,13 +70,17 @@ function AccionesDetalle() {
   );
 }
 
-function BloqueTitulo({ plantacion }: { plantacion: Plantacion }) {
+function BloqueTitulo({ plantacion, onEditar }: { plantacion: Plantacion; onEditar: () => void }) {
   return (
     <div className={styles.titulo}>
-      <div className={styles.estadoFila}>
+      <div className={styles.encabezadoFila}>
         <EstadoPlantacionBadge estado={plantacion.estado} />
+        <h1 className={styles.lugar}>{plantacion.lugar}</h1>
+        <button type="button" className={styles.editar} onClick={onEditar}>
+          <Pencil size={TAMANO_ICONO} aria-hidden />
+          Editar
+        </button>
       </div>
-      <h1 className={styles.lugar}>{plantacion.lugar}</h1>
       <p className={styles.meta}>{lineaMeta(plantacion)}</p>
     </div>
   );
@@ -83,6 +89,7 @@ function BloqueTitulo({ plantacion }: { plantacion: Plantacion }) {
 /** Shell del detalle: topbar + título + tabs; cada tab se renderiza en el Outlet. */
 export function PlantacionDetailScreen() {
   const { id = '' } = useParams();
+  const [editando, setEditando] = useState(false);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['plantacion', id],
     queryFn: () => obtenerPlantacion(id),
@@ -108,13 +115,16 @@ export function PlantacionDetailScreen() {
         }
         right={<AccionesDetalle />}
       />
-      <BloqueTitulo plantacion={data} />
+      <BloqueTitulo plantacion={data} onEditar={() => setEditando(true)} />
       <div className={styles.tabs}>
         <TabNav label="Secciones de la plantación" tabs={tabsDePlantacion(data.id)} />
       </div>
       <div className={styles.contenido}>
         <Outlet />
       </div>
+      {editando && (
+        <PlantacionFormModal plantacion={data} onClose={() => setEditando(false)} />
+      )}
     </section>
   );
 }

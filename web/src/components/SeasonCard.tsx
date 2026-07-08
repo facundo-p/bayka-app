@@ -2,30 +2,27 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import {
   listarPlantaciones,
-  type PlantacionConStats,
+  obtenerTemporadaActivaId,
 } from '../queries/plantationQueries';
 import { formatearEntero } from '../lib/formato';
 import styles from './SeasonCard.module.css';
-
-/** Temporada activa = la plantación 'activa' con más árboles registrados.
- *  Heurística sin campo dedicado de "temporada en curso" en el modelo. */
-function temporadaActiva(plantaciones: PlantacionConStats[]): PlantacionConStats | null {
-  const activas = plantaciones.filter((plantacion) => plantacion.estado === 'activa');
-  if (activas.length === 0) return null;
-  return activas.reduce((mejor, actual) => (actual.arboles > mejor.arboles ? actual : mejor));
-}
 
 function porcentajeObjetivo(arboles: number, objetivo: number | null): number | null {
   if (!objetivo || objetivo <= 0) return null;
   return Math.min(100, Math.round((arboles / objetivo) * 100));
 }
 
-/** Card "Temporada activa" del sidebar. No renderiza nada si no hay activa. */
+/** Card "Temporada activa" del sidebar: la última plantación activa en la que se
+ *  cargaron árboles (registro más reciente). No renderiza nada si no la hay. */
 export function SeasonCard() {
-  const { data, isLoading } = useQuery({ queryKey: ['plantaciones'], queryFn: listarPlantaciones });
-  if (isLoading || !data) return null;
+  const { data } = useQuery({ queryKey: ['plantaciones'], queryFn: listarPlantaciones });
+  const { data: temporadaId } = useQuery({
+    queryKey: ['temporada-activa'],
+    queryFn: obtenerTemporadaActivaId,
+  });
+  if (!data || !temporadaId) return null;
 
-  const temporada = temporadaActiva(data);
+  const temporada = data.find((plantacion) => plantacion.id === temporadaId);
   if (!temporada) return null;
 
   const pct = porcentajeObjetivo(temporada.arboles, temporada.objetivoArboles);
