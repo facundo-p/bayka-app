@@ -1,52 +1,47 @@
-import { NavLink, Outlet } from 'react-router';
+import { Leaf, Sprout, Users } from 'lucide-react';
+import { Link, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
-import { Badge } from './Badge';
-import { Button } from './Button';
+import { CommandMenuTrigger } from './CommandMenuTrigger';
+import { NavItem } from './NavItem';
+import { SeasonCard } from './SeasonCard';
+import { UserMenu } from './UserMenu';
 import styles from './AppLayout.module.css';
 
-type NavItem = { to: string; label: string; soloSuperadmin?: boolean };
-
-const NAV_ITEMS: NavItem[] = [
-  { to: '/plantaciones', label: 'Plantaciones' },
-  { to: '/usuarios', label: 'Usuarios', soloSuperadmin: true },
-];
-
-function navLinkClassName({ isActive }: { isActive: boolean }): string {
-  return isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink;
-}
+const TAMANO_ICONO = 18;
 
 function Sidebar() {
   const { perfil } = useAuth();
-  const items = NAV_ITEMS.filter((item) => !item.soloSuperadmin || perfil?.rol === 'superadmin');
+  const esSuperadmin = perfil?.rol === 'superadmin';
+
   return (
     <aside className={styles.sidebar}>
-      <div className={styles.brand}>
-        <img src="/logo-bayka-white.png" alt="Bayka" className={styles.logo} />
-        <span className={styles.brandSubtitle}>Gestión</span>
-      </div>
-      <nav className={styles.nav}>
-        {items.map(({ to, label }) => (
-          <NavLink key={to} to={to} className={navLinkClassName}>
-            {label}
-          </NavLink>
-        ))}
-      </nav>
-      <div className={styles.sidebarFooter} />
-    </aside>
-  );
-}
+      <Link to="/plantaciones" className={styles.brand}>
+        <img src="/logo-bayka.png" alt="Bayka" className={styles.logo} />
+        <span className={styles.brandOverline}>Plataforma de Gestión</span>
+      </Link>
 
-function HeaderUsuario() {
-  const { perfil, signOut } = useAuth();
-  if (!perfil) return null;
-  return (
-    <div className={styles.headerUsuario}>
-      <span className={styles.headerNombre}>{perfil.nombre}</span>
-      <Badge>{perfil.rol}</Badge>
-      <Button variant="secondary" onClick={() => void signOut()}>
-        Salir
-      </Button>
-    </div>
+      <CommandMenuTrigger disabled />
+
+      <nav className={styles.nav}>
+        <span className={styles.navOverline}>Organización</span>
+        <NavItem
+          to="/plantaciones"
+          icon={<Sprout size={TAMANO_ICONO} />}
+          label="Plantaciones"
+          activeOnDetail
+        />
+        <NavItem to="/especies" icon={<Leaf size={TAMANO_ICONO} />} label="Especies" />
+        {esSuperadmin && (
+          <NavItem to="/usuarios" icon={<Users size={TAMANO_ICONO} />} label="Usuarios" />
+        )}
+      </nav>
+
+      <SeasonCard />
+
+      <div className={styles.footer}>
+        <UserMenu />
+      </div>
+    </aside>
   );
 }
 
@@ -55,9 +50,6 @@ export function AppLayout() {
     <div className={styles.shell}>
       <Sidebar />
       <div className={styles.content}>
-        <header className={styles.header}>
-          <HeaderUsuario />
-        </header>
         <main className={styles.main}>
           <Outlet />
         </main>

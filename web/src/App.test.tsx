@@ -31,12 +31,13 @@ test('autenticado: la ruta raíz redirige al listado de Plantaciones', async () 
   expect(await screen.findByText('Sin plantaciones')).toBeInTheDocument();
 });
 
-test('autenticado: el header muestra nombre, rol y botón Salir', async () => {
+test('autenticado: el footer del sidebar muestra nombre, rol y botón de salir', async () => {
   simularAdminLogueado();
   renderAt('/plantaciones');
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
-  expect(screen.getByText('admin')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Salir' })).toBeInTheDocument();
+  // El rol se muestra con su etiqueta en español en el footer del sidebar.
+  expect(screen.getByText('Administrador')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
 });
 
 test('sin sesión: redirige a /login y muestra el formulario', async () => {

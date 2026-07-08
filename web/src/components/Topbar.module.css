@@ -1,0 +1,27 @@
+.topbar {
+  position: sticky;
+  top: 0;
+  /* Por debajo de los paneles de Leaflet (z-index interno alto) pero por
+     encima del contenido normal. z-index entero: no es un color. */
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2xl);
+  padding: var(--space-2xl) var(--page-pad-x);
+  background-color: var(--color-topbar-bg);
+  backdrop-filter: var(--topbar-blur);
+  border-bottom: var(--border-thin) solid var(--color-border);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
