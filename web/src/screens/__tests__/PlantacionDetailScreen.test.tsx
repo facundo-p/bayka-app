@@ -84,9 +84,10 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones/plant-1');
 
-  expect(await screen.findByRole('heading', { name: 'Mendoza — 2025-2026' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'Mendoza' })).toBeInTheDocument();
   expect(screen.getByText('Activa')).toBeInTheDocument();
-  expect(screen.getByText('Oculta en app')).toBeInTheDocument();
+  // Línea de metadatos: período + fecha de creación.
+  expect(screen.getByText(/2025-2026 · Creada/)).toBeInTheDocument();
   // La tab index (Dashboard) es la activa por defecto: sin árboles muestra el vacío.
   expect(await screen.findByText('Todavía no hay árboles registrados')).toBeInTheDocument();
 

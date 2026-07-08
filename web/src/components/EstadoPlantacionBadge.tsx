@@ -9,5 +9,9 @@ const ETIQUETA_ESTADO: Record<EstadoPlantacion, string> = {
 
 /** Badge del estado de una plantación (un solo lugar para etiqueta y color). */
 export function EstadoPlantacionBadge({ estado }: { estado: EstadoPlantacion }) {
-  return <Badge variant={estado}>{ETIQUETA_ESTADO[estado]}</Badge>;
+  return (
+    <Badge variant={estado} dot>
+      {ETIQUETA_ESTADO[estado]}
+    </Badge>
+  );
 }

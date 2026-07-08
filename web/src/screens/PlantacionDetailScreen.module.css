@@ -1,3 +1,38 @@
+/* Bloque de título del detalle. */
+.titulo {
+  padding: var(--space-5xl) var(--page-pad-x) 0;
+}
+
+.estadoFila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+}
+
+.lugar {
+  margin: var(--space-lg) 0 0;
+  font-size: var(--text-page-title);
+  color: var(--color-text-heading);
+  line-height: 1.1;
+}
+
+.meta {
+  margin: var(--space-md) 0 0;
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+/* Contenedor de las tabs: poco aire arriba, borde inferior, baja densidad. */
+.tabs {
+  margin-top: var(--space-3xl);
+  padding: 0 var(--page-pad-x);
+}
+
+/* Contenido de cada tab (Outlet). */
+.contenido {
+  padding: 0 var(--page-pad-x);
+}
+
 .volver {
   display: inline-block;
   margin-bottom: var(--space-2xl);

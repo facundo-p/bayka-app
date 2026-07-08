@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
@@ -228,7 +228,7 @@ describe('sección GPS', () => {
 });
 
 describe('sección Visibilidad', () => {
-  test('guarda al cambiar e invalida el detalle (el badge del header se actualiza)', async () => {
+  test('guarda al cambiar y refleja el nuevo estado en el checkbox', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const checkbox = await screen.findByLabelText('Visible para técnicos en la app');
@@ -240,10 +240,9 @@ describe('sección Visibilidad', () => {
       (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
     );
     expect(update?.payload).toEqual({ visible_in_app: false });
-    // La invalidación de ['plantacion', id] refetchea el detalle: el header
-    // refleja la plantación oculta.
-    expect(await screen.findByText('Oculta en app')).toBeInTheDocument();
-    expect(checkbox).not.toBeChecked();
+    // La invalidación de ['plantacion', id] refetchea el detalle; el toggle
+    // queda en el nuevo estado (oculta).
+    await waitFor(() => expect(checkbox).not.toBeChecked());
   });
 
   test('si el update falla hace rollback visual del checkbox', async () => {

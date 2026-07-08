@@ -7,17 +7,21 @@
 .table th {
   padding: var(--space-xl) var(--space-2xl);
   text-align: left;
-  font-size: var(--text-sm);
+  /* Overline: 11px mayúsculas con tracking, tenue (rediseño). */
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-text-secondary);
-  background-color: var(--color-primary-bg-light);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-text-faint);
+  background-color: var(--color-surface-sunken);
   border-bottom: var(--border-thin) solid var(--color-border);
 }
 
 .table td {
   padding: var(--space-xl) var(--space-2xl);
   font-size: var(--text-md);
-  border-bottom: var(--border-thin) solid var(--color-border);
+  color: var(--color-text-body);
+  border-bottom: var(--border-thin) solid var(--color-divider);
 }
 
 .clickableRow {
@@ -25,7 +29,7 @@
 }
 
 .clickableRow:hover {
-  background-color: var(--color-primary-bg-light);
+  background-color: var(--color-surface-sunken);
 }
 
 .center {
