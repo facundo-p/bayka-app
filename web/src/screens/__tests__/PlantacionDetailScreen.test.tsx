@@ -92,8 +92,8 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByText('Todavía no hay árboles registrados')).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('link', { name: 'Datos' }));
-  // La tab Datos redirige a Árboles, cuyo selector de sección (toolbar única)
-  // expone las secciones como radios.
+  // La tab Datos redirige a Parcelas (default); el selector de sección (toolbar
+  // única) expone las secciones como radios.
   expect(await screen.findByRole('radio', { name: 'Parcelas' })).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Árboles' })).toBeInTheDocument();
 
