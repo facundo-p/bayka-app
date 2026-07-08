@@ -113,6 +113,33 @@ describe('listarUsuariosConAsignaciones', () => {
     ]);
   });
 
+  test('cuenta asignaciones por usuario sin truncar a 1000 (pagina con range)', async () => {
+    const totalFilas = 1500;
+    const rangos: Array<{ desde: number; hasta: number }> = [];
+    estadoMock.resolverConsulta = (consulta) => {
+      if (consulta.tabla === 'profiles') return { data: [FILAS_PERFILES[0]], error: null };
+      if (consulta.tabla === 'plantation_users') {
+        const { desde, hasta } = consulta.rango ?? { desde: 0, hasta: totalFilas - 1 };
+        rangos.push({ desde, hasta });
+        const filas: Array<{ user_id: string }> = [];
+        for (let indice = desde; indice <= hasta && indice < totalFilas; indice++) {
+          filas.push({ user_id: 'user-1' });
+        }
+        return { data: filas, error: null };
+      }
+      return { data: [], error: null };
+    };
+
+    const usuarios = await listarUsuariosConAsignaciones();
+
+    expect(usuarios[0].plantacionesAsignadas).toBe(totalFilas);
+    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
+    expect(rangos).toEqual([
+      { desde: 0, hasta: 999 },
+      { desde: 1000, hasta: 1999 },
+    ]);
+  });
+
   test('propaga el error de cualquiera de las tablas', async () => {
     estadoMock.resolverConsulta = (consulta) =>
       consulta.tabla === 'plantation_users'

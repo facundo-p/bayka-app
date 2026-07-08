@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { ROL, type Rol } from '../repositories/profileRepository';
+import { leerPaginado } from './leerPaginado';
 
 /** Rol del usuario dentro de una plantación (columna `rol_en_plantacion`):
  *  los roles globales salvo superadmin (que no aplica a nivel plantación). */
@@ -61,10 +62,11 @@ export async function listarPerfiles(): Promise<PerfilResumen[]> {
  * que el conteo de árboles por grupo en dataExplorerQueries).
  */
 async function contarAsignacionesPorUsuario(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('plantation_users').select('user_id');
-  if (error) throw new Error(error.message);
+  const filas = await leerPaginado<{ user_id: string }>((desde, hasta) =>
+    supabase.from('plantation_users').select('user_id').range(desde, hasta),
+  );
   const conteos = new Map<string, number>();
-  for (const fila of (data ?? []) as Array<{ user_id: string }>) {
+  for (const fila of filas) {
     conteos.set(fila.user_id, (conteos.get(fila.user_id) ?? 0) + 1);
   }
   return conteos;

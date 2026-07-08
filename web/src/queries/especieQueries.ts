@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
+import { leerPaginado } from './leerPaginado';
 
 /** Especie del catálogo global (tabla `species`). */
 export type EspecieCatalogo = {
@@ -115,10 +116,11 @@ export async function listarEspeciesConUso(plantationId: string): Promise<Especi
  * count-por-especie en el servidor.
  */
 async function contarPlantacionesPorEspecie(): Promise<Map<string, number>> {
-  const { data, error } = await supabase.from('plantation_species').select('species_id');
-  if (error) throw new Error(error.message);
+  const filas = await leerPaginado<{ species_id: string }>((desde, hasta) =>
+    supabase.from('plantation_species').select('species_id').range(desde, hasta),
+  );
   const conteos = new Map<string, number>();
-  for (const fila of (data ?? []) as Array<{ species_id: string }>) {
+  for (const fila of filas) {
     conteos.set(fila.species_id, (conteos.get(fila.species_id) ?? 0) + 1);
   }
   return conteos;

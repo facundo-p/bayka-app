@@ -150,6 +150,32 @@ describe('listarCatalogoConUso', () => {
     ]);
   });
 
+  test('cuenta plantaciones por especie sin truncar a 1000 (pagina con range)', async () => {
+    const totalFilas = 1500;
+    const consultas = capturarConsultas((consulta) => {
+      if (consulta.tabla === 'species') return { data: [FILA_QUEBRACHO] };
+      if (consulta.tabla === 'plantation_species') {
+        // Slice [desde, hasta] de 1500 filas, todas de la misma especie.
+        const { desde, hasta } = consulta.rango ?? { desde: 0, hasta: totalFilas - 1 };
+        const filas: Array<{ species_id: string }> = [];
+        for (let indice = desde; indice <= hasta && indice < totalFilas; indice++) {
+          filas.push({ species_id: 'sp-1' });
+        }
+        return { data: filas };
+      }
+      return { count: 0 };
+    });
+
+    const catalogo = await listarCatalogoConUso();
+
+    expect(catalogo[0].plantaciones).toBe(totalFilas);
+    const lecturas = consultas.filter((consulta) => consulta.tabla === 'plantation_species');
+    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
+    expect(lecturas).toHaveLength(2);
+    expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
+    expect(lecturas[1].rango).toEqual({ desde: 1000, hasta: 1999 });
+  });
+
   test('propaga el error de la lectura de plantation_species', async () => {
     capturarConsultas((consulta) => {
       if (consulta.tabla === 'species') return { data: [FILA_QUEBRACHO] };
