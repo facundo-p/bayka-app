@@ -6,6 +6,9 @@
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border-card);
   border-radius: var(--radius-card-sm);
+  /* Ocupa todo el alto de la celda (igual al mapa); la lista scrollea. */
+  height: 100%;
+  min-height: 0;
 }
 
 .header {
@@ -13,6 +16,7 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2xl);
+  flex-shrink: 0;
 }
 
 .titulo {
@@ -58,6 +62,10 @@
   margin: 0;
   padding: 0;
   list-style: none;
+  /* Scrollea dentro del panel cuando hay más especies que alto disponible. */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .fila {

@@ -153,13 +153,15 @@ describe('obtenerDashboard', () => {
     return { count: 3 };
   }
 
-  test('lee los árboles en una sola consulta liviana con tope', async () => {
+  test('lee los árboles paginando con range (sin el tope de 1000)', async () => {
     const consultas = capturarConsultas(responder);
     await obtenerDashboard('plant-1');
 
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
+    // Mock con < 1000 filas: una sola página (range 0–999) y corta.
     expect(deArboles).toHaveLength(1);
-    expect(deArboles[0].limite).toBe(15000);
+    expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
+    expect(deArboles[0].limite).toBeUndefined();
     expect(deArboles[0].columnas).toMatch(/^species_id/);
     expect(deArboles[0].filtros).toContainEqual({
       metodo: 'eq',

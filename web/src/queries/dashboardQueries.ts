@@ -13,9 +13,7 @@ import { tieneFotoSubida } from '../services/fotoService';
 import { contarOLanzar } from './conteo';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { listarCatalogo, type EspecieCatalogo } from './especieQueries';
-
-/** Tope de filas de la lectura de árboles (holgado sobre los ~7600 reales). */
-const LIMITE_ARBOLES_DASHBOARD = 15000;
+import { leerPaginado } from './leerPaginado';
 
 /** Largo del prefijo 'YYYY-MM' de una fecha ISO. */
 const LARGO_MES_ISO = 7;
@@ -161,29 +159,37 @@ function mapearArbolDashboard(fila: FilaArbolDashboard): ArbolDashboard {
 const COLUMNAS_ARBOL_BASE = 'species_id, foto_url, created_at, group_id';
 const EMBED_GRUPO = 'groups!inner(plantation_id, parcela_id)';
 
-function consultarArbolesDashboard(plantationId: string, columnas: string) {
+function consultarArbolesDashboard(plantationId: string, columnas: string, desde: number, hasta: number) {
   return supabase
     .from('trees')
     .select(`${columnas}, ${EMBED_GRUPO}`)
     .eq('groups.plantation_id', plantationId)
-    .limit(LIMITE_ARBOLES_DASHBOARD);
+    .range(desde, hasta);
 }
 
-/** Única lectura de árboles: columnas livianas + embed mínimo del grupo.
- *  `latitude` es de la migración 023: si no está aplicada se reintenta sin
- *  ella (el KPI de GPS queda en 0 en vez de romper el dashboard). */
+/** Lectura paginada de todos los árboles (sin el tope de 1000 de PostgREST):
+ *  columnas livianas + embed mínimo del grupo. `latitude` es de la migración
+ *  023: si no está aplicada el select falla con UNDEFINED_COLUMN y se reintenta
+ *  sin ella (el KPI de GPS queda en 0 en vez de romper el dashboard). */
 async function listarArbolesDashboard(plantationId: string): Promise<ArbolDashboard[]> {
-  let { data, error } = await consultarArbolesDashboard(
-    plantationId,
-    `${COLUMNAS_ARBOL_BASE}, latitude`,
-  );
-  if (error?.code === PG_ERROR.UNDEFINED_COLUMN) {
-    ({ data, error } = await consultarArbolesDashboard(plantationId, COLUMNAS_ARBOL_BASE));
-  }
-  if (error) throw new Error(error.message);
   // El cliente sin typegen tipa el embed como array, pero la FK group_id →
   // groups es many-to-one: en runtime llega un objeto.
-  return ((data ?? []) as unknown as FilaArbolDashboard[]).map(mapearArbolDashboard);
+  const aFilas = (filas: unknown[]) =>
+    (filas as FilaArbolDashboard[]).map(mapearArbolDashboard);
+  try {
+    return aFilas(
+      await leerPaginado((desde, hasta) =>
+        consultarArbolesDashboard(plantationId, `${COLUMNAS_ARBOL_BASE}, latitude`, desde, hasta),
+      ),
+    );
+  } catch (error) {
+    if ((error as { code?: string }).code !== PG_ERROR.UNDEFINED_COLUMN) throw error;
+    return aFilas(
+      await leerPaginado((desde, hasta) =>
+        consultarArbolesDashboard(plantationId, COLUMNAS_ARBOL_BASE, desde, hasta),
+      ),
+    );
+  }
 }
 
 /** Parcelas activas (excluye soft-deleted) ordenadas por código. */
