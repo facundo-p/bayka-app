@@ -58,19 +58,10 @@
   white-space: nowrap;
 }
 
-/* Botón-ícono de foto subida (check); sin recuadro, solo el ícono. */
+/* Indicador de foto subida (check no interactivo); la foto se ve en el detalle. */
 .fotoCheck {
   display: inline-flex;
-  padding: 0;
-  border: none;
-  background: none;
   color: var(--color-secondary);
-  cursor: pointer;
-}
-
-.fotoCheck:disabled {
-  cursor: default;
-  opacity: 0.6;
 }
 
 .codigo {

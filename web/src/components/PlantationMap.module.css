@@ -46,23 +46,6 @@
   font-weight: 600;
 }
 
-/* `position:relative; z-index:0` atrapa los z-index internos de Leaflet para
- * que no se monten sobre la topbar sticky. */
-.mapa {
-  position: relative;
-  z-index: 0;
-  height: 360px;
-  overflow: hidden;
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
-}
-
-.mapa :global(.leaflet-container) {
-  height: 100%;
-  width: 100%;
-  background-color: var(--color-surface-sunken);
-}
-
 .vacio {
   display: flex;
   align-items: center;

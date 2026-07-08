@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { Cargando, ErrorConReintento, Paginacion, Table, type TableColumn } from '../../components';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -10,7 +10,8 @@ import { listarArboles, type ArbolDetalle, type PaginaArboles } from '../../quer
 import { listarCatalogo } from '../../queries/especieQueries';
 import { listarPerfiles, type PerfilResumen } from '../../queries/usuarioQueries';
 import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
-import { obtenerUrlFoto, tieneFotoSubida } from '../../services/fotoService';
+import { tieneFotoSubida } from '../../services/fotoService';
+import { ArbolDetalleModal } from './ArbolDetalleModal';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { DatosToolbar } from './DatosToolbar';
 import { ScopeChips, type ScopeChip } from './ScopeChips';
@@ -55,26 +56,14 @@ function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
   );
 }
 
-/** Ícono-check que abre la foto firmada; nada si no hay foto subida. */
+/** Check no interactivo cuando el árbol tiene foto subida; nada si no hay.
+ *  La foto se ve abriendo el detalle de la fila. */
 function CeldaFoto({ fotoUrl }: { fotoUrl: string | null }) {
-  const verFoto = useMutation({
-    mutationFn: () => obtenerUrlFoto(fotoUrl),
-    onSuccess: (url) => {
-      if (url) window.open(url, '_blank', 'noopener');
-    },
-    onError: () => window.alert('No se pudo abrir la foto. Reintentá en unos segundos.'),
-  });
   if (!tieneFotoSubida(fotoUrl)) return null;
   return (
-    <button
-      type="button"
-      className={styles.fotoCheck}
-      aria-label="Ver foto"
-      disabled={verFoto.isPending}
-      onClick={() => verFoto.mutate()}
-    >
+    <span className={styles.fotoCheck} aria-label="Con foto">
       <Check size={TAMANIO_ICONO_FOTO} />
-    </button>
+    </span>
   );
 }
 
@@ -132,12 +121,14 @@ function TablaArboles({
   perfiles,
   pagina,
   onCambiarPagina,
+  onRowClick,
 }: {
   datos: PaginaArboles;
   codigosParcela: Map<string, string>;
   perfiles: PerfilResumen[];
   pagina: number;
   onCambiarPagina: (pagina: number) => void;
+  onRowClick: (arbol: ArbolDetalle) => void;
 }) {
   const nombresUsuario = new Map(perfiles.map((perfil) => [perfil.id, perfil.nombre]));
   return (
@@ -148,6 +139,7 @@ function TablaArboles({
           rows={datos.arboles}
           getRowKey={(arbol) => arbol.id}
           emptyMessage="Sin árboles para mostrar"
+          onRowClick={onRowClick}
         />
       </div>
       {datos.total > 0 && (
@@ -188,6 +180,7 @@ export function ArbolesSection() {
   const { id = '' } = useParams();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
   const [pagina, setPagina] = useState(1);
+  const [arbolSeleccionado, setArbolSeleccionado] = useState<ArbolDetalle | null>(null);
   const busquedaDebounced = useDebounce(filtros.busqueda, RETARDO_BUSQUEDA_MS);
   const filtrosQuery = { ...filtros, busqueda: busquedaDebounced };
 
@@ -201,6 +194,8 @@ export function ArbolesSection() {
   });
   const chips = useScopeChips(filtros, setFiltro);
   const recuento = arboles.data ? `${formatearEntero(arboles.data.total)} árboles` : undefined;
+  const codigosParcela = new Map((parcelas.data ?? []).map((parcela) => [parcela.id, parcela.codigo]));
+  const nombresUsuario = new Map((perfiles.data ?? []).map((perfil) => [perfil.id, perfil.nombre]));
 
   /** Cualquier cambio de filtro vuelve a la página 1. */
   useEffect(() => setPagina(1), [filtros.parcelaId, filtros.groupId, filtros.speciesId, filtros.gps, busquedaDebounced]);
@@ -231,10 +226,25 @@ export function ArbolesSection() {
       ) : (
         <TablaArboles
           datos={arboles.data}
-          codigosParcela={new Map((parcelas.data ?? []).map((parcela) => [parcela.id, parcela.codigo]))}
+          codigosParcela={codigosParcela}
           perfiles={perfiles.data ?? []}
           pagina={pagina}
           onCambiarPagina={setPagina}
+          onRowClick={setArbolSeleccionado}
+        />
+      )}
+      {arbolSeleccionado && (
+        <ArbolDetalleModal
+          arbol={arbolSeleccionado}
+          parcelaCodigo={
+            (arbolSeleccionado.parcelaId && codigosParcela.get(arbolSeleccionado.parcelaId)) || null
+          }
+          tecnicoNombre={
+            (arbolSeleccionado.usuarioRegistro &&
+              nombresUsuario.get(arbolSeleccionado.usuarioRegistro)) ||
+            null
+          }
+          onClose={() => setArbolSeleccionado(null)}
         />
       )}
     </>
