@@ -94,120 +94,130 @@ beforeEach(() => {
   configurarMock();
 });
 
-function filaDe(nombre: string): HTMLElement {
-  const fila = screen.getByRole('cell', { name: nombre }).closest('tr');
-  if (!fila) throw new Error(`No se encontró la fila de ${nombre}`);
-  return fila;
+function consultasEspecies(operacion: ConsultaCapturada['operacion']): ConsultaCapturada[] {
+  return consultas.filter(
+    (consulta) => consulta.tabla === 'plantation_species' && consulta.operacion === operacion,
+  );
 }
 
-describe('sección Especies', () => {
-  test('quitar está deshabilitado solo para especies con árboles registrados', async () => {
+describe('checklist de especies', () => {
+  test('refleja habilitadas/no habilitadas y bloquea las que tienen árboles', async () => {
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    await screen.findByRole('cell', { name: 'Quebracho' });
+    const quebracho = await screen.findByRole('checkbox', { name: 'Quebracho' });
 
-    const quitarQuebracho = within(filaDe('Quebracho')).getByRole('button', { name: 'Quitar' });
-    expect(quitarQuebracho).toBeDisabled();
-    expect(quitarQuebracho).toHaveAttribute('title', expect.stringContaining('árboles registrados'));
-    expect(within(filaDe('Algarrobo')).getByRole('button', { name: 'Quitar' })).toBeEnabled();
+    // Quebracho (sp-1) tiene árboles → marcada y deshabilitada.
+    expect(quebracho).toBeChecked();
+    expect(quebracho).toBeDisabled();
+    expect(quebracho).toHaveAttribute('title', expect.stringContaining('árboles'));
+    // Algarrobo (sp-2) habilitada sin árboles; Ceibo (sp-3) no habilitada.
+    expect(screen.getByRole('checkbox', { name: 'Algarrobo' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Ceibo' })).not.toBeChecked();
   });
 
-  test('agrega una especie del catálogo con orden_visual máximo + 1', async () => {
+  test('habilitar una especie inserta con orden_visual = cantidad habilitada', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    await screen.findByRole('cell', { name: 'Quebracho' });
+    await usuario.click(await screen.findByRole('checkbox', { name: 'Ceibo' }));
 
-    // El select solo ofrece las especies aún no habilitadas.
-    const select = screen.getByLabelText('Especie');
-    expect(within(select).getByRole('option', { name: 'CE — Ceibo' })).toBeInTheDocument();
-    expect(within(select).queryByRole('option', { name: /Quebracho/ })).not.toBeInTheDocument();
-
-    await usuario.selectOptions(select, 'sp-3');
-    await usuario.click(screen.getByRole('button', { name: 'Agregar' }));
-
-    expect(await screen.findByRole('cell', { name: 'Ceibo' })).toBeInTheDocument();
-    const insercion = consultas.find((consulta) => consulta.operacion === 'insert');
-    expect(insercion?.tabla).toBe('plantation_species');
-    expect(insercion?.payload).toEqual({
+    await waitFor(() => expect(consultasEspecies('insert')).toHaveLength(1));
+    expect(consultasEspecies('insert')[0].payload).toEqual({
       plantation_id: 'plant-1',
       species_id: 'sp-3',
       orden_visual: 2,
     });
   });
 
-  test('quitar una especie sin árboles pide confirmación y borra', async () => {
+  test('deshabilitar una especie sin árboles la quita', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    await screen.findByRole('cell', { name: 'Algarrobo' });
+    await usuario.click(await screen.findByRole('checkbox', { name: 'Algarrobo' }));
 
-    await usuario.click(within(filaDe('Algarrobo')).getByRole('button', { name: 'Quitar' }));
-    const dialogo = screen.getByRole('dialog', { name: 'Quitar especie' });
-    await usuario.click(within(dialogo).getByRole('button', { name: 'Quitar' }));
-
-    expect(screen.queryByRole('cell', { name: 'Algarrobo' })).not.toBeInTheDocument();
-    const borrado = consultas.find((consulta) => consulta.operacion === 'delete');
-    expect(borrado?.tabla).toBe('plantation_species');
-    expect(borrado?.filtros).toEqual([
+    await waitFor(() => expect(consultasEspecies('delete')).toHaveLength(1));
+    expect(consultasEspecies('delete')[0].filtros).toEqual([
       { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
       { metodo: 'eq', columna: 'species_id', valor: 'sp-2' },
     ]);
   });
 
-  test('subir una especie intercambia su orden con la vecina', async () => {
+  test('no se puede desmarcar una especie con árboles', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    await screen.findByRole('cell', { name: 'Algarrobo' });
+    await usuario.click(await screen.findByRole('checkbox', { name: 'Quebracho' }));
 
-    expect(screen.getByRole('button', { name: 'Subir Quebracho' })).toBeDisabled();
-    await usuario.click(screen.getByRole('button', { name: 'Subir Algarrobo' }));
+    expect(consultasEspecies('delete')).toHaveLength(0);
+  });
 
-    const updates = consultas.filter(
-      (consulta) => consulta.tabla === 'plantation_species' && consulta.operacion === 'update',
-    );
-    expect(updates).toHaveLength(2);
-    expect(updates[0].payload).toEqual({ orden_visual: 0 });
-    expect(updates[1].payload).toEqual({ orden_visual: 1 });
+  test('el buscador filtra por nombre/código', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
+
+    await usuario.type(screen.getByPlaceholderText(/Buscar especie/), 'ceib');
+
+    expect(screen.getByRole('checkbox', { name: 'Ceibo' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Quebracho' })).not.toBeInTheDocument();
   });
 });
 
 describe('sección GPS', () => {
-  function consultasUpdatePlantations(): ConsultaCapturada[] {
+  function updatesGps(): ConsultaCapturada[] {
     return consultas.filter(
-      (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
+      (consulta) =>
+        consulta.tabla === 'plantations' &&
+        consulta.operacion === 'update' &&
+        (consulta.payload as Record<string, unknown>).gps_capture_frequency !== undefined,
     );
   }
 
-  test('guarda frecuencia y obligatoriedad cuando hay cambios válidos', async () => {
+  test('elegir un preset persiste la nueva frecuencia', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const frecuencia = await screen.findByLabelText('Frecuencia de captura (cada N árboles)');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
 
-    // Sin cambios el botón queda deshabilitado.
-    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
-    await usuario.clear(frecuencia);
-    await usuario.type(frecuencia, '5');
-    await usuario.click(screen.getByLabelText('Captura obligatoria'));
-    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+    // El preset 10 arranca activo (gps_capture_frequency = 10).
+    const radio10 = screen.getByRole('radio', { name: /10/ });
+    expect(radio10).toHaveAttribute('aria-checked', 'true');
+    await usuario.click(screen.getByRole('radio', { name: /5/ }));
 
-    expect(consultasUpdatePlantations()).toHaveLength(1);
-    expect(consultasUpdatePlantations()[0].payload).toEqual({
-      gps_capture_frequency: 5,
-      gps_capture_required: false,
-    });
+    await waitFor(() => expect(updatesGps()).toHaveLength(1));
+    expect(updatesGps()[0].payload).toMatchObject({ gps_capture_frequency: 5 });
   });
 
-  test('frecuencia inválida muestra el error y no toca la base', async () => {
+  test('una frecuencia no preset deja sin preset activo y resalta el input', async () => {
+    filaPlantacion.gps_capture_frequency = 7;
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
+
+    // Ningún preset queda activo.
+    for (const radio of screen.getAllByRole('radio')) {
+      expect(radio).toHaveAttribute('aria-checked', 'false');
+    }
+    const exacto = screen.getByLabelText(/valor exacto/);
+    expect(exacto).toHaveValue(7);
+  });
+
+  test('el input numérico inválido no toca la base', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const frecuencia = await screen.findByLabelText('Frecuencia de captura (cada N árboles)');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
 
-    await usuario.clear(frecuencia);
-    await usuario.type(frecuencia, '0');
-    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+    const exacto = screen.getByLabelText(/valor exacto/);
+    await usuario.clear(exacto);
+    await usuario.type(exacto, '0');
 
-    expect(
-      await screen.findByText('La frecuencia debe ser un número entero de al menos 1'),
-    ).toBeInTheDocument();
-    expect(consultasUpdatePlantations()).toHaveLength(0);
+    expect(updatesGps()).toHaveLength(0);
+  });
+
+  test('el toggle de obligatoria persiste y muestra el hint', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
+
+    expect(screen.getByText('El técnico no puede registrar sin GPS')).toBeInTheDocument();
+    await usuario.click(screen.getByRole('switch', { name: 'Captura obligatoria' }));
+
+    await waitFor(() => expect(updatesGps()).toHaveLength(1));
+    expect(updatesGps()[0].payload).toMatchObject({ gps_capture_required: false });
   });
 
   test('si falta la migración 023 muestra el mensaje y no rompe', async () => {
@@ -217,44 +227,52 @@ describe('sección GPS', () => {
       code: PG_ERROR.UNDEFINED_COLUMN,
     };
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const frecuencia = await screen.findByLabelText('Frecuencia de captura (cada N árboles)');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
 
-    await usuario.clear(frecuencia);
-    await usuario.type(frecuencia, '5');
-    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+    await usuario.click(screen.getByRole('radio', { name: /5/ }));
 
     expect(await screen.findByText(MENSAJE_GPS_SIN_MIGRACION)).toBeInTheDocument();
   });
 });
 
-describe('sección Visibilidad', () => {
-  test('guarda al cambiar y refleja el nuevo estado en el checkbox', async () => {
+describe('sección Técnicos', () => {
+  test('abrir el modal y asignar inserta el usuario', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const checkbox = await screen.findByLabelText('Visible para técnicos en la app');
-    expect(checkbox).toBeChecked();
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
 
-    await usuario.click(checkbox);
+    await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+    const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
+    expect(within(dialogo).getByLabelText('Usuario')).toBeInTheDocument();
+  });
+});
+
+describe('sección Visibilidad', () => {
+  test('guarda al cambiar y refleja el nuevo estado del toggle', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const toggle = await screen.findByRole('switch', { name: 'Visible para técnicos en la app' });
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+
+    await usuario.click(toggle);
 
     const update = consultas.find(
       (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
     );
     expect(update?.payload).toEqual({ visible_in_app: false });
-    // La invalidación de ['plantacion', id] refetchea el detalle; el toggle
-    // queda en el nuevo estado (oculta).
-    await waitFor(() => expect(checkbox).not.toBeChecked());
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'false'));
   });
 
-  test('si el update falla hace rollback visual del checkbox', async () => {
+  test('si el update falla hace rollback visual del toggle', async () => {
     const usuario = userEvent.setup();
     errorUpdatePlantations = { message: 'sin permisos' };
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const checkbox = await screen.findByLabelText('Visible para técnicos en la app');
+    const toggle = await screen.findByRole('switch', { name: 'Visible para técnicos en la app' });
 
-    await usuario.click(checkbox);
+    await usuario.click(toggle);
 
     expect(await screen.findByText('No se pudo actualizar la visibilidad.')).toBeInTheDocument();
-    expect(checkbox).toBeChecked();
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 
   test('si falta la migración 024 muestra el mensaje de migración', async () => {
@@ -264,9 +282,9 @@ describe('sección Visibilidad', () => {
       code: PG_ERROR.UNDEFINED_COLUMN,
     };
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const checkbox = await screen.findByLabelText('Visible para técnicos en la app');
+    const toggle = await screen.findByRole('switch', { name: 'Visible para técnicos en la app' });
 
-    await usuario.click(checkbox);
+    await usuario.click(toggle);
 
     expect(await screen.findByText(MENSAJE_VISIBILIDAD_SIN_MIGRACION)).toBeInTheDocument();
   });

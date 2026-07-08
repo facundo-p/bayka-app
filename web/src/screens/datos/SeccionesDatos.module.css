@@ -3,23 +3,84 @@
  * (Parcelas, Grupos, Árboles): fila de filtros y celdas especiales.
  */
 
-/* Fila de filtros arriba de la tabla. */
-.filtros {
+/* Toolbar única: selector de sección + filtros en línea + recuento. */
+.toolbar {
   display: flex;
-  align-items: flex-end;
-  gap: var(--space-2xl);
+  align-items: center;
+  gap: var(--space-lg);
   flex-wrap: wrap;
-  margin-bottom: var(--space-3xl);
+  margin-bottom: var(--space-2xl);
 }
 
-.filtros > * {
-  flex: 1;
-  min-width: 160px;
-  max-width: 240px;
+/* Divisor vertical fino entre el selector de sección y los filtros. */
+.divisor {
+  align-self: stretch;
+  width: var(--border-thin);
+  background-color: var(--color-border);
+}
+
+/* Recuento de la entidad, alineado a la derecha de la toolbar. */
+.recuento {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
+}
+
+/* Cluster de filtros compacto que vive dentro de la toolbar. */
+.filtrosCompactos {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+/* Controles compactos de la toolbar (sin labels apilados). */
+.filtrosCompactos > * {
+  min-width: 130px;
+}
+
+.busqueda {
+  min-width: 220px;
+}
+
+/* Punto de color que precede a la especie. El color es data-driven (inline). */
+.puntoEspecie {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: var(--space-md);
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+
+/* Celda de especie: punto + texto en una línea. */
+.especie {
+  white-space: nowrap;
+}
+
+/* Botón-ícono de foto subida (check); sin recuadro, solo el ícono. */
+.fotoCheck {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-secondary);
+  cursor: pointer;
+}
+
+.fotoCheck:disabled {
+  cursor: default;
+  opacity: 0.6;
 }
 
 .codigo {
   font-family: var(--font-mono);
+}
+
+/* SubID del árbol: mono en azul de acento (es el identificador principal). */
+.subId {
+  font-family: var(--font-mono);
+  color: var(--color-primary-accent);
 }
 
 /* Conteos numéricos alineados a la derecha: dígitos de ancho fijo. */

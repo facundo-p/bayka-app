@@ -134,17 +134,23 @@ function consultasListaArboles(): ConsultaCapturada[] {
 }
 
 describe('sección Parcelas', () => {
-  test('la tab Datos redirige a parcelas y lista con counts', async () => {
-    renderRutasEn('/plantaciones/plant-1/datos');
+  test('lista parcelas con counts y muestra el selector de sección', async () => {
+    renderRutasEn('/plantaciones/plant-1/datos/parcelas');
 
     expect(await screen.findByRole('cell', { name: 'Norte' })).toBeInTheDocument();
     const fila = filaDe('Norte');
     expect(within(fila).getByRole('cell', { name: 'P1' })).toBeInTheDocument();
     expect(within(fila).getByRole('cell', { name: '4' })).toBeInTheDocument();
     expect(within(fila).getByRole('cell', { name: '10' })).toBeInTheDocument();
-    // Sub-tabs de la tab Datos presentes.
-    expect(screen.getByRole('link', { name: 'Grupos' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Árboles' })).toBeInTheDocument();
+    // El selector de sección (toolbar única) reemplaza a los sub-tabs.
+    expect(screen.getByRole('radio', { name: 'Grupos' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'Árboles' })).toBeInTheDocument();
+  });
+
+  test('la tab Datos redirige a Árboles por defecto', async () => {
+    renderRutasEn('/plantaciones/plant-1/datos');
+    // Árboles es la sección por defecto: su columna SubID confirma el redirect.
+    expect(await screen.findByRole('cell', { name: 'A-001' })).toBeInTheDocument();
   });
 });
 
@@ -180,23 +186,23 @@ describe('sección Grupos', () => {
 });
 
 describe('sección Árboles', () => {
-  test('muestra badge N/N sin especie y deja el GPS vacío sin coordenadas', async () => {
+  test('muestra "N/N · Sin identificar" sin especie y deja el GPS sin coordenadas', async () => {
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
 
     expect(await screen.findByRole('cell', { name: 'A-001' })).toBeInTheDocument();
     const filaCompleta = filaDe('A-001');
-    expect(within(filaCompleta).getByText('QB — Quebracho')).toBeInTheDocument();
+    expect(within(filaCompleta).getByText('QB · Quebracho')).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/±5m/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText('Teo Técnico')).toBeInTheDocument();
-    expect(within(filaCompleta).getByRole('button', { name: 'Ver' })).toBeInTheDocument();
+    expect(within(filaCompleta).getByRole('button', { name: 'Ver foto' })).toBeInTheDocument();
 
     const filaVacia = filaDe('A-002');
-    expect(within(filaVacia).getByText('N/N')).toBeInTheDocument();
-    // Sin coordenadas la celda GPS queda vacía (nunca "0,0").
+    expect(within(filaVacia).getByText('N/N · Sin identificar')).toBeInTheDocument();
+    // Sin coordenadas la celda GPS muestra "—" (nunca "0,0").
     expect(within(filaVacia).queryByText(/-?\d+\.\d{5}/)).not.toBeInTheDocument();
-    // La foto local de mobile no cuenta como subida: sin botón Ver.
-    expect(within(filaVacia).queryByRole('button', { name: 'Ver' })).not.toBeInTheDocument();
+    // La foto local de mobile no cuenta como subida: sin ícono de foto.
+    expect(within(filaVacia).queryByRole('button', { name: 'Ver foto' })).not.toBeInTheDocument();
   });
 
   test('el filtro por especie aplica eq server-side (y N/N aplica is null)', async () => {
@@ -235,13 +241,13 @@ describe('sección Árboles', () => {
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 50, hasta: 99 });
   });
 
-  test('el botón Ver abre la foto firmada en una pestaña nueva', async () => {
+  test('el ícono de foto abre la foto firmada en una pestaña nueva', async () => {
     const usuario = userEvent.setup();
     const abrir = vi.spyOn(window, 'open').mockImplementation(() => null);
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
-    await usuario.click(screen.getByRole('button', { name: 'Ver' }));
+    await usuario.click(screen.getByRole('button', { name: 'Ver foto' }));
 
     expect(estadoMock.firmas).toEqual([
       { bucket: 'tree-photos', path: 'plantations/p1/trees/tree-1.jpg', segundos: 3600 },

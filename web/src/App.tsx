@@ -27,7 +27,7 @@ export function AppRoutes() {
           <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
             <Route index element={<DashboardTab />} />
             <Route path="datos" element={<DatosTab />}>
-              <Route index element={<Navigate to="parcelas" replace />} />
+              <Route index element={<Navigate to="arboles" replace />} />
               <Route path="parcelas" element={<ParcelasSection />} />
               <Route path="grupos" element={<GruposSection />} />
               <Route path="arboles" element={<ArbolesSection />} />

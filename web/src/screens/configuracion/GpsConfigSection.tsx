@@ -1,24 +1,30 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import {
-  Button,
-  Card,
-  Cargando,
-  CheckboxField,
-  ErrorConReintento,
-  Input,
-} from '../../components';
+import { Card, Cargando, ErrorConReintento, Input, SegmentedControl, Toggle } from '../../components';
 import { obtenerPlantacion, type Plantacion } from '../../queries/plantationQueries';
 import {
   actualizarConfigGps,
   MENSAJE_GPS_SIN_MIGRACION,
 } from '../../repositories/plantationRepository';
-import { errorFrecuenciaGps } from '../../services/plantacionValidaciones';
+import { cx } from '../../lib/classNames';
+import { CabeceraConfig } from './CabeceraConfig';
 import { useInvalidarPlantacion } from './useInvalidarPlantacion';
 import styles from './SeccionesConfig.module.css';
 
-/** El mensaje de migración faltante se muestra tal cual; el resto, genérico. */
+/** Presets de frecuencia (cada cuántos árboles se toma un punto GPS). */
+const PRESETS_FRECUENCIA = [1, 5, 10, 20] as const;
+
+/** Opciones del segmentado: "cada árbol" para 1, "árboles" para el resto. */
+const OPCIONES_FRECUENCIA = PRESETS_FRECUENCIA.map((numero) => ({
+  value: numero,
+  label: String(numero),
+  sublabel: numero === 1 ? 'cada árbol' : 'árboles',
+}));
+
+/** value del segmentado cuando la frecuencia no es un preset (ninguno activo). */
+const SIN_PRESET = -1;
+
 function mensajeErrorGuardar(error: Error | null): string | null {
   if (!error) return null;
   return error.message === MENSAJE_GPS_SIN_MIGRACION
@@ -26,56 +32,87 @@ function mensajeErrorGuardar(error: Error | null): string | null {
     : 'No se pudo guardar la configuración GPS.';
 }
 
+function esFrecuenciaValida(valor: number): boolean {
+  return Number.isInteger(valor) && valor >= 1;
+}
+
 function FormGps({ plantacion }: { plantacion: Plantacion }) {
-  const [frecuencia, setFrecuencia] = useState(String(plantacion.gpsCaptureFrequency));
+  const [frecuencia, setFrecuencia] = useState(plantacion.gpsCaptureFrequency);
+  const [textoExacto, setTextoExacto] = useState(String(plantacion.gpsCaptureFrequency));
   const [obligatoria, setObligatoria] = useState(plantacion.gpsCaptureRequired);
-  const [errorValidacion, setErrorValidacion] = useState<string | undefined>();
   const invalidar = useInvalidarPlantacion(plantacion.id);
-  const mutacion = useMutation({
-    mutationFn: () =>
-      actualizarConfigGps(plantacion.id, { frecuencia: Number(frecuencia.trim()), obligatoria }),
+  const guardar = useMutation({
+    mutationFn: (config: { frecuencia: number; obligatoria: boolean }) =>
+      actualizarConfigGps(plantacion.id, config),
     onSuccess: invalidar,
   });
-  const hayCambios =
-    frecuencia.trim() !== String(plantacion.gpsCaptureFrequency) ||
-    obligatoria !== plantacion.gpsCaptureRequired;
 
-  // Se valida acá, antes de tocar la base: un valor inválido nunca llega al update.
-  const guardar = () => {
-    const errorFrecuencia = errorFrecuenciaGps(frecuencia);
-    setErrorValidacion(errorFrecuencia);
-    if (!errorFrecuencia) mutacion.mutate();
+  const presetActivo = (PRESETS_FRECUENCIA as readonly number[]).includes(frecuencia)
+    ? frecuencia
+    : SIN_PRESET;
+
+  // Presets y input numérico comparten el mismo entero `frecuencia`.
+  const aplicarFrecuencia = (nueva: number) => {
+    setFrecuencia(nueva);
+    setTextoExacto(String(nueva));
+    guardar.mutate({ frecuencia: nueva, obligatoria });
+  };
+  const aplicarObligatoria = (valor: boolean) => {
+    setObligatoria(valor);
+    guardar.mutate({ frecuencia, obligatoria: valor });
+  };
+  // El input persiste solo con un entero ≥ 1; valores inválidos no llegan a la base.
+  const aplicarTextoExacto = (texto: string) => {
+    setTextoExacto(texto);
+    const valor = Number(texto.trim());
+    if (esFrecuenciaValida(valor)) aplicarFrecuencia(valor);
   };
 
   return (
-    <div className={styles.formConfig}>
-      <div className={styles.campoCorto}>
-        <Input
-          label="Frecuencia de captura (cada N árboles)"
-          type="number"
-          min={1}
-          step={1}
-          value={frecuencia}
-          onChange={(event) => setFrecuencia(event.target.value)}
-          error={errorValidacion}
+    <div className={styles.formGps}>
+      <div className={styles.filaToggle}>
+        <div>
+          <p className={styles.etiqueta}>Captura obligatoria</p>
+          <p className={styles.textoAyuda}>
+            {obligatoria
+              ? 'El técnico no puede registrar sin GPS'
+              : 'La captura de GPS es opcional'}
+          </p>
+        </div>
+        <Toggle
+          aria-label="Captura obligatoria"
+          checked={obligatoria}
+          disabled={guardar.isPending}
+          onChange={aplicarObligatoria}
         />
       </div>
-      <CheckboxField
-        label="Captura obligatoria"
-        checked={obligatoria}
-        onChange={(event) => setObligatoria(event.target.checked)}
-      />
-      <p className={styles.textoAyuda}>
-        El cambio afecta solo a los registros futuros; los árboles ya registrados no se modifican.
-      </p>
-      {mutacion.isError && (
+
+      <div className={styles.bloqueFrecuencia}>
+        <p className={styles.etiqueta}>Frecuencia de captura — cada cuántos árboles</p>
+        <p className={styles.textoAyuda}>Cada cuántos árboles se toma un punto GPS</p>
+        <SegmentedControl
+          aria-label="Frecuencia de captura"
+          options={OPCIONES_FRECUENCIA}
+          value={presetActivo}
+          onChange={aplicarFrecuencia}
+        />
+        <div className={cx(styles.campoExacto, presetActivo === SIN_PRESET && styles.campoExactoActivo)}>
+          <Input
+            label="O un valor exacto: cada N árboles"
+            type="number"
+            min={1}
+            step={1}
+            value={textoExacto}
+            onChange={(event) => aplicarTextoExacto(event.target.value)}
+          />
+        </div>
+      </div>
+
+      {guardar.isError && (
         <p className={styles.errorAccion} role="alert">
-          {mensajeErrorGuardar(mutacion.error)}
+          {mensajeErrorGuardar(guardar.error)}
         </p>
       )}
-      <Button onClick={guardar} disabled={!hayCambios} loading={mutacion.isPending}>
-        Guardar
-      </Button>
     </div>
   );
 }
@@ -89,7 +126,8 @@ export function GpsConfigSection() {
   });
 
   return (
-    <Card title="Captura GPS">
+    <Card>
+      <CabeceraConfig titulo="Captura de GPS" subtitulo="Cómo se registran los puntos en campo" />
       {plantacion.isPending && <Cargando />}
       {plantacion.isError && (
         <ErrorConReintento

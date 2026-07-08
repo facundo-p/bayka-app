@@ -1,18 +1,9 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Badge,
-  Button,
-  Card,
-  Cargando,
-  ErrorConReintento,
-  Modal,
-  Select,
-  Table,
-  type TableColumn,
-} from '../../components';
-import { formatearFechaCorta } from '../../lib/fechas';
+import { Plus, X } from 'lucide-react';
+import { Badge, Button, Card, Cargando, ErrorConReintento, Modal, Select } from '../../components';
+import { iniciales } from '../../lib/iniciales';
 import {
   listarAsignados,
   listarPerfiles,
@@ -26,11 +17,11 @@ import {
   MENSAJE_USUARIO_YA_ASIGNADO,
 } from '../../repositories/plantationUserRepository';
 import { ROL } from '../../repositories/profileRepository';
+import { CabeceraConfig } from './CabeceraConfig';
 import styles from './SeccionesConfig.module.css';
 
 const ROLES_EN_PLANTACION: RolEnPlantacion[] = [ROL.TECNICO, ROL.ADMIN];
 
-/** Etiquetas en español de los roles (globales y en plantación). */
 const ETIQUETA_ROL: Record<string, string> = {
   [ROL.TECNICO]: 'Técnico',
   [ROL.ADMIN]: 'Admin',
@@ -56,27 +47,6 @@ function perfilesNoAsignados(
   return perfiles.filter((perfil) => !idsAsignados.has(perfil.id));
 }
 
-function columnasAsignados(
-  onQuitar: (asignado: UsuarioAsignado) => void,
-): Array<TableColumn<UsuarioAsignado>> {
-  return [
-    { key: 'nombre', header: 'Nombre', render: (a) => nombreVisible(a.nombre, a.userId) },
-    { key: 'rolGlobal', header: 'Rol global', render: (a) => <Badge>{etiquetaRol(a.rolGlobal)}</Badge> },
-    { key: 'rolEnPlantacion', header: 'Rol en plantación', render: (a) => etiquetaRol(a.rolEnPlantacion) },
-    { key: 'assignedAt', header: 'Asignado', render: (a) => formatearFechaCorta(a.assignedAt) },
-    {
-      key: 'acciones',
-      header: '',
-      align: 'right',
-      render: (a) => (
-        <Button variant="secondary" size="sm" onClick={() => onQuitar(a)}>
-          Quitar
-        </Button>
-      ),
-    },
-  ];
-}
-
 /** Invalida la lista de asignados y el count de usuarios del listado general. */
 function useInvalidarUsuarios(plantationId: string) {
   const queryClient = useQueryClient();
@@ -94,12 +64,41 @@ function mensajeErrorAsignar(error: Error | null): string | null {
     : 'No se pudo asignar el usuario.';
 }
 
-function FormAsignar({
+function FilaAsignado({
+  asignado,
+  onQuitar,
+}: {
+  asignado: UsuarioAsignado;
+  onQuitar: (asignado: UsuarioAsignado) => void;
+}) {
+  const nombre = nombreVisible(asignado.nombre, asignado.userId);
+  return (
+    <li className={styles.filaTecnico}>
+      <span className={styles.avatar} aria-hidden>
+        {iniciales(nombre)}
+      </span>
+      <span className={styles.nombreTecnico}>{nombre}</span>
+      <Badge>{etiquetaRol(asignado.rolEnPlantacion)}</Badge>
+      <button
+        type="button"
+        className={styles.quitarTecnico}
+        aria-label={`Quitar ${nombre}`}
+        onClick={() => onQuitar(asignado)}
+      >
+        <X size={16} />
+      </button>
+    </li>
+  );
+}
+
+function ModalAsignar({
   plantationId,
   disponibles,
+  onCerrar,
 }: {
   plantationId: string;
   disponibles: PerfilResumen[];
+  onCerrar: () => void;
 }) {
   const [userId, setUserId] = useState('');
   const [rol, setRol] = useState<RolEnPlantacion>(ROL.TECNICO);
@@ -107,15 +106,15 @@ function FormAsignar({
   const mutacion = useMutation({
     mutationFn: () => asignarUsuario(plantationId, userId, rol),
     onSuccess: async () => {
-      setUserId('');
       await invalidar();
+      onCerrar();
     },
   });
   const mensajeError = mensajeErrorAsignar(mutacion.error);
 
   return (
-    <div className={styles.formAlta}>
-      <div className={styles.fila}>
+    <Modal open title="Asignar técnico" onClose={onCerrar}>
+      <div className={styles.formModal}>
         <Select label="Usuario" value={userId} onChange={(event) => setUserId(event.target.value)}>
           <option value="">Elegí un usuario</option>
           {disponibles.map((perfil) => (
@@ -135,21 +134,21 @@ function FormAsignar({
             </option>
           ))}
         </Select>
-        <Button
-          onClick={() => mutacion.mutate()}
-          disabled={!userId}
-          loading={mutacion.isPending}
-          className={styles.botonFila}
-        >
-          Asignar
-        </Button>
       </div>
       {mensajeError && (
         <p className={styles.errorAccion} role="alert">
           {mensajeError}
         </p>
       )}
-    </div>
+      <div className={styles.acciones}>
+        <Button variant="secondary" onClick={onCerrar}>
+          Cancelar
+        </Button>
+        <Button onClick={() => mutacion.mutate()} disabled={!userId} loading={mutacion.isPending}>
+          Asignar
+        </Button>
+      </div>
+    </Modal>
   );
 }
 
@@ -204,18 +203,29 @@ function ContenidoUsuarios({
   asignados: UsuarioAsignado[];
 }) {
   const [aQuitar, setAQuitar] = useState<UsuarioAsignado | null>(null);
+  const [asignando, setAsignando] = useState(false);
   return (
     <>
-      <Table
-        columns={columnasAsignados(setAQuitar)}
-        rows={asignados}
-        getRowKey={(asignado) => asignado.userId}
-        emptyMessage="Sin usuarios asignados: nadie ve esta plantación en la app"
-      />
-      <FormAsignar
-        plantationId={plantationId}
-        disponibles={perfilesNoAsignados(perfiles, asignados)}
-      />
+      {asignados.length === 0 ? (
+        <p className={styles.textoAyuda}>Sin técnicos asignados: nadie ve esta plantación en la app.</p>
+      ) : (
+        <ul className={styles.listaTecnicos}>
+          {asignados.map((asignado) => (
+            <FilaAsignado key={asignado.userId} asignado={asignado} onQuitar={setAQuitar} />
+          ))}
+        </ul>
+      )}
+      <button type="button" className={styles.botonAsignar} onClick={() => setAsignando(true)}>
+        <Plus size={16} />
+        Asignar técnico
+      </button>
+      {asignando && (
+        <ModalAsignar
+          plantationId={plantationId}
+          disponibles={perfilesNoAsignados(perfiles, asignados)}
+          onCerrar={() => setAsignando(false)}
+        />
+      )}
       {aQuitar && (
         <ModalQuitar
           plantationId={plantationId}
@@ -238,7 +248,8 @@ export function UsuariosConfigSection() {
   const reintentar = () => void Promise.all([perfiles.refetch(), asignados.refetch()]);
 
   return (
-    <Card title="Usuarios asignados">
+    <Card>
+      <CabeceraConfig titulo="Técnicos asignados" subtitulo="Quién puede registrar en esta plantación" />
       {(perfiles.isPending || asignados.isPending) && <Cargando />}
       {(perfiles.isError || asignados.isError) && (
         <ErrorConReintento mensaje="No se pudieron cargar los usuarios." onReintentar={reintentar} />

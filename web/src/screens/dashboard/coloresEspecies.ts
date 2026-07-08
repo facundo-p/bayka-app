@@ -1,31 +1,19 @@
 /*
- * Asignación de color por especie compartida entre el mapa (leyenda + puntos) y
- * el panel "Por especie", para que ambos pinten la misma especie igual.
- *
- * Regla de color: las especies identificadas toman color por su índice de
- * paleta (`colorEspeciePorIndice`); las N/N siempre el ámbar (`COLOR_GRAFICO_NN`)
- * y NO consumen índice de paleta, así las identificadas conservan su color
- * estable sin importar dónde caiga el segmento "Sin identificar".
+ * Colorea la distribución de especies del dashboard reutilizando el mapeo
+ * canónico código→color (`colorEspeciePorCodigo`), el MISMO que usan el mapa y
+ * el listado de Datos: así una especie tiene un único color en toda la app.
  */
 import type { DistribucionEspecie } from '../../queries/dashboardQueries';
-import { ESPECIE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
-import { COLOR_GRAFICO_NN, colorEspeciePorIndice } from '../../theme/chartColors';
+import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 
 export type EspecieColoreada = DistribucionEspecie & { color: string };
 
-function esSinIdentificar(especie: DistribucionEspecie): boolean {
-  return especie.codigo === ESPECIE_SIN_IDENTIFICAR;
-}
-
-/** Colorea la distribución (ya ordenada desc): paleta por índice a las
- *  identificadas, ámbar fijo a las N/N sin gastar índice de paleta. */
+/** Colorea la distribución: cada especie toma su color estable por código
+ *  (N/N → ámbar). */
 export function asignarColoresEspecies(porEspecie: DistribucionEspecie[]): EspecieColoreada[] {
-  let indicePaleta = 0;
   return porEspecie.map((especie) => ({
     ...especie,
-    color: esSinIdentificar(especie)
-      ? COLOR_GRAFICO_NN
-      : colorEspeciePorIndice(indicePaleta++),
+    color: colorEspeciePorCodigo(especie.codigo),
   }));
 }
 

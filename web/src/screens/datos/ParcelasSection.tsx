@@ -3,6 +3,7 @@ import { Cargando, ErrorConReintento, Table, type TableColumn } from '../../comp
 import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
+import { DatosToolbar } from './DatosToolbar';
 import { filtrosAParams } from './filtrosUrl';
 import { useParcelasDatos } from './useDatosQueries';
 import styles from './SeccionesDatos.module.css';
@@ -59,7 +60,6 @@ export function ParcelasSection() {
     void navigate(`../grupos?${params.toString()}`);
   };
 
-  if (isPending) return <Cargando label="Cargando parcelas…" />;
   if (isError) {
     return (
       <ErrorConReintento
@@ -68,13 +68,21 @@ export function ParcelasSection() {
       />
     );
   }
+  const recuento = data ? `${formatearEntero(data.length)} parcelas` : undefined;
   return (
-    <Table
-      columns={COLUMNAS}
-      rows={data}
-      getRowKey={(parcela) => parcela.id}
-      onRowClick={verGrupos}
-      emptyMessage="La plantación todavía no tiene parcelas"
-    />
+    <>
+      <DatosToolbar segmento="parcelas" recuento={recuento} />
+      {isPending ? (
+        <Cargando label="Cargando parcelas…" />
+      ) : (
+        <Table
+          columns={COLUMNAS}
+          rows={data}
+          getRowKey={(parcela) => parcela.id}
+          onRowClick={verGrupos}
+          emptyMessage="La plantación todavía no tiene parcelas"
+        />
+      )}
+    </>
   );
 }
