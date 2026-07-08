@@ -17,7 +17,7 @@ import {
   listarUsuariosConAsignaciones,
   type UsuarioConAsignaciones,
 } from '../queries/usuarioQueries';
-import { cambiarRol, type Rol } from '../repositories/profileRepository';
+import { cambiarRol, ROL, type Rol } from '../repositories/profileRepository';
 import styles from './UsuariosScreen.module.css';
 
 const NOTA_ALTA = 'El alta de usuarios se hace desde el dashboard de Supabase.';
@@ -31,16 +31,16 @@ const MOTIVO_ROL_PROPIO =
 const MOTIVO_ULTIMO_SUPERADMIN = 'Único superadmin: promové otro antes de degradarlo';
 
 const ROLES: Array<{ valor: Rol; etiqueta: string }> = [
-  { valor: 'tecnico', etiqueta: 'Técnico' },
-  { valor: 'admin', etiqueta: 'Admin' },
-  { valor: 'superadmin', etiqueta: 'Superadmin' },
+  { valor: ROL.TECNICO, etiqueta: 'Técnico' },
+  { valor: ROL.ADMIN, etiqueta: 'Admin' },
+  { valor: ROL.SUPERADMIN, etiqueta: 'Superadmin' },
 ];
 
 /** Variantes existentes del Badge: el azul de "finalizada" distingue al superadmin. */
 const VARIANTE_ROL: Record<Rol, 'finalizada' | 'neutral'> = {
-  superadmin: 'finalizada',
-  admin: 'neutral',
-  tecnico: 'neutral',
+  [ROL.SUPERADMIN]: 'finalizada',
+  [ROL.ADMIN]: 'neutral',
+  [ROL.TECNICO]: 'neutral',
 };
 
 /** Nombre visible: un perfil sin nombre se identifica por el id corto. */
@@ -55,7 +55,7 @@ function motivoAccionDeshabilitada(
   totalSuperadmins: number,
 ): string | null {
   if (usuario.id === idActual) return MOTIVO_ROL_PROPIO;
-  if (usuario.rol === 'superadmin' && totalSuperadmins === 1) return MOTIVO_ULTIMO_SUPERADMIN;
+  if (usuario.rol === ROL.SUPERADMIN && totalSuperadmins === 1) return MOTIVO_ULTIMO_SUPERADMIN;
   return null;
 }
 
@@ -168,7 +168,7 @@ function CambiarRolModal({
         <CuerpoCambiarRol
           rol={rol}
           onCambiar={setRol}
-          advertencia={rol === 'superadmin' && usuario.rol !== 'superadmin'}
+          advertencia={rol === ROL.SUPERADMIN && usuario.rol !== ROL.SUPERADMIN}
           errorEnvio={errorEnvio}
         />
         <div className={styles.acciones}>
@@ -197,7 +197,7 @@ export function UsuariosScreen() {
     queryFn: listarUsuariosConAsignaciones,
   });
   const totalSuperadmins =
-    data?.filter((usuario) => usuario.rol === 'superadmin').length ?? 0;
+    data?.filter((usuario) => usuario.rol === ROL.SUPERADMIN).length ?? 0;
 
   return (
     <section>

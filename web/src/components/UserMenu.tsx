@@ -1,13 +1,13 @@
 import { LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { iniciales } from '../lib/iniciales';
-import type { Perfil } from '../repositories/profileRepository';
+import { ROL, type Perfil } from '../repositories/profileRepository';
 import styles from './UserMenu.module.css';
 
 const ETIQUETA_ROL: Record<Perfil['rol'], string> = {
-  superadmin: 'Superadmin',
-  admin: 'Administrador',
-  tecnico: 'Técnico',
+  [ROL.SUPERADMIN]: 'Superadmin',
+  [ROL.ADMIN]: 'Administrador',
+  [ROL.TECNICO]: 'Técnico',
 };
 
 /** Footer del sidebar: avatar con iniciales + nombre + rol + cerrar sesión. */
