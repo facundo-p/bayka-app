@@ -10,34 +10,16 @@ export type PlantacionFormValues = {
   periodo: string;
   descripcion: string;
   fechaInicio: string;
-  superficieHa: string;
-  ubicacionLat: string;
-  ubicacionLng: string;
   objetivoArboles: string;
 };
 
-export type CampoValidado =
-  | 'lugar'
-  | 'periodo'
-  | 'superficieHa'
-  | 'ubicacionLat'
-  | 'ubicacionLng'
-  | 'objetivoArboles';
+export type CampoValidado = 'lugar' | 'periodo' | 'objetivoArboles';
 
 export type ErroresValidacion = Partial<Record<CampoValidado, string>>;
-
-const LATITUD_MAX = 90;
-const LONGITUD_MAX = 180;
 
 function numeroDe(texto: string): number {
   const limpio = texto.trim();
   return limpio === '' ? Number.NaN : Number(limpio);
-}
-
-function errorSuperficie(texto: string): string | undefined {
-  if (texto.trim() === '') return undefined;
-  const valor = numeroDe(texto);
-  if (Number.isNaN(valor) || valor <= 0) return 'La superficie debe ser un número mayor a 0';
 }
 
 function errorObjetivo(texto: string): string | undefined {
@@ -48,37 +30,11 @@ function errorObjetivo(texto: string): string | undefined {
   }
 }
 
-function errorCoordenada(texto: string, limite: number, nombre: string): string | undefined {
-  const valor = numeroDe(texto);
-  if (Number.isNaN(valor) || Math.abs(valor) > limite) {
-    return `La ${nombre} debe ser un número entre -${limite} y ${limite}`;
-  }
-}
-
-/** Lat y lng van juntas: una sin la otra es error en la que falta. */
-function erroresUbicacion(lat: string, lng: string): ErroresValidacion {
-  const hayLat = lat.trim() !== '';
-  const hayLng = lng.trim() !== '';
-  if (!hayLat && !hayLng) return {};
-  const errores: ErroresValidacion = {};
-  const errorLat = hayLat
-    ? errorCoordenada(lat, LATITUD_MAX, 'latitud')
-    : 'Completá la latitud: va junto con la longitud';
-  const errorLng = hayLng
-    ? errorCoordenada(lng, LONGITUD_MAX, 'longitud')
-    : 'Completá la longitud: va junto con la latitud';
-  if (errorLat) errores.ubicacionLat = errorLat;
-  if (errorLng) errores.ubicacionLng = errorLng;
-  return errores;
-}
-
 /** Valida el formulario completo; objeto vacío = sin errores. */
 export function validarPlantacion(valores: PlantacionFormValues): ErroresValidacion {
-  const errores: ErroresValidacion = erroresUbicacion(valores.ubicacionLat, valores.ubicacionLng);
+  const errores: ErroresValidacion = {};
   if (valores.lugar.trim() === '') errores.lugar = 'El lugar es obligatorio';
   if (valores.periodo.trim() === '') errores.periodo = 'El período es obligatorio';
-  const superficie = errorSuperficie(valores.superficieHa);
-  if (superficie) errores.superficieHa = superficie;
   const objetivo = errorObjetivo(valores.objetivoArboles);
   if (objetivo) errores.objetivoArboles = objetivo;
   return errores;
@@ -106,16 +62,15 @@ function numeroOpcional(texto: string): number | undefined {
   return Number.isNaN(valor) ? undefined : valor;
 }
 
-/** Convierte los valores ya validados al input tipado del repository. */
+/** Convierte los valores ya validados al input tipado del repository.
+ *  Superficie y ubicación ya no se editan desde la web: quedan sin enviar
+ *  (undefined), así editarPlantacion no las toca y conserva lo que haya. */
 export function aPlantacionInput(valores: PlantacionFormValues): PlantacionInput {
   return {
     lugar: valores.lugar.trim(),
     periodo: valores.periodo.trim(),
     descripcion: textoOpcional(valores.descripcion),
     fechaInicio: textoOpcional(valores.fechaInicio),
-    superficieHa: numeroOpcional(valores.superficieHa),
-    ubicacionLat: numeroOpcional(valores.ubicacionLat),
-    ubicacionLng: numeroOpcional(valores.ubicacionLng),
     objetivoArboles: numeroOpcional(valores.objetivoArboles),
   };
 }

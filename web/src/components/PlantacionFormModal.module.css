@@ -4,17 +4,6 @@
   gap: var(--space-2xl);
 }
 
-/* Latitud y longitud van juntas en una fila. */
-.filaUbicacion {
-  display: flex;
-  gap: var(--space-2xl);
-}
-
-.filaUbicacion > * {
-  flex: 1;
-  min-width: 0;
-}
-
 .advertencia {
   margin: 0;
   font-size: var(--text-md);

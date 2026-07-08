@@ -54,9 +54,6 @@ function valoresIniciales(plantacion: PlantacionEditable | null): PlantacionForm
     periodo: plantacion?.periodo ?? '',
     descripcion: plantacion?.descripcion ?? '',
     fechaInicio: plantacion?.fechaInicio ?? '',
-    superficieHa: aTexto(plantacion?.superficieHa),
-    ubicacionLat: aTexto(plantacion?.ubicacionLat),
-    ubicacionLng: aTexto(plantacion?.ubicacionLng),
     objetivoArboles: aTexto(plantacion?.objetivoArboles),
   };
 }
@@ -70,46 +67,22 @@ type CamposProps = {
 function campoProps(campo: keyof PlantacionFormValues, props: CamposProps) {
   return {
     value: props.valores[campo],
-    error: campo === 'descripcion' || campo === 'fechaInicio' ? undefined : props.errores[campo],
+    error: campo === 'lugar' || campo === 'periodo' || campo === 'objetivoArboles'
+      ? props.errores[campo]
+      : undefined,
     onChange: (event: { target: { value: string } }) => props.onCambiar(campo, event.target.value),
   };
 }
 
-function CamposDescripcion(props: CamposProps) {
+/** Campos del formulario: lugar y período obligatorios; descripción, fecha de
+ *  inicio y objetivo opcionales. (Superficie/ubicación se quitaron de la web.) */
+function CamposPlantacion(props: CamposProps) {
   return (
     <>
       <Input label="Lugar *" {...campoProps('lugar', props)} />
       <Input label="Período *" placeholder="2025-2026" {...campoProps('periodo', props)} />
       <Textarea label="Descripción" {...campoProps('descripcion', props)} />
       <Input label="Fecha de inicio" type="date" {...campoProps('fechaInicio', props)} />
-    </>
-  );
-}
-
-function CamposMedidas(props: CamposProps) {
-  return (
-    <>
-      <Input
-        label="Superficie (ha)"
-        type="number"
-        min="0"
-        step="any"
-        {...campoProps('superficieHa', props)}
-      />
-      <div className={styles.filaUbicacion}>
-        <Input
-          label="Ubicación: latitud"
-          type="number"
-          step="any"
-          {...campoProps('ubicacionLat', props)}
-        />
-        <Input
-          label="Ubicación: longitud"
-          type="number"
-          step="any"
-          {...campoProps('ubicacionLng', props)}
-        />
-      </div>
       <Input
         label="Objetivo de árboles"
         type="number"
@@ -208,8 +181,7 @@ export function PlantacionFormModal({ plantacion, onClose }: PlantacionFormModal
   return (
     <Modal open title={editando ? 'Editar plantación' : 'Nueva plantación'} onClose={onClose}>
       <form className={styles.form} onSubmit={(event) => void manejarEnvio(event)} noValidate>
-        <CamposDescripcion {...camposProps} />
-        <CamposMedidas {...camposProps} />
+        <CamposPlantacion {...camposProps} />
         <AvisosFormulario duplicado={duplicado} errorEnvio={errorEnvio} />
         <div className={styles.acciones}>
           <Button type="button" variant="secondary" onClick={onClose}>
