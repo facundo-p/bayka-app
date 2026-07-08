@@ -17,16 +17,21 @@ export function HeroMetric({
   porcentaje,
   metaLabel = 'Meta de la temporada',
 }: HeroMetricProps) {
+  // Sin objetivo definido: ocultamos la barra de progreso y el pie con cifras
+  // (evita el confuso "· 0 · 0%") y avisamos que la meta no está cargada.
+  const tieneObjetivo = objetivo > 0;
   return (
     <div className={styles.card}>
       <div className={styles.blob} aria-hidden />
       <span className={styles.overline}>{overline}</span>
       <p className={styles.value}>{formatearEntero(valor)}</p>
-      <div className={styles.track}>
-        <div className={styles.fill} style={{ width: `${porcentaje}%` }} />
-      </div>
+      {tieneObjetivo && (
+        <div className={styles.track}>
+          <div className={styles.fill} style={{ width: `${porcentaje}%` }} />
+        </div>
+      )}
       <p className={styles.footer}>
-        {metaLabel} · {formatearEntero(objetivo)} · {porcentaje}%
+        {tieneObjetivo ? `${metaLabel} · ${formatearEntero(objetivo)} · ${porcentaje}%` : 'Meta no definida'}
       </p>
     </div>
   );

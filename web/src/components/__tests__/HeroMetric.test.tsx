@@ -17,3 +17,13 @@ test('usa el metaLabel personalizado cuando se provee', () => {
   render(<HeroMetric overline="X" valor={10} objetivo={20} porcentaje={50} metaLabel="Objetivo anual" />);
   expect(screen.getByText('Objetivo anual · 20 · 50%')).toBeInTheDocument();
 });
+
+test('sin objetivo (<=0) oculta la barra y muestra "Meta no definida"', () => {
+  const { container } = render(
+    <HeroMetric overline="Árboles registrados" valor={42} objetivo={0} porcentaje={0} />,
+  );
+  expect(screen.getByText('42')).toBeInTheDocument();
+  expect(screen.getByText('Meta no definida')).toBeInTheDocument();
+  expect(screen.queryByText(/· 0 · 0%/)).not.toBeInTheDocument();
+  expect(container.querySelector(`.${styles.fill}`)).toBeNull();
+});
