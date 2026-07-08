@@ -55,6 +55,18 @@
   padding: 0 var(--page-pad-x);
 }
 
+/* Acciones de la topbar: botones alineados + mensaje inline (sin puntos GPS). */
+.acciones {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.mensajeAccion {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
 .volver {
   display: inline-block;
   margin-bottom: var(--space-2xl);
