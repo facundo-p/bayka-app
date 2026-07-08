@@ -6,6 +6,7 @@ import {
   Cargando,
   EmptyState,
   ErrorConReintento,
+  EspecieFormModal,
   Input,
   Table,
   Topbar,
@@ -18,6 +19,7 @@ import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
 import {
   listarCatalogoConUso,
   type EspecieConCatalogoUso,
+  type EspecieEditable,
 } from '../queries/especieQueries';
 import styles from './EspeciesScreen.module.css';
 
@@ -104,14 +106,20 @@ function filtrar(
   return catalogo.filter((especie) => coincide(especie, termino));
 }
 
-function TablaEspecies({ especies }: { especies: EspecieConCatalogoUso[] }) {
-  // No hay pantalla de detalle de especie: las filas no son clickeables.
+function TablaEspecies({
+  especies,
+  onEditar,
+}: {
+  especies: EspecieConCatalogoUso[];
+  onEditar: (especie: EspecieEditable) => void;
+}) {
   return (
     <div className={styles.tablaScroll}>
       <Table
         columns={COLUMNAS}
         rows={especies}
         getRowKey={(especie) => especie.id}
+        onRowClick={(especie) => onEditar(especie)}
         emptyMessage="No hay especies que coincidan con la búsqueda"
       />
     </div>
@@ -121,6 +129,10 @@ function TablaEspecies({ especies }: { especies: EspecieConCatalogoUso[] }) {
 export function EspeciesScreen() {
   const [busqueda, setBusqueda] = useState('');
   const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
+  // Modal de alta/edición: `abierto` controla visibilidad; `enEdicion` lleva la
+  // especie a editar (null = alta). El catálogo es global y compartido.
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [enEdicion, setEnEdicion] = useState<EspecieEditable | null>(null);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['especies-catalogo-uso'],
     queryFn: listarCatalogoConUso,
@@ -131,13 +143,21 @@ export function EspeciesScreen() {
     [data, busquedaDemorada],
   );
 
+  function abrirCreacion() {
+    setEnEdicion(null);
+    setModalAbierto(true);
+  }
+
+  function abrirEdicion(especie: EspecieEditable) {
+    setEnEdicion(especie);
+    setModalAbierto(true);
+  }
+
   return (
     <section>
       <Topbar
         left={<span className={styles.rotulo}>Organización · Catálogo global</span>}
-        // "Nueva especie" es un placeholder: el catálogo se siembra por seed y no
-        // existe un repo de creación de especies en v1. El botón no hace nada aún.
-        right={<Button onClick={() => undefined}>Nueva especie</Button>}
+        right={<Button onClick={abrirCreacion}>Nueva especie</Button>}
       />
       <div className={styles.body}>
         <h1 className={styles.titulo}>Especies</h1>
@@ -170,9 +190,12 @@ export function EspeciesScreen() {
               description="El catálogo de especies va a aparecer acá."
             />
           ) : (
-            <TablaEspecies especies={filtradas} />
+            <TablaEspecies especies={filtradas} onEditar={abrirEdicion} />
           ))}
       </div>
+      {modalAbierto && (
+        <EspecieFormModal especie={enEdicion} onClose={() => setModalAbierto(false)} />
+      )}
     </section>
   );
 }

@@ -6,6 +6,7 @@ export { CheckboxField } from './CheckboxField';
 export { Cargando } from './Cargando';
 export { CommandMenuTrigger } from './CommandMenuTrigger';
 export { EmptyState } from './EmptyState';
+export { EspecieFormModal } from './EspecieFormModal';
 export { ErrorConReintento } from './ErrorConReintento';
 export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';
 export { HeroMetric } from './HeroMetric';

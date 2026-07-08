@@ -15,6 +15,9 @@ export type EspecieConCatalogoUso = EspecieCatalogo & {
   arboles: number;
 };
 
+/** Campos editables de una especie (los que expone el formulario de alta/edición). */
+export type EspecieEditable = EspecieCatalogo;
+
 /** Especie habilitada en una plantación, con su orden de aparición en la app. */
 export type EspecieDePlantacion = EspecieCatalogo & { ordenVisual: number };
 
