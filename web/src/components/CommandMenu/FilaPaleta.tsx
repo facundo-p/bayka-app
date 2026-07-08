@@ -6,6 +6,8 @@ import styles from './CommandMenu.module.css';
 const TAMANO_ICONO = 16;
 
 interface FilaPaletaProps {
+  /** Id único y estable de la opción, para aria-activedescendant del input. */
+  id: string;
   item: ItemPaleta;
   resaltado: boolean;
   onElegir: () => void;
@@ -22,10 +24,11 @@ function contenidoFila(item: ItemPaleta) {
   return { Icono, titulo: item.resultado.titulo, meta: item.resultado.meta };
 }
 
-export function FilaPaleta({ item, resaltado, onElegir, onResaltar }: FilaPaletaProps) {
+export function FilaPaleta({ id, item, resaltado, onElegir, onResaltar }: FilaPaletaProps) {
   const { Icono, titulo, meta } = contenidoFila(item);
   return (
     <button
+      id={id}
       type="button"
       role="option"
       aria-selected={resaltado}

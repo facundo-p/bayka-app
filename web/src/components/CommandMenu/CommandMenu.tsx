@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -34,6 +34,8 @@ export function CommandMenu() {
   const [texto, setTexto] = useState('');
   const refInput = useRef<HTMLInputElement>(null);
   const refDialog = useRef<HTMLDivElement>(null);
+  const idListbox = useId();
+  const idOpcion = (indice: number) => `${idListbox}-opt-${indice}`;
   const atraparFoco = useFocusTrap(refDialog);
   useDevolverFoco(abierto);
 
@@ -112,10 +114,20 @@ export function CommandMenu() {
             value={texto}
             onChange={(evento) => setTexto(evento.target.value)}
             autoComplete="off"
+            role="combobox"
+            aria-expanded
+            aria-controls={idListbox}
+            aria-activedescendant={itemsPlanos.length > 0 ? idOpcion(resaltado) : undefined}
           />
         </div>
 
-        <div role="listbox" aria-label="Resultados" className={styles.lista} ref={refLista}>
+        <div
+          id={idListbox}
+          role="listbox"
+          aria-label="Resultados"
+          className={styles.lista}
+          ref={refLista}
+        >
           {!hayTexto && <p className={styles.overline}>{tituloVacio}</p>}
           {secciones.map((seccion) => (
             <div key={seccion.clave} className={styles.seccion}>
@@ -123,6 +135,7 @@ export function CommandMenu() {
               {seccion.items.map(({ item, indice }) => (
                 <FilaPaleta
                   key={`${seccion.clave}-${indice}`}
+                  id={idOpcion(indice)}
                   item={item}
                   resaltado={indice === resaltado}
                   onElegir={() => elegir(item)}
