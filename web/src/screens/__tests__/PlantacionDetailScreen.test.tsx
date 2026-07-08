@@ -43,6 +43,9 @@ function filaAsignada(userId: string, rolEnPlantacion: string): FilaAsignada {
 /** Estado mutable del mock: el insert/delete lo actualiza como haría la base. */
 let asignadas: FilaAsignada[];
 let consultas: ConsultaCapturada[];
+/** Conteos de árboles para el gate de "Generar IDs" / "Exportar". */
+let totalArboles: number;
+let conIdArboles: number;
 
 function resolverPlantationUsers(consulta: ConsultaCapturada): RespuestaMock {
   if (consulta.operacion === 'insert') {
@@ -67,6 +70,11 @@ function configurarDetalleMock(): void {
     }
     if (consulta.tabla === 'profiles') return { data: PERFILES };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
+    if (consulta.tabla === 'trees') {
+      // El conteo "sólo con id" se distingue por el filtro sobre global_id.
+      const soloConId = consulta.filtros.some((filtro) => filtro.columna === 'global_id');
+      return { data: [], count: soloConId ? conIdArboles : totalArboles };
+    }
     return { data: [], count: 0 };
   };
 }
@@ -77,6 +85,8 @@ beforeEach(() => {
   estadoMock.perfilFila = PERFIL_ADMIN;
   asignadas = [filaAsignada('user-2', 'tecnico')];
   consultas = [];
+  totalArboles = 0;
+  conIdArboles = 0;
   configurarDetalleMock();
 });
 
@@ -99,6 +109,24 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
 
   await usuario.click(screen.getByRole('link', { name: 'Configuración' }));
   expect(await screen.findByRole('heading', { name: 'Técnicos asignados' })).toBeInTheDocument();
+});
+
+test('ofrece "Generar IDs" (y no "Exportar") mientras los IDs no están generados', async () => {
+  totalArboles = 5;
+  conIdArboles = 3; // set parcial → todavía no generado
+  renderRutasEn('/plantaciones/plant-1');
+
+  expect(await screen.findByRole('button', { name: /Generar IDs/ })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Exportar' })).not.toBeInTheDocument();
+});
+
+test('ofrece "Exportar" (y oculta "Generar IDs") cuando los IDs están generados', async () => {
+  totalArboles = 5;
+  conIdArboles = 5; // todos con global_id → generado
+  renderRutasEn('/plantaciones/plant-1');
+
+  expect(await screen.findByRole('button', { name: 'Exportar' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
 });
 
 test('el botón Editar abre el formulario de la plantación con los datos cargados', async () => {
