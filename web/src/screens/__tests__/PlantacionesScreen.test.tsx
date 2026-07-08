@@ -11,6 +11,17 @@ function enMain() {
   return within(screen.getByRole('main'));
 }
 
+/** Aserciones de contenido de fila acotadas a la tabla: evita chocar con las
+ *  <option> de los Selects de filtro (Lugar/Período), que repiten esos textos. */
+function enTabla() {
+  return within(screen.getByRole('table'));
+}
+
+/** Espera a que la tabla cargue: la fecha "Creada" solo existe en las celdas. */
+function esperarTablaCargada() {
+  return screen.findByText('15/01/2025');
+}
+
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
@@ -50,48 +61,81 @@ test('renderiza las filas con stats, estado, visibilidad y fecha', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   renderRutasEn('/plantaciones');
 
-  // La celda "Salta" (plantación finalizada) solo existe en la tabla, no en
-  // la card del sidebar: sirve para esperar a que la tabla cargue.
-  await screen.findByText('Salta');
-  const main = enMain();
-  expect(main.getByText('Mendoza')).toBeInTheDocument();
-  expect(main.getByText('Salta')).toBeInTheDocument();
-  expect(main.getByText('Activa')).toBeInTheDocument();
-  expect(main.getByText('Finalizada')).toBeInTheDocument();
-  expect(main.getByText('120')).toBeInTheDocument();
-  expect(main.getByText('15/01/2025')).toBeInTheDocument();
+  await esperarTablaCargada();
+  const tabla = enTabla();
+  expect(tabla.getByText('Mendoza')).toBeInTheDocument();
+  expect(tabla.getByText('Salta')).toBeInTheDocument();
+  expect(tabla.getByText('Activa')).toBeInTheDocument();
+  expect(tabla.getByText('Finalizada')).toBeInTheDocument();
+  expect(tabla.getByText('120')).toBeInTheDocument();
+  expect(tabla.getByText('15/01/2025')).toBeInTheDocument();
   // "Oculta" aparece una sola vez: solo la plantación con visible_in_app=false.
-  expect(main.getAllByText('Oculta')).toHaveLength(1);
+  expect(tabla.getAllByText('Oculta')).toHaveLength(1);
 });
 
 test('el subtítulo cuenta plantaciones, temporadas distintas y árboles', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   renderRutasEn('/plantaciones');
-  await screen.findByText('Salta');
+  await esperarTablaCargada();
 
-  // 2 plantaciones, 2 períodos distintos, 120 + 80 = 200 árboles.
+  // 2 plantaciones, 2 períodos distintos, 120 + 80 = 200 árboles (sin prefijo:
+  // no hay filtros activos).
   expect(
     enMain().getByText('2 plantaciones · 2 temporadas · 200 árboles registrados'),
   ).toBeInTheDocument();
 });
 
-test('los segmentos filtran por estado e incluyen su conteo', async () => {
+test('el Select de estado filtra las filas de la tabla', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
-  await screen.findByText('Salta');
+  await esperarTablaCargada();
 
-  await usuario.click(screen.getByRole('radio', { name: 'Activas 1' }));
-  expect(enMain().getByText('Mendoza')).toBeInTheDocument();
-  expect(enMain().queryByText('Salta')).not.toBeInTheDocument();
+  await usuario.selectOptions(enMain().getByLabelText('Estado'), 'activa');
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(enTabla().queryByText('Salta')).not.toBeInTheDocument();
 
-  await usuario.click(screen.getByRole('radio', { name: 'Finalizadas 1' }));
-  expect(enMain().queryByText('Mendoza')).not.toBeInTheDocument();
-  expect(enMain().getByText('Salta')).toBeInTheDocument();
+  await usuario.selectOptions(enMain().getByLabelText('Estado'), 'finalizada');
+  expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
+  expect(enTabla().getByText('Salta')).toBeInTheDocument();
 
-  await usuario.click(screen.getByRole('radio', { name: 'Todas 2' }));
-  expect(enMain().getByText('Mendoza')).toBeInTheDocument();
-  expect(enMain().getByText('Salta')).toBeInTheDocument();
+  await usuario.selectOptions(enMain().getByLabelText('Estado'), '');
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(enTabla().getByText('Salta')).toBeInTheDocument();
+});
+
+test('combina lugar y recalcula el subtítulo con "Mostrando:"', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await esperarTablaCargada();
+
+  await usuario.selectOptions(enMain().getByLabelText('Lugar'), 'Mendoza');
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(enTabla().queryByText('Salta')).not.toBeInTheDocument();
+  // 1 plantación (Mendoza), 1 temporada, 120 árboles, con prefijo de selección.
+  expect(
+    enMain().getByText('Mostrando: 1 plantaciones · 1 temporadas · 120 árboles registrados'),
+  ).toBeInTheDocument();
+});
+
+test('sin coincidencias muestra el estado vacío y permite limpiar filtros', async () => {
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  await esperarTablaCargada();
+
+  // Salta solo tiene una plantación finalizada: activa + Salta = 0 resultados.
+  await usuario.selectOptions(enMain().getByLabelText('Lugar'), 'Salta');
+  await usuario.selectOptions(enMain().getByLabelText('Estado'), 'activa');
+  expect(enMain().getByText('Sin resultados')).toBeInTheDocument();
+  expect(
+    enMain().getByText('Mostrando: 0 plantaciones · 0 temporadas · 0 árboles registrados'),
+  ).toBeInTheDocument();
+
+  await usuario.click(enMain().getByRole('button', { name: 'Limpiar filtros' }));
+  expect(enTabla().getByText('Mendoza')).toBeInTheDocument();
+  expect(enTabla().getByText('Salta')).toBeInTheDocument();
 });
 
 test('clic en una fila navega al detalle de la plantación', async () => {
@@ -99,8 +143,8 @@ test('clic en una fila navega al detalle de la plantación', async () => {
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
 
-  await screen.findByText('Salta');
-  await usuario.click(enMain().getByText('Mendoza'));
+  await esperarTablaCargada();
+  await usuario.click(enTabla().getByText('Mendoza'));
   expect(await screen.findByRole('heading', { name: 'Mendoza' })).toBeInTheDocument();
 });
 
@@ -108,7 +152,7 @@ test('"Nueva plantación" abre el modal de creación', async () => {
   configurarPlantacionesMock(FILAS, STATS);
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones');
-  await screen.findByText('Salta');
+  await esperarTablaCargada();
 
   await usuario.click(screen.getByRole('button', { name: 'Nueva plantación' }));
   expect(screen.getByRole('dialog', { name: 'Nueva plantación' })).toBeInTheDocument();

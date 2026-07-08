@@ -10,7 +10,6 @@ import {
   ErrorConReintento,
   EstadoPlantacionBadge,
   PlantacionFormModal,
-  SegmentedControl,
   Table,
   Topbar,
   type TableColumn,
@@ -18,14 +17,19 @@ import {
 import { formatearEntero } from '../lib/formato';
 import { formatearFechaCorta } from '../lib/fechas';
 import { listarPlantaciones, type PlantacionConStats } from '../queries/plantationQueries';
+import { PlantacionesFiltros } from './plantaciones/PlantacionesFiltros';
+import {
+  FILTROS_PLANTACIONES_INICIALES,
+  filtrarPlantaciones,
+  hayFiltrosActivos,
+  lugaresDisponibles,
+  periodosDisponibles,
+  resumenPlantaciones,
+  type FiltrosPlantaciones,
+} from './plantaciones/filtrosPlantaciones';
 import styles from './PlantacionesScreen.module.css';
 
 const TAMANO_ICONO = 16;
-
-type FiltroEstado = 'todas' | 'activa' | 'finalizada';
-
-/** Conteos por estado para los segmentos del filtro. */
-type Conteos = { todas: number; activa: number; finalizada: number };
 
 function CeldaLugar({ lugar }: { lugar: string }) {
   return (
@@ -70,38 +74,6 @@ const COLUMNAS: Array<TableColumn<PlantacionConStats>> = [
   },
 ];
 
-function filtrarPorEstado(
-  plantaciones: PlantacionConStats[],
-  filtro: FiltroEstado,
-): PlantacionConStats[] {
-  if (filtro === 'todas') return plantaciones;
-  return plantaciones.filter((plantacion) => plantacion.estado === filtro);
-}
-
-/** Conteos por estado a partir de la lista completa. */
-function contarPorEstado(plantaciones: PlantacionConStats[]): Conteos {
-  return {
-    todas: plantaciones.length,
-    activa: plantaciones.filter((plantacion) => plantacion.estado === 'activa').length,
-    finalizada: plantaciones.filter((plantacion) => plantacion.estado === 'finalizada').length,
-  };
-}
-
-/** Subtítulo: N plantaciones · M temporadas distintas · TOTAL árboles. */
-function calcularSubtitulo(plantaciones: PlantacionConStats[]): string {
-  const temporadas = new Set(plantaciones.map((plantacion) => plantacion.periodo)).size;
-  const totalArboles = plantaciones.reduce((suma, plantacion) => suma + plantacion.arboles, 0);
-  return `${plantaciones.length} plantaciones · ${temporadas} temporadas · ${formatearEntero(totalArboles)} árboles registrados`;
-}
-
-function opcionesFiltro(conteos: Conteos): Array<{ value: FiltroEstado; label: string }> {
-  return [
-    { value: 'todas', label: `Todas ${conteos.todas}` },
-    { value: 'activa', label: `Activas ${conteos.activa}` },
-    { value: 'finalizada', label: `Finalizadas ${conteos.finalizada}` },
-  ];
-}
-
 function TablaPlantaciones({ plantaciones }: { plantaciones: PlantacionConStats[] }) {
   const navigate = useNavigate();
   return (
@@ -111,21 +83,37 @@ function TablaPlantaciones({ plantaciones }: { plantaciones: PlantacionConStats[
         rows={plantaciones}
         getRowKey={(plantacion) => plantacion.id}
         onRowClick={(plantacion) => navigate(`/plantaciones/${plantacion.id}`)}
-        emptyMessage="No hay plantaciones con ese estado"
+        emptyMessage="Ninguna plantación coincide con los filtros"
       />
     </div>
   );
 }
 
 export function PlantacionesScreen() {
-  const [filtro, setFiltro] = useState<FiltroEstado>('todas');
+  const [filtros, setFiltros] = useState<FiltrosPlantaciones>(FILTROS_PLANTACIONES_INICIALES);
   const [crearAbierto, setCrearAbierto] = useState(false);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['plantaciones'],
     queryFn: listarPlantaciones,
   });
 
-  const conteos = useMemo(() => contarPorEstado(data ?? []), [data]);
+  const plantaciones = useMemo(() => data ?? [], [data]);
+  const lugares = useMemo(() => lugaresDisponibles(plantaciones), [plantaciones]);
+  const periodos = useMemo(() => periodosDisponibles(plantaciones), [plantaciones]);
+  const filtradas = useMemo(
+    () => filtrarPlantaciones(plantaciones, filtros),
+    [plantaciones, filtros],
+  );
+
+  const filtrosActivos = hayFiltrosActivos(filtros);
+  const cambiarFiltro = (campo: keyof FiltrosPlantaciones, valor: string) =>
+    setFiltros((previos) => ({ ...previos, [campo]: valor }));
+  const limpiarFiltros = () => setFiltros(FILTROS_PLANTACIONES_INICIALES);
+
+  // El subtítulo se recalcula sobre el subconjunto filtrado; cuando hay filtros
+  // activos se antepone "Mostrando:" para dejar claro que es la selección.
+  const resumen = resumenPlantaciones(filtradas);
+  const subtitulo = filtrosActivos ? `Mostrando: ${resumen}` : resumen;
 
   return (
     <section>
@@ -135,15 +123,19 @@ export function PlantacionesScreen() {
       />
       <div className={styles.body}>
         <h1 className={styles.titulo}>Plantaciones</h1>
-        {data && <p className={styles.subtitulo}>{calcularSubtitulo(data)}</p>}
-        <div className={styles.filtros}>
-          <SegmentedControl
-            aria-label="Filtrar por estado"
-            options={opcionesFiltro(conteos)}
-            value={filtro}
-            onChange={setFiltro}
-          />
-        </div>
+        {data && <p className={styles.subtitulo}>{subtitulo}</p>}
+        {data && data.length > 0 && (
+          <div className={styles.filtros}>
+            <PlantacionesFiltros
+              filtros={filtros}
+              lugares={lugares}
+              periodos={periodos}
+              mostrarLimpiar={filtrosActivos}
+              onCambiar={cambiarFiltro}
+              onLimpiar={limpiarFiltros}
+            />
+          </div>
+        )}
         {isPending && <Cargando />}
         {isError && !data && (
           <ErrorConReintento
@@ -157,8 +149,13 @@ export function PlantacionesScreen() {
               title="Sin plantaciones"
               description="Las plantaciones de tu organización van a aparecer acá."
             />
+          ) : filtradas.length === 0 ? (
+            <EmptyState
+              title="Sin resultados"
+              description="Ninguna plantación coincide con los filtros. Probá limpiarlos."
+            />
           ) : (
-            <TablaPlantaciones plantaciones={filtrarPorEstado(data, filtro)} />
+            <TablaPlantaciones plantaciones={filtradas} />
           ))}
       </div>
       {crearAbierto && (
