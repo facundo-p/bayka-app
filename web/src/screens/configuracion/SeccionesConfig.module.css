@@ -172,6 +172,16 @@
   color: var(--color-danger);
 }
 
+.avisoInfo {
+  margin: 0;
+  padding: var(--space-lg) var(--space-xl);
+  border: var(--border-thin) solid var(--color-warn-border);
+  border-radius: var(--radius-control);
+  background-color: var(--color-warn-bg);
+  font-size: var(--text-md);
+  color: var(--color-warn-fg);
+}
+
 .textoAyuda {
   margin: var(--space-xs) 0 0;
   font-size: var(--text-md);

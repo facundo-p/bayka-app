@@ -43,12 +43,19 @@ function resolverPlantations(consulta: ConsultaCapturada): RespuestaMock {
 
 function resolverPlantationSpecies(consulta: ConsultaCapturada): RespuestaMock {
   if (consulta.operacion === 'insert') {
-    asignadas.push(consulta.payload as { species_id: string; orden_visual: number });
+    // El toggle individual inserta una fila; el batch inserta un array.
+    const filas = Array.isArray(consulta.payload) ? consulta.payload : [consulta.payload];
+    asignadas.push(...(filas as Array<{ species_id: string; orden_visual: number }>));
     return { data: null };
   }
   if (consulta.operacion === 'delete') {
-    const especieId = consulta.filtros.find((filtro) => filtro.columna === 'species_id')?.valor;
-    asignadas = asignadas.filter((fila) => fila.species_id !== especieId);
+    const filtroEspecie = consulta.filtros.find((filtro) => filtro.columna === 'species_id');
+    // eq (toggle) → un id; in (batch) → array de ids.
+    const ids =
+      filtroEspecie?.metodo === 'in'
+        ? (filtroEspecie.valor as string[])
+        : [filtroEspecie?.valor];
+    asignadas = asignadas.filter((fila) => !ids.includes(fila.species_id));
     return { data: null };
   }
   return { data: asignadas.map(filaAsignadaConEmbed) };
@@ -156,6 +163,104 @@ describe('checklist de especies', () => {
 
     expect(screen.getByRole('checkbox', { name: 'Ceibo' })).toBeInTheDocument();
     expect(screen.queryByRole('checkbox', { name: 'Quebracho' })).not.toBeInTheDocument();
+  });
+});
+
+describe('checkbox maestro (marcar/desmarcar todas)', () => {
+  test('parcial: marca todas las visibles e inserta las faltantes', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    // sp-1 y sp-2 habilitadas de 3 visibles → indeterminado.
+    expect(maestro).toHaveAttribute('aria-checked', 'mixed');
+
+    await usuario.click(maestro);
+
+    await waitFor(() => expect(consultasEspecies('insert')).toHaveLength(1));
+    // Batch: un solo insert con la única faltante (sp-3).
+    expect(consultasEspecies('insert')[0].payload).toEqual([
+      { plantation_id: 'plant-1', species_id: 'sp-3', orden_visual: 2 },
+    ]);
+    expect(await screen.findByText('3 habilitadas')).toBeInTheDocument();
+    await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
+  });
+
+  test('desmarca todas dejando las bloqueadas y avisa con el conteo', async () => {
+    const usuario = userEvent.setup();
+    asignadas = [
+      { species_id: 'sp-1', orden_visual: 0 },
+      { species_id: 'sp-2', orden_visual: 1 },
+      { species_id: 'sp-3', orden_visual: 2 },
+    ];
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
+
+    await usuario.click(maestro);
+
+    await waitFor(() => expect(consultasEspecies('delete')).toHaveLength(1));
+    // sp-1 tiene árboles → no se borra; batch borra sp-2 y sp-3 con `in`.
+    const filtro = consultasEspecies('delete')[0].filtros.find((f) => f.columna === 'species_id');
+    expect(filtro).toEqual({ metodo: 'in', columna: 'species_id', valor: ['sp-2', 'sp-3'] });
+    expect(
+      await screen.findByText(/1 especie quedó habilitada porque tiene árboles/),
+    ).toBeInTheDocument();
+    expect(await screen.findByRole('checkbox', { name: 'Quebracho' })).toBeChecked();
+  });
+
+  test('todas bloqueadas: no borra nada y avisa por todas', async () => {
+    const usuario = userEvent.setup();
+    asignadas = [
+      { species_id: 'sp-1', orden_visual: 0 },
+      { species_id: 'sp-2', orden_visual: 1 },
+      { species_id: 'sp-3', orden_visual: 2 },
+    ];
+    arbolesPorEspecie = { 'sp-1': 3, 'sp-2': 1, 'sp-3': 5 };
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
+
+    await usuario.click(maestro);
+
+    expect(await screen.findByText(/3 especies quedaron habilitadas/)).toBeInTheDocument();
+    expect(consultasEspecies('delete')).toHaveLength(0);
+  });
+
+  test('sin bloqueadas: desmarcar vacía el checklist sin aviso', async () => {
+    const usuario = userEvent.setup();
+    asignadas = [
+      { species_id: 'sp-2', orden_visual: 0 },
+      { species_id: 'sp-3', orden_visual: 1 },
+    ];
+    arbolesPorEspecie = {};
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    await screen.findByRole('checkbox', { name: 'Ceibo' });
+    // Sólo sp-2 y sp-3 habilitadas → parcial; una marcada las lleva a todas.
+    const maestro = screen.getByRole('checkbox', { name: 'Todas las especies' });
+    await usuario.click(maestro); // marcar sp-1 → todas
+    await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
+
+    await usuario.click(maestro); // desmarcar todas (ninguna bloqueada)
+
+    await waitFor(() => expect(screen.getByText('0 habilitadas')).toBeInTheDocument());
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  test('con búsqueda activa opera sólo sobre las filas visibles', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    await screen.findByRole('checkbox', { name: 'Quebracho' });
+    await usuario.type(screen.getByPlaceholderText(/Buscar especie/), 'ceib');
+
+    // Sólo Ceibo (sp-3, no habilitada) visible → maestro vacío.
+    const maestro = screen.getByRole('checkbox', { name: 'Todas las especies' });
+    expect(maestro).toHaveAttribute('aria-checked', 'false');
+    await usuario.click(maestro);
+
+    await waitFor(() => expect(consultasEspecies('insert')).toHaveLength(1));
+    expect(consultasEspecies('insert')[0].payload).toEqual([
+      { plantation_id: 'plant-1', species_id: 'sp-3', orden_visual: 2 },
+    ]);
   });
 });
 
