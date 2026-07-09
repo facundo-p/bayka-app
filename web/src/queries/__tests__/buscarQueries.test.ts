@@ -40,6 +40,22 @@ const FILA_ARBOL = {
   groups: { plantation_id: 'plant-1', codigo: 'L1' },
 };
 
+const FILA_PARCELA = {
+  id: 'parc-1',
+  nombre: 'Norte',
+  codigo: 'P1',
+  plantation_id: 'plant-1',
+  plantations: { lugar: 'La Maluka' },
+};
+
+const FILA_GRUPO = {
+  id: 'gr-1',
+  nombre: 'Línea 1',
+  codigo: 'L1',
+  plantation_id: 'plant-1',
+  parcelas: { codigo: 'P1' },
+};
+
 /** Resolver que enruta cada tabla a su fila de fixture. */
 function responder(consulta: ConsultaCapturada): RespuestaMock {
   switch (consulta.tabla) {
@@ -51,6 +67,10 @@ function responder(consulta: ConsultaCapturada): RespuestaMock {
       return { data: [FILA_USUARIO] };
     case 'trees':
       return { data: [FILA_ARBOL] };
+    case 'parcelas':
+      return { data: [FILA_PARCELA] };
+    case 'groups':
+      return { data: [FILA_GRUPO] };
     // plantation_users / organizations: counts y nombres de usuarioQueries.
     default:
       return { data: [], count: 0 };
@@ -131,6 +151,39 @@ function esBusquedaArbol(consulta: ConsultaCapturada): boolean {
     consulta.filtros.some((filtro) => filtro.metodo === 'ilike' && filtro.columna === 'sub_id')
   );
 }
+
+test('buscarParcelas mapea a resultado de parcela con su plantación y ruta', async () => {
+  capturarConsultas(responder);
+  const resultados = await buscar('P1');
+  const parcela = resultados.find((resultado) => resultado.tipo === 'parcela');
+
+  expect(parcela).toMatchObject({
+    titulo: 'P1 · Norte',
+    meta: 'La Maluka',
+    to: '/plantaciones/plant-1/datos/parcelas',
+  });
+});
+
+test('la búsqueda de parcelas arma un .or con ilike escapado sobre código y nombre', async () => {
+  const consultas = capturarConsultas(responder);
+  await buscar('P1');
+  const consultaParcela = consultas.find((consulta) => consulta.tabla === 'parcelas');
+  const filtroOr = consultaParcela?.filtros.find((filtro) => filtro.metodo === 'or');
+  // El texto se normaliza a minúsculas y el valor va entrecomillado (escaparBusqueda).
+  expect(filtroOr?.valor).toBe('codigo.ilike."%p1%",nombre.ilike."%p1%"');
+});
+
+test('buscarGrupos mapea a resultado de grupo con su parcela y ruta', async () => {
+  capturarConsultas(responder);
+  const resultados = await buscar('L1');
+  const grupo = resultados.find((resultado) => resultado.tipo === 'grupo');
+
+  expect(grupo).toMatchObject({
+    titulo: 'L1 · Línea 1',
+    meta: 'Parcela P1',
+    to: '/plantaciones/plant-1/datos/grupos',
+  });
+});
 
 test('tolera error de la búsqueda de árbol sin romper el resto', async () => {
   capturarConsultas((consulta) =>

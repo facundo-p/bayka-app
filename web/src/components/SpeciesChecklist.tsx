@@ -23,6 +23,7 @@ interface SpeciesChecklistProps {
 
 const TITULO_BLOQUEADA = 'Tiene árboles registrados';
 const LABEL_MAESTRO = 'Todas las especies';
+const SIN_RESULTADOS = 'Ninguna especie coincide con la búsqueda';
 
 /** Checkbox maestro tri-estado: marca/desmarca todas las visibles a la vez. */
 function MaestroTodas({
@@ -117,6 +118,9 @@ export function SpeciesChecklist({
   onBuscar,
 }: SpeciesChecklistProps) {
   const filtrado = filtrarCatalogo(catalogo, busqueda);
+  // Catálogo con especies pero filtro sin coincidencias: aviso claro en vez de
+  // una lista vacía muda. Si el catálogo entero está vacío, la lista queda sola.
+  const sinResultados = filtrado.length === 0 && catalogo.length > 0;
   return (
     <div className={styles.contenedor}>
       <Input
@@ -131,17 +135,23 @@ export function SpeciesChecklist({
         deshabilitado={filtrado.length === 0}
         onMaestro={onMaestro}
       />
-      <ul className={styles.lista}>
-        {filtrado.map((especie) => (
-          <FilaEspecie
-            key={especie.id}
-            especie={especie}
-            marcada={habilitadas.has(especie.id)}
-            bloqueada={bloqueadas?.has(especie.id) ?? false}
-            onToggle={onToggle}
-          />
-        ))}
-      </ul>
+      {sinResultados ? (
+        <p className={styles.sinResultados} role="status">
+          {SIN_RESULTADOS}
+        </p>
+      ) : (
+        <ul className={styles.lista}>
+          {filtrado.map((especie) => (
+            <FilaEspecie
+              key={especie.id}
+              especie={especie}
+              marcada={habilitadas.has(especie.id)}
+              bloqueada={bloqueadas?.has(especie.id) ?? false}
+              onToggle={onToggle}
+            />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
