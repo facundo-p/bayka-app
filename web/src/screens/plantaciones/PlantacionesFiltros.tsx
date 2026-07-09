@@ -1,9 +1,6 @@
 import { Button, Input, Select } from '../../components';
-import {
-  ESTADO_ACTIVA,
-  ESTADO_FINALIZADA,
-  type FiltrosPlantaciones,
-} from './filtrosPlantaciones';
+import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
+import type { FiltrosPlantaciones } from './filtrosPlantaciones';
 import styles from './PlantacionesFiltros.module.css';
 
 interface PlantacionesFiltrosProps {
@@ -69,8 +66,8 @@ export function PlantacionesFiltros({
         onChange={(evento) => onCambiar('estado', evento.target.value)}
       >
         <option value="">Estado: todos</option>
-        <option value={ESTADO_ACTIVA}>Activas</option>
-        <option value={ESTADO_FINALIZADA}>Finalizadas</option>
+        <option value={ESTADO_PLANTACION.activa}>Activas</option>
+        <option value={ESTADO_PLANTACION.finalizada}>Finalizadas</option>
       </Select>
       <Input
         label="Creada desde"

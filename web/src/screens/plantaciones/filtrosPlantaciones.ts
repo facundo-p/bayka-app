@@ -1,10 +1,6 @@
 import { formatearEntero } from '../../lib/formato';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 
-/** Valores de estado seleccionables ('' = todas). */
-export const ESTADO_ACTIVA = 'activa';
-export const ESTADO_FINALIZADA = 'finalizada';
-
 /**
  * Estado de los filtros tal como vive en los controles ('' = sin filtro).
  * `desde`/`hasta` son fechas 'YYYY-MM-DD' de los <input type="date">.
