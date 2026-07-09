@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { cx } from '../lib/classNames';
+import type { EstadoPlantacion } from '../queries/plantationQueries';
 import styles from './Badge.module.css';
 
-/* Estados de dominio en español (activa/finalizada/pendiente) + roles + genéricos. */
+/* Estados de dominio en español (activa/finalizada/pendiente) + roles + genéricos.
+ * Los valores de estado se derivan de EstadoPlantacion (fuente única). */
 type BadgeVariant =
-  | 'activa'
-  | 'finalizada'
+  | EstadoPlantacion
   | 'pendiente'
   | 'warning'
   | 'neutral'

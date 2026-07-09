@@ -3,9 +3,11 @@ import { contarOLanzar } from './conteo';
 import { patronContiene } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { leerPaginado } from './leerPaginado';
+import type { EstadoPlantacion } from './plantationQueries';
 
 export type TipoGrupo = 'linea' | 'bosquete';
-export type EstadoGrupo = 'activa' | 'finalizada';
+/** El estado de un grupo comparte el dominio del de su plantación. */
+export type EstadoGrupo = EstadoPlantacion;
 
 /** Valor especial del filtro de especie: árboles sin identificar (species_id null). */
 export { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';

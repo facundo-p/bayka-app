@@ -1,3 +1,4 @@
+import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
 
@@ -18,7 +19,9 @@ function aResultado(plantacion: PlantacionConStats): ResultadoBusqueda {
  *  luego las últimas plantaciones por fecha de creación. */
 export function sugerencias(plantaciones: PlantacionConStats[]): ResultadoBusqueda[] {
   if (plantaciones.length === 0) return [];
-  const activas = plantaciones.filter((plantacion) => plantacion.estado === 'activa');
+  const activas = plantaciones.filter(
+    (plantacion) => plantacion.estado === ESTADO_PLANTACION.activa,
+  );
   const temporada = activas.length
     ? activas.reduce((mejor, actual) => (actual.arboles > mejor.arboles ? actual : mejor))
     : null;
