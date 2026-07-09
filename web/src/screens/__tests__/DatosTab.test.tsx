@@ -12,7 +12,7 @@ vi.mock('../../lib/supabase', async () => {
 
 // Leaflet usa APIs de layout que jsdom no implementa: el mapa del detalle se
 // reemplaza por un contenedor tonto. El mapa real se valida en el navegador.
-vi.mock('../../components/MapaPuntos', () => ({
+vi.mock('../../components/mapa/MapaPuntos', () => ({
   MapaPuntos: () => <div>Mapa del árbol</div>,
 }));
 

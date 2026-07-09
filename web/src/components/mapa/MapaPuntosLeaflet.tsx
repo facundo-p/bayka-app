@@ -2,9 +2,9 @@ import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import { CircleMarker, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { cx } from '../lib/classNames';
-import type { PuntoGps } from '../queries/mapaQueries';
-import { COLOR_GRAFICO_NN } from '../theme/chartColors';
+import { cx } from '../../lib/classNames';
+import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
+import type { MapaPuntosProps, PuntoGps } from './types';
 import styles from './MapaPuntos.module.css';
 
 /** Capa base satelital sin API key (Esri World Imagery). */
@@ -16,15 +16,6 @@ const ZOOM_PUNTO_UNICO = 17;
 
 /** Borde blanco del punto: color JS de Leaflet (mismo caso que chartColors). */
 const BORDE_PUNTO = '#ffffff';
-
-/** Variante de tamaño: panel del dashboard (360px) o compacto del modal (220px). */
-type VarianteMapa = 'panel' | 'compacto';
-
-interface MapaPuntosProps {
-  puntos: PuntoGps[];
-  colorPorCodigo: Map<string, string>;
-  variante?: VarianteMapa;
-}
 
 function colorDePunto(punto: PuntoGps, colorPorCodigo: Map<string, string>): string {
   return colorPorCodigo.get(punto.codigo) ?? COLOR_GRAFICO_NN;
@@ -77,16 +68,28 @@ function CapaPuntos({
 }
 
 /**
- * Núcleo reutilizable del mapa: contenedor satelital con un CircleMarker por
- * punto GPS coloreado por especie. Sin puntos no renderiza nada (el caller
- * maneja su propio estado vacío). Usado por el panel del dashboard
- * (`PlantationMap`) y el detalle de un árbol (`ArbolDetalleModal`).
+ * Implementación del mapa sobre react-leaflet. TODO el acoplamiento a Leaflet
+ * vive acá: es el único archivo que la fachada `MapaPuntos` intercambiaría al
+ * cambiar de proveedor. Contenedor satelital con un CircleMarker por punto GPS
+ * coloreado por especie. Sin puntos no renderiza nada (el caller maneja su
+ * propio estado vacío). Usado por el panel del dashboard (`PlantationMap`) y el
+ * detalle de un árbol (`ArbolDetalleModal`).
  */
-export function MapaPuntos({ puntos, colorPorCodigo, variante = 'panel' }: MapaPuntosProps) {
+export function MapaPuntosLeaflet({
+  puntos,
+  colorPorCodigo,
+  variante = 'panel',
+}: MapaPuntosProps) {
   if (puntos.length === 0) return null;
   return (
     <div className={cx(styles.contenedor, styles[variante])}>
-      <MapContainer scrollWheelZoom={false} zoomControl center={[0, 0]} zoom={2}>
+      <MapContainer
+        className={styles.mapa}
+        scrollWheelZoom={false}
+        zoomControl
+        center={[0, 0]}
+        zoom={2}
+      >
         <TileLayer url={TILE_SATELITE} attribution="Imágenes © Esri, Maxar" maxZoom={19} />
         <CapaPuntos puntos={puntos} colorPorCodigo={colorPorCodigo} />
         <AjustarVista puntos={puntos} />

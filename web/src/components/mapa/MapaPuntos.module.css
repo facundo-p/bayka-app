@@ -19,7 +19,10 @@
   height: 220px;
 }
 
-.contenedor :global(.leaflet-container) {
+/* Contenedor del mapa: la clase se aplica sobre el div raíz del proveedor.
+ * Se scopea bajo `.contenedor` para ganarle en especificidad a los estilos
+ * base del proveedor sin depender del orden de import. */
+.contenedor .mapa {
   height: 100%;
   width: 100%;
   background-color: var(--color-surface-sunken);
