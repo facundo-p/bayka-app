@@ -1,0 +1,18 @@
+/* Barra de filtros compacta del listado de plantaciones: una sola fila que
+   envuelve en pantallas angostas. Alineada al final para que los controles
+   queden a la misma altura que el botón "Limpiar". */
+.filtros {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+/* Controles compactos: control más bajo, mismo tamaño de texto en toda la fila. */
+.filtros input,
+.filtros select {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+}

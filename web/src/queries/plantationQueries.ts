@@ -5,7 +5,15 @@ import {
 } from '../lib/gpsDefaults';
 import { contarOLanzar } from './conteo';
 
-export type EstadoPlantacion = 'activa' | 'finalizada';
+/** Estados posibles de una plantación. ÚNICA fuente de verdad de estos valores:
+ *  el tipo `EstadoPlantacion` se deriva de acá, así que valor y tipo no se
+ *  pueden desincronizar y nadie los redefine como literales sueltos. */
+export const ESTADO_PLANTACION = {
+  activa: 'activa',
+  finalizada: 'finalizada',
+} as const;
+
+export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
 /** Fila cruda de `plantations`. Los campos opcionales llegan con las
  *  migraciones 023 (GPS) y 024, que pueden no estar aplicadas todavía:
