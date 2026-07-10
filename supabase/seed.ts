@@ -68,6 +68,7 @@ async function seed() {
           nombre: user.nombre,
           rol: user.rol,
           organizacion_id: ORG_ID,
+          email: user.email,
         }, { onConflict: 'id' });
         if (profileError) console.error(`  Profile error for ${user.email}:`, profileError.message);
         else console.log(`  Profile upserted for ${user.email}`);
@@ -79,13 +80,15 @@ async function seed() {
 
     const userId = authData.user.id;
 
-    // Insert profile row (MUST be done after auth user creation — Pitfall 6)
-    const { error: profileError } = await supabase.from('profiles').insert({
+    // Upsert: el trigger handle_new_user ya crea el profile al crear el auth
+    // user; acá solo se pisan nombre/rol/org con los valores del seed.
+    const { error: profileError } = await supabase.from('profiles').upsert({
       id: userId,
       nombre: user.nombre,
       rol: user.rol,
       organizacion_id: ORG_ID,
-    });
+      email: user.email,
+    }, { onConflict: 'id' });
 
     if (profileError) {
       console.error(`  Profile error for ${user.email}:`, profileError.message);
