@@ -26,16 +26,13 @@ const INPUT_COMPLETO: PlantacionInput = {
   periodo: '2025-2026',
   descripcion: 'Finca norte',
   fechaInicio: '2026-07-01',
-  superficieHa: 12.5,
-  ubicacionLat: -32.9,
-  ubicacionLng: -68.8,
   objetivoArboles: 500,
 };
 
 const INPUT_BASE: PlantacionInput = { lugar: 'Mendoza', periodo: '2025-2026' };
 
 const ERROR_COLUMNA = {
-  message: 'column "superficie_ha" does not exist',
+  message: 'column "objetivo_arboles" does not exist',
   code: PG_ERROR.UNDEFINED_COLUMN,
 };
 
@@ -64,9 +61,6 @@ describe('crearPlantacion', () => {
       creado_por: 'user-1',
       descripcion: 'Finca norte',
       fecha_inicio: '2026-07-01',
-      superficie_ha: 12.5,
-      ubicacion_lat: -32.9,
-      ubicacion_lng: -68.8,
       objetivo_arboles: 500,
     });
     expect(parcela.tabla).toBe('parcelas');
@@ -94,7 +88,7 @@ describe('crearPlantacion', () => {
     const consultas = capturarConsultas((consulta) => {
       if (consulta.tabla === 'plantations' && consulta.operacion === 'insert') {
         const payload = consulta.payload as Record<string, unknown>;
-        if ('superficie_ha' in payload) return { error: ERROR_COLUMNA };
+        if ('objetivo_arboles' in payload) return { error: ERROR_COLUMNA };
         return { data: { id: 'plant-nuevo' } };
       }
       return { data: null };
@@ -104,7 +98,7 @@ describe('crearPlantacion', () => {
     expect(id).toBe('plant-nuevo');
     const inserts = consultas.filter((consulta) => consulta.tabla === 'plantations');
     expect(inserts).toHaveLength(2);
-    expect(Object.keys(inserts[1].payload as object)).not.toContain('superficie_ha');
+    expect(Object.keys(inserts[1].payload as object)).not.toContain('objetivo_arboles');
   });
 
   test('si falla la parcela default borra la plantación (rollback best-effort) y lanza', async () => {

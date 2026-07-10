@@ -29,9 +29,6 @@ type FilaPlantacion = {
   gps_capture_required?: boolean | null;
   descripcion?: string | null;
   fecha_inicio?: string | null;
-  superficie_ha?: number | null;
-  ubicacion_lat?: number | null;
-  ubicacion_lng?: number | null;
   objetivo_arboles?: number | null;
 };
 
@@ -46,9 +43,6 @@ export type Plantacion = {
   createdAt: string;
   descripcion: string | null;
   fechaInicio: string | null;
-  superficieHa: number | null;
-  ubicacionLat: number | null;
-  ubicacionLng: number | null;
   objetivoArboles: number | null;
 };
 
@@ -63,9 +57,6 @@ function camposFormulario(fila: FilaPlantacion) {
   return {
     descripcion: fila.descripcion ?? null,
     fechaInicio: fila.fecha_inicio ?? null,
-    superficieHa: fila.superficie_ha ?? null,
-    ubicacionLat: fila.ubicacion_lat ?? null,
-    ubicacionLng: fila.ubicacion_lng ?? null,
     objetivoArboles: fila.objetivo_arboles ?? null,
   };
 }

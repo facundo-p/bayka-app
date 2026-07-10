@@ -22,14 +22,12 @@ alter table profiles
   add constraint profiles_rol_check check (rol in ('admin', 'tecnico', 'superadmin'));
 
 -- ── 2. Campos nuevos de plantations ──────────────────────────────────────────
+-- Solo los que el formulario web edita hoy. Superficie y ubicación (lat/lng) se
+-- dieron de baja al simplificar el formulario en el rediseño y NO se agregan:
+-- nada las popula (mobile tampoco las envía).
 
 alter table plantations add column descripcion text;
 alter table plantations add column fecha_inicio date;
-alter table plantations add column superficie_ha numeric check (superficie_ha > 0);
-alter table plantations add column ubicacion_lat double precision
-  check (ubicacion_lat between -90 and 90);
-alter table plantations add column ubicacion_lng double precision
-  check (ubicacion_lng between -180 and 180);
 alter table plantations add column objetivo_arboles integer check (objetivo_arboles >= 1);
 alter table plantations add column visible_in_app boolean not null default true;
 

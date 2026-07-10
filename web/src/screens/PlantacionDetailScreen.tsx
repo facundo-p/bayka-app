@@ -66,12 +66,9 @@ function PlantacionNoEncontrada() {
   );
 }
 
-/** Línea de metadatos: período · superficie (si hay) · fecha de creación. */
+/** Línea de metadatos: período · fecha de creación. */
 function lineaMeta(plantacion: Plantacion): string {
-  const partes = [plantacion.periodo];
-  if (plantacion.superficieHa != null) partes.push(`${plantacion.superficieHa} ha`);
-  partes.push(`Creada ${formatearFechaCorta(plantacion.createdAt)}`);
-  return partes.join(' · ');
+  return `${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
 }
 
 /**

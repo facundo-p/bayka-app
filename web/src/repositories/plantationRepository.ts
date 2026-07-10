@@ -10,9 +10,6 @@ export type PlantacionInput = {
   periodo: string;
   descripcion?: string;
   fechaInicio?: string;
-  superficieHa?: number;
-  ubicacionLat?: number;
-  ubicacionLng?: number;
   objetivoArboles?: number;
 };
 
@@ -43,9 +40,6 @@ function campos024(input: PlantacionInput): Payload {
   const campos: Payload = {};
   if (input.descripcion !== undefined) campos.descripcion = input.descripcion;
   if (input.fechaInicio !== undefined) campos.fecha_inicio = input.fechaInicio;
-  if (input.superficieHa !== undefined) campos.superficie_ha = input.superficieHa;
-  if (input.ubicacionLat !== undefined) campos.ubicacion_lat = input.ubicacionLat;
-  if (input.ubicacionLng !== undefined) campos.ubicacion_lng = input.ubicacionLng;
   if (input.objetivoArboles !== undefined) campos.objetivo_arboles = input.objetivoArboles;
   return campos;
 }
