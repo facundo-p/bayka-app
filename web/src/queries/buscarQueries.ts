@@ -13,6 +13,7 @@
  *    busca por `sub_id` (el SubID tipo "PAL23ANC12"), igual que ArbolesSection.
  */
 import { supabase } from '../lib/supabase';
+import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
 import { listarPlantaciones } from './plantationQueries';
 import { listarUsuariosConAsignaciones } from './usuarioQueries';
@@ -105,7 +106,7 @@ async function buscarParcelas(texto: string, scope?: ScopeBusqueda): Promise<Res
     .from('parcelas')
     .select('id, nombre, codigo, plantation_id, plantations(lugar)')
     .is('deleted_at', null)
-    .or(`codigo.ilike.%${texto}%,nombre.ilike.%${texto}%`)
+    .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('plantation_id', scope.plantationId);
   const { data, error } = await consulta;
@@ -131,7 +132,7 @@ async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<Resul
   let consulta = supabase
     .from('groups')
     .select('id, nombre, codigo, plantation_id, parcelas(codigo)')
-    .or(`codigo.ilike.%${texto}%,nombre.ilike.%${texto}%`)
+    .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('plantation_id', scope.plantationId);
   const { data, error } = await consulta;
@@ -156,7 +157,7 @@ async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<Resu
   let consulta = supabase
     .from('trees')
     .select('id, sub_id, species(nombre), groups!inner(plantation_id, codigo)')
-    .ilike('sub_id', `%${texto}%`)
+    .ilike('sub_id', patronContiene(texto))
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('groups.plantation_id', scope.plantationId);
   const { data, error } = await consulta;

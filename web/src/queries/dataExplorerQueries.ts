@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
+import { patronContiene } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { leerPaginado } from './leerPaginado';
 
@@ -234,7 +235,7 @@ function aplicarFiltrosArboles(
   else if (filtros.speciesId) consulta = consulta.eq('species_id', filtros.speciesId);
   if (filtros.conGps === true) consulta = consulta.not('latitude', 'is', null);
   if (filtros.conGps === false) consulta = consulta.is('latitude', null);
-  if (filtros.busqueda) consulta = consulta.ilike('sub_id', `%${filtros.busqueda}%`);
+  if (filtros.busqueda) consulta = consulta.ilike('sub_id', patronContiene(filtros.busqueda));
   return consulta;
 }
 
