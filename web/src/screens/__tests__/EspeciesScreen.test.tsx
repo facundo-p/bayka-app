@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { renderRutasEn } from '../../test/renderConRutas';
@@ -56,6 +56,49 @@ test('renderiza H1, subtítulo y una fila de especie con su uso', async () => {
   expect(main.getByText('Parapiptadenia rigida')).toBeInTheDocument();
   // Anchico: 1 plantación, 1.234 árboles.
   expect(main.getByText('1.234')).toBeInTheDocument();
+});
+
+test('muestra el uso por especie: plantaciones y árboles (0/0 la sin uso)', async () => {
+  configurarEspeciesMock();
+  renderRutasEn('/especies');
+
+  await screen.findByText('Anchico');
+  const main = enMain();
+  // Anchico: habilitado en 1 plantación, 1.234 árboles.
+  const filaAnchico = main.getByText('Anchico').closest('tr');
+  if (!filaAnchico) throw new Error('No se encontró la fila de Anchico');
+  expect(within(filaAnchico).getByText('1')).toBeInTheDocument();
+  expect(within(filaAnchico).getByText('1.234')).toBeInTheDocument();
+  // Ibirá Pitá: sin uso → 0 plantaciones y 0 árboles.
+  const filaIbira = main.getByText('Ibirá Pitá').closest('tr');
+  if (!filaIbira) throw new Error('No se encontró la fila de Ibirá Pitá');
+  expect(within(filaIbira).getAllByText('0').length).toBeGreaterThanOrEqual(2);
+});
+
+test('la búsqueda filtra la lista y deja solo las coincidencias', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await screen.findByText('Anchico');
+  await usuario.type(enMain().getByPlaceholderText(/Buscar por nombre/i), 'Ibirá');
+
+  await waitFor(() => expect(enMain().queryByText('Anchico')).not.toBeInTheDocument());
+  expect(enMain().getByText('Ibirá Pitá')).toBeInTheDocument();
+});
+
+test('una búsqueda sin coincidencias muestra el vacío del listado', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await screen.findByText('Anchico');
+  await usuario.type(enMain().getByPlaceholderText(/Buscar por nombre/i), 'zzz-no-existe');
+
+  expect(
+    await enMain().findByText('No hay especies que coincidan con la búsqueda'),
+  ).toBeInTheDocument();
+  expect(enMain().queryByText('Anchico')).not.toBeInTheDocument();
 });
 
 test('"Nueva especie" abre el modal en modo alta (campos vacíos)', async () => {

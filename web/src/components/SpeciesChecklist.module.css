@@ -66,6 +66,14 @@
   background-color: var(--color-primary);
 }
 
+.sinResultados {
+  margin: 0;
+  padding: var(--space-2xl) var(--space-sm);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
 .punto {
   flex-shrink: 0;
   width: 10px;

@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
@@ -261,5 +261,36 @@ describe('sección Árboles', () => {
     expect(within(dialogo).getByText(/±5m/)).toBeInTheDocument();
     // El mapa real está mockeado; basta su placeholder.
     expect(within(dialogo).getByText('Mapa del árbol')).toBeInTheDocument();
+  });
+
+  test('el detalle se cierra con la tecla ESC', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.click(filaDe('A-001'));
+    await screen.findByRole('dialog', { name: 'A-001' });
+
+    await usuario.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'A-001' })).not.toBeInTheDocument(),
+    );
+  });
+
+  test('el detalle se cierra al hacer click en el overlay (fuera de la card)', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.click(filaDe('A-001'));
+    const dialogo = await screen.findByRole('dialog', { name: 'A-001' });
+    // El overlay envuelve la card: un click ahí (no dentro del diálogo) cierra.
+    const overlay = dialogo.parentElement;
+    if (!overlay) throw new Error('El diálogo no tiene overlay contenedor');
+    await usuario.click(overlay);
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'A-001' })).not.toBeInTheDocument(),
+    );
   });
 });

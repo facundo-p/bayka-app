@@ -72,6 +72,28 @@ test('filtra el catálogo por la búsqueda (nombre/código/científico)', () => 
   expect(screen.queryByRole('checkbox', { name: 'Algarrobo' })).not.toBeInTheDocument();
 });
 
+test('con catálogo no vacío pero búsqueda sin coincidencias muestra el "sin resultados"', () => {
+  renderChecklist({ busqueda: 'zzz-no-existe' });
+  expect(screen.getByText('Ninguna especie coincide con la búsqueda')).toBeInTheDocument();
+  // Sin filas: ninguna especie del catálogo queda visible.
+  expect(screen.queryByRole('checkbox', { name: 'Algarrobo' })).not.toBeInTheDocument();
+});
+
+test('con catálogo vacío no muestra el "sin resultados" (solo lista vacía)', () => {
+  render(
+    <SpeciesChecklist
+      catalogo={[]}
+      habilitadas={new Set()}
+      onToggle={vi.fn()}
+      estadoMaestro="ninguna"
+      onMaestro={vi.fn()}
+      busqueda=""
+      onBuscar={vi.fn()}
+    />,
+  );
+  expect(screen.queryByText('Ninguna especie coincide con la búsqueda')).not.toBeInTheDocument();
+});
+
 test('el maestro refleja el tri-estado con aria-checked (mixed/true/false)', () => {
   const { rerender } = render(
     <SpeciesChecklist

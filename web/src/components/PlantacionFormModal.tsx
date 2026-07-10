@@ -20,17 +20,16 @@ import { Modal } from './Modal';
 import { Textarea } from './Textarea';
 import styles from './PlantacionFormModal.module.css';
 
-/** Campos editables de una plantación; los de la migración 024 pueden venir
- *  null/ausentes si la migración no está aplicada → inputs vacíos. */
+/** Campos editables de una plantación por el formulario web; los de la migración
+ *  024 pueden venir null/ausentes si la migración no está aplicada → inputs
+ *  vacíos. (Superficie/ubicación son columnas reales del modelo de lectura, pero
+ *  el formulario web ya no las edita, así que no forman parte de este tipo.) */
 export type PlantacionEditable = {
   id: string;
   lugar: string;
   periodo: string;
   descripcion?: string | null;
   fechaInicio?: string | null;
-  superficieHa?: number | null;
-  ubicacionLat?: number | null;
-  ubicacionLng?: number | null;
   objetivoArboles?: number | null;
 };
 
