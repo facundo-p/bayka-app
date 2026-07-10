@@ -60,6 +60,9 @@ const CLASE_AVATAR_ROL: Record<Rol, string> = {
 };
 
 type Filtro = 'todos' | 'admins' | 'tecnicos';
+type FiltroEstado = 'todos' | 'activos' | 'inactivos';
+
+const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo' } as const;
 
 /** Nombre visible: un perfil sin nombre se identifica por el id corto. */
 function nombreVisible(usuario: UsuarioConAsignaciones): string {
@@ -87,9 +90,9 @@ function calcularSubtitulo(usuarios: UsuarioConAsignaciones[]): string {
   );
 }
 
-/** Filtro cliente. "Admins" agrupa admin+superadmin (ambos con acceso de
- *  gestión); "Técnicos" sólo técnicos; "Todos" sin filtro. */
-function filtrar(usuarios: UsuarioConAsignaciones[], filtro: Filtro): UsuarioConAsignaciones[] {
+/** Filtro cliente por rol. "Admins" agrupa admin+superadmin (ambos con acceso
+ *  de gestión); "Técnicos" sólo técnicos; "Todos" sin filtro. */
+function filtrarPorRol(usuarios: UsuarioConAsignaciones[], filtro: Filtro): UsuarioConAsignaciones[] {
   if (filtro === 'admins') {
     return usuarios.filter((u) => u.rol === ROL.ADMIN || u.rol === ROL.SUPERADMIN);
   }
@@ -97,10 +100,26 @@ function filtrar(usuarios: UsuarioConAsignaciones[], filtro: Filtro): UsuarioCon
   return usuarios;
 }
 
+/** Filtro cliente por estado; compone con el de rol. */
+function filtrarPorEstado(
+  usuarios: UsuarioConAsignaciones[],
+  filtro: FiltroEstado,
+): UsuarioConAsignaciones[] {
+  if (filtro === 'activos') return usuarios.filter((u) => u.activo);
+  if (filtro === 'inactivos') return usuarios.filter((u) => !u.activo);
+  return usuarios;
+}
+
 const OPCIONES_FILTRO: Array<{ value: Filtro; label: string }> = [
   { value: 'todos', label: 'Todos' },
   { value: 'admins', label: 'Admins' },
   { value: 'tecnicos', label: 'Técnicos' },
+];
+
+const OPCIONES_FILTRO_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
+  { value: 'todos', label: 'Todos' },
+  { value: 'activos', label: 'Activos' },
+  { value: 'inactivos', label: 'Inactivos' },
 ];
 
 /** Por qué la acción "Cambiar rol" está deshabilitada (null = habilitada). */
@@ -122,9 +141,12 @@ function CeldaUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
       </span>
       <span className={styles.usuarioTexto}>
         <span className={styles.nombre}>{nombreVisible(usuario)}</span>
-        {/* No hay email en el schema: usamos la organización como línea secundaria. */}
-        {usuario.organizacionNombre && (
-          <span className={styles.organizacion}>{usuario.organizacionNombre}</span>
+        {/* Email como identificador secundario; perfiles previos al backfill
+            de la migración 026 caen a la organización. */}
+        {(usuario.email ?? usuario.organizacionNombre) && (
+          <span className={styles.organizacion}>
+            {usuario.email ?? usuario.organizacionNombre}
+          </span>
         )}
       </span>
     </div>
@@ -163,6 +185,15 @@ const COLUMNAS: Array<TableColumn<UsuarioConAsignaciones>> = [
     key: 'rol',
     header: 'Rol',
     render: (usuario) => <Badge variant={usuario.rol}>{ETIQUETA_ROL[usuario.rol]}</Badge>,
+  },
+  {
+    key: 'estado',
+    header: 'Estado',
+    render: (usuario) => (
+      <Badge variant={usuario.activo ? 'activa' : 'neutral'} dot>
+        {usuario.activo ? ETIQUETA_ESTADO.activo : ETIQUETA_ESTADO.inactivo}
+      </Badge>
+    ),
   },
   {
     key: 'plantaciones',
@@ -292,6 +323,7 @@ function AgregarUsuarioModal({ onClose }: { onClose: () => void }) {
 export function UsuariosScreen() {
   const { perfil } = useAuth();
   const [filtro, setFiltro] = useState<Filtro>('todos');
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
   const [usuarioEnEdicion, setUsuarioEnEdicion] = useState<UsuarioConAsignaciones | null>(null);
   const [agregarAbierto, setAgregarAbierto] = useState(false);
   const { data, isPending, isError, refetch } = useQuery({
@@ -324,6 +356,12 @@ export function UsuariosScreen() {
             value={filtro}
             onChange={setFiltro}
           />
+          <SegmentedControl
+            aria-label="Filtrar por estado"
+            options={OPCIONES_FILTRO_ESTADO}
+            value={filtroEstado}
+            onChange={setFiltroEstado}
+          />
         </div>
         {isPending && <Cargando />}
         {isError && !data && (
@@ -342,7 +380,7 @@ export function UsuariosScreen() {
             <div className={styles.tablaScroll}>
               <Table
                 columns={columnas}
-                rows={filtrar(data, filtro)}
+                rows={filtrarPorEstado(filtrarPorRol(data, filtro), filtroEstado)}
                 getRowKey={(usuario) => usuario.id}
                 emptyMessage="No hay usuarios con ese rol"
               />
