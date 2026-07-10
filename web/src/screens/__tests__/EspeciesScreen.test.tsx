@@ -1,4 +1,5 @@
 import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { renderRutasEn } from '../../test/renderConRutas';
 
@@ -55,4 +56,30 @@ test('renderiza H1, subtítulo y una fila de especie con su uso', async () => {
   expect(main.getByText('Parapiptadenia rigida')).toBeInTheDocument();
   // Anchico: 1 plantación, 1.234 árboles.
   expect(main.getByText('1.234')).toBeInTheDocument();
+});
+
+test('"Nueva especie" abre el modal en modo alta (campos vacíos)', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await screen.findByText('Anchico');
+  await usuario.click(screen.getByRole('button', { name: 'Nueva especie' }));
+
+  expect(await screen.findByRole('heading', { name: 'Nueva especie' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Código *')).toHaveValue('');
+  expect(screen.getByLabelText('Nombre común *')).toHaveValue('');
+});
+
+test('click en una fila abre el modal de edición precargado con esa especie', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await usuario.click(await screen.findByText('Anchico'));
+
+  expect(await screen.findByRole('heading', { name: 'Editar especie' })).toBeInTheDocument();
+  expect(screen.getByLabelText('Código *')).toHaveValue('ANC');
+  expect(screen.getByLabelText('Nombre común *')).toHaveValue('Anchico');
+  expect(screen.getByLabelText('Nombre científico')).toHaveValue('Parapiptadenia rigida');
 });
