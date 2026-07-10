@@ -124,6 +124,28 @@ test('flecha abajo + Enter navega al resultado resaltado', async () => {
   expect(await screen.findByRole('heading', { name: 'La Maluka' })).toBeInTheDocument();
 });
 
+test('aria-activedescendant del input sigue a la opción resaltada', async () => {
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  const input = within(dialog).getByPlaceholderText(/Buscar plantaciones/);
+  await usuario.type(input, 'Maluka');
+  await within(dialog).findByRole('option', { name: /La Maluka/ });
+
+  // aria-controls apunta al listbox; activedescendant a la opción resaltada.
+  const listbox = within(dialog).getByRole('listbox');
+  expect(input).toHaveAttribute('aria-controls', listbox.id);
+  const primerId = input.getAttribute('aria-activedescendant');
+  expect(primerId).toBeTruthy();
+  expect(document.getElementById(primerId!)).toHaveAttribute('aria-selected', 'true');
+
+  fireEvent.keyDown(dialog, { key: 'ArrowDown' });
+  await waitFor(() =>
+    expect(input.getAttribute('aria-activedescendant')).not.toBe(primerId),
+  );
+  const segundoId = input.getAttribute('aria-activedescendant');
+  expect(document.getElementById(segundoId!)).toHaveAttribute('aria-selected', 'true');
+});
+
 test('Escape cierra la paleta', async () => {
   const dialog = await abrirPaleta();
   fireEvent.keyDown(dialog, { key: 'Escape' });
