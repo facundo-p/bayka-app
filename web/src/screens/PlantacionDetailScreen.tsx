@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Pencil, Plus } from 'lucide-react';
+import { Download, Pencil, Plus } from 'lucide-react';
 import {
   Breadcrumb,
   Button,
@@ -17,7 +17,17 @@ import {
 import { formatearFechaCorta } from '../lib/fechas';
 import { obtenerPlantacion, type Plantacion } from '../queries/plantationQueries';
 import { idsGenerados } from '../queries/idsQueries';
+import { listarPuntosGps } from '../queries/mapaQueries';
+import {
+  construirKml,
+  descargarTexto,
+  nombreArchivoKml,
+  TIPO_MIME_KML,
+} from '../services/exportarKml';
 import styles from './PlantacionDetailScreen.module.css';
+
+const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
+const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
 
 const TAMANO_ICONO = 16;
 
@@ -57,11 +67,34 @@ function lineaMeta(plantacion: Plantacion): string {
 }
 
 /**
- * Acciones de la topbar según el estado de IDs (regla de negocio de mobile):
- * "Generar IDs" hasta que estén generados; "Exportar" sólo después. Ambas aún
- * sin backend en la web (placeholders no-op). Mientras carga, no muestra nada.
+ * Descarga los puntos GPS de la plantación como KML (Google Maps/Earth):
+ * carga los puntos, arma el XML y dispara la descarga. Expone estado de carga
+ * y un mensaje para el caso "sin puntos" (no se descarga un archivo vacío).
  */
-function AccionesDetalle({ plantationId }: { plantationId: string }) {
+function useDescargaKml(plantacion: Plantacion) {
+  const [descargando, setDescargando] = useState(false);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  async function descargar() {
+    setMensaje(null);
+    setDescargando(true);
+    try {
+      const puntos = await listarPuntosGps(plantacion.id);
+      if (puntos.length === 0) return setMensaje(MENSAJE_SIN_PUNTOS);
+      const nombreDocumento = `Puntos GPS – ${plantacion.lugar} (${plantacion.periodo})`;
+      const kml = construirKml(puntos, { nombreDocumento });
+      descargarTexto(kml, nombreArchivoKml(plantacion.lugar, plantacion.periodo), TIPO_MIME_KML);
+    } catch {
+      setMensaje(MENSAJE_ERROR_KML);
+    } finally {
+      setDescargando(false);
+    }
+  }
+  return { descargar, descargando, mensaje };
+}
+
+/** Botón de estado de IDs (regla de mobile): "Generar IDs" hasta generarlos,
+ *  "Exportar" después. Ambos sin backend web todavía (no-op). */
+function BotonEstadoIds({ plantationId }: { plantationId: string }) {
   const { data: generados } = useQuery({
     queryKey: ['ids-generados', plantationId],
     queryFn: () => idsGenerados(plantationId),
@@ -76,6 +109,26 @@ function AccionesDetalle({ plantationId }: { plantationId: string }) {
       <Plus size={TAMANO_ICONO} />
       Generar IDs
     </Button>
+  );
+}
+
+/** Acciones de la topbar: descarga de KML (siempre visible) + botón de estado
+ *  de IDs. El mensaje inline cubre el caso "sin puntos GPS". */
+function AccionesDetalle({ plantacion }: { plantacion: Plantacion }) {
+  const { descargar, descargando, mensaje } = useDescargaKml(plantacion);
+  return (
+    <div className={styles.acciones}>
+      {mensaje && (
+        <span className={styles.mensajeAccion} role="alert">
+          {mensaje}
+        </span>
+      )}
+      <Button variant="secondary" onClick={() => void descargar()} loading={descargando}>
+        <Download size={TAMANO_ICONO} />
+        Descargar KML
+      </Button>
+      <BotonEstadoIds plantationId={plantacion.id} />
+    </div>
   );
 }
 
@@ -122,7 +175,7 @@ export function PlantacionDetailScreen() {
             items={[{ label: 'Plantaciones', to: '/plantaciones' }, { label: data.lugar }]}
           />
         }
-        right={<AccionesDetalle plantationId={data.id} />}
+        right={<AccionesDetalle plantacion={data} />}
       />
       <BloqueTitulo plantacion={data} onEditar={() => setEditando(true)} />
       <div className={styles.tabs}>
