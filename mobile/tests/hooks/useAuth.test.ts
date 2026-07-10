@@ -287,6 +287,92 @@ describe('useAuth', () => {
 
       expect(result.current.role).toBe('admin');
     });
+
+    it('un superadmin obtiene su rol y se cachea (opera como admin en campo)', async () => {
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { rol: 'superadmin', activo: true }, error: null }),
+          }),
+        }),
+      });
+      const mockSession = { access_token: 'token', refresh_token: 'refresh', user: { id: 'u-1', email: 'a@a.com' } };
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession } });
+
+      const { result } = renderHook(() => useAuth());
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.role).toBe('superadmin');
+      expect(SecureStore.setItemAsync).toHaveBeenCalledWith('user_role', 'superadmin');
+    });
+  });
+
+  describe('cuenta desactivada (baja reversible desde la web)', () => {
+    function mockPerfilDesactivado() {
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockReturnValue({
+            single: jest.fn().mockResolvedValue({ data: { rol: 'tecnico', activo: false }, error: null }),
+          }),
+        }),
+      });
+    }
+
+    it('en el init online con sesión, desloguea y no restaura rol', async () => {
+      mockPerfilDesactivado();
+      const mockSession = { access_token: 'token', refresh_token: 'refresh', user: { id: 'u-1', email: 'a@a.com' } };
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: mockSession } });
+
+      const { result } = renderHook(() => useAuth());
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.session).toBeNull();
+      expect(result.current.role).toBeNull();
+      // El signOut explícito borra la key de rol (única excepción del contrato).
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user_role');
+    });
+
+    it('en el signIn online devuelve el mensaje de cuenta desactivada y no cachea credenciales', async () => {
+      mockPerfilDesactivado();
+      const mockSession = { access_token: 'token-abc', refresh_token: 'refresh-abc', user: { id: 'user-1', email: 'test@test.com' } };
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+        data: { session: mockSession },
+        error: null,
+      });
+      const { cacheCredential } = require('../../src/services/OfflineAuthService');
+
+      const { result } = renderHook(() => useAuth());
+      let signInResult: any;
+      await act(async () => {
+        signInResult = await result.current.signIn('test@test.com', 'password');
+      });
+
+      expect(signInResult.error.message).toContain('desactivada');
+      expect(signInResult.data.session).toBeNull();
+      expect(cacheCredential).not.toHaveBeenCalled();
+    });
+
+    it('offline NO consulta el estado: restaura la sesión cacheada (contrato intacto)', async () => {
+      setOffline();
+      (readCachedSession as jest.Mock).mockResolvedValue({
+        access_token: 'cached-token',
+        refresh_token: 'cached-refresh',
+      });
+      (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('tecnico');
+
+      const { result } = renderHook(() => useAuth());
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+
+      expect(result.current.session).not.toBeNull();
+      expect(result.current.role).toBe('tecnico');
+      expect(supabase.from).not.toHaveBeenCalled();
+    });
   });
 
   describe('cross-instance broadcast', () => {

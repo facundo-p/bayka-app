@@ -5,6 +5,20 @@
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../../src/supabase/authErrors';
 
 describe('classifyAuthError', () => {
+  describe('account_disabled (baja reversible desde la web)', () => {
+    it('mapea el código user_banned de GoTrue', () => {
+      expect(classifyAuthError({ status: 400, code: 'user_banned', message: 'User is banned' })).toBe('account_disabled');
+    });
+
+    it('mapea el mensaje "banned" sin código', () => {
+      expect(classifyAuthError({ message: 'User is banned' })).toBe('account_disabled');
+    });
+
+    it('tiene mensaje en español para el usuario', () => {
+      expect(authErrorMessage({ code: 'user_banned' })).toBe('Tu cuenta fue desactivada. Contactá a un administrador.');
+    });
+  });
+
   describe('connectivity (backend down / unreachable)', () => {
     it('maps the non-JSON parse error from a down backend', () => {
       expect(classifyAuthError({ message: 'JSON Parse error: Unexpected character e' })).toBe('connectivity');

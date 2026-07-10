@@ -4,6 +4,7 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import migrations from '../drizzle/migrations';
 import { db } from '../src/database/client';
 import { useAuth } from '../src/hooks/useAuth';
+import { esRolAdmin } from '../src/types/domain';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { Text, View, Image } from 'react-native';
 import { useEffect } from 'react';
@@ -77,7 +78,7 @@ export default function RootLayout() {
       if (!inAuthGroup) {
         router.replace('/(auth)/login');
       }
-    } else if (role === 'admin') {
+    } else if (esRolAdmin(role)) {
       if (!inAdminGroup) {
         router.replace('/(admin)/plantaciones');
       }

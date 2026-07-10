@@ -56,16 +56,25 @@ async function syncAutoRefresh(isConnected: boolean | null) {
 
 // ─── Helpers (no network when offline) ──────────────────────────────────────
 
+/** Respuesta ONLINE explícita: el server marcó la cuenta como desactivada
+ *  (baja reversible desde la web). Distinto de un fallo de red, que cae al
+ *  rol cacheado sin romper el contrato offline. */
+export const CUENTA_DESACTIVADA = 'cuenta-desactivada' as const;
+type RolObtenido = Role | typeof CUENTA_DESACTIVADA | null;
+
 /**
  * Fetch role from Supabase profiles, cache it, return it.
  * Falls back to cached role on timeout/error. ONLY called when online.
  */
-async function fetchAndCacheRole(userId: string, email?: string): Promise<Role | null> {
+async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObtenido> {
   try {
     const { data: profile } = await withTimeout(
-      supabase.from('profiles').select('rol').eq('id', userId).single(),
+      supabase.from('profiles').select('rol, activo').eq('id', userId).single(),
       ROLE_FETCH_TIMEOUT,
     );
+    if (profile && profile.activo === false) {
+      return CUENTA_DESACTIVADA;
+    }
     if (profile?.rol) {
       await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
       if (email) await SecureStore.setItemAsync(EMAIL_KEY, email);
@@ -132,7 +141,14 @@ export function useAuth() {
               await persistSession(supabaseSession);
               await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
               const cachedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
-              restored = { session: supabaseSession, role: cachedRole };
+              if (cachedRole === CUENTA_DESACTIVADA) {
+                // Baja confirmada por el server: signOut explícito (única vía
+                // legítima de borrar las keys según el contrato offline).
+                await signOut();
+                restored = { session: null, role: null };
+              } else {
+                restored = { session: supabaseSession, role: cachedRole };
+              }
             } else {
               restored = await restoreFromCache();
             }
@@ -166,6 +182,16 @@ export function useAuth() {
           await persistSession(supabaseSession);
           await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
           const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
+
+          if (fetchedRole === CUENTA_DESACTIVADA) {
+            await signOut();
+            if (mounted) {
+              setSession(null);
+              setRole(null);
+              setLoading(false);
+            }
+            return;
+          }
 
           if (mounted) {
             setSession(supabaseSession);
@@ -225,15 +251,18 @@ export function useAuth() {
     return { data: { session: offlineSession, user: null }, error: null };
   }
 
-  /** Persist + cache everything after a successful online sign in. */
-  async function persistOnlineSession(email: string, password: string, session: any) {
+  /** Persist + cache everything after a successful online sign in.
+   *  Devuelve false si la cuenta está desactivada (no se cachea nada). */
+  async function persistOnlineSession(email: string, password: string, session: any): Promise<boolean> {
     await persistSession(session);
     await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
     await syncAutoRefresh(true);
 
-    const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '') ?? 'tecnico';
-    await cacheCredential(email, password, userRole);
+    const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '');
+    if (userRole === CUENTA_DESACTIVADA) return false;
+    await cacheCredential(email, password, userRole ?? 'tecnico');
     await saveLastOnlineLogin();
+    return true;
   }
 
   /**
@@ -267,7 +296,16 @@ export function useAuth() {
     }
 
     if (!result.error) {
-      if (result.data.session) await persistOnlineSession(email, password, result.data.session);
+      if (result.data.session) {
+        const cuentaActiva = await persistOnlineSession(email, password, result.data.session);
+        if (!cuentaActiva) {
+          await signOut();
+          return {
+            data: { session: null, user: null },
+            error: { message: AUTH_MESSAGES.account_disabled },
+          };
+        }
+      }
       return result;
     }
 
