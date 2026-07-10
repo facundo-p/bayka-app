@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
+import { ESTADO_PLANTACION } from '../queries/plantationQueries';
 import type { Perfil } from './profileRepository';
 
 /** Datos del formulario ya validados y tipados. Los opcionales ausentes
@@ -98,7 +99,7 @@ async function crearParcelaDefault(plantationId: string): Promise<void> {
 export async function crearPlantacion(input: PlantacionInput, perfil: Perfil): Promise<string> {
   const base: Payload = {
     ...camposBase(input),
-    estado: 'activa',
+    estado: ESTADO_PLANTACION.activa,
     organizacion_id: perfil.organizacionId,
     creado_por: perfil.id,
   };

@@ -156,7 +156,7 @@ export async function obtenerTemporadaActivaId(): Promise<string | null> {
   const { data, error } = await supabase
     .from('trees')
     .select('created_at, groups!inner(plantation_id, plantations!inner(estado))')
-    .eq('groups.plantations.estado', 'activa')
+    .eq('groups.plantations.estado', ESTADO_PLANTACION.activa)
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) throw new Error(error.message);
