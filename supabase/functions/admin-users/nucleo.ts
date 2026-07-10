@@ -68,7 +68,8 @@ const fallo = (status: number, error: string): Respuesta => ({
   body: { ok: false, error },
 });
 
-function emailValido(email: unknown): email is string {
+/** Validación mínima de email; la web la reutiliza para validar antes de enviar. */
+export function emailValido(email: unknown): email is string {
   return typeof email === 'string' && /^\S+@\S+\.\S+$/.test(email);
 }
 

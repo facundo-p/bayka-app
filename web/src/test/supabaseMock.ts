@@ -30,6 +30,9 @@ const oyentes = new Set<OyenteAuth>();
 /** Llamada a `storage.createSignedUrl` capturada por el mock. */
 export type FirmaCapturada = { bucket: string; path: string; segundos: number };
 
+/** Llamada a `functions.invoke` capturada por el mock. */
+export type InvocacionCapturada = { funcion: string; cuerpo: Record<string, unknown> };
+
 /** Estado mutable que cada test configura antes de renderizar. */
 export const estadoMock: {
   sesion: SesionMock | null;
@@ -42,6 +45,14 @@ export const estadoMock: {
   errorFirma: { message: string } | null;
   /** URLs firmadas pedidas durante el test. */
   firmas: FirmaCapturada[];
+  /** Respuesta de functions.invoke (null = { ok: true } sin error). */
+  respuestaInvoke: { data: unknown; error: unknown } | null;
+  /** Invocaciones a edge functions capturadas. */
+  invocaciones: InvocacionCapturada[];
+  /** Error a devolver en auth.updateUser (null = éxito). */
+  errorUpdateUser: { message: string } | null;
+  /** Payloads de auth.updateUser capturados. */
+  actualizacionesUsuario: Array<Record<string, unknown>>;
 } = {
   sesion: null,
   perfilFila: null,
@@ -50,6 +61,10 @@ export const estadoMock: {
   resolverConsulta: null,
   errorFirma: null,
   firmas: [],
+  respuestaInvoke: null,
+  invocaciones: [],
+  errorUpdateUser: null,
+  actualizacionesUsuario: [],
 };
 
 export function resetEstadoMock(): void {
@@ -60,6 +75,10 @@ export function resetEstadoMock(): void {
   estadoMock.resolverConsulta = null;
   estadoMock.errorFirma = null;
   estadoMock.firmas = [];
+  estadoMock.respuestaInvoke = null;
+  estadoMock.invocaciones = [];
+  estadoMock.errorUpdateUser = null;
+  estadoMock.actualizacionesUsuario = [];
   oyentes.clear();
 }
 
@@ -105,6 +124,19 @@ export const supabaseMock = {
       estadoMock.sesion = null;
       emitir('SIGNED_OUT');
       return { error: null };
+    }),
+    updateUser: vi.fn(async (campos: Record<string, unknown>) => {
+      estadoMock.actualizacionesUsuario.push(campos);
+      if (estadoMock.errorUpdateUser) {
+        return { data: { user: null }, error: estadoMock.errorUpdateUser };
+      }
+      return { data: { user: estadoMock.sesion?.user ?? null }, error: null };
+    }),
+  },
+  functions: {
+    invoke: vi.fn(async (funcion: string, opciones: { body: Record<string, unknown> }) => {
+      estadoMock.invocaciones.push({ funcion, cuerpo: opciones.body });
+      return estadoMock.respuestaInvoke ?? { data: { ok: true }, error: null };
     }),
   },
   from: vi.fn((tabla: string) => crearConsultaMock(tabla, resolverPorDefecto)),

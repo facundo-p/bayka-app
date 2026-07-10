@@ -166,7 +166,42 @@ test('el filtro Técnicos deja sólo a los técnicos', async () => {
   expect(tabla.queryByText('Sofía Súper')).not.toBeInTheDocument();
 });
 
-test('"Agregar usuario" abre un aviso: el alta se hace desde Supabase', async () => {
+test('"Agregar usuario" invita por email con el rol elegido y refresca el listado', async () => {
+  const consultas = configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  await usuario.click(screen.getByRole('button', { name: 'Agregar usuario' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Agregar usuario' });
+
+  // Sin datos válidos no se puede enviar.
+  const enviar = within(dialogo).getByRole('button', { name: 'Enviar invitación' });
+  expect(enviar).toBeDisabled();
+  await usuario.type(within(dialogo).getByLabelText('Nombre'), 'Nueva Persona');
+  await usuario.type(within(dialogo).getByLabelText('Email'), 'no-es-email');
+  expect(enviar).toBeDisabled();
+  await usuario.clear(within(dialogo).getByLabelText('Email'));
+  await usuario.type(within(dialogo).getByLabelText('Email'), 'nueva@bayka.org');
+  expect(within(dialogo).getByText(/email para definir su contraseña/)).toBeInTheDocument();
+
+  await usuario.click(enviar);
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  expect(estadoMock.invocaciones).toEqual([
+    {
+      funcion: 'admin-users',
+      cuerpo: { accion: 'crear', nombre: 'Nueva Persona', email: 'nueva@bayka.org', rol: 'tecnico' },
+    },
+  ]);
+  // La invalidación vuelve a pedir el listado de perfiles.
+  const listados = consultas.filter(
+    (consulta) => consulta.tabla === 'profiles' && consulta.operacion === 'select',
+  );
+  expect(listados.length).toBeGreaterThan(1);
+});
+
+test('al promover a superadmin desde el alta se muestra la advertencia', async () => {
   configurarUsuariosMock();
   const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
@@ -174,7 +209,31 @@ test('"Agregar usuario" abre un aviso: el alta se hace desde Supabase', async ()
 
   await usuario.click(screen.getByRole('button', { name: 'Agregar usuario' }));
   const dialogo = screen.getByRole('dialog', { name: 'Agregar usuario' });
-  expect(within(dialogo).getByText(/se dan de alta desde el dashboard de Supabase/)).toBeInTheDocument();
+  await usuario.selectOptions(within(dialogo).getByLabelText('Rol'), 'superadmin');
+  expect(within(dialogo).getByRole('status')).toHaveTextContent(
+    'acceso total, incluida la gestión de usuarios',
+  );
+});
+
+test('un error del alta (email duplicado) se muestra en el modal', async () => {
+  configurarUsuariosMock();
+  estadoMock.respuestaInvoke = {
+    data: { ok: false, error: 'Ya existe un usuario con ese email' },
+    error: null,
+  };
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  await usuario.click(screen.getByRole('button', { name: 'Agregar usuario' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Agregar usuario' });
+  await usuario.type(within(dialogo).getByLabelText('Nombre'), 'Dup');
+  await usuario.type(within(dialogo).getByLabelText('Email'), 'dup@bayka.org');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Enviar invitación' }));
+
+  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+    'Ya existe un usuario con ese email',
+  );
 });
 
 test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida la lista', async () => {
