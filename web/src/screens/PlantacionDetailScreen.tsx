@@ -18,16 +18,24 @@ import { formatearFechaCorta } from '../lib/fechas';
 import { obtenerPlantacion, type Plantacion } from '../queries/plantationQueries';
 import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
+import { listarFilasExportacion } from '../queries/exportacionQueries';
 import {
   construirKml,
   descargarTexto,
   nombreArchivoKml,
   TIPO_MIME_KML,
 } from '../services/exportarKml';
+import { descargarCsvExportacion } from '../services/exportarCsv';
 import styles from './PlantacionDetailScreen.module.css';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
+const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
+const MENSAJE_ERROR_CSV = 'No se pudieron cargar los árboles para exportar.';
+
+/** Los IDs finales se generan contra el SQLite local del admin (algoritmo
+ *  determinístico en la app), no en la web: el botón queda informativo. */
+const TOOLTIP_GENERAR_IDS = 'Los IDs finales se generan desde la Bayka App.';
 
 const TAMANO_ICONO = 16;
 
@@ -92,30 +100,81 @@ function useDescargaKml(plantacion: Plantacion) {
   return { descargar, descargando, mensaje };
 }
 
-/** Botón de estado de IDs (regla de mobile): "Generar IDs" hasta generarlos,
- *  "Exportar" después. Ambos sin backend web todavía (no-op). */
-function BotonEstadoIds({ plantationId }: { plantationId: string }) {
-  const { data: generados } = useQuery({
-    queryKey: ['ids-generados', plantationId],
-    queryFn: () => idsGenerados(plantationId),
-  });
-  if (generados === undefined) return null;
-  return generados ? (
-    <Button variant="secondary" onClick={() => {}}>
-      Exportar
-    </Button>
-  ) : (
-    <Button variant="primary" onClick={() => {}}>
+/**
+ * Descarga los árboles de la plantación como CSV (compatible con Excel): carga
+ * las filas, arma el CSV con BOM y dispara la descarga. Expone estado de carga
+ * y un mensaje para el caso "sin árboles" (no se descarga una planilla vacía).
+ */
+function useDescargaCsv(plantacion: Plantacion) {
+  const [descargando, setDescargando] = useState(false);
+  const [mensaje, setMensaje] = useState<string | null>(null);
+  async function descargar() {
+    setMensaje(null);
+    setDescargando(true);
+    try {
+      const filas = await listarFilasExportacion(plantacion.id);
+      if (filas.length === 0) return setMensaje(MENSAJE_SIN_ARBOLES);
+      descargarCsvExportacion(filas, plantacion.lugar, plantacion.periodo);
+    } catch {
+      setMensaje(MENSAJE_ERROR_CSV);
+    } finally {
+      setDescargando(false);
+    }
+  }
+  return { descargar, descargando, mensaje };
+}
+
+/** "Generar IDs" informativo: la generación es exclusiva de la app (se corre
+ *  contra el SQLite local del admin), así que en la web queda deshabilitado con
+ *  un tooltip que lo explica. */
+function BotonGenerarIds() {
+  return (
+    <Button variant="primary" disabled title={TOOLTIP_GENERAR_IDS}>
       <Plus size={TAMANO_ICONO} />
       Generar IDs
     </Button>
   );
 }
 
+/** Botón de exportación a CSV, con estado de carga. */
+function BotonExportar({ onExportar, descargando }: { onExportar: () => void; descargando: boolean }) {
+  return (
+    <Button variant="secondary" onClick={onExportar} loading={descargando}>
+      <Download size={TAMANO_ICONO} />
+      Exportar
+    </Button>
+  );
+}
+
+/** Estado de IDs (regla de mobile): "Generar IDs" (informativo) hasta generarlos,
+ *  "Exportar" (CSV) después. */
+function BotonEstadoIds({
+  plantationId,
+  onExportar,
+  descargando,
+}: {
+  plantationId: string;
+  onExportar: () => void;
+  descargando: boolean;
+}) {
+  const { data: generados } = useQuery({
+    queryKey: ['ids-generados', plantationId],
+    queryFn: () => idsGenerados(plantationId),
+  });
+  if (generados === undefined) return null;
+  return generados ? (
+    <BotonExportar onExportar={onExportar} descargando={descargando} />
+  ) : (
+    <BotonGenerarIds />
+  );
+}
+
 /** Acciones de la topbar: descarga de KML (siempre visible) + botón de estado
- *  de IDs. El mensaje inline cubre el caso "sin puntos GPS". */
+ *  de IDs. El mensaje inline cubre "sin puntos GPS" y "sin árboles". */
 function AccionesDetalle({ plantacion }: { plantacion: Plantacion }) {
-  const { descargar, descargando, mensaje } = useDescargaKml(plantacion);
+  const kml = useDescargaKml(plantacion);
+  const csv = useDescargaCsv(plantacion);
+  const mensaje = csv.mensaje ?? kml.mensaje;
   return (
     <div className={styles.acciones}>
       {mensaje && (
@@ -123,11 +182,15 @@ function AccionesDetalle({ plantacion }: { plantacion: Plantacion }) {
           {mensaje}
         </span>
       )}
-      <Button variant="secondary" onClick={() => void descargar()} loading={descargando}>
+      <Button variant="secondary" onClick={() => void kml.descargar()} loading={kml.descargando}>
         <Download size={TAMANO_ICONO} />
         Descargar KML
       </Button>
-      <BotonEstadoIds plantationId={plantacion.id} />
+      <BotonEstadoIds
+        plantationId={plantacion.id}
+        onExportar={() => void csv.descargar()}
+        descargando={csv.descargando}
+      />
     </div>
   );
 }
