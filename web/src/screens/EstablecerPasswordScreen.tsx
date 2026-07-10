@@ -2,15 +2,12 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { Button, Card, Input } from '../components';
 import { supabase } from '../lib/supabase';
-import {
-  LONGITUD_MINIMA_PASSWORD,
-  MENSAJES as MENSAJES_ADMIN_USERS,
-} from '../../../supabase/functions/admin-users/nucleo';
+import { MENSAJES as MENSAJES_ADMIN_USERS } from '../../../supabase/functions/admin-users/nucleo';
+import { validarNuevaPassword } from '../lib/validarPassword';
 import styles from './EstablecerPasswordScreen.module.css';
 
 const MENSAJE_LINK_INVALIDO =
   'El link expiró o ya fue usado. Pedile a un administrador que te reenvíe la invitación.';
-const MENSAJE_NO_COINCIDEN = 'Las contraseñas no coinciden';
 const MENSAJE_EXITO = 'Contraseña lista. Ya podés ingresar con tu email.';
 const NOTA_TECNICOS = 'Si sos técnico, ingresá desde la app Bayka en tu teléfono.';
 
@@ -33,12 +30,6 @@ function useSesionDelLink(): EstadoSesion {
   return estado;
 }
 
-function validar(password: string, confirmacion: string): string | null {
-  if (password.length < LONGITUD_MINIMA_PASSWORD) return MENSAJES_ADMIN_USERS.passwordCorta;
-  if (password !== confirmacion) return MENSAJE_NO_COINCIDEN;
-  return null;
-}
-
 function FormularioPassword({ onExito }: { onExito: () => void }) {
   const [password, setPassword] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
@@ -47,7 +38,7 @@ function FormularioPassword({ onExito }: { onExito: () => void }) {
 
   async function manejarSubmit(evento: FormEvent) {
     evento.preventDefault();
-    const invalidez = validar(password, confirmacion);
+    const invalidez = validarNuevaPassword(password, confirmacion);
     if (invalidez) {
       setError(invalidez);
       return;

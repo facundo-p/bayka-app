@@ -1,0 +1,63 @@
+.contenedor {
+  position: relative;
+  display: inline-block;
+}
+
+/* Botón "⋯": mismo tratamiento que el disparador de acciones previo. */
+.disparador {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+  background: none;
+  border: none;
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.disparador:hover,
+.disparador[aria-expanded='true'] {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-xs));
+  z-index: 10;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-sm);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-modal);
+}
+
+.item {
+  padding: var(--space-md) var(--space-xl);
+  background: none;
+  border: none;
+  border-radius: var(--radius-control);
+  text-align: left;
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+  cursor: pointer;
+}
+
+.item:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+}
+
+.item:disabled {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
+.destructiva:not(:disabled) {
+  color: var(--color-danger);
+}
