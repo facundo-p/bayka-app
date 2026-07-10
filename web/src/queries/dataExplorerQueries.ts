@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
+import { leerPaginado } from './leerPaginado';
 
 export type TipoGrupo = 'linea' | 'bosquete';
 export type EstadoGrupo = 'activa' | 'finalizada';
@@ -10,9 +11,6 @@ export { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 
 /** Tamaño de página del listado de árboles. */
 export const ARBOLES_POR_PAGINA = 50;
-
-/** Tope de filas al leer los group_id de todos los árboles de una plantación. */
-const LIMITE_CONTEO_ARBOLES = 10000;
 
 export type ParcelaConStats = {
   id: string;
@@ -159,20 +157,21 @@ export async function listarParcelasConStats(plantationId: string): Promise<Parc
 }
 
 /**
- * Cuenta árboles por grupo en una sola lectura: trae los group_id de todos
- * los árboles de la plantación y agrega en cliente con un Map. Con hasta
- * ~250 grupos, un count head por grupo serían ~250 viajes (N+1); una sola
- * query con tope de filas alcanza para el volumen real de una plantación.
+ * Cuenta árboles por grupo: trae los group_id de todos los árboles de la
+ * plantación y agrega en cliente con un Map. Con hasta ~250 grupos, un count
+ * head por grupo serían ~250 viajes (N+1); una lectura paginada con `.range()`
+ * trae todo el dataset sin el tope de 1000 de PostgREST.
  */
 async function contarArbolesPorGrupo(plantationId: string): Promise<Map<string, number>> {
-  const { data, error } = await supabase
-    .from('trees')
-    .select('group_id, groups!inner(plantation_id)')
-    .eq('groups.plantation_id', plantationId)
-    .limit(LIMITE_CONTEO_ARBOLES);
-  if (error) throw new Error(error.message);
+  const filas = await leerPaginado<{ group_id: string }>((desde, hasta) =>
+    supabase
+      .from('trees')
+      .select('group_id, groups!inner(plantation_id)')
+      .eq('groups.plantation_id', plantationId)
+      .range(desde, hasta),
+  );
   const conteos = new Map<string, number>();
-  for (const fila of (data ?? []) as Array<{ group_id: string }>) {
+  for (const fila of filas) {
     conteos.set(fila.group_id, (conteos.get(fila.group_id) ?? 0) + 1);
   }
   return conteos;
