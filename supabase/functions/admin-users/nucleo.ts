@@ -22,6 +22,7 @@ export const MENSAJES = {
   autoDesactivacion: 'Un superadmin no puede desactivarse a sí mismo',
   ultimoSuperadmin: 'No podés desactivar al último superadmin activo',
   passwordDeOtroSuperadmin: 'No podés cambiar la contraseña de otro superadmin',
+  emailDeOtroSuperadmin: 'No podés cambiar el email de otro superadmin',
   emailDuplicado: 'Ya existe un usuario con ese email',
   usuarioInexistente: 'Usuario inexistente',
   solicitudInvalida: 'Solicitud inválida',
@@ -43,7 +44,13 @@ export type Deps = {
   perfilDelToken: (jwt: string) => Promise<PerfilDb | null>;
   buscarPerfil: (userId: string) => Promise<PerfilDb | null>;
   contarSuperadminsActivos: () => Promise<number>;
-  invitar: (email: string, meta: { nombre: string; rol: string }) => Promise<{ error: string | null }>;
+  /** Invita por email; devuelve el id del usuario creado (para setear su rol). */
+  invitar: (
+    email: string,
+    meta: { nombre: string },
+  ) => Promise<{ error: string | null; userId: string | null }>;
+  /** Setea el rol en profiles con service_role (el trigger crea siempre tecnico). */
+  asignarRol: (userId: string, rol: string) => Promise<{ error: string | null }>;
   enviarRecuperacion: (email: string) => Promise<{ error: string | null }>;
   banear: (userId: string, banear: boolean) => Promise<{ error: string | null }>;
   actualizarAuth: (
@@ -72,6 +79,10 @@ function emailValido(email: unknown): email is string {
   return typeof email === 'string' && /^\S+@\S+\.\S+$/.test(email);
 }
 
+function userIdValido(userId: unknown): userId is string {
+  return typeof userId === 'string' && userId !== '';
+}
+
 /** null si pasó la validación; una Respuesta de error si no. */
 function validarCuerpo(cuerpo: CuerpoAdminUsers): Respuesta | null {
   switch (cuerpo.accion) {
@@ -85,17 +96,17 @@ function validarCuerpo(cuerpo: CuerpoAdminUsers): Respuesta | null {
     case 'reenviarInvitacion':
       return emailValido(cuerpo.email) ? null : fallo(400, MENSAJES.emailInvalido);
     case 'cambiarPassword':
+      if (!userIdValido(cuerpo.userId)) return fallo(400, MENSAJES.solicitudInvalida);
       if (typeof cuerpo.password !== 'string' || cuerpo.password.length < LONGITUD_MINIMA_PASSWORD) {
         return fallo(400, MENSAJES.passwordCorta);
       }
       return null;
     case 'cambiarEmail':
+      if (!userIdValido(cuerpo.userId)) return fallo(400, MENSAJES.solicitudInvalida);
       return emailValido(cuerpo.email) ? null : fallo(400, MENSAJES.emailInvalido);
     case 'desactivar':
     case 'reactivar':
-      return typeof cuerpo.userId === 'string' && cuerpo.userId !== ''
-        ? null
-        : fallo(400, MENSAJES.solicitudInvalida);
+      return userIdValido(cuerpo.userId) ? null : fallo(400, MENSAJES.solicitudInvalida);
     default:
       return fallo(400, MENSAJES.solicitudInvalida);
   }
@@ -148,9 +159,19 @@ async function cambiarPassword(
   return cambio.error ? fallo(500, MENSAJES.errorGenerico) : ok();
 }
 
-async function cambiarEmail(userId: string, email: string, deps: Deps): Promise<Respuesta> {
+async function cambiarEmail(
+  caller: PerfilDb,
+  userId: string,
+  email: string,
+  deps: Deps,
+): Promise<Respuesta> {
   const objetivo = await deps.buscarPerfil(userId);
   if (!objetivo) return fallo(404, MENSAJES.usuarioInexistente);
+  // Mismo guard que cambiarPassword: sin él, cambiar el email de otro
+  // superadmin a una casilla propia + reenviarInvitacion = toma de cuenta.
+  if (objetivo.rol === ROL.SUPERADMIN && objetivo.id !== caller.id) {
+    return fallo(403, MENSAJES.emailDeOtroSuperadmin);
+  }
   const cambio = await deps.actualizarAuth(userId, { email });
   return cambio.error ? falloDeAuth(cambio.error) : ok();
 }
@@ -162,11 +183,15 @@ async function ejecutarAccion(
 ): Promise<Respuesta> {
   switch (cuerpo.accion) {
     case 'crear': {
-      const invitacion = await deps.invitar(cuerpo.email, {
-        nombre: cuerpo.nombre.trim(),
-        rol: cuerpo.rol,
-      });
-      return invitacion.error ? falloDeAuth(invitacion.error) : ok();
+      const invitacion = await deps.invitar(cuerpo.email, { nombre: cuerpo.nombre.trim() });
+      if (invitacion.error) return falloDeAuth(invitacion.error);
+      // El trigger crea siempre 'tecnico'; el rol elevado se setea acá con
+      // service_role (nunca desde la metadata, controlable por el cliente).
+      if (cuerpo.rol !== ROL.TECNICO && invitacion.userId) {
+        const asignacion = await deps.asignarRol(invitacion.userId, cuerpo.rol);
+        if (asignacion.error) return fallo(500, MENSAJES.errorGenerico);
+      }
+      return ok();
     }
     case 'reenviarInvitacion': {
       const envio = await deps.enviarRecuperacion(cuerpo.email);
@@ -179,7 +204,7 @@ async function ejecutarAccion(
     case 'cambiarPassword':
       return cambiarPassword(caller, cuerpo.userId, cuerpo.password, deps);
     case 'cambiarEmail':
-      return cambiarEmail(cuerpo.userId, cuerpo.email, deps);
+      return cambiarEmail(caller, cuerpo.userId, cuerpo.email, deps);
   }
 }
 
