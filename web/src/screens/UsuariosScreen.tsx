@@ -455,7 +455,7 @@ export function UsuariosScreen() {
                 columns={columnas}
                 rows={filtrarPorEstado(filtrarPorRol(data, filtro), filtroEstado)}
                 getRowKey={(usuario) => usuario.id}
-                emptyMessage="No hay usuarios con ese rol"
+                emptyMessage="No hay usuarios con esos filtros"
               />
             </div>
           ))}
