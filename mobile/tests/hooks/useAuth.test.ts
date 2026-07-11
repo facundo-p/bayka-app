@@ -24,6 +24,7 @@ jest.mock('../../src/supabase/client', () => ({
 
 jest.mock('../../src/supabase/auth', () => ({
   persistSession: jest.fn().mockResolvedValue(undefined),
+  clearSession: jest.fn().mockResolvedValue(undefined),
   readCachedSession: jest.fn().mockResolvedValue(null),
   ACCESS_TOKEN_KEY: 'access_token',
   REFRESH_TOKEN_KEY: 'refresh_token',
@@ -37,6 +38,7 @@ jest.mock('../../src/services/OfflineAuthService', () => ({
   saveLastOnlineLogin: jest.fn().mockResolvedValue(undefined),
   isOfflineLoginExpired: jest.fn().mockResolvedValue(false),
   clearCredential: jest.fn().mockResolvedValue(undefined),
+  clearAllCredentials: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../src/hooks/useCurrentUserId', () => ({
@@ -332,8 +334,12 @@ describe('useAuth', () => {
 
       expect(result.current.session).toBeNull();
       expect(result.current.role).toBeNull();
-      // El signOut explícito borra la key de rol (única excepción del contrato).
+      // Purga total: rol, tokens y credenciales offline (sin esto, re-entraría offline).
       expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user_role');
+      const { clearSession } = require('../../src/supabase/auth');
+      const { clearAllCredentials } = require('../../src/services/OfflineAuthService');
+      expect(clearSession).toHaveBeenCalled();
+      expect(clearAllCredentials).toHaveBeenCalled();
     });
 
     it('en el signIn online devuelve el mensaje de cuenta desactivada y no cachea credenciales', async () => {
