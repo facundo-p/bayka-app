@@ -44,7 +44,8 @@ function perfilesNoAsignados(
   asignados: UsuarioAsignado[],
 ): PerfilResumen[] {
   const idsAsignados = new Set(asignados.map((asignado) => asignado.userId));
-  return perfiles.filter((perfil) => !idsAsignados.has(perfil.id));
+  // No se ofrece asignar usuarios dados de baja (no pueden loguearse).
+  return perfiles.filter((perfil) => perfil.activo && !idsAsignados.has(perfil.id));
 }
 
 /** Invalida la lista de asignados y el count de usuarios del listado general. */

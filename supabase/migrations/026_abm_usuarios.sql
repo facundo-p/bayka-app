@@ -28,7 +28,9 @@ where profiles.id = u.id and profiles.email is null;
 insert into profiles (id, nombre, rol, organizacion_id, email)
 select
   u.id,
-  split_part(u.email, '@', 1),
+  -- nombre NOT NULL: un auth user sin email (alta out-of-band) no debe abortar
+  -- la migración entera.
+  coalesce(nullif(split_part(coalesce(u.email, ''), '@', 1), ''), 'Usuario'),
   'tecnico',
   (select id from organizations where id = '00000000-0000-0000-0000-000000000001'),
   u.email
@@ -48,16 +50,21 @@ declare
     select id from public.organizations
     where id = '00000000-0000-0000-0000-000000000001'
   );
-  rol_meta text := new.raw_user_meta_data ->> 'rol';
 begin
-  if rol_meta is null or rol_meta not in ('admin', 'tecnico', 'superadmin') then
-    rol_meta := 'tecnico';
-  end if;
+  -- SIEMPRE 'tecnico': el rol NUNCA se toma de raw_user_meta_data. En un signUp
+  -- con la anon key esa metadata la controla el cliente, así que confiar en
+  -- ella sería una escalación de privilegios (cualquiera se haría superadmin).
+  -- El rol elevado lo setea la edge function admin-users con service_role
+  -- después de invitar, no el alta.
   insert into public.profiles (id, nombre, rol, organizacion_id, email)
   values (
     new.id,
-    coalesce(nullif(new.raw_user_meta_data ->> 'nombre', ''), split_part(new.email, '@', 1)),
-    rol_meta,
+    coalesce(
+      nullif(new.raw_user_meta_data ->> 'nombre', ''),
+      nullif(split_part(coalesce(new.email, ''), '@', 1), ''),
+      'Usuario'
+    ),
+    'tecnico',
     org_bayka,
     new.email
   )
@@ -87,8 +94,17 @@ create trigger trg_sync_profile_email
   execute function sync_profile_email();
 
 -- ── 4. Guard ampliado (reemplaza protect_rol_change de la 024) ───────────────
--- Mismos mensajes para rol (la web los muestra tal cual); se suma la
--- protección de activo y email. Un superadmin desactivado no puede editar.
+-- rol: editable por un superadmin activo con su JWT (vía cambiarRol en la web),
+--   con la misma protección de no autodegradarse.
+-- activo y email: SOLO service_role (auth.uid() is null), es decir la edge
+--   function admin-users. Razones:
+--   · activo — la baja también banea en Auth; permitir un UPDATE directo del
+--     JWT daría un estado split-brain (activo=false sin ban) y podría dejar la
+--     org sin ningún superadmin activo (lockout), guard que solo vive en la
+--     función. Forzando el service_role, esos guards de negocio siempre corren.
+--   · email — es una copia denormalizada cuya única fuente es auth.users (la
+--     sincroniza sync_profile_email, service_role). Un UPDATE directo la
+--     desincronizaría de la fuente en silencio.
 
 drop trigger trg_protect_rol_change on profiles;
 drop function protect_rol_change();
@@ -98,29 +114,23 @@ language plpgsql security definer set search_path = public as $$
 declare
   editor_es_superadmin boolean;
 begin
-  if new.rol is distinct from old.rol
-     or new.activo is distinct from old.activo
-     or new.email is distinct from old.email then
-    -- Conexiones sin usuario (service_role / dashboard / edge function):
-    -- permitidas. Es la vía de admin-users y del primer superadmin.
-    if auth.uid() is null then
-      return new;
-    end if;
+  -- Conexiones sin usuario (service_role / dashboard / edge function): permitidas.
+  if auth.uid() is null then
+    return new;
+  end if;
+  if new.activo is distinct from old.activo or new.email is distinct from old.email then
+    raise exception 'El email y el estado de un usuario solo se cambian desde la gestión de usuarios';
+  end if;
+  if new.rol is distinct from old.rol then
     editor_es_superadmin := exists (
       select 1 from profiles
       where id = auth.uid() and rol = 'superadmin' and activo
     );
-    if new.rol is distinct from old.rol then
-      if not editor_es_superadmin then
-        raise exception 'Solo un superadmin puede cambiar roles';
-      end if;
-      if old.id = auth.uid() and old.rol = 'superadmin' and new.rol <> 'superadmin' then
-        raise exception 'Un superadmin no puede degradarse a sí mismo';
-      end if;
+    if not editor_es_superadmin then
+      raise exception 'Solo un superadmin puede cambiar roles';
     end if;
-    if (new.activo is distinct from old.activo or new.email is distinct from old.email)
-       and not editor_es_superadmin then
-      raise exception 'Solo un superadmin puede modificar el email o el estado de un usuario';
+    if old.id = auth.uid() and old.rol = 'superadmin' and new.rol <> 'superadmin' then
+      raise exception 'Un superadmin no puede degradarse a sí mismo';
     end if;
   end if;
   return new;

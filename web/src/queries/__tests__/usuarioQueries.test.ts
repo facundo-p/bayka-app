@@ -25,11 +25,11 @@ describe('listarPerfiles', () => {
     const consultas: ConsultaCapturada[] = [];
     estadoMock.resolverConsulta = (consulta) => {
       consultas.push(consulta);
-      return { data: [{ id: 'user-1', nombre: 'Ana', rol: 'admin' }], error: null };
+      return { data: [{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }], error: null };
     };
     const perfiles = await listarPerfiles();
 
-    expect(perfiles).toEqual([{ id: 'user-1', nombre: 'Ana', rol: 'admin' }]);
+    expect(perfiles).toEqual([{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }]);
     expect(consultas[0].tabla).toBe('profiles');
     expect(consultas[0].orden).toEqual({ columna: 'nombre', ascending: true });
   });

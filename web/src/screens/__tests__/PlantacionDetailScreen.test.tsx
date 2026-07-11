@@ -19,8 +19,8 @@ const FILA_PLANTACION = {
 };
 
 const PERFILES = [
-  { id: 'user-2', nombre: 'Beto Técnico', rol: 'tecnico' },
-  { id: 'user-3', nombre: 'Carla Campo', rol: 'admin' },
+  { id: 'user-2', nombre: 'Beto Técnico', rol: 'tecnico', activo: true },
+  { id: 'user-3', nombre: 'Carla Campo', rol: 'admin', activo: true },
 ];
 
 type FilaAsignada = {
@@ -233,6 +233,27 @@ test('el select del modal no lista a los ya asignados', async () => {
   const select = within(screen.getByRole('dialog')).getByLabelText('Usuario');
   expect(within(select).getByRole('option', { name: 'Carla Campo' })).toBeInTheDocument();
   expect(within(select).queryByRole('option', { name: 'Beto Técnico' })).not.toBeInTheDocument();
+});
+
+test('el select no ofrece usuarios dados de baja', async () => {
+  const resolverBase = estadoMock.resolverConsulta!;
+  estadoMock.resolverConsulta = (consulta) =>
+    consulta.tabla === 'profiles'
+      ? {
+          data: [
+            { id: 'user-3', nombre: 'Carla Campo', rol: 'admin', activo: true },
+            { id: 'user-4', nombre: 'Dina Baja', rol: 'tecnico', activo: false },
+          ],
+        }
+      : resolverBase(consulta);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones/plant-1/configuracion');
+  await screen.findByText('Beto Técnico');
+
+  await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+  const select = within(screen.getByRole('dialog')).getByLabelText('Usuario');
+  expect(within(select).getByRole('option', { name: 'Carla Campo' })).toBeInTheDocument();
+  expect(within(select).queryByRole('option', { name: 'Dina Baja' })).not.toBeInTheDocument();
 });
 
 test('quitar pide confirmación, cancela sin borrar y confirma borrando', async () => {

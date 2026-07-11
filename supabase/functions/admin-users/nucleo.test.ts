@@ -18,7 +18,8 @@ function crearDeps(caller: PerfilDb | null = SUPERADMIN): Deps {
     perfilDelToken: vi.fn(async () => caller),
     buscarPerfil: vi.fn(async () => TECNICO),
     contarSuperadminsActivos: vi.fn(async () => 2),
-    invitar: vi.fn(async () => ({ error: null })),
+    invitar: vi.fn(async () => ({ error: null, userId: 'nuevo-1' })),
+    asignarRol: vi.fn(async () => ({ error: null })),
     enviarRecuperacion: vi.fn(async () => ({ error: null })),
     banear: vi.fn(async () => ({ error: null })),
     actualizarAuth: vi.fn(async () => ({ error: null })),
@@ -50,14 +51,24 @@ describe('autorización', () => {
 });
 
 describe('crear', () => {
-  test('feliz: invita con nombre/rol como metadata', async () => {
+  test('feliz (técnico): invita solo con nombre y NO setea rol', async () => {
     const deps = crearDeps();
     const respuesta = await manejarAdminUsers('jwt', CREAR, deps);
     expect(respuesta).toEqual({ status: 200, body: { ok: true } });
-    expect(deps.invitar).toHaveBeenCalledWith('nueva@bayka.org', {
-      nombre: 'Nueva',
-      rol: 'tecnico',
-    });
+    expect(deps.invitar).toHaveBeenCalledWith('nueva@bayka.org', { nombre: 'Nueva' });
+    // El trigger ya crea 'tecnico': no hace falta asignarRol.
+    expect(deps.asignarRol).not.toHaveBeenCalled();
+  });
+
+  test('rol elevado: tras invitar, setea el rol con service_role', async () => {
+    const deps = crearDeps();
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'crear', nombre: 'Jefa', email: 'jefa@bayka.org', rol: 'admin' },
+      deps,
+    );
+    expect(respuesta.body.ok).toBe(true);
+    expect(deps.asignarRol).toHaveBeenCalledWith('nuevo-1', 'admin');
   });
 
   test('email ya registrado → 409 con mensaje claro', async () => {
@@ -229,6 +240,29 @@ describe('cambiarEmail', () => {
     );
     expect(respuesta.status).toBe(409);
     expect(respuesta.body.error).toBe(MENSAJES.emailDuplicado);
+  });
+
+  test('a otro superadmin → 403 (evita toma de cuenta vía email+reset)', async () => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => OTRO_SUPERADMIN);
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'cambiarEmail', userId: OTRO_SUPERADMIN.id, email: 'robo@bayka.org' },
+      deps,
+    );
+    expect(respuesta.status).toBe(403);
+    expect(respuesta.body.error).toBe(MENSAJES.emailDeOtroSuperadmin);
+    expect(deps.actualizarAuth).not.toHaveBeenCalled();
+  });
+
+  test('sin userId → 400 solicitud inválida (no 404)', async () => {
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'cambiarEmail', email: 'x@bayka.org' },
+      crearDeps(),
+    );
+    expect(respuesta.status).toBe(400);
+    expect(respuesta.body.error).toBe(MENSAJES.solicitudInvalida);
   });
 });
 

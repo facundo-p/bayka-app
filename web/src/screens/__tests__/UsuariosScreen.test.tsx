@@ -146,7 +146,7 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
   await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
-  expect(screen.getByText('No hay usuarios con ese rol')).toBeInTheDocument();
+  expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
   await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
