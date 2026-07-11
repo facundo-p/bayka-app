@@ -30,14 +30,17 @@ export function EditarUsuarioModal({
     (!emailCambio || emailValido(email.trim()));
 
   const mutacion = useMutation({
+    // Nombre y email tocan backends distintos y son independientes: en paralelo.
     mutationFn: async () => {
-      if (nombreCambio) await actualizarNombre(usuario.id, nombre.trim());
-      if (emailCambio) await cambiarEmail(usuario.id, email.trim());
+      await Promise.all([
+        nombreCambio ? actualizarNombre(usuario.id, nombre.trim()) : null,
+        emailCambio ? cambiarEmail(usuario.id, email.trim()) : null,
+      ]);
     },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      onClose();
-    },
+    // Siempre invalidar: si una parte cambió y la otra falló (p.ej. nombre OK,
+    // email duplicado), la lista igual debe reflejar lo que sí se guardó.
+    onSettled: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
+    onSuccess: onClose,
     onError: (error: Error) => setErrorEnvio(error.message),
   });
 

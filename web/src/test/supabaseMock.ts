@@ -20,6 +20,7 @@ export type PerfilFilaMock = {
   id: string;
   nombre: string;
   rol: string;
+  activo: boolean;
   organizacion_id: string;
 };
 
@@ -86,6 +87,7 @@ export const PERFIL_ADMIN: PerfilFilaMock = {
   id: 'user-1',
   nombre: 'Ana Admin',
   rol: 'admin',
+  activo: true,
   organizacion_id: 'org-1',
 };
 
