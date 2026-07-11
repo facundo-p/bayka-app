@@ -146,7 +146,7 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
   await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
-  expect(screen.getByText('No hay usuarios con ese rol')).toBeInTheDocument();
+  expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
   await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
@@ -369,6 +369,39 @@ test('editar sin cambios no permite guardar', async () => {
   await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
   const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
   expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+});
+
+test('editar con email fallido igual refresca la lista (invalidación en onSettled)', async () => {
+  const consultas = configurarUsuariosMock();
+  // La edge function (cambiarEmail) falla; el update de nombre a profiles va OK.
+  estadoMock.respuestaInvoke = {
+    data: { ok: false, error: 'Ya existe un usuario con ese email' },
+    error: null,
+  };
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  await usuario.clear(within(dialogo).getByLabelText('Nombre'));
+  await usuario.type(within(dialogo).getByLabelText('Nombre'), 'Ana Nueva');
+  await usuario.clear(within(dialogo).getByLabelText('Email'));
+  await usuario.type(within(dialogo).getByLabelText('Email'), 'dup@bayka.org');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+
+  // El error se muestra y el modal queda abierto...
+  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+    'Ya existe un usuario con ese email',
+  );
+  // ...pero la lista se invalidó igual (el nombre sí se guardó).
+  await waitFor(() => {
+    const listados = consultas.filter(
+      (consulta) => consulta.tabla === 'profiles' && consulta.operacion === 'select',
+    );
+    expect(listados.length).toBeGreaterThan(1);
+  });
 });
 
 test('cambiar contraseña valida y llama a la edge function', async () => {

@@ -51,7 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const perfilCargado = await cargarPerfil(session.user.id);
     setPerfil(perfilCargado);
-    setEstado(perfilCargado && perfilCargado.rol !== ROL.TECNICO ? 'autenticado' : 'sin-acceso');
+    // Sin acceso: sin perfil, técnico, o cuenta dada de baja (activo=false).
+    const tieneAcceso =
+      perfilCargado !== null && perfilCargado.rol !== ROL.TECNICO && perfilCargado.activo;
+    setEstado(tieneAcceso ? 'autenticado' : 'sin-acceso');
   }, []);
 
   useEffect(() => {

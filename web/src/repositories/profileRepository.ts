@@ -14,6 +14,7 @@ export type Perfil = {
   id: string;
   nombre: string;
   rol: Rol;
+  activo: boolean;
   organizacionId: string;
 };
 
@@ -58,7 +59,7 @@ export async function actualizarNombre(userId: string, nombre: string): Promise<
 export async function getPerfil(userId: string): Promise<Perfil | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nombre, rol, organizacion_id')
+    .select('id, nombre, rol, activo, organizacion_id')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -67,6 +68,7 @@ export async function getPerfil(userId: string): Promise<Perfil | null> {
     id: data.id,
     nombre: data.nombre,
     rol: data.rol,
+    activo: data.activo,
     organizacionId: data.organizacion_id,
   };
 }

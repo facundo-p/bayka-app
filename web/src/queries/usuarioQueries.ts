@@ -10,6 +10,7 @@ export type PerfilResumen = {
   id: string;
   nombre: string;
   rol: Rol;
+  activo: boolean;
 };
 
 export type UsuarioAsignado = {
@@ -52,11 +53,14 @@ type FilaUsuario = {
   created_at: string;
 };
 
-/** Todos los perfiles visibles (la RLS acota a la organización), por nombre. */
+/** Todos los perfiles visibles (la RLS acota a la organización), por nombre.
+ *  Incluye inactivos: hay consumidores que los necesitan (p.ej. filtrar
+ *  árboles registrados por un técnico dado de baja). Los flujos que no deben
+ *  ofrecer inactivos (asignación) filtran por `activo`. */
 export async function listarPerfiles(): Promise<PerfilResumen[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nombre, rol')
+    .select('id, nombre, rol, activo')
     .order('nombre', { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as PerfilResumen[];
