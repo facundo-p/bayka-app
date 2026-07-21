@@ -110,8 +110,20 @@ email
 password_hash
 nombre
 rol
+activo
 fecha_creacion
 ```
+
+El email y la contraseña viven en Supabase Auth (`auth.users`); `profiles.email`
+es una copia denormalizada que un trigger mantiene sincronizada (migración 026)
+para que la web pueda listarlo con anon key. Al crear un auth user (dashboard o
+invitación), el trigger `handle_new_user` crea el profile automáticamente con
+defaults seguros (rol `tecnico`, organización Bayka).
+
+`activo` implementa la baja reversible: desactivar un usuario marca
+`activo = false` y lo banea en Auth (vía la edge function `admin-users`), sin
+tocar sus datos de campo (árboles, grupos). No existe el hard-delete de
+usuarios: las FKs de `trees`/`subgroups` lo impiden a propósito.
 
 ### Relaciones
 
