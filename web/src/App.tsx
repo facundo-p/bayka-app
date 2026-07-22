@@ -6,6 +6,7 @@ import { AuthProvider } from './hooks/useAuth';
 import { CommandMenuProvider } from './hooks/useCommandMenu';
 import { queryClient } from './lib/queryClient';
 import { LoginScreen } from './screens/LoginScreen';
+import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
@@ -22,6 +23,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginScreen />} />
+      {/* Destino del link de invitación: pública, un técnico también la usa. */}
+      <Route path="/establecer-password" element={<EstablecerPasswordScreen />} />
       <Route element={<RequireAccess />}>
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/plantaciones" replace />} />

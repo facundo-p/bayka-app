@@ -22,10 +22,16 @@ nueva la agrega acá.
   - `tecnico`: sin acceso a la web (pantalla "sin acceso").
   Razón: la gestión de roles es destructiva (puede dejar a alguien sin acceso) y
   conviene restringirla más que la operatoria diaria de plantaciones.
-- **A5 — Sin alta de usuarios en v1.** Crear usuarios requiere la Auth Admin API
-  (service_role), que no puede exponerse en un cliente estático. El alta sigue
-  siendo por el dashboard de Supabase; la web gestiona roles y asignaciones de
-  usuarios existentes.
+- **A5 — ~~Sin alta de usuarios en v1~~ (SUPERADA por la épica #224).** El alta,
+  la baja reversible y el cambio de contraseña/email ahora pasan por la edge
+  function `admin-users` (service_role en el server, nunca en el cliente). El
+  alta es por invitación: el usuario define su contraseña vía email en
+  `/establecer-password`. Sigue vigente que la web con anon key no toca la Auth
+  Admin API directamente.
+- **A5b — Identificador secundario en el listado de usuarios: email.** Con
+  `profiles.email` (migración 026) el email reemplaza a la organización como
+  segunda línea de la celda de usuario; la organización queda como fallback
+  para perfiles sin backfill.
 
 ## 2. Stack técnico
 
