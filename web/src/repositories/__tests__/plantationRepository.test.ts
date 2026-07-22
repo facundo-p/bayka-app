@@ -19,7 +19,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-const PERFIL: Perfil = { id: 'user-1', nombre: 'Ana', rol: 'admin', organizacionId: 'org-1' };
+const PERFIL: Perfil = { id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true, organizacionId: 'org-1' };
 
 const INPUT_COMPLETO: PlantacionInput = {
   lugar: 'Mendoza',

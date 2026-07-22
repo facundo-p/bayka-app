@@ -41,6 +41,7 @@ test('signIn ok con perfil admin pasa a autenticado', async () => {
     id: 'user-1',
     nombre: 'Ana Admin',
     rol: 'admin',
+    activo: true,
     organizacionId: 'org-1',
   });
 });
@@ -58,6 +59,13 @@ test('error de red al cargar el perfil pasa a sin-acceso sin romper', async () =
   const { result } = renderAuth();
   await waitFor(() => expect(result.current.estado).toBe('sin-acceso'));
   expect(result.current.perfil).toBeNull();
+});
+
+test('un admin dado de baja (activo=false) queda sin-acceso', async () => {
+  estadoMock.sesion = { user: { id: 'user-1' } };
+  estadoMock.perfilFila = { ...PERFIL_ADMIN, activo: false };
+  const { result } = renderAuth();
+  await waitFor(() => expect(result.current.estado).toBe('sin-acceso'));
 });
 
 test('signIn con credenciales malas devuelve mensaje legible', async () => {

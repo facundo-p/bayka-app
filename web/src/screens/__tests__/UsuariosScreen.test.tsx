@@ -70,9 +70,10 @@ function configurarUsuariosMock(usuarios = USUARIOS, errorUpdate?: string): Cons
   return consultas;
 }
 
-/** El menú "⋯" de cada fila lleva un aria-label "Cambiar rol de <nombre>". */
-function botonesMenu() {
-  return screen.getAllByRole('button', { name: /^Cambiar rol de / });
+/** El menú "⋯" de cada fila lleva un aria-label "Acciones de <nombre>". */
+async function abrirMenu(usuario: ReturnType<typeof userEvent.setup>, nombre: string) {
+  await usuario.click(screen.getByRole('button', { name: `Acciones de ${nombre}` }));
+  return within(screen.getByRole('menu', { name: `Acciones de ${nombre}` }));
 }
 
 /** La tabla de usuarios (el sidebar también muestra al usuario logueado). */
@@ -92,7 +93,7 @@ test('un admin no ve el link Usuarios y la sección le muestra el aviso de super
   expect(screen.getByRole('link', { name: 'Ir a Plantaciones' })).toBeInTheDocument();
   // No hay tabla: la pantalla de usuarios no se montó.
   expect(screen.queryByText('Teo Técnico')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /^Cambiar rol de / })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Acciones de / })).not.toBeInTheDocument();
 });
 
 test('un superadmin ve el link, el subtítulo con conteos y la tabla con roles', async () => {
@@ -242,8 +243,8 @@ test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  // Las filas conservan el orden del fixture: [Sofía, Ana, Teo].
-  await usuario.click(botonesMenu()[1]);
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Cambiar rol' }));
   const dialogo = screen.getByRole('dialog', { name: 'Cambiar rol de Ana Admin' });
 
   // Sin cambio de rol no hay nada que confirmar.
@@ -268,18 +269,22 @@ test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida
   expect(listados.length).toBeGreaterThan(1);
 });
 
-test('la acción está deshabilitada para la propia fila del superadmin', async () => {
+test('cambiar rol está deshabilitado en la propia fila del superadmin', async () => {
   configurarUsuariosMock();
+  const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const [botonPropio, botonAna] = botonesMenu();
-  expect(botonPropio).toBeDisabled();
-  expect(botonPropio).toHaveAttribute(
+  const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
+  const itemPropio = menuPropio.getByRole('menuitem', { name: 'Cambiar rol' });
+  expect(itemPropio).toBeDisabled();
+  expect(itemPropio).toHaveAttribute(
     'title',
     expect.stringContaining('no puede degradarse a sí mismo'),
   );
-  expect(botonAna).toBeEnabled();
+
+  const menuAna = await abrirMenu(usuario, 'Ana Admin');
+  expect(menuAna.getByRole('menuitem', { name: 'Cambiar rol' })).toBeEnabled();
 });
 
 test('el único superadmin del sistema no es degradable', async () => {
@@ -295,15 +300,14 @@ test('el único superadmin del sistema no es degradable', async () => {
     },
     USUARIOS[1],
   ]);
+  const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
   await screen.findByText('Selva Súper');
 
-  const [botonSelva] = botonesMenu();
-  expect(botonSelva).toBeDisabled();
-  expect(botonSelva).toHaveAttribute(
-    'title',
-    'Único superadmin: promové otro antes de degradarlo',
-  );
+  const menuSelva = await abrirMenu(usuario, 'Selva Súper');
+  const item = menuSelva.getByRole('menuitem', { name: 'Cambiar rol' });
+  expect(item).toBeDisabled();
+  expect(item).toHaveAttribute('title', 'Único superadmin: promové otro antes de degradarlo');
 });
 
 test('un error del trigger del server se muestra legible en el modal', async () => {
@@ -312,7 +316,8 @@ test('un error del trigger del server se muestra legible en el modal', async () 
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  await usuario.click(botonesMenu()[1]);
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Cambiar rol' }));
   const dialogo = screen.getByRole('dialog', { name: 'Cambiar rol de Ana Admin' });
   await usuario.selectOptions(within(dialogo).getByLabelText('Nuevo rol'), 'tecnico');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar' }));
@@ -320,4 +325,200 @@ test('un error del trigger del server se muestra legible en el modal', async () 
   expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
     'Solo un superadmin puede cambiar roles',
   );
+});
+
+test('editar guarda el nombre directo y el email vía la edge function', async () => {
+  const consultas = configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+
+  const inputNombre = within(dialogo).getByLabelText('Nombre');
+  await usuario.clear(inputNombre);
+  await usuario.type(inputNombre, 'Ana Actualizada');
+  const inputEmail = within(dialogo).getByLabelText('Email');
+  await usuario.clear(inputEmail);
+  await usuario.type(inputEmail, 'ana.nueva@bayka.org');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  const update = consultas.find(
+    (consulta) => consulta.tabla === 'profiles' && consulta.operacion === 'update',
+  );
+  expect(update?.payload).toEqual({ nombre: 'Ana Actualizada' });
+  expect(update?.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'user-2' }]);
+  expect(estadoMock.invocaciones).toEqual([
+    {
+      funcion: 'admin-users',
+      cuerpo: { accion: 'cambiarEmail', userId: 'user-2', email: 'ana.nueva@bayka.org' },
+    },
+  ]);
+});
+
+test('editar sin cambios no permite guardar', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+});
+
+test('editar con email fallido igual refresca la lista (invalidación en onSettled)', async () => {
+  const consultas = configurarUsuariosMock();
+  // La edge function (cambiarEmail) falla; el update de nombre a profiles va OK.
+  estadoMock.respuestaInvoke = {
+    data: { ok: false, error: 'Ya existe un usuario con ese email' },
+    error: null,
+  };
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  await usuario.clear(within(dialogo).getByLabelText('Nombre'));
+  await usuario.type(within(dialogo).getByLabelText('Nombre'), 'Ana Nueva');
+  await usuario.clear(within(dialogo).getByLabelText('Email'));
+  await usuario.type(within(dialogo).getByLabelText('Email'), 'dup@bayka.org');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
+
+  // El error se muestra y el modal queda abierto...
+  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+    'Ya existe un usuario con ese email',
+  );
+  // ...pero la lista se invalidó igual (el nombre sí se guardó).
+  await waitFor(() => {
+    const listados = consultas.filter(
+      (consulta) => consulta.tabla === 'profiles' && consulta.operacion === 'select',
+    );
+    expect(listados.length).toBeGreaterThan(1);
+  });
+});
+
+test('cambiar contraseña valida y llama a la edge function', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Cambiar contraseña' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Cambiar contraseña de Ana Admin' });
+
+  await usuario.type(within(dialogo).getByLabelText('Contraseña nueva'), 'segura123');
+  await usuario.type(within(dialogo).getByLabelText('Repetir contraseña'), 'distinta123');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar contraseña' }));
+  expect(within(dialogo).getByRole('alert')).toHaveTextContent('Las contraseñas no coinciden');
+  expect(estadoMock.invocaciones).toEqual([]);
+
+  await usuario.clear(within(dialogo).getByLabelText('Repetir contraseña'));
+  await usuario.type(within(dialogo).getByLabelText('Repetir contraseña'), 'segura123');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar contraseña' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+  expect(estadoMock.invocaciones).toEqual([
+    {
+      funcion: 'admin-users',
+      cuerpo: { accion: 'cambiarPassword', userId: 'user-2', password: 'segura123' },
+    },
+  ]);
+});
+
+test('cambiar la contraseña de OTRO superadmin está deshabilitado (la propia no)', async () => {
+  configurarUsuariosMock([
+    USUARIOS[0],
+    { ...USUARIOS[1], id: 'user-8', nombre: 'Otra Súper', rol: 'superadmin' },
+  ]);
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Otra Súper');
+
+  const menuOtra = await abrirMenu(usuario, 'Otra Súper');
+  const itemOtra = menuOtra.getByRole('menuitem', { name: 'Cambiar contraseña' });
+  expect(itemOtra).toBeDisabled();
+  expect(itemOtra).toHaveAttribute(
+    'title',
+    'No podés cambiar la contraseña de otro superadmin',
+  );
+
+  const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
+  expect(menuPropio.getByRole('menuitem', { name: 'Cambiar contraseña' })).toBeEnabled();
+});
+
+test('desactivar pide confirmación explicando efectos y ejecuta', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Desactivar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Desactivar a Ana Admin' });
+  // §15: qué se pierde (acceso) y qué se conserva (datos de campo).
+  expect(within(dialogo).getByText(/va a perder el acceso/)).toBeInTheDocument();
+  expect(within(dialogo).getByText(/se conservan/)).toBeInTheDocument();
+
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Desactivar' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(estadoMock.invocaciones).toEqual([
+    { funcion: 'admin-users', cuerpo: { accion: 'desactivar', userId: 'user-2' } },
+  ]);
+});
+
+test('desactivarse a sí mismo está deshabilitado; un inactivo ofrece Reactivar', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
+  const itemDesactivar = menuPropio.getByRole('menuitem', { name: 'Desactivar' });
+  expect(itemDesactivar).toBeDisabled();
+  expect(itemDesactivar).toHaveAttribute(
+    'title',
+    'Un superadmin no puede desactivarse a sí mismo',
+  );
+
+  // Teo está inactivo: su menú ofrece Reactivar (no Desactivar).
+  const menuTeo = await abrirMenu(usuario, 'Teo Técnico');
+  expect(menuTeo.queryByRole('menuitem', { name: 'Desactivar' })).not.toBeInTheDocument();
+  await usuario.click(menuTeo.getByRole('menuitem', { name: 'Reactivar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Reactivar a Teo Técnico' });
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Reactivar' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(estadoMock.invocaciones).toEqual([
+    { funcion: 'admin-users', cuerpo: { accion: 'reactivar', userId: 'user-3' } },
+  ]);
+});
+
+test('reenviar invitación: deshabilitada sin email; con email envía y confirma', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  // Teo no tiene email registrado.
+  const menuTeo = await abrirMenu(usuario, 'Teo Técnico');
+  const itemTeo = menuTeo.getByRole('menuitem', { name: 'Reenviar invitación' });
+  expect(itemTeo).toBeDisabled();
+  expect(itemTeo).toHaveAttribute('title', 'El usuario no tiene email registrado');
+
+  const menuAna = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menuAna.getByRole('menuitem', { name: 'Reenviar invitación' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Reenviar invitación a Ana Admin' });
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Reenviar' }));
+
+  expect(await within(dialogo).findByRole('status')).toHaveTextContent('Invitación enviada.');
+  expect(estadoMock.invocaciones).toEqual([
+    { funcion: 'admin-users', cuerpo: { accion: 'reenviarInvitacion', email: 'ana@bayka.org' } },
+  ]);
 });

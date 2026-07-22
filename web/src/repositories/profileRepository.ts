@@ -14,6 +14,7 @@ export type Perfil = {
   id: string;
   nombre: string;
   rol: Rol;
+  activo: boolean;
   organizacionId: string;
 };
 
@@ -42,6 +43,15 @@ export async function cambiarRol(userId: string, nuevoRol: Rol): Promise<void> {
   if (error) throw new Error(mensajeDeCambioRol(error.message));
 }
 
+const MENSAJE_ACTUALIZAR_NOMBRE =
+  'No se pudo guardar el nombre. Revisá tu conexión y probá de nuevo.';
+
+/** Cambia el nombre visible (la policy de superadmin de la 024 lo permite). */
+export async function actualizarNombre(userId: string, nombre: string): Promise<void> {
+  const { error } = await supabase.from('profiles').update({ nombre }).eq('id', userId);
+  if (error) throw new Error(MENSAJE_ACTUALIZAR_NOMBRE);
+}
+
 /**
  * Carga el perfil del usuario desde `profiles`.
  * Devuelve null si no existe la fila; lanza ante error de red/DB.
@@ -49,7 +59,7 @@ export async function cambiarRol(userId: string, nuevoRol: Rol): Promise<void> {
 export async function getPerfil(userId: string): Promise<Perfil | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nombre, rol, organizacion_id')
+    .select('id, nombre, rol, activo, organizacion_id')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -58,6 +68,7 @@ export async function getPerfil(userId: string): Promise<Perfil | null> {
     id: data.id,
     nombre: data.nombre,
     rol: data.rol,
+    activo: data.activo,
     organizacionId: data.organizacion_id,
   };
 }

@@ -1,16 +1,12 @@
 import { useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { MoreHorizontal } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Badge,
   Button,
   Cargando,
   EmptyState,
   ErrorConReintento,
-  Input,
-  Modal,
   SegmentedControl,
-  Select,
   Table,
   Topbar,
   type TableColumn,
@@ -22,34 +18,17 @@ import {
   listarUsuariosConAsignaciones,
   type UsuarioConAsignaciones,
 } from '../queries/usuarioQueries';
-import { cambiarRol, ROL, type Rol } from '../repositories/profileRepository';
-import { crearUsuario } from '../services/adminUsersService';
-import { emailValido } from '../../../supabase/functions/admin-users/nucleo';
+import { ROL, type Rol } from '../repositories/profileRepository';
+import { desactivarUsuario, reactivarUsuario, reenviarInvitacion } from '../services/adminUsersService';
+import { contarSuperadminsActivos, itemsDeMenu, type AccionUsuario } from './usuarios/acciones';
+import { AgregarUsuarioModal } from './usuarios/AgregarUsuarioModal';
+import { CambiarPasswordModal } from './usuarios/CambiarPasswordModal';
+import { CambiarRolModal } from './usuarios/CambiarRolModal';
+import { ConfirmarModal } from './usuarios/ConfirmarModal';
+import { EditarUsuarioModal } from './usuarios/EditarUsuarioModal';
+import { MenuAccionesUsuario } from './usuarios/MenuAccionesUsuario';
+import { ETIQUETA_ROL, nombreVisible } from './usuarios/presentacion';
 import styles from './UsuariosScreen.module.css';
-
-const TAMANO_ICONO = 18;
-
-const ADVERTENCIA_SUPERADMIN =
-  'Va a tener acceso total, incluida la gestión de usuarios.';
-
-const MOTIVO_ROL_PROPIO =
-  'No podés cambiar tu propio rol: un superadmin no puede degradarse a sí mismo';
-
-const MOTIVO_ULTIMO_SUPERADMIN = 'Único superadmin: promové otro antes de degradarlo';
-
-const NOTA_INVITACION = 'Le va a llegar un email para definir su contraseña.';
-
-const ROLES: Array<{ valor: Rol; etiqueta: string }> = [
-  { valor: ROL.TECNICO, etiqueta: 'Técnico' },
-  { valor: ROL.ADMIN, etiqueta: 'Admin' },
-  { valor: ROL.SUPERADMIN, etiqueta: 'Superadmin' },
-];
-
-const ETIQUETA_ROL: Record<Rol, string> = {
-  [ROL.SUPERADMIN]: 'Superadmin',
-  [ROL.ADMIN]: 'Admin',
-  [ROL.TECNICO]: 'Técnico',
-};
 
 /** Clase del avatar según rol (mismos tripletes que el Badge de rol). */
 const CLASE_AVATAR_ROL: Record<Rol, string> = {
@@ -62,11 +41,6 @@ type Filtro = 'todos' | 'admins' | 'tecnicos';
 type FiltroEstado = 'todos' | 'activos' | 'inactivos';
 
 const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo' } as const;
-
-/** Nombre visible: un perfil sin nombre se identifica por el id corto. */
-function nombreVisible(usuario: UsuarioConAsignaciones): string {
-  return usuario.nombre || usuario.id.slice(0, 8);
-}
 
 /** Resumen de plantaciones (el schema sólo da un conteo, no los nombres):
  *  superadmin ve todas; el resto, "N plantaciones" o "Sin plantaciones". */
@@ -121,17 +95,6 @@ const OPCIONES_FILTRO_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
   { value: 'inactivos', label: 'Inactivos' },
 ];
 
-/** Por qué la acción "Cambiar rol" está deshabilitada (null = habilitada). */
-function motivoAccionDeshabilitada(
-  usuario: UsuarioConAsignaciones,
-  idActual: string | undefined,
-  totalSuperadmins: number,
-): string | null {
-  if (usuario.id === idActual) return MOTIVO_ROL_PROPIO;
-  if (usuario.rol === ROL.SUPERADMIN && totalSuperadmins === 1) return MOTIVO_ULTIMO_SUPERADMIN;
-  return null;
-}
-
 function CeldaUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
   return (
     <div className={styles.usuario}>
@@ -149,32 +112,6 @@ function CeldaUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
         )}
       </span>
     </div>
-  );
-}
-
-function MenuAcciones({
-  usuario,
-  idActual,
-  totalSuperadmins,
-  onCambiar,
-}: {
-  usuario: UsuarioConAsignaciones;
-  idActual: string | undefined;
-  totalSuperadmins: number;
-  onCambiar: (usuario: UsuarioConAsignaciones) => void;
-}) {
-  const motivo = motivoAccionDeshabilitada(usuario, idActual, totalSuperadmins);
-  return (
-    <button
-      type="button"
-      className={styles.menu}
-      disabled={motivo !== null}
-      title={motivo ?? 'Cambiar rol'}
-      aria-label={`Cambiar rol de ${nombreVisible(usuario)}`}
-      onClick={() => onCambiar(usuario)}
-    >
-      <MoreHorizontal size={TAMANO_ICONO} aria-hidden />
-    </button>
   );
 }
 
@@ -202,215 +139,110 @@ const COLUMNAS: Array<TableColumn<UsuarioConAsignaciones>> = [
 ];
 
 function columnaAcciones(
-  onCambiar: (usuario: UsuarioConAsignaciones) => void,
+  onAccion: (usuario: UsuarioConAsignaciones, accion: AccionUsuario) => void,
   idActual: string | undefined,
-  totalSuperadmins: number,
+  superadminsActivos: number,
 ): TableColumn<UsuarioConAsignaciones> {
   return {
     key: 'acciones',
     header: '',
     align: 'right',
     render: (usuario) => (
-      <MenuAcciones
-        usuario={usuario}
-        idActual={idActual}
-        totalSuperadmins={totalSuperadmins}
-        onCambiar={onCambiar}
+      <MenuAccionesUsuario
+        nombre={nombreVisible(usuario)}
+        items={itemsDeMenu(usuario, idActual, superadminsActivos)}
+        onAccion={(accion) => onAccion(usuario, accion)}
       />
     ),
   };
 }
 
-function CuerpoCambiarRol({
-  rol,
-  onCambiar,
-  advertencia,
-  errorEnvio,
-}: {
-  rol: Rol;
-  onCambiar: (rol: Rol) => void;
-  advertencia: boolean;
-  errorEnvio: string | null;
-}) {
+/** Copys de confirmación (§15 de la guía UX: qué se pierde y qué se conserva). */
+function copyDesactivar(nombre: string): string {
   return (
-    <>
-      <Select
-        label="Nuevo rol"
-        value={rol}
-        onChange={(event) => onCambiar(event.target.value as Rol)}
-      >
-        {ROLES.map(({ valor, etiqueta }) => (
-          <option key={valor} value={valor}>
-            {etiqueta}
-          </option>
-        ))}
-      </Select>
-      {advertencia && (
-        <p className={styles.advertencia} role="status">
-          {ADVERTENCIA_SUPERADMIN}
-        </p>
-      )}
-      {errorEnvio && (
-        <p className={styles.errorEnvio} role="alert">
-          {errorEnvio}
-        </p>
-      )}
-    </>
+    `${nombre} va a perder el acceso a la app y a la web en cuanto su sesión se renueve. ` +
+    'Si está trabajando sin conexión, sigue operando hasta reconectar. ' +
+    'Sus datos de campo (árboles y grupos registrados) se conservan. Se puede reactivar.'
   );
 }
 
-function CambiarRolModal({
+function ModalDeAccion({
   usuario,
+  accion,
   onClose,
 }: {
   usuario: UsuarioConAsignaciones;
+  accion: AccionUsuario;
   onClose: () => void;
 }) {
-  const queryClient = useQueryClient();
-  const [rol, setRol] = useState<Rol>(usuario.rol);
-  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
-  const mutacion = useMutation({
-    mutationFn: () => cambiarRol(usuario.id, rol),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      onClose();
-    },
-    onError: (error: Error) => setErrorEnvio(error.message),
-  });
-  return (
-    <Modal open title={`Cambiar rol de ${nombreVisible(usuario)}`} onClose={onClose}>
-      <div className={styles.form}>
-        <CuerpoCambiarRol
-          rol={rol}
-          onCambiar={setRol}
-          advertencia={rol === ROL.SUPERADMIN && usuario.rol !== ROL.SUPERADMIN}
-          errorEnvio={errorEnvio}
+  const nombre = nombreVisible(usuario);
+  switch (accion) {
+    case 'cambiarRol':
+      return <CambiarRolModal usuario={usuario} onClose={onClose} />;
+    case 'editar':
+      return <EditarUsuarioModal usuario={usuario} onClose={onClose} />;
+    case 'cambiarPassword':
+      return <CambiarPasswordModal usuario={usuario} onClose={onClose} />;
+    case 'reenviarInvitacion':
+      return (
+        <ConfirmarModal
+          titulo={`Reenviar invitación a ${nombre}`}
+          descripcion={`Le va a llegar un email a ${usuario.email ?? ''} para definir su contraseña.`}
+          confirmarEtiqueta="Reenviar"
+          accion={() => reenviarInvitacion(usuario.email ?? '')}
+          textoExito="Invitación enviada."
+          onClose={onClose}
         />
-        <div className={styles.acciones}>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            disabled={rol === usuario.rol}
-            loading={mutacion.isPending}
-            onClick={() => mutacion.mutate()}
-          >
-            Confirmar
-          </Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function CuerpoAgregarUsuario({
-  valores,
-  onCambiar,
-  errorEnvio,
-}: {
-  valores: { nombre: string; email: string; rol: Rol };
-  onCambiar: (valores: { nombre: string; email: string; rol: Rol }) => void;
-  errorEnvio: string | null;
-}) {
-  return (
-    <>
-      <Input
-        label="Nombre"
-        required
-        value={valores.nombre}
-        onChange={(evento) => onCambiar({ ...valores, nombre: evento.target.value })}
-      />
-      <Input
-        label="Email"
-        type="email"
-        required
-        value={valores.email}
-        onChange={(evento) => onCambiar({ ...valores, email: evento.target.value })}
-      />
-      <Select
-        label="Rol"
-        value={valores.rol}
-        onChange={(evento) => onCambiar({ ...valores, rol: evento.target.value as Rol })}
-      >
-        {ROLES.map(({ valor, etiqueta }) => (
-          <option key={valor} value={valor}>
-            {etiqueta}
-          </option>
-        ))}
-      </Select>
-      {valores.rol === ROL.SUPERADMIN && (
-        <p className={styles.advertencia} role="status">
-          {ADVERTENCIA_SUPERADMIN}
-        </p>
-      )}
-      <p className={styles.info}>{NOTA_INVITACION}</p>
-      {errorEnvio && (
-        <p className={styles.errorEnvio} role="alert">
-          {errorEnvio}
-        </p>
-      )}
-    </>
-  );
-}
-
-/** Alta por invitación: crea el usuario vía la edge function admin-users y
- *  Supabase le envía el email para definir su contraseña. */
-function AgregarUsuarioModal({ onClose }: { onClose: () => void }) {
-  const queryClient = useQueryClient();
-  const [valores, setValores] = useState({ nombre: '', email: '', rol: ROL.TECNICO as Rol });
-  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
-  const mutacion = useMutation({
-    mutationFn: () =>
-      crearUsuario({ nombre: valores.nombre.trim(), email: valores.email.trim(), rol: valores.rol }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
-      onClose();
-    },
-    onError: (error: Error) => setErrorEnvio(error.message),
-  });
-  const valido = valores.nombre.trim() !== '' && emailValido(valores.email.trim());
-  return (
-    <Modal open title="Agregar usuario" onClose={onClose}>
-      <form
-        className={styles.form}
-        onSubmit={(evento) => {
-          evento.preventDefault();
-          mutacion.mutate();
-        }}
-      >
-        <CuerpoAgregarUsuario valores={valores} onCambiar={setValores} errorEnvio={errorEnvio} />
-        <div className={styles.acciones}>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={!valido} loading={mutacion.isPending}>
-            Enviar invitación
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  );
+      );
+    case 'desactivar':
+      return (
+        <ConfirmarModal
+          titulo={`Desactivar a ${nombre}`}
+          descripcion={copyDesactivar(nombre)}
+          confirmarEtiqueta="Desactivar"
+          destructiva
+          accion={() => desactivarUsuario(usuario.id)}
+          onClose={onClose}
+        />
+      );
+    case 'reactivar':
+      return (
+        <ConfirmarModal
+          titulo={`Reactivar a ${nombre}`}
+          descripcion={`${nombre} va a recuperar el acceso que tenía según su rol.`}
+          confirmarEtiqueta="Reactivar"
+          accion={() => reactivarUsuario(usuario.id)}
+          onClose={onClose}
+        />
+      );
+  }
 }
 
 export function UsuariosScreen() {
   const { perfil } = useAuth();
   const [filtro, setFiltro] = useState<Filtro>('todos');
   const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
-  const [usuarioEnEdicion, setUsuarioEnEdicion] = useState<UsuarioConAsignaciones | null>(null);
+  const [accionActiva, setAccionActiva] = useState<{
+    usuario: UsuarioConAsignaciones;
+    accion: AccionUsuario;
+  } | null>(null);
   const [agregarAbierto, setAgregarAbierto] = useState(false);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['usuarios'],
     queryFn: listarUsuariosConAsignaciones,
   });
 
-  const totalSuperadmins = useMemo(
-    () => data?.filter((usuario) => usuario.rol === ROL.SUPERADMIN).length ?? 0,
-    [data],
-  );
+  const superadminsActivos = useMemo(() => contarSuperadminsActivos(data ?? []), [data]);
   const columnas = useMemo(
-    () => [...COLUMNAS, columnaAcciones(setUsuarioEnEdicion, perfil?.id, totalSuperadmins)],
-    [perfil?.id, totalSuperadmins],
+    () => [
+      ...COLUMNAS,
+      columnaAcciones(
+        (usuario, accion) => setAccionActiva({ usuario, accion }),
+        perfil?.id,
+        superadminsActivos,
+      ),
+    ],
+    [perfil?.id, superadminsActivos],
   );
 
   return (
@@ -460,8 +292,12 @@ export function UsuariosScreen() {
             </div>
           ))}
       </div>
-      {usuarioEnEdicion && (
-        <CambiarRolModal usuario={usuarioEnEdicion} onClose={() => setUsuarioEnEdicion(null)} />
+      {accionActiva && (
+        <ModalDeAccion
+          usuario={accionActiva.usuario}
+          accion={accionActiva.accion}
+          onClose={() => setAccionActiva(null)}
+        />
       )}
       {agregarAbierto && <AgregarUsuarioModal onClose={() => setAgregarAbierto(false)} />}
     </section>
