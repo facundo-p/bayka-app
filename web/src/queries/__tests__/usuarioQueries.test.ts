@@ -25,11 +25,11 @@ describe('listarPerfiles', () => {
     const consultas: ConsultaCapturada[] = [];
     estadoMock.resolverConsulta = (consulta) => {
       consultas.push(consulta);
-      return { data: [{ id: 'user-1', nombre: 'Ana', rol: 'admin' }], error: null };
+      return { data: [{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }], error: null };
     };
     const perfiles = await listarPerfiles();
 
-    expect(perfiles).toEqual([{ id: 'user-1', nombre: 'Ana', rol: 'admin' }]);
+    expect(perfiles).toEqual([{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }]);
     expect(consultas[0].tabla).toBe('profiles');
     expect(consultas[0].orden).toEqual({ columna: 'nombre', ascending: true });
   });
@@ -42,9 +42,9 @@ describe('listarPerfiles', () => {
 
 describe('listarUsuariosConAsignaciones', () => {
   const FILAS_PERFILES = [
-    { id: 'user-1', nombre: 'Ana', rol: 'admin', organizacion_id: 'org-1', created_at: '2026-01-10T12:00:00Z' },
-    { id: 'user-2', nombre: 'Beto', rol: 'tecnico', organizacion_id: 'org-2', created_at: '2026-02-20T12:00:00Z' },
-    { id: 'user-3', nombre: 'Cami', rol: 'superadmin', organizacion_id: null, created_at: '2026-03-30T12:00:00Z' },
+    { id: 'user-1', nombre: 'Ana', rol: 'admin', email: 'ana@bayka.org', activo: true, organizacion_id: 'org-1', created_at: '2026-01-10T12:00:00Z' },
+    { id: 'user-2', nombre: 'Beto', rol: 'tecnico', email: null, activo: false, organizacion_id: 'org-2', created_at: '2026-02-20T12:00:00Z' },
+    { id: 'user-3', nombre: 'Cami', rol: 'superadmin', email: 'cami@bayka.org', activo: true, organizacion_id: null, created_at: '2026-03-30T12:00:00Z' },
   ];
 
   function configurarTablas() {
@@ -81,19 +81,24 @@ describe('listarUsuariosConAsignaciones', () => {
     expect(cami.organizacionNombre).toBe('');
   });
 
-  test('mapea rol, organización y fecha de alta a camelCase', async () => {
+  test('mapea rol, email, estado, organización y fecha de alta a camelCase', async () => {
     configurarTablas();
-    const [ana] = await listarUsuariosConAsignaciones();
+    const [ana, beto] = await listarUsuariosConAsignaciones();
 
     expect(ana).toEqual({
       id: 'user-1',
       nombre: 'Ana',
       rol: 'admin',
+      email: 'ana@bayka.org',
+      activo: true,
       organizacionId: 'org-1',
       organizacionNombre: 'Bayka',
       plantacionesAsignadas: 2,
       createdAt: '2026-01-10T12:00:00Z',
     });
+    // Perfil previo al backfill (email null) y desactivado.
+    expect(beto.email).toBeNull();
+    expect(beto.activo).toBe(false);
   });
 
   test('consulta profiles ordenado por nombre', async () => {

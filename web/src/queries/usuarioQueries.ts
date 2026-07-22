@@ -10,6 +10,7 @@ export type PerfilResumen = {
   id: string;
   nombre: string;
   rol: Rol;
+  activo: boolean;
 };
 
 export type UsuarioAsignado = {
@@ -24,6 +25,10 @@ export type UsuarioConAsignaciones = {
   id: string;
   nombre: string;
   rol: Rol;
+  /** Copia sincronizada desde Auth (migración 026); null en perfiles previos al backfill. */
+  email: string | null;
+  /** false = baja reversible (soft-delete); el ban real vive en Auth. */
+  activo: boolean;
   organizacionId: string | null;
   organizacionNombre: string;
   plantacionesAsignadas: number;
@@ -42,15 +47,20 @@ type FilaUsuario = {
   id: string;
   nombre: string | null;
   rol: Rol;
+  email: string | null;
+  activo: boolean;
   organizacion_id: string | null;
   created_at: string;
 };
 
-/** Todos los perfiles visibles (la RLS acota a la organización), por nombre. */
+/** Todos los perfiles visibles (la RLS acota a la organización), por nombre.
+ *  Incluye inactivos: hay consumidores que los necesitan (p.ej. filtrar
+ *  árboles registrados por un técnico dado de baja). Los flujos que no deben
+ *  ofrecer inactivos (asignación) filtran por `activo`. */
 export async function listarPerfiles(): Promise<PerfilResumen[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nombre, rol')
+    .select('id, nombre, rol, activo')
     .order('nombre', { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as PerfilResumen[];
@@ -89,6 +99,8 @@ function mapearUsuario(
     id: fila.id,
     nombre: fila.nombre ?? '',
     rol: fila.rol,
+    email: fila.email,
+    activo: fila.activo,
     organizacionId: fila.organizacion_id,
     organizacionNombre: fila.organizacion_id
       ? (organizaciones.get(fila.organizacion_id) ?? '')
@@ -103,7 +115,7 @@ export async function listarUsuariosConAsignaciones(): Promise<UsuarioConAsignac
   const [{ data, error }, asignaciones, organizaciones] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, nombre, rol, organizacion_id, created_at')
+      .select('id, nombre, rol, email, activo, organizacion_id, created_at')
       .order('nombre', { ascending: true }),
     contarAsignacionesPorUsuario(),
     mapearNombresDeOrganizaciones(),

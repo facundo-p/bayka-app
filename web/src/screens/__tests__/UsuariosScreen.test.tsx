@@ -25,6 +25,8 @@ const USUARIOS = [
     id: 'user-1',
     nombre: 'Sofía Súper',
     rol: 'superadmin',
+    email: 'sofia@bayka.org',
+    activo: true,
     organizacion_id: 'org-1',
     created_at: '2026-01-10T12:00:00Z',
   },
@@ -32,6 +34,8 @@ const USUARIOS = [
     id: 'user-2',
     nombre: 'Ana Admin',
     rol: 'admin',
+    email: 'ana@bayka.org',
+    activo: true,
     organizacion_id: 'org-1',
     created_at: '2026-02-20T12:00:00Z',
   },
@@ -39,6 +43,8 @@ const USUARIOS = [
     id: 'user-3',
     nombre: 'Teo Técnico',
     rol: 'tecnico',
+    email: null,
+    activo: false,
     organizacion_id: 'org-1',
     created_at: '2026-03-30T12:00:00Z',
   },
@@ -109,6 +115,42 @@ test('un superadmin ve el link, el subtítulo con conteos y la tabla con roles',
   expect(tabla.getByText('Todas')).toBeInTheDocument();
   expect(tabla.getByText('2 plantaciones')).toBeInTheDocument();
   expect(tabla.getByText('Sin plantaciones')).toBeInTheDocument();
+});
+
+test('muestra el email como línea secundaria y cae a la organización si falta', async () => {
+  configurarUsuariosMock();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const tabla = tablaUsuarios();
+  expect(tabla.getByText('ana@bayka.org')).toBeInTheDocument();
+  // Teo no tiene email (perfil previo al backfill): se ve su organización.
+  expect(tabla.getByText('Bayka')).toBeInTheDocument();
+});
+
+test('muestra el estado con badge y el filtro por estado compone con el de rol', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  expect(tablaUsuarios().getAllByText('Activo')).toHaveLength(2);
+  expect(tablaUsuarios().getByText('Inactivo')).toBeInTheDocument();
+
+  // Inactivos: queda sólo Teo.
+  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  expect(tablaUsuarios().getByText('Teo Técnico')).toBeInTheDocument();
+  expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
+
+  // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
+  await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
+  expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
+
+  // Activos + Admins: vuelven Ana y Sofía.
+  await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
+  expect(tablaUsuarios().getByText('Ana Admin')).toBeInTheDocument();
+  expect(tablaUsuarios().getByText('Sofía Súper')).toBeInTheDocument();
 });
 
 test('el filtro Técnicos deja sólo a los técnicos', async () => {
@@ -187,6 +229,8 @@ test('el único superadmin del sistema no es degradable', async () => {
       id: 'user-9',
       nombre: 'Selva Súper',
       rol: 'superadmin',
+      email: 'selva@bayka.org',
+      activo: true,
       organizacion_id: 'org-1',
       created_at: '2026-01-10T12:00:00Z',
     },
