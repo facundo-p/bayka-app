@@ -8,7 +8,6 @@ import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL } from '../../repositories/profileRepository';
 
 export type AccionUsuario =
-  | 'cambiarRol'
   | 'editar'
   | 'cambiarPassword'
   | 'reenviarInvitacion'
@@ -32,6 +31,7 @@ export function contarSuperadminsActivos(usuarios: UsuarioConAsignaciones[]): nu
   return usuarios.filter((usuario) => usuario.rol === ROL.SUPERADMIN && usuario.activo).length;
 }
 
+/** Guard del campo Rol del modal Editar (espeja el trigger del server). */
 export function motivoCambiarRol(
   usuario: UsuarioConAsignaciones,
   idActual: string | undefined,
@@ -78,11 +78,6 @@ export function itemsDeMenu(
   superadminsActivos: number,
 ): ItemMenu[] {
   return [
-    {
-      accion: 'cambiarRol',
-      etiqueta: 'Cambiar rol',
-      motivo: motivoCambiarRol(usuario, idActual, superadminsActivos),
-    },
     { accion: 'editar', etiqueta: 'Editar', motivo: null },
     {
       accion: 'cambiarPassword',

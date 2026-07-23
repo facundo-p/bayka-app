@@ -32,13 +32,13 @@ const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
   {
     key: 'grupos',
     header: 'Grupos',
-    align: 'right',
+    align: 'center',
     render: (parcela) => <span className={styles.numero}>{formatearEntero(parcela.grupos)}</span>,
   },
   {
     key: 'arboles',
     header: 'Árboles',
-    align: 'right',
+    align: 'center',
     render: (parcela) => <span className={styles.numero}>{formatearEntero(parcela.arboles)}</span>,
   },
   {

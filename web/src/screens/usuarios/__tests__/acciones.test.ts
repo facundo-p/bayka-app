@@ -68,18 +68,6 @@ test('motivoReenviarInvitacion exige email registrado', () => {
 test('itemsDeMenu ofrece Desactivar a activos y Reactivar a inactivos', () => {
   const acciones = (activo: boolean) =>
     itemsDeMenu(usuario({ activo }), YO, 2).map((item) => item.accion);
-  expect(acciones(true)).toEqual([
-    'cambiarRol',
-    'editar',
-    'cambiarPassword',
-    'reenviarInvitacion',
-    'desactivar',
-  ]);
-  expect(acciones(false)).toEqual([
-    'cambiarRol',
-    'editar',
-    'cambiarPassword',
-    'reenviarInvitacion',
-    'reactivar',
-  ]);
+  expect(acciones(true)).toEqual(['editar', 'cambiarPassword', 'reenviarInvitacion', 'desactivar']);
+  expect(acciones(false)).toEqual(['editar', 'cambiarPassword', 'reenviarInvitacion', 'reactivar']);
 });
