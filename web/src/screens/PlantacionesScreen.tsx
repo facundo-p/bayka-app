@@ -57,12 +57,12 @@ const COLUMNAS: Array<TableColumn<PlantacionConStats>> = [
   { key: 'periodo', header: 'Período' },
   { key: 'estado', header: 'Estado', render: (p) => <EstadoPlantacionBadge estado={p.estado} /> },
   { key: 'visibleInApp', header: 'Visible', render: (p) => <CeldaVisible visible={p.visibleInApp} /> },
-  { key: 'usuarios', header: 'Usuarios', align: 'right' },
-  { key: 'parcelas', header: 'Parcelas', align: 'right' },
+  { key: 'usuarios', header: 'Usuarios', align: 'center' },
+  { key: 'parcelas', header: 'Parcelas', align: 'center' },
   {
     key: 'arboles',
     header: 'Árboles',
-    align: 'right',
+    align: 'center',
     render: (p) => <span className={styles.arboles}>{formatearEntero(p.arboles)}</span>,
   },
   { key: 'createdAt', header: 'Creada', render: (p) => formatearFechaCorta(p.createdAt) },
@@ -125,16 +125,14 @@ export function PlantacionesScreen() {
         <h1 className={styles.titulo}>Plantaciones</h1>
         {data && <p className={styles.subtitulo}>{subtitulo}</p>}
         {data && data.length > 0 && (
-          <div className={styles.filtros}>
-            <PlantacionesFiltros
-              filtros={filtros}
-              lugares={lugares}
-              periodos={periodos}
-              mostrarLimpiar={filtrosActivos}
-              onCambiar={cambiarFiltro}
-              onLimpiar={limpiarFiltros}
-            />
-          </div>
+          <PlantacionesFiltros
+            filtros={filtros}
+            lugares={lugares}
+            periodos={periodos}
+            mostrarLimpiar={filtrosActivos}
+            onCambiar={cambiarFiltro}
+            onLimpiar={limpiarFiltros}
+          />
         )}
         {isPending && <Cargando />}
         {isError && !data && (

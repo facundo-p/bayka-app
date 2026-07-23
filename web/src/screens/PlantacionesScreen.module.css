@@ -21,10 +21,6 @@
   color: var(--color-text-secondary);
 }
 
-.filtros {
-  margin: var(--space-4xl) 0 var(--space-3xl);
-}
-
 /* Envoltura con scroll horizontal en pantallas angostas. */
 .tablaScroll {
   overflow-x: auto;

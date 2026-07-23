@@ -72,32 +72,25 @@ test('sin visible_in_app (migración 024 no aplicada) asume visible', async () =
   expect(plantacion.arboles).toBe(0);
 });
 
-test('los counts filtran por plantación y excluyen parcelas borradas', async () => {
+test('los contadores salen del RPC agregado, en una sola llamada', async () => {
   const consultas: ConsultaCapturada[] = [];
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
     return consulta.tabla === 'plantations'
       ? { data: [FILA_MENDOZA], error: null }
-      : { count: 0, error: null };
+      : { data: [{ plantation_id: 'plant-1', arboles: 7, parcelas: 2, usuarios: 1 }], error: null };
   };
-  await listarPlantaciones();
+  const [plantacion] = await listarPlantaciones();
 
-  const arboles = consultas.find((consulta) => consulta.tabla === 'trees');
-  expect(arboles?.opciones).toEqual({ count: 'exact', head: true });
-  expect(arboles?.filtros).toEqual([
-    { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
-  ]);
+  expect(plantacion).toMatchObject({ arboles: 7, parcelas: 2, usuarios: 1 });
+  const rpcs = consultas.filter((consulta) => consulta.operacion === 'rpc');
+  expect(rpcs.map((consulta) => consulta.tabla)).toEqual(['stats_plantaciones']);
+});
 
-  const parcelas = consultas.find((consulta) => consulta.tabla === 'parcelas');
-  expect(parcelas?.filtros).toEqual([
-    { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
-    { metodo: 'is', columna: 'deleted_at', valor: null },
-  ]);
-
-  const usuarios = consultas.find((consulta) => consulta.tabla === 'plantation_users');
-  expect(usuarios?.filtros).toEqual([
-    { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
-  ]);
+test('plantación sin fila en el RPC (recién creada) muestra contadores en cero', async () => {
+  configurarPlantacionesMock([FILA_MENDOZA], {});
+  const [plantacion] = await listarPlantaciones();
+  expect(plantacion).toMatchObject({ arboles: 0, parcelas: 0, usuarios: 0 });
 });
 
 test('propaga el error de Supabase', async () => {
