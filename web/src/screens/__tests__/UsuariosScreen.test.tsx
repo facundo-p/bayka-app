@@ -139,17 +139,17 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   expect(tablaUsuarios().getByText('Inactivo')).toBeInTheDocument();
 
   // Inactivos: queda sólo Teo.
-  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  await usuario.selectOptions(screen.getByLabelText('Filtrar por estado'), 'inactivos');
   expect(tablaUsuarios().getByText('Teo Técnico')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
 
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
-  await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
+  await usuario.selectOptions(screen.getByLabelText('Filtrar por rol'), 'admins');
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
-  await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
+  await usuario.selectOptions(screen.getByLabelText('Filtrar por estado'), 'activos');
   expect(tablaUsuarios().getByText('Ana Admin')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Sofía Súper')).toBeInTheDocument();
 });
@@ -160,7 +160,7 @@ test('el filtro Técnicos deja sólo a los técnicos', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  await usuario.click(screen.getByRole('radio', { name: 'Técnicos' }));
+  await usuario.selectOptions(screen.getByLabelText('Filtrar por rol'), 'tecnicos');
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   expect(tabla.queryByText('Ana Admin')).not.toBeInTheDocument();

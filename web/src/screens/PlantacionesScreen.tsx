@@ -125,16 +125,14 @@ export function PlantacionesScreen() {
         <h1 className={styles.titulo}>Plantaciones</h1>
         {data && <p className={styles.subtitulo}>{subtitulo}</p>}
         {data && data.length > 0 && (
-          <div className={styles.filtros}>
-            <PlantacionesFiltros
-              filtros={filtros}
-              lugares={lugares}
-              periodos={periodos}
-              mostrarLimpiar={filtrosActivos}
-              onCambiar={cambiarFiltro}
-              onLimpiar={limpiarFiltros}
-            />
-          </div>
+          <PlantacionesFiltros
+            filtros={filtros}
+            lugares={lugares}
+            periodos={periodos}
+            mostrarLimpiar={filtrosActivos}
+            onCambiar={cambiarFiltro}
+            onLimpiar={limpiarFiltros}
+          />
         )}
         {isPending && <Cargando />}
         {isError && !data && (

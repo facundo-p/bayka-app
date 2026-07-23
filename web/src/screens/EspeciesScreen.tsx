@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
 import {
+  BarraFiltros,
   Button,
   Cargando,
   EmptyState,
@@ -166,7 +167,7 @@ export function EspeciesScreen() {
             Catálogo global · {data.length} especies nativas
           </p>
         )}
-        <div className={styles.busqueda}>
+        <BarraFiltros>
           <Input
             label="Buscar especies"
             labelOculto
@@ -175,7 +176,7 @@ export function EspeciesScreen() {
             value={busqueda}
             onChange={(evento) => setBusqueda(evento.target.value)}
           />
-        </div>
+        </BarraFiltros>
         {isPending && <Cargando />}
         {isError && !data && (
           <ErrorConReintento
