@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Badge,
+  BarraFiltros,
   Button,
   Cargando,
   EmptyState,
   ErrorConReintento,
-  SegmentedControl,
+  Select,
   Table,
   Topbar,
   type TableColumn,
@@ -83,13 +84,13 @@ function filtrarPorEstado(
 }
 
 const OPCIONES_FILTRO: Array<{ value: Filtro; label: string }> = [
-  { value: 'todos', label: 'Todos' },
+  { value: 'todos', label: 'Rol: todos' },
   { value: 'admins', label: 'Admins' },
   { value: 'tecnicos', label: 'Técnicos' },
 ];
 
 const OPCIONES_FILTRO_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
-  { value: 'todos', label: 'Todos' },
+  { value: 'todos', label: 'Estado: todos' },
   { value: 'activos', label: 'Activos' },
   { value: 'inactivos', label: 'Inactivos' },
 ];
@@ -262,20 +263,32 @@ export function UsuariosScreen() {
       <div className={styles.body}>
         <h1 className={styles.titulo}>Usuarios</h1>
         {data && <p className={styles.subtitulo}>{calcularSubtitulo(data)}</p>}
-        <div className={styles.filtros}>
-          <SegmentedControl
-            aria-label="Filtrar por rol"
-            options={OPCIONES_FILTRO}
+        <BarraFiltros>
+          <Select
+            label="Filtrar por rol"
+            labelOculto
             value={filtro}
-            onChange={setFiltro}
-          />
-          <SegmentedControl
-            aria-label="Filtrar por estado"
-            options={OPCIONES_FILTRO_ESTADO}
+            onChange={(evento) => setFiltro(evento.target.value as Filtro)}
+          >
+            {OPCIONES_FILTRO.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+          <Select
+            label="Filtrar por estado"
+            labelOculto
             value={filtroEstado}
-            onChange={setFiltroEstado}
-          />
-        </div>
+            onChange={(evento) => setFiltroEstado(evento.target.value as FiltroEstado)}
+          >
+            {OPCIONES_FILTRO_ESTADO.map(({ value, label }) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </Select>
+        </BarraFiltros>
         {isPending && <Cargando />}
         {isError && !data && (
           <ErrorConReintento

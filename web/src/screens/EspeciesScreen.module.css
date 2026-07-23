@@ -21,12 +21,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Buscador del catálogo. */
-.busqueda {
-  margin: var(--space-4xl) 0 var(--space-3xl);
-  max-width: 420px;
-}
-
 /* Envoltura con scroll horizontal en pantallas angostas. */
 .tablaScroll {
   overflow-x: auto;

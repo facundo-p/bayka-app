@@ -1,6 +1,23 @@
 /* El estilo real del control vive en FormField.module.css (compartido con Input). */
 .select {
   composes: control from './FormField.module.css';
+  /* Flecha propia: la nativa queda pegada al borde derecho (no respeta el
+     padding), así que se dibuja como background y se reserva su lugar.
+     El color del chevron es --color-text-secondary (#6e6a5e): un data-URI
+     no puede leer variables css, por eso va el hex literal. */
+  appearance: none;
+  padding-right: var(--space-5xl);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236e6a5e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-lg) center;
+  background-size: 16px;
+}
+
+/* Sin la flecha nativa el estado deshabilitado pierde afordancia: se repone. */
+.select:disabled {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
 }
 
 .selectError {

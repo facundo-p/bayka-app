@@ -1,7 +1,6 @@
-import { Button, Input, Select } from '../../components';
+import { BarraFiltros, Button, Input, Select } from '../../components';
 import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import type { FiltrosPlantaciones } from './filtrosPlantaciones';
-import styles from './PlantacionesFiltros.module.css';
 
 interface PlantacionesFiltrosProps {
   filtros: FiltrosPlantaciones;
@@ -13,10 +12,10 @@ interface PlantacionesFiltrosProps {
 }
 
 /**
- * Barra de filtros compacta del listado de plantaciones (patrón ArbolesFiltros):
- * Lugar + Período + Estado + rango de fecha, en una fila, combinables (AND).
- * Los Selects de Lugar y Período se ocultan si hay ≤1 valor distinto: filtrar
- * por un único valor no aporta ninguna decisión, así que no se muestra el control.
+ * Barra de filtros del listado de plantaciones: Lugar + Período + Estado +
+ * rango de fecha, en una fila, combinables (AND). Los Selects de Lugar y
+ * Período se ocultan si hay ≤1 valor distinto: filtrar por un único valor no
+ * aporta ninguna decisión, así que no se muestra el control.
  * Labels accesibles pero ocultos.
  */
 export function PlantacionesFiltros({
@@ -28,7 +27,7 @@ export function PlantacionesFiltros({
   onLimpiar,
 }: PlantacionesFiltrosProps) {
   return (
-    <div className={styles.filtros}>
+    <BarraFiltros>
       {lugares.length > 1 && (
         <Select
           label="Lugar"
@@ -90,6 +89,6 @@ export function PlantacionesFiltros({
           Limpiar filtros
         </Button>
       )}
-    </div>
+    </BarraFiltros>
   );
 }
