@@ -1,14 +1,20 @@
 /* Barra de filtros estándar de los listados (Plantaciones/Especies/Usuarios).
-   Los controles (Input/Select) conservan su estilo base de FormField: la barra
-   solo resuelve layout y espaciado. Regla: los filtros NUNCA redefinen altura,
-   borde ni tipografía del control — un filtro nuevo se envuelve en BarraFiltros
-   y hereda la estética sin css propio. */
+   Los controles (Input/Select) conservan el estilo base de FormField; la barra
+   resuelve layout, espaciado y la única variación permitida: tipografía un
+   punto más chica que la de los formularios. Regla: un filtro nuevo se
+   envuelve en BarraFiltros y hereda la estética sin css propio. */
 .barra {
   margin: var(--space-4xl) 0 var(--space-3xl);
   display: flex;
   align-items: center;
   gap: var(--space-md);
   flex-wrap: wrap;
+}
+
+/* Tipografía de barra: más compacta que un formulario, igual en toda la fila. */
+.barra input,
+.barra select {
+  font-size: var(--text-md);
 }
 
 /* La búsqueda necesita más aire que un select: su celda crece hasta 420px
