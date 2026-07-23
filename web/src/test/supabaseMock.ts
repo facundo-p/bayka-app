@@ -142,6 +142,15 @@ export const supabaseMock = {
     }),
   },
   from: vi.fn((tabla: string) => crearConsultaMock(tabla, resolverPorDefecto)),
+  rpc: vi.fn(async (funcion: string, argumentos?: Record<string, unknown>) => {
+    const respuesta = resolverPorDefecto({
+      tabla: funcion,
+      operacion: 'rpc',
+      payload: argumentos,
+      filtros: [],
+    });
+    return { data: respuesta.data ?? null, error: respuesta.error ?? null };
+  }),
   storage: {
     from: vi.fn((bucket: string) => ({
       createSignedUrl: vi.fn(async (path: string, segundos: number) => {

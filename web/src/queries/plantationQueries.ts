@@ -3,7 +3,6 @@ import {
   GPS_CAPTURE_FREQUENCY_DEFAULT,
   GPS_CAPTURE_REQUIRED_DEFAULT,
 } from '../lib/gpsDefaults';
-import { contarOLanzar } from './conteo';
 
 /** Estados posibles de una plantación. ÚNICA fuente de verdad de estos valores:
  *  el tipo `EstadoPlantacion` se deriva de acá, así que valor y tipo no se
@@ -61,32 +60,23 @@ function camposFormulario(fila: FilaPlantacion) {
   };
 }
 
-/** Árboles de la plantación: trees → groups (join interno por plantation_id). */
-async function contarArboles(plantationId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('trees')
-    .select('id, groups!inner(plantation_id)', { count: 'exact', head: true })
-    .eq('groups.plantation_id', plantationId);
-  return contarOLanzar(count, error);
-}
+/** Fila del RPC stats_plantaciones (migración 027). */
+type FilaStats = {
+  plantation_id: string;
+  arboles: number;
+  parcelas: number;
+  usuarios: number;
+};
 
-/** Parcelas activas (excluye soft-deleted). */
-async function contarParcelas(plantationId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('parcelas')
-    .select('id', { count: 'exact', head: true })
-    .eq('plantation_id', plantationId)
-    .is('deleted_at', null);
-  return contarOLanzar(count, error);
-}
+const SIN_STATS = { arboles: 0, parcelas: 0, usuarios: 0 };
 
-/** Usuarios asignados a la plantación. */
-async function contarUsuarios(plantationId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('plantation_users')
-    .select('user_id', { count: 'exact', head: true })
-    .eq('plantation_id', plantationId);
-  return contarOLanzar(count, error);
+/** Contadores de todas las plantaciones en una sola query agregada: los
+ *  counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
+async function statsPorPlantacion(): Promise<Map<string, FilaStats>> {
+  const { data, error } = await supabase.rpc('stats_plantaciones');
+  if (error) throw new Error(error.message);
+  const filas = (data ?? []) as FilaStats[];
+  return new Map(filas.map((fila) => [fila.plantation_id, fila]));
 }
 
 function mapearPlantacion(fila: FilaPlantacion): Plantacion {
@@ -103,28 +93,19 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
   };
 }
 
-async function conStats(fila: FilaPlantacion): Promise<PlantacionConStats> {
-  const [arboles, parcelas, usuarios] = await Promise.all([
-    contarArboles(fila.id),
-    contarParcelas(fila.id),
-    contarUsuarios(fila.id),
-  ]);
+function conStats(fila: FilaPlantacion, stats: Map<string, FilaStats>): PlantacionConStats {
+  const { arboles, parcelas, usuarios } = stats.get(fila.id) ?? SIN_STATS;
   return { ...mapearPlantacion(fila), arboles, parcelas, usuarios };
 }
 
-/**
- * Lista plantaciones ordenadas por lugar con sus contadores.
- * Hace 3 counts por plantación (N+1): aceptable porque una organización
- * maneja pocas plantaciones y los counts head son baratos.
- */
+/** Lista plantaciones ordenadas por lugar con sus contadores (2 requests). */
 export async function listarPlantaciones(): Promise<PlantacionConStats[]> {
-  const { data, error } = await supabase
-    .from('plantations')
-    .select('*')
-    .order('lugar', { ascending: true });
+  const [{ data, error }, stats] = await Promise.all([
+    supabase.from('plantations').select('*').order('lugar', { ascending: true }),
+    statsPorPlantacion(),
+  ]);
   if (error) throw new Error(error.message);
-  const filas = (data ?? []) as FilaPlantacion[];
-  return Promise.all(filas.map(conStats));
+  return ((data ?? []) as FilaPlantacion[]).map((fila) => conStats(fila, stats));
 }
 
 /** Carga una plantación por id; null si no existe (o la RLS no la deja ver). */

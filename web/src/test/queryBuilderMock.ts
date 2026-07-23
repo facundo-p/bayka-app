@@ -14,8 +14,9 @@ type Filtro = {
 };
 
 export type ConsultaCapturada = {
+  /** Tabla consultada, o nombre de la función para operacion 'rpc'. */
   tabla: string;
-  operacion: 'select' | 'insert' | 'update' | 'delete';
+  operacion: 'select' | 'insert' | 'update' | 'delete' | 'rpc';
   /** Filas/cambios pasados a insert/update. */
   payload?: unknown;
   columnas?: string;
