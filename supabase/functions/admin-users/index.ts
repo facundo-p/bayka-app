@@ -29,6 +29,13 @@ if (!WEB_URL) {
 }
 const urlEstablecerPassword = `${WEB_URL}/establecer-password`;
 
+/** Deja rastro en los logs de la función cuando una dependencia falla: sin
+ *  esto, todo error de Auth/DB colapsa en un 500 genérico indebuggeable. */
+function conLog<T extends { error: string | null }>(operacion: string, resultado: T): T {
+  if (resultado.error) console.error(`[admin-users] ${operacion}: ${resultado.error}`);
+  return resultado;
+}
+
 const admin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -68,23 +75,23 @@ const deps: Deps = {
       data: meta,
       redirectTo: urlEstablecerPassword,
     });
-    return { error: error?.message ?? null, userId: data?.user?.id ?? null };
+    return conLog('invitar', { error: error?.message ?? null, userId: data?.user?.id ?? null });
   },
   asignarRol: async (userId, rol) => {
     const { error } = await admin.from('profiles').update({ rol }).eq('id', userId);
-    return { error: error?.message ?? null };
+    return conLog('asignarRol', { error: error?.message ?? null });
   },
   enviarRecuperacion: async (email) => {
     const { error } = await admin.auth.resetPasswordForEmail(email, {
       redirectTo: urlEstablecerPassword,
     });
-    return { error: error?.message ?? null };
+    return conLog('enviarRecuperacion', { error: error?.message ?? null });
   },
   banear: async (userId, banear) => {
     const { error } = await admin.auth.admin.updateUserById(userId, {
       ban_duration: banear ? BAN_PERMANENTE : SIN_BAN,
     });
-    return { error: error?.message ?? null };
+    return conLog('banear', { error: error?.message ?? null });
   },
   actualizarAuth: async (userId, campos) => {
     const { error } = await admin.auth.admin.updateUserById(userId, {
@@ -92,11 +99,11 @@ const deps: Deps = {
       // El cambio de email lo hace un superadmin verificado: sin doble opt-in.
       ...(campos.email ? { email_confirm: true } : {}),
     });
-    return { error: error?.message ?? null };
+    return conLog('actualizarAuth', { error: error?.message ?? null });
   },
   marcarActivo: async (userId, activo) => {
     const { error } = await admin.from('profiles').update({ activo }).eq('id', userId);
-    return { error: error?.message ?? null };
+    return conLog('marcarActivo', { error: error?.message ?? null });
   },
 };
 
@@ -109,8 +116,9 @@ Deno.serve(async (solicitud) => {
   let respuesta;
   try {
     respuesta = await manejarAdminUsers(jwt, cuerpo, deps);
-  } catch (_error) {
+  } catch (error) {
     // Fallo transitorio (DB/Auth): 500 reintentable, nunca un 403/404 engañoso.
+    console.error('[admin-users] excepción no controlada:', error);
     respuesta = { status: 500, body: { ok: false, error: MENSAJES.errorGenerico } };
   }
   return new Response(JSON.stringify(respuesta.body), {
