@@ -237,24 +237,24 @@ test('un error del alta (email duplicado) se muestra en el modal', async () => {
   );
 });
 
-test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida la lista', async () => {
+test('editar rol: advierte al promover a superadmin, actualiza e invalida la lista', async () => {
   const consultas = configurarUsuariosMock();
   const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
   const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Cambiar rol' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Cambiar rol de Ana Admin' });
+  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
 
-  // Sin cambio de rol no hay nada que confirmar.
-  expect(within(dialogo).getByRole('button', { name: 'Confirmar' })).toBeDisabled();
-  await usuario.selectOptions(within(dialogo).getByLabelText('Nuevo rol'), 'superadmin');
+  // Sin cambios no hay nada que guardar.
+  expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
+  await usuario.selectOptions(within(dialogo).getByLabelText('Rol'), 'superadmin');
   expect(within(dialogo).getByRole('status')).toHaveTextContent(
     'acceso total, incluida la gestión de usuarios',
   );
 
-  await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar' }));
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
   const update = consultas.find((consulta) => consulta.operacion === 'update');
@@ -269,22 +269,24 @@ test('cambiar rol feliz: advierte al promover a superadmin, actualiza e invalida
   expect(listados.length).toBeGreaterThan(1);
 });
 
-test('cambiar rol está deshabilitado en la propia fila del superadmin', async () => {
+test('el superadmin no puede cambiar su propio rol, pero sí su nombre', async () => {
   configurarUsuariosMock();
   const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
   const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
-  const itemPropio = menuPropio.getByRole('menuitem', { name: 'Cambiar rol' });
-  expect(itemPropio).toBeDisabled();
-  expect(itemPropio).toHaveAttribute(
+  await usuario.click(menuPropio.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Sofía Súper' });
+
+  const selectRol = within(dialogo).getByLabelText('Rol');
+  expect(selectRol).toBeDisabled();
+  expect(selectRol).toHaveAttribute(
     'title',
     expect.stringContaining('no puede degradarse a sí mismo'),
   );
-
-  const menuAna = await abrirMenu(usuario, 'Ana Admin');
-  expect(menuAna.getByRole('menuitem', { name: 'Cambiar rol' })).toBeEnabled();
+  // Los otros campos siguen editables.
+  expect(within(dialogo).getByLabelText('Nombre')).toBeEnabled();
 });
 
 test('el único superadmin del sistema no es degradable', async () => {
@@ -305,9 +307,14 @@ test('el único superadmin del sistema no es degradable', async () => {
   await screen.findByText('Selva Súper');
 
   const menuSelva = await abrirMenu(usuario, 'Selva Súper');
-  const item = menuSelva.getByRole('menuitem', { name: 'Cambiar rol' });
-  expect(item).toBeDisabled();
-  expect(item).toHaveAttribute('title', 'Único superadmin: promové otro antes de degradarlo');
+  await usuario.click(menuSelva.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Selva Súper' });
+  const selectRol = within(dialogo).getByLabelText('Rol');
+  expect(selectRol).toBeDisabled();
+  expect(selectRol).toHaveAttribute(
+    'title',
+    'Único superadmin: promové otro antes de degradarlo',
+  );
 });
 
 test('un error del trigger del server se muestra legible en el modal', async () => {
@@ -317,10 +324,10 @@ test('un error del trigger del server se muestra legible en el modal', async () 
   await screen.findByText('Ana Admin');
 
   const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Cambiar rol' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Cambiar rol de Ana Admin' });
-  await usuario.selectOptions(within(dialogo).getByLabelText('Nuevo rol'), 'tecnico');
-  await usuario.click(within(dialogo).getByRole('button', { name: 'Confirmar' }));
+  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  await usuario.selectOptions(within(dialogo).getByLabelText('Rol'), 'tecnico');
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
 
   expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
     'Solo un superadmin puede cambiar roles',

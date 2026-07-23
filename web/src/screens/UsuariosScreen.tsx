@@ -23,7 +23,6 @@ import { desactivarUsuario, reactivarUsuario, reenviarInvitacion } from '../serv
 import { contarSuperadminsActivos, itemsDeMenu, type AccionUsuario } from './usuarios/acciones';
 import { AgregarUsuarioModal } from './usuarios/AgregarUsuarioModal';
 import { CambiarPasswordModal } from './usuarios/CambiarPasswordModal';
-import { CambiarRolModal } from './usuarios/CambiarRolModal';
 import { ConfirmarModal } from './usuarios/ConfirmarModal';
 import { EditarUsuarioModal } from './usuarios/EditarUsuarioModal';
 import { MenuAccionesUsuario } from './usuarios/MenuAccionesUsuario';
@@ -169,18 +168,27 @@ function copyDesactivar(nombre: string): string {
 function ModalDeAccion({
   usuario,
   accion,
+  idActual,
+  superadminsActivos,
   onClose,
 }: {
   usuario: UsuarioConAsignaciones;
   accion: AccionUsuario;
+  idActual: string | undefined;
+  superadminsActivos: number;
   onClose: () => void;
 }) {
   const nombre = nombreVisible(usuario);
   switch (accion) {
-    case 'cambiarRol':
-      return <CambiarRolModal usuario={usuario} onClose={onClose} />;
     case 'editar':
-      return <EditarUsuarioModal usuario={usuario} onClose={onClose} />;
+      return (
+        <EditarUsuarioModal
+          usuario={usuario}
+          idActual={idActual}
+          superadminsActivos={superadminsActivos}
+          onClose={onClose}
+        />
+      );
     case 'cambiarPassword':
       return <CambiarPasswordModal usuario={usuario} onClose={onClose} />;
     case 'reenviarInvitacion':
@@ -296,6 +304,8 @@ export function UsuariosScreen() {
         <ModalDeAccion
           usuario={accionActiva.usuario}
           accion={accionActiva.accion}
+          idActual={perfil?.id}
+          superadminsActivos={superadminsActivos}
           onClose={() => setAccionActiva(null)}
         />
       )}
