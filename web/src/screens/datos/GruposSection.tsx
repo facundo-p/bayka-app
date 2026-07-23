@@ -43,7 +43,7 @@ const COLUMNAS: Array<TableColumn<GrupoConDetalle>> = [
   {
     key: 'arboles',
     header: 'Árboles',
-    align: 'right',
+    align: 'center',
     render: (grupo) => <span className={styles.numero}>{formatearEntero(grupo.arboles)}</span>,
   },
   {

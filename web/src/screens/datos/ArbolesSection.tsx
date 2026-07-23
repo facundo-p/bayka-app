@@ -96,7 +96,7 @@ function columnasArboles(
     {
       key: 'posicion',
       header: 'Pos.',
-      align: 'right',
+      align: 'center',
       render: (arbol) => <span className={styles.numero}>{arbol.posicion ?? '—'}</span>,
     },
     { key: 'gps', header: 'GPS', render: (arbol) => <CeldaGps arbol={arbol} /> },

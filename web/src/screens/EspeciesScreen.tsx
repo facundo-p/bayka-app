@@ -69,7 +69,7 @@ const COLUMNAS: Array<TableColumn<EspecieConCatalogoUso>> = [
   {
     key: 'plantaciones',
     header: 'Plantaciones',
-    align: 'right',
+    align: 'center',
     render: (especie) => (
       <span className={claseSegunUso(especie, styles.numero)}>{especie.plantaciones}</span>
     ),
@@ -77,7 +77,7 @@ const COLUMNAS: Array<TableColumn<EspecieConCatalogoUso>> = [
   {
     key: 'arboles',
     header: 'Árboles',
-    align: 'right',
+    align: 'center',
     render: (especie) => (
       <span className={claseSegunUso(especie, styles.arboles)}>
         {formatearEntero(especie.arboles)}
