@@ -10,11 +10,16 @@
  * `classifyAuthError` is pure so it can be unit-tested without rendering UI.
  */
 
-export type AuthErrorKind = 'invalid_credentials' | 'connectivity' | 'unknown';
+export type AuthErrorKind =
+  | 'invalid_credentials'
+  | 'connectivity'
+  | 'account_disabled'
+  | 'unknown';
 
 export const AUTH_MESSAGES: Record<AuthErrorKind, string> = {
   invalid_credentials: 'Email o contraseña incorrectos.',
   connectivity: 'No se pudo conectar con el servidor. Verificá tu conexión o intentá más tarde.',
+  account_disabled: 'Tu cuenta fue desactivada. Contactá a un administrador.',
   unknown: 'No se pudo iniciar sesión. Intentá nuevamente.',
 };
 
@@ -51,6 +56,11 @@ export function classifyAuthError(error: AnyAuthError): AuthErrorKind {
   // a precise credential error is never misread as connectivity.
   if (code === 'invalid_credentials' || message.includes('invalid login credentials')) {
     return 'invalid_credentials';
+  }
+
+  // Usuario baneado (baja reversible desde la web de gestión).
+  if (code === 'user_banned' || message.includes('banned')) {
+    return 'account_disabled';
   }
 
   // Server down / unreachable / non-JSON response / timeout → connectivity.

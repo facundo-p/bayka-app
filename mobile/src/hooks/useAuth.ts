@@ -9,12 +9,12 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { persistSession, readCachedSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
+import { persistSession, clearSession, readCachedSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
 import { USER_ID_KEY } from './useCurrentUserId';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired } from '../services/OfflineAuthService';
+import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials } from '../services/OfflineAuthService';
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
 
@@ -54,18 +54,51 @@ async function syncAutoRefresh(isConnected: boolean | null) {
   }
 }
 
+/**
+ * Purga TODO el estado de sesión al confirmar (online) que la cuenta fue
+ * desactivada: tokens, credenciales offline, rol, email y estado del SDK.
+ * A diferencia del signOut normal (que preserva las credenciales offline por
+ * contrato), acá SÍ se borran: si no, el usuario dado de baja volvería a
+ * entrar con login offline (las credenciales no vencen). Es un signOut
+ * explícito disparado por el server, la única excepción legítima al contrato.
+ */
+async function purgarSesionDesactivada() {
+  authChangeListeners.forEach(fn => fn({ session: null, role: null }));
+  await supabase.auth.stopAutoRefresh();
+  autoRefreshActive = false;
+  try { await clearSession(); } catch {}
+  try { await clearAllCredentials(); } catch {}
+  try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
+  try { await SecureStore.deleteItemAsync(EMAIL_KEY); } catch {}
+  try { await SecureStore.deleteItemAsync(USER_ID_KEY); } catch {}
+  try {
+    const keys = await AsyncStorage.getAllKeys();
+    const sbKeys = keys.filter(k => k.startsWith('sb-'));
+    if (sbKeys.length > 0) await AsyncStorage.multiRemove(sbKeys);
+  } catch {}
+}
+
 // ─── Helpers (no network when offline) ──────────────────────────────────────
+
+/** Respuesta ONLINE explícita: el server marcó la cuenta como desactivada
+ *  (baja reversible desde la web). Distinto de un fallo de red, que cae al
+ *  rol cacheado sin romper el contrato offline. */
+export const CUENTA_DESACTIVADA = 'cuenta-desactivada' as const;
+type RolObtenido = Role | typeof CUENTA_DESACTIVADA | null;
 
 /**
  * Fetch role from Supabase profiles, cache it, return it.
  * Falls back to cached role on timeout/error. ONLY called when online.
  */
-async function fetchAndCacheRole(userId: string, email?: string): Promise<Role | null> {
+async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObtenido> {
   try {
     const { data: profile } = await withTimeout(
-      supabase.from('profiles').select('rol').eq('id', userId).single(),
+      supabase.from('profiles').select('rol, activo').eq('id', userId).single(),
       ROLE_FETCH_TIMEOUT,
     );
+    if (profile && profile.activo === false) {
+      return CUENTA_DESACTIVADA;
+    }
     if (profile?.rol) {
       await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
       if (email) await SecureStore.setItemAsync(EMAIL_KEY, email);
@@ -132,7 +165,14 @@ export function useAuth() {
               await persistSession(supabaseSession);
               await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
               const cachedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
-              restored = { session: supabaseSession, role: cachedRole };
+              if (cachedRole === CUENTA_DESACTIVADA) {
+                // Baja confirmada por el server: purga total (tokens +
+                // credenciales offline) para que no vuelva a entrar offline.
+                await purgarSesionDesactivada();
+                restored = { session: null, role: null };
+              } else {
+                restored = { session: supabaseSession, role: cachedRole };
+              }
             } else {
               restored = await restoreFromCache();
             }
@@ -166,6 +206,16 @@ export function useAuth() {
           await persistSession(supabaseSession);
           await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
           const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
+
+          if (fetchedRole === CUENTA_DESACTIVADA) {
+            await purgarSesionDesactivada();
+            if (mounted) {
+              setSession(null);
+              setRole(null);
+              setLoading(false);
+            }
+            return;
+          }
 
           if (mounted) {
             setSession(supabaseSession);
@@ -225,15 +275,18 @@ export function useAuth() {
     return { data: { session: offlineSession, user: null }, error: null };
   }
 
-  /** Persist + cache everything after a successful online sign in. */
-  async function persistOnlineSession(email: string, password: string, session: any) {
+  /** Persist + cache everything after a successful online sign in.
+   *  Devuelve false si la cuenta está desactivada (no se cachea nada). */
+  async function persistOnlineSession(email: string, password: string, session: any): Promise<boolean> {
     await persistSession(session);
     await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
     await syncAutoRefresh(true);
 
-    const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '') ?? 'tecnico';
-    await cacheCredential(email, password, userRole);
+    const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '');
+    if (userRole === CUENTA_DESACTIVADA) return false;
+    await cacheCredential(email, password, userRole ?? 'tecnico');
     await saveLastOnlineLogin();
+    return true;
   }
 
   /**
@@ -267,7 +320,16 @@ export function useAuth() {
     }
 
     if (!result.error) {
-      if (result.data.session) await persistOnlineSession(email, password, result.data.session);
+      if (result.data.session) {
+        const cuentaActiva = await persistOnlineSession(email, password, result.data.session);
+        if (!cuentaActiva) {
+          await purgarSesionDesactivada();
+          return {
+            data: { session: null, user: null },
+            error: { message: AUTH_MESSAGES.account_disabled },
+          };
+        }
+      }
       return result;
     }
 
@@ -275,6 +337,12 @@ export function useAuth() {
     // non-JSON parse error here — that's connectivity, not bad credentials.
     if (classifyAuthError(result.error) === 'connectivity') {
       return handleConnectivityFailure(email, password);
+    }
+    // Cuenta baneada (baja): purga las credenciales cacheadas para que no
+    // vuelva a entrar offline.
+    if (classifyAuthError(result.error) === 'account_disabled') {
+      await purgarSesionDesactivada();
+      return { data: { session: null, user: null }, error: { message: AUTH_MESSAGES.account_disabled } };
     }
     // Real credential / unknown error → friendly message, never the raw SDK one.
     return { data: { session: null, user: null }, error: { message: authErrorMessage(result.error) } };

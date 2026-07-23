@@ -11,6 +11,7 @@ import { resolveNNTree } from '../repositories/TreeRepository';
 import { useLiveData, notifyDataChanged } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import { useProfileData } from './useProfileData';
+import { esRolAdmin } from '../types/domain';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { colors } from '../theme';
@@ -41,7 +42,7 @@ export function useNNResolution(params: {
   const confirm = useConfirm();
   const isPlantationMode = !grupoId;
   const { profile } = useProfileData();
-  const isAdmin = profile?.rol === 'admin';
+  const isAdmin = esRolAdmin(profile?.rol);
 
   const singleGroupTrees = useTrees(grupoId ?? '');
 

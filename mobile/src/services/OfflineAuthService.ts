@@ -84,6 +84,14 @@ export async function clearCredential(email: string): Promise<void> {
   );
 }
 
+/** Borra TODAS las credenciales offline cacheadas. Se usa al desactivar una
+ *  cuenta: sin esto, un usuario dado de baja volvería a entrar con login
+ *  offline (las credenciales no vencen). NO se usa en el logout normal, que
+ *  por contrato preserva las credenciales para el login offline. */
+export async function clearAllCredentials(): Promise<void> {
+  await SecureStore.deleteItemAsync(OFFLINE_CREDENTIALS_KEY);
+}
+
 export async function getCachedEmails(): Promise<string[]> {
   const all = await getAll();
   // Lazy migration: delete old plaintext saved_accounts key

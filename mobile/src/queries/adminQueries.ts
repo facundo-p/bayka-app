@@ -104,7 +104,9 @@ export async function getAllTechnicians(
     .from('profiles')
     .select('id, nombre')
     .eq('organizacion_id', organizacionId)
-    .eq('rol', 'tecnico');
+    .eq('rol', 'tecnico')
+    // No se ofrece asignar técnicos dados de baja (no pueden loguearse).
+    .eq('activo', true);
 
   if (error) throw error;
   return (data ?? []) as Array<{ id: string; nombre: string }>;

@@ -1,4 +1,11 @@
-export type Role = 'admin' | 'tecnico';
+export type Role = 'admin' | 'tecnico' | 'superadmin';
+
+/** Roles que operan la app con capacidades de administración: el superadmin
+ *  (gestión de usuarios en la web) trabaja en campo igual que un admin.
+ *  Todo chequeo de "es admin" debe usar este helper, nunca igualdad estricta. */
+export function esRolAdmin(rol: string | null | undefined): boolean {
+  return rol === 'admin' || rol === 'superadmin';
+}
 
 export interface UserProfile {
   id: string;
