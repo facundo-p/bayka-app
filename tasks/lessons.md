@@ -272,3 +272,10 @@ no mandar `null`.
 parcial cuenta como NO generado. Espejo de `hasIdsGenerated` de mobile
 (`mobile/src/queries/adminQueries.ts`) y `docs/SPECS.md §4.17`. Web:
 `web/src/queries/idsQueries.ts`.
+
+## 2026-07-23 — DDL en prod solo con confirmación dedicada
+Apliqué la migración 027 en el Supabase prod con un "Ok con la migración 27" dado
+al plan general, y el usuario lo vivió como ejecución sin autorización. Regla: la
+aprobación del plan y la de ejecución en prod son dos gates distintos. Antes de
+correr DDL/seeds/deploys en el proyecto remoto: mostrar el SQL exacto, nombrar el
+entorno, y preguntar SOLO eso.
