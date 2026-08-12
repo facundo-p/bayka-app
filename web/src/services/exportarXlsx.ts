@@ -46,6 +46,33 @@ export function nombreArchivoXlsx(lugar: string, periodo: string): string {
   return nombreArchivoDescarga('export', lugar, periodo, EXTENSION_XLSX);
 }
 
+// Ajuste de ancho de columnas (#54): tope para que un valor larguísimo no
+// produzca una columna inusable, más un pequeño respiro visual.
+const ANCHO_MAX_COLUMNA = 100;
+const ANCHO_PADDING = 2;
+
+/** Largo en caracteres del valor de una celda (null → 0). */
+function largoCelda(celda: Cell): number {
+  const valor = celda != null && typeof celda === 'object' && 'value' in celda ? celda.value : celda;
+  return valor == null ? 0 : String(valor).length;
+}
+
+/**
+ * Columnas con ancho ajustado al contenido (#54): por columna, el mayor largo
+ * entre el encabezado y todas las celdas, con tope de ANCHO_MAX_COLUMNA más
+ * padding. Misma regla que mobile (`excelColumnWidths` en ExportService).
+ */
+export function columnasConAncho(filas: FilaExportacion[]): Column<FilaExportacion>[] {
+  return COLUMNAS_XLSX.map((columna) => {
+    let largoMaximo = largoCelda(columna.header);
+    filas.forEach((fila, indice) => {
+      const largo = largoCelda(columna.cell(fila, indice));
+      if (largo > largoMaximo) largoMaximo = largo;
+    });
+    return { ...columna, width: Math.min(largoMaximo, ANCHO_MAX_COLUMNA) + ANCHO_PADDING };
+  });
+}
+
 /** Arma el XLSX (hoja "Plantacion") y dispara la descarga. La librería se
  *  importa dinámicamente para no sumarla al bundle inicial (~21 kB gzip):
  *  se descarga recién en la primera exportación. */
@@ -55,6 +82,9 @@ export async function descargarXlsxExportacion(
   periodo: string,
 ): Promise<void> {
   const { default: writeXlsxFile } = await import('write-excel-file/browser');
-  const blob = await writeXlsxFile(filas, { columns: COLUMNAS_XLSX, sheet: NOMBRE_HOJA }).toBlob();
+  const blob = await writeXlsxFile(filas, {
+    columns: columnasConAncho(filas),
+    sheet: NOMBRE_HOJA,
+  }).toBlob();
   descargarBlob(blob, nombreArchivoXlsx(lugar, periodo));
 }
