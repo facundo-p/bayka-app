@@ -21,7 +21,6 @@ import { usePlantaciones } from '../hooks/usePlantaciones';
 import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
 import { useSync } from '../hooks/useSync';
 import { useAuth } from '../hooks/useAuth';
-import { showConfirmDialog } from '../utils/alertHelpers';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../components/PlantationConfigCard';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
@@ -226,12 +225,6 @@ export default function PlantacionesScreen() {
     if (ok) setAssignTechPlantacionId(plantacionId);
   }
 
-  function handleBottomSheetSync() {
-    if (bottomSheetPlantation) {
-      setBottomSheetVisible(false);
-      showSyncConfirm('plantation', bottomSheetPlantation.id);
-    }
-  }
 
   return (
     <TexturedBackground>
@@ -306,10 +299,18 @@ export default function PlantacionesScreen() {
                     nnCount: nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
                     onPress: () => router.push(`/${routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
+                    // Long-press abre la edición, como en las demás cards (#94).
+                    onLongPress: isAdmin ? () => handleEditPress(item) : undefined,
                     onDelete: () => handleDeletePlantation(item.id),
                     isAdmin,
-                    onEdit: () => handleEditPress(item),
-                    onGear: () => handleOpenGear(item),
+                    // Sync por plantación en la card (#94); oculto sin conexión
+                    // o con un sync en curso, como el botón global del header.
+                    onSync: isOnline && !isSyncing
+                      ? () => showSyncConfirm('plantation', item.id)
+                      : undefined,
+                    // El gear es admin-only: sin el ítem Sincronizar (movido a
+                    // la card), el menú de un técnico quedaría vacío.
+                    onGear: isAdmin ? () => handleOpenGear(item) : undefined,
                   }}
                 />
               </Animated.View>
@@ -381,7 +382,7 @@ export default function PlantacionesScreen() {
         isAdmin={isAdmin}
         isOnline={isOnline}
         onDismiss={() => setBottomSheetVisible(false)}
-        onSync={handleBottomSheetSync}
+        onEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) handleEditPress(bottomSheetPlantation); })}
         onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
         onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
         onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}

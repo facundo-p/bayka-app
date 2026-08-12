@@ -29,11 +29,14 @@ type Props = {
   estado?: string;
   hasPendingSync?: boolean;
   onPress: () => void;
+  /** Long-press de la card: abre la edición (patrón de las demás cards, #94). */
+  onLongPress?: () => void;
   onDelete?: () => void;
   nnCount?: number;
   // Role-aware action slots
   isAdmin?: boolean;
-  onEdit?: () => void;
+  /** Sync de ESTA plantación desde la card (#94); ausente = slot vacío (offline). */
+  onSync?: () => void;
   onGear?: () => void;
   // Visibilidad configurada desde la web; el badge "Oculta en app" solo lo ve
   // el admin (los técnicos directamente no reciben plantaciones ocultas).
@@ -112,32 +115,42 @@ function ExpandedSection({
 }
 
 function ActionStrip({
-  onEdit,
+  onSync,
   onGear,
   onDelete,
 }: {
-  onEdit?: () => void;
+  onSync?: () => void;
   onGear?: () => void;
   onDelete?: () => void;
 }) {
   return (
     <View style={styles.strip}>
-      <Pressable
-        onPress={(e) => { e?.stopPropagation?.(); onEdit?.(); }}
-        hitSlop={8}
-        style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-        accessibilityLabel="Editar lugar y periodo"
-      >
-        <Ionicons name="create-outline" size={18} color={colors.primary} />
-      </Pressable>
-      <Pressable
-        onPress={(e) => { e?.stopPropagation?.(); onGear?.(); }}
-        hitSlop={8}
-        style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-        accessibilityLabel="Acciones de plantacion"
-      >
-        <Ionicons name="settings-outline" size={18} color={colors.primary} />
-      </Pressable>
+      {/* Cada acción ausente deja un slot vacío para que el layout no salte
+          entre cards (sync se oculta offline; gear es admin-only). */}
+      {onSync ? (
+        <Pressable
+          onPress={(e) => { e?.stopPropagation?.(); onSync(); }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+          accessibilityLabel="Sincronizar plantacion"
+        >
+          <Ionicons name="sync-outline" size={18} color={colors.primary} />
+        </Pressable>
+      ) : (
+        <View style={styles.stripSlot} />
+      )}
+      {onGear ? (
+        <Pressable
+          onPress={(e) => { e?.stopPropagation?.(); onGear(); }}
+          hitSlop={8}
+          style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
+          accessibilityLabel="Acciones de plantacion"
+        >
+          <Ionicons name="settings-outline" size={18} color={colors.primary} />
+        </Pressable>
+      ) : (
+        <View style={styles.stripSlot} />
+      )}
       {onDelete ? (
         <Pressable
           onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
@@ -204,9 +217,10 @@ export default function PlantationCard({
   hasPendingSync = false,
   nnCount,
   onPress,
+  onLongPress,
   onDelete,
   isAdmin = false,
-  onEdit,
+  onSync,
   onGear,
   visibleInApp = true,
   parcelasCount = 0,
@@ -223,6 +237,7 @@ export default function PlantationCard({
     <Pressable
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       onPress={onPress}
+      onLongPress={onLongPress}
     >
       {/* Fila superior: franja verde + contenido + acciones. La franja y los
           íconos de acción solo cubren esta fila; la expansión de parcelas va
@@ -264,7 +279,7 @@ export default function PlantationCard({
           )}
         </View>
 
-        <ActionStrip onEdit={onEdit} onGear={onGear} onDelete={onDelete} />
+        <ActionStrip onSync={onSync} onGear={onGear} onDelete={onDelete} />
       </View>
 
       {onToggleExpanded && (

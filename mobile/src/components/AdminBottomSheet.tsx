@@ -1,14 +1,15 @@
 /**
  * AdminBottomSheet — slide-up modal with plantation actions.
  *
- * Opens when any user taps the gear icon on a PlantationCard.
- * Shows sync options for ALL users, plus admin-only management actions.
+ * Opens when an admin taps the gear icon on a PlantationCard (#94: el gear es
+ * admin-only; el sync por plantación vive en la card, no acá).
  */
 import React from 'react';
-import { View, Text, Modal, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Modal, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, fontSize, fonts, borderRadius } from '../theme';
+import { colors, spacing } from '../theme';
+import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 
@@ -21,7 +22,7 @@ type AdminBottomSheetProps = {
   isAdmin: boolean;
   isOnline: boolean;
   onDismiss: () => void;
-  onSync: () => void;
+  onEdit: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
   onFinalize: () => void;
@@ -90,7 +91,7 @@ export default function AdminBottomSheet({
   isAdmin,
   isOnline,
   onDismiss,
-  onSync,
+  onEdit,
   onConfigSpecies,
   onAssignTech,
   onFinalize,
@@ -175,15 +176,16 @@ export default function AdminBottomSheet({
 
           {/* Action list */}
           <View style={styles.actionList}>
-            {/* Sync — available for ALL users (bidirectional) */}
-            <ActionItem
-              icon="sync-outline"
-              label="Sincronizar"
-              color={colors.primary}
-              onPress={onSync}
-              disabled={!isOnline}
-              helperText={!isOnline ? 'Necesitas conexion a internet' : undefined}
-            />
+            {/* Editar — para cualquier estado (#94: reemplaza a Sincronizar,
+                que ahora vive como botón en la card) */}
+            {isAdmin && (
+              <ActionItem
+                icon="create-outline"
+                label="Editar lugar y periodo"
+                color={colors.primary}
+                onPress={onEdit}
+              />
+            )}
 
             {/* Admin-only actions */}
             {isAdmin && plantation.estado === 'activa' && (
@@ -259,126 +261,3 @@ export default function AdminBottomSheet({
     </Modal>
   );
 }
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-
-const styles = StyleSheet.create({
-  outerWrapper: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: borderRadius.xl,
-    borderTopRightRadius: borderRadius.xl,
-    paddingHorizontal: spacing.xxl,
-  },
-  handleContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.xxl,
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: colors.borderMuted,
-    borderRadius: 2,
-  },
-  closeBtn: {
-    position: 'absolute',
-    top: spacing['4xl'],
-    right: spacing.xxl,
-    padding: spacing.md,
-    zIndex: 1,
-  },
-  header: {
-    marginBottom: spacing.xxl,
-    gap: spacing.xs,
-  },
-  headerTitle: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
-    color: colors.textHeading,
-  },
-  headerSubtitle: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-  },
-  pendingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.secondaryBg,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.xxl,
-  },
-  pendingBadgeText: {
-    fontSize: fontSize.sm,
-    color: colors.secondary,
-    flex: 1,
-    fontFamily: fonts.regular,
-  },
-  discardBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  discardBtnText: {
-    fontSize: fontSize.sm,
-    color: colors.danger,
-    fontFamily: fonts.regular,
-  },
-  actionList: {
-    gap: spacing.xxl,
-  },
-  actionItem: {
-    height: 48,
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: borderRadius.lg,
-    paddingHorizontal: spacing.xxl,
-    gap: spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  actionItemDisabled: {
-    opacity: 0.4,
-  },
-  actionItemText: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-  },
-  helperText: {
-    fontSize: fontSize.sm,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.xs,
-    fontFamily: fonts.regular,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.xs,
-  },
-  lockedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.secondaryBg,
-    borderRadius: borderRadius.lg,
-  },
-  lockedText: {
-    color: colors.stateFinalizada,
-    fontSize: fontSize.sm,
-    fontFamily: fonts.regular,
-  },
-});
