@@ -97,19 +97,22 @@ describe('deletePlantationLocally', () => {
     expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes all 6 tables inside the transaction', async () => {
+  it('deletes all 7 tables inside the transaction (incluye parcelas, #90)', async () => {
     await deletePlantationLocally('plant-1');
 
-    // Should delete exactly 6 tables
-    expect(txDeleteCalls).toHaveLength(6);
+    // Should delete exactly 7 tables
+    expect(txDeleteCalls).toHaveLength(7);
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes trees before groups (correct order for FK safety)', async () => {
+  it('deletes trees before groups, and groups before parcelas (FK safety)', async () => {
     await deletePlantationLocally('plant-1');
 
     const treesIdx = txDeleteCalls.indexOf('trees');
     const subgroupsIdx = txDeleteCalls.indexOf('groups');
+    const parcelasIdx = txDeleteCalls.indexOf('parcelas');
     expect(treesIdx).toBeLessThan(subgroupsIdx);
+    // #90: las parcelas se borran después de los groups que las referencian.
+    expect(subgroupsIdx).toBeLessThan(parcelasIdx);
   });
 });

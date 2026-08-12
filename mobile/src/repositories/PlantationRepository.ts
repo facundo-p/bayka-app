@@ -9,7 +9,7 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { plantations, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
+import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
 import { eq, asc } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -496,10 +496,11 @@ export async function clearGeneratedIds(plantacionId: string): Promise<void> {
  * Deletion order (manual cascade — SQLite does not enforce FK cascades):
  * 1. trees (via subgroup IDs)
  * 2. groups
- * 3. plantation_species
- * 4. plantation_users
- * 5. user_species_order
- * 6. plantations
+ * 3. parcelas (#90: antes no se borraban y quedaban filas huérfanas)
+ * 4. plantation_species
+ * 5. plantation_users
+ * 6. user_species_order
+ * 7. plantations
  *
  * Wrapped in db.transaction() for atomicity.
  */
@@ -509,6 +510,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
     );
     await tx.delete(groups).where(eq(groups.plantacionId, plantacionId));
+    await tx.delete(parcelas).where(eq(parcelas.plantacionId, plantacionId));
     await tx.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
     await tx.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantacionId));
     await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.plantacionId, plantacionId));

@@ -130,23 +130,44 @@ describe('exportQueries.getExportRows', () => {
   });
 
   it('el schema rechaza un grupo sin parcela (NOT NULL, #90 / migración 0018)', async () => {
-    const plantation = createTestPlantation({ lugar: 'Campo Invalido' });
-    await mockTestDb.insert(plantations).values(plantation);
+    // DB propia y fresca: valida el resultado de la migración 0018 sin depender
+    // del estado compartido del archivo (evita flakes por interferencia).
+    const propia = createTestDb();
+    try {
+      const columnas = propia.sqlite
+        .prepare('PRAGMA table_info(groups)')
+        .all() as Array<{ name: string; notnull: number }>;
+      expect(columnas.find((c) => c.name === 'parcela_id')?.notnull).toBe(1);
 
-    await expect(
-      mockTestDb.insert(groups).values({
-        id: 'g-sin-parcela',
-        plantacionId: plantation.id,
-        parcelaId: null,
-        nombre: 'Linea Invalida',
-        codigo: 'LI',
-        tipo: 'linea',
-        estado: 'activa',
-        usuarioCreador: 'u1',
-        createdAt: localNow(),
-        pendingSync: false,
-      } as unknown as typeof groups.$inferInsert),
-    ).rejects.toThrow(/NOT NULL/);
+      const plantation = createTestPlantation({ lugar: 'Campo Invalido' });
+      await propia.db.insert(plantations).values(plantation);
+      let error: unknown = null;
+      try {
+        await propia.db.insert(groups).values({
+          id: 'g-sin-parcela',
+          plantacionId: plantation.id,
+          parcelaId: null,
+          nombre: 'Linea Invalida',
+          codigo: 'LI',
+          tipo: 'linea',
+          estado: 'activa',
+          usuarioCreador: 'u1',
+          createdAt: localNow(),
+          pendingSync: false,
+        } as unknown as typeof groups.$inferInsert);
+      } catch (e) {
+        error = e;
+      }
+      if (error === null) {
+        // Diagnóstico del flake: ¿qué quedó insertado realmente?
+        const filas = propia.sqlite.prepare('SELECT id, parcela_id FROM groups').all();
+        // eslint-disable-next-line no-console
+        console.error('DIAG insert-null-resuelto:', JSON.stringify(filas));
+      }
+      expect(String(error)).toMatch(/NOT NULL/);
+    } finally {
+      closeTestDb(propia.sqlite);
+    }
   });
 
   it('orders rows by globalId ASC', async () => {

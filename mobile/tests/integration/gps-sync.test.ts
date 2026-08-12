@@ -186,6 +186,19 @@ function serverTree(overrides: Record<string, any> = {}) {
   };
 }
 
+function serverParcela() {
+  serverState.parcelas.set(PARCELA_ID, {
+    id: PARCELA_ID,
+    plantation_id: PLANTATION_ID,
+    nombre: 'Parcela 1',
+    codigo: 'P1',
+    descripcion: null,
+    created_at: NOW,
+    updated_at: NOW,
+    deleted_at: null,
+  });
+}
+
 function serverPlantation(overrides: Record<string, any> = {}) {
   serverState.plantations.set(PLANTATION_ID, {
     id: PLANTATION_ID,
@@ -213,6 +226,7 @@ afterAll(() => {
 beforeEach(async () => {
   await mockTestDb.delete(trees);
   await mockTestDb.delete(groups);
+  await mockTestDb.delete(parcelas);
   await mockTestDb.delete(plantations);
   for (const k of Object.keys(serverState)) serverState[k].clear();
   rpcCalls.length = 0;
@@ -289,6 +303,7 @@ describe('GPS — pull de árboles', () => {
   test('árbol del server con coordenadas llega al local', async () => {
     await seedLocalPlantation();
     serverPlantation();
+    serverParcela();
     serverState.groups.set(GROUP_ID, {
       id: GROUP_ID,
       plantation_id: PLANTATION_ID,
@@ -326,6 +341,7 @@ describe('GPS — pull de árboles', () => {
       gpsAccuracy: 2.1,
       gpsCapturedAt: NOW,
     }));
+    serverParcela();
     serverState.groups.set(GROUP_ID, {
       id: GROUP_ID,
       plantation_id: PLANTATION_ID,

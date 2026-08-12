@@ -7,9 +7,10 @@
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
+import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
+  parcelas,
   groups,
   trees,
   species,
@@ -53,6 +54,7 @@ beforeEach(async () => {
   // Clear data in FK order
   await db.delete(trees);
   await db.delete(groups);
+  await db.delete(parcelas);
   await db.delete(plantationSpecies);
   await db.delete(plantationUsers);
   await db.delete(plantations);
@@ -151,6 +153,8 @@ describe('Role-based access', () => {
   test('admin sees all groups across all technicians', async () => {
     const plantation = createTestPlantation({ organizacionId: ORG_ID, creadoPor: ADMIN_USER_ID });
     await db.insert(plantations).values(plantation);
+    // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
+    await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
     // Two tecnicos each create a subgroup
     const sg1 = createTestGroup({

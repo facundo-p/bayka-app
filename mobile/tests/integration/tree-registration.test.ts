@@ -5,9 +5,10 @@
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
+import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
+  parcelas,
   groups,
   trees,
   species,
@@ -41,6 +42,7 @@ beforeEach(async () => {
   // Clear data in FK order
   await db.delete(trees);
   await db.delete(groups);
+  await db.delete(parcelas);
   await db.delete(plantations);
   await db.delete(species);
 
@@ -48,6 +50,9 @@ beforeEach(async () => {
   const plantation = createTestPlantation();
   plantationId = plantation.id;
   await db.insert(plantations).values(plantation);
+
+  // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
+  await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantationId }));
 
   const sp1 = createTestSpecies({ codigo: 'EUC', nombre: 'Eucalyptus' });
   species1Id = sp1.id;

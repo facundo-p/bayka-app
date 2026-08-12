@@ -24,9 +24,26 @@ function columnNames(sqlite: InstanceType<typeof Database>, table: string): stri
 test('0015/0016 se aplican en un device incremental con max created_at = 1774200000000', () => {
   const sqlite = new Database(':memory:');
 
-  // Estado pre-0015 de un device real: trees/plantations existen SIN columnas GPS.
+  // Estado pre-0015 de un device real: trees/plantations existen SIN columnas GPS,
+  // y groups/parcelas existen tal como los dejó la 0011 (la 0018 hace un recreate
+  // de groups, así que el fixture necesita la tabla con sus columnas reales).
   sqlite.exec('CREATE TABLE trees (id text)');
-  sqlite.exec('CREATE TABLE plantations (id text)');
+  // id como PK igual que en el device real: la FK del recreate de la 0018
+  // exige que la columna referenciada sea PK/unique.
+  sqlite.exec('CREATE TABLE plantations (id text PRIMARY KEY NOT NULL)');
+  sqlite.exec('CREATE TABLE parcelas (id text PRIMARY KEY NOT NULL)');
+  sqlite.exec(`CREATE TABLE groups (
+    id text PRIMARY KEY NOT NULL,
+    plantacion_id text NOT NULL,
+    parcela_id text,
+    nombre text NOT NULL,
+    codigo text NOT NULL,
+    tipo text DEFAULT 'linea' NOT NULL,
+    estado text DEFAULT 'activa' NOT NULL,
+    usuario_creador text NOT NULL,
+    created_at text NOT NULL,
+    pending_sync integer DEFAULT false NOT NULL
+  )`);
 
   // __drizzle_migrations con el máx created_at de las 0000–0007 (retimestamped a 2026).
   sqlite.exec(
