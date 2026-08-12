@@ -17,6 +17,10 @@
 import { supabase } from '../lib/supabase';
 import { leerPaginado } from './leerPaginado';
 
+/** Etiqueta para árboles sin especie resuelta (D-18-08): visible en la planilla
+ *  en vez de perder la fila. La comparten los serializadores CSV y XLSX. */
+export const ESPECIE_NO_RESUELTA = 'N/N';
+
 /**
  * Fila cruda de una unidad exportable (un árbol). Preserva los nulls tal como
  * llegan de la base: la normalización ("N/N", celdas vacías) es responsabilidad

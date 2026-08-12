@@ -9,6 +9,12 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
+/** Mock del serializador XLSX: evita armar un workbook real en jsdom y deja
+ *  asertar filas/columnas con las que se lo invoca. */
+vi.mock('write-excel-file/browser', () => ({
+  default: vi.fn(() => ({ toBlob: () => Promise.resolve(new Blob(['xlsx'])) })),
+}));
+
 const FILA_PLANTACION = {
   id: 'plant-1',
   lugar: 'Mendoza',
@@ -141,33 +147,33 @@ test('"Generar IDs" queda informativo (deshabilitado + tooltip) mientras no est�
   // La generación es exclusiva de la app: en la web el botón es solo informativo.
   expect(boton).toBeDisabled();
   expect(boton).toHaveAttribute('title', 'Los IDs finales se generan desde la Bayka App.');
-  expect(screen.queryByRole('button', { name: 'Exportar' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Exportar/ })).not.toBeInTheDocument();
 });
 
-test('ofrece "Exportar" habilitado (y oculta "Generar IDs") cuando los IDs están generados', async () => {
+test('ofrece "Exportar Excel" y "Exportar CSV" (y oculta "Generar IDs") con los IDs generados', async () => {
   totalArboles = 5;
   conIdArboles = 5; // todos con global_id → generado
   renderRutasEn('/plantaciones/plant-1');
 
-  const boton = await screen.findByRole('button', { name: 'Exportar' });
-  expect(boton).toBeEnabled();
+  expect(await screen.findByRole('button', { name: 'Exportar Excel' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeEnabled();
   expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
 });
 
-test('"Exportar" sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
+test('exportar sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
   const usuario = userEvent.setup();
   totalArboles = 5;
   conIdArboles = 5;
   filasExport = []; // la query de exportación no devuelve filas
   renderRutasEn('/plantaciones/plant-1');
 
-  await usuario.click(await screen.findByRole('button', { name: 'Exportar' }));
+  await usuario.click(await screen.findByRole('button', { name: 'Exportar Excel' }));
   expect(
     await screen.findByText('Esta plantación no tiene árboles para exportar.'),
   ).toBeInTheDocument();
 });
 
-test('"Exportar" con árboles dispara la descarga del CSV', async () => {
+test('"Exportar CSV" con árboles dispara la descarga del CSV', async () => {
   const usuario = userEvent.setup();
   const crearUrl = vi.fn(() => 'blob:export');
   const revocarUrl = vi.fn();
@@ -177,10 +183,36 @@ test('"Exportar" con árboles dispara la descarga del CSV', async () => {
   filasExport = [filaExport('A-001'), filaExport('A-002')];
   renderRutasEn('/plantaciones/plant-1');
 
-  await usuario.click(await screen.findByRole('button', { name: 'Exportar' }));
+  await usuario.click(await screen.findByRole('button', { name: 'Exportar CSV' }));
 
   await vi.waitFor(() => expect(crearUrl).toHaveBeenCalledTimes(1));
   expect(revocarUrl).toHaveBeenCalledTimes(1);
+  vi.unstubAllGlobals();
+});
+
+test('"Exportar Excel" arma el XLSX con las filas y las 9 columnas y lo descarga', async () => {
+  const usuario = userEvent.setup();
+  const writeXlsxFile = vi.mocked((await import('write-excel-file/browser')).default);
+  const crearUrl = vi.fn(() => 'blob:export');
+  const revocarUrl = vi.fn();
+  vi.stubGlobal('URL', { ...URL, createObjectURL: crearUrl, revokeObjectURL: revocarUrl });
+  totalArboles = 5;
+  conIdArboles = 5;
+  filasExport = [filaExport('A-001'), filaExport('A-002')];
+  renderRutasEn('/plantaciones/plant-1');
+
+  await usuario.click(await screen.findByRole('button', { name: 'Exportar Excel' }));
+
+  await vi.waitFor(() => expect(crearUrl).toHaveBeenCalledTimes(1));
+  expect(revocarUrl).toHaveBeenCalledTimes(1);
+  // La firma de la librería es un overload: fijamos la forma "objetos + columnas".
+  const [filas, opciones] = writeXlsxFile.mock.calls[0] as unknown as [
+    unknown[],
+    { columns: unknown[]; sheet: string },
+  ];
+  expect(filas).toHaveLength(2);
+  expect(opciones.columns).toHaveLength(9);
+  expect(opciones.sheet).toBe('Plantacion');
   vi.unstubAllGlobals();
 });
 
