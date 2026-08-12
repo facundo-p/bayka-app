@@ -211,6 +211,45 @@ describe('ExportService', () => {
         })
       );
     });
+
+    // ─── Anchos de columna ajustados al contenido (#54) ─────────────────────
+
+    it('setea ws[!cols] = max(encabezado, valores) + 2 por columna (#54)', async () => {
+      await exportToExcel('plantation-1', 'ZonaNorte');
+
+      const ws = (XLSX.utils.json_to_sheet as jest.Mock).mock.results[0].value;
+      // sampleRows: p.ej. 'ID Parcial' gana el header (10+2); 'Especie' gana
+      // 'Eucalipto, blanco' (17+2); 'Parcela' gana 'Parcela 1' (9+2).
+      expect(ws['!cols']).toEqual([
+        { wch: 11 }, // ID Global (header 9)
+        { wch: 12 }, // ID Parcial (header 10)
+        { wch: 12 }, // Zona ('Zona Norte' 10)
+        { wch: 12 }, // Plantación (header 10)
+        { wch: 11 }, // Parcela ('Parcela 1' 9)
+        { wch: 9 },  // Grupo ('Línea A' 7)
+        { wch: 12 }, // SubID ('P1-LA-PI-1' 10)
+        { wch: 9 },  // Periodo (header 7)
+        { wch: 19 }, // Especie ('Eucalipto, blanco' 17)
+      ]);
+    });
+
+    it('el ancho se topea en 100 caracteres (+2 de padding) (#54)', async () => {
+      mockGetExportRows.mockResolvedValue([
+        { ...sampleRows[0], especieNombre: 'x'.repeat(150) },
+      ]);
+      await exportToExcel('plantation-1', 'ZonaNorte');
+
+      const ws = (XLSX.utils.json_to_sheet as jest.Mock).mock.results[0].value;
+      expect(ws['!cols'][8]).toEqual({ wch: 102 });
+    });
+
+    it('sin filas no setea anchos (hoja vacía) (#54)', async () => {
+      mockGetExportRows.mockResolvedValue([]);
+      await exportToExcel('plantation-1', 'ZonaNorte');
+
+      const ws = (XLSX.utils.json_to_sheet as jest.Mock).mock.results[0].value;
+      expect(ws['!cols']).toEqual([]);
+    });
   });
 
   // ─── Especie no resuelta (N/N) ──────────────────────────────────────────────

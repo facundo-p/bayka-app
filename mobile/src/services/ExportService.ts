@@ -140,6 +140,30 @@ export async function exportToCSV(plantacionId: string, plantationName: string):
 
 // ─── exportToExcel ────────────────────────────────────────────────────────────
 
+// Ajuste de ancho de columnas (#54): tope para que un valor larguísimo no
+// produzca una columna inusable, más un pequeño respiro visual.
+const EXCEL_ANCHO_MAX = 100;
+const EXCEL_ANCHO_PADDING = 2;
+
+/**
+ * Anchos de columna ajustados al contenido (#54): por columna, el mayor largo
+ * entre el encabezado y todos los valores (como string), con tope de
+ * EXCEL_ANCHO_MAX + padding. Las columnas se derivan de las claves de la
+ * primera fila (`rowToExcel`), no de una lista aparte, para no desincronizarse
+ * del esquema D-18-08. Sin filas no hay hoja que ensanchar → [].
+ */
+function excelColumnWidths(sheetData: Record<string, unknown>[]): { wch: number }[] {
+  if (sheetData.length === 0) return [];
+  return Object.keys(sheetData[0]).map((header) => {
+    let longest = header.length;
+    for (const row of sheetData) {
+      const len = String(row[header] ?? '').length;
+      if (len > longest) longest = len;
+    }
+    return { wch: Math.min(longest, EXCEL_ANCHO_MAX) + EXCEL_ANCHO_PADDING };
+  });
+}
+
 /**
  * EXPO-02
  * Fetches all export rows, builds an Excel workbook via SheetJS,
@@ -151,6 +175,7 @@ export async function exportToExcel(plantacionId: string, plantationName: string
   const sheetData = rows.map(rowToExcel);
 
   const ws = XLSX.utils.json_to_sheet(sheetData);
+  ws['!cols'] = excelColumnWidths(sheetData);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Plantacion');
 
