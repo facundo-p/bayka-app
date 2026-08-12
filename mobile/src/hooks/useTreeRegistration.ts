@@ -28,6 +28,12 @@ export interface UseTreeRegistrationParams {
   userId: string;
   /** Último fix del watcher GPS de la pantalla (lectura estable, sin re-render). */
   getLastGpsFix?: () => GpsFix | null;
+  /**
+   * Surface de errores de escritura (#90): los writers eran fire-and-forget y
+   * un throw (p.ej. grupo sin parcela) se perdía como unhandled rejection sin
+   * ningún aviso al técnico. Cualquier error de escritura pasa por acá.
+   */
+  onError?: (mensaje: string) => void;
 }
 
 export interface UseTreeRegistrationResult {
@@ -87,8 +93,15 @@ export function useTreeRegistration({
   grupoCodigo,
   userId,
   getLastGpsFix,
+  onError,
 }: UseTreeRegistrationParams): UseTreeRegistrationResult {
   const router = useRouter();
+
+  // Mensaje del error real si lo hay (p.ej. "Grupo X sin parcela: dato
+  // inválido"); si no, el fallback de la acción.
+  const notifyError = useCallback((e: unknown, fallback: string) => {
+    onError?.(e instanceof Error && e.message ? e.message : fallback);
+  }, [onError]);
   const [finalizing, setFinalizing] = useState(false);
   const [reversing, setReversing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -130,12 +143,16 @@ export function useTreeRegistration({
 
   const registerTree = useCallback(async (especieId: string, especieCodigo: string) => {
     if (isReadOnly || !userId) return;
-    await insertTreeWithGps(
-      { grupoId, grupoCodigo, especieId, especieCodigo, userId },
-      gpsCaptureFrequency,
-      getLastGpsFix,
-    );
-  }, [isReadOnly, userId, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix]);
+    try {
+      await insertTreeWithGps(
+        { grupoId, grupoCodigo, especieId, especieCodigo, userId },
+        gpsCaptureFrequency,
+        getLastGpsFix,
+      );
+    } catch (e) {
+      notifyError(e, 'No se pudo registrar el árbol.');
+    }
+  }, [isReadOnly, userId, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
 
   const recaptureLastGps = useCallback(async (): Promise<boolean> => {
     // allTrees viene en orden descendente: [0] es el último registrado.
@@ -151,8 +168,12 @@ export function useTreeRegistration({
 
   const undoLast = useCallback(async () => {
     if (isReadOnly) return;
-    await deleteLastTree(grupoId);
-  }, [isReadOnly, grupoId]);
+    try {
+      await deleteLastTree(grupoId);
+    } catch (e) {
+      notifyError(e, 'No se pudo deshacer el último árbol.');
+    }
+  }, [isReadOnly, grupoId, notifyError]);
 
   const captureTreeGps = useCallback(async (treeId: string): Promise<boolean> => {
     setGpsCapturingTreeId(treeId);
@@ -169,59 +190,83 @@ export function useTreeRegistration({
   ) => {
     const photoUri = await pickPhoto();
     if (!photoUri) return;
-    await updateTreePhoto(treeId, photoUri);
-  }, []);
+    try {
+      await updateTreePhoto(treeId, photoUri);
+    } catch (e) {
+      notifyError(e, 'No se pudo guardar la foto.');
+    }
+  }, [notifyError]);
 
   const updatePhoto = useCallback(async (treeId: string, newUri: string) => {
-    await updateTreePhoto(treeId, newUri);
-  }, []);
+    try {
+      await updateTreePhoto(treeId, newUri);
+    } catch (e) {
+      notifyError(e, 'No se pudo actualizar la foto.');
+    }
+  }, [notifyError]);
 
   const removePhoto = useCallback(async (treeId: string) => {
-    await updateTreePhoto(treeId, '');
-  }, []);
+    try {
+      await updateTreePhoto(treeId, '');
+    } catch (e) {
+      notifyError(e, 'No se pudo quitar la foto.');
+    }
+  }, [notifyError]);
 
   const executeReverseOrder = useCallback(async () => {
     setReversing(true);
     try {
       await reverseTreeOrder(grupoId, grupoCodigo);
+    } catch (e) {
+      notifyError(e, 'No se pudo invertir el orden.');
     } finally {
       setReversing(false);
     }
-  }, [grupoId, grupoCodigo]);
+  }, [grupoId, grupoCodigo, notifyError]);
 
   const executeFinalize = useCallback(async () => {
     setFinalizing(true);
     try {
       await finalizeGroup(grupoId);
       router.back();
+    } catch (e) {
+      notifyError(e, 'No se pudo finalizar el grupo.');
     } finally {
       setFinalizing(false);
     }
-  }, [grupoId, router]);
+  }, [grupoId, router, notifyError]);
 
   const executeDeleteGroup = useCallback(async () => {
     setDeleting(true);
     try {
       await deleteGroup(grupoId);
       router.back();
+    } catch (e) {
+      notifyError(e, 'No se pudo eliminar el grupo.');
     } finally {
       setDeleting(false);
     }
-  }, [grupoId, router]);
+  }, [grupoId, router, notifyError]);
 
   const executeReactivate = useCallback(async () => {
     if (!grupoId || !canReactivate) return;
-    await reactivateGroup(grupoId);
-  }, [grupoId, canReactivate]);
+    try {
+      await reactivateGroup(grupoId);
+    } catch (e) {
+      notifyError(e, 'No se pudo reactivar el grupo.');
+    }
+  }, [grupoId, canReactivate, notifyError]);
 
   const executeDeleteTree = useCallback(async (treeId: string) => {
     setDeletingTreeId(treeId);
     try {
       await deleteTreeAndRecalculate(treeId, grupoId, grupoCodigo);
+    } catch (e) {
+      notifyError(e, 'No se pudo eliminar el árbol.');
     } finally {
       setDeletingTreeId(null);
     }
-  }, [grupoId, grupoCodigo]);
+  }, [grupoId, grupoCodigo, notifyError]);
 
   // Placeholder action starters — actual confirm logic stays in screen using confirm hook
   const reverseOrder = useCallback((onConfirmed: () => void) => {

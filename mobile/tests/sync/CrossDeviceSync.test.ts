@@ -95,6 +95,7 @@ const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 const makeSg = (id: string, overrides?: Record<string, any>) => ({
   id,
   plantacionId: 'plantation-1',
+  parcelaId: 'parcela-1',
   nombre: 'Línea A',
   codigo: 'LA',
   tipo: 'linea' as const,

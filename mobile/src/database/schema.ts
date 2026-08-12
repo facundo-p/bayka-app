@@ -66,7 +66,9 @@ export const parcelas = sqliteTable('parcelas', {
 export const groups = sqliteTable('groups', {
   id: text('id').primaryKey(),
   plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
-  parcelaId: text('parcela_id').references(() => parcelas.id),
+  // #90: todo grupo tiene parcela — la ausencia es dato inválido, no caso
+  // válido (los datos legacy pre-P15 ya se migraron).
+  parcelaId: text('parcela_id').notNull().references(() => parcelas.id),
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
   tipo: text('tipo').notNull().default(GROUP_TIPO_DEFAULT),

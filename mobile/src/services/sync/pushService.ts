@@ -189,8 +189,7 @@ export async function uploadGroup(
   const photoMap = new Map<string, string>();
   for (const t of sgTrees) {
     if (isLocalUri(t.fotoUrl) && !t.fotoSynced) {
-      const parcelaSegment = sg.parcelaId ? `parcelas/${sg.parcelaId}/` : '';
-      const storagePath = `plantations/${sg.plantacionId}/${parcelaSegment}trees/${t.id}.jpg`;
+      const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
       const { error } = await uploadPhotoToStorage(t.fotoUrl, storagePath);
       if (!error) {
         photoMap.set(t.id, storagePath);
@@ -266,11 +265,10 @@ function classifyRpcResult(
 
 /**
  * A group can only be pushed if its parcela is sync-ready (no pending changes,
- * not tombstoned). Returns true if parcelaId is null (legacy pre-P15 data) —
- * those groups are not blocked by parcela state.
+ * not tombstoned). Parcela es obligatoria en groups (#90): sin fila lista, el
+ * grupo se reporta PARCELA_PENDING.
  */
-async function isParcelaSyncReady(parcelaId: string | null | undefined): Promise<boolean> {
-  if (!parcelaId) return true;
+async function isParcelaSyncReady(parcelaId: string): Promise<boolean> {
   const [row] = await db.select({ id: parcelasTable.id })
     .from(parcelasTable)
     .where(and(
@@ -304,7 +302,7 @@ export async function uploadSyncableGroups(
         groupId: sg.id,
         nombre: sg.nombre,
         error: 'PARCELA_PENDING',
-        parcelaId: sg.parcelaId ?? null,
+        parcelaId: sg.parcelaId,
       });
       continue;
     }

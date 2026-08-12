@@ -2,11 +2,11 @@
  * Integration tests: exportQueries.getExportRows
  * Real SQLite via better-sqlite3 + drizzle migrations.
  *
- * Verifies LEFT JOIN to parcelas:
- *  - Tree in a group with parcela → parcelaNombre matches parcela.nombre
- *  - Tree in a legacy group without parcela → parcelaNombre is null
+ * Verifies:
+ *  - INNER JOIN a parcelas (#90: parcela obligatoria) → parcelaNombre siempre presente
+ *  - El schema rechaza groups sin parcela (NOT NULL, migración 0018)
  *  - Rows ordered by globalId ASC
- * Covers: EXPO-PARC-01, EXPO-PARC-02, D-18-10
+ * Covers: EXPO-PARC-01, EXPO-PARC-02
  */
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -129,32 +129,45 @@ describe('exportQueries.getExportRows', () => {
     expect(rows[1].parcelaNombre).toBe('Parcela 1');
   });
 
-  it('returns parcelaNombre = null when group has parcelaId = null (legacy)', async () => {
-    const plantation = createTestPlantation({ lugar: 'Legacy Field' });
-    await mockTestDb.insert(plantations).values(plantation);
+  it('el schema rechaza un grupo sin parcela (NOT NULL, #90 / migración 0018)', async () => {
+    // DB propia y fresca: valida el resultado de la migración 0018 sin depender
+    // del estado compartido del archivo (evita flakes por interferencia).
+    const propia = createTestDb();
+    try {
+      const columnas = propia.sqlite
+        .prepare('PRAGMA table_info(groups)')
+        .all() as Array<{ name: string; notnull: number }>;
+      expect(columnas.find((c) => c.name === 'parcela_id')?.notnull).toBe(1);
 
-    await mockTestDb.insert(groups).values({
-      id: 'g-legacy',
-      plantacionId: plantation.id,
-      parcelaId: null,
-      nombre: 'Linea Legacy',
-      codigo: 'LL',
-      tipo: 'linea',
-      estado: 'activa',
-      usuarioCreador: 'u1',
-      createdAt: localNow(),
-      pendingSync: false,
-    });
-
-    const especieId = await seedSpecies('EU');
-    await seedTree('g-legacy', especieId, 1, 1);
-
-    const rows = await getExportRows(plantation.id);
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0].parcelaNombre).toBeNull();
-    expect(rows[0].plantacionLugar).toBe('Legacy Field');
-    expect(rows[0].grupoNombre).toBe('Linea Legacy');
+      const plantation = createTestPlantation({ lugar: 'Campo Invalido' });
+      await propia.db.insert(plantations).values(plantation);
+      let error: unknown = null;
+      try {
+        await propia.db.insert(groups).values({
+          id: 'g-sin-parcela',
+          plantacionId: plantation.id,
+          parcelaId: null,
+          nombre: 'Linea Invalida',
+          codigo: 'LI',
+          tipo: 'linea',
+          estado: 'activa',
+          usuarioCreador: 'u1',
+          createdAt: localNow(),
+          pendingSync: false,
+        } as unknown as typeof groups.$inferInsert);
+      } catch (e) {
+        error = e;
+      }
+      if (error === null) {
+        // Diagnóstico del flake: ¿qué quedó insertado realmente?
+        const filas = propia.sqlite.prepare('SELECT id, parcela_id FROM groups').all();
+        // eslint-disable-next-line no-console
+        console.error('DIAG insert-null-resuelto:', JSON.stringify(filas));
+      }
+      expect(String(error)).toMatch(/NOT NULL/);
+    } finally {
+      closeTestDb(propia.sqlite);
+    }
   });
 
   it('orders rows by globalId ASC', async () => {
@@ -202,10 +215,21 @@ describe('exportQueries.getExportRows', () => {
   async function seedPlantationWithGroup(lugar: string): Promise<string> {
     const plantation = createTestPlantation({ lugar });
     await mockTestDb.insert(plantations).values(plantation);
+    await mockTestDb.insert(parcelas).values({
+      id: `parc-${plantation.id}`,
+      plantacionId: plantation.id,
+      nombre: 'Parcela X',
+      codigo: 'PX',
+      descripcion: null,
+      pendingSync: false,
+      createdAt: localNow(),
+      updatedAt: localNow(),
+      deletedAt: null,
+    });
     await mockTestDb.insert(groups).values({
       id: `g-${plantation.id}`,
       plantacionId: plantation.id,
-      parcelaId: null,
+      parcelaId: `parc-${plantation.id}`,
       nombre: 'Linea X',
       codigo: 'LX',
       tipo: 'linea',

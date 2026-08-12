@@ -30,7 +30,7 @@ export async function countGroupsByParcela(
     .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .where(and(eq(parcelas.plantacionId, plantacionId), isNull(parcelas.deletedAt)))
     .groupBy(groups.parcelaId);
-  return rows.map((r) => ({ parcelaId: r.parcelaId ?? '', count: r.cnt }));
+  return rows.map((r) => ({ parcelaId: r.parcelaId, count: r.cnt }));
 }
 
 /** Count trees per parcela for one plantation (excluding tombstoned parcelas). */
@@ -43,7 +43,7 @@ export async function countTreesByParcela(
     .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .where(and(eq(parcelas.plantacionId, plantacionId), isNull(parcelas.deletedAt)))
     .groupBy(groups.parcelaId);
-  return rows.map((r) => ({ parcelaId: r.parcelaId ?? '', count: r.cnt }));
+  return rows.map((r) => ({ parcelaId: r.parcelaId, count: r.cnt }));
 }
 
 /** Count N/N (trees con especieId NULL) per parcela for one plantation. */
@@ -60,7 +60,7 @@ export async function countNNByParcela(
       isNull(trees.especieId),
     ))
     .groupBy(groups.parcelaId);
-  return rows.map((r) => ({ parcelaId: r.parcelaId ?? '', count: r.cnt }));
+  return rows.map((r) => ({ parcelaId: r.parcelaId, count: r.cnt }));
 }
 
 /**
@@ -82,8 +82,8 @@ async function findParcelaIdsWithPendingChildren(plantacionId: string): Promise<
       sqlIsLocalUri(trees.fotoUrl),
     ));
   const ids = new Set<string>();
-  for (const r of groupRows) if (r.parcelaId) ids.add(r.parcelaId);
-  for (const r of treeRows) if (r.parcelaId) ids.add(r.parcelaId);
+  for (const r of groupRows) ids.add(r.parcelaId);
+  for (const r of treeRows) ids.add(r.parcelaId);
   return ids;
 }
 

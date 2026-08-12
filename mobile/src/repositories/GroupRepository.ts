@@ -13,7 +13,8 @@ export type { GroupTipo };
 export interface Group {
   id: string;
   plantacionId: string;
-  parcelaId?: string | null;
+  /** Parcela obligatoria (#90): la ausencia es dato inválido. */
+  parcelaId: string;
   nombre: string;
   codigo: string;
   tipo: GroupTipo;
@@ -58,26 +59,16 @@ export async function getLastGroupName(plantacionId: string): Promise<string | n
 type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate';
 
 /**
- * Validates that nombre and codigo are unique. Scope is per-parcela when
- * parcelaId is provided; falls back to per-plantacion when parcelaId is
- * null/undefined (legacy or transitional rows).
+ * Validates that nombre and codigo are unique within the group's parcela
+ * (#90: parcela obligatoria — ya no existe el fallback per-plantacion legacy).
  */
-function buildScopeConds(plantacionId: string, parcelaId: string | null | undefined) {
-  if (parcelaId) return [eq(groups.parcelaId, parcelaId)];
-  return [eq(groups.plantacionId, plantacionId)];
-}
-
 async function validateGroupUniqueness(
-  plantacionId: string,
-  parcelaId: string | null | undefined,
+  parcelaId: string,
   nombre: string,
   codigo: string,
   excludeId?: string,
 ): Promise<DuplicateError | null> {
-  if (!parcelaId) {
-    console.warn('grupo sin parcelaId — validación per-plantacion (fallback legacy)');
-  }
-  const scope = buildScopeConds(plantacionId, parcelaId);
+  const scope = [eq(groups.parcelaId, parcelaId)];
   const nombreConds = [...scope, eq(groups.nombre, nombre)];
   const codigoConds = [...scope, eq(groups.codigo, codigo)];
   if (excludeId) {
@@ -98,7 +89,7 @@ export type CreateGroupResult =
 
 export async function createGroup(params: {
   plantacionId: string;
-  parcelaId?: string | null;
+  parcelaId: string;
   nombre: string;
   codigo: string;
   tipo: GroupTipo;
@@ -107,8 +98,7 @@ export async function createGroup(params: {
   const upperCodigo = params.codigo.toUpperCase();
 
   const duplicateError = await validateGroupUniqueness(
-    params.plantacionId,
-    params.parcelaId ?? null,
+    params.parcelaId,
     params.nombre,
     upperCodigo,
   );
@@ -119,7 +109,7 @@ export async function createGroup(params: {
     await db.insert(groups).values({
       id,
       plantacionId: params.plantacionId,
-      parcelaId: params.parcelaId ?? null,
+      parcelaId: params.parcelaId,
       nombre: params.nombre,
       codigo: upperCodigo,
       tipo: params.tipo,
@@ -195,7 +185,6 @@ export async function updateGroup(
   if (!current) return { success: false, error: 'unknown' };
 
   const duplicateError = await validateGroupUniqueness(
-    current.plantacionId,
     current.parcelaId,
     params.nombre,
     upperCodigo,

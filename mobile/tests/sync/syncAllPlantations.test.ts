@@ -64,7 +64,11 @@ function makeSelectChain(directResult: any[]) {
   return {
     from: jest.fn().mockReturnValue(
       Object.assign(Promise.resolve(directResult), {
-        where: jest.fn().mockResolvedValue([]),
+        // where() es awaiteable ([]) y soporta .limit(1): el gate de parcela
+        // (#90, isParcelaSyncReady) debe encontrar la parcela lista.
+        where: jest.fn().mockReturnValue(Object.assign(Promise.resolve([]), {
+          limit: jest.fn().mockResolvedValue([{ id: 'parcela-1' }]),
+        })),
         innerJoin: jest.fn().mockReturnValue({
           where: jest.fn().mockResolvedValue([]),
         }),

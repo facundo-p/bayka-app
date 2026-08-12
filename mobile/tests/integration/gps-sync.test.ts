@@ -12,7 +12,7 @@
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
-import { plantations, groups, trees } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees } from '../../src/database/schema';
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 
 // ─── Mock Supabase (prefijo mock* por hoisting de jest.mock) ─────────────────
@@ -120,11 +120,27 @@ async function seedLocalPlantation(overrides: Partial<typeof plantations.$inferI
   });
 }
 
+const PARCELA_ID = '33333333-3333-3333-3333-333333333333';
+
+async function seedLocalParcela() {
+  await mockTestDb.insert(parcelas).values({
+    id: PARCELA_ID,
+    plantacionId: PLANTATION_ID,
+    nombre: 'Parcela 1',
+    codigo: 'P1',
+    descripcion: null,
+    pendingSync: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  }).onConflictDoNothing();
+}
+
 async function seedLocalGroup(pendingSync: boolean) {
+  await seedLocalParcela();
   await mockTestDb.insert(groups).values({
     id: GROUP_ID,
     plantacionId: PLANTATION_ID,
-    parcelaId: null,
+    parcelaId: PARCELA_ID,
     nombre: 'Línea 1',
     codigo: 'L1',
     tipo: 'linea',
@@ -170,6 +186,19 @@ function serverTree(overrides: Record<string, any> = {}) {
   };
 }
 
+function serverParcela() {
+  serverState.parcelas.set(PARCELA_ID, {
+    id: PARCELA_ID,
+    plantation_id: PLANTATION_ID,
+    nombre: 'Parcela 1',
+    codigo: 'P1',
+    descripcion: null,
+    created_at: NOW,
+    updated_at: NOW,
+    deleted_at: null,
+  });
+}
+
 function serverPlantation(overrides: Record<string, any> = {}) {
   serverState.plantations.set(PLANTATION_ID, {
     id: PLANTATION_ID,
@@ -197,6 +226,7 @@ afterAll(() => {
 beforeEach(async () => {
   await mockTestDb.delete(trees);
   await mockTestDb.delete(groups);
+  await mockTestDb.delete(parcelas);
   await mockTestDb.delete(plantations);
   for (const k of Object.keys(serverState)) serverState[k].clear();
   rpcCalls.length = 0;
@@ -273,10 +303,11 @@ describe('GPS — pull de árboles', () => {
   test('árbol del server con coordenadas llega al local', async () => {
     await seedLocalPlantation();
     serverPlantation();
+    serverParcela();
     serverState.groups.set(GROUP_ID, {
       id: GROUP_ID,
       plantation_id: PLANTATION_ID,
-      parcela_id: null,
+      parcela_id: PARCELA_ID,
       nombre: 'Línea 1',
       codigo: 'L1',
       tipo: 'linea',
@@ -310,10 +341,11 @@ describe('GPS — pull de árboles', () => {
       gpsAccuracy: 2.1,
       gpsCapturedAt: NOW,
     }));
+    serverParcela();
     serverState.groups.set(GROUP_ID, {
       id: GROUP_ID,
       plantation_id: PLANTATION_ID,
-      parcela_id: null,
+      parcela_id: PARCELA_ID,
       nombre: 'Línea 1',
       codigo: 'L1',
       tipo: 'linea',

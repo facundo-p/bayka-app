@@ -8,9 +8,10 @@
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
+import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
+  parcelas,
   groups,
   trees,
   species,
@@ -37,6 +38,7 @@ beforeEach(async () => {
   // Clear data in full FK order
   await db.delete(trees);
   await db.delete(groups);
+  await db.delete(parcelas);
   await db.delete(plantationSpecies);
   await db.delete(plantationUsers);
   await db.delete(plantations);
@@ -53,6 +55,7 @@ function deletePlantationLocally(plantacionId: string): void {
     `DELETE FROM trees WHERE group_id IN (SELECT id FROM groups WHERE plantacion_id = ?)`
   );
   const deleteGroups = sqlite.prepare(`DELETE FROM groups WHERE plantacion_id = ?`);
+  const deleteParcelas = sqlite.prepare(`DELETE FROM parcelas WHERE plantacion_id = ?`);
   const deletePlantationSpecies = sqlite.prepare(`DELETE FROM plantation_species WHERE plantacion_id = ?`);
   const deletePlantationUsers = sqlite.prepare(`DELETE FROM plantation_users WHERE plantation_id = ?`);
   const deleteUserSpeciesOrder = sqlite.prepare(`DELETE FROM user_species_order WHERE plantacion_id = ?`);
@@ -61,6 +64,7 @@ function deletePlantationLocally(plantacionId: string): void {
   const runAll = sqlite.transaction((id: string) => {
     deleteTrees.run(id);
     deleteGroups.run(id);
+    deleteParcelas.run(id);
     deletePlantationSpecies.run(id);
     deletePlantationUsers.run(id);
     deleteUserSpeciesOrder.run(id);
@@ -74,6 +78,8 @@ describe('Cascade delete', () => {
   test('deletePlantationLocally removes plantation, all groups, and all trees', async () => {
     const plantation = createTestPlantation();
     await db.insert(plantations).values(plantation);
+    // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
+    await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
     const sp = createTestSpecies({ codigo: 'EUC' });
     await db.insert(species).values(sp);
@@ -103,6 +109,8 @@ describe('Cascade delete', () => {
   test('deletePlantationLocally removes plantation_species and plantation_users rows', async () => {
     const plantation = createTestPlantation();
     await db.insert(plantations).values(plantation);
+    // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
+    await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
     const sp = createTestSpecies({ codigo: 'EUC' });
     await db.insert(species).values(sp);
@@ -138,6 +146,8 @@ describe('Cascade delete', () => {
   test('after delete, no orphan records remain for any related table', async () => {
     const plantation = createTestPlantation();
     await db.insert(plantations).values(plantation);
+    // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
+    await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
     const sp = createTestSpecies({ codigo: 'PIN' });
     await db.insert(species).values(sp);
@@ -167,6 +177,10 @@ describe('Cascade delete', () => {
 
     const [sgResult] = await db.select({ cnt: count() }).from(groups);
     expect(sgResult.cnt).toBe(0);
+
+    // #90: las parcelas también se borran en la cascada (antes quedaban huérfanas).
+    const [parcResult] = await db.select({ cnt: count() }).from(parcelas);
+    expect(parcResult.cnt).toBe(0);
 
     const [psResult] = await db.select({ cnt: count() }).from(plantationSpecies);
     expect(psResult.cnt).toBe(0);

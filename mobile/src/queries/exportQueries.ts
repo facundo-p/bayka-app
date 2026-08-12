@@ -16,8 +16,8 @@ import { eq, and, asc, isNotNull } from 'drizzle-orm';
  * If the team decides to collapse them, it's a 1-line refactor (drop one field
  * + drop the matching column in ExportService).
  *
- * `parcelaNombre` is nullable because LEFT JOIN to `parcelas`: legacy groups
- * without `parcelaId` produce `null`. Consumer normalizes `?? ''` (D-18-10).
+ * `parcelaNombre` no es nullable (#90): todo grupo tiene parcela (INNER JOIN);
+ * el caso "grupo sin parcela" es dato inválido, no un caso a normalizar.
  *
  * `especieNombre` es nullable por el LEFT JOIN a `species`: un árbol cuya
  * `especieId` es null o apunta a una especie ausente del catálogo local (especie
@@ -30,7 +30,7 @@ export interface ExportRow {
   idParcial: number | null;
   lugar: string;
   plantacionLugar: string;
-  parcelaNombre: string | null;
+  parcelaNombre: string;
   grupoNombre: string;
   subId: string;
   periodo: string;
@@ -40,7 +40,8 @@ export interface ExportRow {
 /**
  * EXPO-03 / EXPO-PARC-01 / EXPO-PARC-02
  * Returns all tree rows with required export columns, ordered by globalId ASC.
- * JOIN: trees → groups → plantations; LEFT JOIN a parcelas y a species.
+ * JOIN: trees → groups → plantations → parcelas (#90: parcela obligatoria);
+ * LEFT JOIN a species.
  *
  * `species` va por LEFT JOIN a propósito: con INNER JOIN, un árbol con
  * `especieId` null o huérfano (especie no presente en el catálogo local) se
@@ -63,7 +64,7 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
-    .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
+    .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .leftJoin(species, eq(trees.especieId, species.id))
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(trees.globalId));
@@ -71,14 +72,14 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
 
 /**
  * Row del export KML: solo árboles CON coordenadas. `especieNombre` nullable
- * (N/N sin resolver se exporta con etiqueta "N/N").
+ * (N/N sin resolver se exporta con etiqueta "N/N"); `parcelaNombre` no (#90).
  */
 export interface KmlExportRow {
   subId: string;
   posicion: number;
   especieNombre: string | null;
   grupoNombre: string;
-  parcelaNombre: string | null;
+  parcelaNombre: string;
   latitude: number;
   longitude: number;
   gpsAccuracy: number | null;
@@ -104,7 +105,7 @@ export async function getKmlExportRows(plantacionId: string): Promise<KmlExportR
     })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
+    .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .leftJoin(species, eq(trees.especieId, species.id))
     .where(and(
       eq(groups.plantacionId, plantacionId),

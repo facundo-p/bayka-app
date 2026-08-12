@@ -6,10 +6,11 @@ import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integration
 import {
   createTestPlantation,
   createTestGroup,
+  createTestParcela,
   createTestTree,
   createTestSpecies,
 } from '../helpers/factories';
-import { plantations, groups, trees, species } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
 import { upsertTreeFromServerTx } from '../../src/services/sync/pullService';
 import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
@@ -32,11 +33,14 @@ afterAll(() => closeTestDb(sqlite));
 beforeEach(async () => {
   await db.delete(trees);
   await db.delete(groups);
+  await db.delete(parcelas);
   await db.delete(plantations);
   await db.delete(species);
 
   await db.insert(plantations).values(createTestPlantation({ id: PID }));
   await db.insert(species).values(createTestSpecies({ id: SP, codigo: 'EUC' }));
+  // #90: parcela obligatoria — el grupo referencia una parcela real.
+  await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: PID }));
   await db.insert(groups).values(createTestGroup({ id: GROUP, plantacionId: PID }));
 });
 
