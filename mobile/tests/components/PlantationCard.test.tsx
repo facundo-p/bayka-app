@@ -51,7 +51,7 @@ function makeProps(overrides?: Partial<React.ComponentProps<typeof PlantationCar
     estado: 'activa',
     onPress: jest.fn(),
     onDelete: jest.fn(),
-    onEdit: jest.fn(),
+    onSync: jest.fn(),
     onGear: jest.fn(),
     isAdmin: false,
     ...overrides,
@@ -63,31 +63,54 @@ describe('PlantationCard sidebar strip', () => {
     jest.clearAllMocks();
   });
 
-  it('renders all 3 icons for admin', () => {
-    const { getByLabelText } = render(<PlantationCard {...makeProps({ isAdmin: true })} />);
-
-    expect(getByLabelText('Editar lugar y periodo')).toBeTruthy();
-    expect(getByLabelText('Acciones de plantacion')).toBeTruthy();
-    expect(getByLabelText('Eliminar plantacion del dispositivo')).toBeTruthy();
-  });
-
-  it('does not render gear icon for tecnico', () => {
+  it('renders sync, gear and trash icons when all callbacks provided', () => {
     const { getByLabelText, queryByLabelText } = render(
-      <PlantationCard {...makeProps({ isAdmin: false })} />
+      <PlantationCard {...makeProps({ isAdmin: true })} />
     );
 
-    expect(getByLabelText('Editar lugar y periodo')).toBeTruthy();
+    // #94: el botón Editar de la card fue reemplazado por Sync.
+    expect(getByLabelText('Sincronizar plantacion')).toBeTruthy();
+    expect(queryByLabelText('Editar lugar y periodo')).toBeNull();
     expect(getByLabelText('Acciones de plantacion')).toBeTruthy();
     expect(getByLabelText('Eliminar plantacion del dispositivo')).toBeTruthy();
   });
 
-  it('calls onEdit when edit icon tapped', () => {
-    const onEdit = jest.fn();
-    const { getByLabelText } = render(<PlantationCard {...makeProps({ onEdit })} />);
+  it('renders empty sync slot when onSync not provided (offline)', () => {
+    const { queryByLabelText } = render(
+      <PlantationCard {...makeProps({ onSync: undefined })} />
+    );
 
-    fireEvent.press(getByLabelText('Editar lugar y periodo'));
+    expect(queryByLabelText('Sincronizar plantacion')).toBeNull();
+  });
 
-    expect(onEdit).toHaveBeenCalledTimes(1);
+  it('renders empty gear slot when onGear not provided (tecnico)', () => {
+    const { queryByLabelText } = render(
+      <PlantationCard {...makeProps({ onGear: undefined })} />
+    );
+
+    expect(queryByLabelText('Acciones de plantacion')).toBeNull();
+  });
+
+  it('calls onSync when sync icon tapped', () => {
+    const onSync = jest.fn();
+    const { getByLabelText } = render(<PlantationCard {...makeProps({ onSync })} />);
+
+    fireEvent.press(getByLabelText('Sincronizar plantacion'));
+
+    expect(onSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('long-press on the card calls onLongPress (abre edición, #94)', () => {
+    const onLongPress = jest.fn();
+    const onPress = jest.fn();
+    const { getByText } = render(
+      <PlantationCard {...makeProps({ onLongPress, onPress })} />
+    );
+
+    fireEvent(getByText('Finca Norte'), 'longPress');
+
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   it('calls onGear when gear icon tapped (admin)', () => {

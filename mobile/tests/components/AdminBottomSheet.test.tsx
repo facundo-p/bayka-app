@@ -46,7 +46,7 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
     isAdmin: true,
     isOnline: true,
     onDismiss: jest.fn(),
-    onSync: jest.fn(),
+    onEdit: jest.fn(),
     onConfigSpecies: jest.fn(),
     onAssignTech: jest.fn(),
     onFinalize: jest.fn(),
@@ -65,11 +65,42 @@ describe('AdminBottomSheet', () => {
   });
 
   it('renders activa actions', () => {
-    const { getByText } = render(<AdminBottomSheet {...makeProps()} />);
+    const { getByText, queryByText } = render(<AdminBottomSheet {...makeProps()} />);
 
+    expect(getByText('Editar lugar y periodo')).toBeTruthy();
     expect(getByText('Configurar especies')).toBeTruthy();
     expect(getByText('Asignar tecnicos')).toBeTruthy();
     expect(getByText('Finalizar plantacion')).toBeTruthy();
+    // #94: el sync por plantación vive en la card, no en el sheet.
+    expect(queryByText('Sincronizar')).toBeNull();
+  });
+
+  it('renders Editar also for finalizada (any estado)', () => {
+    const { getByText } = render(
+      <AdminBottomSheet
+        {...makeProps({
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
+        })}
+      />
+    );
+
+    expect(getByText('Editar lugar y periodo')).toBeTruthy();
+  });
+
+  it('calls onEdit when Editar tapped', () => {
+    const onEdit = jest.fn();
+    const { getByText } = render(<AdminBottomSheet {...makeProps({ onEdit })} />);
+
+    fireEvent.press(getByText('Editar lugar y periodo'));
+
+    expect(onEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders no actions for non-admin', () => {
+    const { queryByText } = render(<AdminBottomSheet {...makeProps({ isAdmin: false })} />);
+
+    expect(queryByText('Editar lugar y periodo')).toBeNull();
+    expect(queryByText('Configurar especies')).toBeNull();
   });
 
   it('shows disabled Finalizar helper when canFinalize=false', () => {
