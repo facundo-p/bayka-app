@@ -84,7 +84,7 @@ function csvField(value: string | number | null | undefined): string {
 
 /**
  * Build a single CSV row from an ExportRow (9 columns, D-18-08 order).
- * Normalizes `parcelaNombre: null` → '' (D-18-10) y `especieNombre: null` → 'N/N'.
+ * Normalizes `especieNombre: null` → 'N/N'. `parcelaNombre` es obligatoria (#90).
  */
 function rowToCSV(r: ExportRow): string {
   return [
@@ -92,7 +92,7 @@ function rowToCSV(r: ExportRow): string {
     csvField(r.idParcial),
     csvField(r.lugar),
     csvField(r.plantacionLugar),
-    csvField(r.parcelaNombre ?? ''),
+    csvField(r.parcelaNombre),
     csvField(r.grupoNombre),
     csvField(r.subId),
     csvField(r.periodo),
@@ -102,7 +102,7 @@ function rowToCSV(r: ExportRow): string {
 
 /**
  * Build an Excel sheetData entry (9 keys, D-18-08 order).
- * Normalizes `parcelaNombre: null` → '' (D-18-10) y `especieNombre: null` → 'N/N'.
+ * Normalizes `especieNombre: null` → 'N/N'. `parcelaNombre` es obligatoria (#90).
  */
 function rowToExcel(r: ExportRow) {
   return {
@@ -110,7 +110,7 @@ function rowToExcel(r: ExportRow) {
     'ID Parcial': r.idParcial,
     'Zona': r.lugar,
     'Plantación': r.plantacionLugar,
-    'Parcela': r.parcelaNombre ?? '',
+    'Parcela': r.parcelaNombre,
     'Grupo': r.grupoNombre,
     'SubID': r.subId,
     'Periodo': r.periodo,

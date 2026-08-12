@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -52,6 +52,12 @@ export default function TreeRegistrationScreen() {
   const confirm = useConfirm();
   const { pickPhoto } = usePhotoCapture(confirm.show);
 
+  // Surface de errores de escritura (#90): cualquier writer que falle (registro,
+  // borrado, foto, finalización) se notifica acá — antes era unhandled rejection.
+  const showWriteError = useCallback((mensaje: string) => {
+    showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
+  }, [confirm.show]);
+
   const [viewingPhoto, setViewingPhoto] = useState<{ uri: string; treeId: string } | null>(null);
   const [showTreeList, setShowTreeList] = useState(false);
   const [editingTreeId, setEditingTreeId] = useState<string | null>(null);
@@ -66,6 +72,7 @@ export default function TreeRegistrationScreen() {
     grupoCodigo: grupoCodigo ?? '',
     userId,
     getLastGpsFix: gpsWatcher.getLastFix,
+    onError: showWriteError,
   });
   const gpsGate = useGpsGate({
     required: treeReg.gpsCaptureRequired,
@@ -84,6 +91,7 @@ export default function TreeRegistrationScreen() {
     pickPhoto,
     gpsCaptureFrequency: treeReg.gpsCaptureFrequency,
     getLastGpsFix: gpsWatcher.getLastFix,
+    onError: showWriteError,
   });
 
   useEffect(() => {

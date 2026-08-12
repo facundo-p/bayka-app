@@ -86,10 +86,19 @@ const mockDb = db as jest.Mocked<typeof db>;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 
+// where() resuelve a `rows` al await y además soporta .limit(1): el gate de
+// parcela (#90, isParcelaSyncReady) consulta la parcela del grupo y debe
+// encontrarla lista (pendingSync=false, sin tombstone).
+function whereResult(rows: unknown) {
+  return Object.assign(Promise.resolve(rows), {
+    limit: jest.fn().mockResolvedValue([{ id: 'parcela-1' }]),
+  });
+}
+
 const makeSg = (id: string, nombre = 'Línea A') => ({
   id,
   plantacionId: 'plantation-1',
-  parcelaId: null,
+  parcelaId: 'parcela-1',
   nombre,
   codigo: 'LA',
   tipo: 'linea' as const,
@@ -130,7 +139,7 @@ describe('SyncService', () => {
     // Default: empty trees select
     (mockDb.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
-        where: jest.fn().mockResolvedValue([]),
+        where: jest.fn().mockReturnValue(whereResult([])),
       }),
     });
 
@@ -154,7 +163,7 @@ describe('SyncService', () => {
     // Default: db.update chain
     (mockDb.update as jest.Mock).mockReturnValue({
       set: jest.fn().mockReturnValue({
-        where: jest.fn().mockResolvedValue(undefined),
+        where: jest.fn().mockReturnValue(whereResult(undefined)),
       }),
     });
 
@@ -188,7 +197,7 @@ describe('SyncService', () => {
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
+          where: jest.fn().mockReturnValue(whereResult([])),
         }),
       });
 
@@ -214,7 +223,7 @@ describe('SyncService', () => {
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue(sgTrees),
+          where: jest.fn().mockReturnValue(whereResult(sgTrees)),
         }),
       });
 
@@ -224,7 +233,7 @@ describe('SyncService', () => {
         p_subgroup: {
           id: 'sg-1',
           plantation_id: 'plantation-1',
-          parcela_id: null,
+          parcela_id: 'parcela-1',
           nombre: 'Línea A',
           codigo: 'LA',
           tipo: 'linea',
@@ -257,7 +266,7 @@ describe('SyncService', () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
       mockGetFinalizadaSubGroups.mockResolvedValue([{ ...makeSg('sg-1'), estado }]);
       (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }),
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockReturnValue(whereResult([])) }),
       });
       await syncPlantation('plantation-1');
       const call = (mockSupabase.rpc as jest.Mock).mock.calls.at(-1);
@@ -286,7 +295,7 @@ describe('SyncService', () => {
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
+          where: jest.fn().mockReturnValue(whereResult([])),
         }),
       });
 
@@ -306,7 +315,7 @@ describe('SyncService', () => {
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
+          where: jest.fn().mockReturnValue(whereResult([])),
         }),
       });
 
@@ -327,7 +336,7 @@ describe('SyncService', () => {
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
+          where: jest.fn().mockReturnValue(whereResult([])),
         }),
       });
 
@@ -355,7 +364,7 @@ describe('SyncService', () => {
 
       (mockDb.select as jest.Mock).mockReturnValue({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
+          where: jest.fn().mockReturnValue(whereResult([])),
         }),
       });
 
@@ -507,7 +516,7 @@ describe('SyncService', () => {
     it('Test 14: returns { downloaded: 0, failed: 0 } when plantation has no groups', async () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([]),
+          where: jest.fn().mockReturnValue(whereResult([])),
         }),
       });
 

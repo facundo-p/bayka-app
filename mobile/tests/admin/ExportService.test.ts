@@ -66,7 +66,7 @@ const sampleRows = [
     idParcial: 2,
     lugar: 'Zona, Sur',
     plantacionLugar: 'Zona, Sur',
-    parcelaNombre: null, // legacy group — D-18-10 normalizes to ''
+    parcelaNombre: 'Sur 2',
     grupoNombre: 'Línea B',
     subId: 'LB-EU-2',
     periodo: '2026',
@@ -130,21 +130,18 @@ describe('ExportService', () => {
       expect(firstRowCols[3]).toBe('Zona Norte'); // Plantación
     });
 
-    it('Test 4: null parcelaNombre is normalized to "" (D-18-10)', async () => {
+    it('Test 4: parcelaNombre viaja tal cual (#90: parcela obligatoria, sin normalización null)', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
-      // Second data row has parcelaNombre = null → must serialize as empty string
       expect(writtenContent).not.toContain('null');
       // Verify the second row's Parcela column (after Plantación "Zona, Sur" quoted)
       // Easiest: split and check column 4 of the row containing globalId 11
       const lines = writtenContent.split('\n');
       const row11 = lines.find((l) => l.startsWith('11,'));
       expect(row11).toBeDefined();
-      // Account for quoted "Zona, Sur" — use a regex to find the parcela column.
-      // Cols: 11, 2, "Zona, Sur", "Zona, Sur", , Línea B, ...
-      // The Parcela column is between the two quoted "Zona, Sur" and "Línea B".
-      expect(row11).toContain('"Zona, Sur","Zona, Sur",,Línea B');
+      // Cols: 11, 2, "Zona, Sur", "Zona, Sur", Sur 2, Línea B, ...
+      expect(row11).toContain('"Zona, Sur","Zona, Sur",Sur 2,Línea B');
     });
 
     it('Test 5: quotes fields that contain commas', async () => {
@@ -184,11 +181,11 @@ describe('ExportService', () => {
       expect(sheetArg[0]['Grupo']).toBe('Línea A');
     });
 
-    it('Test 7: Excel normalizes null parcelaNombre to "" (D-18-10)', async () => {
+    it('Test 7: parcelaNombre viaja tal cual en Excel (#90)', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       const sheetArg = (XLSX.utils.json_to_sheet as jest.Mock).mock.calls[0][0];
-      expect(sheetArg[1]['Parcela']).toBe('');
+      expect(sheetArg[1]['Parcela']).toBe('Sur 2');
     });
 
     it('Test 8: XLSX.write called with type "base64"', async () => {

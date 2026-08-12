@@ -18,12 +18,13 @@ export function useNewGroup(plantacionId: string | undefined, parcelaId?: string
   }, [plantacionId]);
 
   async function handleCreateGroup(values: { nombre: string; codigo: string; tipo: GroupTipo }) {
-    if (!userId) {
+    // parcela obligatoria (#90): la pantalla garantiza el param; sin él no se crea.
+    if (!userId || !plantacionId || !parcelaId) {
       return { success: false as const, error: 'unknown' as const };
     }
     return createGroup({
-      plantacionId: plantacionId ?? '',
-      parcelaId: parcelaId ?? null,
+      plantacionId,
+      parcelaId,
       nombre: values.nombre,
       codigo: values.codigo,
       tipo: values.tipo,

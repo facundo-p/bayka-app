@@ -25,7 +25,7 @@ function buildDescription(row: KmlExportRow): string {
   const lineas = [
     `Especie: ${especieLabel(row)}`,
     `Grupo: ${row.grupoNombre}`,
-    `Parcela: ${row.parcelaNombre ?? 's/d'}`,
+    `Parcela: ${row.parcelaNombre}`,
     `Posición: ${row.posicion}`,
     `Precisión: ${precision}`,
     `Capturado: ${row.gpsCapturedAt ?? 's/d'}`,
@@ -80,7 +80,7 @@ function buildParcelaFolder(parcelaNombre: string, rows: KmlExportRow[]): string
 /** Documento KML completo: estilos por especie + folders parcela → grupo. */
 export function buildKml(plantationName: string, rows: KmlExportRow[]): string {
   const especies = [...new Set(rows.map(especieLabel))];
-  const porParcela = groupBy(rows, (row) => row.parcelaNombre ?? 's/d');
+  const porParcela = groupBy(rows, (row) => row.parcelaNombre);
   const folders = [...porParcela.entries()]
     .map(([parcela, parcelaRows]) => buildParcelaFolder(parcela, parcelaRows))
     .join('\n');

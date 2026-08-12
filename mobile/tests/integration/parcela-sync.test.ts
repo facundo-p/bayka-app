@@ -473,19 +473,20 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
   test('pull NO pisa el estado de un grupo con cambios locales pendientes', async () => {
     const pid = await seedLocalPlantation();
     const now = new Date().toISOString();
+    const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'PG', nombre: 'Parcela G' });
     // Grupo DIRTY local: finalizada + pendingSync (transición sin subir aún).
     await mockTestDb.insert(groups).values({
-      id: 'g-dirty', plantacionId: pid, parcelaId: null, nombre: 'Dirty', codigo: 'GD',
+      id: 'g-dirty', plantacionId: pid, parcelaId: parcId, nombre: 'Dirty', codigo: 'GD',
       tipo: 'linea', estado: 'finalizada', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync: true,
     });
     // Grupo CLEAN local: sin cambios pendientes.
     await mockTestDb.insert(groups).values({
-      id: 'g-clean', plantacionId: pid, parcelaId: null, nombre: 'Clean', codigo: 'GC',
+      id: 'g-clean', plantacionId: pid, parcelaId: parcId, nombre: 'Clean', codigo: 'GC',
       tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync: false,
     });
     // El server tiene ambos con estado VIEJO 'activa' (dirty) / 'finalizada' (clean).
-    serverState.groups.set('g-dirty', { id: 'g-dirty', plantation_id: pid, parcela_id: null, nombre: 'Dirty', codigo: 'GD', tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now });
-    serverState.groups.set('g-clean', { id: 'g-clean', plantation_id: pid, parcela_id: null, nombre: 'Clean', codigo: 'GC', tipo: 'linea', estado: 'finalizada', usuario_creador: 'user-tecnico-1', created_at: now });
+    serverState.groups.set('g-dirty', { id: 'g-dirty', plantation_id: pid, parcela_id: parcId, nombre: 'Dirty', codigo: 'GD', tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now });
+    serverState.groups.set('g-clean', { id: 'g-clean', plantation_id: pid, parcela_id: parcId, nombre: 'Clean', codigo: 'GC', tipo: 'linea', estado: 'finalizada', usuario_creador: 'user-tecnico-1', created_at: now });
 
     await pullFromServer(pid);
 

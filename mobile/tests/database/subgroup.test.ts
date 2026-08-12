@@ -76,6 +76,7 @@ describe('GroupRepository', () => {
 
       const result = await createGroup({
         plantacionId: 'plantation-1',
+        parcelaId: 'parcela-1',
         nombre: 'Línea A',
         codigo: 'la',
         tipo: 'linea',
@@ -103,6 +104,7 @@ describe('GroupRepository', () => {
 
       const result = await createGroup({
         plantacionId: 'plantation-1',
+        parcelaId: 'parcela-1',
         nombre: 'Línea B',
         codigo: 'LA',
         tipo: 'linea',
@@ -120,6 +122,7 @@ describe('GroupRepository', () => {
 
       const result = await createGroup({
         plantacionId: 'plantation-1',
+        parcelaId: 'parcela-1',
         nombre: 'Línea C',
         codigo: 'LC',
         tipo: 'linea',
@@ -137,6 +140,7 @@ describe('GroupRepository', () => {
 
       const result1 = await createGroup({
         plantacionId: 'plantation-1',
+        parcelaId: 'parcela-1',
         nombre: 'Línea A',
         codigo: 'LA',
         tipo: 'linea',
@@ -145,6 +149,7 @@ describe('GroupRepository', () => {
 
       const result2 = await createGroup({
         plantacionId: 'plantation-2',
+        parcelaId: 'parcela-2',
         nombre: 'Línea A',
         codigo: 'LA',
         tipo: 'linea',

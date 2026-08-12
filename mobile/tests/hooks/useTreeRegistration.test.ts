@@ -178,6 +178,66 @@ describe('useTreeRegistration', () => {
     });
   });
 
+  // #90: los writers eran fire-and-forget — un throw (p.ej. "grupo sin parcela",
+  // PR #79) se perdía como unhandled rejection y el árbol no se registraba SIN
+  // ningún aviso. Ahora cualquier error de escritura se surfacea vía onError.
+  describe('surface de errores de escritura (onError, #90)', () => {
+    it('registerTree: un throw del insert notifica el mensaje real y no revienta', async () => {
+      (insertTree as jest.Mock).mockRejectedValue(
+        new Error('Grupo sg-1 sin parcela: dato inválido'),
+      );
+      const onError = jest.fn();
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, onError }));
+
+      await act(async () => {
+        await result.current.registerTree('esp-1', 'ANC');
+      });
+
+      expect(onError).toHaveBeenCalledWith('Grupo sg-1 sin parcela: dato inválido');
+    });
+
+    it('registerTree: error sin mensaje usa el fallback', async () => {
+      (insertTree as jest.Mock).mockRejectedValue('crash raro');
+      const onError = jest.fn();
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, onError }));
+
+      await act(async () => {
+        await result.current.registerTree('esp-1', 'ANC');
+      });
+
+      expect(onError).toHaveBeenCalledWith('No se pudo registrar el árbol.');
+    });
+
+    it('undoLast: un throw del delete notifica en vez de perderse', async () => {
+      (deleteLastTree as jest.Mock).mockRejectedValue(new Error('disk I/O error'));
+      const onError = jest.fn();
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, onError }));
+
+      await act(async () => {
+        await result.current.undoLast();
+      });
+
+      expect(onError).toHaveBeenCalledWith('disk I/O error');
+    });
+
+    it('executeFinalize: ante error notifica, NO navega atrás y apaga el spinner', async () => {
+      (finalizeGroup as jest.Mock).mockRejectedValue(new Error('no se pudo'));
+      const mockBack = jest.fn();
+      const { useRouter } = require('expo-router');
+      (useRouter as jest.Mock).mockReturnValue({ back: mockBack });
+      const onError = jest.fn();
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, onError }));
+
+      await act(async () => {
+        await result.current.executeFinalize();
+      });
+
+      expect(onError).toHaveBeenCalledWith('no se pudo');
+      expect(mockBack).not.toHaveBeenCalled();
+      expect(result.current.finalizing).toBe(false);
+    });
+  });
+
   describe('derived state', () => {
     it('isReadOnly is false when subgroup is activa and user is owner', () => {
       (canEdit as jest.Mock).mockReturnValue(true);

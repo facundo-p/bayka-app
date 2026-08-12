@@ -203,10 +203,16 @@ async function pullGroups(
         done++;
         continue;
       }
+      if (sg.parcela_id == null) {
+        // #90: parcela obligatoria — un grupo sin parcela en el server es dato
+        // inválido. El throw aborta el pull de grupos y el error se reporta en
+        // la UI de sync (no se degrada insertando null en silencio).
+        throw new Error(`Grupo ${sg.id} sin parcela en el server: dato inválido (#90).`);
+      }
       await tx.insert(groups).values({
         id: sg.id,
         plantacionId: sg.plantation_id,
-        parcelaId: sg.parcela_id ?? null,
+        parcelaId: sg.parcela_id,
         nombre: sg.nombre,
         codigo: sg.codigo,
         tipo: sg.tipo,

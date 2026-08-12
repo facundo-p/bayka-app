@@ -47,6 +47,8 @@ export function createTestPlantation(overrides?: Partial<NewPlantation>): NewPla
 export type NewGroup = {
   id: string;
   plantacionId: string;
+  // Parcela obligatoria (#90): el schema la exige NOT NULL.
+  parcelaId: string;
   nombre: string;
   codigo: string;
   tipo: string;
@@ -59,12 +61,40 @@ export function createTestGroup(overrides?: Partial<NewGroup>): NewGroup {
   return {
     id: randomId(),
     plantacionId: 'plantation-default',
+    parcelaId: 'parcela-default',
     nombre: 'Linea A',
     codigo: 'LA',
     tipo: 'linea',
     estado: 'activa',
     usuarioCreador: 'user-tecnico-1',
     createdAt: nowIso(),
+    ...overrides,
+  };
+}
+
+// ---- Parcela ----
+
+export type NewParcela = {
+  id: string;
+  plantacionId: string;
+  nombre: string;
+  codigo: string;
+  descripcion: string | null;
+  pendingSync: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export function createTestParcela(overrides?: Partial<NewParcela>): NewParcela {
+  return {
+    id: randomId(),
+    plantacionId: 'plantation-default',
+    nombre: 'Parcela 1',
+    codigo: 'P1',
+    descripcion: null,
+    pendingSync: false,
+    createdAt: nowIso(),
+    updatedAt: nowIso(),
     ...overrides,
   };
 }

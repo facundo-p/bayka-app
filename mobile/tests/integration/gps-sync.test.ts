@@ -12,7 +12,7 @@
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
-import { plantations, groups, trees } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees } from '../../src/database/schema';
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 
 // ─── Mock Supabase (prefijo mock* por hoisting de jest.mock) ─────────────────
@@ -120,11 +120,27 @@ async function seedLocalPlantation(overrides: Partial<typeof plantations.$inferI
   });
 }
 
+const PARCELA_ID = '33333333-3333-3333-3333-333333333333';
+
+async function seedLocalParcela() {
+  await mockTestDb.insert(parcelas).values({
+    id: PARCELA_ID,
+    plantacionId: PLANTATION_ID,
+    nombre: 'Parcela 1',
+    codigo: 'P1',
+    descripcion: null,
+    pendingSync: false,
+    createdAt: NOW,
+    updatedAt: NOW,
+  }).onConflictDoNothing();
+}
+
 async function seedLocalGroup(pendingSync: boolean) {
+  await seedLocalParcela();
   await mockTestDb.insert(groups).values({
     id: GROUP_ID,
     plantacionId: PLANTATION_ID,
-    parcelaId: null,
+    parcelaId: PARCELA_ID,
     nombre: 'Línea 1',
     codigo: 'L1',
     tipo: 'linea',
@@ -276,7 +292,7 @@ describe('GPS — pull de árboles', () => {
     serverState.groups.set(GROUP_ID, {
       id: GROUP_ID,
       plantation_id: PLANTATION_ID,
-      parcela_id: null,
+      parcela_id: PARCELA_ID,
       nombre: 'Línea 1',
       codigo: 'L1',
       tipo: 'linea',
@@ -313,7 +329,7 @@ describe('GPS — pull de árboles', () => {
     serverState.groups.set(GROUP_ID, {
       id: GROUP_ID,
       plantation_id: PLANTATION_ID,
-      parcela_id: null,
+      parcela_id: PARCELA_ID,
       nombre: 'Línea 1',
       codigo: 'L1',
       tipo: 'linea',
