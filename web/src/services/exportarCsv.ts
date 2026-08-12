@@ -11,8 +11,8 @@
  * es testeable con aserciones sobre el encabezado. El BOM se antepone recién en
  * la descarga (`descargarCsvExportacion`), no en el builder.
  */
-import type { FilaExportacion } from '../queries/exportacionQueries';
-import { aSlug, descargarTexto } from './exportarKml';
+import { ESPECIE_NO_RESUELTA, type FilaExportacion } from '../queries/exportacionQueries';
+import { descargarTexto, nombreArchivoDescarga } from './descargas';
 
 /** MIME del CSV (UTF-8). */
 export const TIPO_MIME_CSV = 'text/csv;charset=utf-8';
@@ -23,10 +23,6 @@ const BOM_UTF8 = '\uFEFF';
 
 /** Encabezado de las 9 columnas, en el orden canónico (D-18-08). */
 const ENCABEZADO_CSV = 'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
-
-/** Etiqueta para árboles sin especie resuelta: visible en la planilla en vez de
- *  perder la fila. */
-const ESPECIE_NO_RESUELTA = 'N/N';
 
 /**
  * Comilla el campo si contiene coma, comilla o salto de línea (RFC 4180): lo
@@ -66,8 +62,7 @@ export function construirCsvExportacion(filas: FilaExportacion[]): string {
 
 /** Nombre de archivo descriptivo: `export-<lugar>-<periodo>.csv`. */
 export function nombreArchivoCsv(lugar: string, periodo: string): string {
-  const partes = [aSlug(lugar), aSlug(periodo)].filter(Boolean);
-  return `export-${partes.join('-')}.${EXTENSION_CSV}`;
+  return nombreArchivoDescarga('export', lugar, periodo, EXTENSION_CSV);
 }
 
 /**

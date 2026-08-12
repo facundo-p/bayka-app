@@ -11,6 +11,7 @@
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../queries/especiesConstantes';
 import type { PuntoGps } from '../queries/mapaQueries';
 import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
+import { nombreArchivoDescarga } from './descargas';
 
 /** MIME de KML; extensión del archivo descargado. */
 export const TIPO_MIME_KML = 'application/vnd.google-earth.kml+xml';
@@ -110,31 +111,7 @@ ${carpetas}
 </kml>`;
 }
 
-/** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */
-export function aSlug(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 /** Nombre de archivo descriptivo: `puntos-gps-<lugar>-<periodo>.kml`. */
 export function nombreArchivoKml(lugar: string, periodo: string): string {
-  const partes = [aSlug(lugar), aSlug(periodo)].filter(Boolean);
-  return `puntos-gps-${partes.join('-')}.${EXTENSION_KML}`;
-}
-
-/** Dispara la descarga de `contenido` como archivo vía un enlace temporal. */
-export function descargarTexto(contenido: string, nombreArchivo: string, tipoMime: string): void {
-  const blob = new Blob([contenido], { type: tipoMime });
-  const url = URL.createObjectURL(blob);
-  const enlace = document.createElement('a');
-  enlace.href = url;
-  enlace.download = nombreArchivo;
-  document.body.appendChild(enlace);
-  enlace.click();
-  enlace.remove();
-  URL.revokeObjectURL(url);
+  return nombreArchivoDescarga('puntos-gps', lugar, periodo, EXTENSION_KML);
 }

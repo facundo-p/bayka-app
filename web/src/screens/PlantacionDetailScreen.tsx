@@ -19,19 +19,16 @@ import { obtenerPlantacion, type Plantacion } from '../queries/plantationQueries
 import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import { listarFilasExportacion } from '../queries/exportacionQueries';
-import {
-  construirKml,
-  descargarTexto,
-  nombreArchivoKml,
-  TIPO_MIME_KML,
-} from '../services/exportarKml';
+import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
+import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
+import { descargarXlsxExportacion } from '../services/exportarXlsx';
 import styles from './PlantacionDetailScreen.module.css';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
 const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
-const MENSAJE_ERROR_CSV = 'No se pudieron cargar los árboles para exportar.';
+const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.';
 
 /** Los IDs finales se generan contra el SQLite local del admin (algoritmo
  *  determinístico en la app), no en la web: el botón queda informativo. */
@@ -97,12 +94,19 @@ function useDescargaKml(plantacion: Plantacion) {
   return { descargar, descargando, mensaje };
 }
 
+/** Serializador de planilla: recibe las filas ya cargadas y dispara la descarga. */
+type DescargarPlanilla = (
+  filas: Awaited<ReturnType<typeof listarFilasExportacion>>,
+  lugar: string,
+  periodo: string,
+) => void | Promise<void>;
+
 /**
- * Descarga los árboles de la plantación como CSV (compatible con Excel): carga
- * las filas, arma el CSV con BOM y dispara la descarga. Expone estado de carga
+ * Descarga los árboles de la plantación como planilla (CSV o XLSX según el
+ * serializador): carga las filas y dispara la descarga. Expone estado de carga
  * y un mensaje para el caso "sin árboles" (no se descarga una planilla vacía).
  */
-function useDescargaCsv(plantacion: Plantacion) {
+function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: DescargarPlanilla) {
   const [descargando, setDescargando] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   async function descargar() {
@@ -111,15 +115,17 @@ function useDescargaCsv(plantacion: Plantacion) {
     try {
       const filas = await listarFilasExportacion(plantacion.id);
       if (filas.length === 0) return setMensaje(MENSAJE_SIN_ARBOLES);
-      descargarCsvExportacion(filas, plantacion.lugar, plantacion.periodo);
+      await descargarPlanilla(filas, plantacion.lugar, plantacion.periodo);
     } catch {
-      setMensaje(MENSAJE_ERROR_CSV);
+      setMensaje(MENSAJE_ERROR_EXPORT);
     } finally {
       setDescargando(false);
     }
   }
   return { descargar, descargando, mensaje };
 }
+
+type DescargaPlanilla = ReturnType<typeof useDescargaPlanilla>;
 
 /** "Generar IDs" informativo: la generación es exclusiva de la app (se corre
  *  contra el SQLite local del admin), así que en la web queda deshabilitado con
@@ -133,45 +139,48 @@ function BotonGenerarIds() {
   );
 }
 
-/** Botón de exportación a CSV, con estado de carga. */
-function BotonExportar({ onExportar, descargando }: { onExportar: () => void; descargando: boolean }) {
+/** Botones de exportación de la planilla, uno por formato (XLSX nativo y CSV). */
+function BotonesExportar({ xlsx, csv }: { xlsx: DescargaPlanilla; csv: DescargaPlanilla }) {
   return (
-    <Button variant="secondary" onClick={onExportar} loading={descargando}>
-      <Download size={TAMANO_ICONO} />
-      Exportar
-    </Button>
+    <>
+      <Button variant="secondary" onClick={() => void xlsx.descargar()} loading={xlsx.descargando}>
+        <Download size={TAMANO_ICONO} />
+        Exportar Excel
+      </Button>
+      <Button variant="secondary" onClick={() => void csv.descargar()} loading={csv.descargando}>
+        <Download size={TAMANO_ICONO} />
+        Exportar CSV
+      </Button>
+    </>
   );
 }
 
 /** Estado de IDs (regla de mobile): "Generar IDs" (informativo) hasta generarlos,
- *  "Exportar" (CSV) después. */
+ *  los botones de exportación (XLSX/CSV) después. */
 function BotonEstadoIds({
   plantationId,
-  onExportar,
-  descargando,
+  xlsx,
+  csv,
 }: {
   plantationId: string;
-  onExportar: () => void;
-  descargando: boolean;
+  xlsx: DescargaPlanilla;
+  csv: DescargaPlanilla;
 }) {
   const { data: generados } = useQuery({
     queryKey: ['ids-generados', plantationId],
     queryFn: () => idsGenerados(plantationId),
   });
   if (generados === undefined) return null;
-  return generados ? (
-    <BotonExportar onExportar={onExportar} descargando={descargando} />
-  ) : (
-    <BotonGenerarIds />
-  );
+  return generados ? <BotonesExportar xlsx={xlsx} csv={csv} /> : <BotonGenerarIds />;
 }
 
 /** Acciones de la topbar: descarga de KML (siempre visible) + botón de estado
  *  de IDs. El mensaje inline cubre "sin puntos GPS" y "sin árboles". */
 function AccionesDetalle({ plantacion }: { plantacion: Plantacion }) {
   const kml = useDescargaKml(plantacion);
-  const csv = useDescargaCsv(plantacion);
-  const mensaje = csv.mensaje ?? kml.mensaje;
+  const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
+  const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
+  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje;
   return (
     <div className={styles.acciones}>
       {mensaje && (
@@ -183,11 +192,7 @@ function AccionesDetalle({ plantacion }: { plantacion: Plantacion }) {
         <Download size={TAMANO_ICONO} />
         Descargar KML
       </Button>
-      <BotonEstadoIds
-        plantationId={plantacion.id}
-        onExportar={() => void csv.descargar()}
-        descargando={csv.descargando}
-      />
+      <BotonEstadoIds plantationId={plantacion.id} xlsx={xlsx} csv={csv} />
     </div>
   );
 }
