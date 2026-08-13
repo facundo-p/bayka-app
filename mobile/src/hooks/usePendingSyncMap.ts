@@ -1,22 +1,38 @@
 import { useMemo } from 'react';
 import { useLiveData } from '../database/liveQuery';
-import { getPendingSyncCounts } from '../queries/dashboardQueries';
+import { useCurrentUserId } from './useCurrentUserId';
+import {
+  countPendingGroupsByPlantation,
+  countPendingParcelasByPlantation,
+  countPendingTreePhotosByPlantation,
+} from '../queries/pendingSyncQueries';
 
 /**
- * Returns a Map of plantacionId -> pendingCount for all plantations.
- * Wraps dashboardQueries.getPendingSyncCounts() as a reactive hook.
- * Screens MUST use this hook instead of calling getPendingSyncCounts() directly.
+ * Map plantacionId → total de pendientes de sync de esa plantación.
+ *
+ * Issue #71 (follow-up): cuenta lo MISMO que el ícono general
+ * (usePendingSyncCount) — grupos del usuario + parcelas (incl. tombstones) +
+ * fotos — para que el dot de la tarjeta señale exactamente qué plantación
+ * enciende el global, y sincronizar solo esa lo apague. Antes contaba solo
+ * grupos y una parcela pendiente era invisible a nivel tarjeta.
  */
 export function usePendingSyncMap(): Map<string, number> {
-  const { data: pendingSyncCounts } = useLiveData(() => getPendingSyncCounts());
+  const userId = useCurrentUserId();
+
+  const { data: groupRows } = useLiveData(
+    () => countPendingGroupsByPlantation(userId),
+    [userId]
+  );
+  const { data: parcelaRows } = useLiveData(() => countPendingParcelasByPlantation());
+  const { data: photoRows } = useLiveData(() => countPendingTreePhotosByPlantation());
 
   return useMemo(() => {
     const map = new Map<string, number>();
-    if (pendingSyncCounts) {
-      for (const c of pendingSyncCounts) {
-        map.set(c.plantacionId, c.pendingCount);
+    for (const rows of [groupRows, parcelaRows, photoRows]) {
+      for (const r of rows ?? []) {
+        map.set(r.plantacionId, (map.get(r.plantacionId) ?? 0) + r.cnt);
       }
     }
     return map;
-  }, [pendingSyncCounts]);
+  }, [groupRows, parcelaRows, photoRows]);
 }
