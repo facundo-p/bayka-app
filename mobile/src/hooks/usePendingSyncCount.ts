@@ -8,17 +8,19 @@ import {
 } from '../queries/pendingSyncQueries';
 
 /**
- * Returns live counts for sync-pending entities. Filtered by current user
- * (each user only sees their own pending groups).
+ * Conteos reactivos de entidades pendientes de sync. Los grupos se filtran por
+ * el usuario actual (cada usuario ve solo sus grupos pendientes).
  *
- * - pendingCount: total pending entities (groups + parcelas) for OrangeDot
- * - syncableCount: pendingCount minus N/N blocked groups (CTA gating)
- * - blockedByNN: finalizada groups blocked by unresolved N/N
- * - pendingPhotosCount: trees with local photo not yet uploaded
- * - pendingParcelasCount: parcelas with pending_sync=true (activas + tombstones)
+ * - pendingCount: total pendiente (grupos + parcelas + fotos) para el OrangeDot
+ * - syncableCount: grupos pendientes menos los bloqueados por N/N (gating del CTA)
+ * - blockedByNN: grupos finalizados bloqueados por N/N sin resolver
+ * - pendingGroupsCount / pendingParcelasCount / pendingPhotosCount: desglose
+ *   por entidad (parcelas incluyen tombstones pendientes)
  *
  * D-16-15 + Finding #10 PLAN-CHECK: las queries viven en
  * `queries/pendingSyncQueries.ts` (CLAUDE.md §9 — cero SQL en hooks).
+ * Issue #71: las fotos pendientes suman a pendingCount — antes el dot las
+ * ignoraba y quedaba inconsistente con el trabajo pendiente real.
  */
 export function usePendingSyncCount(plantacionId?: string) {
   const userId = useCurrentUserId();
@@ -49,13 +51,15 @@ export function usePendingSyncCount(plantacionId?: string) {
   const pendingPhotosCount = pendingPhotosData?.[0]?.cnt ?? 0;
 
   // D-16-15: parcelas pendientes suman al contador global del OrangeDot.
-  const pendingCount = pendingGroupsCount + pendingParcelasCount;
+  // Issue #71: fotos pendientes también.
+  const pendingCount = pendingGroupsCount + pendingParcelasCount + pendingPhotosCount;
   const syncableCount = pendingGroupsCount - blockedByNN;
 
   return {
     pendingCount,
     syncableCount,
     blockedByNN,
+    pendingGroupsCount,
     pendingPhotosCount,
     pendingParcelasCount,
   };

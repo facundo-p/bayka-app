@@ -340,6 +340,7 @@ export default function PlantacionesScreen() {
       <SyncConfirmModal
         visible={syncConfirmVisible}
         title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantacion'}
+        plantacionId={syncConfirmMode === 'plantation' ? syncTargetPlantationId ?? undefined : undefined}
         onConfirm={handleSyncConfirm}
         onClose={() => setSyncConfirmVisible(false)}
       />
