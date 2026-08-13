@@ -13,7 +13,7 @@
  */
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
-import { plantations, parcelas } from '../../src/database/schema';
+import { plantations, parcelas, plantationUsers } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
 
 let mockTestDb: IntegrationDb;
@@ -68,6 +68,8 @@ afterAll(() => {
 
 beforeEach(async () => {
   await mockTestDb.delete(parcelas);
+  // Antes que plantations: FK plantation_users → plantations sin CASCADE (#67).
+  await mockTestDb.delete(plantationUsers);
   await mockTestDb.delete(plantations);
   jest.restoreAllMocks();
 });
@@ -94,6 +96,20 @@ describe('createPlantationWithDefaultParcela', () => {
     await expect(createPlantationWithDefaultParcela(baseParams)).rejects.toThrow(/Default parcela/);
     const all = await mockTestDb.select().from(plantations);
     expect(all).toHaveLength(0);
+    // El rollback también borra la membresía local del creador (#67).
+    const membresias = await mockTestDb.select().from(plantationUsers);
+    expect(membresias).toHaveLength(0);
+  });
+
+  test('crear plantación registra al creador como miembro admin local (#67)', async () => {
+    const r = await createPlantationWithDefaultParcela(baseParams);
+    const membresias = await mockTestDb.select().from(plantationUsers)
+      .where(eq(plantationUsers.plantationId, r.id));
+    expect(membresias).toHaveLength(1);
+    expect(membresias[0]).toMatchObject({
+      userId: 'user-admin-1',
+      rolEnPlantacion: 'admin',
+    });
   });
 
   test('idempotencia: dos invocaciones producen 2 plantaciones + 2 parcelas distintas', async () => {
