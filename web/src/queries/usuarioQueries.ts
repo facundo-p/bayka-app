@@ -70,10 +70,17 @@ export async function listarPerfiles(): Promise<PerfilResumen[]> {
  * Cuenta plantaciones asignadas por usuario en una sola lectura: trae los
  * user_id de plantation_users y agrega en cliente con un Map (mismo patrón
  * que el conteo de árboles por grupo en dataExplorerQueries).
+ * Solo cuenta asignaciones como técnico: desde la migración 028 (issue #67)
+ * los admins son miembros de todas las plantaciones y el conteo perdería
+ * significado.
  */
 async function contarAsignacionesPorUsuario(): Promise<Map<string, number>> {
   const filas = await leerPaginado<{ user_id: string }>((desde, hasta) =>
-    supabase.from('plantation_users').select('user_id').range(desde, hasta),
+    supabase
+      .from('plantation_users')
+      .select('user_id')
+      .eq('rol_en_plantacion', ROL.TECNICO)
+      .range(desde, hasta),
   );
   const conteos = new Map<string, number>();
   for (const fila of filas) {
@@ -136,12 +143,14 @@ function mapearAsignado(fila: FilaAsignado): UsuarioAsignado {
   };
 }
 
-/** Usuarios asignados a la plantación con su perfil, por orden de asignación. */
+/** Técnicos asignados a la plantación con su perfil, por orden de asignación.
+ *  Excluye las membresías 'admin' automáticas (migración 028, issue #67). */
 export async function listarAsignados(plantationId: string): Promise<UsuarioAsignado[]> {
   const { data, error } = await supabase
     .from('plantation_users')
     .select('user_id, rol_en_plantacion, assigned_at, profiles(nombre, rol)')
     .eq('plantation_id', plantationId)
+    .eq('rol_en_plantacion', ROL.TECNICO)
     .order('assigned_at', { ascending: true });
   if (error) throw new Error(error.message);
   // El cliente sin typegen tipa el embed como array, pero la FK user_id →

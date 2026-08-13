@@ -241,6 +241,19 @@ async function pullPlantationUsers(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
+  // Plantación creada offline cuyo push todavía no entró: el server no tiene
+  // filas y el replace destructivo borraría la membresía local del creador
+  // (issue #67). El server es autoridad recién cuando la plantación existe allá.
+  const [localPlant] = await db
+    .select({ pendingSync: plantations.pendingSync })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+  if (localPlant?.pendingSync) {
+    syncLog.info('Pull plantation_users: plantación pendiente de push, se omite el replace');
+    emitProgress(onProgress, 'usuarios', 0, 0);
+    return;
+  }
+
   const { data: remotePu, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId)
   );

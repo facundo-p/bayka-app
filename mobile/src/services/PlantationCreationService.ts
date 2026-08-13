@@ -20,7 +20,7 @@
  * createPlantationLocally directly.
  */
 import { db } from '../database/client';
-import { plantations } from '../database/schema';
+import { plantations, plantationUsers } from '../database/schema';
 import { eq } from 'drizzle-orm';
 import {
   createPlantation,
@@ -88,9 +88,12 @@ export async function createPlantationWithDefaultParcela(
     try {
       await insertDefaultParcela(plantation.id);
     } catch (e) {
-      // Manual rollback: remove the local plantation row so we don't leave an
-      // orphan without its default parcela. Server row (online mode) cannot be
-      // rolled back from here — see Plan 18-01 Risk #3.
+      // Rollback manual: borra la plantación local para no dejar una huérfana
+      // sin su parcela default. La membresía local del creador (#67) se borra
+      // primero (FK plantation_users → plantations sin ON DELETE CASCADE).
+      // La fila server (modo online) no se puede revertir desde acá — Plan
+      // 18-01 Risk #3.
+      await db.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantation.id));
       await db.delete(plantations).where(eq(plantations.id, plantation.id));
       throw e;
     }

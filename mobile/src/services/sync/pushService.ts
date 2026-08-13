@@ -244,7 +244,7 @@ export async function uploadGroup(
 
 // ─── RPC result classification (groups) ──────────────────────────────────────
 
-function classifyRpcResult(
+export function classifyRpcResult(
   sg: Pick<Group, 'id' | 'nombre' | 'parcelaId'>,
   data: any,
   error: any
@@ -257,7 +257,10 @@ function classifyRpcResult(
     return { success: true, groupId: sg.id, nombre: sg.nombre };
   }
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
-  const errorCode: SyncErrorCode = data?.error === 'DUPLICATE_CODE' ? 'DUPLICATE_CODE' : 'UNKNOWN';
+  // Códigos que el RPC sync_subgroup devuelve explícitamente: DUPLICATE_CODE
+  // (unicidad por parcela) y PERMISSION (guard de membresía, migración 028).
+  const RPC_CODES: SyncErrorCode[] = ['DUPLICATE_CODE', 'PERMISSION'];
+  const errorCode: SyncErrorCode = RPC_CODES.includes(data?.error) ? data.error : 'UNKNOWN';
   return { success: false, groupId: sg.id, nombre: sg.nombre, error: errorCode };
 }
 

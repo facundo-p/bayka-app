@@ -17,6 +17,26 @@ import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
 
+// ─── Membresía local del creador ─────────────────────────────────────────────
+
+/**
+ * Registra localmente al creador como miembro admin de la plantación (issue
+ * #67). El server mantiene la membresía completa vía trigger (migración 028);
+ * esta fila local garantiza consistencia inmediata (online) y offline hasta el
+ * próximo pull.
+ */
+async function upsertLocalAdminMembership(plantacionId: string, userId: string): Promise<void> {
+  await db
+    .insert(plantationUsers)
+    .values({
+      plantationId: plantacionId,
+      userId,
+      rolEnPlantacion: 'admin',
+      assignedAt: new Date().toISOString(),
+    })
+    .onConflictDoNothing();
+}
+
 // ─── createPlantation ─────────────────────────────────────────────────────────
 
 /**
@@ -85,6 +105,7 @@ export async function createPlantation(
       set: { estado: sql`excluded.estado` },
     });
 
+  await upsertLocalAdminMembership(data.id, creadoPor);
   notifyDataChanged();
   return data;
 }
@@ -117,6 +138,7 @@ export async function createPlantationLocally(
     pendingSync: true,
     ...(gps ?? {}),
   });
+  await upsertLocalAdminMembership(id, creadoPor);
   notifyDataChanged();
   return { id, lugar, periodo, estado: 'activa' };
 }
@@ -368,21 +390,23 @@ export async function saveSpeciesConfigLocally(
 
 /**
  * PLAN-03
- * Atomically replaces all technician assignments for a plantation:
- * 1. DELETE all existing plantation_users on Supabase
- * 2. INSERT new user rows on Supabase
- * 3. pullFromServer to sync back to local SQLite
- * 4. notifyDataChanged for reactive UI
+ * Reemplaza atómicamente las asignaciones de TÉCNICOS de una plantación:
+ * 1. DELETE de las filas con rol_en_plantacion='tecnico' en Supabase
+ * 2. INSERT de las nuevas asignaciones
+ * 3. pullFromServer para sincronizar el SQLite local
+ *
+ * Issue #67: el delete filtra por rol para NO borrar las membresías 'admin'
+ * (fuente de permisos de parcelas/grupos desde la migración 028).
  */
 export async function assignTechnicians(
   plantacionId: string,
   userIds: string[]
 ): Promise<void> {
-  // Delete all existing user assignments
   const { error: deleteError, count: deleteCount } = await supabase
     .from('plantation_users')
     .delete()
-    .eq('plantation_id', plantacionId);
+    .eq('plantation_id', plantacionId)
+    .eq('rol_en_plantacion', 'tecnico');
 
   console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;

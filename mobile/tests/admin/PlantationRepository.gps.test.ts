@@ -51,7 +51,14 @@ function mockDbChains(row: any) {
   insertedValues = undefined;
   updatedSet = undefined;
   (mockDb.insert as jest.Mock).mockReturnValue({
-    values: jest.fn().mockImplementation((v: any) => { insertedValues = v; return Promise.resolve(); }),
+    // Ignora el insert de membresía local (#67, tiene rolEnPlantacion) para
+    // que insertedValues siga capturando la fila de la plantación.
+    values: jest.fn().mockImplementation((v: any) => {
+      if (!v?.rolEnPlantacion) insertedValues = v;
+      return Object.assign(Promise.resolve(), {
+        onConflictDoNothing: jest.fn().mockResolvedValue(undefined),
+      });
+    }),
   });
   (mockDb.update as jest.Mock).mockReturnValue({
     set: jest.fn().mockImplementation((s: any) => {

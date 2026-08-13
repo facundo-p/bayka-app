@@ -138,7 +138,9 @@ export async function getPlantationSpeciesConfig(
 // ─── getAssignedTechnicians ───────────────────────────────────────────────────
 
 /**
- * Returns all technicians currently assigned to a plantation (local SQLite).
+ * Técnicos asignados a una plantación (SQLite local). Filtra por
+ * rol_en_plantacion='tecnico': desde la migración 028 los admins también son
+ * miembros y no deben aparecer en la lista de técnicos (issue #67).
  */
 export async function getAssignedTechnicians(
   plantacionId: string
@@ -150,7 +152,10 @@ export async function getAssignedTechnicians(
       assignedAt: plantationUsers.assignedAt,
     })
     .from(plantationUsers)
-    .where(eq(plantationUsers.plantationId, plantacionId));
+    .where(and(
+      eq(plantationUsers.plantationId, plantacionId),
+      eq(plantationUsers.rolEnPlantacion, 'tecnico'),
+    ));
 }
 
 // ─── getTechnicianUnsyncedGroupCount ───────────────────────────────────────
