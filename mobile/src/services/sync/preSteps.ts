@@ -10,6 +10,7 @@ import {
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows, runInTransaction } from './paginate';
+import { purgeOrphanRows } from './orphanCleanup';
 import { SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
@@ -266,6 +267,9 @@ export async function uploadPendingEdits(): Promise<void> {
 
 export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   await supabase.auth.getSession();
+  // Residuo pre-#90: filas sin plantación local que el push jamás alcanza y
+  // mantienen el OrangeDot encendido (issue #71).
+  try { await purgeOrphanRows(); } catch (e) { syncLog.error('Purge orphan rows failed:', e); }
   try { await pullSpeciesFromServer(); } catch (e) { syncLog.error('Pull species failed:', e); }
   let plantationResults: SyncPlantationResult[] = [];
   try { plantationResults = await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
