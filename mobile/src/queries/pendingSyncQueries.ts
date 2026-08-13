@@ -39,25 +39,30 @@ export function countNNBlockedGroups(opts: PendingCountQueryOpts) {
   return db.select({ cnt: count() }).from(groups).where(and(...conditions));
 }
 
+/**
+ * Fotos locales sin subir de grupos ya sincronizados (los grupos pendientes
+ * suben sus fotos en el propio push, y ya cuentan como grupo pendiente).
+ * Sin `plantacionId` cuenta TODAS las plantaciones — el OrangeDot global las
+ * suma (issue #71: antes devolvía 0 hardcodeado y el dot las ignoraba).
+ */
 export function countPendingTreePhotos(opts: PendingCountQueryOpts) {
-  if (!opts.plantacionId) return Promise.resolve([{ cnt: 0 }]);
+  const conditions = [
+    eq(groups.pendingSync, false),
+    isNotNull(trees.fotoUrl),
+    eq(trees.fotoSynced, false),
+    sqlIsLocalUri(trees.fotoUrl),
+  ];
+  if (opts.plantacionId) conditions.push(eq(groups.plantacionId, opts.plantacionId));
   return db
     .select({ cnt: count() })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(and(
-      eq(groups.plantacionId, opts.plantacionId),
-      eq(groups.pendingSync, false),
-      isNotNull(trees.fotoUrl),
-      eq(trees.fotoSynced, false),
-      sqlIsLocalUri(trees.fotoUrl),
-    ));
+    .where(and(...conditions));
 }
 
 /**
- * Counts parcelas with pending_sync=true. INCLUDES tombstoned rows (deleted_at
- * IS NOT NULL) — un tombstone pendiente de subir TAMBIÉN es trabajo pendiente
- * para sync. D-16-15.
+ * Parcelas con pending_sync=true. INCLUYE tombstones (deleted_at IS NOT NULL):
+ * un borrado pendiente de subir también es trabajo pendiente de sync. D-16-15.
  */
 export function countPendingParcelas(opts: PendingCountQueryOpts) {
   const conditions = [eq(parcelas.pendingSync, true)];
