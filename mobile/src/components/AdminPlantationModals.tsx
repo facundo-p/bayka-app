@@ -4,24 +4,14 @@
  * Props-driven, no data access logic.
  */
 import React from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  TextInput,
-  ActivityIndicator,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, Modal, ActivityIndicator } from 'react-native';
 import ConfirmModal from './ConfirmModal';
 import PlantationFormModal from './PlantationFormModal';
 import AdminModalWrapper from './AdminModalWrapper';
 import ConfigureSpeciesScreen from '../screens/ConfigureSpeciesScreen';
 import AssignTechniciansScreen from '../screens/AssignTechniciansScreen';
-import Spinner from './Spinner';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
+import { adminPlantationModalsStyles as styles } from './AdminPlantationModals.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 
@@ -38,14 +28,6 @@ type Props = {
 
   // Confirm modal
   confirmProps: any;
-
-  // Seed dialog
-  seedModalPlantacionId: string | null;
-  seedValue: string;
-  setSeedValue: (v: string) => void;
-  seedLoading: boolean;
-  onCloseSeed: () => void;
-  onConfirmSeed: () => void;
 
   // Export loading
   exportingId: string | null;
@@ -68,12 +50,6 @@ export default function AdminPlantationModals({
   onCloseEdit,
   onEditSubmit,
   confirmProps,
-  seedModalPlantacionId,
-  seedValue,
-  setSeedValue,
-  seedLoading,
-  onCloseSeed,
-  onConfirmSeed,
   exportingId,
   configSpeciesPlantacionId,
   onCloseConfigSpecies,
@@ -97,53 +73,6 @@ export default function AdminPlantationModals({
       />
 
       <ConfirmModal {...confirmProps} />
-
-      <Modal
-        visible={!!seedModalPlantacionId}
-        transparent
-        animationType="fade"
-        onRequestClose={() => { if (!seedLoading) onCloseSeed(); }}
-      >
-        {/* KAV centra la card al abrir el teclado (input number-pad) — issue #74. */}
-        <KeyboardAvoidingView
-          style={styles.seedOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.seedCard}>
-            <Text style={styles.seedTitle}>Semilla para ID Global</Text>
-            {seedLoading ? (
-              <Spinner label="Generando y subiendo IDs…" />
-            ) : (
-              <>
-                <Text style={styles.seedLabel}>Valor inicial del ID Global</Text>
-                <TextInput
-                  style={styles.seedInput}
-                  value={seedValue}
-                  onChangeText={setSeedValue}
-                  keyboardType="number-pad"
-                  placeholder="Ej: 1001"
-                  placeholderTextColor={colors.textPlaceholder}
-                />
-                <Text style={styles.seedNote}>Esta acción no se puede deshacer.</Text>
-                <View style={styles.seedButtons}>
-                  <Pressable
-                    style={({ pressed }) => [styles.seedBtn, styles.seedBtnCancel, pressed && { opacity: 0.7 }]}
-                    onPress={onCloseSeed}
-                  >
-                    <Text style={styles.seedBtnCancelText}>Cancelar</Text>
-                  </Pressable>
-                  <Pressable
-                    style={({ pressed }) => [styles.seedBtn, styles.seedBtnPrimary, pressed && { opacity: 0.8 }]}
-                    onPress={onConfirmSeed}
-                  >
-                    <Text style={styles.seedBtnPrimaryText}>Generar</Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
 
       {exportingId && (
         <View style={styles.exportOverlay}>
@@ -191,89 +120,3 @@ export default function AdminPlantationModals({
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  seedOverlay: {
-    flex: 1,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-  },
-  seedCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    marginHorizontal: spacing.xxl,
-    padding: spacing['4xl'],
-    gap: spacing.xl,
-  },
-  seedTitle: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.heading,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  seedLabel: {
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semiBold,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  seedNote: {
-    fontSize: fontSize.xs,
-    fontFamily: fonts.regular,
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  seedInput: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.xxl,
-    fontSize: fontSize.base,
-    color: colors.text,
-    backgroundColor: colors.backgroundAlt,
-  },
-  seedButtons: {
-    flexDirection: 'row',
-    gap: spacing.xl,
-    marginTop: spacing.md,
-  },
-  seedBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-    borderRadius: borderRadius.lg,
-    minHeight: 44,
-  },
-  seedBtnCancel: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  seedBtnCancelText: {
-    color: colors.textMuted,
-    fontSize: fontSize.base,
-    fontFamily: fonts.semiBold,
-  },
-  seedBtnPrimary: { backgroundColor: colors.primary },
-  seedBtnPrimaryText: {
-    color: colors.white,
-    fontSize: fontSize.base,
-    fontFamily: fonts.semiBold,
-  },
-  exportOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: colors.overlay,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xl,
-  },
-  exportOverlayText: {
-    color: colors.white,
-    fontSize: fontSize.xl,
-    fontFamily: fonts.semiBold,
-  },
-});

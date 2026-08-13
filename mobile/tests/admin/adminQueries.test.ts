@@ -1,6 +1,6 @@
 // Tests for adminQueries — admin read queries for plantation management
 // Covers: checkFinalizationGate (all states including sincronizada),
-// getMaxGlobalId, hasIdsGenerated, hasTreesForSpecies
+// hasIdsGenerated, hasTreesForSpecies
 
 jest.mock('../../src/database/client', () => ({
   db: {
@@ -19,7 +19,6 @@ jest.mock('../../src/supabase/client', () => ({
 
 import {
   checkFinalizationGate,
-  getMaxGlobalId,
   getPlantationEstado,
   getAllTechnicians,
   getPlantationSpeciesConfig,
@@ -212,28 +211,6 @@ describe('adminQueries', () => {
       expect(result.canFinalize).toBe(false);
       expect(result.blocking).toHaveLength(1);
       expect(result.blocking[0]).toMatchObject({ nombre: 'Línea A', pendingSync: true });
-    });
-  });
-
-  // ─── getMaxGlobalId ───────────────────────────────────────────────────────
-
-  describe('getMaxGlobalId', () => {
-    it('retorna 0 cuando ningún árbol tiene globalId', async () => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockResolvedValue([{ maxId: null }]),
-      });
-
-      const result = await getMaxGlobalId();
-      expect(result).toBe(0);
-    });
-
-    it('retorna el max globalId cuando existen árboles', async () => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockResolvedValue([{ maxId: 42 }]),
-      });
-
-      const result = await getMaxGlobalId();
-      expect(result).toBe(42);
     });
   });
 

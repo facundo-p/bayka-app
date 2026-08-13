@@ -380,13 +380,11 @@ export default function PlantacionesScreen() {
         plantation={bottomSheetPlantation}
         meta={bottomSheetMeta}
         isAdmin={isAdmin}
-        isOnline={isOnline}
         onDismiss={() => setBottomSheetVisible(false)}
         onEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) handleEditPress(bottomSheetPlantation); })}
         onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
         onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
         onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
-        onGenerateIds={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleGenerateIds(bottomSheetPlantation.id); })}
         onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
         onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
         onExportKml={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportKml(bottomSheetPlantation.id); })}
@@ -402,12 +400,6 @@ export default function PlantacionesScreen() {
           onCloseEdit={() => setEditingPlantation(null)}
           onEditSubmit={async (lugar, periodo, gps) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, gps); setEditingPlantation(null); } }}
           confirmProps={adminHook.confirmProps}
-          seedModalPlantacionId={adminHook.seedModalPlantacionId}
-          seedValue={adminHook.seedValue}
-          setSeedValue={adminHook.setSeedValue}
-          seedLoading={adminHook.seedLoading}
-          onCloseSeed={() => adminHook.setSeedModalPlantacionId(null)}
-          onConfirmSeed={adminHook.confirmSeedAndGenerate}
           exportingId={adminHook.exportingId}
           configSpeciesPlantacionId={configSpeciesPlantacionId}
           onCloseConfigSpecies={handleCloseConfigSpecies}
