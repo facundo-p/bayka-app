@@ -4,7 +4,6 @@
 jest.mock('../../src/queries/adminQueries', () => ({
   checkFinalizationGate: jest.fn(),
   hasIdsGenerated: jest.fn(),
-  getMaxGlobalId: jest.fn(),
 }));
 
 jest.mock('../../src/database/liveQuery', () => ({
@@ -32,7 +31,6 @@ jest.mock('../../src/repositories/PlantationRepository', () => ({
   createPlantationLocally: jest.fn(),
   updatePlantation: jest.fn(),
   finalizePlantation: jest.fn(),
-  generateIds: jest.fn(),
   discardPlantationEdit: jest.fn(),
 }));
 

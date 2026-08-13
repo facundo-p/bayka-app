@@ -3,12 +3,12 @@
  * All local queries use Drizzle ORM (SQLite). Profile listing uses Supabase
  * because local SQLite has no profiles table.
  *
- * Covers requirements: PLAN-06, IDGN-04
+ * Covers requirements: PLAN-06, IDGN-01
  */
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
-import { eq, and, isNotNull, isNull, sql, count, asc } from 'drizzle-orm';
+import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
 
@@ -61,20 +61,6 @@ export async function checkFinalizationGate(
     unresolvedNNCount,
     unresolvedNNGroups,
   };
-}
-
-// ─── getMaxGlobalId ───────────────────────────────────────────────────────────
-
-/**
- * IDGN-04
- * Returns MAX(global_id) from all trees. Used to suggest seed = max + 1.
- * Returns 0 if no tree has a globalId yet.
- */
-export async function getMaxGlobalId(): Promise<number> {
-  const result = await db
-    .select({ maxId: sql<number>`MAX(${trees.globalId})` })
-    .from(trees);
-  return result[0]?.maxId ?? 0;
 }
 
 // ─── getPlantationEstado ──────────────────────────────────────────────────────

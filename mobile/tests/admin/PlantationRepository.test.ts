@@ -1,5 +1,6 @@
 // Tests for PlantationRepository — admin mutation functions
-// Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05, IDGN-01, IDGN-02, IDGN-03
+// Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05
+// (La generación de IDs se movió a la web server-side — issue #232.)
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -31,7 +32,6 @@ import {
   finalizePlantation,
   saveSpeciesConfig,
   assignTechnicians,
-  generateIds,
 } from '../../src/repositories/PlantationRepository';
 
 import { supabase } from '../../src/supabase/client';
@@ -96,7 +96,7 @@ describe('PlantationRepository', () => {
       }),
     });
 
-    // Default db.select chain (for generateIds)
+    // Default db.select chain
     (mockDb.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
         innerJoin: jest.fn().mockReturnValue({
@@ -229,106 +229,4 @@ describe('PlantationRepository', () => {
     });
   });
 
-  // ─── generateIds ─────────────────────────────────────────────────────────
-
-  describe('generateIds', () => {
-    it('Test 7: assigns sequential plantacionId (1..N) and globalId (seed..seed+N-1) ordered by subgroup.createdAt ASC, tree.posicion ASC', async () => {
-      const orderedTrees = [
-        { treeId: 'tree-1' },
-        { treeId: 'tree-2' },
-        { treeId: 'tree-3' },
-      ];
-
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue(orderedTrees),
-            }),
-          }),
-        }),
-      });
-
-      const updateCalls: Array<{ plantacionId: number; globalId: number }> = [];
-      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-        const tx = {
-          update: jest.fn().mockImplementation(() => ({
-            set: jest.fn().mockImplementation((values) => {
-              updateCalls.push(values);
-              return {
-                where: jest.fn().mockResolvedValue(undefined),
-              };
-            }),
-          })),
-        };
-        await fn(tx);
-      });
-
-      await generateIds('plantation-1', 10);
-
-      // Verify sequential IDs starting from seed=10
-      expect(updateCalls[0]).toMatchObject({ plantacionId: 1, globalId: 10 });
-      expect(updateCalls[1]).toMatchObject({ plantacionId: 2, globalId: 11 });
-      expect(updateCalls[2]).toMatchObject({ plantacionId: 3, globalId: 12 });
-    });
-
-    it('Test 8: calls notifyDataChanged after transaction completes', async () => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue([]),
-            }),
-          }),
-        }),
-      });
-
-      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-        await fn({ update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn() }) }) });
-      });
-
-      await generateIds('plantation-1', 1);
-
-      expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
-    });
-
-    it('Test 9: NO marca pendingSync (la persistencia la hace el RPC dedicado en idGenerationService)', async () => {
-      const orderedTrees = [
-        { treeId: 'tree-1', groupId: 'group-A' },
-        { treeId: 'tree-2', groupId: 'group-A' },
-        { treeId: 'tree-3', groupId: 'group-B' },
-      ];
-
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue(orderedTrees),
-            }),
-          }),
-        }),
-      });
-
-      const setValues: any[] = [];
-      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-        const tx = {
-          update: jest.fn().mockImplementation(() => ({
-            set: jest.fn().mockImplementation((values) => {
-              setValues.push(values);
-              return { where: jest.fn().mockResolvedValue(undefined) };
-            }),
-          })),
-        };
-        await fn(tx);
-      });
-
-      const result = await generateIds('plantation-1', 1);
-
-      // No debe flaggear pendingSync: solo asigna IDs.
-      const pendingFlags = setValues.filter((v) => v.pendingSync === true);
-      expect(pendingFlags).toHaveLength(0);
-      // Devuelve los grupos afectados (deduped) para el fallback que decide la UI.
-      expect(result.affectedGroupIds).toEqual(['group-A', 'group-B']);
-    });
-  });
 });

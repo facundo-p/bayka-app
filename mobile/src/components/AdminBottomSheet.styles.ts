@@ -93,6 +93,20 @@ export const adminBottomSheetStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
   },
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  infoNoteText: {
+    flex: 1,
+    fontSize: fontSize.sm,
+    color: colors.textMuted,
+    fontStyle: 'italic',
+    fontFamily: fonts.regular,
+  },
   helperText: {
     fontSize: fontSize.sm,
     color: colors.textMuted,

@@ -220,9 +220,10 @@ export async function uploadGroup(
     created_at: sg.createdAt,
   };
 
-  // NOTA: el sync de grupos NO sube los IDs generados (plantacion_id/global_id).
-  // Esa persistencia la hace el RPC dedicado `update_tree_ids` en el paso de
-  // "Generar IDs". El `sync_subgroup` solo sincroniza el grupo y sus árboles.
+  // NOTA: el sync de grupos NO sube los IDs finales (plantacion_id/global_id).
+  // Esos IDs los genera la web de gestión server-side (RPC generate_tree_ids,
+  // issue #232) y la app los recibe por el pull. El `sync_subgroup` solo
+  // sincroniza el grupo y sus árboles.
   const p_trees = sgTrees.map((t) => ({
     id: t.id,
     subgroup_id: t.groupId,
@@ -323,31 +324,4 @@ export async function uploadSyncableGroups(
   }
 
   return results;
-}
-
-// ─── Persist generated tree IDs (RPC dedicado) ───────────────────────────────
-
-/**
- * Persiste los IDs generados (plantacion_id / global_id) en el server con un RPC
- * dedicado y liviano (bulk UPDATE), sin re-subir grupos/árboles completos.
- * Requiere conexión. `updated` = cantidad de filas que el server realmente tocó
- * (si es menor a las enviadas, algún árbol aún no estaba sincronizado).
- */
-export async function persistGeneratedTreeIds(
-  rows: Array<{ id: string; plantacionId: number; globalId: number }>
-): Promise<{ success: boolean; updated: number }> {
-  if (rows.length === 0) return { success: true, updated: 0 };
-
-  const p_ids = rows.map((row) => ({
-    id: row.id,
-    plantacion_id: row.plantacionId,
-    global_id: row.globalId,
-  }));
-
-  const { data, error } = await supabase.rpc('update_tree_ids', { p_ids });
-  if (error || !data?.success) {
-    syncLog.error('update_tree_ids RPC failed:', JSON.stringify(error ?? data));
-    return { success: false, updated: 0 };
-  }
-  return { success: true, updated: data.updated ?? 0 };
 }

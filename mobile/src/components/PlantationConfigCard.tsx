@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import { checkFinalizationGate, hasIdsGenerated } from '../queries/adminQueries';
 import PlantationEstadoChip from './PlantationEstadoChip';
+import { AVISO_IDS_DESDE_WEB } from './AdminBottomSheet';
+import { plantationConfigCardStyles as styles } from './PlantationConfigCard.styles';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -23,7 +25,6 @@ export type Plantation = {
 type Props = {
   item: Plantation;
   onFinalize: (id: string) => void;
-  onGenerateIds: (id: string) => void;
   onExportCsv: (id: string) => void;
   onExportExcel: (id: string) => void;
   onConfigSpecies: (id: string) => void;
@@ -34,7 +35,6 @@ type Props = {
 export default function PlantationConfigCard({
   item,
   onFinalize,
-  onGenerateIds,
   onExportCsv,
   onExportExcel,
   onConfigSpecies,
@@ -122,18 +122,12 @@ export default function PlantationConfigCard({
 
       {item.estado === 'finalizada' && (
         <View style={styles.actionRow}>
+          {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}
           {!idsGenerated && (
-            <Pressable
-              style={({ pressed }) => [
-                styles.actionBtn,
-                styles.actionBtnPrimary,
-                pressed && { opacity: 0.7 },
-              ]}
-              onPress={() => onGenerateIds(item.id)}
-            >
-              <Ionicons name="key-outline" size={14} color={colors.white} />
-              <Text style={styles.actionBtnPrimaryText}>Generar IDs</Text>
-            </Pressable>
+            <View style={styles.infoNote}>
+              <Ionicons name="information-circle-outline" size={14} color={colors.textMuted} />
+              <Text style={styles.infoNoteText}>{AVISO_IDS_DESDE_WEB}</Text>
+            </View>
           )}
           {idsGenerated && (
             <>
@@ -170,117 +164,3 @@ export default function PlantationConfigCard({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
-    elevation: 2,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    padding: spacing.xxl,
-    gap: spacing.xl,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  cardTitleArea: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  cardHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  editIconBtn: {
-    padding: spacing.sm,
-  },
-  cardTitle: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.bold,
-    color: colors.text,
-    marginBottom: 2,
-  },
-  cardSubtitle: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textFaint,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.lg,
-  },
-  actionBtnPrimary: {
-    backgroundColor: colors.primary,
-  },
-  actionBtnPrimaryText: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semiBold,
-  },
-  actionBtnSecondary: {
-    backgroundColor: colors.primaryBg,
-    borderWidth: 1,
-    borderColor: colors.primaryBorder,
-  },
-  actionBtnSecondaryText: {
-    color: colors.primary,
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semiBold,
-  },
-  actionBtnDanger: {
-    backgroundColor: colors.danger,
-  },
-  actionBtnDisabled: {
-    opacity: 0.4,
-  },
-  actionBtnDangerText: {
-    color: colors.white,
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semiBold,
-  },
-  lockedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: colors.secondaryBg,
-    borderRadius: borderRadius.lg,
-  },
-  lockedText: {
-    color: colors.stateFinalizada,
-    fontSize: fontSize.sm,
-    fontFamily: fonts.semiBold,
-  },
-  pendingSyncBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    backgroundColor: colors.stateFinalizada,
-    borderRadius: borderRadius.full,
-  },
-  pendingSyncText: {
-    color: colors.white,
-    fontSize: fontSize.xs,
-    fontFamily: fonts.semiBold,
-  },
-});
