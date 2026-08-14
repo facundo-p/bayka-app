@@ -1,5 +1,22 @@
 # Proyecto: EE360
 
+## Flujo de branches y deploy (OBLIGATORIO — vigente desde 2026-08-14)
+
+- **`main` = PRODUCCIÓN. `staging` = integración y testing** (branch default de GitHub).
+- **TODO código nuevo sale de `staging` y su PR apunta a `staging`.** Nunca abrir
+  PRs contra `main`.
+- **NADA pasa de `staging` a `main` sin confirmación explícita de Facu.** El pase
+  a producción es un PR `staging → main` que solo él aprueba y mergea. `main`
+  tiene branch protection (sin push directo).
+- Entornos por branch:
+  - `staging` → Supabase **Plantaciones Staging** (`uchejlyyabtrjoxyydmb`, cuenta
+    del cliente) + web staging en Cloudflare Pages + APK variante TEST.
+  - `main` → Supabase prod (proyecto pendiente de creación, #245) + web prod +
+    APK de producción. Hasta el cutover (#254), el prod "viejo" es
+    `apktttwrmhamfudjeklu`.
+- Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
+  `main` correspondiente y confirmación dedicada.
+
 ## Reglas de trabajo
 
 1. Planning obligatorio antes de código.
