@@ -17,6 +17,33 @@
 - Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
   `main` correspondiente y confirmación dedicada.
 
+## Trazabilidad: todo PR con Issue y visible en el board (OBLIGATORIO — vigente desde 2026-08-19)
+
+El Project **Bayka** (GitHub Project #1 de `facundo-p`) es la vista de gestión
+del proyecto. Un PR que no aparece ahí es trabajo invisible.
+
+- **Todo PR arranca de un Issue.** Si no existe, crearlo *antes* de abrir el PR
+  — también para un chore de una línea: título y dos renglones alcanzan.
+- **El PR linkea el Issue con `Closes #N` en el body**, no con una mención
+  suelta. `Closes` crea el link real (mueve la tarjeta del Issue y lo cierra al
+  mergear); un `#N` a secas no linkea nada.
+- **El PR además se agrega al board como item propio.** El link al Issue NO
+  alcanza: linkear mueve la tarjeta del *Issue*, nunca crea la del *PR*. Lo
+  ideal es que lo haga solo el workflow "Auto-add to project" del Project
+  (filtro `is:pr`; se configura por UI en Project → ⋯ → Workflows, no hay API
+  pública para prenderlo). Si aun así el PR no aparece, agregarlo a mano:
+
+  ```sh
+  gh project item-add 1 --owner facundo-p --url <url-del-PR>
+  ```
+
+- **Chequeo de cierre:** antes de dar un PR por entregado, confirmar que se ve
+  en el board. Para listar items y su tipo:
+
+  ```sh
+  gh project item-list 1 --owner facundo-p --format json
+  ```
+
 ## Reglas de trabajo
 
 1. Planning obligatorio antes de código.
@@ -74,6 +101,8 @@
 - When fishing an Issue, update it with the results and relevant considerations.
 - When asking questions to the user, add the replies to issue description.
 - For complex problems, create sub-issues and follow this same rules on them.
+- Todo Issue termina en un PR que lo cierra con `Closes #N` y que se ve en el
+  board: ver "Trazabilidad" arriba.
 
 --- 
 
