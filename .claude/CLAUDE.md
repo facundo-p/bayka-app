@@ -28,10 +28,10 @@ del proyecto. Un PR que no aparece ahí es trabajo invisible.
   suelta. `Closes` crea el link real (mueve la tarjeta del Issue y lo cierra al
   mergear); un `#N` a secas no linkea nada.
 - **El PR además se agrega al board como item propio.** El link al Issue NO
-  alcanza: linkear mueve la tarjeta del *Issue*, nunca crea la del *PR*. Lo
-  ideal es que lo haga solo el workflow "Auto-add to project" del Project
-  (filtro `is:pr`; se configura por UI en Project → ⋯ → Workflows, no hay API
-  pública para prenderlo). Si aun así el PR no aparece, agregarlo a mano:
+  alcanza: linkear mueve la tarjeta del *Issue*, nunca crea la del *PR*. De eso
+  se encarga el workflow "Auto-add to project", ya prendido — su filtro tiene
+  que incluir `is:pr`. No hace backfill: un PR abierto de antes hay que
+  agregarlo a mano, igual que si el auto-add fallara:
 
   ```sh
   gh project item-add 1 --owner facundo-p --url <url-del-PR>
@@ -44,27 +44,66 @@ del proyecto. Un PR que no aparece ahí es trabajo invisible.
   gh project item-list 1 --owner facundo-p --format json
   ```
 
-### Estados del PR en el board
+### Views del board: Issues y PRs separados
 
-El campo `Status` acompaña el flujo `staging → main`:
+El Project tiene tres views. Mezclarlos en una sola confunde: un Issue y el PR
+que lo resuelve son la misma unidad de trabajo en dos momentos distintos.
 
-| Momento | Status |
-| --- | --- |
-| PR abierto contra `staging`, esperando review | `PR en review` |
-| Mergeado a `staging` | `En staging` |
-| Validado en staging, listo para producción | `Esperando OK` |
-| Mergeado a `main` y desplegado | `En prod` |
+| View | Filtro | Para qué |
+| --- | --- | --- |
+| `Issues` (board) | `is:issue` | En qué anda cada unidad de trabajo |
+| `PRs` (board) | `is:pr` | Qué código está esperando review / ya en staging |
+| `View 1` (tabla) | — | Vista cruda de todo, para buscar |
+
+### Estados: el Issue y su PR se mueven juntos
+
+Los dos usan el mismo campo `Status`, cada uno en su view:
+
+| Momento | Status del **PR** | Status del **Issue** |
+| --- | --- | --- |
+| Issue creado | — | `Backlog` |
+| Trabajando | — | `En progreso` |
+| PR abierto contra `staging` | `PR en review` | `En progreso` |
+| PR mergeado a `staging` | `En staging` | `En staging` (y el Issue se cierra) |
+| Validado en staging | — | `Esperando OK` |
+| Mergeado a `main` y desplegado | `En prod` | `En prod` |
 
 `Bloqueado` es transversal: frenado por algo externo o por una decisión pendiente.
 
-Ojo: el workflow "Item added to project" del Project está **apagado**, así que un
-item que entra por auto-add llega **sin Status** y cae en el bucket "No Status".
-Hasta que se prenda, al abrir el PR hay que setearlo:
+**Cómo se mantiene solo el vínculo Issue ↔ PR.** El branch default del repo es
+`staging`, así que al mergear un PR con `Closes #N` **GitHub cierra el Issue
+nativamente**. De ahí se encadenan tres workflows del Project (Project → ⋯ →
+Workflows; se prenden por UI, no hay API pública):
+
+- **`Item closed` → `En staging`**: el Issue que se cierra por el merge cae solo
+  en `En staging`. Este es el que hace que "mergeo un PR a staging y su Issue
+  pasa a En staging".
+- **`Pull request merged` → `En staging`**: mueve la tarjeta del *PR*, que si no
+  se queda clavada en `PR en review`.
+- **`Auto-close issue`**: cinturón y tiradores para los Issues linkeados desde el
+  panel Development en vez de con `Closes`.
+
+**Dos límites que hay que bancarse a mano** (ningún workflow los distingue):
+
+1. El Issue **se cierra al llegar a staging, no a prod** — es comportamiento
+   nativo de GitHub porque el branch default es `staging`. El pase a `En prod`
+   se hace a mano en el pase `staging → main`.
+2. El PR de release `staging → main` también dispara `Pull request merged` y
+   queda en `En staging`; hay que moverlo a `En prod`.
+
+**Al abrir un PR hay que moverlo a `PR en review`.** El workflow
+`Item added to project` está prendido con default `Backlog`, que es lo correcto
+para un Issue nuevo pero no para un PR:
 
 ```sh
 gh project item-edit --id <item-id> --project-id PVT_kwHOAlH2RM4BPDWt \
   --field-id PVTSSF_lAHOAlH2RM4BPDWtzg9kyak --single-select-option-id 82eeff6d
 ```
+
+Ids de las opciones de `Status`: `Backlog` `fd84d80b` · `En progreso` `c7b95fec`
+· `PR en review` `82eeff6d` · `En staging` `c92c5785` · `Esperando OK` `fe66a85a`
+· `En prod` `033672b0` · `Bloqueado` `7c1c8ba6`.
+
 
 ## Reglas de trabajo
 
