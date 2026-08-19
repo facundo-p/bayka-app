@@ -44,6 +44,28 @@ del proyecto. Un PR que no aparece ahí es trabajo invisible.
   gh project item-list 1 --owner facundo-p --format json
   ```
 
+### Estados del PR en el board
+
+El campo `Status` acompaña el flujo `staging → main`:
+
+| Momento | Status |
+| --- | --- |
+| PR abierto contra `staging`, esperando review | `PR en review` |
+| Mergeado a `staging` | `En staging` |
+| Validado en staging, listo para producción | `Esperando OK` |
+| Mergeado a `main` y desplegado | `En prod` |
+
+`Bloqueado` es transversal: frenado por algo externo o por una decisión pendiente.
+
+Ojo: el workflow "Item added to project" del Project está **apagado**, así que un
+item que entra por auto-add llega **sin Status** y cae en el bucket "No Status".
+Hasta que se prenda, al abrir el PR hay que setearlo:
+
+```sh
+gh project item-edit --id <item-id> --project-id PVT_kwHOAlH2RM4BPDWt \
+  --field-id PVTSSF_lAHOAlH2RM4BPDWtzg9kyak --single-select-option-id 82eeff6d
+```
+
 ## Reglas de trabajo
 
 1. Planning obligatorio antes de código.
