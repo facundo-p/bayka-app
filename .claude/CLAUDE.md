@@ -29,9 +29,10 @@ del proyecto. Un PR que no aparece ahí es trabajo invisible.
   mergear); un `#N` a secas no linkea nada.
 - **El PR además se agrega al board como item propio.** El link al Issue NO
   alcanza: linkear mueve la tarjeta del *Issue*, nunca crea la del *PR*. De eso
-  se encarga el workflow "Auto-add to project", ya prendido — su filtro tiene
-  que incluir `is:pr`. No hace backfill: un PR abierto de antes hay que
-  agregarlo a mano, igual que si el auto-add fallara:
+  se encarga el workflow "Auto-add to project", prendido con filtro
+  `is:issue,pr is:open` — o sea que cubre Issues **y** PRs. No hace backfill de
+  lo que ya existía: un item abierto de antes hay que agregarlo a mano, igual
+  que si el auto-add fallara:
 
   ```sh
   gh project item-add 1 --owner facundo-p --url <url-del-PR>
