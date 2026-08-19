@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
-import { Button, Card, Input } from '../components';
+import { Button, Card, Input, PasswordInput } from '../components';
 import { useAuth } from '../hooks/useAuth';
 import styles from './LoginScreen.module.css';
 
@@ -42,9 +42,8 @@ function FormularioLogin() {
         value={email}
         onChange={(evento) => setEmail(evento.target.value)}
       />
-      <Input
+      <PasswordInput
         label="Contraseña"
-        type="password"
         autoComplete="current-password"
         required
         value={password}

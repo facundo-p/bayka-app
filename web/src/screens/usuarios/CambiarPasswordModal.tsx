@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Button, Input, Modal } from '../../components';
+import { Button, Modal, PasswordInput } from '../../components';
 import { validarNuevaPassword } from '../../lib/validarPassword';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { cambiarPassword } from '../../services/adminUsersService';
@@ -39,17 +39,15 @@ export function CambiarPasswordModal({
   return (
     <Modal open title={`Cambiar contraseña de ${nombreVisible(usuario)}`} onClose={onClose}>
       <form className={styles.form} onSubmit={manejarSubmit}>
-        <Input
+        <PasswordInput
           label="Contraseña nueva"
-          type="password"
           autoComplete="new-password"
           required
           value={password}
           onChange={(evento) => setPassword(evento.target.value)}
         />
-        <Input
+        <PasswordInput
           label="Repetir contraseña"
-          type="password"
           autoComplete="new-password"
           required
           value={confirmacion}
