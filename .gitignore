@@ -28,6 +28,9 @@ mobile/.env.staging
 *.swp
 *.swo
 
+# Backups locales (p.ej. .claude/settings.local.json.*.bak) — nunca van al repo
+*.bak
+
 # OS
 .DS_Store
 Thumbs.db

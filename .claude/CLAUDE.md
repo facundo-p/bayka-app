@@ -1,4 +1,4 @@
-# Proyecto: EE360
+# Proyecto: Bayka App
 
 ## Flujo de branches y deploy (OBLIGATORIO — vigente desde 2026-08-14)
 
