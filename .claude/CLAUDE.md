@@ -1,4 +1,4 @@
-# Proyecto: EE360
+# Proyecto: Bayka App
 
 ## Flujo de branches y deploy (OBLIGATORIO — vigente desde 2026-08-14)
 
@@ -16,6 +16,39 @@
     `apktttwrmhamfudjeklu`.
 - Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
   `main` correspondiente y confirmación dedicada.
+
+## Trazabilidad: todo PR con Issue y visible en el board (OBLIGATORIO — vigente desde 2026-08-19)
+
+Project **Bayka** = GitHub Project #1 de `facundo-p`, con views separadas
+`Issues` (`is:issue`) y `PRs` (`is:pr`). Un PR que no aparece ahí es trabajo
+invisible.
+
+- **Todo PR arranca de un Issue**, aunque sea un chore de una línea.
+- **`Closes #N` en el body del PR.** Una mención `#N` suelta no linkea nada.
+- **El PR se agrega al board como item propio**; linkear el Issue no lo crea. Lo
+  hace el workflow "Auto-add to project", que no hace backfill ni es infalible:
+
+  ```sh
+  gh project item-add 1 --owner facundo-p --url <url-del-PR>
+  ```
+
+- **Al abrir el PR, moverlo a `PR en review`** (el auto-add lo deja en `Backlog`):
+
+  ```sh
+  gh project item-edit --id <item-id> --project-id PVT_kwHOAlH2RM4BPDWt \
+    --field-id PVTSSF_lAHOAlH2RM4BPDWtzg9kyak --single-select-option-id 82eeff6d
+  ```
+
+- **Mergear a `staging` cierra el Issue y mueve ambas tarjetas a `En staging`.**
+  Automático, vía los workflows del Project.
+- **`En prod` es manual**, para el Issue y para el PR de release: ningún workflow
+  distingue el base branch. Option id `033672b0`.
+- `Esperando OK` = validado en staging, a la espera del visto bueno para `main`.
+- Antes de dar un PR por entregado, confirmar que se ve en el board:
+  `gh project item-list 1 --owner facundo-p --format json`
+
+Resto de option ids: `gh project field-list 1 --owner facundo-p`. Diseño del
+board, tabla de estados y límites conocidos: #269.
 
 ## Reglas de trabajo
 
@@ -74,6 +107,8 @@
 - When fishing an Issue, update it with the results and relevant considerations.
 - When asking questions to the user, add the replies to issue description.
 - For complex problems, create sub-issues and follow this same rules on them.
+- Todo Issue termina en un PR que lo cierra con `Closes #N` y que se ve en el
+  board: ver "Trazabilidad" arriba.
 
 --- 
 
