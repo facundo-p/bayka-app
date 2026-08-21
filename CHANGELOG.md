@@ -11,6 +11,21 @@ Las notas de cada versión las extrae automáticamente
 son las anclas de ese script — no cambiar su formato sin actualizar el workflow.
 La entrada nueva de cada release la escribe el skill `/deploy`.
 
+## 2026-08-21 · web 1.1.0
+
+### Web 1.1.0
+
+#### Agregado
+- Ojito para ver la contraseña en login y formularios de password (#266)
+
+#### Corregido
+- `_redirects` para SPA fallback en Cloudflare Pages
+
+### Otros
+- Variante TEST de la app mobile apuntando a staging (#253)
+- Sistema de releases: versionado por app, CHANGELOG, skill `/deploy` y workflow de tags (#273)
+- Flujo de branches staging→main, saneamiento de artefactos y trazabilidad en el board
+
 ## 2026-08-20 · web 1.0.0 · mobile 1.0.0
 
 Baseline del sistema de versionado (#273): ambas apps arrancan en 1.0.0 sobre
