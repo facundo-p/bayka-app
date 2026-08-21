@@ -17,6 +17,7 @@
     },
     "android": {
       "package": "com.bayka.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-foreground-bayka.png",
         "backgroundColor": "#0A3760"
