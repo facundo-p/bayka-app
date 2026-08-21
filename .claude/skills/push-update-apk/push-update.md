@@ -15,7 +15,7 @@ Push code changes to all devices that have the Bayka app installed, without requ
 ### 1. Check EAS login
 
 ```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile
 npx eas-cli whoami 2>&1
 ```
 
@@ -24,7 +24,7 @@ If not logged in, tell the user to run: `! npx eas-cli login`
 ### 2. Check for native changes
 
 ```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile
 git diff --name-only HEAD $(git log --oneline -1 --format=%H -- eas.json app.json app.config.js package.json 2>/dev/null || echo HEAD~1) -- app.json app.config.js package.json eas.json 2>/dev/null
 ```
 
@@ -39,7 +39,8 @@ Continue anyway?
 ### 3. Ask for update channel
 
 Use AskUserQuestion:
-- **Preview (Recommended)** — Update preview/testing builds
+- **Preview (Recommended)** — Update preview builds (variante prod instalada desde el profile `preview`)
+- **Test** — Update builds de la variante **Bayka TEST** (staging; EAS profile/channel `test`, #253)
 - **Production** — Update production builds
 
 ### 4. Ask for update message
@@ -50,7 +51,7 @@ Use AskUserQuestion:
 ### 5. Push the update
 
 ```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app-redesign/mobile
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile
 npx eas-cli update --channel <channel> --message "<message>" --non-interactive 2>&1
 ```
 

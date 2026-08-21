@@ -1,118 +1,99 @@
 ---
 name: build-apk-local
-description: Build an installable Android APK locally for Bayka. Uses persistent expo prebuild + gradlew (single-ABI), which is reliable. Requires Android SDK, Java 17, and Node LTS (NOT v25). Use when the user wants a local APK, to avoid EAS queue, or to test a change on a device.
-trigger: Use when the user wants to build an APK locally, avoid EAS queue wait times, or do a quick local build.
+description: Build an installable Android APK locally for Bayka, for either variant — prod ("Bayka App" → Supabase prod) or test ("Bayka TEST" → Supabase staging, TEST icon, installable alongside prod). Delegates to mobile/scripts/build-apk.sh (persistent expo prebuild + gradlew single-ABI). Requires Android SDK, Java 17, Node LTS (NOT v25). Use when the user wants a local APK (de prod o de staging/test), to avoid EAS queue, or to test a change on a device.
+trigger: Use when the user wants to build an APK locally (prod or TEST/staging variant), avoid EAS queue wait times, or do a quick local build.
 ---
 
-# Build APK Local (Bayka)
+# Build APK Local (Bayka) — variantes prod y test
 
-Project root: `/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app`
-Mobile dir:   `/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile`
+Project root: `/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1`
+Mobile dir:   `/Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile`
 
-> **History:** The old EAS `--local` path (all 4 ABIs in one ephemeral build) started
-> failing in June 2026 with a `react-native-reanimated` ↔ `react-native-worklets`
-> native link error. Root cause was twofold (see Troubleshooting). The reliable
-> method below builds in a **persistent `android/` dir, single-ABI**, which sidesteps it.
+Todo el flujo vive en **`mobile/scripts/build-apk.sh <prod|test>`** (#253). El script
+verifica prerequisitos, regenera el prebuild, compila con retry y valida que el APK
+resultante sea de la variante pedida. Este skill documenta cómo invocarlo y cómo
+diagnosticar fallas.
 
-## 0. Prerequisites — verify ALL THREE before building
+## Variantes
+
+| | `prod` | `test` |
+|---|---|---|
+| Nombre / ícono | "Bayka App", ícono normal | "Bayka TEST", franja roja TEST |
+| applicationId | `com.bayka.app` | `com.bayka.app.test` (conviven en un device) |
+| Supabase | prod (según `mobile/.env`) | **staging** (según `mobile/.env.staging`) |
+| Artefacto | `mobile/build-output.apk` | `mobile/build-output-test.apk` |
+
+La variante se decide con `APP_VARIANT=test` en `app.config.js`; el script la exporta
+en prebuild Y gradlew. `mobile/.env.staging` está gitignoreado — si falta, las
+credenciales de staging están en el Bitwarden del cliente (checklist #244).
+
+## 1. Prerequisitos — verificar ANTES de compilar
 
 ```bash
 echo "ANDROID_HOME: ${ANDROID_HOME:-NOT SET}"   # expect /Users/facu/Library/Android/sdk
 java -version 2>&1 | head -1                      # expect openjdk 17.x
-node --version                                    # MUST be an LTS (v20 or v22). NOT v25.
+node --version                                    # MUST be LTS (v20/v22). NOT v25.
 ```
 
-- **ANDROID_HOME** missing → tell user to add `export ANDROID_HOME=$HOME/Library/Android/sdk` to their shell profile.
+El script los re-chequea y falla con mensaje claro, pero conviene validarlos primero:
+- **ANDROID_HOME** missing → `export ANDROID_HOME=$HOME/Library/Android/sdk` en el shell profile.
 - **Java** missing → `brew install openjdk@17`.
-- **Node is v25 (or any non-LTS / odd major)** → STOP. This breaks the build (and Homebrew
-  may have left it linked against a missing `libsimdjson` dylib, so it crashes outright).
-  Fix:
+- **Node no-LTS (v25, o cualquier major impar)** → STOP: rompe el build (y el node de
+  Homebrew puede estar linkeado contra un libsimdjson inexistente y crashear):
   ```bash
   brew install node@22 2>/dev/null
   brew unlink node 2>/dev/null; brew link --overwrite node@22
-  node --version   # must now print v22.x
+  node --version   # debe imprimir v22.x
   ```
-  Expo SDK 54 / RN 0.81 support Node 20 or 22 LTS only.
 
-## 1. Generate the native project (expo prebuild)
-
-```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile
-npx expo prebuild -p android --clean
-```
-
-This regenerates `mobile/android/` (a generated dir; it will show as git changes — that's expected).
-
-## 2. Build the APK (single-ABI, with a built-in retry)
-
-The build needs the Supabase public env vars (mirrors `eas.json` → build.preview.env).
-Single ABI `arm64-v8a` is what modern phones use and avoids the multi-ABI native-build race.
+## 2. Build
 
 ```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile/android
-export EXPO_PUBLIC_SUPABASE_URL="https://apktttwrmhamfudjeklu.supabase.co"
-export EXPO_PUBLIC_SUPABASE_ANON_KEY="<copy from mobile/eas.json → build.preview.env>"
-
-# Pass 1 (usually succeeds). If it ever fails on the reanimated/worklets link,
-# Pass 2 finds the now-persisted libworklets.so and completes — that's the safety net.
-./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon \
-  || ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile
+scripts/build-apk.sh test    # o: prod   (equivalentes: npm run apk:test / apk:prod)
 ```
 
-Run with `run_in_background: true` and a 600000ms timeout. Single-ABI build is ~2-3 min
-(longer the first time if the Gradle cache is cold). To build all ABIs (for distribution),
-drop the `-PreactNativeArchitectures` flag, but ALWAYS keep the `|| <retry>` build-twice.
+Correr con `run_in_background: true` y timeout 600000ms. Single-ABI arm64-v8a tarda
+~2-5 min (más la primera vez, con el cache de Gradle frío). Para todas las ABIs
+(distribución): `ABIS=all scripts/build-apk.sh <variante>` — el retry interno de
+gradlew cubre la race de worklets (ver Troubleshooting).
 
-## 3. Locate, copy, and verify the APK
+El script termina imprimiendo package, label y tamaño **ya verificados** (falla si el
+APK no corresponde a la variante). Instalar: `adb install -r mobile/<artefacto>`.
 
-```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-app/mobile
-cp android/app/build/outputs/apk/release/app-release.apk build-output.apk
-ls -lh build-output.apk
-# Optional: confirm signing (will be the Android DEBUG keystore — see note)
-"$(ls $ANDROID_HOME/build-tools/*/apksigner | sort -V | tail -1)" verify --print-certs build-output.apk 2>&1 | grep -i "certificate DN"
-```
+## 3. Notas y gotchas
 
-## 4. Result summary
-
-```
-APK local listo!
-  APK:  mobile/build-output.apk
-  Size: <size>  (arm64-v8a only)
-  Firma: Android Debug keystore
-
-Instalar en dispositivo conectado:
-  cd mobile && adb install -r build-output.apk
-```
-
-## Notes & gotchas
-
-- **Signing:** `gradlew assembleRelease` signs with the **debug keystore** (the Expo template
-  default), NOT the EAS-managed release key. The APK is installable for testing, but if a
-  build signed with a DIFFERENT key is already on the device, Android refuses to install over
-  it — `adb uninstall com.bayka.app` first (this wipes local app data).
-- **ABIs:** the single-ABI APK only runs on arm64 devices (all modern phones). Add ABIs only
-  if you need armeabi-v7a (old devices) or emulators (x86_64).
-- **build-output.apk** is the canonical artifact location the team expects.
+- **Prebuild por variante:** `android/` (gitignoreado) se regenera con `--clean` en
+  cada build. NO compilar con gradlew a mano después de cambiar de variante sin
+  re-prebuild: quedaría la config de la variante anterior.
+- **Signing:** firma con el **debug keystore** (default del template de Expo), NO la
+  release key de EAS. Instalable para testing; si en el device hay un build con OTRA
+  firma del MISMO applicationId, Android rechaza instalar encima —
+  `adb uninstall com.bayka.app` (o `com.bayka.app.test`) primero (borra data local).
+- **Deep links:** ambas variantes registran el scheme `bayka`; con las dos instaladas
+  Android pregunta con cuál abrir. Esperado y aceptado (#253).
+- **ABIs:** el APK single-ABI solo corre en devices arm64 (todo teléfono moderno).
+  `ABIS=all` solo para armeabi-v7a viejos o emuladores x86_64.
 
 ## Troubleshooting
 
 ### `ninja: error: '.../libworklets.so' ... missing and no known rule to make it`
-reanimated's CMake links worklets' `.so` from a path that isn't ready when reanimated's
-arm64 link runs. Triggered by building **multiple ABIs in one ephemeral pass** (EAS `--local`)
-where task scheduling loses the worklets→reanimated ordering. Fixes:
-1. Build a **single ABI** (`-PreactNativeArchitectures=arm64-v8a`), and/or
-2. **Build twice** in a persistent `android/` (pass 2 finds the persisted `.so`).
-Not caused by: caches, `org.gradle.parallel`, NDK, node_modules, or the Expo/reanimated
-versions — reproducing the last-good versions does NOT fix it; the build *method* is what matters.
+El CMake de reanimated linkea el `.so` de worklets desde un path que no está listo
+cuando corre el link arm64 de reanimated. Lo dispara compilar **varias ABIs en una
+pasada efímera** (EAS `--local`). Mitigado en el script: single-ABI por default +
+build-twice (pasa 2 encuentra el `.so` persistido). No lo causan: caches,
+`org.gradle.parallel`, NDK, node_modules ni versiones de Expo/reanimated — el
+**método** de build es lo que importa.
 
 ### `dyld: Library not loaded: .../libsimdjson.*.dylib ... Referenced from: .../node`
-Your Homebrew `node` is broken (linked against a simdjson version that was upgraded away).
-This is usually Node v25. Fix per Prerequisites: switch to `node@22` LTS.
+Node de Homebrew roto (usualmente v25). Fix en Prerequisitos: `node@22` LTS.
 
-### EAS `--local` as an alternative
-EAS `--local` (`npx eas-cli build -p android --profile preview --local --output ./build-output.apk`)
-gives a release-keystore-signed, multi-ABI APK — better for distribution — but currently hits
-the worklets race because it's a single ephemeral multi-ABI pass. If you must use it, first
-pin the project to a single ABI, or expect to fall back to the gradlew method above.
-```
+### El APK sale con package/label de la otra variante
+No usaste el script (o gradlew corrió sin `APP_VARIANT` exportado). Compilar SIEMPRE
+vía `scripts/build-apk.sh <variante>` — regenera el prebuild y valida el badging.
+
+### EAS como alternativa (nube o `--local`)
+Perfiles en `mobile/eas.json`: `preview`/`production` (prod) y `test` (staging, con
+`APP_VARIANT=test`). `npx eas-cli build -p android --profile test` da un APK firmado
+con la release key y multi-ABI — mejor para distribución. El modo `--local` sufre la
+race de worklets (single ephemeral multi-ABI pass); preferir el script de arriba.
