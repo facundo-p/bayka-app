@@ -1,5 +1,6 @@
 // Tests for PlantationRepository — admin mutation functions
-// Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05, IDGN-01, IDGN-02, IDGN-03
+// Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05
+// (La generación de IDs se movió a la web server-side — issue #232.)
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -31,7 +32,6 @@ import {
   finalizePlantation,
   saveSpeciesConfig,
   assignTechnicians,
-  generateIds,
 } from '../../src/repositories/PlantationRepository';
 
 import { supabase } from '../../src/supabase/client';
@@ -72,14 +72,20 @@ describe('PlantationRepository', () => {
         eq: jest.fn().mockResolvedValue({ error: null }),
       }),
       delete: jest.fn().mockReturnValue({
-        eq: jest.fn().mockResolvedValue({ error: null }),
+        // assignTechnicians encadena .eq(plantation_id).eq(rol_en_plantacion)
+        eq: jest.fn().mockReturnValue(
+          Object.assign(Promise.resolve({ error: null }), {
+            eq: jest.fn().mockResolvedValue({ error: null }),
+          })
+        ),
       }),
     });
 
-    // Default db.insert chain
+    // Default db.insert chain (upsert de plantación + membresía local #67)
     (mockDb.insert as jest.Mock).mockReturnValue({
       values: jest.fn().mockReturnValue({
         onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
+        onConflictDoNothing: jest.fn().mockResolvedValue(undefined),
       }),
     });
 
@@ -90,7 +96,7 @@ describe('PlantationRepository', () => {
       }),
     });
 
-    // Default db.select chain (for generateIds)
+    // Default db.select chain
     (mockDb.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
         innerJoin: jest.fn().mockReturnValue({
@@ -131,6 +137,18 @@ describe('PlantationRepository', () => {
       await createPlantation('Zona Norte', '2026', 'org-1', 'user-1');
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it('Test 2b: registra al creador como miembro admin local (issue #67)', async () => {
+      await createPlantation('Zona Norte', '2026', 'org-1', 'user-1');
+
+      const valuesMock = (mockDb.insert as jest.Mock).mock.results[0].value.values as jest.Mock;
+      const membership = valuesMock.mock.calls.map((c) => c[0]).find((v: any) => v?.rolEnPlantacion);
+      expect(membership).toMatchObject({
+        plantationId: 'plantation-uuid-1',
+        userId: 'user-1',
+        rolEnPlantacion: 'admin',
+      });
     });
   });
 
@@ -186,125 +204,29 @@ describe('PlantationRepository', () => {
   // ─── assignTechnicians ────────────────────────────────────────────────────
 
   describe('assignTechnicians', () => {
-    it('Test 6: deletes all existing users, inserts new ones, calls pullFromServer', async () => {
-      const userIds = ['user-1', 'user-2'];
+    it('Test 6: borra solo filas tecnico, inserta las nuevas y llama pullFromServer', async () => {
+      const eqRol = jest.fn().mockResolvedValue({ error: null, count: 2 });
+      const eqPlantation = jest.fn().mockReturnValue({ eq: eqRol });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqPlantation });
+      const insertMock = jest.fn().mockResolvedValue({ error: null });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        delete: deleteMock,
+        insert: insertMock,
+      });
 
-      await assignTechnicians('plantation-1', userIds);
+      await assignTechnicians('plantation-1', ['user-1', 'user-2']);
 
-      // Verify plantation_users was targeted
       expect(mockSupabase.from).toHaveBeenCalledWith('plantation_users');
-      const fromCalls = (mockSupabase.from as jest.Mock).mock.calls;
-      const puCall = fromCalls.find((args) => args[0] === 'plantation_users');
-      expect(puCall).toBeTruthy();
+      // Issue #67: el delete DEBE filtrar por rol para preservar membresías admin.
+      expect(eqPlantation).toHaveBeenCalledWith('plantation_id', 'plantation-1');
+      expect(eqRol).toHaveBeenCalledWith('rol_en_plantacion', 'tecnico');
+      const insertedRows = insertMock.mock.calls[0][0];
+      expect(insertedRows).toHaveLength(2);
+      expect(insertedRows.every((r: any) => r.rol_en_plantacion === 'tecnico')).toBe(true);
 
-      // Verify pullFromServer called
       expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-
-      // Verify notifyDataChanged called
       expect(mockNotifyDataChanged).toHaveBeenCalled();
     });
   });
 
-  // ─── generateIds ─────────────────────────────────────────────────────────
-
-  describe('generateIds', () => {
-    it('Test 7: assigns sequential plantacionId (1..N) and globalId (seed..seed+N-1) ordered by subgroup.createdAt ASC, tree.posicion ASC', async () => {
-      const orderedTrees = [
-        { treeId: 'tree-1' },
-        { treeId: 'tree-2' },
-        { treeId: 'tree-3' },
-      ];
-
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue(orderedTrees),
-            }),
-          }),
-        }),
-      });
-
-      const updateCalls: Array<{ plantacionId: number; globalId: number }> = [];
-      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-        const tx = {
-          update: jest.fn().mockImplementation(() => ({
-            set: jest.fn().mockImplementation((values) => {
-              updateCalls.push(values);
-              return {
-                where: jest.fn().mockResolvedValue(undefined),
-              };
-            }),
-          })),
-        };
-        await fn(tx);
-      });
-
-      await generateIds('plantation-1', 10);
-
-      // Verify sequential IDs starting from seed=10
-      expect(updateCalls[0]).toMatchObject({ plantacionId: 1, globalId: 10 });
-      expect(updateCalls[1]).toMatchObject({ plantacionId: 2, globalId: 11 });
-      expect(updateCalls[2]).toMatchObject({ plantacionId: 3, globalId: 12 });
-    });
-
-    it('Test 8: calls notifyDataChanged after transaction completes', async () => {
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue([]),
-            }),
-          }),
-        }),
-      });
-
-      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-        await fn({ update: jest.fn().mockReturnValue({ set: jest.fn().mockReturnValue({ where: jest.fn() }) }) });
-      });
-
-      await generateIds('plantation-1', 1);
-
-      expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
-    });
-
-    it('Test 9: NO marca pendingSync (la persistencia la hace el RPC dedicado en idGenerationService)', async () => {
-      const orderedTrees = [
-        { treeId: 'tree-1', groupId: 'group-A' },
-        { treeId: 'tree-2', groupId: 'group-A' },
-        { treeId: 'tree-3', groupId: 'group-B' },
-      ];
-
-      (mockDb.select as jest.Mock).mockReturnValue({
-        from: jest.fn().mockReturnValue({
-          innerJoin: jest.fn().mockReturnValue({
-            where: jest.fn().mockReturnValue({
-              orderBy: jest.fn().mockResolvedValue(orderedTrees),
-            }),
-          }),
-        }),
-      });
-
-      const setValues: any[] = [];
-      (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-        const tx = {
-          update: jest.fn().mockImplementation(() => ({
-            set: jest.fn().mockImplementation((values) => {
-              setValues.push(values);
-              return { where: jest.fn().mockResolvedValue(undefined) };
-            }),
-          })),
-        };
-        await fn(tx);
-      });
-
-      const result = await generateIds('plantation-1', 1);
-
-      // No debe flaggear pendingSync: solo asigna IDs.
-      const pendingFlags = setValues.filter((v) => v.pendingSync === true);
-      expect(pendingFlags).toHaveLength(0);
-      // Devuelve los grupos afectados (deduped) para el fallback que decide la UI.
-      expect(result.affectedGroupIds).toEqual(['group-A', 'group-B']);
-    });
-  });
 });

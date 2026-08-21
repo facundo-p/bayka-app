@@ -3,12 +3,12 @@
  * All local queries use Drizzle ORM (SQLite). Profile listing uses Supabase
  * because local SQLite has no profiles table.
  *
- * Covers requirements: PLAN-06, IDGN-04
+ * Covers requirements: PLAN-06, IDGN-01
  */
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
-import { eq, and, isNotNull, isNull, sql, count, asc } from 'drizzle-orm';
+import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 
 // ─── checkFinalizationGate ────────────────────────────────────────────────────
 
@@ -61,20 +61,6 @@ export async function checkFinalizationGate(
     unresolvedNNCount,
     unresolvedNNGroups,
   };
-}
-
-// ─── getMaxGlobalId ───────────────────────────────────────────────────────────
-
-/**
- * IDGN-04
- * Returns MAX(global_id) from all trees. Used to suggest seed = max + 1.
- * Returns 0 if no tree has a globalId yet.
- */
-export async function getMaxGlobalId(): Promise<number> {
-  const result = await db
-    .select({ maxId: sql<number>`MAX(${trees.globalId})` })
-    .from(trees);
-  return result[0]?.maxId ?? 0;
 }
 
 // ─── getPlantationEstado ──────────────────────────────────────────────────────
@@ -138,7 +124,9 @@ export async function getPlantationSpeciesConfig(
 // ─── getAssignedTechnicians ───────────────────────────────────────────────────
 
 /**
- * Returns all technicians currently assigned to a plantation (local SQLite).
+ * Técnicos asignados a una plantación (SQLite local). Filtra por
+ * rol_en_plantacion='tecnico': desde la migración 028 los admins también son
+ * miembros y no deben aparecer en la lista de técnicos (issue #67).
  */
 export async function getAssignedTechnicians(
   plantacionId: string
@@ -150,7 +138,10 @@ export async function getAssignedTechnicians(
       assignedAt: plantationUsers.assignedAt,
     })
     .from(plantationUsers)
-    .where(eq(plantationUsers.plantationId, plantacionId));
+    .where(and(
+      eq(plantationUsers.plantationId, plantacionId),
+      eq(plantationUsers.rolEnPlantacion, 'tecnico'),
+    ));
 }
 
 // ─── getTechnicianUnsyncedGroupCount ───────────────────────────────────────

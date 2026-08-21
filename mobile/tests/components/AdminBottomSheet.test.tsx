@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-import AdminBottomSheet from '../../src/components/AdminBottomSheet';
+import AdminBottomSheet, { AVISO_IDS_DESDE_WEB } from '../../src/components/AdminBottomSheet';
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn().mockReturnValue({ top: 0, bottom: 34, left: 0, right: 0 }),
@@ -44,13 +44,11 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
     plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01' },
     meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
     isAdmin: true,
-    isOnline: true,
     onDismiss: jest.fn(),
     onEdit: jest.fn(),
     onConfigSpecies: jest.fn(),
     onAssignTech: jest.fn(),
     onFinalize: jest.fn(),
-    onGenerateIds: jest.fn(),
     onExportCsv: jest.fn(),
     onExportExcel: jest.fn(),
     onExportKml: jest.fn(),
@@ -131,7 +129,8 @@ describe('AdminBottomSheet', () => {
     expect(getByText('Sincroniza los cambios antes de finalizar')).toBeTruthy();
   });
 
-  it('renders Generar IDs for finalizada without IDs', () => {
+  // #232: la generación de IDs es exclusiva de la web; mobile solo informa.
+  it('shows the web-generation notice (no action) for finalizada without IDs', () => {
     const { getByText, queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
@@ -141,7 +140,8 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(getByText('Generar IDs')).toBeTruthy();
+    expect(getByText(AVISO_IDS_DESDE_WEB)).toBeTruthy();
+    expect(queryByText('Generar IDs')).toBeNull();
     expect(queryByText('Exportar CSV')).toBeNull();
   });
 
@@ -157,7 +157,7 @@ describe('AdminBottomSheet', () => {
 
     expect(getByText('Exportar CSV')).toBeTruthy();
     expect(getByText('Exportar Excel')).toBeTruthy();
-    expect(queryByText('Generar IDs')).toBeNull();
+    expect(queryByText(AVISO_IDS_DESDE_WEB)).toBeNull();
   });
 
   it('shows Bloqueada badge for finalizada', () => {
@@ -187,7 +187,7 @@ describe('AdminBottomSheet', () => {
     expect(queryByText('Exportar CSV')).toBeNull();
     expect(queryByText('Exportar Excel')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
-    expect(queryByText('Generar IDs')).toBeNull();
+    expect(queryByText(AVISO_IDS_DESDE_WEB)).toBeNull();
   });
 
   it('calls onConfigSpecies when action tapped', () => {

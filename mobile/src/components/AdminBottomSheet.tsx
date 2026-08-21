@@ -13,6 +13,9 @@ import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 
+/** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
+export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 type AdminBottomSheetProps = {
@@ -20,13 +23,11 @@ type AdminBottomSheetProps = {
   plantation: Plantation | null;
   meta: ExpandedMeta;
   isAdmin: boolean;
-  isOnline: boolean;
   onDismiss: () => void;
   onEdit: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
   onFinalize: () => void;
-  onGenerateIds: () => void;
   onExportCsv: () => void;
   onExportExcel: () => void;
   onExportKml: () => void;
@@ -89,13 +90,11 @@ export default function AdminBottomSheet({
   plantation,
   meta,
   isAdmin,
-  isOnline,
   onDismiss,
   onEdit,
   onConfigSpecies,
   onAssignTech,
   onFinalize,
-  onGenerateIds,
   onExportCsv,
   onExportExcel,
   onExportKml,
@@ -217,15 +216,12 @@ export default function AdminBottomSheet({
             {isAdmin && plantation.estado === 'finalizada' && (
               <>
                 <View style={styles.divider} />
+                {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}
                 {!meta.idsGenerated && (
-                  <ActionItem
-                    icon="key-outline"
-                    label="Generar IDs"
-                    color={colors.primary}
-                    onPress={onGenerateIds}
-                    disabled={!isOnline}
-                    helperText={!isOnline ? 'Necesitas conexion a internet' : undefined}
-                  />
+                  <View style={styles.infoNote}>
+                    <Ionicons name="information-circle-outline" size={16} color={colors.textMuted} />
+                    <Text style={styles.infoNoteText}>{AVISO_IDS_DESDE_WEB}</Text>
+                  </View>
                 )}
                 {meta.idsGenerated && (
                   <>
