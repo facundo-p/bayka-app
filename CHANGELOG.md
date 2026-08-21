@@ -9,7 +9,9 @@ Las notas de cada versión las extrae automáticamente
 `.github/workflows/release-tags.yml`: los headers `## ` (release) y `### `
 (app/versión, formato exacto `### Web X.Y.Z` / `### Mobile X.Y.Z (versionCode N)`)
 son las anclas de ese script — no cambiar su formato sin actualizar el workflow.
-La entrada nueva de cada release la escribe el skill `/deploy`.
+La entrada nueva de cada release la escribe el skill `/deploy`, que mantiene
+además la versión pública para usuarios/clientes en `NOVEDADES.md` (sin issues,
+PRs ni jerga interna — ahí solo entra lo visible para el usuario).
 
 ## 2026-08-21 · web 1.1.0
 
