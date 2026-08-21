@@ -53,5 +53,17 @@ maestro test mobile/.maestro/flows/
 
 ## CI/CD
 
-- **Push a cualquier branch:** lint + unit tests + integration tests (`.github/workflows/ci.yml`)
-- **PR a main:** E2E con Maestro en macOS (`.github/workflows/e2e.yml`)
+- **Push a cualquier branch:** typecheck + unit tests + integration tests de
+  `mobile/` (`.github/workflows/ci.yml`; corre también en PRs a `staging` y `main`)
+- **PR que toca `web/`:** typecheck + lint + tests de `web/`
+  (`.github/workflows/web-ci.yml`)
+- **Merge a `main`:** tags `web-vX.Y.Z` / `mobile-vX.Y.Z` + GitHub Releases con
+  notas del `CHANGELOG.md` (`.github/workflows/release-tags.yml`)
+- **E2E (Maestro):** deshabilitado; solo manual vía `workflow_dispatch`
+  (`.github/workflows/e2e.yml`)
+
+## Releases
+
+Versionado por app (`web-vX.Y.Z` / `mobile-vX.Y.Z`), novedades en `CHANGELOG.md`.
+El pase a producción se arma con el skill `/deploy`
+(`.claude/skills/deploy/SKILL.md`) y lo mergea Facu a mano.
