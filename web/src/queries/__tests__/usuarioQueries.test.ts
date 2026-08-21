@@ -180,7 +180,7 @@ describe('listarAsignados', () => {
     expect(asignado.rolGlobal).toBe('tecnico');
   });
 
-  test('filtra por plantación y ordena por fecha de asignación', async () => {
+  test('filtra por plantación y solo técnicos, ordena por fecha de asignación', async () => {
     const consultas: ConsultaCapturada[] = [];
     estadoMock.resolverConsulta = (consulta) => {
       consultas.push(consulta);
@@ -189,8 +189,10 @@ describe('listarAsignados', () => {
     await listarAsignados('plant-1');
 
     expect(consultas[0].tabla).toBe('plantation_users');
+    // Issue #67: excluye las membresías 'admin' automáticas (migración 028).
     expect(consultas[0].filtros).toEqual([
       { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
+      { metodo: 'eq', columna: 'rol_en_plantacion', valor: 'tecnico' },
     ]);
     expect(consultas[0].orden).toEqual({ columna: 'assigned_at', ascending: true });
   });

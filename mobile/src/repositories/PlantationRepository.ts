@@ -3,19 +3,40 @@
  *
  * All server mutations (create, finalize, save species, assign technicians) write
  * to Supabase first, then sync back to local SQLite + call notifyDataChanged().
- * ID generation is a local-only SQLite transaction.
  *
- * Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05, PLAN-06, IDGN-02, IDGN-03
+ * Los IDs finales (plantacion_id/global_id) los genera la web de gestión
+ * server-side (RPC generate_tree_ids, issue #232); la app los recibe por pull.
+ *
+ * Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05, PLAN-06
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
-import { eq, asc } from 'drizzle-orm';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
+
+// ─── Membresía local del creador ─────────────────────────────────────────────
+
+/**
+ * Registra localmente al creador como miembro admin de la plantación (issue
+ * #67). El server mantiene la membresía completa vía trigger (migración 028);
+ * esta fila local garantiza consistencia inmediata (online) y offline hasta el
+ * próximo pull.
+ */
+async function upsertLocalAdminMembership(plantacionId: string, userId: string): Promise<void> {
+  await db
+    .insert(plantationUsers)
+    .values({
+      plantationId: plantacionId,
+      userId,
+      rolEnPlantacion: 'admin',
+      assignedAt: new Date().toISOString(),
+    })
+    .onConflictDoNothing();
+}
 
 // ─── createPlantation ─────────────────────────────────────────────────────────
 
@@ -85,6 +106,7 @@ export async function createPlantation(
       set: { estado: sql`excluded.estado` },
     });
 
+  await upsertLocalAdminMembership(data.id, creadoPor);
   notifyDataChanged();
   return data;
 }
@@ -117,6 +139,7 @@ export async function createPlantationLocally(
     pendingSync: true,
     ...(gps ?? {}),
   });
+  await upsertLocalAdminMembership(id, creadoPor);
   notifyDataChanged();
   return { id, lugar, periodo, estado: 'activa' };
 }
@@ -368,21 +391,23 @@ export async function saveSpeciesConfigLocally(
 
 /**
  * PLAN-03
- * Atomically replaces all technician assignments for a plantation:
- * 1. DELETE all existing plantation_users on Supabase
- * 2. INSERT new user rows on Supabase
- * 3. pullFromServer to sync back to local SQLite
- * 4. notifyDataChanged for reactive UI
+ * Reemplaza atómicamente las asignaciones de TÉCNICOS de una plantación:
+ * 1. DELETE de las filas con rol_en_plantacion='tecnico' en Supabase
+ * 2. INSERT de las nuevas asignaciones
+ * 3. pullFromServer para sincronizar el SQLite local
+ *
+ * Issue #67: el delete filtra por rol para NO borrar las membresías 'admin'
+ * (fuente de permisos de parcelas/grupos desde la migración 028).
  */
 export async function assignTechnicians(
   plantacionId: string,
   userIds: string[]
 ): Promise<void> {
-  // Delete all existing user assignments
   const { error: deleteError, count: deleteCount } = await supabase
     .from('plantation_users')
     .delete()
-    .eq('plantation_id', plantacionId);
+    .eq('plantation_id', plantacionId)
+    .eq('rol_en_plantacion', 'tecnico');
 
   console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;
@@ -406,84 +431,6 @@ export async function assignTechnicians(
 
   // Sync back to local SQLite
   await pullFromServer(plantacionId);
-  notifyDataChanged();
-}
-
-// ─── generateIds ─────────────────────────────────────────────────────────────
-
-/**
- * IDGN-02 / IDGN-03
- * Assigns sequential IDs to all trees in a plantation:
- * - plantacionId: 1..N (sequential within plantation)
- * - globalId: seed..(seed + N - 1) (sequential across org)
- *
- * Order is deterministic: groups.createdAt ASC, trees.posicion ASC.
- * Uses a db.transaction() to ensure atomicity.
- *
- * CRITICAL (Pitfall 3): ORDER BY must be deterministic — groups.createdAt ASC,
- * trees.posicion ASC. Both are immutable after sync.
- */
-export interface GeneratedIds {
-  assignedIds: Array<{ id: string; plantacionId: number; globalId: number }>;
-  affectedGroupIds: string[];
-}
-
-export async function generateIds(plantacionId: string, seed: number): Promise<GeneratedIds> {
-  // 1. Fetch all trees ordered deterministically (groupId needed to re-flag for sync)
-  const orderedTrees = await db
-    .select({ treeId: trees.id, groupId: trees.groupId })
-    .from(trees)
-    .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(eq(groups.plantacionId, plantacionId))
-    .orderBy(asc(groups.createdAt), asc(trees.posicion));
-
-  const affectedGroupIds = [...new Set(orderedTrees.map((t) => t.groupId))];
-  const assignedIds = orderedTrees.map((tree, index) => ({
-    id: tree.treeId,
-    plantacionId: index + 1,
-    globalId: seed + index,
-  }));
-
-  // 2. Asignación atómica de los IDs definitivos (todo-o-nada; un fallo a mitad
-  //    dejaría la secuencia corrupta). NO se marca pendingSync: la persistencia al
-  //    server la hace el RPC dedicado en el MISMO paso (idGenerationService). Si
-  //    ese push falla, el usuario decide reintentar o diferir (marcar pendingSync)
-  //    desde la UI.
-  await db.transaction(async (transaction) => {
-    await assignSequentialIds(transaction, assignedIds);
-  });
-
-  notifyDataChanged();
-  return { assignedIds, affectedGroupIds };
-}
-
-/** Handle de la transacción local de SQLite (drizzle/expo-sqlite). */
-type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
-/** Writes the pre-computed plantacionId / globalId to each tree. */
-async function assignSequentialIds(
-  transaction: DbTransaction,
-  assignedIds: Array<{ id: string; plantacionId: number; globalId: number }>,
-): Promise<void> {
-  for (const { id, plantacionId, globalId } of assignedIds) {
-    await transaction
-      .update(trees)
-      .set({ plantacionId, globalId })
-      .where(eq(trees.id, id));
-  }
-}
-
-/**
- * Revierte los IDs generados (plantacion_id / global_id → NULL) de todos los
- * árboles de la plantación. Se usa cuando el push al server falla: deja la
- * plantación "como si nunca se hubieran generado" → el gate vuelve a ofrecer
- * "Generar IDs" y oculta el export hasta que estén confirmados en el server.
- */
-export async function clearGeneratedIds(plantacionId: string): Promise<void> {
-  await db
-    .update(trees)
-    .set({ plantacionId: null, globalId: null })
-    .where(sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`);
   notifyDataChanged();
 }
 
