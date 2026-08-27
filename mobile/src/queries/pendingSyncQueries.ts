@@ -69,3 +69,40 @@ export function countPendingParcelas(opts: PendingCountQueryOpts) {
   if (opts.plantacionId) conditions.push(eq(parcelas.plantacionId, opts.plantacionId));
   return db.select({ cnt: count() }).from(parcelas).where(and(...conditions));
 }
+
+// ─── Variantes agrupadas por plantación (dot por tarjeta) ────────────────────
+// Mismo criterio que los conteos globales de arriba: el dot de cada tarjeta
+// debe sumar exactamente lo que cuenta el ícono general, para que sincronizar
+// la plantación señalada apague el global (issue #71, follow-up).
+
+export function countPendingGroupsByPlantation(userId?: string | null) {
+  const conditions = [eq(groups.pendingSync, true)];
+  if (userId) conditions.push(eq(groups.usuarioCreador, userId));
+  return db
+    .select({ plantacionId: groups.plantacionId, cnt: count() })
+    .from(groups)
+    .where(and(...conditions))
+    .groupBy(groups.plantacionId);
+}
+
+export function countPendingParcelasByPlantation() {
+  return db
+    .select({ plantacionId: parcelas.plantacionId, cnt: count() })
+    .from(parcelas)
+    .where(eq(parcelas.pendingSync, true))
+    .groupBy(parcelas.plantacionId);
+}
+
+export function countPendingTreePhotosByPlantation() {
+  return db
+    .select({ plantacionId: groups.plantacionId, cnt: count() })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(and(
+      eq(groups.pendingSync, false),
+      isNotNull(trees.fotoUrl),
+      eq(trees.fotoSynced, false),
+      sqlIsLocalUri(trees.fotoUrl),
+    ))
+    .groupBy(groups.plantacionId);
+}

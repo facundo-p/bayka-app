@@ -46,9 +46,14 @@ describe('PlantationRepository — offline functions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default db.insert chain
+    // Default db.insert chain: values() se awaitea directo (plantación) o se
+    // encadena .onConflictDoNothing() (membresía local del creador, #67).
     (mockDb.insert as jest.Mock).mockReturnValue({
-      values: jest.fn().mockResolvedValue(undefined),
+      values: jest.fn().mockReturnValue(
+        Object.assign(Promise.resolve(undefined), {
+          onConflictDoNothing: jest.fn().mockResolvedValue(undefined),
+        })
+      ),
     });
 
     // Default db.delete chain
@@ -96,6 +101,18 @@ describe('PlantationRepository — offline functions', () => {
       await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it('Test 2b: registra al creador como miembro admin local (issue #67)', async () => {
+      await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
+
+      const valuesMock = (mockDb.insert as jest.Mock).mock.results[0].value.values as jest.Mock;
+      const membership = valuesMock.mock.calls.map((c) => c[0]).find((v: any) => v?.rolEnPlantacion);
+      expect(membership).toMatchObject({
+        plantationId: 'mock-uuid-123',
+        userId: 'user-1',
+        rolEnPlantacion: 'admin',
+      });
     });
 
     it('Test 3: returns { id, lugar, periodo, estado: activa }', async () => {

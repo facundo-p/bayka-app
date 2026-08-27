@@ -23,16 +23,13 @@ import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/expor
 import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { descargarXlsxExportacion } from '../services/exportarXlsx';
+import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
 import styles from './PlantacionDetailScreen.module.css';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
 const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
 const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.';
-
-/** Los IDs finales se generan contra el SQLite local del admin (algoritmo
- *  determinístico en la app), no en la web: el botón queda informativo. */
-const TOOLTIP_GENERAR_IDS = 'Los IDs finales se generan desde la Bayka App.';
 
 const TAMANO_ICONO = 16;
 
@@ -127,15 +124,18 @@ function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: Descarga
 
 type DescargaPlanilla = ReturnType<typeof useDescargaPlanilla>;
 
-/** "Generar IDs" informativo: la generación es exclusiva de la app (se corre
- *  contra el SQLite local del admin), así que en la web queda deshabilitado con
- *  un tooltip que lo explica. */
-function BotonGenerarIds() {
+/** "Generar IDs" abre el modal de confirmación (issue #232: la generación es
+ *  exclusiva de la web, server-side vía RPC transaccional). */
+function BotonGenerarIds({ plantationId }: { plantationId: string }) {
+  const [abierto, setAbierto] = useState(false);
   return (
-    <Button variant="primary" disabled title={TOOLTIP_GENERAR_IDS}>
-      <Plus size={TAMANO_ICONO} />
-      Generar IDs
-    </Button>
+    <>
+      <Button variant="primary" onClick={() => setAbierto(true)}>
+        <Plus size={TAMANO_ICONO} />
+        Generar IDs
+      </Button>
+      {abierto && <GenerarIdsModal plantationId={plantationId} onClose={() => setAbierto(false)} />}
+    </>
   );
 }
 
@@ -155,8 +155,8 @@ function BotonesExportar({ xlsx, csv }: { xlsx: DescargaPlanilla; csv: DescargaP
   );
 }
 
-/** Estado de IDs (regla de mobile): "Generar IDs" (informativo) hasta generarlos,
- *  los botones de exportación (XLSX/CSV) después. */
+/** Estado de IDs: "Generar IDs" hasta generarlos, los botones de exportación
+ *  (XLSX/CSV) después. */
 function BotonEstadoIds({
   plantationId,
   xlsx,
@@ -171,7 +171,11 @@ function BotonEstadoIds({
     queryFn: () => idsGenerados(plantationId),
   });
   if (generados === undefined) return null;
-  return generados ? <BotonesExportar xlsx={xlsx} csv={csv} /> : <BotonGenerarIds />;
+  return generados ? (
+    <BotonesExportar xlsx={xlsx} csv={csv} />
+  ) : (
+    <BotonGenerarIds plantationId={plantationId} />
+  );
 }
 
 /** Acciones de la topbar: descarga de KML (siempre visible) + botón de estado

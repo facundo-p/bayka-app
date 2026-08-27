@@ -17,6 +17,32 @@
 - Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
   `main` correspondiente y confirmación dedicada.
 
+## Releases y versionado (OBLIGATORIO — vigente desde 2026-08-20)
+
+- **Versiones separadas por app**: web en `web/package.json`, mobile en
+  `mobile/app.json` (`expo.version` + `expo.android.versionCode`;
+  `mobile/package.json` es espejo). El `package.json` de la raíz está congelado
+  en 1.0.0 y no significa nada — no bumpearlo nunca.
+- **El pase a prod se arma SOLO con el skill `/deploy`** (#273): calcula bumps
+  semver por conventional commits clasificados por paths, propone changelog, y
+  con OK de Facu commitea el release en staging y abre el PR staging→main.
+  Detalle en `.claude/skills/deploy/SKILL.md`.
+- **Tags `web-vX.Y.Z` / `mobile-vX.Y.Z` + GitHub Releases**: los crea
+  `.github/workflows/release-tags.yml` al mergear a main, con notas extraídas
+  de `CHANGELOG.md` (los headers `## `/`### ` del changelog son anclas de ese
+  workflow — no cambiarles el formato).
+- **Única excepción de push directo a staging**: el commit `chore(release): …`
+  que genera `/deploy` (mecánico, con OK previo, revisado dentro del diff del
+  PR de release). Todo lo demás sigue entrando por PR a staging.
+- **Con un PR de release abierto NO se mergea nada a staging** (si pasa,
+  `/deploy` tiene modo "refrescar").
+- **Hotfix directo a main** (excepcional): su PR lleva bump patch + entrada de
+  changelog propios; back-merge main→staging inmediato después del merge.
+- Release con cambios mobile ⇒ **APK nuevo** (versionCode +1); OTA
+  (`push-update-apk`) solo para hotfixes dentro de una misma versión. La web se
+  deploya en CADA merge a main aunque no haya bump — el número de versión no es
+  "hash de lo deployado".
+
 ## Trazabilidad: todo PR con Issue y visible en el board (OBLIGATORIO — vigente desde 2026-08-19)
 
 Project **Bayka** = GitHub Project #1 de `facundo-p`, con views separadas

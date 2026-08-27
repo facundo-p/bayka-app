@@ -1,0 +1,25 @@
+/* Modal de generación de IDs finales (issue #232). */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xl);
+}
+
+.advertencia {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-estado-pending);
+}
+
+.errorEnvio {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-danger);
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-xl);
+}

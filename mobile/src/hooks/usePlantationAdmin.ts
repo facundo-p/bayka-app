@@ -1,10 +1,12 @@
 /**
  * usePlantationAdmin — all data logic for AdminScreen.
  *
- * Encapsulates plantation list, finalization, ID generation, and export.
+ * Encapsulates plantation list, finalization, and export. Los IDs finales se
+ * generan desde la web de gestión (issue #232); acá solo se lee el gate
+ * idsGenerated para habilitar los exports.
  * Screens import this hook and pass callbacks to components.
  */
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
@@ -12,14 +14,13 @@ import { useProfileData } from './useProfileData';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
-import { checkFinalizationGate, getMaxGlobalId, hasIdsGenerated } from '../queries/adminQueries';
+import { checkFinalizationGate, hasIdsGenerated } from '../queries/adminQueries';
 import {
   updatePlantation,
   finalizePlantation,
   discardPlantationEdit,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
-import { generateAndPersistIds } from '../services/idGenerationService';
 // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
@@ -69,9 +70,6 @@ export function usePlantationAdmin() {
   const { confirmProps, show: showConfirm } = useConfirm();
 
   const [finalizing, setFinalizing] = useState(false);
-  const [seedModalPlantacionId, setSeedModalPlantacionId] = useState<string | null>(null);
-  const [seedValue, setSeedValue] = useState('');
-  const [seedLoading, setSeedLoading] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
 
   const { data: plantationList } = useLiveData(
@@ -136,46 +134,6 @@ export function usePlantationAdmin() {
       showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo verificar el estado.', 'alert-circle-outline', colors.danger);
     } finally {
       setFinalizing(false);
-    }
-  }
-
-  async function handleGenerateIds(plantacionId: string) {
-    try {
-      const maxId = await getMaxGlobalId();
-      const suggested = (maxId + 1).toString();
-      setSeedValue(suggested);
-      setSeedModalPlantacionId(plantacionId);
-    } catch (e: any) {
-      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo obtener el ID sugerido.', 'alert-circle-outline', colors.danger);
-    }
-  }
-
-  async function confirmSeedAndGenerate() {
-    if (!seedModalPlantacionId) return;
-    const seed = parseInt(seedValue, 10);
-    if (isNaN(seed) || seed < 1) {
-      showInfoDialog(showConfirm, 'Semilla invalida', 'Ingresa un número entero mayor a 0.', 'alert-circle-outline', colors.secondary);
-      return;
-    }
-    const pid = seedModalPlantacionId;
-    // El modal de seed NO se cierra acá: queda abierto con el spinner durante toda
-    // la operación (generar + subir al server). Recién al terminar se cierra y se
-    // muestra el resultado (éxito/error), para no exponer un estado intermedio
-    // (ej. el export apareciendo antes de confirmar la subida).
-    setSeedLoading(true);
-    try {
-      const result = await generateAndPersistIds(pid, seed);
-      setSeedModalPlantacionId(null);
-      if (result.persisted) {
-        showInfoDialog(showConfirm, 'IDs generados', 'Los IDs se generaron y se subieron al servidor correctamente.', 'checkmark-circle-outline', colors.secondary);
-      } else {
-        showInfoDialog(showConfirm, 'IDs no subidos', 'No se pudieron subir los IDs al servidor. Volvé a tocar "Generar IDs" para reintentar.', 'cloud-offline-outline', colors.danger);
-      }
-    } catch (e: any) {
-      setSeedModalPlantacionId(null);
-      showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudieron generar los IDs.', 'alert-circle-outline', colors.danger);
-    } finally {
-      setSeedLoading(false);
     }
   }
 
@@ -286,17 +244,10 @@ export function usePlantationAdmin() {
   return {
     // State
     plantationList: plantationList as Plantation[] | null,
-    seedModalPlantacionId,
-    seedValue,
-    setSeedValue,
-    seedLoading,
     exportingId,
     confirmProps,
     // Actions
     handleFinalize,
-    handleGenerateIds,
-    confirmSeedAndGenerate,
-    setSeedModalPlantacionId,
     handleExportCsv,
     handleExportExcel,
     handleExportKml,

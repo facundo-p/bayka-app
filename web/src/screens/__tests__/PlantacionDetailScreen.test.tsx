@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { ERRORES_GENERACION_IDS } from '../../queries/idsQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -88,6 +89,11 @@ function resolverPlantationUsers(consulta: ConsultaCapturada): RespuestaMock {
 function configurarDetalleMock(): void {
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids') {
+      // El RPC asigna todos los IDs → el gate pasa a "generado" al re-consultar.
+      conIdArboles = totalArboles;
+      return { data: { success: true, updated: totalArboles, seed: 1001 } };
+    }
     if (consulta.tabla === 'plantations') {
       const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
       return { data: filtroId?.valor === FILA_PLANTACION.id ? FILA_PLANTACION : null };
@@ -97,6 +103,8 @@ function configurarDetalleMock(): void {
     if (consulta.tabla === 'trees') {
       // La query de exportación se distingue por seleccionar `plantacion_id`.
       if (consulta.columnas?.includes('plantacion_id')) return { data: filasExport };
+      // seedSugerido: pide una sola fila (MAX global_id vía orden desc + limit 1).
+      if (consulta.limite === 1) return { data: [{ global_id: 1000 }] };
       // El conteo "sólo con id" se distingue por el filtro sobre global_id.
       const soloConId = consulta.filtros.some((filtro) => filtro.columna === 'global_id');
       return { data: [], count: soloConId ? conIdArboles : totalArboles };
@@ -138,16 +146,54 @@ test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async (
   expect(await screen.findByRole('heading', { name: 'Técnicos asignados' })).toBeInTheDocument();
 });
 
-test('"Generar IDs" queda informativo (deshabilitado + tooltip) mientras no están generados', async () => {
+test('"Generar IDs" abre el modal, confirma con el seed sugerido y habilita los exports', async () => {
+  const usuario = userEvent.setup();
   totalArboles = 5;
   conIdArboles = 3; // set parcial → todavía no generado
   renderRutasEn('/plantaciones/plant-1');
 
-  const boton = await screen.findByRole('button', { name: /Generar IDs/ });
-  // La generación es exclusiva de la app: en la web el botón es solo informativo.
-  expect(boton).toBeDisabled();
-  expect(boton).toHaveAttribute('title', 'Los IDs finales se generan desde la Bayka App.');
-  expect(screen.queryByRole('button', { name: /Exportar/ })).not.toBeInTheDocument();
+  await usuario.click(await screen.findByRole('button', { name: 'Generar IDs' }));
+  const dialogo = await screen.findByRole('dialog', { name: 'Generar IDs' });
+  // Advertencia de irreversibilidad (guía UX §15) y seed sugerido = MAX global + 1.
+  expect(dialogo).toHaveTextContent('Esta acción no se puede deshacer.');
+  const input = within(dialogo).getByLabelText('ID global inicial');
+  await vi.waitFor(() => expect(input).toHaveValue(1001));
+
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Generar' }));
+
+  // Se ejecuta el RPC transaccional con el seed y, tras invalidar el gate,
+  // el modal se cierra y aparecen los botones de exportación.
+  expect(await screen.findByRole('button', { name: 'Exportar Excel' })).toBeEnabled();
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
+  // El dashboard también dispara un RPC (stats): se busca el de generación.
+  const rpc = consultas.find(
+    (consulta) => consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids',
+  );
+  expect(rpc?.payload).toEqual({ p_plantation_id: 'plant-1', p_seed: 1001 });
+});
+
+test('si otra sesión ya generó (ALREADY_GENERATED) el modal muestra el error', async () => {
+  const usuario = userEvent.setup();
+  totalArboles = 5;
+  conIdArboles = 0;
+  const resolverBase = estadoMock.resolverConsulta!;
+  estadoMock.resolverConsulta = (consulta) =>
+    consulta.operacion === 'rpc'
+      ? { data: { success: false, error: ERRORES_GENERACION_IDS.YA_GENERADOS } }
+      : resolverBase(consulta);
+  renderRutasEn('/plantaciones/plant-1');
+
+  await usuario.click(await screen.findByRole('button', { name: 'Generar IDs' }));
+  const dialogo = await screen.findByRole('dialog', { name: 'Generar IDs' });
+  await vi.waitFor(() =>
+    expect(within(dialogo).getByLabelText('ID global inicial')).toHaveValue(1001),
+  );
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Generar' }));
+
+  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+    'Los IDs de esta plantación ya fueron generados',
+  );
 });
 
 test('ofrece "Exportar Excel" y "Exportar CSV" (y oculta "Generar IDs") con los IDs generados', async () => {
