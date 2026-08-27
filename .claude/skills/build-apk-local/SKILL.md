@@ -27,6 +27,16 @@ La variante se decide con `APP_VARIANT=test` en `app.config.js`; el script la ex
 en prebuild Y gradlew. `mobile/.env.staging` está gitignoreado — si falta, las
 credenciales de staging están en el Bitwarden del cliente (checklist #244).
 
+## Versionado
+
+`version` y `expo.android.versionCode` salen de `mobile/app.json` (`mobile/package.json` es
+espejo; el `package.json` de la raiz esta congelado y no significa nada). **No los edites a
+mano desde aca**: los bumpea el skill `deploy` al armar el release (#273). Este skill solo
+compila lo que ya esta en el arbol.
+
+Un release con cambios mobile ⇒ APK nuevo (versionCode +1). Para un hotfix JS dentro de una
+misma version va OTA: skill `push-update-apk`.
+
 ## 1. Prerequisitos — verificar ANTES de compilar
 
 ```bash

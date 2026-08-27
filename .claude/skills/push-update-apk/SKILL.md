@@ -8,7 +8,13 @@ trigger: Use when the user wants to update the app on all installed devices, pus
 
 Push code changes to all devices that have the Bayka app installed, without requiring a new APK install.
 
-**Important:** OTA updates only work for JS/TS/asset changes. If native modules or config plugins changed, the user needs `/build-apk` instead.
+**Important:** OTA updates only work for JS/TS/asset changes. If native modules or config
+plugins changed, use the `build-apk-local` skill instead (no existe ningun `/build-apk`).
+
+**Regla de release (CLAUDE.md, #273):** el OTA es SOLO para hotfixes dentro de una version
+ya publicada. Un release con cambios mobile ⇒ **APK nuevo** con `expo.android.versionCode`
++1 en `mobile/app.json` (lo bumpea el skill `deploy`), NO un OTA. Si lo que te piden empujar
+es un release, parar y usar `deploy`.
 
 ## Process
 
