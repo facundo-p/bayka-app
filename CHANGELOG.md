@@ -11,7 +11,7 @@ Las notas de cada versión las extrae automáticamente
 son las anclas de ese script — no cambiar su formato sin actualizar el workflow.
 La entrada nueva de cada release la escribe el skill `/deploy`.
 
-## 2026-08-21 · web 1.1.0
+## 2026-09-01 · web 1.1.0
 
 ### Web 1.1.0
 
@@ -22,7 +22,10 @@ La entrada nueva de cada release la escribe el skill `/deploy`.
 - `_redirects` para SPA fallback en Cloudflare Pages
 
 ### Otros
-- Variante TEST de la app mobile apuntando a staging (#253)
+- Variante TEST de la app mobile: build local por variante, ícono con "TEST" e
+  instalable junto a la de producción, apuntando a staging (#253)
+- Keep-alive periódico de la API de Supabase (staging y prod) para evitar la
+  pausa por inactividad del free tier (#284)
 - Sistema de releases: versionado por app, CHANGELOG, skill `/deploy` y workflow de tags (#273)
 - Flujo de branches staging→main, saneamiento de artefactos y trazabilidad en el board
 
