@@ -93,8 +93,9 @@ Gana el bump más alto de la lista. Reglas extra:
 
 ## 3. Proponer y ESPERAR el OK
 
-Mostrar a Facu: versiones actuales → nuevas por app, el borrador COMPLETO de la
-entrada de changelog (formato de abajo), y las inconsistencias detectadas.
+Mostrar a Facu: versiones actuales → nuevas por app, el borrador COMPLETO de
+las DOS entradas de changelog — la técnica de `CHANGELOG.md` (formato de abajo)
+y la pública de `NOVEDADES.md` (#279) — y las inconsistencias detectadas.
 **No tocar ningún archivo sin OK explícito.** Si el argumento fue `dry-run`,
 terminar acá.
 
@@ -125,6 +126,23 @@ Se omite la app que no participa; categorías vacías no se escriben. Si hay dos
 releases el mismo día, sufijo ` (2)` en el H2. La entrada nueva va inmediatamente
 después del bloque de intro, arriba de la última.
 
+Entrada pública de `NOVEDADES.md` (#279): redacción de release notes
+comerciales, para usuarios/clientes. Solo cambios que el usuario nota (features
+y fixes visibles); infra, tooling, docs y DB **no aparecen**. Sin `#N`, sin
+jerga interna (staging, RLS, back-merge, …), en voseo. Si ninguna app tiene
+cambios visibles, la entrada es una sola línea: "Mejoras internas y de
+estabilidad". Formato:
+
+```markdown
+## Web X.Y.Z · <D de mes de AAAA>
+
+- **<Titular corto.>** <Qué puede hacer o qué mejora ve el usuario.>
+```
+
+(H2 solo con las apps que participan, `·` como separador; misma regla de
+sufijo ` (2)` si hay dos releases el mismo día. La entrada va después de la
+intro, arriba de la última. Ningún workflow parsea este archivo.)
+
 ## 4. Commit de release (recién con el OK)
 
 ```bash
@@ -132,8 +150,8 @@ git switch staging && git pull --ff-only origin staging
 (cd web && npm version "X.Y.Z" --no-git-tag-version)      # actualiza package-lock también
 (cd mobile && npm version "A.B.C" --no-git-tag-version)   # espejo de app.json
 # mobile/app.json: editar expo.version = "A.B.C" y expo.android.versionCode += 1
-# CHANGELOG.md: insertar la entrada aprobada
-git add CHANGELOG.md web/package.json web/package-lock.json \
+# CHANGELOG.md y NOVEDADES.md: insertar las entradas aprobadas
+git add CHANGELOG.md NOVEDADES.md web/package.json web/package-lock.json \
         mobile/app.json mobile/package.json mobile/package-lock.json
 git commit -m "chore(release): web vX.Y.Z, mobile vA.B.C (#<issue>)"
 git push origin staging
@@ -158,8 +176,9 @@ gh project item-edit --id "$ITEM_ID" --project-id PVT_kwHOAlH2RM4BPDWt \
   --field-id PVTSSF_lAHOAlH2RM4BPDWtzg9kyak --single-select-option-id 82eeff6d  # PR en review
 ```
 
-Body del PR: `Closes #<issue>` + resumen de PRs incluidos + la entrada de
-changelog + este checklist post-merge (literal, es para Facu):
+Body del PR: `Closes #<issue>` + resumen de PRs incluidos + las entradas de
+changelog (técnica y pública) + este checklist post-merge (literal, es para
+Facu):
 
 ```markdown
 ## Post-merge (manual)

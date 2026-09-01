@@ -31,6 +31,11 @@
   `.github/workflows/release-tags.yml` al mergear a main, con notas extraídas
   de `CHANGELOG.md` (los headers `## `/`### ` del changelog son anclas de ese
   workflow — no cambiarles el formato).
+- **Changelog doble** (#279): `CHANGELOG.md` es el técnico/interno (con `#N`
+  linkeables); `NOVEDADES.md` es el público para usuarios/clientes — redacción
+  de release notes comerciales, solo cambios visibles al usuario, sin
+  issues/PRs ni jerga interna. `/deploy` propone y commitea las dos entradas
+  juntas en cada release.
 - **Única excepción de push directo a staging**: el commit `chore(release): …`
   que genera `/deploy` (mecánico, con OK previo, revisado dentro del diff del
   PR de release). Todo lo demás sigue entrando por PR a staging.
