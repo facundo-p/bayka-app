@@ -1,0 +1,40 @@
+name: Supabase Keep-Alive
+
+# Evita la pausa por inactividad del free tier (~7 días sin actividad de API).
+# El ping DEBE entrar por la API (PostgREST): el pg_dump diario del backup no
+# evitó la pausa del prod viejo (2026-08-23) — las conexiones directas a la DB
+# no cuentan como actividad. Detalle y decisión: issue #284.
+
+on:
+  schedule:
+    # Cada 2 días a las 12:00 UTC (09:00 AR)
+    - cron: "0 12 */2 * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    name: Ping ${{ matrix.env_name }}
+    runs-on: ubuntu-latest
+    strategy:
+      # Que un entorno caído no tape el ping del otro
+      fail-fast: false
+      matrix:
+        include:
+          - env_name: staging
+            url: https://uchejlyyabtrjoxyydmb.supabase.co
+            anon_secret: SUPABASE_ANON_KEY_STAGING
+          - env_name: prod
+            url: https://mgtaeogxzuavxrfhrefi.supabase.co
+            anon_secret: SUPABASE_ANON_KEY_PROD
+
+    steps:
+      - name: Ping REST API (${{ matrix.env_name }})
+        env:
+          ANON_KEY: ${{ secrets[matrix.anon_secret] }}
+        run: |
+          # Con RLS, el anon recibe [] — irrelevante: el request ya cuenta como
+          # actividad. Si el curl falla, el run queda en rojo = alarma gratis.
+          curl -sf "${{ matrix.url }}/rest/v1/organizations?select=id&limit=1" \
+            -H "apikey: $ANON_KEY" \
+            -H "Authorization: Bearer $ANON_KEY" > /dev/null
+          echo "ping OK: ${{ matrix.env_name }}"
