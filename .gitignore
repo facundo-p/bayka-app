@@ -10,16 +10,26 @@ build/
 .next/
 *.apk
 
+# Artefactos de migración de entornos (one-shot, no van al repo)
+supabase/baseline_schema.sql
+scripts/copy-storage.mjs
+supabase/.temp/
+
 # Environment variables
 .env
 .env.local
+.env.migration
 .env.*.local
+mobile/.env.staging
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Backups locales (p.ej. .claude/settings.local.json.*.bak) — nunca van al repo
+*.bak
 
 # OS
 .DS_Store
@@ -42,3 +52,7 @@ coverage/
 
 # Tasks (local workflow)
 tasks/
+
+# Claude Code artifacts
+design_handoff_web_gestion
+.planning

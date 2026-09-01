@@ -41,3 +41,18 @@ test('con credenciales malas muestra el error en pantalla', async () => {
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Credenciales inválidas');
 });
+
+test('el ojito del campo de contraseña la muestra y la vuelve a ocultar', async () => {
+  const usuario = userEvent.setup();
+  renderLogin();
+
+  const campo = screen.getByLabelText('Contraseña');
+  await usuario.type(campo, 'secreta123');
+  expect(campo).toHaveAttribute('type', 'password');
+
+  await usuario.click(screen.getByRole('button', { name: 'Mostrar contraseña' }));
+  expect(campo).toHaveAttribute('type', 'text');
+
+  await usuario.click(screen.getByRole('button', { name: 'Ocultar contraseña' }));
+  expect(campo).toHaveAttribute('type', 'password');
+});

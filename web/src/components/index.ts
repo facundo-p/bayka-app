@@ -16,6 +16,7 @@ export { MapaPuntos } from './mapa/MapaPuntos';
 export { Modal } from './Modal';
 export { NavItem } from './NavItem';
 export { PageHeader } from './PageHeader';
+export { PasswordInput } from './PasswordInput';
 export { PlantationMap } from './PlantationMap';
 export { Paginacion } from './Paginacion';
 export { SeasonCard } from './SeasonCard';

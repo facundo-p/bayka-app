@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { Button, Card, Input } from '../components';
+import { Button, Card, PasswordInput } from '../components';
 import { supabase } from '../lib/supabase';
 import { MENSAJES as MENSAJES_ADMIN_USERS } from '../../../supabase/functions/admin-users/nucleo';
 import { validarNuevaPassword } from '../lib/validarPassword';
@@ -56,17 +56,15 @@ function FormularioPassword({ onExito }: { onExito: () => void }) {
 
   return (
     <form className={styles.formulario} onSubmit={manejarSubmit}>
-      <Input
+      <PasswordInput
         label="Contraseña nueva"
-        type="password"
         autoComplete="new-password"
         required
         value={password}
         onChange={(evento) => setPassword(evento.target.value)}
       />
-      <Input
+      <PasswordInput
         label="Repetir contraseña"
-        type="password"
         autoComplete="new-password"
         required
         value={confirmacion}
