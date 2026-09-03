@@ -1,10 +1,13 @@
 import { db } from '../database/client';
-import { groups, trees, parcelas, species as speciesTable } from '../database/schema';
+import { groups, trees, parcelas } from '../database/schema';
 import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
+import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { getTreeEditGating } from '../utils/treeEditGating';
+import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
 import type { GroupTipo } from '../constants/groupTipo';
 
 export type GroupEstado = 'activa' | 'finalizada' | 'sincronizada';
@@ -121,7 +124,7 @@ export async function createGroup(params: {
     notifyDataChanged();
     return { success: true, id };
   } catch (e: any) {
-    if (e?.message?.includes('UNIQUE constraint failed')) {
+    if (isUniqueConstraintError(e)) {
       return { success: false, error: 'codigo_duplicate' };
     }
     return { success: false, error: 'unknown' };
@@ -160,14 +163,19 @@ export async function finalizeGroup(grupoId: string): Promise<{ success: true }>
   return { success: true };
 }
 
-// Ownership guard — inline in screens before showing edit UI.
+// Ownership guard — inline in screens before showing edit UI. Delegates to the
+// shared gating in treeEditGating.ts (issue #155); subgroupEstado only affects
+// canDelete there, so it's irrelevant to this canEdit-only check.
 export function canEdit(
   group: { usuarioCreador: string },
   userId: string,
   plantacionEstado: string
 ): boolean {
-  if (plantacionEstado === 'finalizada') return false;
-  return group.usuarioCreador === userId;
+  return getTreeEditGating({
+    plantacionEstado,
+    subgroupEstado: 'activa',
+    isCreator: group.usuarioCreador === userId,
+  }).canEdit;
 }
 
 export type UpdateGroupResult =
@@ -218,13 +226,7 @@ async function recalcTreesSubIds(
     .orderBy(asc(trees.posicion));
 
   for (const tree of allTrees) {
-    let especieCodigo = 'NN';
-    if (tree.especieId) {
-      const [sp] = await tx.select({ codigo: speciesTable.codigo })
-        .from(speciesTable)
-        .where(eq(speciesTable.id, tree.especieId));
-      especieCodigo = sp?.codigo ?? 'NN';
-    }
+    const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
     const newSubId = generateSubId(parcelaCodigo, newCodigo.toUpperCase(), especieCodigo, tree.posicion);
     await tx.update(trees)
       .set({ subId: newSubId })
@@ -269,8 +271,8 @@ export async function updateGroupCode(
     notifyDataChanged();
     return { success: true };
   } catch (e: any) {
-    if (e?.message?.includes('UNIQUE constraint failed')) {
-      if (e.message.includes('name_unique')) {
+    if (isUniqueConstraintError(e)) {
+      if (isNameUniqueConstraintError(e)) {
         return { success: false, error: 'nombre_duplicate' };
       }
       return { success: false, error: 'codigo_duplicate' };

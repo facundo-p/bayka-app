@@ -40,18 +40,28 @@ export function countNNBlockedGroups(opts: PendingCountQueryOpts) {
 }
 
 /**
+ * Shared filter for "foto local sin subir de grupo ya sincronizado": grupo
+ * sincronizado (los grupos pendientes suben sus fotos en el propio push, y ya
+ * cuentan como grupo pendiente), con foto local no sincronizada. Used by both
+ * the global and per-plantation counters below so the criteria never diverge.
+ */
+function pendingTreePhotoConditions() {
+  return [
+    eq(groups.pendingSync, false),
+    isNotNull(trees.fotoUrl),
+    eq(trees.fotoSynced, false),
+    sqlIsLocalUri(trees.fotoUrl),
+  ];
+}
+
+/**
  * Fotos locales sin subir de grupos ya sincronizados (los grupos pendientes
  * suben sus fotos en el propio push, y ya cuentan como grupo pendiente).
  * Sin `plantacionId` cuenta TODAS las plantaciones — el OrangeDot global las
  * suma (issue #71: antes devolvía 0 hardcodeado y el dot las ignoraba).
  */
 export function countPendingTreePhotos(opts: PendingCountQueryOpts) {
-  const conditions = [
-    eq(groups.pendingSync, false),
-    isNotNull(trees.fotoUrl),
-    eq(trees.fotoSynced, false),
-    sqlIsLocalUri(trees.fotoUrl),
-  ];
+  const conditions = pendingTreePhotoConditions();
   if (opts.plantacionId) conditions.push(eq(groups.plantacionId, opts.plantacionId));
   return db
     .select({ cnt: count() })
@@ -98,11 +108,6 @@ export function countPendingTreePhotosByPlantation() {
     .select({ plantacionId: groups.plantacionId, cnt: count() })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .where(and(
-      eq(groups.pendingSync, false),
-      isNotNull(trees.fotoUrl),
-      eq(trees.fotoSynced, false),
-      sqlIsLocalUri(trees.fotoUrl),
-    ))
+    .where(and(...pendingTreePhotoConditions()))
     .groupBy(groups.plantacionId);
 }

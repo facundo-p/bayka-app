@@ -7,30 +7,7 @@ import { syncLog } from '../../utils/syncLogger';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/TreeRepository';
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
-
-// ─── Photo upload helper (internal) ─────────────────────────────────────────
-
-async function uploadPhotoToStorage(
-  localUri: string,
-  storagePath: string
-): Promise<{ error: Error | null }> {
-  try {
-    const file = new ExpoFile(localUri);
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    const { error } = await supabase.storage
-      .from('tree-photos')
-      .upload(storagePath, bytes, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-
-    return { error: error ? new Error(error.message) : null };
-  } catch (e: any) {
-    return { error: e };
-  }
-}
+import { uploadPhotoToStorage } from './storageUpload';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
 

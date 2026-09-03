@@ -8,6 +8,7 @@ import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { isLocalUri } from '../utils/photoUri';
+import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 
 export interface InsertTreeParams {
   grupoId: string;
@@ -81,15 +82,7 @@ export async function reverseTreeOrder(
   await db.transaction(async (tx) => {
     for (const { id, newPosicion } of reversed) {
       const tree = allTrees.find((t) => t.id === id)!;
-
-      let especieCodigo = 'NN';
-      if (tree.especieId) {
-        const [sp] = await tx.select({ codigo: speciesTable.codigo })
-          .from(speciesTable)
-          .where(eq(speciesTable.id, tree.especieId));
-        especieCodigo = sp?.codigo ?? 'NN';
-      }
-
+      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
@@ -213,6 +206,18 @@ export async function markPhotoSynced(treeId: string): Promise<void> {
 }
 
 /**
+ * Clears a tree's N/N sync conflict marker (server-vs-local especie mismatch
+ * flagged during pull). Used both when accepting the server's resolution and
+ * when keeping the local one — either way the conflict is resolved.
+ */
+export async function clearTreeConflict(treeId: string): Promise<void> {
+  await db.update(trees)
+    .set({ conflictEspecieId: null, conflictEspecieNombre: null })
+    .where(eq(trees.id, treeId));
+  notifyDataChanged();
+}
+
+/**
  * Deletes a single tree and recalculates positions + subIds for all
  * remaining trees in the subgroup so they stay consecutive (1, 2, 3...).
  */
@@ -235,15 +240,7 @@ export async function deleteTreeAndRecalculate(
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
-
-      let especieCodigo = 'NN';
-      if (tree.especieId) {
-        const [sp] = await tx.select({ codigo: speciesTable.codigo })
-          .from(speciesTable)
-          .where(eq(speciesTable.id, tree.especieId));
-        especieCodigo = sp?.codigo ?? 'NN';
-      }
-
+      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })

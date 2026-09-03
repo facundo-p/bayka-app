@@ -15,9 +15,9 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
-import { File as ExpoFile } from 'expo-file-system';
 import { SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress, classifyServerError } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
+import { uploadPhotoToStorage } from './storageUpload';
 
 /*
  * Supabase unique-constraint error shape (capturado en spike 3.3.0, 2026-05-26):
@@ -39,30 +39,6 @@ import { PG_ERROR } from '../../supabase/postgresErrorCodes';
  * NUNCA usa substring matching sobre error.message (no estable entre locales
  * ni versiones de postgres). Fallback explícito: GENERIC_CONFLICT.
  */
-
-// ─── Photo upload helper (internal) ─────────────────────────────────────────
-
-async function uploadPhotoToStorage(
-  localUri: string,
-  storagePath: string
-): Promise<{ error: Error | null }> {
-  try {
-    const file = new ExpoFile(localUri);
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
-
-    const { error } = await supabase.storage
-      .from('tree-photos')
-      .upload(storagePath, bytes, {
-        contentType: 'image/jpeg',
-        upsert: true,
-      });
-
-    return { error: error ? new Error(error.message) : null };
-  } catch (e: any) {
-    return { error: e };
-  }
-}
 
 // ─── Upload Parcela (Task 3.3 — antes que groups por FK D-16-13) ────────────
 

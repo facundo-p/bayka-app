@@ -40,48 +40,15 @@ export function useSync(plantacionId?: string) {
     setGlobalProgress(null);
   }, []);
 
-  const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
-    if (!plantacionId) {
-      console.warn('[Sync] startBidirectionalSync called without plantacionId');
-      return;
-    }
+  // Shared by startBidirectionalSync (uses the hook's own plantacionId) and
+  // startPlantationSync (explicit target) — both ran the identical pull+push
+  // sequence for a single plantation, differing only in where the id came from.
+  const runPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean) => {
     setState('pulling');
     resetSyncState();
 
     try {
       // syncPlantation does pull-then-push internally
-      setState('pushing');
-      const res = await syncPlantation(plantacionId, setProgress, setParcelaResults, setPlantationResults);
-      setResults(res);
-      setPullSuccess(true);
-
-      if (incluirFotos) {
-        setState('uploading-photos');
-        const uploadRes = await uploadPendingPhotos(plantacionId, setPhotoProgress);
-        setState('downloading-photos');
-        const downloadRes = await downloadPhotosForPlantation(plantacionId, setPhotoProgress);
-        setPhotoResult({
-          uploaded: uploadRes.uploaded,
-          uploadFailed: uploadRes.failed,
-          downloaded: downloadRes.downloaded,
-          downloadFailed: downloadRes.failed,
-        });
-      }
-    } catch (err) {
-      console.error('[Sync] Bidirectional sync failed:', err);
-      setPullSuccess(false);
-      if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
-    } finally {
-      setState('done');
-      notifyDataChanged();
-    }
-  }, [plantacionId, resetSyncState]);
-
-  const startPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean = true) => {
-    setState('pulling');
-    resetSyncState();
-
-    try {
       setState('pushing');
       const res = await syncPlantation(targetPlantacionId, setProgress, setParcelaResults, setPlantationResults);
       setResults(res);
@@ -108,6 +75,18 @@ export function useSync(plantacionId?: string) {
       notifyDataChanged();
     }
   }, [resetSyncState]);
+
+  const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
+    if (!plantacionId) {
+      console.warn('[Sync] startBidirectionalSync called without plantacionId');
+      return;
+    }
+    await runPlantationSync(plantacionId, incluirFotos);
+  }, [plantacionId, runPlantationSync]);
+
+  const startPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean = true) => {
+    await runPlantationSync(targetPlantacionId, incluirFotos);
+  }, [runPlantationSync]);
 
   const startGlobalSync = useCallback(async (incluirFotos: boolean = true) => {
     setState('pulling');
