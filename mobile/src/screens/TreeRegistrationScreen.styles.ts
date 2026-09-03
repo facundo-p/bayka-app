@@ -15,11 +15,20 @@ export const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     gap: spacing.sm,
   },
+  viewAllRowPressed: {
+    opacity: 0.7,
+  },
   viewAllText: {
     flex: 1,
     fontSize: fontSize.md,
     fontFamily: fonts.semiBold,
     color: colors.plantation,
+  },
+  viewAllTextDisabled: {
+    color: colors.textLight,
+  },
+  spacer: {
+    flex: 1,
   },
   gridScroll: {
     flex: 1,

@@ -93,6 +93,9 @@ export const colors = {
   overlay: 'rgba(0,0,0,0.6)',
   overlayLight: 'rgba(0,0,0,0.4)',
   overlayDark: 'rgba(0,0,0,0.9)',
+  // Overlay claro sobre la textura de fondo (TexturedBackground) — mismo tono
+  // que `background`, semitransparente.
+  textureOverlay: 'rgba(250,250,249,0.9)',
 
   // ─── State chips ──────────────────────────────────────────────────────────
   stateActiva: '#99B95B',

@@ -3,9 +3,9 @@
  * Shows estado-based filter cards with count, icon, and label.
  * Used by AdminScreen, PlantacionesScreen, and PlantationDetailScreen.
  */
-import { View, Text, Pressable, StyleSheet, LayoutAnimation } from 'react-native';
+import { View, Text, Pressable, LayoutAnimation } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { filterCardsStyles as styles } from './FilterCards.styles';
 
 type FilterConfig = {
   key: string;
@@ -60,28 +60,3 @@ export default function FilterCards({ filters, activeFilter, onToggleFilter }: P
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    gap: spacing.md,
-  },
-  card: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.lg,
-    gap: spacing.xs,
-  },
-  count: {
-    fontSize: fontSize.xl,
-    fontFamily: fonts.bold,
-  },
-  label: {
-    fontSize: fontSize.xs,
-    fontFamily: fonts.medium,
-  },
-});
