@@ -1,0 +1,28 @@
+name: DB Tests
+
+on:
+  push:
+    paths:
+      - 'supabase/**'
+  pull_request:
+    branches:
+      - main
+      - staging
+    paths:
+      - 'supabase/**'
+
+jobs:
+  pgtap:
+    name: pgTAP (baseline + deltas)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Run db test harness
+        run: bash supabase/tests/run-db-tests.sh
