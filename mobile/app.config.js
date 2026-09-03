@@ -47,6 +47,9 @@ module.exports = ({ config }) => ({
     url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID || ''}`,
   },
   extra: {
+    // Variante de build (#287): src/config/entorno.ts la lee en runtime para
+    // mostrar el banner "Entorno de pruebas" solo en la app TEST.
+    appVariant: IS_TEST ? 'test' : 'prod',
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     eas: {

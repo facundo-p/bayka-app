@@ -1,6 +1,6 @@
 .topbar {
   position: sticky;
-  top: 0;
+  top: var(--alto-banner-entorno);
   /* Por debajo de los paneles de Leaflet (z-index interno alto) pero por
      encima del contenido normal. z-index entero: no es un color. */
   z-index: 20;

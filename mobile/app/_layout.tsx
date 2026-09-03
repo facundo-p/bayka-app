@@ -24,6 +24,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PhotoCropProvider } from '../src/components/PhotoCropProvider';
+import BannerEntornoPruebas from '../src/components/BannerEntornoPruebas';
 import * as SplashScreen from 'expo-splash-screen';
 
 // Keep splash visible while fonts load
@@ -119,6 +120,7 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
+      <BannerEntornoPruebas />
       <PhotoCropProvider>
         <Slot />
       </PhotoCropProvider>
