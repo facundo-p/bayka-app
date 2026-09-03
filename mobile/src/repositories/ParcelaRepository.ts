@@ -17,6 +17,7 @@ import { eq, and, asc, count, isNull, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
+import { isUniqueConstraintError } from '../database/sqliteErrors';
 
 const MAX_DESCRIPCION_LENGTH = 10000;
 
@@ -136,7 +137,7 @@ export async function createParcela(params: {
     notifyDataChanged();
     return { success: true, id };
   } catch (e: any) {
-    if (e?.message?.includes('UNIQUE constraint failed')) {
+    if (isUniqueConstraintError(e)) {
       return { success: false, error: 'codigo_duplicate' };
     }
     return { success: false, error: 'unknown' };

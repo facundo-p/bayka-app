@@ -71,11 +71,6 @@ export interface UseTreeRegistrationResult {
   addPhotoToTree: (treeId: string, pickPhoto: () => Promise<string | null>) => Promise<void>;
   updatePhoto: (treeId: string, newUri: string) => Promise<void>;
   removePhoto: (treeId: string) => Promise<void>;
-  reverseOrder: (onConfirmed: () => void) => void;
-  confirmFinalize: (onSuccess: () => void) => void;
-  confirmDeleteGroup: (onConfirmed: () => void) => void;
-  reactivate: (onConfirmed: () => void) => void;
-  deleteTree: (treeId: string, posicion: number, onConfirmed: () => void) => void;
   executeReverseOrder: () => Promise<void>;
   executeFinalize: () => Promise<void>;
   executeDeleteGroup: () => Promise<void>;
@@ -268,27 +263,6 @@ export function useTreeRegistration({
     }
   }, [grupoId, grupoCodigo, notifyError]);
 
-  // Placeholder action starters — actual confirm logic stays in screen using confirm hook
-  const reverseOrder = useCallback((onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
-  const confirmFinalize = useCallback((onSuccess: () => void) => {
-    onSuccess();
-  }, []);
-
-  const confirmDeleteGroup = useCallback((onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
-  const reactivate = useCallback((onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
-  const deleteTree = useCallback((treeId: string, posicion: number, onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
   return {
     allTrees,
     lastThree,
@@ -316,11 +290,6 @@ export function useTreeRegistration({
     addPhotoToTree,
     updatePhoto,
     removePhoto,
-    reverseOrder,
-    confirmFinalize,
-    confirmDeleteGroup,
-    reactivate,
-    deleteTree,
     executeReverseOrder,
     executeFinalize,
     executeDeleteGroup,

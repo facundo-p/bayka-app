@@ -17,6 +17,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
+import { isNetworkRequestFailed } from '../utils/networkErrors';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -229,7 +230,7 @@ export async function updatePlantation(
       return;
     } catch (e: any) {
       // Network error → fall through to offline path
-      if (!e?.message?.includes('Network request failed')) throw e;
+      if (!isNetworkRequestFailed(e)) throw e;
     }
   }
 

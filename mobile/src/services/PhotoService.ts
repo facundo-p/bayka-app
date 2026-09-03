@@ -24,17 +24,6 @@ function saveToPhotos(srcUri: string): string {
   return dest.uri;
 }
 
-// Pitfall 3: quality 1 at capture; manipulateAsync handles compression (single-pass JPEG).
-async function resizeAndSaveToDocument(
-  tempUri: string,
-  width: number | undefined,
-  height: number | undefined
-): Promise<string> {
-  const resize = width !== undefined ? { width } : { height };
-  const result = await manipulateAsync(tempUri, [{ resize }], { compress: 0.85, format: SaveFormat.JPEG });
-  return saveToPhotos(result.uri);
-}
-
 /**
  * Recorta (si `pixelCrop` no es null), redimensiona el lado mayor a MAX_LONG_SIDE
  * y guarda como JPEG permanente. Camino único del cropper de captura (#167):
@@ -85,20 +74,4 @@ export async function launchGalleryRaw(): Promise<RawPhoto | null> {
   if (result.canceled || !result.assets?.[0]) return null;
   const asset = result.assets[0];
   return { uri: asset.uri, width: asset.width ?? 0, height: asset.height ?? 0 };
-}
-
-/** Captura + procesado en un paso (sin recorte interactivo). Conveniencia/legacy. */
-export async function launchCamera(): Promise<string | null> {
-  const raw = await launchCameraRaw();
-  if (!raw) return null;
-  const isLandscape = raw.width >= raw.height;
-  return resizeAndSaveToDocument(raw.uri, isLandscape ? MAX_LONG_SIDE : undefined, isLandscape ? undefined : MAX_LONG_SIDE);
-}
-
-/** Galería + procesado en un paso (sin recorte interactivo). Conveniencia/legacy. */
-export async function launchGallery(): Promise<string | null> {
-  const raw = await launchGalleryRaw();
-  if (!raw) return null;
-  const isLandscape = raw.width >= raw.height;
-  return resizeAndSaveToDocument(raw.uri, isLandscape ? MAX_LONG_SIDE : undefined, isLandscape ? undefined : MAX_LONG_SIDE);
 }
