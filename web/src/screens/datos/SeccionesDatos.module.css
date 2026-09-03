@@ -61,6 +61,8 @@
   margin-right: var(--space-md);
   border-radius: var(--radius-full);
   vertical-align: middle;
+  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  background-color: var(--color);
 }
 
 /* Celda de especie: punto + texto en una línea. */

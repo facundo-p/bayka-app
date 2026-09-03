@@ -19,7 +19,16 @@ const FILA_COMPLETA = {
     nombre: 'Línea 1',
     plantation_id: 'plant-1',
     plantations: { lugar: 'Sitio', periodo: '2025-2026' },
-    parcelas: { nombre: 'Norte' },
+    parcelas: { nombre: 'Norte', deleted_at: null },
+  },
+};
+
+const FILA_PARCELA_ELIMINADA = {
+  ...FILA_COMPLETA,
+  sub_id: 'C-003',
+  groups: {
+    ...FILA_COMPLETA.groups,
+    parcelas: { nombre: 'Sur', deleted_at: '2026-01-01T00:00:00Z' },
   },
 };
 
@@ -46,7 +55,7 @@ describe('listarFilasExportacion', () => {
     expect(deArboles).toHaveLength(1);
     expect(deArboles[0].columnas).toContain('groups!inner(');
     expect(deArboles[0].columnas).toContain('plantations(lugar, periodo)');
-    expect(deArboles[0].columnas).toContain('parcelas(nombre)');
+    expect(deArboles[0].columnas).toContain('parcelas(nombre, deleted_at)');
     expect(deArboles[0].columnas).toContain('species(nombre)');
     expect(deArboles[0].columnas).toContain('global_id');
     expect(deArboles[0].columnas).toContain('plantacion_id');
@@ -88,6 +97,14 @@ describe('listarFilasExportacion', () => {
         especie: null,
       },
     ]);
+  });
+
+  test('una parcela soft-deleted no aparece en la planilla: mapea a null', async () => {
+    capturarConsultas(() => ({ data: [FILA_PARCELA_ELIMINADA] }));
+
+    const [fila] = await listarFilasExportacion('plant-1');
+
+    expect(fila.parcela).toBeNull();
   });
 
   test('pagina sin truncar a 1000 (lee todas las filas con range)', async () => {

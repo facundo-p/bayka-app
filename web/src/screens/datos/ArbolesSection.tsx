@@ -1,32 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { Cargando, ErrorConReintento, Paginacion, Table, type TableColumn } from '../../components';
-import { useDebounce } from '../../hooks/useDebounce';
+import { varsCss } from '../../lib/cssVars';
 import { formatearFechaCorta } from '../../lib/fechas';
-import { formatearEntero } from '../../lib/formato';
-import { listarArboles, type ArbolDetalle, type PaginaArboles } from '../../queries/dataExplorerQueries';
-import { listarCatalogo } from '../../queries/especieQueries';
-import { listarPerfiles, type PerfilResumen } from '../../queries/usuarioQueries';
+import type { ArbolDetalle, PaginaArboles } from '../../queries/dataExplorerQueries';
+import type { PerfilResumen } from '../../queries/usuarioQueries';
 import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { tieneFotoSubida } from '../../services/fotoService';
 import { ArbolDetalleModal } from './ArbolDetalleModal';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { DatosToolbar } from './DatosToolbar';
-import { ScopeChips, type ScopeChip } from './ScopeChips';
+import { ScopeChips } from './ScopeChips';
 import { VacioConFiltros } from './VacioConFiltros';
-import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
-import { useFiltrosDatos } from './useFiltrosDatos';
-import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
+import { useArbolesSection } from './useArbolesSection';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import styles from './SeccionesDatos.module.css';
 
 /** Redondeo de coordenadas para mostrar (~1 m de precisión). */
 const DECIMALES_GPS = 5;
-
-/** Retardo del debounce de la búsqueda por ID, en ms. */
-const RETARDO_BUSQUEDA_MS = 300;
 
 /** Tamaño del ícono de foto subida, en px. */
 const TAMANIO_ICONO_FOTO = 16;
@@ -50,7 +40,10 @@ function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
   const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
   return (
     <span className={styles.especie}>
-      <span className={styles.puntoEspecie} style={{ backgroundColor: colorEspeciePorCodigo(arbol.especieCodigo) }} />
+      <span
+        className={styles.puntoEspecie}
+        style={varsCss({ color: colorEspeciePorCodigo(arbol.especieCodigo) })}
+      />
       {`${codigo} · ${nombre}`}
     </span>
   );
@@ -155,50 +148,26 @@ function TablaArboles({
   );
 }
 
-/** Chips del scope heredado por drill-down (parcela y/o grupo). */
-function useScopeChips(
-  filtros: FiltrosUi,
-  setFiltro: (campo: keyof FiltrosUi, valor: string) => void,
-): ScopeChip[] {
-  const { id = '' } = useParams();
-  const parcelas = useParcelasDatos(id);
-  const grupos = useGruposDatos(id, filtros.parcelaId);
-  const chips: ScopeChip[] = [];
-  const parcela = parcelas.data?.find((item) => item.id === filtros.parcelaId);
-  if (parcela) {
-    chips.push({ etiqueta: `Parcela ${parcela.codigo}`, onQuitar: () => setFiltro('parcelaId', '') });
-  }
-  const grupo = grupos.data?.find((item) => item.id === filtros.groupId);
-  if (grupo) {
-    chips.push({ etiqueta: `Grupo ${grupo.codigo}`, onQuitar: () => setFiltro('groupId', '') });
-  }
-  return chips;
-}
-
 /** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
 export function ArbolesSection() {
-  const { id = '' } = useParams();
-  const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
-  const [pagina, setPagina] = useState(1);
-  const [arbolSeleccionado, setArbolSeleccionado] = useState<ArbolDetalle | null>(null);
-  const busquedaDebounced = useDebounce(filtros.busqueda, RETARDO_BUSQUEDA_MS);
-  const filtrosQuery = { ...filtros, busqueda: busquedaDebounced };
-
-  const parcelas = useParcelasDatos(id);
-  const especies = useQuery({ queryKey: ['especies-catalogo'], queryFn: listarCatalogo });
-  const perfiles = useQuery({ queryKey: ['perfiles'], queryFn: listarPerfiles });
-  const arboles = useQuery({
-    queryKey: ['datos-arboles', id, filtrosQuery, pagina],
-    queryFn: () => listarArboles(id, aFiltrosArboles(filtrosQuery), pagina),
-    placeholderData: keepPreviousData,
-  });
-  const chips = useScopeChips(filtros, setFiltro);
-  const recuento = arboles.data ? `${formatearEntero(arboles.data.total)} árboles` : undefined;
-  const codigosParcela = new Map((parcelas.data ?? []).map((parcela) => [parcela.id, parcela.codigo]));
-  const nombresUsuario = new Map((perfiles.data ?? []).map((perfil) => [perfil.id, perfil.nombre]));
-
-  /** Cualquier cambio de filtro vuelve a la página 1. */
-  useEffect(() => setPagina(1), [filtros.parcelaId, filtros.groupId, filtros.speciesId, filtros.gps, busquedaDebounced]);
+  const {
+    filtros,
+    setFiltro,
+    hayFiltro,
+    limpiar,
+    parcelas,
+    especies,
+    perfiles,
+    arboles,
+    chips,
+    recuento,
+    codigosParcela,
+    nombresUsuario,
+    pagina,
+    setPagina,
+    arbolSeleccionado,
+    setArbolSeleccionado,
+  } = useArbolesSection();
 
   if (arboles.isError) {
     return (

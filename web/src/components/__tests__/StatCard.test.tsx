@@ -15,8 +15,8 @@ test('bar dibuja un fill con el ancho y color provistos', () => {
   );
   const fill = container.querySelector(`.${styles.fill}`) as HTMLElement;
   expect(fill).toBeInTheDocument();
-  expect(fill.style.width).toBe('94%');
-  expect(fill.style.background).toBe('var(--color-secondary)');
+  expect(fill.style.getPropertyValue('--ancho')).toBe('94%');
+  expect(fill.style.getPropertyValue('--color')).toBe('var(--color-secondary)');
 });
 
 test('variante warn aplica la clase y muestra el hint con ícono', () => {

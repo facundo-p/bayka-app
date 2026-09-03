@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import type { PuntoGps } from '../queries/mapaQueries';
 import { MapaPuntos } from './MapaPuntos';
@@ -32,7 +33,7 @@ function Leyenda({
     <div className={styles.leyenda}>
       {especiesLeyenda(colorPorCodigo).map(([codigo, color]) => (
         <span key={codigo} className={styles.item}>
-          <span className={styles.punto} style={{ backgroundColor: color }} />
+          <span className={styles.punto} style={varsCss({ color })} />
           {nombrePorCodigo.get(codigo) ?? codigo}
         </span>
       ))}

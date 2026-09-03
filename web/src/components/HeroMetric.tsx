@@ -1,3 +1,4 @@
+import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import styles from './HeroMetric.module.css';
 
@@ -27,7 +28,7 @@ export function HeroMetric({
       <p className={styles.value}>{formatearEntero(valor)}</p>
       {tieneObjetivo && (
         <div className={styles.track}>
-          <div className={styles.fill} style={{ width: `${porcentaje}%` }} />
+          <div className={styles.fill} style={varsCss({ ancho: `${porcentaje}%` })} />
         </div>
       )}
       <p className={styles.footer}>

@@ -50,7 +50,12 @@ export type FilaExportacion = {
 /**
  * Fila cruda del embed de PostgREST. Los embeds son many-to-one, así que en
  * runtime llegan como objetos (el cliente sin typegen los tipa como array).
+ *
+ * `deleted_at` de `parcelas` viaja solo para post-filtrar en `mapearFila`
+ * (ver nota en `SELECT_EXPORTACION`); no es parte de `FilaExportacion`.
  */
+type ParcelaCruda = { nombre: string; deleted_at: string | null };
+
 type FilaCruda = {
   global_id: number | null;
   plantacion_id: number | null;
@@ -59,7 +64,7 @@ type FilaCruda = {
   groups: {
     nombre: string;
     plantations: { lugar: string; periodo: string } | null;
-    parcelas: { nombre: string } | null;
+    parcelas: ParcelaCruda | null;
   } | null;
 };
 
@@ -67,10 +72,22 @@ type FilaCruda = {
  * Columnas + embeds del export. El scope por plantación va por el join interno
  * `groups!inner(plantation_id)` (mismo patrón que idsQueries/mapaQueries);
  * `plantations`, `parcelas` y `species` se embeben para el resto de columnas.
+ * `parcelas.deleted_at` viaja solo para post-filtrar en `mapearFila`: no puede
+ * ir como filtro de la consulta (`!inner` excluiría los árboles de grupos sin
+ * parcela, un caso válido) — mismo criterio que oculta parcelas soft-deleted
+ * en ArbolesSection/dashboard/buscar (`.is('deleted_at', null)` sobre la
+ * tabla `parcelas` directa).
  */
 const SELECT_EXPORTACION =
   'global_id, plantacion_id, sub_id, species(nombre), ' +
-  'groups!inner(nombre, plantation_id, plantations(lugar, periodo), parcelas(nombre))';
+  'groups!inner(nombre, plantation_id, plantations(lugar, periodo), parcelas(nombre, deleted_at))';
+
+/** Nombre de la parcela, o null si no tiene (grupo sin parcela) o si la
+ *  parcela está soft-deleted (no debe aparecer en la planilla). */
+function nombreParcela(parcela: ParcelaCruda | null): string | null {
+  if (!parcela || parcela.deleted_at !== null) return null;
+  return parcela.nombre;
+}
 
 function mapearFila(fila: FilaCruda): FilaExportacion {
   const lugar = fila.groups?.plantations?.lugar ?? '';
@@ -79,7 +96,7 @@ function mapearFila(fila: FilaCruda): FilaExportacion {
     idParcial: fila.plantacion_id,
     zona: lugar,
     plantacion: lugar,
-    parcela: fila.groups?.parcelas?.nombre ?? null,
+    parcela: nombreParcela(fila.groups?.parcelas ?? null),
     grupo: fila.groups?.nombre ?? '',
     subId: fila.sub_id,
     periodo: fila.groups?.plantations?.periodo ?? '',

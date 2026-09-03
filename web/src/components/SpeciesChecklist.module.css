@@ -79,6 +79,8 @@
   width: 10px;
   height: 10px;
   border-radius: var(--radius-full);
+  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  background-color: var(--color);
 }
 
 .codigo {
