@@ -1,12 +1,10 @@
 /**
- * Reproducción del bug real del milestone GPS: en un device que YA registró las
- * migraciones 0000–0007 (timestamps 2026, máx created_at = 1774200000000), las
- * 0015/0016 con `when` menor se salteaban → faltaban las columnas GPS en runtime
- * ("no such column: trees.latitude").
- *
- * Este test simula ese device incremental con SQLite real y verifica que, con el
- * `when` corregido (> máx global del journal), 0015 y 0016 SÍ se aplican.
- * Si alguien vuelve a bajar el `when` de una migración nueva, este test falla.
+ * Reproduce un bug real: en un device que ya registró las migraciones 0000–0007
+ * (máx created_at = 1774200000000), las 0015/0016 con `when` menor se salteaban
+ * → faltaban las columnas GPS en runtime ("no such column: trees.latitude").
+ * Simula ese device con SQLite real y verifica que, con el `when` corregido
+ * (> máx global del journal), 0015 y 0016 sí se aplican. Falla si alguien vuelve
+ * a bajar el `when` de una migración nueva.
  */
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -24,12 +22,10 @@ function columnNames(sqlite: InstanceType<typeof Database>, table: string): stri
 test('0015/0016 se aplican en un device incremental con max created_at = 1774200000000', () => {
   const sqlite = new Database(':memory:');
 
-  // Estado pre-0015 de un device real: trees/plantations existen SIN columnas GPS,
-  // y groups/parcelas existen tal como los dejó la 0011 (la 0018 hace un recreate
-  // de groups, así que el fixture necesita la tabla con sus columnas reales).
+  // Estado pre-0015: trees/plantations sin columnas GPS; groups/parcelas como
+  // los deja la 0011 (la 0018 recrea groups, necesita las columnas reales).
   sqlite.exec('CREATE TABLE trees (id text)');
-  // id como PK igual que en el device real: la FK del recreate de la 0018
-  // exige que la columna referenciada sea PK/unique.
+  // PK igual que en el device real: el recreate de la 0018 exige FK a columna PK/unique.
   sqlite.exec('CREATE TABLE plantations (id text PRIMARY KEY NOT NULL)');
   sqlite.exec('CREATE TABLE parcelas (id text PRIMARY KEY NOT NULL)');
   sqlite.exec(`CREATE TABLE groups (

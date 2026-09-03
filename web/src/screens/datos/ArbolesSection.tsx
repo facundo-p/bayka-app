@@ -34,7 +34,7 @@ function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
   );
 }
 
-/** Especie del árbol: punto de color + "código · nombre" (N/N si sin identificar). */
+/** Especie del árbol (ver `BloqueEspecie` en ArbolDetalleModal). */
 function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
   const codigo = arbol.especieCodigo ?? 'N/N';
   const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;

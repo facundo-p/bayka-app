@@ -1,10 +1,7 @@
 import { formatearEntero } from '../../lib/formato';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 
-/**
- * Estado de los filtros tal como vive en los controles ('' = sin filtro).
- * `desde`/`hasta` son fechas 'YYYY-MM-DD' de los <input type="date">.
- */
+/** Estado de los filtros ('' = sin filtro); `desde`/`hasta` son 'YYYY-MM-DD' de `<input type="date">`. */
 export type FiltrosPlantaciones = {
   lugar: string;
   periodo: string;
@@ -45,13 +42,8 @@ export function hayFiltrosActivos(filtros: FiltrosPlantaciones): boolean {
 }
 
 /**
- * Filtra plantaciones combinando lugar + período + estado + fecha (AND).
- * Función PURA: no depende de React ni de queries; testeable sin render.
- *
- * La fecha se compara contra `createdAt` (columna "Creada"), el único campo de
- * fecha garantizado en toda fila. `fechaInicio` puede ser null si la migración
- * 024 no está aplicada, por eso NO se usa como eje de filtrado.
- * Un rango invertido (desde > hasta) no matchea ninguna fila → 0 resultados.
+ * Combina lugar+período+estado+fecha (AND); función pura, testeable sin render. Filtra por
+ * `createdAt` (no `fechaInicio`, que puede ser null si la migración 024 no está aplicada).
  */
 export function filtrarPlantaciones(
   plantaciones: PlantacionConStats[],
@@ -61,8 +53,7 @@ export function filtrarPlantaciones(
     if (filtros.lugar && plantacion.lugar !== filtros.lugar) return false;
     if (filtros.periodo && plantacion.periodo !== filtros.periodo) return false;
     if (filtros.estado && plantacion.estado !== filtros.estado) return false;
-    // createdAt es ISO ('YYYY-MM-DDTHH:mm:ssZ'); la porción de fecha se compara
-    // lexicográficamente contra 'YYYY-MM-DD' (ambos ordenan igual como texto).
+    // createdAt es ISO; comparar el prefijo 'YYYY-MM-DD' lexicográficamente funciona porque ambos ordenan igual como texto.
     const fecha = plantacion.createdAt.slice(0, 10);
     if (filtros.desde && fecha < filtros.desde) return false;
     if (filtros.hasta && fecha > filtros.hasta) return false;

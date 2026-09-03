@@ -1,15 +1,8 @@
 /**
- * ParcelaRepository — CRUD + soft-delete tombstone (D-16-19) for parcelas.
- *
- * Mirrors GroupRepository shape (post-16-01). Validates uniqueness (nombre/codigo
- * per plantation, excluding tombstones), descripcion length (≤10k), and blocks
- * delete when child groups exist.
- *
- * Read paths filter `deleted_at IS NULL` by default. Sync internals can pass
- * `{ includeDeleted: true }` to surface tombstoned rows (e.g. to push the
- * tombstone to server).
- *
- * Parcelas do NOT have a `usuarioCreador` column — auditing is server-side.
+ * ParcelaRepository — CRUD + soft-delete tombstone de parcelas.
+ * Valida nombre/codigo únicos por plantación (excluye tombstones) y descripcion ≤10k; bloquea
+ * delete si hay grupos hijos. Lecturas filtran deleted_at IS NULL salvo `{ includeDeleted: true }`
+ * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side.
  */
 import { db } from '../database/client';
 import { parcelas, groups } from '../database/schema';
@@ -53,10 +46,7 @@ export type RestoreParcelaResult =
   | { restored: true }
   | { restored: false; error: 'not_found' | DuplicateError };
 
-/**
- * Validates nombre/codigo uniqueness within a plantation. Excludes tombstoned
- * rows (deletedAt IS NULL) so a reused name from a tombstoned parcela is OK.
- */
+/** Valida nombre/codigo únicos en la plantación, excluyendo tombstones — un nombre reusado de una parcela tombstoned es válido. */
 async function validateParcelaUniqueness(
   plantacionId: string,
   nombre: string,
@@ -88,10 +78,7 @@ function validateDescripcion(descripcion?: string | null): DescripcionError | nu
   return null;
 }
 
-/**
- * Find a single parcela by id. Tombstoned rows are hidden unless
- * `opts.includeDeleted` is true (internal sync use only).
- */
+/** Busca una parcela por id; oculta tombstones salvo `opts.includeDeleted` (uso interno de sync). */
 export async function findById(
   id: string,
   opts?: { includeDeleted?: boolean },
@@ -149,7 +136,7 @@ export async function updateParcela(
   params: { nombre: string; codigo: string; descripcion?: string | null },
 ): Promise<UpdateParcelaResult> {
   const upperCodigo = params.codigo.toUpperCase();
-  const existing = await findById(id); // filters tombstones by default
+  const existing = await findById(id);
   if (!existing) return { success: false, error: 'not_found' };
   const descripcionError = validateDescripcion(params.descripcion);
   if (descripcionError) return { success: false, error: descripcionError };
@@ -175,13 +162,9 @@ async function countChildGroups(parcelaId: string): Promise<number> {
   return row?.cnt ?? 0;
 }
 
-/**
- * Soft-deletes a parcela by setting deleted_at (tombstone). Blocked if the
- * parcela has child groups. Idempotent: a second delete on an already
- * tombstoned parcela returns not_found.
- */
+/** Soft-delete (tombstone) de una parcela; bloqueado si tiene grupos hijos. Idempotente: un segundo delete sobre una parcela ya tombstoned retorna not_found. */
 export async function deleteParcela(id: string): Promise<DeleteParcelaResult> {
-  const existing = await findById(id); // returns null if tombstoned/missing
+  const existing = await findById(id);
   if (!existing) return { deleted: false, error: 'not_found' };
   const childCount = await countChildGroups(id);
   if (childCount > 0) {
@@ -195,12 +178,7 @@ export async function deleteParcela(id: string): Promise<DeleteParcelaResult> {
   return { deleted: true };
 }
 
-/**
- * Restores a tombstoned parcela. Used by sync conflict recovery.
- * Validates that no active parcela with the same nombre/codigo exists in the
- * same plantation (could happen if another parcela took its slot while it was
- * tombstoned).
- */
+/** Restaura una parcela tombstoned (sync conflict recovery); valida que ninguna parcela activa tenga el mismo nombre/codigo en la plantación (pudo tomar su lugar mientras estaba tombstoned). */
 export async function restoreParcela(id: string): Promise<RestoreParcelaResult> {
   const existing = await findById(id, { includeDeleted: true });
   if (!existing || existing.deletedAt === null) {
@@ -225,11 +203,7 @@ export async function markParcelaPendingSync(id: string): Promise<void> {
   notifyDataChanged();
 }
 
-/**
- * Clears pendingSync flag after a successful server sync. Applies to both
- * active and tombstoned parcelas — the tombstone persists locally, only the
- * sync flag is cleared.
- */
+/** Limpia pendingSync tras sync exitoso; aplica a parcelas activas y tombstoned (el tombstone persiste local, solo se limpia el flag). */
 export async function markParcelaSynced(id: string): Promise<void> {
   await db.update(parcelas)
     .set({ pendingSync: false })
@@ -237,10 +211,7 @@ export async function markParcelaSynced(id: string): Promise<void> {
   notifyDataChanged();
 }
 
-/**
- * Returns parcelas with pendingSync=true. INCLUDES tombstoned rows so the
- * delete-as-sync flow can propagate to server.
- */
+/** Parcelas con pendingSync=true, INCLUYE tombstoned para que el delete-as-sync se propague al server. */
 export async function getSyncableParcelas(plantacionId: string): Promise<Parcela[]> {
   const rows = await db.select().from(parcelas)
     .where(and(eq(parcelas.plantacionId, plantacionId), eq(parcelas.pendingSync, true)));

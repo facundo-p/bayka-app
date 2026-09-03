@@ -1,5 +1,4 @@
-// Tests for TreeRepository — unit tests using mock-based approach
-// Covers: insertTree, deleteLastTree, reverseTreeOrder, resolveNNTree, updateTreePhoto, deleteTreeAndRecalculate
+// Unit tests for TreeRepository (mock-based)
 
 // --- DB mock infrastructure ---
 
@@ -298,7 +297,6 @@ describe('TreeRepository', () => {
 
   describe('deleteTreeAndRecalculate', () => {
     it('deletes tree and runs transaction to recalculate positions', async () => {
-      // [0] lleva parcelaId + codigo para el lookup de getGroupParcelaCodigo.
       const remainingTrees = [
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },

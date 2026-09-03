@@ -31,8 +31,8 @@ import {
 import { createParcela, deleteParcela } from '../../src/repositories/ParcelaRepository';
 import { eq } from 'drizzle-orm';
 
-// Force-tombstones a parcela bypassing the has_children guard — used to set up
-// pure query-filter scenarios where children must remain.
+// Force-tombstones a parcela bypassing the has_children guard, para probar
+// filtros de query con hijos que deben permanecer.
 async function forceTombstone(parcelaId: string): Promise<void> {
   await mockTestDb.update(parcelas)
     .set({ deletedAt: localNow(), pendingSync: true })
@@ -130,7 +130,7 @@ describe('parcelaQueries', () => {
     const plantacionId = await seedPlantation();
     const c = await createParcela({ plantacionId, nombre: 'P1', codigo: 'P1' });
     if (!c.success) throw new Error('seed failed');
-    await seedGroup(plantacionId, c.id, 'G1', true); // pendingSync=true
+    await seedGroup(plantacionId, c.id, 'G1', true);
     const list = await listByPlantacionWithStats(plantacionId);
     expect(list[0].pendingSyncBelow).toBe(true);
   });

@@ -37,7 +37,6 @@ export interface UseTreeRegistrationParams {
 }
 
 export interface UseTreeRegistrationResult {
-  // Data
   allTrees: ReturnType<typeof useTrees>['allTrees'];
   lastThree: ReturnType<typeof useTrees>['lastThree'];
   totalCount: number;
@@ -60,12 +59,10 @@ export interface UseTreeRegistrationResult {
   recapturingGps: boolean;
   /** treeId cuya captura GPS está en curso (detalle de árbol), o null. */
   gpsCapturingTreeId: string | null;
-  // Loading states
   finalizing: boolean;
   reversing: boolean;
   deleting: boolean;
   deletingTreeId: string | null;
-  // Actions
   registerTree: (especieId: string, especieCodigo: string) => Promise<void>;
   undoLast: () => Promise<void>;
   addPhotoToTree: (treeId: string, pickPhoto: () => Promise<string | null>) => Promise<void>;

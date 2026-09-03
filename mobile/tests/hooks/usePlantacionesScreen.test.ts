@@ -1,8 +1,7 @@
 /**
- * Tests for usePlantacionesScreen — the hook extracted from PlantacionesScreen
- * that owns modal/dialog state and the handlers wired to the data hooks.
- * All sub-hooks are mocked; this only verifies the hook's own state
- * transitions and how it calls into them (no data access here).
+ * Tests for usePlantacionesScreen — owns modal/dialog state and the handlers
+ * wired to data hooks. Sub-hooks are mocked; only the hook's own state
+ * transitions and calls into them are verified here.
  */
 import { act, renderHook } from '@testing-library/react-native';
 

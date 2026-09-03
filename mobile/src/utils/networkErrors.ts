@@ -1,9 +1,4 @@
-/**
- * Message substring React Native's fetch (used by the Supabase client)
- * throws when there is no network connectivity at request time. Runtime
- * contract, not configurable — centralized so callers never compare
- * `e.message` against the raw literal.
- */
+/** Message substring RN's fetch (via the Supabase client) throws with no network connectivity. Runtime contract, not configurable — callers never compare `e.message` against the raw literal directly. */
 const NETWORK_REQUEST_FAILED_MESSAGE = 'Network request failed';
 
 /** True when `e` is a fetch failure due to no network connectivity. */

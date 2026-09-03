@@ -1,7 +1,5 @@
-// Gate de captura por el toggle de medición de GPS (#121): con la medición
-// desactivada, attachGpsCapture no escribe coordenadas ni pide un fix fresco
-// (no se prende el GPS). El camino "medición ON" lo cubre la integración
-// tree-gps-capture.test.ts (default habilitado).
+// Gate de captura por el toggle de medición de GPS (#121): desactivada, no escribe
+// coordenadas ni pide fix fresco. El camino "medición ON" lo cubre tree-gps-capture.test.ts.
 
 const mockUpdateTreeGps = jest.fn();
 const mockGetCurrentGpsFix = jest.fn();

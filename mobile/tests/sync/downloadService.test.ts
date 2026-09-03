@@ -1,5 +1,4 @@
-// Tests for downloadPlantation and batchDownload in SyncService
-// Covers: CATL-01, CATL-04, CATL-06 (download side)
+// Tests for downloadPlantation and batchDownload (download side) in SyncService.
 
 jest.mock('../../src/database/client', () => ({
   db: {
@@ -64,13 +63,8 @@ function setupDbInsertSuccess() {
 
 /**
  * Sets up supabase.from to return empty data (simulates empty pullFromServer).
- * Handles all chain patterns used by pullFromServer:
- * - .select().eq().single() (plantation metadata)
- * - .select().eq() (groups, plantation_users, plantation_species)
- * - .select().in() (trees)
- *
- * The eq() mock returns a thenable that resolves to { data: [], error: null }
- * and also exposes .single() for the plantation metadata query.
+ * eq() resolves to { data: [], error: null } and also exposes .single(), covering
+ * the three chain patterns pullFromServer uses: .eq().single(), .eq(), .in().
  */
 function setupSupabaseFromEmpty() {
   const eqResult = { data: [], error: null };
@@ -88,12 +82,9 @@ function setupSupabaseFromEmpty() {
 }
 
 /**
- * Sets up db.select, db.update, and db.delete chains used by pullFromServer.
- * pullFromServer calls:
- * - db.select({...}).from().where() for pendingEdit check and plantation_users
- * - db.select().from().where() for plantation_users
- * - db.update().set().where() for plantation metadata
- * - db.delete().where() for removed plantation_users
+ * Sets up db.select/update/delete chains used by pullFromServer: select for the
+ * pendingEdit check and plantation_users, update for plantation metadata, delete
+ * for removed plantation_users.
  */
 function setupDbSelectEmpty() {
   (db.select as jest.Mock).mockReturnValue({
@@ -135,9 +126,7 @@ describe('downloadPlantation', () => {
 
     await downloadPlantation(sp);
 
-    // Verify db.insert was called (upsert step)
     expect(db.insert).toHaveBeenCalled();
-    // Verify values was called with correct camelCase field mapping
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({
       id: 'p-1',
       organizacionId: 'org-1',
@@ -147,9 +136,8 @@ describe('downloadPlantation', () => {
       creadoPor: 'user-admin',
       createdAt: '2026-01-01T00:00:00Z',
     }));
-    // Verify onConflictDoUpdate was called (upsert pattern)
     expect(onConflictSpy).toHaveBeenCalled();
-    // Verify pullFromServer was called (supabase.from is called by pullFromServer)
+    // pullFromServer runs too (it calls supabase.from).
     expect(supabase.from).toHaveBeenCalled();
   });
 
@@ -163,9 +151,8 @@ describe('downloadPlantation', () => {
 
     expect(onConflictSpy).toHaveBeenCalledTimes(1);
     const conflictArgs = onConflictSpy.mock.calls[0][0];
-    // Verify the target is provided (plantations.id column reference)
+    // target must be the plantations.id column reference
     expect(conflictArgs).toHaveProperty('target');
-    // Verify set has estado
     expect(conflictArgs).toHaveProperty('set');
     expect(conflictArgs.set).toHaveProperty('estado');
   });
@@ -225,9 +212,8 @@ describe('batchDownload', () => {
 
     await batchDownload(plantations, onProgress);
 
-    // Multiple emissions per plantation (per-phase progress + start). Reduce
-    // to the first event for each plantation to verify they are emitted in
-    // the expected order with the right name + index.
+    // Multiple events fire per plantation (per-phase progress + start) — reduce to
+    // the first per plantation to check order and name/index.
     const firstEventPerPlantation = progressCalls.filter(
       (p, i, arr) => i === 0 || p.currentName !== arr[i - 1].currentName,
     );
@@ -279,7 +265,6 @@ describe('batchDownload', () => {
 
     await batchDownload(plantations);
 
-    // notifyDataChanged must be called exactly once (after the entire loop)
     expect(notifyDataChanged).toHaveBeenCalledTimes(1);
   });
 
@@ -301,7 +286,6 @@ describe('batchDownload', () => {
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({ success: true, id: 'p-1', nombre: 'Alpha' });
     expect(results[1]).toMatchObject({ success: false, id: 'p-2', nombre: 'Beta' });
-    // Verify shape of returned type
     expect(typeof results[0].nombre).toBe('string');
     expect(typeof results[0].success).toBe('boolean');
     expect(typeof results[0].id).toBe('string');

@@ -1,19 +1,14 @@
 /*
- * Genera un archivo KML con los puntos GPS de los árboles de una plantación,
- * importable en Google Maps / Google Earth. La construcción del XML es una
- * función pura y testeable (`construirKml`); la descarga usa un helper aparte.
- *
- * Color por especie: reutiliza el ÚNICO mapeo código→color de la app
- * (`colorEspeciePorCodigo`), el mismo que pinta el mapa Leaflet y el dashboard,
- * para que los puntos en Earth coincidan con los de la web. El hex #rrggbb se
- * traduce al formato KML `aabbggrr` (alfa + BGR).
+ * KML con los puntos GPS de los árboles, importable en Google Maps/Earth (`construirKml`
+ * es pura y testeable). El color por especie reutiliza el único mapeo código→color de la
+ * app (`colorEspeciePorCodigo`) para que coincida con el mapa Leaflet y el dashboard; el
+ * hex #rrggbb se traduce al formato KML `aabbggrr` (alfa + BGR).
  */
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../queries/especiesConstantes';
 import type { PuntoGps } from '../queries/mapaQueries';
 import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
 import { nombreArchivoDescarga } from './descargas';
 
-/** MIME de KML; extensión del archivo descargado. */
 export const TIPO_MIME_KML = 'application/vnd.google-earth.kml+xml';
 const EXTENSION_KML = 'kml';
 
@@ -25,7 +20,6 @@ export type OpcionesKml = {
   nombreDocumento: string;
 };
 
-/** Escapa los caracteres reservados de XML en texto libre (nombres/descripciones). */
 function escaparXml(texto: string): string {
   return texto
     .replace(/&/g, '&amp;')
@@ -35,7 +29,7 @@ function escaparXml(texto: string): string {
     .replace(/'/g, '&apos;');
 }
 
-/** #rrggbb → color KML `aabbggrr` (alfa opaco + azul/verde/rojo). */
+/** #rrggbb → `aabbggrr` KML (alfa opaco + BGR). */
 function hexAColorKml(hex: string): string {
   const rgb = hex.replace('#', '');
   const rojo = rgb.slice(0, 2);
@@ -44,7 +38,6 @@ function hexAColorKml(hex: string): string {
   return `${ALFA_KML_OPACO}${azul}${verde}${rojo}`;
 }
 
-/** id de `<Style>` estable y XML-safe derivado del código de especie. */
 function idEstilo(codigo: string): string {
   const seguro = codigo.replace(/[^a-zA-Z0-9]/g, '-') || ESPECIE_SIN_IDENTIFICAR;
   return `especie-${seguro}`;
@@ -63,7 +56,6 @@ function agruparPorEspecie(puntos: PuntoGps[]): GrupoEspecie[] {
   return [...grupos.values()];
 }
 
-/** `<Style>` con el color de la especie aplicado al ícono del punto. */
 function bloqueEstilo(grupo: GrupoEspecie): string {
   const color = hexAColorKml(colorEspeciePorCodigo(grupo.codigo));
   return `    <Style id="${idEstilo(grupo.codigo)}">
@@ -71,7 +63,7 @@ function bloqueEstilo(grupo: GrupoEspecie): string {
     </Style>`;
 }
 
-/** `<Placemark>` de un árbol: nombre de especie + punto en orden lng,lat,0. */
+/** KML espera coordenadas en orden lng,lat,0 (no lat,lng). */
 function bloquePlacemark(punto: PuntoGps, styleId: string): string {
   return `      <Placemark>
         <name>${escaparXml(punto.nombre)}</name>
@@ -81,7 +73,6 @@ function bloquePlacemark(punto: PuntoGps, styleId: string): string {
       </Placemark>`;
 }
 
-/** `<Folder>` por especie con un placemark por árbol. */
 function bloqueCarpeta(grupo: GrupoEspecie): string {
   const styleId = idEstilo(grupo.codigo);
   const nombre = grupo.codigo === ESPECIE_SIN_IDENTIFICAR ? NOMBRE_SIN_IDENTIFICAR : grupo.nombre;
@@ -92,11 +83,7 @@ ${placemarks}
     </Folder>`;
 }
 
-/**
- * KML válido con un `<Placemark>` por árbol, agrupados en un `<Folder>` por
- * especie y coloreados con el color estable de cada especie. Función pura:
- * mismos puntos → misma cadena, sin efectos de red ni de DOM.
- */
+/** KML válido: un `<Placemark>` por árbol agrupado en `<Folder>` por especie. Función pura. */
 export function construirKml(puntos: PuntoGps[], opciones: OpcionesKml): string {
   const grupos = agruparPorEspecie(puntos);
   const estilos = grupos.map(bloqueEstilo).join('\n');

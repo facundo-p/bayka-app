@@ -1,5 +1,4 @@
-// Tests for plantationDetailQueries — extracted query functions
-// Validates function signatures, null/edge case handling, and return types
+// plantationDetailQueries — validates return shapes and null/edge case handling
 
 jest.mock('../../src/database/client', () => {
   // Build a deeply chainable mock that resolves to configurable results
@@ -119,7 +118,6 @@ describe('plantationDetailQueries', () => {
       const { db } = require('../../src/database/client');
       const result = await getTodayTreesForUser('p-1', null);
       expect(result).toBe(0);
-      // db.select should not be called for null user
     });
 
     it('returns today tree count for valid user', async () => {

@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 import { leerPaginado } from './leerPaginado';
 
-/** Especie del catálogo global (tabla `species`). */
 export type EspecieCatalogo = {
   id: string;
   codigo: string;
@@ -48,7 +47,6 @@ function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
   };
 }
 
-/** Catálogo global completo, ordenado por código. */
 export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
   const { data, error } = await supabase
     .from('species')
@@ -78,8 +76,7 @@ export async function listarEspeciesDePlantacion(
     .eq('plantation_id', plantationId)
     .order('orden_visual', { ascending: true });
   if (error) throw new Error(error.message);
-  // El cliente sin typegen tipa el embed como array, pero la FK species_id →
-  // species es many-to-one: en runtime llega un objeto.
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   return ((data ?? []) as unknown as FilaAsignada[]).map(mapearAsignada);
 }
 
@@ -94,11 +91,7 @@ async function tieneArbolesEspecie(plantationId: string, speciesId: string): Pro
   return (count ?? 0) > 0;
 }
 
-/**
- * Especies habilitadas + uso. Un count head por especie en paralelo: una
- * plantación habilita pocas especies, así que el costo es marginal (mismo
- * criterio que los counts del listado de plantaciones).
- */
+/** Especies + uso: un count head por especie en paralelo (pocas por plantación, costo marginal). */
 export async function listarEspeciesConUso(plantationId: string): Promise<EspecieConUso[]> {
   const especies = await listarEspeciesDePlantacion(plantationId);
   const usos = await Promise.all(
@@ -108,12 +101,8 @@ export async function listarEspeciesConUso(plantationId: string): Promise<Especi
 }
 
 /**
- * Cuántas plantaciones habilitan cada especie (clave = species_id).
- *
- * Criterio de "se usa": especie HABILITADA en N plantaciones (una fila en
- * plantation_species por par plantación-especie). Es la lectura barata y
- * RLS-safe: leemos todas las filas visibles y contamos en cliente, sin
- * count-por-especie en el servidor.
+ * Cuántas plantaciones habilitan cada especie (clave = species_id): "se usa" = habilitada, no con árboles.
+ * Lectura barata y RLS-safe, contando en cliente en vez de un count-por-especie en el servidor.
  */
 async function contarPlantacionesPorEspecie(): Promise<Map<string, number>> {
   const filas = await leerPaginado<{ species_id: string }>((desde, hasta) =>
@@ -135,12 +124,7 @@ async function contarArbolesDeEspecie(speciesId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-/**
- * Catálogo global + uso por especie. Un count head de árboles por especie en
- * paralelo: el catálogo son ~14 especies, así que el costo es marginal (mismo
- * criterio que los counts del listado de plantaciones). Mantiene el orden por
- * código de `listarCatalogo`.
- */
+/** Catálogo + uso: count head de árboles por especie en paralelo (~14 especies, costo marginal); mantiene el orden de `listarCatalogo`. */
 export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
   const [catalogo, plantacionesPorEspecie] = await Promise.all([
     listarCatalogo(),

@@ -1,6 +1,3 @@
-/**
- * Styles for ParcelasScreen — tokens from theme.ts (CLAUDE.md §8).
- */
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 

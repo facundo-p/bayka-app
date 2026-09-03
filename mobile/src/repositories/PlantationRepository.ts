@@ -1,13 +1,6 @@
 /**
- * PlantationRepository — all admin mutation functions for plantation management.
- *
- * All server mutations (create, finalize, save species, assign technicians) write
- * to Supabase first, then sync back to local SQLite + call notifyDataChanged().
- *
- * Los IDs finales (plantacion_id/global_id) los genera la web de gestión
- * server-side (RPC generate_tree_ids, issue #232); la app los recibe por pull.
- *
- * Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05, PLAN-06
+ * PlantationRepository — mutaciones admin: escriben a Supabase primero, sincronizan a SQLite después.
+ * IDs finales (plantacion_id/global_id) los genera el server (RPC generate_tree_ids, #232) y llegan vía pull.
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
@@ -21,12 +14,7 @@ import { isNetworkRequestFailed } from '../utils/networkErrors';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
-/**
- * Registra localmente al creador como miembro admin de la plantación (issue
- * #67). El server mantiene la membresía completa vía trigger (migración 028);
- * esta fila local garantiza consistencia inmediata (online) y offline hasta el
- * próximo pull.
- */
+/** Inserta localmente la membresía admin del creador (#67); el server la completa vía trigger, pero esta fila da consistencia inmediata offline hasta el próximo pull. */
 async function upsertLocalAdminMembership(plantacionId: string, userId: string): Promise<void> {
   await db
     .insert(plantationUsers)
@@ -41,14 +29,7 @@ async function upsertLocalAdminMembership(plantacionId: string, userId: string):
 
 // ─── createPlantation ─────────────────────────────────────────────────────────
 
-/**
- * PLAN-01
- * Creates a new plantation on Supabase, then upserts the returned row into
- * local SQLite so it appears immediately in the admin list.
- *
- * CRITICAL (Pitfall 2): pullFromServer does NOT pull the plantation row itself —
- * only groups/species/users. We must upsert the returned row directly.
- */
+/** Crea la plantación en Supabase y upsertea la fila en SQLite local: pullFromServer no trae la fila de plantation en sí (solo groups/species/users). */
 /** Config GPS por plantación que el admin puede definir en el form. */
 export interface PlantationGpsSettings {
   gpsCaptureFrequency: number;
@@ -86,7 +67,6 @@ export async function createPlantation(
 
   if (error) throw error;
 
-  // Upsert plantation row directly into local SQLite (pullFromServer won't do this)
   await db
     .insert(plantations)
     .values({
@@ -114,12 +94,7 @@ export async function createPlantation(
 
 // ─── createPlantationLocally ──────────────────────────────────────────────────
 
-/**
- * OFPL-01
- * Creates a new plantation row in local SQLite only, with pendingSync=true.
- * No Supabase call — works fully offline.
- * Groups can immediately reference this plantation via FK because the row exists locally.
- */
+/** Crea la plantación solo en SQLite local (pendingSync=true, sin llamar a Supabase) — los grupos pueden referenciarla por FK de inmediato. */
 export async function createPlantationLocally(
   lugar: string,
   periodo: string,
@@ -148,18 +123,9 @@ export async function createPlantationLocally(
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
 /**
- * Updates lugar, periodo y config GPS de una plantación existente.
- *
- * Online: pushea a Supabase primero, luego actualiza SQLite local + columnas
- * *Server (snapshot del último valor de server).
- * Offline: guarda local, setea pendingEdit=true y snapshotea los valores
- * originales (solo en la primera edición offline — ediciones siguientes
- * conservan el snapshot para que discard revierta al último estado de server).
- * La config GPS sigue el MISMO patrón de snapshot que lugar/periodo
- * (gpsCaptureFrequencyServer/RequiredServer), así discardPlantationEdit la revierte.
- *
- * pendingEdit solo aplica con pendingSync=false (plantación ya en server). Para
- * plantaciones creadas offline (pendingSync=true) se actualizan campos directo.
+ * Actualiza lugar/periodo/GPS: online pushea a Supabase y sincroniza las columnas *Server; offline
+ * guarda local con pendingEdit=true, snapshoteando el valor original SOLO la primera vez (para que
+ * discardPlantationEdit revierta al último server). No aplica a plantaciones creadas offline.
  */
 export async function updatePlantation(
   plantacionId: string,
@@ -193,7 +159,6 @@ export async function updatePlantation(
 
   if (!row) throw new Error('Plantación no encontrada');
 
-  // For offline-created plantations, just update local fields
   if (row.pendingSync) {
     await db
       .update(plantations)
@@ -203,7 +168,6 @@ export async function updatePlantation(
     return;
   }
 
-  // Try online update
   const net = await NetInfo.fetch();
   if (net.isConnected !== false) {
     try {
@@ -213,7 +177,6 @@ export async function updatePlantation(
         .eq('id', plantacionId);
       if (error) throw error;
 
-      // Success: update local + server columns, clear pendingEdit
       await db
         .update(plantations)
         .set({
@@ -229,12 +192,11 @@ export async function updatePlantation(
       notifyDataChanged();
       return;
     } catch (e: any) {
-      // Network error → fall through to offline path
+      // Solo errores de red caen al camino offline; el resto se propaga.
       if (!isNetworkRequestFailed(e)) throw e;
     }
   }
 
-  // Offline path: save locally + snapshot originals on first edit
   const isFirstOfflineEdit = !row.pendingEdit;
   await db
     .update(plantations)
@@ -243,7 +205,6 @@ export async function updatePlantation(
       periodo,
       ...gpsLocal,
       pendingEdit: true,
-      // Only snapshot server values on first offline edit
       ...(isFirstOfflineEdit
         ? {
             lugarServer: row.lugarServer ?? row.lugarCurrent,
@@ -259,10 +220,7 @@ export async function updatePlantation(
 
 // ─── discardPlantationEdit ───────────────────────────────────────────────────
 
-/**
- * Reverts a pending offline edit: restores lugar/periodo y la config GPS desde
- * las columnas *Server y limpia pendingEdit. Funciona 100% offline — sin red.
- */
+/** Revierte una edición offline pendiente: restaura lugar/periodo/GPS desde las columnas *Server y limpia pendingEdit. Funciona sin red. */
 export async function discardPlantationEdit(plantacionId: string): Promise<void> {
   const [row] = await db
     .select({
@@ -284,8 +242,7 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
       lugar: row.lugarServer,
       periodo: row.periodoServer,
       pendingEdit: false,
-      // Revertir la config GPS solo si hay snapshot (plantaciones editadas antes
-      // de existir las columnas 0016 no lo tienen → se dejan como están).
+      // Solo revertir GPS si hay snapshot: plantaciones editadas antes de esas columnas no lo tienen.
       ...(row.gpsFreqServer !== null ? { gpsCaptureFrequency: row.gpsFreqServer } : {}),
       ...(row.gpsReqServer !== null ? { gpsCaptureRequired: row.gpsReqServer } : {}),
     })
@@ -295,15 +252,8 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
 
 // ─── finalizePlantation ───────────────────────────────────────────────────────
 
-/**
- * PLAN-06
- * Updates plantation estado to 'finalizada' on Supabase AND local SQLite.
- *
- * CRITICAL (Pitfall 6): Must update BOTH server AND local. Server update
- * propagates to other devices; local update keeps UI reactive immediately.
- */
+/** Marca la plantación 'finalizada' en Supabase Y en SQLite local: el update de server propaga a otros devices, el local mantiene la UI reactiva sin esperar el pull. */
 export async function finalizePlantation(plantacionId: string): Promise<void> {
-  // 1. Update on Supabase
   const { error } = await supabase
     .from('plantations')
     .update({ estado: 'finalizada' })
@@ -311,7 +261,6 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
   if (error) throw error;
 
-  // 2. Update local SQLite
   await db
     .update(plantations)
     .set({ estado: 'finalizada' })
@@ -322,19 +271,11 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
 // ─── saveSpeciesConfig ────────────────────────────────────────────────────────
 
-/**
- * PLAN-02 / PLAN-04 / PLAN-05
- * Atomically replaces all species for a plantation:
- * 1. DELETE all existing plantation_species on Supabase
- * 2. INSERT the new items array on Supabase
- * 3. pullFromServer to sync back to local SQLite
- * 4. notifyDataChanged for reactive UI
- */
+/** Reemplaza atómicamente el species config de la plantación en Supabase y sincroniza a SQLite vía pullFromServer. */
 export async function saveSpeciesConfig(
   plantacionId: string,
   items: Array<{ especieId: string; ordenVisual: number }>
 ): Promise<void> {
-  // Delete all existing species for this plantation
   const { error: deleteError } = await supabase
     .from('plantation_species')
     .delete()
@@ -342,7 +283,6 @@ export async function saveSpeciesConfig(
 
   if (deleteError) throw deleteError;
 
-  // Insert new items if any
   if (items.length > 0) {
     const { error: insertError } = await supabase
       .from('plantation_species')
@@ -357,19 +297,13 @@ export async function saveSpeciesConfig(
     if (insertError) throw insertError;
   }
 
-  // Sync back to local SQLite (pullFromServer handles plantation_species upsert)
   await pullFromServer(plantacionId);
   notifyDataChanged();
 }
 
 // ─── saveSpeciesConfigLocally ─────────────────────────────────────────────────
 
-/**
- * OFPL-02
- * Writes plantation_species rows to local SQLite only — no Supabase call.
- * Replaces all existing species for the plantation atomically.
- * Used for offline plantation species configuration.
- */
+/** Reemplaza atómicamente el species config solo en SQLite local (sin Supabase) — para configuración offline. */
 export async function saveSpeciesConfigLocally(
   plantacionId: string,
   items: Array<{ especieId: string; ordenVisual: number }>
@@ -390,16 +324,7 @@ export async function saveSpeciesConfigLocally(
 
 // ─── assignTechnicians ────────────────────────────────────────────────────────
 
-/**
- * PLAN-03
- * Reemplaza atómicamente las asignaciones de TÉCNICOS de una plantación:
- * 1. DELETE de las filas con rol_en_plantacion='tecnico' en Supabase
- * 2. INSERT de las nuevas asignaciones
- * 3. pullFromServer para sincronizar el SQLite local
- *
- * Issue #67: el delete filtra por rol para NO borrar las membresías 'admin'
- * (fuente de permisos de parcelas/grupos desde la migración 028).
- */
+/** Reemplaza las asignaciones de técnicos (filtra por rol_en_plantacion='tecnico' para no borrar membresías admin, #67) y sincroniza vía pullFromServer. */
 export async function assignTechnicians(
   plantacionId: string,
   userIds: string[]
@@ -413,7 +338,6 @@ export async function assignTechnicians(
   console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;
 
-  // Insert new assignments
   if (userIds.length > 0) {
     const now = new Date().toISOString();
     const { error: insertError } = await supabase
@@ -430,28 +354,13 @@ export async function assignTechnicians(
     if (insertError) throw insertError;
   }
 
-  // Sync back to local SQLite
   await pullFromServer(plantacionId);
   notifyDataChanged();
 }
 
 // --- deletePlantationLocally ------------------------------------------------
 
-/**
- * Removes a plantation and ALL related data from local SQLite.
- * Server data (Supabase) is NOT affected.
- *
- * Deletion order (manual cascade — SQLite does not enforce FK cascades):
- * 1. trees (via subgroup IDs)
- * 2. groups
- * 3. parcelas (#90: antes no se borraban y quedaban filas huérfanas)
- * 4. plantation_species
- * 5. plantation_users
- * 6. user_species_order
- * 7. plantations
- *
- * Wrapped in db.transaction() for atomicity.
- */
+/** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
   await db.transaction(async (tx) => {
     await tx.delete(trees).where(

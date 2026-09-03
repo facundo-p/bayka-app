@@ -1,13 +1,8 @@
 /**
- * Maps Supabase auth errors to user-friendly Spanish messages.
- *
- * The app is used by field technicians, not developers, so the UI must never
- * surface raw SDK strings. The most common offender: a down/paused backend
- * returns a non-JSON (HTML/text) 5xx, and supabase-js reports
- * `error.message = "JSON Parse error: Unexpected character e"`. That is a
- * connectivity problem, not bad credentials.
- *
- * `classifyAuthError` is pure so it can be unit-tested without rendering UI.
+ * Maps Supabase auth errors to user-friendly Spanish messages — field technicians
+ * must never see raw SDK strings (e.g. a down backend returns non-JSON 5xx and
+ * `error.message` becomes a JSON parse error, not "bad credentials"). Pure functions,
+ * unit-testable without rendering UI.
  */
 
 export type AuthErrorKind =
@@ -52,8 +47,8 @@ export function classifyAuthError(error: AnyAuthError): AuthErrorKind {
   const name = (error.name ?? '').toLowerCase();
   const message = (error.message ?? '').toLowerCase();
 
-  // Real invalid credentials: Supabase returns 400 + this code. Check first so
-  // a precise credential error is never misread as connectivity.
+  // Supabase returns 400 + this code for real invalid credentials; check first so
+  // it's never misread as connectivity.
   if (code === 'invalid_credentials' || message.includes('invalid login credentials')) {
     return 'invalid_credentials';
   }

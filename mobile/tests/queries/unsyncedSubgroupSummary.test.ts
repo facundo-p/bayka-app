@@ -1,5 +1,4 @@
-// Tests for getUnsyncedGroupSummary — unsynced subgroup detection query
-// Covers: DEL-02-unsynced-detection
+// Unsynced subgroup detection query
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -73,8 +72,6 @@ describe('getUnsyncedGroupSummary', () => {
   });
 
   it('Test 4: does NOT filter by usuarioCreador — counts groups from all technicians', async () => {
-    // This test verifies the query shape by checking the select mock was called
-    // and no usuario_creador filter is present
     const whereMock = jest.fn().mockReturnValue({
       groupBy: jest.fn().mockResolvedValue([{ estado: 'activa', cnt: 5 }]),
     });
@@ -89,9 +86,7 @@ describe('getUnsyncedGroupSummary', () => {
 
     const result = await getUnsyncedGroupSummary('plant-1');
 
-    // The function should work and return counts without user filtering
     expect(result.activaCount).toBe(5);
-    // Verify select was called (no user-specific params beyond plantacionId + estado filter)
     expect(db.select).toHaveBeenCalledTimes(1);
   });
 });

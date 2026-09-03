@@ -65,7 +65,6 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   }, [groupRows]);
   const userNames = useUserNames(creatorIds);
 
-  // Build maps
   const nnCountMap = new Map<string, number>();
   if (nnCounts) {
     for (const row of nnCounts) {
@@ -135,7 +134,6 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   }
 
   return {
-    // Data
     plantationRows,
     parcela,
     groupRows,
@@ -148,14 +146,12 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     estadoLoaded,
     isFinalizada,
     userNames,
-    // State
     deletingId,
     editingGroup,
     groupFilter,
     confirmProps: confirm.confirmProps,
     confirmShow: confirm.show,
     userId,
-    // Actions
     setGroupFilter,
     setEditingGroup,
     handleLongPress,

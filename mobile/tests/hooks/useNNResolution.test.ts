@@ -1,7 +1,6 @@
 /**
- * Tests for useNNResolution — focused on the #296 refactor: conflict
- * resolution (acceptServerResolution / keepLocalResolution) now delegates to
- * TreeRepository.clearTreeConflict instead of running db.update() inline.
+ * Tests for useNNResolution — conflict resolution (acceptServerResolution /
+ * keepLocalResolution) delegates to TreeRepository.clearTreeConflict (#296).
  */
 
 const mockResolveNNTree = jest.fn();

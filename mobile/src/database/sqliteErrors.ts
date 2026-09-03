@@ -1,8 +1,7 @@
 /**
- * SQLite error message substrings the expo-sqlite/drizzle driver raises.
- * Centralized so repositories never compare `e.message` against a raw
- * literal (same rationale as PG_ERROR for Postgres codes — see
- * src/supabase/postgresErrorCodes.ts).
+ * SQLite error message substrings que expone el driver expo-sqlite/drizzle.
+ * Centralizado para que los repositories no comparen `e.message` contra un
+ * literal suelto (mismo criterio que PG_ERROR en postgresErrorCodes.ts).
  */
 
 /** SQLite raises this substring when an INSERT/UPDATE violates a UNIQUE index or column constraint. */
@@ -15,10 +14,9 @@ export function isUniqueConstraintError(e: unknown): boolean {
 }
 
 /**
- * Substring of the `groups_parcela_name_unique` index name (see
- * src/database/schema.ts) that SQLite echoes in the UNIQUE violation
- * message — the only way to tell a nombre clash from a codigo clash
- * without a second query.
+ * Substring de `groups_parcela_name_unique` (ver schema.ts) que SQLite repite en el
+ * mensaje de violación UNIQUE — única forma de distinguir un clash de nombre del de
+ * código sin una segunda query.
  */
 const NAME_UNIQUE_INDEX_MARKER = 'name_unique';
 

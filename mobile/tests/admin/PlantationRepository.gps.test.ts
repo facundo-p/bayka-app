@@ -51,8 +51,8 @@ function mockDbChains(row: any) {
   insertedValues = undefined;
   updatedSet = undefined;
   (mockDb.insert as jest.Mock).mockReturnValue({
-    // Ignora el insert de membresía local (#67, tiene rolEnPlantacion) para
-    // que insertedValues siga capturando la fila de la plantación.
+    // Ignora el insert de membresía local (tiene rolEnPlantacion) para que
+    // insertedValues siga capturando la fila de la plantación (#67).
     values: jest.fn().mockImplementation((v: any) => {
       if (!v?.rolEnPlantacion) insertedValues = v;
       return Object.assign(Promise.resolve(), {

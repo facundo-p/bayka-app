@@ -125,7 +125,6 @@ export default function PlantationDetailScreen() {
             <HeaderActionButton
               testID="grupos-header-add"
               icon="add"
-              // Abre el alta de grupo arrastrando la plantación y parcela actuales por la URL
               onPress={() => router.push(`/${routePrefix}/plantation/nuevo-grupo?plantacionId=${pid}&parcelaId=${parcelaId}` as any)}
               accessibilityLabel="Nuevo grupo"
             />

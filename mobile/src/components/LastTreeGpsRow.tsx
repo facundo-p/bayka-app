@@ -15,10 +15,8 @@ interface Props {
 }
 
 /**
- * Precisión del punto del último árbol (color del semáforo) + re-captura
- * manual: el técnico espera a que la señal mejore y reemplaza el punto parado
- * junto al árbol. Si el árbol quedó sin punto (frecuencia), permite capturar
- * a demanda.
+ * Precisión del punto del último árbol (semáforo) + recaptura manual: el
+ * técnico espera mejor señal y reemplaza el punto; sin punto, permite capturar a demanda.
  */
 export default function LastTreeGpsRow({ gpsAccuracy, hasPoint, recapturing, onRecapture }: Props) {
   const accuracyColor =

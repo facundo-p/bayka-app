@@ -1,7 +1,6 @@
-// Tests for useKeyboardOverlap hook
-// Valida que la cobertura del teclado se calcule como alto_de_ventana − screenY
-// (geometría real, exacta por dispositivo) y NO con endCoordinates.height, que
-// en edge-to-edge sub-reporta por el inset de la nav bar.
+// Tests for useKeyboardOverlap: la cobertura del teclado se calcula como
+// alto_de_ventana − screenY (geometría real, exacta por dispositivo), no con
+// endCoordinates.height, que en edge-to-edge sub-reporta por el inset de la nav bar.
 
 import { renderHook, act } from '@testing-library/react-native';
 import { Keyboard, Dimensions } from 'react-native';

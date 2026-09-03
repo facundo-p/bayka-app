@@ -66,11 +66,7 @@ function lineaMeta(plantacion: Plantacion): string {
   return `${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
 }
 
-/**
- * Descarga los puntos GPS de la plantación como KML (Google Maps/Earth):
- * carga los puntos, arma el XML y dispara la descarga. Expone estado de carga
- * y un mensaje para el caso "sin puntos" (no se descarga un archivo vacío).
- */
+/** Descarga los puntos GPS como KML (Google Maps/Earth); no descarga si no hay puntos. */
 function useDescargaKml(plantacion: Plantacion) {
   return useDescarga(async () => {
     const puntos = await listarPuntosGps(plantacion.id);
@@ -89,11 +85,7 @@ type DescargarPlanilla = (
   periodo: string,
 ) => void | Promise<void>;
 
-/**
- * Descarga los árboles de la plantación como planilla (CSV o XLSX según el
- * serializador): carga las filas y dispara la descarga. Expone estado de carga
- * y un mensaje para el caso "sin árboles" (no se descarga una planilla vacía).
- */
+/** Descarga los árboles como planilla (CSV o XLSX según el serializador); no descarga si no hay árboles. */
 function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: DescargarPlanilla) {
   return useDescarga(async () => {
     const filas = await listarFilasExportacion(plantacion.id);

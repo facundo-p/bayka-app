@@ -1,4 +1,3 @@
-// Estilos de StatusChip.
 import { StyleSheet } from 'react-native';
 import { fontSize, spacing, borderRadius, fonts } from '../theme';
 

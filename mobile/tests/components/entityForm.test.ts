@@ -1,9 +1,5 @@
-/**
- * #89 — las pantallas de creación (Plantación/Parcela/Grupo) se unifican bajo un
- * template compartido (modelo: Parcela) con cuerpo keyboard-aware y footer fijo,
- * para que el botón de acción no quede tapado por el teclado. Tests estáticos
- * sobre el source.
- */
+// Las pantallas de creación (Plantación/Parcela/Grupo) comparten un template con
+// cuerpo keyboard-aware y footer fijo, para que el botón de acción no quede tapado (#89).
 import * as fs from 'fs';
 import * as path from 'path';
 

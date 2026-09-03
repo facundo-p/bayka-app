@@ -1,58 +1,32 @@
-/*
- * Filas de exportación de una plantación (planilla CSV/Excel).
- *
- * Espeja el esquema canónico de mobile (`getExportRows` en
- * mobile/src/queries/exportQueries.ts, D-18-08/09/10): trees → groups →
- * plantations, con LEFT JOIN a parcelas y a species. El LEFT JOIN a species es
- * deliberado: un árbol con `species_id` null o huérfano (especie ausente del
- * catálogo) NUNCA debe caerse del export — el consumidor lo marca "N/N".
- *
- * Lectura paginada con `leerPaginado` para no toparse con el `max-rows` (1000)
- * de PostgREST: plantaciones con miles de árboles se exportan completas.
- *
- * NOTA de columnas (D-18-09): `zona` y `plantacion` resuelven ambas a
- * `plantations.lugar`; se mantienen como dos columnas por compatibilidad con la
- * planilla histórica.
- */
+/* Filas de exportación de una plantación (espeja `getExportRows` de mobile); LEFT JOIN a species
+ * para que un árbol sin especie o huérfano nunca se caiga del export, se marca "N/N". */
 import { supabase } from '../lib/supabase';
 import { leerPaginado } from './leerPaginado';
 
-/** Etiqueta para árboles sin especie resuelta (D-18-08): visible en la planilla
- *  en vez de perder la fila. La comparten los serializadores CSV y XLSX. */
+/** Etiqueta para árboles sin especie: evita perder la fila (compartida por CSV y XLSX). */
 export const ESPECIE_NO_RESUELTA = 'N/N';
 
-/**
- * Fila cruda de una unidad exportable (un árbol). Preserva los nulls tal como
- * llegan de la base: la normalización ("N/N", celdas vacías) es responsabilidad
- * del constructor de CSV, no de la query.
- */
+/** Preserva los nulls de la base; la normalización ("N/N", celdas vacías) es responsabilidad del serializador, no de la query. */
 export type FilaExportacion = {
-  /** `global_id` del árbol (ID final); null si aún no se generó. */
+  /** `global_id` (ID final, null si aún no se generó) y `plantacion_id` (ID parcial, null si no tiene). */
   idGlobal: number | null;
-  /** `plantacion_id` del árbol (ID parcial entero); null si no tiene. */
   idParcial: number | null;
-  /** Lugar de la plantación (columna "Zona"). */
+  /** Columnas "Zona"/"Plantación" duplicadas (mismo valor) por compat con la planilla histórica. */
   zona: string;
-  /** Lugar de la plantación (columna "Plantación"). */
   plantacion: string;
   /** Nombre de la parcela; null cuando el grupo no tiene parcela (LEFT JOIN). */
   parcela: string | null;
-  /** Nombre del grupo. */
   grupo: string;
-  /** `sub_id` del árbol. */
   subId: string;
-  /** Período de la plantación. */
   periodo: string;
   /** Nombre de la especie; null si el árbol no tiene especie o es huérfana. */
   especie: string | null;
 };
 
 /**
- * Fila cruda del embed de PostgREST. Los embeds son many-to-one, así que en
- * runtime llegan como objetos (el cliente sin typegen los tipa como array).
- *
- * `deleted_at` de `parcelas` viaja solo para post-filtrar en `mapearFila`
- * (ver nota en `SELECT_EXPORTACION`); no es parte de `FilaExportacion`.
+ * Fila cruda del embed de PostgREST: los embeds son many-to-one, así que en runtime llegan
+ * como objetos (el cliente sin typegen los tipa como array). `deleted_at` no es parte de
+ * `FilaExportacion` (ver `SELECT_EXPORTACION`).
  */
 type ParcelaCruda = { nombre: string; deleted_at: string | null };
 
@@ -69,21 +43,14 @@ type FilaCruda = {
 };
 
 /**
- * Columnas + embeds del export. El scope por plantación va por el join interno
- * `groups!inner(plantation_id)` (mismo patrón que idsQueries/mapaQueries);
- * `plantations`, `parcelas` y `species` se embeben para el resto de columnas.
- * `parcelas.deleted_at` viaja solo para post-filtrar en `mapearFila`: no puede
- * ir como filtro de la consulta (`!inner` excluiría los árboles de grupos sin
- * parcela, un caso válido) — mismo criterio que oculta parcelas soft-deleted
- * en ArbolesSection/dashboard/buscar (`.is('deleted_at', null)` sobre la
- * tabla `parcelas` directa).
+ * Columnas + embeds; scope por plantación vía `groups!inner(plantation_id)`. `parcelas.deleted_at`
+ * no puede ir de filtro (`!inner` excluiría grupos sin parcela, caso válido); se post-filtra en `mapearFila`.
  */
 const SELECT_EXPORTACION =
   'global_id, plantacion_id, sub_id, species(nombre), ' +
   'groups!inner(nombre, plantation_id, plantations(lugar, periodo), parcelas(nombre, deleted_at))';
 
-/** Nombre de la parcela, o null si no tiene (grupo sin parcela) o si la
- *  parcela está soft-deleted (no debe aparecer en la planilla). */
+/** Null si el grupo no tiene parcela o si está soft-deleted (no debe salir en la planilla). */
 function nombreParcela(parcela: ParcelaCruda | null): string | null {
   if (!parcela || parcela.deleted_at !== null) return null;
   return parcela.nombre;
@@ -105,9 +72,8 @@ function mapearFila(fila: FilaCruda): FilaExportacion {
 }
 
 /**
- * Filas de exportación de la plantación, ordenadas por `global_id` ASC. Los
- * `global_id` null quedan al final del orden ascendente de PostgREST (`NULLS
- * LAST` por defecto en Postgres). Lectura paginada: sin el tope de 1000 filas.
+ * Ordenadas por `global_id` ASC (nulls al final, default de Postgres). Lectura paginada
+ * para evitar el tope de 1000 filas de PostgREST.
  */
 export async function listarFilasExportacion(plantationId: string): Promise<FilaExportacion[]> {
   const filas = await leerPaginado<FilaCruda>((desde, hasta) =>

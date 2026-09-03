@@ -1,12 +1,9 @@
 // TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
-// See .planning/phases/16-code-layer-rename-parcelas-data-sync/deferred-items.md
 /**
- * Integration tests: Sync pipeline
- * Tests: atomic insert of subgroup+trees, duplicate detection, sincronizada state
- * Uses real SQLite via better-sqlite3 + drizzle migrations
- *
- * NOTE: drizzle-orm/better-sqlite3 transactions are synchronous-only.
- * Use synchronous drizzle API (or sqlite.transaction) for transaction tests.
+ * Integration tests: Sync pipeline.
+ * Insert atómico de subgroup+trees, detección de duplicados, estado sincronizada.
+ * Nota: las transacciones de drizzle-orm/better-sqlite3 son solo síncronas —
+ * usar la API síncrona de drizzle (o sqlite.transaction) para testear atomicidad.
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
@@ -34,7 +31,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear data in FK order (respecting: trees -> groups -> plantations -> species)
+  // Clear en orden FK: trees -> groups -> plantations -> species
   await db.delete(trees);
   await db.delete(groups);
   await db.delete(plantations);
@@ -74,9 +71,8 @@ describe.skip('Sync pipeline', () => {
     const sg = createTestGroup({ plantacionId: plantation.id });
 
     let threw = false;
-    // Use sqlite.transaction (synchronous) for proper atomicity testing
     const insertWithDuplicate = sqlite.transaction(() => {
-      // We use the raw sqlite prepare/run here to test atomicity directly
+      // raw sqlite prepare/run para testear atomicidad directamente
       const insertSg = sqlite.prepare(
         'INSERT INTO groups (id, plantacion_id, nombre, codigo, tipo, estado, usuario_creador, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
       );
@@ -87,8 +83,7 @@ describe.skip('Sync pipeline', () => {
       );
       const now = new Date().toISOString();
       insertTree.run('tree-1', sg.id, null, 1, 'LA-NN-1', null, null, null, 'user1', now);
-      // Insert duplicate (same id) to trigger PK error
-      insertTree.run('tree-1', sg.id, null, 2, 'LA-NN-2', null, null, null, 'user1', now);
+      insertTree.run('tree-1', sg.id, null, 2, 'LA-NN-2', null, null, null, 'user1', now); // duplicate id → PK error
     });
 
     try {
@@ -99,7 +94,6 @@ describe.skip('Sync pipeline', () => {
 
     expect(threw).toBe(true);
 
-    // Transaction was rolled back — subgroup should NOT exist
     const sgRows = await db.select().from(groups).where(eq(groups.id, sg.id));
     expect(sgRows).toHaveLength(0);
 
@@ -114,7 +108,6 @@ describe.skip('Sync pipeline', () => {
     const sg1 = createTestGroup({ plantacionId: plantation.id, codigo: 'L01', nombre: 'Linea 01' });
     await db.insert(groups).values(sg1);
 
-    // Try to insert another subgroup with same codigo (different id)
     const sg2 = createTestGroup({ plantacionId: plantation.id, codigo: 'L01', nombre: 'Linea 01 Dup' });
 
     let threw = false;
@@ -126,7 +119,6 @@ describe.skip('Sync pipeline', () => {
     }
     expect(threw).toBe(true);
 
-    // Original subgroup still intact
     const rows = await db.select().from(groups).where(eq(groups.plantacionId, plantation.id));
     expect(rows).toHaveLength(1);
     expect(rows[0].id).toBe(sg1.id);
@@ -150,7 +142,6 @@ describe.skip('Sync pipeline', () => {
       await db.insert(trees).values(tree);
     }
 
-    // Mark as sincronizada (simulating sync completion)
     await db.update(groups).set({ estado: 'sincronizada' }).where(eq(groups.id, sg.id));
 
     const sgRows = await db.select().from(groups).where(eq(groups.id, sg.id));

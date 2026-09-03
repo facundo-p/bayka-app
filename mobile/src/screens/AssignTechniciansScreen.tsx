@@ -4,8 +4,6 @@
  * Loads all technicians in the organization from Supabase (profiles table is server-only).
  * Loads currently assigned technicians from local SQLite.
  * Allows toggling assignment and saving atomically.
- *
- * Covers requirements: PLAN-03
  */
 import {
   View,

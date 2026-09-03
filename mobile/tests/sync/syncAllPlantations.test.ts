@@ -206,14 +206,12 @@ describe('syncAllPlantations', () => {
   it('per-plantation failure does not abort the batch', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(TWO_PLANTATIONS));
 
-    // pullFromServer calls supabase.from('plantations').select(...).eq(...).single()
-    // Make it throw for the first plantation by counting 'plantations' calls after pre-steps.
+    // Count 'plantations' calls to make pullFromServer throw for p-1: calls 1-2 are
+    // pre-steps (uploadOffline, uploadPendingEdits), call 3 is pullFromServer for p-1.
     let plantationFromCalls = 0;
     (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
       if (table === 'plantations') {
         plantationFromCalls++;
-        // Calls 1-2 are pre-steps (uploadOffline, uploadPendingEdits).
-        // Call 3 is pullFromServer for p-1 — make it throw.
         if (plantationFromCalls === 3) {
           throw new Error('Network error for p-1');
         }

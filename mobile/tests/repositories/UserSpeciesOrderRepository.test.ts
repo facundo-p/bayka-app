@@ -1,5 +1,4 @@
-// Tests for UserSpeciesOrderRepository — unit tests using mock-based approach
-// Covers: getUserSpeciesOrder, saveUserSpeciesOrder
+// Unit tests for UserSpeciesOrderRepository (mock-based)
 
 jest.mock('../../src/database/client', () => {
   return {
@@ -119,7 +118,6 @@ describe('UserSpeciesOrderRepository', () => {
       await saveUserSpeciesOrder('user-1', 'plant-1', firstOrder);
       await saveUserSpeciesOrder('user-1', 'plant-1', secondOrder);
 
-      // Each call deletes then re-inserts
       expect(mockDeleteWhere).toHaveBeenCalledTimes(2);
       expect(mockInsertValues).toHaveBeenCalledTimes(2);
     });

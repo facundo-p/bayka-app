@@ -1,9 +1,7 @@
 /**
  * Tests de classifyRpcResult (push de grupos vía RPC sync_subgroup).
- * Issue #67: el RPC ahora devuelve 'PERMISSION' cuando el caller no es miembro
- * de la plantación (guard de membresía, migración 028) y el cliente debe
- * pasarlo tal cual (antes cualquier código distinto de DUPLICATE_CODE
- * colapsaba a UNKNOWN).
+ * Issue #67: el RPC devuelve 'PERMISSION' cuando el caller no es miembro de
+ * la plantación, y el cliente debe pasarlo tal cual (no colapsar a UNKNOWN).
  */
 
 jest.mock('../../src/supabase/client', () => ({

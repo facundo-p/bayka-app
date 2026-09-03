@@ -39,7 +39,6 @@ export function CommandMenu() {
   const atraparFoco = useFocusTrap(refDialog);
   useDevolverFoco(abierto);
 
-  // Resetear el texto cada vez que se abre.
   useEffect(() => {
     if (abierto) {
       setTexto('');

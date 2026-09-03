@@ -50,7 +50,6 @@ export function useUserNames(userIds: string[]): UserNamesMap {
         if (raw) cached = JSON.parse(raw);
       } catch {}
 
-      // Populate state with whatever we have cached
       const fromCache: UserNamesMap = {};
       const uncachedIds: string[] = [];
 
@@ -86,7 +85,6 @@ export function useUserNames(userIds: string[]): UserNamesMap {
 
         const merged = { ...cached, ...fetched };
 
-        // Persist updated cache
         try {
           await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(merged));
         } catch {}

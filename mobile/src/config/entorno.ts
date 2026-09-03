@@ -1,8 +1,8 @@
 /**
- * Entorno de ejecución: variante TEST (Supabase staging, #253) vs producción.
- * Único lector de `Constants.expoConfig` para esto. `app.config.js` expone
- * `extra.appVariant` según `APP_VARIANT` en build; el banner "Entorno de
- * pruebas" (#287) y el ajuste de inset de `CustomHeader` salen de acá.
+ * Entorno de ejecución: variante TEST (Supabase staging) vs producción. Único lector
+ * de `Constants.expoConfig`; `app.config.js` expone `extra.appVariant` según
+ * `APP_VARIANT` en build. El banner "Entorno de pruebas" y el ajuste de inset de
+ * `CustomHeader` salen de acá.
  */
 import Constants from 'expo-constants';
 

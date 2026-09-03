@@ -1,11 +1,8 @@
 /**
- * usePlantacionesScreen — state and handlers for PlantacionesScreen.
- *
- * Composes the data hooks (usePlantaciones, usePlantationAdmin, useSync,
- * useAuth, usePendingSyncCount/Map) and owns the screen-local UI state:
- * sync confirm dialog, admin bottom sheet, inline parcela expand/edit, and
- * the admin create/edit/config-species/assign-tech modals. No SQL/db
- * imports here — only calls into existing hooks/repositories/services.
+ * usePlantacionesScreen — state y handlers de PlantacionesScreen. Compone los hooks de datos
+ * (usePlantaciones, usePlantationAdmin, useSync, useAuth, usePendingSyncCount/Map) y el estado UI
+ * local (confirm de sync, bottom sheet admin, expand/edit inline de parcela, modales admin). Sin
+ * imports de SQL/db — solo llama a hooks/repositories/services existentes.
  */
 import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -46,7 +43,6 @@ export function usePlantacionesScreen() {
     signOut();
   }, [sync, signOut]);
 
-  // ─── Sync confirm dialog (global o por plantación) ───────────────────────
   const [syncConfirmVisible, setSyncConfirmVisible] = useState(false);
   const [syncConfirmMode, setSyncConfirmMode] = useState<'global' | 'plantation'>('global');
   const [syncTargetPlantationId, setSyncTargetPlantationId] = useState<string | null>(null);
@@ -68,7 +64,6 @@ export function usePlantacionesScreen() {
     }
   }, [sync, syncConfirmMode, syncTargetPlantationId]);
 
-  // ─── Admin bottom sheet (gear menu) ───────────────────────────────────────
   const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
   const [bottomSheetPlantation, setBottomSheetPlantation] = useState<Plantation | null>(null);
   const [bottomSheetMeta, setBottomSheetMeta] = useState<ExpandedMeta>(EMPTY_META);
@@ -93,15 +88,12 @@ export function usePlantacionesScreen() {
     if (ok) setAssignTechPlantacionId(plantacionId);
   }, [adminHook]);
 
-  // ─── Single-card expansion + inline parcela edit modal ────────────────────
   const [expandedPlantationId, setExpandedPlantationId] = useState<string | null>(null);
   const [editingParcela, setEditingParcela] = useState<Parcela | null>(null);
   const [editingParcelaPlantacionId, setEditingParcelaPlantacionId] = useState<string | null>(null);
 
   const handleToggleExpand = useCallback((id: string) => {
-    // La animación de expansión la maneja reanimated (LinearTransition en el
-    // item + entering/exiting en la sección de parcelas). LayoutAnimation de RN
-    // es no-op con la New Architecture (Fabric), por eso se sentía abrupta.
+    // La expansión la anima reanimated; LayoutAnimation de RN es no-op con Fabric (New Architecture), por eso se sentía abrupta.
     setExpandedPlantationId(prev => (prev === id ? null : id));
   }, []);
 
@@ -119,22 +111,17 @@ export function usePlantacionesScreen() {
     setEditingParcelaPlantacionId(null);
   }, []);
 
-  // ─── Admin: create / edit / config species / assign tech ─────────────────
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [configSpeciesPlantacionId, setConfigSpeciesPlantacionId] = useState<string | null>(null);
   const [assignTechPlantacionId, setAssignTechPlantacionId] = useState<string | null>(null);
   const [editingPlantation, setEditingPlantation] = useState<Plantation | null>(null);
-  // Cuando se crea una plantación, encadenamos: selección de especies (tarea
-  // atómica del alta) y al cerrarla navegamos al detalle para crear subgrupos
-  // (issues #63 + #15). Guarda el id de la plantación a navegar.
+  // Al crear una plantación encadenamos selección de especies (tarea atómica del alta) y navegamos al detalle al cerrar, para crear subgrupos (#63, #15).
   const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
 
   const handleCreatePlantation = useCallback(async (lugar: string, periodo: string, gps: PlantationGpsSettings) => {
     const id = await adminHook.handleCreateSubmit(lugar, periodo, gps);
     setShowCreateModal(false);
     if (!id) return;
-    // Abre la selección de especies de la plantación recién creada y agenda la
-    // navegación al detalle para cuando se cierre esa pantalla.
     setConfigSpeciesPlantacionId(id);
     setPlantacionPendienteNav(id);
   }, [adminHook]);
@@ -159,7 +146,6 @@ export function usePlantacionesScreen() {
     ...plantaciones,
     adminHook,
 
-    // Sync
     syncState: sync.state,
     startGlobalSync: sync.startGlobalSync,
     startPlantationSync: sync.startPlantationSync,
@@ -182,7 +168,6 @@ export function usePlantacionesScreen() {
     isSyncing,
     pendingSyncBoolMap,
 
-    // Sync confirm dialog
     syncConfirmVisible,
     syncConfirmMode,
     syncTargetPlantationId,
@@ -190,7 +175,6 @@ export function usePlantacionesScreen() {
     closeSyncConfirm,
     handleSyncConfirm,
 
-    // Admin bottom sheet
     bottomSheetVisible,
     bottomSheetPlantation,
     bottomSheetMeta,
@@ -199,7 +183,6 @@ export function usePlantacionesScreen() {
     handleBottomSheetAction,
     onAssignTechFromSheet,
 
-    // Expand + inline parcela edit
     expandedPlantationId,
     handleToggleExpand,
     handleParcelaInlinePress,
@@ -208,7 +191,6 @@ export function usePlantacionesScreen() {
     editingParcelaPlantacionId,
     closeEditParcela,
 
-    // Admin create/edit/config-species/assign-tech modals
     showCreateModal,
     setShowCreateModal,
     handleCreatePlantation,

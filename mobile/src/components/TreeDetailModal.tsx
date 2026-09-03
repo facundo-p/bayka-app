@@ -1,8 +1,6 @@
 /**
  * TreeDetailModal — detalle/edición de un árbol del listado de un grupo.
- * Muestra especie (+ nombre científico), foto y punto GPS. Permite tomar/cambiar
- * foto y capturar/recapturar punto GPS según el gating (`canEdit`/`canDelete`).
- * Los datos se cargan reactivamente con `useTreeDetail` (hook como puente).
+ * Foto y punto GPS se editan según el gating de `canEdit`/`canDelete`.
  */
 import { useState } from 'react';
 import { Modal, View, Text, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';

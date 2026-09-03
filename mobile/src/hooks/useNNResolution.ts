@@ -135,7 +135,6 @@ export function useNNResolution(params: {
   async function acceptServerResolution(treeId: string) {
     const conflict = getConflictForTree(treeId);
     if (!conflict) return;
-    // Resolve with server species
     const tree = unresolvedTrees.find(t => t.id === treeId);
     const codigo = tree?.grupoCodigo ?? grupoCodigo ?? '';
     await resolveNNTree(treeId, conflict.serverEspecieId, codigo);
@@ -143,7 +142,7 @@ export function useNNResolution(params: {
   }
 
   async function keepLocalResolution(treeId: string) {
-    // Just clear the conflict marker — local stays, next sync will overwrite server
+    // Solo limpia el marcador: lo local queda, el próximo sync sobreescribe al server
     await clearTreeConflict(treeId);
   }
 
@@ -156,7 +155,6 @@ export function useNNResolution(params: {
   }
 
   return {
-    // Data
     unresolvedTrees,
     species,
     speciesLoading,
@@ -172,7 +170,6 @@ export function useNNResolution(params: {
     canResolve,
     zoomPhotoUri,
     confirmProps: confirm.confirmProps,
-    // Actions
     handleSelectSpecies,
     handleGuardar,
     handleAnterior,

@@ -67,14 +67,9 @@ function CapaPuntos({
   );
 }
 
-/**
- * Implementación del mapa sobre react-leaflet. TODO el acoplamiento a Leaflet
- * vive acá: es el único archivo que la fachada `MapaPuntos` intercambiaría al
- * cambiar de proveedor. Contenedor satelital con un CircleMarker por punto GPS
- * coloreado por especie. Sin puntos no renderiza nada (el caller maneja su
- * propio estado vacío). Usado por el panel del dashboard (`PlantationMap`) y el
- * detalle de un árbol (`ArbolDetalleModal`).
- */
+/** Implementación Leaflet del mapa: satelital con un CircleMarker por punto GPS
+ *  coloreado por especie. Sin puntos no renderiza nada (el caller maneja el
+ *  estado vacío). Usada por `PlantationMap` y `ArbolDetalleModal`. */
 export function MapaPuntosLeaflet({
   puntos,
   colorPorCodigo,

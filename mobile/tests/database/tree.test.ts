@@ -1,5 +1,4 @@
-// Tests for TreeRepository — implemented in Plan 02-02
-// Covers: TREE-02, TREE-03, TREE-07, NN-04, REVR-01, REVR-02
+// Tests for TreeRepository
 
 // --- DB mock infrastructure ---
 
@@ -9,9 +8,8 @@ let mockDeleteWhere: jest.Mock;
 let mockUpdateWhere: jest.Mock;
 let mockTransactionFn: jest.Mock;
 
-// db.select() returns chain: .from().where() OR .from().where().orderBy()...
-// We make it flexible: each .where() resolves to mockSelectResults.
-// Tests can override by reassigning mockSelectResults before each case.
+// db.select() chain is flexible: any .where() resolves to mockSelectResults,
+// which tests reassign per case.
 
 jest.mock('../../src/database/client', () => {
   return {
@@ -126,7 +124,6 @@ describe('TreeRepository', () => {
     });
 
     it('inserts tree with auto-incremented position (TREE-02, TREE-03)', async () => {
-      // Existing tree at posicion=3
       mockSelectResults = [{ maxPos: 3, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -215,9 +212,8 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      // transaction should have been called
       expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-      // update called at least 3 times (once per tree in tx) + 1 for markGroupPendingSync
+      // 3 updates (once per tree in tx) + 1 for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
@@ -230,7 +226,6 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      // Verify updates were called with recalculated subIds
       // tree-1 (pos=1) → newPosicion = 2-1+1 = 2 → 'L1NN2'
       // tree-2 (pos=2) → newPosicion = 2-2+1 = 1 → 'L1NN1'
       // Plus 1 for markGroupPendingSync

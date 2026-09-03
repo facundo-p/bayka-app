@@ -46,7 +46,6 @@ beforeEach(async () => {
   await db.delete(plantations);
   await db.delete(species);
 
-  // Seed base data
   const plantation = createTestPlantation();
   plantationId = plantation.id;
   await db.insert(plantations).values(plantation);
@@ -138,7 +137,6 @@ describe('Tree registration', () => {
     });
     expect(result2.posicion).toBe(2);
 
-    // Verify in DB
     const rows = await db.select().from(trees).where(eq(trees.groupId, groupId));
     expect(rows).toHaveLength(2);
     expect(rows.map(r => r.posicion).sort()).toEqual([1, 2]);
@@ -163,7 +161,6 @@ describe('Tree registration', () => {
     });
     expect(result2.subId).toBe('L01PIN2');
 
-    // Verify in DB
     const rows = await db.select().from(trees).where(eq(trees.groupId, groupId));
     const subIds = rows.map(r => r.subId);
     expect(subIds).toContain('L01EUC1');
@@ -171,20 +168,17 @@ describe('Tree registration', () => {
   });
 
   test('delete last tree (undo), next tree reuses correct position', async () => {
-    // Insert 3 trees
     await insertTree({ grupoId: groupId, grupoCodigo: 'L01', especieId: species1Id, especieCodigo: 'EUC' });
     await insertTree({ grupoId: groupId, grupoCodigo: 'L01', especieId: species1Id, especieCodigo: 'EUC' });
     await insertTree({ grupoId: groupId, grupoCodigo: 'L01', especieId: species1Id, especieCodigo: 'EUC' });
 
-    // Delete last (undo)
     const result = await deleteLastTree(groupId);
     expect(result.deleted).toBe(true);
 
-    // Remaining: 2 trees at positions 1 and 2
     const rows = await db.select().from(trees).where(eq(trees.groupId, groupId));
     expect(rows).toHaveLength(2);
 
-    // Next insert should get position 3 (max was 2)
+    // max era 2 tras el undo → el próximo debe tomar posición 3
     const result4 = await insertTree({
       grupoId: groupId,
       grupoCodigo: 'L01',
@@ -206,16 +200,14 @@ describe('Tree registration', () => {
     expect(nnResult.subId).toBe('L01NN1');
     expect(nnResult.posicion).toBe(1);
 
-    // Verify N/N tree is stored with null especieId
     const rows = await db.select().from(trees).where(eq(trees.groupId, groupId));
     expect(rows[0].especieId).toBeNull();
 
-    // Count unresolved N/N trees
     const [nnCount] = await db
       .select({ cnt: count() })
       .from(trees)
       .where(eq(trees.groupId, groupId));
-    // Verify we can find N/N trees via isNull query
+    // Los N/N deben poder encontrarse vía isNull
     const nnRows = await db
       .select({ id: trees.id })
       .from(trees)
@@ -224,7 +216,6 @@ describe('Tree registration', () => {
   });
 
   test('multiple species in same subgroup each get correct position sequence', async () => {
-    // Mix EUC and PIN trees
     await insertTree({ grupoId: groupId, grupoCodigo: 'L01', especieId: species1Id, especieCodigo: 'EUC' });
     await insertTree({ grupoId: groupId, grupoCodigo: 'L01', especieId: species2Id, especieCodigo: 'PIN' });
     await insertTree({ grupoId: groupId, grupoCodigo: 'L01', especieId: species1Id, especieCodigo: 'EUC' });
@@ -233,11 +224,9 @@ describe('Tree registration', () => {
     const rows = await db.select().from(trees).where(eq(trees.groupId, groupId));
     expect(rows).toHaveLength(4);
 
-    // Positions should be sequential: 1, 2, 3, 4
     const positions = rows.map(r => r.posicion).sort((a, b) => a - b);
     expect(positions).toEqual([1, 2, 3, 4]);
 
-    // SubIDs reflect species + position
     const subIds = rows.map(r => r.subId);
     expect(subIds).toContain('L01EUC1');
     expect(subIds).toContain('L01PIN2');
@@ -246,7 +235,6 @@ describe('Tree registration', () => {
   });
 
   test('tree count query returns accurate count per subgroup', async () => {
-    // Insert trees in two groups
     const sg2 = createTestGroup({ plantacionId: plantationId, codigo: 'L02', nombre: 'Linea 02' });
     await db.insert(groups).values(sg2);
 

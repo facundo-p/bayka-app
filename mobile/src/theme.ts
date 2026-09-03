@@ -1,7 +1,6 @@
 // Centralized theme: colors, spacing, typography, and common styles.
 
 export const colors = {
-  // ─── Primary (brand dark blue) ────────────────────────────────────────────
   primary: '#0A3760',
   primaryDark: '#072847',
   primaryLight: '#1A5A8A',
@@ -15,12 +14,10 @@ export const colors = {
   primaryAccent: '#3B7DB5',
   primaryCountFaded: '#C5DAE8',
 
-  // ─── Secondary (brand olive green) ────────────────────────────────────────
   secondary: '#99B95B',
   secondaryBg: '#F6F9F0',
   secondaryBorder: '#C5D89A',
 
-  // ─── Plantation screens (olive green accent) ──────────────────────────────
   plantation: '#99B95B',
   plantationDark: '#7A9A42',
   plantationMedium: '#8AAA4E',
@@ -33,38 +30,31 @@ export const colors = {
   plantationAccent: '#A8C465',
   plantationCountFaded: '#D4E3B0',
 
-  // ─── Beige/cream for recent trees chips ───────────────────────────────────
   recentBg: '#f5efe6',
   recentBgActive: '#efe8db',
   recentBorder: '#ddd0be',
   recentText: '#7a6b56',
 
-  // ─── Yellow (N/N species) ─────────────────────────────────────────────────
   secondaryYellow: '#ffca28',
   secondaryYellowLight: '#fff8e1',
   secondaryYellowMedium: '#ffe082',
   secondaryYellowDark: '#ffb300',
 
-  // ─── Semantic ─────────────────────────────────────────────────────────────
   danger: '#DC2626',
   dangerLight: '#EF4444',
   dangerBg: '#FEF2F2',
-
   info: '#2563EB',
   infoBg: '#EFF6FF',
-
-  // Banner "Entorno de pruebas" (#287): ámbar de precaución (mismo valor que
-  // secondaryYellowDark), texto en textPrimary. Solo se ve en la app TEST.
+  // Banner "Entorno de pruebas" (#287): mismo valor que secondaryYellowDark; solo visible en TEST.
   entornoPruebasBg: '#ffb300',
 
-  // ─── Text (4-level hierarchy) ─────────────────────────────────────────────
-  textHeading: '#0A3760',   // brand dark blue — harmonizes with primary palette
+  textHeading: '#0A3760',
   textPrimary: '#1E293B',
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textDisabled: '#CBD5E1',
 
-  // Aliases for backward compatibility — migrate to textPrimary/Secondary/Muted/Disabled
+  // Aliases legacy — migrar a textPrimary/Secondary/Muted/Disabled.
   text: '#1E293B',
   textDark: '#1E293B',
   textMedium: '#1E293B',
@@ -75,56 +65,45 @@ export const colors = {
   dangerText: '#DC2626',
   disabled: '#CBD5E1',
 
-  // ─── Surfaces ─────────────────────────────────────────────────────────────
   background: '#FAFAF9',
   backgroundAlt: '#F5F5F4',
   surface: '#FFFFFF',
   surfaceAlt: '#FAFAF9',
   surfacePressed: '#F5F5F4',
 
-  // ─── Borders ──────────────────────────────────────────────────────────────
   border: '#E2E8F0',
   borderLight: '#E2E8F0',
   borderMuted: '#CBD5E1',
 
-  // ─── Base ─────────────────────────────────────────────────────────────────
   white: '#FFFFFF',
   black: '#000000',
   overlay: 'rgba(0,0,0,0.6)',
   overlayLight: 'rgba(0,0,0,0.4)',
   overlayDark: 'rgba(0,0,0,0.9)',
-  // Overlay claro sobre la textura de fondo (TexturedBackground) — mismo tono
-  // que `background`, semitransparente.
+  // Mismo tono que `background`, semitransparente, para superponer sobre TexturedBackground.
   textureOverlay: 'rgba(250,250,249,0.9)',
 
-  // ─── State chips ──────────────────────────────────────────────────────────
   stateActiva: '#99B95B',
   stateFinalizada: '#0A3760',
   stateSincronizada: '#0A3760',
-  syncPending: '#F97316',         // orange-500 -- distinct from stateFinalizada amber
+  syncPending: '#F97316',
 
-  // ─── Semáforo de señal GPS ────────────────────────────────────────────────
-  // Tokens semánticos propios: cambiar el semáforo no debe tocar los chips de
-  // estado aunque hoy compartan valores (verde oliva / amarillo N/N / danger).
+  // Semáforo de señal GPS: tokens propios — cambiarlo no debe tocar los chips de estado aunque hoy compartan valores.
   gpsGood: '#99B95B',
   gpsRegular: '#ffb300',
   gpsBad: '#DC2626',
   gpsNone: '#94A3B8',
 
-  // ─── Other user ───────────────────────────────────────────────────────────
   otherUserBg: '#F5F5F4',
   otherUserBorder: '#94A3B8',
 
-  // ─── Semantic stat colors (consistent with estado) ──────────────────────
-  statTotal: '#99B95B',       // olive green — matches brand secondary
-  statSynced: '#0A3760',      // brand blue — same as stateSincronizada
-  statToday: '#64748B',       // slate-500, neutral gray for daily count
-  statPending: '#99B95B',     // olive green — same as secondary, pending/unsync
+  statTotal: '#99B95B',
+  statSynced: '#0A3760',
+  statToday: '#64748B',
+  statPending: '#99B95B',
 
-  // ─── Photo sync indicator ───────────────────────────────────────────────
-  photoUnsyncDot: '#F59E0B',   // amber dot for unsynced photos (only remaining orange)
+  photoUnsyncDot: '#F59E0B', // amber, único naranja restante
 
-  // ─── Connectivity ─────────────────────────────────────────────────────────
   online: '#99B95B',
   offline: '#94A3B8',
 
@@ -193,9 +172,7 @@ export const headerStyle = {
   headerTitleStyle: { fontFamily: fonts.heading },
 } as const;
 
-// ─── Header action button tokens ─────────────────────────────────────────────
-// Criterio único "Outline puro" para los botones de acción del header (lado
-// derecho) sobre la barra verde. Ver HeaderActionButton + issue #70.
+// Criterio único "Outline puro" para los botones de acción del header (lado derecho, #70).
 export const headerActionButton = {
   size: 40,
   borderWidth: 1.5,

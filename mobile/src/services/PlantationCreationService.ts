@@ -1,23 +1,11 @@
-// FEATURE: auto-parcela trial — remove block if dropped
 /**
- * PlantationCreationService — orchestrates plantation creation with optional
- * default parcela ("Parcela 1" / "P1") behind the AUTO_PARCELA_DEFAULT flag.
- *
- * This file is the ONLY production code-path that auto-creates the default
- * parcela. The single user-initiated call site is
- * `usePlantationAdmin.handleCreateSubmit`. Pull / sync paths (downloadService,
- * pullService) MUST NOT invoke this helper — server-side plantations bring
- * their own parcelas via `pullParcelas` (Phase 16-03).
- *
- * Atomicity: wraps both inserts in `db.transaction` (D-18-04). If
- * `createParcela` returns `{success:false}`, throws to trigger rollback
- * (D-18-06). The online variant performs a Supabase call inside the tx; on
- * failure of the parcela step after Supabase succeeded, the local rollback
- * leaves the server row orphan-free locally — see Plan 18-01 Risk #3.
- *
- * To remove the trial: delete this file, delete the import + call in
- * usePlantationAdmin.ts, revert handleCreateSubmit to call createPlantation /
- * createPlantationLocally directly.
+ * PlantationCreationService — crea una plantación y, si AUTO_PARCELA_DEFAULT, su parcela default
+ * ("Parcela 1"/"P1") atómicamente. Único call site: usePlantationAdmin.handleCreateSubmit — los
+ * paths de pull/sync no deben usarlo (las plantaciones de server traen sus parcelas vía pullParcelas).
+ * El modo online llama a Supabase antes de la transacción local, así que un fallo de parcela puede
+ * dejar la fila server sin su contraparte local.
+ * Para eliminar: borrar este archivo + su import/call en usePlantationAdmin.ts, y volver a llamar
+ * createPlantation/createPlantationLocally directo.
  */
 import { db } from '../database/client';
 import { plantations, plantationUsers } from '../database/schema';
@@ -49,11 +37,7 @@ export interface CreatePlantationResult {
   estado: string;
 }
 
-/**
- * FEATURE: auto-parcela trial — remove block if dropped
- * Inserts the default parcela for a freshly created plantation. Throws on
- * failure so the surrounding transaction rolls back.
- */
+/** Inserta la parcela default de una plantación recién creada; lanza si falla, para que la transacción envolvente haga rollback. */
 async function insertDefaultParcela(plantacionId: string): Promise<void> {
   const r = await createParcela({
     plantacionId,
@@ -66,33 +50,23 @@ async function insertDefaultParcela(plantacionId: string): Promise<void> {
   }
 }
 
-/**
- * Creates a plantation (online or offline) and, when AUTO_PARCELA_DEFAULT is
- * true, a default parcela atomically. Returns the plantation shape that
- * matches `createPlantation` / `createPlantationLocally` so the call site is
- * drop-in.
- */
+/** Crea una plantación (online/offline) y, si AUTO_PARCELA_DEFAULT, su parcela default atómicamente; retorna la misma forma que createPlantation/createPlantationLocally (drop-in). */
 export async function createPlantationWithDefaultParcela(
   params: CreatePlantationParams,
 ): Promise<CreatePlantationResult> {
-  // NOTE: drizzle's better-sqlite3 driver runs `db.transaction` synchronously,
-  // so async work inside the callback does NOT participate in the SQLite
-  // transaction. We do manual cleanup on parcela failure to keep behavior
-  // consistent across runtimes (Plan 18-01 Risk #3, D-18-04 best-effort).
+  // El driver better-sqlite3 de drizzle corre db.transaction síncrono: el trabajo async del
+  // callback no participa de la transacción SQLite, por eso el cleanup en fallo de parcela es manual.
   const plantation =
     params.mode === 'online'
       ? await createPlantation(params.lugar, params.periodo, params.organizacionId, params.creadoPor, params.gps)
       : await createPlantationLocally(params.lugar, params.periodo, params.organizacionId, params.creadoPor, params.gps);
-  // FEATURE: auto-parcela trial — remove block if dropped
   if (AUTO_PARCELA_DEFAULT) {
     try {
       await insertDefaultParcela(plantation.id);
     } catch (e) {
-      // Rollback manual: borra la plantación local para no dejar una huérfana
-      // sin su parcela default. La membresía local del creador (#67) se borra
-      // primero (FK plantation_users → plantations sin ON DELETE CASCADE).
-      // La fila server (modo online) no se puede revertir desde acá — Plan
-      // 18-01 Risk #3.
+      // Rollback manual: borra la plantación local para no dejar una huérfana sin parcela default;
+      // la membresía va primero (FK sin ON DELETE CASCADE). La fila server (modo online) no se
+      // puede revertir desde acá.
       await db.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantation.id));
       await db.delete(plantations).where(eq(plantations.id, plantation.id));
       throw e;

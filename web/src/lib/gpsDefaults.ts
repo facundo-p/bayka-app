@@ -1,8 +1,7 @@
 /**
- * Defaults de la captura GPS de una plantación. El origen de estos valores es
- * mobile/src/constants/gpsCapture.ts (GPS_CAPTURE_FREQUENCY_DEFAULT y
- * GPS_CAPTURE_REQUIRED_DEFAULT): la web no comparte código con mobile, así
- * que se duplican acá a propósito. Si cambian allá, actualizar acá y los
+ * Defaults de captura GPS, duplicados desde mobile/src/constants/gpsCapture.ts
+ * (GPS_CAPTURE_FREQUENCY_DEFAULT y GPS_CAPTURE_REQUIRED_DEFAULT) porque la
+ * web no comparte código con mobile. Si cambian allá, actualizar acá y el
  * DEFAULT de la migración 023 de Supabase.
  */
 

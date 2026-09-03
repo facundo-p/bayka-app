@@ -111,7 +111,6 @@ export function useSync(plantacionId?: string) {
         setPlantationResults
       );
 
-      // Flatten results from all plantations
       const flatResults = allResults.flatMap(r => r.results);
       setResults(flatResults);
       setParcelaResults(allResults.flatMap(r => r.parcelas ?? []));

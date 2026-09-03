@@ -1,5 +1,4 @@
-// Tests for dashboardQueries — Plan 03-03
-// Covers: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
+// Tests for dashboardQueries: role-based plantation visibility and tree/sync counts.
 
 jest.mock('../../src/database/schema', () => ({
   plantations: { id: 'plantations.id', createdAt: 'plantations.created_at', lugar: 'plantations.lugar' },
@@ -63,7 +62,6 @@ import {
 } from '../../src/queries/dashboardQueries';
 import { eq } from 'drizzle-orm';
 
-// Access the internal chain from the mocked module
 const mockDb = db as unknown as { select: jest.Mock; _chain: Record<string, jest.Mock> };
 
 function getChain(): Record<string, jest.Mock> {
@@ -82,7 +80,6 @@ describe('dashboardQueries', () => {
     // Terminal methods resolve to empty arrays
     c.groupBy.mockResolvedValue([]);
     c.orderBy.mockResolvedValue([]);
-    // db.select returns the chain
     mockDb.select.mockReturnValue(c);
   });
 
@@ -93,7 +90,6 @@ describe('dashboardQueries', () => {
       // Must call innerJoin (to join with plantation_users)
       expect(getChain().innerJoin).toHaveBeenCalled();
 
-      // Must filter by userId
       expect(eq).toHaveBeenCalledWith(
         expect.anything(),
         'user-123'
@@ -133,7 +129,6 @@ describe('dashboardQueries', () => {
     it('filters by pendingSync=true AND usuarioRegistro = userId', async () => {
       await getUnsyncedTreeCounts('user-123');
 
-      // Must filter by userId
       expect(eq).toHaveBeenCalledWith(
         expect.anything(),
         'user-123'

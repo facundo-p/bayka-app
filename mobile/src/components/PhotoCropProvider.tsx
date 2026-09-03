@@ -1,10 +1,6 @@
 /**
- * PhotoCropProvider — hospeda el flujo de captura de foto en UN solo paso (#167/#172).
- * Expone `requestPhoto(source)`:
- *  - 'camera'  → cámara in-app → recorte opcional → URI final.
- *  - 'gallery' → selector de galería → recorte opcional → URI final.
- * El recorte permite "Reintentar" (reabre cámara o galería según el origen).
- * Resuelve con la URI final (recortada o completa) o null si se cancela.
+ * PhotoCropProvider — flujo de captura de foto en un solo paso (#167/#172).
+ * requestPhoto(source) resuelve con la URI final (recortada o no) o null si se cancela.
  */
 import { createContext, useContext, useState } from 'react';
 import CameraCaptureView from './CameraCaptureView';

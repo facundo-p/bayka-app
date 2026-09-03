@@ -1,12 +1,6 @@
 /**
- * ParcelasScreen — lists parcelas for a plantation (PUI-01..06).
- *
- * - Header `+` opens ParcelaFormModal in 'create' (D-17-08).
- * - Tap row → grupos scoped via ?parcelaId=... (PUI-03).
- * - Long-press → ParcelaFormModal in 'edit' (D-17-06).
- * - Empty state with CTA "Crear primera parcela" (D-17-07).
- *
- * CLAUDE.md §9: zero db.* calls — consumes useParcelas + usePlantationDetail.
+ * ParcelasScreen — lista las parcelas de una plantación.
+ * Tap → grupos scoped por parcela; long-press → editar; header `+` → crear.
  */
 import { useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';

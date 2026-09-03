@@ -1,12 +1,7 @@
 /**
- * PlantationCard — displays a plantation with stats in the plantaciones list.
- * Used by PlantacionesScreen for both admin and tecnico roles.
- *
- * Includes an inline expandable section with the parcelas list as a shortcut.
- * The expand row uses `stopPropagation` so tapping the chevron does NOT
- * trigger the card's main `onPress`. Animation via `LayoutAnimation` is
- * driven by the parent (PlantacionesScreen calls `LayoutAnimation.configureNext`
- * before flipping `expanded`).
+ * PlantationCard — plantación con stats en el listado (admin y técnico).
+ * Sección expandible de parcelas: el chevron usa stopPropagation (no dispara
+ * el onPress de la card); la animación LayoutAnimation la dispara el padre al togglear `expanded`.
  */
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';

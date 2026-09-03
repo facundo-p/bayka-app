@@ -49,7 +49,6 @@ describe('offlineAuthCycle', () => {
       expect(entry.role).toBe('tecnico');
       expect(entry.hash).toBeDefined();
       expect(entry.salt).toBeDefined();
-      // Hash should NOT be the plaintext password
       expect(entry.hash).not.toBe('mypassword');
     });
 
@@ -59,7 +58,6 @@ describe('offlineAuthCycle', () => {
 
       const storedRaw = store.get('offline_credentials');
       const entries = JSON.parse(storedRaw!);
-      // Should have exactly 1 entry for user@test.com
       const userEntries = entries.filter((e: any) => e.email === 'user@test.com');
       expect(userEntries).toHaveLength(1);
     });
@@ -95,16 +93,9 @@ describe('offlineAuthCycle', () => {
 
   describe('full cycle', () => {
     it('online login caches -> offline verify succeeds -> clear removes -> verify fails', async () => {
-      // Cache credentials (simulates successful online login)
       await cacheCredential('field@test.com', 'fieldpass', 'tecnico');
-
-      // Verify succeeds with correct credentials
       expect(await verifyCredential('field@test.com', 'fieldpass')).toBe('tecnico');
-
-      // Clear the credential
       await clearCredential('field@test.com');
-
-      // Verify fails after clear
       expect(await verifyCredential('field@test.com', 'fieldpass')).toBeNull();
     });
   });
@@ -127,18 +118,15 @@ describe('offlineAuthCycle', () => {
   describe('TTL expiry', () => {
     it('isOfflineLoginExpired returns false when OFFLINE_LOGIN_EXPIRE is false', async () => {
       if (!OFFLINE_LOGIN_EXPIRE) {
-        // Config says offline login never expires — verify this invariant
+        // Nunca expira: debe ser false aun sin avanzar el tiempo
         await saveLastOnlineLogin();
-        // Even if we never advance time, it should return false
         const result = await isOfflineLoginExpired();
         expect(result).toBe(false);
       } else {
-        // OFFLINE_LOGIN_EXPIRE is true — test expiry behavior
         const fixedNow = 1000000;
         jest.spyOn(Date, 'now').mockReturnValue(fixedNow);
         await saveLastOnlineLogin();
 
-        // Advance past the TTL
         const pastTtl = fixedNow + OFFLINE_LOGIN_DURATION_HS * 3600 * 1000 + 1;
         jest.spyOn(Date, 'now').mockReturnValue(pastTtl);
 

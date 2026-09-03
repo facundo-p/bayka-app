@@ -1,8 +1,6 @@
 /**
- * PlantacionesModals — every modal/dialog rendered by PlantacionesScreen:
- * delete confirm, inline parcela edit, sync confirm/progress, session-expired
- * dialog, admin bottom sheet, and the admin create/edit/config-species/
- * assign-tech modals. Purely props-driven, no data access logic.
+ * PlantacionesModals — every modal/dialog rendered by PlantacionesScreen.
+ * Purely props-driven, no data access logic.
  */
 import { colors } from '../theme';
 import ConfirmModal from './ConfirmModal';

@@ -9,10 +9,7 @@ import type { DownloadPhase, DownloadPhaseProgress } from './types';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
-/**
- * Emits progress every PROGRESS_EVERY rows to avoid React state churn on
- * large pulls (a 7000-row tree pull would otherwise dispatch 7000 setState).
- */
+/** Emite progreso cada PROGRESS_EVERY filas para evitar churn de setState en pulls grandes. */
 const PROGRESS_EVERY = 100;
 
 function emitProgress(
@@ -27,9 +24,7 @@ function emitProgress(
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
-  // select('*') en vez de columnas explícitas: tolera servers donde columnas
-  // nuevas (config GPS, visible_in_app) todavía no existen — pedirlas por
-  // nombre haría fallar el pull completo. Los guards != null hacen el resto.
+  // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
   const { data: remotePlantation, error } = await supabase
     .from('plantations')
     .select('*')
@@ -48,9 +43,7 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     estado: remotePlantation.estado,
   };
 
-  // El snapshot *Server de la config GPS se refresca siempre (igual que
-  // lugarServer/periodoServer); las columnas vivas solo si no hay edición local
-  // pendiente. Guard contra server sin migración 023 (columnas ausentes).
+  // El snapshot *Server de GPS se refresca siempre; las columnas vivas solo si no hay edición local pendiente. Guard contra servers sin esas columnas.
   if (remotePlantation.gps_capture_frequency != null) {
     serverUpdate.gpsCaptureFrequencyServer = remotePlantation.gps_capture_frequency;
   }
@@ -58,8 +51,7 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     serverUpdate.gpsCaptureRequiredServer = remotePlantation.gps_capture_required;
   }
 
-  // La visibilidad se administra solo desde la web: el server siempre gana.
-  // Columna ausente (server sin la migración) → visible.
+  // Visibilidad la administra solo la web: el server siempre gana; columna ausente → visible.
   serverUpdate.visibleInApp = remotePlantation.visible_in_app ?? true;
 
   const [local] = await db
@@ -81,7 +73,7 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   await db.update(plantations).set(serverUpdate).where(eq(plantations.id, plantacionId));
 }
 
-// ─── Pull parcelas (BEFORE groups — D-16-12, FK ordering) ────────────────────
+// ─── Pull parcelas (BEFORE groups — FK ordering) ────────────────────
 
 interface RemoteParcela {
   id: string;
@@ -94,14 +86,7 @@ interface RemoteParcela {
   deleted_at: string | null;
 }
 
-/**
- * Pulls parcelas from the server and upserts them locally. Returns the list
- * of remote parcela IDs.
- *
- * Si una fila local tiene pending_sync=true (cambio local pendiente de subir,
- * sea update o tombstone), NO se sobrescribe — el push subsiguiente gana.
- * Esto evita que un pull pise un tombstone local pendiente.
- */
+/** Trae parcelas del server y las upsertea local; si pending_sync=true localmente (cambio o tombstone sin subir), no se sobrescribe — el push subsiguiente gana. */
 async function pullParcelas(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
@@ -121,8 +106,7 @@ async function pullParcelas(
   emitProgress(onProgress, 'parcelas', 0, all.length);
   if (all.length === 0) return [];
 
-  // Pre-fetch ids that have local pending changes to skip in one query
-  // (avoids one extra read per parcela inside the loop).
+  // Pre-fetch de ids con cambios pendientes: evita una lectura extra por parcela dentro del loop.
   const localRows = await db
     .select({ id: parcelas.id, pendingSync: parcelas.pendingSync })
     .from(parcelas)
@@ -133,7 +117,7 @@ async function pullParcelas(
     let done = 0;
     for (const remoteParcela of all) {
       if (pendingLocally.has(remoteParcela.id)) {
-        // Local push wins — skip overwriting pending changes.
+        // Local push wins.
         done++;
         continue;
       }
@@ -185,10 +169,7 @@ async function pullGroups(
   emitProgress(onProgress, 'groups', 0, all.length);
   if (all.length === 0) return [];
 
-  // Pre-fetch ids con cambios locales pendientes para saltearlos (igual que
-  // pullParcelas). El pull NO debe pisar un grupo dirty: antes sobreescribía
-  // estado/nombre/parcela_id con el valor del server aunque hubiera un cambio
-  // local sin subir (p.ej. activa→finalizada), perdiendo la transición.
+  // Pre-fetch de ids con cambios pendientes (igual que pullParcelas): el pull no debe pisar un grupo dirty (p.ej. una transición activa→finalizada sin subir).
   const localRows = await db
     .select({ id: groups.id, pendingSync: groups.pendingSync })
     .from(groups)
@@ -199,14 +180,12 @@ async function pullGroups(
     let done = 0;
     for (const sg of all) {
       if (pendingLocally.has(sg.id)) {
-        // Local push wins — skip overwriting pending changes.
+        // Local push wins.
         done++;
         continue;
       }
       if (sg.parcela_id == null) {
-        // #90: parcela obligatoria — un grupo sin parcela en el server es dato
-        // inválido. El throw aborta el pull de grupos y el error se reporta en
-        // la UI de sync (no se degrada insertando null en silencio).
+        // #90: parcela obligatoria; el throw aborta el pull y se reporta en la UI de sync (no se degrada insertando null en silencio).
         throw new Error(`Grupo ${sg.id} sin parcela en el server: dato inválido (#90).`);
       }
       await tx.insert(groups).values({
@@ -241,9 +220,7 @@ async function pullPlantationUsers(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
-  // Plantación creada offline cuyo push todavía no entró: el server no tiene
-  // filas y el replace destructivo borraría la membresía local del creador
-  // (issue #67). El server es autoridad recién cuando la plantación existe allá.
+  // Plantación offline sin pushear aún: el server no tiene filas y el replace destructivo borraría la membresía local del creador (#67); recién es autoridad si la plantación ya existe allá.
   const [localPlant] = await db
     .select({ pendingSync: plantations.pendingSync })
     .from(plantations)
@@ -342,11 +319,9 @@ async function pullPlantationSpecies(
 type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
 
 /**
- * Per-tree species conflict check: only runs when the row exists locally with
- * a non-null especieId that differs from the server's. Marks the row with
- * conflictEspecieId so the UI can prompt the user.
- *
- * Returns true if the remote tree must NOT be upserted (conflict captured).
+ * Detecta conflicto de especie: si la fila local ya tiene un especieId no-null distinto al del
+ * server, la marca con conflictEspecieId para que la UI prompte.
+ * @returns true si hubo conflicto (el remoto no debe upsertearse).
  */
 async function checkTreeConflict(tx: Tx, remoteTree: any): Promise<boolean> {
   if (!remoteTree.species_id) return false;
@@ -367,8 +342,7 @@ async function checkTreeConflict(tx: Tx, remoteTree: any): Promise<boolean> {
 export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
   const hasFotoOnServer = isRemoteUri(t.foto_url);
   const serverFotoUrl = hasFotoOnServer ? t.foto_url : null;
-  // Server schema usa group_id directo; el compat shim 012b mantiene subgroup_id
-  // como GENERATED column para APKs viejos.
+  // El server usa group_id directo; el compat shim 012b mantiene subgroup_id como GENERATED column para APKs viejos.
   const groupIdRemote = t.group_id ?? t.subgroup_id;
 
   await tx.insert(trees).values({
@@ -395,13 +369,10 @@ export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
       subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
       fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
       fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
-      // IDs definitivos: conservar el local si ya existe (generado y aún no pusheado),
-      // adoptar el del server cuando el local está vacío. Nunca pisar con NULL.
+      // IDs definitivos: conserva el local si ya existe (generado, no pusheado aún); adopta el del server si el local está vacío. Nunca pisa con NULL.
       plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
       globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
-      // Punto GPS: el local no-null gana (captura/re-captura pendiente de push);
-      // recién se adopta el del server cuando no hay punto local. Las 4 columnas
-      // se deciden juntas por latitude para no mezclar campos de fixes distintos.
+      // Punto GPS: el local no-null gana (captura pendiente de push); se adopta el del server solo si no hay punto local. Las 4 columnas se deciden juntas por latitude, para no mezclar fixes.
       latitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.latitude} ELSE excluded.latitude END`,
       longitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.longitude} ELSE excluded.longitude END`,
       gpsAccuracy: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,
@@ -430,8 +401,7 @@ async function pullTrees(
   emitProgress(onProgress, 'arboles', 0, all.length);
   if (all.length === 0) return;
 
-  // Fast path: if no local trees exist for these groups (fresh download), we
-  // can skip the per-row conflict check entirely. Saves 2 reads × N trees.
+  // Fast path: sin árboles locales para estos grupos (descarga fresh), se saltea el conflict check por fila (ahorra 2 reads × N).
   const [localCountRow] = await db
     .select({ cnt: count() })
     .from(trees)
@@ -456,13 +426,7 @@ async function pullTrees(
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
-/**
- * Downloads plantation metadata, parcelas, groups, plantation_users,
- * plantation_species and trees from Supabase and upserts them into local
- * SQLite.
- *
- * FK ordering: parcelas BEFORE groups (groups.parcela_id FK).
- */
+/** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK. */
 export async function pullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,

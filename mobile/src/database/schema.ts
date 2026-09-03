@@ -23,21 +23,18 @@ export const plantations = sqliteTable('plantations', {
   pendingEdit: integer('pending_edit', { mode: 'boolean' }).notNull().default(false),
   lugarServer: text('lugar_server'),
   periodoServer: text('periodo_server'),
-  // Config GPS por plantación (default también duplicado en las migraciones
-  // 0015 local y 023 de Supabase; si cambia, revisar los tres lugares).
+  // Default duplicado en migraciones 0015 (local) y 023 (Supabase); revisar los tres lugares si cambia.
   gpsCaptureFrequency: integer('gps_capture_frequency')
     .notNull()
     .default(GPS_CAPTURE_FREQUENCY_DEFAULT),
   gpsCaptureRequired: integer('gps_capture_required', { mode: 'boolean' })
     .notNull()
     .default(GPS_CAPTURE_REQUIRED_DEFAULT),
-  // Snapshot del último valor conocido del server (como lugarServer/periodoServer):
-  // permite que discardPlantationEdit revierta una edición offline de la config GPS.
-  // Nullable: null = sin snapshot todavía. Migración local 0016.
+  // Snapshot del server (como lugarServer/periodoServer) para que discardPlantationEdit
+  // revierta ediciones offline de la config GPS. Null = sin snapshot todavía (migración 0016).
   gpsCaptureFrequencyServer: integer('gps_capture_frequency_server'),
   gpsCaptureRequiredServer: integer('gps_capture_required_server', { mode: 'boolean' }),
-  // Visibilidad administrada desde la web de gestión: los técnicos no ven
-  // plantaciones ocultas en el listado; el sync no se ve afectado.
+  // Visibilidad administrada desde la web de gestión: técnicos no ven plantaciones ocultas; el sync no se ve afectado.
   visibleInApp: integer('visible_in_app', { mode: 'boolean' }).notNull().default(true),
 });
 
@@ -52,9 +49,8 @@ export const parcelas = sqliteTable('parcelas', {
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 }, (t) => ({
-  // PARTIAL unique indexes: tombstones (deleted_at NOT NULL) están excluidos del
-  // uniqueness check para permitir reusar nombre/codigo de parcelas borradas.
-  // D-16-19: soft-delete + partial unique = espacio de nombres reciclable.
+  // PARTIAL unique indexes: tombstones (deleted_at NOT NULL) quedan excluidos del
+  // uniqueness check, para poder reusar nombre/codigo de parcelas borradas.
   uniqueCode: uniqueIndex('parcelas_plantation_code_unique')
     .on(t.plantacionId, t.codigo)
     .where(sql`deleted_at IS NULL`),
@@ -67,7 +63,7 @@ export const groups = sqliteTable('groups', {
   id: text('id').primaryKey(),
   plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
   // #90: todo grupo tiene parcela — la ausencia es dato inválido, no caso
-  // válido (los datos legacy pre-P15 ya se migraron).
+  // válido (los datos legacy ya se migraron).
   parcelaId: text('parcela_id').notNull().references(() => parcelas.id),
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),

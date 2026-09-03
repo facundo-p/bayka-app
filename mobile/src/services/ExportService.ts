@@ -1,16 +1,6 @@
 /**
- * ExportService — generates CSV and Excel files from plantation export data
- * and shares them via the native share sheet.
- *
- * Covers: EXPO-01 (CSV), EXPO-02 (Excel), EXPO-PARC-01 (Parcela column),
- *         EXPO-PARC-02 (Parcela value = parcela.nombre).
- *
- * 9-column order (D-18-08):
- *   ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie
- *
- * CRITICAL (Pitfall 4): Always use type: 'base64' in XLSX.write — Node Buffer
- * is not available in React Native.
- * CRITICAL (Pitfall 5): Write to Paths.cache only.
+ * ExportService — genera CSV/Excel/KML de datos de plantación y los comparte vía share sheet nativo.
+ * Orden de columnas: ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie.
  */
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -20,21 +10,15 @@ import { pullSpeciesFromServer } from './sync/preSteps';
 import { syncLog } from '../utils/syncLogger';
 import { buildKml } from './kml/kmlGenerator';
 
-// BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y
-// rompe los acentos/ñ. El .xlsx no lo necesita (embebe la codificación). #87.
+// BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y rompe acentos/ñ;
+// el .xlsx no lo necesita (ya embebe la codificación).
 const UTF8_BOM = String.fromCharCode(0xFEFF);
 
-// Etiqueta para árboles cuya especie no se pudo resolver (especieId null o
-// huérfano). Se muestra en la planilla en vez de perder la fila, así el problema
-// queda visible.
+// Especie no resuelta (especieId null o huérfano): se muestra en vez de perder la fila, para que
+// el problema quede visible.
 const ESPECIE_NO_RESUELTA = 'N/N';
 
-/**
- * Refresca el catálogo de especies desde el server antes de generar el export.
- * Best-effort: si no hay red o falla, seguimos con el catálogo local — el LEFT
- * JOIN garantiza que ningún árbol se pierda (a lo sumo sale como "N/N"). Cubre
- * el caso de especies del server que aún no bajaron a este dispositivo.
- */
+/** Refresca el catálogo de especies antes del export; best-effort — si falla, sigue con el catálogo local (el LEFT JOIN evita perder árboles, a lo sumo salen como "N/N"). */
 async function refreshSpeciesCatalogBeforeExport(): Promise<void> {
   try {
     await pullSpeciesFromServer();
@@ -43,12 +27,7 @@ async function refreshSpeciesCatalogBeforeExport(): Promise<void> {
   }
 }
 
-/**
- * Escribe el CSV con BOM UTF-8 garantizado a nivel de bytes (EF BB BF + cuerpo
- * UTF-8) cuando `TextEncoder` está disponible — así Excel detecta la codificación
- * sin ambigüedad. Si no lo está, cae al string con `encoding: 'utf8'` (también
- * correcto, pero menos explícito).
- */
+/** Escribe el BOM UTF-8 a nivel de bytes cuando hay `TextEncoder` (detección de encoding sin ambigüedad en Excel); si no, cae a `encoding: 'utf8'`. */
 function writeCsvWithBom(file: File, csvBody: string): void {
   if (typeof TextEncoder !== 'undefined') {
     const body = new TextEncoder().encode(csvBody);
@@ -63,17 +42,14 @@ function writeCsvWithBom(file: File, csvBody: string): void {
   file.write(UTF8_BOM + csvBody, { encoding: 'utf8' });
 }
 
-// ─── Header constant (D-18-08 — exact order) ────────────────────────────────
+// ─── Header constant ─────────────────────────────────────────────────────────
 
 const CSV_HEADER =
   'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
-/**
- * Wraps a field value in double quotes if it contains a comma, quote, or newline.
- * This satisfies RFC 4180 CSV quoting requirements.
- */
+/** Encierra el valor en comillas si tiene coma/comilla/salto de línea (RFC 4180). */
 function csvField(value: string | number | null | undefined): string {
   const str = value == null ? '' : String(value);
   if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -82,10 +58,7 @@ function csvField(value: string | number | null | undefined): string {
   return str;
 }
 
-/**
- * Build a single CSV row from an ExportRow (9 columns, D-18-08 order).
- * Normalizes `especieNombre: null` → 'N/N'. `parcelaNombre` es obligatoria (#90).
- */
+/** Fila CSV en el orden del header (especieNombre null → 'N/N'; parcelaNombre es obligatoria). */
 function rowToCSV(r: ExportRow): string {
   return [
     csvField(r.globalId),
@@ -100,10 +73,7 @@ function rowToCSV(r: ExportRow): string {
   ].join(',');
 }
 
-/**
- * Build an Excel sheetData entry (9 keys, D-18-08 order).
- * Normalizes `especieNombre: null` → 'N/N'. `parcelaNombre` es obligatoria (#90).
- */
+/** Igual a rowToCSV pero como objeto, para SheetJS. */
 function rowToExcel(r: ExportRow) {
   return {
     'ID Global': r.globalId,
@@ -120,10 +90,7 @@ function rowToExcel(r: ExportRow) {
 
 // ─── exportToCSV ─────────────────────────────────────────────────────────────
 
-/**
- * EXPO-01
- * Fetches all export rows, builds a CSV string, writes to cache, and shares.
- */
+/** Genera el CSV de la plantación y lo comparte. */
 export async function exportToCSV(plantacionId: string, plantationName: string): Promise<void> {
   await refreshSpeciesCatalogBeforeExport();
   const rows = await getExportRows(plantacionId);
@@ -140,18 +107,11 @@ export async function exportToCSV(plantacionId: string, plantationName: string):
 
 // ─── exportToExcel ────────────────────────────────────────────────────────────
 
-// Ajuste de ancho de columnas (#54): tope para que un valor larguísimo no
-// produzca una columna inusable, más un pequeño respiro visual.
+// Tope de ancho de columna: evita que un valor larguísimo genere una columna inusable, + padding visual.
 const EXCEL_ANCHO_MAX = 100;
 const EXCEL_ANCHO_PADDING = 2;
 
-/**
- * Anchos de columna ajustados al contenido (#54): por columna, el mayor largo
- * entre el encabezado y todos los valores (como string), con tope de
- * EXCEL_ANCHO_MAX + padding. Las columnas se derivan de las claves de la
- * primera fila (`rowToExcel`), no de una lista aparte, para no desincronizarse
- * del esquema D-18-08. Sin filas no hay hoja que ensanchar → [].
- */
+/** Ancho por columna = mayor largo entre header y valores, topeado en EXCEL_ANCHO_MAX+padding; las columnas salen de las claves de `rowToExcel` para no desincronizarse del esquema. */
 function excelColumnWidths(sheetData: Record<string, unknown>[]): { wch: number }[] {
   if (sheetData.length === 0) return [];
   return Object.keys(sheetData[0]).map((header) => {
@@ -164,11 +124,7 @@ function excelColumnWidths(sheetData: Record<string, unknown>[]): { wch: number 
   });
 }
 
-/**
- * EXPO-02
- * Fetches all export rows, builds an Excel workbook via SheetJS,
- * writes as base64 to cache, and shares.
- */
+/** Genera el Excel (vía SheetJS) de la plantación y lo comparte. */
 export async function exportToExcel(plantacionId: string, plantationName: string): Promise<void> {
   await refreshSpeciesCatalogBeforeExport();
   const rows = await getExportRows(plantacionId);
@@ -179,10 +135,9 @@ export async function exportToExcel(plantacionId: string, plantationName: string
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Plantacion');
 
-  // CRITICAL: use type: 'base64' — Node Buffer not available in React Native
+  // type: 'base64' — Node Buffer no está disponible en React Native.
   const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
 
-  // CRITICAL: write to Paths.cache only
   const file = new File(Paths.cache, `${plantationName}_export.xlsx`);
   file.write(base64, { encoding: 'base64' });
 
@@ -194,11 +149,7 @@ export async function exportToExcel(plantacionId: string, plantationName: string
 
 // ─── exportToKML ──────────────────────────────────────────────────────────────
 
-/**
- * Exporta los puntos GPS de la plantación como KML (placemarks coloreados por
- * especie, folders parcela → grupo). Solo árboles con coordenadas; sin puntos
- * lanza un error con mensaje claro para el usuario.
- */
+/** Exporta puntos GPS como KML (placemarks por especie, folders parcela → grupo); sin árboles con GPS, lanza error. */
 export async function exportToKML(plantacionId: string, plantationName: string): Promise<void> {
   const rows = await getKmlExportRows(plantacionId);
   if (rows.length === 0) {

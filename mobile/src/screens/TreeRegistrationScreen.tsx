@@ -52,8 +52,8 @@ export default function TreeRegistrationScreen() {
   const confirm = useConfirm();
   const { pickPhoto } = usePhotoCapture(confirm.show);
 
-  // Surface de errores de escritura (#90): cualquier writer que falle (registro,
-  // borrado, foto, finalización) se notifica acá — antes era unhandled rejection.
+  // Surface de errores de escritura (#90): notifica cualquier writer que
+  // falle (registro, borrado, foto, finalización).
   const showWriteError = useCallback((mensaje: string) => {
     showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
   }, [confirm.show]);

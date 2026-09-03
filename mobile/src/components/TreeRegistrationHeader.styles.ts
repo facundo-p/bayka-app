@@ -1,4 +1,3 @@
-// Estilos de TreeRegistrationHeader.
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 

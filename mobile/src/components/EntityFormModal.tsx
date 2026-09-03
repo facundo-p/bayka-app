@@ -15,10 +15,9 @@ interface Props {
 }
 
 /**
- * Template full-screen para creación/edición de entidades (#89). Unifica
- * Plantación, Parcela y Grupo bajo un mismo patrón: header verde con safe-area,
- * cuerpo keyboard-aware y footer fijo. Modelo de referencia = ParcelaFormModal.
- * El back del SO cierra el modal vía onRequestClose.
+ * Template full-screen para creación/edición de entidades (#89): header verde
+ * con safe-area, cuerpo keyboard-aware y footer fijo. El back del SO cierra
+ * el modal vía onRequestClose.
  */
 export default function EntityFormModal({ visible, title, onClose, footer, children, extraContent }: Props) {
   return (

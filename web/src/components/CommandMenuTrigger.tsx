@@ -6,8 +6,7 @@ interface CommandMenuTriggerProps {
   disabled?: boolean;
 }
 
-/** Disparador del buscador (⌘K). El menú llega en un issue posterior;
- *  por ahora se renderiza deshabilitado (visualmente presente, sin acción). */
+/** Disparador del buscador (⌘K). */
 export function CommandMenuTrigger({ onClick, disabled = false }: CommandMenuTriggerProps) {
   return (
     <button type="button" className={styles.trigger} onClick={onClick} disabled={disabled}>

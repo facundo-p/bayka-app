@@ -8,8 +8,6 @@ import { pullFromServer } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
 
-// ─── Download a single plantation from server ─────────────────────────────────
-
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
   includePhotos?: boolean;
@@ -17,10 +15,7 @@ interface DownloadOptions {
   onPhase?: (p: DownloadPhaseProgress) => void;
 }
 
-/**
- * Fila de plantations tal como llega del server (snake_case).
- * visible_in_app es opcional: tolera servers sin la migración que la agrega.
- */
+/** Fila de plantations tal como llega del server (snake_case); visible_in_app opcional, tolera servers sin esa columna. */
 export type ServerPlantationRow = {
   id: string;
   organizacion_id: string;
@@ -32,10 +27,7 @@ export type ServerPlantationRow = {
   visible_in_app?: boolean | null;
 };
 
-/**
- * Downloads a single plantation by upserting its row into local SQLite,
- * then calling pullFromServer to sync groups, species, and users.
- */
+/** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
 export async function downloadPlantation(
   serverPlantation: ServerPlantationRow,
   options: DownloadOptions = {},
@@ -83,14 +75,9 @@ export async function downloadPlantation(
   }
 }
 
-// ─── Batch download plantations ───────────────────────────────────────────────
-
 /**
- * Downloads multiple plantations sequentially. Calls notifyDataChanged once
- * at the end to prevent render storms.
- *
- * Species catalog is pulled once at the start (before the loop) — trees rely
- * on local species rows for code/name resolution.
+ * Descarga varias plantaciones secuencialmente; notifyDataChanged una sola vez al final (evita
+ * render storms). El catálogo de species se trae una vez al inicio — los árboles lo necesitan para resolver código/nombre.
  */
 export async function batchDownload(
   selected: ServerPlantationRow[],

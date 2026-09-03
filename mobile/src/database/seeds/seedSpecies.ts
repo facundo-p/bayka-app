@@ -32,7 +32,6 @@ export async function seedSpeciesIfNeeded(): Promise<void> {
   for (const s of catalog) {
     const ex = existingById.get(s.id);
     if (!ex) {
-      // New species
       await db.insert(species).values({
         id: s.id,
         codigo: s.codigo,
@@ -41,7 +40,6 @@ export async function seedSpeciesIfNeeded(): Promise<void> {
         createdAt: now,
       });
     } else if (ex.codigo !== s.codigo || ex.nombre !== s.nombre || ex.nombreCientifico !== (s.nombre_cientifico ?? null)) {
-      // Updated species
       await db.update(species).set({
         codigo: s.codigo,
         nombre: s.nombre,

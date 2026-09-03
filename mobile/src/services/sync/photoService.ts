@@ -13,9 +13,9 @@ import { uploadPhotoToStorage } from './storageUpload';
 
 /**
  * Uploads all pending photos for a plantation to Supabase Storage.
- * Per D-15: runs after Group sync. Continues on individual failures (batch-safe).
- * Per D-12: stores relative storage path `plantations/{id}/trees/{id}.jpg` in Supabase trees table.
- * Per D-13: marks fotoSynced=true locally on success.
+ * Runs after Group sync; continues on individual failures (batch-safe).
+ * Stores relative storage path `plantations/{id}/trees/{id}.jpg` in the Supabase trees table.
+ * Marks fotoSynced=true locally on success.
  */
 export async function uploadPendingPhotos(
   plantacionId: string,
@@ -28,7 +28,7 @@ export async function uploadPendingPhotos(
   for (let i = 0; i < pending.length; i++) {
     onProgress?.({ total: pending.length, completed: i });
     const tree = pending[i];
-    // Path con parcela (D-16); parcela es obligatoria en groups (#90).
+    // Path con parcela: parcela es obligatoria en groups (#90).
     const storagePath = `plantations/${tree.plantacionId}/parcelas/${tree.parcelaId}/trees/${tree.id}.jpg`;
 
     const { error } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
@@ -36,7 +36,7 @@ export async function uploadPendingPhotos(
       syncLog.error(`Photo upload failed for tree ${tree.id}:`, error.message);
       failed++;
     } else {
-      // Update Supabase trees table with relative storage path (D-12)
+      // Update Supabase trees table with relative storage path.
       const { error: updateError } = await supabase
         .from('trees')
         .update({ foto_url: storagePath })
@@ -102,7 +102,7 @@ async function downloadSinglePhoto(
 
 /**
  * Downloads remote photos for a plantation to local storage.
- * Per D-16: runs during pull flow. Skips trees with local file:// URIs.
+ * Runs during pull flow; skips trees with local file:// URIs.
  * Updates local fotoUrl to local path and sets fotoSynced=true on success.
  */
 export async function downloadPhotosForPlantation(

@@ -1,5 +1,4 @@
 // Tests for offline sync functions in SyncService
-// Covers: OFPL-04, OFPL-05, OFPL-06
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -266,7 +265,7 @@ describe('SyncService — offline functions', () => {
       // pendingSync must NOT be updated to false (plantation was skipped)
       expect(mockDb.update).not.toHaveBeenCalled();
 
-      // The failure is surfaced with the raw postgres detail (no longer swallowed)
+      // Failure is surfaced with the raw postgres detail.
       expect(failResults).toHaveLength(1);
       expect(failResults[0].success).toBe(false);
       if (failResults[0].success) return;

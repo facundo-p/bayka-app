@@ -1,15 +1,11 @@
 /**
  * Integration tests: PlantationCreationService.createPlantationWithDefaultParcela
  *
- * Uses real SQLite via better-sqlite3 + drizzle migrations. Mocks the
- * `database/client` module so the service + repositories operate on the
- * in-memory test DB. Online path (mode='online') is NOT covered here —
- * cubierto implícitamente porque el branching del flag es el mismo código.
- *
- * NOTE: located under `tests/integration/` (not `tests/services/` as planned)
- * because the SQLite-driven test requires the integration jest config to
- * resolve better-sqlite3 properly. The featureFlags.test.ts (trivial) lives
- * at `tests/config/` under the default unit-test config.
+ * Real SQLite via better-sqlite3 + drizzle migrations; mocks `database/client`
+ * so the service + repositories operate on the in-memory test DB. Online mode
+ * isn't covered separately — same code path, only the flag differs.
+ * Lives under tests/integration/ because it needs the integration jest config
+ * to resolve better-sqlite3.
  */
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
@@ -29,8 +25,7 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-// Stub the supabase client (imported transitively via PlantationRepository).
-// We never call online mode in these tests; only the import must not blow up.
+// Stub supabase (imported transitively via PlantationRepository); only the import must not blow up.
 jest.mock('../../src/supabase/client', () => ({
   supabase: { from: jest.fn() },
   isSupabaseConfigured: false,
@@ -40,7 +35,7 @@ jest.mock('../../src/services/SyncService', () => ({
   pullFromServer: jest.fn(),
 }));
 
-// Default: feature flag ON. Individual tests can override via jest.isolateModules.
+// Default: feature flag ON.
 jest.mock('../../src/config/featureFlags', () => ({
   AUTO_PARCELA_DEFAULT: true,
 }));
@@ -128,7 +123,7 @@ describe('createPlantationWithDefaultParcela (flag OFF)', () => {
   test('flag OFF + offline → solo crea plantación, 0 parcelas', async () => {
     jest.resetModules();
     jest.doMock('../../src/config/featureFlags', () => ({ AUTO_PARCELA_DEFAULT: false }));
-    // Re-establish the other mocks for the fresh module registry.
+    // Re-establish mocks for the fresh module registry.
     jest.doMock('../../src/database/client', () => ({ get db() { return mockTestDb; } }));
     jest.doMock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
     jest.doMock('../../src/supabase/client', () => ({ supabase: { from: jest.fn() }, isSupabaseConfigured: false }));

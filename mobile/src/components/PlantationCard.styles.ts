@@ -1,11 +1,5 @@
 /**
- * Styles for PlantationCard — centralized tokens from theme.ts (CLAUDE.md §8,
- * memory `feedback_no_inline_styles.md`).
- *
- * Extracted from PlantationCard.tsx in Plan 17-02 Task 2.1 BEFORE adding
- * inline-expansion logic, so the file does not grow past the ~250 line
- * threshold. Diff vs the inline version is a pure cut+paste — no token
- * changes (Plan 17-02).
+ * Styles for PlantationCard.
  */
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts, chipSizes } from '../theme';
@@ -39,7 +33,6 @@ export const plantationCardStyles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // Main content area — solid surface color (white)
   content: {
     flex: 1,
     padding: spacing.xxl,
@@ -129,13 +122,13 @@ export const plantationCardStyles = StyleSheet.create({
     borderTopColor: colors.borderLight,
   },
 
-  // Expand row — "Parcelas: N" + chevron (D-17-10)
+  // Expand row — "Parcelas: N" + chevron
   expandRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-    minHeight: 44, // D-17-22 touch target
+    minHeight: 44, // touch target
   },
   expandRowPressed: {
     opacity: 0.6,

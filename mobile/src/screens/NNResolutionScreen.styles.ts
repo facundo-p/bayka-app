@@ -1,4 +1,3 @@
-// Estilos de NNResolutionScreen.
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 

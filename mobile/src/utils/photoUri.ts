@@ -20,10 +20,7 @@ export function ensureFileUri(uri: string): string {
   return isLocalUri(uri) ? uri : `file://${uri}`;
 }
 
-/**
- * SQL fragment: evaluates to true when the column holds a local URI.
- * Use in Drizzle .where() or CASE WHEN expressions.
- */
+/** SQL fragment: true when the column holds a local URI. Use in Drizzle .where() or CASE WHEN expressions. */
 export function sqlIsLocalUri(column: SQLiteColumn): SQL {
   return sql`(${column} LIKE 'file://%' OR ${column} LIKE 'content://%')`;
 }

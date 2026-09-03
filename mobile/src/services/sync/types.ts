@@ -1,23 +1,11 @@
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 /**
- * Sync error codes (todas las flows: grupo + parcela).
- *
- * Contrato:
- *  - DUPLICATE_CODE: server rechazó parcela por unique (plantation_id, codigo).
- *    Detectado en pushService.classifyParcelaRpcResult vía error.code === '23505'
- *    + parsing de error.details. NUNCA substring de error.message.
- *  - DUPLICATE_NAME: server rechazó parcela por unique (plantation_id, nombre).
- *    Idem.
- *  - GENERIC_CONFLICT: server rechazó con 23505 pero details no encaja con los
- *    constraints esperados (fallback ante drift de versiones).
- *  - PARCELA_PENDING: grupo no se subió porque su parcela está aún pending_sync
- *    (D-16-16, atomicidad — orden FK).
- *  - PERMISSION: el server rechazó por RLS (postgres 42501). Típicamente el
- *    usuario no está habilitado para escribir en esa plantación.
- *  - NETWORK, UNKNOWN: legacy.
+ * Códigos de error de sync (grupo + parcela). DUPLICATE_CODE/NAME: unique violation (23505) en
+ * pushService, vía error.code + parsing de error.details (nunca substring de message).
+ * GENERIC_CONFLICT: 23505 pero details no matchea los constraints esperados. PARCELA_PENDING:
+ * grupo no subido porque su parcela sigue pending_sync (orden FK). PERMISSION: RLS (42501).
+ * NETWORK/UNKNOWN: legacy.
  */
 export type SyncErrorCode =
   | 'DUPLICATE_CODE'
@@ -84,8 +72,7 @@ export interface DownloadProgress {
   currentName: string;
   /** Per-phase progress within the current plantation. Null while between phases. */
   phase: DownloadPhaseProgress | null;
-  // Legacy fields preserved for backwards-compat with callers that read them
-  // as a plantation-level counter (modal title etc).
+  // Legacy: mantenidos para callers que los leen como contador a nivel de plantación (modal title, etc).
   total: number;
   completed: number;
 }
@@ -96,12 +83,9 @@ export type DownloadResult = {
   nombre: string;
 };
 
-// ─── Error messages (Spanish) ─────────────────────────────────────────────────
-
 const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
-  // DUPLICATE_CODE/NAME los devuelve el RPC tanto para parcelas como para grupos;
-  // el mensaje es neutral para no nombrar la entidad equivocada (la unicidad de
-  // grupo es por parcela, no por plantacion). Ver issue #65.
+  // DUPLICATE_CODE/NAME los devuelve el RPC tanto para parcelas como grupos; mensaje neutral para
+  // no nombrar la entidad equivocada (unicidad de grupo es por parcela, no por plantación, #65).
   DUPLICATE_CODE: 'El codigo ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
   DUPLICATE_NAME: 'El nombre ya existe en el servidor. Renombra e intenta de nuevo.',
   GENERIC_CONFLICT: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
@@ -115,19 +99,15 @@ export function getErrorMessage(code: SyncErrorCode): string {
   return ERROR_MESSAGES[code];
 }
 
-// ─── Server error classification (shared) ─────────────────────────────────────
-
 /** Raw "code: message" del error, para mostrar la causa real en errores opacos. */
 export function rawErrorDetail(error: { code?: string; message?: string } | null | undefined): string {
   return `${error?.code ?? 'sin-codigo'}: ${error?.message ?? ''}`.trim();
 }
 
 /**
- * Clasifica un error de push (server/red) que NO es un conflicto de unicidad
- * (23505). Tail compartido por la clasificación de parcela y de plantación:
- *  - 42501 (RLS insufficient_privilege) → PERMISSION
- *  - fetch/network sin código postgres → NETWORK
- *  - resto → UNKNOWN (con el código/mensaje crudo en `detail`)
+ * Clasifica errores de push que NO son conflicto de unicidad (23505); compartido por parcela y
+ * plantación: 42501 (RLS) → PERMISSION; fetch/network sin código postgres → NETWORK; resto →
+ * UNKNOWN (con code/message crudo en `detail`).
  */
 export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
   const detail = rawErrorDetail(error);

@@ -1,11 +1,7 @@
 /*
- * Datos del dashboard de una plantación.
- *
- * Decisión: se trae UNA sola lectura liviana de árboles (columnas mínimas) y
- * toda la agregación se hace en cliente. El dataset real es ~7600 árboles por
- * plantación, así que evita crear RPCs en Supabase y mantiene la lógica
- * testeable como funciones puras. Si el volumen crece más allá del tope,
- * migrar a una RPC con `group by` en el servidor.
+ * Datos del dashboard de una plantación: una sola lectura liviana de árboles (columnas
+ * mínimas) agregada en cliente (~7600 árboles/plantación); evita RPCs y mantiene la lógica
+ * testeable como funciones puras. Migrar a RPC con `group by` si el volumen crece.
  */
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
@@ -15,13 +11,10 @@ import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from './especiesConst
 import { listarCatalogo, type EspecieCatalogo } from './especieQueries';
 import { leerPaginado } from './leerPaginado';
 
-/** Largo del prefijo 'YYYY-MM' de una fecha ISO. */
 const LARGO_MES_ISO = 7;
 
-/** Nombre visible del segmento de árboles sin especie. */
 export { NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 
-/** Proyección mínima de un árbol para agregar en cliente. */
 export type ArbolDashboard = {
   speciesId: string | null;
   fotoUrl: string | null;
@@ -31,7 +24,6 @@ export type ArbolDashboard = {
   parcelaId: string | null;
 };
 
-/** Parcela activa con lo justo para etiquetar el gráfico. */
 export type ParcelaDashboard = {
   id: string;
   nombre: string;
@@ -63,7 +55,6 @@ export function porcentaje(parte: number, total: number): number {
   return total === 0 ? 0 : Math.round((parte / total) * 100);
 }
 
-/** Cuenta elementos por la clave que devuelve `claveDe`. */
 function contarPor<Elemento, Clave>(
   elementos: Elemento[],
   claveDe: (elemento: Elemento) => Clave,
@@ -94,8 +85,7 @@ export function calcularKpis(arboles: ArbolDashboard[]): KpisArboles {
   };
 }
 
-/** Cantidad de árboles por especie, orden descendente; los N/N van como
- *  "Sin identificar" con código `ESPECIE_SIN_IDENTIFICAR`. */
+/** Cantidad de árboles por especie, orden descendente; N/N van como "Sin identificar". */
 export function agruparPorEspecie(
   arboles: ArbolDashboard[],
   especies: EspecieCatalogo[],
@@ -113,8 +103,7 @@ export function agruparPorEspecie(
   return distribucion.sort((primera, segunda) => segunda.cantidad - primera.cantidad);
 }
 
-/** Cantidad de árboles por parcela activa, en el orden recibido (por código).
- *  Una parcela sin árboles queda con cantidad 0 (la barra en cero informa). */
+/** Árboles por parcela activa, en el orden recibido; sin árboles queda en 0 (barra en cero informa). */
 export function agruparPorParcela(
   arboles: ArbolDashboard[],
   parcelas: ParcelaDashboard[],
@@ -127,7 +116,6 @@ export function agruparPorParcela(
   }));
 }
 
-/** Registros por mes 'YYYY-MM', orden cronológico ascendente. */
 export function agruparPorMes(arboles: ArbolDashboard[]): RegistrosMes[] {
   const conteos = contarPor(arboles, (arbol) => arbol.createdAt.slice(0, LARGO_MES_ISO));
   return [...conteos]
@@ -167,13 +155,12 @@ function consultarArbolesDashboard(plantationId: string, columnas: string, desde
     .range(desde, hasta);
 }
 
-/** Lectura paginada de todos los árboles (sin el tope de 1000 de PostgREST):
- *  columnas livianas + embed mínimo del grupo. `latitude` es de la migración
- *  023: si no está aplicada el select falla con UNDEFINED_COLUMN y se reintenta
- *  sin ella (el KPI de GPS queda en 0 en vez de romper el dashboard). */
+/**
+ * Lectura paginada (sin el tope de 1000 de PostgREST). `latitude` es de la migración 023:
+ * si falla con UNDEFINED_COLUMN se reintenta sin ella (el KPI de GPS queda en 0).
+ */
 async function listarArbolesDashboard(plantationId: string): Promise<ArbolDashboard[]> {
-  // El cliente sin typegen tipa el embed como array, pero la FK group_id →
-  // groups es many-to-one: en runtime llega un objeto.
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   const aFilas = (filas: unknown[]) =>
     (filas as FilaArbolDashboard[]).map(mapearArbolDashboard);
   try {
@@ -192,7 +179,6 @@ async function listarArbolesDashboard(plantationId: string): Promise<ArbolDashbo
   }
 }
 
-/** Parcelas activas (excluye soft-deleted) ordenadas por código. */
 async function listarParcelasDashboard(plantationId: string): Promise<ParcelaDashboard[]> {
   const { data, error } = await supabase
     .from('parcelas')
@@ -212,7 +198,6 @@ async function contarGrupos(plantationId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-/** Carga y agrega todos los datos del dashboard de la plantación. */
 export async function obtenerDashboard(plantationId: string): Promise<DashboardData> {
   const [arboles, especies, parcelas, totalGrupos] = await Promise.all([
     listarArbolesDashboard(plantationId),

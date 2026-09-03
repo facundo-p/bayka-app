@@ -1,24 +1,10 @@
-/**
- * Admin read queries — plantation management and finalization gate checks.
- * All local queries use Drizzle ORM (SQLite). Profile listing uses Supabase
- * because local SQLite has no profiles table.
- *
- * Covers requirements: PLAN-06, IDGN-01
- */
+/** Admin read queries: gestión de plantación + gate de finalización. Local queries usan Drizzle/SQLite; profile listing usa Supabase (SQLite local no tiene profiles). */
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
 import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 
-// ─── checkFinalizationGate ────────────────────────────────────────────────────
-
-/**
- * PLAN-06
- * Checks whether a plantation can be finalized:
- * - Must have at least one subgroup
- * - All groups must be 'finalizada' AND pendingSync=false
- * Returns canFinalize: true if both conditions met, plus the list of blockers.
- */
+/** canFinalize needs ≥1 subgroup, all groups finalizada+synced, and zero unresolved N/N trees. */
 export async function checkFinalizationGate(
   plantacionId: string
 ): Promise<{
@@ -33,13 +19,11 @@ export async function checkFinalizationGate(
     .from(groups)
     .where(eq(groups.plantacionId, plantacionId));
 
-  // A subgroup is "done" if its estado is finalizada OR sincronizada.
-  // sincronizada = finalized + synced to server (Phase 14 lifecycle).
+  // "Done" = finalizada o sincronizada.
   const blocking = allGroups.filter(s =>
     (s.estado !== 'finalizada' && s.estado !== 'sincronizada') || s.pendingSync
   );
 
-  // Count unresolved N/N trees per subgroup in this plantation
   const nnRows = await db.select({
     grupoId: trees.groupId,
     cnt: count(),
@@ -63,11 +47,7 @@ export async function checkFinalizationGate(
   };
 }
 
-// ─── getPlantationEstado ──────────────────────────────────────────────────────
-
-/**
- * Returns the current estado of a plantation. Used to gate UI actions.
- */
+/** Returns the current estado of a plantation. */
 export async function getPlantationEstado(plantacionId: string): Promise<string | null> {
   const rows = await db
     .select({ estado: plantations.estado })
@@ -76,13 +56,7 @@ export async function getPlantationEstado(plantacionId: string): Promise<string 
   return rows[0]?.estado ?? null;
 }
 
-// ─── getAllTechnicians ────────────────────────────────────────────────────────
-
-/**
- * PLAN-03
- * Returns all technicians in the admin's organization.
- * MUST use Supabase (not local SQLite) — profiles table is not local.
- */
+/** Returns all technicians in the admin's organization. */
 export async function getAllTechnicians(
   organizacionId: string
 ): Promise<Array<{ id: string; nombre: string }>> {
@@ -98,12 +72,7 @@ export async function getAllTechnicians(
   return (data ?? []) as Array<{ id: string; nombre: string }>;
 }
 
-// ─── getPlantationSpeciesConfig ───────────────────────────────────────────────
-
-/**
- * PLAN-02 / PLAN-05
- * Returns all species configured for a plantation ordered by ordenVisual.
- */
+/** Especies configuradas para una plantación, ordenadas por ordenVisual. */
 export async function getPlantationSpeciesConfig(
   plantacionId: string
 ): Promise<Array<{ especieId: string; nombre: string; codigo: string; ordenVisual: number }>> {
@@ -121,13 +90,7 @@ export async function getPlantationSpeciesConfig(
   return rows.sort((a, b) => a.ordenVisual - b.ordenVisual);
 }
 
-// ─── getAssignedTechnicians ───────────────────────────────────────────────────
-
-/**
- * Técnicos asignados a una plantación (SQLite local). Filtra por
- * rol_en_plantacion='tecnico': desde la migración 028 los admins también son
- * miembros y no deben aparecer en la lista de técnicos (issue #67).
- */
+/** Técnicos asignados a una plantación; filtra por rol_en_plantacion='tecnico' porque los admins también son miembros y no deben aparecer acá (#67). */
 export async function getAssignedTechnicians(
   plantacionId: string
 ): Promise<Array<{ userId: string; rolEnPlantacion: string; assignedAt: string }>> {
@@ -144,13 +107,7 @@ export async function getAssignedTechnicians(
     ));
 }
 
-// ─── getTechnicianUnsyncedGroupCount ───────────────────────────────────────
-
-/**
- * Returns the count of groups in a plantation created by a specific user
- * that have pending local changes (pendingSync=true).
- * Used to warn admins before unassigning a technician.
- */
+/** Count of groups a user created with pending local changes — used to warn admins before unassigning a technician. */
 export async function getTechnicianUnsyncedGroupCount(
   plantacionId: string,
   userId: string
@@ -168,13 +125,7 @@ export async function getTechnicianUnsyncedGroupCount(
   return result[0]?.cnt ?? 0;
 }
 
-// ─── hasTreesForSpecies ───────────────────────────────────────────────────────
-
-/**
- * EXPO-01 guard / PLAN-02 safety check
- * Returns true if any tree in this plantation uses the given species.
- * Used to prevent removal of a species that has registered trees.
- */
+/** True if any tree in this plantation uses the given species (guards removal of an in-use species). */
 export async function hasTreesForSpecies(
   plantacionId: string,
   especieId: string
@@ -192,12 +143,7 @@ export async function hasTreesForSpecies(
   return rows.length > 0;
 }
 
-// ─── getAllSpecies ────────────────────────────────────────────────────────────
-
-/**
- * Returns all species in the local catalog, ordered alphabetically.
- * Used by species configuration screens to avoid direct db access.
- */
+/** Returns all species in the local catalog, ordered alphabetically. */
 export async function getAllSpecies(): Promise<Array<{ id: string; nombre: string; codigo: string }>> {
   return db
     .select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
@@ -205,15 +151,7 @@ export async function getAllSpecies(): Promise<Array<{ id: string; nombre: strin
     .orderBy(asc(species.nombre));
 }
 
-// ─── hasIdsGenerated ─────────────────────────────────────────────────────────
-
-/**
- * IDGN-01 gate
- * Returns true only when EVERY tree in the plantation has globalId set (and there
- * is at least one tree). A partial set — e.g. a leftover from an incomplete sync —
- * counts as NOT generated, so the UI keeps offering "Generar IDs" to complete it.
- * Used to gate export buttons and prevent re-generation of IDs.
- */
+/** True solo si TODOS los árboles tienen globalId (y hay ≥1); un set parcial cuenta como NO generado, para que la UI siga ofreciendo "Generar IDs". */
 export async function hasIdsGenerated(plantacionId: string): Promise<boolean> {
   const [row] = await db
     .select({

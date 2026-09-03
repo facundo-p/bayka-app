@@ -1,5 +1,5 @@
 /**
- * Styles for ParcelaRow — centralized tokens from theme.ts (CLAUDE.md §8).
+ * Styles for ParcelaRow — centralized tokens from theme.ts.
  */
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';

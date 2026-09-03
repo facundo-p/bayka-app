@@ -1,10 +1,7 @@
 /**
- * ConfigureSpeciesScreen — species toggle list.
- * Allows enabling/disabling species for a plantation.
- * Species with existing trees are locked (cannot be disabled).
- * Reordering is done in a separate screen (ReorderSpeciesScreen).
- *
- * Covers requirements: PLAN-02, PLAN-04
+ * ConfigureSpeciesScreen — species toggle list; enable/disable species for
+ * a plantation. Species with existing trees are locked. Reordering lives in
+ * ReorderSpeciesScreen.
  */
 import {
   View,

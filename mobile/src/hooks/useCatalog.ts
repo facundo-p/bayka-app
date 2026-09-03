@@ -142,7 +142,6 @@ export function useCatalog() {
   );
 
   return {
-    // Data
     catalogItems,
     filteredCatalog,
     localIds,
@@ -157,7 +156,6 @@ export function useCatalog() {
     downloadResults,
     includePhotos,
     confirmProps: confirm.confirmProps,
-    // Actions
     loadCatalog,
     toggleSelection,
     handleBatchDownload,

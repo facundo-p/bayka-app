@@ -1,13 +1,8 @@
 /**
- * Integration tests: captura GPS — schema + sync (issue #96)
- *
- * Cubre con SQLite real (migraciones drizzle completas, incluida la 0015):
- *  1. Defaults de plantations: gps_capture_frequency=10, gps_capture_required=true
- *  2. Round-trip local de columnas GPS en trees
- *  3. Push: payload del RPC sync_subgroup incluye las 4 columnas GPS
- *  4. Pull: árbol del server con coordenadas llega al local
- *  5. Pull: NO pisa coordenadas locales con NULL del server (re-captura pendiente)
- *  6. Pull metadata: refresca config GPS aun con pendingEdit=true, sin pisar lugar
+ * Integration tests: captura GPS — schema + sync (issue #96).
+ * SQLite real (migraciones drizzle completas, incluida la 0015): defaults de
+ * plantations, round-trip de columnas GPS en trees, payload del RPC
+ * sync_subgroup, y pull (llegada de coordenadas, no pisar con NULL, config).
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';

@@ -37,8 +37,8 @@ function useGenerarIds(plantationId: string, onClose: () => void) {
 
 /**
  * Confirmación de generación de IDs finales (issue #232): seed sugerido
- * (MAX global + 1) editable, advertencia de irreversibilidad (guía UX §15) y
- * ejecución del RPC transaccional server-side.
+ * (MAX global + 1) editable, advertencia de irreversibilidad y ejecución
+ * del RPC transaccional server-side.
  */
 export function GenerarIdsModal({
   plantationId,

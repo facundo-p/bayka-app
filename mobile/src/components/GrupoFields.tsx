@@ -7,7 +7,7 @@ interface Props {
   lastGroupName?: string | null;
 }
 
-/** Campos del formulario de grupo (nombre, código, tipo). Presentacional (#89). */
+/** Campos del formulario de grupo (nombre, código, tipo). Presentacional. */
 export default function GrupoFields({ form, lastGroupName }: Props) {
   return (
     <>

@@ -1,10 +1,7 @@
 /**
- * Tests the offline userId resolution logic.
- *
- * After offline re-login, the userId must be available from SecureStore
- * when supabase.auth.getSession() returns null. Without this fallback:
- * - Groups appear as "created by someone else" (grisadas)
- * - Creating new Groups fails (userId is null)
+ * Tests the offline userId resolution logic: after offline re-login, userId must
+ * be available from SecureStore when getSession() returns null — otherwise
+ * Groups appear as "created by someone else" and creating new ones fails.
  */
 import * as SecureStore from 'expo-secure-store';
 
@@ -72,7 +69,7 @@ describe('Offline userId resolution', () => {
     store.set('supabase_refresh_token', 'tok');
     store.set('user_role', 'admin');
 
-    // signOut deletes only ROLE_KEY
+    // signOut deletes only ROLE_KEY, not userId or tokens
     await SecureStore.deleteItemAsync('user_role');
 
     expect(await SecureStore.getItemAsync(USER_ID_KEY)).toBe('uuid-user-123');
@@ -81,16 +78,10 @@ describe('Offline userId resolution', () => {
   });
 
   it('full offline cycle: cache userId → signOut → offline re-login → userId available', async () => {
-    // 1. Online login: cache userId
     await SecureStore.setItemAsync(USER_ID_KEY, 'uuid-admin-42');
-
-    // 2. SignOut: clear role only
     await SecureStore.deleteItemAsync('user_role');
 
-    // 3. Offline re-login: Supabase session is null
     const userId = await resolveUserId(null);
-
-    // 4. userId must be the original
     expect(userId).toBe('uuid-admin-42');
   });
 });

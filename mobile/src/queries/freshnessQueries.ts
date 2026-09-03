@@ -7,10 +7,7 @@ import { supabase } from '../supabase/client';
 let lastFreshnessCheck = 0;
 const FRESHNESS_COOLDOWN_MS = 30_000;
 
-/**
- * Returns the newest created_at timestamp from local groups.
- * Returns null if no groups exist locally.
- */
+/** Timestamp created_at más nuevo de los groups locales; null si no hay ninguno. */
 export async function getLocalMaxGroupCreatedAt(): Promise<string | null> {
   const result = await db
     .select({ maxCreatedAt: sql<string>`MAX(${groups.createdAt})` })
@@ -18,11 +15,7 @@ export async function getLocalMaxGroupCreatedAt(): Promise<string | null> {
   return result[0]?.maxCreatedAt ?? null;
 }
 
-/**
- * Checks if the server has newer subgroup data than the local database.
- * Scoped to the given plantation IDs. Returns false within cooldown window.
- * Returns false on any error (silent skip).
- */
+/** True si el server tiene groups más nuevos que lo local, para las plantaciones dadas; false dentro del cooldown o ante cualquier error (silent skip). */
 export async function checkFreshness(plantacionIds: string[]): Promise<boolean> {
   if (plantacionIds.length === 0) return false;
 
@@ -34,7 +27,7 @@ export async function checkFreshness(plantacionIds: string[]): Promise<boolean> 
     const localMax = await getLocalMaxGroupCreatedAt();
 
     const { data } = await supabase
-      // COMPAT: shim 012b; Plan 16-03 renombra a 'groups'
+      // Consulta la vista compat `subgroups`; migrar a `groups` (#301).
       .from('subgroups')
       .select('created_at')
       .in('plantation_id', plantacionIds)
