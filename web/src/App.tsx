@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './components/AppLayout';
+import { BannerEntornoPruebas } from './components/BannerEntornoPruebas';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { CommandMenuProvider } from './hooks/useCommandMenu';
@@ -55,6 +56,7 @@ export function App() {
       <BrowserRouter>
         <AuthProvider>
           <CommandMenuProvider>
+            <BannerEntornoPruebas />
             <AppRoutes />
           </CommandMenuProvider>
         </AuthProvider>

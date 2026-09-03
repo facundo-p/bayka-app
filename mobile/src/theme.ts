@@ -53,6 +53,10 @@ export const colors = {
   info: '#2563EB',
   infoBg: '#EFF6FF',
 
+  // Banner "Entorno de pruebas" (#287): ámbar de precaución (mismo valor que
+  // secondaryYellowDark), texto en textPrimary. Solo se ve en la app TEST.
+  entornoPruebasBg: '#ffb300',
+
   // ─── Text (4-level hierarchy) ─────────────────────────────────────────────
   textHeading: '#0A3760',   // brand dark blue — harmonizes with primary palette
   textPrimary: '#1E293B',

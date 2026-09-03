@@ -1,0 +1,18 @@
+.banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--alto-banner-entorno);
+  z-index: var(--z-banner-entorno);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-entorno-pruebas-bg);
+  color: var(--color-entorno-pruebas-fg);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 1px;
+  /* Aviso, no control: nunca captura clics. */
+  pointer-events: none;
+}

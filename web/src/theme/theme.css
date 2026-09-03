@@ -217,6 +217,18 @@
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;
   --z-modal: 100;
+
+  /* ─── Banner "Entorno de pruebas" (#287) ─────────────────────────── */
+  /* Alto de la franja: 0 en prod. <html data-entorno="pruebas"> lo sube a
+     26px y sidebar/Topbar se corren por esta MISMA variable. */
+  --alto-banner-entorno: 0px;
+  --z-banner-entorno: 30;              /* sobre la Topbar (20), bajo --z-modal */
+  --color-entorno-pruebas-bg: #ffb300; /* ámbar de precaución (= --color-yellow-dark) */
+  --color-entorno-pruebas-fg: var(--color-text-primary);
+}
+
+:root[data-entorno='pruebas'] {
+  --alto-banner-entorno: 26px;
 }
 
 /* ─── Reset mínimo + estilos base ────────────────────────────────────── */

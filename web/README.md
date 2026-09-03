@@ -29,6 +29,11 @@ npm install
 npm run dev
 ```
 
+El banner **"ENTORNO DE PRUEBAS · vX.Y.Z"** (#287) se muestra siempre salvo que el
+build corra con `CF_PAGES_BRANCH=main` (entorno Production de Cloudflare Pages):
+`npm run dev`, un `npm run build` local y los previews de cualquier otra branch lo
+muestran. Para ver el build de prod: `CF_PAGES_BRANCH=main npm run build`.
+
 ## Scripts
 
 | Script              | Qué hace                       |

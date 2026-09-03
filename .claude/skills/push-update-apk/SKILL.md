@@ -47,6 +47,10 @@ Continue anyway?
 Use AskUserQuestion:
 - **Preview (Recommended)** — Update preview builds (variante prod instalada desde el profile `preview`)
 - **Test** — Update builds de la variante **Bayka TEST** (staging; EAS profile/channel `test`, #253)
+  > ⚠️ Antes de un update al canal `test`, exportar `APP_VARIANT=test` en la shell:
+  > `app.config.js` hornea `extra` (URL/anon key de Supabase **y** `appVariant`, #287)
+  > con el env del momento. Sin la variable, el update sale apuntando a prod y sin
+  > el banner "ENTORNO DE PRUEBAS".
 - **Production** — Update production builds
 
 ### 4. Ask for update message
