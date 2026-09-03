@@ -224,6 +224,8 @@ grupos sincronizados
 fotos de árboles (Supabase Storage, bucket tree-photos)
 ```
 
+Schema, migraciones y cómo crear un ambiente desde cero: [docs/db-baseline.md](./db-baseline.md).
+
 ---
 
 # 5. Flujo de Datos

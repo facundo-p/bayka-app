@@ -1,3 +1,23 @@
+-- supabase/baseline_schema.sql — snapshot completo del schema "public" al día
+-- de hoy, equivalente a staging/prod luego de aplicar hasta la migración 030
+-- (issue #283, re-baseline real). Reemplaza el reemplay histórico de
+-- supabase/migrations/001..030 (archivadas en migrations/archive/, no
+-- replayables desde cero: 013-015 son migraciones de datos puntuales).
+--
+-- Cómo se regenera: supabase/tests/regenerate-baseline.sh (dump del stack
+-- local con este baseline + las migraciones pendientes aplicadas, curado con
+-- los filtros y el agregado de supabase/tests/baseline-extras.sql). Ver
+-- supabase/tests/README.md y docs/db-baseline.md.
+--
+-- Generado con `supabase db dump --schema public`, que ya emite
+-- CREATE TABLE/FUNCTION/TRIGGER/VIEW con IF NOT EXISTS / OR REPLACE (así que
+-- este archivo es idempotente tal cual). Se le quitaron dos líneas del dump
+-- que no aplican fuera de un pg_restore controlado:
+--   - SELECT pg_catalog.set_config('search_path', '', false);
+--   - SET row_security = off;
+-- Y se le agregó, al final, una sección de objetos que un dump de un solo
+-- schema no puede traer (bucket de storage + sus policies, triggers sobre
+-- auth.users) — ver esa sección para el detalle.
 
 
 
@@ -6,47 +26,24 @@ SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
-SET row_security = off;
+
+
+CREATE SCHEMA IF NOT EXISTS "public";
+
+
+ALTER SCHEMA "public" OWNER TO "pg_database_owner";
 
 
 COMMENT ON SCHEMA "public" IS 'standard public schema';
 
 
 
-CREATE EXTENSION IF NOT EXISTS "pg_stat_statements" WITH SCHEMA "extensions";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "supabase_vault" WITH SCHEMA "vault";
-
-
-
-
-
-
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA "extensions";
-
-
-
-
-
-
 CREATE OR REPLACE FUNCTION "public"."add_admin_memberships_to_plantation"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   INSERT INTO plantation_users (plantation_id, user_id, rol_en_plantacion)
@@ -65,6 +62,7 @@ ALTER FUNCTION "public"."add_admin_memberships_to_plantation"() OWNER TO "postgr
 
 CREATE OR REPLACE FUNCTION "public"."generate_tree_ids"("p_plantation_id" "uuid", "p_seed" integer DEFAULT NULL::integer) RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 DECLARE
   v_total INTEGER;
@@ -219,6 +217,7 @@ ALTER FUNCTION "public"."stats_plantaciones"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."sync_admin_memberships_on_rol_change"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF NEW.rol IN ('admin', 'superadmin') AND NEW.activo THEN
@@ -258,6 +257,7 @@ ALTER FUNCTION "public"."sync_profile_email"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup"("p_subgroup" "jsonb", "p_trees" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF NOT EXISTS (
@@ -335,33 +335,6 @@ $$;
 
 ALTER FUNCTION "public"."sync_subgroup"("p_subgroup" "jsonb", "p_trees" "jsonb") OWNER TO "postgres";
 
-
-CREATE OR REPLACE FUNCTION "public"."update_tree_ids"("p_ids" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    AS $$
-DECLARE
-  v_updated INTEGER;
-BEGIN
-  WITH data AS (
-    SELECT * FROM jsonb_to_recordset(p_ids)
-      AS x(id UUID, plantacion_id INTEGER, global_id INTEGER)
-  )
-  UPDATE trees t
-  SET plantacion_id = d.plantacion_id,
-      global_id = d.global_id
-  FROM data d
-  WHERE t.id = d.id;
-
-  GET DIAGNOSTICS v_updated = ROW_COUNT;
-  RETURN jsonb_build_object('success', true, 'updated', v_updated);
-EXCEPTION WHEN OTHERS THEN
-  RETURN jsonb_build_object('success', false, 'error', 'UNKNOWN');
-END;
-$$;
-
-
-ALTER FUNCTION "public"."update_tree_ids"("p_ids" "jsonb") OWNER TO "postgres";
-
 SET default_tablespace = '';
 
 SET default_table_access_method = "heap";
@@ -376,10 +349,9 @@ CREATE TABLE IF NOT EXISTS "public"."groups" (
     "estado" "text" DEFAULT 'activa'::"text" NOT NULL,
     "usuario_creador" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "parcela_id" "uuid",
+    "parcela_id" "uuid" NOT NULL,
     CONSTRAINT "groups_estado_check" CHECK (("estado" = ANY (ARRAY['activa'::"text", 'finalizada'::"text"]))),
-    CONSTRAINT "groups_tipo_check" CHECK (("tipo" = ANY (ARRAY['linea'::"text", 'bosquete'::"text"]))),
-    CONSTRAINT "subgroups_estado_check" CHECK (("estado" = ANY (ARRAY['activa'::"text", 'finalizada'::"text", 'sincronizada'::"text"])))
+    CONSTRAINT "groups_tipo_check" CHECK (("tipo" = ANY (ARRAY['linea'::"text", 'bosquete'::"text"])))
 );
 
 
@@ -595,6 +567,10 @@ CREATE UNIQUE INDEX "groups_parcela_nombre_unique" ON "public"."groups" USING "b
 
 
 
+CREATE INDEX "groups_plantation_id_idx" ON "public"."groups" USING "btree" ("plantation_id");
+
+
+
 CREATE UNIQUE INDEX "parcelas_plantation_code_unique" ON "public"."parcelas" USING "btree" ("plantation_id", "codigo") WHERE ("deleted_at" IS NULL);
 
 
@@ -608,6 +584,10 @@ CREATE UNIQUE INDEX "parcelas_plantation_name_unique" ON "public"."parcelas" USI
 
 
 COMMENT ON INDEX "public"."parcelas_plantation_name_unique" IS 'Partial unique: tombstoneadas (deleted_at NOT NULL) excluidas. D-16-19.';
+
+
+
+CREATE INDEX "trees_group_id_idx" ON "public"."trees" USING "btree" ("group_id");
 
 
 
@@ -844,11 +824,9 @@ CREATE POLICY "Superadmin can update profiles" ON "public"."profiles" FOR UPDATE
 
 
 
-CREATE POLICY "Users can insert own subgroups" ON "public"."groups" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "usuario_creador"));
-
-
-
-CREATE POLICY "Users can insert own trees" ON "public"."trees" FOR INSERT TO "authenticated" WITH CHECK (("auth"."uid"() = "usuario_registro"));
+CREATE POLICY "Users can insert own subgroups" ON "public"."groups" FOR INSERT TO "authenticated" WITH CHECK ((("auth"."uid"() = "usuario_creador") AND (EXISTS ( SELECT 1
+   FROM "public"."plantation_users" "pu"
+  WHERE (("pu"."plantation_id" = "groups"."plantation_id") AND ("pu"."user_id" = "auth"."uid"()))))));
 
 
 
@@ -887,162 +865,10 @@ ALTER TABLE "public"."species" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "public"."trees" ENABLE ROW LEVEL SECURITY;
 
 
-
-
-ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
-
-
 GRANT USAGE ON SCHEMA "public" TO "postgres";
 GRANT USAGE ON SCHEMA "public" TO "anon";
 GRANT USAGE ON SCHEMA "public" TO "authenticated";
 GRANT USAGE ON SCHEMA "public" TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1091,27 +917,6 @@ GRANT ALL ON FUNCTION "public"."sync_profile_email"() TO "service_role";
 GRANT ALL ON FUNCTION "public"."sync_subgroup"("p_subgroup" "jsonb", "p_trees" "jsonb") TO "anon";
 GRANT ALL ON FUNCTION "public"."sync_subgroup"("p_subgroup" "jsonb", "p_trees" "jsonb") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."sync_subgroup"("p_subgroup" "jsonb", "p_trees" "jsonb") TO "service_role";
-
-
-
-GRANT ALL ON FUNCTION "public"."update_tree_ids"("p_ids" "jsonb") TO "anon";
-GRANT ALL ON FUNCTION "public"."update_tree_ids"("p_ids" "jsonb") TO "authenticated";
-GRANT ALL ON FUNCTION "public"."update_tree_ids"("p_ids" "jsonb") TO "service_role";
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1175,12 +980,6 @@ GRANT ALL ON TABLE "public"."trees" TO "service_role";
 
 
 
-
-
-
-
-
-
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "postgres";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "anon";
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON SEQUENCES TO "authenticated";
@@ -1212,27 +1011,55 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 
 
 
+-- Objetos fuera del schema "public" que `supabase db dump --schema public`
+-- no puede traer (viven en storage/auth), pero son parte del estado real de
+-- staging/prod. Se pegan al final de supabase/baseline_schema.sql tal cual
+-- (ver supabase/tests/regenerate-baseline.sh). Idempotente: reentra limpio
+-- sobre un stack ya migrado.
 
+-- ── Bucket 'tree-photos' + policies de storage.objects (migración 008) ──────
+-- 008 asumía el bucket creado a mano desde el Dashboard antes de aplicarla;
+-- acá se crea por SQL para que el baseline alcance por sí solo.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('tree-photos', 'tree-photos', false)
+ON CONFLICT (id) DO NOTHING;
 
+DROP POLICY IF EXISTS "Authenticated users can upload tree photos" ON storage.objects;
+CREATE POLICY "Authenticated users can upload tree photos"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'tree-photos'
+  AND auth.uid() IS NOT NULL
+);
 
+DROP POLICY IF EXISTS "Authenticated users can read tree photos" ON storage.objects;
+CREATE POLICY "Authenticated users can read tree photos"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+  bucket_id = 'tree-photos'
+  AND auth.uid() IS NOT NULL
+);
 
+DROP POLICY IF EXISTS "Authenticated users can update tree photos" ON storage.objects;
+CREATE POLICY "Authenticated users can update tree photos"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'tree-photos'
+  AND auth.uid() IS NOT NULL
+);
 
+-- ── Triggers de auth.users (migración 026) ───────────────────────────────────
+-- Sus funciones (handle_new_user, sync_profile_email) sí vienen en el dump:
+-- viven en public. Solo faltan los triggers que las cuelgan de auth.users.
+CREATE OR REPLACE TRIGGER "trg_handle_new_user"
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+CREATE OR REPLACE TRIGGER "trg_sync_profile_email"
+  AFTER UPDATE OF email ON auth.users
+  FOR EACH ROW
+  WHEN (NEW.email IS DISTINCT FROM OLD.email)
+  EXECUTE FUNCTION public.sync_profile_email();
