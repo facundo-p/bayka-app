@@ -26,9 +26,14 @@ jest.mock('../../src/services/SyncService', () => ({
   pullFromServer: jest.fn(),
 }));
 
+jest.mock('../../src/utils/syncLogger', () => ({
+  syncLog: { info: jest.fn(), error: jest.fn() },
+}));
+
 import {
   createPlantation,
   finalizePlantation,
+  FinalizePlantationLocalSyncError,
   saveSpeciesConfig,
   assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
@@ -37,11 +42,13 @@ import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { pullFromServer } from '../../src/services/SyncService';
+import { syncLog } from '../../src/utils/syncLogger';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockPullFromServer = pullFromServer as jest.Mock;
+const mockSyncLog = syncLog as jest.Mocked<typeof syncLog>;
 
 const fakePlantation = {
   id: 'plantation-uuid-1',
@@ -166,6 +173,34 @@ describe('PlantationRepository', () => {
       await finalizePlantation('plantation-1');
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it('Test 5: server ok + local fails — throws FinalizePlantationLocalSyncError, logs, does NOT notify', async () => {
+      (mockDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockRejectedValue(new Error('SQLITE_BUSY')),
+        }),
+      });
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow(FinalizePlantationLocalSyncError);
+
+      // El server ya quedó finalizado: no debe repetirse el update remoto ni notificar UI a medias.
+      expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
+      expect(mockSyncLog.error).toHaveBeenCalledWith(expect.stringContaining('plantation-1'), expect.any(Error));
+    });
+
+    it('Test 6: server fails — local SQLite untouched, error del server se propaga', async () => {
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: new Error('permission denied') }),
+        }),
+      });
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow('permission denied');
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
     });
   });
 

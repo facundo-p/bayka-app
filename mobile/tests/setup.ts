@@ -39,6 +39,9 @@ jest.mock('expo-crypto', () => ({
 jest.mock('expo-sqlite', () => ({
   openDatabaseSync: jest.fn(() => ({
     execSync: jest.fn(),
+    // Reports "already at the target one-time-fix version" — legacyPatches.ts reads this via
+    // PRAGMA user_version at bootstrap; tests that don't care about that migration just no-op it.
+    getAllSync: jest.fn().mockReturnValue([{ user_version: 4 }]),
   })),
 }));
 

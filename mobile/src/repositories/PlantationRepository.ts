@@ -11,6 +11,7 @@ import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
 import { isNetworkRequestFailed } from '../utils/networkErrors';
+import { syncLog } from '../utils/syncLogger';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -122,25 +123,22 @@ export async function createPlantationLocally(
 
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
-/**
- * Actualiza lugar/periodo/GPS: online pushea a Supabase y sincroniza las columnas *Server; offline
- * guarda local con pendingEdit=true, snapshoteando el valor original SOLO la primera vez (para que
- * discardPlantationEdit revierta al último server). No aplica a plantaciones creadas offline.
- */
-export async function updatePlantation(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps?: PlantationGpsSettings
-): Promise<void> {
-  const gpsLocal = gps ?? {};
-  // Snapshot de server tras un push exitoso (solo si se editó la config GPS).
-  const gpsServerSnapshot = gps
-    ? {
-        gpsCaptureFrequencyServer: gps.gpsCaptureFrequency,
-        gpsCaptureRequiredServer: gps.gpsCaptureRequired,
-      }
-    : {};
+/** Fila mínima necesaria para decidir el camino online/offline y armar el snapshot de server. */
+type CurrentPlantationRow = {
+  pendingSync: boolean;
+  pendingEdit: boolean;
+  lugarServer: string | null;
+  periodoServer: string | null;
+  lugarCurrent: string;
+  periodoCurrent: string;
+  gpsFreqServer: number | null;
+  gpsReqServer: boolean | null;
+  gpsFreqCurrent: number | null;
+  gpsReqCurrent: boolean | null;
+};
+
+/** Lee el estado actual de la plantación necesario para decidir cómo aplicar la edición. */
+async function resolveCurrentPlantationRow(plantacionId: string): Promise<CurrentPlantationRow> {
   const [row] = await db
     .select({
       pendingSync: plantations.pendingSync,
@@ -158,45 +156,89 @@ export async function updatePlantation(
     .where(eq(plantations.id, plantacionId));
 
   if (!row) throw new Error('Plantación no encontrada');
+  return row;
+}
 
-  if (row.pendingSync) {
+/** Plantación creada offline (aún sin fila en el server): edita el local sin pendingEdit ni snapshot. */
+async function updateOfflineCreatedPlantation(
+  plantacionId: string,
+  lugar: string,
+  periodo: string,
+  gpsLocal: Partial<PlantationGpsSettings>
+): Promise<void> {
+  await db
+    .update(plantations)
+    .set({ lugar, periodo, ...gpsLocal })
+    .where(eq(plantations.id, plantacionId));
+}
+
+/** Snapshot de las columnas *Server tras un push exitoso (solo si se editó la config GPS). */
+function buildGpsServerSnapshot(gps?: PlantationGpsSettings) {
+  return gps
+    ? {
+        gpsCaptureFrequencyServer: gps.gpsCaptureFrequency,
+        gpsCaptureRequiredServer: gps.gpsCaptureRequired,
+      }
+    : {};
+}
+
+/**
+ * Intenta pushear la edición a Supabase y, si sale bien, sincroniza las columnas *Server local.
+ * Devuelve false (sin tocar nada más) ante una falla de red, para que el caller caiga al camino
+ * offline; cualquier otro error del server se propaga tal cual.
+ */
+async function tryPushPlantationUpdateOnline(
+  plantacionId: string,
+  lugar: string,
+  periodo: string,
+  gps: PlantationGpsSettings | undefined,
+  gpsLocal: Partial<PlantationGpsSettings>
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('plantations')
+      .update({ lugar, periodo, ...gpsToRemoteColumns(gps) })
+      .eq('id', plantacionId);
+    if (error) throw error;
+
     await db
       .update(plantations)
-      .set({ lugar, periodo, ...gpsLocal })
+      .set({
+        lugar,
+        periodo,
+        lugarServer: lugar,
+        periodoServer: periodo,
+        pendingEdit: false,
+        ...gpsLocal,
+        ...buildGpsServerSnapshot(gps),
+      })
       .where(eq(plantations.id, plantacionId));
-    notifyDataChanged();
-    return;
+    return true;
+  } catch (e: any) {
+    if (!isNetworkRequestFailed(e)) throw e;
+    return false;
   }
+}
 
-  const net = await NetInfo.fetch();
-  if (net.isConnected !== false) {
-    try {
-      const { error } = await supabase
-        .from('plantations')
-        .update({ lugar, periodo, ...gpsToRemoteColumns(gps) })
-        .eq('id', plantacionId);
-      if (error) throw error;
+/** Snapshot de server SOLO en la primera edición offline, para que discardPlantationEdit revierta al último valor confirmado. */
+function buildOfflineEditSnapshot(row: CurrentPlantationRow, isFirstOfflineEdit: boolean) {
+  if (!isFirstOfflineEdit) return {};
+  return {
+    lugarServer: row.lugarServer ?? row.lugarCurrent,
+    periodoServer: row.periodoServer ?? row.periodoCurrent,
+    gpsCaptureFrequencyServer: row.gpsFreqServer ?? row.gpsFreqCurrent,
+    gpsCaptureRequiredServer: row.gpsReqServer ?? row.gpsReqCurrent,
+  };
+}
 
-      await db
-        .update(plantations)
-        .set({
-          lugar,
-          periodo,
-          lugarServer: lugar,
-          periodoServer: periodo,
-          pendingEdit: false,
-          ...gpsLocal,
-          ...gpsServerSnapshot,
-        })
-        .where(eq(plantations.id, plantacionId));
-      notifyDataChanged();
-      return;
-    } catch (e: any) {
-      // Solo errores de red caen al camino offline; el resto se propaga.
-      if (!isNetworkRequestFailed(e)) throw e;
-    }
-  }
-
+/** Guarda la edición local con pendingEdit=true (sin red disponible, o tras una falla de red del push). */
+async function applyOfflineEdit(
+  plantacionId: string,
+  lugar: string,
+  periodo: string,
+  gpsLocal: Partial<PlantationGpsSettings>,
+  row: CurrentPlantationRow
+): Promise<void> {
   const isFirstOfflineEdit = !row.pendingEdit;
   await db
     .update(plantations)
@@ -205,16 +247,41 @@ export async function updatePlantation(
       periodo,
       ...gpsLocal,
       pendingEdit: true,
-      ...(isFirstOfflineEdit
-        ? {
-            lugarServer: row.lugarServer ?? row.lugarCurrent,
-            periodoServer: row.periodoServer ?? row.periodoCurrent,
-            gpsCaptureFrequencyServer: row.gpsFreqServer ?? row.gpsFreqCurrent,
-            gpsCaptureRequiredServer: row.gpsReqServer ?? row.gpsReqCurrent,
-          }
-        : {}),
+      ...buildOfflineEditSnapshot(row, isFirstOfflineEdit),
     })
     .where(eq(plantations.id, plantacionId));
+}
+
+/**
+ * Actualiza lugar/periodo/GPS: online pushea a Supabase y sincroniza las columnas *Server; offline
+ * guarda local con pendingEdit=true, snapshoteando el valor original SOLO la primera vez (para que
+ * discardPlantationEdit revierta al último server). No aplica a plantaciones creadas offline.
+ */
+export async function updatePlantation(
+  plantacionId: string,
+  lugar: string,
+  periodo: string,
+  gps?: PlantationGpsSettings
+): Promise<void> {
+  const gpsLocal = gps ?? {};
+  const row = await resolveCurrentPlantationRow(plantacionId);
+
+  if (row.pendingSync) {
+    await updateOfflineCreatedPlantation(plantacionId, lugar, periodo, gpsLocal);
+    notifyDataChanged();
+    return;
+  }
+
+  const net = await NetInfo.fetch();
+  if (net.isConnected !== false) {
+    const pushed = await tryPushPlantationUpdateOnline(plantacionId, lugar, periodo, gps, gpsLocal);
+    if (pushed) {
+      notifyDataChanged();
+      return;
+    }
+  }
+
+  await applyOfflineEdit(plantacionId, lugar, periodo, gpsLocal, row);
   notifyDataChanged();
 }
 
@@ -252,6 +319,19 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
 
 // ─── finalizePlantation ───────────────────────────────────────────────────────
 
+/**
+ * Thrown by finalizePlantation when Supabase committed 'finalizada' but the local SQLite mirror
+ * failed to update: the finalize IS effective server-side, solo el device local quedó desfasado
+ * (el próximo pullFromServer lo reconcilia). Distingue este caso de un fallo real de finalización.
+ */
+export class FinalizePlantationLocalSyncError extends Error {
+  constructor(cause: unknown) {
+    super('La plantación se finalizó en el servidor, pero no se pudo reflejar localmente');
+    this.name = 'FinalizePlantationLocalSyncError';
+    this.cause = cause;
+  }
+}
+
 /** Marca la plantación 'finalizada' en Supabase Y en SQLite local: el update de server propaga a otros devices, el local mantiene la UI reactiva sin esperar el pull. */
 export async function finalizePlantation(plantacionId: string): Promise<void> {
   const { error } = await supabase
@@ -261,10 +341,15 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
   if (error) throw error;
 
-  await db
-    .update(plantations)
-    .set({ estado: 'finalizada' })
-    .where(eq(plantations.id, plantacionId));
+  try {
+    await db
+      .update(plantations)
+      .set({ estado: 'finalizada' })
+      .where(eq(plantations.id, plantacionId));
+  } catch (e) {
+    syncLog.error(`finalizePlantation: update local falló tras éxito en server para ${plantacionId}`, e);
+    throw new FinalizePlantationLocalSyncError(e);
+  }
 
   notifyDataChanged();
 }

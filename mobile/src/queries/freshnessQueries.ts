@@ -27,8 +27,8 @@ export async function checkFreshness(plantacionIds: string[]): Promise<boolean> 
     const localMax = await getLocalMaxGroupCreatedAt();
 
     const { data } = await supabase
-      // Consulta la vista compat `subgroups`; migrar a `groups` (#301).
-      .from('subgroups')
+      // `groups` es la tabla real; `subgroups` es solo una vista de compat (mismas columnas, #301).
+      .from('groups')
       .select('created_at')
       .in('plantation_id', plantacionIds)
       .order('created_at', { ascending: false })
