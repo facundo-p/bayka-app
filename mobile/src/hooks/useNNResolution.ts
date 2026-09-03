@@ -7,17 +7,14 @@
 import { useState } from 'react';
 import { useTrees } from './useTrees';
 import { usePlantationSpecies } from './usePlantationSpecies';
-import { resolveNNTree } from '../repositories/TreeRepository';
-import { useLiveData, notifyDataChanged } from '../database/liveQuery';
+import { resolveNNTree, clearTreeConflict } from '../repositories/TreeRepository';
+import { useLiveData } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import { useProfileData } from './useProfileData';
 import { esRolAdmin } from '../types/domain';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { colors } from '../theme';
-import { db } from '../database/client';
-import { trees } from '../database/schema';
-import { eq } from 'drizzle-orm';
 
 interface NNTree {
   id: string;
@@ -142,19 +139,12 @@ export function useNNResolution(params: {
     const tree = unresolvedTrees.find(t => t.id === treeId);
     const codigo = tree?.grupoCodigo ?? grupoCodigo ?? '';
     await resolveNNTree(treeId, conflict.serverEspecieId, codigo);
-    // Clear conflict columns
-    await db.update(trees)
-      .set({ conflictEspecieId: null, conflictEspecieNombre: null })
-      .where(eq(trees.id, treeId));
-    notifyDataChanged();
+    await clearTreeConflict(treeId);
   }
 
   async function keepLocalResolution(treeId: string) {
     // Just clear the conflict marker — local stays, next sync will overwrite server
-    await db.update(trees)
-      .set({ conflictEspecieId: null, conflictEspecieNombre: null })
-      .where(eq(trees.id, treeId));
-    notifyDataChanged();
+    await clearTreeConflict(treeId);
   }
 
   function handleAnterior() {
