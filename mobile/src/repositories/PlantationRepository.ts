@@ -443,6 +443,14 @@ export async function assignTechnicians(
   notifyDataChanged();
 }
 
+// ─── deletePlantationRemotely ────────────────────────────────────────────────
+
+/** Borra la fila de plantación en Supabase (FKs server cascadean plantation_users); usada como rollback best-effort cuando un create online falla antes de tener su parcela default. No throwea: el caller decide qué hacer con el error. */
+export async function deletePlantationRemotely(id: string): Promise<{ error: unknown }> {
+  const { error } = await supabase.from('plantations').delete().eq('id', id);
+  return { error };
+}
+
 // --- deletePlantationLocally ------------------------------------------------
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */

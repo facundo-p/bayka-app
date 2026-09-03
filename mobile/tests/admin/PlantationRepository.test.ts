@@ -36,6 +36,7 @@ import {
   FinalizePlantationLocalSyncError,
   saveSpeciesConfig,
   assignTechnicians,
+  deletePlantationRemotely,
 } from '../../src/repositories/PlantationRepository';
 
 import { supabase } from '../../src/supabase/client';
@@ -250,6 +251,33 @@ describe('PlantationRepository', () => {
 
       expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
       expect(mockNotifyDataChanged).toHaveBeenCalled();
+    });
+  });
+
+  // ─── deletePlantationRemotely ─────────────────────────────────────────────
+
+  describe('deletePlantationRemotely', () => {
+    it('borra por id y retorna { error: null } en éxito', async () => {
+      const eqMock = jest.fn().mockResolvedValue({ error: null });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
+
+      const result = await deletePlantationRemotely('plantation-1');
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('plantations');
+      expect(eqMock).toHaveBeenCalledWith('id', 'plantation-1');
+      expect(result).toEqual({ error: null });
+    });
+
+    it('retorna { error } sin throwear cuando Supabase falla', async () => {
+      const dbError = new Error('permission denied');
+      const eqMock = jest.fn().mockResolvedValue({ error: dbError });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
+
+      const result = await deletePlantationRemotely('plantation-1');
+
+      expect(result).toEqual({ error: dbError });
     });
   });
 

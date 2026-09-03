@@ -42,6 +42,8 @@ jest.mock('../../src/config/featureFlags', () => ({
 
 import { createPlantationWithDefaultParcela } from '../../src/services/PlantationCreationService';
 import * as ParcelaRepo from '../../src/repositories/ParcelaRepository';
+import { supabase } from '../../src/supabase/client';
+import { syncLog } from '../../src/utils/syncLogger';
 
 const baseParams = {
   lugar: 'Campo Test',
@@ -116,6 +118,80 @@ describe('createPlantationWithDefaultParcela', () => {
     const allParcelas = await mockTestDb.select().from(parcelas);
     expect(allParcelas).toHaveLength(2);
     expect(allParcelas.every((p) => p.codigo === 'P1' && p.nombre === 'Parcela 1')).toBe(true);
+  });
+});
+
+describe('createPlantationWithDefaultParcela (online mode)', () => {
+  const onlineParams = { ...baseParams, mode: 'online' as const };
+
+  /** Arma supabase.from('plantations') para el insert de createPlantation + el delete de rollback. */
+  function mockSupabaseForOnlineCreate(deleteError: unknown = null) {
+    const insertedRow = {
+      id: 'srv-plantation-1',
+      organizacion_id: onlineParams.organizacionId,
+      lugar: onlineParams.lugar,
+      periodo: onlineParams.periodo,
+      estado: 'activa',
+      creado_por: onlineParams.creadoPor,
+      created_at: new Date().toISOString(),
+    };
+    const deleteEq = jest.fn().mockResolvedValue({ error: deleteError });
+    (supabase.from as jest.Mock).mockReturnValue({
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: insertedRow, error: null }),
+        }),
+      }),
+      delete: jest.fn().mockReturnValue({ eq: deleteEq }),
+    });
+    return { deleteEq, insertedRow };
+  }
+
+  test('parcela falla → borra la plantación remota antes del cleanup local, error se propaga', async () => {
+    const { deleteEq } = mockSupabaseForOnlineCreate(null);
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow(/Default parcela/);
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'srv-plantation-1');
+    const all = await mockTestDb.select().from(plantations);
+    expect(all).toHaveLength(0);
+    const membresias = await mockTestDb.select().from(plantationUsers);
+    expect(membresias).toHaveLength(0);
+  });
+
+  test('parcela falla + delete remoto falla → igual hace cleanup local, error final avisa del leftover remoto', async () => {
+    const remoteError = new Error('permission denied');
+    mockSupabaseForOnlineCreate(remoteError);
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+    const errorSpy = jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow(/srv-plantation-1/);
+
+    const all = await mockTestDb.select().from(plantations);
+    expect(all).toHaveLength(0);
+    const membresias = await mockTestDb.select().from(plantationUsers);
+    expect(membresias).toHaveLength(0);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('srv-plantation-1'), remoteError);
+  });
+
+  test('offline sigue sin llamar a supabase', async () => {
+    const fromSpy = supabase.from as jest.Mock;
+    fromSpy.mockClear();
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+
+    await expect(createPlantationWithDefaultParcela(baseParams)).rejects.toThrow(/Default parcela/);
+
+    expect(fromSpy).not.toHaveBeenCalled();
   });
 });
 
