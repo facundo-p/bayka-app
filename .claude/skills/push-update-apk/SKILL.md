@@ -37,7 +37,7 @@ git diff --name-only HEAD $(git log --oneline -1 --format=%H -- eas.json app.jso
 If `package.json` changed (new native dependencies), warn:
 ```
 New native dependencies detected. If you added a native module,
-you need /build-apk first. OTA updates only cover JS/TS/asset changes.
+you need the build-apk-local skill first. OTA updates only cover JS/TS/asset changes.
 
 Continue anyway?
 ```
