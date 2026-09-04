@@ -2,12 +2,17 @@
 
 ## Fuente de verdad
 
-`supabase/baseline_schema.sql` es el schema completo y auto-contenido de la
-base — equivalente a staging/prod tras la última migración archivada (hoy
-030). No es histórico: es el estado actual. Las migraciones que ya fusionó
-viven, solo como referencia, en `supabase/migrations/archive/` (no
-replayables desde cero: algunas, como 013-015, son migraciones de **datos**
-de un momento puntual, no de esquema).
+`supabase/baseline_schema.sql` es el schema completo y auto-contenido tal
+como quedó tras la última regeneración (hoy incluye hasta 030). No es
+histórico: es el estado que se busca alcanzar. **Regla de archivado: una
+migración se mueve a `supabase/migrations/archive/` recién cuando ya está
+aplicada en prod** — no cuando se funde en la baseline. Por eso puede haber
+migraciones (como 030 hoy) que ya están en la baseline pero siguen viviendo
+en `supabase/migrations/` porque prod todavía no las corrió; ese archivado
+pendiente se hace en el mismo momento en que se regenera la baseline tras
+aplicar a prod. Las ya archivadas viven, solo como referencia, en
+`supabase/migrations/archive/` (no replayables desde cero: algunas, como
+013-015, son migraciones de **datos** de un momento puntual, no de esquema).
 
 ## Migraciones nuevas
 
@@ -33,12 +38,13 @@ Idempotencia: `IF EXISTS` / `IF NOT EXISTS` / `DROP POLICY IF EXISTS` antes de
 
 ## Regenerar la baseline
 
-Después de aplicar migraciones nuevas a staging/prod (nunca antes: la
-baseline debe reflejar un estado real, no uno planeado):
+Después de aplicar migraciones nuevas a prod (nunca antes: la baseline y el
+archivado reflejan un estado real, no uno planeado):
 `supabase/tests/regenerate-baseline.sh`. Automatiza: levantar un stack local
 con la baseline actual + las migraciones pendientes, `supabase db dump
 --schema public`, y pegarle `supabase/tests/baseline-extras.sql` (objetos
 fuera de `public` que un dump de un solo schema no trae: bucket de storage,
 triggers sobre `auth.users`). El script no archiva nada — eso es manual,
-después de confirmar `supabase/tests/run-db-tests.sh` en verde. Detalle
-completo en `supabase/tests/README.md`.
+después de confirmar `supabase/tests/run-db-tests.sh` en verde: recién ahí
+esas migraciones pasan a `supabase/migrations/archive/`. Detalle completo en
+`supabase/tests/README.md`.

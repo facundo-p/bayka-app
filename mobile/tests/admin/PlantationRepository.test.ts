@@ -257,27 +257,35 @@ describe('PlantationRepository', () => {
   // ─── deletePlantationRemotely ─────────────────────────────────────────────
 
   describe('deletePlantationRemotely', () => {
-    it('borra por id y retorna { error: null } en éxito', async () => {
-      const eqMock = jest.fn().mockResolvedValue({ error: null });
+    it('borra por id sin throwear cuando Supabase devuelve la fila borrada', async () => {
+      const selectMock = jest.fn().mockResolvedValue({ data: [{ id: 'plantation-1' }], error: null });
+      const eqMock = jest.fn().mockReturnValue({ select: selectMock });
       const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
       (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
 
-      const result = await deletePlantationRemotely('plantation-1');
+      await expect(deletePlantationRemotely('plantation-1')).resolves.toBeUndefined();
 
       expect(mockSupabase.from).toHaveBeenCalledWith('plantations');
       expect(eqMock).toHaveBeenCalledWith('id', 'plantation-1');
-      expect(result).toEqual({ error: null });
     });
 
-    it('retorna { error } sin throwear cuando Supabase falla', async () => {
+    it('throwea cuando Supabase devuelve error', async () => {
       const dbError = new Error('permission denied');
-      const eqMock = jest.fn().mockResolvedValue({ error: dbError });
+      const selectMock = jest.fn().mockResolvedValue({ data: null, error: dbError });
+      const eqMock = jest.fn().mockReturnValue({ select: selectMock });
       const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
       (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
 
-      const result = await deletePlantationRemotely('plantation-1');
+      await expect(deletePlantationRemotely('plantation-1')).rejects.toThrow('permission denied');
+    });
 
-      expect(result).toEqual({ error: dbError });
+    it('throwea cuando 0 filas vuelven (RLS filtró la fila, no se borró nada)', async () => {
+      const selectMock = jest.fn().mockResolvedValue({ data: [], error: null });
+      const eqMock = jest.fn().mockReturnValue({ select: selectMock });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
+
+      await expect(deletePlantationRemotely('plantation-1')).rejects.toThrow(/0 filas/);
     });
   });
 

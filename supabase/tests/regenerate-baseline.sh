@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Regenera supabase/baseline_schema.sql a partir del stack local (baseline
-# actual + migraciones pendientes en supabase/migrations/), vía
+# Regenera supabase/baseline_schema.sql a partir de un Postgres local
+# (baseline actual + migraciones pendientes en supabase/migrations/), vía
 # `supabase db dump --schema public` curado. Ver docs/db-baseline.md.
 #
 # Después de correr esto con éxito, las migraciones que acabás de fundir en
-# la baseline se archivan a mano: `git mv supabase/migrations/0*.sql
+# la baseline se archivan a mano — solo las que ya estén aplicadas en prod
+# (ver docs/db-baseline.md): `git mv supabase/migrations/0*.sql
 # supabase/migrations/archive/` (quedate con migrations/data/ donde está).
 set -euo pipefail
 
@@ -12,43 +13,18 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SUPABASE_DIR="$REPO_ROOT/supabase"
 TESTS_DIR="$SUPABASE_DIR/tests"
 TMP_ROOT="$SUPABASE_DIR/.tmp-dbtest"
-TMP_SUPABASE="$TMP_ROOT/supabase"
 
-if command -v supabase >/dev/null 2>&1; then
-  SUPABASE_BIN=(supabase)
-else
-  SUPABASE_BIN=(npx --yes supabase@latest)
-fi
+source "$SUPABASE_DIR/tests/lib.sh"
+detect_supabase_bin
 
-cleanup() {
-  echo "==> Deteniendo stack temporal (--workdir $TMP_ROOT)"
-  "${SUPABASE_BIN[@]}" stop --workdir "$TMP_ROOT" --no-backup >/dev/null 2>&1 || true
-}
-trap cleanup EXIT
+trap 'stack_cleanup "$TMP_ROOT" 1' EXIT
 
-echo "==> 1. Levantando stack con la baseline actual + migraciones pendientes"
-rm -rf "$TMP_ROOT"
-mkdir -p "$TMP_SUPABASE/migrations"
-sed \
-  -e 's/^project_id = .*/project_id = "bayka-web-v1-rebaseline"/' \
-  -e 's/^port = 54321$/port = 56321/' \
-  -e 's/^port = 54322$/port = 56322/' \
-  -e 's/^shadow_port = 54320$/shadow_port = 56320/' \
-  -e 's/^port = 54323$/port = 56323/' \
-  -e 's/^port = 54324$/port = 56324/' \
-  -e 's/^port = 54327$/port = 56327/' \
-  -e 's/^port = 54329$/port = 56329/' \
-  -e '/^\[db.seed\]$/,/^enabled = true$/ s/^enabled = true$/enabled = false/' \
-  "$SUPABASE_DIR/config.toml" > "$TMP_SUPABASE/config.toml"
-cp "$SUPABASE_DIR/baseline_schema.sql" "$TMP_SUPABASE/migrations/00000000_baseline.sql"
-shopt -s nullglob
-for f in "$SUPABASE_DIR"/migrations/*.sql; do
-  cp "$f" "$TMP_SUPABASE/migrations/$(basename "$f")"
-done
-shopt -u nullglob
+echo "==> 1. Levantando Postgres con la baseline actual + migraciones pendientes"
+make_tmp_project "$SUPABASE_DIR" "$TMP_ROOT" "bayka-web-v1-rebaseline" "563"
 
-"${SUPABASE_BIN[@]}" start --workdir "$TMP_ROOT"
-"${SUPABASE_BIN[@]}" db reset --workdir "$TMP_ROOT" --local --no-seed
+# `db start` (solo Postgres) aplica baseline + migraciones directo sobre el
+# volumen nuevo; `db dump` no necesita el resto del stack (kong/gotrue/...).
+"${SUPABASE_BIN[@]}" db start --workdir "$TMP_ROOT"
 
 echo "==> 2. supabase db dump --schema public"
 RAW_DUMP="$TMP_ROOT/dump.sql"
@@ -63,7 +39,7 @@ cat > "$CURATED" <<'HEADER'
 -- a la fecha de esta regeneración (issue #283).
 --
 -- Se regenera con este mismo script (supabase/tests/regenerate-baseline.sh):
--- levanta el stack local con la baseline actual + supabase/migrations/*.sql
+-- levanta un Postgres local con la baseline actual + supabase/migrations/*.sql
 -- pendientes, corre `supabase db dump --schema public` (ya emite
 -- CREATE TABLE/FUNCTION/TRIGGER/VIEW con IF NOT EXISTS / OR REPLACE, así que
 -- el resultado es idempotente tal cual) y le aplica dos filtros más el
@@ -83,4 +59,4 @@ cat "$TESTS_DIR/baseline-extras.sql" >> "$CURATED"
 
 cp "$CURATED" "$SUPABASE_DIR/baseline_schema.sql"
 echo "==> supabase/baseline_schema.sql regenerado ($(wc -l < "$SUPABASE_DIR/baseline_schema.sql") líneas)."
-echo "==> Revisá el diff, corré run-db-tests.sh, y si migraste algo nuevo a la baseline archivalo a mano."
+echo "==> Revisá el diff, corré run-db-tests.sh, y si migraste algo nuevo a la baseline archivalo a mano (solo lo ya aplicado en prod)."
