@@ -1,13 +1,10 @@
 /**
- * Integration tests: captura GPS al registrar árboles (issue #97)
- *
- * SQLite real. Cubre:
- *  - updateTreeGps escribe el punto y RE-MARCA el grupo pendingSync (capa 3
- *    de lessons.md: el fix puede resolver después de un push)
- *  - updateTreeGps sobre árbol inexistente (deshecho) es no-op
- *  - attachGpsCapture: fix fresco del watcher (sin pedir fix nuevo), fix viejo
- *    (pide fix fresco), sin fix (árbol queda sin coordenadas, no lanza)
- *  - insertTreeWithGps: posiciones según frecuencia (N=10 → 1 y 11 capturan)
+ * Integration tests: captura GPS al registrar árboles (issue #97).
+ * updateTreeGps re-marca pendingSync del grupo aunque ya esté sincronizado,
+ * porque el fix GPS puede resolver después de un push, y es no-op sobre un
+ * árbol deshecho. attachGpsCapture usa el fix del watcher si está fresco o
+ * pide uno nuevo si no. insertTreeWithGps captura según la frecuencia
+ * configurada por posición.
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';

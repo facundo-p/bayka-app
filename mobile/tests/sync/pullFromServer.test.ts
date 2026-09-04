@@ -1,6 +1,5 @@
 // TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
-// See .planning/phases/16-code-layer-rename-parcelas-data-sync/deferred-items.md
-// Tests for pullFromServer — conflict detection, metadata sync, subgroup upsert
+// Tests for pullFromServer — conflict detection, metadata sync, subgroup upsert.
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -246,8 +245,7 @@ describe.skip('pullFromServer — plantation_users', () => {
       return { select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }), in: jest.fn().mockResolvedValue({ data: [], error: null }) }) };
     });
 
-    // plantation returns null so pendingEdit select is skipped.
-    // First db.select call is for local plantation_users.
+    // plantation is null so pendingEdit select is skipped; first db.select is local plantation_users.
     (mockDb.select as jest.Mock)
       .mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
@@ -292,8 +290,8 @@ describe.skip('pullFromServer — tree conflict detection', () => {
     const setMock = jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue(undefined) });
     (mockDb.update as jest.Mock).mockReturnValue({ set: setMock });
 
-    // plantation returns null so pendingEdit select is skipped.
-    // Calls: 1) local plantation_users, 2) local tree, 3) species name
+    // plantation is null so pendingEdit select is skipped; db.select order:
+    // 1) local plantation_users, 2) local tree, 3) species name.
     (mockDb.select as jest.Mock)
       .mockReturnValueOnce({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }) })
       .mockReturnValueOnce({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([{ especieId: 'sp-local' }]) }) })
@@ -312,8 +310,7 @@ describe.skip('pullFromServer — tree conflict detection', () => {
     const insertValuesMock = jest.fn().mockReturnValue({ onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) });
     (mockDb.insert as jest.Mock).mockReturnValue({ values: insertValuesMock });
 
-    // plantation returns null so pendingEdit select is skipped.
-    // Calls: 1) local plantation_users, 2) local tree, 3) species name
+    // db.select order: 1) local plantation_users, 2) local tree, 3) species name.
     (mockDb.select as jest.Mock)
       .mockReturnValueOnce({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }) })
       .mockReturnValueOnce({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([{ especieId: 'sp-local' }]) }) })
@@ -321,10 +318,8 @@ describe.skip('pullFromServer — tree conflict detection', () => {
 
     await pullFromServer('p-1');
 
-    // db.insert is called for subgroup upsert but NOT for tree upsert
-    // subgroup insert = 1 call; tree insert should be skipped due to conflict
+    // Only the subgroup upsert should run — the tree upsert is skipped due to conflict.
     const insertCalls = (mockDb.insert as jest.Mock).mock.calls;
-    // All insert calls should be for groups only (1 subgroup), not trees
     expect(insertCalls.length).toBe(1);
   });
 
@@ -334,21 +329,18 @@ describe.skip('pullFromServer — tree conflict detection', () => {
     const setMock = jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue(undefined) });
     (mockDb.update as jest.Mock).mockReturnValue({ set: setMock });
 
-    // plantation returns null so pendingEdit select is skipped.
-    // Calls: 1) local plantation_users, 2) local tree
+    // db.select order: 1) local plantation_users, 2) local tree.
     (mockDb.select as jest.Mock)
       .mockReturnValueOnce({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([]) }) })
       .mockReturnValueOnce({ from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([{ especieId: null }]) }) });
 
     await pullFromServer('p-1');
 
-    // No conflict update should have been called with conflictEspecieId
     for (const call of setMock.mock.calls) {
       expect(call[0]).not.toHaveProperty('conflictEspecieId');
     }
 
-    // Tree insert SHOULD have been called (normal upsert path)
-    // 1 for subgroup + 1 for tree = 2
+    // Tree insert still happens (normal upsert path): 1 subgroup + 1 tree.
     expect(mockDb.insert).toHaveBeenCalledTimes(2);
   });
 });

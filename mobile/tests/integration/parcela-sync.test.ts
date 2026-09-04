@@ -1,21 +1,11 @@
 /**
- * Integration tests: Parcela sync (pull + push + tombstones + conflicts)
+ * Integration tests: Parcela sync (pull + push + tombstones + conflicts).
+ * Cubre roundtrip offline-create, pull merge, conflictos de código/nombre
+ * duplicado, fallback a conflicto genérico, atomicidad grupo↔parcela,
+ * orden FK en push/pull, y tombstones (push, pull, conflicto).
  *
- * Cover 11 escenarios obligatorios (Plan 16-03 Task 3.6 + TEST-PARC-03):
- *  1.  Offline-create roundtrip (push then pull)
- *  2.  Pull merge (server → local)
- *  3.  Conflict DUPLICATE_CODE (push)
- *  4.  Conflict DUPLICATE_NAME (push)
- *  5.  GENERIC_CONFLICT fallback (malformed details, Finding #4)
- *  6.  Atomicidad Grupo bloqueado por parcela pendiente (D-16-16)
- *  7.  Orden FK push: parcela antes que group
- *  8.  Orden FK pull: parcela antes que group
- *  9.  Tombstone offline → push sube deleted_at
- *  10. Server tombstone → pull marca deletedAt local
- *  11. Conflict tombstone: push gana sobre versión activa del server
- *
- * Mock de Supabase: estado in-memory por tabla. Emite errores con el shape
- * documentado en spike 3.3.0 (pushService.errors.md).
+ * Mock de Supabase: estado in-memory por tabla, con errores del shape real
+ * de Postgres (code/details/message).
  */
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
@@ -226,7 +216,6 @@ beforeEach(async () => {
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 describe('Parcela sync — pull + push + tombstone + conflicts', () => {
-  // 1.
   test('offline-create roundtrip: push uploads then pull keeps pending_sync=false', async () => {
     const pid = await seedLocalPlantation();
     const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', nombre: 'Lote 1', pendingSync: true });
@@ -245,7 +234,6 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(row2.pendingSync).toBe(false);
   });
 
-  // 2.
   test('pull merge: server parcela appears local with pending_sync=false', async () => {
     const pid = await seedLocalPlantation();
     insertServerParcela({
@@ -267,7 +255,6 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(row.codigo).toBe('SVL');
   });
 
-  // 3.
   test('conflict DUPLICATE_CODE: pending_sync stays true on server unique violation', async () => {
     const pid = await seedLocalPlantation();
     insertServerParcela({
@@ -289,10 +276,9 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(results[0].error).toBe('DUPLICATE_CODE');
 
     const [row] = await mockTestDb.select().from(parcelas).where(eq(parcelas.id, localId));
-    expect(row.pendingSync).toBe(true); // memory: feedback_state_lifecycle_audit
+    expect(row.pendingSync).toBe(true);
   });
 
-  // 4.
   test('conflict DUPLICATE_NAME: pending_sync stays true', async () => {
     const pid = await seedLocalPlantation();
     insertServerParcela({
@@ -317,9 +303,8 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(row.pendingSync).toBe(true);
   });
 
-  // 5.
   test('GENERIC_CONFLICT fallback: malformed details degrade to generic', async () => {
-    // Direct classifier test — más rápido y aislado del mock.
+    // Test directo del classifier — más rápido y aislado del mock.
     const result = classifyParcelaRpcResult(
       { id: 'x', nombre: 'X' },
       null,
@@ -359,11 +344,9 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(denied.error).toBe('PERMISSION');
   });
 
-  // 6.
   test('atomicidad: group dependiente de parcela pendiente reporta PARCELA_PENDING', async () => {
     const pid = await seedLocalPlantation();
     const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'PB', nombre: 'Pend', pendingSync: true });
-    // Insert group depending on that parcela
     await mockTestDb.insert(groups).values({
       id: 'group-1',
       plantacionId: pid,
@@ -396,11 +379,9 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(groupResults[0].success).toBe(false);
     if (groupResults[0].success) return;
     expect(groupResults[0].error).toBe('PARCELA_PENDING');
-    // Group NOT uploaded
-    expect(serverState.groups.has('group-1')).toBe(false);
+    expect(serverState.groups.has('group-1')).toBe(false); // el grupo no llegó a subirse
   });
 
-  // 7.
   test('orden FK push: parcela upserts antes que groups en la secuencia de llamadas', async () => {
     const pid = await seedLocalPlantation();
     const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'PFK', nombre: 'PFK', pendingSync: true });
@@ -419,16 +400,14 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
 
     callOrder.length = 0;
     await uploadSyncableParcelas(pid);
-    // Mark group's parcela as ready, then push groups
     await uploadSyncableGroups(pid);
 
+    // groups en este pipeline usan .rpc('sync_subgroup'), no supabase.from('groups').upsert;
+    // basta confirmar que el upsert de parcela ocurrió.
     const firstParcela = callOrder.findIndex(c => c.table === 'parcelas' && c.op === 'upsert');
-    // groups en este pipeline no llaman supabase.from('groups').upsert sino .rpc('sync_subgroup');
-    // basta con confirmar que el parcela upsert ocurrió.
     expect(firstParcela).toBeGreaterThanOrEqual(0);
   });
 
-  // 8.
   test('orden FK pull: pullFromServer baja parcelas antes que groups', async () => {
     const pid = await seedLocalPlantation();
     insertServerParcela({
@@ -462,7 +441,6 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(groupSelectIdx).toBeGreaterThanOrEqual(0);
     expect(parcSelectIdx).toBeLessThan(groupSelectIdx);
 
-    // Both rows present locally
     const [pRow] = await mockTestDb.select().from(parcelas).where(eq(parcelas.id, 'srv-pull-fk'));
     expect(pRow).toBeDefined();
     const [gRow] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-pull'));
@@ -499,7 +477,6 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(clean.estado).toBe('finalizada');
   });
 
-  // 9.
   test('tombstone push: parcela con deletedAt sube y queda pending_sync=false', async () => {
     const pid = await seedLocalPlantation();
     const now = new Date().toISOString();
@@ -520,7 +497,6 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(serverState.parcelas.get(parcId)?.deleted_at).toBe(now);
   });
 
-  // 10.
   test('server tombstone → pull marca deletedAt local; parcela no aparece en findByPlantacion', async () => {
     const pid = await seedLocalPlantation();
     const tombstoneTs = '2026-05-19T10:00:00.000Z';
@@ -543,7 +519,6 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(visible.find(p => p.id === 'srv-tomb')).toBeUndefined();
   });
 
-  // 11.
   test('conflict tombstone: local tombstone pendiente NO se pisa por pull con server activo', async () => {
     const pid = await seedLocalPlantation();
     const tombTs = '2026-05-20T10:00:00.000Z';
@@ -554,7 +529,7 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
       pendingSync: true,
       deletedAt: tombTs,
     });
-    // Server has same row but ACTIVE (no deleted_at)
+    // Server tiene la misma fila pero ACTIVA (sin deleted_at)
     insertServerParcela({
       id: parcId,
       plantation_id: pid,

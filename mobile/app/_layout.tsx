@@ -1,4 +1,4 @@
-import 'react-native-url-polyfill/auto'; // MUST be first import
+import 'react-native-url-polyfill/auto'; // must be first import
 
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import migrations from '../drizzle/migrations';
@@ -27,7 +27,6 @@ import { PhotoCropProvider } from '../src/components/PhotoCropProvider';
 import BannerEntornoPruebas from '../src/components/BannerEntornoPruebas';
 import * as SplashScreen from 'expo-splash-screen';
 
-// Keep splash visible while fonts load
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
@@ -49,14 +48,12 @@ export default function RootLayout() {
     LinBiolinum_RB: require('../assets/fonts/LinBiolinum_RB.otf'),
   });
 
-  // Hide splash when fonts + migrations are ready
   useEffect(() => {
     if (fontsLoaded && success) {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, success]);
 
-  // Run species seed after migrations succeed
   useEffect(() => {
     if (success) {
       seedSpeciesIfNeeded()
@@ -66,7 +63,7 @@ export default function RootLayout() {
     }
   }, [success]);
 
-  // Redirect based on auth state — after layout is mounted
+  // En useEffect porque el router necesita el layout ya montado para navegar.
   useEffect(() => {
     if (!success || loading || !fontsLoaded) return;
 
@@ -75,7 +72,6 @@ export default function RootLayout() {
     const inTecnicoGroup = segments[0] === '(tecnico)';
 
     if (!session || !role) {
-      // Not logged in or no confirmed role → login screen
       if (!inAuthGroup) {
         router.replace('/(auth)/login');
       }
@@ -90,7 +86,7 @@ export default function RootLayout() {
     }
   }, [success, loading, session, role, segments, fontsLoaded]);
 
-  // Migration error — unrecoverable
+  // Error de migración: sin recuperación posible.
   if (error) {
     return (
       <View style={styles.center}>
@@ -101,12 +97,10 @@ export default function RootLayout() {
     );
   }
 
-  // Migrations or fonts loading
   if (!success || !fontsLoaded) {
-    return null; // Splash screen is visible
+    return null; // splash screen still covers the UI
   }
 
-  // Auth loading
   if (loading) {
     return (
       <View style={styles.loadingContainer}>

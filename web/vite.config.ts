@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
 import { esBranchDeProduccion } from './src/lib/entornoBranch';
 
-// Entorno horneado en build (#287): Cloudflare Pages inyecta CF_PAGES_BRANCH y
+// Entorno horneado en build: Cloudflare Pages inyecta CF_PAGES_BRANCH y
 // solo `main` (Production) es prod. Sin la var (dev local, CI) → pruebas.
 const ES_ENTORNO_PRUEBAS = !esBranchDeProduccion(process.env.CF_PAGES_BRANCH);
 const VERSION_APP: string = JSON.parse(

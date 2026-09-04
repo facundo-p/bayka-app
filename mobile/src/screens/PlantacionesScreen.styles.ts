@@ -10,7 +10,7 @@ export const plantacionesScreenStyles = StyleSheet.create({
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md },
   emptyTitle: { fontSize: fontSize.xxl, fontFamily: fonts.bold, color: colors.textMuted },
   emptySubtext: { fontSize: fontSize.base, color: colors.textLight, fontFamily: fonts.regular },
-  // paddingTop reducido (antes 4xl) para compensar el paddingBottom de filterBar:
-  // el espacio en reposo se mantiene, pero el colchón ya no se pierde al scrollear.
+  // paddingTop reducido para compensar el paddingBottom de filterBar: el
+  // espacio en reposo se mantiene sin perder colchón al scrollear.
   listContent: { padding: spacing.xxl, paddingTop: spacing.xl, paddingBottom: spacing['6xl'], gap: spacing.xl },
 });

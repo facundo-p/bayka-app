@@ -1,12 +1,7 @@
 /**
- * Runs `cb(tx)` inside a database transaction when supported. Falls back to
- * `cb(db)` (no transaction) in two cases:
- *   1. `db.transaction` is undefined (unit-test mocks with partial db objects).
- *   2. The driver throws "Transaction function cannot return a promise"
- *      (better-sqlite3 sync API in integration tests — it doesn't allow async
- *      callbacks even though drizzle/expo-sqlite in prod does).
- * Prod expo-sqlite always supports async transactions, so this preserves
- * the transactional speedup at runtime.
+ * Corre `cb(tx)` en una transacción DB si el driver la soporta; si no (mocks sin `db.transaction`,
+ * o better-sqlite3 sync tirando "cannot return a promise" en tests de integración), cae a
+ * `cb(db)` sin transacción. Prod (expo-sqlite) siempre soporta transacciones async.
  */
 export async function runInTransaction<T>(
   database: any,
@@ -26,13 +21,9 @@ export async function runInTransaction<T>(
 }
 
 /**
- * Paginates a Supabase query through .range() to bypass the PostgREST 1000-row
- * default limit. `buildQuery` must return a fresh query builder on each call;
- * the helper appends .range(from, to) per page and concatenates results.
- *
- * Fallback: if buildQuery() returns something without .range() (test mocks
- * that resolve directly to {data, error}), the helper awaits the result as a
- * single page. Real PostgREST builders always expose .range().
+ * Pagina una query de Supabase con .range() para saltar el límite default de 1000 filas de
+ * PostgREST; `buildQuery` debe devolver un builder fresco por llamada. Fallback: si no expone
+ * .range() (mocks de test), se usa como página única.
  */
 export async function fetchAllRows<T>(
   buildQuery: () => any

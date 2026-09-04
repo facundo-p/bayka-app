@@ -1,18 +1,16 @@
 /**
- * Regresión: drizzle-expo aplica una migración solo si su `when` (folderMillis)
- * es MAYOR que el máximo `created_at` ya registrado en el device
- * (sqlite-core/dialect: `lastDbMigration.created_at < migration.folderMillis`).
- * Si una migración nueva tiene `when` menor que el de alguna anterior, en un
- * device que ya pasó por esa anterior la nueva se SALTEA silenciosamente y
- * useMigrations igual reporta success → columnas faltantes en runtime
- * (bug real: "no such column: trees.latitude", el milestone GPS).
+ * Regresión: drizzle-expo aplica una migración solo si su `when` es mayor que
+ * el `created_at` máximo ya registrado en el device. Si una migración nueva
+ * tiene `when` menor, se SALTEA silenciosamente y useMigrations igual reporta
+ * success → columnas faltantes en runtime (bug real: "no such column:
+ * trees.latitude").
  *
- * Invariante que enforzamos hacia adelante: toda migración con idx >= FIRST_ENFORCED
- * debe tener `when` estrictamente mayor que el máximo de TODAS las anteriores.
+ * Invariante enforzada desde idx >= FIRST_ENFORCED_IDX: `when` debe ser
+ * estrictamente mayor que el máximo de todas las anteriores.
  *
- * Excepción histórica: las 0008–0014 ya están desplegadas con timestamps
- * redondos menores que las 0000–0007 (auto-generadas en 2026). No se pueden
- * corregir sin re-disparar sus ALTER en devices existentes. Se documentan acá.
+ * Excepción: 0008–0014 ya están desplegadas con timestamps menores a las
+ * 0000–0007 y no se pueden corregir sin re-disparar sus ALTER en devices
+ * existentes.
  */
 import journal from '../../drizzle/meta/_journal.json';
 

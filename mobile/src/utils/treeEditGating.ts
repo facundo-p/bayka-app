@@ -1,9 +1,8 @@
 /**
- * Permisos del detalle/edición de árbol (issue #155).
- *
- * - Plantación finalizada **o** usuario no-creador → sólo lectura.
- * - Grupo activo + plantación activa + creador → editar foto/GPS **y** eliminar.
- * - Grupo finalizado + plantación activa + creador → editar foto/GPS, **sin** eliminar.
+ * Permisos del detalle/edición de árbol:
+ * - Plantación finalizada o usuario no-creador → sólo lectura.
+ * - Grupo activo + plantación activa + creador → editar foto/GPS y eliminar.
+ * - Grupo finalizado + plantación activa + creador → editar foto/GPS, sin eliminar.
  */
 export interface TreeEditGating {
   canEdit: boolean;

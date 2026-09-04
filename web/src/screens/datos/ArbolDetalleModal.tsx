@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Cargando, MapaPuntos, Modal } from '../../components';
+import { varsCss } from '../../lib/cssVars';
 import { formatearFechaCorta } from '../../lib/fechas';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
@@ -24,7 +25,7 @@ function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
       <span className={styles.especie}>
         <span
           className={styles.puntoEspecie}
-          style={{ backgroundColor: colorEspeciePorCodigo(arbol.especieCodigo) }}
+          style={varsCss({ color: colorEspeciePorCodigo(arbol.especieCodigo) })}
         />
         {`${codigo} · ${nombre}`}
       </span>

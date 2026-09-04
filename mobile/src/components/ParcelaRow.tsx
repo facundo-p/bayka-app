@@ -1,9 +1,9 @@
 /**
- * ParcelaRow — presentational row for a parcela (D-17-05/-06/-22).
+ * ParcelaRow — presentational row for a parcela.
  *
- * Reusable in standalone list (ParcelasScreen) and inline (PlantationCard expansion, Plan 17-02).
- * Does NOT render `descripcion` (D-17-05).
- * Touch target ≥44×44 (D-17-22).
+ * Reusable in standalone list (ParcelasScreen) and inline (PlantationCard expansion).
+ * Does NOT render `descripcion`.
+ * Touch target ≥44×44.
  */
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';

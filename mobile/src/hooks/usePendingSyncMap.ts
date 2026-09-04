@@ -10,11 +10,9 @@ import {
 /**
  * Map plantacionId → total de pendientes de sync de esa plantación.
  *
- * Issue #71 (follow-up): cuenta lo MISMO que el ícono general
- * (usePendingSyncCount) — grupos del usuario + parcelas (incl. tombstones) +
- * fotos — para que el dot de la tarjeta señale exactamente qué plantación
- * enciende el global, y sincronizar solo esa lo apague. Antes contaba solo
- * grupos y una parcela pendiente era invisible a nivel tarjeta.
+ * Issue #71: cuenta lo mismo que usePendingSyncCount (grupos del usuario +
+ * parcelas, incl. tombstones + fotos), para que el dot de cada tarjeta
+ * señale exactamente qué plantación enciende el global.
  */
 export function usePendingSyncMap(): Map<string, number> {
   const userId = useCurrentUserId();

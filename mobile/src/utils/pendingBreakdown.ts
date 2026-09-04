@@ -1,8 +1,4 @@
-/**
- * Desglose de pendientes de sync para la UI ("2 grupos, 1 parcela, 5 fotos").
- * Presentación pura y testeable; la consume SyncConfirmModal (issue #71: hace
- * diagnosticable un OrangeDot residual mostrando QUÉ queda pendiente).
- */
+/** Desglose de pendientes de sync para la UI ("2 grupos, 1 parcela, 5 fotos"); usado por SyncConfirmModal para mostrar qué queda pendiente (#71). */
 
 function cantidad(n: number, singular: string, plural: string): string {
   return `${n} ${n === 1 ? singular : plural}`;

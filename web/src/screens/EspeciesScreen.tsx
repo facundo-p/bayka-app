@@ -14,6 +14,7 @@ import {
   type TableColumn,
 } from '../components';
 import { cx } from '../lib/classNames';
+import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import { useDebounce } from '../hooks/useDebounce';
 import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
@@ -42,7 +43,7 @@ function CeldaCodigo({ especie }: { especie: EspecieConCatalogoUso }) {
     <span className={claseSegunUso(especie, styles.codigoCelda)}>
       <span
         className={styles.puntoEspecie}
-        style={{ backgroundColor: colorEspeciePorCodigo(especie.codigo) }}
+        style={varsCss({ color: colorEspeciePorCodigo(especie.codigo) })}
       />
       <span className={styles.codigo}>{especie.codigo}</span>
     </span>

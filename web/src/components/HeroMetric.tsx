@@ -1,3 +1,4 @@
+import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import styles from './HeroMetric.module.css';
 
@@ -17,8 +18,7 @@ export function HeroMetric({
   porcentaje,
   metaLabel = 'Meta de la temporada',
 }: HeroMetricProps) {
-  // Sin objetivo definido: ocultamos la barra de progreso y el pie con cifras
-  // (evita el confuso "· 0 · 0%") y avisamos que la meta no está cargada.
+  // Sin objetivo definido: ocultamos progreso/cifras (evita "· 0 · 0%") y avisamos que falta la meta.
   const tieneObjetivo = objetivo > 0;
   return (
     <div className={styles.card}>
@@ -27,7 +27,7 @@ export function HeroMetric({
       <p className={styles.value}>{formatearEntero(valor)}</p>
       {tieneObjetivo && (
         <div className={styles.track}>
-          <div className={styles.fill} style={{ width: `${porcentaje}%` }} />
+          <div className={styles.fill} style={varsCss({ ancho: `${porcentaje}%` })} />
         </div>
       )}
       <p className={styles.footer}>

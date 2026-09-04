@@ -183,7 +183,6 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    // sincronizada estado no longer exists — no actions rendered
     expect(queryByText('Exportar CSV')).toBeNull();
     expect(queryByText('Exportar Excel')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
@@ -206,7 +205,6 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet {...makeProps({ visible: false })} />
     );
 
-    // Modal not visible — inner content should not be rendered
     expect(queryByText('Finca Norte')).toBeNull();
   });
 });

@@ -4,9 +4,7 @@ import {
   GPS_CAPTURE_REQUIRED_DEFAULT,
 } from '../lib/gpsDefaults';
 
-/** Estados posibles de una plantación. ÚNICA fuente de verdad de estos valores:
- *  el tipo `EstadoPlantacion` se deriva de acá, así que valor y tipo no se
- *  pueden desincronizar y nadie los redefine como literales sueltos. */
+/** Única fuente de verdad de los estados; `EstadoPlantacion` se deriva de acá (evita literales sueltos desincronizados). */
 export const ESTADO_PLANTACION = {
   activa: 'activa',
   finalizada: 'finalizada',
@@ -14,9 +12,7 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
-/** Fila cruda de `plantations`. Los campos opcionales llegan con las
- *  migraciones 023 (GPS) y 024, que pueden no estar aplicadas todavía:
- *  se tolera su ausencia. */
+/** Campos opcionales: de las migraciones 023 (GPS) y 024, que pueden no estar aplicadas. */
 type FilaPlantacion = {
   id: string;
   lugar: string;
@@ -70,8 +66,7 @@ type FilaStats = {
 
 const SIN_STATS = { arboles: 0, parcelas: 0, usuarios: 0 };
 
-/** Contadores de todas las plantaciones en una sola query agregada: los
- *  counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
+/** Una sola query agregada: counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
 async function statsPorPlantacion(): Promise<Map<string, FilaStats>> {
   const { data, error } = await supabase.rpc('stats_plantaciones');
   if (error) throw new Error(error.message);
@@ -119,11 +114,7 @@ export async function obtenerPlantacion(id: string): Promise<Plantacion | null> 
   return data ? mapearPlantacion(data as FilaPlantacion) : null;
 }
 
-/**
- * Id de la plantación 'activa' con el registro de árbol MÁS RECIENTE (la última
- * temporada en la que se cargaron árboles), o null si ninguna activa tiene
- * árboles. Define la "Temporada activa" del sidebar.
- */
+/** Plantación 'activa' con el árbol más reciente (última temporada con carga); define la "Temporada activa" del sidebar. */
 export async function obtenerTemporadaActivaId(): Promise<string | null> {
   const { data, error } = await supabase
     .from('trees')
@@ -132,7 +123,7 @@ export async function obtenerTemporadaActivaId(): Promise<string | null> {
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) throw new Error(error.message);
-  // El embed many-to-one llega como objeto en runtime (el cliente lo tipa array).
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   const fila = ((data ?? []) as unknown as Array<{ groups: { plantation_id: string } | null }>)[0];
   return fila?.groups?.plantation_id ?? null;
 }

@@ -1,7 +1,4 @@
-/**
- * Geometría del recorte de foto (#167). Funciones puras y testeables que mapean
- * el box de recorte (en coordenadas de pantalla) a píxeles de la imagen original.
- */
+/** Geometría del recorte de foto: funciones puras que mapean el box de recorte (coords de pantalla) a píxeles de la imagen original. */
 
 export interface Rect { x: number; y: number; w: number; h: number; }
 export interface PixelCrop { originX: number; originY: number; width: number; height: number; }
@@ -11,10 +8,7 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-/**
- * Rectángulo donde se dibuja la imagen con `resizeMode="contain"` dentro de un
- * stage de `stageW × stageH` (centrada, con letterbox).
- */
+/** Rectángulo donde se dibuja la imagen con `resizeMode="contain"` dentro de un stage de `stageW × stageH` (centrada, con letterbox). */
 export function computeDisplayRect(imgW: number, imgH: number, stageW: number, stageH: number): Rect {
   if (imgW <= 0 || imgH <= 0 || stageW <= 0 || stageH <= 0) {
     return { x: 0, y: 0, w: stageW, h: stageH };

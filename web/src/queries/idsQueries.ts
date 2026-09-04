@@ -1,32 +1,18 @@
 /*
- * Generación y estado de los IDs finales de una plantación.
- *
- * Regla de negocio (espejo de hasIdsGenerated de mobile, ver docs/SPECS.md §4.17
- * y docs/ui-ux-guidelines.md §19): "Generar IDs" asigna el `global_id` final a
- * todos los árboles; sólo cuando TODOS lo tienen se considera generado.
- * Mientras tanto se sigue ofreciendo "Generar IDs"; la exportación recién
- * aparece cuando los IDs están confirmados.
- *
- * Desde el issue #232 la generación es exclusiva de la web: el RPC
- * transaccional `generate_tree_ids` (migración 029) numera y persiste
- * server-side; la app recibe los IDs por el pull normal.
+ * Generación y estado de los IDs finales de una plantación (espejo de hasIdsGenerated de mobile).
+ * "Generar IDs" asigna `global_id` a todos los árboles; se considera generado solo cuando TODOS
+ * lo tienen. La generación es exclusiva de la web vía el RPC transaccional `generate_tree_ids`
+ * (numera y persiste server-side); la app recibe los IDs por el pull normal.
  */
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 
-// ─── Códigos de error del RPC generate_tree_ids ──────────────────────────────
-
-/**
- * Errores de negocio que devuelve `generate_tree_ids` en el payload
- * (`{ success: false, error }`, migración 029). Constantes nombradas para no
- * comparar literales sueltos (regla "sin magic constants").
- */
+/** Errores de negocio que devuelve `generate_tree_ids` en el payload `{ success: false, error }`. */
 export const ERRORES_GENERACION_IDS = {
   /** El usuario no es admin/superadmin. */
   NO_AUTORIZADO: 'NOT_AUTHORIZED',
   /** Todos los árboles ya tienen `global_id` (regenerar requiere intervención manual). */
   YA_GENERADOS: 'ALREADY_GENERATED',
-  /** La plantación no tiene árboles. */
   SIN_ARBOLES: 'NO_TREES',
   /** El seed enviado es menor a 1. */
   SEED_INVALIDO: 'INVALID_SEED',
@@ -42,8 +28,7 @@ const MENSAJES_ERROR_GENERACION: Record<string, string> = {
 
 const MENSAJE_ERROR_GENERACION = 'No se pudieron generar los IDs. Probá de nuevo.';
 
-/** Cuenta árboles de la plantación; con `soloConId`, sólo los que ya tienen
- *  `global_id` (ID final asignado y confirmado en el server). */
+/** Cuenta árboles de la plantación; con `soloConId`, solo los que ya tienen `global_id`. */
 async function contarArboles(plantationId: string, soloConId: boolean): Promise<number> {
   let consulta = supabase
     .from('trees')
@@ -55,9 +40,8 @@ async function contarArboles(plantationId: string, soloConId: boolean): Promise<
 }
 
 /**
- * True sólo cuando hay al menos un árbol y TODOS tienen `global_id`. Un set
- * parcial (sync incompleto) cuenta como NO generado. Gobierna la visibilidad de
- * "Generar IDs" (hasta generar) y "Exportar" (sólo después).
+ * True solo si hay al menos un árbol y TODOS tienen `global_id` (un set parcial cuenta como NO
+ * generado). Gobierna la visibilidad de "Generar IDs" vs. "Exportar".
  */
 export async function idsGenerados(plantationId: string): Promise<boolean> {
   const [total, conId] = await Promise.all([
@@ -68,9 +52,8 @@ export async function idsGenerados(plantationId: string): Promise<boolean> {
 }
 
 /**
- * Seed sugerido para el ID global: MAX(global_id) del server + 1 (1 si no hay
- * ninguno). PostgREST no expone MAX directo: se toma la primera fila ordenada
- * descendente.
+ * MAX(global_id) del server + 1 (1 si no hay ninguno). PostgREST no expone MAX directo: se toma
+ * la primera fila ordenada descendente.
  */
 export async function seedSugerido(): Promise<number> {
   const { data, error } = await supabase
@@ -93,10 +76,7 @@ type RespuestaGeneracion = {
   error?: string;
 } | null;
 
-/**
- * Ejecuta el RPC transaccional `generate_tree_ids` (migración 029) y traduce
- * sus códigos de error de negocio a mensajes en español para la UI.
- */
+/** Ejecuta el RPC `generate_tree_ids` y traduce sus códigos de error de negocio a mensajes en español. */
 export async function generarIds(
   plantationId: string,
   seed: number,

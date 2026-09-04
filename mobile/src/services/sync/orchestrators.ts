@@ -9,27 +9,16 @@ import { pullFromServer } from './pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 
-// ─── Main orchestrator ────────────────────────────────────────────────────────
-
-/**
- * Orchestrates pull-then-push sync for a plantation.
- * 1. Refreshes auth session
- * 2. Pulls latest data from server
- * 3. Uploads each finalizada Group one by one
- * 4. Accumulates results (continues on failure)
- * 5. Notifies local data change once at the end
- */
+/** Orquesta pull-then-push de una plantación: refresca sesión, pull, sube grupos finalizada uno por uno acumulando resultados (sigue ante fallas), notifica al final. */
 export async function syncPlantation(
   plantacionId: string,
   onProgress?: (progress: SyncProgress) => void,
   onParcelaResults?: (parcelas: SyncParcelaResult[]) => void,
   onPlantationResults?: (plantations: SyncPlantationResult[]) => void
 ): Promise<SyncGroupResult[]> {
-  // Abort early if the session can't authenticate server writes (avoids anon
-  // requests that RLS rejects as a misleading permission error).
+  // Aborta temprano si la sesión no puede autenticar writes (evita que RLS rechace como error de permisos confuso).
   await ensureServerSession();
-  // runGlobalPreSteps pushes offline-created plantations; surface those failures
-  // so a blocked plantation (which FK-blocks its parcelas/groups) is visible.
+  // runGlobalPreSteps pushea plantaciones offline; se surfacean sus fallas porque bloquean (FK) sus parcelas/grupos.
   const plantationResults = await runGlobalPreSteps();
   onPlantationResults?.(plantationResults);
 
@@ -39,11 +28,8 @@ export async function syncPlantation(
     syncLog.error('Pull failed:', e);
   }
 
-  // D-16-13: push parcelas BEFORE groups (FK ordering).
-  // Las fallas de parcela se surfacean vía onParcelaResults: de lo contrario el
-  // único síntoma visible sería PARCELA_PENDING en los grupos, ocultando la
-  // causa real (RLS, conflicto, red). El callback se invoca SIEMPRE (incluso si
-  // la lectura lanza) para mantener consistente el estado de la UI.
+  // Push parcelas antes que groups (FK). Las fallas se surfacean vía onParcelaResults — si no, el
+  // único síntoma sería PARCELA_PENDING en los grupos, ocultando la causa real (RLS, conflicto, red).
   let parcelaResults: SyncParcelaResult[] = [];
   try {
     parcelaResults = await uploadSyncableParcelas(plantacionId);
@@ -61,13 +47,7 @@ export async function syncPlantation(
   return results;
 }
 
-// ─── Global sync: all local plantations ──────────────────────────────────────
-
-/**
- * Syncs all local plantations sequentially (pull+push per plantation).
- * Global pre-steps: species catalog, offline plantations, pending edits.
- * Optional photo sync across all plantations at the end.
- */
+/** Sincroniza todas las plantaciones locales secuencialmente (pull+push c/u); pre-steps globales (catálogo, plantaciones offline, ediciones pendientes) + sync de fotos opcional al final. */
 export async function syncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
   incluirFotos: boolean = true,
@@ -86,7 +66,7 @@ export async function syncAllPlantations(
 
     try {
       await pullFromServer(plantation.id);
-      // D-16-13: push parcelas antes que groups (FK). Surfaceamos sus fallas.
+      // Push parcelas antes que groups (FK). Surfaceamos sus fallas.
       let parcelaResults: SyncParcelaResult[] = [];
       try {
         parcelaResults = await uploadSyncableParcelas(plantation.id);

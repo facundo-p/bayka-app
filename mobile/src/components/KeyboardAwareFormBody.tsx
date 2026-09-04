@@ -10,10 +10,8 @@ interface Props {
 }
 
 /**
- * Cuerpo de formulario keyboard-aware con footer fijo de acciones. Extrae el
- * patrón correcto de ParcelaFormModal (el body sube y el footer flota sobre el
- * teclado) para reusarlo en todas las pantallas de creación (#89): con el
- * teclado abierto el botón de acción sigue visible y tocable.
+ * Cuerpo de formulario keyboard-aware con footer fijo: el body sube y el
+ * footer queda flotando sobre el teclado (#89).
  */
 export default function KeyboardAwareFormBody({ children, footer, scrollContentStyle }: Props) {
   const keyboard = useKeyboardAwareModal();

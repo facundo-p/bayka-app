@@ -1,5 +1,4 @@
-// Tests for useTreeRegistration hook (extracted in Plan 09-02)
-// Covers: registerTree, undoLast, executeFinalize (with N/N check context), isReadOnly flag
+// Tests for useTreeRegistration hook
 
 jest.mock('expo-router', () => ({
   useRouter: jest.fn().mockReturnValue({ back: jest.fn() }),
@@ -65,7 +64,6 @@ describe('useTreeRegistration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default: subgroup is activa, user is owner
     (useLiveData as jest.Mock).mockReturnValue({ data: [mockGroup] });
     (canEdit as jest.Mock).mockReturnValue(true);
     (useTrees as jest.Mock).mockReturnValue({
@@ -178,9 +176,8 @@ describe('useTreeRegistration', () => {
     });
   });
 
-  // #90: los writers eran fire-and-forget — un throw (p.ej. "grupo sin parcela",
-  // PR #79) se perdía como unhandled rejection y el árbol no se registraba SIN
-  // ningún aviso. Ahora cualquier error de escritura se surfacea vía onError.
+  // #90: los writers eran fire-and-forget — un throw (p.ej. "grupo sin parcela")
+  // se perdía como unhandled rejection sin aviso; ahora se surfacea vía onError.
   describe('surface de errores de escritura (onError, #90)', () => {
     it('registerTree: un throw del insert notifica el mensaje real y no revienta', async () => {
       (insertTree as jest.Mock).mockRejectedValue(

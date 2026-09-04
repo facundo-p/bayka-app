@@ -4,6 +4,7 @@ import {
   listarPlantaciones,
   obtenerTemporadaActivaId,
 } from '../queries/plantationQueries';
+import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import styles from './SeasonCard.module.css';
 
@@ -37,7 +38,7 @@ export function SeasonCard() {
       </div>
       <span className={styles.lugar}>{temporada.lugar}</span>
       <div className={styles.barra}>
-        <div className={styles.relleno} style={{ width: `${ancho}%` }} />
+        <div className={styles.relleno} style={varsCss({ ancho: `${ancho}%` })} />
       </div>
       <span className={styles.pie}>
         {formatearEntero(temporada.arboles)} árboles

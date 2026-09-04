@@ -1,11 +1,8 @@
 /**
- * useAuth — central auth hook for session, role, signIn, signOut.
- *
- * OFFLINE CONTRACT (inviolable):
- * - If NetInfo.isConnected === false → ZERO calls to supabase.*
- * - SecureStore keys (tokens, userId, role) are NEVER deleted except on explicit signOut()
- * - SIGNED_OUT events are IGNORED when offline
- * - Auto-refresh is STOPPED when offline, STARTED when online
+ * useAuth — hook central de auth: sesión, rol, signIn, signOut.
+ * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; las claves de SecureStore
+ * (tokens/userId/role) nunca se borran salvo signOut() explícito; SIGNED_OUT se ignora offline;
+ * auto-refresh se para offline y arranca online.
  */
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
@@ -36,8 +33,7 @@ type AuthState = {
   role: Role | null;
 };
 
-// Broadcast channel for offline login/logout — Supabase's onAuthStateChange
-// only fires for online events, so we need this for offline state sync.
+// Broadcast channel: onAuthStateChange de Supabase solo dispara para eventos online, esto cubre el sync de estado offline.
 const authChangeListeners = new Set<(state: AuthState) => void>();
 
 let autoRefreshActive = false;
@@ -54,14 +50,7 @@ async function syncAutoRefresh(isConnected: boolean | null) {
   }
 }
 
-/**
- * Purga TODO el estado de sesión al confirmar (online) que la cuenta fue
- * desactivada: tokens, credenciales offline, rol, email y estado del SDK.
- * A diferencia del signOut normal (que preserva las credenciales offline por
- * contrato), acá SÍ se borran: si no, el usuario dado de baja volvería a
- * entrar con login offline (las credenciales no vencen). Es un signOut
- * explícito disparado por el server, la única excepción legítima al contrato.
- */
+/** Purga TODO el estado de sesión (tokens, credenciales offline, rol, email, SDK) al confirmar online que la cuenta fue desactivada — a diferencia de signOut(), que preserva las credenciales offline por contrato. */
 async function purgarSesionDesactivada() {
   authChangeListeners.forEach(fn => fn({ session: null, role: null }));
   await supabase.auth.stopAutoRefresh();
@@ -80,16 +69,11 @@ async function purgarSesionDesactivada() {
 
 // ─── Helpers (no network when offline) ──────────────────────────────────────
 
-/** Respuesta ONLINE explícita: el server marcó la cuenta como desactivada
- *  (baja reversible desde la web). Distinto de un fallo de red, que cae al
- *  rol cacheado sin romper el contrato offline. */
+/** Respuesta ONLINE explícita de cuenta desactivada (baja reversible desde la web); distinto de un fallo de red, que cae al rol cacheado. */
 export const CUENTA_DESACTIVADA = 'cuenta-desactivada' as const;
 type RolObtenido = Role | typeof CUENTA_DESACTIVADA | null;
 
-/**
- * Fetch role from Supabase profiles, cache it, return it.
- * Falls back to cached role on timeout/error. ONLY called when online.
- */
+/** Trae el rol de Supabase profiles y lo cachea; si falla/timeoutea, cae al rol cacheado. Solo se llama online. */
 async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObtenido> {
   try {
     const { data: profile } = await withTimeout(
@@ -111,10 +95,7 @@ async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObt
   return cached as Role | null;
 }
 
-/**
- * Restore session from SecureStore cache. ZERO network calls.
- * Used for offline init and as fallback when online init fails.
- */
+/** Restaura sesión desde el cache de SecureStore; CERO llamadas de red. Usado en init offline y como fallback si el init online falla. */
 async function restoreFromCache(): Promise<{ session: AuthState['session']; role: Role | null }> {
   const session = await readCachedSession();
   const role = await SecureStore.getItemAsync(ROLE_KEY) as Role | null;
@@ -129,7 +110,6 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
   const initializing = useRef(true);
 
-  // Subscribe to cross-instance auth state broadcast
   useEffect(() => {
     const listener = (state: AuthState) => {
       setSession(state.session);
@@ -166,8 +146,6 @@ export function useAuth() {
               await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
               const cachedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
               if (cachedRole === CUENTA_DESACTIVADA) {
-                // Baja confirmada por el server: purga total (tokens +
-                // credenciales offline) para que no vuelva a entrar offline.
                 await purgarSesionDesactivada();
                 restored = { session: null, role: null };
               } else {
@@ -197,7 +175,6 @@ export function useAuth() {
       }
     })();
 
-    // Listen for Supabase auth events — guard SIGNED_OUT when offline
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, supabaseSession) => {
         if (initializing.current) return;
@@ -223,8 +200,7 @@ export function useAuth() {
             setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
-          // CRITICAL: Only honor SIGNED_OUT when online.
-          // Offline SIGNED_OUT is a false positive from failed token refresh.
+          // SIGNED_OUT se ignora offline: es un falso positivo de un refresh de token fallido.
           const net = await NetInfo.fetch();
           if (net.isConnected === false) {
             console.warn('[Auth] Ignoring SIGNED_OUT while offline — session preserved');
@@ -239,7 +215,6 @@ export function useAuth() {
       }
     );
 
-    // Connectivity listener: start/stop auto-refresh
     const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
       syncAutoRefresh(state.isConnected);
     });
@@ -275,8 +250,7 @@ export function useAuth() {
     return { data: { session: offlineSession, user: null }, error: null };
   }
 
-  /** Persist + cache everything after a successful online sign in.
-   *  Devuelve false si la cuenta está desactivada (no se cachea nada). */
+  /** Persiste + cachea sesión tras un signIn online exitoso; retorna false si la cuenta está desactivada (no cachea nada). */
   async function persistOnlineSession(email: string, password: string, session: any): Promise<boolean> {
     await persistSession(session);
     await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
@@ -289,12 +263,7 @@ export function useAuth() {
     return true;
   }
 
-  /**
-   * Backend unreachable while the device has network (down/paused server, 5xx,
-   * non-JSON response, timeout). Try offline login with cached credentials; if
-   * that's not possible, surface a clear connectivity message instead of the
-   * offline "credenciales no guardadas" wording, which would mislead the user.
-   */
+  /** Backend inalcanzable con red disponible (caído/pausado, 5xx, no-JSON, timeout): intenta login offline con credenciales cacheadas; si no hay, muestra el mensaje de conectividad (no el "credenciales no guardadas" offline, que confundiría). */
   async function handleConnectivityFailure(email: string, password: string) {
     const offline = await handleOfflineSignIn(email, password);
     if (!offline.error) return offline;
@@ -333,13 +302,11 @@ export function useAuth() {
       return result;
     }
 
-    // Backend returned an error WITHOUT throwing. A down/paused backend yields a
-    // non-JSON parse error here — that's connectivity, not bad credentials.
+    // Error sin throw: un backend caído/pausado devuelve acá un parse error no-JSON — es conectividad, no credenciales malas.
     if (classifyAuthError(result.error) === 'connectivity') {
       return handleConnectivityFailure(email, password);
     }
-    // Cuenta baneada (baja): purga las credenciales cacheadas para que no
-    // vuelva a entrar offline.
+    // Cuenta desactivada: mismo purge que en purgarSesionDesactivada().
     if (classifyAuthError(result.error) === 'account_disabled') {
       await purgarSesionDesactivada();
       return { data: { session: null, user: null }, error: { message: AUTH_MESSAGES.account_disabled } };

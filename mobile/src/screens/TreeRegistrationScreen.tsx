@@ -52,8 +52,8 @@ export default function TreeRegistrationScreen() {
   const confirm = useConfirm();
   const { pickPhoto } = usePhotoCapture(confirm.show);
 
-  // Surface de errores de escritura (#90): cualquier writer que falle (registro,
-  // borrado, foto, finalización) se notifica acá — antes era unhandled rejection.
+  // Surface de errores de escritura (#90): notifica cualquier writer que
+  // falle (registro, borrado, foto, finalización).
   const showWriteError = useCallback((mensaje: string) => {
     showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
   }, [confirm.show]);
@@ -179,12 +179,12 @@ export default function TreeRegistrationScreen() {
 
       {dataLoaded && !isReadOnly && (
         <Pressable
-          style={({ pressed }) => [styles.viewAllRow, pressed && totalCount > 0 && { opacity: 0.7 }]}
+          style={({ pressed }) => [styles.viewAllRow, pressed && totalCount > 0 && styles.viewAllRowPressed]}
           onPress={() => totalCount > 0 && setShowTreeList(true)}
           disabled={totalCount === 0}
         >
           <Ionicons name="list-outline" size={16} color={totalCount > 0 ? colors.plantation : colors.textLight} />
-          <Text style={[styles.viewAllText, totalCount === 0 && { color: colors.textLight }]}>
+          <Text style={[styles.viewAllText, totalCount === 0 && styles.viewAllTextDisabled]}>
             {totalCount > 0 ? 'Ver todos los árboles' : 'Sin árboles cargados'}
           </Text>
           {totalCount > 0 && <Ionicons name="chevron-forward" size={14} color={colors.plantation} />}
@@ -254,7 +254,7 @@ export default function TreeRegistrationScreen() {
             <Pressable style={styles.configButton} onPress={() => setShowConfigModal(true)}>
               <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
             </Pressable>
-            <View style={{ flex: 1 }} />
+            <View style={styles.spacer} />
             <Pressable
               testID="finalize-button"
               style={[styles.finalizarButton, finalizing && styles.buttonDisabled]}

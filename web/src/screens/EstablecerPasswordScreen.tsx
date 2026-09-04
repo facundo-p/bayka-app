@@ -1,7 +1,11 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { Button, Card, PasswordInput } from '../components';
-import { supabase } from '../lib/supabase';
+import {
+  actualizarPasswordUsuario,
+  obtenerSesionActual,
+  suscribirseACambiosDeSesion,
+} from '../services/authService';
 import { MENSAJES as MENSAJES_ADMIN_USERS } from '../../../supabase/functions/admin-users/nucleo';
 import { validarNuevaPassword } from '../lib/validarPassword';
 import styles from './EstablecerPasswordScreen.module.css';
@@ -19,13 +23,12 @@ type EstadoSesion = 'cargando' | 'con-sesion' | 'sin-sesion';
 function useSesionDelLink(): EstadoSesion {
   const [estado, setEstado] = useState<EstadoSesion>('cargando');
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      setEstado(data.session ? 'con-sesion' : 'sin-sesion');
+    void obtenerSesionActual().then((sesion) => {
+      setEstado(sesion ? 'con-sesion' : 'sin-sesion');
     });
-    const { data } = supabase.auth.onAuthStateChange((_evento, session) => {
-      if (session) setEstado('con-sesion');
+    return suscribirseACambiosDeSesion((sesion) => {
+      if (sesion) setEstado('con-sesion');
     });
-    return () => data.subscription.unsubscribe();
   }, []);
   return estado;
 }
@@ -45,7 +48,7 @@ function FormularioPassword({ onExito }: { onExito: () => void }) {
     }
     setEnviando(true);
     setError(null);
-    const { error: errorUpdate } = await supabase.auth.updateUser({ password });
+    const { error: errorUpdate } = await actualizarPasswordUsuario(password);
     if (errorUpdate) {
       setError(MENSAJES_ADMIN_USERS.errorGenerico);
       setEnviando(false);

@@ -83,4 +83,6 @@
   border: var(--border-thin) solid var(--color-surface);
   box-shadow: 0 0 0 1px var(--color-border);
   flex-shrink: 0;
+  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  background-color: var(--color);
 }

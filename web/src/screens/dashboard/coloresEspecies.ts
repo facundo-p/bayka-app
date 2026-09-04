@@ -8,8 +8,7 @@ import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 
 export type EspecieColoreada = DistribucionEspecie & { color: string };
 
-/** Colorea la distribución: cada especie toma su color estable por código
- *  (N/N → ámbar). */
+/** Cada especie toma su color estable por código (N/N → ámbar). */
 export function asignarColoresEspecies(porEspecie: DistribucionEspecie[]): EspecieColoreada[] {
   return porEspecie.map((especie) => ({
     ...especie,

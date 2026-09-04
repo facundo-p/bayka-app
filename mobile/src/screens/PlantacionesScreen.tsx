@@ -1,277 +1,67 @@
-import { useState, useCallback } from 'react';
 import { View, Text, FlatList } from 'react-native';
-import { useRouter } from 'expo-router';
 import { colors } from '../theme';
 import { plantacionesScreenStyles as styles } from './PlantacionesScreen.styles';
-import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
-import PlantationCard from '../components/PlantationCard';
-import ParcelaFormModal from '../components/ParcelaFormModal';
+import ExpandablePlantationCard from '../components/ExpandablePlantationCard';
 import FilterCards from '../components/FilterCards';
 import CustomHeader from '../components/CustomHeader';
 import HeaderActionButton from '../components/HeaderActionButton';
 import TexturedBackground from '../components/TexturedBackground';
-import ConfirmModal from '../components/ConfirmModal';
-import AdminBottomSheet from '../components/AdminBottomSheet';
-import AdminPlantationModals from '../components/AdminPlantationModals';
-import SyncProgressModal from '../components/SyncProgressModal';
-import SyncConfirmModal from '../components/SyncConfirmModal';
-import { usePlantaciones } from '../hooks/usePlantaciones';
-import { usePlantationAdmin, fetchPlantationMeta } from '../hooks/usePlantationAdmin';
-import { useSync } from '../hooks/useSync';
-import { useAuth } from '../hooks/useAuth';
-import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
+import PlantacionesModals from '../components/PlantacionesModals';
+import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../components/PlantationConfigCard';
-import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
-import { usePendingSyncMap } from '../hooks/usePendingSyncMap';
-import { useParcelas } from '../hooks/useParcelas';
-import type { ParcelaWithStats } from '../queries/parcelaQueries';
-import type { Parcela } from '../repositories/ParcelaRepository';
-import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
-
-/**
- * ExpandablePlantationCard — wrapper that pulls parcelas per plantation
- * via `useParcelas` so `PlantationCard` can render "Parcelas: N" and the
- * inline expanded list (Plan 17-02 Task 2.4, D-17-10..14).
- *
- * `useParcelas` is invoked unconditionally to honor the Rules of Hooks;
- * the cost is one indexed query per card. The FPS gate (≥50 FPS over 3s
- * scroll of 10 cards) is the merge criterion — if it regresses, pivot to
- * a lightweight `useParcelasCount` hook for collapsed cards.
- */
-type ExpandableCardProps = {
-  plantacionId: string;
-  expanded: boolean;
-  onToggleExpanded: () => void;
-  onParcelaPress: (parcelaId: string) => void;
-  onParcelaLongPress: (parcela: ParcelaWithStats) => void;
-  // Pass-through to PlantationCard
-  cardProps: Omit<
-    React.ComponentProps<typeof PlantationCard>,
-    'parcelasCount' | 'parcelas' | 'expanded' | 'onToggleExpanded' | 'onParcelaPress' | 'onParcelaLongPress'
-  >;
-};
-
-function ExpandablePlantationCard({
-  plantacionId,
-  expanded,
-  onToggleExpanded,
-  onParcelaPress,
-  onParcelaLongPress,
-  cardProps,
-}: ExpandableCardProps) {
-  const { parcelas } = useParcelas(plantacionId);
-  return (
-    <PlantationCard
-      {...cardProps}
-      parcelasCount={parcelas.length}
-      parcelas={expanded ? parcelas : undefined}
-      expanded={expanded}
-      onToggleExpanded={onToggleExpanded}
-      onParcelaPress={onParcelaPress}
-      onParcelaLongPress={onParcelaLongPress}
-    />
-  );
-}
 
 export default function PlantacionesScreen() {
-  const router = useRouter();
-  const routePrefix = useRoutePrefix();
-
-  const {
-    plantationList,
-    filteredList,
-    estadoCounts,
-    activeFilter,
-    setActiveFilter,
-    headerTitle,
-    headerSubtitle,
-    isOnline,
-    isAdmin,
-    syncedCountMap,
-    pendingSyncMap,
-    todayCountMap,
-    totalCountMap,
-    nnCountMap,
-    handleDeletePlantation,
-    confirmProps,
-  } = usePlantaciones();
-
-  // Always call the hook (React rules of hooks)
-  const adminHook = usePlantationAdmin();
-
-  // Global sync state
-  const { state: syncState, startGlobalSync, startPlantationSync, globalProgress, progress, results, parcelaResults, plantationResults, reset: resetSync, pullSuccess, authExpired, successCount, failureCount, parcelaFailureCount, plantationFailureCount, photoProgress, photoResult } = useSync();
-  const { signOut } = useAuth();
-
-  // Sesión expirada durante el sync: "Aceptar" cierra sesión (el root layout
-  // redirige a login); "Cancelar" solo descarta el aviso.
-  const handleSessionExpiredReauth = useCallback(() => {
-    resetSync();
-    signOut();
-  }, [resetSync, signOut]);
-  const { pendingCount: globalPendingCount } = usePendingSyncCount();
-  const hasAnyPending = globalPendingCount > 0;
-  const isSyncing = syncState !== 'idle' && syncState !== 'done';
-
-  // Per-plantation pending status for hasPendingSync prop
-  const pendingSyncBoolMap = usePendingSyncMap();
-
-  // Sync confirm dialog state
-  const [syncConfirmVisible, setSyncConfirmVisible] = useState(false);
-  const [syncConfirmMode, setSyncConfirmMode] = useState<'global' | 'plantation'>('global');
-  const [syncTargetPlantationId, setSyncTargetPlantationId] = useState<string | null>(null);
-
-  function showSyncConfirm(mode: 'global' | 'plantation', plantationId?: string) {
-    setSyncConfirmMode(mode);
-    setSyncTargetPlantationId(plantationId ?? null);
-    setSyncConfirmVisible(true);
-  }
-
-  function handleSyncConfirm(incluirFotos: boolean) {
-    setSyncConfirmVisible(false);
-    if (syncConfirmMode === 'global') {
-      startGlobalSync(incluirFotos);
-    } else if (syncTargetPlantationId) {
-      startPlantationSync(syncTargetPlantationId, incluirFotos);
-    }
-  }
-
-  // Bottom sheet state
-  const [bottomSheetVisible, setBottomSheetVisible] = useState(false);
-  const [bottomSheetPlantation, setBottomSheetPlantation] = useState<Plantation | null>(null);
-  const [bottomSheetMeta, setBottomSheetMeta] = useState<ExpandedMeta>({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 });
-
-  // Plan 17-02: single-card expansion + inline parcela edit modal
-  const [expandedPlantationId, setExpandedPlantationId] = useState<string | null>(null);
-  const [editingParcela, setEditingParcela] = useState<Parcela | null>(null);
-  const [editingParcelaPlantacionId, setEditingParcelaPlantacionId] = useState<string | null>(null);
-
-  const handleToggleExpand = useCallback((id: string) => {
-    // La animación de expansión la maneja reanimated (LinearTransition en el
-    // item + entering/exiting en la sección de parcelas). LayoutAnimation de RN
-    // es no-op con la New Architecture (Fabric), por eso se sentía abrupta.
-    setExpandedPlantationId(prev => (prev === id ? null : id));
-  }, []);
-
-  const handleParcelaInlinePress = useCallback((plantacionId: string, parcelaId: string) => {
-    router.push(`/${routePrefix}/plantation/${plantacionId}?parcelaId=${parcelaId}` as any);
-  }, [router, routePrefix]);
-
-  const handleParcelaInlineLongPress = useCallback((plantacionId: string, parcela: ParcelaWithStats) => {
-    setEditingParcelaPlantacionId(plantacionId);
-    setEditingParcela(parcela);
-  }, []);
-
-  const closeEditParcela = useCallback(() => {
-    setEditingParcela(null);
-    setEditingParcelaPlantacionId(null);
-  }, []);
-
-  // Admin modal state
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [configSpeciesPlantacionId, setConfigSpeciesPlantacionId] = useState<string | null>(null);
-  const [assignTechPlantacionId, setAssignTechPlantacionId] = useState<string | null>(null);
-  const [editingPlantation, setEditingPlantation] = useState<Plantation | null>(null);
-  // Cuando se crea una plantación, encadenamos: selección de especies (tarea
-  // atómica del alta, ui-ux §19) y al cerrarla navegamos al detalle para crear
-  // subgrupos (issues #63 + #15). Guarda el id de la plantación a navegar.
-  const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
-
-  async function handleCreatePlantation(lugar: string, periodo: string, gps: PlantationGpsSettings) {
-    const id = await adminHook.handleCreateSubmit(lugar, periodo, gps);
-    setShowCreateModal(false);
-    if (!id) return;
-    // Abre la selección de especies de la plantación recién creada y agenda la
-    // navegación al detalle para cuando se cierre esa pantalla.
-    setConfigSpeciesPlantacionId(id);
-    setPlantacionPendienteNav(id);
-  }
-
-  function handleCloseConfigSpecies() {
-    setConfigSpeciesPlantacionId(null);
-    if (!plantacionPendienteNav) return;
-    const navId = plantacionPendienteNav;
-    setPlantacionPendienteNav(null);
-    router.push(`/${routePrefix}/plantation/${navId}` as any);
-  }
+  const s = usePlantacionesScreen();
 
   const filterConfigs = [
-    { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
-    { key: 'finalizada', label: 'Finalizadas', count: estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
+    { key: 'activa', label: 'Activas', count: s.estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
+    { key: 'finalizada', label: 'Finalizadas', count: s.estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
   ];
-
-  async function handleOpenGear(item: any) {
-    const plantation = item as Plantation;
-    setBottomSheetPlantation(plantation);
-    const meta = await fetchPlantationMeta(plantation);
-    setBottomSheetMeta(meta);
-    setBottomSheetVisible(true);
-  }
-
-  function handleEditPress(item: any) {
-    setEditingPlantation(item as Plantation);
-  }
-
-  function handleBottomSheetAction(action: () => void | Promise<void>) {
-    setBottomSheetVisible(false);
-    action();
-  }
-
-  async function onAssignTechFromSheet(plantacionId: string) {
-    setBottomSheetVisible(false);
-    const ok = await adminHook.handleAssignTech(plantacionId);
-    if (ok) setAssignTechPlantacionId(plantacionId);
-  }
-
 
   return (
     <TexturedBackground>
       <CustomHeader
-        title={headerTitle}
-        subtitle={headerSubtitle}
+        title={s.headerTitle}
+        subtitle={s.headerSubtitle}
         rightElement={
           <View style={styles.headerButtons}>
-            {isOnline && (
+            {s.isOnline && (
               <HeaderActionButton
                 icon="sync-outline"
-                onPress={() => showSyncConfirm('global')}
-                variant={hasAnyPending ? 'pending' : 'default'}
-                disabled={isSyncing}
+                onPress={() => s.showSyncConfirm('global')}
+                variant={s.hasAnyPending ? 'pending' : 'default'}
+                disabled={s.isSyncing}
                 accessibilityLabel="Sincronizar todas las plantaciones"
               />
             )}
             <HeaderActionButton
               icon="download-outline"
-              onPress={() => { if (isOnline) router.push(`/${routePrefix}/plantation/catalog` as any); }}
-              variant={isOnline ? 'default' : 'offline'}
-              disabled={!isOnline}
+              onPress={() => { if (s.isOnline) s.router.push(`/${s.routePrefix}/plantation/catalog` as any); }}
+              variant={s.isOnline ? 'default' : 'offline'}
+              disabled={!s.isOnline}
               accessibilityLabel="Gestionar plantaciones descargadas"
             />
-            {isAdmin && (
-              <HeaderActionButton
-                icon="add"
-                onPress={() => setShowCreateModal(true)}
-                accessibilityLabel="Nueva plantacion"
-              />
+            {s.isAdmin && (
+              <HeaderActionButton icon="add" onPress={() => s.setShowCreateModal(true)} accessibilityLabel="Nueva plantacion" />
             )}
           </View>
         }
       />
 
-      {plantationList && plantationList.length > 0 ? (
+      {s.plantationList && s.plantationList.length > 0 ? (
         <>
           <Animated.View entering={FadeInDown.duration(300)} style={styles.filterBar}>
             <FilterCards
               filters={filterConfigs}
-              activeFilter={activeFilter}
-              onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
+              activeFilter={s.activeFilter}
+              onToggleFilter={(key) => s.setActiveFilter((prev: string | null) => prev === key ? null : key)}
             />
           </Animated.View>
 
           <FlatList
-            data={filteredList}
+            data={s.filteredList}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             testID="plantaciones-list"
@@ -283,34 +73,32 @@ export default function PlantacionesScreen() {
               >
                 <ExpandablePlantationCard
                   plantacionId={item.id}
-                  expanded={expandedPlantationId === item.id}
-                  onToggleExpanded={() => handleToggleExpand(item.id)}
-                  onParcelaPress={(parcelaId) => handleParcelaInlinePress(item.id, parcelaId)}
-                  onParcelaLongPress={(p) => handleParcelaInlineLongPress(item.id, p)}
+                  expanded={s.expandedPlantationId === item.id}
+                  onToggleExpanded={() => s.handleToggleExpand(item.id)}
+                  onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
+                  onParcelaLongPress={(p) => s.handleParcelaInlineLongPress(item.id, p)}
                   cardProps={{
                     lugar: item.lugar,
                     periodo: item.periodo,
-                    totalCount: totalCountMap.get(item.id) ?? 0,
-                    syncedCount: syncedCountMap.get(item.id) ?? 0,
-                    todayCount: todayCountMap.get(item.id) ?? 0,
-                    pendingSync: pendingSyncMap.get(item.id) ?? 0,
+                    totalCount: s.totalCountMap.get(item.id) ?? 0,
+                    syncedCount: s.syncedCountMap.get(item.id) ?? 0,
+                    todayCount: s.todayCountMap.get(item.id) ?? 0,
+                    pendingSync: s.pendingSyncMap.get(item.id) ?? 0,
                     estado: item.estado,
-                    hasPendingSync: (pendingSyncBoolMap.get(item.id) ?? 0) > 0,
-                    nnCount: nnCountMap.get(item.id) ?? 0,
+                    hasPendingSync: (s.pendingSyncBoolMap.get(item.id) ?? 0) > 0,
+                    nnCount: s.nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
-                    onPress: () => router.push(`/${routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
+                    onPress: () => s.router.push(`/${s.routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
                     // Long-press abre la edición, como en las demás cards (#94).
-                    onLongPress: isAdmin ? () => handleEditPress(item) : undefined,
-                    onDelete: () => handleDeletePlantation(item.id),
-                    isAdmin,
+                    onLongPress: s.isAdmin ? () => s.handleEditPress(item as Plantation) : undefined,
+                    onDelete: () => s.handleDeletePlantation(item.id),
+                    isAdmin: s.isAdmin,
                     // Sync por plantación en la card (#94); oculto sin conexión
                     // o con un sync en curso, como el botón global del header.
-                    onSync: isOnline && !isSyncing
-                      ? () => showSyncConfirm('plantation', item.id)
-                      : undefined,
+                    onSync: s.isOnline && !s.isSyncing ? () => s.showSyncConfirm('plantation', item.id) : undefined,
                     // El gear es admin-only: sin el ítem Sincronizar (movido a
                     // la card), el menú de un técnico quedaría vacío.
-                    onGear: isAdmin ? () => handleOpenGear(item) : undefined,
+                    onGear: s.isAdmin ? () => s.handleOpenGear(item as Plantation) : undefined,
                   }}
                 />
               </Animated.View>
@@ -325,90 +113,9 @@ export default function PlantacionesScreen() {
         </View>
       )}
 
-      <ConfirmModal {...confirmProps} />
-
-      {editingParcela && editingParcelaPlantacionId && (
-        <ParcelaFormModal
-          visible
-          mode="edit"
-          plantacionId={editingParcelaPlantacionId}
-          parcela={editingParcela}
-          onClose={closeEditParcela}
-        />
-      )}
-
-      <SyncConfirmModal
-        visible={syncConfirmVisible}
-        title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantacion'}
-        plantacionId={syncConfirmMode === 'plantation' ? syncTargetPlantationId ?? undefined : undefined}
-        onConfirm={handleSyncConfirm}
-        onClose={() => setSyncConfirmVisible(false)}
-      />
-
-      <SyncProgressModal
-        state={syncState}
-        progress={progress}
-        results={results}
-        parcelaResults={parcelaResults}
-        plantationResults={plantationResults}
-        successCount={successCount}
-        failureCount={failureCount}
-        parcelaFailureCount={parcelaFailureCount}
-        plantationFailureCount={plantationFailureCount}
-        pullSuccess={pullSuccess}
-        authExpired={authExpired}
-        photoProgress={photoProgress}
-        photoResult={photoResult}
-        globalProgress={globalProgress}
-        onDismiss={resetSync}
-      />
-
-      <ConfirmModal
-        visible={syncState === 'done' && authExpired}
-        icon="lock-closed"
-        iconColor={colors.secondary}
-        title="Sesion expirada"
-        message="Tu sesion expiro. Inicia sesion de nuevo para sincronizar."
-        buttons={[
-          { label: 'Cancelar', style: 'cancel', onPress: resetSync },
-          { label: 'Aceptar', style: 'primary', onPress: handleSessionExpiredReauth },
-        ]}
-        onDismiss={resetSync}
-      />
-
-      <AdminBottomSheet
-        visible={bottomSheetVisible}
-        plantation={bottomSheetPlantation}
-        meta={bottomSheetMeta}
-        isAdmin={isAdmin}
-        onDismiss={() => setBottomSheetVisible(false)}
-        onEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) handleEditPress(bottomSheetPlantation); })}
-        onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
-        onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
-        onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
-        onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
-        onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
-        onExportKml={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportKml(bottomSheetPlantation.id); })}
-        onDiscardEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleDiscardEdit(bottomSheetPlantation.id); })}
-      />
-
-      {isAdmin && (
-        <AdminPlantationModals
-          showCreateModal={showCreateModal}
-          onCloseCreate={() => setShowCreateModal(false)}
-          onCreateSubmit={handleCreatePlantation}
-          editingPlantation={editingPlantation}
-          onCloseEdit={() => setEditingPlantation(null)}
-          onEditSubmit={async (lugar, periodo, gps) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, gps); setEditingPlantation(null); } }}
-          confirmProps={adminHook.confirmProps}
-          exportingId={adminHook.exportingId}
-          configSpeciesPlantacionId={configSpeciesPlantacionId}
-          onCloseConfigSpecies={handleCloseConfigSpecies}
-          pendingSyncForSpecies={(adminHook.plantationList as Plantation[] | null)?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
-          assignTechPlantacionId={assignTechPlantacionId}
-          onCloseAssignTech={() => setAssignTechPlantacionId(null)}
-        />
-      )}
+      {/* All modal state/handlers come from usePlantacionesScreen; the hook's
+          return shape is a superset of PlantacionesModals' props. */}
+      <PlantacionesModals {...s} />
     </TexturedBackground>
   );
 }

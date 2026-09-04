@@ -1,13 +1,7 @@
 /**
- * ParcelaFormModal — full-screen modal for create + edit parcela (D-17-01).
- *
- * Single component with `mode: 'create' | 'edit'` (CLAUDE.md §8, D-17-01).
- * Live char counter for descripcion turns warning at >=9000 (D-17-02).
- * Uniqueness validated on submit (D-17-03).
- * Delete blocked by children with error modal (D-17-04).
- *
- * Chrome (header + cuerpo keyboard-aware + footer) delegado a EntityFormModal /
- * FormActions, compartido con las demás pantallas de creación (#89).
+ * ParcelaFormModal — full-screen modal para crear/editar parcela, un solo
+ * componente con `mode: 'create' | 'edit'`. Contador de descripción avisa
+ * desde 9000 caracteres; borrado bloqueado si la parcela tiene hijos.
  */
 import { useState } from 'react';
 import { View, Text, Pressable, TextInput } from 'react-native';

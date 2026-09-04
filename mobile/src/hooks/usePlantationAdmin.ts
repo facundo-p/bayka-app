@@ -21,7 +21,6 @@ import {
   discardPlantationEdit,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
-// FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
@@ -176,7 +175,6 @@ export function usePlantationAdmin() {
     }
   }
 
-  // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
   async function handleCreateSubmit(
     lugar: string,
     periodo: string,
@@ -242,11 +240,9 @@ export function usePlantationAdmin() {
   }
 
   return {
-    // State
     plantationList: plantationList as Plantation[] | null,
     exportingId,
     confirmProps,
-    // Actions
     handleFinalize,
     handleExportCsv,
     handleExportExcel,

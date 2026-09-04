@@ -1,6 +1,7 @@
 import { Check, Minus } from 'lucide-react';
 import { Input } from './Input';
 import { cx } from '../lib/classNames';
+import { varsCss } from '../lib/cssVars';
 import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
 import { filtrarCatalogo, type EstadoMaestro } from '../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../queries/especieQueries';
@@ -93,7 +94,7 @@ function FilaEspecie({
         </span>
         <span
           className={styles.punto}
-          style={{ backgroundColor: colorEspeciePorCodigo(especie.codigo) }}
+          style={varsCss({ color: colorEspeciePorCodigo(especie.codigo) })}
           aria-hidden
         />
         <span className={styles.codigo}>{especie.codigo}</span>

@@ -1,12 +1,4 @@
-/**
- * Edge function admin-users: operaciones privilegiadas del ABM de usuarios
- * (invitación, ban, contraseña, email) que requieren service_role y por eso
- * no pueden vivir en el cliente web. La autorización (solo superadmin activo)
- * y las reglas de negocio están en nucleo.ts; acá solo se adapta HTTP y se
- * inyectan los clientes reales.
- *
- * Deploy y secrets: ver supabase/functions/README.md
- */
+/** Edge function admin-users (operaciones con service_role); autorización y reglas de negocio en nucleo.ts, acá se adapta HTTP e inyectan los clientes reales. */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { MENSAJES, ROL, manejarAdminUsers, type Deps, type PerfilDb } from './nucleo.ts';
 
@@ -16,21 +8,18 @@ const CABECERAS_CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-/** ban_duration del Auth Admin API: 'none' quita el ban; una duración enorme
- *  lo hace efectivamente permanente pero reversible. Valores del contrato GoTrue. */
+/** ban_duration de GoTrue: 'none' quita el ban; una duración enorme lo hace permanente pero reversible. */
 const BAN_PERMANENTE = '87600h'; // ≈ 10 años
 const SIN_BAN = 'none';
 
-// Fail-fast: sin WEB_URL los links de invitación/recuperación apuntarían al
-// Site URL default de Supabase (flujo de alta roto en silencio).
+// Fail-fast: sin WEB_URL los links de invitación/recuperación apuntarían al Site URL default (flujo roto en silencio).
 const WEB_URL = Deno.env.get('WEB_URL');
 if (!WEB_URL) {
   throw new Error('Falta el secret WEB_URL (base de los links de establecer contraseña).');
 }
 const urlEstablecerPassword = `${WEB_URL}/establecer-password`;
 
-/** Deja rastro en los logs de la función cuando una dependencia falla: sin
- *  esto, todo error de Auth/DB colapsa en un 500 genérico indebuggeable. */
+/** Deja rastro en los logs: sin esto, todo error de Auth/DB colapsa en un 500 genérico indebuggeable. */
 function conLog<T extends { error: string | null }>(operacion: string, resultado: T): T {
   if (resultado.error) console.error(`[admin-users] ${operacion}: ${resultado.error}`);
   return resultado;
@@ -42,8 +31,7 @@ const admin = createClient(
   { auth: { autoRefreshToken: false, persistSession: false } },
 );
 
-/** Lee el perfil; lanza ante error de DB (un fallo transitorio NO debe leerse
- *  como "usuario inexistente"). null solo cuando la fila realmente no existe. */
+/** Lanza ante error de DB (un fallo transitorio no debe leerse como "usuario inexistente"). */
 async function buscarPerfil(userId: string): Promise<PerfilDb | null> {
   const { data, error } = await admin
     .from('profiles')

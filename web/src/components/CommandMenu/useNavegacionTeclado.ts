@@ -6,7 +6,6 @@ export function useNavegacionTeclado(cantidad: number, alElegir: (indice: number
   const [resaltado, setResaltado] = useState(0);
   const refLista = useRef<HTMLDivElement>(null);
 
-  // Al cambiar el set de resultados, volver al primero.
   useEffect(() => setResaltado(0), [cantidad]);
 
   // Mantener el ítem resaltado visible dentro del contenedor de la lista.

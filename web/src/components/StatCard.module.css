@@ -42,6 +42,10 @@
 .fill {
   height: 100%;
   border-radius: var(--radius-full);
+  /* --ancho y --color llegan por inline style: son datos por instancia (ver
+     src/lib/cssVars.ts), no valores de diseño. */
+  width: var(--ancho);
+  background: var(--color);
 }
 
 .hint {

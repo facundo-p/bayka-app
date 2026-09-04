@@ -1,9 +1,7 @@
 /**
- * Integration tests: Role-based access control
- * Tests: Admin sees all plantations, Tecnico sees only assigned plantations
- * and never the hidden ones (visible_in_app=false, configurado desde la web).
- * Runs the REAL getPlantationsForRole from dashboardQueries.ts against
- * SQLite via better-sqlite3 + drizzle migrations.
+ * Integration tests: Role-based access control.
+ * Admin ve todas las plantaciones; tecnico solo las asignadas y nunca las
+ * ocultas (visible_in_app=false). Corre la getPlantationsForRole real.
  */
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
@@ -75,7 +73,6 @@ async function assignUserToPlantation(userId: string, plantationId: string, role
 
 describe('Role-based access', () => {
   test('admin user sees all plantations in organization', async () => {
-    // Create 3 plantations
     const p1 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo A', creadoPor: ADMIN_USER_ID });
     const p2 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo B', creadoPor: ADMIN_USER_ID });
     const p3 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo C', creadoPor: ADMIN_USER_ID });
@@ -83,11 +80,9 @@ describe('Role-based access', () => {
     await db.insert(plantations).values(p2);
     await db.insert(plantations).values(p3);
 
-    // Assign only tecnico1 to p1 and p2
     await assignUserToPlantation(TECNICO1_USER_ID, p1.id);
     await assignUserToPlantation(TECNICO1_USER_ID, p2.id);
 
-    // Admin should see ALL 3 plantations
     const result = await getPlantationsForRole(true, ADMIN_USER_ID);
     expect(result).toHaveLength(3);
 
@@ -98,7 +93,6 @@ describe('Role-based access', () => {
   });
 
   test('tecnico sees only plantations assigned via plantation_users', async () => {
-    // Create 3 plantations
     const p1 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo A', creadoPor: ADMIN_USER_ID });
     const p2 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo B', creadoPor: ADMIN_USER_ID });
     const p3 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo C', creadoPor: ADMIN_USER_ID });
@@ -106,11 +100,9 @@ describe('Role-based access', () => {
     await db.insert(plantations).values(p2);
     await db.insert(plantations).values(p3);
 
-    // Assign tecnico1 only to p1 and p2 (not p3)
     await assignUserToPlantation(TECNICO1_USER_ID, p1.id);
     await assignUserToPlantation(TECNICO1_USER_ID, p2.id);
 
-    // Tecnico1 should only see p1 and p2
     const result = await getPlantationsForRole(false, TECNICO1_USER_ID);
     expect(result).toHaveLength(2);
 
@@ -121,7 +113,6 @@ describe('Role-based access', () => {
   });
 
   test('different tecnicos see only their own assigned plantations', async () => {
-    // Two plantations, each assigned to a different tecnico
     const p1 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo A', creadoPor: ADMIN_USER_ID });
     const p2 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo B', creadoPor: ADMIN_USER_ID });
     await db.insert(plantations).values(p1);
@@ -130,12 +121,10 @@ describe('Role-based access', () => {
     await assignUserToPlantation(TECNICO1_USER_ID, p1.id);
     await assignUserToPlantation(TECNICO2_USER_ID, p2.id);
 
-    // Tecnico1 sees only p1
     const result1 = await getPlantationsForRole(false, TECNICO1_USER_ID);
     expect(result1).toHaveLength(1);
     expect(result1[0].id).toBe(p1.id);
 
-    // Tecnico2 sees only p2
     const result2 = await getPlantationsForRole(false, TECNICO2_USER_ID);
     expect(result2).toHaveLength(1);
     expect(result2[0].id).toBe(p2.id);
@@ -145,7 +134,6 @@ describe('Role-based access', () => {
     const p1 = createTestPlantation({ organizacionId: ORG_ID, lugar: 'Campo A', creadoPor: ADMIN_USER_ID });
     await db.insert(plantations).values(p1);
 
-    // TECNICO2 not assigned to any plantation
     const result = await getPlantationsForRole(false, TECNICO2_USER_ID);
     expect(result).toHaveLength(0);
   });
@@ -156,7 +144,6 @@ describe('Role-based access', () => {
     // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
     await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
-    // Two tecnicos each create a subgroup
     const sg1 = createTestGroup({
       plantacionId: plantation.id,
       codigo: 'L01',
@@ -172,7 +159,6 @@ describe('Role-based access', () => {
     await db.insert(groups).values(sg1);
     await db.insert(groups).values(sg2);
 
-    // Admin query: get all groups for plantation (no user filter)
     const allGroups = await db
       .select()
       .from(groups)
@@ -180,7 +166,6 @@ describe('Role-based access', () => {
 
     expect(allGroups).toHaveLength(2);
 
-    // Both tecnico groups visible
     const creators = allGroups.map(sg => sg.usuarioCreador);
     expect(creators).toContain(TECNICO1_USER_ID);
     expect(creators).toContain(TECNICO2_USER_ID);

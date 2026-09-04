@@ -1,29 +1,14 @@
 /**
  * Export query — returns all required columns for plantation export.
- *
- * Covers: EXPO-03, EXPO-PARC-01, EXPO-PARC-02
  */
 import { db } from '../database/client';
 import { trees, groups, plantations, parcelas, species } from '../database/schema';
 import { eq, and, asc, isNotNull } from 'drizzle-orm';
 
 /**
- * Row shape for the CSV/Excel export.
- *
- * NOTE on `lugar` vs `plantacionLugar` (D-18-09):
- * Both currently resolve to `plantations.lugar`. The "Zona" column is kept
- * for backwards compatibility while "Plantación" is the new column.
- * If the team decides to collapse them, it's a 1-line refactor (drop one field
- * + drop the matching column in ExportService).
- *
- * `parcelaNombre` no es nullable (#90): todo grupo tiene parcela (INNER JOIN);
- * el caso "grupo sin parcela" es dato inválido, no un caso a normalizar.
- *
- * `especieNombre` es nullable por el LEFT JOIN a `species`: un árbol cuya
- * `especieId` es null o apunta a una especie ausente del catálogo local (especie
- * huérfana por sync incompleto) NO debe desaparecer del export — el INNER JOIN
- * previo lo descartaba en silencio. El consumidor lo etiqueta "N/N" para que el
- * problema sea visible en la planilla en vez de perder el árbol.
+ * Fila para el export CSV/Excel. lugar/plantacionLugar resuelven ambos a plantations.lugar ("Zona"
+ * es legacy, "Plantación" la columna nueva). parcelaNombre no es nullable (#90, INNER JOIN);
+ * especieNombre sí (LEFT JOIN a species) — especie null/ausente no debe hacer desaparecer el árbol, se etiqueta "N/N".
  */
 export interface ExportRow {
   globalId: number | null;
@@ -37,17 +22,7 @@ export interface ExportRow {
   especieNombre: string | null;
 }
 
-/**
- * EXPO-03 / EXPO-PARC-01 / EXPO-PARC-02
- * Returns all tree rows with required export columns, ordered by globalId ASC.
- * JOIN: trees → groups → plantations → parcelas (#90: parcela obligatoria);
- * LEFT JOIN a species.
- *
- * `species` va por LEFT JOIN a propósito: con INNER JOIN, un árbol con
- * `especieId` null o huérfano (especie no presente en el catálogo local) se
- * caía del export sin aviso. Con LEFT JOIN el árbol siempre sale y el consumidor
- * lo marca "N/N".
- */
+/** Filas de export ordenadas por globalId ASC; ver `ExportRow` para el porqué de los JOIN. */
 export async function getExportRows(plantacionId: string): Promise<ExportRow[]> {
   return db
     .select({
@@ -70,10 +45,7 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .orderBy(asc(trees.globalId));
 }
 
-/**
- * Row del export KML: solo árboles CON coordenadas. `especieNombre` nullable
- * (N/N sin resolver se exporta con etiqueta "N/N"); `parcelaNombre` no (#90).
- */
+/** Fila del export KML (solo árboles con coordenadas); especieNombre nullable (N/N se exporta como "N/N"), parcelaNombre no (#90). */
 export interface KmlExportRow {
   subId: string;
   posicion: number;
@@ -86,10 +58,7 @@ export interface KmlExportRow {
   gpsCapturedAt: string | null;
 }
 
-/**
- * Árboles con punto GPS de la plantación, ordenados por parcela → grupo →
- * posición (el generador KML agrupa en folders preservando este orden).
- */
+/** Árboles con GPS, ordenados parcela → grupo → posición (el generador KML agrupa en folders preservando este orden). */
 export async function getKmlExportRows(plantacionId: string): Promise<KmlExportRow[]> {
   const rows = await db
     .select({

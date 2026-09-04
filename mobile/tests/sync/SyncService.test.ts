@@ -1,5 +1,4 @@
-// Tests for SyncService — implemented in Plan 03-02
-// Covers: SYNC-01, SYNC-04, SYNC-05, SYNC-06, photo upload/download
+// Tests for SyncService: sync ordering, RPC payloads, error handling, photo upload/download.
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {

@@ -110,6 +110,15 @@ board, tabla de estados y límites conocidos: #269.
    - **En cada code-review** (skill `/code-review`): incluir explícitamente la
      búsqueda de *magic constants / códigos de error hardcodeados* como dimensión
      a chequear, además de bugs/reuse/simplificación.
+   - **Comentarios concisos (OBLIGATORIO, vigente desde 2026-09-03, #293).**
+     Un comentario dice lo necesario con la menor cantidad de palabras, sin ser
+     críptico. Prohibido: claves internas de planificación (`D-16-13`,
+     `PLAN-01`, `OFPL-04`, `Phase 15`, `T02`, `CR1.2`), referencias a secciones
+     de `CLAUDE.md`, a `docs/*.md`, a memorias o a planes. Solo `#N` de
+     Issues/PRs cuando el contexto lo necesite. Si el comentario repite lo que
+     el código ya dice, o contradice al código, se borra o se corrige. Un
+     comentario que explica *por qué* (decisión, contrato externo, edge case)
+     vale; uno que narra *qué* hace la línea siguiente, no.
 
 4. Eficiencia
    - Preguntar si algo es ambiguo.

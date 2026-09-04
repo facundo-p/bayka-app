@@ -1,5 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
 import { cx } from '../lib/classNames';
+import { varsCss } from '../lib/cssVars';
 import styles from './StatCard.module.css';
 
 /** Barra de progreso opcional; el color es dato (token CSS pasado por el caller). */
@@ -27,7 +28,7 @@ export function StatCard({ label, value, variant = 'default', bar, hint }: StatC
       </div>
       {bar && (
         <div className={styles.track}>
-          <div className={styles.fill} style={{ width: `${bar.pct}%`, background: bar.color }} />
+          <div className={styles.fill} style={varsCss({ ancho: `${bar.pct}%`, color: bar.color })} />
         </div>
       )}
       {hint && (

@@ -1,16 +1,8 @@
 /*
- * Búsqueda global multi-entidad para la paleta de comandos (⌘K).
- *
- * Estrategia: las listas chicas (plantaciones, especies, usuarios) reusan las
- * queries cacheables existentes y filtran en cliente; parcelas/grupos/árboles
- * se buscan server-side con `ilike` (la RLS acota a la organización) con un
- * tope por grupo. Todo corre en paralelo con Promise.all y se devuelve un
- * arreglo plano que el componente agrupa por `tipo`.
- *
- * Limitaciones documentadas:
- *  - Usuarios: no hay columna de email en `profiles`; se busca solo por nombre.
- *  - Árboles: no existe una columna "ID global Bayka" numérica conocida; se
- *    busca por `sub_id` (el SubID tipo "PAL23ANC12"), igual que ArbolesSection.
+ * Búsqueda global multi-entidad para la paleta de comandos (⌘K): plantaciones/especies/
+ * usuarios filtran en cliente (queries cacheables); parcelas/grupos/árboles van server-side
+ * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
+ * árboles se buscan por `sub_id`, no por ID global.
  */
 import { supabase } from '../lib/supabase';
 import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
@@ -37,16 +29,13 @@ export type ResultadoBusqueda = {
 
 export type ScopeBusqueda = { plantationId: string };
 
-/** Tope de resultados por grupo server-side (parcelas/grupos/árboles). */
+/** Topes de resultados: por grupo server-side (parcelas/grupos/árboles) y por lista cacheada en cliente. */
 const TOPE_POR_GRUPO = 8;
-
-/** Tope de resultados por lista cacheada filtrada en cliente. */
 const TOPE_LISTA = 6;
 
 /** Mínimo de caracteres para disparar la búsqueda. */
 const MINIMO_CARACTERES = 1;
 
-/** ¿El texto (ya normalizado) aparece en alguno de los campos? */
 function coincide(texto: string, ...campos: Array<string | null | undefined>): boolean {
   return campos.some((campo) => (campo ?? '').toLowerCase().includes(texto));
 }
@@ -169,8 +158,7 @@ async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<Resu
       id: fila.id,
       titulo: fila.sub_id,
       meta: fila.species?.nombre ?? fila.groups?.codigo,
-      // El listado de árboles lee la búsqueda del querystring `q` (filtrosUrl.ts):
-      // deep-link que llega con el SubID ya pre-filtrado.
+      // El listado de árboles lee `q` del querystring (filtrosUrl.ts): deep-link con el SubID pre-filtrado.
       to: `/plantaciones/${fila.groups!.plantation_id}/datos/arboles?q=${encodeURIComponent(fila.sub_id)}`,
     }));
 }
@@ -186,10 +174,7 @@ async function tolerante(
   }
 }
 
-/**
- * Búsqueda combinada. Devuelve [] si el texto es muy corto. Cada grupo corre
- * en paralelo y tolera errores (devuelve [] en vez de romper la paleta).
- */
+/** Búsqueda combinada: [] si el texto es muy corto; cada grupo corre en paralelo y tolera errores. */
 export async function buscar(
   texto: string,
   scope?: ScopeBusqueda,

@@ -50,6 +50,8 @@
   height: 100%;
   border-radius: var(--radius-full);
   background: linear-gradient(90deg, var(--color-secondary), var(--color-plantation-light));
+  /* --ancho llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  width: var(--ancho);
 }
 
 .footer {

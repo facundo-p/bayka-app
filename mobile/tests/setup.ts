@@ -13,14 +13,12 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   flushGetRequests: jest.fn(),
 }));
 
-// Mock expo-secure-store
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(),
   setItemAsync: jest.fn(),
   deleteItemAsync: jest.fn(),
 }));
 
-// Mock @react-native-community/netinfo
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
   default: {
@@ -31,7 +29,6 @@ jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn().mockReturnValue(jest.fn()),
 }));
 
-// Mock expo-crypto
 jest.mock('expo-crypto', () => ({
   randomUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(2, 10)),
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
@@ -39,7 +36,6 @@ jest.mock('expo-crypto', () => ({
   getRandomBytes: jest.fn((n: number) => new Uint8Array(n).fill(42)),
 }));
 
-// Mock expo-sqlite
 jest.mock('expo-sqlite', () => ({
   openDatabaseSync: jest.fn(() => ({
     execSync: jest.fn(),

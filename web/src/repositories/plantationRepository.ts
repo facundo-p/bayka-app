@@ -3,8 +3,7 @@ import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { ESTADO_PLANTACION } from '../queries/plantationQueries';
 import type { Perfil } from './profileRepository';
 
-/** Datos del formulario ya validados y tipados. Los opcionales ausentes
- *  no se mandan a la base (la migración 024 puede no estar aplicada). */
+/** Los opcionales ausentes no se mandan a la base: la migración 024 puede no estar aplicada. */
 export type PlantacionInput = {
   lugar: string;
   periodo: string;
@@ -13,8 +12,7 @@ export type PlantacionInput = {
   objetivoArboles?: number;
 };
 
-/** Paridad con la parcela automática de mobile: toda plantación nueva
- *  arranca con esta parcela default. */
+/** Toda plantación nueva arranca con esta parcela default (paridad con mobile). */
 const PARCELA_DEFAULT = { codigo: 'P1', nombre: 'Parcela 1' } as const;
 
 /** Migración 023 sin aplicar: faltan las columnas de captura GPS. */
@@ -29,13 +27,12 @@ type Payload = Record<string, string | number | boolean>;
 type ErrorSupabase = { message: string; code?: string } | null;
 type ResultadoSupabase = { data: unknown; error: ErrorSupabase };
 
-/** Columnas base que existen desde siempre en `plantations`. */
+/** Columnas que siempre existen en `plantations` (pre-024). */
 function camposBase(input: PlantacionInput): Payload {
   return { lugar: input.lugar, periodo: input.periodo };
 }
 
-/** Columnas de la migración 024 — solo las que tienen valor, sin claves
- *  undefined (PostgREST rechaza columnas desconocidas aunque vengan null). */
+/** Solo campos con valor: PostgREST rechaza columnas desconocidas si van undefined/null. */
 function campos024(input: PlantacionInput): Payload {
   const campos: Payload = {};
   if (input.descripcion !== undefined) campos.descripcion = input.descripcion;
@@ -48,10 +45,7 @@ function esColumnaInexistente(error: ErrorSupabase): boolean {
   return error?.code === PG_ERROR.UNDEFINED_COLUMN;
 }
 
-/**
- * Ejecuta la operación con todos los campos; si falla porque alguna columna
- * de la 024 no existe (migración sin aplicar), reintenta solo con la base.
- */
+/** Reintenta solo con `base` si `extras` falla por columna inexistente (024 sin aplicar). */
 async function ejecutarConReintentoSin024(
   operacion: (payload: Payload) => PromiseLike<ResultadoSupabase>,
   base: Payload,
@@ -66,14 +60,12 @@ async function ejecutarConReintentoSin024(
   return reintento.data;
 }
 
-/** Borra la plantación recién creada si la parcela default falló. Es
- *  best-effort: si el delete también falla queda una plantación sin parcela,
- *  pero igual reportamos el error original al usuario. */
+/** Best-effort: si el delete también falla queda una plantación huérfana, pero se prioriza el error original. */
 async function borrarPlantacionHuerfana(plantationId: string): Promise<void> {
   try {
     await supabase.from('plantations').delete().eq('id', plantationId);
   } catch {
-    // Sin red no hay nada más que hacer; el error original ya se propaga.
+    // Sin red no hay más por hacer; el error original ya se propaga.
   }
 }
 
@@ -86,10 +78,7 @@ async function crearParcelaDefault(plantationId: string): Promise<void> {
   throw new Error(error.message);
 }
 
-/**
- * Crea la plantación (estado 'activa', organización y autor del perfil)
- * junto con su parcela default P1. Devuelve el id creado.
- */
+/** Crea la plantación (estado 'activa') junto con su parcela default P1. */
 export async function crearPlantacion(input: PlantacionInput, perfil: Perfil): Promise<string> {
   const base: Payload = {
     ...camposBase(input),
@@ -105,18 +94,14 @@ export async function crearPlantacion(input: PlantacionInput, perfil: Perfil): P
   return id;
 }
 
-/**
- * Actualiza los campos del formulario. Nunca toca `estado` (finalizar es
- * flujo de mobile) ni `organizacion_id`.
- */
+/** Actualiza los campos del formulario; nunca toca `estado` (finalizar es flujo de mobile) ni `organizacion_id`. */
 export async function editarPlantacion(id: string, input: PlantacionInput): Promise<void> {
   const actualizar = (payload: Payload) =>
     supabase.from('plantations').update(payload).eq('id', id);
   await ejecutarConReintentoSin024(actualizar, camposBase(input), campos024(input));
 }
 
-/** Update chico y específico; si la columna no existe (migración sin aplicar)
- *  lanza el mensaje dado en lugar del error crudo de PostgREST. */
+/** Si la columna no existe (migración sin aplicar), lanza `mensajeSinMigracion` en vez del error crudo. */
 async function actualizarCampos(
   id: string,
   payload: Payload,
@@ -128,9 +113,8 @@ async function actualizarCampos(
 }
 
 export type ConfigGps = {
-  /** Cada cuántos árboles se captura GPS (entero ≥ 1, ya validado por la UI). */
+  /** Cada cuántos árboles se captura GPS (entero ≥ 1, validado por la UI). */
   frecuencia: number;
-  /** Si el registro exige coordenadas. */
   obligatoria: boolean;
 };
 
@@ -143,21 +127,14 @@ export async function actualizarConfigGps(id: string, config: ConfigGps): Promis
   );
 }
 
-/**
- * Muestra u oculta la plantación para los técnicos en la app.
- * Es un toggle de UX (descongestionar el listado), NO una frontera de
- * seguridad: el filtrado es client-side y la lectura de plantations es
- * `using (true)`. Ver docs/decisiones/visibilidad-plantaciones.md.
- */
+/** Toggle de UX, NO frontera de seguridad: el filtrado es client-side y la lectura de plantations es `using (true)`. */
 export async function actualizarVisibilidad(id: string, visible: boolean): Promise<void> {
   await actualizarCampos(id, { visible_in_app: visible }, MENSAJE_VISIBILIDAD_SIN_MIGRACION);
 }
 
 /**
- * Chequeo soft de duplicado por lugar+período (no hay unique en la base):
- * case-insensitive vía ilike. En edición se excluye la propia fila.
- * Nota: ilike trata `%`/`_` como comodines; al ser solo una advertencia
- * no bloqueante, un falso positivo con esos caracteres es aceptable.
+ * Chequeo soft de duplicado (no hay unique en la base), case-insensitive vía ilike; excluye la propia fila en edición.
+ * ilike trata `%`/`_` como comodines, pero al ser solo advertencia no bloqueante un falso positivo es aceptable.
  */
 export async function existePlantacion(
   lugar: string,

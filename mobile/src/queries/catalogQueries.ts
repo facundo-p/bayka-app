@@ -1,16 +1,12 @@
 /**
  * Catalog query functions — server catalog discovery and local plantation ID lookup.
  * Role-gated: admin sees all org plantations, tecnico sees only assigned ones.
- *
- * Covers requirements: CATL-01, CATL-04, CATL-06
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { plantations, groups } from '../database/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { fetchAllRows } from '../services/sync/paginate';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
 
 export type ServerPlantation = {
   id: string;
@@ -26,13 +22,10 @@ export type ServerPlantation = {
   tree_count: number;
 };
 
-// ─── Server catalog query ─────────────────────────────────────────────────────
-
 /**
  * Fetches plantations from Supabase with role-based filtering.
  * - Admin: all plantations in the organization
  * - Tecnico: only plantations assigned via plantation_users
- *
  * Also fetches subgroup and tree counts per plantation and merges them.
  * Throws if any Supabase query returns an error.
  */
@@ -44,7 +37,6 @@ export async function getServerCatalog(
   let remotePlantations: any[];
 
   if (isAdmin) {
-    // Admin path: all plantations in the org
     const { data, error } = await fetchAllRows<any>(() =>
       supabase
         .from('plantations')
@@ -56,7 +48,6 @@ export async function getServerCatalog(
     if (error) throw error;
     remotePlantations = data ?? [];
   } else {
-    // Tecnico path: first find assigned plantation IDs
     const { data: puData, error: puError } = await fetchAllRows<any>(() =>
       supabase.from('plantation_users').select('plantation_id').eq('user_id', userId)
     );
@@ -82,14 +73,12 @@ export async function getServerCatalog(
 
   const plantationIds = remotePlantations.map((p: any) => p.id);
 
-  // Fetch group counts: select all group rows for these plantations.
   const { data: groupRows, error: sgError } = await fetchAllRows<any>(() =>
     supabase.from('groups').select('plantation_id, id').in('plantation_id', plantationIds)
   );
 
   if (sgError) throw sgError;
 
-  // Build subgroup count map: plantation_id -> count
   const groupCountMap: Record<string, number> = {};
   const groupIdsByPlantation: Record<string, string[]> = {};
   for (const sg of groupRows ?? []) {
@@ -100,10 +89,9 @@ export async function getServerCatalog(
     groupIdsByPlantation[sg.plantation_id].push(sg.id);
   }
 
-  // Build flat list of all subgroup IDs for tree count query
+  // Flat list of subgroup IDs, needed to query tree counts across all of them at once
   const allGroupIds = (groupRows ?? []).map((sg: any) => sg.id);
 
-  // Fetch tree counts: select group_id for all trees in these groups
   const treeCountMap: Record<string, number> = {};
   if (allGroupIds.length > 0) {
     const { data: treeRows, error: treeError } = await fetchAllRows<any>(() =>
@@ -112,7 +100,6 @@ export async function getServerCatalog(
 
     if (treeError) throw treeError;
 
-    // Build group_id -> plantation_id lookup
     const sgToPlantation: Record<string, string> = {};
     for (const sg of groupRows ?? []) {
       sgToPlantation[sg.id] = sg.plantation_id;
@@ -126,7 +113,6 @@ export async function getServerCatalog(
     }
   }
 
-  // Merge counts into ServerPlantation objects
   return remotePlantations.map((p: any): ServerPlantation => ({
     id: p.id,
     organizacion_id: p.organizacion_id,
@@ -141,18 +127,11 @@ export async function getServerCatalog(
   }));
 }
 
-// ─── Local plantation ID lookup ───────────────────────────────────────────────
-
-/**
- * Returns a Set of plantation IDs stored in local SQLite.
- * Used to determine which server plantations are already downloaded.
- */
+/** Returns a Set of plantation IDs stored in local SQLite. */
 export async function getLocalPlantationIds(): Promise<Set<string>> {
   const rows = await db.select({ id: plantations.id }).from(plantations);
   return new Set(rows.map((r) => r.id));
 }
-
-// --- Unsynced subgroup detection ---------------------------------------------
 
 export type UnsyncedSummary = {
   activaCount: number;
@@ -161,10 +140,8 @@ export type UnsyncedSummary = {
 
 /**
  * Returns counts of groups with pending local changes for a plantation.
- * Used to determine whether to show a warning before local deletion.
- *
- * IMPORTANT: Does NOT filter by usuarioCreador — counts ALL groups
- * regardless of which technician created them.
+ * Does NOT filter by usuarioCreador — counts ALL groups regardless of
+ * which technician created them.
  */
 export async function getUnsyncedGroupSummary(
   plantacionId: string

@@ -1,10 +1,13 @@
 import { db } from '../database/client';
-import { groups, trees, parcelas, species as speciesTable } from '../database/schema';
+import { groups, trees, parcelas } from '../database/schema';
 import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
+import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { getTreeEditGating } from '../utils/treeEditGating';
+import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
 import type { GroupTipo } from '../constants/groupTipo';
 
 export type GroupEstado = 'activa' | 'finalizada' | 'sincronizada';
@@ -24,12 +27,7 @@ export interface Group {
   pendingSync: boolean;
 }
 
-/**
- * Devuelve el `codigo` de parcela del grupo — primer segmento del SubID
- * (`{parcelaCodigo}{grupoCodigo}{especieCodigo}{posicion}`). Todo grupo tiene
- * parcela con código: la ausencia es un dato inválido, no un caso válido, así
- * que se lanza error (no se degrada a ''). Issue #59.
- */
+/** Codigo de parcela del grupo (primer segmento del SubID); toda parcela lo tiene — sin código, lanza en vez de degradar a '' (#59). */
 export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
   const [group] = await db.select({ parcelaId: groups.parcelaId })
     .from(groups)
@@ -46,7 +44,6 @@ export async function getGroupParcelaCodigo(grupoId: string): Promise<string> {
   return parcela.codigo;
 }
 
-// Returns the nombre of the most recently created Group for this plantation.
 export async function getLastGroupName(plantacionId: string): Promise<string | null> {
   const rows = await db.select({ nombre: groups.nombre })
     .from(groups)
@@ -58,10 +55,7 @@ export async function getLastGroupName(plantacionId: string): Promise<string | n
 
 type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate';
 
-/**
- * Validates that nombre and codigo are unique within the group's parcela
- * (#90: parcela obligatoria — ya no existe el fallback per-plantacion legacy).
- */
+/** Valida nombre/codigo únicos dentro de la parcela del grupo (#90: parcela obligatoria, sin fallback per-plantación). */
 async function validateGroupUniqueness(
   parcelaId: string,
   nombre: string,
@@ -121,35 +115,29 @@ export async function createGroup(params: {
     notifyDataChanged();
     return { success: true, id };
   } catch (e: any) {
-    if (e?.message?.includes('UNIQUE constraint failed')) {
+    if (isUniqueConstraintError(e)) {
       return { success: false, error: 'codigo_duplicate' };
     }
     return { success: false, error: 'unknown' };
   }
 }
 
-// Marks a group as having pending local changes (dirty flag).
 export async function markGroupPendingSync(grupoId: string): Promise<void> {
   await db.update(groups)
     .set({ pendingSync: true })
     .where(eq(groups.id, grupoId));
 }
 
-// Marks a group as synced after successful server sync.
 export async function markGroupSynced(grupoId: string): Promise<void> {
-  // Solo limpiamos pendingSync (la marca real de "sincronizado"). NO pisamos el
-  // estado: forzarlo a 'sincronizada' corrompía el estado real (un grupo 'activa'
-  // quedaba marcado como hecho y dejaba de bloquear la finalización) y divergía
-  // del server, que guarda el estado real ('activa'|'finalizada'). Ver issue #60.
+  // Solo limpia pendingSync: forzar estado a 'sincronizada' corrompía el estado real (un grupo
+  // 'activa' dejaba de bloquear la finalización) y divergía del server (#60).
   await db.update(groups)
     .set({ pendingSync: false })
     .where(eq(groups.id, grupoId));
   notifyDataChanged();
 }
 
-// Finalizes a Group (activa → finalizada). N/N trees are allowed: un grupo se
-// puede sincronizar con N/N sin resolver — los resuelve después cualquier
-// usuario (admin o técnico) tras descargarlo. NO hay gate de N/N en el sync.
+// activa → finalizada. N/N sin resolver puede sincronizar: cualquier usuario lo resuelve después de descargarlo; no hay gate de N/N en el sync.
 export async function finalizeGroup(grupoId: string): Promise<{ success: true }> {
   await db.update(groups)
     .set({ estado: 'finalizada' })
@@ -160,14 +148,17 @@ export async function finalizeGroup(grupoId: string): Promise<{ success: true }>
   return { success: true };
 }
 
-// Ownership guard — inline in screens before showing edit UI.
+// Ownership guard inline en screens; delega a treeEditGating (#155) — subgroupEstado no afecta canEdit ahí, solo canDelete.
 export function canEdit(
   group: { usuarioCreador: string },
   userId: string,
   plantacionEstado: string
 ): boolean {
-  if (plantacionEstado === 'finalizada') return false;
-  return group.usuarioCreador === userId;
+  return getTreeEditGating({
+    plantacionEstado,
+    subgroupEstado: 'activa',
+    isCreator: group.usuarioCreador === userId,
+  }).canEdit;
 }
 
 export type UpdateGroupResult =
@@ -204,9 +195,7 @@ export async function updateGroup(
   return { success: true };
 }
 
-/**
- * Helper: recalculates all tree subIds for a group inside a tx.
- */
+/** Recalculates all tree subIds for a group inside a tx. */
 async function recalcTreesSubIds(
   tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
   grupoId: string,
@@ -218,13 +207,7 @@ async function recalcTreesSubIds(
     .orderBy(asc(trees.posicion));
 
   for (const tree of allTrees) {
-    let especieCodigo = 'NN';
-    if (tree.especieId) {
-      const [sp] = await tx.select({ codigo: speciesTable.codigo })
-        .from(speciesTable)
-        .where(eq(speciesTable.id, tree.especieId));
-      especieCodigo = sp?.codigo ?? 'NN';
-    }
+    const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
     const newSubId = generateSubId(parcelaCodigo, newCodigo.toUpperCase(), especieCodigo, tree.posicion);
     await tx.update(trees)
       .set({ subId: newSubId })
@@ -232,9 +215,7 @@ async function recalcTreesSubIds(
   }
 }
 
-/**
- * Updates group codigo and recalculates all tree subIds in a transaction.
- */
+/** Updates group codigo and recalculates all tree subIds in a transaction. */
 export async function updateGroupCode(
   id: string,
   newCodigo: string,
@@ -269,8 +250,8 @@ export async function updateGroupCode(
     notifyDataChanged();
     return { success: true };
   } catch (e: any) {
-    if (e?.message?.includes('UNIQUE constraint failed')) {
-      if (e.message.includes('name_unique')) {
+    if (isUniqueConstraintError(e)) {
+      if (isNameUniqueConstraintError(e)) {
         return { success: false, error: 'nombre_duplicate' };
       }
       return { success: false, error: 'codigo_duplicate' };
@@ -279,9 +260,7 @@ export async function updateGroupCode(
   }
 }
 
-/**
- * Reactivates a finalized group back to 'activa' state.
- */
+/** Reactivates a finalized group back to 'activa' state. */
 export async function reactivateGroup(id: string): Promise<void> {
   await db.update(groups)
     .set({ estado: 'activa' })
@@ -304,7 +283,6 @@ export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; 
   return { deleted: true, treeCount };
 }
 
-// Returns all finalizada groups for a plantation (pending sync).
 export async function getFinalizadaGroups(plantacionId: string, userId?: string): Promise<Group[]> {
   const conditions = [
     eq(groups.plantacionId, plantacionId),
@@ -317,7 +295,6 @@ export async function getFinalizadaGroups(plantacionId: string, userId?: string)
     .where(and(...conditions)) as unknown as Group[];
 }
 
-// Returns groups with pendingSync=true that are ready to sync.
 export async function getSyncableGroups(plantacionId: string, _userId?: string): Promise<Group[]> {
   const conditions = [
     eq(groups.plantacionId, plantacionId),
@@ -326,7 +303,6 @@ export async function getSyncableGroups(plantacionId: string, _userId?: string):
   return db.select().from(groups).where(and(...conditions)) as unknown as Group[];
 }
 
-// Returns total count of groups with pendingSync=true across all plantations.
 export async function getPendingSyncCount(userId?: string): Promise<number> {
   const conditions = [eq(groups.pendingSync, true)];
   if (userId) {

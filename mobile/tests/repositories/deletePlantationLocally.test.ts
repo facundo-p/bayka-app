@@ -1,5 +1,4 @@
-// Tests for deletePlantationLocally — cascade delete of plantation and all related data
-// Covers: DEL-01-cascade-delete
+// Cascade delete of a plantation and all related data
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -87,7 +86,6 @@ describe('deletePlantationLocally', () => {
 
     await expect(deletePlantationLocally('plant-1')).rejects.toThrow('DB crash');
 
-    // notifyDataChanged should NOT be called on error
     expect(mockNotifyDataChanged).not.toHaveBeenCalled();
   });
 
@@ -100,7 +98,6 @@ describe('deletePlantationLocally', () => {
   it('deletes all 7 tables inside the transaction (incluye parcelas, #90)', async () => {
     await deletePlantationLocally('plant-1');
 
-    // Should delete exactly 7 tables
     expect(txDeleteCalls).toHaveLength(7);
     expect(mockDb.transaction).toHaveBeenCalledTimes(1);
   });

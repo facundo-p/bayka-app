@@ -3,9 +3,8 @@ import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
 
 export const cameraCaptureStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.overlayDark },
-  // flex-end: la barra del obturador (único hijo en flujo) va abajo. El botón
-  // de cerrar es absoluto arriba. Con space-between, al haber un solo hijo en
-  // flujo, quedaba arriba.
+  // flex-end: la barra del obturador (único hijo en flujo) va abajo; el botón
+  // de cerrar es absoluto arriba. Con space-between quedaba arriba.
   camera: { flex: 1, justifyContent: 'flex-end' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg, padding: spacing['4xl'], backgroundColor: colors.overlayDark },
   permText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.regular, textAlign: 'center' },

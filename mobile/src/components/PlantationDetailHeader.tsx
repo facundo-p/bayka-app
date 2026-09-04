@@ -4,11 +4,12 @@
  * (El banner de N/N vive ahora a nivel de plantación, en ParcelasScreen.)
  */
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import FilterCards from './FilterCards';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, spacing } from '../theme';
+import { plantationDetailHeaderStyles as styles } from './PlantationDetailHeader.styles';
 
 type FilterConfig = {
   key: string;
@@ -52,24 +53,3 @@ export default function PlantationDetailHeader({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fixedHeader: {
-    paddingHorizontal: spacing.xxl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  finalizadaBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.secondaryBg,
-    borderRadius: borderRadius.lg,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xxl,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.stateFinalizada + '66',
-  },
-  finalizadaBannerText: { flex: 1, fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.stateFinalizada },
-});

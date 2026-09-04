@@ -9,7 +9,7 @@ interface Props {
   title: string;
   subtitle?: string;
   /** Si se omite, no se muestra la flecha de "atrás" (header raíz, p. ej.
-   *  Plantaciones). Si se pasa, la flecha navega con este callback. Issue #70. */
+   *  Plantaciones). Si se pasa, la flecha navega con este callback. */
   onBack?: () => void;
   rightElement?: React.ReactNode;
   /** Color de fondo del header. Por defecto el azul de marca (`colors.headerBg`). */

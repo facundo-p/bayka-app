@@ -127,17 +127,13 @@ export default function AdminBottomSheet({
       statusBarTranslucent
     >
       <View style={styles.outerWrapper}>
-        {/* Backdrop */}
         <Pressable style={styles.backdrop} onPress={onDismiss} />
 
-        {/* Sheet */}
         <View style={[styles.sheet, { paddingBottom: spacing['5xl'] + insets.bottom }]}>
-          {/* Drag handle */}
           <View style={[styles.handleContainer, { paddingTop: spacing['4xl'] }]}>
             <View style={styles.handle} />
           </View>
 
-          {/* Close button */}
           <Pressable
             style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
             onPress={onDismiss}
@@ -147,13 +143,11 @@ export default function AdminBottomSheet({
             <Ionicons name="close-outline" size={22} color={colors.textMuted} />
           </Pressable>
 
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle} numberOfLines={1}>{plantation.lugar}</Text>
             <Text style={styles.headerSubtitle}>{plantation.periodo}</Text>
           </View>
 
-          {/* Pending sync/edit banner */}
           {hasPendingIssues && (
             <View style={styles.pendingBadge}>
               <Ionicons name="cloud-upload-outline" size={14} color={colors.secondary} />
@@ -173,10 +167,8 @@ export default function AdminBottomSheet({
             </View>
           )}
 
-          {/* Action list */}
           <View style={styles.actionList}>
-            {/* Editar — para cualquier estado (#94: reemplaza a Sincronizar,
-                que ahora vive como botón en la card) */}
+            {/* #94: reemplaza a Sincronizar, que ahora vive como botón en la card */}
             {isAdmin && (
               <ActionItem
                 icon="create-outline"
@@ -186,7 +178,6 @@ export default function AdminBottomSheet({
               />
             )}
 
-            {/* Admin-only actions */}
             {isAdmin && plantation.estado === 'activa' && (
               <>
                 <View style={styles.divider} />

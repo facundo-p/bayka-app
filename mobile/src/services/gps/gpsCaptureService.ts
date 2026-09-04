@@ -12,11 +12,7 @@ import { getCurrentGpsFix, GpsFix } from './locationClient';
 
 export { shouldCaptureGps } from './captureRules';
 
-/**
- * Alta de árbol + captura GPS si corresponde por posición. Camino único para
- * la botonera de especies y el flujo N/N (cuentan posiciones por igual).
- * El insert nunca espera al GPS: el punto se adjunta async al árbol correcto.
- */
+/** Alta de árbol + captura GPS si corresponde por posición (mismo camino para botonera de especies y N/N); el insert nunca espera al GPS, el punto se adjunta async. */
 export async function insertTreeWithGps(
   params: InsertTreeParams,
   frequency: number,
@@ -31,17 +27,11 @@ export async function insertTreeWithGps(
 }
 
 /**
- * Adjunta el punto GPS al árbol recién registrado, sin bloquear el alta:
- * - Si el fix del watcher es esencialmente actual (≤ edad máxima), se usa ese.
- * - Si quedó viejo, se pide un fix fresco en el instante (GPS caliente → rápido).
- * - Si no hay fix (sin permiso/señal/timeout), el árbol queda sin coordenadas.
- *
- * `gpsCapturedAt` registra el momento del tap, no el de resolución del fix.
- * En el alta se invoca fire-and-forget; la re-captura usa el booleano de
- * retorno (true = punto escrito) para dar feedback. Nunca lanza.
- *
- * Con la medición de GPS desactivada (toggle de Ajustes, #121) no se captura ni
- * se pide un fix fresco: el árbol queda sin coordenadas y no se prende el GPS.
+ * Adjunta el punto GPS al árbol sin bloquear el alta: usa el fix del watcher si es reciente
+ * (≤ edad máxima), si no pide uno fresco (GPS caliente → rápido); sin fix, el árbol queda sin
+ * coordenadas. `gpsCapturedAt` es el momento del tap, no el de resolución del fix; el alta lo
+ * invoca fire-and-forget, la re-captura usa el retorno (true = escrito). Nunca lanza. Con la
+ * medición desactivada (toggle de Ajustes), no captura ni prende el GPS.
  */
 export async function attachGpsCapture(
   treeId: string,
@@ -71,11 +61,7 @@ export async function attachGpsCapture(
   }
 }
 
-/**
- * Re-captura manual del punto del último árbol (o captura a demanda si por
- * frecuencia no correspondió): reemplaza lat/lng/precisión/timestamp con un
- * fix del momento. Si no hay fix, el punto anterior se conserva intacto.
- */
+/** Re-captura manual del punto del último árbol (o a demanda si la frecuencia no aplicó); reemplaza lat/lng/precisión/timestamp, o conserva el punto anterior si no hay fix. */
 export function recaptureTreeGps(
   treeId: string,
   getLastFix?: () => GpsFix | null,

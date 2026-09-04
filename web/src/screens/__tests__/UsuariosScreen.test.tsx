@@ -470,7 +470,7 @@ test('desactivar pide confirmación explicando efectos y ejecuta', async () => {
   const menu = await abrirMenu(usuario, 'Ana Admin');
   await usuario.click(menu.getByRole('menuitem', { name: 'Desactivar' }));
   const dialogo = screen.getByRole('dialog', { name: 'Desactivar a Ana Admin' });
-  // §15: qué se pierde (acceso) y qué se conserva (datos de campo).
+  // Qué se pierde (acceso) y qué se conserva (datos de campo).
   expect(within(dialogo).getByText(/va a perder el acceso/)).toBeInTheDocument();
   expect(within(dialogo).getByText(/se conservan/)).toBeInTheDocument();
 

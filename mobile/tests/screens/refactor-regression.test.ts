@@ -1,8 +1,6 @@
 /**
- * Regression tests for Phase 9 refactor.
- * These tests verify that functionality extracted from screens to hooks
- * was properly wired back. Each test catches a specific regression that
- * occurred during the Phase 9 hook extraction.
+ * Regression tests for functionality extracted from screens into hooks —
+ * each test catches a specific case that broke during that extraction.
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -11,7 +9,7 @@ function readSrc(relativePath: string): string {
   return fs.readFileSync(path.resolve(__dirname, '../../src', relativePath), 'utf-8');
 }
 
-// --- Regression 1: pendingEdit workflow (moved from AdminScreen to AdminBottomSheet in Phase 11) ---
+// --- Regression: pendingEdit workflow moved from AdminScreen to AdminBottomSheet ---
 describe('AdminBottomSheet — pendingEdit workflow', () => {
   const hook = readSrc('hooks/usePlantationAdmin.ts');
   const sheet = readSrc('components/AdminBottomSheet.tsx');
@@ -51,7 +49,6 @@ describe('PlantacionesScreen — uploadPendingEdits in refresh', () => {
   });
 
   it('calls uploadPendingEdits in handleRefresh', () => {
-    // Extract handleRefresh function body
     const refreshMatch = hook.match(/handleRefresh[\s\S]*?try\s*\{([\s\S]*?)for/);
     expect(refreshMatch).not.toBeNull();
     expect(refreshMatch![1]).toContain('uploadPendingEdits');
@@ -72,9 +69,7 @@ describe('CatalogScreen — localIds reactivity', () => {
   });
 });
 
-// --- Regression 4-8: Safe area on refactored screens ---
-// Safe area is handled by ScreenContainer/ScreenHeader/CustomHeader wrappers,
-// not directly in each screen. Verify screens use these wrappers.
+// --- Regression: safe area handled by ScreenContainer/ScreenHeader/CustomHeader wrappers, not per-screen ---
 describe('Safe area on refactored screens', () => {
   const screens = {
     TreeRegistrationScreen: readSrc('screens/TreeRegistrationScreen.tsx'),
@@ -89,8 +84,7 @@ describe('Safe area on refactored screens', () => {
         source.includes('ScreenContainer') ||
         source.includes('useSafeAreaInsets') ||
         source.includes('SafeAreaView') ||
-        // EntityFormModal encapsula el safe-area (ModalHeader insets.top +
-        // footer keyboard-aware) para las pantallas de creación (#89).
+        // EntityFormModal también encapsula el safe-area para pantallas de creación (#89)
         source.includes('EntityFormModal');
       expect(usesSafeArea).toBe(true);
     });
@@ -110,8 +104,7 @@ describe('NNResolutionScreen — Guardar selection count', () => {
   });
 });
 
-// --- Regression 9: CatalogScreen safe area handling ---
-// CatalogScreen uses ScreenContainer + ScreenHeader which handle safe area internally.
+// --- Regression: CatalogScreen safe area via ScreenContainer + ScreenHeader ---
 describe('CatalogScreen — safe area handling', () => {
   const screen = readSrc('screens/CatalogScreen.tsx');
 
@@ -130,9 +123,8 @@ describe('PlantacionesScreen — delete local', () => {
   const hook = readSrc('hooks/usePlantaciones.ts');
 
   it('passes onDelete prop to PlantationCard', () => {
-    // Match both prop-style (`onDelete=`) and object-property-style (`onDelete:`)
-    // — Plan 17-02 wraps PlantationCard in ExpandablePlantationCard with a
-    // `cardProps` object, so onDelete now lives inside that object literal.
+    // Matches both prop-style (`onDelete=`) and object-property-style (`onDelete:`),
+    // since onDelete lives inside a cardProps object literal on ExpandablePlantationCard.
     expect(screen).toMatch(/onDelete\s*[:=]/);
   });
 

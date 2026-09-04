@@ -10,7 +10,7 @@ test('formatea el valor con separador de miles y arma el pie con el objetivo', (
   expect(screen.getByText('Árboles registrados')).toBeInTheDocument();
   expect(screen.getByText('Meta de la temporada · 8.000 · 96%')).toBeInTheDocument();
   const fill = container.querySelector(`.${styles.fill}`) as HTMLElement;
-  expect(fill.style.width).toBe('96%');
+  expect(fill.style.getPropertyValue('--ancho')).toBe('96%');
 });
 
 test('usa el metaLabel personalizado cuando se provee', () => {

@@ -33,7 +33,6 @@ export async function saveUserSpeciesOrder(
   plantacionId: string,
   items: Array<{ especieId: string; ordenVisual: number }>,
 ): Promise<void> {
-  // Delete existing order for this user + plantation
   await db
     .delete(userSpeciesOrder)
     .where(
@@ -43,7 +42,6 @@ export async function saveUserSpeciesOrder(
       ),
     );
 
-  // Insert new order
   if (items.length > 0) {
     await db.insert(userSpeciesOrder).values(
       items.map((item) => ({

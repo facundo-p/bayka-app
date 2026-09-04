@@ -78,9 +78,7 @@ describe('buildKml', () => {
       row({ especieNombre: 'Pino A', subId: 'P1' }),
       row({ especieNombre: 'Pino-A', subId: 'P2' }),
     ]);
-    // Mismo styleId para ambos nombres.
     expect(getSpeciesStyleId('Pino A')).toBe(getSpeciesStyleId('Pino-A'));
-    // Un solo <Style> con ese id (no dos con el mismo id y distinto color).
     const styleCount = kml.split(`<Style id="${getSpeciesStyleId('Pino A')}">`).length - 1;
     expect(styleCount).toBe(1);
   });

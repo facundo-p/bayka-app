@@ -1,3 +1,4 @@
+import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import type { EspecieColoreada } from './coloresEspecies';
 import styles from './SpeciesDistribution.module.css';
@@ -23,7 +24,7 @@ function FilaEspecie({ especie, maximo }: { especie: EspecieColoreada; maximo: n
         <span className={styles.cantidad}>{formatearEntero(especie.cantidad)}</span>
       </div>
       <div className={styles.barra}>
-        <div className={styles.relleno} style={{ width: ancho, background: especie.color }} />
+        <div className={styles.relleno} style={varsCss({ ancho, color: especie.color })} />
       </div>
     </li>
   );

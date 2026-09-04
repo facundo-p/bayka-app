@@ -154,7 +154,7 @@ test('"Generar IDs" abre el modal, confirma con el seed sugerido y habilita los 
 
   await usuario.click(await screen.findByRole('button', { name: 'Generar IDs' }));
   const dialogo = await screen.findByRole('dialog', { name: 'Generar IDs' });
-  // Advertencia de irreversibilidad (guía UX §15) y seed sugerido = MAX global + 1.
+  // Advertencia de irreversibilidad y seed sugerido = MAX global + 1.
   expect(dialogo).toHaveTextContent('Esta acción no se puede deshacer.');
   const input = within(dialogo).getByLabelText('ID global inicial');
   await vi.waitFor(() => expect(input).toHaveValue(1001));

@@ -1,8 +1,5 @@
-/**
- * ParcelasScreen — el alta de parcela debe deshabilitarse con la plantación
- * finalizada (mismo criterio que Grupos: canAddGroup = estadoLoaded && !isFinalizada).
- * Tests estáticos sobre el source, al estilo de refactor-regression.test.ts.
- */
+// El alta de parcela debe deshabilitarse con la plantación finalizada
+// (mismo criterio que Grupos: canAddGroup = estadoLoaded && !isFinalizada).
 import * as fs from 'fs';
 import * as path from 'path';
 

@@ -1,6 +1,4 @@
 // Tests for useSync hook
-// Covers: startBidirectionalSync (calls syncPlantation), startGlobalSync (calls syncAllPlantations),
-//         notifyDataChanged in finally, state transitions
 
 jest.mock('../../src/services/SyncService', () => ({
   syncPlantation: jest.fn(),
@@ -63,7 +61,6 @@ describe('useSync', () => {
         result.current.startBidirectionalSync();
       });
 
-      // State should be 'pushing' while promise is pending
       expect(result.current.state).toBe('pushing');
 
       await act(async () => {
@@ -110,8 +107,7 @@ describe('useSync', () => {
       const parcelaFailures = [
         { success: false, parcelaId: 'parc-1', nombre: 'Lote A', error: 'UNKNOWN' as const },
       ];
-      // syncPlantation delivers parcela results through its 3rd callback arg, then
-      // returns the (blocked) group results.
+      // 3rd callback arg delivers parcela results; return value is the (blocked) group results.
       (syncPlantation as jest.Mock).mockImplementation(
         (_id: string, _onProgress: any, onParcelaResults?: (p: any[]) => void) => {
           onParcelaResults?.(parcelaFailures);

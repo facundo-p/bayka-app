@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type KeyboardEvent } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, Cargando, ErrorConReintento, Input, SegmentedControl, Toggle } from '../../components';
@@ -61,11 +61,18 @@ function FormGps({ plantacion }: { plantacion: Plantacion }) {
     setObligatoria(valor);
     guardar.mutate({ frecuencia, obligatoria: valor });
   };
-  // El input persiste solo con un entero ≥ 1; valores inválidos no llegan a la base.
-  const aplicarTextoExacto = (texto: string) => {
-    setTextoExacto(texto);
-    const valor = Number(texto.trim());
+  // El input solo actualiza el texto en cada tecla; persiste una única vez al
+  // confirmar (blur o Enter), no en cada keystroke. Un valor inválido al
+  // confirmar no llega a la base: el campo vuelve al último valor válido.
+  const confirmarTextoExacto = () => {
+    const valor = Number(textoExacto.trim());
     if (esFrecuenciaValida(valor)) aplicarFrecuencia(valor);
+    else setTextoExacto(String(frecuencia));
+  };
+  const manejarTeclaTextoExacto = (evento: KeyboardEvent<HTMLInputElement>) => {
+    if (evento.key !== 'Enter') return;
+    evento.preventDefault();
+    confirmarTextoExacto();
   };
 
   return (
@@ -103,7 +110,9 @@ function FormGps({ plantacion }: { plantacion: Plantacion }) {
             min={1}
             step={1}
             value={textoExacto}
-            onChange={(event) => aplicarTextoExacto(event.target.value)}
+            onChange={(event) => setTextoExacto(event.target.value)}
+            onBlur={confirmarTextoExacto}
+            onKeyDown={manejarTeclaTextoExacto}
           />
         </div>
       </div>

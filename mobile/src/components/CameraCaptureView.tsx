@@ -64,7 +64,6 @@ export default function CameraCaptureView({ visible, onCapture, onCancel }: Prop
     if (capturing || !cameraRef.current) return;
     setCapturing(true);
     try {
-      // shutterSound: false → sin sonido de obturador al capturar.
       const photo = await cameraRef.current.takePictureAsync({ quality: 1, shutterSound: false });
       if (photo?.uri) onCapture({ uri: photo.uri, width: photo.width ?? 0, height: photo.height ?? 0 });
     } finally {

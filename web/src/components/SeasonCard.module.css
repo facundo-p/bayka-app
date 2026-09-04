@@ -55,6 +55,8 @@
   height: 100%;
   background-color: var(--color-secondary);
   border-radius: var(--radius-full);
+  /* --ancho llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  width: var(--ancho);
 }
 
 .pie {

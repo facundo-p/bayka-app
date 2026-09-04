@@ -2,8 +2,7 @@ import { supabase } from '../lib/supabase';
 import { ROL, type Rol } from '../repositories/profileRepository';
 import { leerPaginado } from './leerPaginado';
 
-/** Rol del usuario dentro de una plantación (columna `rol_en_plantacion`):
- *  los roles globales salvo superadmin (que no aplica a nivel plantación). */
+/** Rol del usuario en una plantación (`rol_en_plantacion`): roles globales salvo superadmin. */
 export type RolEnPlantacion = Exclude<Rol, typeof ROL.SUPERADMIN>;
 
 export type PerfilResumen = {
@@ -53,10 +52,7 @@ type FilaUsuario = {
   created_at: string;
 };
 
-/** Todos los perfiles visibles (la RLS acota a la organización), por nombre.
- *  Incluye inactivos: hay consumidores que los necesitan (p.ej. filtrar
- *  árboles registrados por un técnico dado de baja). Los flujos que no deben
- *  ofrecer inactivos (asignación) filtran por `activo`. */
+/** Incluye inactivos: hay consumidores que los necesitan (ej. filtrar árboles de un técnico dado de baja). */
 export async function listarPerfiles(): Promise<PerfilResumen[]> {
   const { data, error } = await supabase
     .from('profiles')
@@ -66,14 +62,7 @@ export async function listarPerfiles(): Promise<PerfilResumen[]> {
   return (data ?? []) as PerfilResumen[];
 }
 
-/**
- * Cuenta plantaciones asignadas por usuario en una sola lectura: trae los
- * user_id de plantation_users y agrega en cliente con un Map (mismo patrón
- * que el conteo de árboles por grupo en dataExplorerQueries).
- * Solo cuenta asignaciones como técnico: desde la migración 028 (issue #67)
- * los admins son miembros de todas las plantaciones y el conteo perdería
- * significado.
- */
+/** Agrega en cliente con un Map (mismo patrón que dataExplorerQueries); solo cuenta técnicos, ya que los admins son miembros automáticos de todas las plantaciones (#67). */
 async function contarAsignacionesPorUsuario(): Promise<Map<string, number>> {
   const filas = await leerPaginado<{ user_id: string }>((desde, hasta) =>
     supabase
@@ -143,8 +132,7 @@ function mapearAsignado(fila: FilaAsignado): UsuarioAsignado {
   };
 }
 
-/** Técnicos asignados a la plantación con su perfil, por orden de asignación.
- *  Excluye las membresías 'admin' automáticas (migración 028, issue #67). */
+/** Técnicos asignados a la plantación, por orden de asignación; excluye membresías 'admin' automáticas (#67). */
 export async function listarAsignados(plantationId: string): Promise<UsuarioAsignado[]> {
   const { data, error } = await supabase
     .from('plantation_users')
@@ -153,7 +141,6 @@ export async function listarAsignados(plantationId: string): Promise<UsuarioAsig
     .eq('rol_en_plantacion', ROL.TECNICO)
     .order('assigned_at', { ascending: true });
   if (error) throw new Error(error.message);
-  // El cliente sin typegen tipa el embed como array, pero la FK user_id →
-  // profiles es many-to-one: en runtime llega un objeto.
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   return ((data ?? []) as unknown as FilaAsignado[]).map(mapearAsignado);
 }

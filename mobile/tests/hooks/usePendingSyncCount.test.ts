@@ -1,10 +1,7 @@
 /**
- * Tests de usePendingSyncCount — mock-based (mismo patrón que useParcelas.test):
- * se mockea useLiveData para no renderizar React y se valida la aritmética de
- * los contadores. Issue #71: pendingCount debe incluir fotos pendientes.
- *
- * Orden de llamadas a useLiveData dentro del hook (fijo):
- *   1. grupos pendientes  2. bloqueados N/N  3. fotos  4. parcelas
+ * Tests de usePendingSyncCount — mock-based (mismo patrón que useParcelas.test).
+ * Issue #71: pendingCount debe incluir fotos pendientes.
+ * Orden fijo de useLiveData en el hook: 1. grupos pendientes 2. bloqueados N/N 3. fotos 4. parcelas.
  */
 
 const mockUseLiveData = jest.fn();

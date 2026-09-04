@@ -32,6 +32,8 @@
   height: 10px;
   border-radius: var(--radius-full);
   flex-shrink: 0;
+  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  background-color: var(--color);
 }
 
 .foto {

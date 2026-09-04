@@ -1,5 +1,4 @@
 // Tests for fetchPlantationMeta — standalone utility in usePlantationAdmin.
-// Covers all 3 estados (activa/finalizada/sincronizada) and error handling.
 
 jest.mock('../../src/queries/adminQueries', () => ({
   checkFinalizationGate: jest.fn(),

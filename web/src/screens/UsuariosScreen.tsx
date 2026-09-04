@@ -157,7 +157,7 @@ function columnaAcciones(
   };
 }
 
-/** Copys de confirmación (§15 de la guía UX: qué se pierde y qué se conserva). */
+/** Copys de confirmación: explican qué se pierde y qué se conserva. */
 function copyDesactivar(nombre: string): string {
   return (
     `${nombre} va a perder el acceso a la app y a la web en cuanto su sesión se renueve. ` +
