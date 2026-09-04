@@ -56,7 +56,9 @@ de la transacción de la que hace rollback:
 `01`-`02` membresía en INSERT (groups/parcelas), `03` guard de
 `sync_subgroup`, `04` gate por rol de `generate_tree_ids`, `05`
 `update_tree_ids` removida, `06` resto de 030, `07` mismo fix en `trees`
-INSERT.
+INSERT, `09` helpers de estado/seed de `global_id` (032, #309), `10` SELECT
+scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
+(033, #310).
 
 ## Hallazgo fuera de alcance (no corregido)
 
