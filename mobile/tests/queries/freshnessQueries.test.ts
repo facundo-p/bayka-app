@@ -83,6 +83,17 @@ describe('freshnessQueries', () => {
       expect(result).toBe(true);
     });
 
+    it('queries the real `groups` table, not the `subgroups` compat view (#301)', async () => {
+      setPendingDbResult([{ maxCreatedAt: '2026-03-19T00:00:00Z' }]);
+      (supabase.from as jest.Mock).mockReturnValue(
+        makeSupabaseChain({ data: { created_at: '2026-03-20T10:00:00Z' }, error: null })
+      );
+
+      await checkFreshness(['plantation-1']);
+
+      expect(supabase.from).toHaveBeenCalledWith('groups');
+    });
+
     it('returns false when server max timestamp <= local max timestamp', async () => {
       setPendingDbResult([{ maxCreatedAt: '2026-03-20T12:00:00Z' }]);
       (supabase.from as jest.Mock).mockReturnValue(

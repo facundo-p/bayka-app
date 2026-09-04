@@ -193,4 +193,65 @@ describe('config GPS por plantación', () => {
     expect(supabaseUpdatePayload).not.toHaveProperty('gps_capture_frequency');
     expect(updatedSet).not.toHaveProperty('gpsCaptureFrequency');
   });
+
+  // ─── camino offline-created / fallback de red (issue #301) ─────────────────
+
+  it('updatePlantation en plantación creada offline (pendingSync=true) solo edita local, sin red ni pendingEdit', async () => {
+    mockDbChains({ pendingSync: true, pendingEdit: false });
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    expect(mockNetInfoFetch).not.toHaveBeenCalled();
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(updatedSet).toMatchObject({ lugar: 'Campo', periodo: '2026', gpsCaptureFrequency: 5 });
+    expect(updatedSet).not.toHaveProperty('pendingEdit');
+  });
+
+  it('updatePlantation online con falla de RED en el push cae al camino offline y snapshotea server', async () => {
+    mockDbChains({
+      pendingSync: false,
+      pendingEdit: false,
+      lugarServer: null,
+      periodoServer: null,
+      lugarCurrent: 'Viejo',
+      periodoCurrent: '2025',
+      gpsFreqServer: null,
+      gpsReqServer: null,
+      gpsFreqCurrent: 10,
+      gpsReqCurrent: true,
+    });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+    (supabase.from as jest.Mock).mockReturnValue({
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockRejectedValue(new Error('Network request failed')),
+      }),
+    });
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    // Cayó al camino offline: snapshotea el valor PRE-edición y marca pendingEdit.
+    expect(updatedSet).toMatchObject({
+      lugar: 'Campo',
+      lugarServer: 'Viejo',
+      periodoServer: '2025',
+      gpsCaptureFrequencyServer: 10,
+      gpsCaptureRequiredServer: true,
+      pendingEdit: true,
+    });
+  });
+
+  it('updatePlantation online con error NO relacionado a red se propaga (no cae al camino offline)', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+    (supabase.from as jest.Mock).mockReturnValue({
+      update: jest.fn().mockReturnValue({
+        eq: jest.fn().mockRejectedValue(new Error('permission denied for table plantations')),
+      }),
+    });
+
+    await expect(updatePlantation('plant-1', 'Campo', '2026', GPS)).rejects.toThrow('permission denied');
+
+    // No hubo fallback: el único intento de escritura local fue el select previo, no un update.
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
 });

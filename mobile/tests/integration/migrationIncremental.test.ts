@@ -1,66 +1,80 @@
 /**
- * Reproduce un bug real: en un device que ya registró las migraciones 0000–0007
- * (máx created_at = 1774200000000), las 0015/0016 con `when` menor se salteaban
- * → faltaban las columnas GPS en runtime ("no such column: trees.latitude").
- * Simula ese device con SQLite real y verifica que, con el `when` corregido
- * (> máx global del journal), 0015 y 0016 sí se aplican. Falla si alguien vuelve
- * a bajar el `when` de una migración nueva.
+ * Regresión del bug de timestamps invertidos (#312): drizzle-orm/sqlite-core/dialect.js,
+ * SQLiteSyncDialect.migrate (usada por expo-sqlite) lee el `created_at` MAX ya registrado
+ * en __drizzle_migrations con un solo `SELECT ... ORDER BY created_at DESC LIMIT 1` (línea 654)
+ * y solo aplica una migración si su `when` es estrictamente mayor a ese máximo (línea 660) — no
+ * camina el journal en orden ni vuelve a consultar el máximo dentro del loop.
+ *
+ * Contrato asumido (issue #312, aprobado): ningún device operativo quedó en un estado anterior a
+ * este fix — todos ya están en idx >= 15 (max created_at >= 1774300000000, el `when` de la 0015).
+ * Este test simula exactamente ese piso: un device que ya migró 0000-0015 y luego recibe una
+ * actualización con el journal completo (hasta 0018). Verifica que 0008-0014 (renumeradas a
+ * `when` entre las de 0007 y 0015, ver drizzle/meta/_journal.json) NO se reaplican — evitando los
+ * "duplicate column"/"table already exists" que dispararían si drizzle intentara correrlas de
+ * nuevo — y que 0016-0018 sí se aplican.
  */
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
+import journal from '../../drizzle/meta/_journal.json';
 
-// Máximo created_at que un device real registró: el `when` de la 0007 (2026).
-const DEVICE_MAX_CREATED_AT = 1774200000000;
+const DRIZZLE_DIR = path.join(__dirname, '../../drizzle');
+const DEVICE_FLOOR_IDX = 15; // Piso asumido: ningún device operativo está por debajo de esto.
+const DEVICE_FLOOR_WHEN = journal.entries.find((e) => e.idx === DEVICE_FLOOR_IDX)!.when;
+
+type MigrationRow = { hash: string; created_at: number };
 
 function columnNames(sqlite: InstanceType<typeof Database>, table: string): string[] {
   return (sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>)
     .map((row) => row.name);
 }
 
-test('0015/0016 se aplican en un device incremental con max created_at = 1774200000000', () => {
+function appliedMigrations(sqlite: InstanceType<typeof Database>): MigrationRow[] {
+  return sqlite.prepare('SELECT hash, created_at FROM __drizzle_migrations ORDER BY id').all() as MigrationRow[];
+}
+
+/** Carpeta de migraciones truncada a idx <= upToIdx, con copias de los .sql reales — simula el journal que un device vio en su primer install. */
+function buildTruncatedMigrationsFolder(upToIdx: number): string {
+  const entries = journal.entries.filter((e) => e.idx <= upToIdx);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bayka-migrations-'));
+  fs.mkdirSync(path.join(dir, 'meta'));
+  fs.writeFileSync(path.join(dir, 'meta/_journal.json'), JSON.stringify({ ...journal, entries }));
+  for (const entry of entries) {
+    fs.copyFileSync(path.join(DRIZZLE_DIR, `${entry.tag}.sql`), path.join(dir, `${entry.tag}.sql`));
+  }
+  return dir;
+}
+
+test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0018 al actualizar', () => {
   const sqlite = new Database(':memory:');
-
-  // Estado pre-0015: trees/plantations sin columnas GPS; groups/parcelas como
-  // los deja la 0011 (la 0018 recrea groups, necesita las columnas reales).
-  sqlite.exec('CREATE TABLE trees (id text)');
-  // PK igual que en el device real: el recreate de la 0018 exige FK a columna PK/unique.
-  sqlite.exec('CREATE TABLE plantations (id text PRIMARY KEY NOT NULL)');
-  sqlite.exec('CREATE TABLE parcelas (id text PRIMARY KEY NOT NULL)');
-  sqlite.exec(`CREATE TABLE groups (
-    id text PRIMARY KEY NOT NULL,
-    plantacion_id text NOT NULL,
-    parcela_id text,
-    nombre text NOT NULL,
-    codigo text NOT NULL,
-    tipo text DEFAULT 'linea' NOT NULL,
-    estado text DEFAULT 'activa' NOT NULL,
-    usuario_creador text NOT NULL,
-    created_at text NOT NULL,
-    pending_sync integer DEFAULT false NOT NULL
-  )`);
-
-  // __drizzle_migrations con el máx created_at de las 0000–0007 (retimestamped a 2026).
-  sqlite.exec(
-    'CREATE TABLE __drizzle_migrations (id INTEGER PRIMARY KEY AUTOINCREMENT, hash text NOT NULL, created_at numeric)',
-  );
-  sqlite
-    .prepare('INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)')
-    .run('seed-0007', DEVICE_MAX_CREATED_AT);
-
   const db = drizzle(sqlite);
-  migrate(db, { migrationsFolder: path.join(__dirname, '../../drizzle') });
 
-  expect(columnNames(sqlite, 'trees')).toEqual(
-    expect.arrayContaining(['latitude', 'longitude', 'gps_accuracy', 'gps_captured_at']),
-  );
+  // Fase 1: fresh install que llega hasta 0015 (piso asumido de todo device operativo).
+  const partialDir = buildTruncatedMigrationsFolder(DEVICE_FLOOR_IDX);
+  try {
+    migrate(db, { migrationsFolder: partialDir });
+  } finally {
+    fs.rmSync(partialDir, { recursive: true, force: true });
+  }
+
+  const afterPhase1 = appliedMigrations(sqlite);
+  expect(afterPhase1).toHaveLength(DEVICE_FLOOR_IDX + 1);
+  expect(Math.max(...afterPhase1.map((r) => Number(r.created_at)))).toBe(DEVICE_FLOOR_WHEN);
+
+  // Fase 2: la app se actualiza y trae el journal completo (hasta 0018).
+  expect(() => migrate(db, { migrationsFolder: DRIZZLE_DIR })).not.toThrow();
+
+  const afterPhase2 = appliedMigrations(sqlite);
+  expect(afterPhase2).toHaveLength(journal.entries.length); // nada se reaplicó dos veces
+
   expect(columnNames(sqlite, 'plantations')).toEqual(
     expect.arrayContaining([
-      'gps_capture_frequency',
-      'gps_capture_required',
       'gps_capture_frequency_server',
       'gps_capture_required_server',
+      'visible_in_app',
     ]),
   );
 

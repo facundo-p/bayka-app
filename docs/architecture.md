@@ -224,6 +224,8 @@ grupos sincronizados
 fotos de árboles (Supabase Storage, bucket tree-photos)
 ```
 
+Schema, migraciones y cómo crear un ambiente desde cero: [docs/db-baseline.md](./db-baseline.md).
+
 ---
 
 # 5. Flujo de Datos
@@ -482,10 +484,12 @@ operación offline
 
 # 10. Generación de IDs
 
-Los IDs finales se generan al finalizar la plantación, **desde la app** (admin):
-`generateIds()` asigna en SQLite local, en una transacción atómica, el ID parcial
-(1..N por plantación) y el ID global (secuencial org-wide desde una semilla que el
-admin define; el sistema sugiere max + 1).
+Los IDs finales se generan **desde la web de gestión, server-side** (issue #232),
+no desde la app. El RPC `generate_tree_ids` (mig. 029) corre en una transacción
+Postgres: ordena los árboles de la plantación (por `groups.created_at`,
+`trees.posicion`, `groups.id` como desempate) y asigna el ID parcial (1..N por
+plantación) y el ID global (secuencial org-wide, desde una semilla que sugiere
+`MAX(global_id) + 1` o la que indique el admin).
 
 Tipos de ID:
 
@@ -494,17 +498,10 @@ ID parcial de plantación  (plantacion_id)
 ID global Bayka           (global_id)
 ```
 
-**Persistencia en el server en el mismo paso.** "Generar IDs" **requiere conexión**
-(se gatea en la UI). Tras asignar los IDs en local, se suben a Supabase de inmediato
-con un RPC dedicado y liviano (`update_tree_ids`, mig. 020): un bulk UPDATE de
-`plantacion_id`/`global_id` por id, sin re-subir grupos/árboles completos.
-
-**Invariante:** los IDs existen en local ⟺ están subidos al server. Si el push
-falla o queda parcial, se **revierten** los IDs locales (vuelven a NULL): la
-plantación queda como si nunca se hubieran generado, el botón **"Generar IDs"**
-vuelve a estar disponible (es el único mecanismo para subirlos) y el export queda
-oculto hasta que estén confirmados en el server. No se usa `pendingSync` ni la
-sincronización de toda la plantación (que ya está finalizada).
+**La app los recibe por el pull normal**, no los genera ni los sube: el upsert de
+`trees` adopta `plantacion_id`/`global_id` del server si el valor local está vacío.
+El RPC viejo `update_tree_ids` (mig. 020), que la app usaba para subir IDs
+generados localmente, quedó sin callers y se eliminó en la mig. 030.
 
 El gate de export exige que TODOS los árboles tengan ID.
 

@@ -11,7 +11,6 @@ build/
 *.apk
 
 # Artefactos de migración de entornos (one-shot, no van al repo)
-supabase/baseline_schema.sql
 scripts/copy-storage.mjs
 supabase/.temp/
 

@@ -42,6 +42,8 @@ jest.mock('../../src/config/featureFlags', () => ({
 
 import { createPlantationWithDefaultParcela } from '../../src/services/PlantationCreationService';
 import * as ParcelaRepo from '../../src/repositories/ParcelaRepository';
+import { supabase } from '../../src/supabase/client';
+import { syncLog } from '../../src/utils/syncLogger';
 
 const baseParams = {
   lugar: 'Campo Test',
@@ -61,12 +63,34 @@ afterAll(() => {
   closeTestDb(sqlite);
 });
 
+/**
+ * drizzle-orm/better-sqlite3's db.transaction() rejects an async callback outright (better-sqlite3
+ * native transaction() throws "Transaction function cannot return a promise"); deletePlantationLocally
+ * (called by the rollback path below) uses one. Real devices run drizzle-orm/expo-sqlite, which
+ * doesn't have this restriction — this shim reproduces that behaviour for the real sqlite instance
+ * used here, so the rollback tests exercise the actual delete logic instead of a mock.
+ */
+function installAsyncTransactionShim(): void {
+  jest.spyOn(mockTestDb, 'transaction').mockImplementation(async (fn: any) => {
+    sqlite.exec('BEGIN');
+    try {
+      const result = await fn(mockTestDb);
+      sqlite.exec('COMMIT');
+      return result;
+    } catch (e) {
+      sqlite.exec('ROLLBACK');
+      throw e;
+    }
+  });
+}
+
 beforeEach(async () => {
   await mockTestDb.delete(parcelas);
   // Antes que plantations: FK plantation_users → plantations sin CASCADE (#67).
   await mockTestDb.delete(plantationUsers);
   await mockTestDb.delete(plantations);
   jest.restoreAllMocks();
+  installAsyncTransactionShim();
 });
 
 describe('createPlantationWithDefaultParcela', () => {
@@ -116,6 +140,111 @@ describe('createPlantationWithDefaultParcela', () => {
     const allParcelas = await mockTestDb.select().from(parcelas);
     expect(allParcelas).toHaveLength(2);
     expect(allParcelas.every((p) => p.codigo === 'P1' && p.nombre === 'Parcela 1')).toBe(true);
+  });
+});
+
+describe('createPlantationWithDefaultParcela (online mode)', () => {
+  const onlineParams = { ...baseParams, mode: 'online' as const };
+
+  /** Arma supabase.from('plantations') para el insert de createPlantation + el delete de rollback. */
+  function mockSupabaseForOnlineCreate(deleteError: unknown = null, deletedRows: Array<{ id: string }> = [{ id: 'srv-plantation-1' }]) {
+    const insertedRow = {
+      id: 'srv-plantation-1',
+      organizacion_id: onlineParams.organizacionId,
+      lugar: onlineParams.lugar,
+      periodo: onlineParams.periodo,
+      estado: 'activa',
+      creado_por: onlineParams.creadoPor,
+      created_at: new Date().toISOString(),
+    };
+    const deleteSelect = jest.fn().mockResolvedValue({ data: deleteError ? null : deletedRows, error: deleteError });
+    const deleteEq = jest.fn().mockReturnValue({ select: deleteSelect });
+    (supabase.from as jest.Mock).mockReturnValue({
+      insert: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          single: jest.fn().mockResolvedValue({ data: insertedRow, error: null }),
+        }),
+      }),
+      delete: jest.fn().mockReturnValue({ eq: deleteEq }),
+    });
+    return { deleteEq, insertedRow };
+  }
+
+  test('parcela falla → rollback local primero, luego borra la plantación remota, error se propaga', async () => {
+    const { deleteEq } = mockSupabaseForOnlineCreate(null);
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow(/Default parcela/);
+
+    expect(deleteEq).toHaveBeenCalledWith('id', 'srv-plantation-1');
+    const all = await mockTestDb.select().from(plantations);
+    expect(all).toHaveLength(0);
+    const membresias = await mockTestDb.select().from(plantationUsers);
+    expect(membresias).toHaveLength(0);
+  });
+
+  test('parcela falla + delete remoto falla → igual hace cleanup local, error final avisa del leftover remoto', async () => {
+    const remoteError = new Error('permission denied');
+    mockSupabaseForOnlineCreate(remoteError);
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+    const errorSpy = jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow(/además, no se pudo borrar la plantación remota/);
+
+    const all = await mockTestDb.select().from(plantations);
+    expect(all).toHaveLength(0);
+    const membresias = await mockTestDb.select().from(plantationUsers);
+    expect(membresias).toHaveLength(0);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('srv-plantation-1'), remoteError);
+  });
+
+  test('parcela falla + delete remoto borra 0 filas (RLS) → tratado como leftover, error final avisa', async () => {
+    mockSupabaseForOnlineCreate(null, []);
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+    const errorSpy = jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow(/además, no se pudo borrar la plantación remota/);
+
+    const all = await mockTestDb.select().from(plantations);
+    expect(all).toHaveLength(0);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('srv-plantation-1'), expect.any(Error));
+  });
+
+  test('rollback local falla → se propaga tal cual, remoto ni se intenta', async () => {
+    const { deleteEq } = mockSupabaseForOnlineCreate(null);
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+    const localError = new Error('SQLITE_BUSY');
+    const deleteSpy = jest.spyOn(mockTestDb, 'transaction').mockRejectedValueOnce(localError as never);
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow('SQLITE_BUSY');
+
+    expect(deleteEq).not.toHaveBeenCalled();
+    deleteSpy.mockRestore();
+  });
+
+  test('offline sigue sin llamar a supabase', async () => {
+    const fromSpy = supabase.from as jest.Mock;
+    fromSpy.mockClear();
+    jest.spyOn(ParcelaRepo, 'createParcela').mockResolvedValueOnce({
+      success: false,
+      error: 'codigo_duplicate',
+    });
+
+    await expect(createPlantationWithDefaultParcela(baseParams)).rejects.toThrow(/Default parcela/);
+
+    expect(fromSpy).not.toHaveBeenCalled();
   });
 });
 

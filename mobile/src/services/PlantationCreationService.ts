@@ -2,21 +2,22 @@
  * PlantationCreationService — crea una plantación y, si AUTO_PARCELA_DEFAULT, su parcela default
  * ("Parcela 1"/"P1") atómicamente. Único call site: usePlantationAdmin.handleCreateSubmit — los
  * paths de pull/sync no deben usarlo (las plantaciones de server traen sus parcelas vía pullParcelas).
- * El modo online llama a Supabase antes de la transacción local, así que un fallo de parcela puede
- * dejar la fila server sin su contraparte local.
+ * El modo online llama a Supabase antes de la transacción local: si la parcela falla, el rollback
+ * borra primero las filas locales y recién después la fila server (best-effort); si el delete
+ * remoto también falla, el error final avisa que puede haber quedado una fila huérfana en el server.
  * Para eliminar: borrar este archivo + su import/call en usePlantationAdmin.ts, y volver a llamar
  * createPlantation/createPlantationLocally directo.
  */
-import { db } from '../database/client';
-import { plantations, plantationUsers } from '../database/schema';
-import { eq } from 'drizzle-orm';
 import {
   createPlantation,
   createPlantationLocally,
+  deletePlantationLocally,
+  deletePlantationRemotely,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
 import { createParcela } from '../repositories/ParcelaRepository';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
+import { syncLog } from '../utils/syncLogger';
 
 export type CreatePlantationMode = 'online' | 'offline';
 
@@ -50,6 +51,29 @@ async function insertDefaultParcela(plantacionId: string): Promise<void> {
   }
 }
 
+/**
+ * Rollback ante fallo de parcela: borra primero las filas locales (deletePlantationLocally,
+ * transaccional y con el orden de FK correcto); si eso falla, se propaga tal cual — el server
+ * todavía no se tocó, queda consistente con el estado previo. En modo online borra después la
+ * fila server (best-effort); si ese delete falla, el error final avisa del posible huérfano.
+ */
+async function rollbackFailedPlantation(plantationId: string, mode: CreatePlantationMode, originalError: unknown): Promise<never> {
+  await deletePlantationLocally(plantationId);
+  if (mode === 'online') {
+    try {
+      await deletePlantationRemotely(plantationId);
+    } catch (remoteError) {
+      syncLog.error(`createPlantationWithDefaultParcela: no se pudo borrar la plantación remota ${plantationId} tras fallo de parcela default`, remoteError);
+      const originalMessage = originalError instanceof Error ? originalError.message : String(originalError);
+      throw new Error(
+        `${originalMessage} (además, no se pudo borrar la plantación remota; puede haber quedado sin parcela)`,
+        { cause: originalError }
+      );
+    }
+  }
+  throw originalError;
+}
+
 /** Crea una plantación (online/offline) y, si AUTO_PARCELA_DEFAULT, su parcela default atómicamente; retorna la misma forma que createPlantation/createPlantationLocally (drop-in). */
 export async function createPlantationWithDefaultParcela(
   params: CreatePlantationParams,
@@ -64,12 +88,7 @@ export async function createPlantationWithDefaultParcela(
     try {
       await insertDefaultParcela(plantation.id);
     } catch (e) {
-      // Rollback manual: borra la plantación local para no dejar una huérfana sin parcela default;
-      // la membresía va primero (FK sin ON DELETE CASCADE). La fila server (modo online) no se
-      // puede revertir desde acá.
-      await db.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantation.id));
-      await db.delete(plantations).where(eq(plantations.id, plantation.id));
-      throw e;
+      await rollbackFailedPlantation(plantation.id, params.mode, e);
     }
   }
   return plantation;

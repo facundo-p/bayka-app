@@ -26,22 +26,30 @@ jest.mock('../../src/services/SyncService', () => ({
   pullFromServer: jest.fn(),
 }));
 
+jest.mock('../../src/utils/syncLogger', () => ({
+  syncLog: { info: jest.fn(), error: jest.fn() },
+}));
+
 import {
   createPlantation,
   finalizePlantation,
+  FinalizePlantationLocalSyncError,
   saveSpeciesConfig,
   assignTechnicians,
+  deletePlantationRemotely,
 } from '../../src/repositories/PlantationRepository';
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { pullFromServer } from '../../src/services/SyncService';
+import { syncLog } from '../../src/utils/syncLogger';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockPullFromServer = pullFromServer as jest.Mock;
+const mockSyncLog = syncLog as jest.Mocked<typeof syncLog>;
 
 const fakePlantation = {
   id: 'plantation-uuid-1',
@@ -167,6 +175,34 @@ describe('PlantationRepository', () => {
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
+
+    it('Test 5: server ok + local fails — throws FinalizePlantationLocalSyncError, logs, does NOT notify', async () => {
+      (mockDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockRejectedValue(new Error('SQLITE_BUSY')),
+        }),
+      });
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow(FinalizePlantationLocalSyncError);
+
+      // El server ya quedó finalizado: no debe repetirse el update remoto ni notificar UI a medias.
+      expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
+      expect(mockSyncLog.error).toHaveBeenCalledWith(expect.stringContaining('plantation-1'), expect.any(Error));
+    });
+
+    it('Test 6: server fails — local SQLite untouched, error del server se propaga', async () => {
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: new Error('permission denied') }),
+        }),
+      });
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow('permission denied');
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
+    });
   });
 
   // ─── saveSpeciesConfig ────────────────────────────────────────────────────
@@ -215,6 +251,41 @@ describe('PlantationRepository', () => {
 
       expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
       expect(mockNotifyDataChanged).toHaveBeenCalled();
+    });
+  });
+
+  // ─── deletePlantationRemotely ─────────────────────────────────────────────
+
+  describe('deletePlantationRemotely', () => {
+    it('borra por id sin throwear cuando Supabase devuelve la fila borrada', async () => {
+      const selectMock = jest.fn().mockResolvedValue({ data: [{ id: 'plantation-1' }], error: null });
+      const eqMock = jest.fn().mockReturnValue({ select: selectMock });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
+
+      await expect(deletePlantationRemotely('plantation-1')).resolves.toBeUndefined();
+
+      expect(mockSupabase.from).toHaveBeenCalledWith('plantations');
+      expect(eqMock).toHaveBeenCalledWith('id', 'plantation-1');
+    });
+
+    it('throwea cuando Supabase devuelve error', async () => {
+      const dbError = new Error('permission denied');
+      const selectMock = jest.fn().mockResolvedValue({ data: null, error: dbError });
+      const eqMock = jest.fn().mockReturnValue({ select: selectMock });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
+
+      await expect(deletePlantationRemotely('plantation-1')).rejects.toThrow('permission denied');
+    });
+
+    it('throwea cuando 0 filas vuelven (RLS filtró la fila, no se borró nada)', async () => {
+      const selectMock = jest.fn().mockResolvedValue({ data: [], error: null });
+      const eqMock = jest.fn().mockReturnValue({ select: selectMock });
+      const deleteMock = jest.fn().mockReturnValue({ eq: eqMock });
+      (mockSupabase.from as jest.Mock).mockReturnValue({ delete: deleteMock });
+
+      await expect(deletePlantationRemotely('plantation-1')).rejects.toThrow(/0 filas/);
     });
   });
 
