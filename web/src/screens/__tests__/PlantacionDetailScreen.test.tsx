@@ -94,6 +94,20 @@ function configurarDetalleMock(): void {
       conIdArboles = totalArboles;
       return { data: { success: true, updated: totalArboles, seed: 1001 } };
     }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'plantation_ids_status') {
+      return {
+        data: [
+          {
+            total: totalArboles,
+            con_id: conIdArboles,
+            generados: totalArboles > 0 && totalArboles === conIdArboles,
+          },
+        ],
+      };
+    }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'next_global_id_seed') {
+      return { data: 1001 };
+    }
     if (consulta.tabla === 'plantations') {
       const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
       return { data: filtroId?.valor === FILA_PLANTACION.id ? FILA_PLANTACION : null };
@@ -103,11 +117,7 @@ function configurarDetalleMock(): void {
     if (consulta.tabla === 'trees') {
       // La query de exportación se distingue por seleccionar `plantacion_id`.
       if (consulta.columnas?.includes('plantacion_id')) return { data: filasExport };
-      // seedSugerido: pide una sola fila (MAX global_id vía orden desc + limit 1).
-      if (consulta.limite === 1) return { data: [{ global_id: 1000 }] };
-      // El conteo "sólo con id" se distingue por el filtro sobre global_id.
-      const soloConId = consulta.filtros.some((filtro) => filtro.columna === 'global_id');
-      return { data: [], count: soloConId ? conIdArboles : totalArboles };
+      return { data: [], count: 0 };
     }
     return { data: [], count: 0 };
   };
@@ -179,7 +189,7 @@ test('si otra sesión ya generó (ALREADY_GENERATED) el modal muestra el error',
   conIdArboles = 0;
   const resolverBase = estadoMock.resolverConsulta!;
   estadoMock.resolverConsulta = (consulta) =>
-    consulta.operacion === 'rpc'
+    consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids'
       ? { data: { success: false, error: ERRORES_GENERACION_IDS.YA_GENERADOS } }
       : resolverBase(consulta);
   renderRutasEn('/plantaciones/plant-1');
