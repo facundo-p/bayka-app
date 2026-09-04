@@ -19,6 +19,7 @@ import {
   updatePlantation,
   finalizePlantation,
   discardPlantationEdit,
+  FinalizePlantationLocalSyncError,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
@@ -104,7 +105,11 @@ export function usePlantationAdmin() {
                 try {
                   await finalizePlantation(plantacionId);
                 } catch (e: any) {
-                  showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantacion.', 'alert-circle-outline', colors.danger);
+                  if (e instanceof FinalizePlantationLocalSyncError) {
+                    showInfoDialog(showConfirm, 'Plantacion finalizada', 'La plantacion se finalizo en el servidor. Este dispositivo se actualizara en la proxima sincronizacion.', 'cloud-done-outline', colors.info);
+                  } else {
+                    showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantacion.', 'alert-circle-outline', colors.danger);
+                  }
                 }
               },
             },

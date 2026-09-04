@@ -123,22 +123,8 @@ export async function createPlantationLocally(
 
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
-/** Fila mínima necesaria para decidir el camino online/offline y armar el snapshot de server. */
-type CurrentPlantationRow = {
-  pendingSync: boolean;
-  pendingEdit: boolean;
-  lugarServer: string | null;
-  periodoServer: string | null;
-  lugarCurrent: string;
-  periodoCurrent: string;
-  gpsFreqServer: number | null;
-  gpsReqServer: boolean | null;
-  gpsFreqCurrent: number | null;
-  gpsReqCurrent: boolean | null;
-};
-
 /** Lee el estado actual de la plantación necesario para decidir cómo aplicar la edición. */
-async function resolveCurrentPlantationRow(plantacionId: string): Promise<CurrentPlantationRow> {
+async function resolveCurrentPlantationRow(plantacionId: string) {
   const [row] = await db
     .select({
       pendingSync: plantations.pendingSync,
@@ -159,18 +145,8 @@ async function resolveCurrentPlantationRow(plantacionId: string): Promise<Curren
   return row;
 }
 
-/** Plantación creada offline (aún sin fila en el server): edita el local sin pendingEdit ni snapshot. */
-async function updateOfflineCreatedPlantation(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gpsLocal: Partial<PlantationGpsSettings>
-): Promise<void> {
-  await db
-    .update(plantations)
-    .set({ lugar, periodo, ...gpsLocal })
-    .where(eq(plantations.id, plantacionId));
-}
+/** Fila mínima necesaria para decidir el camino online/offline y armar el snapshot de server. */
+type CurrentPlantationRow = Awaited<ReturnType<typeof resolveCurrentPlantationRow>>;
 
 /** Snapshot de las columnas *Server tras un push exitoso (solo si se editó la config GPS). */
 function buildGpsServerSnapshot(gps?: PlantationGpsSettings) {
@@ -182,6 +158,27 @@ function buildGpsServerSnapshot(gps?: PlantationGpsSettings) {
     : {};
 }
 
+/** Sincroniza el mirror local tras un push exitoso: valores actuales + snapshot *Server + limpia pendingEdit. */
+async function updateLocalMirrorAfterPush(
+  plantacionId: string,
+  lugar: string,
+  periodo: string,
+  gps: PlantationGpsSettings | undefined
+): Promise<void> {
+  await db
+    .update(plantations)
+    .set({
+      lugar,
+      periodo,
+      lugarServer: lugar,
+      periodoServer: periodo,
+      pendingEdit: false,
+      ...(gps ?? {}),
+      ...buildGpsServerSnapshot(gps),
+    })
+    .where(eq(plantations.id, plantacionId));
+}
+
 /**
  * Intenta pushear la edición a Supabase y, si sale bien, sincroniza las columnas *Server local.
  * Devuelve false (sin tocar nada más) ante una falla de red, para que el caller caiga al camino
@@ -191,8 +188,7 @@ async function tryPushPlantationUpdateOnline(
   plantacionId: string,
   lugar: string,
   periodo: string,
-  gps: PlantationGpsSettings | undefined,
-  gpsLocal: Partial<PlantationGpsSettings>
+  gps: PlantationGpsSettings | undefined
 ): Promise<boolean> {
   try {
     const { error } = await supabase
@@ -201,18 +197,7 @@ async function tryPushPlantationUpdateOnline(
       .eq('id', plantacionId);
     if (error) throw error;
 
-    await db
-      .update(plantations)
-      .set({
-        lugar,
-        periodo,
-        lugarServer: lugar,
-        periodoServer: periodo,
-        pendingEdit: false,
-        ...gpsLocal,
-        ...buildGpsServerSnapshot(gps),
-      })
-      .where(eq(plantations.id, plantacionId));
+    await updateLocalMirrorAfterPush(plantacionId, lugar, periodo, gps);
     return true;
   } catch (e: any) {
     if (!isNetworkRequestFailed(e)) throw e;
@@ -221,8 +206,8 @@ async function tryPushPlantationUpdateOnline(
 }
 
 /** Snapshot de server SOLO en la primera edición offline, para que discardPlantationEdit revierta al último valor confirmado. */
-function buildOfflineEditSnapshot(row: CurrentPlantationRow, isFirstOfflineEdit: boolean) {
-  if (!isFirstOfflineEdit) return {};
+function buildOfflineEditSnapshot(row: CurrentPlantationRow) {
+  if (row.pendingEdit) return {};
   return {
     lugarServer: row.lugarServer ?? row.lugarCurrent,
     periodoServer: row.periodoServer ?? row.periodoCurrent,
@@ -236,18 +221,17 @@ async function applyOfflineEdit(
   plantacionId: string,
   lugar: string,
   periodo: string,
-  gpsLocal: Partial<PlantationGpsSettings>,
+  gps: PlantationGpsSettings | undefined,
   row: CurrentPlantationRow
 ): Promise<void> {
-  const isFirstOfflineEdit = !row.pendingEdit;
   await db
     .update(plantations)
     .set({
       lugar,
       periodo,
-      ...gpsLocal,
+      ...(gps ?? {}),
       pendingEdit: true,
-      ...buildOfflineEditSnapshot(row, isFirstOfflineEdit),
+      ...buildOfflineEditSnapshot(row),
     })
     .where(eq(plantations.id, plantacionId));
 }
@@ -263,25 +247,27 @@ export async function updatePlantation(
   periodo: string,
   gps?: PlantationGpsSettings
 ): Promise<void> {
-  const gpsLocal = gps ?? {};
   const row = await resolveCurrentPlantationRow(plantacionId);
 
   if (row.pendingSync) {
-    await updateOfflineCreatedPlantation(plantacionId, lugar, periodo, gpsLocal);
+    await db
+      .update(plantations)
+      .set({ lugar, periodo, ...(gps ?? {}) })
+      .where(eq(plantations.id, plantacionId));
     notifyDataChanged();
     return;
   }
 
   const net = await NetInfo.fetch();
   if (net.isConnected !== false) {
-    const pushed = await tryPushPlantationUpdateOnline(plantacionId, lugar, periodo, gps, gpsLocal);
+    const pushed = await tryPushPlantationUpdateOnline(plantacionId, lugar, periodo, gps);
     if (pushed) {
       notifyDataChanged();
       return;
     }
   }
 
-  await applyOfflineEdit(plantacionId, lugar, periodo, gpsLocal, row);
+  await applyOfflineEdit(plantacionId, lugar, periodo, gps, row);
   notifyDataChanged();
 }
 
@@ -445,10 +431,18 @@ export async function assignTechnicians(
 
 // ─── deletePlantationRemotely ────────────────────────────────────────────────
 
-/** Borra la fila de plantación en Supabase (FKs server cascadean plantation_users); usada como rollback best-effort cuando un create online falla antes de tener su parcela default. No throwea: el caller decide qué hacer con el error. */
-export async function deletePlantationRemotely(id: string): Promise<{ error: unknown }> {
-  const { error } = await supabase.from('plantations').delete().eq('id', id);
-  return { error };
+/**
+ * Borra la fila de plantación en Supabase (FKs server cascadean plantation_users); usada como
+ * rollback cuando un create online falla antes de tener su parcela default. Throwea igual que
+ * las funciones hermanas de este archivo: en error de Postgres, y también si RLS filtró la fila
+ * (0 rows devueltas = la fila sigue viva en el server pese al delete).
+ */
+export async function deletePlantationRemotely(id: string): Promise<void> {
+  const { data, error } = await supabase.from('plantations').delete().eq('id', id).select('id');
+  if (error) throw error;
+  if (!data || data.length === 0) {
+    throw new Error(`deletePlantationRemotely: 0 filas borradas para ${id} (RLS o la fila ya no existe)`);
+  }
 }
 
 // --- deletePlantationLocally ------------------------------------------------

@@ -3,17 +3,15 @@
  * ("Parcela 1"/"P1") atómicamente. Único call site: usePlantationAdmin.handleCreateSubmit — los
  * paths de pull/sync no deben usarlo (las plantaciones de server traen sus parcelas vía pullParcelas).
  * El modo online llama a Supabase antes de la transacción local: si la parcela falla, el rollback
- * borra primero la fila server (best-effort) y recién después las filas locales; si el delete
+ * borra primero las filas locales y recién después la fila server (best-effort); si el delete
  * remoto también falla, el error final avisa que puede haber quedado una fila huérfana en el server.
  * Para eliminar: borrar este archivo + su import/call en usePlantationAdmin.ts, y volver a llamar
  * createPlantation/createPlantationLocally directo.
  */
-import { db } from '../database/client';
-import { plantations, plantationUsers } from '../database/schema';
-import { eq } from 'drizzle-orm';
 import {
   createPlantation,
   createPlantationLocally,
+  deletePlantationLocally,
   deletePlantationRemotely,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
@@ -53,29 +51,25 @@ async function insertDefaultParcela(plantacionId: string): Promise<void> {
   }
 }
 
-/** Borra las filas locales de una plantación abortada (membresía primero: FK sin ON DELETE CASCADE). */
-async function rollbackLocalPlantationRows(plantationId: string): Promise<void> {
-  await db.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantationId));
-  await db.delete(plantations).where(eq(plantations.id, plantationId));
-}
-
-/** Intenta borrar la fila server tras un fallo de parcela en modo online; nunca throwea, solo loguea y devuelve si quedó un leftover remoto. */
-async function tryDeleteRemotePlantation(plantationId: string): Promise<boolean> {
-  const { error } = await deletePlantationRemotely(plantationId);
-  if (!error) return false;
-  syncLog.error(`createPlantationWithDefaultParcela: no se pudo borrar la plantación remota ${plantationId} tras fallo de parcela default`, error);
-  return true;
-}
-
-/** Rollback ante fallo de parcela: en modo online intenta borrar la fila server antes que las locales; rethrow del error original, ampliado si el server quedó huérfano. */
-async function rollbackFailedPlantation(plantation: CreatePlantationResult, mode: CreatePlantationMode, originalError: unknown): Promise<never> {
-  const remoteLeftover = mode === 'online' ? await tryDeleteRemotePlantation(plantation.id) : false;
-  await rollbackLocalPlantationRows(plantation.id);
-  if (remoteLeftover) {
-    const originalMessage = originalError instanceof Error ? originalError.message : String(originalError);
-    throw new Error(
-      `${originalMessage} (además, no se pudo borrar la plantación remota ${plantation.id}: puede haber quedado huérfana en el servidor)`
-    );
+/**
+ * Rollback ante fallo de parcela: borra primero las filas locales (deletePlantationLocally,
+ * transaccional y con el orden de FK correcto); si eso falla, se propaga tal cual — el server
+ * todavía no se tocó, queda consistente con el estado previo. En modo online borra después la
+ * fila server (best-effort); si ese delete falla, el error final avisa del posible huérfano.
+ */
+async function rollbackFailedPlantation(plantationId: string, mode: CreatePlantationMode, originalError: unknown): Promise<never> {
+  await deletePlantationLocally(plantationId);
+  if (mode === 'online') {
+    try {
+      await deletePlantationRemotely(plantationId);
+    } catch (remoteError) {
+      syncLog.error(`createPlantationWithDefaultParcela: no se pudo borrar la plantación remota ${plantationId} tras fallo de parcela default`, remoteError);
+      const originalMessage = originalError instanceof Error ? originalError.message : String(originalError);
+      throw new Error(
+        `${originalMessage} (además, no se pudo borrar la plantación remota; puede haber quedado sin parcela)`,
+        { cause: originalError }
+      );
+    }
   }
   throw originalError;
 }
@@ -94,7 +88,7 @@ export async function createPlantationWithDefaultParcela(
     try {
       await insertDefaultParcela(plantation.id);
     } catch (e) {
-      await rollbackFailedPlantation(plantation, params.mode, e);
+      await rollbackFailedPlantation(plantation.id, params.mode, e);
     }
   }
   return plantation;
