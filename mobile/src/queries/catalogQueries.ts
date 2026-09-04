@@ -7,6 +7,7 @@ import { db } from '../database/client';
 import { plantations, groups } from '../database/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { fetchAllRows } from '../services/sync/paginate';
+import { ESTADO_GRUPO } from '../constants/estados';
 
 export type ServerPlantation = {
   id: string;
@@ -158,7 +159,7 @@ export async function getUnsyncedGroupSummary(
     .groupBy(groups.estado);
 
   return {
-    activaCount: rows.find((r) => r.estado === 'activa')?.cnt ?? 0,
-    finalizadaCount: rows.find((r) => r.estado === 'finalizada')?.cnt ?? 0,
+    activaCount: rows.find((r) => r.estado === ESTADO_GRUPO.activa)?.cnt ?? 0,
+    finalizadaCount: rows.find((r) => r.estado === ESTADO_GRUPO.finalizada)?.cnt ?? 0,
   };
 }

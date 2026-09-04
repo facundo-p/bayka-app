@@ -1,0 +1,14 @@
+{
+  "_comment": "Fuente de verdad del orden de columnas de exportación (CSV/XLSX). Cambiar esto implica actualizar las copias runtime (mobile/src/services/ExportService.ts CSV_HEADER/rowToExcel, web/src/services/exportarCsv.ts ENCABEZADO_CSV, web/src/services/exportarXlsx.ts COLUMNAS_XLSX) y sus contract tests en el mismo cambio.",
+  "headers": [
+    "ID Global",
+    "ID Parcial",
+    "Zona",
+    "Plantación",
+    "Parcela",
+    "Grupo",
+    "SubID",
+    "Periodo",
+    "Especie"
+  ]
+}

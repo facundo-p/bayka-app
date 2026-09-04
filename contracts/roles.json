@@ -1,0 +1,6 @@
+{
+  "_comment": "Fuente de verdad de los roles de usuario. Cambiar esto implica actualizar las copias runtime (web/src/repositories/profileRepository.ts ROL, mobile/src/constants/roles.ts ROL) y sus contract tests en el mismo cambio.",
+  "admin": "admin",
+  "tecnico": "tecnico",
+  "superadmin": "superadmin"
+}

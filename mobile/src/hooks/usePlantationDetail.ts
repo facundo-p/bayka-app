@@ -23,6 +23,7 @@ import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
+import { ESTADO_PLANTACION, ESTADO_GRUPO } from '../constants/estados';
 import { findById as findParcelaById } from '../repositories/ParcelaRepository';
 import type { Parcela } from '../repositories/ParcelaRepository';
 
@@ -57,7 +58,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   );
   const plantacionEstado = estadoData?.[0]?.estado ?? '';
   const estadoLoaded = estadoData !== undefined;
-  const isFinalizada = plantacionEstado === 'finalizada';
+  const isFinalizada = plantacionEstado === ESTADO_PLANTACION.finalizada;
 
   const creatorIds = useMemo(() => {
     const ids = (groupRows ?? []).map((sg: any) => sg.usuarioCreador).filter(Boolean);
@@ -94,7 +95,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
 
   function handleLongPress(subgroup: Group) {
     const isOwner = userId ? subgroup.usuarioCreador === userId : false;
-    if (!isOwner || subgroup.estado !== 'activa') return;
+    if (!isOwner || subgroup.estado !== ESTADO_GRUPO.activa) return;
     setEditingGroup(subgroup);
   }
 

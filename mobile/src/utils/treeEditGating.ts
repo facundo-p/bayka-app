@@ -1,3 +1,5 @@
+import { ESTADO_PLANTACION, ESTADO_GRUPO } from '../constants/estados';
+
 /**
  * Permisos del detalle/edición de árbol:
  * - Plantación finalizada o usuario no-creador → sólo lectura.
@@ -14,7 +16,7 @@ export function getTreeEditGating(params: {
   subgroupEstado: string;
   isCreator: boolean;
 }): TreeEditGating {
-  const canEdit = params.plantacionEstado !== 'finalizada' && params.isCreator;
-  const canDelete = canEdit && params.subgroupEstado === 'activa';
+  const canEdit = params.plantacionEstado !== ESTADO_PLANTACION.finalizada && params.isCreator;
+  const canDelete = canEdit && params.subgroupEstado === ESTADO_GRUPO.activa;
   return { canEdit, canDelete };
 }

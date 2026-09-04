@@ -5,7 +5,13 @@
  * (numera y persiste server-side); la app recibe los IDs por el pull normal.
  */
 import { supabase } from '../lib/supabase';
-import { contarOLanzar } from './conteo';
+
+/** RPCs de estado/generación de IDs (espejan los definidos en supabase/migrations). */
+const RPC = {
+  ESTADO_IDS: 'plantation_ids_status',
+  SEED_SUGERIDO: 'next_global_id_seed',
+  GENERAR_IDS: 'generate_tree_ids',
+} as const;
 
 /** Errores de negocio que devuelve `generate_tree_ids` en el payload `{ success: false, error }`. */
 export const ERRORES_GENERACION_IDS = {
@@ -28,43 +34,23 @@ const MENSAJES_ERROR_GENERACION: Record<string, string> = {
 
 const MENSAJE_ERROR_GENERACION = 'No se pudieron generar los IDs. Probá de nuevo.';
 
-/** Cuenta árboles de la plantación; con `soloConId`, solo los que ya tienen `global_id`. */
-async function contarArboles(plantationId: string, soloConId: boolean): Promise<number> {
-  let consulta = supabase
-    .from('trees')
-    .select('id, groups!inner(plantation_id)', { count: 'exact', head: true })
-    .eq('groups.plantation_id', plantationId);
-  if (soloConId) consulta = consulta.not('global_id', 'is', null);
-  const { count, error } = await consulta;
-  return contarOLanzar(count, error);
-}
-
 /**
  * True solo si hay al menos un árbol y TODOS tienen `global_id` (un set parcial cuenta como NO
- * generado). Gobierna la visibilidad de "Generar IDs" vs. "Exportar".
+ * generado). Gobierna la visibilidad de "Generar IDs" vs. "Exportar". El RPC devuelve un array
+ * de filas (vacío si la plantación no existe/no tiene árboles) → sin filas es "no generado".
  */
 export async function idsGenerados(plantationId: string): Promise<boolean> {
-  const [total, conId] = await Promise.all([
-    contarArboles(plantationId, false),
-    contarArboles(plantationId, true),
-  ]);
-  return total > 0 && total === conId;
+  const { data, error } = await supabase.rpc(RPC.ESTADO_IDS, { p_plantation_id: plantationId });
+  if (error) throw new Error(error.message);
+  const filas = (data ?? []) as Array<{ total: number; con_id: number; generados: boolean }>;
+  return filas[0]?.generados ?? false;
 }
 
-/**
- * MAX(global_id) del server + 1 (1 si no hay ninguno). PostgREST no expone MAX directo: se toma
- * la primera fila ordenada descendente.
- */
+/** Sugerencia de seed para "Generar IDs": MAX(global_id) global + 1 (1 si no hay ninguno), vía RPC. */
 export async function seedSugerido(): Promise<number> {
-  const { data, error } = await supabase
-    .from('trees')
-    .select('global_id')
-    .not('global_id', 'is', null)
-    .order('global_id', { ascending: false })
-    .limit(1);
+  const { data, error } = await supabase.rpc(RPC.SEED_SUGERIDO);
   if (error) throw new Error(error.message);
-  const filas = (data ?? []) as Array<{ global_id: number }>;
-  return (filas[0]?.global_id ?? 0) + 1;
+  return data as number;
 }
 
 export type ResultadoGeneracionIds = { updated: number; seed: number };
@@ -81,7 +67,7 @@ export async function generarIds(
   plantationId: string,
   seed: number,
 ): Promise<ResultadoGeneracionIds> {
-  const { data, error } = await supabase.rpc('generate_tree_ids', {
+  const { data, error } = await supabase.rpc(RPC.GENERAR_IDS, {
     p_plantation_id: plantationId,
     p_seed: seed,
   });

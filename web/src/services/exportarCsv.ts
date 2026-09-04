@@ -12,7 +12,8 @@ const EXTENSION_CSV = 'csv';
 /** BOM UTF-8: sin él, Excel (Windows) lee el CSV como ANSI y rompe acentos/ñ. */
 const BOM_UTF8 = '\uFEFF';
 
-const ENCABEZADO_CSV = 'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
+export const ENCABEZADO_CSV =
+  'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie';
 
 /** RFC 4180: comilla el campo si tiene coma/comilla/salto de línea, duplicando comillas internas; null/undefined → vacío. */
 function campoCsv(valor: string | number | null | undefined): string {

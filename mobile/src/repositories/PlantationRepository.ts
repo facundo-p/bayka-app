@@ -12,6 +12,8 @@ import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
 import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
+import { ROL } from '../constants/roles';
+import { ESTADO_PLANTACION } from '../constants/estados';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -22,7 +24,7 @@ async function upsertLocalAdminMembership(plantacionId: string, userId: string):
     .values({
       plantationId: plantacionId,
       userId,
-      rolEnPlantacion: 'admin',
+      rolEnPlantacion: ROL.admin,
       assignedAt: new Date().toISOString(),
     })
     .onConflictDoNothing();
@@ -60,7 +62,7 @@ export async function createPlantation(
       periodo,
       organizacion_id: organizacionId,
       creado_por: creadoPor,
-      estado: 'activa',
+      estado: ESTADO_PLANTACION.activa,
       ...gpsToRemoteColumns(gps),
     })
     .select()
@@ -110,7 +112,7 @@ export async function createPlantationLocally(
     organizacionId,
     lugar,
     periodo,
-    estado: 'activa',
+    estado: ESTADO_PLANTACION.activa,
     creadoPor,
     createdAt: now,
     pendingSync: true,
@@ -118,7 +120,7 @@ export async function createPlantationLocally(
   });
   await upsertLocalAdminMembership(id, creadoPor);
   notifyDataChanged();
-  return { id, lugar, periodo, estado: 'activa' };
+  return { id, lugar, periodo, estado: ESTADO_PLANTACION.activa };
 }
 
 // ─── updatePlantation ─────────────────────────────────────────────────────────
@@ -322,7 +324,7 @@ export class FinalizePlantationLocalSyncError extends Error {
 export async function finalizePlantation(plantacionId: string): Promise<void> {
   const { error } = await supabase
     .from('plantations')
-    .update({ estado: 'finalizada' })
+    .update({ estado: ESTADO_PLANTACION.finalizada })
     .eq('id', plantacionId);
 
   if (error) throw error;
@@ -330,7 +332,7 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
   try {
     await db
       .update(plantations)
-      .set({ estado: 'finalizada' })
+      .set({ estado: ESTADO_PLANTACION.finalizada })
       .where(eq(plantations.id, plantacionId));
   } catch (e) {
     syncLog.error(`finalizePlantation: update local falló tras éxito en server para ${plantacionId}`, e);
@@ -404,7 +406,7 @@ export async function assignTechnicians(
     .from('plantation_users')
     .delete()
     .eq('plantation_id', plantacionId)
-    .eq('rol_en_plantacion', 'tecnico');
+    .eq('rol_en_plantacion', ROL.tecnico);
 
   console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;
@@ -417,7 +419,7 @@ export async function assignTechnicians(
         userIds.map((userId) => ({
           plantation_id: plantacionId,
           user_id: userId,
-          rol_en_plantacion: 'tecnico',
+          rol_en_plantacion: ROL.tecnico,
           assigned_at: now,
         }))
       );

@@ -9,8 +9,9 @@ import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 import { getTreeEditGating } from '../utils/treeEditGating';
 import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
 import type { GroupTipo } from '../constants/groupTipo';
+import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 
-export type GroupEstado = 'activa' | 'finalizada' | 'sincronizada';
+export type GroupEstado = EstadoGrupo;
 export type { GroupTipo };
 
 export interface Group {
@@ -107,7 +108,7 @@ export async function createGroup(params: {
       nombre: params.nombre,
       codigo: upperCodigo,
       tipo: params.tipo,
-      estado: 'activa',
+      estado: ESTADO_GRUPO.activa,
       usuarioCreador: params.usuarioCreador,
       createdAt: localNow(),
       pendingSync: true,
@@ -140,7 +141,7 @@ export async function markGroupSynced(grupoId: string): Promise<void> {
 // activa → finalizada. N/N sin resolver puede sincronizar: cualquier usuario lo resuelve después de descargarlo; no hay gate de N/N en el sync.
 export async function finalizeGroup(grupoId: string): Promise<{ success: true }> {
   await db.update(groups)
-    .set({ estado: 'finalizada' })
+    .set({ estado: ESTADO_GRUPO.finalizada })
     .where(eq(groups.id, grupoId));
 
   await markGroupPendingSync(grupoId);
@@ -156,7 +157,7 @@ export function canEdit(
 ): boolean {
   return getTreeEditGating({
     plantacionEstado,
-    subgroupEstado: 'activa',
+    subgroupEstado: ESTADO_GRUPO.activa,
     isCreator: group.usuarioCreador === userId,
   }).canEdit;
 }
@@ -263,7 +264,7 @@ export async function updateGroupCode(
 /** Reactivates a finalized group back to 'activa' state. */
 export async function reactivateGroup(id: string): Promise<void> {
   await db.update(groups)
-    .set({ estado: 'activa' })
+    .set({ estado: ESTADO_GRUPO.activa })
     .where(eq(groups.id, id));
   await markGroupPendingSync(id);
   notifyDataChanged();
@@ -286,7 +287,7 @@ export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; 
 export async function getFinalizadaGroups(plantacionId: string, userId?: string): Promise<Group[]> {
   const conditions = [
     eq(groups.plantacionId, plantacionId),
-    eq(groups.estado, 'finalizada'),
+    eq(groups.estado, ESTADO_GRUPO.finalizada),
   ];
   if (userId) {
     conditions.push(eq(groups.usuarioCreador, userId));

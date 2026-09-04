@@ -3,6 +3,7 @@ import { db } from '../database/client';
 import { groups, trees, parcelas } from '../database/schema';
 import { eq, count, and, isNotNull, sql } from 'drizzle-orm';
 import { sqlIsLocalUri } from '../utils/photoUri';
+import { ESTADO_GRUPO } from '../constants/estados';
 
 export interface PendingCountQueryOpts {
   plantacionId?: string;
@@ -20,7 +21,7 @@ export function countNNBlockedGroups(opts: PendingCountQueryOpts) {
   if (!opts.plantacionId) return Promise.resolve([{ cnt: 0 }]);
   const conditions = [
     eq(groups.plantacionId, opts.plantacionId),
-    eq(groups.estado, 'finalizada'),
+    eq(groups.estado, ESTADO_GRUPO.finalizada),
     sql`EXISTS (SELECT 1 FROM trees WHERE trees.group_id = ${groups.id} AND trees.especie_id IS NULL)`,
   ];
   if (opts.userId) conditions.push(eq(groups.usuarioCreador, opts.userId));

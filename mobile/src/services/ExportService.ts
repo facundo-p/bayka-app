@@ -44,7 +44,7 @@ function writeCsvWithBom(file: File, csvBody: string): void {
 
 // ─── Header constant ─────────────────────────────────────────────────────────
 
-const CSV_HEADER =
+export const CSV_HEADER =
   'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
@@ -74,7 +74,7 @@ function rowToCSV(r: ExportRow): string {
 }
 
 /** Igual a rowToCSV pero como objeto, para SheetJS. */
-function rowToExcel(r: ExportRow) {
+export function rowToExcel(r: ExportRow) {
   return {
     'ID Global': r.globalId,
     'ID Parcial': r.idParcial,

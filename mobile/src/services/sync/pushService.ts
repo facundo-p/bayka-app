@@ -146,8 +146,7 @@ export async function uploadGroup(
     nombre: sg.nombre,
     codigo: sg.codigo,
     tipo: sg.tipo,
-    // El server solo acepta 'activa'|'finalizada'; 'sincronizada' es un flag solo-cliente que mapea a 'finalizada'.
-    estado: sg.estado === 'activa' ? 'activa' : 'finalizada',
+    estado: sg.estado,
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
   };
