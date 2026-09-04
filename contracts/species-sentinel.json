@@ -1,0 +1,4 @@
+{
+  "_comment": "Fuente de verdad del código sentinela de especie no identificada. Cambiar esto implica actualizar las copias runtime (mobile/src/utils/speciesHelpers.ts UNKNOWN_SPECIES_CODE, web/src/queries/especiesConstantes.ts ESPECIE_SIN_IDENTIFICAR) y sus contract tests en el mismo cambio.",
+  "code": "NN"
+}

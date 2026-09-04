@@ -20,6 +20,7 @@ import {
   reactivateGroup,
 } from '../repositories/GroupRepository';
 import type { GroupEstado } from '../repositories/GroupRepository';
+import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 
 export interface UseTreeRegistrationParams {
   grupoId: string;
@@ -108,13 +109,13 @@ export function useTreeRegistration({
     [grupoId]
   );
   const subgroup = groupRows?.[0] ?? null;
-  const subgroupEstado = (subgroup?.estado ?? 'activa') as GroupEstado;
+  const subgroupEstado = (subgroup?.estado ?? ESTADO_GRUPO.activa) as GroupEstado;
 
   const { data: plantationEstadoRows } = useLiveData(
     () => getPlantationEstado(plantacionId),
     [plantacionId]
   );
-  const plantacionEstado = plantationEstadoRows ?? 'activa';
+  const plantacionEstado = plantationEstadoRows ?? ESTADO_PLANTACION.activa;
 
   const { data: gpsConfig } = useLiveData(
     () => getPlantationGpsConfig(plantacionId),
@@ -128,8 +129,8 @@ export function useTreeRegistration({
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador }, userId, plantacionEstado)
     : false;
   const dataLoaded = subgroup !== null && userId !== '';
-  const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== 'activa') : false;
-  const canReactivate = isCreator && subgroupEstado === 'finalizada';
+  const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
+  const canReactivate = isCreator && subgroupEstado === ESTADO_GRUPO.finalizada;
 
   const sortedTrees = [...allTrees].sort((a, b) => a.posicion - b.posicion);
 

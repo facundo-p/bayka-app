@@ -24,6 +24,7 @@ import {
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
+import { ESTADO_PLANTACION } from '../constants/estados';
 import type { Plantation } from '../components/PlantationConfigCard';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -42,7 +43,7 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
   let idsGenerated = false;
   let unresolvedNNCount = 0;
   let unresolvedNNGroups = 0;
-  if (plantation.estado === 'activa') {
+  if (plantation.estado === ESTADO_PLANTACION.activa) {
     try {
       const gate = await checkFinalizationGate(plantation.id);
       canFinalize = gate.canFinalize;
@@ -52,7 +53,7 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
       console.error('[fetchPlantationMeta] checkFinalizationGate failed:', e);
     }
   }
-  if (plantation.estado === 'finalizada') {
+  if (plantation.estado === ESTADO_PLANTACION.finalizada) {
     try {
       idsGenerated = await hasIdsGenerated(plantation.id);
     } catch (e) {

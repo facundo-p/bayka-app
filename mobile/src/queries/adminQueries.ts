@@ -3,6 +3,8 @@ import { db } from '../database/client';
 import { supabase } from '../supabase/client';
 import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
 import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
+import { ROL } from '../constants/roles';
+import { ESTADO_GRUPO } from '../constants/estados';
 
 /** canFinalize needs ≥1 subgroup, all groups finalizada+synced, and zero unresolved N/N trees. */
 export async function checkFinalizationGate(
@@ -21,7 +23,7 @@ export async function checkFinalizationGate(
 
   // "Done" = finalizada o sincronizada.
   const blocking = allGroups.filter(s =>
-    (s.estado !== 'finalizada' && s.estado !== 'sincronizada') || s.pendingSync
+    (s.estado !== ESTADO_GRUPO.finalizada && s.estado !== ESTADO_GRUPO.sincronizada) || s.pendingSync
   );
 
   const nnRows = await db.select({
@@ -64,7 +66,7 @@ export async function getAllTechnicians(
     .from('profiles')
     .select('id, nombre')
     .eq('organizacion_id', organizacionId)
-    .eq('rol', 'tecnico')
+    .eq('rol', ROL.tecnico)
     // No se ofrece asignar técnicos dados de baja (no pueden loguearse).
     .eq('activo', true);
 
@@ -103,7 +105,7 @@ export async function getAssignedTechnicians(
     .from(plantationUsers)
     .where(and(
       eq(plantationUsers.plantationId, plantacionId),
-      eq(plantationUsers.rolEnPlantacion, 'tecnico'),
+      eq(plantationUsers.rolEnPlantacion, ROL.tecnico),
     ));
 }
 

@@ -14,6 +14,7 @@ import * as SecureStore from 'expo-secure-store';
 import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials } from '../services/OfflineAuthService';
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
+import { ROL } from '../constants/roles';
 
 const ROLE_FETCH_TIMEOUT = 5000;
 const LOGIN_TIMEOUT = 8000;
@@ -258,7 +259,7 @@ export function useAuth() {
 
     const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '');
     if (userRole === CUENTA_DESACTIVADA) return false;
-    await cacheCredential(email, password, userRole ?? 'tecnico');
+    await cacheCredential(email, password, userRole ?? ROL.tecnico);
     await saveLastOnlineLogin();
     return true;
   }
