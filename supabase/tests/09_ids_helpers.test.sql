@@ -10,7 +10,10 @@ insert into auth.users (id, email) values
   ('e0000000-0000-0000-0000-0000000000a1', 'admin-09@test.local'),
   ('e0000000-0000-0000-0000-0000000000a2', 'tecnico-09@test.local'),
   ('e0000000-0000-0000-0000-0000000000a3', 'outsider-09@test.local');
-update profiles set rol = 'admin' where id = 'e0000000-0000-0000-0000-0000000000a1';
+-- organizacion_id también, no solo rol: desde 033 la membresía admin
+-- auto-otorgada por trigger exige que coincida con la de la plantación.
+update profiles set rol = 'admin', organizacion_id = 'e0000000-0000-0000-0000-000000000001'
+  where id = 'e0000000-0000-0000-0000-0000000000a1';
 
 -- Sin ningún tree en toda la base: seed arranca en 1.
 select is(

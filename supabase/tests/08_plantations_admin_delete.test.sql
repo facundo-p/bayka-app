@@ -9,7 +9,10 @@ insert into organizations (id, nombre) values
 insert into auth.users (id, email) values
   ('f0000000-0000-0000-0000-0000000000a1', 'admin-08@test.local'),
   ('f0000000-0000-0000-0000-0000000000a2', 'tecnico-08@test.local');
-update profiles set rol = 'admin' where id = 'f0000000-0000-0000-0000-0000000000a1';
+-- organizacion_id también, no solo rol: desde 033 la membresía admin
+-- auto-otorgada por trigger exige que coincida con la de la plantación.
+update profiles set rol = 'admin', organizacion_id = 'f0000000-0000-0000-0000-000000000001'
+  where id = 'f0000000-0000-0000-0000-0000000000a1';
 
 insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
   ('f0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001',
