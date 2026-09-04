@@ -1,7 +1,7 @@
 -- sync_subgroup (028): guard de membresía interno (SECURITY DEFINER bypassea
 -- RLS, así que el chequeo vive en el body de la función, no en policies).
 begin;
-select plan(5);
+select plan(6);
 
 insert into organizations (id, nombre) values
   ('c0000000-0000-0000-0000-000000000001', 'Org Test 03');
@@ -85,6 +85,26 @@ select is(
   ( select count(*)::int from trees where group_id = 'c0000000-0000-0000-0000-000000000005' ),
   1,
   'el árbol del payload quedó insertado'
+);
+
+-- Estado fuera del CHECK (ej. 'sincronizada', legado de mobile): cae a
+-- 'finalizada', no lo rechaza ni lo inserta tal cual.
+select sync_subgroup(
+  jsonb_build_object(
+    'id', 'c0000000-0000-0000-0000-000000000007',
+    'plantation_id', 'c0000000-0000-0000-0000-000000000002',
+    'parcela_id', 'c0000000-0000-0000-0000-000000000003',
+    'nombre', 'G-sincronizada', 'codigo', 'G-SYNC', 'tipo', 'linea', 'estado', 'sincronizada',
+    'usuario_creador', 'c0000000-0000-0000-0000-0000000000a1',
+    'created_at', now()
+  ),
+  '[]'::jsonb
+);
+
+select is(
+  ( select estado from groups where id = 'c0000000-0000-0000-0000-000000000007' ),
+  'finalizada',
+  'estado "sincronizada" del payload se guarda como "finalizada"'
 );
 
 select * from finish();
