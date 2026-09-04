@@ -10,6 +10,27 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 // Uso: exportar APP_VARIANT=test en prebuild Y en gradlew — o directamente
 // scripts/build-apk.sh test (ver skill build-apk-local).
 const IS_TEST = process.env.APP_VARIANT === 'test';
+
+// Commit del build (#321), solo para la variante TEST: identifica QUÉ se está
+// probando, cosa que la versión no hace (la bumpea /deploy recién al pasar a
+// main). En EAS viene por env; en builds locales y en `eas update` sale de git,
+// con sufijo -dirty si había cambios sin commitear. Si git no está disponible
+// queda vacío y el banner muestra solo la versión.
+const { execFileSync } = require('child_process');
+function gitSiEsPosible(...args) {
+  try {
+    // Sin cwd: expo y eas corren siempre desde mobile/, y git busca el repo hacia arriba.
+    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+}
+function commitDelBuild() {
+  const sha = process.env.EAS_BUILD_GIT_COMMIT_HASH || gitSiEsPosible('rev-parse', 'HEAD');
+  if (!sha) return '';
+  const sucio = !process.env.EAS_BUILD_GIT_COMMIT_HASH && gitSiEsPosible('status', '--porcelain') !== '';
+  return sha.slice(0, 7) + (sucio ? '-dirty' : '');
+}
 if (IS_TEST) {
   require('dotenv').config({ path: path.resolve(__dirname, '.env.staging'), override: true });
 }
@@ -50,6 +71,7 @@ module.exports = ({ config }) => ({
     // Variante de build (#287): src/config/entorno.ts la lee en runtime para
     // mostrar el banner "Entorno de pruebas" solo en la app TEST.
     appVariant: IS_TEST ? 'test' : 'prod',
+    ...(IS_TEST ? { commit: commitDelBuild() } : {}),
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     eas: {

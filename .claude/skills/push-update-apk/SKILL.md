@@ -50,7 +50,10 @@ Use AskUserQuestion:
   > ⚠️ Antes de un update al canal `test`, exportar `APP_VARIANT=test` en la shell:
   > `app.config.js` hornea `extra` (URL/anon key de Supabase **y** `appVariant`, #287)
   > con el env del momento. Sin la variable, el update sale apuntando a prod y sin
-  > el banner "ENTORNO DE PRUEBAS".
+  > el banner "ENTORNO DE PRUEBAS". El commit que muestra el banner sale del
+  > working tree al correr el update (#321): tras el OTA los devices muestran
+  > el commit del código nuevo, no el del APK instalado — sirve para confirmar
+  > que el update llegó.
 - **Production** — Update production builds
 
 ### 4. Ask for update message

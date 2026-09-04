@@ -18,7 +18,7 @@ diagnosticar fallas.
 
 | | `prod` | `test` |
 |---|---|---|
-| Nombre / ícono | "Bayka App", ícono normal | "Bayka TEST", franja roja TEST, banner "ENTORNO DE PRUEBAS · vX (versionCode)" arriba de cada pantalla (#287) |
+| Nombre / ícono | "Bayka App", ícono normal | "Bayka TEST", franja roja TEST, banner "ENTORNO DE PRUEBAS · vX · <commit>" arriba de cada pantalla (#287, #321) |
 | applicationId | `com.bayka.app` | `com.bayka.app.test` (conviven en un device) |
 | Supabase | prod (según `mobile/.env`) | **staging** (según `mobile/.env.staging`) |
 | Artefacto | `mobile/build-output.apk` | `mobile/build-output-test.apk` |

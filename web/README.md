@@ -29,10 +29,15 @@ npm install
 npm run dev
 ```
 
-El banner **"ENTORNO DE PRUEBAS · vX.Y.Z"** (#287) se muestra siempre salvo que el
+El banner **"ENTORNO DE PRUEBAS · vX.Y.Z · <commit>"** (#287, #321) se muestra siempre salvo que el
 build corra con `CF_PAGES_BRANCH=main` (entorno Production de Cloudflare Pages):
 `npm run dev`, un `npm run build` local y los previews de cualquier otra branch lo
 muestran. Para ver el build de prod: `CF_PAGES_BRANCH=main npm run build`.
+
+El commit corto identifica el build que se está probando (la versión no: la
+bumpea `/deploy` recién al pasar a `main`). Sale de `CF_PAGES_COMMIT_SHA` en
+Pages y de `git rev-parse` en dev/CI, con sufijo `-dirty` si el árbol tenía
+cambios sin commitear.
 
 ## Scripts
 
