@@ -188,24 +188,17 @@ export function usePlantationAdmin() {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
-    const base = { lugar, periodo, organizacionId, creadoPor: userId, gps };
+    // El alta es local-first; con red se empuja en el acto y si falla queda pendiente de sync.
     const net = await NetInfo.fetch();
-    if (net.isConnected === false) {
-      const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
-      return result.id;
-    } else {
-      try {
-        const result = await createPlantationWithDefaultParcela({ ...base, mode: 'online' });
-        return result.id;
-      } catch (e: any) {
-        if (e?.message?.includes('Network request failed')) {
-          const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
-          return result.id;
-        } else {
-          throw e;
-        }
-      }
-    }
+    const result = await createPlantationWithDefaultParcela({
+      lugar,
+      periodo,
+      organizacionId,
+      creadoPor: userId,
+      gps,
+      mode: net.isConnected === false ? 'offline' : 'online',
+    });
+    return result.id;
   }
 
   async function handleAssignTech(plantacionId: string): Promise<boolean> {

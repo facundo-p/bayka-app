@@ -25,7 +25,7 @@ datos). Si una migración necesita tocar filas existentes de un ambiente real
 replayable.
 
 Idempotencia: `IF EXISTS` / `IF NOT EXISTS` / `DROP POLICY IF EXISTS` antes de
-`CREATE POLICY`, etc. — mismo criterio que ya usa 030/031.
+`CREATE POLICY`, etc. — mismo criterio que ya usa 030.
 
 ## Crear un ambiente desde cero
 
