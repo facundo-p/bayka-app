@@ -6,7 +6,8 @@
  * a la plantación "SSS-Medio-P4-deprecated".
  *
  * Uso:
- *   SUPABASE_SERVICE_KEY=<service_role> node scripts/deferred/delete-deprecated-medio-p4-photos.mjs [--dry-run]
+ *   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=<service_role> \
+ *     node scripts/deferred/delete-deprecated-medio-p4-photos.mjs [--dry-run]
  *
  * Debe correrse ANTES de `delete-deprecated-medio-p4.sql` (cuando la fila
  * de la plantación sigue viva), porque usa el plantation_id para construir
@@ -15,14 +16,14 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://apktttwrmhamfudjeklu.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const PLANT_ID = '51fea9e5-2537-4cef-82fd-c07d6375dbf0';
 const BUCKET = 'tree-photos';
 const FOLDER = `plantations/${PLANT_ID}/trees`;
 
-if (!SUPABASE_KEY) {
-  console.error('Set SUPABASE_SERVICE_KEY env var');
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Set SUPABASE_URL and SUPABASE_SERVICE_KEY env vars');
   process.exit(1);
 }
 

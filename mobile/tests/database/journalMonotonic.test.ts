@@ -27,4 +27,11 @@ describe('journal de migraciones drizzle', () => {
     entries.forEach((entry, i) => expect(entry.idx).toBe(i));
     expect(new Set(entries.map((e) => e.tag)).size).toBe(entries.length);
   });
+
+  it('ninguna entry idx < 15 tiene when >= la de la 0015 (guarda la renumeración de 0008-0014)', () => {
+    const floor = entries.find((e) => e.idx === 15)!;
+    for (const entry of entries.filter((e) => e.idx < 15)) {
+      expect(entry.when).toBeLessThan(floor.when);
+    }
+  });
 });

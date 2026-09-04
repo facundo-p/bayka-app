@@ -19,9 +19,11 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import journal from '../../drizzle/meta/_journal.json';
 
 const DRIZZLE_DIR = path.join(__dirname, '../../drizzle');
 const DEVICE_FLOOR_IDX = 15; // Piso asumido: ningún device operativo está por debajo de esto.
+const DEVICE_FLOOR_WHEN = journal.entries.find((e) => e.idx === DEVICE_FLOOR_IDX)!.when;
 
 type MigrationRow = { hash: string; created_at: number };
 
@@ -36,12 +38,11 @@ function appliedMigrations(sqlite: InstanceType<typeof Database>): MigrationRow[
 
 /** Carpeta de migraciones truncada a idx <= upToIdx, con copias de los .sql reales — simula el journal que un device vio en su primer install. */
 function buildTruncatedMigrationsFolder(upToIdx: number): string {
-  const journal = JSON.parse(fs.readFileSync(path.join(DRIZZLE_DIR, 'meta/_journal.json'), 'utf8'));
-  const entries = journal.entries.filter((e: { idx: number }) => e.idx <= upToIdx);
+  const entries = journal.entries.filter((e) => e.idx <= upToIdx);
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bayka-migrations-'));
   fs.mkdirSync(path.join(dir, 'meta'));
   fs.writeFileSync(path.join(dir, 'meta/_journal.json'), JSON.stringify({ ...journal, entries }));
-  for (const entry of entries as Array<{ tag: string }>) {
+  for (const entry of entries) {
     fs.copyFileSync(path.join(DRIZZLE_DIR, `${entry.tag}.sql`), path.join(dir, `${entry.tag}.sql`));
   }
   return dir;
@@ -53,19 +54,21 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0018 al actualiza
 
   // Fase 1: fresh install que llega hasta 0015 (piso asumido de todo device operativo).
   const partialDir = buildTruncatedMigrationsFolder(DEVICE_FLOOR_IDX);
-  migrate(db, { migrationsFolder: partialDir });
-  fs.rmSync(partialDir, { recursive: true, force: true });
+  try {
+    migrate(db, { migrationsFolder: partialDir });
+  } finally {
+    fs.rmSync(partialDir, { recursive: true, force: true });
+  }
 
   const afterPhase1 = appliedMigrations(sqlite);
   expect(afterPhase1).toHaveLength(DEVICE_FLOOR_IDX + 1);
-  expect(Math.max(...afterPhase1.map((r) => Number(r.created_at)))).toBe(1774300000000);
+  expect(Math.max(...afterPhase1.map((r) => Number(r.created_at)))).toBe(DEVICE_FLOOR_WHEN);
 
   // Fase 2: la app se actualiza y trae el journal completo (hasta 0018).
   expect(() => migrate(db, { migrationsFolder: DRIZZLE_DIR })).not.toThrow();
 
   const afterPhase2 = appliedMigrations(sqlite);
-  const fullJournal = JSON.parse(fs.readFileSync(path.join(DRIZZLE_DIR, 'meta/_journal.json'), 'utf8'));
-  expect(afterPhase2).toHaveLength(fullJournal.entries.length); // nada se reaplicó dos veces
+  expect(afterPhase2).toHaveLength(journal.entries.length); // nada se reaplicó dos veces
 
   expect(columnNames(sqlite, 'plantations')).toEqual(
     expect.arrayContaining([
