@@ -2,14 +2,23 @@ name: DB Tests
 
 on:
   push:
+    branches:
+      - staging
+      - main
     paths:
       - 'supabase/**'
+      - '.github/workflows/db-tests.yml'
   pull_request:
     branches:
       - main
       - staging
     paths:
       - 'supabase/**'
+      - '.github/workflows/db-tests.yml'
+
+concurrency:
+  group: db-tests-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pgtap:
@@ -22,7 +31,8 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Mismo pin que SUPABASE_CLI_VERSION en supabase/tests/lib.sh.
+          version: 2.116.0
 
       - name: Run db test harness
         run: bash supabase/tests/run-db-tests.sh
