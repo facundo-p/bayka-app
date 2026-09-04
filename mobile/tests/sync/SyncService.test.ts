@@ -280,8 +280,8 @@ describe('SyncService', () => {
       expect(await rpcEstadoFor('finalizada')).toBe('finalizada');
     });
 
-    it("mapea 'sincronizada' (flag solo-cliente) a 'finalizada'", async () => {
-      expect(await rpcEstadoFor('sincronizada')).toBe('finalizada');
+    it("envía 'sincronizada' tal cual (el server la mapea a finalizada)", async () => {
+      expect(await rpcEstadoFor('sincronizada')).toBe('sincronizada');
     });
   });
 
