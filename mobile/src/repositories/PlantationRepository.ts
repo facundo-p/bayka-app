@@ -431,20 +431,71 @@ export async function assignTechnicians(
   notifyDataChanged();
 }
 
-// ─── deletePlantationRemotely ────────────────────────────────────────────────
+// ─── createPlantationWithParcelaLocally ──────────────────────────────────────
+
+export interface CreatePlantationWithParcelaParams {
+  lugar: string;
+  periodo: string;
+  organizacionId: string;
+  creadoPor: string;
+  gps?: PlantationGpsSettings;
+  /** Parcela default a crear junto con la plantación; omitir/null = solo plantación (AUTO_PARCELA_DEFAULT off). */
+  parcela?: { nombre: string; codigo: string } | null;
+}
 
 /**
- * Borra la fila de plantación en Supabase (FKs server cascadean plantation_users); usada como
- * rollback cuando un create online falla antes de tener su parcela default. Throwea igual que
- * las funciones hermanas de este archivo: en error de Postgres, y también si RLS filtró la fila
- * (0 rows devueltas = la fila sigue viva en el server pese al delete).
+ * Crea la plantación + membresía admin local + (si se pasa `parcela`) su parcela default, todo en
+ * UNA transacción SQLite (#300): local-first tanto para alta online como offline — si algo falla,
+ * nada quedó escrito. No valida unicidad de nombre/codigo de parcela (a diferencia de
+ * ParcelaRepository.createParcela): es la primera parcela de una plantación recién creada, no
+ * puede colisionar.
  */
-export async function deletePlantationRemotely(id: string): Promise<void> {
-  const { data, error } = await supabase.from('plantations').delete().eq('id', id).select('id');
-  if (error) throw error;
-  if (!data || data.length === 0) {
-    throw new Error(`deletePlantationRemotely: 0 filas borradas para ${id} (RLS o la fila ya no existe)`);
-  }
+export async function createPlantationWithParcelaLocally(
+  params: CreatePlantationWithParcelaParams
+): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
+  const plantationId = Crypto.randomUUID();
+  const now = new Date().toISOString();
+
+  await db.transaction(async (tx) => {
+    await tx.insert(plantations).values({
+      id: plantationId,
+      organizacionId: params.organizacionId,
+      lugar: params.lugar,
+      periodo: params.periodo,
+      estado: 'activa',
+      creadoPor: params.creadoPor,
+      createdAt: now,
+      pendingSync: true,
+      ...(params.gps ?? {}),
+    });
+
+    await tx
+      .insert(plantationUsers)
+      .values({
+        plantationId,
+        userId: params.creadoPor,
+        rolEnPlantacion: 'admin',
+        assignedAt: now,
+      })
+      .onConflictDoNothing();
+
+    if (params.parcela) {
+      await tx.insert(parcelas).values({
+        id: Crypto.randomUUID(),
+        plantacionId: plantationId,
+        nombre: params.parcela.nombre,
+        codigo: params.parcela.codigo,
+        descripcion: null,
+        pendingSync: true,
+        createdAt: now,
+        updatedAt: now,
+        deletedAt: null,
+      });
+    }
+  });
+
+  notifyDataChanged();
+  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: 'activa' };
 }
 
 // --- deletePlantationLocally ------------------------------------------------
