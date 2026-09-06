@@ -1,8 +1,9 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { esBranchDeProduccion } from './src/lib/entornoBranch';
+import { abreviarCommit, esBranchDeProduccion } from './src/lib/entornoBranch';
 import { diagnosticarEnvSupabase } from './src/lib/envSupabase';
 
 // Entorno horneado en build: Cloudflare Pages inyecta CF_PAGES_BRANCH y
@@ -11,6 +12,24 @@ const ES_ENTORNO_PRUEBAS = !esBranchDeProduccion(process.env.CF_PAGES_BRANCH);
 const VERSION_APP: string = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
 ).version;
+
+// Commit del build (#321): identifica QUÉ se está probando, cosa que la versión
+// no hace — `/deploy` la bumpea recién al pasar a main, así que entre releases
+// es la misma en todos los builds de staging. Pages inyecta CF_PAGES_COMMIT_SHA;
+// en dev/CI se cae a git. Si git no está disponible, queda vacío y el banner
+// muestra solo la versión: nunca corta el build por esto.
+function gitSiEsPosible(...args: string[]): string {
+  try {
+    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  } catch {
+    return '';
+  }
+}
+
+const SHA_BUILD = process.env.CF_PAGES_COMMIT_SHA || gitSiEsPosible('rev-parse', 'HEAD');
+// Pages buildea desde un checkout limpio; el sufijo sólo aparece en builds locales.
+const ARBOL_SUCIO = !process.env.CF_PAGES_COMMIT_SHA && gitSiEsPosible('status', '--porcelain') !== '';
+const COMMIT_APP = abreviarCommit(SHA_BUILD, ARBOL_SUCIO);
 
 // Corta el build si el par VITE_SUPABASE_* es incoherente: las variables se
 // hornean acá, así que un valor mal cargado en el hosting recién se notaría
@@ -44,6 +63,7 @@ export default defineConfig({
   define: {
     __ENTORNO_PRUEBAS__: JSON.stringify(ES_ENTORNO_PRUEBAS),
     __VERSION_APP__: JSON.stringify(VERSION_APP),
+    __COMMIT_APP__: JSON.stringify(COMMIT_APP),
   },
   // Permite que vitest cargue los tests de supabase/functions (fuera de web/).
   server: { fs: { allow: ['..'] } },

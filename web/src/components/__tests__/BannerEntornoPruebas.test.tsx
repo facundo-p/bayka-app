@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { BannerEntornoPruebas } from '../BannerEntornoPruebas';
 
-const mockEntorno = vi.hoisted(() => ({ ES_ENTORNO_DE_PRUEBAS: true, VERSION_APP: 'v1.1.0' }));
+const mockEntorno = vi.hoisted(() => ({ ES_ENTORNO_DE_PRUEBAS: true, ETIQUETA_BUILD: 'v1.1.0 · a1b2c3d' }));
 vi.mock('../../lib/entorno', () => mockEntorno);
 
 describe('BannerEntornoPruebas', () => {
@@ -13,9 +13,9 @@ describe('BannerEntornoPruebas', () => {
     delete document.documentElement.dataset.entorno;
   });
 
-  it('en staging muestra el aviso con la versión', () => {
+  it('en staging muestra el aviso con la versión y el commit del build', () => {
     render(<BannerEntornoPruebas />);
-    expect(screen.getByText('ENTORNO DE PRUEBAS · v1.1.0')).toBeInTheDocument();
+    expect(screen.getByText('ENTORNO DE PRUEBAS · v1.1.0 · a1b2c3d')).toBeInTheDocument();
   });
 
   it('marca <html data-entorno="pruebas"> para que sidebar y Topbar se corran', () => {
