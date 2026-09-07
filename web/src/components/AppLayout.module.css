@@ -1,8 +1,10 @@
 .shell {
   display: flex;
   align-items: flex-start;
-  min-height: 100vh;
-  /* Deja lugar al banner de entorno (#287); 0 en prod. */
+  /* Alto de ventana menos el banner de entorno (#287; 0 en prod): el scroll
+     ocurre dentro de las cards, nunca en el documento. */
+  height: calc(100vh - var(--alto-banner-entorno));
+  overflow: hidden;
   padding-top: var(--alto-banner-entorno);
 }
 
@@ -65,15 +67,46 @@
   margin-top: auto;
 }
 
-/* ─── Área principal (scrollea con el documento) ─────────────────────── */
+/* ─── Área principal (columna acotada; scrollea por dentro) ──────────── */
 
 .content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .main {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* La pantalla del Outlet es la columna acotada: su cuerpo scrollea por dentro.
+   Acá y no en cada *.module.css, para no repetirlo en las cinco pantallas. */
+.main > * {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Con menos alto que esto (un 1366×768, o media pantalla) los paneles quedan
+   aplastados: vuelve el scroll de documento y cada pantalla toma su alto natural. */
+@media (max-height: 760px) {
+  .shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .content,
+  .main,
+  .main > * {
+    display: block;
+  }
 }
 
 /* ─── Responsive: el sidebar pasa a barra superior horizontal ────────── */
@@ -82,6 +115,15 @@
   .shell {
     flex-direction: column;
     align-items: stretch;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .content,
+  .main,
+  .main > * {
+    display: block;
   }
 
   .sidebar {

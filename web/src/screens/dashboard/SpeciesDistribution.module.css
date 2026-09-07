@@ -1,13 +1,14 @@
-/* Card de alto fijo (igual al mapa); la lista scrollea adentro. */
+/* La card toma el alto del layout; la lista scrollea adentro. */
 .panel {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xl);
+  gap: var(--space-2xl);
   padding: var(--space-3xl);
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border-card);
   border-radius: var(--radius-card-sm);
-  height: var(--alto-panel-dashboard);
 }
 
 .header {
@@ -61,10 +62,12 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  /* Scrollea dentro del panel cuando hay más especies que alto disponible. */
+  /* Scrollea dentro del panel cuando hay más especies que alto disponible;
+     si entran todas, se reparten el alto en vez de amontonarse arriba. */
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  justify-content: space-between;
 }
 
 .fila {
@@ -95,7 +98,15 @@
   color: var(--color-text-body);
 }
 
+.share {
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
 .cantidad {
+  width: 52px;
+  text-align: right;
   font-family: var(--font-mono);
   font-size: var(--text-md);
   font-variant-numeric: tabular-nums;

@@ -2,14 +2,10 @@ import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Cargando, EmptyState, ErrorConReintento } from '../../components';
-import { HeroMetric, type AlcanceMetrica } from '../../components/HeroMetric';
-import { StatCard } from '../../components/StatCard';
 import { PlantationMap } from '../../components/PlantationMap';
-import { formatearEntero } from '../../lib/formato';
 import {
   calcularDashboard,
   obtenerFuenteDashboard,
-  type DashboardData,
   type FuenteDashboard,
 } from '../../queries/dashboardQueries';
 import { obtenerPlantacion } from '../../queries/plantationQueries';
@@ -19,6 +15,7 @@ import {
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
 import { asignarColoresEspecies } from './coloresEspecies';
+import { ResumenPlantacion, type AlcanceMetrica } from './ResumenPlantacion';
 import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
 import styles from './DashboardTab.module.css';
@@ -52,45 +49,6 @@ interface ContenidoDashboardProps {
   puntos: PuntoGps[];
 }
 
-interface FilaAProps {
-  datos: DashboardData;
-  objetivoArboles: number | null;
-  alcance?: AlcanceMetrica;
-}
-
-function FilaA({ datos, objetivoArboles, alcance }: FilaAProps) {
-  const objetivo = objetivoArboles ?? 0;
-  return (
-    <div className={styles.filaA}>
-      <HeroMetric
-        overline="Árboles registrados"
-        valor={datos.totalArboles}
-        objetivo={objetivo}
-        porcentaje={porcentajeObjetivo(datos.totalArboles, objetivo)}
-        alcance={alcance}
-      />
-      <div className={styles.stats}>
-        <StatCard
-          label="Con GPS"
-          value={`${datos.porcentajeConGps}%`}
-          bar={{ pct: datos.porcentajeConGps, color: 'var(--color-secondary)' }}
-        />
-        <StatCard
-          label="Con foto"
-          value={`${datos.porcentajeConFoto}%`}
-          bar={{ pct: datos.porcentajeConFoto, color: 'var(--color-primary-accent)' }}
-        />
-        <StatCard
-          label="N/N sin resolver"
-          value={formatearEntero(datos.arbolesNN)}
-          variant={datos.arbolesNN > 0 ? 'warn' : 'default'}
-          hint={datos.arbolesNN > 0 ? 'requieren atención' : undefined}
-        />
-      </div>
-    </div>
-  );
-}
-
 function ContenidoDashboard({
   fuente,
   objetivoArboles,
@@ -115,26 +73,35 @@ function ContenidoDashboard({
         onVerTodos: () => setSeleccionada(null),
       }
     : undefined;
+  const objetivo = objetivoArboles ?? 0;
   return (
     <div className={styles.dashboard}>
-      <FilaA datos={datos} objetivoArboles={objetivoArboles} alcance={alcance} />
-      <div className={styles.filaB}>
+      <div className={styles.columna}>
+        <ResumenPlantacion
+          datos={datos}
+          objetivo={objetivo}
+          porcentaje={porcentajeObjetivo(datos.totalArboles, objetivo)}
+          alcance={alcance}
+        />
+        <SpeciesDistribution
+          especies={coloreadas}
+          total={datos.totalArboles}
+          totalEspecies={datos.especiesUsadas}
+          parcelaFiltro={parcelaFiltro?.codigo}
+        />
+      </div>
+      <div className={styles.columna}>
         <PlantationMap
           puntos={filtrarPuntos(puntos, parcelaId)}
           leyenda={coloreadas}
           parcelaFiltro={parcelaFiltro?.codigo}
         />
-        <SpeciesDistribution
-          especies={coloreadas}
-          totalEspecies={datos.especiesUsadas}
-          parcelaFiltro={parcelaFiltro?.codigo}
+        <ParcelasStrip
+          parcelas={parcelas}
+          parcelaSeleccionada={parcelaId}
+          onSeleccionar={alternar}
         />
       </div>
-      <ParcelasStrip
-        parcelas={parcelas}
-        parcelaSeleccionada={parcelaId}
-        onSeleccionar={alternar}
-      />
     </div>
   );
 }

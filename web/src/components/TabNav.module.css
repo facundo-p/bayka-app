@@ -36,3 +36,34 @@
   padding: var(--space-md) var(--space-xl);
   font-size: var(--text-sm);
 }
+
+/* Variante segmentada: píldora de la barra única del detalle. La activa se
+   levanta en blanco sobre el riel hundido, sin subrayado. */
+.navSegmentada {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  margin-bottom: 0;
+  background-color: var(--color-surface-sunken);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-control);
+}
+
+.navSegmentada .tab {
+  padding: var(--space-sm) var(--space-xl-plus);
+  margin-bottom: 0;
+  border-bottom: none;
+  border-radius: var(--radius-segment);
+  white-space: nowrap;
+}
+
+.navSegmentada .tab:hover {
+  background-color: transparent;
+}
+
+.navSegmentada .tabActiva {
+  background-color: var(--color-surface);
+  color: var(--color-text-heading);
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+}

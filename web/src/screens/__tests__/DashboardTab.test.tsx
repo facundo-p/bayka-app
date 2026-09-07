@@ -73,9 +73,15 @@ const FILAS_PARCELAS = [
   { id: 'parc-3', nombre: 'Este', codigo: 'P3', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
 ];
 
-/** La card hero: el overline y el número grande cuelgan del mismo contenedor. */
-function hero(): HTMLElement {
-  return screen.getByText('Árboles registrados').parentElement as HTMLElement;
+/** La card azul de resumen: total, tasas y fila de alcance viven acá adentro.
+ *  Se busca por landmark porque los porcentajes se repiten en "Por especie". */
+function resumen(): HTMLElement {
+  return screen.getByRole('region', { name: 'Resumen de la plantación' });
+}
+
+/** Fila del número grande: lo separa del N/N, que también puede valer 0. */
+function totalResumen(): HTMLElement {
+  return within(resumen()).getByText(/Meta/).parentElement as HTMLElement;
 }
 
 /** Puntos GPS del mapa: 2 en parc-1, 1 en parc-2 (para poder filtrar). */
@@ -120,19 +126,27 @@ describe('DashboardTab', () => {
     capturarConsultas(crearResolver(FILAS_ARBOLES));
     renderRutasEn('/plantaciones/plant-1');
 
-    // Número hero (total de árboles) y overline.
-    expect(await screen.findByText('5', {}, { timeout: ESPERA_RUTA_MS })).toBeInTheDocument();
-    expect(screen.getByText('Árboles registrados')).toBeInTheDocument();
-    // StatCards de tasas y alerta N/N.
-    expect(screen.getByText('Con GPS')).toBeInTheDocument();
-    expect(screen.getByText('60%')).toBeInTheDocument();
-    expect(screen.getByText('Con foto')).toBeInTheDocument();
-    expect(screen.getByText('40%')).toBeInTheDocument();
-    expect(screen.getByText('N/N sin resolver')).toBeInTheDocument();
-    expect(screen.getByText('requieren atención')).toBeInTheDocument();
+    // Número grande (total de árboles) y overline.
+    await screen.findByRole('region', { name: 'Resumen de la plantación' }, { timeout: ESPERA_RUTA_MS });
+    const card = resumen();
+    expect(within(card).getByText('5')).toBeInTheDocument();
+    expect(within(card).getByText('Árboles registrados')).toBeInTheDocument();
+    // Las tres tasas al pie de la card.
+    expect(within(card).getByText('Con GPS')).toBeInTheDocument();
+    expect(within(card).getByText('60%')).toBeInTheDocument();
+    expect(within(card).getByText('Con foto')).toBeInTheDocument();
+    expect(within(card).getByText('40%')).toBeInTheDocument();
+    expect(within(card).getByText('N/N')).toBeInTheDocument();
+    expect(within(card).getByText('requieren atención')).toBeInTheDocument();
     // Paneles nuevos.
     expect(screen.getByText('Por especie')).toBeInTheDocument();
     expect(screen.getByText('Parcelas')).toBeInTheDocument();
+    // Cada especie muestra su cantidad y su peso sobre el total del alcance.
+    const quebracho = screen.getByText('Quebracho').closest('li') as HTMLElement;
+    expect(within(quebracho).getByText('3')).toBeInTheDocument();
+    expect(within(quebracho).getByText('60%')).toBeInTheDocument();
+    const algarrobo = screen.getByText('Algarrobo').closest('li') as HTMLElement;
+    expect(within(algarrobo).getByText('20%')).toBeInTheDocument();
   });
 
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {
@@ -175,17 +189,18 @@ describe('DashboardTab', () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
-    expect(await screen.findByText('5', {}, { timeout: ESPERA_RUTA_MS })).toBeInTheDocument();
-    expect(screen.getByText('60%')).toBeInTheDocument();
+    await screen.findByRole('region', { name: 'Resumen de la plantación' }, { timeout: ESPERA_RUTA_MS });
+    expect(within(resumen()).getByText('5')).toBeInTheDocument();
+    expect(within(resumen()).getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('Algarrobo')).toBeInTheDocument();
 
     await usuario.click(screen.getByRole('button', { name: /Norte/ }));
 
-    expect(within(hero()).getByText('3')).toBeInTheDocument();
-    expect(within(hero()).getByText('P1')).toBeInTheDocument();
-    expect(within(hero()).getByText('Norte')).toBeInTheDocument();
+    expect(within(resumen()).getByText('3')).toBeInTheDocument();
+    expect(within(resumen()).getByText('P1')).toBeInTheDocument();
+    expect(within(resumen()).getByText('Norte')).toBeInTheDocument();
     // GPS y foto quedan los dos en 67% con los 3 árboles de la parcela.
-    expect(screen.getAllByText('67%')).toHaveLength(2);
+    expect(within(resumen()).getAllByText('67%')).toHaveLength(2);
     expect(screen.queryByText('Algarrobo')).not.toBeInTheDocument();
     expect(screen.getByText('Composición de la parcela P1')).toBeInTheDocument();
   });
@@ -198,8 +213,8 @@ describe('DashboardTab', () => {
     await usuario.click(await screen.findByRole('button', { name: /Norte/ }));
     await usuario.click(screen.getByRole('button', { name: 'Ver todos' }));
 
-    expect(within(hero()).getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(within(resumen()).getByText('5')).toBeInTheDocument();
+    expect(within(resumen()).getByText('60%')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ver todos' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Norte/ })).toHaveAttribute('aria-pressed', 'false');
   });
@@ -211,7 +226,7 @@ describe('DashboardTab', () => {
 
     await usuario.click(await screen.findByRole('button', { name: /Este/ }));
 
-    expect(within(hero()).getByText('0')).toBeInTheDocument();
+    expect(within(totalResumen()).getByText('0')).toBeInTheDocument();
     expect(screen.queryByText('Todavía no hay árboles registrados')).not.toBeInTheDocument();
     // Sin esta salida la parcela vacía sería una pantalla sin retorno.
     expect(screen.getByRole('button', { name: 'Ver todos' })).toBeInTheDocument();

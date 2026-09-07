@@ -1,18 +1,16 @@
+/* Sin card contenedora: la tira es un riel que cuelga bajo el mapa. */
 .panel {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xl);
-  padding: var(--space-3xl);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card);
+  gap: var(--space-xl);
+  min-width: 0;
 }
 
 .header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2xl);
+  gap: var(--space-xl);
 }
 
 .titulo {
@@ -23,31 +21,72 @@
   color: var(--color-text-heading);
 }
 
+.recuento {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.controles {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
 .enlace {
+  margin-right: var(--space-md);
   font-size: var(--text-md);
   font-weight: 500;
   color: var(--color-primary-accent);
 }
 
-.grilla {
-  display: grid;
-  /* auto-fill: la tira lista todas las parcelas y envuelve sola, sin breakpoints. */
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-2xl);
+.flecha {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.flecha:hover {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-heading);
+}
+
+/* Riel horizontal con snap por card; la barra se oculta (mandan las flechas). */
+.riel {
+  display: flex;
+  gap: var(--space-xl);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+}
+
+.riel::-webkit-scrollbar {
+  display: none;
 }
 
 .miniCard {
+  flex: none;
+  width: 160px;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
-  padding: var(--space-2xl);
+  gap: var(--space-xs);
+  padding: var(--space-xl) var(--space-xl-plus);
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border-card);
   border-radius: var(--radius-card-sm);
   appearance: none;
   font: inherit;
   text-align: left;
-  width: 100%;
   cursor: pointer;
 }
 
@@ -62,30 +101,36 @@
   border-color: var(--color-secondary-border);
 }
 
+.miniCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
 .codigo {
-  align-self: flex-start;
-  padding: var(--space-xs) var(--space-md);
-  background-color: var(--color-surface-tint);
-  border-radius: var(--radius-code);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
+.grupos {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
 .arboles {
   font-family: var(--font-heading);
-  font-size: var(--text-heading);
+  font-size: var(--text-kpi-sm);
   line-height: 1;
   color: var(--color-text-heading);
   font-variant-numeric: tabular-nums;
 }
 
 .nombre {
-  font-size: var(--text-md);
-  color: var(--color-text-body);
-}
-
-.grupos {
   font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  color: var(--color-text-body);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

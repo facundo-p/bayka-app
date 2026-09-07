@@ -36,7 +36,7 @@ function Leyenda({ leyenda }: { leyenda: EspecieLeyenda[] }) {
   );
 }
 
-/** Panel del dashboard: chrome (header + chip + leyenda) sobre el mapa satelital. */
+/** Panel del dashboard: chrome (título + leyenda + chip) sobre el mapa satelital. */
 export function PlantationMap({ puntos, leyenda, parcelaFiltro }: PlantationMapProps) {
   const colorPorCodigo = useMemo(
     () => new Map(leyenda.map(({ codigo, color }) => [codigo, color])),
@@ -45,27 +45,27 @@ export function PlantationMap({ puntos, leyenda, parcelaFiltro }: PlantationMapP
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
-        <div>
+        <div className={styles.tituloFila}>
           <h3 className={styles.titulo}>Mapa de la plantación</h3>
           <p className={styles.subtitulo}>
             {parcelaFiltro ? `Parcela ${parcelaFiltro}` : 'Puntos GPS registrados'} · imagen
             satelital
           </p>
         </div>
-        <span className={styles.chip}>
-          <span className={styles.chipNumero}>{formatearEntero(puntos.length)}</span>
-          puntos
-        </span>
+        <div className={styles.headerDerecha}>
+          {puntos.length > 0 && <Leyenda leyenda={leyenda} />}
+          <span className={styles.chip}>
+            <span className={styles.chipNumero}>{formatearEntero(puntos.length)}</span>
+            puntos
+          </span>
+        </div>
       </div>
       {puntos.length === 0 ? (
         <div className={styles.vacio}>
           {parcelaFiltro ? `Sin puntos GPS en la parcela ${parcelaFiltro}` : 'Sin puntos GPS todavía'}
         </div>
       ) : (
-        <>
-          <MapaPuntos puntos={puntos} colorPorCodigo={colorPorCodigo} variante="panel" />
-          <Leyenda leyenda={leyenda} />
-        </>
+        <MapaPuntos puntos={puntos} colorPorCodigo={colorPorCodigo} variante="panel" />
       )}
     </div>
   );

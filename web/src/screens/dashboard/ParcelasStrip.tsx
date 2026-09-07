@@ -1,7 +1,13 @@
+import { useRef } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { cx } from '../../lib/classNames';
 import { formatearEntero } from '../../lib/formato';
 import styles from './ParcelasStrip.module.css';
+
+const TAMANO_ICONO = 16;
+/** Cuánto avanza cada flecha: casi una pantalla, dejando una card de contexto. */
+const PASO_RIEL = 0.8;
 
 interface ParcelaStrip {
   id: string;
@@ -33,10 +39,12 @@ function MiniCardParcela({
       aria-pressed={seleccionada}
       onClick={() => onSeleccionar(parcela.id)}
     >
-      <span className={styles.codigo}>{parcela.codigo}</span>
+      <div className={styles.miniCardTop}>
+        <span className={styles.codigo}>{parcela.codigo}</span>
+        <span className={styles.grupos}>{`${parcela.grupos} grupos`}</span>
+      </div>
       <span className={styles.arboles}>{formatearEntero(parcela.arboles)}</span>
       <span className={styles.nombre}>{parcela.nombre}</span>
-      <span className={styles.grupos}>{`${parcela.grupos} grupos`}</span>
     </button>
   );
 }
@@ -48,15 +56,41 @@ export function ParcelasStrip({
   parcelaSeleccionada,
   onSeleccionar,
 }: ParcelasStripProps) {
+  const rielRef = useRef<HTMLDivElement>(null);
+
+  const desplazar = (direccion: 1 | -1) => {
+    const riel = rielRef.current;
+    if (riel) riel.scrollBy({ left: direccion * riel.clientWidth * PASO_RIEL, behavior: 'smooth' });
+  };
+
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
         <h3 className={styles.titulo}>Parcelas</h3>
-        <Link to="datos" className={styles.enlace}>
-          Ver datos →
-        </Link>
+        <span className={styles.recuento}>{`${parcelas.length} · clic para filtrar`}</span>
+        <div className={styles.controles}>
+          <Link to="datos" className={styles.enlace}>
+            Ver datos →
+          </Link>
+          <button
+            type="button"
+            className={styles.flecha}
+            aria-label="Parcelas anteriores"
+            onClick={() => desplazar(-1)}
+          >
+            <ChevronLeft size={TAMANO_ICONO} aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={styles.flecha}
+            aria-label="Parcelas siguientes"
+            onClick={() => desplazar(1)}
+          >
+            <ChevronRight size={TAMANO_ICONO} aria-hidden />
+          </button>
+        </div>
       </div>
-      <div className={styles.grilla}>
+      <div className={styles.riel} ref={rielRef}>
         {parcelas.map((parcela) => (
           <MiniCardParcela
             key={parcela.id}

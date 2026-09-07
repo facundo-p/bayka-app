@@ -1,21 +1,37 @@
+/* La card toma el alto del layout; el mapa llena lo que sobra del header. */
 .panel {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-2xl);
+  gap: var(--space-xl-plus);
   padding: var(--space-3xl);
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border-card);
   border-radius: var(--radius-card-sm);
-  /* Alto fijo: el área del mapa llena el resto; la card de especies iguala. */
-  height: var(--alto-panel-dashboard);
 }
 
 .header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2xl);
   flex-shrink: 0;
+}
+
+/* Título y subtítulo en una línea: el chrome del panel ocupa lo mínimo. */
+.tituloFila {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xl);
+  min-width: 0;
+}
+
+.headerDerecha {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+  min-width: 0;
 }
 
 .titulo {
@@ -27,7 +43,7 @@
 }
 
 .subtitulo {
-  margin: var(--space-xs) 0 0;
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
@@ -64,8 +80,9 @@
 .leyenda {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-lg) var(--space-2xl);
-  flex-shrink: 0;
+  justify-content: flex-end;
+  gap: var(--space-md) var(--space-xl-plus);
+  min-width: 0;
 }
 
 .item {

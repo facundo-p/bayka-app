@@ -8,6 +8,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2xl);
+  flex-shrink: 0;
   padding: var(--space-2xl) var(--page-pad-x);
   background-color: var(--color-topbar-bg);
   backdrop-filter: var(--topbar-blur);
@@ -24,4 +25,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-lg);
+}
+
+/* Barra única del detalle: el breadcrumb es el título y las tabs viven acá. */
+.compacta {
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-xl);
+}
+
+.compacta .right {
+  gap: var(--space-md);
 }

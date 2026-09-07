@@ -146,6 +146,15 @@
      a través del backdrop-filter). Espejo translúcido de --color-background. */
   --color-topbar-bg: rgba(244, 242, 234, 0.82);
 
+  /* ─── Blancos sobre el azul de marca (card resumen del dashboard) ─── */
+  --color-on-primary-strong: rgba(255, 255, 255, 0.7);   /* overlines */
+  --color-on-primary-soft: rgba(255, 255, 255, 0.75);    /* texto secundario */
+  --color-on-primary-faint: rgba(255, 255, 255, 0.72);   /* nombre en el chip de alcance */
+  --color-on-primary-track: rgba(255, 255, 255, 0.18);   /* fondo de barras de progreso */
+  --color-on-primary-chip: rgba(255, 255, 255, 0.14);    /* fondo del chip de alcance */
+  --color-on-primary-line: rgba(255, 255, 255, 0.14);    /* divisores entre celdas */
+  --color-on-primary-border: rgba(255, 255, 255, 0.42);  /* borde del botón "Ver todos" */
+
   /* ─── Tipografías ──────────────────────────────────────────────────── */
   --font-heading: 'Linux Biolinum', Georgia, serif;   /* títulos + números grandes */
   --font-body: 'Poppins', system-ui, sans-serif;      /* cuerpo, labels, botones */
@@ -162,6 +171,9 @@
   --space-4xl: 24px;
   --space-5xl: 32px;
   --space-6xl: 40px;
+  /* Pasos intermedios que pide el rediseño del detalle; no rompen la escala. */
+  --space-xl-plus: 14px;   /* entre xl (12) y 2xl (16) */
+  --space-4xl-plus: 28px;  /* entre 4xl (24) y 5xl (32) */
 
   /* ─── Radios ───────────────────────────────────────────────────────── */
   --radius-sm: 6px;
@@ -184,7 +196,9 @@
   /* Escala grande del rediseño (serif): número hero del dashboard, KPI, título de página. */
   --text-kpi: 32px;
   --text-page-title: 38px;
-  --text-hero-num: 72px;
+  --text-detail-title: 22px;   /* h1 del detalle dentro de la topbar */
+  --text-kpi-sm: 26px;         /* celdas del resumen, número de mini-card de parcela */
+  --text-hero-num: 64px;
 
   /* ─── Sombras ──────────────────────────────────────────────────────── */
   --shadow-card: 0 1px 3px rgba(10, 55, 96, 0.08);
@@ -197,6 +211,7 @@
   --radius-card-sm: 14px;  /* cards de KPI / tabla */
   --radius-pill: 20px;     /* badges de estado/rol */
   --radius-code: 6px;      /* chip de código mono */
+  --radius-segment: 7px;   /* opción de control segmentado, dentro de un --radius-control */
 
   /* ─── Layout ───────────────────────────────────────────────────────── */
   /* Breakpoint responsive: 900px, literal en media queries porque las
@@ -204,7 +219,9 @@
   --layout-sidebar-width: 220px;
   --sidebar-width: 252px;          /* sidebar del rediseño */
   --page-pad-x: 38px;              /* padding horizontal del contenido principal */
-  --alto-panel-dashboard: 500px;  /* alto compartido de las cards mapa + especies */
+  /* Piso del shell acotado al viewport: con menos alto que esto los paneles
+     quedan aplastados y vuelve el scroll de documento. */
+  --alto-min-contenido: 700px;
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
