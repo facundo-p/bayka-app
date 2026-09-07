@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react';
 import { PERFIL_ADMIN, PERFIL_TECNICO, estadoMock, resetEstadoMock } from './test/supabaseMock';
 import { renderRutasEn as renderAt } from './test/renderConRutas';
+import { capturarConsultas } from './test/capturarConsultas';
 
 vi.mock('./lib/supabase', async () => {
   const { supabaseMock } = await import('./test/supabaseMock');
@@ -58,4 +59,11 @@ test('autenticado: /login redirige a Plantaciones', async () => {
   simularAdminLogueado();
   renderAt('/login');
   expect(await screen.findByRole('heading', { name: 'Plantaciones' })).toBeInTheDocument();
+});
+
+test('sin sesión: no se consultan plantaciones (cachearía vacío y lo vería el login)', async () => {
+  const consultas = capturarConsultas(() => ({ data: [] }));
+  renderAt('/login');
+  expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+  expect(consultas.filter((consulta) => consulta.tabla === 'plantations')).toEqual([]);
 });

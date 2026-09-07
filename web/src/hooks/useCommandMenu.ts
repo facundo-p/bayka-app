@@ -84,7 +84,11 @@ function useAperturaPorAtajo() {
 function useScopeContextual(): ScopeContextual | null {
   const match = useMatch('/plantaciones/:id/*');
   const plantationId = match?.params.id;
-  const { data } = useQuery({ queryKey: ['plantaciones'], queryFn: listarPlantaciones });
+  const { data } = useQuery({
+    queryKey: ['plantaciones'],
+    queryFn: listarPlantaciones,
+    enabled: Boolean(plantationId),
+  });
   return useMemo(() => {
     if (!plantationId) return null;
     const lugar = data?.find((plantacion) => plantacion.id === plantationId)?.lugar ?? '';

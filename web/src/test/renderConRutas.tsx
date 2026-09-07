@@ -2,7 +2,6 @@ import { render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../hooks/useAuth';
-import { CommandMenuProvider } from '../hooks/useCommandMenu';
 import { AppRoutes } from '../App';
 
 /** Renderiza las rutas reales con los providers de test.
@@ -13,9 +12,7 @@ export function renderRutasEn(path: string) {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
         <AuthProvider>
-          <CommandMenuProvider>
-            <AppRoutes />
-          </CommandMenuProvider>
+          <AppRoutes />
         </AuthProvider>
       </MemoryRouter>
     </QueryClientProvider>,
