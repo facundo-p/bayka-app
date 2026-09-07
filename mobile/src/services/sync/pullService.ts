@@ -5,7 +5,8 @@ import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows, runInTransaction } from './paginate';
-import type { DownloadPhase, DownloadPhaseProgress } from './types';
+import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
+import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -22,6 +23,39 @@ function emitProgress(
 }
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
+
+/**
+ * ¿El server todavía reconoce mi membresía? Es el mismo criterio que las
+ * policies de SELECT (`is_plantation_member`), incluidos los admins, que reciben
+ * su fila por trigger.
+ *
+ * Solo devuelve false ante evidencia positiva de revocación: si no hay sesión,
+ * si la consulta falla (offline) o si la plantación todavía no se pusheó, se
+ * asume acceso y el pull sigue su camino de siempre.
+ */
+async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
+  const [local] = await db
+    .select({ pendingSync: plantations.pendingSync })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+  if (local?.pendingSync) return true;
+
+  const { data: sesion } = await supabase.auth.getSession();
+  const userId = sesion?.session?.user?.id;
+  if (!userId) return true;
+
+  const { data, error } = await supabase
+    .from('plantation_users')
+    .select('user_id')
+    // (plantation_id, user_id) es la PK: vuelve una fila o ninguna.
+    .eq('plantation_id', plantacionId)
+    .eq('user_id', userId);
+  if (error) {
+    syncLog.error('Chequeo de membresía falló:', JSON.stringify(error));
+    return true;
+  }
+  return (data ?? []).length > 0;
+}
 
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
@@ -97,13 +131,13 @@ async function pullParcelas(
 
   if (error) {
     syncLog.error('Pull parcelas error:', JSON.stringify(error));
-    emitProgress(onProgress, 'parcelas', 0, 0);
+    emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, 0, 0);
     return [];
   }
 
   const all = (remoteParcelas ?? []) as RemoteParcela[];
   syncLog.info('Pull parcelas:', all.length, 'rows');
-  emitProgress(onProgress, 'parcelas', 0, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, 0, all.length);
   if (all.length === 0) return [];
 
   // Pre-fetch de ids con cambios pendientes: evita una lectura extra por parcela dentro del loop.
@@ -143,10 +177,10 @@ async function pullParcelas(
         },
       });
       done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'parcelas', done, all.length);
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, done, all.length);
     }
   });
-  emitProgress(onProgress, 'parcelas', all.length, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, all.length, all.length);
 
   return all.map((remoteParcela) => remoteParcela.id);
 }
@@ -161,12 +195,12 @@ async function pullGroups(
 
   if (error) {
     syncLog.error('Pull groups error:', JSON.stringify(error));
-    emitProgress(onProgress, 'groups', 0, 0);
+    emitProgress(onProgress, DOWNLOAD_PHASE.groups, 0, 0);
     return [];
   }
   const all = remoteGroups ?? [];
   syncLog.info('Pull groups:', all.length, 'rows');
-  emitProgress(onProgress, 'groups', 0, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.groups, 0, all.length);
   if (all.length === 0) return [];
 
   // Pre-fetch de ids con cambios pendientes (igual que pullParcelas): el pull no debe pisar un grupo dirty (p.ej. una transición activa→finalizada sin subir).
@@ -208,10 +242,10 @@ async function pullGroups(
         },
       });
       done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'groups', done, all.length);
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.groups, done, all.length);
     }
   });
-  emitProgress(onProgress, 'groups', all.length, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.groups, all.length, all.length);
 
   return all.map((sg: any) => sg.id);
 }
@@ -227,7 +261,7 @@ async function pullPlantationUsers(
     .where(eq(plantations.id, plantacionId));
   if (localPlant?.pendingSync) {
     syncLog.info('Pull plantation_users: plantación pendiente de push, se omite el replace');
-    emitProgress(onProgress, 'usuarios', 0, 0);
+    emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, 0);
     return;
   }
 
@@ -237,12 +271,12 @@ async function pullPlantationUsers(
 
   if (error) {
     syncLog.error('Pull plantation_users error:', JSON.stringify(error));
-    emitProgress(onProgress, 'usuarios', 0, 0);
+    emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, 0);
     return;
   }
   const all = remotePu ?? [];
   syncLog.info('Pull plantation_users:', all.length, 'rows');
-  emitProgress(onProgress, 'usuarios', 0, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, all.length);
 
   const remoteUserIds = new Set(all.map((pu: any) => pu.user_id));
   const localPu = await db.select().from(plantationUsers)
@@ -272,10 +306,10 @@ async function pullPlantationUsers(
         set: { rolEnPlantacion: sql`excluded.rol_en_plantacion` },
       });
       done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'usuarios', done, all.length);
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, done, all.length);
     }
   });
-  emitProgress(onProgress, 'usuarios', all.length, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, all.length, all.length);
 }
 
 async function pullPlantationSpecies(
@@ -288,12 +322,12 @@ async function pullPlantationSpecies(
 
   if (error) {
     syncLog.error('Pull plantation_species error:', JSON.stringify(error));
-    emitProgress(onProgress, 'especies_plantacion', 0, 0);
+    emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, 0);
     return;
   }
   const all = remotePs ?? [];
   syncLog.info('Pull plantation_species:', all.length, 'rows');
-  emitProgress(onProgress, 'especies_plantacion', 0, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
   if (all.length === 0) return;
 
   await runInTransaction(db, async (tx: any) => {
@@ -310,10 +344,10 @@ async function pullPlantationSpecies(
         set: { ordenVisual: sql`excluded.orden_visual` },
       });
       done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'especies_plantacion', done, all.length);
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, done, all.length);
     }
   });
-  emitProgress(onProgress, 'especies_plantacion', all.length, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, all.length, all.length);
 }
 
 type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
@@ -393,12 +427,12 @@ async function pullTrees(
 
   if (error) {
     syncLog.error('Pull trees error:', JSON.stringify(error));
-    emitProgress(onProgress, 'arboles', 0, 0);
+    emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, 0);
     return;
   }
   const all = remoteTrees ?? [];
   syncLog.info('Pull trees:', all.length, 'rows');
-  emitProgress(onProgress, 'arboles', 0, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, all.length);
   if (all.length === 0) return;
 
   // Fast path: sin árboles locales para estos grupos (descarga fresh), se saltea el conflict check por fila (ahorra 2 reads × N).
@@ -418,19 +452,24 @@ async function pullTrees(
       }
       await upsertTreeFromServerTx(tx, t);
       done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, 'arboles', done, all.length);
+      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.arboles, done, all.length);
     }
   });
-  emitProgress(onProgress, 'arboles', all.length, all.length);
+  emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
 }
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
-/** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK. */
+/** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK.
+ *  Corta antes de tocar la base si la membresía fue revocada: la copia local se conserva tal cual. */
 export async function pullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
-): Promise<void> {
+): Promise<PullResult> {
+  if (!(await tieneAccesoRemoto(plantacionId))) {
+    syncLog.info('Pull abortado: sin membresía en la plantación', plantacionId);
+    return PULL_SIN_ACCESO;
+  }
   syncLog.info('Pull starting for plantation:', plantacionId);
   await pullPlantationMetadata(plantacionId);
   await pullParcelas(plantacionId, onProgress);
@@ -438,4 +477,5 @@ export async function pullFromServer(
   await pullPlantationUsers(plantacionId, onProgress);
   await pullPlantationSpecies(plantacionId, onProgress);
   if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds, onProgress);
+  return PULL_OK;
 }

@@ -61,24 +61,40 @@ function setupDbInsertSuccess() {
   return { valuesSpy, onConflictSpy };
 }
 
+/** El pull chequea la membresía propia antes de tocar la base (#317). */
+function setupSesion() {
+  (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+    data: { session: { user: { id: 'user-1' } } },
+  });
+}
+
 /**
  * Sets up supabase.from to return empty data (simulates empty pullFromServer).
- * eq() resolves to { data: [], error: null } and also exposes .single(), covering
- * the three chain patterns pullFromServer uses: .eq().single(), .eq(), .in().
+ * eq() es encadenable y a la vez awaitable, y expone .single(), cubriendo los
+ * patrones que usa pullFromServer: .eq().single(), .eq(), .eq().eq(), .in().
+ *
+ * Ojo: con data vacío el chequeo de membresía de #317 devolvería "sin acceso",
+ * así que la fila de membresía se sirve aparte.
  */
 function setupSupabaseFromEmpty() {
-  const eqResult = { data: [], error: null };
-  const eqMock = jest.fn().mockImplementation(() => {
-    const result = Promise.resolve(eqResult);
-    (result as any).single = jest.fn().mockResolvedValue({ data: null, error: null });
-    return result;
-  });
-  (supabase.from as jest.Mock).mockReturnValue({
-    select: jest.fn().mockReturnValue({
-      eq: eqMock,
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-    }),
-  });
+  // El chequeo de membresía filtra por user_id; el replace de plantation_users
+  // del pull filtra solo por plantation_id y sigue viendo el server vacío.
+  const esChequeoDeMembresia = (tabla: string, columnas: string[]) =>
+    tabla === 'plantation_users' && columnas.includes('user_id');
+
+  const encadenable = (tabla: string, columnas: string[]): any => {
+    const resultado = Promise.resolve({
+      data: esChequeoDeMembresia(tabla, columnas) ? [{ user_id: 'user-1' }] : [],
+      error: null,
+    }) as any;
+    resultado.eq = jest.fn((col: string) => encadenable(tabla, [...columnas, col]));
+    resultado.in = jest.fn((col: string) => encadenable(tabla, [...columnas, col]));
+    resultado.single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return resultado;
+  };
+  (supabase.from as jest.Mock).mockImplementation((tabla: string) => ({
+    select: jest.fn(() => encadenable(tabla, [])),
+  }));
 }
 
 /**
@@ -116,6 +132,7 @@ function setupDbInsertFailure() {
 describe('downloadPlantation', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    setupSesion();
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
   });
@@ -181,6 +198,7 @@ describe('downloadPlantation', () => {
 describe('batchDownload', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    setupSesion();
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
   });

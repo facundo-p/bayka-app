@@ -10,18 +10,22 @@ import {
   SyncProgress,
   PhotoSyncProgress,
   GlobalSyncProgress,
+  SYNC_STATE,
+  SyncState,
+  esSinAcceso,
 } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 
-export type SyncState = 'idle' | 'pulling' | 'pushing' | 'uploading-photos' | 'downloading-photos' | 'done';
+export type { SyncState };
 
 export function useSync(plantacionId?: string) {
-  const [state, setState] = useState<SyncState>('idle');
+  const [state, setState] = useState<SyncState>(SYNC_STATE.idle);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
   const [results, setResults] = useState<SyncGroupResult[]>([]);
   const [parcelaResults, setParcelaResults] = useState<SyncParcelaResult[]>([]);
   const [plantationResults, setPlantationResults] = useState<SyncPlantationResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
+  const [sinAcceso, setSinAcceso] = useState(false);
   const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
@@ -34,6 +38,7 @@ export function useSync(plantacionId?: string) {
     setParcelaResults([]);
     setPlantationResults([]);
     setPullSuccess(null);
+    setSinAcceso(false);
     setAuthExpired(false);
     setPhotoProgress(null);
     setPhotoResult(null);
@@ -44,20 +49,31 @@ export function useSync(plantacionId?: string) {
   // startPlantationSync (explicit target) — both ran the identical pull+push
   // sequence for a single plantation, differing only in where the id came from.
   const runPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean) => {
-    setState('pulling');
+    setState(SYNC_STATE.pulling);
     resetSyncState();
 
     try {
       // syncPlantation does pull-then-push internally
-      setState('pushing');
-      const res = await syncPlantation(targetPlantacionId, setProgress, setParcelaResults, setPlantationResults);
+      setState(SYNC_STATE.pushing);
+      let accesoRevocado = false;
+      const res = await syncPlantation(
+        targetPlantacionId,
+        setProgress,
+        setParcelaResults,
+        setPlantationResults,
+        (pull) => {
+          accesoRevocado = esSinAcceso(pull);
+          setSinAcceso(accesoRevocado);
+        },
+      );
       setResults(res);
-      setPullSuccess(true);
+      setPullSuccess(!accesoRevocado);
 
-      if (incluirFotos) {
-        setState('uploading-photos');
+      // Sin acceso no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
+      if (incluirFotos && !accesoRevocado) {
+        setState(SYNC_STATE.uploadingPhotos);
         const uploadRes = await uploadPendingPhotos(targetPlantacionId, setPhotoProgress);
-        setState('downloading-photos');
+        setState(SYNC_STATE.downloadingPhotos);
         const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, setPhotoProgress);
         setPhotoResult({
           uploaded: uploadRes.uploaded,
@@ -71,7 +87,7 @@ export function useSync(plantacionId?: string) {
       setPullSuccess(false);
       if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
     } finally {
-      setState('done');
+      setState(SYNC_STATE.done);
       notifyDataChanged();
     }
   }, [resetSyncState]);
@@ -89,7 +105,7 @@ export function useSync(plantacionId?: string) {
   }, [runPlantationSync]);
 
   const startGlobalSync = useCallback(async (incluirFotos: boolean = true) => {
-    setState('pulling');
+    setState(SYNC_STATE.pulling);
     resetSyncState();
 
     try {
@@ -101,10 +117,10 @@ export function useSync(plantacionId?: string) {
             total: info.plantationTotal,
           });
           if (info.subgroupProgress) {
-            setState('pushing');
+            setState(SYNC_STATE.pushing);
             setProgress(info.subgroupProgress);
           } else {
-            setState('pulling');
+            setState(SYNC_STATE.pulling);
           }
         },
         incluirFotos,
@@ -120,13 +136,13 @@ export function useSync(plantacionId?: string) {
       setPullSuccess(false);
       if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
     } finally {
-      setState('done');
+      setState(SYNC_STATE.done);
       notifyDataChanged();
     }
   }, [resetSyncState]);
 
   const reset = useCallback(() => {
-    setState('idle');
+    setState(SYNC_STATE.idle);
     resetSyncState();
   }, [resetSyncState]);
 
@@ -147,6 +163,7 @@ export function useSync(plantacionId?: string) {
     startPlantationSync,
     startGlobalSync,
     pullSuccess,
+    sinAcceso,
     reset,
     hasFailures,
     successCount,

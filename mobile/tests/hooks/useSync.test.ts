@@ -1,6 +1,10 @@
 // Tests for useSync hook
 
+// Se stubea el comportamiento (las funciones de sync), no el contrato: las constantes
+// salen de sync/types, que no tiene side effects. Si se mockea el módulo entero,
+// SYNC_STATE llega undefined al hook.
 jest.mock('../../src/services/SyncService', () => ({
+  ...jest.requireActual('../../src/services/sync/types'),
   syncPlantation: jest.fn(),
   syncAllPlantations: jest.fn(),
   uploadPendingPhotos: jest.fn().mockResolvedValue({ uploaded: 0, failed: 0 }),
@@ -42,7 +46,7 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function), expect.any(Function));
     });
 
     it('transitions state from idle → pushing → done', async () => {

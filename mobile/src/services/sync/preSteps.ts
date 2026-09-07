@@ -10,7 +10,7 @@ import {
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows, runInTransaction } from './paginate';
-import { SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
+import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
@@ -174,7 +174,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
       syncLog.error('Upload plantation exception:', p.id, e?.message ?? e);
       results.push({
         success: false, plantacionId: p.id, nombre: p.lugar,
-        error: 'NETWORK', detail: rawErrorDetail({ message: String(e?.message ?? e) }),
+        error: SYNC_ERROR.NETWORK, detail: rawErrorDetail({ message: String(e?.message ?? e) }),
       });
     }
   }

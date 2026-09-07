@@ -1,26 +1,27 @@
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
-import type { DownloadResult, DownloadProgress, DownloadPhase } from '../services/SyncService';
+import { DOWNLOAD_PHASE, DOWNLOAD_STATE } from '../services/SyncService';
+import type { DownloadResult, DownloadProgress, DownloadPhase, DownloadState } from '../services/SyncService';
 import BaseModal from './BaseModal';
 import { downloadProgressModalStyles as styles } from './DownloadProgressModal.styles';
 
 interface Props {
-  state: 'idle' | 'downloading' | 'done';
+  state: DownloadState;
   progress: DownloadProgress | null;
   results: DownloadResult[];
   onDismiss: () => void;
 }
 
 const PHASE_LABEL: Record<DownloadPhase, string> = {
-  species: 'Catálogo de especies',
-  parcelas: 'Parcelas',
-  groups: 'Grupos',
-  usuarios: 'Usuarios',
-  especies_plantacion: 'Especies asignadas',
-  arboles: 'Árboles',
-  fotos: 'Fotos',
-  finalizando: 'Finalizando',
+  [DOWNLOAD_PHASE.species]: 'Catálogo de especies',
+  [DOWNLOAD_PHASE.parcelas]: 'Parcelas',
+  [DOWNLOAD_PHASE.groups]: 'Grupos',
+  [DOWNLOAD_PHASE.usuarios]: 'Usuarios',
+  [DOWNLOAD_PHASE.especiesPlantacion]: 'Especies asignadas',
+  [DOWNLOAD_PHASE.arboles]: 'Árboles',
+  [DOWNLOAD_PHASE.fotos]: 'Fotos',
+  [DOWNLOAD_PHASE.finalizando]: 'Finalizando',
 };
 
 function ProgressBar({ fraction }: { fraction: number }) {
@@ -33,7 +34,7 @@ function ProgressBar({ fraction }: { fraction: number }) {
 }
 
 export default function DownloadProgressModal({ state, progress, results, onDismiss }: Props) {
-  if (state === 'idle') return null;
+  if (state === DOWNLOAD_STATE.idle) return null;
 
   const successCount = results.filter((r) => r.success).length;
   const failureCount = results.length - successCount;
@@ -41,12 +42,12 @@ export default function DownloadProgressModal({ state, progress, results, onDism
   const allFailed = successCount === 0 && results.length > 0;
 
   return (
-    <BaseModal visible onRequestClose={state === 'done' ? onDismiss : undefined}>
-      {state === 'downloading' && (
+    <BaseModal visible onRequestClose={state === DOWNLOAD_STATE.done ? onDismiss : undefined}>
+      {state === DOWNLOAD_STATE.downloading && (
         <DownloadingView progress={progress} />
       )}
 
-      {state === 'done' && allSuccess && (
+      {state === DOWNLOAD_STATE.done && allSuccess && (
         <>
           <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
           <Text style={styles.title}>Descarga completa</Text>
@@ -57,7 +58,7 @@ export default function DownloadProgressModal({ state, progress, results, onDism
         </>
       )}
 
-      {state === 'done' && !allSuccess && !allFailed && (
+      {state === DOWNLOAD_STATE.done && !allSuccess && !allFailed && (
         <>
           <Ionicons name="alert-circle" size={48} color={colors.secondary} />
           <Text style={styles.title}>Descarga parcial</Text>
@@ -77,7 +78,7 @@ export default function DownloadProgressModal({ state, progress, results, onDism
         </>
       )}
 
-      {state === 'done' && allFailed && (
+      {state === DOWNLOAD_STATE.done && allFailed && (
         <>
           <Ionicons name="alert-circle" size={48} color={colors.danger} />
           <Text style={styles.title}>Error en la descarga</Text>

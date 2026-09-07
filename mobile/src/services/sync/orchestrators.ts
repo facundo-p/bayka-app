@@ -2,7 +2,7 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress } from './types';
+import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, PullResult, esSinAcceso } from './types';
 import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
@@ -14,7 +14,8 @@ export async function syncPlantation(
   plantacionId: string,
   onProgress?: (progress: SyncProgress) => void,
   onParcelaResults?: (parcelas: SyncParcelaResult[]) => void,
-  onPlantationResults?: (plantations: SyncPlantationResult[]) => void
+  onPlantationResults?: (plantations: SyncPlantationResult[]) => void,
+  onPullResult?: (resultado: PullResult) => void
 ): Promise<SyncGroupResult[]> {
   // Aborta temprano si la sesión no puede autenticar writes (evita que RLS rechace como error de permisos confuso).
   await ensureServerSession();
@@ -23,7 +24,11 @@ export async function syncPlantation(
   onPlantationResults?.(plantationResults);
 
   try {
-    await pullFromServer(plantacionId);
+    const pull = await pullFromServer(plantacionId);
+    onPullResult?.(pull);
+    // Sin membresía el push también lo rechaza RLS: cortar acá evita una lista
+    // de errores de permisos que tapan la causa real.
+    if (esSinAcceso(pull)) return [];
   } catch (e) {
     syncLog.error('Pull failed:', e);
   }
@@ -65,7 +70,11 @@ export async function syncAllPlantations(
     onProgress?.({ plantationName: plantation.lugar, plantationDone: i, plantationTotal: localPlantations.length });
 
     try {
-      await pullFromServer(plantation.id);
+      const pull = await pullFromServer(plantation.id);
+      if (esSinAcceso(pull)) {
+        syncLog.info(`Sync global: "${plantation.lugar}" sin acceso, se saltea`);
+        continue;
+      }
       // Push parcelas antes que groups (FK). Surfaceamos sus fallas.
       let parcelaResults: SyncParcelaResult[] = [];
       try {
