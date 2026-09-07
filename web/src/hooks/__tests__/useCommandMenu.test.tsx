@@ -153,11 +153,13 @@ test('scope: etiqueta vacía si la plantación todavía no llegó de la query', 
   expect(result.current.scope).toEqual({ plantationId: 'plant-x', etiqueta: '' });
 });
 
-test('scope: fuera de /plantaciones/:id es null', async () => {
+test('scope: fuera de /plantaciones/:id es null y no consulta plantaciones', async () => {
   listarPlantacionesMock.mockResolvedValue([plantacionMinima('plant-1', 'La Maluka')]);
   const { result } = renderHook(() => useCommandMenu(), { wrapper: crearWrapper('/especies') });
-  await waitFor(() => expect(listarPlantacionesMock).toHaveBeenCalled());
   expect(result.current.scope).toBeNull();
+  // Sin :id no hay etiqueta que resolver: pedir el listado solo llenaría la
+  // cache compartida con un resultado que nadie pidió.
+  await waitFor(() => expect(listarPlantacionesMock).not.toHaveBeenCalled());
 });
 
 /** Arnés con navegación real: limpiarScope() y la reactivación del scope

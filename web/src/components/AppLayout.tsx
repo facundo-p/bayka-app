@@ -1,7 +1,7 @@
 import { Leaf, Sprout, Users } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
-import { useCommandMenu } from '../hooks/useCommandMenu';
+import { CommandMenuProvider, useCommandMenu } from '../hooks/useCommandMenu';
 import { ROL } from '../repositories/profileRepository';
 import { CommandMenu } from './CommandMenu/CommandMenu';
 import { CommandMenuTrigger } from './CommandMenuTrigger';
@@ -49,16 +49,20 @@ function Sidebar() {
   );
 }
 
+/** Vive dentro del gate de sesión: montado en `/login` consultaría plantaciones
+ *  como anónimo y dejaría un `[]` cacheado que después ven todas las pantallas. */
 export function AppLayout() {
   return (
-    <div className={styles.shell}>
-      <Sidebar />
-      <div className={styles.content}>
-        <main className={styles.main}>
-          <Outlet />
-        </main>
+    <CommandMenuProvider>
+      <div className={styles.shell}>
+        <Sidebar />
+        <div className={styles.content}>
+          <main className={styles.main}>
+            <Outlet />
+          </main>
+        </div>
+        <CommandMenu />
       </div>
-      <CommandMenu />
-    </div>
+    </CommandMenuProvider>
   );
 }

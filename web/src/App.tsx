@@ -4,7 +4,6 @@ import { AppLayout } from './components/AppLayout';
 import { BannerEntornoPruebas } from './components/BannerEntornoPruebas';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
-import { CommandMenuProvider } from './hooks/useCommandMenu';
 import { queryClient } from './lib/queryClient';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
@@ -55,10 +54,8 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <CommandMenuProvider>
-            <BannerEntornoPruebas />
-            <AppRoutes />
-          </CommandMenuProvider>
+          <BannerEntornoPruebas />
+          <AppRoutes />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
