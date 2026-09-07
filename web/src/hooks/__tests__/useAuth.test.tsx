@@ -1,7 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   PERFIL_ADMIN,
   PERFIL_TECNICO,
+  emitirEventoAuth,
   estadoMock,
   resetEstadoMock,
 } from '../../test/supabaseMock';
@@ -14,8 +16,29 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-function renderAuth() {
-  return renderHook(() => useAuth(), { wrapper: AuthProvider });
+function renderAuth(queryClient = new QueryClient()) {
+  return renderHook(() => useAuth(), {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>{children}</AuthProvider>
+      </QueryClientProvider>
+    ),
+  });
+}
+
+const CLAVE = ['plantaciones'];
+
+/** Deja la sesión de user-1 abierta y algo cacheado a su nombre. */
+async function loguearConCache(queryClient: QueryClient) {
+  estadoMock.perfilFila = PERFIL_ADMIN;
+  const { result } = renderAuth(queryClient);
+  await waitFor(() => expect(result.current.estado).toBe('anonimo'));
+  await act(async () => {
+    await result.current.signIn('ana@bayka.com', 'secreta');
+  });
+  await waitFor(() => expect(result.current.estado).toBe('autenticado'));
+  queryClient.setQueryData(CLAVE, [{ id: 'plant-1' }]);
+  return result;
 }
 
 test('sin sesión queda anonimo', async () => {
@@ -91,4 +114,27 @@ test('signOut vuelve a anonimo y limpia el perfil', async () => {
   });
   await waitFor(() => expect(result.current.estado).toBe('anonimo'));
   expect(result.current.perfil).toBeNull();
+});
+
+test('cerrar sesión descarta la cache: el usuario siguiente no ve datos del anterior', async () => {
+  const queryClient = new QueryClient();
+  const result = await loguearConCache(queryClient);
+
+  await act(async () => {
+    await result.current.signOut();
+  });
+
+  expect(queryClient.getQueryData(CLAVE)).toBeUndefined();
+});
+
+test('un refresh de token del mismo usuario no descarta la cache', async () => {
+  const queryClient = new QueryClient();
+  const result = await loguearConCache(queryClient);
+
+  await act(async () => {
+    emitirEventoAuth('TOKEN_REFRESHED');
+  });
+
+  await waitFor(() => expect(result.current.estado).toBe('autenticado'));
+  expect(queryClient.getQueryData(CLAVE)).toEqual([{ id: 'plant-1' }]);
 });
