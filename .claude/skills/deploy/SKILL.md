@@ -141,7 +141,12 @@ estabilidad". Formato:
 
 (H2 solo con las apps que participan, `·` como separador; misma regla de
 sufijo ` (2)` si hay dos releases el mismo día. La entrada va después de la
-intro, arriba de la última. Ningún workflow parsea este archivo.)
+intro, arriba de la última.)
+
+Ningún workflow parsea este archivo, pero **la web sí**: la pantalla
+`/novedades` lo importa horneado en el build y lo lee con
+`web/src/lib/parsearNovedades.ts` (#286). El formato de arriba es contrato: si
+cambia, esa pantalla deja de mostrar las entradas.
 
 ## 4. Commit de release (recién con el OK)
 
@@ -236,4 +241,4 @@ check del paso 0) y se rehúsa a apilar otro bump encima.
 | Hay cambios pero ningún bump (solo docs/chore/DB) | Preguntar a Facu; con OK → release "sin versiones": entrada solo con `### Otros`, sin bumps ni tags (el merge igual deploya la web y habilita migraciones) |
 | No existe ningún tag `web-v*`/`mobile-v*` | Faltan los tags baseline (#273): crearlos sobre origin/main y volver a empezar |
 | `origin/staging..origin/main` con commits (`--no-merges`) | STOP: hotfix sin back-merge. El PR de hotfix a main lleva su propio bump patch + entrada de changelog (el workflow lo taggea al mergear); después back-merge main→staging inmediato |
-| PR de release ya abierto | No crear otro: "Refrescar" o abortar |
+| PR de release ya abierto | No crear otro: "Refrescar" o abortar. El commit de refresh incluye **CHANGELOG.md y NOVEDADES.md**, no solo los bumps |

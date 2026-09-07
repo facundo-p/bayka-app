@@ -9,6 +9,7 @@ import { queryClient } from './lib/queryClient';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
+import { NovedadesScreen } from './screens/NovedadesScreen';
 import { PlantacionDetailScreen } from './screens/PlantacionDetailScreen';
 import { PlantacionesScreen } from './screens/PlantacionesScreen';
 import { UsuariosScreen } from './screens/UsuariosScreen';
@@ -41,6 +42,7 @@ export function AppRoutes() {
             <Route path="configuracion" element={<ConfiguracionTab />} />
           </Route>
           <Route path="/especies" element={<EspeciesScreen />} />
+          <Route path="/novedades" element={<NovedadesScreen />} />
           <Route element={<RequireSuperadmin />}>
             <Route path="/usuarios" element={<UsuariosScreen />} />
           </Route>
