@@ -1,6 +1,5 @@
 .shell {
   display: flex;
-  align-items: flex-start;
   /* Alto de ventana menos el banner de entorno (#287; 0 en prod): el scroll
      ocurre dentro de las cards, nunca en el documento. */
   height: calc(100vh - var(--alto-banner-entorno));
@@ -11,11 +10,8 @@
 /* ─── Sidebar (papel cálido, fijo y sticky) ──────────────────────────── */
 
 .sidebar {
-  position: sticky;
-  top: var(--alto-banner-entorno);
-  align-self: flex-start;
-  height: calc(100vh - var(--alto-banner-entorno));
   flex-shrink: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4xl);
@@ -100,6 +96,13 @@
     height: auto;
     min-height: 100vh;
     overflow: visible;
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: var(--alto-banner-entorno);
+    height: calc(100vh - var(--alto-banner-entorno));
   }
 
   .content,

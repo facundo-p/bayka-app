@@ -1,8 +1,6 @@
 import { Check, Minus } from 'lucide-react';
 import { Input } from './Input';
 import { cx } from '../lib/classNames';
-import { varsCss } from '../lib/cssVars';
-import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
 import { filtrarCatalogo, type EstadoMaestro } from '../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../queries/especieQueries';
 import styles from './SpeciesChecklist.module.css';
@@ -110,11 +108,6 @@ function FilaEspecie({
         <span className={cx(styles.checkbox, marcada && styles.checkboxMarcado)} aria-hidden>
           {marcada && <Check size={14} strokeWidth={3} />}
         </span>
-        <span
-          className={styles.punto}
-          style={varsCss({ color: colorEspeciePorCodigo(especie.codigo) })}
-          aria-hidden
-        />
         <span className={styles.codigo}>{especie.codigo}</span>
         <span className={styles.nombre}>{especie.nombre}</span>
         {bloqueada && <span className={styles.conArboles}>{MARCA_BLOQUEADA}</span>}

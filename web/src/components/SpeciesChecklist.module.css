@@ -105,18 +105,11 @@
   text-align: center;
 }
 
-.punto {
-  flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  background-color: var(--color);
-}
-
 .codigo {
   flex-shrink: 0;
-  width: 36px;
+  padding: var(--space-xs) var(--space-md);
+  background-color: var(--color-surface-tint);
+  border-radius: var(--radius-code);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);

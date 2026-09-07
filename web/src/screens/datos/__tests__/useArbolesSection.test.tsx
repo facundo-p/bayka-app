@@ -65,7 +65,7 @@ beforeEach(() => {
 test('arma el recuento y los mapas de código de parcela / nombre de usuario', async () => {
   const { result } = renderConRuta();
 
-  await waitFor(() => expect(result.current.recuento).toBe('3 árboles'));
+  await waitFor(() => expect(result.current.recuento).toBe('3 árboles · página 1 de 1'));
   expect(result.current.codigosParcela.get('parc-1')).toBe('P1');
   expect(result.current.nombresUsuario.get('user-1')).toBe('Ana');
 });

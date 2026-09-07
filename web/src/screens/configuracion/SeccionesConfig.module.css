@@ -24,10 +24,12 @@
 
 .titulo {
   margin: 0;
+  flex-shrink: 0;
   font-family: var(--font-heading);
   font-size: var(--text-title);
   line-height: 1.1;
   color: var(--color-text-heading);
+  white-space: nowrap;
 }
 
 .chip {

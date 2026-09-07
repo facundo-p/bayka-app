@@ -242,7 +242,7 @@ describe('sección Árboles', () => {
     // El pie de la card dice el rango visible; la toolbar, el total.
     expect(screen.getByText(/Mostrando 1–50 de 120/)).toBeInTheDocument();
     expect(screen.getByText('1 / 3')).toBeInTheDocument();
-    expect(screen.getByText('120 árboles')).toBeInTheDocument();
+    expect(screen.getByText('120 árboles · página 1 de 3')).toBeInTheDocument();
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 0, hasta: 49 });
 
     await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
