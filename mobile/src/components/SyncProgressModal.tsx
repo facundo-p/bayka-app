@@ -18,6 +18,8 @@ interface Props {
   parcelaFailureCount: number;
   plantationFailureCount: number;
   pullSuccess: boolean | null;
+  /** La membresía fue revocada: la copia local queda para consulta (#317). */
+  sinAcceso: boolean;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
@@ -36,6 +38,7 @@ export default function SyncProgressModal({
   parcelaFailureCount,
   plantationFailureCount,
   pullSuccess,
+  sinAcceso,
   authExpired,
   photoProgress,
   photoResult,
@@ -111,7 +114,21 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && pullSuccess !== null && results.length === 0 && !anyFailure && (
+      {state === 'done' && sinAcceso && (
+        <>
+          <Ionicons name="lock-closed" size={48} color={colors.secondary} />
+          <Text style={styles.title}>Sin acceso a la plantacion</Text>
+          <Text style={styles.progressText}>
+            Un administrador te quito el acceso. Los datos descargados quedan solo para consulta
+            y no se van a sincronizar.
+          </Text>
+          <Pressable style={styles.dismissButton} onPress={onDismiss}>
+            <Text style={styles.dismissText}>Cerrar</Text>
+          </Pressable>
+        </>
+      )}
+
+      {state === 'done' && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -137,7 +154,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && (results.length > 0 || anyFailure || pullSuccess === null) && (
+      {state === 'done' && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
         <>
           <Ionicons
             name={anyFailure ? 'alert-circle' : 'checkmark-circle'}

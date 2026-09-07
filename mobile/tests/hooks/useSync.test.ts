@@ -42,7 +42,7 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function), expect.any(Function));
     });
 
     it('transitions state from idle → pushing → done', async () => {

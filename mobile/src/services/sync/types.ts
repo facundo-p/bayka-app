@@ -47,6 +47,14 @@ export interface GlobalSyncProgress {
   subgroupProgress?: SyncProgress;
 }
 
+/**
+ * Resultado del pull. `sin-acceso`: el server ya no reconoce la membresía del
+ * usuario en la plantación (revocada). Sin esto, las policies por membresía
+ * devuelven `{ data: [], error: null }` en cada paso y el pull lo lee como
+ * "el server está vacío".
+ */
+export type PullResult = { estado: 'ok' } | { estado: 'sin-acceso' };
+
 export type DownloadPhase =
   | 'species'      // global catalog (runs once at batch start)
   | 'parcelas'

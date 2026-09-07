@@ -22,6 +22,7 @@ export function useSync(plantacionId?: string) {
   const [parcelaResults, setParcelaResults] = useState<SyncParcelaResult[]>([]);
   const [plantationResults, setPlantationResults] = useState<SyncPlantationResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
+  const [sinAcceso, setSinAcceso] = useState(false);
   const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
@@ -34,6 +35,7 @@ export function useSync(plantacionId?: string) {
     setParcelaResults([]);
     setPlantationResults([]);
     setPullSuccess(null);
+    setSinAcceso(false);
     setAuthExpired(false);
     setPhotoProgress(null);
     setPhotoResult(null);
@@ -50,11 +52,22 @@ export function useSync(plantacionId?: string) {
     try {
       // syncPlantation does pull-then-push internally
       setState('pushing');
-      const res = await syncPlantation(targetPlantacionId, setProgress, setParcelaResults, setPlantationResults);
+      let accesoRevocado = false;
+      const res = await syncPlantation(
+        targetPlantacionId,
+        setProgress,
+        setParcelaResults,
+        setPlantationResults,
+        (pull) => {
+          accesoRevocado = pull.estado === 'sin-acceso';
+          setSinAcceso(accesoRevocado);
+        },
+      );
       setResults(res);
-      setPullSuccess(true);
+      setPullSuccess(!accesoRevocado);
 
-      if (incluirFotos) {
+      // Sin acceso no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
+      if (incluirFotos && !accesoRevocado) {
         setState('uploading-photos');
         const uploadRes = await uploadPendingPhotos(targetPlantacionId, setPhotoProgress);
         setState('downloading-photos');
@@ -147,6 +160,7 @@ export function useSync(plantacionId?: string) {
     startPlantationSync,
     startGlobalSync,
     pullSuccess,
+    sinAcceso,
     reset,
     hasFailures,
     successCount,

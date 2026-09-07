@@ -115,6 +115,9 @@ jest.mock('../../src/supabase/client', () => {
         };
       },
       auth: {
+        // El pull chequea la membresía propia antes de tocar la base (#317).
+        getSession: () =>
+          Promise.resolve({ data: { session: { user: { id: 'user-tecnico-1' } } } }),
         getUser: () => Promise.resolve({ data: { user: { id: 'user-tecnico-1' } } }),
       },
       rpc: () => Promise.resolve({ data: { success: true }, error: null }),
@@ -169,6 +172,14 @@ async function seedLocalPlantation(): Promise<string> {
     createdAt: new Date().toISOString(),
     pendingSync: false,
   });
+  // Membresía en el server: sin ella el pull corta con "sin acceso" (#317),
+  // que es justo lo que pasa en producción bajo las policies por membresía.
+  serverState.plantation_users.set(`pu-${id}`, {
+    plantation_id: id,
+    user_id: 'user-tecnico-1',
+    rol_en_plantacion: 'tecnico',
+    assigned_at: new Date().toISOString(),
+  });
   return id;
 }
 
@@ -199,6 +210,9 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  // Prod (expo-sqlite) no activa PRAGMA foreign_keys (#265): el pull escribe
+  // filas cuyo padre puede no estar local todavía.
+  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {

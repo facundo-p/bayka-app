@@ -59,6 +59,7 @@ type Props = {
   parcelaFailureCount: number;
   plantationFailureCount: number;
   pullSuccess: boolean | null;
+  sinAcceso: boolean;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
@@ -111,6 +112,7 @@ export default function PlantacionesModals({
   parcelaFailureCount,
   plantationFailureCount,
   pullSuccess,
+  sinAcceso,
   authExpired,
   photoProgress,
   photoResult,
@@ -169,6 +171,7 @@ export default function PlantacionesModals({
         parcelaFailureCount={parcelaFailureCount}
         plantationFailureCount={plantationFailureCount}
         pullSuccess={pullSuccess}
+        sinAcceso={sinAcceso}
         authExpired={authExpired}
         photoProgress={photoProgress}
         photoResult={photoResult}

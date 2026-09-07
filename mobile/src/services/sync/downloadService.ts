@@ -61,7 +61,12 @@ export async function downloadPlantation(
       },
     });
 
-  await pullFromServer(serverPlantation.id, onPhase);
+  const pull = await pullFromServer(serverPlantation.id, onPhase);
+  // Sin acceso no hay datos que bajar: que la descarga se reporte como fallida
+  // en vez de "listo" con la plantación vacía.
+  if (pull.estado === 'sin-acceso') {
+    throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
+  }
 
   if (includePhotos) {
     try {

@@ -5,7 +5,7 @@ import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows, runInTransaction } from './paginate';
-import type { DownloadPhase, DownloadPhaseProgress } from './types';
+import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -22,6 +22,39 @@ function emitProgress(
 }
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
+
+/**
+ * ¿El server todavía reconoce mi membresía? Es el mismo criterio que las
+ * policies de SELECT (`is_plantation_member`), incluidos los admins, que reciben
+ * su fila por trigger.
+ *
+ * Solo devuelve false ante evidencia positiva de revocación: si no hay sesión,
+ * si la consulta falla (offline) o si la plantación todavía no se pusheó, se
+ * asume acceso y el pull sigue su camino de siempre.
+ */
+async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
+  const [local] = await db
+    .select({ pendingSync: plantations.pendingSync })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+  if (local?.pendingSync) return true;
+
+  const { data: sesion } = await supabase.auth.getSession();
+  const userId = sesion?.session?.user?.id;
+  if (!userId) return true;
+
+  const { data, error } = await supabase
+    .from('plantation_users')
+    .select('user_id')
+    // (plantation_id, user_id) es la PK: vuelve una fila o ninguna.
+    .eq('plantation_id', plantacionId)
+    .eq('user_id', userId);
+  if (error) {
+    syncLog.error('Chequeo de membresía falló:', JSON.stringify(error));
+    return true;
+  }
+  return (data ?? []).length > 0;
+}
 
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
@@ -426,11 +459,16 @@ async function pullTrees(
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
-/** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK. */
+/** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK.
+ *  Corta antes de tocar la base si la membresía fue revocada: la copia local se conserva tal cual. */
 export async function pullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
-): Promise<void> {
+): Promise<PullResult> {
+  if (!(await tieneAccesoRemoto(plantacionId))) {
+    syncLog.info('Pull abortado: sin membresía en la plantación', plantacionId);
+    return { estado: 'sin-acceso' };
+  }
   syncLog.info('Pull starting for plantation:', plantacionId);
   await pullPlantationMetadata(plantacionId);
   await pullParcelas(plantacionId, onProgress);
@@ -438,4 +476,5 @@ export async function pullFromServer(
   await pullPlantationUsers(plantacionId, onProgress);
   await pullPlantationSpecies(plantacionId, onProgress);
   if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds, onProgress);
+  return { estado: 'ok' };
 }
