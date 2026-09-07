@@ -1,7 +1,7 @@
 /**
  * Integration tests: exportQueries.getExportRows
  * Real SQLite via better-sqlite3 + drizzle migrations.
- * Covers el INNER JOIN a parcelas (#90, parcelaNombre siempre presente), el
+ * Covers el nombre de parcela (null si está tombstoned, como en la web), el
  * NOT NULL de groups.parcela_id (migración 0018) y el orden por globalId ASC.
  */
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
@@ -122,6 +122,46 @@ describe('exportQueries.getExportRows', () => {
     expect(rows[0].lugar).toBe('Campo Test');
     expect(rows[0].grupoNombre).toBe('Linea A');
     expect(rows[1].parcelaNombre).toBe('Parcela 1');
+  });
+
+  it('una parcela tombstoned no filtra su nombre al export (alineado con la web)', async () => {
+    const plantation = createTestPlantation({ lugar: 'Campo Test' });
+    await mockTestDb.insert(plantations).values(plantation);
+
+    await mockTestDb.insert(parcelas).values({
+      id: 'parc-borrada',
+      plantacionId: plantation.id,
+      nombre: 'Parcela Vieja',
+      codigo: 'PV',
+      descripcion: null,
+      pendingSync: false,
+      createdAt: localNow(),
+      updatedAt: localNow(),
+      deletedAt: localNow(),
+    });
+
+    await mockTestDb.insert(groups).values({
+      id: 'g-borrada',
+      plantacionId: plantation.id,
+      parcelaId: 'parc-borrada',
+      nombre: 'Linea Z',
+      codigo: 'LZ',
+      tipo: 'linea',
+      estado: 'activa',
+      usuarioCreador: 'u1',
+      createdAt: localNow(),
+      pendingSync: false,
+    });
+
+    const especieId = await seedSpecies('PI');
+    await seedTree('g-borrada', especieId, 20, 1);
+
+    const rows = await getExportRows(plantation.id);
+
+    // El árbol sigue en la planilla; lo que desaparece es el nombre de la parcela.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].parcelaNombre).toBeNull();
+    expect(rows[0].grupoNombre).toBe('Linea Z');
   });
 
   it('el schema rechaza un grupo sin parcela (NOT NULL, #90 / migración 0018)', async () => {

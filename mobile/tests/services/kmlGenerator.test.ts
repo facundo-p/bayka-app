@@ -93,6 +93,13 @@ describe('buildKml', () => {
     expect(kml).toContain(`<styleUrl>#${getSpeciesStyleId('N/N')}</styleUrl>`);
   });
 
+  it('parcela borrada: el punto se conserva bajo "Sin parcela", sin el nombre viejo', () => {
+    const kml = buildKml('Campo Norte', [row({ parcelaNombre: null })]);
+    expect(kml).toContain('<name>Sin parcela</name>');
+    expect(kml).toContain('Parcela: Sin parcela');
+    expect(kml).toContain('<name>PL1EUC1</name>');
+  });
+
   it('la descripción incluye especie, grupo, parcela, posición, precisión y fecha', () => {
     const kml = buildKml('Campo', [row()]);
     expect(kml).toContain('Especie: Eucalipto');

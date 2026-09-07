@@ -58,14 +58,14 @@ function csvField(value: string | number | null | undefined): string {
   return str;
 }
 
-/** Fila CSV en el orden del header (especieNombre null → 'N/N'; parcelaNombre es obligatoria). */
+/** Fila CSV en el orden del header (especieNombre null → 'N/N'; parcelaNombre null → celda vacía). */
 function rowToCSV(r: ExportRow): string {
   return [
     csvField(r.globalId),
     csvField(r.idParcial),
     csvField(r.lugar),
     csvField(r.plantacionLugar),
-    csvField(r.parcelaNombre),
+    csvField(r.parcelaNombre ?? ''),
     csvField(r.grupoNombre),
     csvField(r.subId),
     csvField(r.periodo),
@@ -80,7 +80,7 @@ export function rowToExcel(r: ExportRow) {
     'ID Parcial': r.idParcial,
     'Zona': r.lugar,
     'Plantación': r.plantacionLugar,
-    'Parcela': r.parcelaNombre,
+    'Parcela': r.parcelaNombre ?? '',
     'Grupo': r.grupoNombre,
     'SubID': r.subId,
     'Periodo': r.periodo,
