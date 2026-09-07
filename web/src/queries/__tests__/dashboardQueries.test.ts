@@ -5,8 +5,10 @@ import {
   agruparPorEspecie,
   agruparPorMes,
   agruparPorParcela,
+  calcularDashboard,
   calcularKpis,
-  obtenerDashboard,
+  filtrarPorParcela,
+  obtenerFuenteDashboard,
   porcentaje,
   type ArbolDashboard,
 } from '../dashboardQueries';
@@ -125,7 +127,65 @@ describe('agruparPorMes', () => {
   });
 });
 
-describe('obtenerDashboard', () => {
+describe('filtrarPorParcela', () => {
+  const arboles = [arbol(), arbol({ parcelaId: 'parc-2' })];
+
+  test('sin parcela devuelve la misma lista, sin copiarla', () => {
+    expect(filtrarPorParcela(arboles, null)).toBe(arboles);
+  });
+
+  test('con parcela deja solo los de esa parcela', () => {
+    expect(filtrarPorParcela(arboles, 'parc-2')).toEqual([arboles[1]]);
+  });
+});
+
+describe('calcularDashboard', () => {
+  const FUENTE = {
+    arboles: [
+      arbol({ latitude: -27.1, fotoUrl: 'plantations/p1/trees/t1.jpg' }),
+      arbol({ speciesId: null }),
+      arbol({ speciesId: 'sp-2', parcelaId: 'parc-2', latitude: -27.2 }),
+    ],
+    especies: ESPECIES,
+    parcelas: [
+      { id: 'parc-1', nombre: 'Norte', codigo: 'P1' },
+      { id: 'parc-2', nombre: 'Sur', codigo: 'P2' },
+      { id: 'parc-3', nombre: 'Este', codigo: 'P3' },
+    ],
+    totalGrupos: 7,
+  };
+
+  test('con una parcela recalcula KPIs y especies sobre sus árboles', () => {
+    const dashboard = calcularDashboard(FUENTE, 'parc-1');
+
+    expect(dashboard.totalArboles).toBe(2);
+    expect(dashboard.arbolesNN).toBe(1);
+    expect(dashboard.especiesUsadas).toBe(1);
+    expect(dashboard.porcentajeConGps).toBe(50);
+    expect(dashboard.porcentajeConFoto).toBe(50);
+    expect(dashboard.porEspecie).toEqual([
+      { codigo: 'QB', nombre: 'Quebracho', cantidad: 1 },
+      { codigo: 'NN', nombre: 'Sin identificar', cantidad: 1 },
+    ]);
+  });
+
+  test('el tamaño de la plantación (grupos y parcelas) no sigue al filtro', () => {
+    const dashboard = calcularDashboard(FUENTE, 'parc-2');
+
+    expect(dashboard.totalGrupos).toBe(7);
+    expect(dashboard.totalParcelas).toBe(3);
+  });
+
+  test('una parcela sin árboles da ceros, no un dashboard de la plantación', () => {
+    const dashboard = calcularDashboard(FUENTE, 'parc-3');
+
+    expect(dashboard.totalArboles).toBe(0);
+    expect(dashboard.porEspecie).toEqual([]);
+    expect(dashboard.porcentajeConGps).toBe(0);
+  });
+});
+
+describe('obtenerFuenteDashboard', () => {
   const FILA_ARBOL = {
     species_id: 'sp-1',
     foto_url: 'plantations/p1/trees/t1.jpg',
@@ -155,7 +215,7 @@ describe('obtenerDashboard', () => {
 
   test('lee los árboles paginando con range (sin el tope de 1000)', async () => {
     const consultas = capturarConsultas(responder);
-    await obtenerDashboard('plant-1');
+    await obtenerFuenteDashboard('plant-1');
 
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
     // Mock con < 1000 filas: una sola página (range 0–999) y corta.
@@ -173,7 +233,7 @@ describe('obtenerDashboard', () => {
   test('arma los KPIs y las distribuciones agregadas en cliente', async () => {
     capturarConsultas(responder);
 
-    expect(await obtenerDashboard('plant-1')).toEqual({
+    expect(calcularDashboard(await obtenerFuenteDashboard('plant-1'), null)).toEqual({
       totalArboles: 2,
       arbolesNN: 1,
       especiesUsadas: 1,
@@ -209,7 +269,7 @@ describe('obtenerDashboard', () => {
       return responder(consulta);
     });
 
-    const dashboard = await obtenerDashboard('plant-1');
+    const dashboard = calcularDashboard(await obtenerFuenteDashboard('plant-1'), null);
 
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
     expect(deArboles).toHaveLength(2);

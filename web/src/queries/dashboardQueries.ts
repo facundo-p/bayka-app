@@ -116,6 +116,16 @@ export function agruparPorParcela(
   }));
 }
 
+/** Árboles de una parcela; sin parcela, la lista entera. */
+export function filtrarPorParcela(
+  arboles: ArbolDashboard[],
+  parcelaId: string | null,
+): ArbolDashboard[] {
+  return parcelaId === null
+    ? arboles
+    : arboles.filter((arbol) => arbol.parcelaId === parcelaId);
+}
+
 export function agruparPorMes(arboles: ArbolDashboard[]): RegistrosMes[] {
   const conteos = contarPor(arboles, (arbol) => arbol.createdAt.slice(0, LARGO_MES_ISO));
   return [...conteos]
@@ -198,19 +208,40 @@ async function contarGrupos(plantationId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-export async function obtenerDashboard(plantationId: string): Promise<DashboardData> {
+/** Lecturas crudas: los agregados salen después, según la parcela elegida. */
+export type FuenteDashboard = {
+  arboles: ArbolDashboard[];
+  especies: EspecieCatalogo[];
+  parcelas: ParcelaDashboard[];
+  totalGrupos: number;
+};
+
+export async function obtenerFuenteDashboard(plantationId: string): Promise<FuenteDashboard> {
   const [arboles, especies, parcelas, totalGrupos] = await Promise.all([
     listarArbolesDashboard(plantationId),
     listarCatalogo(),
     listarParcelasDashboard(plantationId),
     contarGrupos(plantationId),
   ]);
+  return { arboles, especies, parcelas, totalGrupos };
+}
+
+/**
+ * Agregados del alcance elegido: toda la plantación (`parcelaId` null) o una parcela.
+ * `totalGrupos` y `totalParcelas` describen el tamaño de la plantación, no el del
+ * recorte, así que no se filtran.
+ */
+export function calcularDashboard(
+  fuente: FuenteDashboard,
+  parcelaId: string | null,
+): DashboardData {
+  const arboles = filtrarPorParcela(fuente.arboles, parcelaId);
   return {
     ...calcularKpis(arboles),
-    totalGrupos,
-    totalParcelas: parcelas.length,
-    porEspecie: agruparPorEspecie(arboles, especies),
-    porParcela: agruparPorParcela(arboles, parcelas),
+    totalGrupos: fuente.totalGrupos,
+    totalParcelas: fuente.parcelas.length,
+    porEspecie: agruparPorEspecie(arboles, fuente.especies),
+    porParcela: agruparPorParcela(arboles, fuente.parcelas),
     porMes: agruparPorMes(arboles),
   };
 }

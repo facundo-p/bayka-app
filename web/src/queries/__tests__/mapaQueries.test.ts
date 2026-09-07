@@ -16,6 +16,7 @@ const FILA_CON_ESPECIE = {
   longitude: -55.2,
   species_id: 'sp-1',
   species: { codigo: 'QB', nombre: 'Quebracho' },
+  groups: { parcela_id: 'parc-1' },
 };
 
 const FILA_SIN_ESPECIE = {
@@ -23,6 +24,7 @@ const FILA_SIN_ESPECIE = {
   longitude: -55.4,
   species_id: null,
   species: null,
+  groups: { parcela_id: null },
 };
 
 describe('listarPuntosGps', () => {
@@ -55,13 +57,22 @@ describe('listarPuntosGps', () => {
     });
   });
 
-  test('mapea filas a puntos y usa N/N cuando no hay especie', async () => {
+  test('mapea filas a puntos con su parcela y usa N/N cuando no hay especie', async () => {
     capturarConsultas(() => ({ data: [FILA_CON_ESPECIE, FILA_SIN_ESPECIE] }));
 
     expect(await listarPuntosGps('plant-1')).toEqual([
-      { lat: -27.1, lng: -55.2, codigo: 'QB', nombre: 'Quebracho' },
-      { lat: -27.3, lng: -55.4, codigo: 'NN', nombre: 'Sin identificar' },
+      { lat: -27.1, lng: -55.2, codigo: 'QB', nombre: 'Quebracho', parcelaId: 'parc-1' },
+      { lat: -27.3, lng: -55.4, codigo: 'NN', nombre: 'Sin identificar', parcelaId: null },
     ]);
+  });
+
+  test('pide parcela_id en el embed: sin eso el filtro por parcela no existe', async () => {
+    const consultas = capturarConsultas(() => ({ data: [FILA_CON_ESPECIE] }));
+
+    await listarPuntosGps('plant-1');
+
+    const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
+    expect(deArboles[0].columnas).toContain('parcela_id');
   });
 
   test('devuelve [] si latitude/longitude no existen (migración 023 sin aplicar)', async () => {

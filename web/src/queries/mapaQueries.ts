@@ -7,13 +7,21 @@ import { supabase } from '../lib/supabase';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { leerPaginado } from './leerPaginado';
 
-export type PuntoGps = { lat: number; lng: number; codigo: string; nombre: string };
+export type PuntoGps = {
+  lat: number;
+  lng: number;
+  codigo: string;
+  nombre: string;
+  /** Parcela del grupo del árbol; null si el grupo no tiene parcela. */
+  parcelaId: string | null;
+};
 
 type FilaPuntoGps = {
   latitude: number;
   longitude: number;
   species_id: string | null;
   species: { codigo: string; nombre: string } | null;
+  groups: { parcela_id: string | null } | null;
 };
 
 function mapearPunto(fila: FilaPuntoGps): PuntoGps {
@@ -22,11 +30,12 @@ function mapearPunto(fila: FilaPuntoGps): PuntoGps {
     lng: fila.longitude,
     codigo: fila.species?.codigo ?? ESPECIE_SIN_IDENTIFICAR,
     nombre: fila.species?.nombre ?? NOMBRE_SIN_IDENTIFICAR,
+    parcelaId: fila.groups?.parcela_id ?? null,
   };
 }
 
 const COLUMNAS_PUNTO = 'latitude, longitude, species_id, species(codigo, nombre)';
-const EMBED_GRUPO = 'groups!inner(plantation_id)';
+const EMBED_GRUPO = 'groups!inner(plantation_id, parcela_id)';
 
 function consultarPuntos(plantationId: string, desde: number, hasta: number) {
   return supabase

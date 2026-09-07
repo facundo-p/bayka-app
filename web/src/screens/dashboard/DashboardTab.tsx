@@ -1,24 +1,27 @@
+import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Cargando, EmptyState, ErrorConReintento } from '../../components';
-import { HeroMetric } from '../../components/HeroMetric';
+import { HeroMetric, type AlcanceMetrica } from '../../components/HeroMetric';
 import { StatCard } from '../../components/StatCard';
 import { PlantationMap } from '../../components/PlantationMap';
 import { formatearEntero } from '../../lib/formato';
-import { obtenerDashboard, type DashboardData } from '../../queries/dashboardQueries';
+import {
+  calcularDashboard,
+  obtenerFuenteDashboard,
+  type DashboardData,
+  type FuenteDashboard,
+} from '../../queries/dashboardQueries';
 import { obtenerPlantacion } from '../../queries/plantationQueries';
-import { listarPuntosGps } from '../../queries/mapaQueries';
+import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import {
   listarParcelasConStats,
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
-import { asignarColoresEspecies, mapaColorPorCodigo } from './coloresEspecies';
+import { asignarColoresEspecies } from './coloresEspecies';
 import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
 import styles from './DashboardTab.module.css';
-
-/** Cantidad de parcelas destacadas en la tira (top por árboles). */
-const PARCELAS_DESTACADAS = 5;
 
 function SinArboles() {
   return (
@@ -35,22 +38,27 @@ function porcentajeObjetivo(total: number, objetivo: number): number {
   return objetivo > 0 ? Math.round((total / objetivo) * 100) : 0;
 }
 
-/** Top parcelas por cantidad de árboles, mapeadas a la forma de la tira. */
-function parcelasDestacadas(parcelas: ParcelaConStats[]) {
-  return [...parcelas]
-    .sort((a, b) => b.arboles - a.arboles)
-    .slice(0, PARCELAS_DESTACADAS)
-    .map(({ id, codigo, nombre, arboles, grupos }) => ({ id, codigo, nombre, arboles, grupos }));
+/** Puntos de una parcela; sin selección devuelve el MISMO array (si cambia la
+ *  referencia, el mapa vuelve a encuadrar aunque no haya filtrado nada). */
+function filtrarPuntos(puntos: PuntoGps[], parcelaId: string | null): PuntoGps[] {
+  if (parcelaId === null) return puntos;
+  return puntos.filter((punto) => punto.parcelaId === parcelaId);
 }
 
 interface ContenidoDashboardProps {
-  datos: DashboardData;
+  fuente: FuenteDashboard;
   objetivoArboles: number | null;
   parcelas: ParcelaConStats[];
-  puntos: import('../../queries/mapaQueries').PuntoGps[];
+  puntos: PuntoGps[];
 }
 
-function FilaA({ datos, objetivoArboles }: Pick<ContenidoDashboardProps, 'datos' | 'objetivoArboles'>) {
+interface FilaAProps {
+  datos: DashboardData;
+  objetivoArboles: number | null;
+  alcance?: AlcanceMetrica;
+}
+
+function FilaA({ datos, objetivoArboles, alcance }: FilaAProps) {
   const objetivo = objetivoArboles ?? 0;
   return (
     <div className={styles.filaA}>
@@ -59,6 +67,7 @@ function FilaA({ datos, objetivoArboles }: Pick<ContenidoDashboardProps, 'datos'
         valor={datos.totalArboles}
         objetivo={objetivo}
         porcentaje={porcentajeObjetivo(datos.totalArboles, objetivo)}
+        alcance={alcance}
       />
       <div className={styles.stats}>
         <StatCard
@@ -82,18 +91,50 @@ function FilaA({ datos, objetivoArboles }: Pick<ContenidoDashboardProps, 'datos'
   );
 }
 
-function ContenidoDashboard({ datos, objetivoArboles, parcelas, puntos }: ContenidoDashboardProps) {
-  if (datos.totalArboles === 0) return <SinArboles />;
+function ContenidoDashboard({
+  fuente,
+  objetivoArboles,
+  parcelas,
+  puntos,
+}: ContenidoDashboardProps) {
+  const [seleccionada, setSeleccionada] = useState<string | null>(null);
+  // Si la parcela seleccionada ya no está en la lista, el filtro se cae solo.
+  const parcelaFiltro = parcelas.find((parcela) => parcela.id === seleccionada) ?? null;
+  const parcelaId = parcelaFiltro?.id ?? null;
+  const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
+  // El vacío es de la plantación: una parcela sin árboles muestra ceros y la
+  // salida a "Ver todos", no una pantalla sin retorno.
+  if (fuente.arboles.length === 0) return <SinArboles />;
   const coloreadas = asignarColoresEspecies(datos.porEspecie);
-  const colorPorCodigo = mapaColorPorCodigo(coloreadas);
+  const alternar = (id: string) =>
+    setSeleccionada((actual) => (actual === id ? null : id));
+  const alcance: AlcanceMetrica | undefined = parcelaFiltro
+    ? {
+        codigo: parcelaFiltro.codigo,
+        nombre: parcelaFiltro.nombre,
+        onVerTodos: () => setSeleccionada(null),
+      }
+    : undefined;
   return (
     <div className={styles.dashboard}>
-      <FilaA datos={datos} objetivoArboles={objetivoArboles} />
+      <FilaA datos={datos} objetivoArboles={objetivoArboles} alcance={alcance} />
       <div className={styles.filaB}>
-        <PlantationMap puntos={puntos} colorPorCodigo={colorPorCodigo} />
-        <SpeciesDistribution especies={coloreadas} totalEspecies={datos.especiesUsadas} />
+        <PlantationMap
+          puntos={filtrarPuntos(puntos, parcelaId)}
+          leyenda={coloreadas}
+          parcelaFiltro={parcelaFiltro?.codigo}
+        />
+        <SpeciesDistribution
+          especies={coloreadas}
+          totalEspecies={datos.especiesUsadas}
+          parcelaFiltro={parcelaFiltro?.codigo}
+        />
       </div>
-      <ParcelasStrip parcelas={parcelasDestacadas(parcelas)} />
+      <ParcelasStrip
+        parcelas={parcelas}
+        parcelaSeleccionada={parcelaId}
+        onSeleccionar={alternar}
+      />
     </div>
   );
 }
@@ -101,7 +142,10 @@ function ContenidoDashboard({ datos, objetivoArboles, parcelas, puntos }: Conten
 /** Tab Dashboard del detalle de plantación: hero, KPIs, mapa y panel de especies. */
 export function DashboardTab() {
   const { id = '' } = useParams();
-  const dashboard = useQuery({ queryKey: ['dashboard', id], queryFn: () => obtenerDashboard(id) });
+  const dashboard = useQuery({
+    queryKey: ['dashboard', id],
+    queryFn: () => obtenerFuenteDashboard(id),
+  });
   // Misma key que el shell del detalle: reusa la cache y solo aporta el objetivo.
   const plantacion = useQuery({ queryKey: ['plantacion', id], queryFn: () => obtenerPlantacion(id) });
   // Mapa y parcelas pueden seguir cargando con el dashboard ya listo: se rinden
@@ -121,7 +165,7 @@ export function DashboardTab() {
   }
   return (
     <ContenidoDashboard
-      datos={dashboard.data}
+      fuente={dashboard.data}
       objetivoArboles={plantacion.data?.objetivoArboles ?? null}
       parcelas={parcelas.data ?? []}
       puntos={mapa.data ?? []}

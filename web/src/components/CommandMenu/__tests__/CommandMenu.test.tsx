@@ -9,6 +9,11 @@ vi.mock('../../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
+// El detalle de plantación monta el dashboard, y Leaflet no anda en jsdom.
+vi.mock('../../PlantationMap', () => ({
+  PlantationMap: () => <div>Mapa de la plantación</div>,
+}));
+
 const FILA_PLANTACION = {
   id: 'plant-1',
   lugar: 'La Maluka',
@@ -25,11 +30,18 @@ const FILA_ESPECIE = {
   nombre_cientifico: 'Schinopsis balansae',
 };
 
+/** El mock responde esta fila a TODA consulta de `trees`, incluida la del
+ *  dashboard de la plantación: lleva también sus columnas. */
 const FILA_ARBOL = {
   id: 'tree-1',
   sub_id: 'PAL23ANC12',
+  species_id: 'sp-1',
   species: { nombre: 'Quebracho' },
-  groups: { plantation_id: 'plant-1', codigo: 'L1' },
+  foto_url: null,
+  latitude: null,
+  created_at: '2026-04-02T00:00:00Z',
+  group_id: 'gr-1',
+  groups: { plantation_id: 'plant-1', codigo: 'L1', parcela_id: null },
 };
 
 /** El detalle filtra por id con maybeSingle → devolver la fila única. */
