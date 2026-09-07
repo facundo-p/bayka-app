@@ -4,6 +4,11 @@ Qué trae cada actualización de Bayka, contado para quienes usan la app. Este e
 el changelog para compartir con usuarios y clientes: sin referencias internas ni
 detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 
+> El formato de abajo es **contrato**: los `## ` y los bullets
+> `- **Titular.** Detalle` los parsea la web para la pantalla `/novedades`
+> (`web/src/lib/parsearNovedades.ts`), igual que los headers de `CHANGELOG.md`
+> son anclas del workflow de tags. Cambiar el formato rompe esa pantalla.
+
 ## Web 1.1.0 · 21 de agosto de 2026
 
 - **Mostrá u ocultá tu contraseña.** El inicio de sesión y los formularios de

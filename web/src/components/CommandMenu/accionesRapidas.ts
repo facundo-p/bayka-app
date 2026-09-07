@@ -1,4 +1,4 @@
-import { Leaf, Plus, Settings, Sprout, Users, type LucideIcon } from 'lucide-react';
+import { Leaf, Plus, Settings, Sparkles, Sprout, Users, type LucideIcon } from 'lucide-react';
 import type { ScopeContextual } from '../../hooks/useCommandMenu';
 
 /** Acción rápida de la paleta: navegación simple (sin backend nuevo). */
@@ -16,6 +16,7 @@ export function accionesRapidas(scope: ScopeContextual | null): AccionRapida[] {
     { id: 'ir-plantaciones', titulo: 'Ir a Plantaciones', Icono: Sprout, to: '/plantaciones' },
     { id: 'ir-especies', titulo: 'Ir a Especies', Icono: Leaf, to: '/especies' },
     { id: 'ir-usuarios', titulo: 'Ir a Usuarios', Icono: Users, to: '/usuarios' },
+    { id: 'ir-novedades', titulo: 'Ver novedades', Icono: Sparkles, to: '/novedades' },
   ];
   if (scope) {
     base.push({
