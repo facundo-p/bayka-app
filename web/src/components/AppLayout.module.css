@@ -1,8 +1,9 @@
 .shell {
   display: flex;
-  /* Alto de ventana menos el banner de entorno (#287; 0 en prod): el scroll
-     ocurre dentro de las cards, nunca en el documento. */
-  height: calc(100vh - var(--alto-banner-entorno));
+  /* Alto de ventana: el scroll ocurre dentro de las cards, nunca en el
+     documento. El padding deja lugar al banner de entorno (#287; 0 en prod) y
+     entra en el height, que es border-box. */
+  height: 100vh;
   overflow: hidden;
   padding-top: var(--alto-banner-entorno);
 }
