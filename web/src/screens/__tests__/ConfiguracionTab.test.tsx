@@ -170,7 +170,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('parcial: marca todas las visibles e inserta las faltantes', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
     // sp-1 y sp-2 habilitadas de 3 visibles → indeterminado.
     expect(maestro).toHaveAttribute('aria-checked', 'mixed');
 
@@ -181,7 +181,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     expect(consultasEspecies('insert')[0].payload).toEqual([
       { plantation_id: 'plant-1', species_id: 'sp-3', orden_visual: 2 },
     ]);
-    expect(await screen.findByText('3 habilitadas')).toBeInTheDocument();
+    expect(await screen.findByText(/^3 habilitadas ·/)).toBeInTheDocument();
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
   });
 
@@ -193,7 +193,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
       { species_id: 'sp-3', orden_visual: 2 },
     ];
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
 
     await usuario.click(maestro);
@@ -217,7 +217,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     ];
     arbolesPorEspecie = { 'sp-1': 3, 'sp-2': 1, 'sp-3': 5 };
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
 
     await usuario.click(maestro);
@@ -236,13 +236,13 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await screen.findByRole('checkbox', { name: 'Ceibo' });
     // Sólo sp-2 y sp-3 habilitadas → parcial; una marcada las lleva a todas.
-    const maestro = screen.getByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = screen.getByRole('checkbox', { name: 'Marcar todas' });
     await usuario.click(maestro); // marcar sp-1 → todas
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
 
     await usuario.click(maestro); // desmarcar todas (ninguna bloqueada)
 
-    await waitFor(() => expect(screen.getByText('0 habilitadas')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^0 habilitadas ·/)).toBeInTheDocument());
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
@@ -253,7 +253,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     await usuario.type(screen.getByPlaceholderText(/Buscar especie/), 'ceib');
 
     // Sólo Ceibo (sp-3, no habilitada) visible → maestro vacío.
-    const maestro = screen.getByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = screen.getByRole('checkbox', { name: 'Marcar todas' });
     expect(maestro).toHaveAttribute('aria-checked', 'false');
     await usuario.click(maestro);
 
@@ -319,7 +319,7 @@ describe('sección GPS', () => {
     await screen.findByRole('checkbox', { name: 'Quebracho' });
 
     expect(screen.getByText('El técnico no puede registrar sin GPS')).toBeInTheDocument();
-    await usuario.click(screen.getByRole('switch', { name: 'Captura obligatoria' }));
+    await usuario.click(screen.getByRole('switch', { name: 'Captura de GPS obligatoria' }));
 
     await waitFor(() => expect(updatesGps()).toHaveLength(1));
     expect(updatesGps()[0].payload).toMatchObject({ gps_capture_required: false });

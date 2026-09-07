@@ -1,10 +1,10 @@
-/* Fila de chips que muestra el scope (parcela/grupo) heredado por drill-down. */
+/* Chips del scope (parcela/grupo) heredado por drill-down. Viven dentro de la
+   toolbar, así que no llevan margen ni saltan de línea. */
 .fila {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-md);
-  margin-bottom: var(--space-2xl);
+  min-width: 0;
 }
 
 .chip {

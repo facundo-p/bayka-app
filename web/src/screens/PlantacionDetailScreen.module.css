@@ -1,34 +1,73 @@
-/* Bloque de título del detalle. */
-.titulo {
-  padding: var(--space-5xl) var(--page-pad-x) 0;
+/* Columna acotada: la barra es fija y el contenido de la tab llena el resto. */
+.pantalla {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
-/* Chip de estado + nombre + Editar, todo en la misma línea. */
-.encabezadoFila {
+/* ─── Barra única: el breadcrumb es el título ────────────────────────── */
+
+.cabecera {
   display: flex;
   align-items: center;
-  gap: var(--space-2xl);
-  flex-wrap: wrap;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.raiz {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.raiz:hover {
+  color: var(--color-primary);
+}
+
+.separador {
+  color: var(--color-text-faint);
 }
 
 .lugar {
   margin: 0;
-  font-size: var(--text-page-title);
-  color: var(--color-text-heading);
+  font-size: var(--text-detail-title);
   line-height: 1.1;
+  color: var(--color-text-heading);
+  white-space: nowrap;
 }
 
+.meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ─── Acciones: tabs + editar + exportar ─────────────────────────────── */
+
+.acciones {
+  /* Ancla del mensaje de descarga, que cuelga fuera de la barra. */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.divisor {
+  width: var(--border-thin);
+  height: var(--space-4xl);
+  background-color: var(--color-border);
+}
+
+/* Editar queda solo-ícono: el nombre lo da el aria-label/title. */
 .editar {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
-  margin-left: auto;
-  padding: var(--space-sm) var(--space-lg);
+  justify-content: center;
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
   background: none;
   border: var(--border-thin) solid var(--color-border-strong);
   border-radius: var(--radius-control);
-  font-family: var(--font-body);
-  font-size: var(--text-md);
   color: var(--color-text-secondary);
   cursor: pointer;
 }
@@ -38,33 +77,30 @@
   color: var(--color-text-heading);
 }
 
-.meta {
-  margin: var(--space-md) 0 0;
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-/* Contenedor de las tabs: poco aire arriba, borde inferior, baja densidad. */
-.tabs {
-  margin-top: var(--space-3xl);
-  padding: 0 var(--page-pad-x);
-}
-
-/* Contenido de cada tab (Outlet). */
-.contenido {
-  padding: 0 var(--page-pad-x);
-}
-
-/* Acciones de la topbar: botones alineados + mensaje inline (sin puntos GPS). */
-.acciones {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-lg);
-}
-
+/* "Sin puntos GPS" / "sin árboles": cuelga bajo el botón para no ensanchar la barra. */
 .mensajeAccion {
+  position: absolute;
+  top: calc(100% + var(--space-md));
+  right: 0;
+  z-index: 10;
+  max-width: 320px;
+  padding: var(--space-md) var(--space-xl);
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-control);
+  box-shadow: var(--shadow-card);
   font-size: var(--text-md);
-  color: var(--color-text-muted);
+  color: var(--color-text-secondary);
+}
+
+/* ─── Contenido de cada tab (Outlet) ─────────────────────────────────── */
+
+.contenido {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
 
 .volver {

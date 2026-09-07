@@ -6,6 +6,9 @@
 
 /* Cuerpo de la página: padding horizontal de contenido + aire arriba. */
 .body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--space-4xl) var(--page-pad-x) var(--space-6xl);
 }
 

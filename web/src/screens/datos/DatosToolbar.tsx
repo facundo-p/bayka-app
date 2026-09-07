@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { SegmentedControl } from '../../components';
+import { ScopeChips, type ScopeChip } from './ScopeChips';
 import styles from './SeccionesDatos.module.css';
 
 /** Sección activa de la tab Datos (coincide con el sub-segmento de la ruta). */
@@ -16,6 +17,8 @@ interface DatosToolbarProps {
   segmento: SegmentoDatos;
   /** Texto del recuento a la derecha, ej. "7.642 árboles". */
   recuento?: string;
+  /** Scope activo (parcela/grupo del drill-down), en la misma fila. */
+  chips?: ScopeChip[];
   /** Filtros propios de la sección, en línea dentro de la toolbar. */
   children?: ReactNode;
 }
@@ -24,7 +27,7 @@ interface DatosToolbarProps {
  * Toolbar única de la tab Datos: selector de sección + filtros + recuento.
  * Reemplaza al sub-TabNav apilado para ganar densidad (un solo renglón).
  */
-export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps) {
+export function DatosToolbar({ segmento, recuento, chips, children }: DatosToolbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -44,6 +47,7 @@ export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps
       />
       {children && <span className={styles.divisor} aria-hidden="true" />}
       {children}
+      {chips && <ScopeChips chips={chips} />}
       {recuento && <span className={styles.recuento}>{recuento}</span>}
     </div>
   );

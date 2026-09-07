@@ -239,12 +239,16 @@ describe('sección Árboles', () => {
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
-    expect(screen.getByText('Página 1 de 3 · total 120 árboles')).toBeInTheDocument();
+    // El pie de la card dice el rango visible; la toolbar, el total.
+    expect(screen.getByText(/Mostrando 1–50 de 120/)).toBeInTheDocument();
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+    expect(screen.getByText('120 árboles · página 1 de 3')).toBeInTheDocument();
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 0, hasta: 49 });
 
-    await usuario.click(screen.getByRole('button', { name: 'Siguiente' }));
+    await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
 
-    expect(await screen.findByText('Página 2 de 3 · total 120 árboles')).toBeInTheDocument();
+    expect(await screen.findByText(/Mostrando 51–100 de 120/)).toBeInTheDocument();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 50, hasta: 99 });
   });
 

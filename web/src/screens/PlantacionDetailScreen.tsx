@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Pencil, Plus } from 'lucide-react';
+import { ChevronDown, Download, Pencil, Plus } from 'lucide-react';
 import {
-  Breadcrumb,
   Button,
   Cargando,
   EmptyState,
   ErrorConReintento,
   EstadoPlantacionBadge,
+  MenuDesplegable,
   PlantacionFormModal,
   TabNav,
   Topbar,
+  type ItemDesplegable,
   type TabItem,
 } from '../components';
 import { useDescarga } from '../hooks/useDescarga';
@@ -31,8 +32,11 @@ const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.'
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
 const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
 const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.';
+/** La planilla se arma con los IDs definitivos: sin generarlos no hay qué exportar. */
+const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar la planilla';
 
 const TAMANO_ICONO = 16;
+const TAMANO_CHEVRON = 14;
 
 function tabsDePlantacion(id: string): TabItem[] {
   return [
@@ -95,7 +99,7 @@ function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: Descarga
   }, MENSAJE_ERROR_EXPORT);
 }
 
-type DescargaPlanilla = ReturnType<typeof useDescargaPlanilla>;
+type Descarga = ReturnType<typeof useDescargaKml>;
 
 /** "Generar IDs" abre el modal de confirmación (issue #232: la generación es
  *  exclusiva de la web, server-side vía RPC transaccional). */
@@ -103,8 +107,8 @@ function BotonGenerarIds({ plantationId }: { plantationId: string }) {
   const [abierto, setAbierto] = useState(false);
   return (
     <>
-      <Button variant="primary" onClick={() => setAbierto(true)}>
-        <Plus size={TAMANO_ICONO} />
+      <Button variant="primary" size="sm" onClick={() => setAbierto(true)}>
+        <Plus size={TAMANO_ICONO} aria-hidden />
         Generar IDs
       </Button>
       {abierto && <GenerarIdsModal plantationId={plantationId} onClose={() => setAbierto(false)} />}
@@ -112,85 +116,115 @@ function BotonGenerarIds({ plantationId }: { plantationId: string }) {
   );
 }
 
-/** Botones de exportación de la planilla, uno por formato (XLSX nativo y CSV). */
-function BotonesExportar({ xlsx, csv }: { xlsx: DescargaPlanilla; csv: DescargaPlanilla }) {
+interface MenuExportarProps {
+  kml: Descarga;
+  xlsx: Descarga;
+  csv: Descarga;
+  /** Las planillas necesitan los IDs definitivos; el KML no. */
+  idsPendientes: boolean;
+}
+
+/** Las tres descargas agrupadas en un solo menú. */
+function MenuExportar({ kml, xlsx, csv, idsPendientes }: MenuExportarProps) {
+  const motivoPlanilla = idsPendientes ? MOTIVO_IDS_PENDIENTES : null;
+  const items: ItemDesplegable[] = [
+    { clave: 'kml', etiqueta: 'Descargar KML', onSeleccionar: () => void kml.descargar() },
+    {
+      clave: 'xlsx',
+      etiqueta: 'Exportar Excel',
+      motivo: motivoPlanilla,
+      onSeleccionar: () => void xlsx.descargar(),
+    },
+    {
+      clave: 'csv',
+      etiqueta: 'Exportar CSV',
+      motivo: motivoPlanilla,
+      onSeleccionar: () => void csv.descargar(),
+    },
+  ];
+  const descargando = kml.descargando || xlsx.descargando || csv.descargando;
   return (
-    <>
-      <Button variant="secondary" onClick={() => void xlsx.descargar()} loading={xlsx.descargando}>
-        <Download size={TAMANO_ICONO} />
-        Exportar Excel
-      </Button>
-      <Button variant="secondary" onClick={() => void csv.descargar()} loading={csv.descargando}>
-        <Download size={TAMANO_ICONO} />
-        Exportar CSV
-      </Button>
-    </>
+    <MenuDesplegable
+      etiqueta="Exportar"
+      items={items}
+      disparador={(props) => (
+        <Button variant="secondary" size="sm" loading={descargando} {...props}>
+          <Download size={TAMANO_ICONO} aria-hidden />
+          Exportar
+          <ChevronDown size={TAMANO_CHEVRON} aria-hidden />
+        </Button>
+      )}
+    />
   );
 }
 
-/** Estado de IDs: "Generar IDs" hasta generarlos, los botones de exportación
- *  (XLSX/CSV) después. */
-function BotonEstadoIds({
-  plantationId,
-  xlsx,
-  csv,
+/** Lado derecho de la barra: tabs, editar y exportación. El mensaje de
+ *  "sin puntos"/"sin árboles" cuelga debajo del botón para no ensanchar la barra. */
+function AccionesDetalle({
+  plantacion,
+  onEditar,
 }: {
-  plantationId: string;
-  xlsx: DescargaPlanilla;
-  csv: DescargaPlanilla;
+  plantacion: Plantacion;
+  onEditar: () => void;
 }) {
-  const { data: generados } = useQuery({
-    queryKey: ['ids-generados', plantationId],
-    queryFn: () => idsGenerados(plantationId),
-  });
-  if (generados === undefined) return null;
-  return generados ? (
-    <BotonesExportar xlsx={xlsx} csv={csv} />
-  ) : (
-    <BotonGenerarIds plantationId={plantationId} />
-  );
-}
-
-/** Acciones de la topbar: descarga de KML (siempre visible) + botón de estado
- *  de IDs. El mensaje inline cubre "sin puntos GPS" y "sin árboles". */
-function AccionesDetalle({ plantacion }: { plantacion: Plantacion }) {
   const kml = useDescargaKml(plantacion);
   const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
   const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
   const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje;
+  const { data: generados } = useQuery({
+    queryKey: ['ids-generados', plantacion.id],
+    queryFn: () => idsGenerados(plantacion.id),
+  });
+
   return (
     <div className={styles.acciones}>
+      <TabNav
+        variant="segmentada"
+        label="Secciones de la plantación"
+        tabs={tabsDePlantacion(plantacion.id)}
+      />
+      <span className={styles.divisor} aria-hidden />
+      <button
+        type="button"
+        className={styles.editar}
+        onClick={onEditar}
+        aria-label="Editar"
+        title="Editar"
+      >
+        <Pencil size={TAMANO_ICONO} aria-hidden />
+      </button>
+      <MenuExportar kml={kml} xlsx={xlsx} csv={csv} idsPendientes={generados === false} />
+      {generados === false && <BotonGenerarIds plantationId={plantacion.id} />}
       {mensaje && (
         <span className={styles.mensajeAccion} role="alert">
           {mensaje}
         </span>
       )}
-      <Button variant="secondary" onClick={() => void kml.descargar()} loading={kml.descargando}>
-        <Download size={TAMANO_ICONO} />
-        Descargar KML
-      </Button>
-      <BotonEstadoIds plantationId={plantacion.id} xlsx={xlsx} csv={csv} />
     </div>
   );
 }
 
-function BloqueTitulo({ plantacion, onEditar }: { plantacion: Plantacion; onEditar: () => void }) {
+/** Lado izquierdo de la barra: el breadcrumb ES el título de la pantalla. */
+function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
   return (
-    <div className={styles.titulo}>
-      <div className={styles.encabezadoFila}>
-        <EstadoPlantacionBadge estado={plantacion.estado} />
-        <h1 className={styles.lugar}>{plantacion.lugar}</h1>
-        <button type="button" className={styles.editar} onClick={onEditar}>
-          <Pencil size={TAMANO_ICONO} aria-hidden />
-          Editar
-        </button>
-      </div>
-      <p className={styles.meta}>{lineaMeta(plantacion)}</p>
-    </div>
+    <nav className={styles.cabecera} aria-label="Migas de navegación">
+      <Link to="/plantaciones" className={styles.raiz}>
+        Plantaciones
+      </Link>
+      <span className={styles.separador} aria-hidden>
+        /
+      </span>
+      <EstadoPlantacionBadge estado={plantacion.estado} />
+      <h1 className={styles.lugar} aria-current="page">
+        {plantacion.lugar}
+      </h1>
+      <span className={styles.meta}>{lineaMeta(plantacion)}</span>
+    </nav>
   );
 }
 
-/** Shell del detalle: topbar + título + tabs; cada tab se renderiza en el Outlet. */
+/** Shell del detalle: una sola barra con título, tabs y acciones; cada tab
+ *  se renderiza en el Outlet y llena el alto restante. */
 export function PlantacionDetailScreen() {
   const { id = '' } = useParams();
   const [editando, setEditando] = useState(false);
@@ -210,19 +244,12 @@ export function PlantacionDetailScreen() {
   }
   if (!data) return <PlantacionNoEncontrada />;
   return (
-    <section>
+    <section className={styles.pantalla}>
       <Topbar
-        left={
-          <Breadcrumb
-            items={[{ label: 'Plantaciones', to: '/plantaciones' }, { label: data.lugar }]}
-          />
-        }
-        right={<AccionesDetalle plantacion={data} />}
+        densidad="compacta"
+        left={<CabeceraPlantacion plantacion={data} />}
+        right={<AccionesDetalle plantacion={data} onEditar={() => setEditando(true)} />}
       />
-      <BloqueTitulo plantacion={data} onEditar={() => setEditando(true)} />
-      <div className={styles.tabs}>
-        <TabNav label="Secciones de la plantación" tabs={tabsDePlantacion(data.id)} />
-      </div>
       <div className={styles.contenido}>
         <Outlet />
       </div>

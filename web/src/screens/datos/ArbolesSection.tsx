@@ -1,5 +1,7 @@
 import { Check } from 'lucide-react';
 import { Cargando, ErrorConReintento, Paginacion, Table, type TableColumn } from '../../components';
+import { ARBOLES_POR_PAGINA } from '../../queries/dataExplorerQueries';
+import { formatearEntero } from '../../lib/formato';
 import { varsCss } from '../../lib/cssVars';
 import { formatearFechaCorta } from '../../lib/fechas';
 import type { ArbolDetalle, PaginaArboles } from '../../queries/dataExplorerQueries';
@@ -8,8 +10,8 @@ import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { tieneFotoSubida } from '../../services/fotoService';
 import { ArbolDetalleModal } from './ArbolDetalleModal';
 import { ArbolesFiltros } from './ArbolesFiltros';
+import { CardTabla } from './CardTabla';
 import { DatosToolbar } from './DatosToolbar';
-import { ScopeChips } from './ScopeChips';
 import { VacioConFiltros } from './VacioConFiltros';
 import { useArbolesSection } from './useArbolesSection';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
@@ -108,6 +110,13 @@ function columnasArboles(
   ];
 }
 
+/** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
+function rangoVisible(pagina: number, total: number): string {
+  const desde = (pagina - 1) * ARBOLES_POR_PAGINA + 1;
+  const hasta = Math.min(pagina * ARBOLES_POR_PAGINA, total);
+  return `Mostrando ${formatearEntero(desde)}–${formatearEntero(hasta)} de ${formatearEntero(total)}`;
+}
+
 function TablaArboles({
   datos,
   codigosParcela,
@@ -124,27 +133,32 @@ function TablaArboles({
   onRowClick: (arbol: ArbolDetalle) => void;
 }) {
   const nombresUsuario = new Map(perfiles.map((perfil) => [perfil.id, perfil.nombre]));
+  const hayArboles = datos.total > 0;
   return (
-    <>
-      <div className={styles.tablaAncha}>
-        <Table
-          columns={columnasArboles(codigosParcela, nombresUsuario)}
-          rows={datos.arboles}
-          getRowKey={(arbol) => arbol.id}
-          emptyMessage="Sin árboles para mostrar"
-          onRowClick={onRowClick}
-        />
-      </div>
-      {datos.total > 0 && (
-        <Paginacion
-          pagina={pagina}
-          totalPaginas={datos.totalPaginas}
-          total={datos.total}
-          etiqueta="árboles"
-          onCambiar={onCambiarPagina}
-        />
-      )}
-    </>
+    <CardTabla
+      pie={
+        hayArboles
+          ? `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle del árbol`
+          : undefined
+      }
+      acciones={
+        hayArboles && (
+          <Paginacion
+            pagina={pagina}
+            totalPaginas={datos.totalPaginas}
+            onCambiar={onCambiarPagina}
+          />
+        )
+      }
+    >
+      <Table
+        columns={columnasArboles(codigosParcela, nombresUsuario)}
+        rows={datos.arboles}
+        getRowKey={(arbol) => arbol.id}
+        emptyMessage="Sin árboles para mostrar"
+        onRowClick={onRowClick}
+      />
+    </CardTabla>
   );
 }
 
@@ -179,7 +193,7 @@ export function ArbolesSection() {
   }
   return (
     <>
-      <DatosToolbar segmento="arboles" recuento={recuento}>
+      <DatosToolbar segmento="arboles" recuento={recuento} chips={chips}>
         <ArbolesFiltros
           filtros={filtros}
           parcelas={parcelas.data ?? []}
@@ -187,7 +201,6 @@ export function ArbolesSection() {
           onCambiar={setFiltro}
         />
       </DatosToolbar>
-      <ScopeChips chips={chips} />
       {arboles.isPending ? (
         <Cargando label="Cargando árboles…" />
       ) : arboles.data.total === 0 && hayFiltro ? (

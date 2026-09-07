@@ -1,17 +1,19 @@
-.contenedor {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
-}
-
+/* Dos columnas: 39 especies entran sin obligar a scrollear media pantalla.
+   El alto y el scroll los pone la card que la contiene. */
 .lista {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: var(--space-xl);
+  align-content: start;
   margin: 0;
   padding: 0;
   list-style: none;
-  max-height: 430px;
-  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .lista {
+    grid-template-columns: 1fr;
+  }
 }
 
 .fila {
@@ -19,13 +21,18 @@
   align-items: center;
   gap: var(--space-lg);
   width: 100%;
-  padding: var(--space-lg) var(--space-sm);
+  padding: 9px var(--space-xl);
   border: none;
-  border-bottom: var(--border-thin) solid var(--color-divider);
+  border-radius: var(--radius-control);
   background-color: transparent;
   font-family: var(--font-body);
   text-align: left;
   cursor: pointer;
+}
+
+/* Habilitada: fondo tenue para leer de un vistazo qué entra en la app. */
+.filaMarcada {
+  background-color: var(--color-plantation-bg-light);
 }
 
 .fila:hover:not(:disabled) {
@@ -36,17 +43,35 @@
   cursor: default;
 }
 
-/* Fila maestra "Todas las especies": separada del buscador y de la lista. */
-.filaMaestra {
-  gap: var(--space-lg);
-  margin-top: calc(-1 * var(--space-lg));
-  border-bottom: var(--border-medium) solid var(--color-divider);
+/* Buscador y maestro: controles de la cabecera, no de la lista. */
+.buscador {
+  width: 180px;
 }
 
-.nombreMaestra {
+.buscador input {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-control);
   font-size: var(--text-md);
-  font-weight: 600;
-  color: var(--color-text-body);
+}
+
+.maestro {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.maestro:disabled {
+  color: var(--color-text-disabled);
+  cursor: default;
 }
 
 .checkbox {
@@ -54,50 +79,62 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   border: var(--border-medium) solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: 5px;
   color: var(--color-white);
 }
 
 .checkboxMarcado {
-  border-color: var(--color-primary);
-  background-color: var(--color-primary);
+  border-color: var(--color-secondary);
+  background-color: var(--color-secondary);
+}
+
+/* Bloqueada (tiene árboles): marcada pero apagada, para que se lea que no se toca. */
+.fila:disabled .checkboxMarcado {
+  border-color: var(--color-plantation-light);
+  background-color: var(--color-plantation-light);
 }
 
 .sinResultados {
   margin: 0;
-  padding: var(--space-2xl) var(--space-sm);
+  padding: var(--space-2xl) var(--space-xl);
   font-size: var(--text-md);
   color: var(--color-text-secondary);
   text-align: center;
 }
 
-.punto {
-  flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-full);
-  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  background-color: var(--color);
-}
-
 .codigo {
   flex-shrink: 0;
-  width: 36px;
+  padding: var(--space-xs) var(--space-md);
+  background-color: var(--color-surface-tint);
+  border-radius: var(--radius-code);
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: var(--color-text-secondary);
 }
 
 .nombre {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: var(--text-md);
   color: var(--color-text-body);
 }
 
 .cientifico {
+  flex-shrink: 0;
   font-size: var(--text-sm);
   font-style: italic;
   color: var(--color-text-faint);
+}
+
+/* Marca de bloqueo: dice por qué la fila no se puede desmarcar. */
+.conArboles {
+  flex-shrink: 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }

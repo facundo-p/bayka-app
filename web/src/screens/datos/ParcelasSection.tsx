@@ -3,6 +3,7 @@ import { Cargando, ErrorConReintento, Table, type TableColumn } from '../../comp
 import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
+import { CardTabla } from './CardTabla';
 import { DatosToolbar } from './DatosToolbar';
 import { filtrosAParams } from './filtrosUrl';
 import { useParcelasDatos } from './useDatosQueries';
@@ -75,13 +76,15 @@ export function ParcelasSection() {
       {isPending ? (
         <Cargando label="Cargando parcelas…" />
       ) : (
-        <Table
-          columns={COLUMNAS}
-          rows={data}
-          getRowKey={(parcela) => parcela.id}
-          onRowClick={verGrupos}
-          emptyMessage="La plantación todavía no tiene parcelas"
-        />
+        <CardTabla pie="Clic en una fila abre los grupos de la parcela">
+          <Table
+            columns={COLUMNAS}
+            rows={data}
+            getRowKey={(parcela) => parcela.id}
+            onRowClick={verGrupos}
+            emptyMessage="La plantación todavía no tiene parcelas"
+          />
+        </CardTabla>
       )}
     </>
   );

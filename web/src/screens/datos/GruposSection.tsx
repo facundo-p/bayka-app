@@ -9,8 +9,8 @@ import {
 import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { GrupoConDetalle, TipoGrupo } from '../../queries/dataExplorerQueries';
+import { CardTabla } from './CardTabla';
 import { DatosToolbar } from './DatosToolbar';
-import { ScopeChips } from './ScopeChips';
 import { SelectParcela } from './SelectParcela';
 import { VacioConFiltros } from './VacioConFiltros';
 import { filtrosAParams } from './filtrosUrl';
@@ -82,7 +82,7 @@ export function GruposSection() {
   const recuento = grupos.data ? `${formatearEntero(grupos.data.length)} grupos` : undefined;
   return (
     <>
-      <DatosToolbar segmento="grupos" recuento={recuento}>
+      <DatosToolbar segmento="grupos" recuento={recuento} chips={chips}>
         <SelectParcela
           parcelas={parcelas.data ?? []}
           value={filtros.parcelaId}
@@ -90,19 +90,20 @@ export function GruposSection() {
           labelOculto
         />
       </DatosToolbar>
-      <ScopeChips chips={chips} />
       {grupos.isPending ? (
         <Cargando label="Cargando grupos…" />
       ) : grupos.data.length === 0 && hayFiltro ? (
         <VacioConFiltros mensaje="Ningún grupo coincide con los filtros" onLimpiar={limpiar} />
       ) : (
-        <Table
-          columns={COLUMNAS}
-          rows={grupos.data}
-          getRowKey={(grupo) => grupo.id}
-          onRowClick={verArboles}
-          emptyMessage="Sin grupos para mostrar"
-        />
+        <CardTabla pie="Clic en una fila abre los árboles del grupo">
+          <Table
+            columns={COLUMNAS}
+            rows={grupos.data}
+            getRowKey={(grupo) => grupo.id}
+            onRowClick={verArboles}
+            emptyMessage="Sin grupos para mostrar"
+          />
+        </CardTabla>
       )}
     </>
   );

@@ -58,7 +58,9 @@ export function useArbolesSection() {
   });
 
   const chips = scopeChips(filtros, setFiltro, parcelas, grupos);
-  const recuento = arboles.data ? `${formatearEntero(arboles.data.total)} árboles` : undefined;
+  const recuento = arboles.data
+    ? `${formatearEntero(arboles.data.total)} árboles · página ${pagina} de ${arboles.data.totalPaginas}`
+    : undefined;
   const codigosParcela = new Map(
     (parcelas.data ?? []).map((parcela) => [parcela.id, parcela.codigo]),
   );

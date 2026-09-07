@@ -10,9 +10,9 @@ export { EmptyState } from './EmptyState';
 export { EspecieFormModal } from './EspecieFormModal';
 export { ErrorConReintento } from './ErrorConReintento';
 export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';
-export { HeroMetric } from './HeroMetric';
 export { Input } from './Input';
 export { MapaPuntos } from './mapa/MapaPuntos';
+export { MenuDesplegable, type ItemDesplegable } from './MenuDesplegable';
 export { Modal } from './Modal';
 export { NavItem } from './NavItem';
 export { PageHeader } from './PageHeader';
@@ -21,8 +21,11 @@ export { PlantationMap } from './PlantationMap';
 export { Paginacion } from './Paginacion';
 export { SeasonCard } from './SeasonCard';
 export { SegmentedControl } from './SegmentedControl';
-export { SpeciesChecklist } from './SpeciesChecklist';
-export { StatCard } from './StatCard';
+export {
+  BuscadorEspecies,
+  MaestroEspecies,
+  SpeciesChecklist,
+} from './SpeciesChecklist';
 export { TabNav, type TabItem } from './TabNav';
 export { Toggle } from './Toggle';
 export { Topbar } from './Topbar';

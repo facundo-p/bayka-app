@@ -1,0 +1,194 @@
+.card {
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  border-radius: var(--radius-card);
+}
+
+/* Blob radial oliva decorativo (esquina superior derecha). */
+.blob {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, var(--color-secondary) 0%, transparent 70%);
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.bloqueSuperior {
+  position: relative;
+  padding: var(--space-4xl) var(--space-4xl-plus) var(--space-3xl);
+}
+
+.filaEncabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xl);
+  min-height: var(--space-4xl);
+}
+
+.overline {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-on-primary-strong);
+}
+
+.filaValor {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xl-plus);
+  margin: var(--space-sm) 0 var(--space-2xl);
+}
+
+.valor {
+  font-family: var(--font-heading);
+  font-size: var(--text-hero-num);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  font-size: var(--text-md);
+  color: var(--color-on-primary-soft);
+}
+
+.track {
+  height: 8px;
+  background-color: var(--color-on-primary-track);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-plantation-light));
+  /* --ancho llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
+  width: var(--ancho);
+}
+
+/* ─── Fila de alcance (parcela seleccionada) ───────────────────────────── */
+
+.alcance {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding: 3px var(--space-lg);
+  border-radius: var(--radius-full);
+  background-color: var(--color-on-primary-chip);
+  font-size: var(--text-sm);
+}
+
+.chipCodigo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.chipNombre {
+  color: var(--color-on-primary-faint);
+}
+
+.verTodos {
+  padding: 3px var(--space-lg);
+  border: var(--border-thin) solid var(--color-on-primary-border);
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--color-white);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.verTodos:hover {
+  background-color: var(--color-on-primary-chip);
+}
+
+.verTodos:focus-visible {
+  outline: var(--border-medium) solid var(--color-plantation-light);
+  outline-offset: 2px;
+}
+
+/* ─── Tres tasas al pie de la card ─────────────────────────────────────── */
+
+.celdas {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: var(--border-thin) solid var(--color-on-primary-line);
+}
+
+.celda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  padding: var(--space-2xl) var(--space-4xl-plus);
+  min-width: 0;
+}
+
+.celda:not(:last-child) {
+  border-right: var(--border-thin) solid var(--color-on-primary-line);
+}
+
+.celdaFila {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.celdaValor {
+  font-family: var(--font-heading);
+  font-size: var(--text-kpi-sm);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.valorAlerta {
+  color: var(--color-warn-dot);
+}
+
+.barra {
+  height: 4px;
+  background-color: var(--color-on-primary-track);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.relleno {
+  height: 100%;
+  border-radius: var(--radius-full);
+  width: var(--ancho);
+}
+
+.rellenoGps {
+  background-color: var(--color-secondary);
+}
+
+.rellenoFoto {
+  background-color: var(--color-primary-bg-muted);
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--color-warn-dot);
+}

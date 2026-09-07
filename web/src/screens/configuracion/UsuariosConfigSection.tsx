@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
-import { Badge, Button, Card, Cargando, ErrorConReintento, Modal, Select } from '../../components';
+import { Badge, Button, Cargando, ErrorConReintento, Modal, Select } from '../../components';
 import { iniciales } from '../../lib/iniciales';
 import {
   listarAsignados,
@@ -194,6 +194,9 @@ function ModalQuitar({
   );
 }
 
+const TITULO = 'Técnicos asignados';
+const SUBTITULO = 'Quién puede registrar en esta plantación';
+
 function ContenidoUsuarios({
   plantationId,
   perfiles,
@@ -207,6 +210,17 @@ function ContenidoUsuarios({
   const [asignando, setAsignando] = useState(false);
   return (
     <>
+      <CabeceraConfig
+        titulo={TITULO}
+        subtitulo={SUBTITULO}
+        chip={`${asignados.length} asignados`}
+        acciones={
+          <button type="button" className={styles.botonAsignar} onClick={() => setAsignando(true)}>
+            <Plus size={16} aria-hidden />
+            Asignar técnico
+          </button>
+        }
+      />
       {asignados.length === 0 ? (
         <p className={styles.textoAyuda}>Sin técnicos asignados: nadie ve esta plantación en la app.</p>
       ) : (
@@ -216,10 +230,6 @@ function ContenidoUsuarios({
           ))}
         </ul>
       )}
-      <button type="button" className={styles.botonAsignar} onClick={() => setAsignando(true)}>
-        <Plus size={16} />
-        Asignar técnico
-      </button>
       {asignando && (
         <ModalAsignar
           plantationId={plantationId}
@@ -249,15 +259,25 @@ export function UsuariosConfigSection() {
   const reintentar = () => void Promise.all([perfiles.refetch(), asignados.refetch()]);
 
   return (
-    <Card>
-      <CabeceraConfig titulo="Técnicos asignados" subtitulo="Quién puede registrar en esta plantación" />
-      {(perfiles.isPending || asignados.isPending) && <Cargando />}
+    <section className={styles.cardTecnicos}>
+      {(perfiles.isPending || asignados.isPending) && (
+        <>
+          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
+          <Cargando />
+        </>
+      )}
       {(perfiles.isError || asignados.isError) && (
-        <ErrorConReintento mensaje="No se pudieron cargar los usuarios." onReintentar={reintentar} />
+        <>
+          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
+          <ErrorConReintento
+            mensaje="No se pudieron cargar los usuarios."
+            onReintentar={reintentar}
+          />
+        </>
       )}
       {perfiles.data && asignados.data && (
         <ContenidoUsuarios plantationId={id} perfiles={perfiles.data} asignados={asignados.data} />
       )}
-    </Card>
+    </section>
   );
 }

@@ -1,25 +1,28 @@
+/* Dos columnas que llenan el alto: las listas scrollean dentro de su card. */
 .grilla {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1.25fr 1fr;
-  align-items: start;
+  align-items: stretch;
   gap: var(--space-3xl);
 }
 
-.columnaIzquierda,
 .columnaDerecha {
   display: flex;
   flex-direction: column;
   gap: var(--space-3xl);
   min-width: 0;
-}
-
-/* Ocupa las dos columnas (ancho completo) en la fila inferior. */
-.anchoCompleto {
-  grid-column: 1 / -1;
+  min-height: 0;
 }
 
 @media (max-width: 900px) {
   .grilla {
     grid-template-columns: 1fr;
+    min-height: auto;
+  }
+
+  .columnaDerecha {
+    min-height: auto;
   }
 }

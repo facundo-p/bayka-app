@@ -56,6 +56,14 @@ let conIdArboles: number;
 /** Filas que devuelve la query de exportación (select con `plantacion_id`). */
 let filasExport: unknown[];
 
+type Usuario = ReturnType<typeof userEvent.setup>;
+
+/** Abre el menú "Exportar" y devuelve uno de sus ítems. */
+async function itemExportar(usuario: Usuario, etiqueta: string) {
+  await usuario.click(await screen.findByRole('button', { name: 'Exportar' }));
+  return screen.getByRole('menuitem', { name: etiqueta });
+}
+
 /** Fila cruda del embed de exportación (trees → groups → plantations/…). */
 function filaExport(subId: string) {
   return {
@@ -172,10 +180,12 @@ test('"Generar IDs" abre el modal, confirma con el seed sugerido y habilita los 
   await usuario.click(within(dialogo).getByRole('button', { name: 'Generar' }));
 
   // Se ejecuta el RPC transaccional con el seed y, tras invalidar el gate,
-  // el modal se cierra y aparecen los botones de exportación.
-  expect(await screen.findByRole('button', { name: 'Exportar Excel' })).toBeEnabled();
+  // el modal se cierra y las planillas quedan habilitadas en el menú.
+  await vi.waitFor(() =>
+    expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument(),
+  );
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
+  expect(await itemExportar(usuario, 'Exportar Excel')).toBeEnabled();
   // El dashboard también dispara un RPC (stats): se busca el de generación.
   const rpc = consultas.find(
     (consulta) => consulta.operacion === 'rpc' && consulta.tabla === 'generate_tree_ids',
@@ -206,14 +216,32 @@ test('si otra sesión ya generó (ALREADY_GENERATED) el modal muestra el error',
   );
 });
 
-test('ofrece "Exportar Excel" y "Exportar CSV" (y oculta "Generar IDs") con los IDs generados', async () => {
+test('ofrece las tres descargas (y oculta "Generar IDs") con los IDs generados', async () => {
+  const usuario = userEvent.setup();
   totalArboles = 5;
   conIdArboles = 5; // todos con global_id → generado
   renderRutasEn('/plantaciones/plant-1');
 
-  expect(await screen.findByRole('button', { name: 'Exportar Excel' })).toBeEnabled();
-  expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeEnabled();
+  expect(await itemExportar(usuario, 'Descargar KML')).toBeEnabled();
+  expect(screen.getByRole('menuitem', { name: 'Exportar Excel' })).toBeEnabled();
+  expect(screen.getByRole('menuitem', { name: 'Exportar CSV' })).toBeEnabled();
   expect(screen.queryByRole('button', { name: /Generar IDs/ })).not.toBeInTheDocument();
+});
+
+test('sin IDs generados el KML sigue disponible y las planillas explican por qué no', async () => {
+  const usuario = userEvent.setup();
+  totalArboles = 5;
+  conIdArboles = 3; // set parcial → todavía no generado
+  renderRutasEn('/plantaciones/plant-1');
+
+  expect(await screen.findByRole('button', { name: 'Generar IDs' })).toBeInTheDocument();
+  expect(await itemExportar(usuario, 'Descargar KML')).toBeEnabled();
+  const excel = screen.getByRole('menuitem', { name: 'Exportar Excel' });
+  expect(excel).toBeDisabled();
+  expect(excel).toHaveAttribute(
+    'title',
+    'Generá los IDs de la plantación para exportar la planilla',
+  );
 });
 
 test('exportar sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
@@ -223,7 +251,7 @@ test('exportar sin árboles muestra el mensaje en vez de descargar una planilla 
   filasExport = []; // la query de exportación no devuelve filas
   renderRutasEn('/plantaciones/plant-1');
 
-  await usuario.click(await screen.findByRole('button', { name: 'Exportar Excel' }));
+  await usuario.click(await itemExportar(usuario, 'Exportar Excel'));
   expect(
     await screen.findByText('Esta plantación no tiene árboles para exportar.'),
   ).toBeInTheDocument();
@@ -239,7 +267,7 @@ test('"Exportar CSV" con árboles dispara la descarga del CSV', async () => {
   filasExport = [filaExport('A-001'), filaExport('A-002')];
   renderRutasEn('/plantaciones/plant-1');
 
-  await usuario.click(await screen.findByRole('button', { name: 'Exportar CSV' }));
+  await usuario.click(await itemExportar(usuario, 'Exportar CSV'));
 
   await vi.waitFor(() => expect(crearUrl).toHaveBeenCalledTimes(1));
   expect(revocarUrl).toHaveBeenCalledTimes(1);
@@ -257,7 +285,7 @@ test('"Exportar Excel" arma el XLSX con las filas y las 9 columnas y lo descarga
   filasExport = [filaExport('A-001'), filaExport('A-002')];
   renderRutasEn('/plantaciones/plant-1');
 
-  await usuario.click(await screen.findByRole('button', { name: 'Exportar Excel' }));
+  await usuario.click(await itemExportar(usuario, 'Exportar Excel'));
 
   await vi.waitFor(() => expect(crearUrl).toHaveBeenCalledTimes(1));
   expect(revocarUrl).toHaveBeenCalledTimes(1);
