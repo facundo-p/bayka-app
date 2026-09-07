@@ -34,6 +34,9 @@
   height: 34px;
   width: auto;
   display: block;
+  /* `.brand` es flex column: sin esto el ítem se estira al ancho del contenedor
+     y el PNG (300x89) pierde la proporción. */
+  align-self: flex-start;
 }
 
 .brandOverline {
