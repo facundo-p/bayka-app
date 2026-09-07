@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Cargando, EmptyState, ErrorConReintento } from '../../components';
@@ -7,18 +8,15 @@ import { PlantationMap } from '../../components/PlantationMap';
 import { formatearEntero } from '../../lib/formato';
 import { obtenerDashboard, type DashboardData } from '../../queries/dashboardQueries';
 import { obtenerPlantacion } from '../../queries/plantationQueries';
-import { listarPuntosGps } from '../../queries/mapaQueries';
+import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import {
   listarParcelasConStats,
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
-import { asignarColoresEspecies, mapaColorPorCodigo } from './coloresEspecies';
+import { asignarColoresEspecies } from './coloresEspecies';
 import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
 import styles from './DashboardTab.module.css';
-
-/** Cantidad de parcelas destacadas en la tira (top por árboles). */
-const PARCELAS_DESTACADAS = 5;
 
 function SinArboles() {
   return (
@@ -35,19 +33,18 @@ function porcentajeObjetivo(total: number, objetivo: number): number {
   return objetivo > 0 ? Math.round((total / objetivo) * 100) : 0;
 }
 
-/** Top parcelas por cantidad de árboles, mapeadas a la forma de la tira. */
-function parcelasDestacadas(parcelas: ParcelaConStats[]) {
-  return [...parcelas]
-    .sort((a, b) => b.arboles - a.arboles)
-    .slice(0, PARCELAS_DESTACADAS)
-    .map(({ id, codigo, nombre, arboles, grupos }) => ({ id, codigo, nombre, arboles, grupos }));
+/** Puntos de una parcela; sin selección devuelve el MISMO array (si cambia la
+ *  referencia, el mapa vuelve a encuadrar aunque no haya filtrado nada). */
+function filtrarPorParcela(puntos: PuntoGps[], parcelaId: string | null): PuntoGps[] {
+  if (parcelaId === null) return puntos;
+  return puntos.filter((punto) => punto.parcelaId === parcelaId);
 }
 
 interface ContenidoDashboardProps {
   datos: DashboardData;
   objetivoArboles: number | null;
   parcelas: ParcelaConStats[];
-  puntos: import('../../queries/mapaQueries').PuntoGps[];
+  puntos: PuntoGps[];
 }
 
 function FilaA({ datos, objetivoArboles }: Pick<ContenidoDashboardProps, 'datos' | 'objetivoArboles'>) {
@@ -83,17 +80,29 @@ function FilaA({ datos, objetivoArboles }: Pick<ContenidoDashboardProps, 'datos'
 }
 
 function ContenidoDashboard({ datos, objetivoArboles, parcelas, puntos }: ContenidoDashboardProps) {
+  const [seleccionada, setSeleccionada] = useState<string | null>(null);
   if (datos.totalArboles === 0) return <SinArboles />;
   const coloreadas = asignarColoresEspecies(datos.porEspecie);
-  const colorPorCodigo = mapaColorPorCodigo(coloreadas);
+  // Si la parcela seleccionada ya no está en la lista, el filtro se cae solo.
+  const parcelaFiltro = parcelas.find((parcela) => parcela.id === seleccionada) ?? null;
+  const alternar = (parcelaId: string) =>
+    setSeleccionada((actual) => (actual === parcelaId ? null : parcelaId));
   return (
     <div className={styles.dashboard}>
       <FilaA datos={datos} objetivoArboles={objetivoArboles} />
       <div className={styles.filaB}>
-        <PlantationMap puntos={puntos} colorPorCodigo={colorPorCodigo} />
+        <PlantationMap
+          puntos={filtrarPorParcela(puntos, parcelaFiltro?.id ?? null)}
+          leyenda={coloreadas}
+          parcelaFiltro={parcelaFiltro?.codigo}
+        />
         <SpeciesDistribution especies={coloreadas} totalEspecies={datos.especiesUsadas} />
       </div>
-      <ParcelasStrip parcelas={parcelasDestacadas(parcelas)} />
+      <ParcelasStrip
+        parcelas={parcelas}
+        parcelaSeleccionada={parcelaFiltro?.id ?? null}
+        onSeleccionar={alternar}
+      />
     </div>
   );
 }

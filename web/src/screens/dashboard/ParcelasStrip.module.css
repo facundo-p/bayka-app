@@ -31,20 +31,9 @@
 
 .grilla {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  /* auto-fill: la tira lista todas las parcelas y envuelve sola, sin breakpoints. */
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: var(--space-2xl);
-}
-
-@media (max-width: 900px) {
-  .grilla {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .grilla {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 .miniCard {
@@ -55,6 +44,22 @@
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border-card);
   border-radius: var(--radius-card-sm);
+  appearance: none;
+  font: inherit;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+}
+
+.miniCard:hover {
+  background-color: var(--color-surface-sunken);
+}
+
+/* Solo cambia color, no el grosor del borde: el layout no se corre al filtrar. */
+.seleccionada,
+.seleccionada:hover {
+  background-color: var(--color-secondary-bg);
+  border-color: var(--color-secondary-border);
 }
 
 .codigo {

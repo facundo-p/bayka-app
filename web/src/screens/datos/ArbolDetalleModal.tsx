@@ -71,6 +71,7 @@ function BloqueGps({ arbol }: { arbol: ArbolDetalle }) {
     lng: arbol.longitude,
     codigo,
     nombre: arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR,
+    parcelaId: arbol.parcelaId,
   };
   return (
     <div className={styles.bloque}>

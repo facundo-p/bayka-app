@@ -6,7 +6,14 @@ import { construirKml, nombreArchivoKml } from '../exportarKml';
 const OPCIONES = { nombreDocumento: 'Puntos GPS – Sitio (2025)' };
 
 function punto(parcial: Partial<PuntoGps>): PuntoGps {
-  return { lat: -31.4, lng: -64.2, codigo: 'QB', nombre: 'Quebracho', ...parcial };
+  return {
+    lat: -31.4,
+    lng: -64.2,
+    codigo: 'QB',
+    nombre: 'Quebracho',
+    parcelaId: null,
+    ...parcial,
+  };
 }
 
 /** #rrggbb → color KML aabbggrr (alfa opaco + BGR), como lo arma el servicio. */

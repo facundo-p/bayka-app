@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
@@ -10,9 +11,15 @@ vi.mock('../../lib/supabase', async () => {
 });
 
 // Leaflet usa APIs de layout que jsdom no implementa: se reemplaza el mapa por
-// un contenedor tonto. El mapa real se valida en el navegador, no en jsdom.
+// un contenedor tonto que expone lo que recibe, para poder afirmar sobre el filtro.
 vi.mock('../../components/PlantationMap', () => ({
-  PlantationMap: () => <div>Mapa de la plantación</div>,
+  PlantationMap: ({ puntos, parcelaFiltro }: { puntos: unknown[]; parcelaFiltro?: string }) => (
+    <div>
+      Mapa de la plantación
+      <span data-testid="puntos-en-mapa">{puntos.length}</span>
+      <span data-testid="parcela-filtro">{parcelaFiltro ?? '-'}</span>
+    </div>
+  ),
 }));
 
 /** Estos tests montan la ruta completa (layout, sidebar, paneles y queries).
@@ -60,9 +67,11 @@ const FILAS_PARCELAS = [
   { id: 'parc-2', nombre: 'Sur', codigo: 'P2', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
 ];
 
-/** Puntos GPS del mapa: árboles con lat/lng no nulos + su especie embebida. */
+/** Puntos GPS del mapa: 2 en parc-1, 1 en parc-2 (para poder filtrar). */
 const FILAS_PUNTOS = [
-  { latitude: -27.1, longitude: -55.2, species_id: 'sp-1', species: { codigo: 'QB', nombre: 'Quebracho' } },
+  { latitude: -27.1, longitude: -55.2, species_id: 'sp-1', species: { codigo: 'QB', nombre: 'Quebracho' }, groups: { parcela_id: 'parc-1' } },
+  { latitude: -27.2, longitude: -55.3, species_id: 'sp-1', species: { codigo: 'QB', nombre: 'Quebracho' }, groups: { parcela_id: 'parc-1' } },
+  { latitude: -27.4, longitude: -55.5, species_id: 'sp-2', species: { codigo: 'AL', nombre: 'Algarrobo' }, groups: { parcela_id: 'parc-2' } },
 ];
 
 function esConteo(consulta: ConsultaCapturada): boolean {
@@ -113,6 +122,41 @@ describe('DashboardTab', () => {
     // Paneles nuevos.
     expect(screen.getByText('Por especie')).toBeInTheDocument();
     expect(screen.getByText('Parcelas')).toBeInTheDocument();
+  });
+
+  test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {
+    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    // Arranca sin filtro: los 3 puntos de la plantación.
+    expect(await screen.findByTestId('puntos-en-mapa')).toHaveTextContent('3');
+    expect(screen.getByTestId('parcela-filtro')).toHaveTextContent('-');
+
+    const norte = screen.getByRole('button', { name: /Norte/ });
+    await usuario.click(norte);
+
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('2');
+    expect(screen.getByTestId('parcela-filtro')).toHaveTextContent('P1');
+    expect(norte).toHaveAttribute('aria-pressed', 'true');
+
+    await usuario.click(norte);
+
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('3');
+    expect(norte).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('clickear otra parcela cambia el filtro directo, sin pasar por "todos"', async () => {
+    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(await screen.findByRole('button', { name: /Norte/ }));
+    await usuario.click(screen.getByRole('button', { name: /Sur/ }));
+
+    expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('1');
+    expect(screen.getByTestId('parcela-filtro')).toHaveTextContent('P2');
+    expect(screen.getByRole('button', { name: /Norte/ })).toHaveAttribute('aria-pressed', 'false');
   });
 
   test('sin árboles muestra el estado vacío y ningún panel', async () => {
