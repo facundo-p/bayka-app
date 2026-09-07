@@ -6,6 +6,7 @@ import {
   estadoMock,
   resetEstadoMock,
 } from '../../test/supabaseMock';
+import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
 
@@ -505,6 +506,24 @@ test('desactivarse a sí mismo está deshabilitado; un inactivo ofrece Reactivar
   expect(estadoMock.invocaciones).toEqual([
     { funcion: 'admin-users', cuerpo: { accion: 'reactivar', userId: 'user-3' } },
   ]);
+});
+
+test('reenviar invitación: el rate limit se muestra con su mensaje, no con el genérico', async () => {
+  configurarUsuariosMock();
+  estadoMock.respuestaInvoke = {
+    data: null,
+    error: { context: { json: async () => ({ ok: false, error: MENSAJES.limiteEmails }) } },
+  };
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Reenviar invitación' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Reenviar invitación a Ana Admin' });
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Reenviar' }));
+
+  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(MENSAJES.limiteEmails);
 });
 
 test('reenviar invitación: deshabilitada sin email; con email envía y confirma', async () => {
