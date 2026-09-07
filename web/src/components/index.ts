@@ -21,7 +21,11 @@ export { PlantationMap } from './PlantationMap';
 export { Paginacion } from './Paginacion';
 export { SeasonCard } from './SeasonCard';
 export { SegmentedControl } from './SegmentedControl';
-export { SpeciesChecklist } from './SpeciesChecklist';
+export {
+  BuscadorEspecies,
+  MaestroEspecies,
+  SpeciesChecklist,
+} from './SpeciesChecklist';
 export { TabNav, type TabItem } from './TabNav';
 export { Toggle } from './Toggle';
 export { Topbar } from './Topbar';

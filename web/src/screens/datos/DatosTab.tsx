@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router';
+import styles from './SeccionesDatos.module.css';
 
 /**
  * Tab Datos del detalle de plantación. Los sub-tabs Árboles / Grupos / Parcelas
@@ -6,7 +7,7 @@ import { Outlet } from 'react-router';
  */
 export function DatosTab() {
   return (
-    <section>
+    <section className={styles.pantalla}>
       <Outlet />
     </section>
   );

@@ -30,6 +30,7 @@ export function ArbolesFiltros({ filtros, parcelas, especies, onCambiar }: Arbol
       <Select
         label="Parcela"
         labelOculto
+        className={styles.filtroParcela}
         value={filtros.parcelaId}
         onChange={(evento) => onCambiar('parcelaId', evento.target.value)}
       >
@@ -43,6 +44,7 @@ export function ArbolesFiltros({ filtros, parcelas, especies, onCambiar }: Arbol
       <Select
         label="Especie"
         labelOculto
+        className={styles.filtroEspecie}
         value={filtros.speciesId}
         onChange={(evento) => onCambiar('speciesId', evento.target.value)}
       >
@@ -57,6 +59,7 @@ export function ArbolesFiltros({ filtros, parcelas, especies, onCambiar }: Arbol
       <Select
         label="GPS"
         labelOculto
+        className={styles.filtroGps}
         value={filtros.gps}
         onChange={(evento) => onCambiar('gps', evento.target.value)}
       >

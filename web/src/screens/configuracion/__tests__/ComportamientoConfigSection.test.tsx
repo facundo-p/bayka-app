@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { GpsConfigSection } from '../GpsConfigSection';
+import { ComportamientoConfigSection } from '../ComportamientoConfigSection';
 import { actualizarConfigGps } from '../../../repositories/plantationRepository';
 import { obtenerPlantacion, type Plantacion } from '../../../queries/plantationQueries';
 
@@ -38,7 +38,7 @@ function renderSeccion() {
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={['/plantaciones/plant-1']}>
         <Routes>
-          <Route path="/plantaciones/:id" element={<GpsConfigSection />} />
+          <Route path="/plantaciones/:id" element={<ComportamientoConfigSection />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

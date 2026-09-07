@@ -1,7 +1,13 @@
 import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, Cargando, ErrorConReintento, SpeciesChecklist } from '../../components';
+import {
+  BuscadorEspecies,
+  Cargando,
+  ErrorConReintento,
+  MaestroEspecies,
+  SpeciesChecklist,
+} from '../../components';
 import {
   listarCatalogo,
   listarEspeciesConUso,
@@ -27,6 +33,9 @@ type Toggle = { speciesId: string; habilitar: boolean; orden: number };
 type Sincronizacion = { idsHabilitar: string[]; idsQuitar: string[]; ordenInicial: number };
 
 const QUERY_ESPECIES = (id: string) => ['plantacion-especies', id] as const;
+
+const TITULO = 'Especies habilitadas';
+const SUBTITULO = 'Definen la botonera de registro en la app';
 
 /** Set de ids habilitados a partir de las especies de la plantación. */
 function idsHabilitadas(especies: EspecieConUso[]): Set<string> {
@@ -168,16 +177,30 @@ function ContenidoEspecies({
 
   return (
     <>
-      <SpeciesChecklist
-        catalogo={catalogo}
-        habilitadas={habilitadas}
-        bloqueadas={bloqueadas}
-        onToggle={alternar}
-        estadoMaestro={estado}
-        onMaestro={alternarTodas}
-        busqueda={busqueda}
-        onBuscar={setBusqueda}
+      <CabeceraConfig
+        titulo={TITULO}
+        subtitulo={SUBTITULO}
+        chip={`${especies.length} habilitadas · ${catalogo.length} en catálogo`}
+        acciones={
+          <>
+            <BuscadorEspecies busqueda={busqueda} onBuscar={setBusqueda} />
+            <MaestroEspecies
+              estado={estado}
+              deshabilitado={idsVisibles.length === 0}
+              onMaestro={alternarTodas}
+            />
+          </>
+        }
       />
+      <div className={styles.cuerpoEspecies}>
+        <SpeciesChecklist
+          catalogo={catalogo}
+          habilitadas={habilitadas}
+          bloqueadas={bloqueadas}
+          onToggle={alternar}
+          busqueda={busqueda}
+        />
+      </div>
       {aviso && (
         <p className={styles.avisoInfo} role="status">
           {aviso}
@@ -188,6 +211,10 @@ function ContenidoEspecies({
           No se pudo guardar el cambio de especie.
         </p>
       )}
+      <p className={styles.pieEspecies}>
+        Las especies con árboles registrados no se pueden desmarcar. El orden en la app es el
+        orden de alta.
+      </p>
     </>
   );
 }
@@ -201,22 +228,27 @@ export function EspeciesConfigSection() {
     queryFn: () => listarEspeciesConUso(id),
   });
   const reintentar = () => void Promise.all([catalogo.refetch(), especies.refetch()]);
-  const habilitadas = especies.data?.length ?? 0;
 
   return (
-    <Card>
-      <CabeceraConfig
-        titulo="Especies habilitadas"
-        subtitulo="Definen la botonera de registro en la app"
-        chip={`${habilitadas} habilitadas`}
-      />
-      {(catalogo.isPending || especies.isPending) && <Cargando />}
+    <section className={styles.cardEspecies}>
+      {(catalogo.isPending || especies.isPending) && (
+        <>
+          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
+          <Cargando />
+        </>
+      )}
       {(catalogo.isError || especies.isError) && (
-        <ErrorConReintento mensaje="No se pudieron cargar las especies." onReintentar={reintentar} />
+        <>
+          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
+          <ErrorConReintento
+            mensaje="No se pudieron cargar las especies."
+            onReintentar={reintentar}
+          />
+        </>
       )}
       {catalogo.data && especies.data && (
         <ContenidoEspecies plantationId={id} catalogo={catalogo.data} especies={especies.data} />
       )}
-    </Card>
+    </section>
   );
 }

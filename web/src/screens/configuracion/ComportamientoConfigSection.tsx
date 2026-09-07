@@ -5,10 +5,13 @@ import { Card, Cargando, ErrorConReintento, Input, SegmentedControl, Toggle } fr
 import { obtenerPlantacion, type Plantacion } from '../../queries/plantationQueries';
 import {
   actualizarConfigGps,
+  actualizarVisibilidad,
   MENSAJE_GPS_SIN_MIGRACION,
+  MENSAJE_VISIBILIDAD_SIN_MIGRACION,
 } from '../../repositories/plantationRepository';
 import { cx } from '../../lib/classNames';
 import { CabeceraConfig } from './CabeceraConfig';
+import { FilaConfig } from './FilaConfig';
 import { useInvalidarPlantacion } from './useInvalidarPlantacion';
 import styles from './SeccionesConfig.module.css';
 
@@ -25,6 +28,9 @@ const OPCIONES_FRECUENCIA = PRESETS_FRECUENCIA.map((numero) => ({
 /** value del segmentado cuando la frecuencia no es un preset (ninguno activo). */
 const SIN_PRESET = -1;
 
+const AYUDA_VISIBILIDAD =
+  'Si se desactiva, no verán esta plantación; sus datos pendientes igual sincronizan';
+
 function mensajeErrorGuardar(error: Error | null): string | null {
   if (!error) return null;
   return error.message === MENSAJE_GPS_SIN_MIGRACION
@@ -32,11 +38,20 @@ function mensajeErrorGuardar(error: Error | null): string | null {
     : 'No se pudo guardar la configuración GPS.';
 }
 
+/** El mensaje de migración faltante se muestra tal cual; el resto, genérico. */
+function mensajeErrorVisibilidad(error: Error | null): string | null {
+  if (!error) return null;
+  return error.message === MENSAJE_VISIBILIDAD_SIN_MIGRACION
+    ? error.message
+    : 'No se pudo actualizar la visibilidad.';
+}
+
 function esFrecuenciaValida(valor: number): boolean {
   return Number.isInteger(valor) && valor >= 1;
 }
 
-function FormGps({ plantacion }: { plantacion: Plantacion }) {
+/** Obligatoriedad y frecuencia comparten payload, así que comparten estado. */
+function FilasGps({ plantacion }: { plantacion: Plantacion }) {
   const [frecuencia, setFrecuencia] = useState(plantacion.gpsCaptureFrequency);
   const [textoExacto, setTextoExacto] = useState(String(plantacion.gpsCaptureFrequency));
   const [obligatoria, setObligatoria] = useState(plantacion.gpsCaptureRequired);
@@ -76,36 +91,40 @@ function FormGps({ plantacion }: { plantacion: Plantacion }) {
   };
 
   return (
-    <div className={styles.formGps}>
-      <div className={styles.filaToggle}>
-        <div>
-          <p className={styles.etiqueta}>Captura obligatoria</p>
-          <p className={styles.textoAyuda}>
-            {obligatoria
-              ? 'El técnico no puede registrar sin GPS'
-              : 'La captura de GPS es opcional'}
-          </p>
-        </div>
+    <>
+      <FilaConfig
+        etiqueta="Captura de GPS obligatoria"
+        ayuda={
+          obligatoria ? 'El técnico no puede registrar sin GPS' : 'La captura de GPS es opcional'
+        }
+      >
         <Toggle
-          aria-label="Captura obligatoria"
+          aria-label="Captura de GPS obligatoria"
           checked={obligatoria}
           disabled={guardar.isPending}
           onChange={aplicarObligatoria}
         />
-      </div>
+      </FilaConfig>
 
-      <div className={styles.bloqueFrecuencia}>
-        <p className={styles.etiqueta}>Frecuencia de captura — cada cuántos árboles</p>
-        <p className={styles.textoAyuda}>Cada cuántos árboles se toma un punto GPS</p>
+      <FilaConfig
+        etiqueta="Frecuencia de captura"
+        ayuda="Cada cuántos árboles se toma un punto GPS"
+      >
         <SegmentedControl
           aria-label="Frecuencia de captura"
           options={OPCIONES_FRECUENCIA}
           value={presetActivo}
           onChange={aplicarFrecuencia}
         />
-        <div className={cx(styles.campoExacto, presetActivo === SIN_PRESET && styles.campoExactoActivo)}>
+        <span className={styles.oExacto} aria-hidden>
+          o exacto
+        </span>
+        <div
+          className={cx(styles.campoExacto, presetActivo === SIN_PRESET && styles.campoExactoActivo)}
+        >
           <Input
             label="O un valor exacto: cada N árboles"
+            labelOculto
             type="number"
             min={1}
             step={1}
@@ -115,19 +134,53 @@ function FormGps({ plantacion }: { plantacion: Plantacion }) {
             onKeyDown={manejarTeclaTextoExacto}
           />
         </div>
-      </div>
+      </FilaConfig>
 
       {guardar.isError && (
         <p className={styles.errorAccion} role="alert">
           {mensajeErrorGuardar(guardar.error)}
         </p>
       )}
-    </div>
+    </>
   );
 }
 
-/** Frecuencia y obligatoriedad de la captura GPS al registrar árboles. */
-export function GpsConfigSection() {
+function FilaVisibilidad({ plantacion }: { plantacion: Plantacion }) {
+  // Estado local para feedback inmediato: el guardado es al cambiar, sin
+  // botón aparte, y si el update falla se vuelve al valor anterior.
+  const [visible, setVisible] = useState(plantacion.visibleInApp);
+  const invalidar = useInvalidarPlantacion(plantacion.id);
+  const mutacion = useMutation({
+    mutationFn: (nuevoValor: boolean) => actualizarVisibilidad(plantacion.id, nuevoValor),
+    onSuccess: invalidar,
+    onError: (_error, nuevoValor) => setVisible(!nuevoValor),
+  });
+  const cambiar = (nuevoValor: boolean) => {
+    setVisible(nuevoValor);
+    mutacion.mutate(nuevoValor);
+  };
+
+  return (
+    <>
+      <FilaConfig etiqueta="Visible para técnicos en la app" ayuda={AYUDA_VISIBILIDAD}>
+        <Toggle
+          aria-label="Visible para técnicos en la app"
+          checked={visible}
+          disabled={mutacion.isPending}
+          onChange={cambiar}
+        />
+      </FilaConfig>
+      {mutacion.isError && (
+        <p className={styles.errorAccion} role="alert">
+          {mensajeErrorVisibilidad(mutacion.error)}
+        </p>
+      )}
+    </>
+  );
+}
+
+/** Cómo se comporta la plantación en Bayka App: captura de GPS y visibilidad. */
+export function ComportamientoConfigSection() {
   const { id = '' } = useParams();
   const plantacion = useQuery({
     queryKey: ['plantacion', id],
@@ -136,15 +189,23 @@ export function GpsConfigSection() {
 
   return (
     <Card>
-      <CabeceraConfig titulo="Captura de GPS" subtitulo="Cómo se registran los puntos en campo" />
+      <CabeceraConfig
+        titulo="Comportamiento en la app"
+        subtitulo="GPS y visibilidad para los técnicos"
+      />
       {plantacion.isPending && <Cargando />}
       {plantacion.isError && (
         <ErrorConReintento
-          mensaje="No se pudo cargar la configuración GPS."
+          mensaje="No se pudo cargar la configuración de la plantación."
           onReintentar={() => void plantacion.refetch()}
         />
       )}
-      {plantacion.data && <FormGps plantacion={plantacion.data} />}
+      {plantacion.data && (
+        <div className={styles.filasComportamiento}>
+          <FilasGps plantacion={plantacion.data} />
+          <FilaVisibilidad plantacion={plantacion.data} />
+        </div>
+      )}
     </Card>
   );
 }

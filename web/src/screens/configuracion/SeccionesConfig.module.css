@@ -4,16 +4,22 @@
  * card, formularios de toggle/frecuencia, lista de técnicos y modales.
  */
 
-/* ─── Cabecera de card (título serif + chip + subtítulo) ─────────────── */
+/* ─── Cabecera de card: título + subtítulo + chip + controles, un renglón ── */
 .cabecera {
-  margin-bottom: var(--space-3xl);
-}
-
-.cabeceraFila {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2xl);
+  gap: var(--space-xl);
+  flex-shrink: 0;
+  min-width: 0;
+  padding: var(--space-3xl) var(--space-3xl) var(--space-xl);
+}
+
+.cabeceraAcciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  flex-shrink: 0;
 }
 
 .titulo {
@@ -26,6 +32,7 @@
 
 .chip {
   flex-shrink: 0;
+  white-space: nowrap;
   padding: var(--space-xs) var(--space-xl);
   border-radius: var(--radius-pill);
   background-color: var(--color-secondary-bg);
@@ -35,24 +42,77 @@
   color: var(--color-text-secondary);
 }
 
+/* Se trunca antes que empujar los controles fuera del renglón. */
 .subtitulo {
-  margin: var(--space-sm) 0 0;
-  font-size: var(--text-md);
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-/* ─── Form de GPS / Visibilidad (toggles + frecuencia) ───────────────── */
-.formGps {
+/* ─── Cards que toman el alto del layout y scrollean por dentro ──────── */
+.cardEspecies,
+.cardTecnicos {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xl);
+  min-height: 0;
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
 
-.filaToggle {
+.cardTecnicos {
+  flex: 1;
+}
+
+/* Único lugar con scroll de la card de especies. */
+.cuerpoEspecies {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-xl) var(--space-xl);
+}
+
+/* ─── Comportamiento en la app (GPS + visibilidad) ───────────────────── */
+.filasComportamiento {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+}
+
+.filaConfig {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-2xl);
+  padding: var(--space-xl-plus) 0;
+  border-bottom: var(--border-thin) solid var(--color-divider);
+}
+
+/* La última fila cierra la card: sin línea colgando. */
+.filaConfig:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.filaConfigTexto {
+  min-width: 0;
+}
+
+.filaConfigControl {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+  flex-shrink: 0;
+}
+
+.oExacto {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .etiqueta {
@@ -62,16 +122,17 @@
   color: var(--color-text-body);
 }
 
-.bloqueFrecuencia {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding-top: var(--space-3xl);
-  border-top: var(--border-thin) solid var(--color-divider);
+/* Ancho de un número de dos dígitos: es "cada N árboles", no un campo libre. */
+.campoExacto {
+  width: 72px;
 }
 
-.campoExacto {
-  max-width: 240px;
+.campoExacto input {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
 }
 
 /* La frecuencia no cae en ningún preset: el input es el control vigente. */
@@ -81,10 +142,13 @@
 
 /* ─── Lista de técnicos asignados ────────────────────────────────────── */
 .listaTecnicos {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--space-3xl) var(--space-xl);
   list-style: none;
 }
 
@@ -140,8 +204,8 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
-  margin-top: var(--space-2xl);
-  padding: var(--space-xl);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-xl);
   border: var(--border-thin) dashed var(--color-border-strong);
   border-radius: var(--radius-control);
   background-color: transparent;
@@ -184,7 +248,7 @@
 
 .textoAyuda {
   margin: var(--space-xs) 0 0;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -197,4 +261,15 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-xl);
+}
+
+/* Pie fijo del checklist: la regla que explica las especies bloqueadas. */
+.pieEspecies {
+  margin: 0;
+  flex-shrink: 0;
+  padding: var(--space-lg) var(--space-3xl);
+  border-top: var(--border-thin) solid var(--color-border);
+  background-color: var(--color-surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
