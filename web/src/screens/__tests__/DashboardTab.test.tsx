@@ -15,6 +15,12 @@ vi.mock('../../components/PlantationMap', () => ({
   PlantationMap: () => <div>Mapa de la plantación</div>,
 }));
 
+/** Estos tests montan la ruta completa (layout, sidebar, paneles y queries).
+ *  El default de 1 s de Testing Library alcanza en una máquina ociosa pero no en
+ *  un runner cargado, y lo que se verifica acá es qué se renderiza, no en cuánto
+ *  tiempo. Es un timeout por espera, no el global de vitest. */
+const ESPERA_RUTA_MS = 5000;
+
 const FILA_PLANTACION = {
   id: 'plant-1',
   lugar: 'Mendoza',
@@ -95,7 +101,7 @@ describe('DashboardTab', () => {
     renderRutasEn('/plantaciones/plant-1');
 
     // Número hero (total de árboles) y overline.
-    expect(await screen.findByText('5')).toBeInTheDocument();
+    expect(await screen.findByText('5', {}, { timeout: ESPERA_RUTA_MS })).toBeInTheDocument();
     expect(screen.getByText('Árboles registrados')).toBeInTheDocument();
     // StatCards de tasas y alerta N/N.
     expect(screen.getByText('Con GPS')).toBeInTheDocument();
@@ -113,7 +119,9 @@ describe('DashboardTab', () => {
     capturarConsultas(crearResolver([]));
     renderRutasEn('/plantaciones/plant-1');
 
-    expect(await screen.findByText('Todavía no hay árboles registrados')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Todavía no hay árboles registrados', {}, { timeout: ESPERA_RUTA_MS }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Por especie')).not.toBeInTheDocument();
     expect(screen.queryByText('Con GPS')).not.toBeInTheDocument();
   });

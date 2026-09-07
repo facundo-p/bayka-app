@@ -65,6 +65,24 @@ beforeEach(() => {
   window.localStorage.clear();
 });
 
+/** Ids de las opciones una vez que la lista dejó de crecer.
+ *
+ *  La búsqueda entra con debounce y en tandas, y `useNavegacionTeclado` resetea
+ *  el resaltado cada vez que cambia la cantidad de ítems: si la flecha se manda
+ *  antes de que la lista se aquiete, el resaltado vuelve a 0 y el cambio se
+ *  pierde. Además exige al menos dos opciones, porque con una sola la flecha da
+ *  la vuelta sobre sí misma y el índice nunca cambia. */
+async function esperarOpcionesEstables(dialog: HTMLElement): Promise<string[]> {
+  let previas = -1;
+  await waitFor(() => {
+    const cantidad = within(dialog).getAllByRole('option').length;
+    const estable = cantidad > 1 && cantidad === previas;
+    previas = cantidad;
+    expect(estable).toBe(true);
+  });
+  return within(dialog).getAllByRole('option').map((opcion) => opcion.id);
+}
+
 /** Abre la paleta con ⌘K y espera el dialog. */
 async function abrirPaleta() {
   renderRutasEn('/plantaciones');
@@ -130,20 +148,17 @@ test('aria-activedescendant del input sigue a la opción resaltada', async () =>
   const input = within(dialog).getByPlaceholderText(/Buscar plantaciones/);
   await usuario.type(input, 'Maluka');
   await within(dialog).findByRole('option', { name: /La Maluka/ });
+  const ids = await esperarOpcionesEstables(dialog);
 
   // aria-controls apunta al listbox; activedescendant a la opción resaltada.
   const listbox = within(dialog).getByRole('listbox');
   expect(input).toHaveAttribute('aria-controls', listbox.id);
-  const primerId = input.getAttribute('aria-activedescendant');
-  expect(primerId).toBeTruthy();
-  expect(document.getElementById(primerId!)).toHaveAttribute('aria-selected', 'true');
+  expect(input).toHaveAttribute('aria-activedescendant', ids[0]);
+  expect(document.getElementById(ids[0])).toHaveAttribute('aria-selected', 'true');
 
   fireEvent.keyDown(dialog, { key: 'ArrowDown' });
-  await waitFor(() =>
-    expect(input.getAttribute('aria-activedescendant')).not.toBe(primerId),
-  );
-  const segundoId = input.getAttribute('aria-activedescendant');
-  expect(document.getElementById(segundoId!)).toHaveAttribute('aria-selected', 'true');
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ids[1]));
+  expect(document.getElementById(ids[1])).toHaveAttribute('aria-selected', 'true');
 });
 
 test('Escape cierra la paleta', async () => {
