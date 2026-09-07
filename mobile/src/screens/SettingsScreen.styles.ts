@@ -20,11 +20,14 @@ export const settingsScreenStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  cardTitle: {
-    fontSize: fontSize.title,
-    fontFamily: fonts.heading,
-    color: colors.textPrimary,
-    marginBottom: spacing.xxl,
+  /** Rótulo del grupo de ajustes; la conexión queda fuera porque es estado. */
+  grupoTitulo: {
+    fontSize: fontSize.xs,
+    fontFamily: fonts.medium,
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.md,
   },
   sectionRow: {
     flexDirection: 'row',

@@ -4,7 +4,8 @@ import { useProfileData } from '../hooks/useProfileData';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors } from '../theme';
-import ScreenContainer from '../components/ScreenContainer';
+import CustomHeader from '../components/CustomHeader';
+import TexturedBackground from '../components/TexturedBackground';
 import React from 'react';
 import { perfilScreenStyles as styles } from './PerfilScreen.styles';
 
@@ -17,7 +18,8 @@ export default function PerfilScreen({ roleLabel }: Props) {
   const { profile, loading } = useProfileData();
 
   return (
-    <ScreenContainer withTexture>
+    <TexturedBackground>
+      <CustomHeader title="Perfil" />
       <View style={styles.innerContainer}>
       <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
         {/* Avatar placeholder: circle with initials */}
@@ -48,7 +50,7 @@ export default function PerfilScreen({ roleLabel }: Props) {
         </TouchableOpacity>
       </Animated.View>
       </View>
-    </ScreenContainer>
+    </TexturedBackground>
   );
 }
 
