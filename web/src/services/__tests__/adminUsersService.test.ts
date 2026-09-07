@@ -1,3 +1,4 @@
+import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import {
   MENSAJE_ADMIN_USERS_GENERICO,
@@ -69,4 +70,12 @@ test('una falla de red sin cuerpo interpretable usa el mensaje genérico', async
   await expect(reenviarInvitacion('teo@bayka.org')).rejects.toThrow(
     MENSAJE_ADMIN_USERS_GENERICO,
   );
+});
+
+test('el 429 del rate limit conserva su mensaje accionable', async () => {
+  estadoMock.respuestaInvoke = {
+    data: null,
+    error: { context: { json: async () => ({ ok: false, error: MENSAJES.limiteEmails }) } },
+  };
+  await expect(reenviarInvitacion('teo@bayka.org')).rejects.toThrow(MENSAJES.limiteEmails);
 });

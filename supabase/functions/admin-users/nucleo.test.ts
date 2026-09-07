@@ -289,4 +289,49 @@ describe('reenviarInvitacion', () => {
     expect(respuesta.status).toBe(500);
     expect(respuesta.body.error).toBe(MENSAJES.errorGenerico);
   });
+
+  test('rate limit de emails → 429 accionable, no 500', async () => {
+    const deps = crearDeps();
+    deps.enviarRecuperacion = vi.fn(async () => ({ error: 'email rate limit exceeded' }));
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'reenviarInvitacion', email: 'teo@bayka.org' },
+      deps,
+    );
+    expect(respuesta.status).toBe(429);
+    expect(respuesta.body.error).toBe(MENSAJES.limiteEmails);
+  });
+
+  test('smtp_max_frequency ("only request this after") entra en el mismo 429', async () => {
+    const deps = crearDeps();
+    deps.enviarRecuperacion = vi.fn(async () => ({
+      error: 'For security purposes, you can only request this after 42 seconds',
+    }));
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'reenviarInvitacion', email: 'teo@bayka.org' },
+      deps,
+    );
+    expect(respuesta.status).toBe(429);
+    expect(respuesta.body.error).toBe(MENSAJES.limiteEmails);
+  });
+});
+
+describe('mapeo de errores de Auth', () => {
+  const casos = [
+    { error: 'email rate limit exceeded', status: 429, mensaje: () => MENSAJES.limiteEmails },
+    { error: 'over_email_send_rate_limit', status: 429, mensaje: () => MENSAJES.limiteEmails },
+    { error: 'User already registered', status: 409, mensaje: () => MENSAJES.emailDuplicado },
+    { error: 'algo raro del server', status: 500, mensaje: () => MENSAJES.errorGenerico },
+  ];
+
+  for (const caso of casos) {
+    test(`crear con "${caso.error}" → ${caso.status}`, async () => {
+      const deps = crearDeps();
+      deps.invitar = vi.fn(async () => ({ error: caso.error, userId: null }));
+      const respuesta = await manejarAdminUsers('jwt', CREAR, deps);
+      expect(respuesta.status).toBe(caso.status);
+      expect(respuesta.body.error).toBe(caso.mensaje());
+    });
+  }
 });

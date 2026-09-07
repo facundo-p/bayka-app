@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'web/**'
+      # El núcleo de las edge functions se testea con el vitest de web.
+      - 'supabase/functions/**'
       - '.github/workflows/web-ci.yml'
 
 jobs:

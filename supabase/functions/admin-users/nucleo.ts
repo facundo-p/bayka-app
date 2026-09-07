@@ -26,11 +26,17 @@ export const MENSAJES = {
   rolInvalido: 'Rol inválido',
   nombreRequerido: 'El nombre es obligatorio',
   passwordCorta: `La contraseña debe tener al menos ${LONGITUD_MINIMA_PASSWORD} caracteres`,
+  limiteEmails: 'Alcanzaste el límite de emails. Esperá unos minutos y probá de nuevo.',
   errorGenerico: 'No se pudo completar la operación. Probá de nuevo.',
 } as const;
 
 /** Errores de duplicado de GoTrue: "... already ... registered" (texto varía entre crear/actualizar). */
 const PATRON_AUTH_YA_REGISTRADO = /already.*registered/i;
+
+/** Cuota de emails de GoTrue: "email rate limit exceeded" y "over_email_send_rate_limit"
+ *  (rate_limit_email_sent), más el "only request this after N seconds" de
+ *  smtp_max_frequency. El texto cambia entre versiones: si no matchea, cae al 500. */
+const PATRON_AUTH_RATE_LIMIT = /rate.?limit|only request this after/i;
 
 export type PerfilDb = { id: string; nombre: string; rol: string; activo: boolean };
 
@@ -110,6 +116,8 @@ function validarCuerpo(cuerpo: CuerpoAdminUsers): Respuesta | null {
 
 function falloDeAuth(error: string): Respuesta {
   if (PATRON_AUTH_YA_REGISTRADO.test(error)) return fallo(409, MENSAJES.emailDuplicado);
+  // Un rate limit no es un fallo del sistema: reintentar consume más cuota.
+  if (PATRON_AUTH_RATE_LIMIT.test(error)) return fallo(429, MENSAJES.limiteEmails);
   return fallo(500, MENSAJES.errorGenerico);
 }
 
@@ -188,7 +196,7 @@ async function ejecutarAccion(
     }
     case 'reenviarInvitacion': {
       const envio = await deps.enviarRecuperacion(cuerpo.email);
-      return envio.error ? fallo(500, MENSAJES.errorGenerico) : ok();
+      return envio.error ? falloDeAuth(envio.error) : ok();
     }
     case 'desactivar':
       return desactivar(caller, cuerpo.userId, deps);
