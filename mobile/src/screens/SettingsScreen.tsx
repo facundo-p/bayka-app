@@ -2,7 +2,8 @@ import { View, Text, Switch, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
-import ScreenContainer from '../components/ScreenContainer';
+import CustomHeader from '../components/CustomHeader';
+import TexturedBackground from '../components/TexturedBackground';
 import GpsSignalIndicator from '../components/GpsSignalIndicator';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
@@ -17,10 +18,11 @@ export default function SettingsScreen() {
   const { isOnline } = useNetStatus();
 
   return (
-    <ScreenContainer withTexture>
+    <TexturedBackground>
+      <CustomHeader title="Ajustes" />
       <View style={styles.innerContainer}>
         <Animated.View entering={FadeInDown.duration(400)} style={styles.card}>
-          <Text style={styles.cardTitle}>Ajustes</Text>
+          <Text style={styles.grupoTitulo}>Ajustes GPS</Text>
 
           <View style={styles.sectionRow}>
             <View style={styles.sectionLabelWrap}>
@@ -61,7 +63,7 @@ export default function SettingsScreen() {
           </View>
         </Animated.View>
       </View>
-    </ScreenContainer>
+    </TexturedBackground>
   );
 }
 

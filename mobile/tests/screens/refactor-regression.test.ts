@@ -132,3 +132,28 @@ describe('PlantacionesScreen — delete local', () => {
     expect(hook).toMatch(/return\s*\{[\s\S]*handleDeletePlantation[\s\S]*\}/);
   });
 });
+
+// --- Regression: las tabs Ajustes y Perfil usan el header compartido (#289) ---
+describe('Header unificado en las tabs (guía UX §6.1)', () => {
+  const tabs = {
+    SettingsScreen: readSrc('screens/SettingsScreen.tsx'),
+    PerfilScreen: readSrc('screens/PerfilScreen.tsx'),
+  };
+
+  for (const [nombre, source] of Object.entries(tabs)) {
+    // CustomHeader es el único wrapper de estas dos que aplica insets.top;
+    // ScreenContainer explícitamente no lo hace, así que no alcanza.
+    it(`${nombre} monta CustomHeader`, () => {
+      expect(source).toMatch(/<CustomHeader\b/);
+    });
+  }
+
+  it('SettingsScreen no repite el título de la pantalla dentro de la card', () => {
+    expect(tabs.SettingsScreen).toMatch(/<CustomHeader title="Ajustes"/);
+    expect(tabs.SettingsScreen).not.toMatch(/styles\.cardTitle/);
+  });
+
+  it('el grupo de ajustes de GPS está rotulado', () => {
+    expect(tabs.SettingsScreen).toContain('Ajustes GPS');
+  });
+});
