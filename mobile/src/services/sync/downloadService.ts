@@ -3,7 +3,7 @@ import { plantations } from '../../database/schema';
 import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { DownloadProgress, DownloadResult, DownloadPhaseProgress } from './types';
+import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esSinAcceso } from './types';
 import { pullFromServer } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
@@ -64,14 +64,14 @@ export async function downloadPlantation(
   const pull = await pullFromServer(serverPlantation.id, onPhase);
   // Sin acceso no hay datos que bajar: que la descarga se reporte como fallida
   // en vez de "listo" con la plantación vacía.
-  if (pull.estado === 'sin-acceso') {
+  if (esSinAcceso(pull)) {
     throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
   }
 
   if (includePhotos) {
     try {
       await downloadPhotosForPlantation(serverPlantation.id, (p) => {
-        onPhase?.({ phase: 'fotos', phaseDone: p.completed, phaseTotal: p.total });
+        onPhase?.({ phase: DOWNLOAD_PHASE.fotos, phaseDone: p.completed, phaseTotal: p.total });
       });
     } catch (e) {
       syncLog.error('Download: Photo download failed for plantation:', serverPlantation.id, e);
@@ -109,7 +109,7 @@ export async function batchDownload(
 
   // Initial event so the modal shows a state before the first plantation starts.
   if (selected.length > 0) {
-    emitProgress(1, selected[0].lugar, { phase: 'species', phaseDone: 0, phaseTotal: 0 });
+    emitProgress(1, selected[0].lugar, { phase: DOWNLOAD_PHASE.species, phaseDone: 0, phaseTotal: 0 });
   }
 
   try {

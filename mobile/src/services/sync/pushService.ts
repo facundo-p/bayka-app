@@ -15,7 +15,7 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
-import { SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress, classifyServerError } from './types';
+import { SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress, classifyServerError } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
 
@@ -56,20 +56,20 @@ export function classifyParcelaRpcResult(
   if (error?.code === PG_ERROR.UNIQUE_VIOLATION) {
     const details: string | undefined = error?.details;
     if (!details) {
-      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
     }
     const match = details.match(/Key \(([^)]+)\)=/);
     if (!match) {
-      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
     }
     const cols = match[1].split(',').map(c => c.trim().toLowerCase());
     if (cols.includes('codigo')) {
-      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'DUPLICATE_CODE' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.DUPLICATE_CODE };
     }
     if (cols.includes('nombre')) {
-      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'DUPLICATE_NAME' };
+      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.DUPLICATE_NAME };
     }
-    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'GENERIC_CONFLICT' };
+    return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
   }
 
   // No-conflict (42501/network/unknown): detail lleva el código postgres crudo para errores
@@ -94,7 +94,7 @@ export async function uploadSyncableParcelas(
       results.push(result);
     } catch (e: any) {
       syncLog.error(`Parcela upload exception "${parcela.nombre}" (${parcela.id}):`, e);
-      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: 'NETWORK' });
+      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.NETWORK });
     }
   }
 
@@ -180,7 +180,7 @@ export function classifyRpcResult(
 ): SyncGroupResult {
   if (error) {
     syncLog.error(`RPC error for "${sg.nombre}" (${sg.id}):`, JSON.stringify(error));
-    return { success: false, groupId: sg.id, nombre: sg.nombre, error: 'NETWORK' };
+    return { success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK };
   }
   if (data?.success === true) {
     return { success: true, groupId: sg.id, nombre: sg.nombre };
@@ -188,8 +188,8 @@ export function classifyRpcResult(
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
   // DUPLICATE_CODE y PERMISSION son los códigos que sync_subgroup devuelve explícitamente
   // (unicidad por parcela / guard de membresía).
-  const RPC_CODES: SyncErrorCode[] = ['DUPLICATE_CODE', 'PERMISSION'];
-  const errorCode: SyncErrorCode = RPC_CODES.includes(data?.error) ? data.error : 'UNKNOWN';
+  const RPC_CODES: SyncErrorCode[] = [SYNC_ERROR.DUPLICATE_CODE, SYNC_ERROR.PERMISSION];
+  const errorCode: SyncErrorCode = RPC_CODES.includes(data?.error) ? data.error : SYNC_ERROR.UNKNOWN;
   return { success: false, groupId: sg.id, nombre: sg.nombre, error: errorCode };
 }
 
@@ -228,7 +228,7 @@ export async function uploadSyncableGroups(
         success: false,
         groupId: sg.id,
         nombre: sg.nombre,
-        error: 'PARCELA_PENDING',
+        error: SYNC_ERROR.PARCELA_PENDING,
         parcelaId: sg.parcelaId,
       });
       continue;
@@ -242,7 +242,7 @@ export async function uploadSyncableGroups(
       results.push(result);
     } catch (e) {
       syncLog.error(`Exception for "${sg.nombre}" (${sg.id}):`, e);
-      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: 'NETWORK' });
+      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK });
     }
   }
 

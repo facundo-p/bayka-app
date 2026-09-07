@@ -2,7 +2,7 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, PullResult } from './types';
+import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, PullResult, esSinAcceso } from './types';
 import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
@@ -28,7 +28,7 @@ export async function syncPlantation(
     onPullResult?.(pull);
     // Sin membresía el push también lo rechaza RLS: cortar acá evita una lista
     // de errores de permisos que tapan la causa real.
-    if (pull.estado === 'sin-acceso') return [];
+    if (esSinAcceso(pull)) return [];
   } catch (e) {
     syncLog.error('Pull failed:', e);
   }
@@ -71,7 +71,7 @@ export async function syncAllPlantations(
 
     try {
       const pull = await pullFromServer(plantation.id);
-      if (pull.estado === 'sin-acceso') {
+      if (esSinAcceso(pull)) {
         syncLog.info(`Sync global: "${plantation.lugar}" sin acceso, se saltea`);
         continue;
       }

@@ -100,16 +100,37 @@ board, tabla de estados y límites conocidos: #269.
    - Refactor si función >20 líneas.
    - Separar lógica y presentación.
    - Actualizar archivos de documentación .md que hayan quedado desactualizados
-   - **Sin "magic constants".** Códigos de error / valores externos (p.ej. SQLSTATE
-     de Postgres `'23505'`/`'42501'`) van en un módulo de constantes nombradas y
-     documentadas (ver `mobile/src/supabase/postgresErrorCodes.ts`), NUNCA como
-     literal suelto comparado contra `error.code`. Un literal opaco no se
-     autodocumenta, no se grepea y nadie nota si cambia el contrato.
-     **Enforzado por eslint** (`no-restricted-syntax` en `mobile/eslint.config.js`:
-     falla ante un SQLSTATE literal en una comparación de igualdad).
+   - **Sin "magic constants" (ampliado 2026-09-07, #334).** Todo **valor de dominio
+     o discriminante de unión** que se compare o se asigne en más de un lugar vive
+     en un objeto `as const` con su tipo derivado, NUNCA como literal suelto. No es
+     solo para códigos de error externos: aplica igual a estados (`'sin-acceso'`),
+     fases (`'especies_plantacion'`) y máquinas de estado de UI
+     (`'uploading-photos'`). Un literal opaco no se autodocumenta, no se grepea y
+     nadie nota si cambia el contrato.
+
+     Módulos canónicos, agregá el valor nuevo al que corresponda:
+     `mobile/src/constants/estados.ts`, `constants/roles.ts`, `constants/groupTipo.ts`
+     (dominio/DB, con contrato en `contracts/*.json`);
+     `mobile/src/supabase/postgresErrorCodes.ts` (SQLSTATE);
+     `mobile/src/services/sync/types.ts` (contratos internos del módulo de sync).
+
+     **La legibilidad manda** — es la mitad que se olvida al aplicar la regla. Si la
+     misma comparación se repite, exponé un predicado nombrado en vez del campo:
+     `esSinAcceso(pull)` gana contra `pull.estado === PULL_ESTADO.sinAcceso`, y las
+     dos ganan contra el literal. Si la constante deja el call site menos claro que
+     el string, el problema es el nombre de la constante.
+
+     Los tests que **afirman el contrato** (`expect(res.error).toBe('DUPLICATE_CODE')`)
+     sí usan el literal a propósito: un test que importa la misma constante que el
+     código bajo prueba deja de detectar un cambio de valor.
+
+     **Enforzado por eslint solo para SQLSTATE** (`no-restricted-syntax` en
+     `mobile/eslint.config.js`), porque ahí el patrón del valor es reconocible. Para
+     el resto no hay red automática: lo agarra el code-review.
    - **En cada code-review** (skill `/code-review`): incluir explícitamente la
-     búsqueda de *magic constants / códigos de error hardcodeados* como dimensión
-     a chequear, además de bugs/reuse/simplificación.
+     búsqueda de *magic constants* como dimensión a chequear, además de
+     bugs/reuse/simplificación. No solo códigos de error hardcodeados: también
+     literales de estado/fase repetidos y uniones de strings escritas a mano.
    - **Comentarios concisos (OBLIGATORIO, vigente desde 2026-09-03, #293).**
      Un comentario dice lo necesario con la menor cantidad de palabras, sin ser
      críptico. Prohibido: claves internas de planificación (`D-16-13`,

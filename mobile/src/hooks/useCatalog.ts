@@ -14,7 +14,7 @@ import { useConfirm } from './useConfirm';
 import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { getServerCatalog, getLocalPlantationIds, getUnsyncedGroupSummary, ServerPlantation } from '../queries/catalogQueries';
 import { deletePlantationLocally } from '../repositories/PlantationRepository';
-import { batchDownload, DownloadResult, DownloadProgress } from '../services/SyncService';
+import { batchDownload, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState } from '../services/SyncService';
 import { colors } from '../theme';
 
 export function useCatalog() {
@@ -34,7 +34,7 @@ export function useCatalog() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [downloadState, setDownloadState] = useState<'idle' | 'downloading' | 'done'>('idle');
+  const [downloadState, setDownloadState] = useState<DownloadState>(DOWNLOAD_STATE.idle);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [downloadResults, setDownloadResults] = useState<DownloadResult[]>([]);
   const [includePhotos, setIncludePhotos] = useState(false);
@@ -79,7 +79,7 @@ export function useCatalog() {
 
   async function handleBatchDownload() {
     const selected = catalogItems.filter((item) => selectedIds.has(item.id));
-    setDownloadState('downloading');
+    setDownloadState(DOWNLOAD_STATE.downloading);
     setDownloadProgress(null);
     setDownloadResults([]);
     try {
@@ -88,7 +88,7 @@ export function useCatalog() {
     } catch {
       setDownloadResults(selected.map((s) => ({ success: false, id: s.id, nombre: s.lugar })));
     } finally {
-      setDownloadState('done');
+      setDownloadState(DOWNLOAD_STATE.done);
     }
   }
 
@@ -126,7 +126,7 @@ export function useCatalog() {
   }
 
   function handleDismiss() {
-    setDownloadState('idle');
+    setDownloadState(DOWNLOAD_STATE.idle);
     setSelectedIds(new Set());
   }
 

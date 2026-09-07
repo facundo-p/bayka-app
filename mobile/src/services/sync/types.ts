@@ -1,20 +1,28 @@
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 /**
- * Códigos de error de sync (grupo + parcela). DUPLICATE_CODE/NAME: unique violation (23505) en
- * pushService, vía error.code + parsing de error.details (nunca substring de message).
- * GENERIC_CONFLICT: 23505 pero details no matchea los constraints esperados. PARCELA_PENDING:
- * grupo no subido porque su parcela sigue pending_sync (orden FK). PERMISSION: RLS (42501).
- * NETWORK/UNKNOWN: legacy.
+ * Códigos de error de sync (grupo + parcela). En el push de grupos DUPLICATE_CODE y
+ * PERMISSION cruzan el contrato del RPC `sync_subgroup` — llegan en `data.error` (#67),
+ * no los inventa el cliente; renombrar el valor rompe la clasificación.
  */
-export type SyncErrorCode =
-  | 'DUPLICATE_CODE'
-  | 'DUPLICATE_NAME'
-  | 'GENERIC_CONFLICT'
-  | 'PARCELA_PENDING'
-  | 'PERMISSION'
-  | 'NETWORK'
-  | 'UNKNOWN';
+export const SYNC_ERROR = {
+  /** unique violation (23505) sobre el código, vía error.details (nunca substring de message). */
+  DUPLICATE_CODE: 'DUPLICATE_CODE',
+  /** unique violation (23505) sobre el nombre. */
+  DUPLICATE_NAME: 'DUPLICATE_NAME',
+  /** 23505 pero details no matchea los constraints esperados. */
+  GENERIC_CONFLICT: 'GENERIC_CONFLICT',
+  /** Grupo no subido porque su parcela sigue pending_sync (orden FK). */
+  PARCELA_PENDING: 'PARCELA_PENDING',
+  /** RLS rechazó la operación (42501). */
+  PERMISSION: 'PERMISSION',
+  /** Legacy: falla de red sin código de postgres. */
+  NETWORK: 'NETWORK',
+  /** Legacy: todo lo demás, con code/message crudo en `detail`. */
+  UNKNOWN: 'UNKNOWN',
+} as const;
+
+export type SyncErrorCode = (typeof SYNC_ERROR)[keyof typeof SYNC_ERROR];
 
 export interface PhotoSyncProgress {
   total: number;
@@ -47,23 +55,64 @@ export interface GlobalSyncProgress {
   subgroupProgress?: SyncProgress;
 }
 
-/**
- * Resultado del pull. `sin-acceso`: el server ya no reconoce la membresía del
- * usuario en la plantación (revocada). Sin esto, las policies por membresía
- * devuelven `{ data: [], error: null }` en cada paso y el pull lo lee como
- * "el server está vacío".
- */
-export type PullResult = { estado: 'ok' } | { estado: 'sin-acceso' };
+export const PULL_ESTADO = {
+  ok: 'ok',
+  /**
+   * El server ya no reconoce la membresía del usuario en la plantación (revocada).
+   * Sin distinguirlo, las policies por membresía devuelven `{ data: [], error: null }`
+   * en cada paso y el pull lo lee como "el server está vacío".
+   */
+  sinAcceso: 'sin-acceso',
+} as const;
 
-export type DownloadPhase =
-  | 'species'      // global catalog (runs once at batch start)
-  | 'parcelas'
-  | 'groups'
-  | 'usuarios'
-  | 'especies_plantacion'
-  | 'arboles'
-  | 'fotos'        // optional, only if includePhotos=true
-  | 'finalizando'; // post-loop cleanup / notify
+export type PullEstado = (typeof PULL_ESTADO)[keyof typeof PULL_ESTADO];
+
+/** Resultado del pull. Los callers preguntan con `esSinAcceso`, no por el `estado`. */
+export type PullResult = { estado: PullEstado };
+
+export const PULL_OK: PullResult = { estado: PULL_ESTADO.ok };
+export const PULL_SIN_ACCESO: PullResult = { estado: PULL_ESTADO.sinAcceso };
+
+/** La membresía fue revocada: la copia local queda solo para consulta (#317). */
+export const esSinAcceso = (resultado: PullResult): boolean =>
+  resultado.estado === PULL_ESTADO.sinAcceso;
+
+export const DOWNLOAD_PHASE = {
+  /** Catálogo global; corre una sola vez al arrancar el batch. */
+  species: 'species',
+  parcelas: 'parcelas',
+  groups: 'groups',
+  usuarios: 'usuarios',
+  especiesPlantacion: 'especies_plantacion',
+  arboles: 'arboles',
+  /** Opcional, solo si includePhotos=true. */
+  fotos: 'fotos',
+  /** Cleanup y notify posteriores al loop. */
+  finalizando: 'finalizando',
+} as const;
+
+export type DownloadPhase = (typeof DOWNLOAD_PHASE)[keyof typeof DOWNLOAD_PHASE];
+
+/** Máquina de estados de una corrida de sync: la fija `useSync`, la leen los modales. */
+export const SYNC_STATE = {
+  idle: 'idle',
+  pulling: 'pulling',
+  pushing: 'pushing',
+  uploadingPhotos: 'uploading-photos',
+  downloadingPhotos: 'downloading-photos',
+  done: 'done',
+} as const;
+
+export type SyncState = (typeof SYNC_STATE)[keyof typeof SYNC_STATE];
+
+/** Máquina de estados de una descarga de plantaciones (`useCatalog` + su modal). */
+export const DOWNLOAD_STATE = {
+  idle: 'idle',
+  downloading: 'downloading',
+  done: 'done',
+} as const;
+
+export type DownloadState = (typeof DOWNLOAD_STATE)[keyof typeof DOWNLOAD_STATE];
 
 export interface DownloadPhaseProgress {
   phase: DownloadPhase;
@@ -94,13 +143,13 @@ export type DownloadResult = {
 const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   // DUPLICATE_CODE/NAME los devuelve el RPC tanto para parcelas como grupos; mensaje neutral para
   // no nombrar la entidad equivocada (unicidad de grupo es por parcela, no por plantación, #65).
-  DUPLICATE_CODE: 'El codigo ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
-  DUPLICATE_NAME: 'El nombre ya existe en el servidor. Renombra e intenta de nuevo.',
-  GENERIC_CONFLICT: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
-  PARCELA_PENDING: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
-  PERMISSION: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
-  NETWORK: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
-  UNKNOWN: 'Error inesperado. Intenta de nuevo.',
+  [SYNC_ERROR.DUPLICATE_CODE]: 'El codigo ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
+  [SYNC_ERROR.DUPLICATE_NAME]: 'El nombre ya existe en el servidor. Renombra e intenta de nuevo.',
+  [SYNC_ERROR.GENERIC_CONFLICT]: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
+  [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
+  [SYNC_ERROR.PERMISSION]: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
+  [SYNC_ERROR.NETWORK]: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
+  [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intenta de nuevo.',
 };
 
 export function getErrorMessage(code: SyncErrorCode): string {
@@ -119,10 +168,10 @@ export function rawErrorDetail(error: { code?: string; message?: string } | null
  */
 export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
   const detail = rawErrorDetail(error);
-  if (error?.code === PG_ERROR.INSUFFICIENT_PRIVILEGE) return { error: 'PERMISSION', detail };
+  if (error?.code === PG_ERROR.INSUFFICIENT_PRIVILEGE) return { error: SYNC_ERROR.PERMISSION, detail };
   const msg = String(error?.message ?? '').toLowerCase();
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
-    return { error: 'NETWORK', detail };
+    return { error: SYNC_ERROR.NETWORK, detail };
   }
-  return { error: 'UNKNOWN', detail };
+  return { error: SYNC_ERROR.UNKNOWN, detail };
 }

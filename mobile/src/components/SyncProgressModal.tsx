@@ -1,6 +1,7 @@
 import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
+import { SYNC_STATE } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress } from '../services/SyncService';
 import BaseModal from './BaseModal';
@@ -45,7 +46,7 @@ export default function SyncProgressModal({
   globalProgress,
   onDismiss,
 }: Props) {
-  if (state === 'idle') return null;
+  if (state === SYNC_STATE.idle) return null;
   // Session expiry is surfaced by a dedicated ConfirmModal (re-login flow),
   // not here — suppress this modal so the two don't overlap.
   if (authExpired) return null;
@@ -57,9 +58,9 @@ export default function SyncProgressModal({
   return (
     <BaseModal
       visible
-      onRequestClose={state === 'done' ? onDismiss : undefined}
+      onRequestClose={state === SYNC_STATE.done ? onDismiss : undefined}
     >
-      {state === 'pulling' && (
+      {state === SYNC_STATE.pulling && (
         <>
           <ActivityIndicator size="large" color={colors.info} />
           <Text style={styles.title}>Actualizando datos...</Text>
@@ -72,7 +73,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'pushing' && (
+      {state === SYNC_STATE.pushing && (
         <>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.title}>Subiendo grupos...</Text>
@@ -90,7 +91,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'uploading-photos' && (
+      {state === SYNC_STATE.uploadingPhotos && (
         <>
           <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.title}>Subiendo fotos...</Text>
@@ -102,7 +103,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'downloading-photos' && (
+      {state === SYNC_STATE.downloadingPhotos && (
         <>
           <ActivityIndicator size="large" color={colors.info} />
           <Text style={styles.title}>Descargando fotos...</Text>
@@ -114,7 +115,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && sinAcceso && (
+      {state === SYNC_STATE.done && sinAcceso && (
         <>
           <Ionicons name="lock-closed" size={48} color={colors.secondary} />
           <Text style={styles.title}>Sin acceso a la plantacion</Text>
@@ -128,7 +129,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
+      {state === SYNC_STATE.done && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -154,7 +155,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === 'done' && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
+      {state === SYNC_STATE.done && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
         <>
           <Ionicons
             name={anyFailure ? 'alert-circle' : 'checkmark-circle'}
