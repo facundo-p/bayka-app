@@ -96,6 +96,12 @@ function emitir(evento: string): void {
   for (const oyente of oyentes) oyente(evento, estadoMock.sesion);
 }
 
+/** Dispara un evento de auth con la sesión actual (refresh de token, logout
+ *  desde otra pestaña): eventos que no nacen de signIn/signOut de esta pestaña. */
+export function emitirEventoAuth(evento: string): void {
+  emitir(evento);
+}
+
 export const supabaseMock = {
   auth: {
     getSession: vi.fn(async () => ({ data: { session: estadoMock.sesion } })),
