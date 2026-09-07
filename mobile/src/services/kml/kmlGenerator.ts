@@ -7,6 +7,9 @@ import { buildSpeciesStyles, getSpeciesStyleId } from './speciesStyles';
 
 export const NN_SPECIES_LABEL = 'N/N';
 
+/** Folder para árboles cuya parcela fue borrada: el punto se conserva, el nombre viejo no. */
+export const SIN_PARCELA_LABEL = 'Sin parcela';
+
 export function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -20,12 +23,16 @@ function especieLabel(row: KmlExportRow): string {
   return row.especieNombre ?? NN_SPECIES_LABEL;
 }
 
+function parcelaLabel(row: KmlExportRow): string {
+  return row.parcelaNombre ?? SIN_PARCELA_LABEL;
+}
+
 function buildDescription(row: KmlExportRow): string {
   const precision = row.gpsAccuracy !== null ? `± ${Math.round(row.gpsAccuracy)} m` : 's/d';
   const lineas = [
     `Especie: ${especieLabel(row)}`,
     `Grupo: ${row.grupoNombre}`,
-    `Parcela: ${row.parcelaNombre}`,
+    `Parcela: ${parcelaLabel(row)}`,
     `Posición: ${row.posicion}`,
     `Precisión: ${precision}`,
     `Capturado: ${row.gpsCapturedAt ?? 's/d'}`,
@@ -80,7 +87,7 @@ function buildParcelaFolder(parcelaNombre: string, rows: KmlExportRow[]): string
 /** Documento KML completo: estilos por especie + folders parcela → grupo. */
 export function buildKml(plantationName: string, rows: KmlExportRow[]): string {
   const especies = [...new Set(rows.map(especieLabel))];
-  const porParcela = groupBy(rows, (row) => row.parcelaNombre);
+  const porParcela = groupBy(rows, parcelaLabel);
   const folders = [...porParcela.entries()]
     .map(([parcela, parcelaRows]) => buildParcelaFolder(parcela, parcelaRows))
     .join('\n');
