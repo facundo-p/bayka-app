@@ -41,7 +41,8 @@ function MiniCardParcela({
   );
 }
 
-/** Tira de parcelas: filtra el mapa al clickear una, y enlaza a la tab Datos. */
+/** Tira de parcelas: filtra el dashboard al clickear una, y enlaza a la tab Datos.
+ *  Sus números son los de cada parcela y no siguen al filtro: son el selector. */
 export function ParcelasStrip({
   parcelas,
   parcelaSeleccionada,

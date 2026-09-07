@@ -60,3 +60,55 @@
   font-size: var(--text-md);
   color: rgba(255, 255, 255, 0.75);
 }
+
+/* ─── Fila de alcance (parcela seleccionada) ───────────────────────────── */
+
+.alcance {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xl);
+  margin-bottom: var(--space-3xl);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-xl);
+  border-radius: var(--radius-full);
+  background-color: rgba(255, 255, 255, 0.14);
+  font-size: var(--text-md);
+}
+
+.chipCodigo {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+
+.chipNombre {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.verTodos {
+  font-family: inherit;
+  font-size: var(--text-md);
+  font-weight: 500;
+  padding: var(--space-sm) var(--space-2xl);
+  border-radius: var(--radius-full);
+  border: var(--border-thin) solid rgba(255, 255, 255, 0.42);
+  background-color: transparent;
+  color: var(--color-white);
+  cursor: pointer;
+}
+
+.verTodos:hover {
+  background-color: rgba(255, 255, 255, 0.14);
+}
+
+.verTodos:focus-visible {
+  outline: var(--border-medium) solid var(--color-plantation-light);
+  outline-offset: 2px;
+}

@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
@@ -48,12 +48,15 @@ const ARBOL_BASE = {
   groups: { plantation_id: 'plant-1', parcela_id: 'parc-1' },
 };
 
-/** 5 árboles: 3 con GPS (60%), 2 con foto subida (40%), 1 N/N, 2 especies. */
+/** 5 árboles: 3 con GPS (60%), 2 con foto subida (40%), 1 N/N, 2 especies.
+ *  Repartidos 3 en parc-1 (67% GPS, 67% foto, el N/N) y 2 en parc-2 (50% GPS,
+ *  0% foto), para que filtrar mueva los números. */
+const EN_PARC_2 = { groups: { plantation_id: 'plant-1', parcela_id: 'parc-2' } };
 const FILAS_ARBOLES = [
   ARBOL_BASE,
   ARBOL_BASE,
-  { ...ARBOL_BASE, species_id: 'sp-2', foto_url: 'file:///data/foto.jpg' },
-  { ...ARBOL_BASE, latitude: null, longitude: null, foto_url: null },
+  { ...ARBOL_BASE, ...EN_PARC_2, species_id: 'sp-2', foto_url: 'file:///data/foto.jpg' },
+  { ...ARBOL_BASE, ...EN_PARC_2, latitude: null, longitude: null, foto_url: null },
   { ...ARBOL_BASE, species_id: null, latitude: null, longitude: null, foto_url: null },
 ];
 
@@ -62,10 +65,18 @@ const CATALOGO = [
   { id: 'sp-2', codigo: 'AL', nombre: 'Algarrobo', nombre_cientifico: null },
 ];
 
+/** parc-3 no tiene árboles: es el caso borde del filtro. Ojo que el mock
+ *  responde el mismo conteo para las tres en la tira de parcelas. */
 const FILAS_PARCELAS = [
   { id: 'parc-1', nombre: 'Norte', codigo: 'P1', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
   { id: 'parc-2', nombre: 'Sur', codigo: 'P2', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
+  { id: 'parc-3', nombre: 'Este', codigo: 'P3', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
 ];
+
+/** La card hero: el overline y el número grande cuelgan del mismo contenedor. */
+function hero(): HTMLElement {
+  return screen.getByText('Árboles registrados').parentElement as HTMLElement;
+}
 
 /** Puntos GPS del mapa: 2 en parc-1, 1 en parc-2 (para poder filtrar). */
 const FILAS_PUNTOS = [
@@ -157,6 +168,53 @@ describe('DashboardTab', () => {
     expect(screen.getByTestId('puntos-en-mapa')).toHaveTextContent('1');
     expect(screen.getByTestId('parcela-filtro')).toHaveTextContent('P2');
     expect(screen.getByRole('button', { name: /Norte/ })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('seleccionar una parcela recalcula el hero, los KPIs y las especies', async () => {
+    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    expect(await screen.findByText('5', {}, { timeout: ESPERA_RUTA_MS })).toBeInTheDocument();
+    expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.getByText('Algarrobo')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: /Norte/ }));
+
+    expect(within(hero()).getByText('3')).toBeInTheDocument();
+    expect(within(hero()).getByText('P1')).toBeInTheDocument();
+    expect(within(hero()).getByText('Norte')).toBeInTheDocument();
+    // GPS y foto quedan los dos en 67% con los 3 árboles de la parcela.
+    expect(screen.getAllByText('67%')).toHaveLength(2);
+    expect(screen.queryByText('Algarrobo')).not.toBeInTheDocument();
+    expect(screen.getByText('Composición de la parcela P1')).toBeInTheDocument();
+  });
+
+  test('"Ver todos" vuelve a la plantación entera y suelta la parcela', async () => {
+    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(await screen.findByRole('button', { name: /Norte/ }));
+    await usuario.click(screen.getByRole('button', { name: 'Ver todos' }));
+
+    expect(within(hero()).getByText('5')).toBeInTheDocument();
+    expect(screen.getByText('60%')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ver todos' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Norte/ })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  test('una parcela sin árboles muestra ceros, no el estado vacío', async () => {
+    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    await usuario.click(await screen.findByRole('button', { name: /Este/ }));
+
+    expect(within(hero()).getByText('0')).toBeInTheDocument();
+    expect(screen.queryByText('Todavía no hay árboles registrados')).not.toBeInTheDocument();
+    // Sin esta salida la parcela vacía sería una pantalla sin retorno.
+    expect(screen.getByRole('button', { name: 'Ver todos' })).toBeInTheDocument();
   });
 
   test('sin árboles muestra el estado vacío y ningún panel', async () => {

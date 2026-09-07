@@ -6,6 +6,8 @@ import styles from './SpeciesDistribution.module.css';
 interface SpeciesDistributionProps {
   especies: EspecieColoreada[];
   totalEspecies: number;
+  /** Código de la parcela cuando el panel está filtrado. */
+  parcelaFiltro?: string;
 }
 
 /** Máxima cantidad para normalizar el ancho de las barras (la lista viene
@@ -31,14 +33,20 @@ function FilaEspecie({ especie, maximo }: { especie: EspecieColoreada; maximo: n
 }
 
 /** Panel "Por especie": conteo de especies + barras horizontales por especie. */
-export function SpeciesDistribution({ especies, totalEspecies }: SpeciesDistributionProps) {
+export function SpeciesDistribution({
+  especies,
+  totalEspecies,
+  parcelaFiltro,
+}: SpeciesDistributionProps) {
   const maximo = maximoCantidad(especies);
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
         <div>
           <h3 className={styles.titulo}>Por especie</h3>
-          <p className={styles.subtitulo}>Composición del rodal</p>
+          <p className={styles.subtitulo}>
+            {parcelaFiltro ? `Composición de la parcela ${parcelaFiltro}` : 'Composición del rodal'}
+          </p>
         </div>
         <div className={styles.conteo}>
           <span className={styles.conteoNumero}>{totalEspecies}</span>
