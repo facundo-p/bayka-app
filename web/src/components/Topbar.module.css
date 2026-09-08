@@ -1,8 +1,10 @@
 .topbar {
-  position: sticky;
-  top: var(--alto-banner-entorno);
-  /* Por debajo de los paneles de Leaflet (z-index interno alto) pero por
+  /* Estática mientras el shell está acotado al viewport: no hay nada que
+     scrollee detrás, y `sticky` la correría el alto del banner tapando el
+     contenido. Vuelve a sticky en los fallbacks donde scrollea el documento.
+     Por debajo de los paneles de Leaflet (z-index interno alto) pero por
      encima del contenido normal. z-index entero: no es un color. */
+  position: static;
   z-index: 20;
   display: flex;
   align-items: center;
@@ -35,4 +37,13 @@
 
 .compacta .right {
   gap: var(--space-md);
+}
+
+/* Fallbacks del shell (ventana baja o angosta): ahí sí scrollea el documento
+   y la barra tiene que quedar fija arriba. */
+@media (max-height: 760px), (max-width: 900px) {
+  .topbar {
+    position: sticky;
+    top: var(--alto-banner-entorno);
+  }
 }
