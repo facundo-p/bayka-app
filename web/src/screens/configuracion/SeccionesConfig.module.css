@@ -4,22 +4,27 @@
  * card, formularios de toggle/frecuencia, lista de técnicos y modales.
  */
 
-/* ─── Cabecera de card: título + subtítulo + chip + controles, un renglón ── */
+/* ─── Cabecera de card: título + subtítulo + chip + controles ─────────────
+ * Un renglón mientras haya lugar. Cuando no lo hay, los controles bajan a un
+ * segundo renglón en vez de salirse de la card (donde el overflow los recorta
+ * y quedan inalcanzables).
+ */
 .cabecera {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-xl);
+  gap: var(--space-md) var(--space-xl);
   flex-shrink: 0;
-  min-width: 0;
   padding: var(--space-3xl) var(--space-3xl) var(--space-xl);
 }
 
 .cabeceraAcciones {
   margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-xl);
-  flex-shrink: 0;
 }
 
 .titulo {
@@ -44,9 +49,11 @@
   color: var(--color-text-secondary);
 }
 
-/* Se trunca antes que empujar los controles fuera del renglón. */
+/* Se trunca antes que empujar los controles fuera del renglón; con base 0 no
+   cuenta para decidir el wrap, así que es lo primero que cede. */
 .subtitulo {
   margin: 0;
+  flex: 1 1 0;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -86,11 +93,17 @@
   flex-direction: column;
 }
 
+/*
+ * Escalera de plegado, de más ancho a más angosto: el control entero a la
+ * derecha del texto; el control partido en dos renglones dentro suyo; el
+ * control debajo del texto. Sin esto el cluster de frecuencia (~478px) no
+ * entra en la columna derecha y se sale de la card pisando el texto.
+ */
 .filaConfig {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2xl);
+  gap: var(--space-lg) var(--space-2xl);
   padding: var(--space-xl-plus) 0;
   border-bottom: var(--border-thin) solid var(--color-divider);
 }
@@ -102,17 +115,28 @@
 }
 
 .filaConfigTexto {
-  min-width: 0;
+  flex: 1 1 10rem;
 }
 
 .filaConfigControl {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-lg) var(--space-xl);
+  margin-left: auto;
+  min-width: 0;
+}
+
+/* "o exacto" y su campo bajan de renglón juntos: separados no se entienden. */
+.grupoExacto {
+  display: flex;
   align-items: center;
   gap: var(--space-xl);
-  flex-shrink: 0;
 }
 
 .oExacto {
+  white-space: nowrap;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
@@ -126,6 +150,7 @@
 
 /* Ancho de un número de dos dígitos: es "cada N árboles", no un campo libre. */
 .campoExacto {
+  flex-shrink: 0;
   width: 72px;
 }
 

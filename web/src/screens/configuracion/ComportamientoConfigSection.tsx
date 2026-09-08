@@ -116,23 +116,28 @@ function FilasGps({ plantacion }: { plantacion: Plantacion }) {
           value={presetActivo}
           onChange={aplicarFrecuencia}
         />
-        <span className={styles.oExacto} aria-hidden>
-          o exacto
-        </span>
-        <div
-          className={cx(styles.campoExacto, presetActivo === SIN_PRESET && styles.campoExactoActivo)}
-        >
-          <Input
-            label="O un valor exacto: cada N árboles"
-            labelOculto
-            type="number"
-            min={1}
-            step={1}
-            value={textoExacto}
-            onChange={(event) => setTextoExacto(event.target.value)}
-            onBlur={confirmarTextoExacto}
-            onKeyDown={manejarTeclaTextoExacto}
-          />
+        <div className={styles.grupoExacto}>
+          <span className={styles.oExacto} aria-hidden>
+            o exacto
+          </span>
+          <div
+            className={cx(
+              styles.campoExacto,
+              presetActivo === SIN_PRESET && styles.campoExactoActivo,
+            )}
+          >
+            <Input
+              label="O un valor exacto: cada N árboles"
+              labelOculto
+              type="number"
+              min={1}
+              step={1}
+              value={textoExacto}
+              onChange={(event) => setTextoExacto(event.target.value)}
+              onBlur={confirmarTextoExacto}
+              onKeyDown={manejarTeclaTextoExacto}
+            />
+          </div>
         </div>
       </FilaConfig>
 
