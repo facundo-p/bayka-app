@@ -8,10 +8,11 @@
  *
  * Uso:
  *   npx playwright install chromium   # una vez por máquina
- *   npm run dev:demo                  # en otra terminal: servidor sin backend
+ *   npm run dev:demo                  # en otra terminal: servidor sin backend (#353)
  *   npm run audit:responsive
  *
  *   npm run audit:responsive -- --baseline   # regraba scripts/auditoria.baseline.json
+ *   npm run audit:responsive -- --autotest   # verifica que los checks disparen
  *   BASE_URL=http://localhost:4173 npm run audit:responsive
  *
  * Sale con código 1 si alguna celda empeoró respecto del baseline.
@@ -27,6 +28,7 @@ const CAPTURAS = join(AQUI, '..', '.auditoria');
 
 const BASE_URL = process.env.BASE_URL ?? 'http://localhost:5199';
 const REGRABAR = process.argv.includes('--baseline');
+const AUTOTEST = process.argv.includes('--autotest');
 const CON_CAPTURAS = process.argv.includes('--capturas');
 
 /** El id `p1` lo define el fake de `src/demo/datos.ts`. */
@@ -50,19 +52,17 @@ const ANCHOS = [1920, 1440, 1280, 1024, 900, 768, 600, 430, 360];
  * cerrar sobre nada de este módulo.
  */
 function medir() {
-  /**
-   * Visible de verdad: además de los estilos, el rect tiene que caer dentro del
-   * viewport Y dentro de cada ancestro que recorte. Sin lo segundo, una fila
-   * scrolleada fuera de su card sigue teniendo rect y aparece "solapada" con lo
-   * que haya debajo — es la fuente de falsos positivos más grande de todas.
-   */
-  const visible = (el) => {
+  /** Pintado: los estilos no lo esconden y ocupa lugar. No mira recortes. */
+  const pintado = (el) => {
     const c = getComputedStyle(el);
     if (c.display === 'none' || c.visibility === 'hidden' || c.opacity === '0') return false;
     const r = el.getBoundingClientRect();
-    if (r.width <= 2 || r.height <= 2) return false;
-    if (r.bottom <= 0 || r.top >= window.innerHeight) return false;
+    return r.width > 2 && r.height > 2;
+  };
 
+  /** Primer ancestro que recorta y deja al elemento afuera, o null. */
+  const recortadoPor = (el) => {
+    const r = el.getBoundingClientRect();
     for (let anc = el.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
       const co = getComputedStyle(anc);
       if (co.overflowX === 'visible' && co.overflowY === 'visible') continue;
@@ -70,9 +70,25 @@ function medir() {
       const dentro =
         r.right > ra.left + 1 && r.left < ra.right - 1 &&
         r.bottom > ra.top + 1 && r.top < ra.bottom - 1;
-      if (!dentro) return false;
+      if (!dentro) return anc;
     }
-    return true;
+    return null;
+  };
+
+  /**
+   * Visible de verdad: pintado, dentro del viewport y dentro de todo ancestro
+   * que recorte. Sin lo último, una fila scrolleada fuera de su card sigue
+   * teniendo rect y aparece "solapada" con lo que haya debajo.
+   *
+   * Ojo: esto vale para medir TEXTO. Para un control, quedar recortado por un
+   * ancestro no lo hace invisible, lo hace inalcanzable — que es el defecto que
+   * hay que reportar, no descartar.
+   */
+  const visible = (el) => {
+    if (!pintado(el)) return false;
+    const r = el.getBoundingClientRect();
+    if (r.bottom <= 0 || r.top >= window.innerHeight) return false;
+    return recortadoPor(el) === null;
   };
 
   const etiqueta = (el) =>
@@ -135,13 +151,20 @@ function medir() {
   const tapados = [];
   const foco = 'button, a, input, select, textarea, [role="radio"], [role="checkbox"]';
   for (const el of document.querySelectorAll(foco)) {
-    if (!visible(el)) continue;
+    if (!pintado(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.right > window.innerWidth + 2 || r.left < -2) {
-      fueraViewport.push({ q: etiqueta(el) });
+      fueraViewport.push({ q: etiqueta(el), motivo: 'fuera del viewport' });
       continue;
     }
-    if (r.top < 0 || r.bottom > window.innerHeight) continue; // abajo del fold, no es un defecto
+    // Recortado por una card con overflow hidden: no se puede alcanzar ni
+    // scrolleando. Es el modo en que los controles "desaparecen" arriba de 900.
+    const recorta = recortadoPor(el);
+    if (recorta) {
+      fueraViewport.push({ q: etiqueta(el), motivo: 'recortado por un ancestro' });
+      continue;
+    }
+    if (r.top < 0 || r.bottom > window.innerHeight) continue; // abajo del fold, no es defecto
     const centro = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     if (centro && !el.contains(centro) && centro !== el && !centro.contains(el)) {
       tapados.push({ q: etiqueta(el) });
@@ -150,44 +173,65 @@ function medir() {
 
   // ── Cards colapsadas ────────────────────────────────────────────────────
   // Debajo de 900px el shell deja de ser columna flex (`.main > * {display:block}`)
-  // y todo lo que dependía de `flex: 1` queda en 0px de alto. Una card de 0px no
-  // solapa, no recorta y no scrollea: sin este check puntúa limpio.
-  // Ancho mínimo para considerarlo una card y no un wrapper de fila: sin este
-  // filtro, los contenedores de 30px de alto de cada fila de tabla puntúan como
-  // cards colapsadas.
-  const ANCHO_MINIMO_CARD = 240;
-  // Solo se releva la altura; quién colapsó se decide afuera, comparando cada
-  // card contra sí misma en el ancho más grande. Un umbral fijo no sirve: hay
-  // panels que miden 139px en todos los anchos porque son así de altos.
-  const alturasCards = {};
+  // y todo lo que dependía de `flex: 1` queda en 0px. Una card de 0px no solapa,
+  // no recorta y no scrollea: sin este check puntúa limpio.
+  //
+  // Se relevan las DOS dimensiones y si el contenido entra. Quién colapsó se
+  // decide afuera, comparando cada card contra sí misma en el ancho más grande:
+  // un umbral fijo no sirve porque hay panels que miden 139px en todos los
+  // anchos porque son así de bajos. Y no se filtra por ancho mínimo: el mapa a
+  // 1024 mide 107px de ancho —destruido— y un filtro de ancho lo escondería,
+  // además de hacer que angostar una card BAJE el número de defectos.
+  const cards = {};
   const sospechosas = document.querySelectorAll(
     '[class*="_panel_"], [class*="_mapa_"], [class*="_cardTabla_"], .leaflet-container',
   );
   for (const el of sospechosas) {
     if (getComputedStyle(el).display === 'none' || !el.children.length) continue;
     const { height, width } = el.getBoundingClientRect();
-    if (width < ANCHO_MINIMO_CARD) continue;
     const clave = el.className.toString().split(' ')[0] || el.tagName.toLowerCase();
-    alturasCards[clave] = Math.round(height);
+    cards[clave] = {
+      h: Math.round(height),
+      w: Math.round(width),
+      // Si el contenido entra, la card se ajustó a su contenido y está bien:
+      // encogerse no es colapsar. Si desborda, lo que sobra no se ve.
+      desborda: el.scrollHeight > el.clientHeight + 4 || el.scrollWidth > el.clientWidth + 4,
+    };
   }
 
   // ── Tablas que recortan en vez de scrollear ─────────────────────────────
   // `Table` tiene `width: 100%` sin piso: sin `min-width` el navegador aprieta
-  // las columnas hasta recortar el texto en vez de generar scroll. Distinguir
-  // "recorta" de "scrollea" es justo lo que hay que verificar.
+  // las columnas hasta que el texto se recorta DENTRO de la celda, en vez de
+  // desbordar la tabla y generar scroll en el contenedor. Por eso no sirve
+  // mirar `tabla.scrollWidth`: una <table> en flujo normal se dimensiona a su
+  // contenido y da scrollWidth === clientWidth siempre. La señal está en las
+  // celdas, y en que la tabla no quepa en un contenedor que no scrollea.
   const tablasRecortadas = [];
   for (const tabla of document.querySelectorAll('table')) {
-    if (tabla.scrollWidth <= tabla.clientWidth + 2) continue;
-    let scrolleable = false;
+    let celdasRecortadas = 0;
+    for (const celda of tabla.querySelectorAll('td, th')) {
+      if (celda.scrollWidth > celda.clientWidth + 2) celdasRecortadas++;
+    }
+
+    // Primer ancestro que recorta o scrollea.
+    let contenedor = null;
+    let overflow = 'visible';
     for (let anc = tabla.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
       const ox = getComputedStyle(anc).overflowX;
-      if (ox === 'auto' || ox === 'scroll') {
-        scrolleable = anc.scrollWidth > anc.clientWidth + 2;
+      if (ox !== 'visible') {
+        contenedor = anc;
+        overflow = ox;
         break;
       }
     }
-    if (!scrolleable) {
-      tablasRecortadas.push({ sobra: Math.round(tabla.scrollWidth - tabla.clientWidth) });
+    const anchoTabla = Math.max(tabla.scrollWidth, Math.round(tabla.getBoundingClientRect().width));
+    const sobra = contenedor ? anchoTabla - contenedor.clientWidth : 0;
+    // Desbordar un contenedor que scrollea está bien: eso ES la salida buena.
+    const desbordaSinScroll =
+      sobra > 2 && overflow !== 'auto' && overflow !== 'scroll';
+
+    if (celdasRecortadas > 0 || desbordaSinScroll) {
+      tablasRecortadas.push({ celdasRecortadas, sobra: Math.max(sobra, 0) });
     }
   }
 
@@ -202,7 +246,7 @@ function medir() {
     nFueraViewport: fueraViewport.length,
     tapados: tapados.slice(0, 4),
     nTapados: tapados.length,
-    alturasCards,
+    cards,
     tablasRecortadas,
     nTablasRecortadas: tablasRecortadas.length,
   };
@@ -214,20 +258,28 @@ function medir() {
  * grande de la corrida: debajo de 40px es colapso seguro, y por debajo del 40%
  * de su alto de referencia también.
  */
-const ALTO_COLAPSO_DURO = 40;
+const TAMANO_COLAPSO_DURO = 40;
 const FRACCION_COLAPSO = 0.4;
 
 function marcarColapsadas(informe, pantalla, anchos) {
-  const referencia = informe[`${pantalla}@${anchos[0]}`]?.alturasCards ?? {};
+  const referencia = informe[`${pantalla}@${anchos[0]}`]?.cards ?? {};
   for (const ancho of anchos) {
     const f = informe[`${pantalla}@${ancho}`];
     if (!f || f.error) continue;
     const colapsadas = [];
-    for (const [clase, alto] of Object.entries(f.alturasCards ?? {})) {
+    for (const [clase, card] of Object.entries(f.cards ?? {})) {
       const base = referencia[clase];
-      const esperado = base == null ? null : base * FRACCION_COLAPSO;
-      if (alto < ALTO_COLAPSO_DURO || (esperado != null && alto < esperado)) {
-        colapsadas.push({ el: clase, alto, base: base ?? null });
+      // Colapso duro: no queda nada en alguno de los dos ejes.
+      const duro = card.h < TAMANO_COLAPSO_DURO || card.w < TAMANO_COLAPSO_DURO;
+      // Colapso relativo: perdió la mayor parte de su tamaño de desktop Y el
+      // contenido ya no entra. Sin lo segundo, una card que simplemente se
+      // ajusta a su contenido —y se ve entera— contaba como rota.
+      const relativo =
+        base != null &&
+        card.desborda &&
+        (card.h < base.h * FRACCION_COLAPSO || card.w < base.w * FRACCION_COLAPSO);
+      if (duro || relativo) {
+        colapsadas.push({ el: clase, alto: card.h, ancho: card.w, base: base ?? null });
       }
     }
     f.colapsadas = colapsadas;
@@ -251,8 +303,90 @@ function celda(f) {
 /** Métricas que cuentan para decir si una celda empeoró. `tapados` no entra. */
 const DUROS = ['scrollH', 'nSolapes', 'nRecortados', 'nFueraViewport', 'nColapsadas', 'nTablasRecortadas'];
 
+/**
+ * Un check que no puede disparar nunca reporta cero y parece una app impecable.
+ * Esto le inyecta a una pantalla limpia cada defecto que el script dice cazar y
+ * exige que lo reporte. Es la única forma de distinguir "no hay defectos" de
+ * "el check está muerto".
+ */
+const CASOS_AUTOTEST = [
+  {
+    nombre: 'T · contenedor de tabla que recorta en vez de scrollear',
+    ruta: '/especies',
+    ancho: 600,
+    css: '[class*="_tablaScroll_"]{overflow-x:hidden !important}',
+    espera: (r) => r.nTablasRecortadas > 0,
+  },
+  {
+    nombre: 'T · celdas apretadas hasta recortar el texto',
+    ruta: '/especies',
+    ancho: 600,
+    css: 'table{table-layout:fixed !important} td,th{overflow:hidden !important}',
+    espera: (r) => r.nTablasRecortadas > 0,
+  },
+  {
+    nombre: 'H · card aplastada a cero',
+    ruta: '/plantaciones/p1',
+    ancho: 1920,
+    css: '[class*="_panel_"]{height:0 !important;min-height:0 !important}',
+    espera: (r) => Object.values(r.cards).some((c) => c.h < 40),
+  },
+  {
+    nombre: 'O · dos textos encimados',
+    ruta: '/especies',
+    ancho: 1920,
+    css: '[class*="_recuento_"]{position:fixed !important;top:120px !important;left:400px !important;z-index:99}',
+    espera: (r) => r.nSolapes > 0,
+  },
+  {
+    nombre: 'X · control fuera del viewport',
+    ruta: '/especies',
+    ancho: 1920,
+    css: '[class*="_toolbar_"] button{position:relative !important;left:3000px !important}',
+    espera: (r) => r.nFueraViewport > 0,
+  },
+  {
+    nombre: 'S · scroll horizontal de documento',
+    ruta: '/especies',
+    ancho: 1920,
+    css: 'body::after{content:"";display:block;width:3000px;height:1px}',
+    espera: (r) => r.scrollH > 0,
+  },
+];
+
+async function autotest(navegador) {
+  let fallos = 0;
+  for (const caso of CASOS_AUTOTEST) {
+    const pagina = await navegador.newPage({ viewport: { width: caso.ancho, height: 900 } });
+    await pagina.goto(BASE_URL + caso.ruta, { waitUntil: 'networkidle', timeout: 20000 });
+    await pagina.waitForTimeout(400);
+
+    const limpio = await pagina.evaluate(medir);
+    await pagina.addStyleTag({ content: caso.css });
+    await pagina.waitForTimeout(300);
+    const roto = await pagina.evaluate(medir);
+    await pagina.close();
+
+    const dispara = caso.espera(roto);
+    const calla = !caso.espera(limpio);
+    const ok = dispara && calla;
+    if (!ok) fallos++;
+    const motivo = dispara ? (calla ? '' : ' (dispara también sin el defecto)') : ' (NO dispara)';
+    console.log(`  ${ok ? 'ok  ' : 'FALLA'} ${caso.nombre}${motivo}`);
+  }
+  console.log(fallos ? `\n${fallos} checks no sirven.` : '\nTodos los checks disparan con su defecto y callan sin él.');
+  return fallos ? 1 : 0;
+}
+
 async function main() {
   const navegador = await chromium.launch();
+
+  if (AUTOTEST) {
+    console.log('\nAutotest de los checks:\n');
+    const codigo = await autotest(navegador);
+    await navegador.close();
+    return codigo;
+  }
   const informe = {};
 
   for (const [pantalla, ruta] of RUTAS) {

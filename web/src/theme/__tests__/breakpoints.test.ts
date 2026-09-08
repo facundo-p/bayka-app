@@ -48,6 +48,24 @@ describe('escala de breakpoints', () => {
     expect(fuera).toEqual([]);
   });
 
+  it('no usa unidades ni sintaxis que el test no sabe leer', () => {
+    // La promesa es "falla si aparece cualquier otro número". Un `64em` o la
+    // sintaxis de rango `(width <= 1024px)` pasarían sin ruido por los tests de
+    // arriba, así que se prohíben de entrada.
+    const fuera: string[] = [];
+    for (const { ruta, texto } of CSS) {
+      for (const [prelude] of texto.matchAll(/@media[^{]+/g)) {
+        if (/\d\s*(em|rem|ch|vw|vh|pt|%)\s*\)/.test(prelude)) {
+          fuera.push(`${ruta}: unidad no-px en ${prelude.trim()}`);
+        }
+        if (/(width|height)\s*[<>]=?/.test(prelude)) {
+          fuera.push(`${ruta}: sintaxis de rango en ${prelude.trim()}`);
+        }
+      }
+    }
+    expect(fuera).toEqual([]);
+  });
+
   it('no usa ningún alto fuera de la escala', () => {
     const fuera: string[] = [];
     for (const { ruta, texto } of CSS) {

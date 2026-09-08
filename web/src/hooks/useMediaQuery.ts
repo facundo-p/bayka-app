@@ -18,14 +18,19 @@ export const BP = {
 
 export type Breakpoint = (typeof BP)[keyof typeof BP];
 
-/** En SSR y en tests sin stub no hay `matchMedia`: se asume desktop. */
-const SIN_MATCH_MEDIA = typeof window === 'undefined' || !window.matchMedia;
+/**
+ * En SSR y en tests sin stub no hay `matchMedia`: se asume desktop.
+ * Se consulta en cada llamada, no una vez al importar el módulo: cacheado en
+ * una constante, el guard no protege a quien reemplace `window.matchMedia`
+ * después de la carga —que es exactamente lo que hacen los tests.
+ */
+const hayMatchMedia = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function';
 
 /** `true` mientras la consulta se cumple. Se re-renderiza al cruzar el umbral. */
 export function useMediaQuery(consulta: Breakpoint | string): boolean {
   const suscribir = useCallback(
     (avisar: () => void) => {
-      if (SIN_MATCH_MEDIA) return () => {};
+      if (!hayMatchMedia()) return () => {};
       const lista = window.matchMedia(consulta);
       lista.addEventListener('change', avisar);
       return () => lista.removeEventListener('change', avisar);
@@ -34,7 +39,7 @@ export function useMediaQuery(consulta: Breakpoint | string): boolean {
   );
 
   const leer = useCallback(
-    () => (SIN_MATCH_MEDIA ? false : window.matchMedia(consulta).matches),
+    () => (hayMatchMedia() ? window.matchMedia(consulta).matches : false),
     [consulta],
   );
 
