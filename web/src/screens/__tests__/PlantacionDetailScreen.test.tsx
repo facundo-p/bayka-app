@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { ANCHO, restaurarAncho, simularAncho } from '../../test/simularAncho';
 import { ERRORES_GENERACION_IDS } from '../../queries/idsQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -142,6 +143,8 @@ beforeEach(() => {
   filasExport = [];
   configurarDetalleMock();
 });
+
+afterEach(restaurarAncho);
 
 test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async () => {
   const usuario = userEvent.setup();
@@ -398,4 +401,59 @@ test('quitar pide confirmación, cancela sin borrar y confirma borrando', async 
     { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
     { metodo: 'eq', columna: 'user_id', valor: 'user-2' },
   ]);
+});
+
+test('a ≤900px las acciones se pliegan en un solo «⋯» sin perder ninguna', async () => {
+  simularAncho(ANCHO.tablet);
+  const usuario = userEvent.setup();
+  totalArboles = 5;
+  conIdArboles = 3; // set parcial → "Generar IDs" sigue en juego
+  renderRutasEn('/plantaciones/plant-1');
+
+  // Los tres controles sueltos de la barra ancha ya no están sueltos.
+  expect(await screen.findByRole('heading', { name: 'Mendoza' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Exportar' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument();
+
+  await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
+  const menu = screen.getByRole('menu', { name: 'Acciones de la plantación' });
+  expect(await within(menu).findByRole('menuitem', { name: 'Generar IDs' })).toBeInTheDocument();
+  expect(within(menu).getByRole('menuitem', { name: 'Editar plantación' })).toBeInTheDocument();
+  expect(within(menu).getByRole('menuitem', { name: 'Descargar KML' })).toBeEnabled();
+  // El gate de las planillas viaja con la acción, no con el control que la muestra.
+  const excel = within(menu).getByRole('menuitem', { name: 'Exportar Excel' });
+  expect(excel).toBeDisabled();
+  expect(excel).toHaveAttribute(
+    'title',
+    'Generá los IDs de la plantación para exportar la planilla',
+  );
+});
+
+test('plegado, "Editar plantación" abre el mismo formulario que el botón de la barra ancha', async () => {
+  simularAncho(ANCHO.movil);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones/plant-1');
+  await screen.findByRole('heading', { name: 'Mendoza' });
+
+  await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
+  await usuario.click(screen.getByRole('menuitem', { name: 'Editar plantación' }));
+
+  const dialogo = await screen.findByRole('dialog');
+  expect(within(dialogo).getByLabelText(/Lugar/)).toHaveValue('Mendoza');
+});
+
+test('plegado, "Generar IDs" abre el modal de confirmación', async () => {
+  simularAncho(ANCHO.tablet);
+  const usuario = userEvent.setup();
+  totalArboles = 5;
+  conIdArboles = 3;
+  renderRutasEn('/plantaciones/plant-1');
+  await screen.findByRole('heading', { name: 'Mendoza' });
+
+  await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
+  await usuario.click(await screen.findByRole('menuitem', { name: 'Generar IDs' }));
+
+  expect(await screen.findByRole('dialog', { name: 'Generar IDs' })).toHaveTextContent(
+    'Esta acción no se puede deshacer.',
+  );
 });

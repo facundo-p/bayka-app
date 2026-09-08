@@ -11,18 +11,23 @@
   /* Ancla del mensaje de descarga, que cuelga fuera de la barra. */
   position: relative;
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-md);
+  max-width: 100%;
 }
 
 .divisor {
+  flex-shrink: 0;
   width: var(--border-thin);
   height: var(--space-4xl);
   background-color: var(--color-border);
 }
 
-/* Editar queda solo-ícono: el nombre lo da el aria-label/title. */
-.editar {
+/* Botón cuadrado solo-ícono: Editar en la barra ancha y el «⋯» que los
+   agrupa en la angosta. El nombre lo da el aria-label. */
+.botonIcono {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -35,7 +40,7 @@
   cursor: pointer;
 }
 
-.editar:hover {
+.botonIcono:hover {
   background-color: var(--color-surface-sunken);
   color: var(--color-text-heading);
 }

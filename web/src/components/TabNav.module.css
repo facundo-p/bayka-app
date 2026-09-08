@@ -1,5 +1,6 @@
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-md);
   border-bottom: var(--border-thin) solid var(--color-border);
   margin-bottom: var(--space-4xl);
@@ -39,8 +40,13 @@
 
 /* Variante segmentada: píldora de la barra única del detalle. La activa se
    levanta en blanco sobre el riel hundido, sin subrayado. */
+/* Envuelve sus propios segmentos en vez de fijarle un piso de ancho a la
+   barra que la contiene: la píldora crece a dos renglones, la barra no
+   desborda. */
 .navSegmentada {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 2px;
   padding: 3px;
   margin-bottom: 0;
@@ -66,4 +72,20 @@
   color: var(--color-text-heading);
   font-weight: 600;
   box-shadow: var(--shadow-card);
+}
+
+/* En mobile la píldora ocupa el ancho y reparte los segmentos: quedan como
+   destino táctil parejo en vez de apiñarse a la izquierda. */
+@media (max-width: 600px) {
+  .navSegmentada {
+    display: flex;
+    width: 100%;
+  }
+
+  .navSegmentada .tab {
+    flex: 1 1 auto;
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+    text-align: center;
+  }
 }
