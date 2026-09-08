@@ -1,5 +1,10 @@
-import { Search } from 'lucide-react';
-import { Input, SegmentedControl, Select } from '../../components';
+import {
+  BarraHerramientas,
+  CampoBusqueda,
+  RecuentoNumero,
+  SegmentedControl,
+  Select,
+} from '../../components';
 import { formatearEntero } from '../../lib/formato';
 import {
   ORDEN_ESPECIE,
@@ -8,8 +13,6 @@ import {
   type UsoEspecie,
 } from './filtros';
 import styles from './Especies.module.css';
-
-const TAMANO_ICONO = 14;
 
 const OPCIONES_USO: Array<{ value: UsoEspecie; label: string }> = [
   { value: USO_ESPECIE.todas, label: 'Todas' },
@@ -47,20 +50,22 @@ export function EspeciesToolbar({
   arboles,
 }: EspeciesToolbarProps) {
   return (
-    <div className={styles.toolbar}>
-      <div className={styles.busqueda}>
-        <Search className={styles.iconoBusqueda} size={TAMANO_ICONO} aria-hidden />
-        <Input
+    <BarraHerramientas
+      encabezado={
+        <CampoBusqueda
           label="Buscar especies"
-          labelOculto
-          type="search"
-          className={styles.inputBusqueda}
           placeholder="Buscar por nombre, código o científico…"
           value={busqueda}
-          onChange={(evento) => onBuscar(evento.target.value)}
+          onChange={onBuscar}
         />
-      </div>
-      <span className={styles.divisor} aria-hidden="true" />
+      }
+      recuento={
+        <>
+          <RecuentoNumero>{formatearEntero(especies)}</RecuentoNumero> especies ·{' '}
+          <RecuentoNumero>{formatearEntero(arboles)}</RecuentoNumero> árboles
+        </>
+      }
+    >
       <SegmentedControl
         options={OPCIONES_USO}
         value={uso}
@@ -81,10 +86,6 @@ export function EspeciesToolbar({
           </option>
         ))}
       </Select>
-      <span className={styles.recuento}>
-        <strong className={styles.recuentoNumero}>{formatearEntero(especies)}</strong> especies ·{' '}
-        <strong className={styles.recuentoNumero}>{formatearEntero(arboles)}</strong> árboles
-      </span>
-    </div>
+    </BarraHerramientas>
   );
 }

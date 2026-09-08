@@ -1,5 +1,10 @@
-import { Search } from 'lucide-react';
-import { Input, SegmentedControl, Select } from '../../components';
+import {
+  BarraHerramientas,
+  CampoBusqueda,
+  RecuentoNumero,
+  SegmentedControl,
+  Select,
+} from '../../components';
 import { formatearEntero } from '../../lib/formato';
 import {
   FILTRO_ESTADO,
@@ -9,8 +14,6 @@ import {
   type OrdenPlantacion,
 } from './filtros';
 import styles from './Plantaciones.module.css';
-
-const TAMANO_ICONO = 14;
 
 const OPCIONES_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
   { value: FILTRO_ESTADO.todas, label: 'Todas' },
@@ -55,20 +58,23 @@ export function PlantacionesToolbar({
   arboles,
 }: PlantacionesToolbarProps) {
   return (
-    <div className={styles.toolbar}>
-      <div className={styles.busqueda}>
-        <Search className={styles.iconoBusqueda} size={TAMANO_ICONO} aria-hidden />
-        <Input
+    <BarraHerramientas
+      encabezado={
+        <CampoBusqueda
           label="Buscar plantaciones"
-          labelOculto
-          type="search"
-          className={styles.inputBusqueda}
           placeholder="Buscar por lugar o temporada…"
           value={busqueda}
-          onChange={(evento) => onBuscar(evento.target.value)}
+          onChange={onBuscar}
         />
-      </div>
-      <span className={styles.divisor} aria-hidden="true" />
+      }
+      recuento={
+        <>
+          <RecuentoNumero>{formatearEntero(plantaciones)}</RecuentoNumero>{' '}
+          {plantaciones === 1 ? 'plantación' : 'plantaciones'} ·{' '}
+          <RecuentoNumero>{formatearEntero(arboles)}</RecuentoNumero> árboles
+        </>
+      }
+    >
       <SegmentedControl
         options={OPCIONES_ESTADO}
         value={estado}
@@ -106,11 +112,6 @@ export function PlantacionesToolbar({
           </option>
         ))}
       </Select>
-      <span className={styles.recuento}>
-        <strong className={styles.recuentoNumero}>{formatearEntero(plantaciones)}</strong>{' '}
-        {plantaciones === 1 ? 'plantación' : 'plantaciones'} ·{' '}
-        <strong className={styles.recuentoNumero}>{formatearEntero(arboles)}</strong> árboles
-      </span>
-    </div>
+    </BarraHerramientas>
   );
 }

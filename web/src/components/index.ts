@@ -1,7 +1,9 @@
 export { Badge } from './Badge';
+export { BarraHerramientas, RecuentoNumero } from './BarraHerramientas';
 export { Breadcrumb } from './Breadcrumb';
 export { CabeceraSeccion } from './CabeceraSeccion';
 export { Button } from './Button';
+export { CampoBusqueda } from './CampoBusqueda';
 export { Card } from './Card';
 export { CardTabla } from './CardTabla';
 export { CheckboxField } from './CheckboxField';

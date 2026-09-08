@@ -1,0 +1,27 @@
+/* Ancla de la lupa, que va dentro del campo. */
+.campo {
+  position: relative;
+  /* Sin grow: el ancho es predecible y sobra lugar para los filtros. Cede
+     antes que ellos porque un buscador angosto sigue siendo usable y un
+     select recortado no. */
+  flex: 0 1 18rem;
+  min-width: 10rem;
+  max-width: 100%;
+}
+
+.icono {
+  position: absolute;
+  top: 50%;
+  left: var(--space-xl);
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  pointer-events: none;
+}
+
+/* El padding izquierdo es el que le deja lugar a la lupa. */
+.input {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-lg) 0 var(--space-5xl);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+}

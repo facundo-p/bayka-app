@@ -1,0 +1,40 @@
+/* Fila de herramientas de un listado. Envuelve antes que desbordarse: la regla
+   que atraviesa toda la escala es que ninguna fila puede tener min-content
+   mayor que el viewport. */
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-shrink: 0;
+}
+
+.divisor {
+  align-self: stretch;
+  flex-shrink: 0;
+  width: var(--border-thin);
+  min-height: var(--control-height-sm);
+  background-color: var(--color-border);
+}
+
+.recuento {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
+  white-space: nowrap;
+}
+
+.recuentoNumero {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text-heading);
+}
+
+/* Con la barra ya envolviendo, un divisor suelto a principio o fin de renglón
+   no separa nada: es ruido. */
+@media (max-width: 900px) {
+  .divisor {
+    display: none;
+  }
+}
