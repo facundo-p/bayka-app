@@ -187,11 +187,10 @@ export function ArbolesSection() {
     hayFiltro,
     limpiar,
     parcelas,
+    grupos,
     especies,
     perfiles,
     arboles,
-    chips,
-    recuento,
     codigosParcela,
     nombresUsuario,
     pagina,
@@ -210,10 +209,11 @@ export function ArbolesSection() {
   }
   return (
     <>
-      <DatosToolbar segmento="arboles" recuento={recuento} chips={chips}>
+      <DatosToolbar segmento="arboles">
         <ArbolesFiltros
           filtros={filtros}
           parcelas={parcelas.data ?? []}
+          grupos={grupos.data ?? []}
           especies={especies.data ?? []}
           onCambiar={setFiltro}
         />

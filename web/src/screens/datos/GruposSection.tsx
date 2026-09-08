@@ -58,7 +58,6 @@ export function GruposSection() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
-  const quitarParcela = () => setFiltro('parcelaId', '');
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
   const reintentar = () => void Promise.all([parcelas.refetch(), grupos.refetch()]);
@@ -69,11 +68,6 @@ export function GruposSection() {
     void navigate(`../arboles?${params.toString()}`);
   };
 
-  const parcelaEnScope = parcelas.data?.find((parcela) => parcela.id === filtros.parcelaId);
-  const chips = parcelaEnScope
-    ? [{ etiqueta: `Parcela ${parcelaEnScope.codigo}`, onQuitar: quitarParcela }]
-    : [];
-
   if (parcelas.isError || grupos.isError) {
     return (
       <ErrorConReintento mensaje="No se pudieron cargar los grupos." onReintentar={reintentar} />
@@ -82,7 +76,7 @@ export function GruposSection() {
   const recuento = grupos.data ? `${formatearEntero(grupos.data.length)} grupos` : undefined;
   return (
     <>
-      <DatosToolbar segmento="grupos" recuento={recuento} chips={chips}>
+      <DatosToolbar segmento="grupos" recuento={recuento}>
         <SelectParcela
           parcelas={parcelas.data ?? []}
           value={filtros.parcelaId}
