@@ -69,7 +69,7 @@ function CapaPuntos({
 
 /** Implementación Leaflet del mapa: satelital con un CircleMarker por punto GPS
  *  coloreado por especie. Sin puntos no renderiza nada (el caller maneja el
- *  estado vacío). Usada por `PlantationMap` y `ArbolDetalleModal`. */
+ *  estado vacío). Usada por `PlantationMap` y `ArbolDetallePanel`. */
 export function MapaPuntosLeaflet({
   puntos,
   colorPorCodigo,

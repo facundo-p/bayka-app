@@ -1,7 +1,10 @@
-.cuerpo {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
+/* El SubID es la identidad del árbol: mono, como en la tabla. */
+.titulo {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  line-height: 1.2;
+  color: var(--color-text-heading);
 }
 
 .bloque {
@@ -10,10 +13,14 @@
   gap: var(--space-md);
 }
 
-/* Etiqueta tenue que encabeza cada bloque/dato (overline metadata). */
+/* Overline que encabeza cada bloque/dato, igual que en los paneles de
+   Especies y Usuarios. */
 .etiqueta {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: var(--color-text-faint);
 }
 
 /* Especie: punto de color + "código · nombre" en una línea. */

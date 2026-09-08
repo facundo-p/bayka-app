@@ -252,19 +252,46 @@ describe('sección Árboles', () => {
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 50, hasta: 99 });
   });
 
-  test('al hacer click en una fila se abre el detalle con especie y coordenadas', async () => {
+  /** El detalle vive en un <aside> al costado de la tabla (el sidebar del shell
+   *  también es un aside: hay que nombrarlo). */
+  const PANEL_A001 = { name: 'Detalle del árbol A-001' };
+
+  test('al hacer click en una fila se abre el detalle al costado, con especie y coordenadas', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
     await usuario.click(filaDe('A-001'));
 
-    const dialogo = await screen.findByRole('dialog', { name: 'A-001' });
-    expect(within(dialogo).getByText('QB · Quebracho')).toBeInTheDocument();
-    expect(within(dialogo).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
-    expect(within(dialogo).getByText(/±5m/)).toBeInTheDocument();
+    const panel = await screen.findByRole('complementary', PANEL_A001);
+    expect(within(panel).getByText('QB · Quebracho')).toBeInTheDocument();
+    expect(within(panel).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
+    expect(within(panel).getByText(/±5m/)).toBeInTheDocument();
     // El mapa real está mockeado; basta su placeholder.
-    expect(within(dialogo).getByText('Mapa del árbol')).toBeInTheDocument();
+    expect(within(panel).getByText('Mapa del árbol')).toBeInTheDocument();
+    // La tabla sigue visible al lado: el detalle no la tapa.
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  test('con el panel abierto la tabla suelta las columnas que el panel repite', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    const encabezados = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('columnheader')
+        .map((celda) => celda.textContent);
+    expect(encabezados()).toEqual(expect.arrayContaining(['GPS', 'Registrado', 'Técnico']));
+
+    await usuario.click(filaDe('A-001'));
+    await screen.findByRole('complementary', PANEL_A001);
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['GPS']));
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['Registrado']));
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['Técnico']));
+
+    await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001' }));
+    await waitFor(() => expect(encabezados()).toEqual(expect.arrayContaining(['GPS'])));
   });
 
   test('el detalle se cierra con la tecla ESC', async () => {
@@ -273,28 +300,26 @@ describe('sección Árboles', () => {
     await screen.findByRole('cell', { name: 'A-001' });
 
     await usuario.click(filaDe('A-001'));
-    await screen.findByRole('dialog', { name: 'A-001' });
+    await screen.findByRole('complementary', PANEL_A001);
 
     await usuario.keyboard('{Escape}');
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'A-001' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('complementary', PANEL_A001)).not.toBeInTheDocument(),
     );
   });
 
-  test('el detalle se cierra al hacer click en el overlay (fuera de la card)', async () => {
+  test('clickear otra fila cambia el panel en vez de cerrarlo', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
     await usuario.click(filaDe('A-001'));
-    const dialogo = await screen.findByRole('dialog', { name: 'A-001' });
-    // El overlay envuelve la card: un click ahí (no dentro del diálogo) cierra.
-    const overlay = dialogo.parentElement;
-    if (!overlay) throw new Error('El diálogo no tiene overlay contenedor');
-    await usuario.click(overlay);
+    await screen.findByRole('complementary', PANEL_A001);
 
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'A-001' })).not.toBeInTheDocument(),
-    );
+    await usuario.click(filaDe('A-002'));
+    expect(
+      await screen.findByRole('complementary', { name: 'Detalle del árbol A-002' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', PANEL_A001)).not.toBeInTheDocument();
   });
 });

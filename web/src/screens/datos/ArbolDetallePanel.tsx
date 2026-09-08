@@ -1,18 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cargando, MapaPuntos, Modal } from '../../components';
+import { Cargando, MapaPuntos, PanelLateral } from '../../components';
 import { varsCss } from '../../lib/cssVars';
 import { formatearFechaCorta } from '../../lib/fechas';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { obtenerUrlFoto, tieneFotoSubida } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
-import styles from './ArbolDetalleModal.module.css';
+import styles from './ArbolDetallePanel.module.css';
 
-interface ArbolDetalleModalProps {
+interface ArbolDetallePanelProps {
   arbol: ArbolDetalle;
   parcelaCodigo: string | null;
   tecnicoNombre: string | null;
-  onClose: () => void;
+  onCerrar: () => void;
 }
 
 /** Especie del árbol: punto de color + "código · nombre" (N/N si sin identificar). */
@@ -122,21 +122,24 @@ function BloqueMeta({
   );
 }
 
-/** Detalle de un árbol en modal: especie, foto, GPS y metadatos. */
-export function ArbolDetalleModal({
+/** Detalle de un árbol al costado del listado: especie, foto, GPS y metadatos.
+ *  Es de solo lectura, así que el panel va sin pie de acciones. */
+export function ArbolDetallePanel({
   arbol,
   parcelaCodigo,
   tecnicoNombre,
-  onClose,
-}: ArbolDetalleModalProps) {
+  onCerrar,
+}: ArbolDetallePanelProps) {
   return (
-    <Modal open title={arbol.subId} onClose={onClose}>
-      <div className={styles.cuerpo}>
-        <BloqueEspecie arbol={arbol} />
-        <BloqueFoto arbol={arbol} />
-        <BloqueGps arbol={arbol} />
-        <BloqueMeta arbol={arbol} parcelaCodigo={parcelaCodigo} tecnicoNombre={tecnicoNombre} />
-      </div>
-    </Modal>
+    <PanelLateral
+      etiqueta={`Detalle del árbol ${arbol.subId}`}
+      cabecera={<h2 className={styles.titulo}>{arbol.subId}</h2>}
+      onCerrar={onCerrar}
+    >
+      <BloqueEspecie arbol={arbol} />
+      <BloqueFoto arbol={arbol} />
+      <BloqueGps arbol={arbol} />
+      <BloqueMeta arbol={arbol} parcelaCodigo={parcelaCodigo} tecnicoNombre={tecnicoNombre} />
+    </PanelLateral>
   );
 }
