@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "format": "prettier --write src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audit:responsive": "node scripts/auditoria-responsive.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
@@ -40,6 +41,7 @@
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "jsdom": "^26.0.0",
+    "playwright": "^1.63.0",
     "prettier": "^3.5.2",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8.25.0",
