@@ -1,4 +1,4 @@
-import { formatearFechaCorta, formatearMes } from '../fechas';
+import { formatearFechaCorta, formatearMes, formatearFechaDia } from '../fechas';
 
 // Mediodía UTC: la fecha local coincide en cualquier huso entre -11 y +11.
 test('formatea un ISO como dd/mm/aaaa en es-AR', () => {
@@ -16,4 +16,9 @@ test('formatea un mes YYYY-MM como mes corto + año', () => {
 
 test('el huso horario no corre el mes (ancla en UTC)', () => {
   expect(formatearMes('2026-12')).toBe('dic 2026');
+});
+
+test('formatearFechaDia usa mes abreviado sin los "de" que mete es-AR', () => {
+  expect(formatearFechaDia('2025-04-18T12:00:00Z')).toBe('18 abr 2025');
+  expect(formatearFechaDia('2026-01-15T12:00:00Z')).toBe('15 ene 2026');
 });

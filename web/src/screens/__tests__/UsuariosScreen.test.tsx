@@ -82,6 +82,12 @@ function tablaUsuarios() {
   return within(screen.getByRole('table'));
 }
 
+/** Clic en la fila: abre el detalle de esa persona en el panel lateral. */
+async function abrirPanel(usuario: ReturnType<typeof userEvent.setup>, nombre: string) {
+  await usuario.click(tablaUsuarios().getByText(nombre));
+  return screen.getByRole('complementary', { name: `Detalle de ${nombre}` });
+}
+
 test('un admin no ve el link Usuarios y la sección le muestra el aviso de superadmin', async () => {
   estadoMock.perfilFila = PERFIL_ADMIN;
   configurarUsuariosMock();
@@ -97,13 +103,13 @@ test('un admin no ve el link Usuarios y la sección le muestra el aviso de super
   expect(screen.queryByRole('button', { name: /^Acciones de / })).not.toBeInTheDocument();
 });
 
-test('un superadmin ve el link, el subtítulo con conteos y la tabla con roles', async () => {
+test('un superadmin ve el link, la meta con conteos y la tabla con roles', async () => {
   configurarUsuariosMock();
   renderRutasEn('/usuarios');
 
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
-  // Subtítulo computado por rol (1 superadmin, 1 admin, 1 técnico).
+  // Meta de la cabecera computada por rol (1 superadmin, 1 admin, 1 técnico).
   expect(
     screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico'),
   ).toBeInTheDocument();
@@ -113,9 +119,8 @@ test('un superadmin ve el link, el subtítulo con conteos y la tabla con roles',
   expect(tabla.getByText('Superadmin')).toBeInTheDocument();
   expect(tabla.getByText('Admin')).toBeInTheDocument();
   expect(tabla.getByText('Técnico')).toBeInTheDocument();
-  // Plantaciones: superadmin "Todas"; Ana tiene 2; el resto "Sin plantaciones".
-  expect(tabla.getByText('Todas')).toBeInTheDocument();
-  expect(tabla.getByText('2 plantaciones')).toBeInTheDocument();
+  // Plantaciones: superadmin y admin son miembros automáticos de todas (#67).
+  expect(tabla.getAllByText('Todas')).toHaveLength(2);
   expect(tabla.getByText('Sin plantaciones')).toBeInTheDocument();
 });
 
@@ -140,17 +145,17 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   expect(tablaUsuarios().getByText('Inactivo')).toBeInTheDocument();
 
   // Inactivos: queda sólo Teo.
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por estado'), 'inactivos');
+  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
   expect(tablaUsuarios().getByText('Teo Técnico')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
 
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por rol'), 'admins');
+  await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por estado'), 'activos');
+  await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
   expect(tablaUsuarios().getByText('Ana Admin')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Sofía Súper')).toBeInTheDocument();
 });
@@ -161,7 +166,7 @@ test('el filtro Técnicos deja sólo a los técnicos', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por rol'), 'tecnicos');
+  await usuario.click(screen.getByRole('radio', { name: 'Técnicos' }));
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   expect(tabla.queryByText('Ana Admin')).not.toBeInTheDocument();
@@ -244,9 +249,7 @@ test('editar rol: advierte al promover a superadmin, actualiza e invalida la lis
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
 
   // Sin cambios no hay nada que guardar.
   expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
@@ -256,7 +259,11 @@ test('editar rol: advierte al promover a superadmin, actualiza e invalida la lis
   );
 
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('complementary', { name: 'Detalle de Ana Admin' }),
+    ).not.toBeInTheDocument(),
+  );
 
   const update = consultas.find((consulta) => consulta.operacion === 'update');
   expect(update?.tabla).toBe('profiles');
@@ -276,9 +283,7 @@ test('el superadmin no puede cambiar su propio rol, pero sí su nombre', async (
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
-  await usuario.click(menuPropio.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Sofía Súper' });
+  const dialogo = await abrirPanel(usuario, 'Sofía Súper');
 
   const selectRol = within(dialogo).getByLabelText('Rol');
   expect(selectRol).toBeDisabled();
@@ -307,9 +312,7 @@ test('el único superadmin del sistema no es degradable', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Selva Súper');
 
-  const menuSelva = await abrirMenu(usuario, 'Selva Súper');
-  await usuario.click(menuSelva.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Selva Súper' });
+  const dialogo = await abrirPanel(usuario, 'Selva Súper');
   const selectRol = within(dialogo).getByLabelText('Rol');
   expect(selectRol).toBeDisabled();
   expect(selectRol).toHaveAttribute(
@@ -324,9 +327,7 @@ test('un error del trigger del server se muestra legible en el modal', async () 
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
   await usuario.selectOptions(within(dialogo).getByLabelText('Rol'), 'tecnico');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
 
@@ -341,9 +342,7 @@ test('editar guarda el nombre directo y el email vía la edge function', async (
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
 
   const inputNombre = within(dialogo).getByLabelText('Nombre');
   await usuario.clear(inputNombre);
@@ -352,7 +351,11 @@ test('editar guarda el nombre directo y el email vía la edge function', async (
   await usuario.clear(inputEmail);
   await usuario.type(inputEmail, 'ana.nueva@bayka.org');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('complementary', { name: 'Detalle de Ana Admin' }),
+    ).not.toBeInTheDocument(),
+  );
 
   const update = consultas.find(
     (consulta) => consulta.tabla === 'profiles' && consulta.operacion === 'update',
@@ -367,15 +370,13 @@ test('editar guarda el nombre directo y el email vía la edge function', async (
   ]);
 });
 
-test('editar sin cambios no permite guardar', async () => {
+test('abrir el panel sin cambiar nada no permite guardar', async () => {
   configurarUsuariosMock();
   const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
   expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
 });
 
@@ -390,16 +391,14 @@ test('editar con email fallido igual refresca la lista (invalidación en onSettl
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
   await usuario.clear(within(dialogo).getByLabelText('Nombre'));
   await usuario.type(within(dialogo).getByLabelText('Nombre'), 'Ana Nueva');
   await usuario.clear(within(dialogo).getByLabelText('Email'));
   await usuario.type(within(dialogo).getByLabelText('Email'), 'dup@bayka.org');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
 
-  // El error se muestra y el modal queda abierto...
+  // El error se muestra y el panel queda abierto...
   expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
     'Ya existe un usuario con ese email',
   );

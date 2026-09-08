@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Download, Pencil, Plus } from 'lucide-react';
 import {
   Button,
+  CabeceraSeccion,
   Cargando,
   EmptyState,
   ErrorConReintento,
@@ -207,19 +208,14 @@ function AccionesDetalle({
 /** Lado izquierdo de la barra: el breadcrumb ES el título de la pantalla. */
 function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
   return (
-    <nav className={styles.cabecera} aria-label="Migas de navegación">
-      <Link to="/plantaciones" className={styles.raiz}>
-        Plantaciones
-      </Link>
-      <span className={styles.separador} aria-hidden>
-        /
-      </span>
+    <CabeceraSeccion
+      raiz="Plantaciones"
+      raizA="/plantaciones"
+      titulo={plantacion.lugar}
+      meta={lineaMeta(plantacion)}
+    >
       <EstadoPlantacionBadge estado={plantacion.estado} />
-      <h1 className={styles.lugar} aria-current="page">
-        {plantacion.lugar}
-      </h1>
-      <span className={styles.meta}>{lineaMeta(plantacion)}</span>
-    </nav>
+    </CabeceraSeccion>
   );
 }
 

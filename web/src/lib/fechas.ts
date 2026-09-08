@@ -20,3 +20,21 @@ export function formatearMes(mes: string): string {
     timeZone: 'UTC',
   });
 }
+
+const FORMATO_DIA = new Intl.DateTimeFormat('es-AR', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+});
+
+/**
+ * Formatea una fecha ISO como día con mes abreviado, ej. "18 abr 2025".
+ * Se arma por partes porque es-AR las une con "de" ("18 de abr de 2025") y el
+ * punto del mes abreviado varía según la versión de ICU.
+ */
+export function formatearFechaDia(iso: string): string {
+  const partes = FORMATO_DIA.formatToParts(new Date(iso));
+  const parte = (tipo: Intl.DateTimeFormatPartTypes) =>
+    partes.find((p) => p.type === tipo)?.value.replace('.', '') ?? '';
+  return `${parte('day')} ${parte('month')} ${parte('year')}`;
+}

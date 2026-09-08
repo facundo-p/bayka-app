@@ -42,6 +42,8 @@
   font-size: var(--text-md);
   font-weight: 600;
   line-height: 1.2;
+  /* Las etiquetas con prefijo ("Rol: todos") no deben partirse en dos líneas. */
+  white-space: nowrap;
 }
 
 .sublabel {

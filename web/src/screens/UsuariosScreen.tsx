@@ -1,161 +1,47 @@
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Plus } from 'lucide-react';
 import {
-  Badge,
-  BarraFiltros,
   Button,
+  CabeceraSeccion,
+  CardTabla,
   Cargando,
   EmptyState,
   ErrorConReintento,
-  Select,
+  LayoutConPanel,
   Table,
   Topbar,
-  type TableColumn,
 } from '../components';
 import { useAuth } from '../hooks/useAuth';
-import { iniciales } from '../lib/iniciales';
-import { cx } from '../lib/classNames';
+import { useDebounce } from '../hooks/useDebounce';
 import {
   listarUsuariosConAsignaciones,
   type UsuarioConAsignaciones,
 } from '../queries/usuarioQueries';
-import { ROL, type Rol } from '../repositories/profileRepository';
 import { desactivarUsuario, reactivarUsuario, reenviarInvitacion } from '../services/adminUsersService';
-import { contarSuperadminsActivos, itemsDeMenu, type AccionUsuario } from './usuarios/acciones';
+import { contarSuperadminsActivos, type AccionUsuario } from './usuarios/acciones';
 import { AgregarUsuarioModal } from './usuarios/AgregarUsuarioModal';
 import { CambiarPasswordModal } from './usuarios/CambiarPasswordModal';
+import { columnasUsuarios } from './usuarios/columnas';
 import { ConfirmarModal } from './usuarios/ConfirmarModal';
-import { EditarUsuarioModal } from './usuarios/EditarUsuarioModal';
-import { MenuAccionesUsuario } from './usuarios/MenuAccionesUsuario';
-import { ETIQUETA_ROL, nombreVisible } from './usuarios/presentacion';
-import styles from './UsuariosScreen.module.css';
+import {
+  calcularMeta,
+  contarActivas,
+  FILTRO_ESTADO,
+  FILTRO_ROL,
+  filtrarUsuarios,
+  type FiltroEstado,
+  type FiltroRol,
+} from './usuarios/filtros';
+import { nombreVisible } from './usuarios/presentacion';
+import { UsuarioPanel } from './usuarios/UsuarioPanel';
+import { UsuariosToolbar } from './usuarios/UsuariosToolbar';
+import styles from './usuarios/Usuarios.module.css';
 
-/** Clase del avatar según rol (mismos tripletes que el Badge de rol). */
-const CLASE_AVATAR_ROL: Record<Rol, string> = {
-  [ROL.SUPERADMIN]: styles.avatarSuperadmin,
-  [ROL.ADMIN]: styles.avatarAdmin,
-  [ROL.TECNICO]: styles.avatarTecnico,
-};
+const DEBOUNCE_BUSQUEDA_MS = 200;
 
-type Filtro = 'todos' | 'admins' | 'tecnicos';
-type FiltroEstado = 'todos' | 'activos' | 'inactivos';
-
-const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo' } as const;
-
-/** Resumen de plantaciones (el schema sólo da un conteo, no los nombres):
- *  superadmin ve todas; el resto, "N plantaciones" o "Sin plantaciones". */
-function resumenPlantaciones(usuario: UsuarioConAsignaciones): string {
-  if (usuario.rol === ROL.SUPERADMIN) return 'Todas';
-  if (usuario.plantacionesAsignadas === 0) return 'Sin plantaciones';
-  return `${usuario.plantacionesAsignadas} plantaciones`;
-}
-
-/** Subtítulo con conteos por rol; pluraliza "persona(s)". */
-function calcularSubtitulo(usuarios: UsuarioConAsignaciones[]): string {
-  const superadmins = usuarios.filter((usuario) => usuario.rol === ROL.SUPERADMIN).length;
-  const admins = usuarios.filter((usuario) => usuario.rol === ROL.ADMIN).length;
-  const tecnicos = usuarios.filter((usuario) => usuario.rol === ROL.TECNICO).length;
-  const personas = usuarios.length === 1 ? 'persona' : 'personas';
-  return (
-    `${usuarios.length} ${personas} · ${superadmins} superadmin · ` +
-    `${admins} ${admins === 1 ? 'admin' : 'admins'} · ` +
-    `${tecnicos} ${tecnicos === 1 ? 'técnico' : 'técnicos'}`
-  );
-}
-
-/** Filtro cliente por rol. "Admins" agrupa admin+superadmin (ambos con acceso
- *  de gestión); "Técnicos" sólo técnicos; "Todos" sin filtro. */
-function filtrarPorRol(usuarios: UsuarioConAsignaciones[], filtro: Filtro): UsuarioConAsignaciones[] {
-  if (filtro === 'admins') {
-    return usuarios.filter((u) => u.rol === ROL.ADMIN || u.rol === ROL.SUPERADMIN);
-  }
-  if (filtro === 'tecnicos') return usuarios.filter((u) => u.rol === ROL.TECNICO);
-  return usuarios;
-}
-
-/** Filtro cliente por estado; compone con el de rol. */
-function filtrarPorEstado(
-  usuarios: UsuarioConAsignaciones[],
-  filtro: FiltroEstado,
-): UsuarioConAsignaciones[] {
-  if (filtro === 'activos') return usuarios.filter((u) => u.activo);
-  if (filtro === 'inactivos') return usuarios.filter((u) => !u.activo);
-  return usuarios;
-}
-
-const OPCIONES_FILTRO: Array<{ value: Filtro; label: string }> = [
-  { value: 'todos', label: 'Rol: todos' },
-  { value: 'admins', label: 'Admins' },
-  { value: 'tecnicos', label: 'Técnicos' },
-];
-
-const OPCIONES_FILTRO_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
-  { value: 'todos', label: 'Estado: todos' },
-  { value: 'activos', label: 'Activos' },
-  { value: 'inactivos', label: 'Inactivos' },
-];
-
-function CeldaUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
-  return (
-    <div className={styles.usuario}>
-      <span className={cx(styles.avatar, CLASE_AVATAR_ROL[usuario.rol])} aria-hidden>
-        {iniciales(nombreVisible(usuario))}
-      </span>
-      <span className={styles.usuarioTexto}>
-        <span className={styles.nombre}>{nombreVisible(usuario)}</span>
-        {/* Email como identificador secundario; perfiles previos al backfill
-            de la migración 026 caen a la organización. */}
-        {(usuario.email ?? usuario.organizacionNombre) && (
-          <span className={styles.organizacion}>
-            {usuario.email ?? usuario.organizacionNombre}
-          </span>
-        )}
-      </span>
-    </div>
-  );
-}
-
-const COLUMNAS: Array<TableColumn<UsuarioConAsignaciones>> = [
-  { key: 'usuario', header: 'Usuario', render: (usuario) => <CeldaUsuario usuario={usuario} /> },
-  {
-    key: 'rol',
-    header: 'Rol',
-    render: (usuario) => <Badge variant={usuario.rol}>{ETIQUETA_ROL[usuario.rol]}</Badge>,
-  },
-  {
-    key: 'estado',
-    header: 'Estado',
-    render: (usuario) => (
-      <Badge variant={usuario.activo ? 'activa' : 'neutral'} dot>
-        {usuario.activo ? ETIQUETA_ESTADO.activo : ETIQUETA_ESTADO.inactivo}
-      </Badge>
-    ),
-  },
-  {
-    key: 'plantaciones',
-    header: 'Plantaciones',
-    render: (usuario) => resumenPlantaciones(usuario),
-  },
-];
-
-function columnaAcciones(
-  onAccion: (usuario: UsuarioConAsignaciones, accion: AccionUsuario) => void,
-  idActual: string | undefined,
-  superadminsActivos: number,
-): TableColumn<UsuarioConAsignaciones> {
-  return {
-    key: 'acciones',
-    header: '',
-    align: 'right',
-    render: (usuario) => (
-      <MenuAccionesUsuario
-        nombre={nombreVisible(usuario)}
-        items={itemsDeMenu(usuario, idActual, superadminsActivos)}
-        onAccion={(accion) => onAccion(usuario, accion)}
-      />
-    ),
-  };
-}
+const PIE_AYUDA = 'clic en una fila abre el detalle en el panel lateral · ⋯ para acciones rápidas';
+const PIE_NOTA = 'Las personas inactivas aparecen atenuadas';
 
 /** Copys de confirmación: explican qué se pierde y qué se conserva. */
 function copyDesactivar(nombre: string): string {
@@ -169,27 +55,14 @@ function copyDesactivar(nombre: string): string {
 function ModalDeAccion({
   usuario,
   accion,
-  idActual,
-  superadminsActivos,
   onClose,
 }: {
   usuario: UsuarioConAsignaciones;
   accion: AccionUsuario;
-  idActual: string | undefined;
-  superadminsActivos: number;
   onClose: () => void;
 }) {
   const nombre = nombreVisible(usuario);
   switch (accion) {
-    case 'editar':
-      return (
-        <EditarUsuarioModal
-          usuario={usuario}
-          idActual={idActual}
-          superadminsActivos={superadminsActivos}
-          onClose={onClose}
-        />
-      );
     case 'cambiarPassword':
       return <CambiarPasswordModal usuario={usuario} onClose={onClose} />;
     case 'reenviarInvitacion':
@@ -229,13 +102,16 @@ function ModalDeAccion({
 
 export function UsuariosScreen() {
   const { perfil } = useAuth();
-  const [filtro, setFiltro] = useState<Filtro>('todos');
-  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>('todos');
+  const [busqueda, setBusqueda] = useState('');
+  const [rol, setRol] = useState<FiltroRol>(FILTRO_ROL.todos);
+  const [estado, setEstado] = useState<FiltroEstado>(FILTRO_ESTADO.todos);
+  const [seleccionado, setSeleccionado] = useState<UsuarioConAsignaciones | null>(null);
   const [accionActiva, setAccionActiva] = useState<{
     usuario: UsuarioConAsignaciones;
     accion: AccionUsuario;
   } | null>(null);
   const [agregarAbierto, setAgregarAbierto] = useState(false);
+  const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['usuarios'],
     queryFn: listarUsuariosConAsignaciones,
@@ -243,52 +119,48 @@ export function UsuariosScreen() {
 
   const superadminsActivos = useMemo(() => contarSuperadminsActivos(data ?? []), [data]);
   const columnas = useMemo(
-    () => [
-      ...COLUMNAS,
-      columnaAcciones(
+    () =>
+      columnasUsuarios(
         (usuario, accion) => setAccionActiva({ usuario, accion }),
         perfil?.id,
         superadminsActivos,
       ),
-    ],
     [perfil?.id, superadminsActivos],
+  );
+  const visibles = useMemo(
+    () => filtrarUsuarios(data ?? [], { busqueda: busquedaDemorada, rol, estado }),
+    [data, busquedaDemorada, rol, estado],
   );
 
   return (
-    <section>
+    <section className={styles.pantalla}>
       <Topbar
-        left={<span className={styles.rotulo}>Organización · Equipo</span>}
-        right={<Button onClick={() => setAgregarAbierto(true)}>Agregar usuario</Button>}
+        densidad="compacta"
+        left={
+          <CabeceraSeccion
+            raiz="Organización"
+            titulo="Usuarios"
+            meta={data ? calcularMeta(data) : undefined}
+          />
+        }
+        right={
+          <Button size="sm" onClick={() => setAgregarAbierto(true)}>
+            <Plus size={16} aria-hidden />
+            Agregar usuario
+          </Button>
+        }
       />
-      <div className={styles.body}>
-        <h1 className={styles.titulo}>Usuarios</h1>
-        {data && <p className={styles.subtitulo}>{calcularSubtitulo(data)}</p>}
-        <BarraFiltros>
-          <Select
-            label="Filtrar por rol"
-            labelOculto
-            value={filtro}
-            onChange={(evento) => setFiltro(evento.target.value as Filtro)}
-          >
-            {OPCIONES_FILTRO.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-          <Select
-            label="Filtrar por estado"
-            labelOculto
-            value={filtroEstado}
-            onChange={(evento) => setFiltroEstado(evento.target.value as FiltroEstado)}
-          >
-            {OPCIONES_FILTRO_ESTADO.map(({ value, label }) => (
-              <option key={value} value={value}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        </BarraFiltros>
+      <div className={styles.contenido}>
+        <UsuariosToolbar
+          busqueda={busqueda}
+          rol={rol}
+          estado={estado}
+          onBuscar={setBusqueda}
+          onRol={setRol}
+          onEstado={setEstado}
+          personas={visibles.length}
+          activas={contarActivas(visibles)}
+        />
         {isPending && <Cargando />}
         {isError && !data && (
           <ErrorConReintento
@@ -303,22 +175,42 @@ export function UsuariosScreen() {
               description="Las personas de tu organización van a aparecer acá."
             />
           ) : (
-            <div className={styles.tablaScroll}>
-              <Table
-                columns={columnas}
-                rows={filtrarPorEstado(filtrarPorRol(data, filtro), filtroEstado)}
-                getRowKey={(usuario) => usuario.id}
-                emptyMessage="No hay usuarios con esos filtros"
-              />
-            </div>
+            <LayoutConPanel
+              panel={
+                seleccionado && (
+                  <UsuarioPanel
+                    // Remonta el panel al cambiar de fila: los campos se
+                    // reinicializan con los datos de la nueva persona.
+                    key={seleccionado.id}
+                    usuario={seleccionado}
+                    idActual={perfil?.id}
+                    superadminsActivos={superadminsActivos}
+                    onAccion={(accion) => setAccionActiva({ usuario: seleccionado, accion })}
+                    onCerrar={() => setSeleccionado(null)}
+                  />
+                )
+              }
+            >
+              <CardTabla
+                pie={`${visibles.length} ${visibles.length === 1 ? 'persona' : 'personas'} · ${PIE_AYUDA}`}
+                pieDerecha={PIE_NOTA}
+              >
+                <Table
+                  columns={columnas}
+                  rows={visibles}
+                  getRowKey={(usuario) => usuario.id}
+                  claveSeleccionada={seleccionado?.id}
+                  onRowClick={setSeleccionado}
+                  emptyMessage="No hay usuarios con esos filtros"
+                />
+              </CardTabla>
+            </LayoutConPanel>
           ))}
       </div>
       {accionActiva && (
         <ModalDeAccion
           usuario={accionActiva.usuario}
           accion={accionActiva.accion}
-          idActual={perfil?.id}
-          superadminsActivos={superadminsActivos}
           onClose={() => setAccionActiva(null)}
         />
       )}

@@ -139,3 +139,52 @@ export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
     arboles: arboles[indice] ?? 0,
   }));
 }
+
+/** Plantación que habilita una especie, con sus árboles de esa especie. */
+export type PlantacionDeEspecie = {
+  id: string;
+  nombre: string;
+  arboles: number;
+};
+
+/** Fila del join plantation_species → plantations (embed de PostgREST). */
+type FilaPlantacionDeEspecie = {
+  plantation_id: string;
+  plantations: { id: string; lugar: string } | null;
+};
+
+/** Árboles de una especie dentro de una plantación (count head vía groups). */
+async function contarArbolesEnPlantacion(
+  plantationId: string,
+  speciesId: string,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from('trees')
+    .select('id, groups!inner(plantation_id)', { count: 'exact', head: true })
+    .eq('groups.plantation_id', plantationId)
+    .eq('species_id', speciesId);
+  return contarOLanzar(count, error);
+}
+
+/** Dónde está habilitada una especie, de mayor a menor cantidad de árboles. */
+export async function listarPlantacionesDeEspecie(
+  especieId: string,
+): Promise<PlantacionDeEspecie[]> {
+  const { data, error } = await supabase
+    .from('plantation_species')
+    .select('plantation_id, plantations(id, lugar)')
+    .eq('species_id', especieId);
+  if (error) throw new Error(error.message);
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
+  const filas = (data ?? []) as unknown as FilaPlantacionDeEspecie[];
+  const arboles = await Promise.all(
+    filas.map((fila) => contarArbolesEnPlantacion(fila.plantation_id, especieId)),
+  );
+  return filas
+    .map((fila, indice) => ({
+      id: fila.plantation_id,
+      nombre: fila.plantations?.lugar ?? '',
+      arboles: arboles[indice] ?? 0,
+    }))
+    .sort((a, b) => b.arboles - a.arboles);
+}
