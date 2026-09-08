@@ -54,7 +54,7 @@ function crearConsulta(nombreTabla: string): ConsultaDemo {
       return { data: null, error: null, count: total };
     }
     const filas = tabla.filas.filter((fila) =>
-      filtros.every(({ columna, valor }) => fila[columna] === valor),
+      filtros.every(({ columna, valor }) => !(columna in fila) || fila[columna] === valor),
     );
     if (unaFila) return { data: filas[0] ?? null, error: null };
     return { data: filas, error: null, count: filas.length };

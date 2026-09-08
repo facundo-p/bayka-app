@@ -69,12 +69,16 @@ El banner de entorno de pruebas viene prendido a propósito: nada de lo que se v
 ahí es real. `DEMO_BANNER=0 npm run dev:demo` lo apaga, para medir una pantalla
 sin los 26px de la franja.
 
+Cubre las tres pantallas de Organización y el detalle de plantación (parcelas,
+grupos y 30 árboles con GPS y fotos en distintos estados).
+
 Los datos están en `src/demo/datos.ts`, una tabla por clave. Para cubrir una
 pantalla nueva, agregá su tabla ahí. El cliente falso (`src/demo/supabase.ts`)
 solo simula lo que la web usa: el constructor de consultas encadenable, los
-`count`, `rpc` y `auth`. Los filtros que no son `eq` se ignoran — con datos de
-mentira alcanza. Nada de esto entra al bundle de producción: el reemplazo lo
-hace un alias de `vite.demo.config.ts`.
+`count`, `rpc` y `auth`. Los filtros que no son `eq` se ignoran, y los `eq` sobre
+columnas que los datos no modelan (los embebidos tipo `groups.plantation_id`)
+también — con datos de mentira alcanza. Nada de esto entra al bundle de
+producción: el reemplazo lo hace un alias de `vite.demo.config.ts`.
 
 ## Estructura (espejo de mobile)
 

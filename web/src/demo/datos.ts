@@ -104,6 +104,48 @@ const PLANTACION_USUARIOS: FilaDemo[] = [
   { user_id: 'u6', plantation_id: 'p2', rol_en_plantacion: 'tecnico', assigned_at: '2025-05-08T12:00:00Z' },
 ];
 
+const PARCELAS: FilaDemo[] = [
+  { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z' },
+  { id: 'pa2', plantation_id: 'p1', nombre: 'Bajo del Arroyo', codigo: 'BA03', descripcion: null, created_at: '2025-03-16T12:00:00Z' },
+];
+
+const GRUPOS: FilaDemo[] = [
+  { id: 'g1', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 10', codigo: 'L10', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T12:00:00Z', parcelas: { codigo: 'LP12' } },
+  { id: 'g2', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 11', codigo: 'L11', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T13:00:00Z', parcelas: { codigo: 'LP12' } },
+  { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: 'bosquete', estado: 'finalizada', created_at: '2025-04-05T12:00:00Z', parcelas: { codigo: 'BA03' } },
+];
+
+const ESPECIES_ARBOL = [
+  { id: 's1', codigo: 'ANC', nombre: 'Anchico Colorado' },
+  { id: 's2', codigo: 'CBT', nombre: 'Cambota' },
+  { id: 's4', codigo: 'TIM', nombre: 'Timbó' },
+  { id: 's3', codigo: 'LAP', nombre: 'Lapacho rosado' },
+];
+
+/** 30 árboles de la parcela LP12 / grupo L10, como en la pantalla real. */
+const ARBOLES: FilaDemo[] = Array.from({ length: 30 }, (_, indice) => {
+  const especie = ESPECIES_ARBOL[indice % ESPECIES_ARBOL.length];
+  const conGps = indice % 4 === 0;
+  const foto = indice % 3;
+  return {
+    id: `t${indice + 1}`,
+    sub_id: `LP12L10${especie.codigo}${indice + 1}`,
+    posicion: indice + 1,
+    group_id: 'g1',
+    species_id: especie.id,
+    // Una de cada tres subida, una local sin sincronizar, una sin foto.
+    foto_url: foto === 0 ? `plantations/p1/trees/t${indice + 1}.jpg` : foto === 1 ? 'file:///data/foto.jpg' : null,
+    usuario_registro: 'u4',
+    created_at: '2026-04-10T12:00:00Z',
+    latitude: conGps ? -27.36012 - indice * 0.0001 : null,
+    longitude: conGps ? -55.89744 + indice * 0.0001 : null,
+    gps_accuracy: conGps ? 4.2 : null,
+    gps_captured_at: conGps ? '2026-04-10T12:00:05Z' : null,
+    species: { codigo: especie.codigo, nombre: especie.nombre },
+    groups: { codigo: 'L10', parcela_id: 'pa1', plantation_id: 'p1' },
+  };
+});
+
 /** Cuenta filas de una tabla local aplicando los `eq` de la consulta. */
 function contarEn(filas: FilaDemo[], filtros: FiltroDemo[]): number {
   return filas.filter((fila) => filtros.every(({ columna, valor }) => fila[columna] === valor))
@@ -118,8 +160,10 @@ export const TABLAS: Record<string, TablaDemo> = {
   species: { filas: ESPECIES },
   plantation_species: { filas: PLANTACION_ESPECIES },
   plantation_users: { filas: PLANTACION_USUARIOS },
+  parcelas: { filas: PARCELAS },
+  groups: { filas: GRUPOS },
   trees: {
-    filas: [],
+    filas: ARBOLES,
     contar: (filtros) => {
       const especie = filtros.find((filtro) => filtro.columna === 'species_id');
       if (especie) return ARBOLES_POR_ESPECIE[String(especie.valor)] ?? 0;
