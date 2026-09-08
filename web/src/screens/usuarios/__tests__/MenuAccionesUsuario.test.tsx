@@ -4,7 +4,7 @@ import type { ItemMenu } from '../acciones';
 import { MenuAccionesUsuario } from '../MenuAccionesUsuario';
 
 const ITEMS: ItemMenu[] = [
-  { accion: 'editar', etiqueta: 'Editar', motivo: null },
+  { accion: 'cambiarPassword', etiqueta: 'Cambiar contraseña', motivo: null },
   {
     accion: 'desactivar',
     etiqueta: 'Desactivar',
@@ -32,7 +32,7 @@ test('al hacer click en el disparador muestra un menuitem por cada item', async 
   await usuario.click(screen.getByRole('button', { name: 'Acciones de Ana' }));
 
   expect(screen.getByRole('menu')).toBeInTheDocument();
-  expect(screen.getByRole('menuitem', { name: 'Editar' })).toBeInTheDocument();
+  expect(screen.getByRole('menuitem', { name: 'Cambiar contraseña' })).toBeInTheDocument();
   expect(screen.getByRole('menuitem', { name: 'Desactivar' })).toBeInTheDocument();
 });
 
@@ -52,9 +52,9 @@ test('clickear un item habilitado llama a onAccion con la acción y cierra el me
   const onAccion = renderMenu();
 
   await usuario.click(screen.getByRole('button', { name: 'Acciones de Ana' }));
-  await usuario.click(screen.getByRole('menuitem', { name: 'Editar' }));
+  await usuario.click(screen.getByRole('menuitem', { name: 'Cambiar contraseña' }));
 
-  expect(onAccion).toHaveBeenCalledWith('editar');
+  expect(onAccion).toHaveBeenCalledWith('cambiarPassword');
   expect(screen.queryByRole('menu')).not.toBeInTheDocument();
 });
 

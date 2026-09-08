@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '../lib/classNames';
 import { EmptyState } from './EmptyState';
 import styles from './Table.module.css';
 
@@ -15,6 +16,8 @@ interface TableProps<T> {
   rows: T[];
   getRowKey: (row: T) => string | number;
   onRowClick?: (row: T) => void;
+  /** Clave de la fila abierta en el panel lateral: se resalta. */
+  claveSeleccionada?: string | number;
   emptyMessage?: string;
 }
 
@@ -40,6 +43,7 @@ export function Table<T>({
   rows,
   getRowKey,
   onRowClick,
+  claveSeleccionada,
   emptyMessage = 'Sin datos para mostrar',
 }: TableProps<T>) {
   if (rows.length === 0) return <EmptyState title={emptyMessage} />;
@@ -55,15 +59,21 @@ export function Table<T>({
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr
-            key={getRowKey(row)}
-            className={onRowClick ? styles.clickableRow : undefined}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
-          >
-            {renderCells(columns, row)}
-          </tr>
-        ))}
+        {rows.map((row) => {
+          const clave = getRowKey(row);
+          return (
+            <tr
+              key={clave}
+              className={cx(
+                onRowClick && styles.clickableRow,
+                claveSeleccionada != null && clave === claveSeleccionada && styles.filaSeleccionada,
+              )}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
+              {renderCells(columns, row)}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

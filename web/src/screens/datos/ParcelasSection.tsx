@@ -1,9 +1,14 @@
 import { useNavigate, useParams } from 'react-router';
-import { Cargando, ErrorConReintento, Table, type TableColumn } from '../../components';
+import {
+  Cargando,
+  CardTabla,
+  ErrorConReintento,
+  Table,
+  type TableColumn,
+} from '../../components';
 import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
-import { CardTabla } from './CardTabla';
 import { DatosToolbar } from './DatosToolbar';
 import { filtrosAParams } from './filtrosUrl';
 import { useParcelasDatos } from './useDatosQueries';

@@ -8,7 +8,6 @@ import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL } from '../../repositories/profileRepository';
 
 export type AccionUsuario =
-  | 'editar'
   | 'cambiarPassword'
   | 'reenviarInvitacion'
   | 'desactivar'
@@ -71,14 +70,14 @@ export function motivoReenviarInvitacion(usuario: UsuarioConAsignaciones): strin
   return usuario.email ? null : MOTIVO_SIN_EMAIL;
 }
 
-/** Menú completo de una fila, con cada acción habilitada o su motivo. */
+/** Acciones rápidas de una fila, con cada una habilitada o su motivo. Editar no
+ *  está: se edita clickeando la fila, que abre el panel lateral. */
 export function itemsDeMenu(
   usuario: UsuarioConAsignaciones,
   idActual: string | undefined,
   superadminsActivos: number,
 ): ItemMenu[] {
   return [
-    { accion: 'editar', etiqueta: 'Editar', motivo: null },
     {
       accion: 'cambiarPassword',
       etiqueta: 'Cambiar contraseña',

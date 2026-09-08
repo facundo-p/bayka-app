@@ -84,6 +84,7 @@
   --color-danger: #dc2626;
   --color-danger-light: #ef4444;
   --color-danger-bg: #fef2f2;
+  --color-danger-border: #f0c9c9;      /* borde de acciones destructivas outline */
   --color-info: #2563eb;
   --color-info-bg: #eff6ff;
 
@@ -219,6 +220,7 @@
   --layout-sidebar-width: 220px;
   --sidebar-width: 252px;          /* sidebar del rediseño */
   --page-pad-x: 38px;              /* padding horizontal del contenido principal */
+  --ancho-panel-lateral: 400px;    /* columna de detalle al costado del listado */
   /* Piso del shell acotado al viewport: con menos alto que esto los paneles
      quedan aplastados y vuelve el scroll de documento. */
   --alto-min-contenido: 700px;
@@ -230,6 +232,7 @@
   --border-medium: 2px;
   --control-height: 44px;
   --control-height-sm: 32px;
+  --control-height-input: 36px;    /* input del panel lateral */
   --modal-max-width: 420px;
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;

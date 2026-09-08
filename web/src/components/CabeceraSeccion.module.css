@@ -1,0 +1,35 @@
+.cabecera {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.raiz {
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* Solo el rótulo navegable reacciona al hover; como texto plano queda quieto. */
+a.raiz:hover {
+  color: var(--color-primary);
+}
+
+.separador {
+  color: var(--color-text-faint);
+}
+
+.titulo {
+  margin: 0;
+  font-size: var(--text-detail-title);
+  line-height: 1.1;
+  color: var(--color-text-heading);
+  white-space: nowrap;
+}
+
+.meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}

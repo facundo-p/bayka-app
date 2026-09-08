@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from 'react-router';
 import {
   Cargando,
+  CardTabla,
   ErrorConReintento,
   EstadoPlantacionBadge,
   Table,
@@ -9,7 +10,6 @@ import {
 import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { GrupoConDetalle, TipoGrupo } from '../../queries/dataExplorerQueries';
-import { CardTabla } from './CardTabla';
 import { DatosToolbar } from './DatosToolbar';
 import { SelectParcela } from './SelectParcela';
 import { VacioConFiltros } from './VacioConFiltros';

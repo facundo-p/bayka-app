@@ -1,5 +1,12 @@
 import { Check } from 'lucide-react';
-import { Cargando, ErrorConReintento, Paginacion, Table, type TableColumn } from '../../components';
+import {
+  Cargando,
+  CardTabla,
+  ErrorConReintento,
+  Paginacion,
+  Table,
+  type TableColumn,
+} from '../../components';
 import { ARBOLES_POR_PAGINA } from '../../queries/dataExplorerQueries';
 import { formatearEntero } from '../../lib/formato';
 import { varsCss } from '../../lib/cssVars';
@@ -10,7 +17,6 @@ import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { tieneFotoSubida } from '../../services/fotoService';
 import { ArbolDetalleModal } from './ArbolDetalleModal';
 import { ArbolesFiltros } from './ArbolesFiltros';
-import { CardTabla } from './CardTabla';
 import { DatosToolbar } from './DatosToolbar';
 import { VacioConFiltros } from './VacioConFiltros';
 import { useArbolesSection } from './useArbolesSection';

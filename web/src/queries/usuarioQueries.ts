@@ -144,3 +144,39 @@ export async function listarAsignados(plantationId: string): Promise<UsuarioAsig
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   return ((data ?? []) as unknown as FilaAsignado[]).map(mapearAsignado);
 }
+
+/** Plantación a la que una persona está asignada, con su rol ahí. */
+export type PlantacionDeUsuario = {
+  id: string;
+  nombre: string;
+  rolEnPlantacion: RolEnPlantacion;
+};
+
+/** Fila del join plantation_users → plantations (embed de PostgREST). */
+type FilaPlantacionDeUsuario = {
+  plantation_id: string;
+  rol_en_plantacion: RolEnPlantacion;
+  plantations: { id: string; lugar: string } | null;
+};
+
+/**
+ * Plantaciones asignadas a una persona, por orden de asignación. Superadmin y
+ * admin no tienen filas acá: son miembros automáticos de todas (#67), así que
+ * quien consuma esto debe resolver ese caso sin llamar a la query.
+ */
+export async function listarPlantacionesDeUsuario(
+  userId: string,
+): Promise<PlantacionDeUsuario[]> {
+  const { data, error } = await supabase
+    .from('plantation_users')
+    .select('plantation_id, rol_en_plantacion, plantations(id, lugar)')
+    .eq('user_id', userId)
+    .order('assigned_at', { ascending: true });
+  if (error) throw new Error(error.message);
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
+  return ((data ?? []) as unknown as FilaPlantacionDeUsuario[]).map((fila) => ({
+    id: fila.plantation_id,
+    nombre: fila.plantations?.lugar ?? '',
+    rolEnPlantacion: fila.rol_en_plantacion,
+  }));
+}

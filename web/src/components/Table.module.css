@@ -5,7 +5,12 @@
 }
 
 .table th {
-  padding: var(--space-xl) var(--space-2xl);
+  /* Encabezados fijos cuando la tabla vive en una card con scroll propio;
+     no-op donde la tabla no está dentro de un contenedor scrolleable. */
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--space-lg) var(--space-2xl);
   text-align: left;
   /* Overline: 11px mayúsculas con tracking, tenue (rediseño). */
   font-size: var(--text-xs);
@@ -18,7 +23,7 @@
 }
 
 .table td {
-  padding: var(--space-xl) var(--space-2xl);
+  padding: var(--space-lg) var(--space-2xl);
   font-size: var(--text-md);
   color: var(--color-text-body);
   border-bottom: var(--border-thin) solid var(--color-divider);
@@ -30,6 +35,12 @@
 
 .clickableRow:hover {
   background-color: var(--color-surface-sunken);
+}
+
+/* Fila abierta en el panel lateral: gana sobre el hover. */
+.filaSeleccionada,
+.clickableRow.filaSeleccionada:hover {
+  background-color: var(--color-secondary-bg);
 }
 
 .center {
