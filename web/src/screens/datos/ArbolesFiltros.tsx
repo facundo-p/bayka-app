@@ -1,4 +1,4 @@
-import { Input, Select } from '../../components';
+import { CampoBusqueda, Select } from '../../components';
 import type { EspecieCatalogo } from '../../queries/especieQueries';
 import {
   ESPECIE_SIN_IDENTIFICAR,
@@ -35,13 +35,12 @@ export function ArbolesFiltros({
   const grupoHabilitado = Boolean(filtros.parcelaId || filtros.groupId);
   return (
     <div className={styles.filtrosCompactos}>
-      <Input
+      <CampoBusqueda
+        densidad="compacta"
         label="Buscar por ID o SubID"
-        labelOculto
-        className={styles.busqueda}
         placeholder="Buscar por ID o SubID…"
         value={filtros.busqueda}
-        onChange={(evento) => onCambiar('busqueda', evento.target.value)}
+        onChange={(texto) => onCambiar('busqueda', texto)}
       />
       <Select
         label="Parcela"

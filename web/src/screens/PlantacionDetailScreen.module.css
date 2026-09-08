@@ -74,3 +74,12 @@
 .volver:hover {
   color: var(--color-primary);
 }
+
+/* Plegadas, el «⋯» es el ÚNICO acceso a las cinco acciones de la plantación:
+   ahí sí vale el destino táctil completo. */
+@media (max-width: 900px) {
+  .botonIcono {
+    width: var(--control-height);
+    height: var(--control-height);
+  }
+}

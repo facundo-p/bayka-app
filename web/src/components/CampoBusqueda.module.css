@@ -9,6 +9,12 @@
   max-width: 100%;
 }
 
+/* Comparte renglón con otros cinco filtros y con el selector de sección: al
+   ancho normal empujaría un envolvimiento más arriba de 1440. */
+.compacta {
+  flex-basis: var(--ancho-buscador-compacto);
+}
+
 .icono {
   position: absolute;
   top: 50%;

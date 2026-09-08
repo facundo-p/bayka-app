@@ -240,6 +240,7 @@
   /* Buscador de los listados: mismo ancho en las cuatro barras. */
   --ancho-buscador: 18rem;
   --ancho-buscador-min: 10rem;
+  --ancho-buscador-compacto: 220px;
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;

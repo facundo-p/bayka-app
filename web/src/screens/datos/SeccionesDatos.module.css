@@ -50,13 +50,6 @@
   cursor: not-allowed;
 }
 
-/* 220 y no 240: es lo que hace que los seis filtros entren en un renglón a
-   1366, y el placeholder sigue entrando entero. */
-.busqueda {
-  width: 220px;
-}
-
-
 /* Punto de color que precede a la especie. El color es data-driven (inline). */
 .puntoEspecie {
   display: inline-block;
