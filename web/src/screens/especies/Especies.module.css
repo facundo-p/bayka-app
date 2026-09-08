@@ -14,16 +14,6 @@
   padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
 
-/* Sin ancho fijo: un select no elide, y "Orden: plantaciones ↓" no entraba en
-   los 150px que tenía —se recortaba dentro del control. */
-.orden {
-  max-width: 100%;
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-lg);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
-}
-
 /* ─── Celdas de la tabla ─────────────────────────────────────────────── */
 
 .codigoCelda {

@@ -47,9 +47,12 @@ a.raiz:hover {
   white-space: nowrap;
 }
 
-/* Con la barra ya envolviendo, la meta gana su propio renglón antes que
-   quedar recortada a dos palabras. */
-@media (max-width: 900px) {
+/*
+ * 1400 es, según la escala, el ancho donde la barra del detalle deja de entrar
+ * en un renglón. Sin esto la meta se elidía desde ~1500 hasta 1200 y a 1366
+ * —la notebook más común— mostraba MENOS que a 1024, donde ya envolvía.
+ */
+@media (max-width: 1400px) {
   .meta {
     flex-basis: 100%;
   }

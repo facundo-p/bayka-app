@@ -6,6 +6,7 @@ import {
   Button,
   CabeceraSeccion,
   Cargando,
+  Divisor,
   EmptyState,
   ErrorConReintento,
   EstadoPlantacionBadge,
@@ -236,7 +237,7 @@ function AccionesDetalle({
         label="Secciones de la plantación"
         tabs={tabsDePlantacion(plantacion.id)}
       />
-      <span className={styles.divisor} aria-hidden />
+      <Divisor />
       {plegado ? <AccionesPlegadas {...acciones} /> : <AccionesDesplegadas {...acciones} />}
       {mensaje && (
         <span className={styles.mensajeAccion} role="alert">

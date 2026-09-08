@@ -14,17 +14,6 @@
   padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
 
-/* Sin ancho fijo: un select no elide, y "Orden: árboles ↓" no entraba en los
-   150px que tenía. Que lo fije su opción más larga. */
-.temporadaSelect,
-.orden {
-  min-height: var(--control-height-sm);
-  max-width: 100%;
-  padding: 0 var(--space-lg);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
-}
-
 /* ─── Celdas de la tabla ─────────────────────────────────────────────── */
 
 /* Lugar: ícono cuadrado + texto. */

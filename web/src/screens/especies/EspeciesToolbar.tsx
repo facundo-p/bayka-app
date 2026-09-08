@@ -12,7 +12,6 @@ import {
   type OrdenEspecie,
   type UsoEspecie,
 } from './filtros';
-import styles from './Especies.module.css';
 
 const OPCIONES_USO: Array<{ value: UsoEspecie; label: string }> = [
   { value: USO_ESPECIE.todas, label: 'Todas' },
@@ -76,7 +75,6 @@ export function EspeciesToolbar({
       <Select
         label="Ordenar especies"
         labelOculto
-        className={styles.orden}
         value={orden}
         onChange={(evento) => onOrden(evento.target.value as OrdenEspecie)}
       >

@@ -4,8 +4,8 @@
   /* Sin grow: el ancho es predecible y sobra lugar para los filtros. Cede
      antes que ellos porque un buscador angosto sigue siendo usable y un
      select recortado no. */
-  flex: 0 1 18rem;
-  min-width: 10rem;
+  flex: 0 1 var(--ancho-buscador);
+  min-width: var(--ancho-buscador-min);
   max-width: 100%;
 }
 
@@ -18,10 +18,12 @@
   pointer-events: none;
 }
 
-/* El padding izquierdo es el que le deja lugar a la lupa. */
-.input {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-lg) 0 var(--space-5xl);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
+/*
+ * Anidado a propósito: el padding izquierdo es el hueco de la lupa, y la
+ * declaración tiene que ganarle a la de `FormField.control`, que es de la
+ * misma especificidad y se inyecta después por ser otro módulo. Con `.input`
+ * suelto la lupa termina dibujada encima de la primera letra.
+ */
+.campo .input {
+  padding-left: var(--space-5xl);
 }

@@ -1,0 +1,15 @@
+.divisor {
+  align-self: stretch;
+  flex-shrink: 0;
+  width: var(--border-thin);
+  min-height: var(--control-height-sm);
+  background-color: var(--color-border);
+}
+
+/* Con la barra ya envolviendo, un divisor suelto a principio o fin de renglón
+   no separa nada: es ruido. */
+@media (max-width: 900px) {
+  .divisor {
+    display: none;
+  }
+}

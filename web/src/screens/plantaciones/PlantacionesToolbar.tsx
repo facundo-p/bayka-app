@@ -13,7 +13,6 @@ import {
   type FiltroEstado,
   type OrdenPlantacion,
 } from './filtros';
-import styles from './Plantaciones.module.css';
 
 const OPCIONES_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
   { value: FILTRO_ESTADO.todas, label: 'Todas' },
@@ -87,7 +86,6 @@ export function PlantacionesToolbar({
         <Select
           label="Filtrar por temporada"
           labelOculto
-          className={styles.temporadaSelect}
           value={temporada}
           onChange={(evento) => onTemporada(evento.target.value)}
         >
@@ -102,7 +100,6 @@ export function PlantacionesToolbar({
       <Select
         label="Ordenar plantaciones"
         labelOculto
-        className={styles.orden}
         value={orden}
         onChange={(evento) => onOrden(evento.target.value as OrdenPlantacion)}
       >

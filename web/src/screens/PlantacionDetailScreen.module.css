@@ -18,13 +18,6 @@
   max-width: 100%;
 }
 
-.divisor {
-  flex-shrink: 0;
-  width: var(--border-thin);
-  height: var(--space-4xl);
-  background-color: var(--color-border);
-}
-
 /* Botón cuadrado solo-ícono: Editar en la barra ancha y el «⋯» que los
    agrupa en la angosta. El nombre lo da el aria-label. */
 .botonIcono {

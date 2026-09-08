@@ -9,12 +9,24 @@
   flex-shrink: 0;
 }
 
-.divisor {
-  align-self: stretch;
-  flex-shrink: 0;
-  width: var(--border-thin);
+/*
+ * Controles compactos: la barra los achica a su alto. Vivía copiado en los
+ * cuatro módulos de pantalla, que es como se coló que un control quedara 12px
+ * más alto que sus vecinos sin que nadie lo notara.
+ *
+ * `padding-right` va sólo en los input: en un `<select>` ese hueco es el que
+ * `Select` reserva para su flecha, y pisarlo la dibuja encima del texto.
+ */
+.barra :is(input, select) {
   min-height: var(--control-height-sm);
-  background-color: var(--color-border);
+  max-width: 100%;
+  padding-left: var(--space-lg);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+}
+
+.barra input {
+  padding-right: var(--space-lg);
 }
 
 .recuento {
@@ -29,12 +41,4 @@
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--color-text-heading);
-}
-
-/* Con la barra ya envolviendo, un divisor suelto a principio o fin de renglón
-   no separa nada: es ruido. */
-@media (max-width: 900px) {
-  .divisor {
-    display: none;
-  }
 }

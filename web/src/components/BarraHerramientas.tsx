@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Divisor } from './Divisor';
 import styles from './BarraHerramientas.module.css';
 
 interface BarraHerramientasProps {
@@ -20,7 +21,7 @@ export function BarraHerramientas({ encabezado, children, recuento }: BarraHerra
   return (
     <div className={styles.barra}>
       {encabezado}
-      {encabezado && children && <span className={styles.divisor} aria-hidden="true" />}
+      {encabezado && children && <Divisor />}
       {children}
       {recuento && <span className={styles.recuento}>{recuento}</span>}
     </div>

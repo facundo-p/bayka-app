@@ -292,6 +292,78 @@ function medir() {
     }
   }
 
+  // ── Controles desparejos en una misma fila ──────────────────────────────
+  // Dos controles vecinos con altos distintos leen como error de estilo, y
+  // ninguna otra métrica los ve: no solapan, no recortan y están dentro del
+  // viewport. Es exactamente lo que pasó al mover el CSS del buscador a un
+  // módulo compartido, donde perdió la cascada contra FormField y quedó 12px
+  // más alto que sus vecinos en las cuatro barras.
+  const ALTO_DESPAREJO = 8;
+
+  /**
+   * Un botón de texto plano (sin borde ni fondo) no es una caja: su alto es el
+   * de su línea y no tiene por qué coincidir con el de un input al lado.
+   */
+  const esCaja = (el) => {
+    const co = getComputedStyle(el);
+    const conBorde =
+      parseFloat(co.borderTopWidth) > 0 || parseFloat(co.borderBottomWidth) > 0;
+    const conFondo = co.backgroundColor !== 'rgba(0, 0, 0, 0)';
+    return conBorde || conFondo;
+  };
+
+  /**
+   * Un control que apila su propio contenido (etiqueta + sub-etiqueta) fija su
+   * alto: no tiene por qué medir lo mismo que un input de una línea al lado.
+   */
+  const apilaContenido = (el) => {
+    const co = getComputedStyle(el);
+    return (
+      co.display.includes('flex') &&
+      co.flexDirection.startsWith('column') &&
+      el.children.length > 1
+    );
+  };
+
+  /**
+   * Primer ancestro común: sólo cuenta si es una fila flex. Dos controles que
+   * casualmente comparten la misma banda vertical en columnas distintas de la
+   * pantalla no están "en la misma fila".
+   */
+  const mismaFilaFlex = (a, b) => {
+    for (let anc = a.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
+      if (!anc.contains(b)) continue;
+      const co = getComputedStyle(anc);
+      return co.display.includes('flex') && !co.flexDirection.startsWith('column');
+    }
+    return false;
+  };
+
+  const desparejos = [];
+  const controles = [];
+  for (const el of document.querySelectorAll('input, select, button, [role="radio"]')) {
+    if (!pintado(el) || !esCaja(el) || apilaContenido(el)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) controles.push({ el, r });
+  }
+  for (let i = 0; i < controles.length; i++) {
+    for (let j = i + 1; j < controles.length; j++) {
+      const a = controles[i];
+      const b = controles[j];
+      if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      const centroA = (a.r.top + a.r.bottom) / 2;
+      const centroB = (b.r.top + b.r.bottom) / 2;
+      if (Math.abs(centroA - centroB) > 3) continue;
+      if (Math.abs(a.r.height - b.r.height) <= ALTO_DESPAREJO) continue;
+      if (!mismaFilaFlex(a.el, b.el)) continue;
+      desparejos.push({
+        a: etiqueta(a.el),
+        b: etiqueta(b.el),
+        altos: `${Math.round(a.r.height)}/${Math.round(b.r.height)}`,
+      });
+    }
+  }
+
   // ── Cards colapsadas ────────────────────────────────────────────────────
   // Debajo de 900px el shell deja de ser columna flex (`.main > * {display:block}`)
   // y todo lo que dependía de `flex: 1` queda en 0px. Una card de 0px no solapa,
@@ -369,6 +441,8 @@ function medir() {
     nFueraViewport: fueraViewport.length,
     tapados: tapados.slice(0, 4),
     nTapados: tapados.length,
+    desparejos: desparejos.slice(0, 4),
+    nDesparejos: desparejos.length,
     cards,
     tablasRecortadas,
     nTablasRecortadas: tablasRecortadas.length,
@@ -418,13 +492,22 @@ function celda(f) {
   if (f.nSolapes) p.push(`O${f.nSolapes}`);
   if (f.nRecortados) p.push(`R${f.nRecortados}`);
   if (f.nFueraViewport) p.push(`X${f.nFueraViewport}`);
+  if (f.nDesparejos) p.push(`D${f.nDesparejos}`);
   if (f.nColapsadas) p.push(`H${f.nColapsadas}`);
   if (f.nTablasRecortadas) p.push(`T${f.nTablasRecortadas}`);
   return p.join('/') || '·';
 }
 
 /** Métricas que cuentan para decir si una celda empeoró. `tapados` no entra. */
-const DUROS = ['scrollH', 'nSolapes', 'nRecortados', 'nFueraViewport', 'nColapsadas', 'nTablasRecortadas'];
+const DUROS = [
+  'scrollH',
+  'nSolapes',
+  'nRecortados',
+  'nFueraViewport',
+  'nColapsadas',
+  'nTablasRecortadas',
+  'nDesparejos',
+];
 
 /**
  * Un check que no puede disparar nunca reporta cero y parece una app impecable.
@@ -563,6 +646,16 @@ const CASOS_AUTOTEST = [
     esperaLimpio: (r) => r.nSolapes === 0,
   },
   {
+    nombre: 'D · control más alto que su vecino de fila',
+    ruta: '/especies',
+    ancho: 1920,
+    // La regresión que las otras métricas no vieron: un control que pierde su
+    // alto compacto no solapa, no recorta y está dentro del viewport.
+    css: '[class*="_campo_"] input{min-height:64px !important}',
+    espera: (r) => r.nDesparejos > 0,
+    esperaLimpio: (r) => r.nDesparejos === 0,
+  },
+  {
     nombre: 'S · scroll horizontal de documento',
     ruta: '/especies',
     ancho: 1920,
@@ -671,7 +764,7 @@ async function main() {
   // ── Matriz ──────────────────────────────────────────────────────────────
   const ancho0 = 17;
   console.log('\nS=scroll horizontal  O=solapes  R=texto recortado  X=fuera del viewport');
-  console.log('H=card colapsada  T=tabla que recorta sin scrollear\n');
+  console.log('H=card colapsada  T=tabla que recorta sin scrollear  D=controles desparejos\n');
   console.log('pantalla'.padEnd(ancho0) + ANCHOS.map((a) => String(a).padStart(13)).join(''));
   for (const [pantalla] of RUTAS) {
     const fila = ANCHOS.map((a) => celda(informe[`${pantalla}@${a}`]).padStart(13)).join('');

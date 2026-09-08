@@ -50,32 +50,12 @@
   cursor: not-allowed;
 }
 
-/* Achica los inputs/selects: control más bajo y texto a la par del entorno
-   (antes el texto del filtro era más grande que el resto de la toolbar). */
-.filtrosCompactos input,
-.filtrosCompactos select {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-lg);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
-}
-
 /* 220 y no 240: es lo que hace que los seis filtros entren en un renglón a
    1366, y el placeholder sigue entrando entero. */
 .busqueda {
   width: 220px;
 }
 
-/* Techo común: los anchos de arriba son preferencias, no pisos. Sin esto un
-   control de 210px desborda un viewport de 360 con su padding. */
-.filtroParcela,
-.filtroGrupo,
-.filtroEspecie,
-.filtroGps,
-.filtroFoto,
-.busqueda {
-  max-width: 100%;
-}
 
 /* Punto de color que precede a la especie. El color es data-driven (inline). */
 .puntoEspecie {

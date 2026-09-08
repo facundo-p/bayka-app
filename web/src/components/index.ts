@@ -9,6 +9,7 @@ export { CardTabla } from './CardTabla';
 export { CheckboxField } from './CheckboxField';
 export { Cargando } from './Cargando';
 export { CommandMenuTrigger } from './CommandMenuTrigger';
+export { Divisor } from './Divisor';
 export { EmptyState } from './EmptyState';
 export { ErrorConReintento } from './ErrorConReintento';
 export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';

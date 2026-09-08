@@ -45,13 +45,18 @@
   cursor: default;
 }
 
-/* Buscador y maestro: controles de la cabecera, no de la lista. */
-.buscador {
+/*
+ * Buscador y maestro: controles de la cabecera, no de la lista.
+ *
+ * `input.buscador` y no `.buscador`: la clase cae sobre el propio <input>, así
+ * que `.buscador input` no matcheaba nada y el campo quedaba con el alto de
+ * formulario (44px) al lado de controles de 20. Y con el selector de tipo la
+ * declaración le gana a `FormField.control` sin depender del orden en que se
+ * inyecten los módulos.
+ */
+input.buscador {
   width: 180px;
   max-width: 100%;
-}
-
-.buscador input {
   min-height: var(--control-height-sm);
   padding: 0 var(--space-lg);
   border-radius: var(--radius-control);
