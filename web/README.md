@@ -63,6 +63,9 @@ Los bugs de layout no los ve ningún test: jsdom no evalúa layout. Para eso est
 `npm run audit:responsive`, que recorre 9 pantallas × 9 anchos en Chromium y
 reporta scroll horizontal, solapamientos, texto recortado, controles
 inalcanzables, cards colapsadas y tablas que recortan en vez de scrollear.
+Un texto truncado con contrato de ellipsis completo (`nowrap` + `overflow` +
+`text-overflow`) se releva aparte y no cuenta: es la salida deliberada para un
+dato de largo variable, y contarla haría que el arreglo correcto suba la nota.
 Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
 empeoró.
 

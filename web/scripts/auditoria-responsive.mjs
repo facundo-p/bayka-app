@@ -114,6 +114,55 @@ function medir() {
     return null;
   };
 
+  /**
+   * Caja del texto REALMENTE pintado: la del Range recortada por cada ancestro
+   * que recorta —incluido su propio elemento, que es el caso del ellipsis—.
+   *
+   * `getBoundingClientRect` de un Range devuelve el ancho completo del texto
+   * aunque `overflow: hidden` lo esté cortando: sin esto un título elidido
+   * sigue "solapando" al vecino que tiene al lado, y agregarle el ellipsis
+   * —el arreglo correcto— sube el número de defectos en vez de bajarlo.
+   *
+   * Para solapes, un contenedor con scroll también recorta: lo que está fuera
+   * de su ventana no se está pintando ahora.
+   */
+  const cajaPintada = (padre, r) => {
+    const caja = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
+      const co = getComputedStyle(anc);
+      const ra = anc.getBoundingClientRect();
+      if (co.overflowX !== 'visible') {
+        caja.left = Math.max(caja.left, ra.left);
+        caja.right = Math.min(caja.right, ra.right);
+      }
+      if (co.overflowY !== 'visible') {
+        caja.top = Math.max(caja.top, ra.top);
+        caja.bottom = Math.min(caja.bottom, ra.bottom);
+      }
+    }
+    return caja;
+  };
+
+  /**
+   * Recorte horizontal que NO se puede deshacer scrolleando: es el que deja
+   * texto ilegible. Por eje y no por elemento —una card que scrollea en
+   * vertical sigue recortando de verdad en horizontal—, y acumulando todos
+   * los ancestros en vez de quedarse con el primero.
+   */
+  const recorteHorizontal = (padre, r) => {
+    let left = r.left;
+    let right = r.right;
+    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
+      const ox = getComputedStyle(anc).overflowX;
+      if (ox === 'auto' || ox === 'scroll') break;
+      if (ox !== 'hidden' && ox !== 'clip') continue;
+      const ra = anc.getBoundingClientRect();
+      left = Math.max(left, ra.left);
+      right = Math.min(right, ra.right);
+    }
+    return { left, right };
+  };
+
   const etiqueta = (el) =>
     (el.getAttribute('aria-label') || el.textContent || el.placeholder || el.tagName)
       .trim()
@@ -145,10 +194,11 @@ function medir() {
     const r = rango.getBoundingClientRect();
     if (r.width <= 2 || r.height <= 2) continue;
     if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
-    // Lo que un ancestro recorta no se está pintando: no puede solaparse.
-    if (fueraDeCaja(padre, false)) continue;
+    // Lo que se recorta no se está pintando: no puede solaparse con nada.
+    const pintadaX = cajaPintada(padre, r);
+    if (pintadaX.right - pintadaX.left <= 2 || pintadaX.bottom - pintadaX.top <= 2) continue;
 
-    textos.push({ nodo, padre, r, texto: contenido });
+    textos.push({ nodo, padre, r, pintada: pintadaX, texto: contenido });
   }
 
   // ── Solapamientos: pares de texto cuyas cajas se pisan de verdad ───────
@@ -160,8 +210,8 @@ function medir() {
       // Texto de un ancestro contra el de su descendiente: no es un solape de
       // layout, es la misma caja anidada.
       if (a.padre.contains(b.padre) || b.padre.contains(a.padre)) continue;
-      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
-      const oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      const ox = Math.min(a.pintada.right, b.pintada.right) - Math.max(a.pintada.left, b.pintada.left);
+      const oy = Math.min(a.pintada.bottom, b.pintada.bottom) - Math.max(a.pintada.top, b.pintada.top);
       if (ox > 3 && oy > 3) {
         solapes.push({
           a: a.texto.slice(0, 30),
@@ -177,17 +227,22 @@ function medir() {
   // Un ancestro con overflow auto/scroll NO recorta: el contenido se alcanza
   // scrolleando. Hay que cortar la subida ahí, o se termina culpando al
   // `.shell { overflow: hidden }` del layout por texto perfectamente accesible.
+  //
+  // Recorte SIN aviso (la caja corta el texto y nada lo indica) = defecto.
+  // Truncado con contrato de ellipsis completo (nowrap + overflow + ellipsis)
+  // = deliberado: se releva aparte y no cuenta para el criterio de fallo. Es
+  // la salida que el plan prescribe para un dato de largo variable en un slot
+  // fijo; contarla haría que agregar el ellipsis empeore la nota.
   const recortados = [];
+  const truncados = [];
   for (const { padre, r, texto } of textos) {
-    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
-      const ox = getComputedStyle(anc).overflowX;
-      if (ox === 'auto' || ox === 'scroll') break;
-      if (ox !== 'hidden' && ox !== 'clip') continue;
-      const ra = anc.getBoundingClientRect();
-      const fuera = Math.round(Math.max(r.right - ra.right, ra.left - r.left));
-      if (fuera > 2) recortados.push({ texto: texto.slice(0, 30), fuera });
-      break;
-    }
+    const caja = recorteHorizontal(padre, r);
+    const fuera = Math.round(Math.max(r.right - caja.right, caja.left - r.left));
+    if (fuera <= 2) continue;
+    const co = getComputedStyle(padre);
+    const conEllipsis =
+      co.textOverflow === 'ellipsis' && co.whiteSpace === 'nowrap' && co.overflowX !== 'visible';
+    (conEllipsis ? truncados : recortados).push({ texto: texto.slice(0, 30), fuera });
   }
 
   // ── Controles inalcanzables ─────────────────────────────────────────────
@@ -308,6 +363,8 @@ function medir() {
     nSolapes: solapes.length,
     recortados: recortados.slice(0, 4),
     nRecortados: recortados.length,
+    truncados: truncados.slice(0, 4),
+    nTruncados: truncados.length,
     fueraViewport: fueraViewport.slice(0, 4),
     nFueraViewport: fueraViewport.length,
     tapados: tapados.slice(0, 4),
@@ -421,7 +478,12 @@ const CASOS_AUTOTEST = [
     nombre: 'O · dos textos encimados',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_recuento_"]{position:fixed !important;top:120px !important;left:400px !important;z-index:99}',
+    // Estructural y no coordenadas fijas: un `top/left` a mano deja de pisar
+    // nada en cuanto el layout se mueve, y el check pasa a estar sin ejercer.
+    css:
+      '[class*="_barra_"]{display:grid !important}' +
+      ' [class*="_barra_"] > *{grid-area:1/1 !important;justify-self:start !important;' +
+      'margin:0 !important}',
     espera: (r) => r.nSolapes > 0,
   },
   {
@@ -442,24 +504,30 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.nSolapes > 0,
   },
   {
-    nombre: 'R · texto recortado por un ancestro sin scroll',
+    nombre: 'R · texto recortado sin aviso',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_toolbar_"]{width:180px !important;overflow-x:hidden !important}',
+    // Mismo apretón que el caso del ellipsis, pero sin `text-overflow`: acá
+    // no hay nada que le diga al usuario que falta texto.
+    css:
+      '[class*="_recuento_"]{display:block !important;width:40px !important;' +
+      'overflow:hidden !important;white-space:nowrap !important}',
     espera: (r) => r.nRecortados > 0,
   },
   {
     nombre: 'X · control fuera del viewport',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_toolbar_"] button{position:relative !important;left:3000px !important}',
+    css: '[class*="_barra_"] button{position:relative !important;left:3000px !important}',
     espera: (r) => r.nFueraViewport > 0,
   },
   {
     nombre: 'X · control recortado por una card que no scrollea',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_toolbar_"]{width:120px !important;overflow:hidden !important}',
+    css:
+      '[class*="_barra_"]{width:120px !important;overflow:hidden !important;' +
+      'flex-wrap:nowrap !important}',
     espera: (r) => r.nFueraViewport > 0,
   },
   {
@@ -472,6 +540,29 @@ const CASOS_AUTOTEST = [
     esperaLimpio: (r) => r.nFueraViewport === 0,
   },
   {
+    nombre: 'R · truncado con ellipsis NO cuenta (sí como truncado)',
+    ruta: '/especies',
+    ancho: 1920,
+    // El arreglo que las fases 1 y 5 prescriben: no puede subir la nota.
+    css:
+      '[class*="_recuento_"]{display:block !important;width:60px !important;overflow:hidden' +
+      ' !important;white-space:nowrap !important;text-overflow:ellipsis !important}',
+    espera: (r) => r.nRecortados === 0 && r.nTruncados > 0,
+    esperaLimpio: (r) => r.nRecortados === 0,
+  },
+  {
+    nombre: 'O · sin ellipsis la meta del detalle se encima con las tabs',
+    ruta: '/plantaciones/p1',
+    ancho: 1440,
+    // El defecto original de #357, y su arreglo, en el mismo caso: sacándole
+    // el truncado a `.meta` el check tiene que dispararse, y con el truncado
+    // puesto tiene que callarse. Si midiera la caja del Range en vez de la
+    // pintada, la segunda mitad fallaría.
+    css: '[class*="_meta_"]{overflow:visible !important;text-overflow:clip !important}',
+    espera: (r) => r.nSolapes > 0,
+    esperaLimpio: (r) => r.nSolapes === 0,
+  },
+  {
     nombre: 'S · scroll horizontal de documento',
     ruta: '/especies',
     ancho: 1920,
@@ -479,6 +570,24 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.scrollH > 0,
   },
 ];
+
+/**
+ * Espera a que el DOM deje de crecer antes de medir.
+ *
+ * `networkidle` más un timeout fijo no alcanza: Leaflet y los gráficos montan
+ * después, y una corrida que mide antes reporta la pantalla limpia porque los
+ * controles todavía no existen. Grabar el baseline en una corrida así vuelve
+ * regresión falsa a todas las siguientes —pasó con dashboard@900—.
+ */
+async function asentar(pagina, intentos = 10, paso = 200) {
+  let previo = -1;
+  for (let i = 0; i < intentos; i++) {
+    await pagina.waitForTimeout(paso);
+    const actual = await pagina.evaluate(() => document.querySelectorAll('*').length);
+    if (actual === previo) return;
+    previo = actual;
+  }
+}
 
 /** Corre el clasificador real de colapso sobre una medición suelta. */
 function clasificarSuelta(referencia, medicion) {
@@ -492,7 +601,7 @@ async function autotest(navegador) {
   for (const caso of CASOS_AUTOTEST) {
     const pagina = await navegador.newPage({ viewport: { width: caso.ancho, height: 900 } });
     await pagina.goto(BASE_URL + caso.ruta, { waitUntil: 'networkidle', timeout: 20000 });
-    await pagina.waitForTimeout(400);
+    await asentar(pagina);
 
     let limpio = await pagina.evaluate(medir);
     await pagina.addStyleTag({ content: caso.css });
@@ -543,7 +652,7 @@ async function main() {
       const clave = `${pantalla}@${ancho}`;
       try {
         await pagina.goto(BASE_URL + ruta, { waitUntil: 'networkidle', timeout: 20000 });
-        await pagina.waitForTimeout(400);
+        await asentar(pagina);
         informe[clave] = await pagina.evaluate(medir);
         if (CON_CAPTURAS) {
           mkdirSync(CAPTURAS, { recursive: true });
