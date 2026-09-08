@@ -1,5 +1,4 @@
 export { Badge } from './Badge';
-export { BarraFiltros } from './BarraFiltros';
 export { Breadcrumb } from './Breadcrumb';
 export { CabeceraSeccion } from './CabeceraSeccion';
 export { Button } from './Button';
