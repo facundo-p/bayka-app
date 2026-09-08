@@ -72,6 +72,9 @@ describe('escala de breakpoints', () => {
       for (const [, valor] of texto.matchAll(/@media[^{]*?\(\s*max-height:\s*(\d+)px\s*\)/g)) {
         if (!ALTOS_VALIDOS.includes(Number(valor))) fuera.push(`${ruta}: ${valor}px`);
       }
+      for (const [, valor] of texto.matchAll(/@media[^{]*?\(\s*min-height:\s*(\d+)px\s*\)/g)) {
+        fuera.push(`${ruta}: min-height ${valor}px (la escala es desktop-first)`);
+      }
     }
     expect(fuera).toEqual([]);
   });
@@ -84,18 +87,18 @@ describe('escala de breakpoints', () => {
  */
 const GRILLAS_PENDIENTES = [
   // Grupo C (fase 3): el panel lateral y el dashboard.
-  '/components/PanelLateral.module.css: grid-template-columns: 1fr;',
-  '/components/PanelLateral.module.css: grid-template-columns: 1fr var(--ancho-panel-lateral);',
-  '/screens/dashboard/DashboardTab.module.css: grid-template-columns: 540px 1fr;',
-  '/screens/dashboard/DashboardTab.module.css: grid-template-columns: 1fr;',
-  '/screens/dashboard/ResumenPlantacion.module.css: grid-template-columns: 1fr 1fr 1fr;',
-  '/screens/datos/ArbolDetallePanel.module.css: grid-template-columns: repeat(2, 1fr);',
-  '/screens/especies/Especies.module.css: grid-template-columns: 1fr 1fr;',
+  '/components/PanelLateral.module.css: grid-template-columns: 1fr',
+  '/components/PanelLateral.module.css: grid-template-columns: 1fr var(--ancho-panel-lateral)',
+  '/screens/dashboard/DashboardTab.module.css: grid-template-columns: 1fr',
+  '/screens/dashboard/DashboardTab.module.css: grid-template-columns: 540px 1fr',
+  '/screens/dashboard/ResumenPlantacion.module.css: grid-template-columns: 1fr 1fr 1fr',
+  '/screens/datos/ArbolDetallePanel.module.css: grid-template-columns: repeat(2, 1fr)',
+  '/screens/especies/Especies.module.css: grid-template-columns: 1fr 1fr',
   // Ya arreglados en #358 (PR aparte), siguen acá hasta que ese merge llegue.
-  '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr 1fr;',
-  '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr;',
-  '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1.25fr 1fr;',
-  '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1fr;',
+  '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr',
+  '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr 1fr',
+  '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1.25fr 1fr',
+  '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1fr',
 ];
 
 describe('grillas', () => {
@@ -107,7 +110,7 @@ describe('grillas', () => {
   it('ningún track flexible sin piso en 0', () => {
     const fuera: string[] = [];
     for (const { ruta, texto } of CSS) {
-      for (const [linea] of texto.matchAll(/grid-template-columns:[^;]+;/g)) {
+      for (const [linea] of texto.matchAll(/grid-template(?:-columns)?:[^;}]+/g)) {
         if (!linea.includes('fr')) continue;
         // `repeat(auto-fit, minmax(Npx, 1fr))` ya trae su propio piso.
         if (linea.includes('minmax(0,') || /repeat\(\s*auto-(fit|fill)\s*,\s*minmax\(/.test(linea)) {
@@ -123,7 +126,7 @@ describe('grillas', () => {
   it('el trinquete no tiene entradas de más', () => {
     const encontradas = new Set<string>();
     for (const { ruta, texto } of CSS) {
-      for (const [linea] of texto.matchAll(/grid-template-columns:[^;]+;/g)) {
+      for (const [linea] of texto.matchAll(/grid-template(?:-columns)?:[^;}]+/g)) {
         encontradas.add(`${ruta}: ${linea.replace(/\s+/g, ' ')}`);
       }
     }

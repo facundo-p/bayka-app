@@ -67,10 +67,29 @@
  },
  "plantaciones@1024": {
   "scrollH": 0,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
+  "solapes": [
+   {
+    "a": "7 plantaciones · 3 temporadas ",
+    "b": "Nueva plantación",
+    "area": 63
+   }
+  ],
+  "nSolapes": 1,
+  "recortados": [
+   {
+    "texto": "plantaciones",
+    "fuera": 15
+   },
+   {
+    "texto": "·",
+    "fuera": 21
+   },
+   {
+    "texto": "árboles",
+    "fuera": 124
+   }
+  ],
+  "nRecortados": 3,
   "fueraViewport": [],
   "nFueraViewport": 0,
   "tapados": [],
@@ -133,8 +152,14 @@
  },
  "plantaciones@600": {
   "scrollH": 29,
-  "solapes": [],
-  "nSolapes": 0,
+  "solapes": [
+   {
+    "a": "7 plantaciones · 3 temporadas ",
+    "b": "Nueva plantación",
+    "area": 1225
+   }
+  ],
+  "nSolapes": 1,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -155,8 +180,14 @@
  },
  "plantaciones@430": {
   "scrollH": 197,
-  "solapes": [],
-  "nSolapes": 0,
+  "solapes": [
+   {
+    "a": "7 plantaciones · 3 temporadas ",
+    "b": "Nueva plantación",
+    "area": 1225
+   }
+  ],
+  "nSolapes": 1,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -177,8 +208,19 @@
  },
  "plantaciones@360": {
   "scrollH": 267,
-  "solapes": [],
-  "nSolapes": 0,
+  "solapes": [
+   {
+    "a": "7 plantaciones · 3 temporadas ",
+    "b": "Nueva plantación",
+    "area": 750
+   },
+   {
+    "a": "Plantaciones",
+    "b": "Nueva plantación",
+    "area": 448
+   }
+  ],
+  "nSolapes": 2,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -245,7 +287,7 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 648
+    "area": 374
    }
   ],
   "nSolapes": 1,
@@ -293,17 +335,17 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 1685
+    "area": 1255
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 1185
+    "area": 643
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 438
+    "area": 176
    }
   ],
   "nSolapes": 3,
@@ -362,28 +404,28 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 1645
+    "area": 1026
+   },
+   {
+    "a": "Mapa de la plantación",
+    "b": "Ibirá Pitá",
+    "area": 905
+   },
+   {
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 771
    },
    {
     "a": "San Sebastián",
     "b": "Datos",
-    "area": 1592
-   },
-   {
-    "a": "2025-2026 · Creada 12/03/2025",
-    "b": "Configuración",
-    "area": 767
-   },
-   {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "area": 719
    }
   ],
-  "nSolapes": 5,
+  "nSolapes": 10,
   "recortados": [
    {
-    "texto": "Puntos GPS registrados · image",
+    "texto": "Puntos GPS registrados",
     "fuera": 16
    }
   ],
@@ -396,13 +438,9 @@
    {
     "q": "Parcelas siguientes",
     "motivo": "fuera del viewport"
-   },
-   {
-    "q": "BA031 grupos18.442Bajo del Arr",
-    "motivo": "fuera del viewport"
    }
   ],
-  "nFueraViewport": 3,
+  "nFueraViewport": 2,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -472,19 +510,19 @@
   "scrollH": 0,
   "solapes": [
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 2463
-   },
-   {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 2171
+    "area": 1575
+   },
+   {
+    "a": "San Sebastián",
+    "b": "Dashboard",
+    "area": 1402
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 998
+    "area": 643
    }
   ],
   "nSolapes": 3,
@@ -493,15 +531,15 @@
   "fueraViewport": [
    {
     "q": "Zoom in",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Zoom out",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Leaflet",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    }
   ],
   "nFueraViewport": 3,
@@ -565,40 +603,40 @@
   "solapes": [
    {
     "a": "San Sebastián",
-    "b": "Datos",
-    "area": 1592
+    "b": "Configuración",
+    "area": 810
    },
    {
     "a": "San Sebastián",
-    "b": "Configuración",
-    "area": 1370
+    "b": "Datos",
+    "area": 719
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 972
+    "area": 680
    },
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 273
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 578
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [
    {
     "q": "Zoom in",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Zoom out",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Leaflet",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    }
   ],
   "nFueraViewport": 3,
@@ -663,41 +701,42 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2622
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 459
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [
    {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
     "q": "Zoom in",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Zoom out",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Leaflet",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    }
   ],
-  "nFueraViewport": 4,
+  "nFueraViewport": 3,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -763,41 +802,42 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2622
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 459
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [
    {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
     "q": "Zoom in",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Zoom out",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
+   },
+   {
+    "q": "Leaflet",
+    "motivo": "recortado sin scroll"
    }
   ],
-  "nFueraViewport": 5,
+  "nFueraViewport": 3,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -863,41 +903,42 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2622
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 459
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [
    {
-    "q": "Editar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
     "q": "Zoom in",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
+   },
+   {
+    "q": "Zoom out",
+    "motivo": "recortado sin scroll"
+   },
+   {
+    "q": "Leaflet",
+    "motivo": "recortado sin scroll"
    }
   ],
-  "nFueraViewport": 6,
+  "nFueraViewport": 3,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -985,7 +1026,7 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 640
+    "area": 366
    }
   ],
   "nSolapes": 1,
@@ -1013,17 +1054,17 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 1671
+    "area": 1235
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 1198
+    "area": 656
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 438
+    "area": 176
    }
   ],
   "nSolapes": 3,
@@ -1051,25 +1092,25 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 1645
+    "area": 1026
+   },
+   {
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 771
    },
    {
     "a": "San Sebastián",
     "b": "Datos",
-    "area": 1610
+    "area": 733
    },
    {
-    "a": "2025-2026 · Creada 12/03/2025",
-    "b": "Configuración",
-    "area": 767
-   },
-   {
-    "a": "/",
+    "a": "Activa",
     "b": "Dashboard",
-    "area": 164
+    "area": 574
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -1092,19 +1133,19 @@
   "scrollH": 0,
   "solapes": [
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 2434
-   },
-   {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 2171
+    "area": 1575
+   },
+   {
+    "a": "San Sebastián",
+    "b": "Dashboard",
+    "area": 1380
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 998
+    "area": 656
    }
   ],
   "nSolapes": 3,
@@ -1131,26 +1172,26 @@
   "solapes": [
    {
     "a": "San Sebastián",
-    "b": "Datos",
-    "area": 1610
+    "b": "Configuración",
+    "area": 810
    },
    {
     "a": "San Sebastián",
-    "b": "Configuración",
-    "area": 1370
+    "b": "Datos",
+    "area": 733
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 972
+    "area": 680
    },
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 255
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 578
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -1175,29 +1216,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 1,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -1222,33 +1263,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 2,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -1273,37 +1310,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Editar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -1350,7 +1379,7 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 640
+    "area": 366
    }
   ],
   "nSolapes": 1,
@@ -1378,17 +1407,17 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 1671
+    "area": 1235
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 1198
+    "area": 656
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 438
+    "area": 176
    }
   ],
   "nSolapes": 3,
@@ -1416,25 +1445,25 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 1645
+    "area": 1026
+   },
+   {
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 771
    },
    {
     "a": "San Sebastián",
     "b": "Datos",
-    "area": 1610
+    "area": 733
    },
    {
-    "a": "2025-2026 · Creada 12/03/2025",
-    "b": "Configuración",
-    "area": 767
-   },
-   {
-    "a": "/",
+    "a": "Activa",
     "b": "Dashboard",
-    "area": 164
+    "area": 574
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -1457,19 +1486,19 @@
   "scrollH": 0,
   "solapes": [
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 2434
-   },
-   {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 2171
+    "area": 1575
+   },
+   {
+    "a": "San Sebastián",
+    "b": "Dashboard",
+    "area": 1380
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 998
+    "area": 656
    }
   ],
   "nSolapes": 3,
@@ -1496,26 +1525,26 @@
   "solapes": [
    {
     "a": "San Sebastián",
-    "b": "Datos",
-    "area": 1610
+    "b": "Configuración",
+    "area": 810
    },
    {
     "a": "San Sebastián",
-    "b": "Configuración",
-    "area": 1370
+    "b": "Datos",
+    "area": 733
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 972
+    "area": 680
    },
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 255
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 578
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -1540,29 +1569,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 1,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -1587,33 +1616,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 2,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -1638,37 +1663,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Editar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -1715,7 +1732,7 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 640
+    "area": 366
    }
   ],
   "nSolapes": 1,
@@ -1743,25 +1760,20 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 1671
+    "area": 1235
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 1198
+    "area": 656
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 438
-   },
-   {
-    "a": "10/04/2026",
-    "b": "1 / 1",
-    "area": 140
+    "area": 176
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 3,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [
@@ -1795,38 +1807,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 1645
+    "area": 1026
+   },
+   {
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 771
    },
    {
     "a": "San Sebastián",
     "b": "Datos",
-    "area": 1610
+    "area": 733
    },
    {
-    "a": "2025-2026 · Creada 12/03/2025",
-    "b": "Configuración",
-    "area": 767
-   },
-   {
-    "a": "/",
+    "a": "Activa",
     "b": "Dashboard",
-    "area": 164
+    "area": 574
    }
   ],
   "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Especie: todasN/N (sin identif",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "GPS: todosCon GPSSin GPS",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 2,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Parcela: todasLP12 — Loma-P12B"
@@ -1849,35 +1852,26 @@
   "scrollH": 133,
   "solapes": [
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 2434
-   },
-   {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 2171
+    "area": 1575
+   },
+   {
+    "a": "San Sebastián",
+    "b": "Dashboard",
+    "area": 1380
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 998
+    "area": 656
    }
   ],
   "nSolapes": 3,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Especie: todasN/N (sin identif",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "GPS: todosCon GPSSin GPS",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 2,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -1897,39 +1891,30 @@
   "solapes": [
    {
     "a": "San Sebastián",
-    "b": "Datos",
-    "area": 1610
+    "b": "Configuración",
+    "area": 810
    },
    {
     "a": "San Sebastián",
-    "b": "Configuración",
-    "area": 1370
+    "b": "Datos",
+    "area": 733
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 972
+    "area": 680
    },
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 255
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 578
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 5,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Especie: todasN/N (sin identif",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "GPS: todosCon GPSSin GPS",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 2,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Parcela: todasLP12 — Loma-P12B"
@@ -1954,41 +1939,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Parcela: todasLP12 — Loma-P12B",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Especie: todasN/N (sin identif",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "GPS: todosCon GPSSin GPS",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 4,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -2013,41 +1986,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Buscar por ID o SubID…",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Parcela: todasLP12 — Loma-P12B",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 6,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -2072,41 +2033,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2611
+    "area": 1760
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 451
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Editar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Buscar por ID o SubID…",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 7,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -2127,10 +2076,30 @@
  },
  "configuracion@1920": {
   "scrollH": 0,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
+  "solapes": [
+   {
+    "a": "Definen la botonera de registr",
+    "b": "4 habilitadas · 8 en catálogo",
+    "area": 1721
+   },
+   {
+    "a": "Quién puede registrar en esta ",
+    "b": "2 asignados",
+    "area": 337
+   }
+  ],
+  "nSolapes": 2,
+  "recortados": [
+   {
+    "texto": "Definen la botonera de registr",
+    "fuera": 133
+   },
+   {
+    "texto": "Quién puede registrar en esta ",
+    "fuera": 46
+   }
+  ],
+  "nRecortados": 2,
   "fueraViewport": [],
   "nFueraViewport": 0,
   "tapados": [],
@@ -2147,16 +2116,21 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 665
+    "area": 390
    }
   ],
   "nSolapes": 1,
-  "recortados": [],
-  "nRecortados": 0,
+  "recortados": [
+   {
+    "texto": "GPS y visibilidad para los téc",
+    "fuera": 56
+   }
+  ],
+  "nRecortados": 1,
   "fueraViewport": [
    {
     "q": "Marcar todas",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    }
   ],
   "nFueraViewport": 1,
@@ -2174,26 +2148,48 @@
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Dashboard",
-    "area": 1646
+    "area": 1235
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 1185
+    "area": 643
+   },
+   {
+    "a": "Lapacho rosado",
+    "b": "con árboles",
+    "area": 219
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 477
+    "area": 213
    }
   ],
-  "nSolapes": 3,
-  "recortados": [],
-  "nRecortados": 0,
+  "nSolapes": 4,
+  "recortados": [
+   {
+    "texto": "Ibirá Pitá",
+    "fuera": 5
+   },
+   {
+    "texto": "Lapacho rosado",
+    "fuera": 24
+   },
+   {
+    "texto": "GPS y visibilidad para los téc",
+    "fuera": 127
+   },
+   {
+    "texto": "Asignar técnico",
+    "fuera": 50
+   }
+  ],
+  "nRecortados": 4,
   "fueraViewport": [
    {
     "q": "Marcar todas",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "INPUT",
@@ -2219,59 +2215,55 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 1697
+    "area": 1067
+   },
+   {
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 771
    },
    {
     "a": "San Sebastián",
     "b": "Datos",
-    "area": 1586
+    "area": 719
    },
    {
-    "a": "2025-2026 · Creada 12/03/2025",
-    "b": "Configuración",
-    "area": 767
-   },
-   {
-    "a": "/",
+    "a": "Activa",
     "b": "Dashboard",
-    "area": 164
+    "area": 574
    }
   ],
-  "nSolapes": 4,
+  "nSolapes": 6,
   "recortados": [
    {
     "texto": "4 habilitadas · 8 en catálogo",
-    "fuera": 28
+    "fuera": 15
    },
    {
-    "texto": "árboles",
+    "texto": "Ibirá Pitá",
+    "fuera": 24
+   },
+   {
+    "texto": "Lapacho rosado",
+    "fuera": 24
+   },
+   {
+    "texto": "Timbó",
     "fuera": 8
-   },
-   {
-    "texto": "2 asignados",
-    "fuera": 5
    }
   ],
-  "nRecortados": 3,
+  "nRecortados": 5,
   "fueraViewport": [
    {
     "q": "Buscar especie…",
-    "motivo": "recortado por un ancestro"
+    "motivo": "recortado sin scroll"
    },
    {
     "q": "Marcar todas",
-    "motivo": "recortado por un ancestro"
-   },
-   {
-    "q": "20árboles",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "INPUT",
-    "motivo": "fuera del viewport"
+    "motivo": "recortado sin scroll"
    }
   ],
-  "nFueraViewport": 5,
+  "nFueraViewport": 2,
   "tapados": [],
   "nTapados": 0,
   "cards": {},
@@ -2284,24 +2276,34 @@
   "scrollH": 0,
   "solapes": [
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 2434
+    "a": "Definen la botonera de registr",
+    "b": "4 habilitadas · 8 en catálogo",
+    "area": 2158
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 2210
+    "area": 1611
+   },
+   {
+    "a": "San Sebastián",
+    "b": "Dashboard",
+    "area": 1380
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Datos",
-    "area": 959
+    "area": 643
    }
   ],
-  "nSolapes": 3,
-  "recortados": [],
-  "nRecortados": 0,
+  "nSolapes": 4,
+  "recortados": [
+   {
+    "texto": "Definen la botonera de registr",
+    "fuera": 160
+   }
+  ],
+  "nRecortados": 1,
   "fueraViewport": [],
   "nFueraViewport": 0,
   "tapados": [],
@@ -2317,28 +2319,33 @@
   "solapes": [
    {
     "a": "San Sebastián",
-    "b": "Datos",
-    "area": 1592
+    "b": "Configuración",
+    "area": 851
    },
    {
     "a": "San Sebastián",
-    "b": "Configuración",
-    "area": 1422
+    "b": "Datos",
+    "area": 719
    },
    {
     "a": "2025-2026 · Creada 12/03/2025",
     "b": "Configuración",
-    "area": 972
+    "area": 680
    },
    {
-    "a": "San Sebastián",
-    "b": "Dashboard",
-    "area": 221
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 578
    }
   ],
-  "nSolapes": 4,
-  "recortados": [],
-  "nRecortados": 0,
+  "nSolapes": 5,
+  "recortados": [
+   {
+    "texto": "Marcar todas",
+    "fuera": 16
+   }
+  ],
+  "nRecortados": 1,
   "fueraViewport": [],
   "nFueraViewport": 0,
   "tapados": [],
@@ -2355,37 +2362,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2646
+    "area": 1801
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 440
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [],
   "nRecortados": 0,
-  "fueraViewport": [
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Buscar especie…",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Marcar todas",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -2404,46 +2403,29 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2646
+    "area": 1801
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 440
    }
   ],
-  "nSolapes": 3,
-  "recortados": [
-   {
-    "texto": "4 habilitadas · 8 en catálogo",
-    "fuera": 14
-   }
-  ],
-  "nRecortados": 1,
-  "fueraViewport": [
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Buscar especie…",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Marcar todas",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 6,
+  "nSolapes": 4,
+  "recortados": [],
+  "nRecortados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -2462,46 +2444,34 @@
    {
     "a": "San Sebastián",
     "b": "Configuración",
-    "area": 2646
+    "area": 1801
    },
    {
     "a": "Plantaciones",
     "b": "Dashboard",
-    "area": 1767
+    "area": 1194
    },
    {
-    "a": "/",
-    "b": "Dashboard",
-    "area": 164
+    "a": "2025-2026 · Creada 12/03/2025",
+    "b": "Exportar",
+    "area": 942
+   },
+   {
+    "a": "Activa",
+    "b": "Datos",
+    "area": 440
    }
   ],
-  "nSolapes": 3,
+  "nSolapes": 4,
   "recortados": [
    {
     "texto": "4 habilitadas · 8 en catálogo",
-    "fuera": 84
+    "fuera": 71
    }
   ],
   "nRecortados": 1,
-  "fueraViewport": [
-   {
-    "q": "Editar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Exportar",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Generar IDs",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Buscar especie…",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 8,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [
    {
     "q": "Plantaciones"
@@ -2648,8 +2618,14 @@
  },
  "especies@600": {
   "scrollH": 46,
-  "solapes": [],
-  "nSolapes": 0,
+  "solapes": [
+   {
+    "a": "Catálogo global · 8 especies n",
+    "b": "Nueva especie",
+    "area": 261
+   }
+  ],
+  "nSolapes": 1,
   "recortados": [],
   "nRecortados": 0,
   "fueraViewport": [],
@@ -2670,17 +2646,18 @@
  },
  "especies@430": {
   "scrollH": 214,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
-  "fueraViewport": [
+  "solapes": [
    {
-    "q": "Orden: árboles ↓Orden: plantac",
-    "motivo": "fuera del viewport"
+    "a": "Catálogo global · 8 especies n",
+    "b": "Nueva especie",
+    "area": 874
    }
   ],
-  "nFueraViewport": 1,
+  "nSolapes": 1,
+  "recortados": [],
+  "nRecortados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -2697,17 +2674,18 @@
  },
  "especies@360": {
   "scrollH": 284,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
-  "fueraViewport": [
+  "solapes": [
    {
-    "q": "Orden: árboles ↓Orden: plantac",
-    "motivo": "fuera del viewport"
+    "a": "Catálogo global · 8 especies n",
+    "b": "Nueva especie",
+    "area": 874
    }
   ],
-  "nFueraViewport": 1,
+  "nSolapes": 1,
+  "recortados": [],
+  "nRecortados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -2792,27 +2770,15 @@
   "scrollH": 0,
   "solapes": [],
   "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
-  "fueraViewport": [
+  "recortados": [
    {
-    "q": "Acciones de Facundo Pichinini",
-    "motivo": "recortado por un ancestro"
-   },
-   {
-    "q": "Acciones de Sofía Bianchi",
-    "motivo": "recortado por un ancestro"
-   },
-   {
-    "q": "Acciones de Martín Oyola",
-    "motivo": "recortado por un ancestro"
-   },
-   {
-    "q": "Acciones de Lucía Ferreyra",
-    "motivo": "recortado por un ancestro"
+    "texto": "activas",
+    "fuera": 28
    }
   ],
-  "nFueraViewport": 6,
+  "nRecortados": 1,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -2873,29 +2839,18 @@
  },
  "usuarios@600": {
   "scrollH": 187,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
-  "fueraViewport": [
+  "solapes": [
    {
-    "q": "Inactivos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Acciones de Facundo Pichinini",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Acciones de Sofía Bianchi",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Acciones de Martín Oyola",
-    "motivo": "fuera del viewport"
+    "a": "6 personas · 1 superadmin · 1 ",
+    "b": "Agregar usuario",
+    "area": 456
    }
   ],
-  "nFueraViewport": 7,
+  "nSolapes": 1,
+  "recortados": [],
+  "nRecortados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -2912,29 +2867,18 @@
  },
  "usuarios@430": {
   "scrollH": 355,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
-  "fueraViewport": [
+  "solapes": [
    {
-    "q": "Estado: todos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Activos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Inactivos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Acciones de Facundo Pichinini",
-    "motivo": "fuera del viewport"
+    "a": "6 personas · 1 superadmin · 1 ",
+    "b": "Agregar usuario",
+    "area": 923
    }
   ],
-  "nFueraViewport": 9,
+  "nSolapes": 1,
+  "recortados": [],
+  "nRecortados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {
@@ -2951,29 +2895,18 @@
  },
  "usuarios@360": {
   "scrollH": 425,
-  "solapes": [],
-  "nSolapes": 0,
-  "recortados": [],
-  "nRecortados": 0,
-  "fueraViewport": [
+  "solapes": [
    {
-    "q": "Estado: todos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Activos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Inactivos",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Acciones de Facundo Pichinini",
-    "motivo": "fuera del viewport"
+    "a": "6 personas · 1 superadmin · 1 ",
+    "b": "Agregar usuario",
+    "area": 923
    }
   ],
-  "nFueraViewport": 9,
+  "nSolapes": 1,
+  "recortados": [],
+  "nRecortados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "cards": {

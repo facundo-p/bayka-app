@@ -60,35 +60,42 @@ function medir() {
     return r.width > 2 && r.height > 2;
   };
 
-  /** Primer ancestro que recorta y deja al elemento afuera, o null. */
-  const recortadoPor = (el) => {
-    const r = el.getBoundingClientRect();
-    for (let anc = el.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
-      const co = getComputedStyle(anc);
-      if (co.overflowX === 'visible' && co.overflowY === 'visible') continue;
-      const ra = anc.getBoundingClientRect();
-      const dentro =
-        r.right > ra.left + 1 && r.left < ra.right - 1 &&
-        r.bottom > ra.top + 1 && r.top < ra.bottom - 1;
-      if (!dentro) return anc;
-    }
-    return null;
+  const AFUERA = { no: 0, x: 1, y: 2 };
+
+  /** En qué eje `r` cae fuera de `ra`, si es que cae. */
+  const ejeAfuera = (r, ra) => {
+    if (r.right <= ra.left + 1 || r.left >= ra.right - 1) return AFUERA.x;
+    if (r.bottom <= ra.top + 1 || r.top >= ra.bottom - 1) return AFUERA.y;
+    return AFUERA.no;
   };
 
   /**
-   * Visible de verdad: pintado, dentro del viewport y dentro de todo ancestro
-   * que recorte. Sin lo último, una fila scrolleada fuera de su card sigue
-   * teniendo rect y aparece "solapada" con lo que haya debajo.
-   *
-   * Ojo: esto vale para medir TEXTO. Para un control, quedar recortado por un
-   * ancestro no lo hace invisible, lo hace inalcanzable — que es el defecto que
-   * hay que reportar, no descartar.
+   * Primer ancestro que deja al rect afuera de su caja.
+   * `exigirSinScroll` distingue los dos usos:
+   *  - texto (false): estar fuera de un contenedor scrolleable igual significa
+   *    que ahora mismo no se pinta, así que no puede solaparse con nada;
+   *  - control (true): si el eje en que quedó afuera scrollea de verdad, se
+   *    alcanza scrolleando y NO es un defecto. Sin esto, poner el `min-width`
+   *    que el check T pide en una tabla haría subir los controles
+   *    "inalcanzables" y la auditoría rechazaría el arreglo correcto.
    */
-  const visible = (el) => {
-    if (!pintado(el)) return false;
+  const fueraDeCaja = (el, exigirSinScroll) => {
     const r = el.getBoundingClientRect();
-    if (r.bottom <= 0 || r.top >= window.innerHeight) return false;
-    return recortadoPor(el) === null;
+    for (let anc = el.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
+      const co = getComputedStyle(anc);
+      const ox = co.overflowX;
+      const oy = co.overflowY;
+      if (ox === 'visible' && oy === 'visible') continue;
+      const eje = ejeAfuera(r, anc.getBoundingClientRect());
+      if (eje === AFUERA.no) continue;
+      if (!exigirSinScroll) return anc;
+      const scrollea =
+        eje === AFUERA.x
+          ? (ox === 'auto' || ox === 'scroll') && anc.scrollWidth > anc.clientWidth + 2
+          : (oy === 'auto' || oy === 'scroll') && anc.scrollHeight > anc.clientHeight + 2;
+      if (!scrollea) return anc;
+    }
+    return null;
   };
 
   const etiqueta = (el) =>
@@ -96,28 +103,50 @@ function medir() {
       .trim()
       .slice(0, 30);
 
-  // Hojas con texto propio: las candidatas a solaparse de forma legible.
-  const hojas = [...document.querySelectorAll('body *')].filter((el) => {
-    if (el.children.length > 0 || !visible(el)) return false;
-    const t = (el.textContent || '').trim();
-    return t.length > 0 && t.length < 80;
-  });
+  /**
+   * Unidad de medida del texto: el nodo de texto, no el elemento.
+   *
+   * Filtrar por `children.length === 0` dejaba afuera todo botón con ícono
+   * (`<svg>` + texto), que en esta app son el 84% de los controles con texto —
+   * y con ellos, solapes tan visibles como el botón de acción principal encima
+   * del título de la pantalla. Un Range sobre el nodo da además la caja real
+   * del texto pintado, no la del contenedor.
+   */
+  const textos = [];
+  const rango = document.createRange();
+  const paseo = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let nodo = paseo.nextNode(); nodo; nodo = paseo.nextNode()) {
+    const contenido = (nodo.textContent || '').trim();
+    if (!contenido || contenido.length >= 80) continue;
+    const padre = nodo.parentElement;
+    if (!padre || !pintado(padre)) continue;
+    if (padre.closest('svg')) continue;
 
-  // ── Solapamientos: pares de texto cuyos rects se pisan de verdad ────────
+    rango.selectNodeContents(nodo);
+    const r = rango.getBoundingClientRect();
+    if (r.width <= 2 || r.height <= 2) continue;
+    if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
+    // Lo que un ancestro recorta no se está pintando: no puede solaparse.
+    if (fueraDeCaja(padre, false)) continue;
+
+    textos.push({ nodo, padre, r, texto: contenido });
+  }
+
+  // ── Solapamientos: pares de texto cuyas cajas se pisan de verdad ───────
   const solapes = [];
-  for (let i = 0; i < hojas.length; i++) {
-    for (let j = i + 1; j < hojas.length; j++) {
-      const a = hojas[i];
-      const b = hojas[j];
-      if (a.contains(b) || b.contains(a)) continue;
-      const ra = a.getBoundingClientRect();
-      const rb = b.getBoundingClientRect();
-      const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left);
-      const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+  for (let i = 0; i < textos.length; i++) {
+    for (let j = i + 1; j < textos.length; j++) {
+      const a = textos[i];
+      const b = textos[j];
+      // Texto de un ancestro contra el de su descendiente: no es un solape de
+      // layout, es la misma caja anidada.
+      if (a.padre.contains(b.padre) || b.padre.contains(a.padre)) continue;
+      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+      const oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
       if (ox > 3 && oy > 3) {
         solapes.push({
-          a: (a.textContent || '').trim().slice(0, 30),
-          b: (b.textContent || '').trim().slice(0, 30),
+          a: a.texto.slice(0, 30),
+          b: b.texto.slice(0, 30),
           area: Math.round(ox * oy),
         });
       }
@@ -125,28 +154,45 @@ function medir() {
   }
   solapes.sort((x, y) => y.area - x.area);
 
-  // ── Texto recortado por un ancestro con overflow hidden ─────────────────
+  // ── Texto recortado ─────────────────────────────────────────────────────
   // Un ancestro con overflow auto/scroll NO recorta: el contenido se alcanza
   // scrolleando. Hay que cortar la subida ahí, o se termina culpando al
   // `.shell { overflow: hidden }` del layout por texto perfectamente accesible.
   const recortados = [];
-  for (const el of hojas) {
-    const re = el.getBoundingClientRect();
-    for (let anc = el.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
+  for (const { padre, r, texto } of textos) {
+    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
       const ox = getComputedStyle(anc).overflowX;
       if (ox === 'auto' || ox === 'scroll') break;
       if (ox !== 'hidden' && ox !== 'clip') continue;
       const ra = anc.getBoundingClientRect();
-      const fuera = Math.round(Math.max(re.right - ra.right, ra.left - re.left));
-      if (fuera > 2) recortados.push({ texto: (el.textContent || '').trim().slice(0, 30), fuera });
+      const fuera = Math.round(Math.max(r.right - ra.right, ra.left - r.left));
+      if (fuera > 2) recortados.push({ texto: texto.slice(0, 30), fuera });
       break;
     }
   }
 
   // ── Controles inalcanzables ─────────────────────────────────────────────
-  // `fuera-viewport` es duro y siempre real. `tapado` es blando: elementFromPoint
-  // da falsos positivos con backdrop-filter y capas sticky (la topbar es
-  // translúcida), así que no cuenta para el criterio de fallo.
+  // `fuera del viewport` y `recortado sin scroll` son duros y siempre reales.
+  // `tapado` es blando: elementFromPoint da falsos positivos con
+  // backdrop-filter y capas sticky, así que no cuenta para el criterio de fallo.
+  /**
+   * ¿Se puede traer a la vista scrolleando algo? Un contenedor con scroll
+   * horizontal propio, o el documento entero.
+   *
+   * Sin esto, poner el `min-width` que el check T pide en una tabla mandaría
+   * los botones de la última columna "fuera del viewport" y la auditoría
+   * rechazaría el arreglo correcto. Y cuando el que scrollea es el documento,
+   * el defecto ya está contado como S: no hay que contarlo dos veces.
+   */
+  const alcanzableScrolleando = (el) => {
+    for (let anc = el.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
+      const ox = getComputedStyle(anc).overflowX;
+      if ((ox === 'auto' || ox === 'scroll') && anc.scrollWidth > anc.clientWidth + 2) return true;
+    }
+    const doc = document.documentElement;
+    return doc.scrollWidth > doc.clientWidth + 2;
+  };
+
   const fueraViewport = [];
   const tapados = [];
   const foco = 'button, a, input, select, textarea, [role="radio"], [role="checkbox"]';
@@ -154,14 +200,15 @@ function medir() {
     if (!pintado(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.right > window.innerWidth + 2 || r.left < -2) {
-      fueraViewport.push({ q: etiqueta(el), motivo: 'fuera del viewport' });
+      if (!alcanzableScrolleando(el)) {
+        fueraViewport.push({ q: etiqueta(el), motivo: 'fuera del viewport' });
+      }
       continue;
     }
-    // Recortado por una card con overflow hidden: no se puede alcanzar ni
-    // scrolleando. Es el modo en que los controles "desaparecen" arriba de 900.
-    const recorta = recortadoPor(el);
-    if (recorta) {
-      fueraViewport.push({ q: etiqueta(el), motivo: 'recortado por un ancestro' });
+    // Recortado por una card que NO scrollea en ese eje: no hay forma de
+    // llegar. Si el contenedor scrollea, el control se alcanza y no es defecto.
+    if (fueraDeCaja(el, true)) {
+      fueraViewport.push({ q: etiqueta(el), motivo: 'recortado sin scroll' });
       continue;
     }
     if (r.top < 0 || r.bottom > window.innerHeight) continue; // abajo del fold, no es defecto
@@ -329,7 +376,27 @@ const CASOS_AUTOTEST = [
     ruta: '/plantaciones/p1',
     ancho: 1920,
     css: '[class*="_panel_"]{height:0 !important;min-height:0 !important}',
-    espera: (r) => Object.values(r.cards).some((c) => c.h < 40),
+    // Pasa por marcarColapsadas, no por una regla inline: la rama relativa
+    // (fracción + desborda) es la que produce la mayoría de los hits reales.
+    clasificar: true,
+    espera: (r) => r.nColapsadas > 0,
+  },
+  {
+    nombre: 'H · card que pierde el alto y deja contenido afuera',
+    ruta: '/plantaciones/p1',
+    ancho: 1920,
+    css: '[class*="_panel_"]{max-height:60px !important;overflow:hidden !important}',
+    clasificar: true,
+    espera: (r) => r.nColapsadas > 0,
+  },
+  {
+    nombre: 'H · card que encoge pero se ve entera NO cuenta',
+    ruta: '/especies',
+    ancho: 1920,
+    css: '[class*="_cardTabla_"]{flex:0 0 auto !important}',
+    clasificar: true,
+    espera: (r) => r.nColapsadas === 0,
+    esperaLimpio: (r) => r.nColapsadas === 0,
   },
   {
     nombre: 'O · dos textos encimados',
@@ -339,11 +406,42 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.nSolapes > 0,
   },
   {
+    nombre: 'O · botón con ícono encima de un título',
+    ruta: '/especies',
+    ancho: 1920,
+    // El caso que el check no veía: el texto vive en un elemento con hijos.
+    css: 'button{position:fixed !important;top:100px !important;left:320px !important;z-index:99}',
+    espera: (r) => r.nSolapes > 0,
+  },
+  {
+    nombre: 'R · texto recortado por un ancestro sin scroll',
+    ruta: '/especies',
+    ancho: 1920,
+    css: '[class*="_toolbar_"]{width:180px !important;overflow-x:hidden !important}',
+    espera: (r) => r.nRecortados > 0,
+  },
+  {
     nombre: 'X · control fuera del viewport',
     ruta: '/especies',
     ancho: 1920,
     css: '[class*="_toolbar_"] button{position:relative !important;left:3000px !important}',
     espera: (r) => r.nFueraViewport > 0,
+  },
+  {
+    nombre: 'X · control recortado por una card que no scrollea',
+    ruta: '/especies',
+    ancho: 1920,
+    css: '[class*="_toolbar_"]{width:120px !important;overflow:hidden !important}',
+    espera: (r) => r.nFueraViewport > 0,
+  },
+  {
+    nombre: 'X · control alcanzable scrolleando NO cuenta',
+    ruta: '/usuarios',
+    ancho: 1280,
+    // Es el arreglo que el check T empuja: no puede contarse como regresión.
+    css: 'table{min-width:1400px !important}',
+    espera: (r) => r.nFueraViewport === 0,
+    esperaLimpio: (r) => r.nFueraViewport === 0,
   },
   {
     nombre: 'S · scroll horizontal de documento',
@@ -354,6 +452,13 @@ const CASOS_AUTOTEST = [
   },
 ];
 
+/** Corre el clasificador real de colapso sobre una medición suelta. */
+function clasificarSuelta(referencia, medicion) {
+  const informe = { 'x@2': referencia, 'x@1': medicion };
+  marcarColapsadas(informe, 'x', [2, 1]);
+  return informe['x@1'];
+}
+
 async function autotest(navegador) {
   let fallos = 0;
   for (const caso of CASOS_AUTOTEST) {
@@ -361,20 +466,35 @@ async function autotest(navegador) {
     await pagina.goto(BASE_URL + caso.ruta, { waitUntil: 'networkidle', timeout: 20000 });
     await pagina.waitForTimeout(400);
 
-    const limpio = await pagina.evaluate(medir);
+    let limpio = await pagina.evaluate(medir);
     await pagina.addStyleTag({ content: caso.css });
     await pagina.waitForTimeout(300);
-    const roto = await pagina.evaluate(medir);
+    let roto = await pagina.evaluate(medir);
     await pagina.close();
 
+    if (caso.clasificar) {
+      roto = clasificarSuelta(limpio, roto);
+      limpio = clasificarSuelta(limpio, limpio);
+    }
+
     const dispara = caso.espera(roto);
-    const calla = !caso.espera(limpio);
+    // Por defecto se exige que el check calle sin el defecto; los casos que
+    // verifican "esto NO debe contarse" lo redefinen.
+    const calla = caso.esperaLimpio ? caso.esperaLimpio(limpio) : !caso.espera(limpio);
     const ok = dispara && calla;
     if (!ok) fallos++;
-    const motivo = dispara ? (calla ? '' : ' (dispara también sin el defecto)') : ' (NO dispara)';
+    const motivo = dispara
+      ? calla
+        ? ''
+        : ' (también sin el defecto)'
+      : ' (NO dispara)';
     console.log(`  ${ok ? 'ok  ' : 'FALLA'} ${caso.nombre}${motivo}`);
   }
-  console.log(fallos ? `\n${fallos} checks no sirven.` : '\nTodos los checks disparan con su defecto y callan sin él.');
+  console.log(
+    fallos
+      ? `\n${fallos} checks no sirven.`
+      : '\nTodos los checks disparan con su defecto y callan sin él.',
+  );
   return fallos ? 1 : 0;
 }
 
