@@ -3,6 +3,7 @@ import {
   Cargando,
   CardTabla,
   ErrorConReintento,
+  LayoutConPanel,
   Paginacion,
   Table,
   type TableColumn,
@@ -15,7 +16,7 @@ import type { ArbolDetalle, PaginaArboles } from '../../queries/dataExplorerQuer
 import type { PerfilResumen } from '../../queries/usuarioQueries';
 import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { tieneFotoSubida } from '../../services/fotoService';
-import { ArbolDetalleModal } from './ArbolDetalleModal';
+import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { DatosToolbar } from './DatosToolbar';
 import { VacioConFiltros } from './VacioConFiltros';
@@ -42,7 +43,7 @@ function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
   );
 }
 
-/** Especie del árbol (ver `BloqueEspecie` en ArbolDetalleModal). */
+/** Especie del árbol (ver `BloqueEspecie` en ArbolDetallePanel). */
 function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
   const codigo = arbol.especieCodigo ?? 'N/N';
   const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
@@ -68,11 +69,16 @@ function CeldaFoto({ fotoUrl }: { fotoUrl: string | null }) {
   );
 }
 
+/** Columnas que el panel lateral repite en grande: sobran mientras está abierto,
+ *  y sin sacarlas las nueve no entran en el ancho que queda. */
+const COLUMNAS_EN_EL_PANEL = ['gps', 'createdAt', 'usuario'];
+
 function columnasArboles(
   codigosParcela: Map<string, string>,
   nombresUsuario: Map<string, string>,
+  conPanel: boolean,
 ): Array<TableColumn<ArbolDetalle>> {
-  return [
+  const columnas: Array<TableColumn<ArbolDetalle>> = [
     {
       key: 'subId',
       header: 'SubID',
@@ -114,6 +120,8 @@ function columnasArboles(
         (arbol.usuarioRegistro && nombresUsuario.get(arbol.usuarioRegistro)) || '—',
     },
   ];
+  if (!conPanel) return columnas;
+  return columnas.filter((columna) => !COLUMNAS_EN_EL_PANEL.includes(columna.key));
 }
 
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
@@ -130,6 +138,7 @@ function TablaArboles({
   pagina,
   onCambiarPagina,
   onRowClick,
+  seleccionadoId,
 }: {
   datos: PaginaArboles;
   codigosParcela: Map<string, string>;
@@ -137,6 +146,7 @@ function TablaArboles({
   pagina: number;
   onCambiarPagina: (pagina: number) => void;
   onRowClick: (arbol: ArbolDetalle) => void;
+  seleccionadoId: string | undefined;
 }) {
   const nombresUsuario = new Map(perfiles.map((perfil) => [perfil.id, perfil.nombre]));
   const hayArboles = datos.total > 0;
@@ -144,7 +154,7 @@ function TablaArboles({
     <CardTabla
       pie={
         hayArboles
-          ? `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle del árbol`
+          ? `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle al costado`
           : undefined
       }
       acciones={
@@ -158,9 +168,10 @@ function TablaArboles({
       }
     >
       <Table
-        columns={columnasArboles(codigosParcela, nombresUsuario)}
+        columns={columnasArboles(codigosParcela, nombresUsuario, seleccionadoId !== undefined)}
         rows={datos.arboles}
         getRowKey={(arbol) => arbol.id}
+        claveSeleccionada={seleccionadoId}
         emptyMessage="Sin árboles para mostrar"
         onRowClick={onRowClick}
       />
@@ -212,28 +223,39 @@ export function ArbolesSection() {
       ) : arboles.data.total === 0 && hayFiltro ? (
         <VacioConFiltros mensaje="Ningún árbol coincide con los filtros" onLimpiar={limpiar} />
       ) : (
-        <TablaArboles
-          datos={arboles.data}
-          codigosParcela={codigosParcela}
-          perfiles={perfiles.data ?? []}
-          pagina={pagina}
-          onCambiarPagina={setPagina}
-          onRowClick={setArbolSeleccionado}
-        />
-      )}
-      {arbolSeleccionado && (
-        <ArbolDetalleModal
-          arbol={arbolSeleccionado}
-          parcelaCodigo={
-            (arbolSeleccionado.parcelaId && codigosParcela.get(arbolSeleccionado.parcelaId)) || null
+        <LayoutConPanel
+          panel={
+            arbolSeleccionado && (
+              <ArbolDetallePanel
+                // Remonta el panel al cambiar de fila: la foto y el mapa se
+                // rearman con el árbol nuevo.
+                key={arbolSeleccionado.id}
+                arbol={arbolSeleccionado}
+                parcelaCodigo={
+                  (arbolSeleccionado.parcelaId &&
+                    codigosParcela.get(arbolSeleccionado.parcelaId)) ||
+                  null
+                }
+                tecnicoNombre={
+                  (arbolSeleccionado.usuarioRegistro &&
+                    nombresUsuario.get(arbolSeleccionado.usuarioRegistro)) ||
+                  null
+                }
+                onCerrar={() => setArbolSeleccionado(null)}
+              />
+            )
           }
-          tecnicoNombre={
-            (arbolSeleccionado.usuarioRegistro &&
-              nombresUsuario.get(arbolSeleccionado.usuarioRegistro)) ||
-            null
-          }
-          onClose={() => setArbolSeleccionado(null)}
-        />
+        >
+          <TablaArboles
+            datos={arboles.data}
+            codigosParcela={codigosParcela}
+            perfiles={perfiles.data ?? []}
+            pagina={pagina}
+            onCambiarPagina={setPagina}
+            onRowClick={setArbolSeleccionado}
+            seleccionadoId={arbolSeleccionado?.id}
+          />
+        </LayoutConPanel>
       )}
     </>
   );
