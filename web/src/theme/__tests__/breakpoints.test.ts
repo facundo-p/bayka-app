@@ -110,10 +110,10 @@ describe('grillas', () => {
   it('ningún track flexible sin piso en 0', () => {
     const fuera: string[] = [];
     for (const { ruta, texto } of CSS) {
-      for (const [linea] of texto.matchAll(/grid-template(?:-columns)?:[^;}]+/g)) {
+      for (const [linea] of texto.matchAll(/grid-template(?:-columns|-rows)?:[^;}]+/g)) {
         if (!linea.includes('fr')) continue;
         // `repeat(auto-fit, minmax(Npx, 1fr))` ya trae su propio piso.
-        if (linea.includes('minmax(0,') || /repeat\(\s*auto-(fit|fill)\s*,\s*minmax\(/.test(linea)) {
+        if (/minmax\(\s*0(px)?\s*,/.test(linea) || /repeat\(\s*auto-(fit|fill)\s*,\s*minmax\(/.test(linea)) {
           continue;
         }
         const hallazgo = `${ruta}: ${linea.replace(/\s+/g, ' ')}`;
@@ -126,7 +126,7 @@ describe('grillas', () => {
   it('el trinquete no tiene entradas de más', () => {
     const encontradas = new Set<string>();
     for (const { ruta, texto } of CSS) {
-      for (const [linea] of texto.matchAll(/grid-template(?:-columns)?:[^;}]+/g)) {
+      for (const [linea] of texto.matchAll(/grid-template(?:-columns|-rows)?:[^;}]+/g)) {
         encontradas.add(`${ruta}: ${linea.replace(/\s+/g, ' ')}`);
       }
     }

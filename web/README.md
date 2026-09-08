@@ -68,10 +68,11 @@ empeoró.
 
 ```sh
 npx playwright install chromium   # una vez por máquina
-npm run dev:demo                  # en otra terminal
+npm run dev:demo                  # en otra terminal (llega con #353)
 npm run audit:responsive
 npm run audit:responsive -- --autotest   # verifica que los checks disparen
 npm run audit:responsive -- --baseline   # regraba el baseline
+npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
 ```
 
 `--autotest` existe porque un check que no puede disparar reporta cero y hace

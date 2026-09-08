@@ -8,14 +8,30 @@
  *
  * Uso:
  *   npx playwright install chromium   # una vez por máquina
- *   npm run dev:demo                  # en otra terminal: servidor sin backend (#353)
+ *   npm run dev:demo                  # en otra terminal (viene de #353)
  *   npm run audit:responsive
  *
  *   npm run audit:responsive -- --baseline   # regraba scripts/auditoria.baseline.json
  *   npm run audit:responsive -- --autotest   # verifica que los checks disparen
+ *   npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
  *   BASE_URL=http://localhost:4173 npm run audit:responsive
  *
- * Sale con código 1 si alguna celda empeoró respecto del baseline.
+ * Sale con código 1 si alguna celda empeoró respecto del baseline, o si una
+ * celda que antes se medía ya no se puede medir.
+ *
+ * Límites conocidos, para no leer de más en un `·`:
+ *  - Solo mide la carga inicial de cada ruta: nada de formularios, modales,
+ *    estados de error/vacío ni nada post-interacción. Con un popover abierto O
+ *    da ruido, porque no tiene noción de capa flotante.
+ *  - O y R solo ven el primer viewport: en los anchos chicos, donde el
+ *    documento scrollea, queda afuera la mayor parte del contenido.
+ *  - Corre siempre a 900px de alto: el escalón `max-height: 760` no se ejerce.
+ *  - `tapados` (texto encima de un control solo-ícono) se releva pero no cuenta
+ *    para el criterio de fallo: elementFromPoint da falsos positivos con
+ *    backdrop-filter y capas sticky.
+ *  - T es un guardarraíl, no una métrica de progreso: hoy da 0 en las 81 celdas
+ *    porque las tablas viven en un contenedor con scroll y las celdas envuelven
+ *    en vez de recortar. Sirve para que eso no se rompa.
  */
 import { chromium } from 'playwright';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -117,7 +133,10 @@ function medir() {
   const paseo = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let nodo = paseo.nextNode(); nodo; nodo = paseo.nextNode()) {
     const contenido = (nodo.textContent || '').trim();
-    if (!contenido || contenido.length >= 80) continue;
+    // Sin tope de largo: recortar acá dejaba ciego al check con los párrafos
+    // descriptivos, que es justo donde hay texto suelto que se puede encimar.
+    // El recorte a 80 va en el reporte.
+    if (!contenido) continue;
     const padre = nodo.parentElement;
     if (!padre || !pintado(padre)) continue;
     if (padre.closest('svg')) continue;
@@ -414,6 +433,15 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.nSolapes > 0,
   },
   {
+    nombre: 'O · dos textos apilados en la misma celda de grilla',
+    ruta: '/usuarios',
+    ancho: 1440,
+    // Estructural, no un position:fixed con coordenadas: es el caso que
+    // destapó que el check ignoraba los nodos de texto largos.
+    css: '[class*="_pieCard_"]{display:grid !important} [class*="_pieCard_"] > *{grid-area:1/1 !important}',
+    espera: (r) => r.nSolapes > 0,
+  },
+  {
     nombre: 'R · texto recortado por un ancestro sin scroll',
     ruta: '/especies',
     ancho: 1920,
@@ -559,7 +587,15 @@ async function main() {
   for (const clave of Object.keys(informe)) {
     const antes = base[clave];
     const ahora = informe[clave];
-    if (!antes || antes.error || ahora.error) continue;
+    if (!antes) continue;
+    // Una celda que antes se medía y ahora no, es una regresión: sin esto,
+    // olvidarse de levantar el server da las 81 celdas en ERR y un verde
+    // impecable — justo el modo de falla que esta auditoría existe para evitar.
+    if (ahora.error) {
+      peores.push(`${clave}: no se pudo medir (${ahora.error.slice(0, 60)})`);
+      continue;
+    }
+    if (antes.error) continue;
     for (const m of DUROS) {
       const a = antes[m] ?? 0;
       const b = ahora[m] ?? 0;
