@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
-import { patronContiene } from './escaparBusqueda';
+import { citarValorOr, patronContiene } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
+import { ESQUEMAS_FOTO_LOCAL } from './fotoConstantes';
 import { leerPaginado } from './leerPaginado';
 import type { EstadoPlantacion } from './plantationQueries';
 
@@ -63,6 +64,8 @@ export type FiltrosArboles = {
   speciesId?: string;
   /** true = solo con GPS, false = solo sin GPS, undefined = todos. */
   conGps?: boolean;
+  /** true = solo con foto subida, false = solo sin ella, undefined = todos. */
+  conFoto?: boolean;
   busqueda?: string;
 };
 
@@ -214,6 +217,33 @@ function consultaBaseArboles(plantationId: string) {
 
 type ConsultaArboles = ReturnType<typeof consultaBaseArboles>;
 
+/** Patrón LIKE de un esquema local, ej. `file://%`. */
+function patronEsquemaLocal(esquema: string): string {
+  return `${esquema}%`;
+}
+
+/**
+ * "Con foto" = foto subida al bucket, igual que `tieneFotoSubida`: no basta con
+ * que `foto_url` no sea nulo, porque una foto que el celular todavía no
+ * sincronizó guarda un `file://` que no se puede mostrar.
+ */
+function aplicarFiltroFoto(consulta: ConsultaArboles, conFoto: boolean): ConsultaArboles {
+  if (conFoto) {
+    consulta = consulta.not('foto_url', 'is', null);
+    for (const esquema of ESQUEMAS_FOTO_LOCAL) {
+      consulta = consulta.not('foto_url', 'like', patronEsquemaLocal(esquema));
+    }
+    return consulta;
+  }
+  const condiciones = [
+    'foto_url.is.null',
+    ...ESQUEMAS_FOTO_LOCAL.map(
+      (esquema) => `foto_url.like.${citarValorOr(patronEsquemaLocal(esquema))}`,
+    ),
+  ];
+  return consulta.or(condiciones.join(','));
+}
+
 function aplicarFiltrosArboles(
   consulta: ConsultaArboles,
   filtros: FiltrosArboles,
@@ -224,6 +254,7 @@ function aplicarFiltrosArboles(
   else if (filtros.speciesId) consulta = consulta.eq('species_id', filtros.speciesId);
   if (filtros.conGps === true) consulta = consulta.not('latitude', 'is', null);
   if (filtros.conGps === false) consulta = consulta.is('latitude', null);
+  if (filtros.conFoto !== undefined) consulta = aplicarFiltroFoto(consulta, filtros.conFoto);
   if (filtros.busqueda) consulta = consulta.ilike('sub_id', patronContiene(filtros.busqueda));
   return consulta;
 }

@@ -1,4 +1,9 @@
-import { aFiltrosArboles, FILTROS_INICIALES, GPS_CON, GPS_SIN } from '../filtrosArboles';
+import {
+  aFiltrosArboles,
+  FILTRO_FOTO,
+  FILTRO_GPS,
+  FILTROS_INICIALES,
+} from '../filtrosArboles';
 
 test('filtros iniciales están todos vacíos', () => {
   expect(FILTROS_INICIALES).toEqual({
@@ -6,6 +11,7 @@ test('filtros iniciales están todos vacíos', () => {
     groupId: '',
     speciesId: '',
     gps: '',
+    foto: '',
     busqueda: '',
   });
 });
@@ -16,6 +22,7 @@ test('mapea filtros vacíos a undefined en todos los campos', () => {
     groupId: undefined,
     speciesId: undefined,
     conGps: undefined,
+    conFoto: undefined,
     busqueda: undefined,
   });
 });
@@ -33,11 +40,29 @@ test('mapea ids de parcela, grupo y especie tal cual cuando están seteados', ()
 });
 
 test('gps "con" mapea a conGps true', () => {
-  expect(aFiltrosArboles({ ...FILTROS_INICIALES, gps: GPS_CON }).conGps).toBe(true);
+  expect(aFiltrosArboles({ ...FILTROS_INICIALES, gps: FILTRO_GPS.con }).conGps).toBe(true);
 });
 
 test('gps "sin" mapea a conGps false', () => {
-  expect(aFiltrosArboles({ ...FILTROS_INICIALES, gps: GPS_SIN }).conGps).toBe(false);
+  expect(aFiltrosArboles({ ...FILTROS_INICIALES, gps: FILTRO_GPS.sin }).conGps).toBe(false);
+});
+
+test('foto "con" mapea a conFoto true', () => {
+  expect(aFiltrosArboles({ ...FILTROS_INICIALES, foto: FILTRO_FOTO.con }).conFoto).toBe(true);
+});
+
+test('foto "sin" mapea a conFoto false', () => {
+  expect(aFiltrosArboles({ ...FILTROS_INICIALES, foto: FILTRO_FOTO.sin }).conFoto).toBe(false);
+});
+
+test('gps y foto son independientes entre sí', () => {
+  const resultado = aFiltrosArboles({
+    ...FILTROS_INICIALES,
+    gps: FILTRO_GPS.sin,
+    foto: FILTRO_FOTO.con,
+  });
+  expect(resultado.conGps).toBe(false);
+  expect(resultado.conFoto).toBe(true);
 });
 
 test('busqueda se recorta (trim) antes de mandarse', () => {

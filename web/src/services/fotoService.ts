@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { ESQUEMAS_FOTO_LOCAL } from '../queries/fotoConstantes';
 
 /** Bucket privado de Storage donde mobile sube las fotos de árboles. */
 const BUCKET_FOTOS_ARBOLES = 'tree-photos';
@@ -6,11 +7,8 @@ const BUCKET_FOTOS_ARBOLES = 'tree-photos';
 /** Validez del enlace firmado: 1 hora. */
 const SEGUNDOS_VALIDEZ_URL = 3600;
 
-/** Esquemas de archivo local de mobile: la foto todavía no se subió al bucket. */
-const ESQUEMAS_LOCALES = ['file://', 'content://'];
-
 function esFotoLocal(fotoUrl: string): boolean {
-  return ESQUEMAS_LOCALES.some((esquema) => fotoUrl.startsWith(esquema));
+  return ESQUEMAS_FOTO_LOCAL.some((esquema) => fotoUrl.startsWith(esquema));
 }
 
 /** true si el árbol tiene una foto subida al bucket (no local ni vacía). */

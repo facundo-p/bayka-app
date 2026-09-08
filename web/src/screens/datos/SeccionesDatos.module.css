@@ -12,10 +12,13 @@
   gap: var(--space-xl-plus);
 }
 
-/* Toolbar única: selector de sección + filtros + scope + recuento, un renglón. */
+/* Toolbar única: selector de sección + filtros + recuento. Un renglón cuando
+   entra; con los seis filtros de Árboles envuelve en pantallas angostas, antes
+   que empujar scroll horizontal de documento. */
 .toolbar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-lg);
   flex-shrink: 0;
 }
@@ -40,6 +43,7 @@
 .filtrosCompactos {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-md);
   min-width: 0;
 }
@@ -49,12 +53,28 @@
   width: 210px;
 }
 
+.filtroGrupo {
+  width: 150px;
+}
+
 .filtroEspecie {
   width: 150px;
 }
 
 .filtroGps {
   width: 120px;
+}
+
+.filtroFoto {
+  width: 130px;
+}
+
+/* Filtro sin sentido todavía (Grupo sin parcela elegida): se ve apagado, no
+   invisible, así queda claro que aparece al elegir parcela. */
+.filtrosCompactos select:disabled {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
 }
 
 /* Achica los inputs/selects: control más bajo y texto a la par del entorno
@@ -67,8 +87,10 @@
   font-size: var(--text-md);
 }
 
+/* 220 y no 240: es lo que hace que los seis filtros entren en un renglón a
+   1366, y el placeholder sigue entrando entero. */
 .busqueda {
-  width: 240px;
+  width: 220px;
 }
 
 /* Punto de color que precede a la especie. El color es data-driven (inline). */

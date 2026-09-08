@@ -234,15 +234,108 @@ describe('sección Árboles', () => {
     });
   });
 
+  test('el filtro de Grupo arranca deshabilitado y se puebla al elegir parcela', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    // Un grupo solo acota dentro de una parcela: sin parcela no hay qué listar.
+    const grupo = screen.getByLabelText('Grupo');
+    expect(grupo).toBeDisabled();
+
+    await usuario.selectOptions(screen.getByLabelText('Parcela'), 'parc-1');
+    await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeEnabled());
+    expect(within(screen.getByLabelText('Grupo')).getByRole('option', { name: 'L1' }))
+      .toBeInTheDocument();
+
+    await usuario.selectOptions(screen.getByLabelText('Grupo'), 'gr-1');
+    await screen.findByRole('cell', { name: 'A-001' });
+    expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
+      metodo: 'eq',
+      columna: 'group_id',
+      valor: 'gr-1',
+    });
+  });
+
+  test('llegar desde Grupos deja los dos selects con el scope heredado', async () => {
+    renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+    const grupo = screen.getByLabelText('Grupo');
+    expect(grupo).toBeEnabled();
+    expect(grupo).toHaveValue('gr-1');
+    // Los chips de scope los reemplazan estos dos selects.
+    expect(screen.queryByLabelText(/^Quitar /)).not.toBeInTheDocument();
+  });
+
+  test('cambiar de parcela resetea el grupo', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.selectOptions(screen.getByLabelText('Parcela'), '');
+    await waitFor(() => expect(screen.getByLabelText('Grupo')).toHaveValue(''));
+    expect(consultasListaArboles().at(-1)?.filtros).not.toContainEqual(
+      expect.objectContaining({ columna: 'group_id' }),
+    );
+  });
+
+  test('"Con foto" excluye las fotos locales sin sincronizar', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.selectOptions(screen.getByLabelText('Foto'), 'con');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    // Mismo criterio que el ✓ de la columna: no basta con que no sea nulo.
+    const filtros = consultasListaArboles().at(-1)?.filtros;
+    expect(filtros).toContainEqual({
+      metodo: 'not',
+      columna: 'foto_url',
+      operador: 'is',
+      valor: null,
+    });
+    expect(filtros).toContainEqual({
+      metodo: 'not',
+      columna: 'foto_url',
+      operador: 'like',
+      valor: 'file://%',
+    });
+    expect(filtros).toContainEqual({
+      metodo: 'not',
+      columna: 'foto_url',
+      operador: 'like',
+      valor: 'content://%',
+    });
+  });
+
+  test('"Sin foto" incluye las nulas y las locales, en un solo OR', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.selectOptions(screen.getByLabelText('Foto'), 'sin');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
+      metodo: 'or',
+      columna: '',
+      valor: 'foto_url.is.null,foto_url.like."file://%",foto_url.like."content://%"',
+    });
+  });
+
   test('la paginación pide el rango siguiente y muestra el estado', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
-    // El pie de la card dice el rango visible; la toolbar, el total.
+    // El total y la página viven solo en el pie de la card: la toolbar ya no
+    // repite el recuento.
     expect(screen.getByText(/Mostrando 1–50 de 120/)).toBeInTheDocument();
     expect(screen.getByText('1 / 3')).toBeInTheDocument();
-    expect(screen.getByText('120 árboles · página 1 de 3')).toBeInTheDocument();
+    expect(screen.queryByText(/página 1 de 3/)).not.toBeInTheDocument();
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 0, hasta: 49 });
 
     await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
