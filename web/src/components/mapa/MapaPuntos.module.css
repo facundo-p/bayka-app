@@ -8,10 +8,13 @@
   border-radius: var(--radius-card-sm);
 }
 
-/* En el dashboard llena el alto restante de la card (alto fijo del panel). */
+/* En el dashboard llena el alto restante de la card.
+ * El piso no es decorativo: a ≤900 la pantalla deja de ser flex column
+ * (AppLayout) y un `flex:1` con piso en 0 resuelve a 0px — el mapa y sus
+ * controles de zoom desaparecían sin que nada se solapara ni desbordara. */
 .panel {
   flex: 1;
-  min-height: 0;
+  min-height: 320px;
 }
 
 /* En el modal de detalle de árbol, alto fijo compacto. */

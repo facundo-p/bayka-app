@@ -130,7 +130,10 @@
 .celdas {
   position: relative;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  /* 140px es el min-content de la celda más ancha: con eso las tres siguen
+     entrando cuando la columna baja de 540 a 465, y recién se apilan cuando de
+     verdad no dan. `auto-fit` nunca abre más tracks que celdas hay. */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   border-top: var(--border-thin) solid var(--color-on-primary-line);
 }
 

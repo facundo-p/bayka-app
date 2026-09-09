@@ -149,7 +149,9 @@
 /* Caja de conteos: dos columnas con el número en serif grande. */
 .conteos {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* El conteo más ancho mide 97px; con 160 entran los dos en el panel (358px)
+     y pasan a uno solo cuando el panel se angosta. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: var(--space-2xl);
   padding: var(--space-2xl);
   border-radius: var(--radius-control);

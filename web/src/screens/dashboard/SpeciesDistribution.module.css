@@ -1,7 +1,8 @@
-/* La card toma el alto del layout; la lista scrollea adentro. */
+/* La card toma el alto del layout; la lista scrollea adentro. El piso deja
+   ver el encabezado y unas cuantas especies cuando la columna es de alto libre. */
 .panel {
   flex: 1;
-  min-height: 0;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2xl);

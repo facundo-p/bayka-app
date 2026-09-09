@@ -63,11 +63,13 @@
 }
 
 /* ─── Cards que toman el alto del layout y scrollean por dentro ──────── */
+/* El piso es lo que sostiene la lista cuando la card deja de tener un alto que
+   repartir: sin él el checklist quedaba en una ventana de 36px. */
 .cardEspecies,
 .cardTecnicos {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 420px;
   overflow: hidden;
   background-color: var(--color-surface);
   border: var(--border-thin) solid var(--color-border);
@@ -75,8 +77,10 @@
   box-shadow: var(--shadow-card);
 }
 
+/* Menos filas que el checklist de especies: le alcanza con un piso más bajo. */
 .cardTecnicos {
   flex: 1;
+  min-height: 260px;
 }
 
 /* Único lugar con scroll de la card de especies. */

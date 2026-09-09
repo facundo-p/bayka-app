@@ -17,10 +17,11 @@
 }
 
 /* Debajo de ~1200px la columna izquierda ya no sostiene las dos columnas del
-   checklist de especies: una sola columna ancha entra mejor que dos angostas. */
+   checklist de especies: una sola columna ancha entra mejor que dos angostas.
+   Apiladas toman su alto natural; lo que sobra lo scrollea `.contenido`. */
 @media (max-width: 1200px) {
   .grilla {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     min-height: auto;
   }
 

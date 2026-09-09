@@ -64,6 +64,22 @@
   padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
 
+/* Apiladas, las tabs no entran en la ventana y `.shell` recorta lo que sobra
+   —los pies de las últimas cards quedaban fuera de alcance—. El scroll vive
+   acá, no en cada tab, y la barra de arriba queda fija. */
+@media (max-width: 1200px) {
+  .contenido {
+    overflow-y: auto;
+  }
+}
+
+/* Acá vuelve el scroll de documento (AppLayout) y este contenedor sobra. */
+@media (max-width: 900px) {
+  .contenido {
+    overflow-y: visible;
+  }
+}
+
 .volver {
   display: inline-block;
   margin-bottom: var(--space-2xl);
