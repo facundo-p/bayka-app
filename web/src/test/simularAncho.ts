@@ -24,6 +24,16 @@ export function simularAncho(ancho: number): void {
   }) as unknown as typeof window.matchMedia;
 }
 
+/**
+ * Vuelve al caso desktop. `simularAncho` pisa `window.matchMedia` global y el
+ * stub de `setupTests` se instala una sola vez al cargar el módulo: sin esto,
+ * un test de pantalla chica se lleva puestos a los que corren después en el
+ * mismo archivo.
+ */
+export function restaurarAncho(): void {
+  simularAncho(Number.POSITIVE_INFINITY);
+}
+
 /** Anchos con nombre, para que los tests no repitan números sueltos. */
 export const ANCHO = {
   desktop: 1920,

@@ -1,7 +1,8 @@
 .cabecera {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-lg);
+  gap: var(--space-sm) var(--space-lg);
   min-width: 0;
 }
 
@@ -20,16 +21,39 @@ a.raiz:hover {
   color: var(--color-text-faint);
 }
 
+/* Título y meta son `nowrap`: sin truncado la caja llega a 0px y el texto se
+   sigue pintando encima del vecino. El ellipsis es lo que convierte el
+   desborde en recorte legible. */
 .titulo {
   margin: 0;
+  flex: 0 1 auto;
+  min-width: 5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: var(--text-detail-title);
   line-height: 1.1;
   color: var(--color-text-heading);
   white-space: nowrap;
 }
 
+/* Cede antes que el título: es contexto, no identidad. */
 .meta {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+/*
+ * 1400 es, según la escala, el ancho donde la barra del detalle deja de entrar
+ * en un renglón. Sin esto la meta se elidía desde ~1500 hasta 1200 y a 1366
+ * —la notebook más común— mostraba MENOS que a 1024, donde ya envolvía.
+ */
+@media (max-width: 1400px) {
+  .meta {
+    flex-basis: 100%;
+  }
 }

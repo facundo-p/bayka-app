@@ -1,12 +1,15 @@
 export { Badge } from './Badge';
+export { BarraHerramientas, RecuentoNumero } from './BarraHerramientas';
 export { Breadcrumb } from './Breadcrumb';
 export { CabeceraSeccion } from './CabeceraSeccion';
 export { Button } from './Button';
+export { CampoBusqueda } from './CampoBusqueda';
 export { Card } from './Card';
 export { CardTabla } from './CardTabla';
 export { CheckboxField } from './CheckboxField';
 export { Cargando } from './Cargando';
 export { CommandMenuTrigger } from './CommandMenuTrigger';
+export { Divisor } from './Divisor';
 export { EmptyState } from './EmptyState';
 export { ErrorConReintento } from './ErrorConReintento';
 export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';

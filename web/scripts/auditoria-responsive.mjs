@@ -118,6 +118,55 @@ function medir() {
     return null;
   };
 
+  /**
+   * Caja del texto REALMENTE pintado: la del Range recortada por cada ancestro
+   * que recorta —incluido su propio elemento, que es el caso del ellipsis—.
+   *
+   * `getBoundingClientRect` de un Range devuelve el ancho completo del texto
+   * aunque `overflow: hidden` lo esté cortando: sin esto un título elidido
+   * sigue "solapando" al vecino que tiene al lado, y agregarle el ellipsis
+   * —el arreglo correcto— sube el número de defectos en vez de bajarlo.
+   *
+   * Para solapes, un contenedor con scroll también recorta: lo que está fuera
+   * de su ventana no se está pintando ahora.
+   */
+  const cajaPintada = (padre, r) => {
+    const caja = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
+      const co = getComputedStyle(anc);
+      const ra = anc.getBoundingClientRect();
+      if (co.overflowX !== 'visible') {
+        caja.left = Math.max(caja.left, ra.left);
+        caja.right = Math.min(caja.right, ra.right);
+      }
+      if (co.overflowY !== 'visible') {
+        caja.top = Math.max(caja.top, ra.top);
+        caja.bottom = Math.min(caja.bottom, ra.bottom);
+      }
+    }
+    return caja;
+  };
+
+  /**
+   * Recorte horizontal que NO se puede deshacer scrolleando: es el que deja
+   * texto ilegible. Por eje y no por elemento —una card que scrollea en
+   * vertical sigue recortando de verdad en horizontal—, y acumulando todos
+   * los ancestros en vez de quedarse con el primero.
+   */
+  const recorteHorizontal = (padre, r) => {
+    let left = r.left;
+    let right = r.right;
+    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
+      const ox = getComputedStyle(anc).overflowX;
+      if (ox === 'auto' || ox === 'scroll') break;
+      if (ox !== 'hidden' && ox !== 'clip') continue;
+      const ra = anc.getBoundingClientRect();
+      left = Math.max(left, ra.left);
+      right = Math.min(right, ra.right);
+    }
+    return { left, right };
+  };
+
   const etiqueta = (el) =>
     (el.getAttribute('aria-label') || el.textContent || el.placeholder || el.tagName)
       .trim()
@@ -149,10 +198,11 @@ function medir() {
     const r = rango.getBoundingClientRect();
     if (r.width <= 2 || r.height <= 2) continue;
     if (r.bottom <= 0 || r.top >= window.innerHeight) continue;
-    // Lo que un ancestro recorta no se está pintando: no puede solaparse.
-    if (fueraDeCaja(padre, false)) continue;
+    // Lo que se recorta no se está pintando: no puede solaparse con nada.
+    const pintadaX = cajaPintada(padre, r);
+    if (pintadaX.right - pintadaX.left <= 2 || pintadaX.bottom - pintadaX.top <= 2) continue;
 
-    textos.push({ nodo, padre, r, texto: contenido });
+    textos.push({ nodo, padre, r, pintada: pintadaX, texto: contenido });
   }
 
   // ── Solapamientos: pares de texto cuyas cajas se pisan de verdad ───────
@@ -164,8 +214,8 @@ function medir() {
       // Texto de un ancestro contra el de su descendiente: no es un solape de
       // layout, es la misma caja anidada.
       if (a.padre.contains(b.padre) || b.padre.contains(a.padre)) continue;
-      const ox = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
-      const oy = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+      const ox = Math.min(a.pintada.right, b.pintada.right) - Math.max(a.pintada.left, b.pintada.left);
+      const oy = Math.min(a.pintada.bottom, b.pintada.bottom) - Math.max(a.pintada.top, b.pintada.top);
       if (ox > 3 && oy > 3) {
         solapes.push({
           a: a.texto.slice(0, 30),
@@ -181,17 +231,22 @@ function medir() {
   // Un ancestro con overflow auto/scroll NO recorta: el contenido se alcanza
   // scrolleando. Hay que cortar la subida ahí, o se termina culpando al
   // `.shell { overflow: hidden }` del layout por texto perfectamente accesible.
+  //
+  // Recorte SIN aviso (la caja corta el texto y nada lo indica) = defecto.
+  // Truncado con contrato de ellipsis completo (nowrap + overflow + ellipsis)
+  // = deliberado: se releva aparte y no cuenta para el criterio de fallo. Es
+  // la salida que el plan prescribe para un dato de largo variable en un slot
+  // fijo; contarla haría que agregar el ellipsis empeore la nota.
   const recortados = [];
+  const truncados = [];
   for (const { padre, r, texto } of textos) {
-    for (let anc = padre; anc && anc !== document.body; anc = anc.parentElement) {
-      const ox = getComputedStyle(anc).overflowX;
-      if (ox === 'auto' || ox === 'scroll') break;
-      if (ox !== 'hidden' && ox !== 'clip') continue;
-      const ra = anc.getBoundingClientRect();
-      const fuera = Math.round(Math.max(r.right - ra.right, ra.left - r.left));
-      if (fuera > 2) recortados.push({ texto: texto.slice(0, 30), fuera });
-      break;
-    }
+    const caja = recorteHorizontal(padre, r);
+    const fuera = Math.round(Math.max(r.right - caja.right, caja.left - r.left));
+    if (fuera <= 2) continue;
+    const co = getComputedStyle(padre);
+    const conEllipsis =
+      co.textOverflow === 'ellipsis' && co.whiteSpace === 'nowrap' && co.overflowX !== 'visible';
+    (conEllipsis ? truncados : recortados).push({ texto: texto.slice(0, 30), fuera });
   }
 
   // ── Controles inalcanzables ─────────────────────────────────────────────
@@ -238,6 +293,78 @@ function medir() {
     const centro = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     if (centro && !el.contains(centro) && centro !== el && !centro.contains(el)) {
       tapados.push({ q: etiqueta(el) });
+    }
+  }
+
+  // ── Controles desparejos en una misma fila ──────────────────────────────
+  // Dos controles vecinos con altos distintos leen como error de estilo, y
+  // ninguna otra métrica los ve: no solapan, no recortan y están dentro del
+  // viewport. Es exactamente lo que pasó al mover el CSS del buscador a un
+  // módulo compartido, donde perdió la cascada contra FormField y quedó 12px
+  // más alto que sus vecinos en las cuatro barras.
+  const ALTO_DESPAREJO = 8;
+
+  /**
+   * Un botón de texto plano (sin borde ni fondo) no es una caja: su alto es el
+   * de su línea y no tiene por qué coincidir con el de un input al lado.
+   */
+  const esCaja = (el) => {
+    const co = getComputedStyle(el);
+    const conBorde =
+      parseFloat(co.borderTopWidth) > 0 || parseFloat(co.borderBottomWidth) > 0;
+    const conFondo = co.backgroundColor !== 'rgba(0, 0, 0, 0)';
+    return conBorde || conFondo;
+  };
+
+  /**
+   * Un control que apila su propio contenido (etiqueta + sub-etiqueta) fija su
+   * alto: no tiene por qué medir lo mismo que un input de una línea al lado.
+   */
+  const apilaContenido = (el) => {
+    const co = getComputedStyle(el);
+    return (
+      co.display.includes('flex') &&
+      co.flexDirection.startsWith('column') &&
+      el.children.length > 1
+    );
+  };
+
+  /**
+   * Primer ancestro común: sólo cuenta si es una fila flex. Dos controles que
+   * casualmente comparten la misma banda vertical en columnas distintas de la
+   * pantalla no están "en la misma fila".
+   */
+  const mismaFilaFlex = (a, b) => {
+    for (let anc = a.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
+      if (!anc.contains(b)) continue;
+      const co = getComputedStyle(anc);
+      return co.display.includes('flex') && !co.flexDirection.startsWith('column');
+    }
+    return false;
+  };
+
+  const desparejos = [];
+  const controles = [];
+  for (const el of document.querySelectorAll('input, select, button, [role="radio"]')) {
+    if (!pintado(el) || !esCaja(el) || apilaContenido(el)) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) controles.push({ el, r });
+  }
+  for (let i = 0; i < controles.length; i++) {
+    for (let j = i + 1; j < controles.length; j++) {
+      const a = controles[i];
+      const b = controles[j];
+      if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+      const centroA = (a.r.top + a.r.bottom) / 2;
+      const centroB = (b.r.top + b.r.bottom) / 2;
+      if (Math.abs(centroA - centroB) > 3) continue;
+      if (Math.abs(a.r.height - b.r.height) <= ALTO_DESPAREJO) continue;
+      if (!mismaFilaFlex(a.el, b.el)) continue;
+      desparejos.push({
+        a: etiqueta(a.el),
+        b: etiqueta(b.el),
+        altos: `${Math.round(a.r.height)}/${Math.round(b.r.height)}`,
+      });
     }
   }
 
@@ -312,11 +439,15 @@ function medir() {
     nSolapes: solapes.length,
     recortados: recortados.slice(0, 4),
     nRecortados: recortados.length,
+    truncados: truncados.slice(0, 4),
+    nTruncados: truncados.length,
     fueraViewport: fueraViewport.slice(0, 4),
     nFueraViewport: fueraViewport.length,
     textoVisible: (document.body.innerText ?? '').trim().length,
     tapados: tapados.slice(0, 4),
     nTapados: tapados.length,
+    desparejos: desparejos.slice(0, 4),
+    nDesparejos: desparejos.length,
     cards,
     tablasRecortadas,
     nTablasRecortadas: tablasRecortadas.length,
@@ -371,13 +502,23 @@ function celda(f) {
   if (f.nRecortados) p.push(`R${f.nRecortados}`);
   if (f.nFueraViewport) p.push(`X${f.nFueraViewport}`);
   if (f.nVacia) p.push('VACIA');
+  if (f.nDesparejos) p.push(`D${f.nDesparejos}`);
   if (f.nColapsadas) p.push(`H${f.nColapsadas}`);
   if (f.nTablasRecortadas) p.push(`T${f.nTablasRecortadas}`);
   return p.join('/') || '·';
 }
 
 /** Métricas que cuentan para decir si una celda empeoró. `tapados` no entra. */
-const DUROS = ['scrollH', 'nSolapes', 'nRecortados', 'nFueraViewport', 'nColapsadas', 'nTablasRecortadas'];
+const DUROS = [
+  'nVacia',
+  'scrollH',
+  'nSolapes',
+  'nRecortados',
+  'nFueraViewport',
+  'nColapsadas',
+  'nTablasRecortadas',
+  'nDesparejos',
+];
 
 /**
  * El baseline entra al repo, así que guarda lo mínimo que el trinquete compara:
@@ -451,12 +592,12 @@ const CASOS_AUTOTEST = [
     nombre: 'O · dos textos encimados',
     ruta: '/especies',
     ancho: 1920,
-    // Dos encabezados en la MISMA coordenada: el solape no depende de dónde caiga
-    // cada control ni de los datos, que es lo que hacía que el caso dejara de
-    // disparar cuando la pantalla cambiaba de layout.
+    // Estructural y no coordenadas fijas: un `top/left` a mano deja de pisar
+    // nada en cuanto el layout se mueve, y el check pasa a estar sin ejercer.
     css:
-      'thead th:nth-child(1), thead th:nth-child(2){position:fixed !important;' +
-      'top:300px !important;left:600px !important;z-index:99}',
+      '[class*="_barra_"]{display:grid !important}' +
+      ' [class*="_barra_"] > *{grid-area:1/1 !important;justify-self:start !important;' +
+      'margin:0 !important}',
     espera: (r) => r.nSolapes > 0,
   },
   {
@@ -477,24 +618,30 @@ const CASOS_AUTOTEST = [
     espera: (r) => r.nSolapes > 0,
   },
   {
-    nombre: 'R · texto recortado por un ancestro sin scroll',
+    nombre: 'R · texto recortado sin aviso',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_toolbar_"]{width:180px !important;overflow-x:hidden !important}',
+    // Mismo apretón que el caso del ellipsis, pero sin `text-overflow`: acá
+    // no hay nada que le diga al usuario que falta texto.
+    css:
+      '[class*="_recuento_"]{display:block !important;width:40px !important;' +
+      'overflow:hidden !important;white-space:nowrap !important}',
     espera: (r) => r.nRecortados > 0,
   },
   {
     nombre: 'X · control fuera del viewport',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_toolbar_"] button{position:relative !important;left:3000px !important}',
+    css: '[class*="_barra_"] button{position:relative !important;left:3000px !important}',
     espera: (r) => r.nFueraViewport > 0,
   },
   {
     nombre: 'X · control recortado por una card que no scrollea',
     ruta: '/especies',
     ancho: 1920,
-    css: '[class*="_toolbar_"]{width:120px !important;overflow:hidden !important}',
+    css:
+      '[class*="_barra_"]{width:120px !important;overflow:hidden !important;' +
+      'flex-wrap:nowrap !important}',
     espera: (r) => r.nFueraViewport > 0,
   },
   {
@@ -505,6 +652,39 @@ const CASOS_AUTOTEST = [
     css: 'table{min-width:1400px !important}',
     espera: (r) => r.nFueraViewport === 0,
     esperaLimpio: (r) => r.nFueraViewport === 0,
+  },
+  {
+    nombre: 'R · truncado con ellipsis NO cuenta (sí como truncado)',
+    ruta: '/especies',
+    ancho: 1920,
+    // El arreglo que las fases 1 y 5 prescriben: no puede subir la nota.
+    css:
+      '[class*="_recuento_"]{display:block !important;width:60px !important;overflow:hidden' +
+      ' !important;white-space:nowrap !important;text-overflow:ellipsis !important}',
+    espera: (r) => r.nRecortados === 0 && r.nTruncados > 0,
+    esperaLimpio: (r) => r.nRecortados === 0,
+  },
+  {
+    nombre: 'O · sin ellipsis la meta del detalle se encima con las tabs',
+    ruta: '/plantaciones/p1',
+    ancho: 1440,
+    // El defecto original de #357, y su arreglo, en el mismo caso: sacándole
+    // el truncado a `.meta` el check tiene que dispararse, y con el truncado
+    // puesto tiene que callarse. Si midiera la caja del Range en vez de la
+    // pintada, la segunda mitad fallaría.
+    css: '[class*="_meta_"]{overflow:visible !important;text-overflow:clip !important}',
+    espera: (r) => r.nSolapes > 0,
+    esperaLimpio: (r) => r.nSolapes === 0,
+  },
+  {
+    nombre: 'D · control más alto que su vecino de fila',
+    ruta: '/especies',
+    ancho: 1920,
+    // La regresión que las otras métricas no vieron: un control que pierde su
+    // alto compacto no solapa, no recorta y está dentro del viewport.
+    css: '[class*="_campo_"] input{min-height:64px !important}',
+    espera: (r) => r.nDesparejos > 0,
+    esperaLimpio: (r) => r.nDesparejos === 0,
   },
   {
     nombre: 'VACIA · una pantalla que no renderiza no puntúa limpio',
@@ -523,6 +703,24 @@ const CASOS_AUTOTEST = [
   },
 ];
 
+/**
+ * Espera a que el DOM deje de crecer antes de medir.
+ *
+ * `networkidle` más un timeout fijo no alcanza: Leaflet y los gráficos montan
+ * después, y una corrida que mide antes reporta la pantalla limpia porque los
+ * controles todavía no existen. Grabar el baseline en una corrida así vuelve
+ * regresión falsa a todas las siguientes —pasó con dashboard@900—.
+ */
+async function asentar(pagina, intentos = 10, paso = 200) {
+  let previo = -1;
+  for (let i = 0; i < intentos; i++) {
+    await pagina.waitForTimeout(paso);
+    const actual = await pagina.evaluate(() => document.querySelectorAll('*').length);
+    if (actual === previo) return;
+    previo = actual;
+  }
+}
+
 /** Corre el clasificador real de colapso sobre una medición suelta. */
 function clasificarSuelta(referencia, medicion) {
   const informe = { 'x@2': referencia, 'x@1': medicion };
@@ -535,7 +733,7 @@ async function autotest(navegador) {
   for (const caso of CASOS_AUTOTEST) {
     const pagina = await navegador.newPage({ viewport: { width: caso.ancho, height: 900 } });
     await pagina.goto(BASE_URL + caso.ruta, { waitUntil: 'networkidle', timeout: 20000 });
-    await pagina.waitForTimeout(400);
+    await asentar(pagina);
 
     let limpio = await pagina.evaluate(medir);
     await pagina.addStyleTag({ content: caso.css });
@@ -586,7 +784,7 @@ async function main() {
       const clave = `${pantalla}@${ancho}`;
       try {
         await pagina.goto(BASE_URL + ruta, { waitUntil: 'networkidle', timeout: 20000 });
-        await pagina.waitForTimeout(400);
+        await asentar(pagina);
         const medicion = await pagina.evaluate(medir);
         // Una pantalla en blanco da cero en todos los checks y se lee como
         // impecable. Sin esto, un crash de render se reporta como una fila
@@ -610,7 +808,8 @@ async function main() {
   // ── Matriz ──────────────────────────────────────────────────────────────
   const ancho0 = 17;
   console.log('\nS=scroll horizontal  O=solapes  R=texto recortado  X=fuera del viewport');
-  console.log('H=card colapsada  T=tabla que recorta sin scrollear\n');
+  console.log('H=card colapsada  T=tabla que recorta sin scrollear  D=controles desparejos');
+  console.log('VACIA=la pantalla no renderizó nada\n');
   console.log('pantalla'.padEnd(ancho0) + ANCHOS.map((a) => String(a).padStart(13)).join(''));
   for (const [pantalla] of RUTAS) {
     const fila = ANCHOS.map((a) => celda(informe[`${pantalla}@${a}`]).padStart(13)).join('');

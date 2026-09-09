@@ -94,7 +94,13 @@ Los bugs de layout no los ve ningún test: jsdom no evalúa layout, así que tod
 los `getBoundingClientRect` dan cero. Para eso está `npm run audit:responsive`,
 que recorre 9 pantallas × 9 anchos en Chromium y reporta scroll horizontal,
 solapamientos, texto recortado, controles inalcanzables, cards colapsadas,
-tablas que recortan en vez de scrollear y pantallas que no renderizaron nada.
+tablas que recortan en vez de scrollear, pantallas que no renderizaron nada y
+controles con altos distintos en una misma fila —este último es el único que
+ve una regresión de estilo que no rompe la geometría, como un campo que pierde
+su alto compacto al cambiar de módulo CSS—.
+Un texto truncado con contrato de ellipsis completo (`nowrap` + `overflow` +
+`text-overflow`) se releva aparte y no cuenta: es la salida deliberada para un
+dato de largo variable, y contarla haría que el arreglo correcto suba la nota.
 Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
 empeoró.
 

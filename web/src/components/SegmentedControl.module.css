@@ -1,5 +1,9 @@
+/* Envuelve sus segmentos: sin esto la píldora es un piso duro de ancho para
+   la barra que la contiene, y son cuatro barras las que la usan. */
 .group {
   display: inline-flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: var(--space-xs);
   padding: 3px;
   background-color: var(--color-divider);

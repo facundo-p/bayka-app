@@ -1,0 +1,44 @@
+/* Fila de herramientas de un listado. Envuelve antes que desbordarse: la regla
+   que atraviesa toda la escala es que ninguna fila puede tener min-content
+   mayor que el viewport. */
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg);
+  flex-shrink: 0;
+}
+
+/*
+ * Controles compactos: la barra los achica a su alto. Vivía copiado en los
+ * cuatro módulos de pantalla, que es como se coló que un control quedara 12px
+ * más alto que sus vecinos sin que nadie lo notara.
+ *
+ * `padding-right` va sólo en los input: en un `<select>` ese hueco es el que
+ * `Select` reserva para su flecha, y pisarlo la dibuja encima del texto.
+ */
+.barra :is(input, select) {
+  min-height: var(--control-height-sm);
+  max-width: 100%;
+  padding-left: var(--space-lg);
+  border-radius: var(--radius-control);
+  font-size: var(--text-md);
+}
+
+.barra input {
+  padding-right: var(--space-lg);
+}
+
+.recuento {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
+  white-space: nowrap;
+}
+
+.recuentoNumero {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--color-text-heading);
+}

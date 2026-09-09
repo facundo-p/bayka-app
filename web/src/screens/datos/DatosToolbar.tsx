@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { SegmentedControl } from '../../components';
-import styles from './SeccionesDatos.module.css';
+import { BarraHerramientas, SegmentedControl } from '../../components';
 
 /** Sección activa de la tab Datos (coincide con el sub-segmento de la ruta). */
 export type SegmentoDatos = 'arboles' | 'grupos' | 'parcelas';
@@ -35,17 +34,19 @@ export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps
   };
 
   return (
-    <div className={styles.toolbar}>
-      <SegmentedControl
-        options={OPCIONES}
-        value={segmento}
-        onChange={cambiarSegmento}
-        size="sm"
-        aria-label="Sección de datos"
-      />
-      {children && <span className={styles.divisor} aria-hidden="true" />}
+    <BarraHerramientas
+      encabezado={
+        <SegmentedControl
+          options={OPCIONES}
+          value={segmento}
+          onChange={cambiarSegmento}
+          size="sm"
+          aria-label="Sección de datos"
+        />
+      }
+      recuento={recuento}
+    >
       {children}
-      {recuento && <span className={styles.recuento}>{recuento}</span>}
-    </div>
+    </BarraHerramientas>
   );
 }

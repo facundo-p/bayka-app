@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, Outlet, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ChevronDown, Download, Pencil, Plus } from 'lucide-react';
+import { ChevronDown, Download, MoreHorizontal, Pencil, Plus } from 'lucide-react';
 import {
   Button,
   CabeceraSeccion,
   Cargando,
+  Divisor,
   EmptyState,
   ErrorConReintento,
   EstadoPlantacionBadge,
@@ -17,6 +18,7 @@ import {
   type TabItem,
 } from '../components';
 import { useDescarga } from '../hooks/useDescarga';
+import { BP, useMediaQuery } from '../hooks/useMediaQuery';
 import { formatearFechaCorta } from '../lib/fechas';
 import { obtenerPlantacion, type Plantacion } from '../queries/plantationQueries';
 import { idsGenerados } from '../queries/idsQueries';
@@ -38,6 +40,7 @@ const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar l
 
 const TAMANO_ICONO = 16;
 const TAMANO_CHEVRON = 14;
+const TAMANO_ICONO_MENU = 18;
 
 function tabsDePlantacion(id: string): TabItem[] {
   return [
@@ -102,33 +105,22 @@ function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: Descarga
 
 type Descarga = ReturnType<typeof useDescargaKml>;
 
-/** "Generar IDs" abre el modal de confirmación (issue #232: la generación es
- *  exclusiva de la web, server-side vía RPC transaccional). */
-function BotonGenerarIds({ plantationId }: { plantationId: string }) {
-  const [abierto, setAbierto] = useState(false);
-  return (
-    <>
-      <Button variant="primary" size="sm" onClick={() => setAbierto(true)}>
-        <Plus size={TAMANO_ICONO} aria-hidden />
-        Generar IDs
-      </Button>
-      {abierto && <GenerarIdsModal plantationId={plantationId} onClose={() => setAbierto(false)} />}
-    </>
-  );
-}
-
-interface MenuExportarProps {
+interface AccionesProps {
   kml: Descarga;
   xlsx: Descarga;
   csv: Descarga;
   /** Las planillas necesitan los IDs definitivos; el KML no. */
   idsPendientes: boolean;
+  onEditar: () => void;
+  /** La generación es exclusiva de la web, server-side vía RPC (#232): abre
+   *  el modal de confirmación. */
+  onGenerarIds: () => void;
 }
 
-/** Las tres descargas agrupadas en un solo menú. */
-function MenuExportar({ kml, xlsx, csv, idsPendientes }: MenuExportarProps) {
+/** Las tres descargas como ítems de menú. */
+function itemsExportar({ kml, xlsx, csv, idsPendientes }: AccionesProps): ItemDesplegable[] {
   const motivoPlanilla = idsPendientes ? MOTIVO_IDS_PENDIENTES : null;
-  const items: ItemDesplegable[] = [
+  return [
     { clave: 'kml', etiqueta: 'Descargar KML', onSeleccionar: () => void kml.descargar() },
     {
       clave: 'xlsx',
@@ -143,20 +135,73 @@ function MenuExportar({ kml, xlsx, csv, idsPendientes }: MenuExportarProps) {
       onSeleccionar: () => void csv.descargar(),
     },
   ];
+}
+
+/** Barra ancha: cada acción con su propio control. */
+function AccionesDesplegadas(props: AccionesProps) {
+  const { kml, xlsx, csv, idsPendientes, onEditar, onGenerarIds } = props;
   const descargando = kml.descargando || xlsx.descargando || csv.descargando;
   return (
-    <MenuDesplegable
-      etiqueta="Exportar"
-      items={items}
-      disparador={(props) => (
-        <Button variant="secondary" size="sm" loading={descargando} {...props}>
-          <Download size={TAMANO_ICONO} aria-hidden />
-          Exportar
-          <ChevronDown size={TAMANO_CHEVRON} aria-hidden />
+    <>
+      <button
+        type="button"
+        className={styles.botonIcono}
+        onClick={onEditar}
+        aria-label="Editar"
+        title="Editar"
+      >
+        <Pencil size={TAMANO_ICONO} aria-hidden />
+      </button>
+      <MenuDesplegable
+        etiqueta="Exportar"
+        items={itemsExportar(props)}
+        disparador={(propsDisparador) => (
+          <Button variant="secondary" size="sm" loading={descargando} {...propsDisparador}>
+            <Download size={TAMANO_ICONO} aria-hidden />
+            Exportar
+            <ChevronDown size={TAMANO_CHEVRON} aria-hidden />
+          </Button>
+        )}
+      />
+      {idsPendientes && (
+        <Button variant="primary" size="sm" onClick={onGenerarIds}>
+          <Plus size={TAMANO_ICONO} aria-hidden />
+          Generar IDs
         </Button>
+      )}
+    </>
+  );
+}
+
+/** Barra angosta: las mismas acciones en un solo «⋯». Desplegadas se comen
+ *  tres renglones de barra y empujan el contenido fuera del primer pantallazo. */
+function AccionesPlegadas(props: AccionesProps) {
+  const items: ItemDesplegable[] = [
+    { clave: 'editar', etiqueta: 'Editar plantación', onSeleccionar: props.onEditar },
+    ...itemsExportar(props),
+  ];
+  if (props.idsPendientes) {
+    items.push({ clave: 'ids', etiqueta: 'Generar IDs', onSeleccionar: props.onGenerarIds });
+  }
+  return (
+    <MenuDesplegable
+      etiqueta="Acciones de la plantación"
+      items={items}
+      disparador={(propsDisparador) => (
+        <button type="button" className={styles.botonIcono} {...propsDisparador}>
+          <MoreHorizontal size={TAMANO_ICONO_MENU} aria-hidden />
+        </button>
       )}
     />
   );
+}
+
+/** Las tres descargas de la barra, con el mensaje que devuelva cualquiera. */
+function useDescargasDetalle(plantacion: Plantacion) {
+  const kml = useDescargaKml(plantacion);
+  const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
+  const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
+  return { kml, xlsx, csv, mensaje: xlsx.mensaje ?? csv.mensaje ?? kml.mensaje };
 }
 
 /** Lado derecho de la barra: tabs, editar y exportación. El mensaje de
@@ -168,14 +213,22 @@ function AccionesDetalle({
   plantacion: Plantacion;
   onEditar: () => void;
 }) {
-  const kml = useDescargaKml(plantacion);
-  const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
-  const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
-  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje;
+  const { kml, xlsx, csv, mensaje } = useDescargasDetalle(plantacion);
+  const [generandoIds, setGenerandoIds] = useState(false);
+  const plegado = useMediaQuery(BP.tablet);
   const { data: generados } = useQuery({
     queryKey: ['ids-generados', plantacion.id],
     queryFn: () => idsGenerados(plantacion.id),
   });
+
+  const acciones: AccionesProps = {
+    kml,
+    xlsx,
+    csv,
+    idsPendientes: generados === false,
+    onEditar,
+    onGenerarIds: () => setGenerandoIds(true),
+  };
 
   return (
     <div className={styles.acciones}>
@@ -184,22 +237,15 @@ function AccionesDetalle({
         label="Secciones de la plantación"
         tabs={tabsDePlantacion(plantacion.id)}
       />
-      <span className={styles.divisor} aria-hidden />
-      <button
-        type="button"
-        className={styles.editar}
-        onClick={onEditar}
-        aria-label="Editar"
-        title="Editar"
-      >
-        <Pencil size={TAMANO_ICONO} aria-hidden />
-      </button>
-      <MenuExportar kml={kml} xlsx={xlsx} csv={csv} idsPendientes={generados === false} />
-      {generados === false && <BotonGenerarIds plantationId={plantacion.id} />}
+      <Divisor />
+      {plegado ? <AccionesPlegadas {...acciones} /> : <AccionesDesplegadas {...acciones} />}
       {mensaje && (
         <span className={styles.mensajeAccion} role="alert">
           {mensaje}
         </span>
+      )}
+      {generandoIds && (
+        <GenerarIdsModal plantationId={plantacion.id} onClose={() => setGenerandoIds(false)} />
       )}
     </div>
   );

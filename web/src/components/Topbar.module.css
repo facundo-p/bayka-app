@@ -7,9 +7,12 @@
   position: static;
   z-index: 20;
   display: flex;
+  /* Envuelve en vez de desbordarse. `space-between` fuerza un renglón único:
+     el reparto lo hace el `margin-left: auto` de `.right`, que sigue pegando
+     las acciones a la derecha cuando entran y las baja de renglón cuando no. */
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2xl);
+  gap: var(--space-lg) var(--space-2xl);
   flex-shrink: 0;
   padding: var(--space-2xl) var(--page-pad-x);
   background-color: var(--color-topbar-bg);
@@ -20,13 +23,20 @@
 .left {
   display: flex;
   align-items: center;
+  /* Base grande a propósito: ante la duda el navegador baja `.right` de
+     renglón antes que exprimir el título hasta hacerlo ilegible. */
+  flex: 1 1 22rem;
   min-width: 0;
 }
 
 .right {
+  margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-lg);
+  min-width: 0;
 }
 
 /* Barra única del detalle: el breadcrumb es el título y las tabs viven acá. */
