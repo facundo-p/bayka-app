@@ -439,6 +439,7 @@ function medir() {
     nTruncados: truncados.length,
     fueraViewport: fueraViewport.slice(0, 4),
     nFueraViewport: fueraViewport.length,
+    textoVisible: (document.body.innerText ?? '').trim().length,
     tapados: tapados.slice(0, 4),
     nTapados: tapados.length,
     desparejos: desparejos.slice(0, 4),
@@ -455,6 +456,10 @@ function medir() {
  * grande de la corrida: debajo de 40px es colapso seguro, y por debajo del 40%
  * de su alto de referencia también.
  */
+/* Menos texto visible que esto y la pantalla no se renderizó: la de contenido
+   más pobre (novedades) pasa largamente de acá. */
+const MINIMO_TEXTO_PANTALLA = 200;
+
 const TAMANO_COLAPSO_DURO = 40;
 const FRACCION_COLAPSO = 0.4;
 
@@ -492,6 +497,7 @@ function celda(f) {
   if (f.nSolapes) p.push(`O${f.nSolapes}`);
   if (f.nRecortados) p.push(`R${f.nRecortados}`);
   if (f.nFueraViewport) p.push(`X${f.nFueraViewport}`);
+  if (f.nVacia) p.push('VACIA');
   if (f.nDesparejos) p.push(`D${f.nDesparejos}`);
   if (f.nColapsadas) p.push(`H${f.nColapsadas}`);
   if (f.nTablasRecortadas) p.push(`T${f.nTablasRecortadas}`);
@@ -500,6 +506,7 @@ function celda(f) {
 
 /** Métricas que cuentan para decir si una celda empeoró. `tapados` no entra. */
 const DUROS = [
+  'nVacia',
   'scrollH',
   'nSolapes',
   'nRecortados',
@@ -656,6 +663,14 @@ const CASOS_AUTOTEST = [
     esperaLimpio: (r) => r.nDesparejos === 0,
   },
   {
+    nombre: 'VACIA · una pantalla que no renderiza no puntúa limpio',
+    ruta: '/usuarios',
+    ancho: 1440,
+    css: 'body > * { display: none !important }',
+    espera: (r) => r.textoVisible < 200,
+    esperaLimpio: (r) => r.textoVisible >= 200,
+  },
+  {
     nombre: 'S · scroll horizontal de documento',
     ruta: '/especies',
     ancho: 1920,
@@ -746,7 +761,12 @@ async function main() {
       try {
         await pagina.goto(BASE_URL + ruta, { waitUntil: 'networkidle', timeout: 20000 });
         await asentar(pagina);
-        informe[clave] = await pagina.evaluate(medir);
+        const medicion = await pagina.evaluate(medir);
+        // Una pantalla en blanco da cero en todos los checks y se lee como
+        // impecable. Sin esto, un crash de render se reporta como una fila
+        // limpia —que es exactamente lo que pasó con el mapa y `.not(is,null)`.
+        medicion.nVacia = medicion.textoVisible < MINIMO_TEXTO_PANTALLA ? 1 : 0;
+        informe[clave] = medicion;
         if (CON_CAPTURAS) {
           mkdirSync(CAPTURAS, { recursive: true });
           await pagina.screenshot({ path: join(CAPTURAS, `${pantalla}-${ancho}.png`) });
@@ -764,7 +784,8 @@ async function main() {
   // ── Matriz ──────────────────────────────────────────────────────────────
   const ancho0 = 17;
   console.log('\nS=scroll horizontal  O=solapes  R=texto recortado  X=fuera del viewport');
-  console.log('H=card colapsada  T=tabla que recorta sin scrollear  D=controles desparejos\n');
+  console.log('H=card colapsada  T=tabla que recorta sin scrollear  D=controles desparejos');
+  console.log('VACIA=la pantalla no renderizó nada\n');
   console.log('pantalla'.padEnd(ancho0) + ANCHOS.map((a) => String(a).padStart(13)).join(''));
   for (const [pantalla] of RUTAS) {
     const fila = ANCHOS.map((a) => celda(informe[`${pantalla}@${a}`]).padStart(13)).join('');
