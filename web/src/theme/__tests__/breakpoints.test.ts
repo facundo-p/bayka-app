@@ -94,10 +94,9 @@ const GRILLAS_PENDIENTES = [
   '/screens/dashboard/ResumenPlantacion.module.css: grid-template-columns: 1fr 1fr 1fr',
   '/screens/datos/ArbolDetallePanel.module.css: grid-template-columns: repeat(2, 1fr)',
   '/screens/especies/Especies.module.css: grid-template-columns: 1fr 1fr',
-  // Ya arreglados en #358 (PR aparte), siguen acá hasta que ese merge llegue.
+  // Columna única dentro de un @media: la de dos ya la arregló #358, pero un
+  // track `1fr` solo tampoco baja de su min-content.
   '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr',
-  '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr 1fr',
-  '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1.25fr 1fr',
   '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1fr',
 ];
 
