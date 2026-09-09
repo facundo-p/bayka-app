@@ -23,6 +23,7 @@ import { contarSuperadminsActivos, type AccionUsuario } from './usuarios/accione
 import { AgregarUsuarioModal } from './usuarios/AgregarUsuarioModal';
 import { CambiarPasswordModal } from './usuarios/CambiarPasswordModal';
 import { columnasUsuarios } from './usuarios/columnas';
+import { useColumnasVisibles } from '../hooks/useColumnasVisibles';
 import { ConfirmarModal } from './usuarios/ConfirmarModal';
 import {
   calcularMeta,
@@ -127,6 +128,7 @@ export function UsuariosScreen() {
       ),
     [perfil?.id, superadminsActivos],
   );
+  const columnasVisibles = useColumnasVisibles(columnas);
   const visibles = useMemo(
     () => filtrarUsuarios(data ?? [], { busqueda: busquedaDemorada, rol, estado }),
     [data, busquedaDemorada, rol, estado],
@@ -196,7 +198,7 @@ export function UsuariosScreen() {
                 pieDerecha={PIE_NOTA}
               >
                 <Table
-                  columns={columnas}
+                  columns={columnasVisibles}
                   rows={visibles}
                   getRowKey={(usuario) => usuario.id}
                   claveSeleccionada={seleccionado?.id}

@@ -13,6 +13,7 @@ import { DatosToolbar } from './DatosToolbar';
 import { filtrosAParams } from './filtrosUrl';
 import { useParcelasDatos } from './useDatosQueries';
 import styles from './SeccionesDatos.module.css';
+import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 
 function CeldaDescripcion({ descripcion }: { descripcion: string | null }) {
   if (!descripcion) return <>—</>;
@@ -32,6 +33,7 @@ const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
   },
   {
     key: 'descripcion',
+    fueraEnMovil: true,
     header: 'Descripción',
     render: (parcela) => <CeldaDescripcion descripcion={parcela.descripcion} />,
   },
@@ -49,6 +51,7 @@ const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
   },
   {
     key: 'createdAt',
+    fueraEnMovil: true,
     header: 'Creada',
     render: (parcela) => formatearFechaCorta(parcela.createdAt),
   },
@@ -56,6 +59,7 @@ const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
 
 /** Sección Parcelas de la tab Datos: tabla de parcelas activas con counts. */
 export function ParcelasSection() {
+  const columnas = useColumnasVisibles(COLUMNAS);
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { data, isPending, isError, refetch } = useParcelasDatos(id);
@@ -83,7 +87,7 @@ export function ParcelasSection() {
       ) : (
         <CardTabla pie="Clic en una fila abre los grupos de la parcela">
           <Table
-            columns={COLUMNAS}
+            columns={columnas}
             rows={data}
             getRowKey={(parcela) => parcela.id}
             onRowClick={verGrupos}

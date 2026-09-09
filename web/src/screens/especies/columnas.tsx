@@ -15,11 +15,13 @@ export const COLUMNAS_ESPECIES: Array<TableColumn<EspecieConCatalogoUso>> = [
   },
   {
     key: 'nombreCientifico',
+    fueraEnMovil: true,
     header: 'Nombre científico',
     render: (especie) => <CeldaCientifico especie={especie} />,
   },
   {
     key: 'plantaciones',
+    fueraEnMovil: true,
     header: 'Plantaciones',
     align: 'center',
     render: (especie) => (
@@ -36,6 +38,7 @@ export const COLUMNAS_ESPECIES: Array<TableColumn<EspecieConCatalogoUso>> = [
   },
   {
     key: 'chevron',
+    fueraEnMovil: true,
     header: '',
     align: 'right',
     render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO} aria-hidden />,

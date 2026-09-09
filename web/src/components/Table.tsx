@@ -9,6 +9,15 @@ export interface TableColumn<T> {
   /** Sin render, se muestra el valor de `row[key]` como texto. */
   render?: (row: T) => ReactNode;
   align?: 'left' | 'center' | 'right';
+  /**
+   * Secundaria: se cae en pantalla de teléfono, donde no entran todas. El dato
+   * sigue estando en el detalle de la fila. La marca vive acá y no en una lista
+   * de claves aparte para que no puedan desincronizarse.
+   * Quién la aplica: `useColumnasVisibles`.
+   */
+  fueraEnMovil?: boolean;
+  /** Redundante mientras el panel lateral la muestra en grande. */
+  fueraConPanel?: boolean;
 }
 
 interface TableProps<T> {

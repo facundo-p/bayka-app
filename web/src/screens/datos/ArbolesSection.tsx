@@ -23,6 +23,7 @@ import { VacioConFiltros } from './VacioConFiltros';
 import { useArbolesSection } from './useArbolesSection';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import styles from './SeccionesDatos.module.css';
+import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 
 /** Redondeo de coordenadas para mostrar (~1 m de precisión). */
 const DECIMALES_GPS = 5;
@@ -69,14 +70,9 @@ function CeldaFoto({ fotoUrl }: { fotoUrl: string | null }) {
   );
 }
 
-/** Columnas que el panel lateral repite en grande: sobran mientras está abierto,
- *  y sin sacarlas las nueve no entran en el ancho que queda. */
-const COLUMNAS_EN_EL_PANEL = ['gps', 'createdAt', 'usuario'];
-
 function columnasArboles(
   codigosParcela: Map<string, string>,
   nombresUsuario: Map<string, string>,
-  conPanel: boolean,
 ): Array<TableColumn<ArbolDetalle>> {
   const columnas: Array<TableColumn<ArbolDetalle>> = [
     {
@@ -102,26 +98,30 @@ function columnasArboles(
     },
     {
       key: 'posicion',
+      fueraEnMovil: true,
       header: 'Pos.',
       align: 'center',
       render: (arbol) => <span className={styles.numero}>{arbol.posicion ?? '—'}</span>,
     },
-    { key: 'gps', header: 'GPS', render: (arbol) => <CeldaGps arbol={arbol} /> },
-    { key: 'foto', header: 'Foto', render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} /> },
+    { key: 'gps', fueraEnMovil: true, fueraConPanel: true, header: 'GPS', render: (arbol) => <CeldaGps arbol={arbol} /> },
+    { key: 'foto', fueraEnMovil: true, header: 'Foto', render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} /> },
     {
       key: 'createdAt',
+      fueraEnMovil: true,
+      fueraConPanel: true,
       header: 'Registrado',
       render: (arbol) => formatearFechaCorta(arbol.createdAt),
     },
     {
       key: 'usuario',
+      fueraEnMovil: true,
+      fueraConPanel: true,
       header: 'Técnico',
       render: (arbol) =>
         (arbol.usuarioRegistro && nombresUsuario.get(arbol.usuarioRegistro)) || '—',
     },
   ];
-  if (!conPanel) return columnas;
-  return columnas.filter((columna) => !COLUMNAS_EN_EL_PANEL.includes(columna.key));
+  return columnas;
 }
 
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
@@ -149,6 +149,10 @@ function TablaArboles({
   seleccionadoId: string | undefined;
 }) {
   const nombresUsuario = new Map(perfiles.map((perfil) => [perfil.id, perfil.nombre]));
+  const columnas = useColumnasVisibles(
+    columnasArboles(codigosParcela, nombresUsuario),
+    seleccionadoId !== undefined,
+  );
   const hayArboles = datos.total > 0;
   return (
     <CardTabla
@@ -168,7 +172,7 @@ function TablaArboles({
       }
     >
       <Table
-        columns={columnasArboles(codigosParcela, nombresUsuario, seleccionadoId !== undefined)}
+        columns={columnas}
         rows={datos.arboles}
         getRowKey={(arbol) => arbol.id}
         claveSeleccionada={seleccionadoId}

@@ -17,6 +17,7 @@ import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 import styles from './SeccionesDatos.module.css';
+import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 
 /* Etiquetas en español de los tipos de grupo. */
 const ETIQUETA_TIPO: Record<TipoGrupo, string> = { linea: 'Línea', bosquete: 'Bosquete' };
@@ -33,7 +34,7 @@ const COLUMNAS: Array<TableColumn<GrupoConDetalle>> = [
     header: 'Parcela',
     render: (grupo) => <span className={styles.codigo}>{grupo.parcelaCodigo}</span>,
   },
-  { key: 'tipo', header: 'Tipo', render: (grupo) => ETIQUETA_TIPO[grupo.tipo] },
+  { key: 'tipo', fueraEnMovil: true, header: 'Tipo', render: (grupo) => ETIQUETA_TIPO[grupo.tipo] },
   {
     key: 'estado',
     header: 'Estado',
@@ -48,6 +49,7 @@ const COLUMNAS: Array<TableColumn<GrupoConDetalle>> = [
   },
   {
     key: 'createdAt',
+    fueraEnMovil: true,
     header: 'Creado',
     render: (grupo) => formatearFechaCorta(grupo.createdAt),
   },
@@ -55,6 +57,7 @@ const COLUMNAS: Array<TableColumn<GrupoConDetalle>> = [
 
 /** Sección Grupos de la tab Datos: tabla filtrable por parcela con drill-down. */
 export function GruposSection() {
+  const columnas = useColumnasVisibles(COLUMNAS);
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
@@ -91,7 +94,7 @@ export function GruposSection() {
       ) : (
         <CardTabla pie="Clic en una fila abre los árboles del grupo">
           <Table
-            columns={COLUMNAS}
+            columns={columnas}
             rows={grupos.data}
             getRowKey={(grupo) => grupo.id}
             onRowClick={verArboles}

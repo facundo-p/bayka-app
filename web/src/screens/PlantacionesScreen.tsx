@@ -17,6 +17,7 @@ import { useDebounce } from '../hooks/useDebounce';
 import { pluralizar } from '../lib/formato';
 import { listarPlantaciones } from '../queries/plantationQueries';
 import { COLUMNAS_PLANTACIONES } from './plantaciones/columnas';
+import { useColumnasVisibles } from '../hooks/useColumnasVisibles';
 import { PlantacionesToolbar } from './plantaciones/PlantacionesToolbar';
 import {
   contarArboles,
@@ -44,6 +45,7 @@ export function PlantacionesScreen() {
   const [temporada, setTemporada] = useState(TEMPORADA_TODAS);
   const [orden, setOrden] = useState<OrdenPlantacion>(ORDEN_PLANTACION.arboles);
   const [crearAbierto, setCrearAbierto] = useState(false);
+  const columnas = useColumnasVisibles(COLUMNAS_PLANTACIONES);
   const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['plantaciones'],
@@ -107,7 +109,7 @@ export function PlantacionesScreen() {
               pieDerecha={PIE_NOTA}
             >
               <Table
-                columns={COLUMNAS_PLANTACIONES}
+                columns={columnas}
                 rows={visibles}
                 getRowKey={(plantacion) => plantacion.id}
                 onRowClick={(plantacion) => void navigate(`/plantaciones/${plantacion.id}`)}
