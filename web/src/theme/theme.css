@@ -215,15 +215,28 @@
   --radius-segment: 7px;   /* opción de control segmentado, dentro de un --radius-control */
 
   /* ─── Layout ───────────────────────────────────────────────────────── */
-  /* Breakpoint responsive: 900px, literal en media queries porque las
-     custom properties no aplican ahí. */
-  --layout-sidebar-width: 220px;
+  /*
+   * Escala de breakpoints — fuente de verdad del proyecto (#359).
+   *
+   * Los valores van LITERALES en cada @media: var() solo se resuelve en el
+   * valor de una declaración, nunca en el prelude de una at-rule. Esta lista
+   * la hace cumplir theme/__tests__/breakpoints.test.ts, que falla si aparece
+   * cualquier otro número.
+   *
+   *   1400  notebook  — la barra del detalle deja de entrar en un renglón
+   *   1200  compacta  — las grillas de dos columnas pasan a una
+   *    900  tablet    — sidebar horizontal; vuelve el scroll de documento
+   *    600  movil     — las tablas sueltan columnas secundarias
+   *   (max-height: 760) ventana baja
+   *
+   * Regla que atraviesa toda la escala: ninguna fila puede tener min-content
+   * mayor que el viewport. O envuelve, o tiene overflow-x propio.
+   */
   --sidebar-width: 252px;          /* sidebar del rediseño */
-  --page-pad-x: 38px;              /* padding horizontal del contenido principal */
+  /* Fluido en vez de escalonado: 38px fijos se comían 76px de un viewport de
+     360. Es un escalar puro, interpola bien y no necesita breakpoint. */
+  --page-pad-x: clamp(16px, 3vw, 38px);
   --ancho-panel-lateral: 400px;    /* columna de detalle al costado del listado */
-  /* Piso del shell acotado al viewport: con menos alto que esto los paneles
-     quedan aplastados y vuelve el scroll de documento. */
-  --alto-min-contenido: 700px;
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
@@ -249,6 +262,26 @@
 
 :root[data-entorno='pruebas'] {
   --alto-banner-entorno: 26px;
+}
+
+/* Anchos estructurales por escalón. No van con clamp(): entre "panel al
+   costado" y "panel apilado" no hay valores intermedios que tengan sentido. */
+@media (max-width: 1200px) {
+  :root {
+    --ancho-panel-lateral: 340px;
+  }
+}
+
+@media (max-width: 900px) {
+  :root {
+    --ancho-panel-lateral: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --modal-max-width: 100%;
+  }
 }
 
 /* ─── Reset mínimo + estilos base ────────────────────────────────────── */

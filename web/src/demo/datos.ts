@@ -8,7 +8,18 @@
 
 export type FilaDemo = Record<string, unknown>;
 
-export type FiltroDemo = { columna: string; valor: unknown };
+export type FiltroDemo = {
+  columna: string;
+  valor: unknown;
+  /** `not(col, 'is', null)`: la fila entra si NO coincide. */
+  excluye?: boolean;
+};
+
+/** ¿La fila pasa el filtro? Una columna que los datos no modelan no filtra. */
+export function cumpleFiltro(fila: FilaDemo, { columna, valor, excluye }: FiltroDemo): boolean {
+  if (!(columna in fila)) return true;
+  return excluye ? fila[columna] !== valor : fila[columna] === valor;
+}
 
 /**
  * Una tabla del backend falso. `contar` existe para los `select(head, count)`:
@@ -146,10 +157,9 @@ const ARBOLES: FilaDemo[] = Array.from({ length: 30 }, (_, indice) => {
   };
 });
 
-/** Cuenta filas de una tabla local aplicando los `eq` de la consulta. */
+/** Cuenta filas de una tabla local aplicando los filtros de la consulta. */
 function contarEn(filas: FilaDemo[], filtros: FiltroDemo[]): number {
-  return filas.filter((fila) => filtros.every(({ columna, valor }) => fila[columna] === valor))
-    .length;
+  return filas.filter((fila) => filtros.every((filtro) => cumpleFiltro(fila, filtro))).length;
 }
 
 export const TABLAS: Record<string, TablaDemo> = {

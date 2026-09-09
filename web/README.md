@@ -41,14 +41,15 @@ cambios sin commitear.
 
 ## Scripts
 
-| Script               | Qué hace                                    |
-| -------------------- | ------------------------------------------- |
-| `npm run dev`        | Servidor de desarrollo                      |
-| `npm run dev:demo`   | Igual, con datos de mentira y sin backend   |
-| `npm run build`      | Typecheck + build de prod                   |
-| `npm run typecheck`  | Solo typecheck                              |
-| `npm run lint`       | ESLint                                      |
-| `npm test`           | Tests (Vitest)                              |
+| Script                     | Qué hace                                  |
+| -------------------------- | ----------------------------------------- |
+| `npm run dev`              | Servidor de desarrollo                    |
+| `npm run dev:demo`         | Igual, con datos de mentira y sin backend |
+| `npm run build`            | Typecheck + build de prod                 |
+| `npm run typecheck`        | Solo typecheck                            |
+| `npm run lint`             | ESLint                                    |
+| `npm test`                 | Tests (Vitest)                            |
+| `npm run audit:responsive` | Auditoría de layout en browser            |
 
 ## Modo demo (sin backend)
 
@@ -79,6 +80,49 @@ solo simula lo que la web usa: el constructor de consultas encadenable, los
 columnas que los datos no modelan (los embebidos tipo `groups.plantation_id`)
 también — con datos de mentira alcanza. Nada de esto entra al bundle de
 producción: el reemplazo lo hace un alias de `vite.demo.config.ts`.
+
+## Responsive
+
+La escala de breakpoints del proyecto es **1400 / 1200 / 900 / 600** (más
+`max-height: 760` para ventana baja), documentada en el bloque Layout de
+`src/theme/theme.css`. Los valores van literales en cada `@media` porque `var()`
+no se resuelve en el prelude de una at-rule; `src/theme/__tests__/breakpoints.test.ts`
+falla si aparece otro número, otra unidad o la sintaxis de rango, y también exige
+`minmax(0, …)` en los tracks flexibles.
+
+Los bugs de layout no los ve ningún test: jsdom no evalúa layout, así que todos
+los `getBoundingClientRect` dan cero. Para eso está `npm run audit:responsive`,
+que recorre 9 pantallas × 9 anchos en Chromium y reporta scroll horizontal,
+solapamientos, texto recortado, controles inalcanzables, cards colapsadas,
+tablas que recortan en vez de scrollear y pantallas que no renderizaron nada.
+Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
+empeoró.
+
+**Corrélo a mano cuando toques layout: no está en CI**, y es una decisión, no un
+olvido. Necesita un Chromium y el servidor demo levantado, y el trabajo que
+cubre —CSS de layout— es el que menos cambia. Con eso, el baseline vale lo que
+valga la disciplina de correrlo: si tocaste un `@media`, una grilla, un `flex` o
+un alto de card, corrélo antes de abrir el PR y pegá la matriz ahí. Si querés
+volver sobre esto, la conversación es #359.
+
+El baseline versiona **solo las métricas duras distintas de cero**: una celda
+limpia es `{}` y lo único que se lee en el archivo son los defectos conocidos
+que faltan arreglar. El informe completo —el detalle de cada defecto y el
+tamaño de cada card— sale por pantalla en cada corrida; guardarlo eran 2400
+líneas de output generado donde cualquier píxel producía diff.
+
+```sh
+npx playwright install chromium   # una vez por máquina
+npm run dev:demo                  # en otra terminal
+npm run audit:responsive
+npm run audit:responsive -- --autotest   # verifica que los checks disparen
+npm run audit:responsive -- --baseline   # regraba el baseline
+npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
+```
+
+`--autotest` existe porque un check que no puede disparar reporta cero y hace
+parecer que la app está impecable: le inyecta a una pantalla limpia cada defecto
+que dice cazar y exige que lo reporte, y que calle sin él.
 
 ## Estructura (espejo de mobile)
 

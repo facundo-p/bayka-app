@@ -12,6 +12,7 @@ import {
   SESION_DEMO,
   TABLAS,
   type FilaDemo,
+  cumpleFiltro,
   type FiltroDemo,
 } from './datos';
 
@@ -54,7 +55,7 @@ function crearConsulta(nombreTabla: string): ConsultaDemo {
       return { data: null, error: null, count: total };
     }
     const filas = tabla.filas.filter((fila) =>
-      filtros.every(({ columna, valor }) => !(columna in fila) || fila[columna] === valor),
+      filtros.every((filtro) => cumpleFiltro(fila, filtro)),
     );
     if (unaFila) return { data: filas[0] ?? null, error: null };
     return { data: filas, error: null, count: filas.length };
@@ -69,11 +70,16 @@ function crearConsulta(nombreTabla: string): ConsultaDemo {
       filtros.push({ columna, valor });
       return consulta;
     },
-    // El resto no cambia el resultado: con datos de mentira alcanza con los eq.
+    // `not(col, 'is', null)` sí cambia el resultado: sin él los árboles sin GPS
+    // llegan al mapa con `latitude: null` y Leaflet tira abajo la pantalla
+    // entera. El resto no hace falta: con datos de mentira alcanza con los eq.
+    not: (columna, operador, valor) => {
+      if (operador === 'is') filtros.push({ columna, valor, excluye: true });
+      return consulta;
+    },
     neq: () => consulta,
     in: () => consulta,
     is: () => consulta,
-    not: () => consulta,
     gte: () => consulta,
     lte: () => consulta,
     ilike: () => consulta,
