@@ -3,7 +3,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1.25fr 1fr;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   align-items: stretch;
   gap: var(--space-3xl);
 }
@@ -16,7 +16,9 @@
   min-height: 0;
 }
 
-@media (max-width: 900px) {
+/* Debajo de ~1200px la columna izquierda ya no sostiene las dos columnas del
+   checklist de especies: una sola columna ancha entra mejor que dos angostas. */
+@media (max-width: 1200px) {
   .grilla {
     grid-template-columns: 1fr;
     min-height: auto;

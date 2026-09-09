@@ -2,7 +2,9 @@
    El alto y el scroll los pone la card que la contiene. */
 .lista {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0, …): sin el piso en 0 la columna no baja de su contenido, se queda
+     con más de la mitad y la fila se desborda en vez de elidir el nombre. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   column-gap: var(--space-xl);
   align-content: start;
   margin: 0;
@@ -46,6 +48,7 @@
 /* Buscador y maestro: controles de la cabecera, no de la lista. */
 .buscador {
   width: 180px;
+  max-width: 100%;
 }
 
 .buscador input {
