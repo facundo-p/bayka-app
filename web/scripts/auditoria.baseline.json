@@ -171,7 +171,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 564,
+    "h": 452,
     "w": 564,
     "desborda": false
    }
@@ -253,22 +253,22 @@
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
+   "_panel_1cu4c_3": {
     "h": 546,
     "w": 540,
     "desborda": false
    },
-   "_panel_19xf8_2": {
+   "_panel_1bw9g_4": {
     "h": 632,
     "w": 1032,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
+   "_contenedor_1wsaj_3": {
     "h": 546,
     "w": 990,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
+   "_mapa_1wsaj_28": {
     "h": 544,
     "w": 988,
     "desborda": true
@@ -304,22 +304,22 @@
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
+   "_panel_1cu4c_3": {
     "h": 546,
     "w": 540,
     "desborda": false
    },
-   "_panel_19xf8_2": {
+   "_panel_1bw9g_4": {
     "h": 632,
     "w": 552,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
+   "_contenedor_1wsaj_3": {
     "h": 506,
     "w": 510,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
+   "_mapa_1wsaj_28": {
     "h": 504,
     "w": 508,
     "desborda": true
@@ -350,159 +350,82 @@
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 487,
-    "w": 540,
+   "_panel_1cu4c_3": {
+    "h": 470,
+    "w": 466,
     "desborda": false
    },
-   "_panel_19xf8_2": {
+   "_panel_1bw9g_4": {
     "h": 573,
-    "w": 392,
+    "w": 466,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
+   "_contenedor_1wsaj_3": {
     "h": 403,
-    "w": 350,
+    "w": 424,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
+   "_mapa_1wsaj_28": {
     "h": 401,
-    "w": 348,
+    "w": 422,
     "desborda": true
    },
    "_panel_150gu_2": {
     "h": 139,
-    "w": 392,
+    "w": 466,
     "desborda": false
    }
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 401,
-    "ancho": 348,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   }
-  ],
-  "nColapsadas": 1
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "dashboard@1024": {
   "scrollH": 0,
-  "solapes": [
-   {
-    "a": "Mapa de la plantación",
-    "b": "Ibirá Pitá",
-    "area": 905
-   },
-   {
-    "a": "Mapa de la plantación",
-    "b": "Timbó",
-    "area": 639
-   },
-   {
-    "a": "Puntos GPS registrados",
-    "b": "puntos",
-    "area": 355
-   },
-   {
-    "a": "· imagen satelital",
-    "b": "puntos",
-    "area": 213
-   }
-  ],
-  "nSolapes": 5,
-  "recortados": [
-   {
-    "texto": "Puntos GPS registrados",
-    "fuera": 16
-   }
-  ],
-  "nRecortados": 1,
+  "solapes": [],
+  "nSolapes": 0,
+  "recortados": [],
+  "nRecortados": 0,
   "truncados": [],
   "nTruncados": 0,
-  "fueraViewport": [
-   {
-    "q": "Parcelas anteriores",
-    "motivo": "fuera del viewport"
-   },
-   {
-    "q": "Parcelas siguientes",
-    "motivo": "fuera del viewport"
-   }
-  ],
-  "nFueraViewport": 2,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 487,
-    "w": 540,
+   "_panel_1cu4c_3": {
+    "h": 280,
+    "w": 711,
     "desborda": false
    },
-   "_panel_19xf8_2": {
-    "h": 533,
-    "w": 151,
-    "desborda": true
-   },
-   "_contenedor_wzioc_3": {
-    "h": 345,
-    "w": 109,
+   "_panel_1bw9g_4": {
+    "h": 420,
+    "w": 711,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
-    "h": 343,
-    "w": 107,
+   "_contenedor_1wsaj_3": {
+    "h": 320,
+    "w": 669,
+    "desborda": false
+   },
+   "_mapa_1wsaj_28": {
+    "h": 318,
+    "w": 667,
     "desborda": true
    },
    "_panel_150gu_2": {
-    "h": 179,
-    "w": 151,
-    "desborda": true
+    "h": 139,
+    "w": 711,
+    "desborda": false
    }
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_panel_19xf8_2",
-    "alto": 533,
-    "ancho": 151,
-    "base": {
-     "h": 632,
-     "w": 1032,
-     "desborda": false
-    }
-   },
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 343,
-    "ancho": 107,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   },
-   {
-    "el": "_panel_150gu_2",
-    "alto": 179,
-    "ancho": 151,
-    "base": {
-     "h": 139,
-     "w": 1032,
-     "desborda": false
-    }
-   }
-  ],
-  "nColapsadas": 3
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "dashboard@900": {
   "scrollH": 0,
@@ -512,43 +435,30 @@
   "nRecortados": 0,
   "truncados": [],
   "nTruncados": 0,
-  "fueraViewport": [
-   {
-    "q": "Zoom in",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Zoom out",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Leaflet",
-    "motivo": "recortado sin scroll"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 279,
+   "_panel_1cu4c_3": {
+    "h": 280,
     "w": 846,
     "desborda": false
    },
-   "_panel_19xf8_2": {
-    "h": 102,
+   "_panel_1bw9g_4": {
+    "h": 420,
     "w": 846,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
-    "h": 2,
+   "_contenedor_1wsaj_3": {
+    "h": 320,
     "w": 804,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
-    "h": 0,
+   "_mapa_1wsaj_28": {
+    "h": 318,
     "w": 802,
     "desborda": true
    },
@@ -560,29 +470,8 @@
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_contenedor_wzioc_3",
-    "alto": 2,
-    "ancho": 804,
-    "base": {
-     "h": 546,
-     "w": 990,
-     "desborda": false
-    }
-   },
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 0,
-    "ancho": 802,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   }
-  ],
-  "nColapsadas": 2
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "dashboard@768": {
   "scrollH": 0,
@@ -592,43 +481,30 @@
   "nRecortados": 0,
   "truncados": [],
   "nTruncados": 0,
-  "fueraViewport": [
-   {
-    "q": "Zoom in",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Zoom out",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Leaflet",
-    "motivo": "recortado sin scroll"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 279,
+   "_panel_1cu4c_3": {
+    "h": 280,
     "w": 722,
     "desborda": false
    },
-   "_panel_19xf8_2": {
-    "h": 102,
+   "_panel_1bw9g_4": {
+    "h": 420,
     "w": 722,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
-    "h": 2,
+   "_contenedor_1wsaj_3": {
+    "h": 320,
     "w": 680,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
-    "h": 0,
+   "_mapa_1wsaj_28": {
+    "h": 318,
     "w": 678,
     "desborda": true
    },
@@ -640,29 +516,8 @@
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_contenedor_wzioc_3",
-    "alto": 2,
-    "ancho": 680,
-    "base": {
-     "h": 546,
-     "w": 990,
-     "desborda": false
-    }
-   },
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 0,
-    "ancho": 678,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   }
-  ],
-  "nColapsadas": 2
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "dashboard@600": {
   "scrollH": 0,
@@ -672,43 +527,30 @@
   "nRecortados": 0,
   "truncados": [],
   "nTruncados": 0,
-  "fueraViewport": [
-   {
-    "q": "Zoom in",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Zoom out",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Leaflet",
-    "motivo": "recortado sin scroll"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 279,
+   "_panel_1cu4c_3": {
+    "h": 280,
     "w": 564,
     "desborda": false
    },
-   "_panel_19xf8_2": {
-    "h": 128,
+   "_panel_1bw9g_4": {
+    "h": 446,
     "w": 564,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
-    "h": 2,
+   "_contenedor_1wsaj_3": {
+    "h": 320,
     "w": 522,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
-    "h": 0,
+   "_mapa_1wsaj_28": {
+    "h": 318,
     "w": 520,
     "desborda": true
    },
@@ -720,29 +562,8 @@
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_contenedor_wzioc_3",
-    "alto": 2,
-    "ancho": 522,
-    "base": {
-     "h": 546,
-     "w": 990,
-     "desborda": false
-    }
-   },
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 0,
-    "ancho": 520,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   }
-  ],
-  "nColapsadas": 2
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "dashboard@430": {
   "scrollH": 0,
@@ -752,43 +573,30 @@
   "nRecortados": 0,
   "truncados": [],
   "nTruncados": 0,
-  "fueraViewport": [
-   {
-    "q": "Zoom in",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Zoom out",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Leaflet",
-    "motivo": "recortado sin scroll"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 279,
+   "_panel_1cu4c_3": {
+    "h": 280,
     "w": 398,
     "desborda": false
    },
-   "_panel_19xf8_2": {
-    "h": 172,
+   "_panel_1bw9g_4": {
+    "h": 490,
     "w": 398,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
-    "h": 2,
+   "_contenedor_1wsaj_3": {
+    "h": 320,
     "w": 356,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
-    "h": 0,
+   "_mapa_1wsaj_28": {
+    "h": 318,
     "w": 354,
     "desborda": true
    },
@@ -800,29 +608,8 @@
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_contenedor_wzioc_3",
-    "alto": 2,
-    "ancho": 356,
-    "base": {
-     "h": 546,
-     "w": 990,
-     "desborda": false
-    }
-   },
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 0,
-    "ancho": 354,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   }
-  ],
-  "nColapsadas": 2
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "dashboard@360": {
   "scrollH": 0,
@@ -832,43 +619,30 @@
   "nRecortados": 0,
   "truncados": [],
   "nTruncados": 0,
-  "fueraViewport": [
-   {
-    "q": "Zoom in",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Zoom out",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Leaflet",
-    "motivo": "recortado sin scroll"
-   }
-  ],
-  "nFueraViewport": 3,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
   "nDesparejos": 0,
   "cards": {
-   "_panel_cixmd_2": {
-    "h": 279,
+   "_panel_1cu4c_3": {
+    "h": 280,
     "w": 328,
     "desborda": false
    },
-   "_panel_19xf8_2": {
-    "h": 190,
+   "_panel_1bw9g_4": {
+    "h": 508,
     "w": 328,
     "desborda": false
    },
-   "_contenedor_wzioc_3": {
-    "h": 2,
+   "_contenedor_1wsaj_3": {
+    "h": 320,
     "w": 286,
     "desborda": false
    },
-   "_mapa_wzioc_25": {
-    "h": 0,
+   "_mapa_1wsaj_28": {
+    "h": 318,
     "w": 284,
     "desborda": true
    },
@@ -880,29 +654,8 @@
   },
   "tablasRecortadas": [],
   "nTablasRecortadas": 0,
-  "colapsadas": [
-   {
-    "el": "_contenedor_wzioc_3",
-    "alto": 2,
-    "ancho": 286,
-    "base": {
-     "h": 546,
-     "w": 990,
-     "desborda": false
-    }
-   },
-   {
-    "el": "_mapa_wzioc_25",
-    "alto": 0,
-    "ancho": 284,
-    "base": {
-     "h": 544,
-     "w": 988,
-     "desborda": true
-    }
-   }
-  ],
-  "nColapsadas": 2
+  "colapsadas": [],
+  "nColapsadas": 0
  },
  "datos-parcelas@1920": {
   "scrollH": 0,
@@ -1081,7 +834,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 201,
+    "h": 161,
     "w": 564,
     "desborda": false
    }
@@ -1107,7 +860,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 201,
+    "h": 161,
     "w": 398,
     "desborda": false
    }
@@ -1320,7 +1073,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 233,
+    "h": 218,
     "w": 564,
     "desborda": false
    }
@@ -1398,7 +1151,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 743,
+    "h": 705,
     "w": 1592,
     "desborda": false
    }
@@ -1429,7 +1182,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 701,
+    "h": 661,
     "w": 1112,
     "desborda": false
    }
@@ -1559,7 +1312,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 1923,
+    "h": 1323,
     "w": 564,
     "desborda": false
    }
@@ -1585,7 +1338,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 1942,
+    "h": 1342,
     "w": 398,
     "desborda": false
    }
@@ -1611,7 +1364,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 1945,
+    "h": 1345,
     "w": 328,
     "desborda": false
    }
@@ -1699,10 +1452,6 @@
     "fuera": 162
    },
    {
-    "texto": "Lapacho rosado",
-    "fuera": 39
-   },
-   {
     "texto": "GPS y visibilidad para los téc",
     "fuera": 127
    },
@@ -1711,7 +1460,7 @@
     "fuera": 166
    }
   ],
-  "nTruncados": 4,
+  "nTruncados": 3,
   "fueraViewport": [],
   "nFueraViewport": 0,
   "tapados": [],
@@ -1730,24 +1479,10 @@
   "nSolapes": 0,
   "recortados": [],
   "nRecortados": 0,
-  "truncados": [
-   {
-    "texto": "Quién puede registrar en esta ",
-    "fuera": 34
-   }
-  ],
-  "nTruncados": 1,
-  "fueraViewport": [
-   {
-    "q": "Quitar u3",
-    "motivo": "recortado sin scroll"
-   },
-   {
-    "q": "Quitar u4",
-    "motivo": "recortado sin scroll"
-   }
-  ],
-  "nFueraViewport": 2,
+  "truncados": [],
+  "nTruncados": 0,
+  "fueraViewport": [],
+  "nFueraViewport": 0,
   "tapados": [],
   "nTapados": 0,
   "desparejos": [],
@@ -2050,7 +1785,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 584,
+    "h": 425,
     "w": 564,
     "desborda": false
    }
@@ -2076,7 +1811,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 584,
+    "h": 425,
     "w": 398,
     "desborda": false
    }
@@ -2102,7 +1837,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 602,
+    "h": 443,
     "w": 328,
     "desborda": false
    }
@@ -2284,7 +2019,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 453,
+    "h": 451,
     "w": 564,
     "desborda": false
    }
@@ -2310,7 +2045,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 471,
+    "h": 469,
     "w": 398,
     "desborda": false
    }
@@ -2336,7 +2071,7 @@
   "nDesparejos": 0,
   "cards": {
    "_cardTabla_tizxy_2": {
-    "h": 489,
+    "h": 487,
     "w": 328,
     "desborda": false
    }
