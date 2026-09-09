@@ -530,6 +530,26 @@ const DUROS = [
 ];
 
 /**
+ * El baseline entra al repo, así que guarda lo mínimo que el trinquete compara:
+ * las métricas duras, y solo las que no son cero.
+ *
+ * El informe completo trae además los detalles de cada defecto y el tamaño de
+ * cada card. Eso sirve para leer la corrida que tenés adelante, no para
+ * versionarlo: son 2400 líneas de output generado donde cualquier píxel produce
+ * diff. Así, una celda limpia es `{}` y lo único que se lee en el archivo son
+ * los defectos conocidos que faltan arreglar.
+ */
+function serializarBaseline(informe) {
+  const filas = Object.entries(informe).map(([clave, f]) => {
+    const magro = f.error
+      ? { error: f.error }
+      : Object.fromEntries(DUROS.filter((m) => (f[m] ?? 0) !== 0).map((m) => [m, f[m]]));
+    return ` ${JSON.stringify(clave)}: ${JSON.stringify(magro)}`;
+  });
+  return `{\n${filas.join(',\n')}\n}\n`;
+}
+
+/**
  * Un check que no puede disparar nunca reporta cero y parece una app impecable.
  * Esto le inyecta a una pantalla limpia cada defecto que el script dice cazar y
  * exige que lo reporte. Es la única forma de distinguir "no hay defectos" de
@@ -824,7 +844,7 @@ async function main() {
   }
 
   if (REGRABAR) {
-    writeFileSync(BASELINE, JSON.stringify(informe, null, 1));
+    writeFileSync(BASELINE, serializarBaseline(informe));
     console.log(`\nBaseline regrabado: ${BASELINE}`);
     return 0;
   }
