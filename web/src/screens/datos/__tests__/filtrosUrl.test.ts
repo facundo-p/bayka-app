@@ -8,12 +8,13 @@ import {
 } from '../filtrosUrl';
 
 test('leerFiltrosDeUrl mapea cada query param a su campo (vacío si falta)', () => {
-  const params = new URLSearchParams('parcela=p1&grupo=g1&especie=e1&gps=con&q=A-12');
+  const params = new URLSearchParams('parcela=p1&grupo=g1&especie=e1&gps=con&foto=sin&q=A-12');
   expect(leerFiltrosDeUrl(params)).toEqual({
     parcelaId: 'p1',
     groupId: 'g1',
     speciesId: 'e1',
     gps: 'con',
+    foto: 'sin',
     busqueda: 'A-12',
   });
   expect(leerFiltrosDeUrl(new URLSearchParams())).toEqual(FILTROS_INICIALES);
