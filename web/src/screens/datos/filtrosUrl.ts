@@ -6,6 +6,7 @@ export const PARAM_PARCELA = 'parcela';
 export const PARAM_GRUPO = 'grupo';
 export const PARAM_ESPECIE = 'especie';
 export const PARAM_GPS = 'gps';
+export const PARAM_FOTO = 'foto';
 export const PARAM_BUSQUEDA = 'q';
 
 /** Mapeo campo de filtro UI → clave en la URL. */
@@ -14,6 +15,7 @@ const CAMPO_A_PARAM: Record<keyof FiltrosUi, string> = {
   groupId: PARAM_GRUPO,
   speciesId: PARAM_ESPECIE,
   gps: PARAM_GPS,
+  foto: PARAM_FOTO,
   busqueda: PARAM_BUSQUEDA,
 };
 
@@ -24,6 +26,7 @@ export function leerFiltrosDeUrl(params: URLSearchParams): FiltrosUi {
     groupId: params.get(PARAM_GRUPO) ?? '',
     speciesId: params.get(PARAM_ESPECIE) ?? '',
     gps: params.get(PARAM_GPS) ?? '',
+    foto: params.get(PARAM_FOTO) ?? '',
     busqueda: params.get(PARAM_BUSQUEDA) ?? '',
   };
 }

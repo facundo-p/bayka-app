@@ -62,12 +62,21 @@ beforeEach(() => {
   });
 });
 
-test('arma el recuento y los mapas de código de parcela / nombre de usuario', async () => {
+test('arma los mapas de código de parcela y nombre de usuario', async () => {
   const { result } = renderConRuta();
 
-  await waitFor(() => expect(result.current.recuento).toBe('3 árboles · página 1 de 1'));
+  await waitFor(() => expect(result.current.arboles.isPending).toBe(false));
   expect(result.current.codigosParcela.get('parc-1')).toBe('P1');
   expect(result.current.nombresUsuario.get('user-1')).toBe('Ana');
+});
+
+test('cambiar el filtro de foto vuelve la página a 1', async () => {
+  const { result } = renderConRuta();
+  await waitFor(() => expect(result.current.arboles.isPending).toBe(false));
+
+  act(() => result.current.setPagina(2));
+  act(() => result.current.setFiltro('foto', 'con'));
+  await waitFor(() => expect(result.current.pagina).toBe(1));
 });
 
 test('cambiar un filtro vuelve la página a 1', async () => {
