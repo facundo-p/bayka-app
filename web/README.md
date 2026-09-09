@@ -90,10 +90,11 @@ no se resuelve en el prelude de una at-rule; `src/theme/__tests__/breakpoints.te
 falla si aparece otro número, otra unidad o la sintaxis de rango, y también exige
 `minmax(0, …)` en los tracks flexibles.
 
-Los bugs de layout no los ve ningún test: jsdom no evalúa layout. Para eso está
-`npm run audit:responsive`, que recorre 9 pantallas × 9 anchos en Chromium y
-reporta scroll horizontal, solapamientos, texto recortado, controles
-inalcanzables, cards colapsadas, tablas que recortan en vez de scrollear y
+Los bugs de layout no los ve ningún test: jsdom no evalúa layout, así que todos
+los `getBoundingClientRect` dan cero. Para eso está `npm run audit:responsive`,
+que recorre 9 pantallas × 9 anchos en Chromium y reporta scroll horizontal,
+solapamientos, texto recortado, controles inalcanzables, cards colapsadas,
+tablas que recortan en vez de scrollear, pantallas que no renderizaron nada y
 controles con altos distintos en una misma fila —este último es el único que
 ve una regresión de estilo que no rompe la geometría, como un campo que pierde
 su alto compacto al cambiar de módulo CSS—.
@@ -102,6 +103,19 @@ Un texto truncado con contrato de ellipsis completo (`nowrap` + `overflow` +
 dato de largo variable, y contarla haría que el arreglo correcto suba la nota.
 Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
 empeoró.
+
+**Corrélo a mano cuando toques layout: no está en CI**, y es una decisión, no un
+olvido. Necesita un Chromium y el servidor demo levantado, y el trabajo que
+cubre —CSS de layout— es el que menos cambia. Con eso, el baseline vale lo que
+valga la disciplina de correrlo: si tocaste un `@media`, una grilla, un `flex` o
+un alto de card, corrélo antes de abrir el PR y pegá la matriz ahí. Si querés
+volver sobre esto, la conversación es #359.
+
+El baseline versiona **solo las métricas duras distintas de cero**: una celda
+limpia es `{}` y lo único que se lee en el archivo son los defectos conocidos
+que faltan arreglar. El informe completo —el detalle de cada defecto y el
+tamaño de cada card— sale por pantalla en cada corrida; guardarlo eran 2400
+líneas de output generado donde cualquier píxel producía diff.
 
 ```sh
 npx playwright install chromium   # una vez por máquina
