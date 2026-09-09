@@ -19,6 +19,10 @@
  * Sale con código 1 si alguna celda empeoró respecto del baseline, o si una
  * celda que antes se medía ya no se puede medir.
  *
+ * NO corre en CI, por decisión: se corre a mano al tocar layout (#359). O sea
+ * que el baseline vale lo que valga esa disciplina — si tocaste un `@media`,
+ * una grilla, un `flex` o un alto de card, corrélo antes de abrir el PR.
+ *
  * Límites conocidos, para no leer de más en un `·`:
  *  - Solo mide la carga inicial de cada ruta: nada de formularios, modales,
  *    estados de error/vacío ni nada post-interacción. Con un popover abierto O
