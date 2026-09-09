@@ -3,7 +3,7 @@
    y el mapa, que sí tiene piso, se pinta afuera. */
 .panel {
   flex: 1;
-  min-height: 420px;
+  min-height: var(--alto-min-card-lista);
   display: flex;
   flex-direction: column;
   gap: var(--space-xl-plus);

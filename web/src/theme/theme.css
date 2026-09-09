@@ -238,6 +238,9 @@
   --page-pad-x: clamp(16px, 3vw, 38px);
   --ancho-panel-lateral: 400px;    /* columna de detalle al costado del listado */
   /* Buscador de los listados: mismo ancho en las cuatro barras. */
+  /* Piso de alto de una card con lista: apilada no hay alto que repartir y un
+     `flex:1` con piso en 0 la deja con el alto del encabezado. */
+  --alto-min-card-lista: 420px;
   --ancho-buscador: 18rem;
   --ancho-buscador-min: 10rem;
   --ancho-buscador-compacto: 220px;

@@ -3,61 +3,22 @@ import {
   Cargando,
   CardTabla,
   ErrorConReintento,
-  EstadoPlantacionBadge,
   Table,
-  type TableColumn,
 } from '../../components';
-import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
-import type { GrupoConDetalle, TipoGrupo } from '../../queries/dataExplorerQueries';
+import type { GrupoConDetalle } from '../../queries/dataExplorerQueries';
 import { DatosToolbar } from './DatosToolbar';
 import { SelectParcela } from './SelectParcela';
 import { VacioConFiltros } from './VacioConFiltros';
 import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
-import styles from './SeccionesDatos.module.css';
+import { COLUMNAS_GRUPOS } from './columnas';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
-
-/* Etiquetas en español de los tipos de grupo. */
-const ETIQUETA_TIPO: Record<TipoGrupo, string> = { linea: 'Línea', bosquete: 'Bosquete' };
-
-const COLUMNAS: Array<TableColumn<GrupoConDetalle>> = [
-  {
-    key: 'codigo',
-    header: 'Código',
-    render: (grupo) => <span className={styles.codigo}>{grupo.codigo}</span>,
-  },
-  { key: 'nombre', header: 'Nombre' },
-  {
-    key: 'parcelaCodigo',
-    header: 'Parcela',
-    render: (grupo) => <span className={styles.codigo}>{grupo.parcelaCodigo}</span>,
-  },
-  { key: 'tipo', fueraEnMovil: true, header: 'Tipo', render: (grupo) => ETIQUETA_TIPO[grupo.tipo] },
-  {
-    key: 'estado',
-    header: 'Estado',
-    // Grupos y plantaciones comparten los estados activa/finalizada: mismo badge.
-    render: (grupo) => <EstadoPlantacionBadge estado={grupo.estado} />,
-  },
-  {
-    key: 'arboles',
-    header: 'Árboles',
-    align: 'center',
-    render: (grupo) => <span className={styles.numero}>{formatearEntero(grupo.arboles)}</span>,
-  },
-  {
-    key: 'createdAt',
-    fueraEnMovil: true,
-    header: 'Creado',
-    render: (grupo) => formatearFechaCorta(grupo.createdAt),
-  },
-];
 
 /** Sección Grupos de la tab Datos: tabla filtrable por parcela con drill-down. */
 export function GruposSection() {
-  const columnas = useColumnasVisibles(COLUMNAS);
+  const columnas = useColumnasVisibles(COLUMNAS_GRUPOS);
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();

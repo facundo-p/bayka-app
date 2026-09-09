@@ -12,11 +12,14 @@
   gap: var(--space-xl-plus);
 }
 
-/* Cluster de filtros compacto que vive dentro de la toolbar. */
+/* Cluster de filtros compacto que vive dentro de la toolbar.
+   `flex-grow: 1` para que tome el espacio libre de su fila: sin él los seis
+   controles envolvían a 1920 con 342px vacíos al lado. */
 .filtrosCompactos {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  flex-grow: 1;
   gap: var(--space-md);
   min-width: 0;
 }

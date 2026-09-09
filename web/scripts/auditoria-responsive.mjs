@@ -529,17 +529,20 @@ const DUROS = [
  * "el check está muerto".
  */
 const CASOS_AUTOTEST = [
+  // La ruta y el ancho importan: hace falta una tabla que REALMENTE desborde su
+  // contenedor, si no la inyección no rompe nada y el check pasa sin ejercitarse.
+  // A 600 las tablas entran exactas desde que sueltan columnas; a 360 no.
   {
     nombre: 'T · contenedor de tabla que recorta en vez de scrollear',
-    ruta: '/especies',
-    ancho: 600,
+    ruta: '/plantaciones',
+    ancho: 360,
     css: '[class*="_tablaScroll_"]{overflow-x:hidden !important}',
     espera: (r) => r.nTablasRecortadas > 0,
   },
   {
     nombre: 'T · celdas apretadas hasta recortar el texto',
-    ruta: '/especies',
-    ancho: 600,
+    ruta: '/plantaciones',
+    ancho: 360,
     css: 'table{table-layout:fixed !important} td,th{overflow:hidden !important}',
     espera: (r) => r.nTablasRecortadas > 0,
   },

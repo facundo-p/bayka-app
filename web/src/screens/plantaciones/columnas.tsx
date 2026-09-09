@@ -62,6 +62,7 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
   },
   {
     key: 'chevron',
+    fueraEnMovil: true,
     header: '',
     align: 'right',
     render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO} aria-hidden />,
