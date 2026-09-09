@@ -41,13 +41,44 @@ cambios sin commitear.
 
 ## Scripts
 
-| Script              | Qué hace                       |
-| ------------------- | ------------------------------ |
-| `npm run dev`       | Servidor de desarrollo         |
-| `npm run build`     | Typecheck + build de prod      |
-| `npm run typecheck` | Solo typecheck                 |
-| `npm run lint`      | ESLint                         |
-| `npm test`          | Tests (Vitest)                 |
+| Script               | Qué hace                                    |
+| -------------------- | ------------------------------------------- |
+| `npm run dev`        | Servidor de desarrollo                      |
+| `npm run dev:demo`   | Igual, con datos de mentira y sin backend   |
+| `npm run build`      | Typecheck + build de prod                   |
+| `npm run typecheck`  | Solo typecheck                              |
+| `npm run lint`       | ESLint                                      |
+| `npm test`           | Tests (Vitest)                              |
+
+## Modo demo (sin backend)
+
+```bash
+npm run dev:demo      # http://localhost:5199
+```
+
+Levanta la app con un cliente Supabase falso (`src/demo/`) en lugar del real:
+sin login, sin red y con datos verosímiles. Sirve para dos cosas que el servidor
+normal no cubre:
+
+- **Revisar layout y fidelidad visual.** Los tests no ven que una etiqueta se
+  parta en dos renglones, que una fecha salga mal formateada o que una toolbar
+  empuje scroll horizontal. Con anchos de columna y conteos reales, sí se ve.
+- **Mostrar la app sin tocar datos reales** ni depender de staging.
+
+El banner de entorno de pruebas viene prendido a propósito: nada de lo que se ve
+ahí es real. `DEMO_BANNER=0 npm run dev:demo` lo apaga, para medir una pantalla
+sin los 26px de la franja.
+
+Cubre las tres pantallas de Organización y el detalle de plantación (parcelas,
+grupos y 30 árboles con GPS y fotos en distintos estados).
+
+Los datos están en `src/demo/datos.ts`, una tabla por clave. Para cubrir una
+pantalla nueva, agregá su tabla ahí. El cliente falso (`src/demo/supabase.ts`)
+solo simula lo que la web usa: el constructor de consultas encadenable, los
+`count`, `rpc` y `auth`. Los filtros que no son `eq` se ignoran, y los `eq` sobre
+columnas que los datos no modelan (los embebidos tipo `groups.plantation_id`)
+también — con datos de mentira alcanza. Nada de esto entra al bundle de
+producción: el reemplazo lo hace un alias de `vite.demo.config.ts`.
 
 ## Estructura (espejo de mobile)
 
