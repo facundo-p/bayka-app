@@ -1,35 +1,8 @@
 /// <reference types="vitest/config" />
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { abreviarCommit, esBranchDeProduccion } from './src/lib/entornoBranch';
+import { definirConstantesBuild } from './constantesBuild';
 import { diagnosticarEnvSupabase } from './src/lib/envSupabase';
-
-// Entorno horneado en build: Cloudflare Pages inyecta CF_PAGES_BRANCH y
-// solo `main` (Production) es prod. Sin la var (dev local, CI) → pruebas.
-const ES_ENTORNO_PRUEBAS = !esBranchDeProduccion(process.env.CF_PAGES_BRANCH);
-const VERSION_APP: string = JSON.parse(
-  readFileSync(new URL('./package.json', import.meta.url), 'utf8'),
-).version;
-
-// Commit del build (#321): identifica QUÉ se está probando, cosa que la versión
-// no hace — `/deploy` la bumpea recién al pasar a main, así que entre releases
-// es la misma en todos los builds de staging. Pages inyecta CF_PAGES_COMMIT_SHA;
-// en dev/CI se cae a git. Si git no está disponible, queda vacío y el banner
-// muestra solo la versión: nunca corta el build por esto.
-function gitSiEsPosible(...args: string[]): string {
-  try {
-    return execFileSync('git', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  } catch {
-    return '';
-  }
-}
-
-const SHA_BUILD = process.env.CF_PAGES_COMMIT_SHA || gitSiEsPosible('rev-parse', 'HEAD');
-// Pages buildea desde un checkout limpio; el sufijo sólo aparece en builds locales.
-const ARBOL_SUCIO = !process.env.CF_PAGES_COMMIT_SHA && gitSiEsPosible('status', '--porcelain') !== '';
-const COMMIT_APP = abreviarCommit(SHA_BUILD, ARBOL_SUCIO);
 
 // Corta el build si el par VITE_SUPABASE_* es incoherente: las variables se
 // hornean acá, así que un valor mal cargado en el hosting recién se notaría
@@ -59,21 +32,20 @@ function chequearEnvSupabase(): Plugin {
 
 export default defineConfig({
   plugins: [react(), chequearEnvSupabase()],
-  // Único lector: src/lib/entorno.ts (tipos en src/vite-env.d.ts).
-  define: {
-    __ENTORNO_PRUEBAS__: JSON.stringify(ES_ENTORNO_PRUEBAS),
-    __VERSION_APP__: JSON.stringify(VERSION_APP),
-    __COMMIT_APP__: JSON.stringify(COMMIT_APP),
-  },
-  // Permite que vitest cargue los tests de supabase/functions (fuera de web/).
+  define: definirConstantesBuild(),
+  // Permite que vitest cargue los tests de fuera de web/.
   server: { fs: { allow: ['..'] } },
   test: {
     environment: 'jsdom',
     setupFiles: './src/setupTests.ts',
     globals: true,
-    // La lógica de las edge functions (nucleo.ts, sin imports de Deno) se
-    // testea con esta suite; el entry index.ts es solo-Deno y queda afuera.
-    include: ['src/**/*.{test,spec}.{ts,tsx}', '../supabase/functions/**/*.test.ts'],
+    // Suma la lógica de las edge functions (nucleo.ts, sin imports de Deno; el
+    // entry index.ts es solo-Deno y queda afuera) y los scripts de la raíz.
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      '../supabase/functions/**/*.test.ts',
+      '../scripts/**/*.test.ts',
+    ],
     // Config dummy de Supabase para los tests: sin web/.env (p.ej. en CI) el
     // cliente lanzaría al importarse. Los tests mockean las llamadas reales.
     env: { VITE_SUPABASE_URL: 'http://localhost', VITE_SUPABASE_ANON_KEY: 'anon-test' },
