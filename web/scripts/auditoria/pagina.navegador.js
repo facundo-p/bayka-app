@@ -11,3 +11,7 @@ export function contarNodos() {
 export function medirEnPagina([selectorRaiz, selectorCards]) {
   return window.medir(selectorRaiz, selectorCards);
 }
+
+export function desplegarDetails() {
+  for (const details of document.querySelectorAll('details')) details.open = true;
+}

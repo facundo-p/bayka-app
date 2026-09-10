@@ -67,12 +67,16 @@ export const MODAL_NUEVA_PLANTACION = Object.freeze({
   raiz: SELECTOR_DIALOGO,
 });
 
+/** Valor de `abrir` que despliega todos los `<details>` en vez de clickear un botón. */
+export const TODOS_LOS_DETAILS = Symbol('todos los <details>');
+
 /**
  * Qué se mide. `abrir` es el nombre accesible de un botón que se clickea
- * después de cargar, y `raiz` acota la medición a ese subárbol: con un modal
- * abierto, el texto de la página que queda detrás del overlay se pisa con el
- * del diálogo y O daría decenas de solapes que nadie ve. `sinChrome` marca las
- * que no montan el layout, para el piso de VACIA.
+ * después de cargar, o TODOS_LOS_DETAILS: plegado, el contenido de un
+ * `<details>` no se pinta y no se mide. `raiz` acota la medición a ese
+ * subárbol: con un modal abierto, el texto de la página que queda detrás del
+ * overlay se pisa con el del diálogo y O daría decenas de solapes que nadie ve.
+ * `sinChrome` marca las que no montan el layout, para el piso de VACIA.
  */
 export const VISTAS = Object.freeze([
   { pantalla: 'plantaciones', ruta: RUTA.plantaciones },
@@ -84,6 +88,8 @@ export const VISTAS = Object.freeze([
   { pantalla: 'especies', ruta: RUTA.especies },
   { pantalla: 'usuarios', ruta: RUTA.usuarios },
   { pantalla: 'novedades', ruta: RUTA.novedades },
+  // Los pasos de prueba de cada ítem, desplegados.
+  { pantalla: 'novedades-pasos', ruta: RUTA.novedades, abrir: TODOS_LOS_DETAILS },
   // Fuera del gate de sesión: se ven sin el sidebar.
   { pantalla: 'login', ruta: RUTA.loginSinSesion, sinChrome: true },
   { pantalla: 'password', ruta: RUTA.password, sinChrome: true },
@@ -136,6 +142,12 @@ export const METRICAS = Object.freeze([
     letra: 'T',
     leyenda: 'tabla que recorta sin scrollear',
     detalle: 'tablasRecortadas',
+  },
+  {
+    campo: 'nDesbordesLaterales',
+    letra: 'L',
+    leyenda: 'texto que se sale de su caja',
+    detalle: 'desbordesLaterales',
   },
 ]);
 
