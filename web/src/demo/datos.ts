@@ -15,12 +15,6 @@ export type FiltroDemo = {
   excluye?: boolean;
 };
 
-/** ¿La fila pasa el filtro? Una columna que los datos no modelan no filtra. */
-export function cumpleFiltro(fila: FilaDemo, { columna, valor, excluye }: FiltroDemo): boolean {
-  if (!(columna in fila)) return true;
-  return excluye ? fila[columna] !== valor : fila[columna] === valor;
-}
-
 /**
  * Una tabla del backend falso. `contar` existe para los `select(head, count)`:
  * devuelve el total sin materializar miles de filas de árboles.
@@ -30,18 +24,20 @@ export type TablaDemo = {
   contar?: (filtros: FiltroDemo[]) => number;
 };
 
+type Especie = { id: string; codigo: string; nombre: string; nombre_cientifico: string | null };
+
 export const SESION_DEMO = { user: { id: 'u1', email: 'demo@bayka.app' } };
 
 const ORGANIZACION = { id: 'org-1', nombre: 'Bayka' };
 
 const PERFILES: FilaDemo[] = [
-  { id: 'u1', nombre: 'Facundo Pichinini', rol: 'superadmin', email: 'demo@bayka.app', activo: true, organizacion_id: 'org-1', created_at: '2024-01-18T12:00:00Z' },
-  { id: 'u2', nombre: 'Sofía Bianchi', rol: 'admin', email: 'sofia@bayka.app', activo: true, organizacion_id: 'org-1', created_at: '2024-04-18T12:00:00Z' },
-  { id: 'u3', nombre: 'Martín Oyola', rol: 'tecnico', email: 'martin@bayka.app', activo: true, organizacion_id: 'org-1', created_at: '2024-06-02T12:00:00Z' },
-  { id: 'u4', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true, organizacion_id: 'org-1', created_at: '2024-09-11T12:00:00Z' },
-  { id: 'u5', nombre: 'Ramiro Ledesma', rol: 'tecnico', email: 'ramiro@bayka.app', activo: false, organizacion_id: 'org-1', created_at: '2025-02-27T12:00:00Z' },
-  { id: 'u6', nombre: 'Valentina Cáceres', rol: 'tecnico', email: 'valentina@bayka.app', activo: true, organizacion_id: 'org-1', created_at: '2025-05-06T12:00:00Z' },
-];
+  { id: 'u1', nombre: 'Facundo Pichinini', rol: 'superadmin', email: 'demo@bayka.app', activo: true, created_at: '2024-01-18T12:00:00Z' },
+  { id: 'u2', nombre: 'Sofía Bianchi', rol: 'admin', email: 'sofia@bayka.app', activo: true, created_at: '2024-04-18T12:00:00Z' },
+  { id: 'u3', nombre: 'Martín Oyola', rol: 'tecnico', email: 'martin@bayka.app', activo: true, created_at: '2024-06-02T12:00:00Z' },
+  { id: 'u4', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true, created_at: '2024-09-11T12:00:00Z' },
+  { id: 'u5', nombre: 'Ramiro Ledesma', rol: 'tecnico', email: 'ramiro@bayka.app', activo: false, created_at: '2025-02-27T12:00:00Z' },
+  { id: 'u6', nombre: 'Valentina Cáceres', rol: 'tecnico', email: 'valentina@bayka.app', activo: true, created_at: '2025-05-06T12:00:00Z' },
+].map((perfil) => ({ ...perfil, organizacion_id: ORGANIZACION.id }));
 
 const PLANTACIONES: FilaDemo[] = [
   { id: 'p1', lugar: 'San Sebastián', periodo: '2025-2026', estado: 'activa', created_at: '2025-03-12T12:00:00Z', visible_in_app: true },
@@ -64,7 +60,7 @@ const STATS_PLANTACIONES: FilaDemo[] = [
   { plantation_id: 'p7', arboles: 878, parcelas: 5, usuarios: 2 },
 ];
 
-const ESPECIES: FilaDemo[] = [
+const ESPECIES: Especie[] = [
   { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
   { id: 's2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
   { id: 's3', codigo: 'LAP', nombre: 'Lapacho rosado', nombre_cientifico: 'Handroanthus impetiginosus' },
@@ -74,6 +70,12 @@ const ESPECIES: FilaDemo[] = [
   { id: 's7', codigo: 'PET', nombre: 'Petiribí', nombre_cientifico: null },
   { id: 's8', codigo: 'URU', nombre: 'Urunday', nombre_cientifico: 'Astronium balansae' },
 ];
+
+function especiePorId(id: string): Especie {
+  const especie = ESPECIES.find((candidata) => candidata.id === id);
+  if (!especie) throw new Error(`Especie de demo inexistente: ${id}`);
+  return especie;
+}
 
 /** Árboles por especie: alimenta los `count` sin inventar 18.442 filas. */
 const ARBOLES_POR_ESPECIE: Record<string, number> = {
@@ -88,32 +90,37 @@ const ARBOLES_POR_ESPECIE: Record<string, number> = {
 };
 
 /** Qué especies habilita cada plantación. */
-const PLANTACION_ESPECIES: FilaDemo[] = [
-  { plantation_id: 'p1', species_id: 's1' },
-  { plantation_id: 'p1', species_id: 's2' },
-  { plantation_id: 'p1', species_id: 's3' },
-  { plantation_id: 'p1', species_id: 's4' },
-  { plantation_id: 'p2', species_id: 's1' },
-  { plantation_id: 'p2', species_id: 's2' },
-  { plantation_id: 'p2', species_id: 's5' },
-  { plantation_id: 'p3', species_id: 's1' },
-  { plantation_id: 'p3', species_id: 's6' },
-  { plantation_id: 'p4', species_id: 's3' },
-  { plantation_id: 'p4', species_id: 's4' },
-  { plantation_id: 'p5', species_id: 's2' },
-  { plantation_id: 'p6', species_id: 's5' },
-  { plantation_id: 'p7', species_id: 's6' },
-];
+const ESPECIES_POR_PLANTACION: Record<string, string[]> = {
+  p1: ['s1', 's2', 's3', 's4'],
+  p2: ['s1', 's2', 's5'],
+  p3: ['s1', 's6'],
+  p4: ['s3', 's4'],
+  p5: ['s2'],
+  p6: ['s5'],
+  p7: ['s6'],
+};
 
-/** Asignaciones técnico → plantación (los admins son miembros automáticos, #67). */
-const PLANTACION_USUARIOS: FilaDemo[] = [
-  { user_id: 'u3', plantation_id: 'p1', rol_en_plantacion: 'tecnico', assigned_at: '2025-03-14T12:00:00Z' },
-  { user_id: 'u3', plantation_id: 'p2', rol_en_plantacion: 'tecnico', assigned_at: '2025-04-06T12:00:00Z' },
-  { user_id: 'u4', plantation_id: 'p1', rol_en_plantacion: 'tecnico', assigned_at: '2025-03-14T12:00:00Z' },
-  { user_id: 'u4', plantation_id: 'p3', rol_en_plantacion: 'tecnico', assigned_at: '2025-05-20T12:00:00Z' },
-  { user_id: 'u4', plantation_id: 'p6', rol_en_plantacion: 'tecnico', assigned_at: '2024-08-01T12:00:00Z' },
-  { user_id: 'u6', plantation_id: 'p2', rol_en_plantacion: 'tecnico', assigned_at: '2025-05-08T12:00:00Z' },
-];
+const PLANTACION_ESPECIES: FilaDemo[] = Object.entries(ESPECIES_POR_PLANTACION).flatMap(
+  ([plantation_id, especies]) => especies.map((species_id) => ({ plantation_id, species_id })),
+);
+
+/** Técnico → plantación → día de la asignación (los admins son miembros
+ *  automáticos, #67). */
+const ASIGNACIONES_POR_TECNICO: Record<string, Record<string, string>> = {
+  u3: { p1: '2025-03-14', p2: '2025-04-06' },
+  u4: { p1: '2025-03-14', p3: '2025-05-20', p6: '2024-08-01' },
+  u6: { p2: '2025-05-08' },
+};
+
+const PLANTACION_USUARIOS: FilaDemo[] = Object.entries(ASIGNACIONES_POR_TECNICO).flatMap(
+  ([user_id, plantaciones]) =>
+    Object.entries(plantaciones).map(([plantation_id, dia]) => ({
+      user_id,
+      plantation_id,
+      rol_en_plantacion: 'tecnico',
+      assigned_at: `${dia}T12:00:00Z`,
+    })),
+);
 
 const PARCELAS: FilaDemo[] = [
   { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z' },
@@ -126,12 +133,8 @@ const GRUPOS: FilaDemo[] = [
   { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: 'bosquete', estado: 'finalizada', created_at: '2025-04-05T12:00:00Z', parcelas: { codigo: 'BA03' } },
 ];
 
-const ESPECIES_ARBOL = [
-  { id: 's1', codigo: 'ANC', nombre: 'Anchico Colorado' },
-  { id: 's2', codigo: 'CBT', nombre: 'Cambota' },
-  { id: 's4', codigo: 'TIM', nombre: 'Timbó' },
-  { id: 's3', codigo: 'LAP', nombre: 'Lapacho rosado' },
-];
+/** Especies de los árboles del grupo, en el orden en que se alternan. */
+const ESPECIES_ARBOL = ['s1', 's2', 's4', 's3'].map(especiePorId);
 
 /** 30 árboles de la parcela LP12 / grupo L10, como en la pantalla real. */
 const ARBOLES: FilaDemo[] = Array.from({ length: 30 }, (_, indice) => {
@@ -156,11 +159,6 @@ const ARBOLES: FilaDemo[] = Array.from({ length: 30 }, (_, indice) => {
     groups: { codigo: 'L10', parcela_id: 'pa1', plantation_id: 'p1' },
   };
 });
-
-/** Cuenta filas de una tabla local aplicando los filtros de la consulta. */
-function contarEn(filas: FilaDemo[], filtros: FiltroDemo[]): number {
-  return filas.filter((fila) => filtros.every((filtro) => cumpleFiltro(fila, filtro))).length;
-}
 
 export const TABLAS: Record<string, TablaDemo> = {
   organizations: { filas: [ORGANIZACION] },
@@ -191,5 +189,3 @@ export const TABLAS: Record<string, TablaDemo> = {
 export const RPC: Record<string, unknown> = {
   stats_plantaciones: STATS_PLANTACIONES,
 };
-
-export { contarEn };
