@@ -58,7 +58,8 @@ de la transacción de la que hace rollback:
 `update_tree_ids` removida, `06` resto de 030, `07` mismo fix en `trees`
 INSERT, `09` helpers de estado/seed de `global_id` (032, #309), `10` SELECT
 scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
-(033, #310).
+(033, #310), `11` alta de plantaciones con `INSERT … RETURNING` bajo esa
+RLS (034, #379).
 
 ## Hallazgo fuera de alcance (no corregido)
 
