@@ -36,9 +36,17 @@
   de release notes comerciales, solo cambios visibles al usuario, sin
   issues/PRs ni jerga interna. `/deploy` propone y commitea las dos entradas
   juntas en cada release.
-- **Única excepción de push directo a staging**: el commit `chore(release): …`
-  que genera `/deploy` (mecánico, con OK previo, revisado dentro del diff del
-  PR de release). Todo lo demás sigue entrando por PR a staging.
+- **Novedades en pruebas** (#375): entre releases, staging acumula lo pendiente
+  en `## En pruebas · …` (NOVEDADES.md) y `## Sin publicar` (CHANGELOG.md). Las
+  mantiene el skill `/novedades` —correrlo después de mergear a staging—, que
+  concilia los PRs que alteran o quitan cambios anteriores. La web de staging
+  las muestra en `/novedades` con pasos de prueba, y `/deploy` las convierte en
+  la entrada de la versión. En main nunca aparecen.
+- **Excepciones de push directo a staging** (solo estas dos, las dos con OK
+  previo de Facu): el commit `chore(release): …` que genera `/deploy`
+  (mecánico, revisado dentro del diff del PR de release) y el commit
+  `docs(novedades): …` que genera `/novedades` (solo NOVEDADES.md +
+  CHANGELOG.md). Todo lo demás sigue entrando por PR a staging.
 - **Con un PR de release abierto NO se mergea nada a staging** (si pasa,
   `/deploy` tiene modo "refrescar").
 - **Hotfix directo a main** (excepcional): su PR lleva bump patch + entrada de

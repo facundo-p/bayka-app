@@ -56,6 +56,13 @@ done
 El rango del release es **`origin/main..origin/staging`** — exactamente lo que
 el PR va a mergear. Los tags NO definen el rango (solo el sanity check de arriba).
 
+**Si `NOVEDADES.md`/`CHANGELOG.md` tienen sección pendiente** (`## En pruebas` /
+`## Sin publicar`, #375): correr la conciliación de `/novedades` en modo
+`completo` sobre este rango (sus pasos 1–4, sin su commit) y usar el resultado
+como borrador de las dos entradas. Si la marca `sincronizado-hasta` no era el
+último PR del rango, avisarlo en la propuesta. Los bumps se siguen calculando
+por commits, como abajo.
+
 ```bash
 RANGE="origin/main..origin/staging"
 git rev-list --count $RANGE      # 0 → abortar: "staging y main están al día"
@@ -95,7 +102,9 @@ Gana el bump más alto de la lista. Reglas extra:
 
 Mostrar a Facu: versiones actuales → nuevas por app, el borrador COMPLETO de
 las DOS entradas de changelog — la técnica de `CHANGELOG.md` (formato de abajo)
-y la pública de `NOVEDADES.md` (#279) — y las inconsistencias detectadas.
+y la pública de `NOVEDADES.md` (#279) — y las inconsistencias detectadas. Con
+secciones pendientes, los borradores son esas secciones conciliadas, ya con las
+versiones y sin pasos, trazas ni marcas.
 **No tocar ningún archivo sin OK explícito.** Si el argumento fue `dry-run`,
 terminar acá.
 
@@ -166,6 +175,20 @@ Saltear el `npm version`/edición de la app que no bumpea. Este push directo a
 staging es la excepción documentada en CLAUDE.md: commit mecánico, generado con
 OK previo, y revisado dentro del diff del PR de release.
 
+**Conversión de las secciones pendientes** (#375), en este mismo commit:
+
+- `CHANGELOG.md`: `## Sin publicar` → `## <YYYY-MM-DD> · web X.Y.Z · mobile A.B.C`;
+  `### Web` → `### Web X.Y.Z`; `### Mobile` → `### Mobile A.B.C (versionCode M)`.
+  Se borran la marca y las apps sin cambios. Las anclas tienen que quedar
+  exactamente como las busca `release-tags.yml`.
+- `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`. Se
+  borran la marca, las trazas `<!-- #N -->` y todos los sub-bullets de pasos.
+- Verificar antes de commitear: `grep -nE 'sincronizado-hasta|<!-- #|^## (Sin publicar|En pruebas)' NOVEDADES.md CHANGELOG.md`
+  sin resultados, y `grep -n '^  - ' NOVEDADES.md` vacío.
+
+Así main nunca ve la sección pendiente, y el próximo `/novedades` arranca de
+cero desde `origin/main`.
+
 ## 5. Issue + PR + board
 
 ```bash
@@ -218,7 +241,9 @@ CLAUDE.md), o hubo que meter un fix: recalcular todo sobre el staging actual
 (pasos 1–3) y, con OK, pushear a staging UN commit que corrija versión +
 changelog (`chore(release): ajusta release a web vX.Y.Z', ...`). El PR existente
 se actualiza solo (trackea el HEAD de staging). Editar título/body del PR e
-Issue para reflejar las versiones nuevas.
+Issue para reflejar las versiones nuevas. Los PRs que entraron después del
+commit de release se concilian con las reglas del paso 4 de `/novedades`
+directamente sobre las entradas del release; no se recrea la sección pendiente.
 
 ## Abortar un release en curso
 
@@ -242,3 +267,5 @@ check del paso 0) y se rehúsa a apilar otro bump encima.
 | No existe ningún tag `web-v*`/`mobile-v*` | Faltan los tags baseline (#273): crearlos sobre origin/main y volver a empezar |
 | `origin/staging..origin/main` con commits (`--no-merges`) | STOP: hotfix sin back-merge. El PR de hotfix a main lleva su propio bump patch + entrada de changelog (el workflow lo taggea al mergear); después back-merge main→staging inmediato |
 | PR de release ya abierto | No crear otro: "Refrescar" o abortar. El commit de refresh incluye **CHANGELOG.md y NOVEDADES.md**, no solo los bumps |
+| Sección pendiente desactualizada o con marcas distintas | La conciliación en modo `completo` del paso 1 la pone al día; avisar el desync en la propuesta |
+| Sin sección pendiente | Derivar las dos entradas de los commits, como siempre |

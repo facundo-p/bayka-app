@@ -13,6 +13,12 @@ La entrada nueva de cada release la escribe el skill `/deploy`, que mantiene
 además la versión pública para usuarios/clientes en `NOVEDADES.md` (sin issues,
 PRs ni jerga interna — ahí solo entra lo visible para el usuario).
 
+Entre releases, staging acumula lo que va entrando en una sección
+`## Sin publicar` (`### Web` / `### Mobile` / `### Otros` sin versión, más la
+marca `<!-- sincronizado-hasta: … -->`), que el skill `/novedades` mantiene
+sincronizada con la de `NOVEDADES.md`. `/deploy` la convierte en la entrada del
+release, así que en `main` nunca aparece.
+
 ## 2026-09-01 · web 1.1.0
 
 ### Web 1.1.0

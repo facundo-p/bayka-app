@@ -8,6 +8,12 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > `- **Titular.** Detalle` los parsea la web para la pantalla `/novedades`
 > (`web/src/lib/parsearNovedades.ts`), igual que los headers de `CHANGELOG.md`
 > son anclas del workflow de tags. Cambiar el formato rompe esa pantalla.
+>
+> Entre releases, staging tiene arriba una sección `## En pruebas · …` que
+> mantiene el skill `/novedades`: cada bullet lleva su traza oculta
+> `<!-- #N -->` y los pasos para probarlo como sub-bullets, y la sección, una
+> marca `<!-- sincronizado-hasta: … -->`. La web la muestra solo en staging;
+> `/deploy` la convierte en la entrada de la versión.
 
 ## Web 1.1.0 · 21 de agosto de 2026
 
