@@ -1,9 +1,50 @@
 import novedadesRaw from '../../../../NOVEDADES.md?raw';
+import { entradasVisibles } from '../novedades';
 import { esEntradaEnPruebas, parsearNovedades } from '../parsearNovedades';
 
-describe('parsearNovedades sobre el archivo real', () => {
-  // La sección en pruebas cambia con cada sincronización: solo se afirma lo publicado.
-  const entradas = parsearNovedades(novedadesRaw).filter((entrada) => !esEntradaEnPruebas(entrada));
+// Sobre el archivo real solo se afirma la forma: `/deploy` y `/novedades` le
+// agregan entradas arriba y un contenido fijo rompería el CI del próximo release.
+describe('NOVEDADES.md real', () => {
+  const entradas = parsearNovedades(novedadesRaw);
+  const publicadas = entradas.filter((entrada) => !esEntradaEnPruebas(entrada));
+
+  test('parsea al menos una entrada publicada, todas con título', () => {
+    expect(publicadas.length).toBeGreaterThan(0);
+    expect(entradas.filter((entrada) => entrada.titulo.trim() === '')).toEqual([]);
+  });
+
+  // Una línea suelta sin `- ` no es ítem: la pantalla mostraría la versión vacía.
+  test('toda entrada publicada tiene al menos un ítem', () => {
+    expect(publicadas.filter((entrada) => entrada.items.length === 0)).toEqual([]);
+  });
+
+  test('la sección en pruebas, si está, es una sola y va arriba de todo', () => {
+    expect(entradas.slice(1).filter(esEntradaEnPruebas)).toEqual([]);
+  });
+
+  test('fuera de staging no se ve ninguna entrada en pruebas', () => {
+    expect(entradasVisibles(entradas, false).filter(esEntradaEnPruebas)).toEqual([]);
+  });
+});
+
+describe('parsearNovedades: entradas publicadas', () => {
+  const PUBLICADAS = [
+    '# Novedades de Bayka',
+    '',
+    'Intro con **bold** que no es una entrada.',
+    '',
+    '## Web 1.1.0 · 21 de agosto de 2026',
+    '',
+    '- **Mostrá u ocultá tu contraseña.** El inicio de sesión y los formularios de',
+    '  contraseña ahora tienen un botón con forma de ojo.',
+    '',
+    '## Web 1.0.0 · Mobile 1.0.0 · 20 de agosto de 2026',
+    '',
+    '- Primera versión numerada de Bayka: la gestión web para administrar',
+    '  plantaciones y la app Android.',
+  ].join('\n');
+  const entradas = parsearNovedades(PUBLICADAS);
+  const [nueva, primera] = entradas;
 
   test('una entrada por versión, con el título tal cual está escrito', () => {
     expect(entradas.map((entrada) => entrada.titulo)).toEqual([
@@ -13,22 +54,20 @@ describe('parsearNovedades sobre el archivo real', () => {
   });
 
   test('el bullet con titular se parte en titular + detalle, uniendo el wrap', () => {
-    expect(entradas[0].items).toEqual([
+    expect(nueva.items).toEqual([
       {
         titular: 'Mostrá u ocultá tu contraseña.',
         detalle:
-          'El inicio de sesión y los formularios de contraseña ahora tienen un botón con ' +
-          'forma de ojo para ver lo que estás escribiendo y evitar errores de tipeo.',
+          'El inicio de sesión y los formularios de contraseña ahora tienen un botón con forma de ojo.',
       },
     ]);
   });
 
   test('el bullet sin bold queda como puro detalle', () => {
-    expect(entradas[1].items).toEqual([
+    expect(primera.items).toEqual([
       {
         detalle:
-          'Primera versión numerada de Bayka: la gestión web para administrar plantaciones ' +
-          'y la app Android para el trabajo en campo.',
+          'Primera versión numerada de Bayka: la gestión web para administrar plantaciones y la app Android.',
       },
     ]);
   });
