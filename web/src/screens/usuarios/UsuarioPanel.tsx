@@ -51,7 +51,11 @@ function CabeceraUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
     <PanelIdentidad
       marca={<Avatar usuario={usuario} clase={styles.avatarGrande} />}
       titulo={nombreVisible(usuario)}
-      meta={`${ETIQUETA_ROL[usuario.rol]} · desde ${formatearFechaDia(usuario.createdAt)}`}
+      meta={
+        <>
+          {ETIQUETA_ROL[usuario.rol]} · desde {formatearFechaDia(usuario.createdAt)}
+        </>
+      }
     />
   );
 }
