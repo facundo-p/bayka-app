@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { cx } from '../lib/classNames';
 import { useCerrarConEscape } from '../hooks/useCerrarConEscape';
 import { TAMANO_ICONO } from '../theme/iconos';
+import { BotonIcono } from './BotonIcono';
 import styles from './PanelLateral.module.css';
 
 interface PanelLateralProps {
@@ -27,14 +28,9 @@ export function PanelLateral({ cabecera, pie, etiqueta, onCerrar, children }: Pa
     <aside className={styles.panel} aria-label={etiqueta}>
       <div className={styles.cabecera}>
         <div className={styles.identidad}>{cabecera}</div>
-        <button
-          type="button"
-          className={styles.cerrar}
-          aria-label={`Cerrar ${etiqueta}`}
-          onClick={onCerrar}
-        >
+        <BotonIcono variante="fantasma" tamano="sm" etiqueta={`Cerrar ${etiqueta}`} onClick={onCerrar}>
           <X size={TAMANO_ICONO.lg} aria-hidden />
-        </button>
+        </BotonIcono>
       </div>
       <div className={styles.cuerpo}>{children}</div>
       {pie && <div className={styles.pie}>{pie}</div>}

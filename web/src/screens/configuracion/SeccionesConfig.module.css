@@ -219,25 +219,6 @@
   color: var(--color-text-body);
 }
 
-.quitarTecnico {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-control);
-  background-color: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.quitarTecnico:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-danger);
-}
-
 .botonAsignar {
   display: inline-flex;
   align-items: center;

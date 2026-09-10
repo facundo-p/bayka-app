@@ -36,25 +36,6 @@
   color: var(--color-primary-accent);
 }
 
-.flecha {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.flecha:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
-
 /* Riel horizontal con snap por card; la barra se oculta (mandan las flechas). */
 .riel {
   display: flex;

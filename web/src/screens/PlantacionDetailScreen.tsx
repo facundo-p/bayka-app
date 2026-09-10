@@ -3,6 +3,7 @@ import { Link, Outlet, useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, Download, MoreHorizontal, Pencil, Plus } from 'lucide-react';
 import {
+  BotonIcono,
   Button,
   CabeceraSeccion,
   Cargando,
@@ -142,15 +143,15 @@ function AccionesDesplegadas(props: AccionesProps) {
   const descargando = kml.descargando || xlsx.descargando || csv.descargando;
   return (
     <>
-      <button
-        type="button"
-        className={styles.botonIcono}
-        onClick={onEditar}
-        aria-label="Editar"
+      <BotonIcono
+        variante="contornoTransparente"
+        tamano="sm"
+        etiqueta="Editar"
         title="Editar"
+        onClick={onEditar}
       >
         <Pencil size={TAMANO_ICONO.md} aria-hidden />
-      </button>
+      </BotonIcono>
       <MenuDesplegable
         etiqueta="Exportar"
         items={itemsExportar(props)}
@@ -173,7 +174,9 @@ function AccionesDesplegadas(props: AccionesProps) {
 }
 
 /** Barra angosta: las mismas acciones en un solo «⋯». Desplegadas se comen
- *  tres renglones de barra y empujan el contenido fuera del primer pantallazo. */
+ *  tres renglones de barra y empujan el contenido fuera del primer pantallazo.
+ *  Como el «⋯» es el único acceso a esas acciones, va con el destino táctil
+ *  completo. */
 function AccionesPlegadas(props: AccionesProps) {
   const items: ItemDesplegable[] = [
     { clave: 'editar', etiqueta: 'Editar plantación', onSeleccionar: props.onEditar },
@@ -186,10 +189,15 @@ function AccionesPlegadas(props: AccionesProps) {
     <MenuDesplegable
       etiqueta="Acciones de la plantación"
       items={items}
-      disparador={(propsDisparador) => (
-        <button type="button" className={styles.botonIcono} {...propsDisparador}>
+      disparador={({ 'aria-label': etiqueta, ...propsDisparador }) => (
+        <BotonIcono
+          variante="contornoTransparente"
+          tamano="md"
+          etiqueta={etiqueta}
+          {...propsDisparador}
+        >
           <MoreHorizontal size={TAMANO_ICONO.lg} aria-hidden />
-        </button>
+        </BotonIcono>
       )}
     />
   );

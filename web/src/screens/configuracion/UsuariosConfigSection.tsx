@@ -4,6 +4,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import {
   Badge,
+  BotonIcono,
   Button,
   Cargando,
   ErrorConReintento,
@@ -92,14 +93,14 @@ function FilaAsignado({
       </span>
       <span className={styles.nombreTecnico}>{nombre}</span>
       <Badge>{etiquetaRol(asignado.rolEnPlantacion)}</Badge>
-      <button
-        type="button"
-        className={styles.quitarTecnico}
-        aria-label={`Quitar ${nombre}`}
+      <BotonIcono
+        variante="fantasma"
+        destructiva
+        etiqueta={`Quitar ${nombre}`}
         onClick={() => onQuitar(asignado)}
       >
         <X size={TAMANO_ICONO.md} />
-      </button>
+      </BotonIcono>
     </li>
   );
 }

@@ -4,30 +4,6 @@
   gap: var(--space-md);
 }
 
-.flecha {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.flecha:hover:not(:disabled) {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
-
-.flecha:disabled {
-  color: var(--color-text-disabled);
-  cursor: not-allowed;
-}
-
 .estado {
   font-family: var(--font-mono);
   font-size: var(--text-md);

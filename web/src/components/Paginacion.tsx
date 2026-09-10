@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { TAMANO_ICONO } from '../theme/iconos';
+import { BotonIcono } from './BotonIcono';
 import styles from './Paginacion.module.css';
 
 interface PaginacionProps {
@@ -13,27 +14,27 @@ interface PaginacionProps {
 export function Paginacion({ pagina, totalPaginas, onCambiar }: PaginacionProps) {
   return (
     <nav className={styles.paginacion} aria-label="Paginación">
-      <button
-        type="button"
-        className={styles.flecha}
-        aria-label="Página anterior"
+      <BotonIcono
+        variante="contorno"
+        tamano="sm"
+        etiqueta="Página anterior"
         disabled={pagina <= 1}
         onClick={() => onCambiar(pagina - 1)}
       >
         <ChevronLeft size={TAMANO_ICONO.md} aria-hidden />
-      </button>
+      </BotonIcono>
       <span className={styles.estado}>
         {pagina} / {totalPaginas}
       </span>
-      <button
-        type="button"
-        className={styles.flecha}
-        aria-label="Página siguiente"
+      <BotonIcono
+        variante="contorno"
+        tamano="sm"
+        etiqueta="Página siguiente"
         disabled={pagina >= totalPaginas}
         onClick={() => onCambiar(pagina + 1)}
       >
         <ChevronRight size={TAMANO_ICONO.md} aria-hidden />
-      </button>
+      </BotonIcono>
     </nav>
   );
 }

@@ -33,25 +33,6 @@
   min-width: 0;
 }
 
-.cerrar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-  background: none;
-  border: none;
-  border-radius: var(--radius-control);
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.cerrar:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
-
 /* Único lugar con scroll del panel: los campos y bloques de contexto. */
 .cuerpo {
   flex: 1;

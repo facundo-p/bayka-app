@@ -1,5 +1,6 @@
 export { Badge } from './Badge';
 export { BarraHerramientas, RecuentoNumero } from './BarraHerramientas';
+export { BotonIcono } from './BotonIcono';
 export { Breadcrumb } from './Breadcrumb';
 export { CabeceraSeccion } from './CabeceraSeccion';
 export { Button } from './Button';
