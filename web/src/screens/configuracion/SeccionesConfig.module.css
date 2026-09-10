@@ -183,6 +183,20 @@
   list-style: none;
 }
 
+/* Estado vacío: ocupa el lugar de la lista, con su mismo inset lateral y
+   centrado en el alto que sobra —si no, queda solo arriba con 200px muertos—. */
+.listaVacia {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 var(--space-3xl) var(--space-xl);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 .filaTecnico {
   display: flex;
   align-items: center;
@@ -292,6 +306,23 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-xl);
+}
+
+/* ─── Inset de los hijos directos de la card ─────────────────────────────
+ * Estas cards no tienen padding: el inset lateral lo pone cada hijo, porque el
+ * pie de Especies va a sangre (borde y fondo de lado a lado) y un padding de
+ * card lo rompería. Los mensajes de abajo no traen inset propio —`.avisoInfo` y
+ * `.errorAccion` se comparten con los modales, donde el inset lo pone el modal—,
+ * así que acá se lo agrega la card (#370).
+ */
+.cardEspecies > .avisoInfo,
+.cardEspecies > .errorAccion {
+  margin: 0 var(--space-3xl) var(--space-lg);
+}
+
+/* `ErrorConReintento` no tiene padding propio y acá cuelga de la card. */
+.bloqueEstado {
+  padding: 0 var(--space-3xl) var(--space-3xl);
 }
 
 /* Pie fijo del checklist: la regla que explica las especies bloqueadas. */

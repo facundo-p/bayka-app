@@ -222,7 +222,9 @@ function ContenidoUsuarios({
         }
       />
       {asignados.length === 0 ? (
-        <p className={styles.textoAyuda}>Sin técnicos asignados: nadie ve esta plantación en la app.</p>
+        <p className={styles.listaVacia}>
+          Sin técnicos asignados: nadie ve esta plantación en la app.
+        </p>
       ) : (
         <ul className={styles.listaTecnicos}>
           {asignados.map((asignado) => (
@@ -269,10 +271,12 @@ export function UsuariosConfigSection() {
       {(perfiles.isError || asignados.isError) && (
         <>
           <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
-          <ErrorConReintento
-            mensaje="No se pudieron cargar los usuarios."
-            onReintentar={reintentar}
-          />
+          <div className={styles.bloqueEstado}>
+            <ErrorConReintento
+              mensaje="No se pudieron cargar los usuarios."
+              onReintentar={reintentar}
+            />
+          </div>
         </>
       )}
       {perfiles.data && asignados.data && (

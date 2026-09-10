@@ -240,10 +240,12 @@ export function EspeciesConfigSection() {
       {(catalogo.isError || especies.isError) && (
         <>
           <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
-          <ErrorConReintento
-            mensaje="No se pudieron cargar las especies."
-            onReintentar={reintentar}
-          />
+          <div className={styles.bloqueEstado}>
+            <ErrorConReintento
+              mensaje="No se pudieron cargar las especies."
+              onReintentar={reintentar}
+            />
+          </div>
         </>
       )}
       {catalogo.data && especies.data && (
