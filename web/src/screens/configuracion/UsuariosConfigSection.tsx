@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import {
   Badge,
@@ -11,10 +11,12 @@ import {
   SelectConDetalle,
   type OpcionConDetalle,
 } from '../../components';
+import { useInvalidarConListado } from '../../hooks/useInvalidarConListado';
+import { usePerfiles } from '../../hooks/usePerfiles';
 import { iniciales } from '../../lib/iniciales';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarAsignados,
-  listarPerfiles,
   type PerfilResumen,
   type UsuarioAsignado,
 } from '../../queries/usuarioQueries';
@@ -67,16 +69,6 @@ function opcionesDeUsuario(perfiles: PerfilResumen[]): OpcionConDetalle[] {
   }));
 }
 
-/** Invalida la lista de asignados y el count de usuarios del listado general. */
-function useInvalidarUsuarios(plantationId: string) {
-  const queryClient = useQueryClient();
-  return () =>
-    Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['plantacion-usuarios', plantationId] }),
-      queryClient.invalidateQueries({ queryKey: ['plantaciones'] }),
-    ]);
-}
-
 function mensajeErrorAsignar(error: Error | null): string | null {
   if (!error) return null;
   return error.message === MENSAJE_USUARIO_YA_ASIGNADO
@@ -121,7 +113,7 @@ function ModalAsignar({
   onCerrar: () => void;
 }) {
   const [userId, setUserId] = useState('');
-  const invalidar = useInvalidarUsuarios(plantationId);
+  const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacionUsuarios(plantationId));
   const mutacion = useMutation({
     mutationFn: () => asignarUsuario(plantationId, userId),
     onSuccess: async () => {
@@ -172,7 +164,7 @@ function ModalQuitar({
   asignado: UsuarioAsignado;
   onCerrar: () => void;
 }) {
-  const invalidar = useInvalidarUsuarios(plantationId);
+  const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacionUsuarios(plantationId));
   const mutacion = useMutation({
     mutationFn: () => desasignarUsuario(plantationId, asignado.userId),
     onSuccess: async () => {
@@ -263,9 +255,9 @@ function ContenidoUsuarios({
 /** Control de acceso de la app: solo los usuarios asignados ven la plantación. */
 export function UsuariosConfigSection() {
   const { id = '' } = useParams();
-  const perfiles = useQuery({ queryKey: ['perfiles'], queryFn: listarPerfiles });
+  const perfiles = usePerfiles();
   const asignados = useQuery({
-    queryKey: ['plantacion-usuarios', id],
+    queryKey: CLAVE_QUERY.plantacionUsuarios(id),
     queryFn: () => listarAsignados(id),
   });
   const reintentar = () => void Promise.all([perfiles.refetch(), asignados.refetch()]);

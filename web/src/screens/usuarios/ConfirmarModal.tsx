@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Modal } from '../../components';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import styles from './ModalUsuarios.module.css';
 
 /** Confirmación genérica para acciones de usuario (desactivar, reactivar,
@@ -29,7 +30,7 @@ export function ConfirmarModal({
   const mutacion = useMutation({
     mutationFn: accion,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.usuarios() });
       if (textoExito) setCompletada(true);
       else onClose();
     },

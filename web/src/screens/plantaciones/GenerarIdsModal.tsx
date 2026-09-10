@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Modal } from '../../components';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { generarIds, seedSugerido } from '../../queries/idsQueries';
 import styles from './GenerarIdsModal.module.css';
 
@@ -13,13 +14,16 @@ function useGenerarIds(plantationId: string, onClose: () => void) {
   const queryClient = useQueryClient();
   const [seedEditado, setSeedEditado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { data: sugerido } = useQuery({ queryKey: ['seed-sugerido'], queryFn: seedSugerido });
+  const { data: sugerido } = useQuery({
+    queryKey: CLAVE_QUERY.seedSugerido(),
+    queryFn: seedSugerido,
+  });
   const seed = seedEditado ?? (sugerido != null ? String(sugerido) : '');
 
   const mutacion = useMutation({
     mutationFn: (seedElegido: number) => generarIds(plantationId, seedElegido),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['ids-generados', plantationId] });
+      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.idsGenerados(plantationId) });
       onClose();
     },
     onError: (errorRpc: Error) => setError(errorRpc.message),

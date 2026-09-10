@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPlantaciones } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
 import { useCommandMenu } from '../../hooks/useCommandMenu';
@@ -48,7 +49,7 @@ export function CommandMenu() {
 
   const resultados = useResultadosBusqueda(texto, scope ?? undefined);
   const { data: plantaciones } = useQuery({
-    queryKey: ['plantaciones'],
+    queryKey: CLAVE_QUERY.plantaciones(),
     queryFn: listarPlantaciones,
   });
 

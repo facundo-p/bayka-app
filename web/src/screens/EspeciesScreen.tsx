@@ -14,6 +14,7 @@ import {
 } from '../components';
 import { formatearEntero } from '../lib/formato';
 import { useDebounce } from '../hooks/useDebounce';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarCatalogoConUso, type EspecieConCatalogoUso } from '../queries/especieQueries';
 import { COLUMNAS_ESPECIES } from './especies/columnas';
 import { useColumnasVisibles } from '../hooks/useColumnasVisibles';
@@ -51,7 +52,7 @@ export function EspeciesScreen() {
   const columnas = useColumnasVisibles(COLUMNAS_ESPECIES);
   const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['especies-catalogo-uso'],
+    queryKey: CLAVE_QUERY.especiesCatalogoUso(),
     queryFn: listarCatalogoConUso,
   });
 

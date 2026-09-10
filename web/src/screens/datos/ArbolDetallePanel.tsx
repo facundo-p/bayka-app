@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Cargando, MapaPuntos, PanelLateral } from '../../components';
 import { varsCss } from '../../lib/cssVars';
 import { formatearFechaCorta } from '../../lib/fechas';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { obtenerUrlFoto, tieneFotoSubida } from '../../services/fotoService';
@@ -35,7 +36,10 @@ function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
 
 /** Imagen de la foto firmada; tenue mientras carga o si no se pudo obtener. */
 function FotoSubida({ fotoUrl, alt }: { fotoUrl: string; alt: string }) {
-  const foto = useQuery({ queryKey: ['foto', fotoUrl], queryFn: () => obtenerUrlFoto(fotoUrl) });
+  const foto = useQuery({
+    queryKey: CLAVE_QUERY.foto(fotoUrl),
+    queryFn: () => obtenerUrlFoto(fotoUrl),
+  });
   if (foto.isPending) return <Cargando />;
   if (!foto.data) return <span className={styles.tenue}>No se pudo cargar la foto</span>;
   return <img className={styles.foto} src={foto.data} alt={alt} />;

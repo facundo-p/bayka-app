@@ -15,6 +15,7 @@ import {
 } from '../components';
 import { useDebounce } from '../hooks/useDebounce';
 import { pluralizar } from '../lib/formato';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones } from '../queries/plantationQueries';
 import { COLUMNAS_PLANTACIONES } from './plantaciones/columnas';
 import { useColumnasVisibles } from '../hooks/useColumnasVisibles';
@@ -48,7 +49,7 @@ export function PlantacionesScreen() {
   const columnas = useColumnasVisibles(COLUMNAS_PLANTACIONES);
   const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['plantaciones'],
+    queryKey: CLAVE_QUERY.plantaciones(),
     queryFn: listarPlantaciones,
   });
 

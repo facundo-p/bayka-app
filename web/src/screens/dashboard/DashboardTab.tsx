@@ -8,12 +8,11 @@ import {
   obtenerFuenteDashboard,
   type FuenteDashboard,
 } from '../../queries/dashboardQueries';
-import { obtenerPlantacion } from '../../queries/plantationQueries';
+import { usePlantacion } from '../../hooks/usePlantacion';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
-import {
-  listarParcelasConStats,
-  type ParcelaConStats,
-} from '../../queries/dataExplorerQueries';
+import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
+import { useParcelasDatos } from '../datos/useDatosQueries';
 import { asignarColoresEspecies } from './coloresEspecies';
 import { ResumenPlantacion, type AlcanceMetrica } from './ResumenPlantacion';
 import { SpeciesDistribution } from './SpeciesDistribution';
@@ -110,16 +109,14 @@ function ContenidoDashboard({
 export function DashboardTab() {
   const { id = '' } = useParams();
   const dashboard = useQuery({
-    queryKey: ['dashboard', id],
+    queryKey: CLAVE_QUERY.dashboard(id),
     queryFn: () => obtenerFuenteDashboard(id),
   });
-  // Misma key que el shell del detalle: reusa la cache y solo aporta el objetivo.
-  const plantacion = useQuery({ queryKey: ['plantacion', id], queryFn: () => obtenerPlantacion(id) });
+  const plantacion = usePlantacion(id);
   // Mapa y parcelas pueden seguir cargando con el dashboard ya listo: se rinden
   // defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla.
-  const mapa = useQuery({ queryKey: ['mapa', id], queryFn: () => listarPuntosGps(id) });
-  // Misma key que la tab Datos: comparten cache.
-  const parcelas = useQuery({ queryKey: ['datos-parcelas', id], queryFn: () => listarParcelasConStats(id) });
+  const mapa = useQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) });
+  const parcelas = useParcelasDatos(id);
 
   if (dashboard.isPending) return <Cargando />;
   if (dashboard.isError) {
