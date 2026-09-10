@@ -9,14 +9,28 @@ interface FormFieldProps {
   error?: string;
   /** Oculta el label visualmente pero lo deja accesible (toolbars densas). */
   labelOculto?: boolean;
+  /** Para controles no nativos que se nombran con aria-labelledby. */
+  labelId?: string;
   children: ReactNode;
 }
 
 /** Estructura compartida de Input/Select: label asociado + hint/error debajo. */
-export function FormField({ id, label, hint, error, labelOculto, children }: FormFieldProps) {
+export function FormField({
+  id,
+  label,
+  hint,
+  error,
+  labelOculto,
+  labelId,
+  children,
+}: FormFieldProps) {
   return (
     <div className={styles.field}>
-      <label className={cx(styles.label, labelOculto && styles.labelOculto)} htmlFor={id}>
+      <label
+        id={labelId}
+        className={cx(styles.label, labelOculto && styles.labelOculto)}
+        htmlFor={id}
+      >
         {label}
       </label>
       {children}

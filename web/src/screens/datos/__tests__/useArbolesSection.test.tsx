@@ -32,7 +32,13 @@ vi.mock('../../../queries/usuarioQueries', async () => {
 });
 
 const PARCELA = { id: 'parc-1', nombre: 'Norte', codigo: 'P1', descripcion: null, createdAt: '', grupos: 1, arboles: 1 };
-const PERFIL = { id: 'user-1', nombre: 'Ana', rol: 'admin' as const, activo: true };
+const PERFIL = {
+  id: 'user-1',
+  nombre: 'Ana',
+  rol: 'admin' as const,
+  email: 'ana@bayka.org',
+  activo: true,
+};
 const PAGINA_VACIA: PaginaArboles = { arboles: [], total: 0, totalPaginas: 1 };
 
 function renderConRuta() {

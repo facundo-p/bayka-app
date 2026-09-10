@@ -21,16 +21,18 @@ const FILA_ASIGNADO = {
 };
 
 describe('listarPerfiles', () => {
-  test('consulta profiles ordenado por nombre y devuelve las filas', async () => {
+  test('consulta profiles con email, ordenado por nombre, y devuelve las filas', async () => {
     const consultas: ConsultaCapturada[] = [];
+    const fila = { id: 'user-1', nombre: 'Ana', rol: 'admin', email: 'ana@bayka.org', activo: true };
     estadoMock.resolverConsulta = (consulta) => {
       consultas.push(consulta);
-      return { data: [{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }], error: null };
+      return { data: [fila], error: null };
     };
     const perfiles = await listarPerfiles();
 
-    expect(perfiles).toEqual([{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }]);
+    expect(perfiles).toEqual([fila]);
     expect(consultas[0].tabla).toBe('profiles');
+    expect(consultas[0].columnas).toBe('id, nombre, rol, email, activo');
     expect(consultas[0].orden).toEqual({ columna: 'nombre', ascending: true });
   });
 
