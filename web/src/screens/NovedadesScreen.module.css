@@ -52,7 +52,7 @@
 
 /* ─── Sección en pruebas (solo staging, #375) ─────────────────────────── */
 
-/* Punteado = provisorio; el ámbar del rótulo la ata al banner de entorno. */
+/* Punteado = provisorio: todavía no está en producción. */
 .enPruebas {
   border-style: dashed;
   border-color: var(--color-border-strong);

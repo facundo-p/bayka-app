@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import type { PuntoGps } from '../queries/mapaQueries';
-import { MapaPuntos } from './MapaPuntos';
+import { MapaPuntos } from './mapa/MapaPuntos';
 import styles from './PlantationMap.module.css';
 
 /** Cantidad de especies que entran en la leyenda (las principales por orden). */
