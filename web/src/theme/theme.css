@@ -201,6 +201,10 @@
   --text-kpi-sm: 26px;         /* celdas del resumen, número de mini-card de parcela */
   --text-hero-num: 64px;
 
+  /* ─── Peso y espaciado de letra ────────────────────────────────────── */
+  --font-weight-semibold: 600;
+  --letter-spacing-wide: 1px;
+
   /* ─── Sombras ──────────────────────────────────────────────────────── */
   --shadow-card: 0 1px 3px rgba(10, 55, 96, 0.08);
   --shadow-modal: 0 24px 60px rgba(10, 30, 55, 0.28);   /* overlay ⌘K + modales */
@@ -265,7 +269,7 @@
      26px y sidebar/Topbar se corren por esta MISMA variable. */
   --alto-banner-entorno: 0px;
   --z-banner-entorno: 30;              /* sobre la Topbar (20), bajo --z-modal */
-  --color-entorno-pruebas-bg: #ffb300; /* ámbar de precaución (= --color-yellow-dark) */
+  --color-entorno-pruebas-bg: var(--color-yellow-dark);
   --color-entorno-pruebas-fg: var(--color-text-primary);
 }
 

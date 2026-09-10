@@ -13,16 +13,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
+import { definirConstantesBuild } from './constantesBuild';
 
 const clienteFalso = fileURLToPath(new URL('./src/demo/supabase.ts', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
-  define: {
-    __ENTORNO_PRUEBAS__: JSON.stringify(process.env.DEMO_BANNER !== '0'),
-    __VERSION_APP__: JSON.stringify('demo'),
-    __COMMIT_APP__: JSON.stringify(''),
-  },
+  define: definirConstantesBuild(process.env.DEMO_BANNER !== '0'),
   // Los imports son relativos ('../lib/supabase', '../../lib/supabase'): el
   // alias se aplica sobre el especificador crudo, así que va por regex.
   resolve: {

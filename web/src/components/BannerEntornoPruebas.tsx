@@ -4,6 +4,7 @@ import styles from './BannerEntornoPruebas.module.css';
 
 /** Valor de `<html data-entorno>`: theme.css sube --alto-banner-entorno con él. */
 const MARCA_ENTORNO_PRUEBAS = 'pruebas';
+const TEXTO_BANNER_ENTORNO = 'ENTORNO DE PRUEBAS';
 
 /** Franja fija "ENTORNO DE PRUEBAS · vX.Y.Z · commit", montada una vez en App.tsx (cubre
  *  también /login). Es dueña de la franja Y del offset: marca el documento para
@@ -18,5 +19,5 @@ export function BannerEntornoPruebas() {
   }, []);
 
   if (!ES_ENTORNO_DE_PRUEBAS) return null;
-  return <div className={styles.banner}>{`ENTORNO DE PRUEBAS · ${ETIQUETA_BUILD}`}</div>;
+  return <div className={styles.banner}>{`${TEXTO_BANNER_ENTORNO} · ${ETIQUETA_BUILD}`}</div>;
 }

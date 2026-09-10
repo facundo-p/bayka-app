@@ -6,15 +6,12 @@
  * `vite.demo.config.ts` lo pone en lugar de `lib/supabase` por alias, así que
  * ningún módulo de producción lo importa y nunca entra al bundle.
  */
-import {
-  contarEn,
-  RPC,
-  SESION_DEMO,
-  TABLAS,
-  type FilaDemo,
-  cumpleFiltro,
-  type FiltroDemo,
-} from './datos';
+import { RPC, SESION_DEMO, TABLAS, type FilaDemo, type FiltroDemo } from './datos';
+
+/** Parámetro de URL que arranca sin sesión. Es la única forma de ver el login
+ *  acá: con sesión redirige al listado, así que sin esto una captura de
+ *  `/login` es en realidad una captura de `/plantaciones`. */
+export const PARAMETRO_SIN_SESION = 'sinSesion';
 
 type RespuestaDemo = {
   data: FilaDemo | FilaDemo[] | null;
@@ -24,85 +21,84 @@ type RespuestaDemo = {
 
 type OpcionesSelect = { head?: boolean; count?: string };
 
+/** La web los encadena pero con datos de mentira alcanza con `eq` y `not`. */
+const METODOS_SIN_EFECTO = ['neq', 'in', 'is', 'gte', 'lte', 'ilike', 'order', 'limit', 'range'] as const;
+type MetodoSinEfecto = (typeof METODOS_SIN_EFECTO)[number];
+
 /** Sólo los métodos que la web encadena; el resto no hace falta simularlo. */
-interface ConsultaDemo extends PromiseLike<RespuestaDemo> {
+interface ConsultaDemo
+  extends PromiseLike<RespuestaDemo>,
+    Record<MetodoSinEfecto, () => ConsultaDemo> {
   select: (columnas?: string, opciones?: OpcionesSelect) => ConsultaDemo;
   eq: (columna: string, valor: unknown) => ConsultaDemo;
-  neq: (columna: string, valor: unknown) => ConsultaDemo;
-  in: (columna: string, valores: unknown[]) => ConsultaDemo;
-  is: (columna: string, valor: unknown) => ConsultaDemo;
   not: (columna: string, operador: string, valor: unknown) => ConsultaDemo;
-  gte: (columna: string, valor: unknown) => ConsultaDemo;
-  lte: (columna: string, valor: unknown) => ConsultaDemo;
-  ilike: (columna: string, patron: string) => ConsultaDemo;
-  order: (columna: string, opciones?: { ascending?: boolean }) => ConsultaDemo;
-  limit: (cantidad: number) => ConsultaDemo;
-  range: (desde: number, hasta: number) => ConsultaDemo;
   maybeSingle: () => Promise<RespuestaDemo>;
   single: () => Promise<RespuestaDemo>;
 }
 
-function crearConsulta(nombreTabla: string): ConsultaDemo {
-  const filtros: FiltroDemo[] = [];
-  let soloConteo = false;
-  let unaFila = false;
+type EstadoConsulta = {
+  tabla: string;
+  filtros: FiltroDemo[];
+  soloConteo: boolean;
+  unaFila: boolean;
+};
 
-  const resolver = (): RespuestaDemo => {
-    const tabla = TABLAS[nombreTabla];
-    if (!tabla) return { data: unaFila ? null : [], error: null, count: 0 };
-    if (soloConteo) {
-      const total = tabla.contar ? tabla.contar(filtros) : contarEn(tabla.filas, filtros);
-      return { data: null, error: null, count: total };
-    }
-    const filas = tabla.filas.filter((fila) =>
-      filtros.every((filtro) => cumpleFiltro(fila, filtro)),
-    );
-    if (unaFila) return { data: filas[0] ?? null, error: null };
-    return { data: filas, error: null, count: filas.length };
+/** ¿La fila pasa el filtro? Una columna que los datos no modelan no filtra. */
+function cumpleFiltro(fila: FilaDemo, { columna, valor, excluye }: FiltroDemo): boolean {
+  if (!(columna in fila)) return true;
+  return excluye ? fila[columna] !== valor : fila[columna] === valor;
+}
+
+function filtrarEn(filas: FilaDemo[], filtros: FiltroDemo[]): FilaDemo[] {
+  return filas.filter((fila) => filtros.every((filtro) => cumpleFiltro(fila, filtro)));
+}
+
+function resolver({ tabla: nombre, filtros, soloConteo, unaFila }: EstadoConsulta): RespuestaDemo {
+  const tabla = TABLAS[nombre];
+  if (!tabla) return { data: unaFila ? null : [], error: null, count: 0 };
+  if (soloConteo) {
+    const total = tabla.contar ? tabla.contar(filtros) : filtrarEn(tabla.filas, filtros).length;
+    return { data: null, error: null, count: total };
+  }
+  const filas = filtrarEn(tabla.filas, filtros);
+  if (unaFila) return { data: filas[0] ?? null, error: null };
+  return { data: filas, error: null, count: filas.length };
+}
+
+function crearConsulta(tabla: string): ConsultaDemo {
+  const estado: EstadoConsulta = { tabla, filtros: [], soloConteo: false, unaFila: false };
+  const unaSola = () => {
+    estado.unaFila = true;
+    return Promise.resolve(resolver(estado));
   };
+  const sinEfecto = Object.fromEntries(
+    METODOS_SIN_EFECTO.map((metodo) => [metodo, () => consulta]),
+  ) as Record<MetodoSinEfecto, () => ConsultaDemo>;
 
   const consulta: ConsultaDemo = {
-    select: (_columnas?: string, opciones?: OpcionesSelect) => {
-      if (opciones?.head) soloConteo = true;
+    ...sinEfecto,
+    select: (_columnas, opciones) => {
+      if (opciones?.head) estado.soloConteo = true;
       return consulta;
     },
     eq: (columna, valor) => {
-      filtros.push({ columna, valor });
+      estado.filtros.push({ columna, valor });
       return consulta;
     },
     // `not(col, 'is', null)` sí cambia el resultado: sin él los árboles sin GPS
-    // llegan al mapa con `latitude: null` y Leaflet tira abajo la pantalla
-    // entera. El resto no hace falta: con datos de mentira alcanza con los eq.
+    // llegan al mapa con `latitude: null` y Leaflet tira abajo la pantalla entera.
     not: (columna, operador, valor) => {
-      if (operador === 'is') filtros.push({ columna, valor, excluye: true });
+      if (operador === 'is') estado.filtros.push({ columna, valor, excluye: true });
       return consulta;
     },
-    neq: () => consulta,
-    in: () => consulta,
-    is: () => consulta,
-    gte: () => consulta,
-    lte: () => consulta,
-    ilike: () => consulta,
-    order: () => consulta,
-    limit: () => consulta,
-    range: () => consulta,
-    maybeSingle: () => {
-      unaFila = true;
-      return Promise.resolve(resolver());
-    },
-    single: () => {
-      unaFila = true;
-      return Promise.resolve(resolver());
-    },
-    then: (alCumplir, alFallar) => Promise.resolve(resolver()).then(alCumplir, alFallar),
+    maybeSingle: unaSola,
+    single: unaSola,
+    then: (alCumplir, alFallar) => Promise.resolve(resolver(estado)).then(alCumplir, alFallar),
   };
   return consulta;
 }
 
-/** `?sinSesion` arranca sin sesión. Es la única forma de ver el login acá: con
- *  sesión redirige al listado, así que sin esto una captura de `/login` es en
- *  realidad una captura de `/plantaciones`. */
-const SIN_SESION = new URLSearchParams(window.location.search).has('sinSesion');
+const SIN_SESION = new URLSearchParams(window.location.search).has(PARAMETRO_SIN_SESION);
 
 export const supabase = {
   from: (tabla: string) => crearConsulta(tabla),

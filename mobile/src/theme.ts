@@ -1,5 +1,13 @@
 // Centralized theme: colors, spacing, typography, and common styles.
 
+// Base palette: semantic tokens that share a tone reference it instead of the hex.
+const yellow = {
+  base: '#ffca28',
+  light: '#fff8e1',
+  medium: '#ffe082',
+  dark: '#ffb300',
+} as const;
+
 export const colors = {
   primary: '#0A3760',
   primaryDark: '#072847',
@@ -35,18 +43,17 @@ export const colors = {
   recentBorder: '#ddd0be',
   recentText: '#7a6b56',
 
-  secondaryYellow: '#ffca28',
-  secondaryYellowLight: '#fff8e1',
-  secondaryYellowMedium: '#ffe082',
-  secondaryYellowDark: '#ffb300',
+  secondaryYellow: yellow.base,
+  secondaryYellowLight: yellow.light,
+  secondaryYellowMedium: yellow.medium,
+  secondaryYellowDark: yellow.dark,
 
   danger: '#DC2626',
   dangerLight: '#EF4444',
   dangerBg: '#FEF2F2',
   info: '#2563EB',
   infoBg: '#EFF6FF',
-  // Banner "Entorno de pruebas" (#287): mismo valor que secondaryYellowDark; solo visible en TEST.
-  entornoPruebasBg: '#ffb300',
+  entornoPruebasBg: yellow.dark,
 
   textHeading: '#0A3760',
   textPrimary: '#1E293B',
@@ -90,7 +97,7 @@ export const colors = {
 
   // Semáforo de señal GPS: tokens propios — cambiarlo no debe tocar los chips de estado aunque hoy compartan valores.
   gpsGood: '#99B95B',
-  gpsRegular: '#ffb300',
+  gpsRegular: yellow.dark,
   gpsBad: '#DC2626',
   gpsNone: '#94A3B8',
 
@@ -137,6 +144,14 @@ export const fontSize = {
   title: 20,
   heading: 24,
   hero: 32,
+} as const;
+
+export const lineHeight = {
+  xs: 14,
+} as const;
+
+export const letterSpacing = {
+  wide: 0.8,
 } as const;
 
 export const borderRadius = {
