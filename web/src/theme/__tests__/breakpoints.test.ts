@@ -29,63 +29,62 @@ const CSS = archivosCss(RAIZ).map((ruta) => ({
   texto: readFileSync(ruta, 'utf8'),
 }));
 
+/** Lo que `revisar` objete del prelude de cada `@media`, con el archivo adelante. */
+function hallazgosEnMedia(revisar: (prelude: string) => string[]): string[] {
+  return CSS.flatMap(({ ruta, texto }) =>
+    [...texto.matchAll(/@media[^{]+/g)].flatMap(([prelude]) =>
+      revisar(prelude).map((hallazgo) => `${ruta}: ${hallazgo}`),
+    ),
+  );
+}
+
+function valoresPx(prelude: string, feature: string): number[] {
+  const patron = new RegExp(`\\(\\s*${feature}:\\s*(\\d+)px\\s*\\)`, 'g');
+  return [...prelude.matchAll(patron)].map(([, valor]) => Number(valor));
+}
+
+// min-* partiría la escala en dos direcciones: la app es desktop-first.
+function fueraDeEscala(dimension: string, validos: number[]) {
+  return (prelude: string) => [
+    ...valoresPx(prelude, `max-${dimension}`)
+      .filter((valor) => !validos.includes(valor))
+      .map((valor) => `${valor}px`),
+    ...valoresPx(prelude, `min-${dimension}`).map(
+      (valor) => `min-${dimension} ${valor}px (la escala es desktop-first)`,
+    ),
+  ];
+}
+
+// La promesa es "falla si aparece cualquier otro número". Un `64em` o la sintaxis
+// de rango `(width <= 1024px)` pasarían sin ruido por los chequeos de escala.
+function sintaxisIlegible(prelude: string): string[] {
+  const hallazgos: string[] = [];
+  if (/\d\s*(em|rem|ch|vw|vh|pt|%)\s*\)/.test(prelude)) {
+    hallazgos.push(`unidad no-px en ${prelude.trim()}`);
+  }
+  if (/(width|height)\s*[<>]=?/.test(prelude)) {
+    hallazgos.push(`sintaxis de rango en ${prelude.trim()}`);
+  }
+  return hallazgos;
+}
+
 describe('escala de breakpoints', () => {
   it('encuentra los .css del proyecto', () => {
     expect(CSS.length).toBeGreaterThan(20);
   });
 
   it('no usa ningún ancho fuera de la escala', () => {
-    const fuera: string[] = [];
-    for (const { ruta, texto } of CSS) {
-      for (const [, valor] of texto.matchAll(/@media[^{]*?\(\s*max-width:\s*(\d+)px\s*\)/g)) {
-        if (!ANCHOS_VALIDOS.includes(Number(valor))) fuera.push(`${ruta}: ${valor}px`);
-      }
-      // min-width partiría la escala en dos direcciones: la app es desktop-first.
-      for (const [, valor] of texto.matchAll(/@media[^{]*?\(\s*min-width:\s*(\d+)px\s*\)/g)) {
-        fuera.push(`${ruta}: min-width ${valor}px (la escala es desktop-first)`);
-      }
-    }
-    expect(fuera).toEqual([]);
+    expect(hallazgosEnMedia(fueraDeEscala('width', ANCHOS_VALIDOS))).toEqual([]);
   });
 
   it('no usa unidades ni sintaxis que el test no sabe leer', () => {
-    // La promesa es "falla si aparece cualquier otro número". Un `64em` o la
-    // sintaxis de rango `(width <= 1024px)` pasarían sin ruido por los tests de
-    // arriba, así que se prohíben de entrada.
-    const fuera: string[] = [];
-    for (const { ruta, texto } of CSS) {
-      for (const [prelude] of texto.matchAll(/@media[^{]+/g)) {
-        if (/\d\s*(em|rem|ch|vw|vh|pt|%)\s*\)/.test(prelude)) {
-          fuera.push(`${ruta}: unidad no-px en ${prelude.trim()}`);
-        }
-        if (/(width|height)\s*[<>]=?/.test(prelude)) {
-          fuera.push(`${ruta}: sintaxis de rango en ${prelude.trim()}`);
-        }
-      }
-    }
-    expect(fuera).toEqual([]);
+    expect(hallazgosEnMedia(sintaxisIlegible)).toEqual([]);
   });
 
   it('no usa ningún alto fuera de la escala', () => {
-    const fuera: string[] = [];
-    for (const { ruta, texto } of CSS) {
-      for (const [, valor] of texto.matchAll(/@media[^{]*?\(\s*max-height:\s*(\d+)px\s*\)/g)) {
-        if (!ALTOS_VALIDOS.includes(Number(valor))) fuera.push(`${ruta}: ${valor}px`);
-      }
-      for (const [, valor] of texto.matchAll(/@media[^{]*?\(\s*min-height:\s*(\d+)px\s*\)/g)) {
-        fuera.push(`${ruta}: min-height ${valor}px (la escala es desktop-first)`);
-      }
-    }
-    expect(fuera).toEqual([]);
+    expect(hallazgosEnMedia(fueraDeEscala('height', ALTOS_VALIDOS))).toEqual([]);
   });
 });
-
-/**
- * Trinquete: las grillas que estaban sin piso cuando se escribió el test.
- * El grupo C (#359) las arregló todas, así que quedó vacío. Nunca se agregan
- * entradas — si este array crece, el arreglo va al CSS.
- */
-const GRILLAS_PENDIENTES: string[] = [];
 
 describe('grillas', () => {
   /**
@@ -94,29 +93,18 @@ describe('grillas', () => {
    * de tres bugs medidos (#357, #359), así que va como invariante.
    */
   it('ningún track flexible sin piso en 0', () => {
-    const fuera: string[] = [];
-    for (const { ruta, texto } of CSS) {
-      for (const [linea] of texto.matchAll(/grid-template(?:-columns|-rows)?:[^;}]+/g)) {
-        if (!linea.includes('fr')) continue;
+    const fuera = CSS.flatMap(({ ruta, texto }) =>
+      [...texto.matchAll(/grid-template(?:-columns|-rows)?:[^;}]+/g)]
+        .map(([linea]) => linea)
+        .filter((linea) => linea.includes('fr'))
         // `repeat(auto-fit, minmax(Npx, 1fr))` ya trae su propio piso.
-        if (/minmax\(\s*0(px)?\s*,/.test(linea) || /repeat\(\s*auto-(fit|fill)\s*,\s*minmax\(/.test(linea)) {
-          continue;
-        }
-        const hallazgo = `${ruta}: ${linea.replace(/\s+/g, ' ')}`;
-        if (!GRILLAS_PENDIENTES.includes(hallazgo)) fuera.push(hallazgo);
-      }
-    }
+        .filter(
+          (linea) =>
+            !/minmax\(\s*0(px)?\s*,/.test(linea) &&
+            !/repeat\(\s*auto-(fit|fill)\s*,\s*minmax\(/.test(linea),
+        )
+        .map((linea) => `${ruta}: ${linea.replace(/\s+/g, ' ')}`),
+    );
     expect(fuera).toEqual([]);
-  });
-
-  it('el trinquete no tiene entradas de más', () => {
-    const encontradas = new Set<string>();
-    for (const { ruta, texto } of CSS) {
-      for (const [linea] of texto.matchAll(/grid-template(?:-columns|-rows)?:[^;}]+/g)) {
-        encontradas.add(`${ruta}: ${linea.replace(/\s+/g, ' ')}`);
-      }
-    }
-    // Una entrada que ya no matchea es una grilla arreglada: sacala de la lista.
-    expect(GRILLAS_PENDIENTES.filter((e) => !encontradas.has(e))).toEqual([]);
   });
 });
