@@ -116,17 +116,6 @@ function arbolesDePlantacion(plantationId: string): number {
   return porEspecie.reduce((total, arboles) => total + arboles, 0);
 }
 
-/** Devuelto por el RPC agregado `stats_plantaciones` (migración 027). */
-const STATS_PLANTACIONES: FilaDemo[] = [
-  { plantation_id: 'p1', parcelas: 14, usuarios: 6 },
-  { plantation_id: 'p2', parcelas: 11, usuarios: 4 },
-  { plantation_id: 'p3', parcelas: 9, usuarios: 3 },
-  { plantation_id: 'p4', parcelas: 12, usuarios: 5 },
-  { plantation_id: 'p5', parcelas: 6, usuarios: 2 },
-  { plantation_id: 'p6', parcelas: 7, usuarios: 3 },
-  { plantation_id: 'p7', parcelas: 5, usuarios: 2 },
-].map((stats) => ({ ...stats, arboles: arbolesDePlantacion(stats.plantation_id) }));
-
 const ESPECIES: Especie[] = [
   { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
   { id: 's2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
@@ -250,6 +239,26 @@ const GENERADAS: ParcelaGenerada[] = PLANTACIONES_CON_ARBOLES.filter((id) => !CO
 const PARCELAS: Parcela[] = [...PARCELAS_A_MANO, ...GENERADAS.map(({ parcela }) => parcela)];
 
 const GRUPOS: Grupo[] = [...GRUPOS_A_MANO, ...GENERADAS.flatMap(({ grupos }) => grupos)];
+
+function parcelasDePlantacion(plantationId: string): number {
+  return PARCELAS.filter((parcela) => parcela.plantation_id === plantationId).length;
+}
+
+/** Devuelto por el RPC agregado `stats_plantaciones` (migración 027). Los
+ *  árboles salen de la matriz y las parcelas, de las que lista el explorador. */
+const STATS_PLANTACIONES: FilaDemo[] = [
+  { plantation_id: 'p1', usuarios: 6 },
+  { plantation_id: 'p2', usuarios: 4 },
+  { plantation_id: 'p3', usuarios: 3 },
+  { plantation_id: 'p4', usuarios: 5 },
+  { plantation_id: 'p5', usuarios: 2 },
+  { plantation_id: 'p6', usuarios: 3 },
+  { plantation_id: 'p7', usuarios: 2 },
+].map((stats) => ({
+  ...stats,
+  parcelas: parcelasDePlantacion(stats.plantation_id),
+  arboles: arbolesDePlantacion(stats.plantation_id),
+}));
 
 function parcelaPorId(id: string): Parcela {
   const parcela = PARCELAS.find((candidata) => candidata.id === id);

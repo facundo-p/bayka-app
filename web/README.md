@@ -74,16 +74,21 @@ El cliente falso siempre devuelve sesión, así que `/login` redirige al listado
 no se puede ver. Con **`?sinSesion=1`** arranca sin sesión: es la única forma de
 mirar el login acá.
 
-Cubre las tres pantallas de Organización y el detalle de plantación (parcelas,
-grupos y 30 árboles con GPS y fotos en distintos estados).
+Cubre las tres pantallas de Organización y el detalle de cada plantación.
 
 Los datos están en `src/demo/datos.ts`, una tabla por clave. Para cubrir una
 pantalla nueva, agregá su tabla ahí. El cliente falso (`src/demo/supabase.ts`)
-solo simula lo que la web usa: el constructor de consultas encadenable, los
-`count`, `rpc` y `auth`. Los filtros que no son `eq` se ignoran, y los `eq` sobre
-columnas que los datos no modelan (los embebidos tipo `groups.plantation_id`)
-también — con datos de mentira alcanza. Nada de esto entra al bundle de
-producción: el reemplazo lo hace un alias de `vite.demo.config.ts`.
+resuelve las consultas de la web contra esas tablas: filtros reales, embebidos
+(`groups!inner(...)`, anidados), `.or()`, `limit`/`range` y `count`. Un operador
+que no simula tira un error, en vez de devolver todo sin filtrar. Nada de esto
+entra al bundle de producción: el reemplazo lo hace un alias de
+`vite.demo.config.ts`.
+
+Los árboles tienen dos escalas a propósito. La matriz `ARBOLES_POR_PLANTACION`
+da los totales de las tarjetas y de Especies (18.442 árboles). El explorador de
+Datos, el dashboard y el mapa listan pocas filas de muestra por plantación, y
+los conteos por parcela se hacen sobre esas filas, así cada parcela suma lo
+mismo que sus grupos.
 
 ## Responsive
 

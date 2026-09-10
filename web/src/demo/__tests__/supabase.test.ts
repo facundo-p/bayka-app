@@ -126,6 +126,15 @@ describe('cliente demo: árboles de muestra', () => {
     }
   });
 
+  it('la tarjeta cuenta las parcelas que lista el explorador', async () => {
+    const { data } = await supabase.rpc('stats_plantaciones');
+
+    for (const stats of data as FilaDemo[]) {
+      const parcelas = await listarParcelasConStats(String(stats.plantation_id));
+      expect(stats.parcelas, String(stats.plantation_id)).toBe(parcelas.length);
+    }
+  });
+
   it('el dashboard y el mapa de p2 tienen árboles', async () => {
     const [fuente, puntos] = await Promise.all([obtenerFuenteDashboard('p2'), listarPuntosGps('p2')]);
 
