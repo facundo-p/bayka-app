@@ -93,11 +93,9 @@
 
 /* Descripción truncada a una línea; el title muestra el texto completo. */
 .descripcion {
+  composes: truncar from '../../theme/utilidades.module.css';
   display: inline-block;
   max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   vertical-align: bottom;
   color: var(--color-text-secondary);
 }

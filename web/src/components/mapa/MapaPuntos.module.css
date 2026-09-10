@@ -1,11 +1,10 @@
 /* `position:relative; z-index:0` atrapa los z-index internos de Leaflet para
  * que no se monten sobre la topbar sticky. */
 .contenedor {
+  composes: superficieCard from '../../theme/utilidades.module.css';
   position: relative;
   z-index: 0;
   overflow: hidden;
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
 /* En el dashboard llena el alto restante de la card.

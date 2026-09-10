@@ -1,15 +1,13 @@
 /* La card toma el alto del layout; la lista scrollea adentro. El piso deja
    ver el encabezado y unas cuantas especies cuando la columna es de alto libre. */
 .panel {
+  composes: superficieCard from '../../theme/utilidades.module.css';
   flex: 1;
   min-height: 280px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2xl);
   padding: var(--space-3xl);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
 .header {
@@ -21,11 +19,7 @@
 }
 
 .titulo {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-heading);
+  composes: tituloCard from '../../theme/utilidades.module.css';
 }
 
 .subtitulo {
@@ -49,11 +43,7 @@
 }
 
 .conteoLabel {
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overline from '../../theme/utilidades.module.css';
 }
 
 .lista {

@@ -67,12 +67,9 @@
 }
 
 .overline {
+  composes: overlineRegular from '../../theme/utilidades.module.css';
   margin: 0;
   padding: 0 var(--space-md);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
 }
 
 .fila {
@@ -101,10 +98,8 @@
 }
 
 .filaTitulo {
+  composes: truncar from '../../theme/utilidades.module.css';
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .filaMeta {

@@ -13,14 +13,8 @@
   gap: var(--space-md);
 }
 
-/* Overline que encabeza cada bloque/dato, igual que en los paneles de
-   Especies y Usuarios. */
 .etiqueta {
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overline from '../../theme/utilidades.module.css';
 }
 
 /* Especie: punto de color + "código · nombre" en una línea. */

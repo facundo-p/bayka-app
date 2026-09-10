@@ -12,14 +12,12 @@
   z-index: 1;
   padding: var(--space-lg) var(--space-2xl);
   text-align: left;
-  /* Overline: 11px mayúsculas con tracking, tenue (rediseño). */
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
   background-color: var(--color-surface-sunken);
   border-bottom: var(--border-thin) solid var(--color-border);
+}
+
+.encabezado {
+  composes: overline from '../theme/utilidades.module.css';
 }
 
 .table td {

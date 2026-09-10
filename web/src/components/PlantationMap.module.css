@@ -2,15 +2,13 @@
    El piso cubre el header más el mínimo del mapa: sin él la card se encoge a 0
    y el mapa, que sí tiene piso, se pinta afuera. */
 .panel {
+  composes: superficieCard from '../theme/utilidades.module.css';
   flex: 1;
   min-height: var(--alto-min-card-lista);
   display: flex;
   flex-direction: column;
   gap: var(--space-xl-plus);
   padding: var(--space-3xl);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
 .header {
@@ -37,11 +35,7 @@
 }
 
 .titulo {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-heading);
+  composes: tituloCard from '../theme/utilidades.module.css';
 }
 
 .subtitulo {

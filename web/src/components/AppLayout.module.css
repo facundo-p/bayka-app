@@ -39,10 +39,7 @@
 }
 
 .brandOverline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
 }
 
 .nav {
@@ -52,10 +49,7 @@
 }
 
 .navOverline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
   padding: 0 var(--space-xl) var(--space-md);
 }
 

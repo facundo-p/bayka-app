@@ -28,12 +28,8 @@
 }
 
 .titulo {
-  margin: 0;
+  composes: tituloCard from '../../theme/utilidades.module.css';
   flex-shrink: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-heading);
   white-space: nowrap;
 }
 
@@ -52,12 +48,10 @@
 /* Se trunca antes que empujar los controles fuera del renglón; con base 0 no
    cuenta para decidir el wrap, así que es lo primero que cede. */
 .subtitulo {
+  composes: truncar from '../../theme/utilidades.module.css';
   margin: 0;
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
 }

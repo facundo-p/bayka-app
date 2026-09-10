@@ -19,22 +19,21 @@
 }
 
 .valorPrincipal {
+  composes: truncar from '../../theme/utilidades.module.css';
   flex-shrink: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Detalle tenue (ej. el email), igual en el disparador y en la lista. */
-.valorSecundario,
-.opcionSecundario {
+.valorSecundario {
+  composes: truncar from '../../theme/utilidades.module.css';
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--text-sm);
   color: var(--color-text-faint);
+}
+
+.opcionSecundario {
+  composes: valorSecundario;
 }
 
 .placeholder {
@@ -98,9 +97,7 @@
 }
 
 .opcionPrincipal {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  composes: truncar from '../../theme/utilidades.module.css';
   font-weight: var(--font-weight-medium);
   color: var(--color-text-body);
 }

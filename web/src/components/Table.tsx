@@ -61,7 +61,7 @@ export function Table<T>({
       <thead>
         <tr>
           {columns.map((column) => (
-            <th key={column.key} className={alignClass(column.align)}>
+            <th key={column.key} className={cx(styles.encabezado, alignClass(column.align))}>
               {column.header}
             </th>
           ))}

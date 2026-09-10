@@ -34,12 +34,10 @@
 }
 
 .nombre {
+  composes: truncar from '../theme/utilidades.module.css';
   font-weight: var(--font-weight-medium);
   font-size: var(--text-md);
   color: var(--color-text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .rol {

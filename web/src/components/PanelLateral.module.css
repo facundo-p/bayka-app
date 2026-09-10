@@ -13,13 +13,11 @@
 
 /* Misma card que la de la tabla: el panel es su par, no una capa encima. */
 .panel {
+  composes: superficieCard from '../theme/utilidades.module.css';
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
 .cabecera {
