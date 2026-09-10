@@ -32,11 +32,12 @@ export default tseslint.config(
     },
   },
   {
-    // Scripts CommonJS de la raíz que requieren web y mobile al buildear. ESLint
-    // ignora lo que está fuera de web/, así que `lint` los pasa desde la raíz
-    // con `-c`, que toma el cwd como base de los patrones.
-    files: ['scripts/*.cjs'],
-    languageOptions: { sourceType: 'commonjs', globals: globals.node },
+    // Scripts de Node de la raíz. ESLint ignora lo que está fuera de web/, así
+    // que `lint` los pasa desde la raíz con `-c`, que toma el cwd como base de
+    // los patrones. El sourceType sale de la extensión (default de ESLint) y sus
+    // tests en TS caen en el bloque de arriba.
+    files: ['scripts/*.{cjs,mjs}'],
+    languageOptions: { globals: globals.node },
     rules: js.configs.recommended.rules,
   },
 );
