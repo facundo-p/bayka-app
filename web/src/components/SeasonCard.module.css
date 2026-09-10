@@ -63,3 +63,13 @@
   font-size: var(--text-xs);
   color: var(--color-text-muted);
 }
+
+/* En teléfono la barra superior apila sus bloques y esta card es el más alto
+   (134px) de los cinco. Es informativa y además un atajo: su destino sigue a un
+   toque desde Plantaciones, así que se retira para que el contenido no arranque
+   abajo del fold. Único consumidor: el sidebar de AppLayout. */
+@media (max-width: 600px) {
+  .card {
+    display: none;
+  }
+}
