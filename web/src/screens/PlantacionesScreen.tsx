@@ -31,10 +31,10 @@ import {
   type FiltroEstado,
   type OrdenPlantacion,
 } from './plantaciones/filtros';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './plantaciones/Plantaciones.module.css';
 
 const DEBOUNCE_BUSQUEDA_MS = 200;
-const TAMANO_ICONO = 16;
 
 const PIE_AYUDA = 'clic en una fila abre el detalle';
 const PIE_NOTA = 'Las plantaciones ocultas en la app aparecen marcadas';
@@ -72,7 +72,7 @@ export function PlantacionesScreen() {
         }
         right={
           <Button size="sm" onClick={() => setCrearAbierto(true)}>
-            <Plus size={TAMANO_ICONO} aria-hidden />
+            <Plus size={TAMANO_ICONO.md} aria-hidden />
             Nueva plantación
           </Button>
         }

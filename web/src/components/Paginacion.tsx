@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './Paginacion.module.css';
-
-const TAMANO_ICONO = 16;
 
 interface PaginacionProps {
   pagina: number;
@@ -21,7 +20,7 @@ export function Paginacion({ pagina, totalPaginas, onCambiar }: PaginacionProps)
         disabled={pagina <= 1}
         onClick={() => onCambiar(pagina - 1)}
       >
-        <ChevronLeft size={TAMANO_ICONO} aria-hidden />
+        <ChevronLeft size={TAMANO_ICONO.md} aria-hidden />
       </button>
       <span className={styles.estado}>
         {pagina} / {totalPaginas}
@@ -33,7 +32,7 @@ export function Paginacion({ pagina, totalPaginas, onCambiar }: PaginacionProps)
         disabled={pagina >= totalPaginas}
         onClick={() => onCambiar(pagina + 1)}
       >
-        <ChevronRight size={TAMANO_ICONO} aria-hidden />
+        <ChevronRight size={TAMANO_ICONO.md} aria-hidden />
       </button>
     </nav>
   );

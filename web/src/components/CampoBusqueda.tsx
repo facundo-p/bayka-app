@@ -1,9 +1,8 @@
 import { Search } from 'lucide-react';
 import { cx } from '../lib/classNames';
 import { Input } from './Input';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './CampoBusqueda.module.css';
-
-const TAMANO_ICONO = 14;
 
 interface CampoBusquedaProps {
   /** Nombre accesible del campo; queda oculto a la vista. */
@@ -25,7 +24,7 @@ export function CampoBusqueda({
 }: CampoBusquedaProps) {
   return (
     <div className={cx(styles.campo, densidad === 'compacta' && styles.compacta)}>
-      <Search className={styles.icono} size={TAMANO_ICONO} aria-hidden />
+      <Search className={styles.icono} size={TAMANO_ICONO.sm} aria-hidden />
       <Input
         label={label}
         labelOculto

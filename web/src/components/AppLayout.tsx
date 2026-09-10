@@ -8,9 +8,8 @@ import { CommandMenuTrigger } from './CommandMenuTrigger';
 import { NavItem } from './NavItem';
 import { SeasonCard } from './SeasonCard';
 import { UserMenu } from './UserMenu';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './AppLayout.module.css';
-
-const TAMANO_ICONO = 18;
 
 function Sidebar() {
   const { perfil } = useAuth();
@@ -30,13 +29,13 @@ function Sidebar() {
         <span className={styles.navOverline}>Organización</span>
         <NavItem
           to="/plantaciones"
-          icon={<Sprout size={TAMANO_ICONO} />}
+          icon={<Sprout size={TAMANO_ICONO.lg} />}
           label="Plantaciones"
           activeOnDetail
         />
-        <NavItem to="/especies" icon={<Leaf size={TAMANO_ICONO} />} label="Especies" />
+        <NavItem to="/especies" icon={<Leaf size={TAMANO_ICONO.lg} />} label="Especies" />
         {esSuperadmin && (
-          <NavItem to="/usuarios" icon={<Users size={TAMANO_ICONO} />} label="Usuarios" />
+          <NavItem to="/usuarios" icon={<Users size={TAMANO_ICONO.lg} />} label="Usuarios" />
         )}
       </nav>
 

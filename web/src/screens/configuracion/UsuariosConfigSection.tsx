@@ -27,6 +27,7 @@ import {
 } from '../../repositories/plantationUserRepository';
 import { ROL } from '../../repositories/profileRepository';
 import { CabeceraConfig } from './CabeceraConfig';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './SeccionesConfig.module.css';
 
 const ETIQUETA_ROL: Record<string, string> = {
@@ -97,7 +98,7 @@ function FilaAsignado({
         aria-label={`Quitar ${nombre}`}
         onClick={() => onQuitar(asignado)}
       >
-        <X size={16} />
+        <X size={TAMANO_ICONO.md} />
       </button>
     </li>
   );
@@ -218,7 +219,7 @@ function ContenidoUsuarios({
         chip={`${asignados.length} asignados`}
         acciones={
           <button type="button" className={styles.botonAsignar} onClick={() => setAsignando(true)}>
-            <Plus size={16} aria-hidden />
+            <Plus size={TAMANO_ICONO.md} aria-hidden />
             Asignar técnico
           </button>
         }

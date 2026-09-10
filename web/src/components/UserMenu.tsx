@@ -5,6 +5,7 @@ import { useNovedadesNoVistas } from '../hooks/useNovedadesNoVistas';
 import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
 import { ROL, type Perfil } from '../repositories/profileRepository';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './UserMenu.module.css';
 
 const ETIQUETA_ROL: Record<Perfil['rol'], string> = {
@@ -50,7 +51,7 @@ export function UserMenu() {
           onClick={() => void signOut()}
           aria-label="Cerrar sesión"
         >
-          <LogOut size={18} aria-hidden />
+          <LogOut size={TAMANO_ICONO.lg} aria-hidden />
         </button>
       </div>
       <EnlaceNovedades />

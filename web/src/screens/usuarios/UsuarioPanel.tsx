@@ -17,9 +17,8 @@ import { emailValido } from '../../../../supabase/functions/admin-users/nucleo';
 import { itemsDeMenu, motivoCambiarRol, type AccionUsuario, type ItemMenu } from './acciones';
 import { Avatar } from './celdas';
 import { ADVERTENCIA_SUPERADMIN, ETIQUETA_ROL, nombreVisible, ROLES } from './presentacion';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Usuarios.module.css';
-
-const TAMANO_ICONO = 16;
 
 const AYUDA_DESACTIVAR =
   'Al desactivar pierde el acceso; sus datos de campo se conservan y se puede reactivar.';
@@ -137,7 +136,7 @@ function BotonAccion({ item, onAccion }: { item: ItemMenu; onAccion: () => void 
       title={item.motivo ?? undefined}
       onClick={onAccion}
     >
-      {Icono && <Icono size={TAMANO_ICONO} aria-hidden />}
+      {Icono && <Icono size={TAMANO_ICONO.md} aria-hidden />}
       {item.etiqueta}
     </button>
   );
