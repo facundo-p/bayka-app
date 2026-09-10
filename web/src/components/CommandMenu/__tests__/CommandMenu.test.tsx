@@ -103,6 +103,14 @@ async function abrirPaleta() {
   return screen.findByRole('dialog', { name: 'Buscar' });
 }
 
+/** Dentro de una plantación la paleta tiene scope y suma "Ir a Configuración…". */
+async function abrirPaletaEnPlantacion() {
+  renderRutasEn('/plantaciones/plant-1');
+  await screen.findByRole('heading', { name: 'La Maluka' });
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  return screen.findByRole('dialog', { name: 'Buscar' });
+}
+
 test('⌘K abre la paleta con foco en el input', async () => {
   const dialog = await abrirPaleta();
   expect(within(dialog).getByPlaceholderText(/Buscar plantaciones/)).toHaveFocus();
@@ -128,10 +136,7 @@ test('escribir devuelve resultados agrupados por tipo', async () => {
 });
 
 test('estado vacío muestra el chip de scope y sugerencias dentro de la plantación', async () => {
-  renderRutasEn('/plantaciones/plant-1');
-  await screen.findByRole('heading', { name: 'La Maluka' });
-  fireEvent.keyDown(document, { key: 'k', metaKey: true });
-  const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
+  const dialog = await abrirPaletaEnPlantacion();
 
   expect(within(dialog).getByRole('button', { name: /en La Maluka/ })).toBeInTheDocument();
   expect(within(dialog).getByText('Sugerencias')).toBeInTheDocument();
@@ -171,6 +176,17 @@ test('aria-activedescendant del input sigue a la opción resaltada', async () =>
   fireEvent.keyDown(dialog, { key: 'ArrowDown' });
   await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ids[1]));
   expect(document.getElementById(ids[1])).toHaveAttribute('aria-selected', 'true');
+});
+
+test('las acciones ignoran acentos: "configuracion" encuentra "Ir a Configuración…"', async () => {
+  const dialog = await abrirPaletaEnPlantacion();
+  const usuario = userEvent.setup();
+
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'configuracion');
+
+  expect(
+    await within(dialog).findByRole('option', { name: /Ir a Configuración…/ }),
+  ).toBeInTheDocument();
 });
 
 test('Escape cierra la paleta', async () => {
