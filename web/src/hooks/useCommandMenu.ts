@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useMatch } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
+import { CLAVE_STORAGE, guardarLocal, leerLocal } from '../lib/almacenamientoLocal';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones } from '../queries/plantationQueries';
 import type { ResultadoBusqueda, ScopeBusqueda } from '../queries/buscarQueries';
@@ -29,7 +30,6 @@ type CommandMenuContexto = {
 
 const Contexto = createContext<CommandMenuContexto | null>(null);
 
-const CLAVE_RECIENTES = 'bayka.command-menu.recientes';
 const TOPE_RECIENTES = 6;
 
 /** ¿El foco está en un campo de texto editable? (no en el input de la paleta). */
@@ -45,22 +45,19 @@ function esAtajoComando(evento: KeyboardEvent): boolean {
   return (evento.metaKey || evento.ctrlKey) && evento.key.toLowerCase() === 'k';
 }
 
-/** Lee recientes de localStorage tolerando SSR / JSON inválido / acceso negado. */
+/** Un JSON corrupto arranca vacío en vez de romper la paleta. */
 function leerRecientes(): ResultadoBusqueda[] {
+  const crudo = leerLocal(CLAVE_STORAGE.recientesCommandMenu);
+  if (!crudo) return [];
   try {
-    const crudo = window.localStorage.getItem(CLAVE_RECIENTES);
-    return crudo ? (JSON.parse(crudo) as ResultadoBusqueda[]) : [];
+    return JSON.parse(crudo) as ResultadoBusqueda[];
   } catch {
     return [];
   }
 }
 
 function guardarRecientes(recientes: ResultadoBusqueda[]): void {
-  try {
-    window.localStorage.setItem(CLAVE_RECIENTES, JSON.stringify(recientes));
-  } catch {
-    /* localStorage no disponible: los recientes quedan solo en memoria. */
-  }
+  guardarLocal(CLAVE_STORAGE.recientesCommandMenu, JSON.stringify(recientes));
 }
 
 /** Estado abierto/cerrado + atajo global ⌘K (ignora foco en texto). */
