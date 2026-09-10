@@ -47,7 +47,7 @@ cambios sin commitear.
 | `npm run dev:demo`         | Igual, con datos de mentira y sin backend |
 | `npm run build`            | Typecheck + build de prod                 |
 | `npm run typecheck`        | Solo typecheck                            |
-| `npm run lint`             | ESLint                                    |
+| `npm run lint`             | ESLint de web y de `scripts/` de la raíz  |
 | `npm test`                 | Tests (Vitest)                            |
 | `npm run audit:responsive` | Auditoría de layout en browser            |
 
