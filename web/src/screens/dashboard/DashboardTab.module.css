@@ -8,7 +8,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 540px 1fr;
+  grid-template-columns: 540px minmax(0, 1fr);
   gap: var(--space-3xl);
 }
 
@@ -22,9 +22,20 @@
   min-height: 0;
 }
 
-@media (max-width: 900px) {
+/* Los 540px fijos se los cobra el mapa, que es la columna elástica: medido a
+   1280 le quedaban 348px contra los 540 del listado. Debajo de la notebook las
+   dos columnas se reparten en partes iguales. */
+@media (max-width: 1400px) {
   .dashboard {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* Ya no entran dos columnas útiles: se apilan y cada card toma su alto natural.
+   Lo que sobra lo scrollea `.contenido` (PlantacionDetailScreen). */
+@media (max-width: 1200px) {
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
     min-height: auto;
   }
 

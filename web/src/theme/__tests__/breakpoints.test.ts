@@ -81,24 +81,11 @@ describe('escala de breakpoints', () => {
 });
 
 /**
- * Trinquete: las grillas que ya estaban sin piso cuando se escribió el test.
- * Cada grupo de #359 borra sus líneas; el test falla si aparece una NUEVA.
- * Nunca se agregan entradas acá — si este array crece, el arreglo va al CSS.
+ * Trinquete: las grillas que estaban sin piso cuando se escribió el test.
+ * El grupo C (#359) las arregló todas, así que quedó vacío. Nunca se agregan
+ * entradas — si este array crece, el arreglo va al CSS.
  */
-const GRILLAS_PENDIENTES = [
-  // Grupo C (fase 3): el panel lateral y el dashboard.
-  '/components/PanelLateral.module.css: grid-template-columns: 1fr',
-  '/components/PanelLateral.module.css: grid-template-columns: 1fr var(--ancho-panel-lateral)',
-  '/screens/dashboard/DashboardTab.module.css: grid-template-columns: 1fr',
-  '/screens/dashboard/DashboardTab.module.css: grid-template-columns: 540px 1fr',
-  '/screens/dashboard/ResumenPlantacion.module.css: grid-template-columns: 1fr 1fr 1fr',
-  '/screens/datos/ArbolDetallePanel.module.css: grid-template-columns: repeat(2, 1fr)',
-  '/screens/especies/Especies.module.css: grid-template-columns: 1fr 1fr',
-  // Columna única dentro de un @media: la de dos ya la arregló #358, pero un
-  // track `1fr` solo tampoco baja de su min-content.
-  '/components/SpeciesChecklist.module.css: grid-template-columns: 1fr',
-  '/screens/configuracion/ConfiguracionTab.module.css: grid-template-columns: 1fr',
-];
+const GRILLAS_PENDIENTES: string[] = [];
 
 describe('grillas', () => {
   /**

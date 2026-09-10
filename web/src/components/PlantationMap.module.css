@@ -1,7 +1,9 @@
-/* La card toma el alto del layout; el mapa llena lo que sobra del header. */
+/* La card toma el alto del layout; el mapa llena lo que sobra del header.
+   El piso cubre el header más el mínimo del mapa: sin él la card se encoge a 0
+   y el mapa, que sí tiene piso, se pinta afuera. */
 .panel {
   flex: 1;
-  min-height: 0;
+  min-height: var(--alto-min-card-lista);
   display: flex;
   flex-direction: column;
   gap: var(--space-xl-plus);

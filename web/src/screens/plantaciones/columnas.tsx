@@ -16,6 +16,7 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
   },
   {
     key: 'periodo',
+    fueraEnMovil: true,
     header: 'Temporada',
     render: (plantacion) => <span className={styles.temporada}>{plantacion.periodo}</span>,
   },
@@ -26,11 +27,13 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
   },
   {
     key: 'visibleInApp',
+    fueraEnMovil: true,
     header: 'Visible',
     render: (plantacion) => <CeldaVisible visible={plantacion.visibleInApp} />,
   },
   {
     key: 'usuarios',
+    fueraEnMovil: true,
     header: 'Usuarios',
     align: 'center',
     render: (plantacion) => <span className={styles.numero}>{plantacion.usuarios}</span>,
@@ -51,6 +54,7 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
   },
   {
     key: 'createdAt',
+    fueraEnMovil: true,
     header: 'Creada',
     render: (plantacion) => (
       <span className={styles.fecha}>{formatearFechaDia(plantacion.createdAt)}</span>
@@ -58,6 +62,7 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
   },
   {
     key: 'chevron',
+    fueraEnMovil: true,
     header: '',
     align: 'right',
     render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO} aria-hidden />,

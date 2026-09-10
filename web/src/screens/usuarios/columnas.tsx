@@ -28,11 +28,13 @@ const COLUMNAS_BASE: Array<TableColumn<UsuarioConAsignaciones>> = [
   },
   {
     key: 'plantaciones',
+    fueraEnMovil: true,
     header: 'Plantaciones',
     render: (usuario) => <CeldaTexto usuario={usuario} texto={resumenPlantaciones(usuario)} />,
   },
   {
     key: 'alta',
+    fueraEnMovil: true,
     header: 'Alta',
     render: (usuario) => (
       <CeldaTexto

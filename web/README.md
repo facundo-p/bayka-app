@@ -130,6 +130,14 @@ npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
 parecer que la app está impecable: le inyecta a una pantalla limpia cada defecto
 que dice cazar y exige que lo reporte, y que calle sin él.
 
+En pantalla de teléfono las tablas sueltan sus columnas secundarias. La marca
+vive en la columna (`fueraEnMovil` en `TableColumn`), no en una lista de claves
+aparte que se pueda desincronizar, y la aplica `useColumnasVisibles`. Se filtra
+el array y no se esconden las celdas por CSS: esconder `<td>` por `nth-child`
+obliga a esconder el `<th>` por el mismo índice, y el día que alguien inserte
+una columna en el medio los dos se desalinean en silencio. Dos reglas duras, con
+test propio: nunca se cae la columna de identidad ni la de acciones.
+
 ## Estructura (espejo de mobile)
 
 ```

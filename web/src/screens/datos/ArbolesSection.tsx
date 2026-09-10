@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react';
 import {
   Cargando,
   CardTabla,
@@ -6,123 +5,18 @@ import {
   LayoutConPanel,
   Paginacion,
   Table,
-  type TableColumn,
 } from '../../components';
 import { ARBOLES_POR_PAGINA } from '../../queries/dataExplorerQueries';
 import { formatearEntero } from '../../lib/formato';
-import { varsCss } from '../../lib/cssVars';
-import { formatearFechaCorta } from '../../lib/fechas';
 import type { ArbolDetalle, PaginaArboles } from '../../queries/dataExplorerQueries';
 import type { PerfilResumen } from '../../queries/usuarioQueries';
-import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
-import { tieneFotoSubida } from '../../services/fotoService';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { DatosToolbar } from './DatosToolbar';
 import { VacioConFiltros } from './VacioConFiltros';
 import { useArbolesSection } from './useArbolesSection';
-import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
-import styles from './SeccionesDatos.module.css';
-
-/** Redondeo de coordenadas para mostrar (~1 m de precisión). */
-const DECIMALES_GPS = 5;
-
-/** Tamaño del ícono de foto subida, en px. */
-const TAMANIO_ICONO_FOTO = 16;
-
-/** Coordenadas + precisión; nada si el árbol no tiene GPS (nunca "0,0"). */
-function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
-  if (arbol.latitude == null || arbol.longitude == null) return '—';
-  return (
-    <span className={styles.gps}>
-      {arbol.latitude.toFixed(DECIMALES_GPS)}, {arbol.longitude.toFixed(DECIMALES_GPS)}
-      {arbol.gpsAccuracy != null && (
-        <span className={styles.precision}> ±{Math.round(arbol.gpsAccuracy)}m</span>
-      )}
-    </span>
-  );
-}
-
-/** Especie del árbol (ver `BloqueEspecie` en ArbolDetallePanel). */
-function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
-  const codigo = arbol.especieCodigo ?? 'N/N';
-  const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
-  return (
-    <span className={styles.especie}>
-      <span
-        className={styles.puntoEspecie}
-        style={varsCss({ color: colorEspeciePorCodigo(arbol.especieCodigo) })}
-      />
-      {`${codigo} · ${nombre}`}
-    </span>
-  );
-}
-
-/** Check no interactivo cuando el árbol tiene foto subida; nada si no hay.
- *  La foto se ve abriendo el detalle de la fila. */
-function CeldaFoto({ fotoUrl }: { fotoUrl: string | null }) {
-  if (!tieneFotoSubida(fotoUrl)) return null;
-  return (
-    <span className={styles.fotoCheck} aria-label="Con foto">
-      <Check size={TAMANIO_ICONO_FOTO} />
-    </span>
-  );
-}
-
-/** Columnas que el panel lateral repite en grande: sobran mientras está abierto,
- *  y sin sacarlas las nueve no entran en el ancho que queda. */
-const COLUMNAS_EN_EL_PANEL = ['gps', 'createdAt', 'usuario'];
-
-function columnasArboles(
-  codigosParcela: Map<string, string>,
-  nombresUsuario: Map<string, string>,
-  conPanel: boolean,
-): Array<TableColumn<ArbolDetalle>> {
-  const columnas: Array<TableColumn<ArbolDetalle>> = [
-    {
-      key: 'subId',
-      header: 'SubID',
-      render: (arbol) => <span className={styles.subId}>{arbol.subId}</span>,
-    },
-    { key: 'especie', header: 'Especie', render: (arbol) => <CeldaEspecie arbol={arbol} /> },
-    {
-      key: 'parcela',
-      header: 'Parcela',
-      render: (arbol) =>
-        arbol.parcelaId && codigosParcela.get(arbol.parcelaId) ? (
-          <span className={styles.codigo}>{codigosParcela.get(arbol.parcelaId)}</span>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      key: 'grupo',
-      header: 'Grupo',
-      render: (arbol) => <span className={styles.codigo}>{arbol.grupoCodigo}</span>,
-    },
-    {
-      key: 'posicion',
-      header: 'Pos.',
-      align: 'center',
-      render: (arbol) => <span className={styles.numero}>{arbol.posicion ?? '—'}</span>,
-    },
-    { key: 'gps', header: 'GPS', render: (arbol) => <CeldaGps arbol={arbol} /> },
-    { key: 'foto', header: 'Foto', render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} /> },
-    {
-      key: 'createdAt',
-      header: 'Registrado',
-      render: (arbol) => formatearFechaCorta(arbol.createdAt),
-    },
-    {
-      key: 'usuario',
-      header: 'Técnico',
-      render: (arbol) =>
-        (arbol.usuarioRegistro && nombresUsuario.get(arbol.usuarioRegistro)) || '—',
-    },
-  ];
-  if (!conPanel) return columnas;
-  return columnas.filter((columna) => !COLUMNAS_EN_EL_PANEL.includes(columna.key));
-}
+import { columnasArboles } from './columnas';
+import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
 function rangoVisible(pagina: number, total: number): string {
@@ -149,6 +43,10 @@ function TablaArboles({
   seleccionadoId: string | undefined;
 }) {
   const nombresUsuario = new Map(perfiles.map((perfil) => [perfil.id, perfil.nombre]));
+  const columnas = useColumnasVisibles(
+    columnasArboles(codigosParcela, nombresUsuario),
+    seleccionadoId !== undefined,
+  );
   const hayArboles = datos.total > 0;
   return (
     <CardTabla
@@ -168,7 +66,7 @@ function TablaArboles({
       }
     >
       <Table
-        columns={columnasArboles(codigosParcela, nombresUsuario, seleccionadoId !== undefined)}
+        columns={columnas}
         rows={datos.arboles}
         getRowKey={(arbol) => arbol.id}
         claveSeleccionada={seleccionadoId}

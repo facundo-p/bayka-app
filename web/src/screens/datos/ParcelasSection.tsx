@@ -4,58 +4,18 @@ import {
   CardTabla,
   ErrorConReintento,
   Table,
-  type TableColumn,
 } from '../../components';
-import { formatearFechaCorta } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { DatosToolbar } from './DatosToolbar';
 import { filtrosAParams } from './filtrosUrl';
 import { useParcelasDatos } from './useDatosQueries';
-import styles from './SeccionesDatos.module.css';
-
-function CeldaDescripcion({ descripcion }: { descripcion: string | null }) {
-  if (!descripcion) return <>—</>;
-  return (
-    <span className={styles.descripcion} title={descripcion}>
-      {descripcion}
-    </span>
-  );
-}
-
-const COLUMNAS: Array<TableColumn<ParcelaConStats>> = [
-  { key: 'nombre', header: 'Nombre' },
-  {
-    key: 'codigo',
-    header: 'Código',
-    render: (parcela) => <span className={styles.codigo}>{parcela.codigo}</span>,
-  },
-  {
-    key: 'descripcion',
-    header: 'Descripción',
-    render: (parcela) => <CeldaDescripcion descripcion={parcela.descripcion} />,
-  },
-  {
-    key: 'grupos',
-    header: 'Grupos',
-    align: 'center',
-    render: (parcela) => <span className={styles.numero}>{formatearEntero(parcela.grupos)}</span>,
-  },
-  {
-    key: 'arboles',
-    header: 'Árboles',
-    align: 'center',
-    render: (parcela) => <span className={styles.numero}>{formatearEntero(parcela.arboles)}</span>,
-  },
-  {
-    key: 'createdAt',
-    header: 'Creada',
-    render: (parcela) => formatearFechaCorta(parcela.createdAt),
-  },
-];
+import { COLUMNAS_PARCELAS } from './columnas';
+import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 
 /** Sección Parcelas de la tab Datos: tabla de parcelas activas con counts. */
 export function ParcelasSection() {
+  const columnas = useColumnasVisibles(COLUMNAS_PARCELAS);
   const { id = '' } = useParams();
   const navigate = useNavigate();
   const { data, isPending, isError, refetch } = useParcelasDatos(id);
@@ -83,7 +43,7 @@ export function ParcelasSection() {
       ) : (
         <CardTabla pie="Clic en una fila abre los grupos de la parcela">
           <Table
-            columns={COLUMNAS}
+            columns={columnas}
             rows={data}
             getRowKey={(parcela) => parcela.id}
             onRowClick={verGrupos}

@@ -100,7 +100,7 @@ function medir() {
    *    "inalcanzables" y la auditoría rechazaría el arreglo correcto.
    */
   const fueraDeCaja = (el, exigirSinScroll) => {
-    const r = el.getBoundingClientRect();
+    let r = el.getBoundingClientRect();
     for (let anc = el.parentElement; anc && anc !== document.body; anc = anc.parentElement) {
       const co = getComputedStyle(anc);
       const ox = co.overflowX;
@@ -109,11 +109,19 @@ function medir() {
       const eje = ejeAfuera(r, anc.getBoundingClientRect());
       if (eje === AFUERA.no) continue;
       if (!exigirSinScroll) return anc;
+      const ra = anc.getBoundingClientRect();
       const scrollea =
         eje === AFUERA.x
           ? (ox === 'auto' || ox === 'scroll') && anc.scrollWidth > anc.clientWidth + 2
           : (oy === 'auto' || oy === 'scroll') && anc.scrollHeight > anc.clientHeight + 2;
       if (!scrollea) return anc;
+      // Alcanzable acá dentro: los ancestros de más arriba tienen que juzgarlo
+      // por dónde va a quedar DESPUÉS de scrollear, y scrollear lo TRASLADA a
+      // algún lugar de esta caja (no lo recorta contra ella). Sin esto, un
+      // control bajo el fold de una card con scroll propio se declara
+      // inalcanzable al llegar a `.shell`, que recorta sin scrollear: el
+      // arreglo correcto —darle scroll a la card— subía el número de defectos.
+      r = ra;
     }
     return null;
   };
@@ -470,6 +478,11 @@ const FRACCION_COLAPSO = 0.4;
 function marcarColapsadas(informe, pantalla, anchos) {
   const referencia = informe[`${pantalla}@${anchos[0]}`]?.cards ?? {};
   for (const ancho of anchos) {
+    // El ancho de referencia se mide en desktop: a 360 CUALQUIER card a ancho
+    // completo es menos del 40% de lo que medía a 1920, y sin esta escala la
+    // regla relativa dispara sola en las pantallas chicas. El alto no se
+    // escala: la auditoría mide siempre con la misma altura de ventana.
+    const escala = ancho / anchos[0];
     const f = informe[`${pantalla}@${ancho}`];
     if (!f || f.error) continue;
     const colapsadas = [];
@@ -483,7 +496,7 @@ function marcarColapsadas(informe, pantalla, anchos) {
       const relativo =
         base != null &&
         card.desborda &&
-        (card.h < base.h * FRACCION_COLAPSO || card.w < base.w * FRACCION_COLAPSO);
+        (card.h < base.h * FRACCION_COLAPSO || card.w < base.w * escala * FRACCION_COLAPSO);
       if (duro || relativo) {
         colapsadas.push({ el: clase, alto: card.h, ancho: card.w, base: base ?? null });
       }
@@ -547,17 +560,20 @@ function serializarBaseline(informe) {
  * "el check está muerto".
  */
 const CASOS_AUTOTEST = [
+  // La ruta y el ancho importan: hace falta una tabla que REALMENTE desborde su
+  // contenedor, si no la inyección no rompe nada y el check pasa sin ejercitarse.
+  // A 600 las tablas entran exactas desde que sueltan columnas; a 360 no.
   {
     nombre: 'T · contenedor de tabla que recorta en vez de scrollear',
-    ruta: '/especies',
-    ancho: 600,
+    ruta: '/plantaciones',
+    ancho: 360,
     css: '[class*="_tablaScroll_"]{overflow-x:hidden !important}',
     espera: (r) => r.nTablasRecortadas > 0,
   },
   {
     nombre: 'T · celdas apretadas hasta recortar el texto',
-    ruta: '/especies',
-    ancho: 600,
+    ruta: '/plantaciones',
+    ancho: 360,
     css: 'table{table-layout:fixed !important} td,th{overflow:hidden !important}',
     espera: (r) => r.nTablasRecortadas > 0,
   },
@@ -575,7 +591,11 @@ const CASOS_AUTOTEST = [
     nombre: 'H · card que pierde el alto y deja contenido afuera',
     ruta: '/plantaciones/p1',
     ancho: 1920,
-    css: '[class*="_panel_"]{max-height:60px !important;overflow:hidden !important}',
+    // `min-height:0` va sí o sí: los pisos de la fase 3 le ganan al max-height
+    // (min-height se aplica último) y sin anularlos la inyección no rompe nada.
+    css:
+      '[class*="_panel_"]{min-height:0 !important;max-height:60px !important;' +
+      'overflow:hidden !important}',
     clasificar: true,
     espera: (r) => r.nColapsadas > 0,
   },
@@ -643,6 +663,17 @@ const CASOS_AUTOTEST = [
       '[class*="_barra_"]{width:120px !important;overflow:hidden !important;' +
       'flex-wrap:nowrap !important}',
     espera: (r) => r.nFueraViewport > 0,
+  },
+  {
+    nombre: 'X · control bajo el fold de una card con scroll propio NO cuenta',
+    ruta: '/plantaciones/p1',
+    ancho: 1024,
+    // El arreglo que empuja la fase 3: apilar y darle scroll propio al área.
+    // Los controles que quedan abajo se alcanzan scrolleando esa card, aunque
+    // `.shell` —que recorta sin scrollear— los vea fuera de su caja.
+    css: '[class*="_dashboard_"]{overflow-y:auto !important}',
+    espera: (r) => r.nFueraViewport === 0,
+    esperaLimpio: (r) => r.nFueraViewport === 0,
   },
   {
     nombre: 'X · control alcanzable scrolleando NO cuenta',

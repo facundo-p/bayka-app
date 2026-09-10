@@ -16,6 +16,7 @@ import { formatearEntero } from '../lib/formato';
 import { useDebounce } from '../hooks/useDebounce';
 import { listarCatalogoConUso, type EspecieConCatalogoUso } from '../queries/especieQueries';
 import { COLUMNAS_ESPECIES } from './especies/columnas';
+import { useColumnasVisibles } from '../hooks/useColumnasVisibles';
 import { EspeciePanel } from './especies/EspeciePanel';
 import { EspeciesToolbar } from './especies/EspeciesToolbar';
 import {
@@ -47,6 +48,7 @@ export function EspeciesScreen() {
   const [uso, setUso] = useState<UsoEspecie>(USO_ESPECIE.todas);
   const [orden, setOrden] = useState<OrdenEspecie>(ORDEN_ESPECIE.arboles);
   const [seleccion, setSeleccion] = useState<Seleccion | null>(null);
+  const columnas = useColumnasVisibles(COLUMNAS_ESPECIES);
   const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
   const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['especies-catalogo-uso'],
@@ -119,7 +121,7 @@ export function EspeciesScreen() {
                 pieDerecha={PIE_NOTA}
               >
                 <Table
-                  columns={COLUMNAS_ESPECIES}
+                  columns={columnas}
                   rows={visibles}
                   getRowKey={(especie) => especie.id}
                   claveSeleccionada={seleccion?.especie?.id}

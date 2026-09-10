@@ -70,7 +70,9 @@
 /* Grilla de metadatos: etiqueta tenue arriba, valor debajo. */
 .meta {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* El dato más ancho mide 91px; con 140 quedan dos columnas en el panel y una
+     sola cuando se angosta, sin cortar ninguna etiqueta. */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--space-xl) var(--space-2xl);
   margin: 0;
 }

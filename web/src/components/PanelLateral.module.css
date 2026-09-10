@@ -3,12 +3,12 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3xl);
 }
 
 .layoutConPanel {
-  grid-template-columns: 1fr var(--ancho-panel-lateral);
+  grid-template-columns: minmax(0, 1fr) var(--ancho-panel-lateral);
 }
 
 /* Misma card que la de la tabla: el panel es su par, no una capa encima. */

@@ -1,21 +1,16 @@
 /* Dos columnas: 39 especies entran sin obligar a scrollear media pantalla.
-   El alto y el scroll los pone la card que la contiene. */
+   El alto y el scroll los pone la card que la contiene.
+   300px: la fila más ancha mide 279px, así que en la card de desktop (847px)
+   entran dos y no tres. Lo que decide es el ancho de la card, no el del
+   viewport, y `auto-fit` lo lee solo. */
 .lista {
   display: grid;
-  /* minmax(0, …): sin el piso en 0 la columna no baja de su contenido, se queda
-     con más de la mitad y la fila se desborda en vez de elidir el nombre. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   column-gap: var(--space-xl);
   align-content: start;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-@media (max-width: 900px) {
-  .lista {
-    grid-template-columns: 1fr;
-  }
 }
 
 .fila {
