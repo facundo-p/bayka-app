@@ -127,7 +127,7 @@ export async function actualizarConfigGps(id: string, config: ConfigGps): Promis
   );
 }
 
-/** Toggle de UX, NO frontera de seguridad: el filtrado es client-side y la lectura de plantations es `using (true)`. */
+/** Toggle de UX, NO frontera de seguridad: el filtrado es client-side; quien puede leer la plantación la sigue leyendo oculta. */
 export async function actualizarVisibilidad(id: string, visible: boolean): Promise<void> {
   await actualizarCampos(id, { visible_in_app: visible }, MENSAJE_VISIBILIDAD_SIN_MIGRACION);
 }
