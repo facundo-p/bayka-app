@@ -23,16 +23,6 @@
   white-space: nowrap;
 }
 
-.puntoEspecie {
-  display: inline-block;
-  width: var(--tamano-punto);
-  height: var(--tamano-punto);
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  background-color: var(--color);
-}
-
 .codigo {
   font-family: var(--font-mono);
 }
@@ -68,16 +58,6 @@
   align-items: center;
   gap: var(--space-lg);
   min-width: 0;
-}
-
-.panelPunto {
-  display: inline-block;
-  width: var(--tamano-punto-lg);
-  height: var(--tamano-punto-lg);
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  /* --color llega por inline style: dato por instancia. */
-  background-color: var(--color);
 }
 
 .panelTitulo {

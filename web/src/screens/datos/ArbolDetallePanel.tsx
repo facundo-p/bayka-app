@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cargando, MapaPuntos, PanelLateral } from '../../components';
-import { varsCss } from '../../lib/cssVars';
+import { Cargando, MapaPuntos, PanelLateral, PuntoColor } from '../../components';
 import { formatearFechaCorta } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
@@ -24,10 +23,7 @@ function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
     <div className={styles.bloque}>
       <span className={styles.etiqueta}>Especie</span>
       <span className={styles.especie}>
-        <span
-          className={styles.puntoEspecie}
-          style={varsCss({ color: colorEspeciePorCodigo(arbol.especieCodigo) })}
-        />
+        <PuntoColor color={colorEspeciePorCodigo(arbol.especieCodigo)} tamano="lg" />
         {`${codigo} · ${nombre}`}
       </span>
     </div>

@@ -1,9 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, Input, PanelLateral } from '../../components';
+import { Button, Input, PanelLateral, PuntoColor } from '../../components';
 import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
-import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -44,10 +43,7 @@ function valoresIniciales(especie: EspecieConCatalogoUso | null): EspecieFormVal
 function CabeceraEspecie({ especie }: { especie: EspecieConCatalogoUso | null }) {
   return (
     <div className={styles.panelIdentidad}>
-      <span
-        className={styles.panelPunto}
-        style={varsCss({ color: colorEspeciePorCodigo(especie?.codigo ?? null) })}
-      />
+      <PuntoColor color={colorEspeciePorCodigo(especie?.codigo ?? null)} tamano="lg" />
       <h2 className={styles.panelTitulo}>{especie ? 'Editar especie' : 'Nueva especie'}</h2>
       {especie && <span className={styles.chipCodigo}>{especie.codigo}</span>}
     </div>

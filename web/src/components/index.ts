@@ -23,6 +23,7 @@ export { PageHeader } from './PageHeader';
 export { PasswordInput } from './PasswordInput';
 export { PlantationMap } from './PlantationMap';
 export { Paginacion } from './Paginacion';
+export { PuntoColor } from './PuntoColor';
 export { SeasonCard } from './SeasonCard';
 export { SegmentedControl } from './SegmentedControl';
 export {

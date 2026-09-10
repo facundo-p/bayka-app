@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { varsCss } from '../../lib/cssVars';
+import { PuntoColor } from '../../components';
 import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { tieneFotoSubida } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
@@ -40,9 +40,9 @@ export function CeldaEspecie({ arbol }: { arbol: ArbolDetalle }) {
   const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
   return (
     <span className={styles.especie}>
-      <span
+      <PuntoColor
+        color={colorEspeciePorCodigo(arbol.especieCodigo)}
         className={styles.puntoEspecie}
-        style={varsCss({ color: colorEspeciePorCodigo(arbol.especieCodigo) })}
       />
       {`${codigo} · ${nombre}`}
     </span>

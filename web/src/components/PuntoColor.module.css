@@ -1,0 +1,21 @@
+/* --color llega por varsCss: es dato por instancia, no valor de diseño. */
+.punto {
+  display: inline-block;
+  flex-shrink: 0;
+  width: var(--tamano-punto);
+  height: var(--tamano-punto);
+  border-radius: var(--radius-full);
+  /* Fuera de un flex, en una línea de texto, lo centra con las letras. */
+  vertical-align: middle;
+  background-color: var(--color);
+}
+
+.lg {
+  width: var(--tamano-punto-lg);
+  height: var(--tamano-punto-lg);
+}
+
+.aro {
+  border: var(--border-thin) solid var(--color-surface);
+  box-shadow: 0 0 0 var(--border-thin) var(--color-border);
+}

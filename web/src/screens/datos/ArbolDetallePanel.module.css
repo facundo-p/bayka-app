@@ -26,17 +26,6 @@
   color: var(--color-text-secondary);
 }
 
-/* Punto de color que precede a la especie. El color es data-driven (inline). */
-.puntoEspecie {
-  display: inline-block;
-  width: var(--tamano-punto-lg);
-  height: var(--tamano-punto-lg);
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  background-color: var(--color);
-}
-
 .foto {
   max-width: 100%;
   max-height: 320px;
