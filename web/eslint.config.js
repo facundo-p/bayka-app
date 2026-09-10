@@ -36,7 +36,9 @@ export default tseslint.config(
     // que `lint` los pasa desde la raíz con `-c`, que toma el cwd como base de
     // los patrones. El sourceType sale de la extensión (default de ESLint) y sus
     // tests en TS caen en el bloque de arriba.
-    files: ['scripts/*.{cjs,mjs}'],
+    files: ['scripts/**/*.{cjs,mjs}'],
+    // Desde web/ el patrón también toma la auditoría, que evalúa código en el browser.
+    ignores: ['scripts/auditoria/**'],
     languageOptions: { globals: globals.node },
     rules: js.configs.recommended.rules,
   },
