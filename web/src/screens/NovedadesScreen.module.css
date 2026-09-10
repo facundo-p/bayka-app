@@ -1,5 +1,5 @@
 /* Rótulo tenue de la izquierda de la topbar. */
-.rotulo {
+.rotuloTopbar {
   font-size: var(--text-md);
   color: var(--color-text-faint);
 }
@@ -48,4 +48,69 @@
 
 .titular {
   color: var(--color-text-heading);
+}
+
+/* ─── Sección en pruebas (solo staging, #375) ─────────────────────────── */
+
+/* Punteado = provisorio; el ámbar del rótulo la ata al banner de entorno. */
+.enPruebas {
+  border-style: dashed;
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+}
+
+.cabezaEnPruebas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-xl);
+  margin-bottom: var(--space-md);
+}
+
+.tituloEnPruebas {
+  font-size: var(--text-xl);
+}
+
+.rotulo {
+  padding: var(--space-xs) var(--space-lg);
+  border: var(--border-thin) solid var(--color-warn-border);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-warn-bg);
+  color: var(--color-warn-fg-strong);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.notaEnPruebas {
+  margin: 0 0 var(--space-3xl);
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
+}
+
+.pasos {
+  margin-top: var(--space-md);
+}
+
+.pasosResumen {
+  width: fit-content;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-primary-accent);
+}
+
+.pasosLista {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: var(--space-md) 0 0;
+  padding: var(--space-xl) var(--space-2xl) var(--space-xl) var(--space-5xl);
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-sunken);
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--color-text-secondary);
 }

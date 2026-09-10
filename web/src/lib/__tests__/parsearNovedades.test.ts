@@ -1,8 +1,9 @@
 import novedadesRaw from '../../../../NOVEDADES.md?raw';
-import { parsearNovedades } from '../parsearNovedades';
+import { esEntradaEnPruebas, parsearNovedades } from '../parsearNovedades';
 
 describe('parsearNovedades sobre el archivo real', () => {
-  const entradas = parsearNovedades(novedadesRaw);
+  // La sección en pruebas cambia con cada sincronización: solo se afirma lo publicado.
+  const entradas = parsearNovedades(novedadesRaw).filter((entrada) => !esEntradaEnPruebas(entrada));
 
   test('una entrada por versión, con el título tal cual está escrito', () => {
     expect(entradas.map((entrada) => entrada.titulo)).toEqual([
@@ -71,6 +72,60 @@ describe('parsearNovedades: contrato', () => {
   });
 
   test('nunca lanza, ni con entradas raras', () => {
-    expect(() => parsearNovedades('##\n-\n**\n   ')).not.toThrow();
+    expect(() => parsearNovedades('##\n-\n**\n   \n  - \n<!--\n-->')).not.toThrow();
+  });
+});
+
+describe('parsearNovedades: sección en pruebas (#375)', () => {
+  const SECCION = [
+    '## En pruebas · próxima versión',
+    '<!-- sincronizado-hasta: 5930146 #374 -->',
+    '',
+    '- **Detalle nuevo.** Se abre al costado <!-- #344 #350 -->',
+    '  del listado.',
+    '  - Entrá a una plantación.',
+    '  - Esperá ver: el detalle a la derecha,',
+    '    sin tapar el listado.',
+    '',
+    '## Web 1.1.0 · 21 de agosto de 2026',
+    '',
+    '- **Publicado.** Ya está en producción.',
+  ].join('\n');
+
+  test('los comentarios no se muestran y la marca queda en su entrada', () => {
+    const [enPruebas, publicada] = parsearNovedades(SECCION);
+
+    expect(enPruebas.sincronizadoHasta).toBe('5930146 #374');
+    expect(enPruebas.items[0].detalle).toBe('Se abre al costado del listado.');
+    expect(publicada.sincronizadoHasta).toBeUndefined();
+  });
+
+  test('los sub-bullets son pasos del ítem, uniendo su wrap', () => {
+    const [enPruebas] = parsearNovedades(SECCION);
+
+    expect(enPruebas.items[0].pasos).toEqual([
+      'Entrá a una plantación.',
+      'Esperá ver: el detalle a la derecha, sin tapar el listado.',
+    ]);
+  });
+
+  test('solo la entrada con el prefijo del contrato está en pruebas', () => {
+    expect(parsearNovedades(SECCION).map(esEntradaEnPruebas)).toEqual([true, false]);
+  });
+
+  test('una línea que solo tiene un comentario no corta la continuación', () => {
+    const crudo = ['## X', '', '- uno', '<!-- nota -->', '  sigue uno'].join('\n');
+
+    expect(parsearNovedades(crudo)[0].items).toEqual([{ detalle: 'uno sigue uno' }]);
+  });
+
+  test('un paso sin ítem arriba se ignora', () => {
+    expect(parsearNovedades('## X\n\n  - huérfano')).toEqual([{ titulo: 'X', items: [] }]);
+  });
+
+  test('un comentario sin cerrar queda como texto: no se come el resto', () => {
+    expect(parsearNovedades('## X\n\n- uno <!-- abierto')[0].items).toEqual([
+      { detalle: 'uno <!-- abierto' },
+    ]);
   });
 });

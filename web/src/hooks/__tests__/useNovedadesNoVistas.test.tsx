@@ -1,7 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { marcarNovedadesVistas, useNovedadesNoVistas } from '../useNovedadesNoVistas';
 
-vi.mock('../../lib/entorno', () => ({ VERSION_APP: 'v9.9.9' }));
+vi.mock('../../lib/novedades', () => ({ FIRMA_NOVEDADES: 'v9.9.9' }));
 
 const CLAVE = 'bayka.novedades.ultima-vista';
 
@@ -29,7 +29,13 @@ test('una versión vieja marcada vuelve a encender el aviso', () => {
   expect(screen.getByTestId('a')).toHaveTextContent('si');
 });
 
-test('marcar vistas persiste la versión y apaga el aviso en todos los montados', () => {
+test('una sincronización nueva en staging cambia la firma y vuelve a encender el aviso', () => {
+  window.localStorage.setItem(CLAVE, 'v9.9.9 · 1234567 #300');
+  render(<Sonda nombre="a" />);
+  expect(screen.getByTestId('a')).toHaveTextContent('si');
+});
+
+test('marcar vistas persiste la firma y apaga el aviso en todos los montados', () => {
   render(
     <>
       <Sonda nombre="a" />

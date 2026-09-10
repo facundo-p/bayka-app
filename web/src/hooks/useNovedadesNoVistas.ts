@@ -1,6 +1,7 @@
 /**
- * Marca si hay novedades sin ver: la versión deployada no coincide con la última
- * que este navegador marcó como leída. Store de módulo + useSyncExternalStore
+ * Marca si hay novedades sin ver: la firma deployada (versión, más la marca de
+ * sincronización en staging) no coincide con la última que este navegador marcó
+ * como leída. Store de módulo + useSyncExternalStore
  * para que el dot del sidebar se apague solo cuando la pantalla marca vista, sin
  * meter un provider por un booleano.
  *
@@ -8,7 +9,7 @@
  * no necesita un caso especial.
  */
 import { useSyncExternalStore } from 'react';
-import { VERSION_APP } from '../lib/entorno';
+import { FIRMA_NOVEDADES } from '../lib/novedades';
 
 const CLAVE_ULTIMA_VISTA = 'bayka.novedades.ultima-vista';
 
@@ -31,13 +32,13 @@ function suscribir(alCambiar: () => void): () => void {
 }
 
 function hayNoVistas(): boolean {
-  return leerUltimaVista() !== VERSION_APP;
+  return leerUltimaVista() !== FIRMA_NOVEDADES;
 }
 
-/** Marca la versión actual como vista y avisa a todos los suscriptores. */
+/** Marca la firma actual como vista y avisa a todos los suscriptores. */
 export function marcarNovedadesVistas(): void {
   try {
-    window.localStorage.setItem(CLAVE_ULTIMA_VISTA, VERSION_APP);
+    window.localStorage.setItem(CLAVE_ULTIMA_VISTA, FIRMA_NOVEDADES);
   } catch {
     // Si no se puede persistir, igual se apaga el dot en esta sesión.
   }
