@@ -254,9 +254,11 @@
   --control-height-sm: 32px;
   --control-height-input: 36px;    /* input del panel lateral */
   --modal-max-width: 420px;
+  --alto-max-desplegable: 320px;   /* lista de un selector con búsqueda */
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;
   --z-modal: 100;
+  --z-popover: 110;                /* listas desplegables que se abren dentro de un modal */
 
   /* ─── Banner "Entorno de pruebas" (#287) ─────────────────────────── */
   /* Alto de la franja: 0 en prod. <html data-entorno="pruebas"> lo sube a

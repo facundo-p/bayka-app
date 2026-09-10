@@ -312,7 +312,7 @@ Periodo
 Luego de crear la plantación el administrador debe:
 
 - seleccionar especies disponibles
-- asignar usuarios (perfiles admin o técnicos pertenecientes a la organización)
+- asignar técnicos de la organización (los admins ya ven todas las plantaciones de su organización, sin asignación manual)
 
 ---
 

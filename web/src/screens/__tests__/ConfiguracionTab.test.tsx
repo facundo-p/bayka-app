@@ -348,7 +348,8 @@ describe('sección Técnicos', () => {
 
     await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
     const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
-    expect(within(dialogo).getByLabelText('Usuario')).toBeInTheDocument();
+    expect(within(dialogo).getByRole('button', { name: /^Técnico/ })).toBeInTheDocument();
+    expect(within(dialogo).queryByText('Rol en plantación')).not.toBeInTheDocument();
   });
 });
 

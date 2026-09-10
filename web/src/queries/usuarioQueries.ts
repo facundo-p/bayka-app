@@ -9,6 +9,8 @@ export type PerfilResumen = {
   id: string;
   nombre: string;
   rol: Rol;
+  /** null en perfiles previos al backfill de la migración 026. */
+  email: string | null;
   activo: boolean;
 };
 
@@ -56,7 +58,7 @@ type FilaUsuario = {
 export async function listarPerfiles(): Promise<PerfilResumen[]> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, nombre, rol, activo')
+    .select('id, nombre, rol, email, activo')
     .order('nombre', { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as PerfilResumen[];

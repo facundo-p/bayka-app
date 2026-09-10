@@ -4,12 +4,11 @@
  * (KML, CSV, XLSX) solo arman el contenido.
  */
 
+import { normalizarTexto } from '../lib/normalizarTexto';
+
 /** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */
 export function aSlug(texto: string): string {
-  return texto
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
+  return normalizarTexto(texto)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }

@@ -270,6 +270,14 @@ admin
 tecnico
 ```
 
+`rol_en_plantacion` no otorga permisos: el acceso sale de tener la fila (membresía) y
+del rol global. Lo que distingue es el origen de la fila:
+
+- `admin`: membresía automática, por trigger, de cada admin/superadmin activo de la
+  organización (al crear la plantación o al promover al usuario). Se borra si deja de
+  ser admin.
+- `tecnico`: asignación manual desde la web o la app. Solo se asignan técnicos (#372).
+
 ---
 
 # 8. Parcela

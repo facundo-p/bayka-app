@@ -27,8 +27,9 @@ const FILA_PLANTACION = {
 };
 
 const PERFILES = [
-  { id: 'user-2', nombre: 'Beto Técnico', rol: 'tecnico', activo: true },
-  { id: 'user-3', nombre: 'Carla Campo', rol: 'admin', activo: true },
+  { id: 'user-2', nombre: 'Beto Técnico', rol: 'tecnico', email: 'beto@bayka.org', activo: true },
+  { id: 'user-3', nombre: 'Carla Campo', rol: 'admin', email: 'carla@bayka.org', activo: true },
+  { id: 'user-4', nombre: 'Dora Surco', rol: 'tecnico', email: 'dora@bayka.org', activo: true },
 ];
 
 type FilaAsignada = {
@@ -330,38 +331,49 @@ test('asigna un usuario disponible y la lista se actualiza', async () => {
   // Asignar es un modal disparado por el botón punteado.
   await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
   const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
-  await usuario.selectOptions(within(dialogo).getByLabelText('Usuario'), 'user-3');
+  // El rol en plantación no se elige: siempre se asigna como técnico.
+  expect(within(dialogo).queryByText('Rol en plantación')).not.toBeInTheDocument();
+  await usuario.click(within(dialogo).getByRole('button', { name: /^Técnico/ }));
+  await usuario.click(screen.getByRole('option', { name: 'Dora Surco dora@bayka.org' }));
   await usuario.click(within(dialogo).getByRole('button', { name: 'Asignar' }));
 
-  expect(await screen.findByText('Carla Campo')).toBeInTheDocument();
+  expect(await screen.findByText('Dora Surco')).toBeInTheDocument();
   const insercion = consultas.find((consulta) => consulta.operacion === 'insert');
   expect(insercion?.tabla).toBe('plantation_users');
   expect(insercion?.payload).toEqual({
     plantation_id: 'plant-1',
-    user_id: 'user-3',
+    user_id: 'user-4',
     rol_en_plantacion: 'tecnico',
   });
 });
 
-test('el select del modal no lista a los ya asignados', async () => {
+/** Abre el modal de asignar y su lista de técnicos. */
+async function abrirListaDeTecnicos(usuario: Usuario) {
+  await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+  await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: /^Técnico/ }));
+  return screen.getByRole('listbox');
+}
+
+test('el selector solo ofrece técnicos sin asignar, con su email', async () => {
   const usuario = userEvent.setup();
   renderRutasEn('/plantaciones/plant-1/configuracion');
   await screen.findByText('Beto Técnico');
 
-  await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
-  const select = within(screen.getByRole('dialog')).getByLabelText('Usuario');
-  expect(within(select).getByRole('option', { name: 'Carla Campo' })).toBeInTheDocument();
-  expect(within(select).queryByRole('option', { name: 'Beto Técnico' })).not.toBeInTheDocument();
+  const lista = await abrirListaDeTecnicos(usuario);
+  expect(within(lista).getByRole('option', { name: 'Dora Surco dora@bayka.org' })).toBeInTheDocument();
+  // Beto ya está asignado; Carla es admin, miembro automático de todas las plantaciones.
+  expect(within(lista).queryByRole('option', { name: /Beto Técnico/ })).not.toBeInTheDocument();
+  expect(within(lista).queryByRole('option', { name: /Carla Campo/ })).not.toBeInTheDocument();
 });
 
-test('el select no ofrece usuarios dados de baja', async () => {
+test('el selector no ofrece usuarios dados de baja', async () => {
   const resolverBase = estadoMock.resolverConsulta!;
   estadoMock.resolverConsulta = (consulta) =>
     consulta.tabla === 'profiles'
       ? {
           data: [
-            { id: 'user-3', nombre: 'Carla Campo', rol: 'admin', activo: true },
-            { id: 'user-4', nombre: 'Dina Baja', rol: 'tecnico', activo: false },
+            { id: 'user-4', nombre: 'Dora Surco', rol: 'tecnico', email: 'dora@bayka.org', activo: true },
+            { id: 'user-5', nombre: 'Dina Baja', rol: 'tecnico', email: 'dina@bayka.org', activo: false },
           ],
         }
       : resolverBase(consulta);
@@ -369,10 +381,9 @@ test('el select no ofrece usuarios dados de baja', async () => {
   renderRutasEn('/plantaciones/plant-1/configuracion');
   await screen.findByText('Beto Técnico');
 
-  await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
-  const select = within(screen.getByRole('dialog')).getByLabelText('Usuario');
-  expect(within(select).getByRole('option', { name: 'Carla Campo' })).toBeInTheDocument();
-  expect(within(select).queryByRole('option', { name: 'Dina Baja' })).not.toBeInTheDocument();
+  const lista = await abrirListaDeTecnicos(usuario);
+  expect(within(lista).getByRole('option', { name: /Dora Surco/ })).toBeInTheDocument();
+  expect(within(lista).queryByRole('option', { name: /Dina Baja/ })).not.toBeInTheDocument();
 });
 
 test('quitar pide confirmación, cancela sin borrar y confirma borrando', async () => {

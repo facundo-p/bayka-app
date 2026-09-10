@@ -1,0 +1,122 @@
+/* El disparador se ve igual que Select: control + chevron propio. */
+.disparador {
+  composes: select from './Select.module.css';
+  display: flex;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+
+.disparadorError {
+  composes: selectError from './Select.module.css';
+}
+
+.valor {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.valorPrincipal {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Detalle tenue (email): mismo par de tokens que la línea secundaria de Usuarios. */
+.valorSecundario,
+.opcionSecundario {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--color-text-faint);
+}
+
+.placeholder {
+  color: var(--color-text-disabled);
+}
+
+/* Fixed + portal: el overflow del modal no lo recorta. La posición llega por
+   variables desde usePosicionAnclada. */
+.popover {
+  position: fixed;
+  top: var(--arriba);
+  bottom: var(--abajo);
+  left: var(--izquierda);
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  width: var(--ancho);
+  max-height: min(var(--alto-disponible), var(--alto-max-desplegable));
+  overflow: hidden;
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-modal);
+}
+
+.cabecera {
+  padding: var(--space-md);
+  border-bottom: var(--border-thin) solid var(--color-border);
+}
+
+.busqueda {
+  min-height: var(--control-height-input);
+  font-size: var(--text-md);
+}
+
+.lista {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.opcion {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+.opcionResaltada {
+  background-color: var(--color-surface-tint);
+}
+
+.opcionTexto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opcionPrincipal {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--color-text-body);
+}
+
+.opcionElegida {
+  color: var(--color-primary);
+}
+
+.check {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.vacio {
+  margin: 0;
+  padding: var(--space-2xl) var(--space-xl);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}

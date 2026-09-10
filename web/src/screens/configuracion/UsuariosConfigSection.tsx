@@ -2,13 +2,20 @@ import { useState } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
-import { Badge, Button, Cargando, ErrorConReintento, Modal, Select } from '../../components';
+import {
+  Badge,
+  Button,
+  Cargando,
+  ErrorConReintento,
+  Modal,
+  SelectConDetalle,
+  type OpcionConDetalle,
+} from '../../components';
 import { iniciales } from '../../lib/iniciales';
 import {
   listarAsignados,
   listarPerfiles,
   type PerfilResumen,
-  type RolEnPlantacion,
   type UsuarioAsignado,
 } from '../../queries/usuarioQueries';
 import {
@@ -20,8 +27,6 @@ import { ROL } from '../../repositories/profileRepository';
 import { CabeceraConfig } from './CabeceraConfig';
 import styles from './SeccionesConfig.module.css';
 
-const ROLES_EN_PLANTACION: RolEnPlantacion[] = [ROL.TECNICO, ROL.ADMIN];
-
 const ETIQUETA_ROL: Record<string, string> = {
   [ROL.TECNICO]: 'Técnico',
   [ROL.ADMIN]: 'Admin',
@@ -29,6 +34,8 @@ const ETIQUETA_ROL: Record<string, string> = {
 };
 
 const LARGO_ID_CORTO = 8;
+
+const AYUDA_ASIGNAR = 'Se asigna como técnico. Los admins ya ven todas las plantaciones.';
 
 function etiquetaRol(rol: string): string {
   return ETIQUETA_ROL[rol] ?? rol;
@@ -44,8 +51,20 @@ function perfilesNoAsignados(
   asignados: UsuarioAsignado[],
 ): PerfilResumen[] {
   const idsAsignados = new Set(asignados.map((asignado) => asignado.userId));
-  // No se ofrece asignar usuarios dados de baja (no pueden loguearse).
-  return perfiles.filter((perfil) => perfil.activo && !idsAsignados.has(perfil.id));
+  // Solo técnicos activos: los admins ya son miembros automáticos de todas las
+  // plantaciones (#67) y un usuario dado de baja no puede loguearse.
+  return perfiles.filter(
+    (perfil) => perfil.activo && perfil.rol === ROL.TECNICO && !idsAsignados.has(perfil.id),
+  );
+}
+
+/** El email desambigua nombres repetidos. */
+function opcionesDeUsuario(perfiles: PerfilResumen[]): OpcionConDetalle[] {
+  return perfiles.map((perfil) => ({
+    valor: perfil.id,
+    principal: nombreVisible(perfil.nombre, perfil.id),
+    secundario: perfil.email,
+  }));
 }
 
 /** Invalida la lista de asignados y el count de usuarios del listado general. */
@@ -102,10 +121,9 @@ function ModalAsignar({
   onCerrar: () => void;
 }) {
   const [userId, setUserId] = useState('');
-  const [rol, setRol] = useState<RolEnPlantacion>(ROL.TECNICO);
   const invalidar = useInvalidarUsuarios(plantationId);
   const mutacion = useMutation({
-    mutationFn: () => asignarUsuario(plantationId, userId, rol),
+    mutationFn: () => asignarUsuario(plantationId, userId),
     onSuccess: async () => {
       await invalidar();
       onCerrar();
@@ -116,25 +134,17 @@ function ModalAsignar({
   return (
     <Modal open title="Asignar técnico" onClose={onCerrar}>
       <div className={styles.formModal}>
-        <Select label="Usuario" value={userId} onChange={(event) => setUserId(event.target.value)}>
-          <option value="">Elegí un usuario</option>
-          {disponibles.map((perfil) => (
-            <option key={perfil.id} value={perfil.id}>
-              {nombreVisible(perfil.nombre, perfil.id)}
-            </option>
-          ))}
-        </Select>
-        <Select
-          label="Rol en plantación"
-          value={rol}
-          onChange={(event) => setRol(event.target.value as RolEnPlantacion)}
-        >
-          {ROLES_EN_PLANTACION.map((opcion) => (
-            <option key={opcion} value={opcion}>
-              {etiquetaRol(opcion)}
-            </option>
-          ))}
-        </Select>
+        <SelectConDetalle
+          label="Técnico"
+          value={userId}
+          onChange={setUserId}
+          opciones={opcionesDeUsuario(disponibles)}
+          placeholder="Elegí un técnico"
+          placeholderBusqueda="Buscar por nombre o email"
+          textoVacio="No quedan técnicos para asignar."
+          textoSinCoincidencias="Ningún técnico coincide."
+          hint={AYUDA_ASIGNAR}
+        />
       </div>
       {mensajeError && (
         <p className={styles.errorAccion} role="alert">

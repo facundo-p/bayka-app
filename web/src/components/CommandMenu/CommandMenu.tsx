@@ -6,13 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import { listarPlantaciones } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
 import { useCommandMenu } from '../../hooks/useCommandMenu';
+import { useNavegacionTeclado } from '../../hooks/useNavegacionTeclado';
 import { Input } from '../Input';
 import { accionesRapidas, filtrarAcciones } from './accionesRapidas';
 import { construirItems, destinoDeItem, type ItemPaleta } from './construirItems';
 import { sugerencias } from './sugerencias';
 import { FilaPaleta } from './FilaPaleta';
 import { useFocusTrap } from './useFocusTrap';
-import { useNavegacionTeclado } from './useNavegacionTeclado';
 import { useResultadosBusqueda } from './useResultadosBusqueda';
 import styles from './CommandMenu.module.css';
 
