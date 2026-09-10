@@ -2,6 +2,8 @@
 export const TECLA = {
   abajo: 'ArrowDown',
   arriba: 'ArrowUp',
+  izquierda: 'ArrowLeft',
+  derecha: 'ArrowRight',
   inicio: 'Home',
   fin: 'End',
   enter: 'Enter',

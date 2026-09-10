@@ -13,6 +13,7 @@ import {
   MENSAJE_VISIBILIDAD_SIN_MIGRACION,
 } from '../../repositories/plantationRepository';
 import { cx } from '../../lib/classNames';
+import { TECLA } from '../../lib/teclas';
 import { CabeceraConfig } from './CabeceraConfig';
 import { FilaConfig } from './FilaConfig';
 import styles from './SeccionesConfig.module.css';
@@ -87,7 +88,7 @@ function FilasGps({ plantacion }: { plantacion: Plantacion }) {
     else setTextoExacto(String(frecuencia));
   };
   const manejarTeclaTextoExacto = (evento: KeyboardEvent<HTMLInputElement>) => {
-    if (evento.key !== 'Enter') return;
+    if (evento.key !== TECLA.enter) return;
     evento.preventDefault();
     confirmarTextoExacto();
   };
