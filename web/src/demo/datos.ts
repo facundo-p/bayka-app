@@ -3,7 +3,8 @@
  * nombres verosímiles a propósito: el punto es ver la app con anchos de columna
  * y conteos reales, que es donde aparecen los problemas de layout.
  *
- * Para cubrir una pantalla nueva, agregá su tabla a `TABLAS`.
+ * Para cubrir una pantalla nueva, agregá su tabla a `TABLAS` y, si otra la
+ * embebe, la FK a `COLUMNA_QUE_APUNTA_A`.
  */
 
 export type FilaDemo = Record<string, unknown>;
@@ -123,14 +124,14 @@ const PLANTACION_USUARIOS: FilaDemo[] = Object.entries(ASIGNACIONES_POR_TECNICO)
 );
 
 const PARCELAS: FilaDemo[] = [
-  { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z' },
-  { id: 'pa2', plantation_id: 'p1', nombre: 'Bajo del Arroyo', codigo: 'BA03', descripcion: null, created_at: '2025-03-16T12:00:00Z' },
+  { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z', deleted_at: null },
+  { id: 'pa2', plantation_id: 'p1', nombre: 'Bajo del Arroyo', codigo: 'BA03', descripcion: null, created_at: '2025-03-16T12:00:00Z', deleted_at: null },
 ];
 
 const GRUPOS: FilaDemo[] = [
-  { id: 'g1', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 10', codigo: 'L10', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T12:00:00Z', parcelas: { codigo: 'LP12' } },
-  { id: 'g2', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 11', codigo: 'L11', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T13:00:00Z', parcelas: { codigo: 'LP12' } },
-  { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: 'bosquete', estado: 'finalizada', created_at: '2025-04-05T12:00:00Z', parcelas: { codigo: 'BA03' } },
+  { id: 'g1', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 10', codigo: 'L10', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T12:00:00Z' },
+  { id: 'g2', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 11', codigo: 'L11', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T13:00:00Z' },
+  { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: 'bosquete', estado: 'finalizada', created_at: '2025-04-05T12:00:00Z' },
 ];
 
 /** Especies de los árboles del grupo, en el orden en que se alternan. */
@@ -155,10 +156,18 @@ const ARBOLES: FilaDemo[] = Array.from({ length: 30 }, (_, indice) => {
     longitude: conGps ? -55.89744 + indice * 0.0001 : null,
     gps_accuracy: conGps ? 4.2 : null,
     gps_captured_at: conGps ? '2026-04-10T12:00:05Z' : null,
-    species: { codigo: especie.codigo, nombre: especie.nombre },
-    groups: { codigo: 'L10', parcela_id: 'pa1', plantation_id: 'p1' },
   };
 });
+
+/** Columna con la que otra tabla apunta a cada una. Un nombre por destino
+ *  alcanza porque las FK que embebe la web siguen esa convención. */
+export const COLUMNA_QUE_APUNTA_A: Readonly<Record<string, string | undefined>> = {
+  plantations: 'plantation_id',
+  species: 'species_id',
+  profiles: 'user_id',
+  parcelas: 'parcela_id',
+  groups: 'group_id',
+};
 
 export const TABLAS: Record<string, TablaDemo> = {
   organizations: { filas: [ORGANIZACION] },
