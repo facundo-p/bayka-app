@@ -4,16 +4,9 @@ Qué trae cada actualización de Bayka, contado para quienes usan la app. Este e
 el changelog para compartir con usuarios y clientes: sin referencias internas ni
 detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 
-> El formato de abajo es **contrato**: los `## ` y los bullets
-> `- **Titular.** Detalle` los parsea la web para la pantalla `/novedades`
-> (`web/src/lib/parsearNovedades.ts`), igual que los headers de `CHANGELOG.md`
-> son anclas del workflow de tags. Cambiar el formato rompe esa pantalla.
->
-> Entre releases, staging tiene arriba una sección `## En pruebas · …` que
-> mantiene el skill `/novedades`: cada bullet lleva su traza oculta
-> `<!-- #N -->` y los pasos para probarlo como sub-bullets, y la sección, una
-> marca `<!-- sincronizado-hasta: … -->`. La web la muestra solo en staging;
-> `/deploy` la convierte en la entrada de la versión.
+> El formato de abajo es **contrato**: lo lee la pantalla `/novedades` de la
+> web, y cambiarlo la rompe. Está en `.claude/skills/deploy/SKILL.md`
+> ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · próxima versión
 <!-- sincronizado-hasta: 6733b7e #383 -->

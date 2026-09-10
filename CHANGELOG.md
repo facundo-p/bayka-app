@@ -1,23 +1,13 @@
 # Changelog
 
-Novedades de Bayka por release a producción. Formato basado en
-[Keep a Changelog](https://keepachangelog.com/es-AR/1.1.0/), adaptado: web y
-mobile llevan versiones independientes (tags `web-vX.Y.Z` / `mobile-vX.Y.Z`),
-agrupadas por release (fecha del pase a `main`).
+Registro técnico de cada release a producción, basado en
+[Keep a Changelog](https://keepachangelog.com/es-AR/1.1.0/). La versión para
+usuarios y clientes es [NOVEDADES.md](NOVEDADES.md).
 
-Las notas de cada versión las extrae automáticamente
-`.github/workflows/release-tags.yml`: los headers `## ` (release) y `### `
-(app/versión, formato exacto `### Web X.Y.Z` / `### Mobile X.Y.Z (versionCode N)`)
-son las anclas de ese script — no cambiar su formato sin actualizar el workflow.
-La entrada nueva de cada release la escribe el skill `/deploy`, que mantiene
-además la versión pública para usuarios/clientes en `NOVEDADES.md` (sin issues,
-PRs ni jerga interna — ahí solo entra lo visible para el usuario).
-
-Entre releases, staging acumula lo que va entrando en una sección
-`## Sin publicar` (`### Web` / `### Mobile` / `### Otros` sin versión, más la
-marca `<!-- sincronizado-hasta: … -->`), que el skill `/novedades` mantiene
-sincronizada con la de `NOVEDADES.md`. `/deploy` la convierte en la entrada del
-release, así que en `main` nunca aparece.
+Los headers de las entradas son anclas de `.github/workflows/release-tags.yml`,
+que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
+contrato completo (entrada de release, sección pendiente de staging y su
+conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
 ## Sin publicar
 <!-- sincronizado-hasta: 6733b7e #383 -->

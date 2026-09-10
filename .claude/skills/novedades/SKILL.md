@@ -21,72 +21,23 @@ La regla que manda todo lo demás: **la sección describe `origin/staging` como
 está hoy**, no la historia de cómo se llegó. Nunca pedir que se pruebe algo
 que ya no existe, o que no existe como se hizo en un principio.
 
-## Contrato de las secciones
+## Contrato de formato
 
-Van inmediatamente después de la intro de cada archivo, arriba de la última
-entrada publicada. `NOVEDADES.md`:
-
-```markdown
-## En pruebas · próxima versión
-<!-- sincronizado-hasta: 5930146 #374 -->
-
-- **Titular corto.** Qué puede hacer o qué mejora ve el usuario. <!-- #344 #350 -->
-  - En la web de pruebas, entrá a Plantaciones y abrí una.
-  - Tocá un árbol del listado.
-  - Esperá ver: el detalle se abre a la derecha, sin tapar el listado.
-```
-
-`CHANGELOG.md`:
-
-```markdown
-## Sin publicar
-<!-- sincronizado-hasta: 5930146 #374 -->
-
-### Web
-
-#### Agregado
-- Detalle de árbol en panel lateral (#344, #350)
-
-### Mobile
-
-### Otros
-- RLS por membresía (#318)
-```
-
-- **Marca** `sincronizado-hasta: <sha-corto> #<PR>`: el último commit
-  first-parent de staging procesado. Va en la línea siguiente al `## ` y es
-  **idéntica en los dos archivos** — así se sabe que están sincronizados.
-- **Traza**: cada bullet de NOVEDADES termina en `<!-- #N #M -->` (la web no la
-  muestra); cada bullet de CHANGELOG, en `(#N, #M)`. Todo ítem pendiente la
-  tiene: es lo que permite saber qué ítems toca un PR nuevo.
-- **Pasos**: sub-bullets indentados 2 espacios. El primero dice dónde probar
-  (web de pruebas, o app **Bayka TEST**); el último arranca con "Esperá ver:".
-  Wrap a 80 columnas con 4 espacios; una línea de continuación nunca empieza
-  con `- ` (se leería como otro paso).
-- El título de NOVEDADES empieza con **"En pruebas"**: es contrato con
-  `TITULO_EN_PRUEBAS` de `web/src/lib/parsearNovedades.ts`. Los `### Web` /
-  `### Mobile` sin versión no chocan con `release-tags.yml` (busca
-  `### Web X.Y.Z` exacto) y además la sección nunca llega a main.
-- Redacción de NOVEDADES: las reglas del paso 3 de `/deploy` (voseo, sin `#N`
-  visibles, sin jerga, solo lo que el usuario nota). CHANGELOG: técnico,
-  `#### Agregado` / `Cambiado` / `Corregido`; apps o categorías vacías se omiten.
-- Si nada de lo pendiente es visible, NOVEDADES lleva un único bullet:
-  "- Mejoras internas y de estabilidad. Por ahora no hay nada nuevo para probar."
+Vive en `.claude/skills/deploy/SKILL.md`, "Contrato de formato de CHANGELOG.md
+y NOVEDADES.md": leerlo antes de redactar. Acá importa sobre todo "Sección
+pendiente" (marca, traza, pasos, el caso "nada visible") y la redacción de las
+entradas publicadas, que es la misma.
 
 ## 0. Precondiciones — abortar si falla alguna
 
-```bash
-git fetch origin --tags --prune
-git ls-remote origin refs/heads/staging      # la verdad es el remoto: el staging local puede estar viejo
-gh pr list --base main --head staging --state open --json number,url
-# ↑ algo → STOP: con un release abierto no se sincroniza; usar /deploy "Refrescar"
-git log --no-merges --oneline origin/staging..origin/main
-# ↑ algo → STOP: hotfix sin back-merge main→staging
-git status --porcelain                       # sucio → STOP
-```
+Las comunes del paso 0 de `/deploy` (working tree limpio, `fetch`, PR de release
+abierto, hotfix sin back-merge); el sanity check de tags es solo de `/deploy`.
+Con un PR de release abierto, STOP: no se sincroniza, lo nuevo lo concilia
+`/deploy` "Refrescar".
 
 Todo lo que sigue se lee de `origin/staging` (`git show origin/staging:NOVEDADES.md`,
-`git grep … origin/staging`), no del working tree.
+`git grep … origin/staging`), no del working tree ni del staging local, que
+puede estar viejo.
 
 ## 1. Base del rango
 
@@ -189,7 +140,7 @@ Mostrar a Facu:
 git switch staging && git pull --ff-only origin staging
 # NOVEDADES.md y CHANGELOG.md: reemplazar la sección pendiente entera (o crearla
 # después de la intro), con la misma marca en los dos
-(cd web && npx vitest run src/lib/__tests__/parsearNovedades.test.ts src/screens/__tests__/NovedadesScreen.test.tsx)
+# Correr la "Verificación" del contrato: el vitest, no los greps de conversión
 git add NOVEDADES.md CHANGELOG.md
 git commit -m "docs(novedades): sincroniza pendientes hasta #N"
 git push origin staging
