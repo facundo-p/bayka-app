@@ -12,6 +12,7 @@ import {
   OPERADOR,
   alternativasDe,
   cumpleTodos,
+  modelaTodos,
   negacion,
   type FiltroDemo,
   type Operador,
@@ -64,9 +65,11 @@ function filasQueEntran(filas: FilaDemo[], { filtros, embebidos }: EstadoConsult
     .filter((fila) => cumpleTodos(fila, filtros));
 }
 
-/** `conteos` da el total sin materializar las filas; sin él se cuentan las que entran. */
+/** `conteos` da el total sin materializar las filas. Si un filtro pide una
+ *  columna que no modela, ignorarlo inflaría el conteo: se cuentan las filas. */
 function contar({ filas, conteos }: TablaDemo, estado: EstadoConsulta): number {
-  if (!conteos) return filasQueEntran(filas, estado).length;
+  const modelados = conteos?.every(({ fila }) => modelaTodos(fila, estado.filtros));
+  if (!conteos || !modelados) return filasQueEntran(filas, estado).length;
   return conteos
     .filter(({ fila }) => cumpleTodos(fila, estado.filtros))
     .reduce((total, { cantidad }) => total + cantidad, 0);

@@ -116,3 +116,15 @@ function cumpleFiltro(fila: FilaDemo, filtro: FiltroDemo): boolean {
 export function cumpleTodos(fila: FilaDemo, filtros: FiltroDemo[]): boolean {
   return filtros.every((filtro) => cumpleFiltro(fila, filtro));
 }
+
+function columnasDe(filtro: FiltroDemo): string[] {
+  if (!('alternativas' in filtro)) return [filtro.columna];
+  return filtro.alternativas.map(({ columna }) => columna);
+}
+
+/** Si la fila tiene todas las columnas por las que se filtra. */
+export function modelaTodos(fila: FilaDemo, filtros: FiltroDemo[]): boolean {
+  return filtros
+    .flatMap(columnasDe)
+    .every((columna) => leerRuta(fila, columna) !== NO_MODELADA);
+}
