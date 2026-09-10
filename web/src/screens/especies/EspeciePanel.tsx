@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button, Input, PanelLateral } from '../../components';
+import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
 import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
@@ -101,7 +102,7 @@ interface EspeciePanelProps {
 
 /** Panel lateral de alta y edición de especies del catálogo global. */
 export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
-  const queryClient = useQueryClient();
+  const invalidarEspecies = useInvalidarEspecies();
   const [valores, setValores] = useState(() => valoresIniciales(especie));
   const [errores, setErrores] = useState<ErroresEspecie>({});
   const [duplicado, setDuplicado] = useState(false);
@@ -114,11 +115,7 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
       await crearEspecie(input);
     },
     onSuccess: async () => {
-      // El catálogo alimenta el checklist de Configuración y Árboles; el uso, esta pantalla.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.especiesCatalogo() }),
-        queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.especiesCatalogoUso() }),
-      ]);
+      await invalidarEspecies();
       onCerrar();
     },
     onError: (error) => {

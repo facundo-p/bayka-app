@@ -121,7 +121,20 @@ test('editar: precarga los valores y llama a editarEspecie con el id', async () 
   });
 });
 
-test('crear invalida el catálogo y el catálogo con uso', async () => {
+/** Catálogo, catálogo con uso y, por familia, dashboard, mapa y tabla de Árboles. */
+const CLAVES_CON_ESPECIES = [
+  ['especies-catalogo'],
+  ['especies-catalogo-uso'],
+  ['dashboard'],
+  ['mapa'],
+  ['datos-arboles'],
+];
+
+function clavesInvalidadas(invalidaciones: ReturnType<typeof espiarInvalidaciones>) {
+  return invalidaciones.mock.calls.map(([filtros]) => filtros?.queryKey);
+}
+
+test('crear invalida toda vista que muestra especies', async () => {
   const invalidaciones = espiarInvalidaciones();
   const usuario = userEvent.setup();
   const onCerrar = renderPanel();
@@ -131,12 +144,10 @@ test('crear invalida el catálogo y el catálogo con uso', async () => {
   await usuario.click(screen.getByRole('button', { name: 'Crear' }));
 
   await waitFor(() => expect(onCerrar).toHaveBeenCalled());
-  expect(invalidaciones).toHaveBeenCalledTimes(2);
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo'] });
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo-uso'] });
+  expect(clavesInvalidadas(invalidaciones)).toEqual(CLAVES_CON_ESPECIES);
 });
 
-test('editar invalida el catálogo y el catálogo con uso', async () => {
+test('editar invalida toda vista que muestra especies', async () => {
   const invalidaciones = espiarInvalidaciones();
   const usuario = userEvent.setup();
   const onCerrar = renderPanel(IBIRA);
@@ -144,9 +155,7 @@ test('editar invalida el catálogo y el catálogo con uso', async () => {
   await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
 
   await waitFor(() => expect(onCerrar).toHaveBeenCalled());
-  expect(invalidaciones).toHaveBeenCalledTimes(2);
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo'] });
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo-uso'] });
+  expect(clavesInvalidadas(invalidaciones)).toEqual(CLAVES_CON_ESPECIES);
 });
 
 test('error de red: muestra mensaje claro y conserva lo tipeado', async () => {
