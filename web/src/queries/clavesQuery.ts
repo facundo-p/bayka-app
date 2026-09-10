@@ -1,3 +1,5 @@
+import type { QueryKey } from '@tanstack/react-query';
+
 /**
  * Claves de TanStack Query de toda la web. El primer segmento identifica la
  * familia y es único: invalidar solo ese segmento (`['plantacion']`) alcanza a
@@ -29,3 +31,9 @@ export const CLAVE_QUERY = {
   usuarioPlantaciones: (userId: string) => ['usuario-plantaciones', userId] as const,
   plantacionUsuarios: (plantationId: string) => ['plantacion-usuarios', plantationId] as const,
 } as const;
+
+/** Prefijo que abarca todas las variantes de una fábrica, para invalidar la
+ *  familia sin conocer sus parámetros. El primer segmento no depende de ellos. */
+export function familia(fabrica: (...args: never[]) => QueryKey): QueryKey {
+  return [(fabrica as () => QueryKey)()[0]];
+}

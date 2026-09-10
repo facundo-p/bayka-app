@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { UsuarioConAsignaciones } from '../../../queries/usuarioQueries';
 import { ROL } from '../../../repositories/profileRepository';
+import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import { MOTIVO_ROL_PROPIO } from '../acciones';
 import { ADVERTENCIA_SUPERADMIN } from '../presentacion';
 import { UsuarioPanel } from '../UsuarioPanel';
@@ -110,6 +111,22 @@ test('cambiar solo el nombre habilita el botón y solo llama a actualizarNombre'
   expect(vi.mocked(actualizarNombre)).toHaveBeenCalledWith('user-9', 'Nombre Nuevo');
   expect(vi.mocked(cambiarEmail)).not.toHaveBeenCalled();
   expect(vi.mocked(cambiarRol)).not.toHaveBeenCalled();
+});
+
+test('guardar invalida la lista de usuarios y los perfiles', async () => {
+  const invalidaciones = espiarInvalidaciones();
+  const usuarioEvento = userEvent.setup();
+  const onCerrar = renderPanel();
+
+  const campoNombre = screen.getByLabelText('Nombre');
+  await usuarioEvento.clear(campoNombre);
+  await usuarioEvento.type(campoNombre, 'Nombre Nuevo');
+  await usuarioEvento.click(screen.getByRole('button', { name: 'Guardar' }));
+
+  await waitFor(() => expect(onCerrar).toHaveBeenCalled());
+  expect(invalidaciones).toHaveBeenCalledTimes(2);
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['perfiles'] });
 });
 
 test('email inválido: mantiene el botón deshabilitado aunque haya cambiado', async () => {

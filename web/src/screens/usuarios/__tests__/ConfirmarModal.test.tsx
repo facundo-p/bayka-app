@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import { ConfirmarModal } from '../ConfirmarModal';
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof ConfirmarModal>> = {}) {
@@ -38,6 +39,19 @@ test('sin textoExito: confirmar ejecuta la acción y cierra', async () => {
   expect(accion).toHaveBeenCalledTimes(1);
 });
 
+test('confirmar invalida la lista de usuarios y los perfiles', async () => {
+  const invalidaciones = espiarInvalidaciones();
+  const usuario = userEvent.setup();
+  const { onClose } = renderModal();
+
+  await usuario.click(screen.getByRole('button', { name: 'Desactivar' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(invalidaciones).toHaveBeenCalledTimes(2);
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['perfiles'] });
+});
+
 test('con textoExito: confirmar muestra el estado completado en vez de cerrar', async () => {
   const usuario = userEvent.setup();
   const { onClose, accion } = renderModal({ textoExito: 'Invitación reenviada.' });
@@ -52,7 +66,8 @@ test('con textoExito: confirmar muestra el estado completado en vez de cerrar', 
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
-test('si la acción falla muestra el error y no cierra', async () => {
+test('si la acción falla muestra el error, no cierra ni invalida', async () => {
+  const invalidaciones = espiarInvalidaciones();
   const usuario = userEvent.setup();
   const { onClose } = renderModal({
     accion: vi.fn().mockRejectedValue(new Error('No se pudo desactivar al usuario.')),
@@ -62,4 +77,5 @@ test('si la acción falla muestra el error y no cierra', async () => {
 
   expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo desactivar al usuario.');
   expect(onClose).not.toHaveBeenCalled();
+  expect(invalidaciones).not.toHaveBeenCalled();
 });

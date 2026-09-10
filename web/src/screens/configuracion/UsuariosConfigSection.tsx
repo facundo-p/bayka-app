@@ -11,7 +11,7 @@ import {
   SelectConDetalle,
   type OpcionConDetalle,
 } from '../../components';
-import { useInvalidarConListado } from '../../hooks/useInvalidarConListado';
+import { useInvalidarAsignacion } from '../../hooks/useInvalidarAsignacion';
 import { usePerfiles } from '../../hooks/usePerfiles';
 import { iniciales } from '../../lib/iniciales';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -113,7 +113,7 @@ function ModalAsignar({
   onCerrar: () => void;
 }) {
   const [userId, setUserId] = useState('');
-  const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacionUsuarios(plantationId));
+  const invalidar = useInvalidarAsignacion(plantationId, userId);
   const mutacion = useMutation({
     mutationFn: () => asignarUsuario(plantationId, userId),
     onSuccess: async () => {
@@ -164,7 +164,7 @@ function ModalQuitar({
   asignado: UsuarioAsignado;
   onCerrar: () => void;
 }) {
-  const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacionUsuarios(plantationId));
+  const invalidar = useInvalidarAsignacion(plantationId, asignado.userId);
   const mutacion = useMutation({
     mutationFn: () => desasignarUsuario(plantationId, asignado.userId),
     onSuccess: async () => {

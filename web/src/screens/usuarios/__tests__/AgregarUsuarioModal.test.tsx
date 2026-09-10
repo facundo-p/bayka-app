@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { crearUsuario } from '../../../services/adminUsersService';
 import { ROL } from '../../../repositories/profileRepository';
+import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import { AgregarUsuarioModal } from '../AgregarUsuarioModal';
 
 vi.mock('../../../services/adminUsersService', () => ({
@@ -81,6 +82,21 @@ test('al enviar llama a crearUsuario con los datos recortados y cierra', async (
     email: 'ana@bayka.org',
     rol: ROL.ADMIN,
   });
+});
+
+test('al enviar invalida la lista de usuarios y los perfiles', async () => {
+  const invalidaciones = espiarInvalidaciones();
+  const usuario = userEvent.setup();
+  const onClose = renderModal();
+
+  await usuario.type(screen.getByLabelText('Nombre'), 'Ana');
+  await usuario.type(screen.getByLabelText('Email'), 'ana@bayka.org');
+  await usuario.click(screen.getByRole('button', { name: 'Enviar invitación' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(invalidaciones).toHaveBeenCalledTimes(2);
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['perfiles'] });
 });
 
 test('muestra el error del servidor y no cierra el modal', async () => {

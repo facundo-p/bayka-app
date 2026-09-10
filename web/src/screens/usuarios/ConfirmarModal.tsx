@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Button, Modal } from '../../components';
-import { CLAVE_QUERY } from '../../queries/clavesQuery';
+import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import styles from './ModalUsuarios.module.css';
 
 /** Confirmación genérica para acciones de usuario (desactivar, reactivar,
@@ -24,13 +24,13 @@ export function ConfirmarModal({
   textoExito?: string;
   onClose: () => void;
 }) {
-  const queryClient = useQueryClient();
+  const invalidarUsuarios = useInvalidarUsuarios();
   const [error, setError] = useState<string | null>(null);
   const [completada, setCompletada] = useState(false);
   const mutacion = useMutation({
     mutationFn: accion,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.usuarios() });
+      await invalidarUsuarios();
       if (textoExito) setCompletada(true);
       else onClose();
     },
