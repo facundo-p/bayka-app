@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { espiarInvalidaciones } from '../../test/espiarInvalidaciones';
 import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import {
   MENSAJE_GPS_SIN_MIGRACION,
@@ -382,7 +383,8 @@ describe('sección Técnicos', () => {
     expect(within(dialogo).queryByText('Rol en plantación')).not.toBeInTheDocument();
   });
 
-  test('asignar un técnico lo suma a la card', async () => {
+  test('asignar un técnico lo suma a la card y refresca Usuarios y su panel', async () => {
+    const invalidaciones = espiarInvalidaciones();
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
     expect(await screen.findByText('0 asignados')).toBeInTheDocument();
@@ -395,10 +397,16 @@ describe('sección Técnicos', () => {
 
     expect(await screen.findByText('1 asignados')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quitar Pablo Ríos' })).toBeInTheDocument();
+    expect(invalidaciones).toHaveBeenCalledTimes(4);
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantacion-usuarios', 'plant-1'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuario-plantaciones', 'tec-2'] });
   });
 
-  test('quitar un técnico lo saca de la card', async () => {
+  test('quitar un técnico lo saca de la card y refresca Usuarios y su panel', async () => {
     tecnicosAsignados = ['tec-1'];
+    const invalidaciones = espiarInvalidaciones();
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
 
@@ -408,6 +416,11 @@ describe('sección Técnicos', () => {
 
     expect(await screen.findByText('0 asignados')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Quitar Lucía Ferreyra' })).not.toBeInTheDocument();
+    expect(invalidaciones).toHaveBeenCalledTimes(4);
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantacion-usuarios', 'plant-1'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuario-plantaciones', 'tec-1'] });
   });
 });
 
