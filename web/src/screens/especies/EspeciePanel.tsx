@@ -114,7 +114,11 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
       await crearEspecie(input);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.especiesCatalogoUso() });
+      // El catálogo alimenta el checklist de Configuración y Árboles; el uso, esta pantalla.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.especiesCatalogo() }),
+        queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.especiesCatalogoUso() }),
+      ]);
       onCerrar();
     },
     onError: (error) => {

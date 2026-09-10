@@ -11,6 +11,7 @@ import {
   listarPlantacionesDeEspecie,
   type EspecieConCatalogoUso,
 } from '../../../queries/especieQueries';
+import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import { EspeciePanel } from '../EspeciePanel';
 
 vi.mock('../../../repositories/especieRepository', async () => {
@@ -120,8 +121,37 @@ test('editar: precarga los valores y llama a editarEspecie con el id', async () 
   });
 });
 
+test('crear invalida el catálogo y el catálogo con uso', async () => {
+  const invalidaciones = espiarInvalidaciones();
+  const usuario = userEvent.setup();
+  const onCerrar = renderPanel();
+
+  await usuario.type(screen.getByLabelText('Código *'), 'ANC');
+  await usuario.type(screen.getByLabelText('Nombre común *'), 'Anchico');
+  await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+  await waitFor(() => expect(onCerrar).toHaveBeenCalled());
+  expect(invalidaciones).toHaveBeenCalledTimes(2);
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo'] });
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo-uso'] });
+});
+
+test('editar invalida el catálogo y el catálogo con uso', async () => {
+  const invalidaciones = espiarInvalidaciones();
+  const usuario = userEvent.setup();
+  const onCerrar = renderPanel(IBIRA);
+
+  await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+  await waitFor(() => expect(onCerrar).toHaveBeenCalled());
+  expect(invalidaciones).toHaveBeenCalledTimes(2);
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo'] });
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['especies-catalogo-uso'] });
+});
+
 test('error de red: muestra mensaje claro y conserva lo tipeado', async () => {
   vi.mocked(crearEspecie).mockRejectedValue(new Error('network'));
+  const invalidaciones = espiarInvalidaciones();
   const usuario = userEvent.setup();
   const onCerrar = renderPanel();
 
@@ -134,6 +164,7 @@ test('error de red: muestra mensaje claro y conserva lo tipeado', async () => {
   );
   expect(screen.getByLabelText('Código *')).toHaveValue('ANC');
   expect(onCerrar).not.toHaveBeenCalled();
+  expect(invalidaciones).not.toHaveBeenCalled();
 });
 
 test('editar muestra los conteos y dónde está habilitada, con link a la plantación', async () => {
