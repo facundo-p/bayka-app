@@ -53,20 +53,6 @@
 
 /* ─── Panel lateral ──────────────────────────────────────────────────── */
 
-.panelIdentidad {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg);
-  min-width: 0;
-}
-
-.panelTitulo {
-  margin: 0;
-  font-size: var(--text-title);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-heading);
-}
-
 /* Chip con el código actual de la especie, junto al título. */
 .chipCodigo {
   padding: var(--space-xs) var(--space-md);
@@ -124,46 +110,4 @@
   font-size: var(--text-kpi-sm);
   line-height: var(--line-height-tight);
   color: var(--color-text-heading);
-}
-
-.bloque {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.listaUso {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.filaUso {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  padding: var(--space-md) 0;
-  border-bottom: var(--border-thin) solid var(--color-divider);
-}
-
-.enlaceUso {
-  font-size: var(--text-md);
-  color: var(--color-text-body);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.enlaceUso:hover {
-  color: var(--color-primary);
-}
-
-.numeroUso {
-  flex-shrink: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
 }

@@ -83,13 +83,6 @@
 
 /* ─── Panel lateral ──────────────────────────────────────────────────── */
 
-.panelIdentidad {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xl);
-  min-width: 0;
-}
-
 .avatarGrande {
   display: flex;
   align-items: center;
@@ -100,24 +93,6 @@
   border-radius: var(--radius-full);
   font-size: var(--text-md);
   font-weight: var(--font-weight-semibold);
-}
-
-.panelTextos {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.panelTitulo {
-  margin: 0;
-  font-size: var(--text-title);
-  line-height: var(--line-height-snug);
-  color: var(--color-text-heading);
-}
-
-.panelMeta {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
 }
 
 .form {
@@ -138,67 +113,11 @@
   composes: errorEnvio from '../../components/Formulario.module.css';
 }
 
-.overline {
-  composes: overline from '../../theme/utilidades.module.css';
-}
-
-.bloque {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.bloqueCabecera {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-lg);
-}
-
-.numeroBloque {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
+/* Bloque de plantaciones sin lista: acceso a todas o ninguna asignada. */
 .textoBloque {
   margin: 0;
   font-size: var(--text-md);
   color: var(--color-text-secondary);
-}
-
-.listaUso {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.filaUso {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  padding: var(--space-md) 0;
-  border-bottom: var(--border-thin) solid var(--color-divider);
-}
-
-.enlaceUso {
-  font-size: var(--text-md);
-  color: var(--color-text-body);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.enlaceUso:hover {
-  color: var(--color-primary);
-}
-
-.rolUso {
-  flex-shrink: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
 }
 
 /* Acciones rápidas: Button contorno; la destructiva en rojo. */

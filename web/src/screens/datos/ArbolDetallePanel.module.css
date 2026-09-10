@@ -7,12 +7,6 @@
   color: var(--color-text-heading);
 }
 
-.bloque {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
 .etiqueta {
   composes: overline from '../../theme/utilidades.module.css';
 }

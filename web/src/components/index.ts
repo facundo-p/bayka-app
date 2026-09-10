@@ -19,7 +19,14 @@ export { MapaPuntos } from './mapa/MapaPuntos';
 export { MenuDesplegable, type ItemDesplegable } from './MenuDesplegable';
 export { Modal } from './Modal';
 export { NavItem } from './NavItem';
-export { LayoutConPanel, PanelLateral } from './PanelLateral';
+export {
+  LayoutConPanel,
+  PanelBloque,
+  PanelIdentidad,
+  PanelLateral,
+  PanelListaEnlaces,
+  type EnlacePanel,
+} from './PanelLateral';
 export { PageHeader } from './PageHeader';
 export { PasswordInput } from './PasswordInput';
 export { PlantationMap } from './PlantationMap';
