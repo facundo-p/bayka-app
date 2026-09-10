@@ -8,8 +8,9 @@ import {
   MaestroEspecies,
   SpeciesChecklist,
 } from '../../components';
+import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
-  listarCatalogo,
   listarEspeciesConUso,
   type EspecieCatalogo,
   type EspecieConUso,
@@ -32,8 +33,6 @@ import styles from './SeccionesConfig.module.css';
 type Toggle = { speciesId: string; habilitar: boolean; orden: number };
 type Sincronizacion = { idsHabilitar: string[]; idsQuitar: string[]; ordenInicial: number };
 
-const QUERY_ESPECIES = (id: string) => ['plantacion-especies', id] as const;
-
 const TITULO = 'Especies habilitadas';
 const SUBTITULO = 'Definen la botonera de registro en la app';
 
@@ -54,7 +53,7 @@ function idsBloqueadas(especies: EspecieConUso[]): Set<string> {
  */
 function useToggleEspecie(plantationId: string, catalogo: EspecieCatalogo[]) {
   const queryClient = useQueryClient();
-  const clave = QUERY_ESPECIES(plantationId);
+  const clave = CLAVE_QUERY.plantacionEspecies(plantationId);
   return useMutation({
     // `orden` se calcula en el call site (cantidad habilitada actual): append
     // al final, igual que la tabla vieja, sin reordenamiento manual en web.
@@ -96,7 +95,7 @@ function aplicarToggle(
  */
 function useSincronizarEspecies(plantationId: string, catalogo: EspecieCatalogo[]) {
   const queryClient = useQueryClient();
-  const clave = QUERY_ESPECIES(plantationId);
+  const clave = CLAVE_QUERY.plantacionEspecies(plantationId);
   return useMutation({
     mutationFn: ({ idsHabilitar, idsQuitar, ordenInicial }: Sincronizacion) =>
       sincronizarEspecies(plantationId, idsHabilitar, idsQuitar, ordenInicial),
@@ -222,9 +221,9 @@ function ContenidoEspecies({
 /** Qué especies pueden registrar los técnicos en esta plantación (checklist). */
 export function EspeciesConfigSection() {
   const { id = '' } = useParams();
-  const catalogo = useQuery({ queryKey: ['especies-catalogo'], queryFn: listarCatalogo });
+  const catalogo = useCatalogoEspecies();
   const especies = useQuery({
-    queryKey: QUERY_ESPECIES(id),
+    queryKey: CLAVE_QUERY.plantacionEspecies(id),
     queryFn: () => listarEspeciesConUso(id),
   });
   const reintentar = () => void Promise.all([catalogo.refetch(), especies.refetch()]);

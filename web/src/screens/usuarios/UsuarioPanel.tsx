@@ -5,6 +5,7 @@ import { Ban, Key, Mail } from 'lucide-react';
 import { Button, Input, PanelLateral, Select } from '../../components';
 import { cx } from '../../lib/classNames';
 import { formatearFechaDia } from '../../lib/fechas';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeUsuario,
   type UsuarioConAsignaciones,
@@ -93,7 +94,7 @@ function CampoRol({
 function BloquePlantaciones({ usuario }: { usuario: UsuarioConAsignaciones }) {
   const todas = accedeATodas(usuario.rol);
   const plantaciones = useQuery({
-    queryKey: ['usuario-plantaciones', usuario.id],
+    queryKey: CLAVE_QUERY.usuarioPlantaciones(usuario.id),
     queryFn: () => listarPlantacionesDeUsuario(usuario.id),
     enabled: !todas,
   });
@@ -213,7 +214,7 @@ export function UsuarioPanel({
     },
     // Siempre invalidar: si una parte cambió y otra falló (p.ej. nombre OK,
     // email duplicado), la lista igual debe reflejar lo que sí se guardó.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: ['usuarios'] }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.usuarios() }),
     onSuccess: onCerrar,
     onError: (error: Error) => setErrorEnvio(error.message),
   });

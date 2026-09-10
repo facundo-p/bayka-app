@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import {
   listarPlantaciones,
   obtenerTemporadaActivaId,
@@ -16,9 +17,9 @@ function porcentajeObjetivo(arboles: number, objetivo: number | null): number | 
 /** Card "Temporada activa" del sidebar: la última plantación activa en la que se
  *  cargaron árboles (registro más reciente). No renderiza nada si no la hay. */
 export function SeasonCard() {
-  const { data } = useQuery({ queryKey: ['plantaciones'], queryFn: listarPlantaciones });
+  const { data } = useQuery({ queryKey: CLAVE_QUERY.plantaciones(), queryFn: listarPlantaciones });
   const { data: temporadaId } = useQuery({
-    queryKey: ['temporada-activa'],
+    queryKey: CLAVE_QUERY.temporadaActiva(),
     queryFn: obtenerTemporadaActivaId,
   });
   if (!data || !temporadaId) return null;

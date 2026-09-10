@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
+import { usePerfiles } from '../../hooks/usePerfiles';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarArboles, type ArbolDetalle } from '../../queries/dataExplorerQueries';
-import { listarCatalogo } from '../../queries/especieQueries';
-import { listarPerfiles } from '../../queries/usuarioQueries';
 import { aFiltrosArboles } from './filtrosArboles';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
@@ -28,10 +29,10 @@ export function useArbolesSection() {
 
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
-  const especies = useQuery({ queryKey: ['especies-catalogo'], queryFn: listarCatalogo });
-  const perfiles = useQuery({ queryKey: ['perfiles'], queryFn: listarPerfiles });
+  const especies = useCatalogoEspecies();
+  const perfiles = usePerfiles();
   const arboles = useQuery({
-    queryKey: ['datos-arboles', id, filtrosQuery, pagina],
+    queryKey: CLAVE_QUERY.datosArboles(id, filtrosQuery, pagina),
     queryFn: () => listarArboles(id, aFiltrosArboles(filtrosQuery), pagina),
     placeholderData: keepPreviousData,
   });

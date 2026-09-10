@@ -19,8 +19,10 @@ import {
 } from '../components';
 import { useDescarga } from '../hooks/useDescarga';
 import { BP, useMediaQuery } from '../hooks/useMediaQuery';
+import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
-import { obtenerPlantacion, type Plantacion } from '../queries/plantationQueries';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
+import type { Plantacion } from '../queries/plantationQueries';
 import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import { listarFilasExportacion } from '../queries/exportacionQueries';
@@ -217,7 +219,7 @@ function AccionesDetalle({
   const [generandoIds, setGenerandoIds] = useState(false);
   const plegado = useMediaQuery(BP.tablet);
   const { data: generados } = useQuery({
-    queryKey: ['ids-generados', plantacion.id],
+    queryKey: CLAVE_QUERY.idsGenerados(plantacion.id),
     queryFn: () => idsGenerados(plantacion.id),
   });
 
@@ -270,10 +272,7 @@ function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
 export function PlantacionDetailScreen() {
   const { id = '' } = useParams();
   const [editando, setEditando] = useState(false);
-  const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['plantacion', id],
-    queryFn: () => obtenerPlantacion(id),
-  });
+  const { data, isPending, isError, refetch } = usePlantacion(id);
 
   if (isPending) return <Cargando />;
   if (isError) {

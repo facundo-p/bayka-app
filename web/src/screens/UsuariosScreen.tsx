@@ -14,6 +14,7 @@ import {
 } from '../components';
 import { useAuth } from '../hooks/useAuth';
 import { useDebounce } from '../hooks/useDebounce';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import {
   listarUsuariosConAsignaciones,
   type UsuarioConAsignaciones,
@@ -114,7 +115,7 @@ export function UsuariosScreen() {
   const [agregarAbierto, setAgregarAbierto] = useState(false);
   const busquedaDemorada = useDebounce(busqueda, DEBOUNCE_BUSQUEDA_MS);
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ['usuarios'],
+    queryKey: CLAVE_QUERY.usuarios(),
     queryFn: listarUsuariosConAsignaciones,
   });
 

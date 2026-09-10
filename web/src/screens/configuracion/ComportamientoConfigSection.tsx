@@ -1,8 +1,11 @@
 import { useState, type KeyboardEvent } from 'react';
 import { useParams } from 'react-router';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Card, Cargando, ErrorConReintento, Input, SegmentedControl, Toggle } from '../../components';
-import { obtenerPlantacion, type Plantacion } from '../../queries/plantationQueries';
+import { useInvalidarConListado } from '../../hooks/useInvalidarConListado';
+import { usePlantacion } from '../../hooks/usePlantacion';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
+import type { Plantacion } from '../../queries/plantationQueries';
 import {
   actualizarConfigGps,
   actualizarVisibilidad,
@@ -12,7 +15,6 @@ import {
 import { cx } from '../../lib/classNames';
 import { CabeceraConfig } from './CabeceraConfig';
 import { FilaConfig } from './FilaConfig';
-import { useInvalidarPlantacion } from './useInvalidarPlantacion';
 import styles from './SeccionesConfig.module.css';
 
 /** Presets de frecuencia (cada cuántos árboles se toma un punto GPS). */
@@ -55,7 +57,7 @@ function FilasGps({ plantacion }: { plantacion: Plantacion }) {
   const [frecuencia, setFrecuencia] = useState(plantacion.gpsCaptureFrequency);
   const [textoExacto, setTextoExacto] = useState(String(plantacion.gpsCaptureFrequency));
   const [obligatoria, setObligatoria] = useState(plantacion.gpsCaptureRequired);
-  const invalidar = useInvalidarPlantacion(plantacion.id);
+  const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacion(plantacion.id));
   const guardar = useMutation({
     mutationFn: (config: { frecuencia: number; obligatoria: boolean }) =>
       actualizarConfigGps(plantacion.id, config),
@@ -154,7 +156,7 @@ function FilaVisibilidad({ plantacion }: { plantacion: Plantacion }) {
   // Estado local para feedback inmediato: el guardado es al cambiar, sin
   // botón aparte, y si el update falla se vuelve al valor anterior.
   const [visible, setVisible] = useState(plantacion.visibleInApp);
-  const invalidar = useInvalidarPlantacion(plantacion.id);
+  const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacion(plantacion.id));
   const mutacion = useMutation({
     mutationFn: (nuevoValor: boolean) => actualizarVisibilidad(plantacion.id, nuevoValor),
     onSuccess: invalidar,
@@ -187,10 +189,7 @@ function FilaVisibilidad({ plantacion }: { plantacion: Plantacion }) {
 /** Cómo se comporta la plantación en Bayka App: captura de GPS y visibilidad. */
 export function ComportamientoConfigSection() {
   const { id = '' } = useParams();
-  const plantacion = useQuery({
-    queryKey: ['plantacion', id],
-    queryFn: () => obtenerPlantacion(id),
-  });
+  const plantacion = usePlantacion(id);
 
   return (
     <Card>

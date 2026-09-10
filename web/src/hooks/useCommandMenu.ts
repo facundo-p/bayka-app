@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useMatch } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones } from '../queries/plantationQueries';
 import type { ResultadoBusqueda, ScopeBusqueda } from '../queries/buscarQueries';
 
@@ -85,7 +86,7 @@ function useScopeContextual(): ScopeContextual | null {
   const match = useMatch('/plantaciones/:id/*');
   const plantationId = match?.params.id;
   const { data } = useQuery({
-    queryKey: ['plantaciones'],
+    queryKey: CLAVE_QUERY.plantaciones(),
     queryFn: listarPlantaciones,
     enabled: Boolean(plantationId),
   });

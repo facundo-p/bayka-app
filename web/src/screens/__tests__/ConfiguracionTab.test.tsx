@@ -20,9 +20,15 @@ const CATALOGO = [
   { id: 'sp-1', codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
 ];
 
+const PERFILES = [
+  { id: 'tec-1', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true },
+  { id: 'tec-2', nombre: 'Pablo Ríos', rol: 'tecnico', email: 'pablo@bayka.app', activo: true },
+];
+
 /** Estado mutable del mock: los updates/inserts lo modifican como la base. */
 let filaPlantacion: Record<string, unknown>;
 let asignadas: Array<{ species_id: string; orden_visual: number }>;
+let tecnicosAsignados: string[];
 let arbolesPorEspecie: Record<string, number>;
 let errorUpdatePlantations: { message: string; code?: string } | null;
 let consultas: ConsultaCapturada[];
@@ -61,6 +67,29 @@ function resolverPlantationSpecies(consulta: ConsultaCapturada): RespuestaMock {
   return { data: asignadas.map(filaAsignadaConEmbed) };
 }
 
+function filaTecnicoAsignado(userId: string) {
+  const perfil = PERFILES.find((candidato) => candidato.id === userId);
+  return {
+    user_id: userId,
+    rol_en_plantacion: 'tecnico',
+    assigned_at: '2026-06-12T12:00:00Z',
+    profiles: { nombre: perfil?.nombre ?? '', rol: 'tecnico' },
+  };
+}
+
+function resolverPlantationUsers(consulta: ConsultaCapturada): RespuestaMock {
+  if (consulta.operacion === 'insert') {
+    tecnicosAsignados.push((consulta.payload as { user_id: string }).user_id);
+    return { data: null };
+  }
+  if (consulta.operacion === 'delete') {
+    const userId = consulta.filtros.find((filtro) => filtro.columna === 'user_id')?.valor;
+    tecnicosAsignados = tecnicosAsignados.filter((id) => id !== userId);
+    return { data: null };
+  }
+  return { data: tecnicosAsignados.map(filaTecnicoAsignado) };
+}
+
 function resolverTrees(consulta: ConsultaCapturada): RespuestaMock {
   const especieId = consulta.filtros.find((filtro) => filtro.columna === 'species_id')?.valor;
   return { count: arbolesPorEspecie[String(especieId)] ?? 0 };
@@ -73,6 +102,8 @@ function configurarMock(): void {
     if (consulta.tabla === 'plantation_species') return resolverPlantationSpecies(consulta);
     if (consulta.tabla === 'trees') return resolverTrees(consulta);
     if (consulta.tabla === 'species') return { data: CATALOGO };
+    if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
+    if (consulta.tabla === 'profiles') return { data: PERFILES };
     return { data: [], count: 0 };
   };
 }
@@ -96,6 +127,7 @@ beforeEach(() => {
     { species_id: 'sp-2', orden_visual: 1 },
   ];
   arbolesPorEspecie = { 'sp-1': 3 };
+  tecnicosAsignados = [];
   errorUpdatePlantations = null;
   consultas = [];
   configurarMock();
@@ -350,6 +382,34 @@ describe('sección Técnicos', () => {
     const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
     expect(within(dialogo).getByRole('button', { name: /^Técnico/ })).toBeInTheDocument();
     expect(within(dialogo).queryByText('Rol en plantación')).not.toBeInTheDocument();
+  });
+
+  test('asignar un técnico lo suma a la card', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    expect(await screen.findByText('0 asignados')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+    const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
+    await usuario.click(within(dialogo).getByRole('button', { name: /^Técnico/ }));
+    await usuario.click(screen.getByRole('option', { name: /Pablo Ríos/ }));
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Asignar' }));
+
+    expect(await screen.findByText('1 asignados')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quitar Pablo Ríos' })).toBeInTheDocument();
+  });
+
+  test('quitar un técnico lo saca de la card', async () => {
+    tecnicosAsignados = ['tec-1'];
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+
+    await usuario.click(await screen.findByRole('button', { name: 'Quitar Lucía Ferreyra' }));
+    const dialogo = screen.getByRole('dialog', { name: 'Quitar usuario' });
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Quitar' }));
+
+    expect(await screen.findByText('0 asignados')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Quitar Lucía Ferreyra' })).not.toBeInTheDocument();
   });
 });
 

@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
+import { useInvalidarConListado } from '../hooks/useInvalidarConListado';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import {
   crearPlantacion,
   editarPlantacion,
@@ -133,7 +135,9 @@ async function esDuplicado(valores: PlantacionFormValues, excluirId?: string): P
 /** Modal compartido de creación y edición de plantaciones. */
 export function PlantacionFormModal({ plantacion, onClose }: PlantacionFormModalProps) {
   const { perfil } = useAuth();
-  const queryClient = useQueryClient();
+  const invalidar = useInvalidarConListado(
+    plantacion ? CLAVE_QUERY.plantacion(plantacion.id) : undefined,
+  );
   const [valores, setValores] = useState(() => valoresIniciales(plantacion));
   const [errores, setErrores] = useState<ErroresValidacion>({});
   const [duplicado, setDuplicado] = useState(false);
@@ -147,11 +151,7 @@ export function PlantacionFormModal({ plantacion, onClose }: PlantacionFormModal
       await crearPlantacion(input, perfil);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['plantaciones'] });
-      // En edición, refrescar también el detalle abierto de esa plantación.
-      if (plantacion) {
-        await queryClient.invalidateQueries({ queryKey: ['plantacion', plantacion.id] });
-      }
+      await invalidar();
       onClose();
     },
     onError: () => setErrorEnvio(MENSAJE_ERROR_GUARDADO),

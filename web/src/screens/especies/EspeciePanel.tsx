@@ -5,6 +5,7 @@ import { Button, Input, PanelLateral } from '../../components';
 import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeEspecie,
   type EspecieConCatalogoUso,
@@ -24,9 +25,6 @@ import {
   type EspecieFormValues,
 } from '../../services/especieValidaciones';
 import styles from './Especies.module.css';
-
-/** Clave de la query del catálogo con uso (listado de la pantalla). */
-const QUERY_CATALOGO = ['especies-catalogo-uso'] as const;
 
 const MENSAJE_ERROR_GUARDADO =
   'No se pudo guardar la especie. Revisá tu conexión y probá de nuevo.';
@@ -74,7 +72,7 @@ function BloqueConteos({ especie }: { especie: EspecieConCatalogoUso }) {
 /** Plantaciones que habilitan la especie, con sus árboles a la derecha. */
 function BloqueHabilitadaEn({ especieId }: { especieId: string }) {
   const plantaciones = useQuery({
-    queryKey: ['especie-plantaciones', especieId],
+    queryKey: CLAVE_QUERY.especiePlantaciones(especieId),
     queryFn: () => listarPlantacionesDeEspecie(especieId),
   });
   if (!plantaciones.data || plantaciones.data.length === 0) return null;
@@ -116,7 +114,7 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
       await crearEspecie(input);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: QUERY_CATALOGO });
+      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.especiesCatalogoUso() });
       onCerrar();
     },
     onError: (error) => {

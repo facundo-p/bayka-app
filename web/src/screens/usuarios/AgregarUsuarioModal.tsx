@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Modal, Select } from '../../components';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { ROL, type Rol } from '../../repositories/profileRepository';
 import { crearUsuario } from '../../services/adminUsersService';
 import { emailValido } from '../../../../supabase/functions/admin-users/nucleo';
@@ -75,7 +76,7 @@ export function AgregarUsuarioModal({ onClose }: { onClose: () => void }) {
         rol: valores.rol,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['usuarios'] });
+      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.usuarios() });
       onClose();
     },
     onError: (error: Error) => setErrorEnvio(error.message),
