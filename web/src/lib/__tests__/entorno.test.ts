@@ -13,6 +13,7 @@ describe('formatearEtiquetaBuild', () => {
 
   it('sin commit degrada a solo la versión', () => {
     expect(formatearEtiquetaBuild('1.1.0', '')).toBe('v1.1.0');
+    expect(formatearEtiquetaBuild('1.1.0')).toBe('v1.1.0');
   });
 
   it('conserva el sufijo -dirty del commit', () => {

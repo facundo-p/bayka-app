@@ -10,13 +10,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ES_ENTORNO_DE_PRUEBAS, ETIQUETA_BUILD } from '../config/entorno';
 import { bannerEntornoPruebasStyles as styles } from './BannerEntornoPruebas.styles';
 
+const TEXTO_BANNER_ENTORNO = 'ENTORNO DE PRUEBAS';
+
 export default function BannerEntornoPruebas() {
   const insets = useSafeAreaInsets();
   if (!ES_ENTORNO_DE_PRUEBAS) return null;
 
   return (
     <View testID="banner-entorno-pruebas" pointerEvents="none" style={[styles.franja, { paddingTop: insets.top }]}>
-      <Text style={styles.texto} numberOfLines={1}>{`ENTORNO DE PRUEBAS · ${ETIQUETA_BUILD}`}</Text>
+      <Text style={styles.texto} numberOfLines={1}>{`${TEXTO_BANNER_ENTORNO} · ${ETIQUETA_BUILD}`}</Text>
     </View>
   );
 }

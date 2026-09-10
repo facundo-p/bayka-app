@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, fonts, spacing } from '../theme';
+import { colors, fontSize, fonts, letterSpacing, lineHeight, spacing } from '../theme';
 
 export const bannerEntornoPruebasStyles = StyleSheet.create({
   // El paddingTop (inset de la status bar) lo aplica el componente.
@@ -12,7 +12,7 @@ export const bannerEntornoPruebasStyles = StyleSheet.create({
     color: colors.textPrimary,
     fontFamily: fonts.semiBold,
     fontSize: fontSize.xs,
-    lineHeight: 14,
-    letterSpacing: 0.8,
+    lineHeight: lineHeight.xs,
+    letterSpacing: letterSpacing.wide,
   },
 });

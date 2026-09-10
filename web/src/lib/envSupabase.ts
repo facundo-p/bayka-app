@@ -10,6 +10,9 @@
 
 export type Diagnostico = { nivel: 'error' | 'aviso'; mensaje: string };
 
+export const MENSAJE_FALTAN_VARIABLES =
+  'Faltan VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY: copiá web/.env.example a web/.env.';
+
 /** El `ref` identifica al proyecto y también viaja dentro de la anon key:
  *  si no coinciden, Supabase responde 401 sin decir cuál de los dos está mal. */
 const HOST_PROYECTO = /^([a-z0-9]+)\.supabase\.co$/;
@@ -106,11 +109,7 @@ function claimsDeLaKey(anonKey: string): { claims?: Claims; diagnostico?: Diagno
 /** Diagnostica el par de variables. Sin errores, el build puede seguir. */
 export function diagnosticarEnvSupabase(url: unknown, anonKey: unknown): Diagnostico[] {
   if (typeof url !== 'string' || !url || typeof anonKey !== 'string' || !anonKey) {
-    return [
-      error(
-        'Faltan VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY: copiá web/.env.example a web/.env.',
-      ),
-    ];
+    return [error(MENSAJE_FALTAN_VARIABLES)];
   }
 
   const { ref, diagnostico: dUrl } = refDeLaUrl(url);
