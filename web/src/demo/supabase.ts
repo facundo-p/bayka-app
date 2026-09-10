@@ -99,11 +99,17 @@ function crearConsulta(nombreTabla: string): ConsultaDemo {
   return consulta;
 }
 
+/** `?sinSesion` arranca sin sesión. Es la única forma de ver el login acá: con
+ *  sesión redirige al listado, así que sin esto una captura de `/login` es en
+ *  realidad una captura de `/plantaciones`. */
+const SIN_SESION = new URLSearchParams(window.location.search).has('sinSesion');
+
 export const supabase = {
   from: (tabla: string) => crearConsulta(tabla),
   rpc: (nombre: string) => Promise.resolve({ data: RPC[nombre] ?? [], error: null }),
   auth: {
-    getSession: () => Promise.resolve({ data: { session: SESION_DEMO }, error: null }),
+    getSession: () =>
+      Promise.resolve({ data: { session: SIN_SESION ? null : SESION_DEMO }, error: null }),
     onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     signInWithPassword: () => Promise.resolve({ error: null }),
     signOut: () => Promise.resolve({ error: null }),

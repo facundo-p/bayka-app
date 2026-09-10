@@ -70,6 +70,10 @@ El banner de entorno de pruebas viene prendido a propósito: nada de lo que se v
 ahí es real. `DEMO_BANNER=0 npm run dev:demo` lo apaga, para medir una pantalla
 sin los 26px de la franja.
 
+El cliente falso siempre devuelve sesión, así que `/login` redirige al listado y
+no se puede ver. Con **`?sinSesion=1`** arranca sin sesión: es la única forma de
+mirar el login acá.
+
 Cubre las tres pantallas de Organización y el detalle de plantación (parcelas,
 grupos y 30 árboles con GPS y fotos en distintos estados).
 
@@ -109,11 +113,12 @@ Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
 empeoró.
 
 Las 13 vistas son las 9 pantallas, las 2 que quedan fuera del gate de sesión
-(login y establecer contraseña) y 2 modales. Un modal se mide abriéndolo con el
-nombre de su botón (`abrir`) y acotando la medición al diálogo (`raiz`): sin
-acotarla, el texto de la página que queda detrás del overlay se pisa con el del
-diálogo y darían decenas de solapes que nadie ve. Lo que sigue sin cubrir son
-los estados de error y de vacío, y los popovers.
+(login y establecer contraseña) y 2 de los 6 modales —el más grande y el más
+chico—. Un modal se mide abriéndolo con el nombre de su botón (`abrir`) y
+acotando la medición al diálogo (`raiz`): sin acotarla, el texto de la página
+que queda detrás del overlay se pisa con el del diálogo y darían decenas de
+solapes que nadie ve. Sin cubrir quedan los otros 4 modales, los estados de
+error y de vacío, y los popovers.
 
 Lo que la auditoría **no** puede ver es todo lo que no rompe la geometría. Una
 barra superior que se come el 91% del alto antes de mostrar un dato no solapa,
@@ -144,6 +149,12 @@ npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
 `--autotest` existe porque un check que no puede disparar reporta cero y hace
 parecer que la app está impecable: le inyecta a una pantalla limpia cada defecto
 que dice cazar y exige que lo reporte, y que calle sin él.
+
+Corre además unas verificaciones de **cobertura**, porque un check sano apuntado
+a la pantalla equivocada también reporta cero: que cada fila mida lo que dice
+medir, y que una medición acotada esté realmente acotada. Existen porque la fila
+`login` medía el listado de plantaciones —con sesión, `/login` redirige— y sus 9
+celdas eran un duplicado exacto de las de `plantaciones`.
 
 En pantalla de teléfono las tablas sueltan sus columnas secundarias. La marca
 vive en la columna (`fueraEnMovil` en `TableColumn`), no en una lista de claves

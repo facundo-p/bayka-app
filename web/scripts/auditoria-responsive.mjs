@@ -72,7 +72,7 @@ const RUTAS = [
   { pantalla: 'usuarios', ruta: '/usuarios' },
   { pantalla: 'novedades', ruta: '/novedades' },
   // Fuera del gate de sesión: se ven sin el sidebar y nunca se habían medido.
-  { pantalla: 'login', ruta: '/login', sinChrome: true },
+  { pantalla: 'login', ruta: '/login?sinSesion=1', sinChrome: true },
   { pantalla: 'password', ruta: '/establecer-password', sinChrome: true },
   // El formulario más grande de la app y el más chico: los dos extremos del modal.
   {
@@ -100,7 +100,12 @@ function medir(selectorRaiz) {
   // Qué subárbol se releva. Los recorridos hacia ARRIBA (recortes, scroll,
   // fila flex) siguen llegando a `document.body`: el diálogo vive donde vive,
   // acotar la raíz no cambia quién lo recorta.
-  const raiz = (selectorRaiz && document.querySelector(selectorRaiz)) || document.body;
+  //
+  // Si el selector no matchea se corta acá. Caer a `document.body` mediría la
+  // página entera diciendo que midió el diálogo, que es la clase de cobertura
+  // fantasma que este script existe para no tener.
+  const raiz = selectorRaiz ? document.querySelector(selectorRaiz) : document.body;
+  if (!raiz) throw new Error(`raíz ausente: ${selectorRaiz}`);
 
   /** Pintado: los estilos no lo esconden y ocupa lugar. No mira recortes. */
   const pintado = (el) => {
@@ -511,6 +516,13 @@ const MINIMO_TEXTO_PANTALLA = 200;
    VACIA estando perfectos. Un render fallido ahí deja sólo el banner (~26). */
 const MINIMO_TEXTO_SIN_CHROME = 40;
 
+/** ¿Lo medido no renderizó? `acotada` = se midió un diálogo o una pantalla que
+ *  no monta el layout, y entonces el piso de la app entera no aplica. */
+function estaVacia(medicion, acotada) {
+  const piso = acotada ? MINIMO_TEXTO_SIN_CHROME : MINIMO_TEXTO_PANTALLA;
+  return medicion.textoVisible < piso ? 1 : 0;
+}
+
 const TAMANO_COLAPSO_DURO = 40;
 const FRACCION_COLAPSO = 0.4;
 
@@ -798,6 +810,77 @@ function clasificarSuelta(referencia, medicion) {
   return informe['x@1'];
 }
 
+/**
+ * Que los checks disparen no alcanza: un check sano apuntado a la pantalla
+ * equivocada reporta cero igual que uno muerto. Esto verifica que lo que la
+ * matriz DICE medir sea lo que mide.
+ *
+ * Existe porque la fila `login` medía el listado de plantaciones: con sesión,
+ * `/login` redirige, y sus 9 celdas eran un duplicado exacto de las de
+ * `plantaciones` — cobertura fantasma que puntuaba impecable.
+ */
+const COBERTURA = [
+  {
+    nombre: 'login · se mide el login, no el listado al que redirige',
+    ruta: '/login?sinSesion=1',
+    vale: async (pagina) =>
+      (await pagina.getByRole('button', { name: 'Ingresar' }).count()) > 0 &&
+      (await pagina.locator('table').count()) === 0,
+  },
+  {
+    nombre: 'login · con su piso propio no cuenta como pantalla vacía',
+    ruta: '/login?sinSesion=1',
+    vale: async (pagina) => {
+      const m = await pagina.evaluate(medir, null);
+      return estaVacia(m, true) === 0 && m.textoVisible > 0;
+    },
+  },
+  {
+    nombre: 'raiz · medir el diálogo deja afuera la página de atrás',
+    ruta: '/plantaciones',
+    abrir: 'Nueva plantación',
+    vale: async (pagina) => {
+      const dialogo = await pagina.evaluate(medir, '[role="dialog"]');
+      const todo = await pagina.evaluate(medir, null);
+      return dialogo.textoVisible > 0 && dialogo.textoVisible * 3 < todo.textoVisible;
+    },
+  },
+  {
+    nombre: 'raiz · un selector que no matchea falla en vez de medir la página',
+    ruta: '/plantaciones',
+    vale: async (pagina) => {
+      const cayoAlBody = await pagina
+        .evaluate(medir, '[role="dialog"]')
+        .then((m) => m.textoVisible > 0)
+        .catch(() => false);
+      return !cayoAlBody;
+    },
+  },
+];
+
+async function cobertura(navegador) {
+  let fallos = 0;
+  for (const caso of COBERTURA) {
+    const pagina = await navegador.newPage({ viewport: { width: 1440, height: 900 } });
+    let ok = false;
+    try {
+      await pagina.goto(BASE_URL + caso.ruta, { waitUntil: 'networkidle', timeout: 20000 });
+      await asentar(pagina);
+      if (caso.abrir) {
+        await pagina.getByRole('button', { name: caso.abrir }).click({ timeout: 10000 });
+        await asentar(pagina);
+      }
+      ok = await caso.vale(pagina);
+    } catch (e) {
+      ok = false;
+    }
+    await pagina.close();
+    if (!ok) fallos++;
+    console.log(`  ${ok ? 'ok  ' : 'FALLA'} ${caso.nombre}`);
+  }
+  return fallos;
+}
+
 async function autotest(navegador) {
   let fallos = 0;
   for (const caso of CASOS_AUTOTEST) {
@@ -834,7 +917,12 @@ async function autotest(navegador) {
       ? `\n${fallos} checks no sirven.`
       : '\nTodos los checks disparan con su defecto y callan sin él.',
   );
-  return fallos ? 1 : 0;
+
+  console.log('\nCobertura — que cada fila mida lo que dice medir:\n');
+  const fallosCobertura = await cobertura(navegador);
+  if (fallosCobertura) console.log(`\n${fallosCobertura} filas no miden lo que dicen.`);
+
+  return fallos + fallosCobertura ? 1 : 0;
 }
 
 async function main() {
@@ -864,8 +952,7 @@ async function main() {
         // Una pantalla en blanco da cero en todos los checks y se lee como
         // impecable. Sin esto, un crash de render se reporta como una fila
         // limpia —que es exactamente lo que pasó con el mapa y `.not(is,null)`.
-        const piso = raiz || sinChrome ? MINIMO_TEXTO_SIN_CHROME : MINIMO_TEXTO_PANTALLA;
-        medicion.nVacia = medicion.textoVisible < piso ? 1 : 0;
+        medicion.nVacia = estaVacia(medicion, Boolean(raiz) || Boolean(sinChrome));
         informe[clave] = medicion;
         if (CON_CAPTURAS) {
           mkdirSync(CAPTURAS, { recursive: true });
