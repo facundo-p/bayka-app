@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Ban, Key, Mail } from 'lucide-react';
 import { Button, Input, PanelLateral, Select } from '../../components';
+import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { cx } from '../../lib/classNames';
 import { formatearFechaDia } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -188,7 +189,7 @@ export function UsuarioPanel({
   onAccion,
   onCerrar,
 }: UsuarioPanelProps) {
-  const queryClient = useQueryClient();
+  const invalidarUsuarios = useInvalidarUsuarios();
   const [nombre, setNombre] = useState(usuario.nombre);
   const [email, setEmail] = useState(usuario.email ?? '');
   const [rol, setRol] = useState<Rol>(usuario.rol);
@@ -214,7 +215,7 @@ export function UsuarioPanel({
     },
     // Siempre invalidar: si una parte cambió y otra falló (p.ej. nombre OK,
     // email duplicado), la lista igual debe reflejar lo que sí se guardó.
-    onSettled: () => queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.usuarios() }),
+    onSettled: () => invalidarUsuarios(),
     onSuccess: onCerrar,
     onError: (error: Error) => setErrorEnvio(error.message),
   });

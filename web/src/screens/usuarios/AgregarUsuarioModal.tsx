@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { Button, Input, Modal, Select } from '../../components';
-import { CLAVE_QUERY } from '../../queries/clavesQuery';
+import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { ROL, type Rol } from '../../repositories/profileRepository';
 import { crearUsuario } from '../../services/adminUsersService';
 import { emailValido } from '../../../../supabase/functions/admin-users/nucleo';
@@ -65,7 +65,7 @@ function CuerpoAgregarUsuario({
 /** Alta por invitación: crea el usuario vía la edge function admin-users y
  *  Supabase le envía el email para definir su contraseña. */
 export function AgregarUsuarioModal({ onClose }: { onClose: () => void }) {
-  const queryClient = useQueryClient();
+  const invalidarUsuarios = useInvalidarUsuarios();
   const [valores, setValores] = useState<Valores>({ nombre: '', email: '', rol: ROL.TECNICO });
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
   const mutacion = useMutation({
@@ -76,7 +76,7 @@ export function AgregarUsuarioModal({ onClose }: { onClose: () => void }) {
         rol: valores.rol,
       }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.usuarios() });
+      await invalidarUsuarios();
       onClose();
     },
     onError: (error: Error) => setErrorEnvio(error.message),
