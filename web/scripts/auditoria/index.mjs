@@ -18,8 +18,9 @@
  * mano al tocar layout.
  *
  * Límites, para no leer de más en un `·`:
- *  - Mide la carga inicial de cada vista y los modales de VISTAS. No cubre
- *    estados de error ni de vacío, ni popovers.
+ *  - Mide la carga inicial de cada vista, los modales de VISTAS y los
+ *    `<details>` desplegados de /novedades. No cubre estados de error ni de
+ *    vacío, ni popovers.
  *  - O y R solo ven el primer viewport.
  *  - La ventana mide siempre ALTO_VENTANA: el escalón `max-height: 760` no se
  *    ejerce.

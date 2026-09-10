@@ -3,6 +3,7 @@
  * imports, así que esto se inyecta entero con `addScriptTag` y todo queda como
  * global de la página. El punto de entrada es `medir`.
  */
+/* exported medir -- lo llama pagina.navegador.js */
 
 /** Holgura para no contar redondeos de subpíxel como defecto. */
 const TOLERANCIA_PX = 2;
@@ -60,6 +61,7 @@ function detallarDefectos(raiz) {
     fueraViewport: detectarInalcanzables(raiz),
     desparejos: detectarDesparejos(raiz),
     tablasRecortadas: detectarTablasRecortadas(raiz),
+    desbordesLaterales: detectarDesbordesLaterales(raiz),
   };
 }
 
@@ -71,6 +73,7 @@ function contarDefectos(detalle) {
     nFueraViewport: detalle.fueraViewport.length,
     nDesparejos: detalle.desparejos.length,
     nTablasRecortadas: detalle.tablasRecortadas.length,
+    nDesbordesLaterales: detalle.desbordesLaterales.length,
   };
 }
 
@@ -110,6 +113,26 @@ function tieneArea(ancho, alto) {
   return ancho > TOLERANCIA_PX && alto > TOLERANCIA_PX;
 }
 
+/** Cuánto se sale `r` de costado de `caja`, en px enteros. */
+function sobresaleX(r, caja) {
+  return Math.round(Math.max(r.right - caja.right, caja.left - r.left));
+}
+
+/**
+ * Con borde o fondo se ve dónde termina. Un botón de texto plano no es una
+ * caja: su alto es el de su línea y no tiene un borde del que salirse.
+ */
+function esCaja(el) {
+  const co = getComputedStyle(el);
+  const conBorde = parseFloat(co.borderTopWidth) > 0 || parseFloat(co.borderBottomWidth) > 0;
+  return conBorde || co.backgroundColor !== 'rgba(0, 0, 0, 0)';
+}
+
+/** Cómo se nombra un elemento en el detalle: su primera clase, o su tag. */
+function claseDe(el) {
+  return el.className.toString().split(' ')[0] || el.tagName.toLowerCase();
+}
+
 /** Los estilos no lo esconden y ocupa lugar. No mira recortes. */
 function pintado(el) {
   // Un <details> cerrado esconde su contenido con `content-visibility`, que no
@@ -140,12 +163,28 @@ function etiqueta(el) {
 function relevarTextos(raiz) {
   const textos = [];
   const rango = document.createRange();
-  const paseo = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
-  for (let nodo = paseo.nextNode(); nodo; nodo = paseo.nextNode()) {
+  for (const nodo of nodosDeTexto(raiz)) {
     const texto = medirTexto(nodo, rango);
     if (texto) textos.push(texto);
   }
   return textos;
+}
+
+function* nodosDeTexto(raiz) {
+  const paseo = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
+  for (let nodo = paseo.nextNode(); nodo; nodo = paseo.nextNode()) yield nodo;
+}
+
+/** El texto del primer viewport, con la caja que realmente se pinta. */
+function medirTexto(nodo, rango) {
+  const ubicado = ubicarTexto(nodo, rango);
+  if (!ubicado) return null;
+  const { padre, r } = ubicado;
+  if (r.bottom <= 0 || r.top >= window.innerHeight) return null;
+  // Lo que se recorta no se está pintando: no puede solaparse con nada.
+  const pintada = cajaPintada(padre, r);
+  if (!tieneArea(pintada.right - pintada.left, pintada.bottom - pintada.top)) return null;
+  return { ...ubicado, pintada };
 }
 
 /**
@@ -153,18 +192,13 @@ function relevarTextos(raiz) {
  * largo: recortar acá dejaba ciego al check con los párrafos descriptivos, que
  * es justo donde hay texto suelto que se puede encimar.
  */
-function medirTexto(nodo, rango) {
+function ubicarTexto(nodo, rango) {
   const texto = (nodo.textContent || '').trim();
   const padre = nodo.parentElement;
   if (!texto || !padre || !pintado(padre) || padre.closest('svg')) return null;
   rango.selectNodeContents(nodo);
   const r = rango.getBoundingClientRect();
-  if (!tieneArea(r.width, r.height)) return null;
-  if (r.bottom <= 0 || r.top >= window.innerHeight) return null;
-  // Lo que se recorta no se está pintando: no puede solaparse con nada.
-  const pintada = cajaPintada(padre, r);
-  if (!tieneArea(pintada.right - pintada.left, pintada.bottom - pintada.top)) return null;
-  return { padre, r, pintada, texto };
+  return tieneArea(r.width, r.height) ? { padre, r, texto } : null;
 }
 
 /**
@@ -227,8 +261,7 @@ function detectarRecortes(textos) {
   const recortados = [];
   const truncados = [];
   for (const { padre, r, texto } of textos) {
-    const caja = recorteHorizontal(padre, r);
-    const fuera = Math.round(Math.max(r.right - caja.right, caja.left - r.left));
+    const fuera = sobresaleX(r, recorteHorizontal(padre, r));
     if (fuera <= TOLERANCIA_PX) continue;
     const destino = conEllipsis(padre) ? truncados : recortados;
     destino.push({ texto: texto.slice(0, LARGO_ETIQUETA), fuera });
@@ -377,16 +410,6 @@ function sonDesparejos(a, b) {
 }
 
 /**
- * Un botón de texto plano (sin borde ni fondo) no es una caja: su alto es el
- * de su línea y no tiene por qué coincidir con el de un input al lado.
- */
-function esCaja(el) {
-  const co = getComputedStyle(el);
-  const conBorde = parseFloat(co.borderTopWidth) > 0 || parseFloat(co.borderBottomWidth) > 0;
-  return conBorde || co.backgroundColor !== 'rgba(0, 0, 0, 0)';
-}
-
-/**
  * Un control que apila su propio contenido (etiqueta + sub-etiqueta) fija su
  * alto: no tiene por qué medir lo mismo que un input de una línea al lado.
  */
@@ -426,7 +449,7 @@ function relevarCards(raiz, selector) {
   for (const el of raiz.querySelectorAll(selector)) {
     if (getComputedStyle(el).display === 'none' || !el.children.length) continue;
     const { height, width } = el.getBoundingClientRect();
-    const clave = el.className.toString().split(' ')[0] || el.tagName.toLowerCase();
+    const clave = claseDe(el);
     // Si el contenido entra, la card se ajustó a él: encogerse no es colapsar.
     const desborda =
       el.scrollHeight > el.clientHeight + DESBORDE_CARD_PX ||
@@ -471,6 +494,43 @@ function medirTabla(tabla) {
 function contenedorConOverflow(el) {
   for (const anc of ancestros(el.parentElement)) {
     if (getComputedStyle(anc).overflowX !== 'visible') return anc;
+  }
+  return null;
+}
+
+// ── L · texto que se sale de su caja ─────────────────────────────────────
+
+/**
+ * Texto que se sale de costado de una caja con borde o fondo, sin que nada lo
+ * recorte. Si el que scrollea es un contenedor, el documento no scrollea (S) y
+ * nada recorta (R): una URL en un paso de /novedades se salía 58px de la card
+ * a 360 sin que ninguna métrica la viera (#416).
+ *
+ * Mira todo el texto, no solo el primer viewport: salirse de la caja no
+ * depende de cuánto esté scrolleado el contenedor.
+ */
+function detectarDesbordesLaterales(raiz) {
+  const desbordes = [];
+  const rango = document.createRange();
+  for (const nodo of nodosDeTexto(raiz)) {
+    const ubicado = ubicarTexto(nodo, rango);
+    const desborde = ubicado && cajaDesbordada(ubicado.padre, ubicado.r);
+    if (desborde) desbordes.push({ texto: ubicado.texto.slice(0, LARGO_ETIQUETA), ...desborde });
+  }
+  return desbordes;
+}
+
+/**
+ * La caja más cercana de la que `r` se sale de costado. Sube solo hasta el
+ * primer ancestro que recorta o scrollea: de ahí para afuera lo que sobra se
+ * corta, y es R, o se alcanza scrolleando, como una tabla en su contenedor.
+ */
+function cajaDesbordada(padre, r) {
+  for (const anc of ancestros(padre)) {
+    if (getComputedStyle(anc).overflowX !== 'visible') return null;
+    if (!esCaja(anc)) continue;
+    const fuera = sobresaleX(r, anc.getBoundingClientRect());
+    if (fuera > TOLERANCIA_PX) return { caja: claseDe(anc), fuera };
   }
   return null;
 }

@@ -5,12 +5,29 @@
  * hay defectos" de "el check está muerto".
  */
 import { clasificarSuelta, estaVacia } from './clasificar.mjs';
-import { MODAL_NUEVA_PLANTACION, RUTA, SELECTOR_DIALOGO, claseModulo } from './config.mjs';
+import {
+  MODAL_NUEVA_PLANTACION,
+  RUTA,
+  SELECTOR_DIALOGO,
+  TODOS_LOS_DETAILS,
+  claseModulo,
+} from './config.mjs';
 import { conPagina, medirPagina } from './navegacion.mjs';
 
 /** Lo que tarda en aplicarse el CSS inyectado. */
 const ESPERA_ESTILO_MS = 300;
 const ANCHO_COBERTURA = 1440;
+
+/** Apretón que recorta el recuento de Especies sin ellipsis. */
+const RECUENTO_RECORTADO =
+  `${claseModulo('recuento')}{display:block !important;width:40px !important;` +
+  'overflow:hidden !important;white-space:nowrap !important}';
+
+/** Tabla más ancha que su contenedor, que la scrollea: el arreglo que pide T. */
+const TABLA_ANCHA = 'table{min-width:1400px !important}';
+
+/** Pasos de /novedades que no parten: hace de URL larga sin tocar NOVEDADES.md. */
+const PASOS_SIN_PARTIR = `${claseModulo('pasosLista')} li{white-space:nowrap !important}`;
 
 const CASOS_AUTOTEST = [
   // La ruta y el ancho importan: hace falta una tabla que REALMENTE desborde su
@@ -35,7 +52,7 @@ const CASOS_AUTOTEST = [
     ruta: RUTA.dashboard,
     ancho: 1920,
     css: `${claseModulo('panel')}{height:0 !important;min-height:0 !important}`,
-    // Pasa por marcarColapsadas, no por una regla inline: la rama relativa
+    // Pasa por el clasificador real, no por una regla inline: la rama relativa
     // (fracción + desborda) es la que produce la mayoría de los hits reales.
     clasificar: true,
     espera: (r) => r.nColapsadas > 0,
@@ -48,6 +65,18 @@ const CASOS_AUTOTEST = [
     // max-height, y sin anularlos la inyección no rompe nada.
     css:
       `${claseModulo('panel')}{min-height:0 !important;max-height:60px !important;` +
+      'overflow:hidden !important}',
+    clasificar: true,
+    espera: (r) => r.nColapsadas > 0,
+  },
+  {
+    nombre: 'H · card que pierde el ancho y deja contenido afuera',
+    ruta: RUTA.dashboard,
+    ancho: 1920,
+    // Ejerce la escala de ancho: el mapa queda en 256px de 988 y su contenido no
+    // entra. Con una escala de 0.5 hacía falta bajar del 20% para contar.
+    css:
+      `${claseModulo('panel')}{min-width:0 !important;max-width:300px !important;` +
       'overflow:hidden !important}',
     clasificar: true,
     espera: (r) => r.nColapsadas > 0,
@@ -98,9 +127,7 @@ const CASOS_AUTOTEST = [
     ancho: 1920,
     // Mismo apretón que el caso del ellipsis, pero sin `text-overflow`: acá
     // no hay nada que le diga al usuario que falta texto.
-    css:
-      `${claseModulo('recuento')}{display:block !important;width:40px !important;` +
-      'overflow:hidden !important;white-space:nowrap !important}',
+    css: RECUENTO_RECORTADO,
     espera: (r) => r.nRecortados > 0,
   },
   {
@@ -135,7 +162,7 @@ const CASOS_AUTOTEST = [
     ruta: RUTA.usuarios,
     ancho: 1280,
     // Es el arreglo que el check T empuja: no puede contarse como regresión.
-    css: 'table{min-width:1400px !important}',
+    css: TABLA_ANCHA,
     espera: (r) => r.nFueraViewport === 0,
     esperaLimpio: (r) => r.nFueraViewport === 0,
   },
@@ -185,6 +212,41 @@ const CASOS_AUTOTEST = [
     ancho: 1920,
     css: 'body::after{content:"";display:block;width:3000px;height:1px}',
     espera: (r) => r.scrollH > 0,
+  },
+  {
+    nombre: 'L · paso desplegado que no parte se sale de su caja',
+    ruta: RUTA.novedades,
+    ancho: 360,
+    abrir: TODOS_LOS_DETAILS,
+    // El caso de #416: el que scrollea es `.body`, así que ni S ni R lo ven.
+    css: PASOS_SIN_PARTIR,
+    espera: (r) => r.nDesbordesLaterales > 0,
+  },
+  {
+    nombre: 'L · el mismo paso plegado NO cuenta',
+    ruta: RUTA.novedades,
+    ancho: 360,
+    // Plegado no se pinta: sin la vista con los <details> abiertos no se mide.
+    css: PASOS_SIN_PARTIR,
+    espera: (r) => r.nDesbordesLaterales === 0,
+    esperaLimpio: (r) => r.nDesbordesLaterales === 0,
+  },
+  {
+    nombre: 'L · tabla que se alcanza scrolleando su contenedor NO cuenta',
+    ruta: RUTA.usuarios,
+    ancho: 1280,
+    // Sobrepasa la card, pero adentro del contenedor que la scrollea.
+    css: TABLA_ANCHA,
+    espera: (r) => r.nDesbordesLaterales === 0,
+    esperaLimpio: (r) => r.nDesbordesLaterales === 0,
+  },
+  {
+    nombre: 'L · texto que su caja recorta NO cuenta (es R)',
+    ruta: RUTA.especies,
+    ancho: 1920,
+    css: RECUENTO_RECORTADO,
+    espera: (r) => r.nRecortados > 0 && r.nDesbordesLaterales === 0,
+    esperaLimpio: (r) => r.nDesbordesLaterales === 0,
   },
 ];
 

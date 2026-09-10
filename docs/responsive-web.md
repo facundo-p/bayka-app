@@ -118,8 +118,9 @@ que muestrean la escala y marca en cada celda de la matriz:
 | **D** | Controles de altos distintos en una misma fila |
 | **H** | Cards colapsadas: perdieron la mayor parte del tamaño que tenían en desktop y el contenido ya no entra |
 | **T** | Tablas que recortan en vez de scrollear |
+| **L** | Texto que se sale de costado de una caja con borde o fondo, sin que nada lo recorte |
 
-Tres criterios que no son obvios:
+Cuatro criterios que no son obvios:
 
 - **Lo que se alcanza scrolleando no cuenta**, ni para X ni para R. Poner el
   `min-width` que T pide en una tabla manda las últimas columnas fuera del
@@ -129,6 +130,13 @@ Tres criterios que no son obvios:
   dato de largo variable, y contarlo haría que el arreglo correcto suba la nota.
 - **D es la única que ve una regresión de estilo que no rompe la geometría**,
   como un campo que pierde su alto compacto al cambiar de módulo CSS.
+- **L ve lo que un contenedor con scroll les esconde a S y a R.** Si el que
+  scrollea es el contenedor, el documento no scrollea y nada recorta: una URL en
+  un paso de `/novedades` se salía 58px de la card a 360 sin que nada la marcara.
+  L no mide si el texto se alcanza, sino que se salga de la caja que lo enmarca,
+  que se ve roto aunque se pueda scrollear hasta él. Sube desde el texto hasta el
+  primer ancestro que recorta o scrollea, así que una tabla que desborda el
+  contenedor que la scrollea no cuenta, y un texto que su caja recorta es R.
 
 Las vistas son las pantallas con sesión, las dos que quedan fuera del gate de
 sesión (login y establecer contraseña) y dos modales: el más grande y el más
@@ -136,6 +144,11 @@ chico. Un modal se mide abriéndolo con el nombre de su botón (`abrir`) y
 acotando la medición al diálogo (`raiz`): sin acotarla, el texto de la página
 que queda detrás del overlay se pisa con el del diálogo y darían decenas de
 solapes que nadie ve.
+
+`abrir` también puede desplegar todos los `<details>` de la vista
+(`TODOS_LOS_DETAILS`): plegado, su contenido no se pinta y la auditoría no lo
+mide. `/novedades` se mide plegada y además desplegada (`novedades-pasos`),
+porque los pasos de prueba solo se ven así.
 
 ### Baseline
 
@@ -179,9 +192,13 @@ Para no leer de más en un `·`:
 
 - **Solo la carga inicial.** No cubre estados de error ni de vacío, los demás
   modales, ni popovers: con uno abierto O da ruido, porque fuera de una `raiz`
-  acotada no tiene noción de capa flotante.
+  acotada no tiene noción de capa flotante. De los `<details>`, solo los de
+  `/novedades` se miden desplegados.
+- **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems en pruebas no hay
+  pasos que desplegar, y la fila mide lo mismo que `novedades`.
 - **O y R solo ven el primer viewport.** En los anchos chicos, donde el
-  documento scrollea, queda afuera la mayor parte del contenido.
+  documento scrollea, queda afuera la mayor parte del contenido. L mira todo el
+  texto.
 - **La ventana mide siempre 900px de alto**: el escalón `max-height: 760` no se
   ejerce.
 - **Los anchos muestrean los escalones, no las bandas entre ellos.** 601–767 no

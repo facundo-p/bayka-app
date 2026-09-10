@@ -1,5 +1,12 @@
 /** Abrir una vista en Chromium y medirla. */
-import { ALTO_VENTANA, BASE_URL, MEDIR_NAVEGADOR, SELECTOR_CARDS } from './config.mjs';
+import {
+  ALTO_VENTANA,
+  BASE_URL,
+  MEDIR_NAVEGADOR,
+  SELECTOR_CARDS,
+  TODOS_LOS_DETAILS,
+} from './config.mjs';
+import { contarNodos, desplegarDetails, medirEnPagina } from './pagina.navegador.js';
 
 const TIMEOUT_CARGA_MS = 20000;
 const TIMEOUT_ABRIR_MS = 10000;
@@ -17,25 +24,27 @@ export async function conPagina(navegador, vista, usar) {
   }
 }
 
-/**
- * Carga `ruta` y, si la vista es un modal, lo abre con el botón `abrir` y
- * espera a que aparezca su `raiz`. Deja inyectado `medir`.
- */
+/** Carga `ruta`, la lleva al estado `abrir` si la vista lo pide y deja inyectado `medir`. */
 export async function abrirPagina(pagina, { ruta, abrir, raiz }) {
   await pagina.goto(BASE_URL + ruta, { waitUntil: 'networkidle', timeout: TIMEOUT_CARGA_MS });
   await asentar(pagina);
   if (abrir) {
-    await pagina.getByRole('button', { name: abrir }).click({ timeout: TIMEOUT_ABRIR_MS });
-    await pagina.locator(raiz).waitFor({ timeout: TIMEOUT_ABRIR_MS });
+    await llevarAEstado(pagina, abrir, raiz);
     await asentar(pagina);
   }
   await pagina.addScriptTag({ path: MEDIR_NAVEGADOR });
 }
 
+/** Despliega los `<details>`, o clickea el botón `abrir` y espera a que aparezca su `raiz`. */
+async function llevarAEstado(pagina, abrir, raiz) {
+  if (abrir === TODOS_LOS_DETAILS) return pagina.evaluate(desplegarDetails);
+  await pagina.getByRole('button', { name: abrir }).click({ timeout: TIMEOUT_ABRIR_MS });
+  await pagina.locator(raiz).waitFor({ timeout: TIMEOUT_ABRIR_MS });
+}
+
 /** Mide la página abierta, acotada a `selectorRaiz` si viene. */
 export function medirPagina(pagina, selectorRaiz = null) {
-  // `medir` es global de la página: la inyecta abrirPagina.
-  return pagina.evaluate(([raiz, cards]) => medir(raiz, cards), [selectorRaiz, SELECTOR_CARDS]);
+  return pagina.evaluate(medirEnPagina, [selectorRaiz, SELECTOR_CARDS]);
 }
 
 /**
@@ -50,7 +59,7 @@ async function asentar(pagina) {
   let previo = -1;
   for (let i = 0; i < INTENTOS_ASENTAR; i++) {
     await pagina.waitForTimeout(PASO_ASENTAR_MS);
-    const actual = await pagina.evaluate(() => document.querySelectorAll('*').length);
+    const actual = await pagina.evaluate(contarNodos);
     if (actual === previo) return;
     previo = actual;
   }

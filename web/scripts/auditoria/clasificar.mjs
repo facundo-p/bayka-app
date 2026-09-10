@@ -17,6 +17,9 @@ const MINIMO_TEXTO_SIN_CHROME = 40;
 const TAMANO_COLAPSO_DURO = 40;
 const FRACCION_COLAPSO = 0.4;
 
+/** La escala de `marcarColapsadas` entre dos mediciones tomadas al mismo ancho. */
+const MISMO_ANCHO = 1;
+
 /**
  * ¿Lo medido no renderizó? Una pantalla en blanco da cero en todos los checks
  * y se lee como impecable: sin esto, un crash de render se reporta como una
@@ -38,11 +41,14 @@ export function marcarColapsadas(informe, pantalla, anchos) {
   const referencia = informe[claveCelda(pantalla, anchos[0])]?.cards ?? {};
   for (const ancho of anchos) {
     const f = informe[claveCelda(pantalla, ancho)];
-    if (!f || f.error) continue;
-    const colapsadas = detectarColapsadas(f.cards ?? {}, referencia, ancho / anchos[0]);
-    f.nColapsadas = colapsadas.length;
-    f.detalle.colapsadas = colapsadas;
+    if (f && !f.error) marcarCelda(f, referencia, ancho / anchos[0]);
   }
+}
+
+function marcarCelda(medicion, referencia, escala) {
+  const colapsadas = detectarColapsadas(medicion.cards ?? {}, referencia, escala);
+  medicion.nColapsadas = colapsadas.length;
+  medicion.detalle.colapsadas = colapsadas;
 }
 
 function detectarColapsadas(cards, referencia, escala) {
@@ -75,9 +81,8 @@ function estaColapsada(card, base, escala) {
   return duro || relativo;
 }
 
-/** Corre el clasificador real de colapso sobre una medición suelta. */
+/** Corre el clasificador real de colapso sobre una medición suelta, contra una referencia de su mismo ancho. */
 export function clasificarSuelta(referencia, medicion) {
-  const informe = { [claveCelda('x', 2)]: referencia, [claveCelda('x', 1)]: medicion };
-  marcarColapsadas(informe, 'x', [2, 1]);
+  marcarCelda(medicion, referencia.cards ?? {}, MISMO_ANCHO);
   return medicion;
 }
