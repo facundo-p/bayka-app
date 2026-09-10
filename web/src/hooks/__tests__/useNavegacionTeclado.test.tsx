@@ -65,7 +65,12 @@ test('al cambiar la cantidad de ítems, vuelve a resaltar el primero', () => {
   expect(result.current.resaltado).toBe(0);
 });
 
-test('expone la ref del contenedor de la lista', () => {
+test('Home va al primero y End al último', () => {
   const { result } = renderHook(() => useNavegacionTeclado(3, vi.fn()));
-  expect(result.current.refLista.current).toBeNull();
+  const fin = evento('End');
+  act(() => result.current.alPresionar(fin));
+  expect(result.current.resaltado).toBe(2);
+  expect(fin.preventDefault).toHaveBeenCalled();
+  act(() => result.current.alPresionar(evento('Home')));
+  expect(result.current.resaltado).toBe(0);
 });

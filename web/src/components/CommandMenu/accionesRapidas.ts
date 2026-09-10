@@ -1,5 +1,6 @@
 import { Leaf, Plus, Settings, Sparkles, Sprout, Users, type LucideIcon } from 'lucide-react';
 import type { ScopeContextual } from '../../hooks/useCommandMenu';
+import { coincideBusqueda } from '../../lib/normalizarTexto';
 
 /** Acción rápida de la paleta: navegación simple (sin backend nuevo). */
 export type AccionRapida = {
@@ -31,7 +32,5 @@ export function accionesRapidas(scope: ScopeContextual | null): AccionRapida[] {
 
 /** Filtra las acciones por el texto escrito (vacío = todas). */
 export function filtrarAcciones(acciones: AccionRapida[], texto: string): AccionRapida[] {
-  const normalizado = texto.trim().toLowerCase();
-  if (!normalizado) return acciones;
-  return acciones.filter((accion) => accion.titulo.toLowerCase().includes(normalizado));
+  return acciones.filter((accion) => coincideBusqueda([accion.titulo], texto));
 }

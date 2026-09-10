@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_SUPERADMIN, estadoMock, resetEstadoMock } from '../../../test/supabaseMock';
+import { PERFIL_SUPERADMIN, estadoMock, prepararSesion } from '../../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../../test/queryBuilderMock';
 import { renderRutasEn } from '../../../test/renderConRutas';
 
@@ -70,9 +70,7 @@ function responder(consulta: ConsultaCapturada): RespuestaMock {
 }
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_SUPERADMIN;
+  prepararSesion(PERFIL_SUPERADMIN);
   estadoMock.resolverConsulta = responder;
   window.localStorage.clear();
 });
@@ -103,6 +101,14 @@ async function abrirPaleta() {
   return screen.findByRole('dialog', { name: 'Buscar' });
 }
 
+/** Dentro de una plantación la paleta tiene scope y suma "Ir a Configuración…". */
+async function abrirPaletaEnPlantacion() {
+  renderRutasEn('/plantaciones/plant-1');
+  await screen.findByRole('heading', { name: 'La Maluka' });
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  return screen.findByRole('dialog', { name: 'Buscar' });
+}
+
 test('⌘K abre la paleta con foco en el input', async () => {
   const dialog = await abrirPaleta();
   expect(within(dialog).getByPlaceholderText(/Buscar plantaciones/)).toHaveFocus();
@@ -128,10 +134,7 @@ test('escribir devuelve resultados agrupados por tipo', async () => {
 });
 
 test('estado vacío muestra el chip de scope y sugerencias dentro de la plantación', async () => {
-  renderRutasEn('/plantaciones/plant-1');
-  await screen.findByRole('heading', { name: 'La Maluka' });
-  fireEvent.keyDown(document, { key: 'k', metaKey: true });
-  const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
+  const dialog = await abrirPaletaEnPlantacion();
 
   expect(within(dialog).getByRole('button', { name: /en La Maluka/ })).toBeInTheDocument();
   expect(within(dialog).getByText('Sugerencias')).toBeInTheDocument();
@@ -165,12 +168,41 @@ test('aria-activedescendant del input sigue a la opción resaltada', async () =>
   // aria-controls apunta al listbox; activedescendant a la opción resaltada.
   const listbox = within(dialog).getByRole('listbox');
   expect(input).toHaveAttribute('aria-controls', listbox.id);
+  expect(input).toHaveAttribute('aria-autocomplete', 'list');
   expect(input).toHaveAttribute('aria-activedescendant', ids[0]);
   expect(document.getElementById(ids[0])).toHaveAttribute('aria-selected', 'true');
 
   fireEvent.keyDown(dialog, { key: 'ArrowDown' });
   await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ids[1]));
   expect(document.getElementById(ids[1])).toHaveAttribute('aria-selected', 'true');
+});
+
+test('Home y End resaltan la primera y la última opción; ArrowUp da la vuelta', async () => {
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  const input = within(dialog).getByPlaceholderText(/Buscar plantaciones/);
+  await usuario.type(input, 'Maluka');
+  await within(dialog).findByRole('option', { name: /La Maluka/ });
+  const ids = await esperarOpcionesEstables(dialog);
+  const ultima = ids[ids.length - 1];
+
+  fireEvent.keyDown(dialog, { key: 'End' });
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ultima));
+  fireEvent.keyDown(dialog, { key: 'Home' });
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ids[0]));
+  fireEvent.keyDown(dialog, { key: 'ArrowUp' });
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ultima));
+});
+
+test('las acciones ignoran acentos: "configuracion" encuentra "Ir a Configuración…"', async () => {
+  const dialog = await abrirPaletaEnPlantacion();
+  const usuario = userEvent.setup();
+
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'configuracion');
+
+  expect(
+    await within(dialog).findByRole('option', { name: /Ir a Configuración…/ }),
+  ).toBeInTheDocument();
 });
 
 test('Escape cierra la paleta', async () => {
