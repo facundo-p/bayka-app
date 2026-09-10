@@ -1,8 +1,8 @@
 import { render, screen, act } from '@testing-library/react';
-import { BP, useMediaQuery } from '../useMediaQuery';
+import { BP, useMediaQuery, type Breakpoint } from '../useMediaQuery';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
 
-function Sonda({ consulta }: { consulta: string }) {
+function Sonda({ consulta }: { consulta: Breakpoint }) {
   return <span>{useMediaQuery(consulta) ? 'sí' : 'no'}</span>;
 }
 

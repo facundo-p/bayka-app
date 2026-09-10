@@ -1,4 +1,4 @@
-import { BP } from '../hooks/useMediaQuery';
+import { valoresPx } from './consultaMedia';
 
 /**
  * Único stub de `matchMedia` de los tests: jsdom no lo implementa y
@@ -13,8 +13,8 @@ const oyentes = new Set<() => void>();
 let anchoSimulado = Number.POSITIVE_INFINITY;
 
 function coincide(consulta: string): boolean {
-  const tope = /\(max-width:\s*(\d+)px\)/.exec(consulta);
-  return tope ? anchoSimulado <= Number(tope[1]) : false;
+  const [tope] = valoresPx(consulta, 'max-width');
+  return tope !== undefined && anchoSimulado <= tope;
 }
 
 function matchMediaSimulado(consulta: string) {
@@ -51,9 +51,6 @@ export function restaurarAncho(): void {
 /** Anchos con nombre, para que los tests no repitan números sueltos. */
 export const ANCHO = {
   desktop: 1920,
-  notebook: 1366,
   tablet: 820,
   movil: 430,
 } as const;
-
-export { BP };
