@@ -1,11 +1,21 @@
 // https://docs.expo.dev/guides/using-eslint/
 const { defineConfig } = require('eslint/config');
 const expoConfig = require("eslint-config-expo/flat");
+const globals = require("globals");
 
 module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
+  },
+  {
+    // Config y scripts de tooling corren en Node como CommonJS, no en la app;
+    // expoConfig solo le da globals de Node a metro.config.js.
+    files: ["*.config.js", "sql-transformer.js", "scripts/**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: globals.node,
+    },
   },
   {
     // Prohíbe comparar contra códigos de error SQLSTATE de Postgres como literal
