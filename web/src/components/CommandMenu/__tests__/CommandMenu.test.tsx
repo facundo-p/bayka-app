@@ -170,12 +170,30 @@ test('aria-activedescendant del input sigue a la opción resaltada', async () =>
   // aria-controls apunta al listbox; activedescendant a la opción resaltada.
   const listbox = within(dialog).getByRole('listbox');
   expect(input).toHaveAttribute('aria-controls', listbox.id);
+  expect(input).toHaveAttribute('aria-autocomplete', 'list');
   expect(input).toHaveAttribute('aria-activedescendant', ids[0]);
   expect(document.getElementById(ids[0])).toHaveAttribute('aria-selected', 'true');
 
   fireEvent.keyDown(dialog, { key: 'ArrowDown' });
   await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ids[1]));
   expect(document.getElementById(ids[1])).toHaveAttribute('aria-selected', 'true');
+});
+
+test('Home y End resaltan la primera y la última opción; ArrowUp da la vuelta', async () => {
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  const input = within(dialog).getByPlaceholderText(/Buscar plantaciones/);
+  await usuario.type(input, 'Maluka');
+  await within(dialog).findByRole('option', { name: /La Maluka/ });
+  const ids = await esperarOpcionesEstables(dialog);
+  const ultima = ids[ids.length - 1];
+
+  fireEvent.keyDown(dialog, { key: 'End' });
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ultima));
+  fireEvent.keyDown(dialog, { key: 'Home' });
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ids[0]));
+  fireEvent.keyDown(dialog, { key: 'ArrowUp' });
+  await waitFor(() => expect(input).toHaveAttribute('aria-activedescendant', ultima));
 });
 
 test('las acciones ignoran acentos: "configuracion" encuentra "Ir a Configuración…"', async () => {

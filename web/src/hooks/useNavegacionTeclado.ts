@@ -1,42 +1,32 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { TECLA } from '../lib/teclas';
 
-/** Navegación por teclado sobre una lista plana ordenada, con wrap y scroll
- *  contenido en el contenedor (sin scrollIntoView global de la página). */
+type Movimiento = (actual: number, cantidad: number) => number;
+
+const MOVIMIENTOS: Partial<Record<string, Movimiento>> = {
+  [TECLA.abajo]: (actual, cantidad) => (actual + 1) % cantidad,
+  [TECLA.arriba]: (actual, cantidad) => (actual - 1 + cantidad) % cantidad,
+  [TECLA.inicio]: () => 0,
+  [TECLA.fin]: (_actual, cantidad) => cantidad - 1,
+};
+
+/** Resaltado de una lista plana: flechas con wrap, Home/End a los extremos y Enter elige. */
 export function useNavegacionTeclado(cantidad: number, alElegir: (indice: number) => void) {
   const [resaltado, setResaltado] = useState(0);
-  const refLista = useRef<HTMLDivElement>(null);
-
   useEffect(() => setResaltado(0), [cantidad]);
-
-  // Mantener el ítem resaltado visible dentro del contenedor de la lista.
-  useEffect(() => {
-    const lista = refLista.current;
-    const activo = lista?.querySelector<HTMLElement>('[data-resaltado="true"]');
-    if (!lista || !activo) return;
-    const arriba = activo.offsetTop;
-    const abajo = arriba + activo.offsetHeight;
-    if (arriba < lista.scrollTop) lista.scrollTop = arriba;
-    else if (abajo > lista.scrollTop + lista.clientHeight) {
-      lista.scrollTop = abajo - lista.clientHeight;
-    }
-  }, [resaltado]);
-
   const alPresionar = useCallback(
     (evento: React.KeyboardEvent) => {
       if (cantidad === 0) return;
-      if (evento.key === 'ArrowDown') {
+      const mover = MOVIMIENTOS[evento.key];
+      if (mover) {
         evento.preventDefault();
-        setResaltado((previo) => (previo + 1) % cantidad);
-      } else if (evento.key === 'ArrowUp') {
-        evento.preventDefault();
-        setResaltado((previo) => (previo - 1 + cantidad) % cantidad);
-      } else if (evento.key === 'Enter') {
+        setResaltado((previo) => mover(previo, cantidad));
+      } else if (evento.key === TECLA.enter) {
         evento.preventDefault();
         alElegir(resaltado);
       }
     },
     [cantidad, resaltado, alElegir],
   );
-
-  return { resaltado, setResaltado, refLista, alPresionar };
+  return { resaltado, setResaltado, alPresionar };
 }

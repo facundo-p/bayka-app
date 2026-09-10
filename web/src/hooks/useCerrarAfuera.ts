@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import { useCerrarConEscape } from './useCerrarConEscape';
 
 /**
  * Cierra un panel flotante al clickear afuera o con Escape. `refExtra` también
@@ -10,22 +11,15 @@ export function useCerrarAfuera(
   ref: RefObject<HTMLElement | null>,
   refExtra?: RefObject<HTMLElement | null>,
 ) {
+  useCerrarConEscape(abierto, cerrar);
   useEffect(() => {
     if (!abierto) return;
-    function estaAdentro(nodo: Node): boolean {
-      return [ref, refExtra].some((candidato) => candidato?.current?.contains(nodo));
-    }
     function alClickear(evento: MouseEvent) {
-      if (ref.current && !estaAdentro(evento.target as Node)) cerrar();
-    }
-    function alTeclear(evento: KeyboardEvent) {
-      if (evento.key === 'Escape') cerrar();
+      const nodo = evento.target as Node;
+      const adentro = [ref, refExtra].some((candidato) => candidato?.current?.contains(nodo));
+      if (ref.current && !adentro) cerrar();
     }
     document.addEventListener('mousedown', alClickear);
-    document.addEventListener('keydown', alTeclear);
-    return () => {
-      document.removeEventListener('mousedown', alClickear);
-      document.removeEventListener('keydown', alTeclear);
-    };
+    return () => document.removeEventListener('mousedown', alClickear);
   }, [abierto, cerrar, ref, refExtra]);
 }

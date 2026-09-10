@@ -1,6 +1,6 @@
 /* El disparador se ve igual que Select: control + chevron propio. */
 .disparador {
-  composes: select from './Select.module.css';
+  composes: select from '../Select.module.css';
   display: flex;
   align-items: center;
   text-align: left;
@@ -8,7 +8,7 @@
 }
 
 .disparadorError {
-  composes: selectError from './Select.module.css';
+  composes: selectError from '../Select.module.css';
 }
 
 .valor {
@@ -26,7 +26,7 @@
   white-space: nowrap;
 }
 
-/* Detalle tenue (email): mismo par de tokens que la línea secundaria de Usuarios. */
+/* Detalle tenue (ej. el email), igual en el disparador y en la lista. */
 .valorSecundario,
 .opcionSecundario {
   min-width: 0;

@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useNavigate } from 'react-router';
@@ -7,7 +7,8 @@ import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPlantaciones } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
 import { useCommandMenu } from '../../hooks/useCommandMenu';
-import { useNavegacionTeclado } from '../../hooks/useNavegacionTeclado';
+import { useListboxNavegable } from '../../hooks/useListboxNavegable';
+import { TECLA } from '../../lib/teclas';
 import { Input } from '../Input';
 import { accionesRapidas, filtrarAcciones } from './accionesRapidas';
 import { construirItems, destinoDeItem, type ItemPaleta } from './construirItems';
@@ -35,8 +36,6 @@ export function CommandMenu() {
   const [texto, setTexto] = useState('');
   const refInput = useRef<HTMLInputElement>(null);
   const refDialog = useRef<HTMLDivElement>(null);
-  const idListbox = useId();
-  const idOpcion = (indice: number) => `${idListbox}-opt-${indice}`;
   const atraparFoco = useFocusTrap(refDialog);
   useDevolverFoco(abierto);
 
@@ -75,10 +74,7 @@ export function CommandMenu() {
     navigate(destinoDeItem(item));
     cerrar();
   };
-  const { resaltado, setResaltado, refLista, alPresionar } = useNavegacionTeclado(
-    itemsPlanos.length,
-    (indice) => elegir(itemsPlanos[indice]),
-  );
+  const listbox = useListboxNavegable(itemsPlanos.length, (indice) => elegir(itemsPlanos[indice]));
 
   if (!abierto) return null;
 
@@ -94,9 +90,9 @@ export function CommandMenu() {
         className={styles.dialog}
         onClick={(evento) => evento.stopPropagation()}
         onKeyDown={(evento) => {
-          if (evento.key === 'Escape') cerrar();
-          else if (evento.key === 'Tab') atraparFoco(evento);
-          else alPresionar(evento);
+          if (evento.key === TECLA.escape) cerrar();
+          else if (evento.key === TECLA.tab) atraparFoco(evento);
+          else listbox.alPresionar(evento);
         }}
       >
         <div className={styles.cabecera}>
@@ -114,20 +110,11 @@ export function CommandMenu() {
             value={texto}
             onChange={(evento) => setTexto(evento.target.value)}
             autoComplete="off"
-            role="combobox"
-            aria-expanded
-            aria-controls={idListbox}
-            aria-activedescendant={itemsPlanos.length > 0 ? idOpcion(resaltado) : undefined}
+            {...listbox.propsBuscador()}
           />
         </div>
 
-        <div
-          id={idListbox}
-          role="listbox"
-          aria-label="Resultados"
-          className={styles.lista}
-          ref={refLista}
-        >
+        <div {...listbox.propsLista()} aria-label="Resultados" className={styles.lista}>
           {!hayTexto && <p className={styles.overline}>{tituloVacio}</p>}
           {secciones.map((seccion) => (
             <div key={seccion.clave} className={styles.seccion}>
@@ -135,11 +122,9 @@ export function CommandMenu() {
               {seccion.items.map(({ item, indice }) => (
                 <FilaPaleta
                   key={`${seccion.clave}-${indice}`}
-                  id={idOpcion(indice)}
                   item={item}
-                  resaltado={indice === resaltado}
+                  propsOpcion={listbox.propsOpcion(indice)}
                   onElegir={() => elegir(item)}
-                  onResaltar={() => setResaltado(indice)}
                 />
               ))}
             </div>

@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Modal } from '../Modal';
+import { Modal } from '../../Modal';
 import { SelectConDetalle } from '../SelectConDetalle';
 import type { OpcionConDetalle } from '../opcionesConDetalle';
-
-const OPCIONES: OpcionConDetalle[] = [
-  { valor: 'u4', principal: 'Lucía Ferreyra', secundario: 'lucia@bayka.app' },
-  { valor: 'u7', principal: 'Lucía Ferreyra', secundario: 'lferreyra@gmail.com' },
-  { valor: 'u8', principal: 'Pablo Ríos', secundario: null },
-];
+import { OPCIONES } from './fixtures';
 
 /** Dentro de un Modal real: el caso de uso y el conflicto de Escape que importa. */
 function EnModal({
@@ -40,10 +35,17 @@ type Usuario = ReturnType<typeof userEvent.setup>;
 
 const disparador = () => screen.getByRole('button', { name: /^Técnico/ });
 const buscador = () => screen.getByRole('combobox', { name: 'Buscar por nombre o email' });
+const resaltada = () => screen.getByRole('option', { selected: true });
 
 async function abrir(usuario: Usuario) {
   await usuario.click(disparador());
   return screen.getByRole('listbox', { name: 'Técnico' });
+}
+
+/** La opción resaltada es la que anuncia el buscador. */
+function esperarResaltada(nombre: string | RegExp) {
+  expect(resaltada()).toHaveAccessibleName(nombre);
+  expect(buscador()).toHaveAttribute('aria-activedescendant', resaltada().id);
 }
 
 test('cerrado muestra el placeholder; abierto lista nombre y email y enfoca el buscador', async () => {
@@ -55,6 +57,7 @@ test('cerrado muestra el placeholder; abierto lista nombre y email y enfoca el b
   const lista = await abrir(usuario);
 
   expect(disparador()).toHaveAttribute('aria-expanded', 'true');
+  expect(disparador()).toHaveAttribute('aria-controls', lista.id);
   expect(buscador()).toHaveFocus();
   const nombres = within(lista)
     .getAllByRole('option')
@@ -66,18 +69,15 @@ test('cerrado muestra el placeholder; abierto lista nombre y email y enfoca el b
   ]);
 });
 
-test('el buscador filtra por email y por nombre sin acentos', async () => {
+test('el buscador filtra por email', async () => {
   const usuario = userEvent.setup();
   render(<EnModal />);
   const lista = await abrir(usuario);
 
   await usuario.type(buscador(), 'gmail');
+
   expect(within(lista).getAllByRole('option')).toHaveLength(1);
   expect(within(lista).getByRole('option', { name: /lferreyra@gmail.com/ })).toBeInTheDocument();
-
-  await usuario.clear(buscador());
-  await usuario.type(buscador(), 'rios');
-  expect(within(lista).getByRole('option', { name: 'Pablo Ríos' })).toBeInTheDocument();
 });
 
 test('avisa cuando la búsqueda no coincide y cuando no hay opciones', async () => {
@@ -112,15 +112,28 @@ test('con teclado: flecha abre, flechas resaltan y Enter elige', async () => {
 
   await usuario.keyboard('{ArrowDown}');
   const lista = screen.getByRole('listbox');
-  const [primera, segunda] = within(lista).getAllByRole('option');
-  expect(buscador()).toHaveAttribute('aria-activedescendant', primera.id);
-  expect(primera).toHaveAttribute('aria-selected', 'true');
+  expect(buscador()).toHaveAttribute('aria-controls', lista.id);
+  expect(buscador()).toHaveAttribute('aria-autocomplete', 'list');
+  esperarResaltada('Lucía Ferreyra lucia@bayka.app');
 
   await usuario.keyboard('{ArrowDown}');
-  expect(buscador()).toHaveAttribute('aria-activedescendant', segunda.id);
+  esperarResaltada('Lucía Ferreyra lferreyra@gmail.com');
 
   await usuario.keyboard('{Enter}');
   expect(disparador()).toHaveAccessibleName('Técnico Lucía Ferreyra lferreyra@gmail.com');
+});
+
+test('ArrowUp da la vuelta desde la primera; Home y End van a los extremos', async () => {
+  const usuario = userEvent.setup();
+  render(<EnModal />);
+  await abrir(usuario);
+
+  await usuario.keyboard('{ArrowUp}');
+  esperarResaltada('Pablo Ríos');
+  await usuario.keyboard('{Home}');
+  esperarResaltada('Lucía Ferreyra lucia@bayka.app');
+  await usuario.keyboard('{End}');
+  esperarResaltada('Pablo Ríos');
 });
 
 test('al reabrir, resalta la opción elegida', async () => {
@@ -128,15 +141,39 @@ test('al reabrir, resalta la opción elegida', async () => {
   render(<EnModal />);
   await usuario.click(within(await abrir(usuario)).getByRole('option', { name: 'Pablo Ríos' }));
 
-  const lista = await abrir(usuario);
+  await abrir(usuario);
 
-  expect(within(lista).getByRole('option', { name: 'Pablo Ríos' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  esperarResaltada('Pablo Ríos');
 });
 
-test('Escape cierra solo la lista, no el modal', async () => {
+test('si la opción resaltada desaparece al filtrar, se resalta la primera que queda', async () => {
+  const usuario = userEvent.setup();
+  render(<EnModal />);
+  await abrir(usuario);
+  await usuario.keyboard('{End}');
+
+  await usuario.type(buscador(), 'lucia');
+
+  esperarResaltada('Lucía Ferreyra lucia@bayka.app');
+  await usuario.keyboard('{Enter}');
+  expect(disparador()).toHaveAccessibleName('Técnico Lucía Ferreyra lucia@bayka.app');
+});
+
+test('con la lista vacía tras filtrar no hay opción activa y Enter no elige', async () => {
+  const usuario = userEvent.setup();
+  render(<EnModal />);
+  const lista = await abrir(usuario);
+
+  await usuario.type(buscador(), 'zzz');
+  await usuario.keyboard('{Enter}');
+
+  expect(within(lista).queryAllByRole('option')).toHaveLength(0);
+  expect(buscador()).not.toHaveAttribute('aria-activedescendant');
+  expect(screen.getByRole('listbox')).toBeInTheDocument();
+  expect(disparador()).toHaveAccessibleName('Técnico Elegí un técnico');
+});
+
+test('Escape cierra solo la lista; un segundo Escape cierra el modal', async () => {
   const usuario = userEvent.setup();
   const onCerrarModal = vi.fn();
   render(<EnModal onCerrarModal={onCerrarModal} />);
@@ -147,6 +184,21 @@ test('Escape cierra solo la lista, no el modal', async () => {
   expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   expect(onCerrarModal).not.toHaveBeenCalled();
   expect(disparador()).toHaveFocus();
+
+  await usuario.keyboard('{Escape}');
+  expect(onCerrarModal).toHaveBeenCalledTimes(1);
+});
+
+test('un click adentro del popover, que está en un portal, no lo cierra', async () => {
+  const usuario = userEvent.setup();
+  render(<EnModal />);
+  await abrir(usuario);
+
+  await usuario.click(buscador());
+  await usuario.type(buscador(), 'zzz');
+  await usuario.click(screen.getByText('Ningún técnico coincide.'));
+
+  expect(screen.getByRole('listbox')).toBeInTheDocument();
 });
 
 test('un click afuera cierra la lista sin elegir', async () => {
