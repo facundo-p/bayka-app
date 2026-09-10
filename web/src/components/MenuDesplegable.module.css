@@ -4,6 +4,7 @@
 }
 
 .menu {
+  composes: caja from './listaFlotante.module.css';
   position: absolute;
   right: 0;
   top: calc(100% + var(--space-xs));
@@ -12,26 +13,15 @@
   display: flex;
   flex-direction: column;
   padding: var(--space-sm);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border);
   border-radius: var(--radius-control);
-  box-shadow: var(--shadow-modal);
 }
 
 .item {
-  display: flex;
-  align-items: center;
+  composes: filaBoton from './listaFlotante.module.css';
   gap: var(--space-lg);
-  padding: var(--space-md) var(--space-xl);
-  background: none;
-  border: none;
-  border-radius: var(--radius-control);
-  text-align: left;
-  font-family: var(--font-body);
-  font-size: var(--text-md);
+  padding-inline: var(--space-xl);
   color: var(--color-text-body);
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .item:hover:not(:disabled) {

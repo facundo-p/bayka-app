@@ -1,0 +1,40 @@
+/*
+ * Lista flotante: opciones de SelectConDetalle, resultados del CommandMenu e
+ * ítems de MenuDesplegable. Cada una pone su gap y su inset lateral: el de la
+ * paleta es más corto para alinear las filas con sus rótulos de sección.
+ */
+
+.caja {
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border);
+  box-shadow: var(--shadow-modal);
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  padding-block: var(--space-md);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+}
+
+/* Fila que es un <button>: sin el cromo nativo. */
+.filaBoton {
+  composes: fila;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  text-align: left;
+}
+
+.filaResaltada {
+  background-color: var(--color-surface-tint);
+}
+
+.vacio {
+  margin: 0;
+  padding-block: var(--space-2xl);
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
