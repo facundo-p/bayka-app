@@ -5,6 +5,8 @@ import {
   PERFIL_TECNICO,
   emitirEventoAuth,
   estadoMock,
+  prepararSesion,
+  prepararSesionAdmin,
   resetEstadoMock,
 } from '../../test/supabaseMock';
 import { AuthProvider, useAuth } from '../useAuth';
@@ -70,8 +72,7 @@ test('signIn ok con perfil admin pasa a autenticado', async () => {
 });
 
 test('sesión con perfil tecnico pasa a sin-acceso', async () => {
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_TECNICO;
+  prepararSesion(PERFIL_TECNICO);
   const { result } = renderAuth();
   await waitFor(() => expect(result.current.estado).toBe('sin-acceso'));
 });
@@ -85,8 +86,7 @@ test('error de red al cargar el perfil pasa a sin-acceso sin romper', async () =
 });
 
 test('un admin dado de baja (activo=false) queda sin-acceso', async () => {
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = { ...PERFIL_ADMIN, activo: false };
+  prepararSesion({ ...PERFIL_ADMIN, activo: false });
   const { result } = renderAuth();
   await waitFor(() => expect(result.current.estado).toBe('sin-acceso'));
 });
@@ -104,8 +104,7 @@ test('signIn con credenciales malas devuelve mensaje legible', async () => {
 });
 
 test('signOut vuelve a anonimo y limpia el perfil', async () => {
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
+  prepararSesionAdmin();
   const { result } = renderAuth();
   await waitFor(() => expect(result.current.estado).toBe('autenticado'));
 

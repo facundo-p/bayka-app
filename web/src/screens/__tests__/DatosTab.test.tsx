@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
@@ -117,9 +117,7 @@ function resolver(consulta: ConsultaCapturada): RespuestaMock {
 }
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
+  prepararSesionAdmin();
   consultas = capturarConsultas(resolver);
 });
 

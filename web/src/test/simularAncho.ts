@@ -1,37 +1,51 @@
 import { BP } from '../hooks/useMediaQuery';
 
 /**
- * Hace que `useMediaQuery` responda como si la ventana midiera `ancho`.
- * El stub por defecto de `setupTests` no matchea nada (caso desktop); esto es
- * para los tests que verifican qué se renderiza en pantalla chica.
+ * Único stub de `matchMedia` de los tests: jsdom no lo implementa y
+ * `useMediaQuery` lo consulta. Solo entiende las consultas `(max-width: N)` de
+ * `BP`, que son las únicas que usa la app.
  *
- * Solo entiende las consultas `(max-width: N)` de `BP`, que son las únicas que
- * usa la app.
+ * `setupTests` lo reinstala en desktop después de cada test, así un
+ * `simularAncho` o un `matchMedia` borrado no se lleva puestos a los que
+ * siguen. El estado es global a la ventana: no sirve con `test.concurrent`.
  */
-export function simularAncho(ancho: number): void {
-  window.matchMedia = ((consulta: string) => {
-    const tope = /\(max-width:\s*(\d+)px\)/.exec(consulta);
-    return {
-      matches: tope ? ancho <= Number(tope[1]) : false,
-      media: consulta,
-      onchange: null,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-      addListener: () => {},
-      removeListener: () => {},
-      dispatchEvent: () => false,
-    };
-  }) as unknown as typeof window.matchMedia;
+const oyentes = new Set<() => void>();
+let anchoSimulado = Number.POSITIVE_INFINITY;
+
+function coincide(consulta: string): boolean {
+  const tope = /\(max-width:\s*(\d+)px\)/.exec(consulta);
+  return tope ? anchoSimulado <= Number(tope[1]) : false;
+}
+
+function matchMediaSimulado(consulta: string) {
+  return {
+    matches: coincide(consulta),
+    media: consulta,
+    onchange: null,
+    addEventListener: (_: string, avisar: () => void) => oyentes.add(avisar),
+    removeEventListener: (_: string, avisar: () => void) => oyentes.delete(avisar),
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  };
 }
 
 /**
- * Vuelve al caso desktop. `simularAncho` pisa `window.matchMedia` global y el
- * stub de `setupTests` se instala una sola vez al cargar el módulo: sin esto,
- * un test de pantalla chica se lleva puestos a los que corren después en el
- * mismo archivo.
+ * Hace que `useMediaQuery` responda como si la ventana midiera `ancho`. Avisa a
+ * los componentes montados, que se re-renderizan como al cruzar un umbral real:
+ * con algo montado, llamarlo dentro de `act`.
  */
+export function simularAncho(ancho: number): void {
+  anchoSimulado = ancho;
+  window.matchMedia = matchMediaSimulado as unknown as typeof window.matchMedia;
+  oyentes.forEach((avisar) => avisar());
+}
+
+/** Vuelve al caso desktop, donde ninguna consulta matchea. */
 export function restaurarAncho(): void {
-  simularAncho(Number.POSITIVE_INFINITY);
+  oyentes.clear();
+  anchoSimulado = Number.POSITIVE_INFINITY;
+  window.matchMedia = matchMediaSimulado as unknown as typeof window.matchMedia;
 }
 
 /** Anchos con nombre, para que los tests no repitan números sueltos. */

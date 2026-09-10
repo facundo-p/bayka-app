@@ -4,7 +4,7 @@ import {
   PERFIL_ADMIN,
   PERFIL_SUPERADMIN,
   estadoMock,
-  resetEstadoMock,
+  prepararSesion,
 } from '../../test/supabaseMock';
 import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
@@ -15,11 +15,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_SUPERADMIN;
-});
+beforeEach(() => prepararSesion(PERFIL_SUPERADMIN));
 
 const USUARIOS = [
   {

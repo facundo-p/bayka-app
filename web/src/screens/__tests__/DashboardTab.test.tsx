@@ -1,6 +1,6 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
@@ -115,11 +115,7 @@ function crearResolver(arboles: RespuestaMock['data']) {
   };
 }
 
-beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
-});
+beforeEach(prepararSesionAdmin);
 
 describe('DashboardTab', () => {
   test('muestra el hero, los KPIs y los paneles de especies y parcelas', async () => {

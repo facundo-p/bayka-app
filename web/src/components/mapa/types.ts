@@ -5,7 +5,8 @@ import type { PuntoGps } from '../../queries/mapaQueries';
  *  proveedor concreto. */
 export type { PuntoGps };
 
-/** Variante de tamaño: panel del dashboard (360px) o compacto del modal (220px). */
+/** Variante de tamaño: `panel` llena la card del dashboard; `compacto` es el
+ *  alto fijo del detalle de árbol. Las medidas viven en `MapaPuntos.module.css`. */
 export type VarianteMapa = 'panel' | 'compacto';
 
 export interface MapaPuntosProps {

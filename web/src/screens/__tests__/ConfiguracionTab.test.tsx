@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { PG_ERROR } from '../../lib/postgresErrorCodes';
@@ -109,9 +109,7 @@ function configurarMock(): void {
 }
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
+  prepararSesionAdmin();
   filaPlantacion = {
     id: 'plant-1',
     lugar: 'Mendoza',

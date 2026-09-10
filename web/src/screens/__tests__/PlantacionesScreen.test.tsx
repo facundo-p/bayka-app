@@ -1,15 +1,8 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
-import { renderRutasEn } from '../../test/renderConRutas';
-
-/** El contenido de la pantalla vive en <main>; el sidebar (con la card de
- *  temporada activa, que también muestra el lugar de una plantación) queda
- *  fuera. Acotamos las aserciones a <main> para no chocar con él. */
-function enMain() {
-  return within(screen.getByRole('main'));
-}
+import { enMain, renderRutasEn } from '../../test/renderConRutas';
 
 /** Aserciones de contenido de fila acotadas a la tabla: evita chocar con las
  *  <option> del Select de temporada, que repiten esos textos. */
@@ -27,11 +20,7 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
-});
+beforeEach(prepararSesionAdmin);
 
 const FILAS = [
   {

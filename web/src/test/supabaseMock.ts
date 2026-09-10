@@ -92,6 +92,17 @@ export const PERFIL_SUPERADMIN: PerfilFilaMock = {
   rol: 'superadmin',
 };
 
+/** Estado limpio con la sesión de `perfil` ya abierta, como si hubiera entrado antes del render. */
+export function prepararSesion(perfil: PerfilFilaMock): void {
+  resetEstadoMock();
+  estadoMock.sesion = { user: { id: perfil.id } };
+  estadoMock.perfilFila = perfil;
+}
+
+export function prepararSesionAdmin(): void {
+  prepararSesion(PERFIL_ADMIN);
+}
+
 function emitir(evento: string): void {
   for (const oyente of oyentes) oyente(evento, estadoMock.sesion);
 }

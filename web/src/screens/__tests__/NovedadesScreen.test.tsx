@@ -1,56 +1,87 @@
-import { screen, within } from '@testing-library/react';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { renderRutasEn } from '../../test/renderConRutas';
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { prepararSesionAdmin } from '../../test/supabaseMock';
+import { esperarMain, renderRutasEn } from '../../test/renderConRutas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
+// Fixture en vez del NOVEDADES.md real: cada release le agrega entradas arriba.
+// Es lo que `lib/novedades` deja pasar en staging, con la sección en pruebas arriba.
+vi.mock('../../lib/novedades', () => ({
+  ENTRADAS: [
+    {
+      titulo: 'En pruebas · próxima versión',
+      sincronizadoHasta: '5930146 #374',
+      items: [
+        {
+          titular: 'Detalle al costado.',
+          detalle: 'El árbol se abre sin tapar el listado.',
+          pasos: ['Entrá a una plantación.', 'Esperá ver el detalle a la derecha.'],
+        },
+      ],
+    },
+    {
+      titulo: 'Web 1.1.0 · 21 de agosto de 2026',
+      items: [{ titular: 'Contraseña visible.', detalle: 'Ya publicado.' }],
+    },
+  ],
+  FIRMA_NOVEDADES: 'v1.1.0 · 5930146 #374',
+}));
+
 const CLAVE_ULTIMA_VISTA = 'bayka.novedades.ultima-vista';
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
   // Un admin alcanza: /novedades no está bajo RequireSuperadmin.
-  estadoMock.perfilFila = PERFIL_ADMIN;
-  estadoMock.resolverConsulta = () => ({ data: [], error: null, count: 0 });
+  prepararSesionAdmin();
   window.localStorage.clear();
 });
 
-/** El contenido vive en <main>; acotamos ahí para no chocar con el sidebar.
- *  Se espera el <main> porque la ruta monta recién cuando resuelve la sesión. */
-async function enMain() {
-  return within(await screen.findByRole('main'));
-}
-
-test('lista las entradas del changelog público real', async () => {
+test('una tarjeta por entrada, con sus ítems', async () => {
   renderRutasEn('/novedades');
 
-  // Los títulos salen del NOVEDADES.md del repo, importado con ?raw.
-  const main = await enMain();
-  expect(
-    await main.findByRole('heading', { name: 'Web 1.1.0 · 21 de agosto de 2026' }),
-  ).toBeInTheDocument();
-  expect(
-    main.getByRole('heading', { name: 'Web 1.0.0 · Mobile 1.0.0 · 20 de agosto de 2026' }),
-  ).toBeInTheDocument();
-  expect(main.getByText(/Mostrá u ocultá tu contraseña\./)).toBeInTheDocument();
+  const main = await esperarMain();
+  expect(await main.findByRole('heading', { name: 'Web 1.1.0 · 21 de agosto de 2026' })).toBeInTheDocument();
+  expect(main.getByText(/Contraseña visible\./)).toBeInTheDocument();
+});
+
+test('la sección en pruebas avisa que todavía no está en producción', async () => {
+  renderRutasEn('/novedades');
+
+  const main = await esperarMain();
+  expect(await main.findByRole('heading', { name: 'En pruebas · próxima versión' })).toBeInTheDocument();
+  expect(main.getByText('Todavía no está en producción')).toBeInTheDocument();
 });
 
 test('muestra la versión que se está usando', async () => {
   renderRutasEn('/novedades');
 
-  const main = await enMain();
+  const main = await esperarMain();
   expect(await main.findByText(/Estás usando la versión v/)).toBeInTheDocument();
 });
 
-test('entrar marca las novedades como vistas', async () => {
+test('los pasos de prueba arrancan plegados y se abren con "Cómo probarlo"', async () => {
   renderRutasEn('/novedades');
-  const main = await enMain();
+
+  const main = await esperarMain();
+  const resumen = await main.findByText('Cómo probarlo');
+  const desplegable = resumen.closest('details');
+  expect(desplegable).not.toHaveAttribute('open');
+
+  await userEvent.click(resumen);
+
+  expect(desplegable).toHaveAttribute('open');
+  expect(main.getByText('Entrá a una plantación.')).toBeVisible();
+});
+
+test('entrar guarda la firma con la marca de sincronización', async () => {
+  renderRutasEn('/novedades');
+  const main = await esperarMain();
   await main.findByRole('heading', { name: 'Novedades' });
 
-  expect(window.localStorage.getItem(CLAVE_ULTIMA_VISTA)).toMatch(/^v/);
+  expect(window.localStorage.getItem(CLAVE_ULTIMA_VISTA)).toBe('v1.1.0 · 5930146 #374');
 });
 
 test('el footer del sidebar linkea a novedades con el dot encendido', async () => {

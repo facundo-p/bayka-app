@@ -1,9 +1,9 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
-import { ANCHO, restaurarAncho, simularAncho } from '../../test/simularAncho';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { ERRORES_GENERACION_IDS } from '../../queries/idsQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -134,18 +134,14 @@ function configurarDetalleMock(): void {
 }
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
-  asignadas = [filaAsignada('user-2', 'tecnico')];
+  prepararSesionAdmin();
+  asignadas =[filaAsignada('user-2', 'tecnico')];
   consultas = [];
   totalArboles = 0;
   conIdArboles = 0;
   filasExport = [];
   configurarDetalleMock();
 });
-
-afterEach(restaurarAncho);
 
 test('muestra encabezado con badges y las tabs navegan entre sub-rutas', async () => {
   const usuario = userEvent.setup();

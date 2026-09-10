@@ -1,24 +1,14 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { renderRutasEn } from '../../test/renderConRutas';
+import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
+import { enMain, renderRutasEn } from '../../test/renderConRutas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
-beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
-});
-
-/** El contenido de la pantalla vive en <main>; acotamos ahí las aserciones
- *  para no chocar con la card de temporada del sidebar. */
-function enMain() {
-  return within(screen.getByRole('main'));
-}
+beforeEach(prepararSesionAdmin);
 
 const FILAS_ESPECIES = [
   { id: 'sp-1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },

@@ -4,7 +4,7 @@ import { COLUMNAS_PLANTACIONES } from '../../screens/plantaciones/columnas';
 import { COLUMNAS_ESPECIES } from '../../screens/especies/columnas';
 import { columnasUsuarios } from '../../screens/usuarios/columnas';
 import { COLUMNAS_GRUPOS, COLUMNAS_PARCELAS, columnasArboles } from '../../screens/datos/columnas';
-import { ANCHO, restaurarAncho, simularAncho } from '../../test/simularAncho';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 import type { TableColumn } from '../../components/Table';
 
 interface Fila {
@@ -19,8 +19,6 @@ const COLUMNAS: Array<TableColumn<Fila>> = [
 ];
 
 const claves = <T,>(columnas: Array<TableColumn<T>>) => columnas.map((c) => c.key);
-
-afterEach(restaurarAncho);
 
 describe('useColumnasVisibles', () => {
   it('en desktop no saca ninguna', () => {
@@ -89,7 +87,7 @@ describe('lo que nunca se cae en móvil', () => {
     expect(claves(result.current)).toContain('acciones');
   });
 
-  it('en móvil efectivamente saca columnas de las tres tablas', () => {
+  it('en móvil efectivamente saca columnas de cada tabla', () => {
     simularAncho(ANCHO.movil);
     for (const columnas of [
       COLUMNAS_PLANTACIONES,
