@@ -3,25 +3,21 @@
  * nombres verosímiles a propósito: el punto es ver la app con anchos de columna
  * y conteos reales, que es donde aparecen los problemas de layout.
  *
- * Para cubrir una pantalla nueva, agregá su tabla a `TABLAS`.
+ * Para cubrir una pantalla nueva, agregá su tabla a `TABLAS` y, si otra la
+ * embebe, la FK a `COLUMNA_QUE_APUNTA_A`.
  */
 
 export type FilaDemo = Record<string, unknown>;
 
-export type FiltroDemo = {
-  columna: string;
-  valor: unknown;
-  /** `not(col, 'is', null)`: la fila entra si NO coincide. */
-  excluye?: boolean;
-};
+/** Cuántas filas comparten los valores de `fila`: cuenta miles de árboles sin
+ *  materializarlos. `fila` se filtra igual que una fila real. */
+export type ConteoDemo = { fila: FilaDemo; cantidad: number };
 
-/**
- * Una tabla del backend falso. `contar` existe para los `select(head, count)`:
- * devuelve el total sin materializar miles de filas de árboles.
- */
+/** Una tabla del backend falso. Si tiene `conteos`, responden los
+ *  `select(head, count)` en lugar de `filas`. */
 export type TablaDemo = {
   filas: FilaDemo[];
-  contar?: (filtros: FiltroDemo[]) => number;
+  conteos?: ConteoDemo[];
 };
 
 type Especie = { id: string; codigo: string; nombre: string; nombre_cientifico: string | null };
@@ -49,16 +45,41 @@ const PLANTACIONES: FilaDemo[] = [
   { id: 'p7', lugar: 'Arroyo Ceibo', periodo: '2023-2024', estado: 'finalizada', created_at: '2023-01-15T12:00:00Z', visible_in_app: false },
 ];
 
+/**
+ * Árboles por plantación y especie. De acá salen qué especies habilita cada
+ * plantación y todos los totales de árboles, así la tabla de especies, su panel
+ * y las tarjetas de plantación cierran entre sí.
+ */
+const ARBOLES_POR_PLANTACION: Record<string, Record<string, number>> = {
+  p1: { s1: 1002, s2: 774, s3: 2100, s4: 1408 },
+  p2: { s1: 2018, s2: 1500, s5: 400 },
+  p3: { s1: 2382, s6: 258 },
+  p4: { s3: 1136, s4: 1336 },
+  p5: { s2: 1844 },
+  p6: { s5: 1406 },
+  p7: { s6: 878 },
+};
+
+const TOTALES_DE_ARBOLES = Object.entries(ARBOLES_POR_PLANTACION).flatMap(
+  ([plantation_id, porEspecie]) =>
+    Object.entries(porEspecie).map(([species_id, arboles]) => ({ plantation_id, species_id, arboles })),
+);
+
+function arbolesDePlantacion(plantationId: string): number {
+  const porEspecie = Object.values(ARBOLES_POR_PLANTACION[plantationId] ?? {});
+  return porEspecie.reduce((total, arboles) => total + arboles, 0);
+}
+
 /** Devuelto por el RPC agregado `stats_plantaciones` (migración 027). */
 const STATS_PLANTACIONES: FilaDemo[] = [
-  { plantation_id: 'p1', arboles: 5284, parcelas: 14, usuarios: 6 },
-  { plantation_id: 'p2', arboles: 3918, parcelas: 11, usuarios: 4 },
-  { plantation_id: 'p3', arboles: 2640, parcelas: 9, usuarios: 3 },
-  { plantation_id: 'p4', arboles: 2472, parcelas: 12, usuarios: 5 },
-  { plantation_id: 'p5', arboles: 1844, parcelas: 6, usuarios: 2 },
-  { plantation_id: 'p6', arboles: 1406, parcelas: 7, usuarios: 3 },
-  { plantation_id: 'p7', arboles: 878, parcelas: 5, usuarios: 2 },
-];
+  { plantation_id: 'p1', parcelas: 14, usuarios: 6 },
+  { plantation_id: 'p2', parcelas: 11, usuarios: 4 },
+  { plantation_id: 'p3', parcelas: 9, usuarios: 3 },
+  { plantation_id: 'p4', parcelas: 12, usuarios: 5 },
+  { plantation_id: 'p5', parcelas: 6, usuarios: 2 },
+  { plantation_id: 'p6', parcelas: 7, usuarios: 3 },
+  { plantation_id: 'p7', parcelas: 5, usuarios: 2 },
+].map((stats) => ({ ...stats, arboles: arbolesDePlantacion(stats.plantation_id) }));
 
 const ESPECIES: Especie[] = [
   { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
@@ -77,31 +98,17 @@ function especiePorId(id: string): Especie {
   return especie;
 }
 
-/** Árboles por especie: alimenta los `count` sin inventar 18.442 filas. */
-const ARBOLES_POR_ESPECIE: Record<string, number> = {
-  s1: 5402,
-  s2: 4118,
-  s3: 3236,
-  s4: 2744,
-  s5: 1806,
-  s6: 1136,
-  s7: 0,
-  s8: 0,
-};
+const PLANTACION_ESPECIES: FilaDemo[] = TOTALES_DE_ARBOLES.map(({ plantation_id, species_id }) => ({
+  plantation_id,
+  species_id,
+}));
 
-/** Qué especies habilita cada plantación. */
-const ESPECIES_POR_PLANTACION: Record<string, string[]> = {
-  p1: ['s1', 's2', 's3', 's4'],
-  p2: ['s1', 's2', 's5'],
-  p3: ['s1', 's6'],
-  p4: ['s3', 's4'],
-  p5: ['s2'],
-  p6: ['s5'],
-  p7: ['s6'],
-};
-
-const PLANTACION_ESPECIES: FilaDemo[] = Object.entries(ESPECIES_POR_PLANTACION).flatMap(
-  ([plantation_id, especies]) => especies.map((species_id) => ({ plantation_id, species_id })),
+/** Con la forma en que las consultas filtran árboles: por especie y por `groups.plantation_id`. */
+const CONTEOS_DE_ARBOLES: ConteoDemo[] = TOTALES_DE_ARBOLES.map(
+  ({ plantation_id, species_id, arboles }) => ({
+    fila: { species_id, groups: { plantation_id } },
+    cantidad: arboles,
+  }),
 );
 
 /** Técnico → plantación → día de la asignación (los admins son miembros
@@ -123,14 +130,14 @@ const PLANTACION_USUARIOS: FilaDemo[] = Object.entries(ASIGNACIONES_POR_TECNICO)
 );
 
 const PARCELAS: FilaDemo[] = [
-  { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z' },
-  { id: 'pa2', plantation_id: 'p1', nombre: 'Bajo del Arroyo', codigo: 'BA03', descripcion: null, created_at: '2025-03-16T12:00:00Z' },
+  { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z', deleted_at: null },
+  { id: 'pa2', plantation_id: 'p1', nombre: 'Bajo del Arroyo', codigo: 'BA03', descripcion: null, created_at: '2025-03-16T12:00:00Z', deleted_at: null },
 ];
 
 const GRUPOS: FilaDemo[] = [
-  { id: 'g1', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 10', codigo: 'L10', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T12:00:00Z', parcelas: { codigo: 'LP12' } },
-  { id: 'g2', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 11', codigo: 'L11', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T13:00:00Z', parcelas: { codigo: 'LP12' } },
-  { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: 'bosquete', estado: 'finalizada', created_at: '2025-04-05T12:00:00Z', parcelas: { codigo: 'BA03' } },
+  { id: 'g1', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 10', codigo: 'L10', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T12:00:00Z' },
+  { id: 'g2', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 11', codigo: 'L11', tipo: 'linea', estado: 'activa', created_at: '2025-04-02T13:00:00Z' },
+  { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: 'bosquete', estado: 'finalizada', created_at: '2025-04-05T12:00:00Z' },
 ];
 
 /** Especies de los árboles del grupo, en el orden en que se alternan. */
@@ -155,10 +162,18 @@ const ARBOLES: FilaDemo[] = Array.from({ length: 30 }, (_, indice) => {
     longitude: conGps ? -55.89744 + indice * 0.0001 : null,
     gps_accuracy: conGps ? 4.2 : null,
     gps_captured_at: conGps ? '2026-04-10T12:00:05Z' : null,
-    species: { codigo: especie.codigo, nombre: especie.nombre },
-    groups: { codigo: 'L10', parcela_id: 'pa1', plantation_id: 'p1' },
   };
 });
+
+/** Columna con la que otra tabla apunta a cada una. Un nombre por destino
+ *  alcanza porque las FK que embebe la web siguen esa convención. */
+export const COLUMNA_QUE_APUNTA_A: Readonly<Record<string, string | undefined>> = {
+  plantations: 'plantation_id',
+  species: 'species_id',
+  profiles: 'user_id',
+  parcelas: 'parcela_id',
+  groups: 'group_id',
+};
 
 export const TABLAS: Record<string, TablaDemo> = {
   organizations: { filas: [ORGANIZACION] },
@@ -170,19 +185,7 @@ export const TABLAS: Record<string, TablaDemo> = {
   plantation_users: { filas: PLANTACION_USUARIOS },
   parcelas: { filas: PARCELAS },
   groups: { filas: GRUPOS },
-  trees: {
-    filas: ARBOLES,
-    contar: (filtros) => {
-      const especie = filtros.find((filtro) => filtro.columna === 'species_id');
-      if (especie) return ARBOLES_POR_ESPECIE[String(especie.valor)] ?? 0;
-      const plantacion = filtros.find((filtro) => filtro.columna === 'plantation_id');
-      if (plantacion) {
-        const stats = STATS_PLANTACIONES.find((fila) => fila.plantation_id === plantacion.valor);
-        return Number(stats?.arboles ?? 0);
-      }
-      return Object.values(ARBOLES_POR_ESPECIE).reduce((total, n) => total + n, 0);
-    },
-  },
+  trees: { filas: ARBOLES, conteos: CONTEOS_DE_ARBOLES },
 };
 
 /** Respuestas de `supabase.rpc(...)`. */

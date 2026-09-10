@@ -6,7 +6,16 @@
  * `vite.demo.config.ts` lo pone en lugar de `lib/supabase` por alias, así que
  * ningún módulo de producción lo importa y nunca entra al bundle.
  */
-import { RPC, SESION_DEMO, TABLAS, type FilaDemo, type FiltroDemo } from './datos';
+import { RPC, SESION_DEMO, TABLAS, type FilaDemo, type TablaDemo } from './datos';
+import { conEmbebidos, embebidosDe, type Embebido } from './embebidos';
+import {
+  OPERADOR,
+  alternativasDe,
+  cumpleTodos,
+  negacion,
+  type FiltroDemo,
+  type Operador,
+} from './filtros';
 
 /** Parámetro de URL que arranca sin sesión. Es la única forma de ver el login
  *  acá: con sesión redirige al listado, así que sin esto una captura de
@@ -21,76 +30,98 @@ type RespuestaDemo = {
 
 type OpcionesSelect = { head?: boolean; count?: string };
 
-/** La web los encadena pero con datos de mentira alcanza con `eq` y `not`. */
-const METODOS_SIN_EFECTO = ['neq', 'in', 'is', 'gte', 'lte', 'ilike', 'order', 'limit', 'range'] as const;
-type MetodoSinEfecto = (typeof METODOS_SIN_EFECTO)[number];
+type MetodoDeFiltro = (columna: string, valor: unknown) => ConsultaDemo;
 
 /** Sólo los métodos que la web encadena; el resto no hace falta simularlo. */
-interface ConsultaDemo
-  extends PromiseLike<RespuestaDemo>,
-    Record<MetodoSinEfecto, () => ConsultaDemo> {
+interface ConsultaDemo extends PromiseLike<RespuestaDemo>, Record<Operador, MetodoDeFiltro> {
   select: (columnas?: string, opciones?: OpcionesSelect) => ConsultaDemo;
-  eq: (columna: string, valor: unknown) => ConsultaDemo;
   not: (columna: string, operador: string, valor: unknown) => ConsultaDemo;
+  or: (condiciones: string) => ConsultaDemo;
+  order: () => ConsultaDemo;
+  limit: (cantidad: number) => ConsultaDemo;
+  range: (desde: number, hasta: number) => ConsultaDemo;
   maybeSingle: () => Promise<RespuestaDemo>;
   single: () => Promise<RespuestaDemo>;
 }
 
+/** Filas de `desde` a `hasta` inclusive, como `range` de PostgREST. */
+type Ventana = { desde: number; hasta: number };
+
 type EstadoConsulta = {
   tabla: string;
   filtros: FiltroDemo[];
+  embebidos: Embebido[];
+  ventana: Ventana | null;
   soloConteo: boolean;
   unaFila: boolean;
 };
 
-/** ¿La fila pasa el filtro? Una columna que los datos no modelan no filtra. */
-function cumpleFiltro(fila: FilaDemo, { columna, valor, excluye }: FiltroDemo): boolean {
-  if (!(columna in fila)) return true;
-  return excluye ? fila[columna] !== valor : fila[columna] === valor;
+type Cambiar = (cambio: Partial<EstadoConsulta>) => ConsultaDemo;
+
+function filasQueEntran(filas: FilaDemo[], { filtros, embebidos }: EstadoConsulta): FilaDemo[] {
+  return filas
+    .map((fila) => conEmbebidos(fila, embebidos))
+    .filter((fila) => cumpleTodos(fila, filtros));
 }
 
-function filtrarEn(filas: FilaDemo[], filtros: FiltroDemo[]): FilaDemo[] {
-  return filas.filter((fila) => filtros.every((filtro) => cumpleFiltro(fila, filtro)));
+/** `conteos` da el total sin materializar las filas; sin él se cuentan las que entran. */
+function contar({ filas, conteos }: TablaDemo, estado: EstadoConsulta): number {
+  if (!conteos) return filasQueEntran(filas, estado).length;
+  return conteos
+    .filter(({ fila }) => cumpleTodos(fila, estado.filtros))
+    .reduce((total, { cantidad }) => total + cantidad, 0);
 }
 
-function resolver({ tabla: nombre, filtros, soloConteo, unaFila }: EstadoConsulta): RespuestaDemo {
-  const tabla = TABLAS[nombre];
-  if (!tabla) return { data: unaFila ? null : [], error: null, count: 0 };
-  if (soloConteo) {
-    const total = tabla.contar ? tabla.contar(filtros) : filtrarEn(tabla.filas, filtros).length;
-    return { data: null, error: null, count: total };
-  }
-  const filas = filtrarEn(tabla.filas, filtros);
-  if (unaFila) return { data: filas[0] ?? null, error: null };
-  return { data: filas, error: null, count: filas.length };
+function recortar(filas: FilaDemo[], ventana: Ventana | null): FilaDemo[] {
+  return ventana ? filas.slice(ventana.desde, ventana.hasta + 1) : filas;
+}
+
+/** Como `count: 'exact'` de PostgREST: el total es de todo lo que entra, no de la página. */
+function resolver(estado: EstadoConsulta): RespuestaDemo {
+  const tabla = TABLAS[estado.tabla];
+  if (!tabla) return { data: estado.unaFila ? null : [], error: null, count: 0 };
+  if (estado.soloConteo) return { data: null, error: null, count: contar(tabla, estado) };
+  const filas = filasQueEntran(tabla.filas, estado);
+  if (estado.unaFila) return { data: filas[0] ?? null, error: null };
+  return { data: recortar(filas, estado.ventana), error: null, count: filas.length };
+}
+
+function metodosDeFiltro(agregar: (filtro: FiltroDemo) => ConsultaDemo): Record<Operador, MetodoDeFiltro> {
+  const metodos = Object.values(OPERADOR).map((operador) => [
+    operador,
+    (columna: string, valor: unknown) => agregar({ columna, operador, valor }),
+  ]);
+  return Object.fromEntries(metodos) as Record<Operador, MetodoDeFiltro>;
+}
+
+/** `order` no cambia nada: las fixtures ya vienen en el orden en que las muestran las pantallas. */
+function metodosDePagina(cambiar: Cambiar): Pick<ConsultaDemo, 'order' | 'limit' | 'range'> {
+  return {
+    order: () => cambiar({}),
+    limit: (cantidad) => cambiar({ ventana: { desde: 0, hasta: cantidad - 1 } }),
+    range: (desde, hasta) => cambiar({ ventana: { desde, hasta } }),
+  };
+}
+
+function estadoInicial(tabla: string): EstadoConsulta {
+  return { tabla, filtros: [], embebidos: [], ventana: null, soloConteo: false, unaFila: false };
 }
 
 function crearConsulta(tabla: string): ConsultaDemo {
-  const estado: EstadoConsulta = { tabla, filtros: [], soloConteo: false, unaFila: false };
-  const unaSola = () => {
-    estado.unaFila = true;
-    return Promise.resolve(resolver(estado));
+  const estado = estadoInicial(tabla);
+  const cambiar: Cambiar = (cambio) => {
+    Object.assign(estado, cambio);
+    return consulta;
   };
-  const sinEfecto = Object.fromEntries(
-    METODOS_SIN_EFECTO.map((metodo) => [metodo, () => consulta]),
-  ) as Record<MetodoSinEfecto, () => ConsultaDemo>;
-
+  const agregar = (filtro: FiltroDemo) => cambiar({ filtros: [...estado.filtros, filtro] });
+  const unaSola = () => Promise.resolve(resolver({ ...estado, unaFila: true }));
   const consulta: ConsultaDemo = {
-    ...sinEfecto,
-    select: (_columnas, opciones) => {
-      if (opciones?.head) estado.soloConteo = true;
-      return consulta;
-    },
-    eq: (columna, valor) => {
-      estado.filtros.push({ columna, valor });
-      return consulta;
-    },
-    // `not(col, 'is', null)` sí cambia el resultado: sin él los árboles sin GPS
-    // llegan al mapa con `latitude: null` y Leaflet tira abajo la pantalla entera.
-    not: (columna, operador, valor) => {
-      if (operador === 'is') estado.filtros.push({ columna, valor, excluye: true });
-      return consulta;
-    },
+    ...metodosDeFiltro(agregar),
+    ...metodosDePagina(cambiar),
+    select: (columnas = '', opciones) =>
+      cambiar({ embebidos: embebidosDe(columnas), soloConteo: Boolean(opciones?.head) }),
+    not: (columna, operador, valor) => agregar(negacion(columna, operador, valor)),
+    or: (condiciones) => agregar(alternativasDe(condiciones)),
     maybeSingle: unaSola,
     single: unaSola,
     then: (alCumplir, alFallar) => Promise.resolve(resolver(estado)).then(alCumplir, alFallar),
