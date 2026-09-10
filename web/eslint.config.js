@@ -35,11 +35,23 @@ export default tseslint.config(
     // Scripts de Node de la raíz. ESLint ignora lo que está fuera de web/, así
     // que `lint` los pasa desde la raíz con `-c`, que toma el cwd como base de
     // los patrones. El sourceType sale de la extensión (default de ESLint) y sus
-    // tests en TS caen en el bloque de arriba.
+    // tests en TS caen en el bloque de arriba. Desde web/ también toma los .mjs
+    // de la auditoría, que corren en Node.
     files: ['scripts/**/*.{cjs,mjs}'],
-    // Desde web/ el patrón también toma la auditoría, que evalúa código en el browser.
-    ignores: ['scripts/auditoria/**'],
     languageOptions: { globals: globals.node },
     rules: js.configs.recommended.rules,
+  },
+  {
+    // Lo que la auditoría corre en la página: lo inyecta `addScriptTag` o lo
+    // serializa `pagina.evaluate`. Por eso vive aparte de los .mjs de Node.
+    files: ['scripts/auditoria/*.navegador.js'],
+    languageOptions: { globals: globals.browser },
+    rules: js.configs.recommended.rules,
+  },
+  {
+    // `addScriptTag` lo inyecta como script clásico: sus funciones quedan
+    // globales de la página, no son exports de un módulo.
+    files: ['scripts/auditoria/medir.navegador.js'],
+    languageOptions: { sourceType: 'script' },
   },
 );

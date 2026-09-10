@@ -1,5 +1,6 @@
 /** Abrir una vista en Chromium y medirla. */
 import { ALTO_VENTANA, BASE_URL, MEDIR_NAVEGADOR, SELECTOR_CARDS } from './config.mjs';
+import { contarNodos, medirEnPagina } from './pagina.navegador.js';
 
 const TIMEOUT_CARGA_MS = 20000;
 const TIMEOUT_ABRIR_MS = 10000;
@@ -34,8 +35,7 @@ export async function abrirPagina(pagina, { ruta, abrir, raiz }) {
 
 /** Mide la página abierta, acotada a `selectorRaiz` si viene. */
 export function medirPagina(pagina, selectorRaiz = null) {
-  // `medir` es global de la página: la inyecta abrirPagina.
-  return pagina.evaluate(([raiz, cards]) => medir(raiz, cards), [selectorRaiz, SELECTOR_CARDS]);
+  return pagina.evaluate(medirEnPagina, [selectorRaiz, SELECTOR_CARDS]);
 }
 
 /**
@@ -50,7 +50,7 @@ async function asentar(pagina) {
   let previo = -1;
   for (let i = 0; i < INTENTOS_ASENTAR; i++) {
     await pagina.waitForTimeout(PASO_ASENTAR_MS);
-    const actual = await pagina.evaluate(() => document.querySelectorAll('*').length);
+    const actual = await pagina.evaluate(contarNodos);
     if (actual === previo) return;
     previo = actual;
   }

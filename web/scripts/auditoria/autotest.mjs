@@ -35,7 +35,7 @@ const CASOS_AUTOTEST = [
     ruta: RUTA.dashboard,
     ancho: 1920,
     css: `${claseModulo('panel')}{height:0 !important;min-height:0 !important}`,
-    // Pasa por marcarColapsadas, no por una regla inline: la rama relativa
+    // Pasa por el clasificador real, no por una regla inline: la rama relativa
     // (fracción + desborda) es la que produce la mayoría de los hits reales.
     clasificar: true,
     espera: (r) => r.nColapsadas > 0,
@@ -48,6 +48,18 @@ const CASOS_AUTOTEST = [
     // max-height, y sin anularlos la inyección no rompe nada.
     css:
       `${claseModulo('panel')}{min-height:0 !important;max-height:60px !important;` +
+      'overflow:hidden !important}',
+    clasificar: true,
+    espera: (r) => r.nColapsadas > 0,
+  },
+  {
+    nombre: 'H · card que pierde el ancho y deja contenido afuera',
+    ruta: RUTA.dashboard,
+    ancho: 1920,
+    // Ejerce la escala de ancho: el mapa queda en 256px de 988 y su contenido no
+    // entra. Con una escala de 0.5 hacía falta bajar del 20% para contar.
+    css:
+      `${claseModulo('panel')}{min-width:0 !important;max-width:300px !important;` +
       'overflow:hidden !important}',
     clasificar: true,
     espera: (r) => r.nColapsadas > 0,

@@ -3,6 +3,7 @@
  * imports, así que esto se inyecta entero con `addScriptTag` y todo queda como
  * global de la página. El punto de entrada es `medir`.
  */
+/* exported medir -- lo llama pagina.navegador.js */
 
 /** Holgura para no contar redondeos de subpíxel como defecto. */
 const TOLERANCIA_PX = 2;
