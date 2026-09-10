@@ -98,63 +98,19 @@ no se resuelve en el prelude de una at-rule; `src/theme/__tests__/breakpoints.te
 falla si aparece otro número, otra unidad o la sintaxis de rango, y también exige
 `minmax(0, …)` en los tracks flexibles.
 
-Los bugs de layout no los ve ningún test: jsdom no evalúa layout, así que todos
-los `getBoundingClientRect` dan cero. Para eso está `npm run audit:responsive`,
-que recorre 13 vistas × 9 anchos en Chromium y reporta scroll horizontal,
-solapamientos, texto recortado, controles inalcanzables, cards colapsadas,
-tablas que recortan en vez de scrollear, pantallas que no renderizaron nada y
-controles con altos distintos en una misma fila —este último es el único que
-ve una regresión de estilo que no rompe la geometría, como un campo que pierde
-su alto compacto al cambiar de módulo CSS—.
-Un texto truncado con contrato de ellipsis completo (`nowrap` + `overflow` +
-`text-overflow`) se releva aparte y no cuenta: es la salida deliberada para un
-dato de largo variable, y contarla haría que el arreglo correcto suba la nota.
-Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
-empeoró.
-
-Las 13 vistas son las 9 pantallas, las 2 que quedan fuera del gate de sesión
-(login y establecer contraseña) y 2 de los 6 modales —el más grande y el más
-chico—. Un modal se mide abriéndolo con el nombre de su botón (`abrir`) y
-acotando la medición al diálogo (`raiz`): sin acotarla, el texto de la página
-que queda detrás del overlay se pisa con el del diálogo y darían decenas de
-solapes que nadie ve. Sin cubrir quedan los otros 4 modales, los estados de
-error y de vacío, y los popovers.
-
-Lo que la auditoría **no** puede ver es todo lo que no rompe la geometría. Una
-barra superior que se come el 91% del alto antes de mostrar un dato no solapa,
-no recorta y se alcanza scrolleando: eso se mira a ojo con `dev:demo`.
-
-**Corrélo a mano cuando toques layout: no está en CI**, y es una decisión, no un
-olvido. Necesita un Chromium y el servidor demo levantado, y el trabajo que
-cubre —CSS de layout— es el que menos cambia. Con eso, el baseline vale lo que
-valga la disciplina de correrlo: si tocaste un `@media`, una grilla, un `flex` o
-un alto de card, corrélo antes de abrir el PR y pegá la matriz ahí. Si querés
-volver sobre esto, la conversación es #359.
-
-El baseline versiona **solo las métricas duras distintas de cero**: una celda
-limpia es `{}` y lo único que se lee en el archivo son los defectos conocidos
-que faltan arreglar. El informe completo —el detalle de cada defecto y el
-tamaño de cada card— sale por pantalla en cada corrida; guardarlo eran 2400
-líneas de output generado donde cualquier píxel producía diff.
+Los bugs de layout los busca la auditoría en Chromium. Qué mide, por qué no
+corre en CI y qué no ve: [docs/responsive-web.md](../docs/responsive-web.md#cómo-se-verifica).
+Corrélo cuando toques layout y pegá la matriz en el PR.
 
 ```sh
-npx playwright install chromium   # una vez por máquina
-npm run dev:demo                  # en otra terminal
-npm run audit:responsive
-npm run audit:responsive -- --autotest   # verifica que los checks disparen
-npm run audit:responsive -- --baseline   # regraba el baseline
+npx playwright install chromium          # una vez por máquina
+npm run dev:demo                         # en otra terminal
+npm run audit:responsive                 # matriz; sale con 1 si algo empeoró contra el baseline
+npm run audit:responsive -- --autotest   # que los checks disparen y cada fila mida lo que dice
+npm run audit:responsive -- --baseline   # regraba scripts/auditoria/baseline.json
 npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
+BASE_URL=http://localhost:4173 npm run audit:responsive   # contra otro servidor
 ```
-
-`--autotest` existe porque un check que no puede disparar reporta cero y hace
-parecer que la app está impecable: le inyecta a una pantalla limpia cada defecto
-que dice cazar y exige que lo reporte, y que calle sin él.
-
-Corre además unas verificaciones de **cobertura**, porque un check sano apuntado
-a la pantalla equivocada también reporta cero: que cada fila mida lo que dice
-medir, y que una medición acotada esté realmente acotada. Existen porque la fila
-`login` medía el listado de plantaciones —con sesión, `/login` redirige— y sus 9
-celdas eran un duplicado exacto de las de `plantaciones`.
 
 En pantalla de teléfono las tablas sueltan sus columnas secundarias. La marca
 vive en la columna (`fueraEnMovil` en `TableColumn`), no en una lista de claves
