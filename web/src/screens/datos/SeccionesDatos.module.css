@@ -26,23 +26,23 @@
 
 /* Anchos por control: el más informativo (parcela) es el más ancho. */
 .filtroParcela {
-  width: 210px;
+  width: var(--ancho-filtro-lg);
 }
 
 .filtroGrupo {
-  width: 150px;
+  width: var(--ancho-filtro-md);
 }
 
 .filtroEspecie {
-  width: 150px;
+  width: var(--ancho-filtro-md);
 }
 
 .filtroGps {
-  width: 120px;
+  width: var(--ancho-filtro-xs);
 }
 
 .filtroFoto {
-  width: 130px;
+  width: var(--ancho-filtro-sm);
 }
 
 /* Filtro sin sentido todavía (Grupo sin parcela elegida): se ve apagado, no
@@ -56,8 +56,8 @@
 /* Punto de color que precede a la especie. El color es data-driven (inline). */
 .puntoEspecie {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: var(--tamano-punto);
+  height: var(--tamano-punto);
   margin-right: var(--space-md);
   border-radius: var(--radius-full);
   vertical-align: middle;

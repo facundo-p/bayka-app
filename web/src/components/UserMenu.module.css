@@ -23,7 +23,7 @@
   background-color: var(--color-primary);
   color: var(--color-white);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .datos {
@@ -34,7 +34,7 @@
 }
 
 .nombre {
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   font-size: var(--text-md);
   color: var(--color-text-primary);
   white-space: nowrap;

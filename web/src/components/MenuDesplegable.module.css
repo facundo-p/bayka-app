@@ -7,7 +7,7 @@
   position: absolute;
   right: 0;
   top: calc(100% + var(--space-xs));
-  z-index: 10;
+  z-index: var(--z-flotante);
   min-width: 200px;
   display: flex;
   flex-direction: column;

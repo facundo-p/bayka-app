@@ -2,10 +2,10 @@
   /* Estática mientras el shell está acotado al viewport: no hay nada que
      scrollee detrás, y `sticky` la correría el alto del banner tapando el
      contenido. Vuelve a sticky en los fallbacks donde scrollea el documento.
-     Por debajo de los paneles de Leaflet (z-index interno alto) pero por
-     encima del contenido normal. z-index entero: no es un color. */
+     Queda sobre el mapa porque MapaPuntos encierra los z-index de Leaflet en
+     su propio contexto de apilamiento. */
   position: static;
-  z-index: 20;
+  z-index: var(--z-topbar);
   display: flex;
   /* Envuelve en vez de desbordarse. `space-between` fuerza un renglón único:
      el reparto lo hace el `margin-left: auto` de `.right`, que sigue pegando

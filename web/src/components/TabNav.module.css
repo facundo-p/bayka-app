@@ -23,7 +23,7 @@
 
 .tabActiva {
   color: var(--color-primary);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   border-bottom-color: var(--color-primary-accent);
 }
 
@@ -48,7 +48,7 @@
   flex-wrap: wrap;
   max-width: 100%;
   gap: 2px;
-  padding: 3px;
+  padding: var(--pad-riel);
   margin-bottom: 0;
   background-color: var(--color-surface-sunken);
   border: var(--border-thin) solid var(--color-border);
@@ -70,7 +70,7 @@
 .navSegmentada .tabActiva {
   background-color: var(--color-surface);
   color: var(--color-text-heading);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   box-shadow: var(--shadow-card);
 }
 
