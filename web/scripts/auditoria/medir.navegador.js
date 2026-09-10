@@ -112,6 +112,10 @@ function tieneArea(ancho, alto) {
 
 /** Los estilos no lo esconden y ocupa lugar. No mira recortes. */
 function pintado(el) {
+  // Un <details> cerrado esconde su contenido con `content-visibility`, que no
+  // toca display ni visibility: el texto sigue ubicado encima del ítem de abajo
+  // sin pintarse, y se contaba como solape (#409).
+  if (!el.checkVisibility()) return false;
   const c = getComputedStyle(el);
   if (c.display === 'none' || c.visibility === 'hidden' || c.opacity === '0') return false;
   const r = el.getBoundingClientRect();
