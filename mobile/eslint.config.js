@@ -18,6 +18,13 @@ module.exports = defineConfig([
     },
   },
   {
+    // Los mocks manuales en JS usan el global `jest` sin importarlo.
+    files: ["__mocks__/**/*.js", "tests/__mocks__/**/*.js"],
+    languageOptions: {
+      globals: globals.jest,
+    },
+  },
+  {
     // Prohíbe comparar contra códigos de error SQLSTATE de Postgres como literal
     // suelto (p.ej. `error.code === '23505'`). Deben venir de PG_ERROR
     // (src/supabase/postgresErrorCodes.ts). Detecta el patrón SQLSTATE: 2 dígitos

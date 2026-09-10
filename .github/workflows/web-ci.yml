@@ -6,6 +6,8 @@ on:
       - 'web/**'
       # El núcleo de las edge functions se testea con el vitest de web.
       - 'supabase/functions/**'
+      # Web lintea y testea los scripts de la raíz.
+      - 'scripts/**'
       - '.github/workflows/web-ci.yml'
 
 jobs:

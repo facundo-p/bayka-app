@@ -33,6 +33,9 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      - name: ESLint
+        run: npx eslint .
+
   unit:
     name: Unit Tests
     runs-on: ubuntu-latest

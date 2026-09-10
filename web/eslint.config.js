@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -29,5 +30,13 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // Scripts CommonJS de la raíz que requieren web y mobile al buildear. ESLint
+    // ignora lo que está fuera de web/, así que `lint` los pasa desde la raíz
+    // con `-c`, que toma el cwd como base de los patrones.
+    files: ['scripts/*.cjs'],
+    languageOptions: { sourceType: 'commonjs', globals: globals.node },
+    rules: js.configs.recommended.rules,
   },
 );
