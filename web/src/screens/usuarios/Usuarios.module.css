@@ -121,24 +121,7 @@
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
-}
-
-.form input,
-.form select {
-  min-height: var(--control-height-input);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
-}
-
-.form label {
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: formCompacto from '../../components/Formulario.module.css';
 }
 
 /* Rol bloqueado por un guard: el fondo hundido lo marca como no editable. */
@@ -148,15 +131,11 @@
 }
 
 .advertencia {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-estado-pending);
+  composes: advertencia from '../../components/Formulario.module.css';
 }
 
 .errorEnvio {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-danger);
+  composes: errorEnvio from '../../components/Formulario.module.css';
 }
 
 .overline {

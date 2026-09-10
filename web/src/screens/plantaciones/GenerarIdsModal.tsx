@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Modal } from '../../components';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { generarIds, seedSugerido } from '../../queries/idsQueries';
-import styles from './GenerarIdsModal.module.css';
+import styles from '../../components/Formulario.module.css';
 
 const MENSAJE_SEED_INVALIDO = 'Ingresá un número entero mayor a 0.';
 const ADVERTENCIA_IRREVERSIBLE = 'Esta acción no se puede deshacer.';

@@ -262,17 +262,13 @@
 
 /* ─── Form dentro de modal (asignar técnico) ─────────────────────────── */
 .formModal {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
+  composes: form from '../../components/Formulario.module.css';
   margin-bottom: var(--space-3xl);
 }
 
 /* ─── Compartidos (errores, ayudas, modales de confirmación) ─────────── */
 .errorAccion {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-danger);
+  composes: errorEnvio from '../../components/Formulario.module.css';
 }
 
 .avisoInfo {
