@@ -70,6 +70,10 @@ El banner de entorno de pruebas viene prendido a propósito: nada de lo que se v
 ahí es real. `DEMO_BANNER=0 npm run dev:demo` lo apaga, para medir una pantalla
 sin los 26px de la franja.
 
+El cliente falso siempre devuelve sesión, así que `/login` redirige al listado y
+no se puede ver. Con **`?sinSesion=1`** arranca sin sesión: es la única forma de
+mirar el login acá.
+
 Cubre las tres pantallas de Organización y el detalle de plantación (parcelas,
 grupos y 30 árboles con GPS y fotos en distintos estados).
 
@@ -83,6 +87,10 @@ producción: el reemplazo lo hace un alias de `vite.demo.config.ts`.
 
 ## Responsive
 
+El criterio, los patrones y las decisiones están en
+[docs/responsive-web.md](../docs/responsive-web.md). Acá va sólo cómo se corre
+la verificación.
+
 La escala de breakpoints del proyecto es **1400 / 1200 / 900 / 600** (más
 `max-height: 760` para ventana baja), documentada en el bloque Layout de
 `src/theme/theme.css`. Los valores van literales en cada `@media` porque `var()`
@@ -92,7 +100,7 @@ falla si aparece otro número, otra unidad o la sintaxis de rango, y también ex
 
 Los bugs de layout no los ve ningún test: jsdom no evalúa layout, así que todos
 los `getBoundingClientRect` dan cero. Para eso está `npm run audit:responsive`,
-que recorre 9 pantallas × 9 anchos en Chromium y reporta scroll horizontal,
+que recorre 13 vistas × 9 anchos en Chromium y reporta scroll horizontal,
 solapamientos, texto recortado, controles inalcanzables, cards colapsadas,
 tablas que recortan en vez de scrollear, pantallas que no renderizaron nada y
 controles con altos distintos en una misma fila —este último es el único que
@@ -103,6 +111,18 @@ Un texto truncado con contrato de ellipsis completo (`nowrap` + `overflow` +
 dato de largo variable, y contarla haría que el arreglo correcto suba la nota.
 Compara contra `scripts/auditoria.baseline.json` y sale con código 1 si algo
 empeoró.
+
+Las 13 vistas son las 9 pantallas, las 2 que quedan fuera del gate de sesión
+(login y establecer contraseña) y 2 de los 6 modales —el más grande y el más
+chico—. Un modal se mide abriéndolo con el nombre de su botón (`abrir`) y
+acotando la medición al diálogo (`raiz`): sin acotarla, el texto de la página
+que queda detrás del overlay se pisa con el del diálogo y darían decenas de
+solapes que nadie ve. Sin cubrir quedan los otros 4 modales, los estados de
+error y de vacío, y los popovers.
+
+Lo que la auditoría **no** puede ver es todo lo que no rompe la geometría. Una
+barra superior que se come el 91% del alto antes de mostrar un dato no solapa,
+no recorta y se alcanza scrolleando: eso se mira a ojo con `dev:demo`.
 
 **Corrélo a mano cuando toques layout: no está en CI**, y es una decisión, no un
 olvido. Necesita un Chromium y el servidor demo levantado, y el trabajo que
@@ -129,6 +149,12 @@ npm run audit:responsive -- --capturas   # además escribe PNGs en .auditoria/
 `--autotest` existe porque un check que no puede disparar reporta cero y hace
 parecer que la app está impecable: le inyecta a una pantalla limpia cada defecto
 que dice cazar y exige que lo reporte, y que calle sin él.
+
+Corre además unas verificaciones de **cobertura**, porque un check sano apuntado
+a la pantalla equivocada también reporta cero: que cada fila mida lo que dice
+medir, y que una medición acotada esté realmente acotada. Existen porque la fila
+`login` medía el listado de plantaciones —con sesión, `/login` redirige— y sus 9
+celdas eran un duplicado exacto de las de `plantaciones`.
 
 En pantalla de teléfono las tablas sueltan sus columnas secundarias. La marca
 vive en la columna (`fueraEnMovil` en `TableColumn`), no en una lista de claves

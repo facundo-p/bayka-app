@@ -24,12 +24,16 @@
  * una grilla, un `flex` o un alto de card, corrélo antes de abrir el PR.
  *
  * Límites conocidos, para no leer de más en un `·`:
- *  - Solo mide la carga inicial de cada ruta: nada de formularios, modales,
- *    estados de error/vacío ni nada post-interacción. Con un popover abierto O
- *    da ruido, porque no tiene noción de capa flotante.
+ *  - Mide la carga inicial de cada ruta, y los modales abriéndolos con su
+ *    `abrir` y midiendo sólo el diálogo. Lo que no cubre: estados de error y
+ *    de vacío, y popovers —con uno abierto O da ruido, porque fuera de una
+ *    `raiz` acotada no tiene noción de capa flotante—.
  *  - O y R solo ven el primer viewport: en los anchos chicos, donde el
  *    documento scrollea, queda afuera la mayor parte del contenido.
  *  - Corre siempre a 900px de alto: el escalón `max-height: 760` no se ejerce.
+ *  - Los anchos muestrean los escalones, no las bandas entre ellos: 601–767 no
+ *    se mide, y ahí la barra superior mide más que a 768 porque vuelve la card
+ *    de temporada.
  *  - `tapados` (texto encima de un control solo-ícono) se releva pero no cuenta
  *    para el criterio de fallo: elementFromPoint da falsos positivos con
  *    backdrop-filter y capas sticky.
@@ -51,17 +55,41 @@ const REGRABAR = process.argv.includes('--baseline');
 const AUTOTEST = process.argv.includes('--autotest');
 const CON_CAPTURAS = process.argv.includes('--capturas');
 
-/** El id `p1` lo define el fake de `src/demo/datos.ts`. */
+/**
+ * Qué se mide. `abrir` es el nombre accesible de un botón que se clickea
+ * después de cargar, y `raiz` acota la medición a ese subárbol: con un modal
+ * abierto, el texto de la página que queda detrás del overlay se pisa con el
+ * del diálogo y O daría decenas de solapes que nadie ve. `sinChrome` marca las
+ * que no montan el layout, para el piso de VACIA.
+ *
+ * El id `p1` lo define el fake de `src/demo/datos.ts`.
+ */
 const RUTAS = [
-  ['plantaciones', '/plantaciones'],
-  ['dashboard', '/plantaciones/p1'],
-  ['datos-parcelas', '/plantaciones/p1/datos/parcelas'],
-  ['datos-grupos', '/plantaciones/p1/datos/grupos'],
-  ['datos-arboles', '/plantaciones/p1/datos/arboles'],
-  ['configuracion', '/plantaciones/p1/configuracion'],
-  ['especies', '/especies'],
-  ['usuarios', '/usuarios'],
-  ['novedades', '/novedades'],
+  { pantalla: 'plantaciones', ruta: '/plantaciones' },
+  { pantalla: 'dashboard', ruta: '/plantaciones/p1' },
+  { pantalla: 'datos-parcelas', ruta: '/plantaciones/p1/datos/parcelas' },
+  { pantalla: 'datos-grupos', ruta: '/plantaciones/p1/datos/grupos' },
+  { pantalla: 'datos-arboles', ruta: '/plantaciones/p1/datos/arboles' },
+  { pantalla: 'configuracion', ruta: '/plantaciones/p1/configuracion' },
+  { pantalla: 'especies', ruta: '/especies' },
+  { pantalla: 'usuarios', ruta: '/usuarios' },
+  { pantalla: 'novedades', ruta: '/novedades' },
+  // Fuera del gate de sesión: se ven sin el sidebar y nunca se habían medido.
+  { pantalla: 'login', ruta: '/login?sinSesion=1', sinChrome: true },
+  { pantalla: 'password', ruta: '/establecer-password', sinChrome: true },
+  // El formulario más grande de la app y el más chico: los dos extremos del modal.
+  {
+    pantalla: 'modal-plantacion',
+    ruta: '/plantaciones',
+    abrir: 'Nueva plantación',
+    raiz: '[role="dialog"]',
+  },
+  {
+    pantalla: 'modal-usuario',
+    ruta: '/usuarios',
+    abrir: 'Agregar usuario',
+    raiz: '[role="dialog"]',
+  },
 ];
 
 /** Los 4 escalones de la escala, más los extremos que nadie cubre. */
@@ -71,7 +99,17 @@ const ANCHOS = [1920, 1440, 1280, 1024, 900, 768, 600, 430, 360];
  * Lo que se mide en cada página. Corre dentro del browser, así que no puede
  * cerrar sobre nada de este módulo.
  */
-function medir() {
+function medir(selectorRaiz) {
+  // Qué subárbol se releva. Los recorridos hacia ARRIBA (recortes, scroll,
+  // fila flex) siguen llegando a `document.body`: el diálogo vive donde vive,
+  // acotar la raíz no cambia quién lo recorta.
+  //
+  // Si el selector no matchea se corta acá. Caer a `document.body` mediría la
+  // página entera diciendo que midió el diálogo, que es la clase de cobertura
+  // fantasma que este script existe para no tener.
+  const raiz = selectorRaiz ? document.querySelector(selectorRaiz) : document.body;
+  if (!raiz) throw new Error(`raíz ausente: ${selectorRaiz}`);
+
   /** Pintado: los estilos no lo esconden y ocupa lugar. No mira recortes. */
   const pintado = (el) => {
     const c = getComputedStyle(el);
@@ -191,7 +229,7 @@ function medir() {
    */
   const textos = [];
   const rango = document.createRange();
-  const paseo = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  const paseo = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
   for (let nodo = paseo.nextNode(); nodo; nodo = paseo.nextNode()) {
     const contenido = (nodo.textContent || '').trim();
     // Sin tope de largo: recortar acá dejaba ciego al check con los párrafos
@@ -282,7 +320,7 @@ function medir() {
   const fueraViewport = [];
   const tapados = [];
   const foco = 'button, a, input, select, textarea, [role="radio"], [role="checkbox"]';
-  for (const el of document.querySelectorAll(foco)) {
+  for (const el of raiz.querySelectorAll(foco)) {
     if (!pintado(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.right > window.innerWidth + 2 || r.left < -2) {
@@ -353,7 +391,7 @@ function medir() {
 
   const desparejos = [];
   const controles = [];
-  for (const el of document.querySelectorAll('input, select, button, [role="radio"]')) {
+  for (const el of raiz.querySelectorAll('input, select, button, [role="radio"]')) {
     if (!pintado(el) || !esCaja(el) || apilaContenido(el)) continue;
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0) controles.push({ el, r });
@@ -388,7 +426,7 @@ function medir() {
   // 1024 mide 107px de ancho —destruido— y un filtro de ancho lo escondería,
   // además de hacer que angostar una card BAJE el número de defectos.
   const cards = {};
-  const sospechosas = document.querySelectorAll(
+  const sospechosas = raiz.querySelectorAll(
     '[class*="_panel_"], [class*="_mapa_"], [class*="_cardTabla_"], .leaflet-container',
   );
   for (const el of sospechosas) {
@@ -412,7 +450,7 @@ function medir() {
   // contenido y da scrollWidth === clientWidth siempre. La señal está en las
   // celdas, y en que la tabla no quepa en un contenedor que no scrollea.
   const tablasRecortadas = [];
-  for (const tabla of document.querySelectorAll('table')) {
+  for (const tabla of raiz.querySelectorAll('table')) {
     let celdasRecortadas = 0;
     for (const celda of tabla.querySelectorAll('td, th')) {
       if (celda.scrollWidth > celda.clientWidth + 2) celdasRecortadas++;
@@ -451,7 +489,7 @@ function medir() {
     nTruncados: truncados.length,
     fueraViewport: fueraViewport.slice(0, 4),
     nFueraViewport: fueraViewport.length,
-    textoVisible: (document.body.innerText ?? '').trim().length,
+    textoVisible: (raiz.innerText ?? '').trim().length,
     tapados: tapados.slice(0, 4),
     nTapados: tapados.length,
     desparejos: desparejos.slice(0, 4),
@@ -469,8 +507,24 @@ function medir() {
  * de su alto de referencia también.
  */
 /* Menos texto visible que esto y la pantalla no se renderizó: la de contenido
-   más pobre (novedades) pasa largamente de acá. */
+   más pobre (novedades) pasa largamente de acá.
+   El piso está calibrado contra pantallas CON chrome —sidebar y topbar ya suman
+   ~150 caracteres—, porque el caso que motivó el check era justamente contenido
+   en blanco con el marco puesto. */
 const MINIMO_TEXTO_PANTALLA = 200;
+
+/* Piso de lo que se mide sin chrome alrededor: un diálogo, o una pantalla de
+   autenticación que no monta el layout. Son legítimamente cortos —el más chico
+   son un título, tres etiquetas y dos botones— y con el piso general darían
+   VACIA estando perfectos. Un render fallido ahí deja sólo el banner (~26). */
+const MINIMO_TEXTO_SIN_CHROME = 40;
+
+/** ¿Lo medido no renderizó? `acotada` = se midió un diálogo o una pantalla que
+ *  no monta el layout, y entonces el piso de la app entera no aplica. */
+function estaVacia(medicion, acotada) {
+  const piso = acotada ? MINIMO_TEXTO_SIN_CHROME : MINIMO_TEXTO_PANTALLA;
+  return medicion.textoVisible < piso ? 1 : 0;
+}
 
 const TAMANO_COLAPSO_DURO = 40;
 const FRACCION_COLAPSO = 0.4;
@@ -759,6 +813,77 @@ function clasificarSuelta(referencia, medicion) {
   return informe['x@1'];
 }
 
+/**
+ * Que los checks disparen no alcanza: un check sano apuntado a la pantalla
+ * equivocada reporta cero igual que uno muerto. Esto verifica que lo que la
+ * matriz DICE medir sea lo que mide.
+ *
+ * Existe porque la fila `login` medía el listado de plantaciones: con sesión,
+ * `/login` redirige, y sus 9 celdas eran un duplicado exacto de las de
+ * `plantaciones` — cobertura fantasma que puntuaba impecable.
+ */
+const COBERTURA = [
+  {
+    nombre: 'login · se mide el login, no el listado al que redirige',
+    ruta: '/login?sinSesion=1',
+    vale: async (pagina) =>
+      (await pagina.getByRole('button', { name: 'Ingresar' }).count()) > 0 &&
+      (await pagina.locator('table').count()) === 0,
+  },
+  {
+    nombre: 'login · con su piso propio no cuenta como pantalla vacía',
+    ruta: '/login?sinSesion=1',
+    vale: async (pagina) => {
+      const m = await pagina.evaluate(medir, null);
+      return estaVacia(m, true) === 0 && m.textoVisible > 0;
+    },
+  },
+  {
+    nombre: 'raiz · medir el diálogo deja afuera la página de atrás',
+    ruta: '/plantaciones',
+    abrir: 'Nueva plantación',
+    vale: async (pagina) => {
+      const dialogo = await pagina.evaluate(medir, '[role="dialog"]');
+      const todo = await pagina.evaluate(medir, null);
+      return dialogo.textoVisible > 0 && dialogo.textoVisible * 3 < todo.textoVisible;
+    },
+  },
+  {
+    nombre: 'raiz · un selector que no matchea falla en vez de medir la página',
+    ruta: '/plantaciones',
+    vale: async (pagina) => {
+      const cayoAlBody = await pagina
+        .evaluate(medir, '[role="dialog"]')
+        .then((m) => m.textoVisible > 0)
+        .catch(() => false);
+      return !cayoAlBody;
+    },
+  },
+];
+
+async function cobertura(navegador) {
+  let fallos = 0;
+  for (const caso of COBERTURA) {
+    const pagina = await navegador.newPage({ viewport: { width: 1440, height: 900 } });
+    let ok = false;
+    try {
+      await pagina.goto(BASE_URL + caso.ruta, { waitUntil: 'networkidle', timeout: 20000 });
+      await asentar(pagina);
+      if (caso.abrir) {
+        await pagina.getByRole('button', { name: caso.abrir }).click({ timeout: 10000 });
+        await asentar(pagina);
+      }
+      ok = await caso.vale(pagina);
+    } catch (e) {
+      ok = false;
+    }
+    await pagina.close();
+    if (!ok) fallos++;
+    console.log(`  ${ok ? 'ok  ' : 'FALLA'} ${caso.nombre}`);
+  }
+  return fallos;
+}
+
 async function autotest(navegador) {
   let fallos = 0;
   for (const caso of CASOS_AUTOTEST) {
@@ -795,7 +920,12 @@ async function autotest(navegador) {
       ? `\n${fallos} checks no sirven.`
       : '\nTodos los checks disparan con su defecto y callan sin él.',
   );
-  return fallos ? 1 : 0;
+
+  console.log('\nCobertura — que cada fila mida lo que dice medir:\n');
+  const fallosCobertura = await cobertura(navegador);
+  if (fallosCobertura) console.log(`\n${fallosCobertura} filas no miden lo que dicen.`);
+
+  return fallos + fallosCobertura ? 1 : 0;
 }
 
 async function main() {
@@ -809,18 +939,23 @@ async function main() {
   }
   const informe = {};
 
-  for (const [pantalla, ruta] of RUTAS) {
+  for (const { pantalla, ruta, abrir, raiz, sinChrome } of RUTAS) {
     for (const ancho of ANCHOS) {
       const pagina = await navegador.newPage({ viewport: { width: ancho, height: 900 } });
       const clave = `${pantalla}@${ancho}`;
       try {
         await pagina.goto(BASE_URL + ruta, { waitUntil: 'networkidle', timeout: 20000 });
         await asentar(pagina);
-        const medicion = await pagina.evaluate(medir);
+        if (abrir) {
+          await pagina.getByRole('button', { name: abrir }).click({ timeout: 10000 });
+          await pagina.locator(raiz).waitFor({ timeout: 10000 });
+          await asentar(pagina);
+        }
+        const medicion = await pagina.evaluate(medir, raiz);
         // Una pantalla en blanco da cero en todos los checks y se lee como
         // impecable. Sin esto, un crash de render se reporta como una fila
         // limpia —que es exactamente lo que pasó con el mapa y `.not(is,null)`.
-        medicion.nVacia = medicion.textoVisible < MINIMO_TEXTO_PANTALLA ? 1 : 0;
+        medicion.nVacia = estaVacia(medicion, Boolean(raiz) || Boolean(sinChrome));
         informe[clave] = medicion;
         if (CON_CAPTURAS) {
           mkdirSync(CAPTURAS, { recursive: true });
@@ -834,7 +969,7 @@ async function main() {
   }
   await navegador.close();
 
-  for (const [pantalla] of RUTAS) marcarColapsadas(informe, pantalla, ANCHOS);
+  for (const { pantalla } of RUTAS) marcarColapsadas(informe, pantalla, ANCHOS);
 
   // ── Matriz ──────────────────────────────────────────────────────────────
   const ancho0 = 17;
@@ -842,7 +977,7 @@ async function main() {
   console.log('H=card colapsada  T=tabla que recorta sin scrollear  D=controles desparejos');
   console.log('VACIA=la pantalla no renderizó nada\n');
   console.log('pantalla'.padEnd(ancho0) + ANCHOS.map((a) => String(a).padStart(13)).join(''));
-  for (const [pantalla] of RUTAS) {
+  for (const { pantalla } of RUTAS) {
     const fila = ANCHOS.map((a) => celda(informe[`${pantalla}@${a}`]).padStart(13)).join('');
     console.log(pantalla.padEnd(ancho0) + fila);
   }

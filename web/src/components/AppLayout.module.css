@@ -154,10 +154,25 @@
     display: none;
   }
 
-  /* En barra horizontal, la card de temporada y el footer ocupan demasiado:
-     se ocultan; los datos siguen accesibles dentro de cada plantación. */
+  /* En barra horizontal no hay "fondo" que empujar: el footer se va a la
+     derecha de su fila. */
   .footer {
     margin-top: 0;
     margin-left: auto;
+  }
+}
+
+/* Barra de teléfono: los cinco bloques de la barra se apilan y comen 500px de
+   900 —el contenido arrancaba al 91% del alto, sin que nada se solape ni
+   desborde, así que ninguna métrica lo veía—. Se achican las separaciones y la
+   card de temporada se retira (ver SeasonCard.module.css). */
+@media (max-width: 600px) {
+  .sidebar {
+    gap: var(--space-lg);
+    padding: var(--space-lg) var(--page-pad-x);
+  }
+
+  .brand {
+    gap: 0;
   }
 }

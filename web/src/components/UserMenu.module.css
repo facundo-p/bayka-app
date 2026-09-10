@@ -86,3 +86,13 @@
   border-radius: var(--radius-full);
   background-color: var(--color-primary-accent);
 }
+
+/* El divisor de `.fila` separa al usuario de lo que tiene ENCIMA en el sidebar
+   apilado. Convertido en barra horizontal no hay nada encima: queda una línea
+   suelta a media altura. */
+@media (max-width: 900px) {
+  .fila {
+    padding-top: 0;
+    border-top: none;
+  }
+}
