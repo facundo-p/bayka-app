@@ -201,47 +201,11 @@
   color: var(--color-text-muted);
 }
 
-/* Acciones rápidas: outline compacto; la destructiva en rojo. */
+/* Acciones rápidas: Button contorno; la destructiva en rojo. */
 .acciones {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-md);
-}
-
-.botonAccion {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-md);
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-xl);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  color: var(--color-text-secondary);
-  font-family: var(--font-body);
-  font-size: var(--text-md);
-  cursor: pointer;
-}
-
-.botonAccion:hover:not(:disabled) {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
-
-.botonAccion:disabled {
-  color: var(--color-text-disabled);
-  border-color: var(--color-border);
-  cursor: not-allowed;
-}
-
-.botonDestructivo {
-  color: var(--color-danger);
-  border-color: var(--color-danger-border);
-}
-
-.botonDestructivo:hover:not(:disabled) {
-  background-color: var(--color-danger-bg);
-  color: var(--color-danger);
 }
 
 .ayuda {

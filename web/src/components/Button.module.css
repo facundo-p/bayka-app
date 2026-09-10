@@ -53,3 +53,37 @@
 .danger:hover:not(:disabled) {
   background-color: var(--color-danger-light);
 }
+
+/* Acción liviana: sin negrita y con el radio de los controles, para no
+   competir con el botón principal. */
+.contorno {
+  padding: 0 var(--space-xl);
+  background-color: var(--color-surface);
+  border-color: var(--color-border-strong);
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-regular);
+}
+
+.contorno:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-heading);
+}
+
+.destructiva {
+  composes: contorno;
+  color: var(--color-danger);
+  border-color: var(--color-danger-border);
+}
+
+.destructiva:hover:not(:disabled) {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+/* Se apaga por color: con la opacidad de la base encima no se leería. */
+.contorno:disabled {
+  opacity: 1;
+  color: var(--color-text-disabled);
+  border-color: var(--color-border);
+}

@@ -40,6 +40,16 @@
   color: var(--color-text-primary);
 }
 
+/* Rótulo en mayúsculas junto a un título: toma el interlineado del texto. */
+.aviso {
+  background-color: var(--color-warn-bg);
+  color: var(--color-warn-fg-strong);
+  border: var(--border-thin) solid var(--color-warn-border);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: normal;
+}
+
 .neutral {
   background-color: var(--color-background-alt);
   border: var(--border-thin) solid var(--color-border-muted);

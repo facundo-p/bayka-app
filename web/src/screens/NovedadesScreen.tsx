@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Card, EmptyState, Topbar } from '../components';
+import { Badge, Card, EmptyState, Topbar } from '../components';
 import { VERSION_APP } from '../lib/entorno';
 import { ENTRADAS } from '../lib/novedades';
 import { esEntradaEnPruebas, type EntradaNovedades, type ItemNovedad } from '../lib/parsearNovedades';
@@ -39,7 +39,7 @@ function CardEnPruebas({ entrada }: { entrada: EntradaNovedades }) {
     <Card className={styles.enPruebas}>
       <div className={styles.cabezaEnPruebas}>
         <h2 className={styles.tituloEnPruebas}>{entrada.titulo}</h2>
-        <span className={styles.rotulo}>Todavía no está en producción</span>
+        <Badge variant="aviso">Todavía no está en producción</Badge>
       </div>
       <p className={styles.notaEnPruebas}>
         Esto ya se puede usar acá y va a llegar a producción cuando se apruebe. Si algo no se

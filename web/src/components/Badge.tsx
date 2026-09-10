@@ -8,6 +8,7 @@ type BadgeVariant =
   | EstadoPlantacion
   | 'pendiente'
   | 'warning'
+  | 'aviso'
   | 'neutral'
   | 'superadmin'
   | 'admin'

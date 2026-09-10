@@ -4,7 +4,6 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Ban, Key, Mail } from 'lucide-react';
 import { Button, Input, PanelLateral, Select } from '../../components';
 import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
-import { cx } from '../../lib/classNames';
 import { formatearFechaDia } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
@@ -129,16 +128,17 @@ function BloquePlantaciones({ usuario }: { usuario: UsuarioConAsignaciones }) {
 function BotonAccion({ item, onAccion }: { item: ItemMenu; onAccion: () => void }) {
   const Icono = ICONO_ACCION[item.accion];
   return (
-    <button
+    <Button
       type="button"
-      className={cx(styles.botonAccion, item.destructiva && styles.botonDestructivo)}
+      variant={item.destructiva ? 'destructiva' : 'contorno'}
+      size="sm"
       disabled={item.motivo !== null}
       title={item.motivo ?? undefined}
       onClick={onAccion}
     >
       {Icono && <Icono size={TAMANO_ICONO.md} aria-hidden />}
       {item.etiqueta}
-    </button>
+    </Button>
   );
 }
 
