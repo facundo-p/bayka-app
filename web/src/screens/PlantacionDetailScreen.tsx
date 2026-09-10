@@ -239,11 +239,7 @@ function AccionesDetalle({
 
   return (
     <div className={styles.acciones}>
-      <TabNav
-        variant="segmentada"
-        label="Secciones de la plantación"
-        tabs={tabsDePlantacion(plantacion.id)}
-      />
+      <TabNav label="Secciones de la plantación" tabs={tabsDePlantacion(plantacion.id)} />
       <Divisor />
       {plegado ? <AccionesPlegadas {...acciones} /> : <AccionesDesplegadas {...acciones} />}
       {mensaje && (

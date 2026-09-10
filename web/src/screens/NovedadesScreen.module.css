@@ -14,7 +14,7 @@
 .titulo {
   font-size: var(--text-page-title);
   color: var(--color-text-heading);
-  line-height: 1.1;
+  line-height: var(--line-height-tight);
 }
 
 .subtitulo {
@@ -76,7 +76,7 @@
 .notaEnPruebas {
   margin: 0 0 var(--space-3xl);
   font-size: var(--text-md);
-  line-height: 1.55;
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
 }
 
@@ -88,7 +88,7 @@
   width: fit-content;
   cursor: pointer;
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-primary-accent);
 }
 
@@ -101,6 +101,6 @@
   border-radius: var(--radius-md);
   background-color: var(--color-surface-sunken);
   font-size: var(--text-md);
-  line-height: 1.55;
+  line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
 }

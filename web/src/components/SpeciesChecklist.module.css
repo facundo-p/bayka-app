@@ -126,13 +126,6 @@ input.buscador {
   color: var(--color-text-body);
 }
 
-.cientifico {
-  flex-shrink: 0;
-  font-size: var(--text-sm);
-  font-style: italic;
-  color: var(--color-text-faint);
-}
-
 /* Marca de bloqueo: dice por qué la fila no se puede desmarcar. */
 .conArboles {
   flex-shrink: 0;

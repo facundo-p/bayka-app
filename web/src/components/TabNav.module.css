@@ -1,73 +1,32 @@
+/* Riel hundido con los segmentos adentro. Envuelve sus propios segmentos en
+   vez de fijarle un piso de ancho a la barra que lo contiene: la píldora
+   crece a dos renglones, la barra no desborda. */
 .nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-  border-bottom: var(--border-thin) solid var(--color-border);
-  margin-bottom: var(--space-4xl);
-}
-
-.tab {
-  padding: var(--space-lg) var(--space-2xl);
-  /* Pisa el borde inferior del nav para que el subrayado quede al ras. */
-  margin-bottom: calc(-1 * var(--border-thin));
-  border-bottom: var(--border-accent) solid transparent;
-  color: var(--color-text-secondary);
-  font-size: var(--text-md);
-  transition: color 0.15s ease;
-}
-
-.tab:hover {
-  color: var(--color-primary);
-  background-color: var(--color-primary-bg-light);
-}
-
-.tabActiva {
-  color: var(--color-primary);
-  font-weight: var(--font-weight-semibold);
-  border-bottom-color: var(--color-primary-accent);
-}
-
-/* Variante secundaria: sub-tabs compactas dentro de una tab principal. */
-.navSecundaria {
-  gap: var(--space-sm);
-  margin-bottom: var(--space-3xl);
-}
-
-.navSecundaria .tab {
-  padding: var(--space-md) var(--space-xl);
-  font-size: var(--text-sm);
-}
-
-/* Variante segmentada: píldora de la barra única del detalle. La activa se
-   levanta en blanco sobre el riel hundido, sin subrayado. */
-/* Envuelve sus propios segmentos en vez de fijarle un piso de ancho a la
-   barra que la contiene: la píldora crece a dos renglones, la barra no
-   desborda. */
-.navSegmentada {
   display: inline-flex;
   flex-wrap: wrap;
   max-width: 100%;
   gap: 2px;
   padding: var(--pad-riel);
-  margin-bottom: 0;
   background-color: var(--color-surface-sunken);
   border: var(--border-thin) solid var(--color-border);
   border-radius: var(--radius-control);
 }
 
-.navSegmentada .tab {
+.tab {
   padding: var(--space-sm) var(--space-xl-plus);
-  margin-bottom: 0;
-  border-bottom: none;
   border-radius: var(--radius-segment);
+  color: var(--color-text-secondary);
+  font-size: var(--text-md);
   white-space: nowrap;
+  transition: color 0.15s ease;
 }
 
-.navSegmentada .tab:hover {
-  background-color: transparent;
+.tab:hover {
+  color: var(--color-primary);
 }
 
-.navSegmentada .tabActiva {
+.tabActiva,
+.tabActiva:hover {
   background-color: var(--color-surface);
   color: var(--color-text-heading);
   font-weight: var(--font-weight-semibold);
@@ -77,12 +36,12 @@
 /* En mobile la píldora ocupa el ancho y reparte los segmentos: quedan como
    destino táctil parejo en vez de apiñarse a la izquierda. */
 @media (max-width: 600px) {
-  .navSegmentada {
+  .nav {
     display: flex;
     width: 100%;
   }
 
-  .navSegmentada .tab {
+  .tab {
     flex: 1 1 auto;
     padding-left: var(--space-md);
     padding-right: var(--space-md);
