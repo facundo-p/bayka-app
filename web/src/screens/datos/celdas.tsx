@@ -4,6 +4,7 @@ import { NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { tieneFotoSubida } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './SeccionesDatos.module.css';
 
 /* Celdas con formato propio de las tablas de la tab Datos. */
@@ -19,9 +20,6 @@ export function CeldaDescripcion({ descripcion }: { descripcion: string | null }
 
 /** Redondeo de coordenadas para mostrar (~1 m de precisión). */
 const DECIMALES_GPS = 5;
-
-/** Tamaño del ícono de foto subida, en px. */
-const TAMANIO_ICONO_FOTO = 16;
 
 /** Coordenadas + precisión; nada si el árbol no tiene GPS (nunca "0,0"). */
 export function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
@@ -57,7 +55,7 @@ export function CeldaFoto({ fotoUrl }: { fotoUrl: string | null }) {
   if (!tieneFotoSubida(fotoUrl)) return null;
   return (
     <span className={styles.fotoCheck} aria-label="Con foto">
-      <Check size={TAMANIO_ICONO_FOTO} />
+      <Check size={TAMANO_ICONO.md} />
     </span>
   );
 }

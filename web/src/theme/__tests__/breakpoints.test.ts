@@ -1,8 +1,10 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { valoresPx } from '../../test/consultaMedia';
+import { ALTO_BP, ANCHO_BP } from '../breakpoints';
 
 /**
- * Guardia de la escala documentada en el bloque Layout de `theme.css` (#359).
+ * Guardia de la escala de `breakpoints.json` en los `@media` (#359).
  *
  * Antes de esto había 7 media queries ad hoc en 59 archivos (900, 1200, 760) y
  * ninguna capa por debajo de 900. Cada breakpoint suelto es un ancho más donde
@@ -10,8 +12,8 @@ import { join } from 'node:path';
  * se resuelve en el prelude de una at-rule—, así que la única forma de que la
  * escala signifique algo es un test que la haga cumplir.
  */
-const ANCHOS_VALIDOS = [1400, 1200, 900, 600];
-const ALTOS_VALIDOS = [760];
+const ANCHOS_VALIDOS: number[] = Object.values(ANCHO_BP);
+const ALTOS_VALIDOS: number[] = Object.values(ALTO_BP);
 
 // vitest corre con cwd en `web/`; los .css que importan son todos los de src/.
 const RAIZ = join(process.cwd(), 'src');
@@ -36,11 +38,6 @@ function hallazgosEnMedia(revisar: (prelude: string) => string[]): string[] {
       revisar(prelude).map((hallazgo) => `${ruta}: ${hallazgo}`),
     ),
   );
-}
-
-function valoresPx(prelude: string, feature: string): number[] {
-  const patron = new RegExp(`\\(\\s*${feature}:\\s*(\\d+)px\\s*\\)`, 'g');
-  return [...prelude.matchAll(patron)].map(([, valor]) => Number(valor));
 }
 
 // min-* partiría la escala en dos direcciones: la app es desktop-first.

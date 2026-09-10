@@ -16,6 +16,7 @@ import { sugerencias } from './sugerencias';
 import { FilaPaleta } from './FilaPaleta';
 import { useFocusTrap } from './useFocusTrap';
 import { useResultadosBusqueda } from './useResultadosBusqueda';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './CommandMenu.module.css';
 
 /** Devuelve el foco al elemento que abrió la paleta (el trigger) al cerrar. */
@@ -99,7 +100,7 @@ export function CommandMenu() {
           {scope && (
             <button type="button" className={styles.chipScope} onClick={limpiarScope}>
               en {scope.etiqueta || 'plantación'}
-              <X size={12} aria-hidden />
+              <X size={TAMANO_ICONO.xs} aria-hidden />
             </button>
           )}
           <Input

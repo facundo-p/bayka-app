@@ -2,9 +2,8 @@ import { ChevronRight } from 'lucide-react';
 import type { TableColumn } from '../../components';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
 import { CeldaArboles, CeldaCientifico, CeldaCodigo, CeldaTexto } from './celdas';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Especies.module.css';
-
-const TAMANO_ICONO = 16;
 
 export const COLUMNAS_ESPECIES: Array<TableColumn<EspecieConCatalogoUso>> = [
   { key: 'codigo', header: 'Código', render: (especie) => <CeldaCodigo especie={especie} /> },
@@ -41,6 +40,6 @@ export const COLUMNAS_ESPECIES: Array<TableColumn<EspecieConCatalogoUso>> = [
     fueraEnMovil: true,
     header: '',
     align: 'right',
-    render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO} aria-hidden />,
+    render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO.md} aria-hidden />,
   },
 ];

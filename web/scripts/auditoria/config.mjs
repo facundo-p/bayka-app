@@ -4,6 +4,7 @@
  */
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ESCALA from '../../src/theme/breakpoints.json' with { type: 'json' };
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 export const BASELINE = join(AQUI, 'baseline.json');
@@ -16,8 +17,16 @@ export const BASE_URL = process.env.BASE_URL ?? `http://localhost:${PUERTO_DEMO}
 
 export const ALTO_VENTANA = 900;
 
-/** Los escalones de la escala, más los extremos que nadie cubre. */
-export const ANCHOS = Object.freeze([1920, 1440, 1280, 1024, 900, 768, 600, 430, 360]);
+/** Pantallas reales: al menos una por banda de la escala, más los extremos. */
+const PANTALLAS = [1920, 1440, 1280, 1024, 768, 430, 360];
+
+/**
+ * Los escalones que cambian la estructura (sidebar horizontal, tablas sin
+ * columnas secundarias) se miden además en el borde.
+ */
+const BORDES = [ESCALA.ancho.tablet, ESCALA.ancho.movil];
+
+export const ANCHOS = Object.freeze([...PANTALLAS, ...BORDES].sort((a, b) => b - a));
 
 export const claveCelda = (pantalla, ancho) => `${pantalla}@${ancho}`;
 

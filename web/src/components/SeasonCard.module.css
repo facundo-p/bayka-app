@@ -16,7 +16,7 @@
 .overline {
   font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 1.2px;
+  letter-spacing: var(--letter-spacing-overline);
   color: var(--color-text-faint);
 }
 

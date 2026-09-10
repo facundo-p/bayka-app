@@ -17,7 +17,7 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-title);
-  line-height: 1.1;
+  line-height: var(--line-height-tight);
   color: var(--color-text-heading);
 }
 
@@ -36,7 +36,7 @@
 .enlace {
   margin-right: var(--space-md);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   color: var(--color-primary-accent);
 }
 
@@ -122,7 +122,7 @@
 .arboles {
   font-family: var(--font-heading);
   font-size: var(--text-kpi-sm);
-  line-height: 1;
+  line-height: var(--line-height-none);
   color: var(--color-text-heading);
   font-variant-numeric: tabular-nums;
 }

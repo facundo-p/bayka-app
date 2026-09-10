@@ -31,7 +31,7 @@ a.raiz:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   font-size: var(--text-detail-title);
-  line-height: 1.1;
+  line-height: var(--line-height-tight);
   color: var(--color-text-heading);
   white-space: nowrap;
 }

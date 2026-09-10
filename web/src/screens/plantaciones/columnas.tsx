@@ -4,9 +4,8 @@ import { formatearFechaDia } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import { CeldaLugar, CeldaVisible } from './celdas';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Plantaciones.module.css';
-
-const TAMANO_ICONO = 16;
 
 export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
   {
@@ -65,6 +64,6 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
     fueraEnMovil: true,
     header: '',
     align: 'right',
-    render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO} aria-hidden />,
+    render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO.md} aria-hidden />,
   },
 ];

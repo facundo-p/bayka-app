@@ -1,4 +1,5 @@
 import { useCallback, type RefObject } from 'react';
+import { TECLA } from '../../lib/teclas';
 
 const SELECTOR_FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -7,7 +8,7 @@ const SELECTOR_FOCUSABLE =
 export function useFocusTrap(ref: RefObject<HTMLElement | null>) {
   return useCallback(
     (evento: React.KeyboardEvent) => {
-      if (evento.key !== 'Tab' || !ref.current) return;
+      if (evento.key !== TECLA.tab || !ref.current) return;
       const focusables = Array.from(
         ref.current.querySelectorAll<HTMLElement>(SELECTOR_FOCUSABLE),
       );

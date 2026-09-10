@@ -5,7 +5,7 @@
   flex-wrap: wrap;
   max-width: 100%;
   gap: var(--space-xs);
-  padding: 3px;
+  padding: var(--pad-riel);
   background-color: var(--color-divider);
   border-radius: var(--radius-control);
 }
@@ -44,14 +44,14 @@
 
 .label {
   font-size: var(--text-md);
-  font-weight: 600;
-  line-height: 1.2;
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
   /* Las etiquetas con prefijo ("Rol: todos") no deben partirse en dos líneas. */
   white-space: nowrap;
 }
 
 .sublabel {
   font-size: var(--text-xs);
-  font-weight: 400;
+  font-weight: var(--font-weight-regular);
   opacity: 0.85;
 }

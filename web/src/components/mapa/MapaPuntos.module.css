@@ -14,12 +14,12 @@
  * controles de zoom desaparecían sin que nada se solapara ni desbordara. */
 .panel {
   flex: 1;
-  min-height: 320px;
+  min-height: var(--alto-min-mapa);
 }
 
 /* En el panel lateral de detalle de árbol, alto fijo compacto. */
 .compacto {
-  height: 220px;
+  height: var(--alto-mapa-compacto);
 }
 
 /* Contenedor del mapa: la clase se aplica sobre el div raíz del proveedor.

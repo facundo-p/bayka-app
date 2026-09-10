@@ -29,6 +29,7 @@ import {
   type OrdenEspecie,
   type UsoEspecie,
 } from './especies/filtros';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './especies/Especies.module.css';
 
 const DEBOUNCE_BUSQUEDA_MS = 200;
@@ -74,7 +75,7 @@ export function EspeciesScreen() {
         }
         right={
           <Button size="sm" onClick={() => setSeleccion({ especie: null })}>
-            <Plus size={16} aria-hidden />
+            <Plus size={TAMANO_ICONO.md} aria-hidden />
             Nueva especie
           </Button>
         }

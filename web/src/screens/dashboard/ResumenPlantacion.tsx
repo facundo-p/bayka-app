@@ -3,9 +3,8 @@ import { cx } from '../../lib/classNames';
 import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import type { KpisArboles } from '../../queries/dashboardQueries';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ResumenPlantacion.module.css';
-
-const TAMANO_ICONO = 14;
 
 /** Parcela que acota la métrica, con la salida para volver a la plantación entera. */
 export interface AlcanceMetrica {
@@ -75,7 +74,7 @@ function CeldaSinIdentificar({ cantidad }: { cantidad: number }) {
       </div>
       {hayPendientes && (
         <span className={styles.hint}>
-          <AlertTriangle size={TAMANO_ICONO} aria-hidden />
+          <AlertTriangle size={TAMANO_ICONO.sm} aria-hidden />
           requieren atención
         </span>
       )}

@@ -9,20 +9,10 @@
  * no necesita un caso especial.
  */
 import { useSyncExternalStore } from 'react';
+import { CLAVE_STORAGE, guardarLocal, leerLocal } from '../lib/almacenamientoLocal';
 import { FIRMA_NOVEDADES } from '../lib/novedades';
 
-const CLAVE_ULTIMA_VISTA = 'bayka.novedades.ultima-vista';
-
 const suscriptores = new Set<() => void>();
-
-function leerUltimaVista(): string | null {
-  try {
-    return window.localStorage.getItem(CLAVE_ULTIMA_VISTA);
-  } catch {
-    // Modo privado o storage bloqueado: se comporta como primera visita.
-    return null;
-  }
-}
 
 function suscribir(alCambiar: () => void): () => void {
   suscriptores.add(alCambiar);
@@ -31,17 +21,15 @@ function suscribir(alCambiar: () => void): () => void {
   };
 }
 
+// Sin storage se comporta como primera visita.
 function hayNoVistas(): boolean {
-  return leerUltimaVista() !== FIRMA_NOVEDADES;
+  return leerLocal(CLAVE_STORAGE.novedadesUltimaVista) !== FIRMA_NOVEDADES;
 }
 
 /** Marca la firma actual como vista y avisa a todos los suscriptores. */
 export function marcarNovedadesVistas(): void {
-  try {
-    window.localStorage.setItem(CLAVE_ULTIMA_VISTA, FIRMA_NOVEDADES);
-  } catch {
-    // Si no se puede persistir, igual se apaga el dot en esta sesión.
-  }
+  // Aunque no se pueda persistir, el dot se apaga en esta sesión.
+  guardarLocal(CLAVE_STORAGE.novedadesUltimaVista, FIRMA_NOVEDADES);
   for (const alCambiar of suscriptores) alCambiar();
 }
 

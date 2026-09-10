@@ -27,9 +27,10 @@ mismo desborde creciendo, y eso se cubre con `clamp()`, no con otro breakpoint.
 
 **Los valores van literales en cada `@media`.** `var()` solo se resuelve en el
 valor de una declaración, no en el prelude de una at-rule; `@custom-media`
-necesitaría PostCSS, que el repo no tiene. La lista normativa vive en el bloque
-Layout de `web/src/theme/theme.css` y `theme/__tests__/breakpoints.test.ts`
-falla si aparece otro número, otra unidad o la sintaxis de rango.
+necesitaría PostCSS, que el repo no tiene. La lista normativa es
+`web/src/theme/breakpoints.json` —de ahí la leen el TS y la auditoría— y
+`theme/__tests__/breakpoints.test.ts` falla si un `@media` usa otro número, otra
+unidad o la sintaxis de rango.
 
 ## Patrones
 

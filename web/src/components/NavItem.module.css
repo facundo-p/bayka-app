@@ -23,7 +23,7 @@
   background-color: var(--color-surface-tint);
   border-left-color: var(--color-secondary);
   color: var(--color-primary);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .activo:hover {

@@ -38,6 +38,7 @@ import {
 import { nombreVisible } from './usuarios/presentacion';
 import { UsuarioPanel } from './usuarios/UsuarioPanel';
 import { UsuariosToolbar } from './usuarios/UsuariosToolbar';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './usuarios/Usuarios.module.css';
 
 const DEBOUNCE_BUSQUEDA_MS = 200;
@@ -148,7 +149,7 @@ export function UsuariosScreen() {
         }
         right={
           <Button size="sm" onClick={() => setAgregarAbierto(true)}>
-            <Plus size={16} aria-hidden />
+            <Plus size={TAMANO_ICONO.md} aria-hidden />
             Agregar usuario
           </Button>
         }

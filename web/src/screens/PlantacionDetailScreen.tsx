@@ -31,6 +31,7 @@ import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { descargarXlsxExportacion } from '../services/exportarXlsx';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PlantacionDetailScreen.module.css';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
@@ -39,10 +40,6 @@ const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
 const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.';
 /** La planilla se arma con los IDs definitivos: sin generarlos no hay qué exportar. */
 const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar la planilla';
-
-const TAMANO_ICONO = 16;
-const TAMANO_CHEVRON = 14;
-const TAMANO_ICONO_MENU = 18;
 
 function tabsDePlantacion(id: string): TabItem[] {
   return [
@@ -152,22 +149,22 @@ function AccionesDesplegadas(props: AccionesProps) {
         aria-label="Editar"
         title="Editar"
       >
-        <Pencil size={TAMANO_ICONO} aria-hidden />
+        <Pencil size={TAMANO_ICONO.md} aria-hidden />
       </button>
       <MenuDesplegable
         etiqueta="Exportar"
         items={itemsExportar(props)}
         disparador={(propsDisparador) => (
           <Button variant="secondary" size="sm" loading={descargando} {...propsDisparador}>
-            <Download size={TAMANO_ICONO} aria-hidden />
+            <Download size={TAMANO_ICONO.md} aria-hidden />
             Exportar
-            <ChevronDown size={TAMANO_CHEVRON} aria-hidden />
+            <ChevronDown size={TAMANO_ICONO.sm} aria-hidden />
           </Button>
         )}
       />
       {idsPendientes && (
         <Button variant="primary" size="sm" onClick={onGenerarIds}>
-          <Plus size={TAMANO_ICONO} aria-hidden />
+          <Plus size={TAMANO_ICONO.md} aria-hidden />
           Generar IDs
         </Button>
       )}
@@ -191,7 +188,7 @@ function AccionesPlegadas(props: AccionesProps) {
       items={items}
       disparador={(propsDisparador) => (
         <button type="button" className={styles.botonIcono} {...propsDisparador}>
-          <MoreHorizontal size={TAMANO_ICONO_MENU} aria-hidden />
+          <MoreHorizontal size={TAMANO_ICONO.lg} aria-hidden />
         </button>
       )}
     />

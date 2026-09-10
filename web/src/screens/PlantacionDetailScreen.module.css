@@ -43,7 +43,7 @@
   position: absolute;
   top: calc(100% + var(--space-md));
   right: 0;
-  z-index: 10;
+  z-index: var(--z-flotante);
   max-width: 320px;
   padding: var(--space-md) var(--space-xl);
   background-color: var(--color-surface);

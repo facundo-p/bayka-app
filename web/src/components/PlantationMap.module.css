@@ -40,7 +40,7 @@
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-title);
-  line-height: 1.1;
+  line-height: var(--line-height-tight);
   color: var(--color-text-heading);
 }
 
@@ -64,7 +64,7 @@
 
 .chipNumero {
   font-family: var(--font-mono);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .vacio {
@@ -96,8 +96,8 @@
 }
 
 .punto {
-  width: 10px;
-  height: 10px;
+  width: var(--tamano-punto-lg);
+  height: var(--tamano-punto-lg);
   border-radius: var(--radius-full);
   border: var(--border-thin) solid var(--color-surface);
   box-shadow: 0 0 0 1px var(--color-border);

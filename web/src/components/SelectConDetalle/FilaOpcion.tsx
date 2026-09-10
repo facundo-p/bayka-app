@@ -3,9 +3,8 @@ import { cx } from '../../lib/classNames';
 import type { PropsOpcion } from '../../hooks/useListboxNavegable';
 import type { OpcionConDetalle } from './opcionesConDetalle';
 import { TextoOpcion } from './TextoOpcion';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './SelectConDetalle.module.css';
-
-const TAMANO_ICONO = 16;
 
 interface FilaOpcionProps {
   opcion: OpcionConDetalle;
@@ -30,7 +29,7 @@ export function FilaOpcion({ opcion, elegida, propsOpcion, onElegir }: FilaOpcio
           claseSecundario={styles.opcionSecundario}
         />
       </span>
-      {elegida && <Check size={TAMANO_ICONO} aria-hidden className={styles.check} />}
+      {elegida && <Check size={TAMANO_ICONO.md} aria-hidden className={styles.check} />}
     </div>
   );
 }

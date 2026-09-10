@@ -2,9 +2,8 @@ import { cx } from '../../lib/classNames';
 import type { PropsOpcion } from '../../hooks/useListboxNavegable';
 import { metaDeTipo } from './tiposResultado';
 import type { ItemPaleta } from './construirItems';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './CommandMenu.module.css';
-
-const TAMANO_ICONO = 16;
 
 interface FilaPaletaProps {
   item: ItemPaleta;
@@ -31,7 +30,7 @@ export function FilaPaleta({ item, propsOpcion, onElegir }: FilaPaletaProps) {
       className={cx(styles.fila, propsOpcion['aria-selected'] && styles.filaResaltada)}
       onClick={onElegir}
     >
-      <Icono size={TAMANO_ICONO} aria-hidden className={styles.filaIcono} />
+      <Icono size={TAMANO_ICONO.md} aria-hidden className={styles.filaIcono} />
       <span className={styles.filaTitulo}>{titulo}</span>
       {meta && <span className={styles.filaMeta}>{meta}</span>}
     </button>

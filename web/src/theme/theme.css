@@ -1,6 +1,7 @@
 /*
  * Tokens de marca Bayka — único lugar con valores de diseño.
- * Espejo de mobile/src/theme.ts: cualquier cambio de color/escala se hace acá.
+ * Los colores de marca son los de mobile/src/theme.ts, pero acá se declaran
+ * solo los tokens que la web usa: un token sin `var()` que lo lea se poda.
  * Poppins se importa vía @fontsource en main.tsx; acá solo Linux Biolinum.
  */
 
@@ -29,8 +30,6 @@
 
   /* ─── Primario (azul de marca) ─────────────────────────────────────── */
   --color-primary: #0a3760;
-  --color-primary-dark: #072847;
-  --color-primary-light: #1a5a8a;
   --color-primary-medium: #0e4573;
   --color-primary-bg: #edf4f9;
   --color-primary-bg-light: #f4f8fb;
@@ -44,15 +43,10 @@
   --color-secondary-border: #c5d89a;
 
   /* ─── Plantaciones (acento verde oliva) ────────────────────────────── */
-  --color-plantation: #99b95b;
   --color-plantation-dark: #6b8f3c;    /* oliva oscuro — números de acento, dato */
-  --color-plantation-medium: #8aaa4e;
   --color-plantation-light: #b3cf7e;
-  --color-plantation-header-bg: #6b8f3c;
-  --color-plantation-bg: #f6f9f0;
   --color-plantation-bg-light: #fafcf5;
   --color-plantation-border: #d4e3b0;
-  --color-plantation-accent: #a8c465;
 
   /* ─── Texto (jerarquía cálida) ─────────────────────────────────────── */
   --color-text-heading: #0a3760;       /* títulos (azul de marca) */
@@ -70,7 +64,6 @@
   --color-surface: #ffffff;            /* cards, modales */
   --color-surface-sunken: #faf8f1;     /* head de tabla, inputs suaves, footers */
   --color-surface-tint: #eef3ee;       /* item de nav activo, chip de código */
-  --color-surface-pressed: #f5f5f4;
   --color-white: #ffffff;
 
   /* ─── Bordes / divisores cálidos ───────────────────────────────────── */
@@ -86,12 +79,8 @@
   --color-danger-bg: #fef2f2;
   --color-danger-border: #f0c9c9;      /* borde de acciones destructivas outline */
   --color-info: #2563eb;
-  --color-info-bg: #eff6ff;
 
   /* ─── Estados de dominio (chips activa/finalizada/pendiente) ───────── */
-  /* Valor simple (compat) + triplete fg/bg/border del rediseño. */
-  --color-estado-activa: #99b95b;
-  --color-estado-finalizada: #0a3760;
   --color-estado-pending: #f97316;
   --color-estado-activa-fg: #5d7d2f;
   --color-estado-activa-bg: #eef3e2;
@@ -118,26 +107,7 @@
   --color-rol-tecnico-bg: #eef3e2;
   --color-rol-tecnico-border: #d3e0b4;
 
-  /* ─── Datos neutros (segmento "Otras" de gráficos) ─────────────────── */
-  /* Gris de DATO propio (no el de texto muted): distingue "Otras" como una
-     categoría real, no como un elemento deshabilitado/placeholder. */
-  --color-data-neutral: #64748b;
-
-  /* ─── Paleta categórica de especies (gráficos y puntos de mapa) ────── */
-  /* Alterna azules/olivas de marca para máximo contraste entre vecinos. */
-  --chart-1: #0a3760;
-  --chart-2: #99b95b;
-  --chart-3: #3b7db5;
-  --chart-4: #6b8f3c;
-  --chart-5: #1a5a8a;
-  --chart-6: #b3cf7e;
-  --chart-7: #0e4573;
-  --chart-8: #a8c465;
-  --chart-nn: #e0a83b;                 /* "Sin identificar" / N/N */
-
-  /* ─── Amarillo (legacy especies N/N — usar --color-warn-* en rediseño) ─ */
-  --color-yellow: #ffca28;
-  --color-yellow-light: #fff8e1;
+  /* ─── Amarillo ─────────────────────────────────────────────────────── */
   --color-yellow-medium: #ffe082;
   --color-yellow-dark: #ffb300;
 
@@ -183,6 +153,13 @@
   --radius-xl: 16px;
   --radius-round: 20px;
   --radius-full: 9999px;
+  /* Semánticos: los que coinciden con un escalón lo referencian. */
+  --radius-control: 9px;                /* botones, inputs, chips de filtro */
+  --radius-card: var(--radius-xl);      /* cards de panel */
+  --radius-card-sm: 14px;               /* cards de KPI / tabla */
+  --radius-pill: var(--radius-round);   /* badges de estado/rol */
+  --radius-code: var(--radius-sm);      /* chip de código mono */
+  --radius-segment: 7px;                /* opción de control segmentado, dentro de un --radius-control */
 
   /* ─── Tamaños de fuente ────────────────────────────────────────────── */
   --text-xs: 11px;
@@ -190,10 +167,8 @@
   --text-md: 13px;
   --text-base: 15px;
   --text-xl: 16px;
-  --text-xxl: 18px;
   --text-title: 20px;
   --text-heading: 24px;
-  --text-hero: 32px;
   /* Escala grande del rediseño (serif): número hero del dashboard, KPI, título de página. */
   --text-kpi: 32px;
   --text-page-title: 38px;
@@ -201,31 +176,29 @@
   --text-kpi-sm: 26px;         /* celdas del resumen, número de mini-card de parcela */
   --text-hero-num: 64px;
 
-  /* ─── Peso y espaciado de letra ────────────────────────────────────── */
+  /* ─── Peso, interlineado y espaciado de letra ──────────────────────── */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
   --font-weight-semibold: 600;
+  --line-height-none: 1;           /* números grandes */
+  --line-height-tight: 1.1;        /* títulos */
+  --line-height-snug: 1.2;
+  --line-height-relaxed: 1.55;     /* texto corrido */
   --letter-spacing-wide: 1px;
+  --letter-spacing-overline: 1.2px; /* rótulos en mayúsculas */
 
   /* ─── Sombras ──────────────────────────────────────────────────────── */
   --shadow-card: 0 1px 3px rgba(10, 55, 96, 0.08);
   --shadow-modal: 0 24px 60px rgba(10, 30, 55, 0.28);   /* overlay ⌘K + modales */
 
-  /* ─── Radios ───────────────────────────────────────────────────────── */
-  /* (los --radius-sm/md/lg/xl/round/full siguen arriba; estos son semánticos) */
-  --radius-control: 9px;   /* botones, inputs, chips de filtro */
-  --radius-card: 16px;     /* cards de panel */
-  --radius-card-sm: 14px;  /* cards de KPI / tabla */
-  --radius-pill: 20px;     /* badges de estado/rol */
-  --radius-code: 6px;      /* chip de código mono */
-  --radius-segment: 7px;   /* opción de control segmentado, dentro de un --radius-control */
-
   /* ─── Layout ───────────────────────────────────────────────────────── */
   /*
-   * Escala de breakpoints — fuente de verdad del proyecto (#359).
+   * Escala de breakpoints (#359). Los números viven en theme/breakpoints.json,
+   * que leen el TS y la auditoría responsive.
    *
-   * Los valores van LITERALES en cada @media: var() solo se resuelve en el
-   * valor de una declaración, nunca en el prelude de una at-rule. Esta lista
-   * la hace cumplir theme/__tests__/breakpoints.test.ts, que falla si aparece
-   * cualquier otro número.
+   * En CSS van LITERALES en cada @media: var() solo se resuelve en el valor de
+   * una declaración, nunca en el prelude de una at-rule.
+   * theme/__tests__/breakpoints.test.ts falla si un @media usa otro número.
    *
    *   1400  notebook  — la barra del detalle deja de entrar en un renglón
    *   1200  compacta  — las grillas de dos columnas pasan a una
@@ -241,18 +214,25 @@
      360. Es un escalar puro, interpola bien y no necesita breakpoint. */
   --page-pad-x: clamp(16px, 3vw, 38px);
   --ancho-panel-lateral: 400px;    /* columna de detalle al costado del listado */
-  /* Buscador de los listados: mismo ancho en las cuatro barras. */
   /* Piso de alto de una card con lista: apilada no hay alto que repartir y un
      `flex:1` con piso en 0 la deja con el alto del encabezado. */
   --alto-min-card-lista: 420px;
+  /* Buscador de los listados: mismo ancho en las cuatro barras. */
   --ancho-buscador: 18rem;
   --ancho-buscador-min: 10rem;
   --ancho-buscador-compacto: 220px;
+  /* Filtros de Datos: el más informativo (parcela) es el más ancho. */
+  --ancho-filtro-lg: 210px;
+  --ancho-filtro-md: 150px;
+  --ancho-filtro-sm: 130px;
+  --ancho-filtro-xs: 120px;
+  --alto-min-mapa: 320px;          /* mapa del dashboard */
+  --alto-mapa-compacto: 220px;     /* mapa del panel lateral */
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
   /* Tokens de controles: alto táctil mínimo (espejo del minHeight 44 de
-     mobile), borde de foco/spinner, ancho de modal y capa del overlay. */
+     mobile), borde de foco/spinner y ancho de modal. */
   --border-medium: 2px;
   --control-height: 44px;
   --control-height-sm: 32px;
@@ -261,6 +241,18 @@
   --alto-max-desplegable: 320px;   /* lista de un selector con búsqueda */
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;
+  --pad-riel: 3px;                 /* hueco entre un riel segmentado y sus opciones */
+  --tamano-avatar: 32px;
+  --tamano-punto: 8px;             /* punto de color de especie en tablas */
+  --tamano-punto-lg: 10px;         /* ídem en paneles y leyenda del mapa */
+  --alto-barra-progreso-lg: 8px;
+  --alto-barra-progreso-md: 6px;
+  --alto-barra-progreso-sm: 4px;
+
+  /* ─── Capas (z-index) ──────────────────────────────────────────────── */
+  --z-flotante: 10;                /* menús y avisos anclados a un botón */
+  --z-topbar: 20;
+  --z-banner-entorno: 30;
   --z-modal: 100;
   --z-popover: 110;                /* listas desplegables que se abren dentro de un modal */
 
@@ -268,7 +260,6 @@
   /* Alto de la franja: 0 en prod. <html data-entorno="pruebas"> lo sube a
      26px y sidebar/Topbar se corren por esta MISMA variable. */
   --alto-banner-entorno: 0px;
-  --z-banner-entorno: 30;              /* sobre la Topbar (20), bajo --z-modal */
   --color-entorno-pruebas-bg: var(--color-yellow-dark);
   --color-entorno-pruebas-fg: var(--color-text-primary);
 }

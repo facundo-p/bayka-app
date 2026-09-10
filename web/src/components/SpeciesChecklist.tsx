@@ -3,6 +3,7 @@ import { Input } from './Input';
 import { cx } from '../lib/classNames';
 import { filtrarCatalogo, type EstadoMaestro } from '../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../queries/especieQueries';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './SpeciesChecklist.module.css';
 
 interface SpeciesChecklistProps {
@@ -19,6 +20,8 @@ const TITULO_BLOQUEADA = 'Tiene árboles registrados';
 const MARCA_BLOQUEADA = 'con árboles';
 const LABEL_MAESTRO = 'Marcar todas';
 const SIN_RESULTADOS = 'Ninguna especie coincide con la búsqueda';
+/** Más grueso que el default de lucide: a 14px el tilde fino no se lee sobre el fondo marcado. */
+const GROSOR_TILDE = 3;
 
 /** Buscador del checklist; vive en la cabecera de la card, no sobre la lista. */
 export function BuscadorEspecies({
@@ -67,9 +70,9 @@ export function MaestroEspecies({
         aria-hidden
       >
         {parcial ? (
-          <Minus size={14} strokeWidth={3} />
+          <Minus size={TAMANO_ICONO.sm} strokeWidth={GROSOR_TILDE} />
         ) : (
-          marcada && <Check size={14} strokeWidth={3} />
+          marcada && <Check size={TAMANO_ICONO.sm} strokeWidth={GROSOR_TILDE} />
         )}
       </span>
       {LABEL_MAESTRO}
@@ -106,7 +109,7 @@ function FilaEspecie({
         onClick={alternar}
       >
         <span className={cx(styles.checkbox, marcada && styles.checkboxMarcado)} aria-hidden>
-          {marcada && <Check size={14} strokeWidth={3} />}
+          {marcada && <Check size={TAMANO_ICONO.sm} strokeWidth={GROSOR_TILDE} />}
         </span>
         <span className={styles.codigo}>{especie.codigo}</span>
         <span className={styles.nombre}>{especie.nombre}</span>

@@ -2,9 +2,8 @@ import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cx } from '../lib/classNames';
 import { useCerrarConEscape } from '../hooks/useCerrarConEscape';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PanelLateral.module.css';
-
-const TAMANO_ICONO_CERRAR = 18;
 
 interface PanelLateralProps {
   /** Identidad del encabezado: punto/avatar + título + meta. */
@@ -34,7 +33,7 @@ export function PanelLateral({ cabecera, pie, etiqueta, onCerrar, children }: Pa
           aria-label={`Cerrar ${etiqueta}`}
           onClick={onCerrar}
         >
-          <X size={TAMANO_ICONO_CERRAR} aria-hidden />
+          <X size={TAMANO_ICONO.lg} aria-hidden />
         </button>
       </div>
       <div className={styles.cuerpo}>{children}</div>

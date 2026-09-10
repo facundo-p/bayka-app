@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { cx } from '../lib/classNames';
+import { TECLA } from '../lib/teclas';
 import styles from './SegmentedControl.module.css';
 
 interface SegmentedOption<T extends string | number> {
@@ -57,21 +58,21 @@ export function SegmentedControl<T extends string | number>({
 
   const alPresionar = (evento: KeyboardEvent<HTMLButtonElement>, indice: number) => {
     switch (evento.key) {
-      case 'ArrowRight':
-      case 'ArrowDown':
+      case TECLA.derecha:
+      case TECLA.abajo:
         evento.preventDefault();
         moverDesde(indice, 1);
         break;
-      case 'ArrowLeft':
-      case 'ArrowUp':
+      case TECLA.izquierda:
+      case TECLA.arriba:
         evento.preventDefault();
         moverDesde(indice, -1);
         break;
-      case 'Home':
+      case TECLA.inicio:
         evento.preventDefault();
         moverDesde(-1, 1); // primer habilitado
         break;
-      case 'End':
+      case TECLA.fin:
         evento.preventDefault();
         moverDesde(0, -1); // último habilitado (wrap hacia atrás)
         break;

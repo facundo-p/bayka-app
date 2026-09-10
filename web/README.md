@@ -92,9 +92,11 @@ El criterio, los patrones y las decisiones están en
 la verificación.
 
 La escala de breakpoints del proyecto es **1400 / 1200 / 900 / 600** (más
-`max-height: 760` para ventana baja), documentada en el bloque Layout de
-`src/theme/theme.css`. Los valores van literales en cada `@media` porque `var()`
-no se resuelve en el prelude de una at-rule; `src/theme/__tests__/breakpoints.test.ts`
+`max-height: 760` para ventana baja). Los números viven en
+`src/theme/breakpoints.json`, que leen `useMediaQuery` (`BP`), el test de abajo y
+los anchos de la auditoría; el porqué de cada escalón está en el bloque Layout de
+`src/theme/theme.css`. En CSS los valores van literales en cada `@media` porque
+`var()` no se resuelve en el prelude de una at-rule; `src/theme/__tests__/breakpoints.test.ts`
 falla si aparece otro número, otra unidad o la sintaxis de rango, y también exige
 `minmax(0, …)` en los tracks flexibles.
 
