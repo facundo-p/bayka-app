@@ -31,6 +31,9 @@
  *  - O y R solo ven el primer viewport: en los anchos chicos, donde el
  *    documento scrollea, queda afuera la mayor parte del contenido.
  *  - Corre siempre a 900px de alto: el escalón `max-height: 760` no se ejerce.
+ *  - Los anchos muestrean los escalones, no las bandas entre ellos: 601–767 no
+ *    se mide, y ahí la barra superior mide más que a 768 porque vuelve la card
+ *    de temporada.
  *  - `tapados` (texto encima de un control solo-ícono) se releva pero no cuenta
  *    para el criterio de fallo: elementFromPoint da falsos positivos con
  *    backdrop-filter y capas sticky.
