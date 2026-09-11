@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { formatearEntero } from '../lib/formato';
+import { concordar, formatearEntero, type Sustantivo } from '../lib/formato';
 import type { PuntoGps } from '../queries/mapaQueries';
 import { MapaPuntos } from './mapa/MapaPuntos';
 import { PuntoColor } from './PuntoColor';
@@ -7,6 +7,8 @@ import styles from './PlantationMap.module.css';
 
 /** Cantidad de especies que entran en la leyenda (las principales por orden). */
 const MAX_LEYENDA = 6;
+
+const PUNTO: Sustantivo = { singular: 'punto', plural: 'puntos' };
 
 /** Especie de la leyenda. Tipo estructural: el mapa no importa de `screens/`. */
 export interface EspecieLeyenda {
@@ -56,7 +58,7 @@ export function PlantationMap({ puntos, leyenda, parcelaFiltro }: PlantationMapP
           {puntos.length > 0 && <Leyenda leyenda={leyenda} />}
           <span className={styles.chip}>
             <span className={styles.chipNumero}>{formatearEntero(puntos.length)}</span>
-            puntos
+            {concordar(puntos.length, PUNTO)}
           </span>
         </div>
       </div>

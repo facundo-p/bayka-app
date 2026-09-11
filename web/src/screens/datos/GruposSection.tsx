@@ -1,5 +1,6 @@
 import { useParams } from 'react-router';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { GrupoConDetalle } from '../../queries/dataExplorerQueries';
 import { COLUMNAS_GRUPOS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
@@ -10,7 +11,7 @@ import { useIrASeccion } from './useIrASeccion';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
 const TEXTOS: TextosSeccion = {
-  unidad: 'grupos',
+  unidad: SUSTANTIVO.grupo,
   cargando: 'Cargando grupos…',
   error: 'No se pudieron cargar los grupos.',
   pie: 'Clic en una fila abre los árboles del grupo',

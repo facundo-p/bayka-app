@@ -7,6 +7,7 @@ import {
   type Opcion,
 } from '../../components';
 import type { ControlesFiltros } from '../../hooks/useFiltrosListado';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
 import {
   contarArboles,
@@ -50,8 +51,8 @@ export function EspeciesToolbar({ controles, visibles }: EspeciesToolbarProps) {
       }
       recuento={
         <>
-          <RecuentoItem cantidad={visibles.length} singular="especie" plural="especies" /> ·{' '}
-          <RecuentoItem cantidad={contarArboles(visibles)} singular="árbol" plural="árboles" />
+          <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.especie} /> ·{' '}
+          <RecuentoItem cantidad={contarArboles(visibles)} sustantivo={SUSTANTIVO.arbol} />
         </>
       }
     >

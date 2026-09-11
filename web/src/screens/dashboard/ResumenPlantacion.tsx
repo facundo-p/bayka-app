@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { BarraProgreso, type RellenoBarra } from '../../components/BarraProgreso';
 import { cx } from '../../lib/classNames';
-import { formatearEntero, porcentajeDeObjetivo } from '../../lib/formato';
+import { concordar, formatearEntero, porcentajeDeObjetivo } from '../../lib/formato';
 import type { KpisArboles } from '../../queries/dashboardQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ResumenPlantacion.module.css';
@@ -20,6 +20,9 @@ interface ResumenPlantacionProps {
   /** Sin esto la card mide toda la plantación y no muestra la fila de alcance. */
   alcance?: AlcanceMetrica;
 }
+
+/** El verbo concuerda con los N/N de la cifra de al lado. */
+const AVISO_PENDIENTES = { singular: 'requiere atención', plural: 'requieren atención' };
 
 /** Sin meta no hay "de 0 · 0%": se avisa que falta. */
 function textoMeta(objetivo: number | null, avance: number | null): string {
@@ -99,7 +102,7 @@ function CeldaSinIdentificar({ cantidad }: { cantidad: number }) {
       {hayPendientes && (
         <span className={styles.hint}>
           <AlertTriangle size={TAMANO_ICONO.sm} aria-hidden />
-          requieren atención
+          {concordar(cantidad, AVISO_PENDIENTES)}
         </span>
       )}
     </div>

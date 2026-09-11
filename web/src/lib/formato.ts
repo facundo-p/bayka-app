@@ -3,8 +3,14 @@ export function formatearEntero(valor: number): string {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
 }
 
-/** El sustantivo que concuerda con la cantidad, sin la cantidad. */
-export function concordar(cantidad: number, singular: string, plural: string): string {
+/** Las dos formas de lo que concuerda con una cantidad, ej. árbol/árboles. */
+export interface Sustantivo {
+  singular: string;
+  plural: string;
+}
+
+/** La forma que concuerda con la cantidad, sin la cantidad. */
+export function concordar(cantidad: number, { singular, plural }: Sustantivo): string {
   return cantidad === 1 ? singular : plural;
 }
 
@@ -12,8 +18,8 @@ export function concordar(cantidad: number, singular: string, plural: string): s
  * Concuerda un sustantivo con su cantidad, ya formateada, ej. "1 plantación"
  * o "1.260 árboles".
  */
-export function pluralizar(cantidad: number, singular: string, plural: string): string {
-  return `${formatearEntero(cantidad)} ${concordar(cantidad, singular, plural)}`;
+export function pluralizar(cantidad: number, sustantivo: Sustantivo): string {
+  return `${formatearEntero(cantidad)} ${concordar(cantidad, sustantivo)}`;
 }
 
 /** Opción de un select de entidades con código, ej. "P1 — Norte". */

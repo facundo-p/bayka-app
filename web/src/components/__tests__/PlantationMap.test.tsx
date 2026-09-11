@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import { PlantationMap } from '../PlantationMap';
 
@@ -49,4 +49,16 @@ test('el chip cuenta los puntos que recibe (ya filtrados)', () => {
   );
 
   expect(screen.getByText('2')).toBeInTheDocument();
+});
+
+test.each([
+  [0, '0', 'puntos'],
+  [1, '1', 'punto'],
+  [2, '2', 'puntos'],
+  [1000, '1.000', 'puntos'],
+])('el chip concuerda con %i puntos: "%s %s"', (cantidad, numero, sustantivo) => {
+  const puntos = Array.from({ length: cantidad }, () => punto('QB', 'Quebracho'));
+  render(<PlantationMap puntos={puntos} leyenda={LEYENDA} />);
+
+  expect(within(screen.getByText(sustantivo)).getByText(numero)).toBeInTheDocument();
 });

@@ -29,6 +29,7 @@ import {
 import { ROL } from '../../repositories/profileRepository';
 import { CabeceraConfig } from './CabeceraConfig';
 import { CardConfig } from './CardConfig';
+import { chipTecnicos } from './chipsConfig';
 import { ErrorAccion } from './ErrorAccion';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './SeccionesConfig.module.css';
@@ -200,7 +201,7 @@ function CabeceraTecnicos({ cantidad, onAsignar }: { cantidad: number; onAsignar
     <CabeceraConfig
       titulo={TITULO}
       subtitulo={SUBTITULO}
-      chip={`${cantidad} asignados`}
+      chip={chipTecnicos(cantidad)}
       acciones={asignar}
     />
   );

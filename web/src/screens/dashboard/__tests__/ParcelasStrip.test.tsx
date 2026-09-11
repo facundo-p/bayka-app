@@ -8,11 +8,11 @@ const PARCELAS = [
   { id: 'p2', codigo: 'P-02', nombre: 'Bajo del Sauce', arboles: 1112, grupos: 8 },
 ];
 
-function renderStrip(seleccionada: string | null, onSeleccionar = vi.fn()) {
+function renderStrip(seleccionada: string | null, onSeleccionar = vi.fn(), parcelas = PARCELAS) {
   render(
     <MemoryRouter>
       <ParcelasStrip
-        parcelas={PARCELAS}
+        parcelas={parcelas}
         parcelaSeleccionada={seleccionada}
         onSeleccionar={onSeleccionar}
       />
@@ -27,6 +27,17 @@ test('lista las parcelas con su recuento y la invitación a filtrar', () => {
   expect(screen.getByText('2 · clic para filtrar')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /Lote Norte/ })).toBeInTheDocument();
   expect(screen.getByText('1.240')).toBeInTheDocument();
+});
+
+test.each([
+  [0, '0 grupos'],
+  [1, '1 grupo'],
+  [2, '2 grupos'],
+  [1000, '1.000 grupos'],
+])('la mini card concuerda los grupos: %i → "%s"', (grupos, texto) => {
+  renderStrip(null, vi.fn(), [{ ...PARCELAS[0], grupos }]);
+
+  expect(screen.getByText(texto)).toBeInTheDocument();
 });
 
 test('clickear una parcela la propaga y la seleccionada queda marcada', async () => {

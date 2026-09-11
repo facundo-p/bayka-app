@@ -6,6 +6,7 @@ import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarEspeciesConUso } from '../../queries/especieQueries';
 import { CabeceraConfig } from './CabeceraConfig';
 import { CardConfig } from './CardConfig';
+import { chipEspecies } from './chipsConfig';
 import { ErrorAccion } from './ErrorAccion';
 import { useChecklistEspecies, type DatosChecklist } from './useChecklistEspecies';
 import styles from './SeccionesConfig.module.css';
@@ -53,7 +54,7 @@ function AvisosEspecies({ checklist }: { checklist: Checklist }) {
 
 function ContenidoEspecies(datos: DatosChecklist) {
   const checklist = useChecklistEspecies(datos);
-  const chip = `${datos.especies.length} habilitadas · ${datos.catalogo.length} en catálogo`;
+  const chip = chipEspecies(datos.especies.length, datos.catalogo.length);
   return (
     <>
       <CabeceraEspecies checklist={checklist} chip={chip} />

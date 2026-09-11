@@ -8,15 +8,21 @@ import {
   porcentajeDeObjetivo,
 } from '../formato';
 
+const ARBOL = { singular: 'árbol', plural: 'árboles' };
+
 test('concordar: singular solo con uno, plural con cero y con más', () => {
-  expect(concordar(1, 'árbol', 'árboles')).toBe('árbol');
-  expect(concordar(0, 'árbol', 'árboles')).toBe('árboles');
-  expect(concordar(2, 'árbol', 'árboles')).toBe('árboles');
+  expect(concordar(1, ARBOL)).toBe('árbol');
+  expect(concordar(0, ARBOL)).toBe('árboles');
+  expect(concordar(2, ARBOL)).toBe('árboles');
 });
 
-test('pluralizar: cantidad formateada más el sustantivo concordado', () => {
-  expect(pluralizar(1, 'plantación', 'plantaciones')).toBe('1 plantación');
-  expect(pluralizar(1260, 'árbol', 'árboles')).toBe('1.260 árboles');
+test.each([
+  [0, '0 árboles'],
+  [1, '1 árbol'],
+  [2, '2 árboles'],
+  [1260, '1.260 árboles'],
+])('pluralizar %i: "%s"', (cantidad, texto) => {
+  expect(pluralizar(cantidad, ARBOL)).toBe(texto);
 });
 
 test('etiquetaCodigoNombre separa código y nombre con raya', () => {

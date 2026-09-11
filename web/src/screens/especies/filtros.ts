@@ -1,7 +1,10 @@
 /**
  * Filtro y orden del catálogo de especies. Puro: se testea sin renderizar.
  */
+import { formatearEntero, pluralizar, type Sustantivo } from '../../lib/formato';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
+
+const ESPECIE_NATIVA: Sustantivo = { singular: 'especie nativa', plural: 'especies nativas' };
 
 export const USO_ESPECIE = {
   todas: 'todas',
@@ -81,6 +84,12 @@ export function filtrarEspecies(
 /** Cuántas especies del catálogo tienen algún uso (para la meta de la cabecera). */
 export function contarEnUso(catalogo: EspecieConCatalogoUso[]): number {
   return catalogo.filter((especie) => !sinUso(especie)).length;
+}
+
+/** Meta de la cabecera: tamaño del catálogo y cuántas están en uso. */
+export function metaCatalogo(catalogo: EspecieConCatalogoUso[]): string {
+  const enUso = formatearEntero(contarEnUso(catalogo));
+  return `Catálogo global · ${pluralizar(catalogo.length, ESPECIE_NATIVA)} · ${enUso} en uso`;
 }
 
 export function contarArboles(catalogo: EspecieConCatalogoUso[]): number {

@@ -1,9 +1,20 @@
 /**
  * Filtro del listado de usuarios. Puro: se testea sin renderizar.
  */
+import { pluralizar, type Sustantivo } from '../../lib/formato';
 import { nombreVisible } from '../../lib/presentacionUsuario';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
-import { ROL } from '../../repositories/profileRepository';
+import { ROL, type Rol } from '../../repositories/profileRepository';
+
+/** Cómo cuenta cada rol la meta de la cabecera. */
+const SUSTANTIVO_ROL = {
+  [ROL.SUPERADMIN]: { singular: 'superadmin', plural: 'superadmins' },
+  [ROL.ADMIN]: { singular: 'admin', plural: 'admins' },
+  [ROL.TECNICO]: { singular: 'técnico', plural: 'técnicos' },
+} as const satisfies Record<Rol, Sustantivo>;
+
+const ROLES_EN_META: readonly Rol[] = [ROL.SUPERADMIN, ROL.ADMIN, ROL.TECNICO];
 
 export const FILTRO_ROL = {
   todos: 'todos',
@@ -76,21 +87,19 @@ export function filtrarUsuarios(
 export function resumenPlantaciones(usuario: UsuarioConAsignaciones): string {
   if (usuario.rol === ROL.SUPERADMIN || usuario.rol === ROL.ADMIN) return 'Todas';
   if (usuario.plantacionesAsignadas === 0) return 'Sin plantaciones';
-  const plural = usuario.plantacionesAsignadas === 1 ? 'plantación' : 'plantaciones';
-  return `${usuario.plantacionesAsignadas} ${plural}`;
+  return pluralizar(usuario.plantacionesAsignadas, SUSTANTIVO.plantacion);
 }
 
-/** Meta de la cabecera con los conteos por rol; pluraliza "persona(s)". */
+function contarRol(usuarios: UsuarioConAsignaciones[], rol: Rol): number {
+  return usuarios.filter((usuario) => usuario.rol === rol).length;
+}
+
+/** Meta de la cabecera: el total de personas y cuántas hay de cada rol. */
 export function calcularMeta(usuarios: UsuarioConAsignaciones[]): string {
-  const superadmins = usuarios.filter((usuario) => usuario.rol === ROL.SUPERADMIN).length;
-  const admins = usuarios.filter((usuario) => usuario.rol === ROL.ADMIN).length;
-  const tecnicos = usuarios.filter((usuario) => usuario.rol === ROL.TECNICO).length;
-  const personas = usuarios.length === 1 ? 'persona' : 'personas';
-  return (
-    `${usuarios.length} ${personas} · ${superadmins} superadmin · ` +
-    `${admins} ${admins === 1 ? 'admin' : 'admins'} · ` +
-    `${tecnicos} ${tecnicos === 1 ? 'técnico' : 'técnicos'}`
+  const porRol = ROLES_EN_META.map((rol) =>
+    pluralizar(contarRol(usuarios, rol), SUSTANTIVO_ROL[rol]),
   );
+  return [pluralizar(usuarios.length, SUSTANTIVO.persona), ...porRol].join(' · ');
 }
 
 export function contarActivas(usuarios: UsuarioConAsignaciones[]): number {

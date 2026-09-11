@@ -3,8 +3,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
 import { BotonIcono } from '../../components';
 import { cx } from '../../lib/classNames';
-import { formatearEntero } from '../../lib/formato';
+import { formatearEntero, pluralizar } from '../../lib/formato';
 import { TAB_DETALLE } from '../../lib/rutas';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ParcelasStrip.module.css';
 
@@ -52,7 +53,7 @@ function MiniCardParcela({ parcela, seleccionada, onSeleccionar }: MiniCardParce
     >
       <div className={styles.miniCardTop}>
         <span className={styles.codigo}>{parcela.codigo}</span>
-        <span className={styles.grupos}>{`${parcela.grupos} grupos`}</span>
+        <span className={styles.grupos}>{pluralizar(parcela.grupos, SUSTANTIVO.grupo)}</span>
       </div>
       <span className={styles.arboles}>{formatearEntero(parcela.arboles)}</span>
       <span className={styles.nombre}>{parcela.nombre}</span>

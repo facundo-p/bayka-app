@@ -395,7 +395,7 @@ describe('sección Técnicos', () => {
     await usuario.click(screen.getByRole('option', { name: /Pablo Ríos/ }));
     await usuario.click(within(dialogo).getByRole('button', { name: 'Asignar' }));
 
-    expect(await screen.findByText('1 asignados')).toBeInTheDocument();
+    expect(await screen.findByText('1 asignado')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Quitar Pablo Ríos' })).toBeInTheDocument();
     expect(invalidaciones).toHaveBeenCalledTimes(4);
     expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantacion-usuarios', 'plant-1'] });

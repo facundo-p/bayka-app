@@ -3,6 +3,7 @@ import { CardTabla, LayoutConPanel, Table } from '../../components';
 import { useAuth } from '../../hooks/useAuth';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { pluralizar } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { contarSuperadminsActivos, type AccionActiva } from './acciones';
 import { columnasUsuarios } from './columnas';
@@ -44,7 +45,7 @@ export function ListadoUsuarios({ usuarios, visibles, onAccion }: ListadoUsuario
   return (
     <LayoutConPanel panel={panel}>
       <CardTabla
-        pie={`${pluralizar(visibles.length, 'persona', 'personas')} · ${PIE_AYUDA}`}
+        pie={`${pluralizar(visibles.length, SUSTANTIVO.persona)} · ${PIE_AYUDA}`}
         pieDerecha={PIE_NOTA}
       >
         <Table

@@ -82,14 +82,22 @@ test('los roles de gestión acceden a todas las plantaciones (#67)', () => {
   expect(resumenPlantaciones(EQUIPO[3])).toBe('Sin plantaciones');
 });
 
-test('el resumen de un técnico con una sola plantación va en singular', () => {
-  expect(resumenPlantaciones(usuario('u9', 'Uno', ROL.TECNICO, null, true, 1))).toBe(
-    '1 plantación',
-  );
+test.each([
+  [1, '1 plantación'],
+  [2, '2 plantaciones'],
+  [1000, '1.000 plantaciones'],
+])('el resumen de un técnico con %i asignaciones: "%s"', (asignadas, texto) => {
+  expect(resumenPlantaciones(usuario('u9', 'Uno', ROL.TECNICO, null, true, asignadas))).toBe(texto);
 });
 
 test('la meta de la cabecera cuenta por rol y pluraliza', () => {
   expect(calcularMeta(EQUIPO)).toBe('4 personas · 1 superadmin · 1 admin · 2 técnicos');
   expect(calcularMeta([EQUIPO[0]])).toBe('1 persona · 1 superadmin · 0 admins · 0 técnicos');
   expect(contarActivas(EQUIPO)).toBe(3);
+});
+
+test('la meta también pluraliza los superadmins', () => {
+  const dosSuper = [EQUIPO[0], { ...EQUIPO[0], id: 'u8' }];
+  expect(calcularMeta(dosSuper)).toBe('2 personas · 2 superadmins · 0 admins · 0 técnicos');
+  expect(calcularMeta([])).toBe('0 personas · 0 superadmins · 0 admins · 0 técnicos');
 });

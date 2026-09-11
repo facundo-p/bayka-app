@@ -1,5 +1,6 @@
 import { useParams } from 'react-router';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { COLUMNAS_PARCELAS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
@@ -8,7 +9,7 @@ import { useParcelasDatos } from './useDatosQueries';
 import { useIrASeccion } from './useIrASeccion';
 
 const TEXTOS: TextosSeccion = {
-  unidad: 'parcelas',
+  unidad: SUSTANTIVO.parcela,
   cargando: 'Cargando parcelas…',
   error: 'No se pudieron cargar las parcelas.',
   pie: 'Clic en una fila abre los grupos de la parcela',

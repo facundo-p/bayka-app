@@ -3,6 +3,7 @@ import { CardTabla, Table } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { pluralizar } from '../../lib/formato';
 import { rutaPlantacion } from '../../lib/rutas';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import { COLUMNAS_PLANTACIONES } from './columnas';
 
@@ -15,7 +16,7 @@ export function ListadoPlantaciones({ visibles }: { visibles: PlantacionConStats
   const columnas = useColumnasVisibles(COLUMNAS_PLANTACIONES);
   return (
     <CardTabla
-      pie={`${pluralizar(visibles.length, 'plantación', 'plantaciones')} · ${PIE_AYUDA}`}
+      pie={`${pluralizar(visibles.length, SUSTANTIVO.plantacion)} · ${PIE_AYUDA}`}
       pieDerecha={PIE_NOTA}
     >
       <Table

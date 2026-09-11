@@ -175,4 +175,13 @@ describe('resumen y conteos', () => {
   test('el resumen del listado vacío no rompe', () => {
     expect(resumenPlantaciones([])).toBe('0 plantaciones · 0 temporadas · 0 árboles registrados');
   });
+
+  test.each([
+    [1, '1 árbol registrado'],
+    [2, '2 árboles registrados'],
+  ])('el resumen concuerda %i árboles: "%s"', (arboles, texto) => {
+    expect(resumenPlantaciones([plantacion({ arboles })])).toBe(
+      `1 plantación · 1 temporada · ${texto}`,
+    );
+  });
 });

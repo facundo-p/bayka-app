@@ -3,20 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import { PantallaListado, type TextosConsulta } from '../components';
 import { useFiltrosListado } from '../hooks/useFiltrosListado';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
-import { listarCatalogoConUso, type EspecieConCatalogoUso } from '../queries/especieQueries';
+import { listarCatalogoConUso } from '../queries/especieQueries';
 import { EspeciesToolbar } from './especies/EspeciesToolbar';
-import { contarEnUso, filtrarEspecies, FILTROS_INICIALES_ESPECIES } from './especies/filtros';
+import { filtrarEspecies, FILTROS_INICIALES_ESPECIES, metaCatalogo } from './especies/filtros';
 import { ListadoEspecies, type Seleccion } from './especies/ListadoEspecies';
 
 const TEXTOS: TextosConsulta = {
   error: 'No se pudieron cargar las especies.',
   vacio: { titulo: 'Sin especies', descripcion: 'El catálogo de especies va a aparecer acá.' },
 };
-
-/** Meta de la cabecera: tamaño del catálogo y cuántas están en uso. */
-function metaCatalogo(catalogo: EspecieConCatalogoUso[]): string {
-  return `Catálogo global · ${catalogo.length} especies nativas · ${contarEnUso(catalogo)} en uso`;
-}
 
 export function EspeciesScreen() {
   const consulta = useQuery({

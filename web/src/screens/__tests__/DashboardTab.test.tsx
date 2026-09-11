@@ -133,7 +133,7 @@ describe('DashboardTab', () => {
     expect(within(card).getByText('Con foto')).toBeInTheDocument();
     expect(within(card).getByText('40%')).toBeInTheDocument();
     expect(within(card).getByText('N/N')).toBeInTheDocument();
-    expect(within(card).getByText('requieren atención')).toBeInTheDocument();
+    expect(within(card).getByText('requiere atención')).toBeInTheDocument();
     // Paneles nuevos.
     expect(screen.getByText('Por especie')).toBeInTheDocument();
     expect(screen.getByText('Parcelas')).toBeInTheDocument();
