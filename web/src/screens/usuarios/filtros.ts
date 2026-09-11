@@ -1,9 +1,9 @@
 /**
  * Filtro del listado de usuarios. Puro: se testea sin renderizar.
  */
+import { nombreVisible } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL } from '../../repositories/profileRepository';
-import { nombreVisible } from './presentacion';
 
 export const FILTRO_ROL = {
   todos: 'todos',
@@ -39,7 +39,7 @@ export const FILTROS_INICIALES_USUARIOS: FiltrosBarraUsuarios = {
 function coincide(usuario: UsuarioConAsignaciones, termino: string): boolean {
   const aguja = termino.trim().toLowerCase();
   if (!aguja) return true;
-  return [nombreVisible(usuario), usuario.email ?? ''].some((campo) =>
+  return [nombreVisible(usuario.nombre, usuario.id), usuario.email ?? ''].some((campo) =>
     campo.toLowerCase().includes(aguja),
   );
 }

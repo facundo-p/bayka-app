@@ -1,23 +1,15 @@
 /** Constantes de presentación compartidas por la pantalla y los modales de usuarios. */
-import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
+import type { Opcion } from '../../components/opcion';
+import { etiquetaRol } from '../../lib/presentacionUsuario';
 import { ROL, type Rol } from '../../repositories/profileRepository';
 
 export const ADVERTENCIA_SUPERADMIN =
   'Va a tener acceso total, incluida la gestión de usuarios.';
 
-export const ROLES: Array<{ valor: Rol; etiqueta: string }> = [
-  { valor: ROL.TECNICO, etiqueta: 'Técnico' },
-  { valor: ROL.ADMIN, etiqueta: 'Admin' },
-  { valor: ROL.SUPERADMIN, etiqueta: 'Superadmin' },
-];
+/** De menor a mayor alcance: el orden del selector de rol. */
+const ORDEN_ROLES: readonly Rol[] = [ROL.TECNICO, ROL.ADMIN, ROL.SUPERADMIN];
 
-export const ETIQUETA_ROL: Record<Rol, string> = {
-  [ROL.SUPERADMIN]: 'Superadmin',
-  [ROL.ADMIN]: 'Admin',
-  [ROL.TECNICO]: 'Técnico',
-};
-
-/** Nombre visible: un perfil sin nombre se identifica por el id corto. */
-export function nombreVisible(usuario: UsuarioConAsignaciones): string {
-  return usuario.nombre || usuario.id.slice(0, 8);
-}
+export const OPCIONES_ROL: ReadonlyArray<Opcion<Rol>> = ORDEN_ROLES.map((rol) => ({
+  value: rol,
+  label: etiquetaRol(rol),
+}));

@@ -4,16 +4,10 @@ import { useAuth } from '../hooks/useAuth';
 import { useNovedadesNoVistas } from '../hooks/useNovedadesNoVistas';
 import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
-import { ROL, type Perfil } from '../repositories/profileRepository';
+import { etiquetaRol } from '../lib/presentacionUsuario';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
 import styles from './UserMenu.module.css';
-
-const ETIQUETA_ROL: Record<Perfil['rol'], string> = {
-  [ROL.SUPERADMIN]: 'Superadmin',
-  [ROL.ADMIN]: 'Administrador',
-  [ROL.TECNICO]: 'Técnico',
-};
 
 /** Link a Novedades con la versión deployada; el dot avisa que hay una versión
  *  que este navegador todavía no vio. */
@@ -44,7 +38,7 @@ export function UserMenu() {
         </div>
         <div className={styles.datos}>
           <span className={styles.nombre}>{perfil.nombre}</span>
-          <span className={styles.rol}>{ETIQUETA_ROL[perfil.rol]}</span>
+          <span className={styles.rol}>{etiquetaRol(perfil.rol)}</span>
         </div>
         <BotonIcono variante="fantasma" etiqueta="Cerrar sesión" onClick={() => void signOut()}>
           <LogOut size={TAMANO_ICONO.lg} aria-hidden />
