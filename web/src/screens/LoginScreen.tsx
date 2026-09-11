@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import { Button, Card, Input, PasswordInput } from '../components';
 import { useAuth } from '../hooks/useAuth';
+import { RUTA } from '../lib/rutas';
 import styles from './LoginScreen.module.css';
 
 function MarcaBayka() {
@@ -66,7 +67,7 @@ export function LoginScreen() {
 
   // Con sesión ya resuelta el gate de rutas decide qué mostrar.
   if (estado === 'autenticado' || estado === 'sin-acceso') {
-    return <Navigate to="/plantaciones" replace />;
+    return <Navigate to={RUTA.plantaciones} replace />;
   }
 
   return (

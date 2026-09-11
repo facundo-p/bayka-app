@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router';
-import { rutaSeccion, type SegmentoDatos } from '../../lib/rutasPlantacion';
+import { rutaSeccion, type SegmentoDatos } from '../../lib/rutas';
 
 /** Navegación a una sección hermana: el selector de la toolbar y los drill-downs. */
 export function useIrASeccion() {

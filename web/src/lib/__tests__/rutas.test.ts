@@ -1,11 +1,30 @@
+import { matchPath } from 'react-router';
 import {
   PARAM_URL,
+  PATRON_DETALLE_PLANTACION,
+  RUTA,
   rutaDatos,
   rutaPlantacion,
   rutaSeccion,
   SEGMENTO_DATOS,
   TAB_DETALLE,
-} from '../rutasPlantacion';
+} from '../rutas';
+
+test('RUTA: la raíz de cada pantalla', () => {
+  expect(RUTA).toEqual({
+    login: '/login',
+    establecerPassword: '/establecer-password',
+    plantaciones: '/plantaciones',
+    especies: '/especies',
+    novedades: '/novedades',
+    usuarios: '/usuarios',
+  });
+});
+
+test('el patrón del detalle reconoce la ruta que arma rutaPlantacion', () => {
+  expect(PATRON_DETALLE_PLANTACION).toBe('/plantaciones/:id');
+  expect(matchPath(PATRON_DETALLE_PLANTACION, rutaPlantacion('p1'))?.params.id).toBe('p1');
+});
 
 test('rutaPlantacion: sin tab es el dashboard; con tab, su segmento', () => {
   expect(rutaPlantacion('p1')).toBe('/plantaciones/p1');

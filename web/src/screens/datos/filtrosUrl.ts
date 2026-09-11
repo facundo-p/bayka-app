@@ -1,4 +1,4 @@
-import { PARAM_URL, type ParamUrl } from '../../lib/rutasPlantacion';
+import { PARAM_URL, type ParamUrl } from '../../lib/rutas';
 import { FILTRO_FOTO, FILTRO_GPS, FILTROS_INICIALES, type FiltrosUi } from './filtrosArboles';
 
 type CampoFiltro = keyof FiltrosUi;
