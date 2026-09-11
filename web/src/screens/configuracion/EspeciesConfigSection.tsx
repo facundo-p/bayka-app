@@ -1,13 +1,6 @@
-import { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  BuscadorEspecies,
-  Cargando,
-  ErrorConReintento,
-  MaestroEspecies,
-  SpeciesChecklist,
-} from '../../components';
+import { useQuery } from '@tanstack/react-query';
+import { BuscadorEspecies, MaestroEspecies, SpeciesChecklist } from '../../components';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
@@ -15,210 +8,74 @@ import {
   type EspecieCatalogo,
   type EspecieConUso,
 } from '../../queries/especieQueries';
-import {
-  agregarEspecie,
-  quitarEspecie,
-  sincronizarEspecies,
-} from '../../repositories/plantationSpeciesRepository';
-import {
-  accionDesdeEstado,
-  avisoBloqueadas,
-  estadoMaestro,
-  filtrarCatalogo,
-  planificarAccionMasiva,
-} from '../../lib/speciesChecklistSelection';
 import { CabeceraConfig } from './CabeceraConfig';
+import { CardConfig } from './CardConfig';
+import { ErrorAccion } from './ErrorAccion';
+import { useChecklistEspecies } from './useChecklistEspecies';
 import styles from './SeccionesConfig.module.css';
-
-type Toggle = { speciesId: string; habilitar: boolean; orden: number };
-type Sincronizacion = { idsHabilitar: string[]; idsQuitar: string[]; ordenInicial: number };
 
 const TITULO = 'Especies habilitadas';
 const SUBTITULO = 'Definen la botonera de registro en la app';
+const PIE =
+  'Las especies con árboles registrados no se pueden desmarcar. El orden en la app es el orden de alta.';
 
-/** Set de ids habilitados a partir de las especies de la plantación. */
-function idsHabilitadas(especies: EspecieConUso[]): Set<string> {
-  return new Set(especies.map((especie) => especie.id));
-}
+type Checklist = ReturnType<typeof useChecklistEspecies>;
 
-/** Set de ids habilitados con árboles: no se pueden desmarcar (paridad mobile). */
-function idsBloqueadas(especies: EspecieConUso[]): Set<string> {
-  return new Set(especies.filter((especie) => especie.tieneArboles).map((especie) => especie.id));
-}
-
-/**
- * Mutación optimista de habilitar/quitar especie. La reordenación manual
- * (↑/↓ de la tabla vieja) ya no se expone en la web: el orden_visual se
- * asigna por orden de alta (append al final).
- */
-function useToggleEspecie(plantationId: string, catalogo: EspecieCatalogo[]) {
-  const queryClient = useQueryClient();
-  const clave = CLAVE_QUERY.plantacionEspecies(plantationId);
-  return useMutation({
-    // `orden` se calcula en el call site (cantidad habilitada actual): append
-    // al final, igual que la tabla vieja, sin reordenamiento manual en web.
-    mutationFn: ({ speciesId, habilitar, orden }: Toggle) =>
-      habilitar
-        ? agregarEspecie(plantationId, speciesId, orden)
-        : quitarEspecie(plantationId, speciesId),
-    onMutate: async ({ speciesId, habilitar }) => {
-      await queryClient.cancelQueries({ queryKey: clave });
-      const previas = queryClient.getQueryData<EspecieConUso[]>(clave) ?? [];
-      queryClient.setQueryData<EspecieConUso[]>(clave, aplicarToggle(previas, catalogo, speciesId, habilitar));
-      return { previas };
-    },
-    onError: (_error, _variables, contexto) => {
-      if (contexto) queryClient.setQueryData(clave, contexto.previas);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: clave }),
-  });
-}
-
-/** Aplica el toggle al cache: agrega (append) o quita la especie. */
-function aplicarToggle(
-  previas: EspecieConUso[],
-  catalogo: EspecieCatalogo[],
-  speciesId: string,
-  habilitar: boolean,
-): EspecieConUso[] {
-  if (!habilitar) return previas.filter((especie) => especie.id !== speciesId);
-  const base = catalogo.find((especie) => especie.id === speciesId);
-  if (!base) return previas;
-  return [...previas, { ...base, ordenVisual: previas.length, tieneArboles: false }];
-}
-
-/**
- * Mutación optimista de la acción masiva (marcar/desmarcar todas). Aplica el
- * batch de altas/bajas de una sola vez, con rollback e invalidación igual que
- * el toggle individual. La decisión de qué agregar/quitar la calcula el pure
- * helper `speciesChecklistSelection`; acá solo se ejecuta y se cachea.
- */
-function useSincronizarEspecies(plantationId: string, catalogo: EspecieCatalogo[]) {
-  const queryClient = useQueryClient();
-  const clave = CLAVE_QUERY.plantacionEspecies(plantationId);
-  return useMutation({
-    mutationFn: ({ idsHabilitar, idsQuitar, ordenInicial }: Sincronizacion) =>
-      sincronizarEspecies(plantationId, idsHabilitar, idsQuitar, ordenInicial),
-    onMutate: async ({ idsHabilitar, idsQuitar }) => {
-      await queryClient.cancelQueries({ queryKey: clave });
-      const previas = queryClient.getQueryData<EspecieConUso[]>(clave) ?? [];
-      queryClient.setQueryData<EspecieConUso[]>(
-        clave,
-        aplicarSincronizacion(previas, catalogo, idsHabilitar, idsQuitar),
-      );
-      return { previas };
-    },
-    onError: (_error, _variables, contexto) => {
-      if (contexto) queryClient.setQueryData(clave, contexto.previas);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: clave }),
-  });
-}
-
-/** Aplica el batch al cache: quita las bajas y agrega (append) las altas. */
-function aplicarSincronizacion(
-  previas: EspecieConUso[],
-  catalogo: EspecieCatalogo[],
-  idsHabilitar: string[],
-  idsQuitar: string[],
-): EspecieConUso[] {
-  const quitar = new Set(idsQuitar);
-  const conservadas = previas.filter((especie) => !quitar.has(especie.id));
-  const altas = idsHabilitar
-    .map((speciesId) => catalogo.find((especie) => especie.id === speciesId))
-    .filter((especie): especie is EspecieCatalogo => Boolean(especie))
-    .map((especie, indice) => ({
-      ...especie,
-      ordenVisual: conservadas.length + indice,
-      tieneArboles: false,
-    }));
-  return [...conservadas, ...altas];
-}
-
-function ContenidoEspecies({
-  plantationId,
-  catalogo,
-  especies,
-}: {
+interface ContenidoEspeciesProps {
   plantationId: string;
   catalogo: EspecieCatalogo[];
   especies: EspecieConUso[];
-}) {
-  const [busqueda, setBusqueda] = useState('');
-  const [aviso, setAviso] = useState<string | null>(null);
-  const habilitadas = useMemo(() => idsHabilitadas(especies), [especies]);
-  const bloqueadas = useMemo(() => idsBloqueadas(especies), [especies]);
-  const idsVisibles = useMemo(
-    () => filtrarCatalogo(catalogo, busqueda).map((especie) => especie.id),
-    [catalogo, busqueda],
+}
+
+function CabeceraEspecies({ checklist, chip }: { checklist: Checklist; chip: string }) {
+  const acciones = (
+    <>
+      <BuscadorEspecies busqueda={checklist.busqueda} onBuscar={checklist.setBusqueda} />
+      <MaestroEspecies
+        estado={checklist.estado}
+        deshabilitado={checklist.contexto.idsVisibles.length === 0}
+        onMaestro={checklist.alternarTodas}
+      />
+    </>
   );
-  const toggle = useToggleEspecie(plantationId, catalogo);
-  const sincronizar = useSincronizarEspecies(plantationId, catalogo);
+  return <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} chip={chip} acciones={acciones} />;
+}
 
-  const contexto = { idsVisibles, habilitadas, bloqueadas };
-  const estado = estadoMaestro(contexto);
-
-  const alternar = (speciesId: string, habilitar: boolean) => {
-    setAviso(null);
-    toggle.mutate({ speciesId, habilitar, orden: especies.length });
-  };
-
-  const alternarTodas = () => {
-    const plan = planificarAccionMasiva(contexto, accionDesdeEstado(estado));
-    setAviso(plan.bloqueadasMantenidas > 0 ? avisoBloqueadas(plan.bloqueadasMantenidas) : null);
-    if (plan.idsHabilitar.length === 0 && plan.idsQuitar.length === 0) return;
-    sincronizar.mutate({
-      idsHabilitar: plan.idsHabilitar,
-      idsQuitar: plan.idsQuitar,
-      ordenInicial: especies.length,
-    });
-  };
-
+function AvisosEspecies({ checklist }: { checklist: Checklist }) {
   return (
     <>
-      <CabeceraConfig
-        titulo={TITULO}
-        subtitulo={SUBTITULO}
-        chip={`${especies.length} habilitadas · ${catalogo.length} en catálogo`}
-        acciones={
-          <>
-            <BuscadorEspecies busqueda={busqueda} onBuscar={setBusqueda} />
-            <MaestroEspecies
-              estado={estado}
-              deshabilitado={idsVisibles.length === 0}
-              onMaestro={alternarTodas}
-            />
-          </>
-        }
-      />
-      <div className={styles.cuerpoEspecies}>
-        <SpeciesChecklist
-          catalogo={catalogo}
-          habilitadas={habilitadas}
-          bloqueadas={bloqueadas}
-          onToggle={alternar}
-          busqueda={busqueda}
-        />
-      </div>
-      {aviso && (
+      {checklist.aviso && (
         <p className={styles.avisoInfo} role="status">
-          {aviso}
+          {checklist.aviso}
         </p>
       )}
-      {(toggle.isError || sincronizar.isError) && (
-        <p className={styles.errorAccion} role="alert">
-          No se pudo guardar el cambio de especie.
-        </p>
-      )}
-      <p className={styles.pieEspecies}>
-        Las especies con árboles registrados no se pueden desmarcar. El orden en la app es el
-        orden de alta.
-      </p>
+      <ErrorAccion mensaje={checklist.mensajeError} />
     </>
   );
 }
 
-/** Qué especies pueden registrar los técnicos en esta plantación (checklist). */
+function ContenidoEspecies({ plantationId, catalogo, especies }: ContenidoEspeciesProps) {
+  const checklist = useChecklistEspecies(plantationId, catalogo, especies);
+  const chip = `${especies.length} habilitadas · ${catalogo.length} en catálogo`;
+  return (
+    <>
+      <CabeceraEspecies checklist={checklist} chip={chip} />
+      <div className={styles.cuerpoEspecies}>
+        <SpeciesChecklist
+          catalogo={catalogo}
+          habilitadas={checklist.contexto.habilitadas}
+          bloqueadas={checklist.contexto.bloqueadas}
+          onToggle={checklist.alternar}
+          busqueda={checklist.busqueda}
+        />
+      </div>
+      <AvisosEspecies checklist={checklist} />
+      <p className={styles.pieEspecies}>{PIE}</p>
+    </>
+  );
+}
+
+/** Qué especies pueden registrar los técnicos en esta plantación. */
 export function EspeciesConfigSection() {
   const { id = '' } = useParams();
   const catalogo = useCatalogoEspecies();
@@ -226,30 +83,17 @@ export function EspeciesConfigSection() {
     queryKey: CLAVE_QUERY.plantacionEspecies(id),
     queryFn: () => listarEspeciesConUso(id),
   });
-  const reintentar = () => void Promise.all([catalogo.refetch(), especies.refetch()]);
-
   return (
-    <section className={styles.cardEspecies}>
-      {(catalogo.isPending || especies.isPending) && (
-        <>
-          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
-          <Cargando />
-        </>
-      )}
-      {(catalogo.isError || especies.isError) && (
-        <>
-          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
-          <div className={styles.bloqueEstado}>
-            <ErrorConReintento
-              mensaje="No se pudieron cargar las especies."
-              onReintentar={reintentar}
-            />
-          </div>
-        </>
-      )}
+    <CardConfig
+      className={styles.cardEspecies}
+      titulo={TITULO}
+      subtitulo={SUBTITULO}
+      consultas={[catalogo, especies]}
+      mensajeError="No se pudieron cargar las especies."
+    >
       {catalogo.data && especies.data && (
         <ContenidoEspecies plantationId={id} catalogo={catalogo.data} especies={especies.data} />
       )}
-    </section>
+    </CardConfig>
   );
 }
