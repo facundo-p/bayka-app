@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Cargando, EmptyState, ErrorConReintento } from '../../components';
@@ -13,10 +13,11 @@ import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { useParcelasDatos } from '../datos/useDatosQueries';
-import { asignarColoresEspecies } from './coloresEspecies';
-import { ResumenPlantacion, type AlcanceMetrica } from './ResumenPlantacion';
+import { asignarColoresEspecies, type EspecieColoreada } from './coloresEspecies';
+import { ResumenPlantacion } from './ResumenPlantacion';
 import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
+import { useFiltroParcela } from './useFiltroParcela';
 import styles from './DashboardTab.module.css';
 
 function SinArboles() {
@@ -41,6 +42,59 @@ function filtrarPuntos(puntos: PuntoGps[], parcelaId: string | null): PuntoGps[]
   return puntos.filter((punto) => punto.parcelaId === parcelaId);
 }
 
+type FiltroParcela = ReturnType<typeof useFiltroParcela>;
+
+interface ColumnaMetricasProps {
+  datos: ReturnType<typeof calcularDashboard>;
+  especies: EspecieColoreada[];
+  objetivo: number;
+  filtro: FiltroParcela;
+}
+
+function ColumnaMetricas({ datos, especies, objetivo, filtro }: ColumnaMetricasProps) {
+  return (
+    <div className={styles.columna}>
+      <ResumenPlantacion
+        datos={datos}
+        objetivo={objetivo}
+        porcentaje={porcentajeObjetivo(datos.totalArboles, objetivo)}
+        alcance={filtro.alcance}
+      />
+      <SpeciesDistribution
+        especies={especies}
+        total={datos.totalArboles}
+        totalEspecies={datos.especiesUsadas}
+        parcelaFiltro={filtro.parcela?.codigo}
+      />
+    </div>
+  );
+}
+
+interface ColumnaMapaProps {
+  puntos: PuntoGps[];
+  parcelas: ParcelaConStats[];
+  especies: EspecieColoreada[];
+  filtro: FiltroParcela;
+}
+
+function ColumnaMapa({ puntos, parcelas, especies, filtro }: ColumnaMapaProps) {
+  const parcelaId = filtro.parcela?.id ?? null;
+  return (
+    <div className={styles.columna}>
+      <PlantationMap
+        puntos={filtrarPuntos(puntos, parcelaId)}
+        leyenda={especies}
+        parcelaFiltro={filtro.parcela?.codigo}
+      />
+      <ParcelasStrip
+        parcelas={parcelas}
+        parcelaSeleccionada={parcelaId}
+        onSeleccionar={filtro.alternar}
+      />
+    </div>
+  );
+}
+
 interface ContenidoDashboardProps {
   fuente: FuenteDashboard;
   objetivoArboles: number | null;
@@ -54,70 +108,43 @@ function ContenidoDashboard({
   parcelas,
   puntos,
 }: ContenidoDashboardProps) {
-  const [seleccionada, setSeleccionada] = useState<string | null>(null);
-  // Si la parcela seleccionada ya no está en la lista, el filtro se cae solo.
-  const parcelaFiltro = parcelas.find((parcela) => parcela.id === seleccionada) ?? null;
-  const parcelaId = parcelaFiltro?.id ?? null;
+  const filtro = useFiltroParcela(parcelas);
+  const parcelaId = filtro.parcela?.id ?? null;
   const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
   // El vacío es de la plantación: una parcela sin árboles muestra ceros y la
   // salida a "Ver todos", no una pantalla sin retorno.
   if (fuente.arboles.length === 0) return <SinArboles />;
-  const coloreadas = asignarColoresEspecies(datos.porEspecie);
-  const alternar = (id: string) =>
-    setSeleccionada((actual) => (actual === id ? null : id));
-  const alcance: AlcanceMetrica | undefined = parcelaFiltro
-    ? {
-        codigo: parcelaFiltro.codigo,
-        nombre: parcelaFiltro.nombre,
-        onVerTodos: () => setSeleccionada(null),
-      }
-    : undefined;
+  const especies = asignarColoresEspecies(datos.porEspecie);
   const objetivo = objetivoArboles ?? 0;
   return (
     <div className={styles.dashboard}>
-      <div className={styles.columna}>
-        <ResumenPlantacion
-          datos={datos}
-          objetivo={objetivo}
-          porcentaje={porcentajeObjetivo(datos.totalArboles, objetivo)}
-          alcance={alcance}
-        />
-        <SpeciesDistribution
-          especies={coloreadas}
-          total={datos.totalArboles}
-          totalEspecies={datos.especiesUsadas}
-          parcelaFiltro={parcelaFiltro?.codigo}
-        />
-      </div>
-      <div className={styles.columna}>
-        <PlantationMap
-          puntos={filtrarPuntos(puntos, parcelaId)}
-          leyenda={coloreadas}
-          parcelaFiltro={parcelaFiltro?.codigo}
-        />
-        <ParcelasStrip
-          parcelas={parcelas}
-          parcelaSeleccionada={parcelaId}
-          onSeleccionar={alternar}
-        />
-      </div>
+      <ColumnaMetricas datos={datos} especies={especies} objetivo={objetivo} filtro={filtro} />
+      <ColumnaMapa puntos={puntos} parcelas={parcelas} especies={especies} filtro={filtro} />
     </div>
   );
+}
+
+/** Mapa y parcelas pueden seguir cargando con el dashboard ya listo: se rinden
+ *  defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla. */
+function useDatosDashboard(plantationId: string) {
+  const dashboard = useQuery({
+    queryKey: CLAVE_QUERY.dashboard(plantationId),
+    queryFn: () => obtenerFuenteDashboard(plantationId),
+  });
+  const plantacion = usePlantacion(plantationId);
+  const mapa = useQuery({
+    queryKey: CLAVE_QUERY.mapa(plantationId),
+    queryFn: () => listarPuntosGps(plantationId),
+  });
+  const parcelas = useParcelasDatos(plantationId);
+  const objetivoArboles = plantacion.data?.objetivoArboles ?? null;
+  return { dashboard, objetivoArboles, parcelas: parcelas.data ?? [], puntos: mapa.data ?? [] };
 }
 
 /** Tab Dashboard del detalle de plantación: hero, KPIs, mapa y panel de especies. */
 export function DashboardTab() {
   const { id = '' } = useParams();
-  const dashboard = useQuery({
-    queryKey: CLAVE_QUERY.dashboard(id),
-    queryFn: () => obtenerFuenteDashboard(id),
-  });
-  const plantacion = usePlantacion(id);
-  // Mapa y parcelas pueden seguir cargando con el dashboard ya listo: se rinden
-  // defensivos (puntos=[] / parcelas=[]) sin bloquear toda la pantalla.
-  const mapa = useQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) });
-  const parcelas = useParcelasDatos(id);
-
+  const { dashboard, ...contexto } = useDatosDashboard(id);
   if (dashboard.isPending) return <Cargando />;
   if (dashboard.isError) {
     return (
@@ -127,12 +154,5 @@ export function DashboardTab() {
       />
     );
   }
-  return (
-    <ContenidoDashboard
-      fuente={dashboard.data}
-      objetivoArboles={plantacion.data?.objetivoArboles ?? null}
-      parcelas={parcelas.data ?? []}
-      puntos={mapa.data ?? []}
-    />
-  );
+  return <ContenidoDashboard fuente={dashboard.data} {...contexto} />;
 }
