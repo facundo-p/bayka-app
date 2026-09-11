@@ -22,7 +22,13 @@ import {
 import { actualizarNombre, cambiarRol, ROL, type Rol } from '../../repositories/profileRepository';
 import { cambiarEmail } from '../../services/adminUsersService';
 import { emailValido } from '../../../../supabase/functions/admin-users/nucleo';
-import { itemsDeMenu, motivoCambiarRol, type AccionUsuario, type ItemMenu } from './acciones';
+import {
+  ACCION_USUARIO,
+  itemsDeMenu,
+  motivoCambiarRol,
+  type AccionUsuario,
+  type ItemMenu,
+} from './acciones';
 import { Avatar } from './celdas';
 import { ADVERTENCIA_SUPERADMIN, ETIQUETA_ROL, nombreVisible, ROLES } from './presentacion';
 import { TAMANO_ICONO } from '../../theme/iconos';
@@ -34,11 +40,11 @@ const SIN_ASIGNACIONES = 'Sin plantaciones asignadas';
 const ACCESO_TOTAL = 'Acceso a todas las plantaciones';
 
 /** Ícono de cada acción rápida del panel (las mismas que el menú "⋯"). */
-const ICONO_ACCION: Partial<Record<AccionUsuario, typeof Key>> = {
-  cambiarPassword: Key,
-  reenviarInvitacion: Mail,
-  desactivar: Ban,
-  reactivar: Ban,
+const ICONO_ACCION: Record<AccionUsuario, typeof Key> = {
+  [ACCION_USUARIO.cambiarPassword]: Key,
+  [ACCION_USUARIO.reenviarInvitacion]: Mail,
+  [ACCION_USUARIO.desactivar]: Ban,
+  [ACCION_USUARIO.reactivar]: Ban,
 };
 
 /** Superadmin y admin son miembros automáticos de todas las plantaciones (#67). */
@@ -148,7 +154,7 @@ function BotonAccion({ item, onAccion }: { item: ItemMenu; onAccion: () => void 
       title={item.motivo ?? undefined}
       onClick={onAccion}
     >
-      {Icono && <Icono size={TAMANO_ICONO.md} aria-hidden />}
+      <Icono size={TAMANO_ICONO.md} aria-hidden />
       {item.etiqueta}
     </Button>
   );
