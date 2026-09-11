@@ -3,7 +3,8 @@
  * Espeja el esquema de mobile (ExportService): 9 columnas, comillado RFC 4180.
  * `construirCsvExportacion` es PURA (testeable); el BOM se agrega recién en la descarga.
  */
-import { ESPECIE_NO_RESUELTA, type FilaExportacion } from '../queries/exportacionQueries';
+import { ESPECIE_NO_RESUELTA } from '../queries/especiesConstantes';
+import type { FilaExportacion } from '../queries/exportacionQueries';
 import { descargarTexto, nombreArchivoDescarga } from './descargas';
 
 export const TIPO_MIME_CSV = 'text/csv;charset=utf-8';

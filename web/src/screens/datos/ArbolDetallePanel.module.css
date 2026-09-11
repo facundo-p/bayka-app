@@ -11,11 +11,11 @@
   composes: overline from '../../theme/utilidades.module.css';
 }
 
-/* Especie: punto de color + "código · nombre" en una línea. */
+/* Especie: punto de color + "código · nombre" en una línea. El hueco lo pone
+   el margen del punto, el mismo que en la celda de la tabla. */
 .especie {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-md);
   font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
@@ -32,10 +32,6 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--color-text-secondary);
-}
-
-.precision {
-  color: var(--color-text-muted);
 }
 
 /* Texto tenue de ausencia (sin foto / sin GPS). */

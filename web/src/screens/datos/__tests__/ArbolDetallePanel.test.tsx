@@ -45,20 +45,31 @@ function arbolSinGps(): ArbolDetalle {
   return resto;
 }
 
-function renderPanel(datos: ArbolDetalle = arbol()) {
+function renderPanel(
+  datos: ArbolDetalle = arbol(),
+  {
+    parcelaCodigo = 'P-01' as string | null,
+    tecnicoNombre = 'Lucía Ferreyra' as string | null,
+  } = {},
+) {
   const onCerrar = vi.fn();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
       <ArbolDetallePanel
         arbol={datos}
-        parcelaCodigo="P-01"
-        tecnicoNombre="Lucía Ferreyra"
+        parcelaCodigo={parcelaCodigo}
+        tecnicoNombre={tecnicoNombre}
         onCerrar={onCerrar}
       />
     </QueryClientProvider>,
   );
   return onCerrar;
+}
+
+/** Valor del dato de la grilla de metadatos con esa etiqueta. */
+function metaDato(etiqueta: string): string | null | undefined {
+  return screen.getByText(etiqueta).nextElementSibling?.textContent;
 }
 
 test('muestra especie, coordenadas con precisión y los metadatos', () => {
@@ -87,7 +98,26 @@ test('sin foto subida lo dice, no deja el bloque vacío', () => {
 
 test('sin especie identificada cae a N/N', () => {
   renderPanel(arbol({ especieCodigo: null, especieNombre: null }));
-  expect(screen.getByText(/N\/N ·/)).toBeInTheDocument();
+  expect(screen.getByText('N/N · Sin identificar')).toBeInTheDocument();
+});
+
+test('sin técnico, parcela ni posición muestra la raya en cada dato', () => {
+  renderPanel(arbol({ usuarioRegistro: null, parcelaId: null, posicion: null }), {
+    parcelaCodigo: null,
+    tecnicoNombre: null,
+  });
+
+  expect(metaDato('Técnico')).toBe('—');
+  expect(metaDato('Parcela')).toBe('—');
+  expect(metaDato('Posición')).toBe('—');
+  expect(metaDato('Grupo')).toBe('G-01');
+});
+
+test('GPS sin precisión muestra solo las coordenadas', () => {
+  renderPanel(arbol({ gpsAccuracy: undefined }));
+
+  expect(screen.getByText('-27.12346, -55.65432')).toBeInTheDocument();
+  expect(screen.queryByText(/±/)).not.toBeInTheDocument();
 });
 
 test('la X cierra el panel', async () => {

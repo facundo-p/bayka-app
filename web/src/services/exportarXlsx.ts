@@ -5,7 +5,8 @@
  * fila→celdas (testeable); la descarga arma el Blob y delega en `descargarBlob`.
  */
 import type { Cell, Column } from 'write-excel-file/browser';
-import { ESPECIE_NO_RESUELTA, type FilaExportacion } from '../queries/exportacionQueries';
+import { ESPECIE_NO_RESUELTA } from '../queries/especiesConstantes';
+import type { FilaExportacion } from '../queries/exportacionQueries';
 import { descargarBlob, nombreArchivoDescarga } from './descargas';
 
 const EXTENSION_XLSX = 'xlsx';
