@@ -1,16 +1,6 @@
+import { PARAM_URL, type ParamUrl } from '../../lib/rutasPlantacion';
 import { FILTRO_FOTO, FILTRO_GPS, FILTROS_INICIALES, type FiltrosUi } from './filtrosArboles';
 
-/** Claves de query string que persisten el scope entre las secciones de Datos. */
-export const PARAM_URL = {
-  parcela: 'parcela',
-  grupo: 'grupo',
-  especie: 'especie',
-  gps: 'gps',
-  foto: 'foto',
-  busqueda: 'q',
-} as const;
-
-type ParamUrl = (typeof PARAM_URL)[keyof typeof PARAM_URL];
 type CampoFiltro = keyof FiltrosUi;
 
 /** Lo que escribe la UI: se valida recién al volver a leerlo de la URL. */

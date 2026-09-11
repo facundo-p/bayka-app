@@ -1,11 +1,12 @@
 import { useParams } from 'react-router';
+import { SEGMENTO_DATOS } from '../../lib/rutasPlantacion';
 import type { GrupoConDetalle } from '../../queries/dataExplorerQueries';
 import { COLUMNAS_GRUPOS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
 import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
-import { SEGMENTO_DATOS, useIrASeccion } from './seccionesDatos';
 import { SelectParcela } from './SelectParcela';
 import { useFiltrosDatos } from './useFiltrosDatos';
+import { useIrASeccion } from './useIrASeccion';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
 const TEXTOS: TextosSeccion = {

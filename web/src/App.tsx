@@ -5,6 +5,7 @@ import { BannerEntornoPruebas } from './components/BannerEntornoPruebas';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { queryClient } from './lib/queryClient';
+import { SEGMENTO_DATOS } from './lib/rutasPlantacion';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
@@ -18,7 +19,6 @@ import { ArbolesSection } from './screens/datos/ArbolesSection';
 import { DatosTab } from './screens/datos/DatosTab';
 import { GruposSection } from './screens/datos/GruposSection';
 import { ParcelasSection } from './screens/datos/ParcelasSection';
-import { SEGMENTO_DATOS } from './screens/datos/seccionesDatos';
 
 /** Rutas sin router: permite testearlas con MemoryRouter. */
 export function AppRoutes() {
