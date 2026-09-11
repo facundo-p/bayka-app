@@ -26,4 +26,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npx prettier --check src
       - run: npm test
