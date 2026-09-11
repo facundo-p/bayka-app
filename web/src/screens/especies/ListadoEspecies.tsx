@@ -1,6 +1,7 @@
 import { CardTabla, LayoutConPanel, Table } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { pluralizar } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
 import { COLUMNAS_ESPECIES } from './columnas';
 import { EspeciePanel } from './EspeciePanel';
@@ -32,7 +33,7 @@ export function ListadoEspecies({ visibles, seleccion, onSeleccionar }: ListadoE
   return (
     <LayoutConPanel panel={panel}>
       <CardTabla
-        pie={`${pluralizar(visibles.length, 'especie', 'especies')} · ${PIE_AYUDA}`}
+        pie={`${pluralizar(visibles.length, SUSTANTIVO.especie)} · ${PIE_AYUDA}`}
         pieDerecha={PIE_NOTA}
       >
         <Table

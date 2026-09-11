@@ -1,8 +1,11 @@
 /**
  * Filtro y orden del listado de plantaciones. Puro: se testea sin renderizar.
  */
-import { formatearEntero, pluralizar } from '../../lib/formato';
+import { pluralizar, type Sustantivo } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import { ESTADO_PLANTACION, type PlantacionConStats } from '../../queries/plantationQueries';
+
+const ARBOL_REGISTRADO: Sustantivo = { singular: 'árbol registrado', plural: 'árboles registrados' };
 
 /** `todas` es el sentinela del segmentado; el resto son estados de dominio. */
 export const FILTRO_ESTADO = {
@@ -101,8 +104,8 @@ export function contarArboles(plantaciones: PlantacionConStats[]): number {
 export function resumenPlantaciones(plantaciones: PlantacionConStats[]): string {
   const temporadas = temporadasDisponibles(plantaciones).length;
   return [
-    pluralizar(plantaciones.length, 'plantación', 'plantaciones'),
-    pluralizar(temporadas, 'temporada', 'temporadas'),
-    `${formatearEntero(contarArboles(plantaciones))} árboles registrados`,
+    pluralizar(plantaciones.length, SUSTANTIVO.plantacion),
+    pluralizar(temporadas, SUSTANTIVO.temporada),
+    pluralizar(contarArboles(plantaciones), ARBOL_REGISTRADO),
   ].join(' · ');
 }

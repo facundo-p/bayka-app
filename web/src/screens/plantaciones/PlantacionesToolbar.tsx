@@ -8,6 +8,7 @@ import {
   type Opcion,
 } from '../../components';
 import type { ControlesFiltros } from '../../hooks/useFiltrosListado';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import {
   contarArboles,
@@ -60,8 +61,8 @@ export function PlantacionesToolbar({ controles, todas, visibles }: Plantaciones
       }
       recuento={
         <>
-          <RecuentoItem cantidad={visibles.length} singular="plantación" plural="plantaciones" /> ·{' '}
-          <RecuentoItem cantidad={contarArboles(visibles)} singular="árbol" plural="árboles" />
+          <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.plantacion} /> ·{' '}
+          <RecuentoItem cantidad={contarArboles(visibles)} sustantivo={SUSTANTIVO.arbol} />
         </>
       }
     >

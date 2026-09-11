@@ -6,6 +6,8 @@ import {
   type Opcion,
 } from '../../components';
 import type { ControlesFiltros } from '../../hooks/useFiltrosListado';
+import type { Sustantivo } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import {
   contarActivas,
@@ -15,6 +17,8 @@ import {
   type FiltroRol,
   type FiltrosBarraUsuarios,
 } from './filtros';
+
+const ACTIVA: Sustantivo = { singular: 'activa', plural: 'activas' };
 
 const OPCIONES_ROL: Array<Opcion<FiltroRol>> = [
   { value: FILTRO_ROL.todos, label: 'Rol: todos' },
@@ -49,8 +53,8 @@ export function UsuariosToolbar({ controles, visibles }: UsuariosToolbarProps) {
       }
       recuento={
         <>
-          <RecuentoItem cantidad={visibles.length} singular="persona" plural="personas" /> ·{' '}
-          <RecuentoItem cantidad={contarActivas(visibles)} singular="activa" plural="activas" />
+          <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.persona} /> ·{' '}
+          <RecuentoItem cantidad={contarActivas(visibles)} sustantivo={ACTIVA} />
         </>
       }
     >

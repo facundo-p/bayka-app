@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { concordar, formatearEntero } from '../lib/formato';
+import { concordar, formatearEntero, type Sustantivo } from '../lib/formato';
 import { Divisor } from './Divisor';
 import styles from './BarraHerramientas.module.css';
 
@@ -31,17 +31,16 @@ export function BarraHerramientas({ encabezado, children, recuento }: BarraHerra
 
 interface RecuentoItemProps {
   cantidad: number;
-  singular: string;
-  plural: string;
+  sustantivo: Sustantivo;
 }
 
 /** Un término del recuento: la cifra en mono, para que alinee entre pantallas,
  *  y el sustantivo concordado. */
-export function RecuentoItem({ cantidad, singular, plural }: RecuentoItemProps) {
+export function RecuentoItem({ cantidad, sustantivo }: RecuentoItemProps) {
   return (
     <>
       <strong className={styles.recuentoNumero}>{formatearEntero(cantidad)}</strong>{' '}
-      {concordar(cantidad, singular, plural)}
+      {concordar(cantidad, sustantivo)}
     </>
   );
 }

@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones, obtenerTemporadaActivaId } from '../queries/plantationQueries';
-import { formatearEntero, PORCENTAJE_COMPLETO, porcentajeDeObjetivo } from '../lib/formato';
+import { PORCENTAJE_COMPLETO, pluralizar, porcentajeDeObjetivo } from '../lib/formato';
 import { rutaPlantacion } from '../lib/rutas';
+import { SUSTANTIVO } from '../lib/sustantivos';
 import { BarraProgreso } from './BarraProgreso';
 import styles from './SeasonCard.module.css';
 
@@ -39,7 +40,7 @@ export function SeasonCard() {
       <span className={styles.lugar}>{temporada.lugar}</span>
       <BarraProgreso alto="md" porcentaje={anchoBarra(temporada.arboles, avance)} />
       <span className={styles.pie}>
-        {formatearEntero(temporada.arboles)} árboles
+        {pluralizar(temporada.arboles, SUSTANTIVO.arbol)}
         {avance !== null && ` · ${avance}%`}
       </span>
     </Link>

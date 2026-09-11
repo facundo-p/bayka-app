@@ -31,6 +31,15 @@ test('con N/N pendientes avisa que requieren atención', () => {
   expect(within(card()).getByText('requieren atención')).toBeInTheDocument();
 });
 
+test.each([
+  [1, 'requiere atención'],
+  [2, 'requieren atención'],
+])('el aviso concuerda con %i N/N: "%s"', (arbolesNN, aviso) => {
+  render(<ResumenPlantacion datos={{ ...KPIS, arbolesNN }} objetivo={20000} />);
+
+  expect(within(card()).getByText(aviso)).toBeInTheDocument();
+});
+
 test('sin N/N el aviso desaparece: cero es un dato más, no una alerta', () => {
   render(<ResumenPlantacion datos={{ ...KPIS, arbolesNN: 0 }} objetivo={20000} />);
 

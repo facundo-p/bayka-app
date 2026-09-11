@@ -2,14 +2,14 @@ import type { ReactNode } from 'react';
 import { Cargando, CardTabla, ErrorConReintento, Table, type TableColumn } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { algunaConError, reintentarTodas, type EstadoConsulta } from '../../lib/consultas';
-import { formatearEntero } from '../../lib/formato';
+import { pluralizar, type Sustantivo } from '../../lib/formato';
 import type { SegmentoDatos } from '../../lib/rutas';
 import { DatosToolbar } from './DatosToolbar';
 import { VacioConFiltros } from './VacioConFiltros';
 
 export interface TextosSeccion {
-  /** Sustantivo del recuento, ej. "parcelas". */
-  unidad: string;
+  /** Qué cuenta el recuento de la toolbar. */
+  unidad: Sustantivo;
   cargando: string;
   error: string;
   /** Qué hace clickear una fila. */
@@ -59,7 +59,7 @@ export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaD
       <ErrorConReintento mensaje={tabla.textos.error} onReintentar={reintentarTodas(consultas)} />
     );
   }
-  const recuento = filas && `${formatearEntero(filas.length)} ${tabla.textos.unidad}`;
+  const recuento = filas && pluralizar(filas.length, tabla.textos.unidad);
   const cuerpo = filas ? <TablaSeccion filas={filas} {...tabla} /> : null;
   return (
     <>

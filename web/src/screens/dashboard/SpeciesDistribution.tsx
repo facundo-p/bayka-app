@@ -1,5 +1,6 @@
 import { BarraProgreso } from '../../components/BarraProgreso';
-import { formatearEntero, PORCENTAJE_COMPLETO, porcentaje } from '../../lib/formato';
+import { concordar, formatearEntero, PORCENTAJE_COMPLETO, porcentaje } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { EspecieColoreada } from './coloresEspecies';
 import styles from './SpeciesDistribution.module.css';
 
@@ -54,8 +55,8 @@ function CabeceraEspecies({ totalEspecies, parcelaFiltro }: CabeceraEspeciesProp
         <p className={styles.subtitulo}>{subtituloComposicion(parcelaFiltro)}</p>
       </div>
       <div className={styles.conteo}>
-        <span className={styles.conteoNumero}>{totalEspecies}</span>
-        <span className={styles.conteoLabel}>especies</span>
+        <span className={styles.conteoNumero}>{formatearEntero(totalEspecies)}</span>
+        <span className={styles.conteoLabel}>{concordar(totalEspecies, SUSTANTIVO.especie)}</span>
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import {
   contarArboles,
   contarEnUso,
   filtrarEspecies,
+  metaCatalogo,
   ORDEN_ESPECIE,
   sinUso,
   USO_ESPECIE,
@@ -72,4 +73,14 @@ test('búsqueda y uso componen entre sí', () => {
 test('los recuentos de la cabecera cuentan sobre el catálogo dado', () => {
   expect(contarEnUso(CATALOGO)).toBe(2);
   expect(contarArboles(CATALOGO)).toBe(4814);
+});
+
+test.each([
+  [0, 'Catálogo global · 0 especies nativas · 0 en uso'],
+  [1, 'Catálogo global · 1 especie nativa · 1 en uso'],
+  [2, 'Catálogo global · 2 especies nativas · 2 en uso'],
+  [1000, 'Catálogo global · 1.000 especies nativas · 1.000 en uso'],
+])('la meta del catálogo con %i especies: "%s"', (cantidad, texto) => {
+  const catalogo = Array.from({ length: cantidad }, (_, i) => especie(`E${i}`, 'E', 1, 1));
+  expect(metaCatalogo(catalogo)).toBe(texto);
 });
