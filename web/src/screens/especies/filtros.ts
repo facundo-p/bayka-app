@@ -25,6 +25,14 @@ export type FiltrosEspecies = {
   orden: OrdenEspecie;
 };
 
+/** Los filtros de la barra, sin el texto del buscador. */
+export type FiltrosBarraEspecies = Omit<FiltrosEspecies, 'busqueda'>;
+
+export const FILTROS_INICIALES_ESPECIES: FiltrosBarraEspecies = {
+  uso: USO_ESPECIE.todas,
+  orden: ORDEN_ESPECIE.arboles,
+};
+
 /** Una especie sin uso: no habilitada en ninguna plantación y sin árboles. */
 export function sinUso(especie: EspecieConCatalogoUso): boolean {
   return especie.plantaciones === 0 && especie.arboles === 0;

@@ -29,11 +29,6 @@ export function BarraHerramientas({ encabezado, children, recuento }: BarraHerra
   );
 }
 
-/** Número destacado dentro del recuento: mono, para que alinee entre pantallas. */
-export function RecuentoNumero({ children }: { children: ReactNode }) {
-  return <strong className={styles.recuentoNumero}>{children}</strong>;
-}
-
 interface RecuentoItemProps {
   cantidad: number;
   singular: string;

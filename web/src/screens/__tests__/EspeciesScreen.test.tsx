@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
+import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -149,4 +150,40 @@ test('el panel se cierra con la X y la fila abierta queda marcada', async () => 
   expect(
     screen.queryByRole('complementary', { name: 'Editar especie' }),
   ).not.toBeInTheDocument();
+});
+
+test('con el catálogo vacío muestra el vacío total, no el de la búsqueda', async () => {
+  estadoMock.resolverConsulta = () => ({ data: [], error: null, count: 0 });
+  renderRutasEn('/especies');
+
+  expect(await screen.findByText('Sin especies')).toBeInTheDocument();
+  expect(screen.getByText('El catálogo de especies va a aparecer acá.')).toBeInTheDocument();
+  expect(
+    screen.queryByText('No hay especies que coincidan con la búsqueda'),
+  ).not.toBeInTheDocument();
+});
+
+test('ante un error muestra el mensaje con botón de reintento', async () => {
+  estadoMock.resolverConsulta = () => {
+    throw new Error('falló la red');
+  };
+  renderRutasEn('/especies');
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'No se pudieron cargar las especies.',
+  );
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+});
+
+test('el recuento de la barra concuerda en singular', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+  await screen.findByText('Anchico');
+
+  expect(enMain().getByText(textoCompleto('2 especies · 1.234 árboles'))).toBeInTheDocument();
+  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  expect(
+    await enMain().findByText(textoCompleto('1 especie · 1.234 árboles')),
+  ).toBeInTheDocument();
 });

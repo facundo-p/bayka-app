@@ -9,6 +9,7 @@ import {
 import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -542,4 +543,36 @@ test('reenviar invitación: deshabilitada sin email; con email envía y confirma
   expect(estadoMock.invocaciones).toEqual([
     { funcion: 'admin-users', cuerpo: { accion: 'reenviarInvitacion', email: 'ana@bayka.org' } },
   ]);
+});
+
+test('sin personas muestra el vacío total, no el de los filtros', async () => {
+  configurarUsuariosMock([]);
+  renderRutasEn('/usuarios');
+
+  expect(await screen.findByText('Sin usuarios')).toBeInTheDocument();
+  expect(
+    screen.getByText('Las personas de tu organización van a aparecer acá.'),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('No hay usuarios con esos filtros')).not.toBeInTheDocument();
+});
+
+test('ante un error muestra el mensaje con botón de reintento', async () => {
+  estadoMock.resolverConsulta = () => {
+    throw new Error('falló la red');
+  };
+  renderRutasEn('/usuarios');
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar los usuarios.');
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+});
+
+test('el recuento de la barra sigue a los filtros y concuerda en singular', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  expect(screen.getByText(textoCompleto('3 personas · 2 activas'))).toBeInTheDocument();
+  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  expect(screen.getByText(textoCompleto('1 persona · 0 activas'))).toBeInTheDocument();
 });

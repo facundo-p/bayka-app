@@ -1,53 +1,43 @@
 import {
   BarraHerramientas,
   CampoBusqueda,
-  RecuentoNumero,
+  RecuentoItem,
   SegmentedControl,
   Select,
+  type Opcion,
 } from '../../components';
-import { formatearEntero } from '../../lib/formato';
+import type { ControlesFiltros } from '../../hooks/useFiltrosListado';
+import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
 import {
+  contarArboles,
   ORDEN_ESPECIE,
   USO_ESPECIE,
+  type FiltrosBarraEspecies,
   type OrdenEspecie,
   type UsoEspecie,
 } from './filtros';
 
-const OPCIONES_USO: Array<{ value: UsoEspecie; label: string }> = [
+const OPCIONES_USO: Array<Opcion<UsoEspecie>> = [
   { value: USO_ESPECIE.todas, label: 'Todas' },
   { value: USO_ESPECIE.enUso, label: 'En uso' },
   { value: USO_ESPECIE.sinUso, label: 'Sin uso' },
 ];
 
-const OPCIONES_ORDEN: Array<{ value: OrdenEspecie; label: string }> = [
+const OPCIONES_ORDEN: Array<Opcion<OrdenEspecie>> = [
   { value: ORDEN_ESPECIE.arboles, label: 'Orden: árboles ↓' },
   { value: ORDEN_ESPECIE.plantaciones, label: 'Orden: plantaciones ↓' },
   { value: ORDEN_ESPECIE.codigo, label: 'Orden: código A-Z' },
 ];
 
 interface EspeciesToolbarProps {
-  busqueda: string;
-  uso: UsoEspecie;
-  orden: OrdenEspecie;
-  onBuscar: (texto: string) => void;
-  onUso: (uso: UsoEspecie) => void;
-  onOrden: (orden: OrdenEspecie) => void;
-  /** Especies visibles y sus árboles, tras aplicar los filtros. */
-  especies: number;
-  arboles: number;
+  controles: ControlesFiltros<FiltrosBarraEspecies>;
+  /** Las que pasan los filtros: de ellas sale el recuento. */
+  visibles: EspecieConCatalogoUso[];
 }
 
 /** Toolbar de Especies: búsqueda, filtro de uso, orden y recuento, un renglón. */
-export function EspeciesToolbar({
-  busqueda,
-  uso,
-  orden,
-  onBuscar,
-  onUso,
-  onOrden,
-  especies,
-  arboles,
-}: EspeciesToolbarProps) {
+export function EspeciesToolbar({ controles, visibles }: EspeciesToolbarProps) {
+  const { busqueda, onBuscar, filtros, onFiltro } = controles;
   return (
     <BarraHerramientas
       encabezado={
@@ -60,30 +50,25 @@ export function EspeciesToolbar({
       }
       recuento={
         <>
-          <RecuentoNumero>{formatearEntero(especies)}</RecuentoNumero> especies ·{' '}
-          <RecuentoNumero>{formatearEntero(arboles)}</RecuentoNumero> árboles
+          <RecuentoItem cantidad={visibles.length} singular="especie" plural="especies" /> ·{' '}
+          <RecuentoItem cantidad={contarArboles(visibles)} singular="árbol" plural="árboles" />
         </>
       }
     >
       <SegmentedControl
         options={OPCIONES_USO}
-        value={uso}
-        onChange={onUso}
+        value={filtros.uso}
+        onChange={(uso) => onFiltro('uso', uso)}
         size="sm"
         aria-label="Filtrar por uso"
       />
       <Select
         label="Ordenar especies"
         labelOculto
-        value={orden}
-        onChange={(evento) => onOrden(evento.target.value as OrdenEspecie)}
-      >
-        {OPCIONES_ORDEN.map(({ value, label }) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </Select>
+        value={filtros.orden}
+        onChange={(evento) => onFiltro('orden', evento.target.value as OrdenEspecie)}
+        opciones={OPCIONES_ORDEN}
+      />
     </BarraHerramientas>
   );
 }

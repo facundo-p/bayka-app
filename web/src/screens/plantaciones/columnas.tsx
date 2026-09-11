@@ -1,10 +1,10 @@
-import { ChevronRight } from 'lucide-react';
-import { EstadoPlantacionBadge, type TableColumn } from '../../components';
+import { columnaChevron, EstadoPlantacionBadge, type TableColumn } from '../../components';
+import tabla from '../../components/Table.module.css';
+import { cx } from '../../lib/classNames';
 import { formatearFechaDia } from '../../lib/fechas';
 import { formatearEntero } from '../../lib/formato';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import { CeldaLugar, CeldaVisible } from './celdas';
-import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Plantaciones.module.css';
 
 export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
@@ -17,7 +17,9 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
     key: 'periodo',
     fueraEnMovil: true,
     header: 'Temporada',
-    render: (plantacion) => <span className={styles.temporada}>{plantacion.periodo}</span>,
+    render: (plantacion) => (
+      <span className={cx(tabla.mono, styles.temporada)}>{plantacion.periodo}</span>
+    ),
   },
   {
     key: 'estado',
@@ -35,20 +37,22 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
     fueraEnMovil: true,
     header: 'Usuarios',
     align: 'center',
-    render: (plantacion) => <span className={styles.numero}>{plantacion.usuarios}</span>,
+    render: (plantacion) => <span className={tabla.numero}>{plantacion.usuarios}</span>,
   },
   {
     key: 'parcelas',
     header: 'Parcelas',
     align: 'center',
-    render: (plantacion) => <span className={styles.numero}>{plantacion.parcelas}</span>,
+    render: (plantacion) => <span className={tabla.numero}>{plantacion.parcelas}</span>,
   },
   {
     key: 'arboles',
     header: 'Árboles',
     align: 'right',
     render: (plantacion) => (
-      <span className={styles.arboles}>{formatearEntero(plantacion.arboles)}</span>
+      <span className={cx(tabla.mono, tabla.numero, styles.arboles)}>
+        {formatearEntero(plantacion.arboles)}
+      </span>
     ),
   },
   {
@@ -59,11 +63,5 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
       <span className={styles.fecha}>{formatearFechaDia(plantacion.createdAt)}</span>
     ),
   },
-  {
-    key: 'chevron',
-    fueraEnMovil: true,
-    header: '',
-    align: 'right',
-    render: () => <ChevronRight className={styles.chevron} size={TAMANO_ICONO.md} aria-hidden />,
-  },
+  columnaChevron(),
 ];
