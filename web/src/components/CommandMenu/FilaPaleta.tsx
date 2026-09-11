@@ -1,7 +1,7 @@
 import { cx } from '../../lib/classNames';
 import type { PropsOpcion } from '../../hooks/useListboxNavegable';
 import { metaDeTipo } from './tiposResultado';
-import type { ItemPaleta } from './construirItems';
+import { esAccion, type ItemPaleta } from './construirItems';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './CommandMenu.module.css';
 
@@ -11,9 +11,9 @@ interface FilaPaletaProps {
   onElegir: () => void;
 }
 
-/** Título, meta y posición de la fila según sea acción o resultado de entidad. */
+/** Ícono, título y meta de la fila según sea acción o resultado de entidad. */
 function contenidoFila(item: ItemPaleta) {
-  if (item.clase === 'accion') {
+  if (esAccion(item)) {
     const { Icono, titulo } = item.accion;
     return { Icono, titulo, meta: undefined as string | undefined };
   }
