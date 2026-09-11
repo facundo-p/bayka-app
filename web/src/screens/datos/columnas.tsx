@@ -113,8 +113,19 @@ const COLUMNAS_REGISTRO_ARBOL: Array<TableColumn<ArbolDetalle>> = [
     align: 'center',
     render: (arbol) => <span className={styles.numero}>{arbol.posicion ?? SIN_DATO}</span>,
   },
-  { key: 'gps', fueraEnMovil: true, fueraConPanel: true, header: 'GPS', render: (arbol) => <CeldaGps arbol={arbol} /> },
-  { key: 'foto', fueraEnMovil: true, header: 'Foto', render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} /> },
+  {
+    key: 'gps',
+    fueraEnMovil: true,
+    fueraConPanel: true,
+    header: 'GPS',
+    render: (arbol) => <CeldaGps arbol={arbol} />,
+  },
+  {
+    key: 'foto',
+    fueraEnMovil: true,
+    header: 'Foto',
+    render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} />,
+  },
   {
     key: 'createdAt',
     fueraEnMovil: true,

@@ -30,7 +30,10 @@ test('tieneGps exige las dos coordenadas', () => {
 
 test('los lookups devuelven null sin id, sin entrada o con nombre vacío', () => {
   const codigos = new Map([['parc-1', 'P1']]);
-  const nombres = new Map([['user-1', 'Ana'], ['user-2', '']]);
+  const nombres = new Map([
+    ['user-1', 'Ana'],
+    ['user-2', ''],
+  ]);
   expect(codigoParcelaDe(ARBOL, codigos)).toBe('P1');
   expect(codigoParcelaDe({ ...ARBOL, parcelaId: null }, codigos)).toBeNull();
   expect(codigoParcelaDe({ ...ARBOL, parcelaId: 'otra' }, codigos)).toBeNull();

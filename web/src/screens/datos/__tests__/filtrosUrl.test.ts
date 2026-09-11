@@ -1,5 +1,15 @@
 import { FILTROS_INICIALES } from '../filtrosArboles';
-import { filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from '../filtrosUrl';
+import { conFiltro, filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from '../filtrosUrl';
+
+test('conFiltro cambia el campo y, si es la parcela, suelta el grupo', () => {
+  const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', groupId: 'g1', speciesId: 'e1' };
+  expect(conFiltro(filtros, 'speciesId', 'e2')).toMatchObject({ groupId: 'g1', speciesId: 'e2' });
+  expect(conFiltro(filtros, 'parcelaId', 'p2')).toMatchObject({
+    parcelaId: 'p2',
+    groupId: '',
+    speciesId: 'e1',
+  });
+});
 
 test('leerFiltrosDeUrl mapea cada query param a su campo (vacío si falta)', () => {
   const params = new URLSearchParams('parcela=p1&grupo=g1&especie=e1&gps=con&foto=sin&q=A-12');

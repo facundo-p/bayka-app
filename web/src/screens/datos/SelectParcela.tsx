@@ -10,16 +10,22 @@ interface SelectParcelaProps {
   className?: string;
 }
 
-/** Filtro por parcela de las toolbars de Grupos y Árboles. */
-export function SelectParcela({ parcelas, value, onChange, className }: SelectParcelaProps) {
-  // Un `parcela=<id>` en la URL que no existe entre las opciones (p. ej. de otra
-  // plantación) dejaría el select en una opción fantasma vacía; lo reseteamos a
-  // "todas". Solo con parcelas ya cargadas, para no limpiar durante la carga.
+/**
+ * Un `parcela=<id>` en la URL que no existe entre las opciones (p. ej. de otra
+ * plantación) dejaría el select en una opción fantasma vacía; se resetea a
+ * "todas". Solo con parcelas ya cargadas, para no limpiar durante la carga.
+ */
+function useResetIdFantasma({ parcelas, value, onChange }: SelectParcelaProps) {
   const idFantasma = value !== '' && !parcelas.some((parcela) => parcela.id === value);
   useEffect(() => {
     if (parcelas.length > 0 && idFantasma) onChange('');
   }, [parcelas.length, idFantasma, onChange]);
+}
 
+/** Filtro por parcela de las toolbars de Grupos y Árboles. */
+export function SelectParcela(props: SelectParcelaProps) {
+  const { parcelas, value, onChange, className } = props;
+  useResetIdFantasma(props);
   return (
     <Select
       label="Parcela"

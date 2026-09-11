@@ -17,30 +17,29 @@ interface DatosToolbarProps {
   children?: ReactNode;
 }
 
+function SelectorSeccion({ segmento }: { segmento: SegmentoDatos }) {
+  const irA = useIrASeccion();
+  const location = useLocation();
+  // Los filtros viajan en el querystring: sobreviven al cambio de sección.
+  const cambiar = (proximo: SegmentoDatos) => irA(proximo, new URLSearchParams(location.search));
+  return (
+    <SegmentedControl
+      options={OPCIONES}
+      value={segmento}
+      onChange={cambiar}
+      size="sm"
+      aria-label="Sección de datos"
+    />
+  );
+}
+
 /**
  * Toolbar de la tab Datos: selector de sección + filtros + recuento. Árboles no
  * pasa `recuento`: su pie ya dice "Mostrando 1–30 de 30" y tiene la paginación.
  */
 export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps) {
-  const irA = useIrASeccion();
-  const location = useLocation();
-  // Los filtros viajan en el querystring: sobreviven al cambio de sección.
-  const cambiarSegmento = (proximo: SegmentoDatos) =>
-    irA(proximo, new URLSearchParams(location.search));
-
   return (
-    <BarraHerramientas
-      encabezado={
-        <SegmentedControl
-          options={OPCIONES}
-          value={segmento}
-          onChange={cambiarSegmento}
-          size="sm"
-          aria-label="Sección de datos"
-        />
-      }
-      recuento={recuento}
-    >
+    <BarraHerramientas encabezado={<SelectorSeccion segmento={segmento} />} recuento={recuento}>
       {children}
     </BarraHerramientas>
   );

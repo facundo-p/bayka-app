@@ -24,6 +24,8 @@ import { VacioConFiltros } from './VacioConFiltros';
 
 type SeccionArboles = ReturnType<typeof useArbolesSection>;
 
+const VACIO_CON_FILTROS = 'Ningún árbol coincide con los filtros';
+
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
 function rangoVisible(pagina: number, total: number): string {
   const desde = (pagina - 1) * ARBOLES_POR_PAGINA + 1;
@@ -36,12 +38,15 @@ function pieTabla(pagina: number, datos: PaginaArboles): string | undefined {
   return `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle al costado`;
 }
 
+/** Con el panel abierto la tabla suelta las columnas que el panel repite. */
+function useColumnasArboles(seccion: SeccionArboles) {
+  const columnas = columnasArboles(seccion.codigosParcela, seccion.nombresUsuario);
+  return useColumnasVisibles(columnas, seccion.arbolSeleccionado !== null);
+}
+
 function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: PaginaArboles }) {
-  const { pagina, setPagina, arbolSeleccionado } = seccion;
-  const columnas = useColumnasVisibles(
-    columnasArboles(seccion.codigosParcela, seccion.nombresUsuario),
-    arbolSeleccionado !== null,
-  );
+  const { pagina, setPagina } = seccion;
+  const columnas = useColumnasArboles(seccion);
   const paginacion = (
     <Paginacion pagina={pagina} totalPaginas={datos.totalPaginas} onCambiar={setPagina} />
   );
@@ -51,7 +56,7 @@ function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: Pagi
         columns={columnas}
         rows={datos.arboles}
         getRowKey={(arbol) => arbol.id}
-        claveSeleccionada={arbolSeleccionado?.id}
+        claveSeleccionada={seccion.arbolSeleccionado?.id}
         emptyMessage="Sin árboles para mostrar"
         onRowClick={seccion.setArbolSeleccionado}
       />
@@ -59,9 +64,16 @@ function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: Pagi
   );
 }
 
-function PanelArbolSeleccionado({ seccion, arbol }: { seccion: SeccionArboles; arbol: ArbolDetalle }) {
+interface PanelArbolProps {
+  seccion: SeccionArboles;
+  arbol: ArbolDetalle;
+}
+
+/** La key remonta el panel al cambiar de fila: la foto y el mapa se rearman. */
+function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
   return (
     <ArbolDetallePanel
+      key={arbol.id}
       arbol={arbol}
       parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
       tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
@@ -71,15 +83,12 @@ function PanelArbolSeleccionado({ seccion, arbol }: { seccion: SeccionArboles; a
 }
 
 function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
-  const { arboles, arbolSeleccionado } = seccion;
+  const { arboles, arbolSeleccionado: arbol } = seccion;
   if (!arboles.data) return <Cargando label="Cargando árboles…" />;
   if (arboles.data.total === 0 && seccion.hayFiltro) {
-    return <VacioConFiltros mensaje="Ningún árbol coincide con los filtros" onLimpiar={seccion.limpiar} />;
+    return <VacioConFiltros mensaje={VACIO_CON_FILTROS} onLimpiar={seccion.limpiar} />;
   }
-  // La key remonta el panel al cambiar de fila: la foto y el mapa se rearman.
-  const panel = arbolSeleccionado && (
-    <PanelArbolSeleccionado key={arbolSeleccionado.id} seccion={seccion} arbol={arbolSeleccionado} />
-  );
+  const panel = arbol && <PanelArbolSeleccionado seccion={seccion} arbol={arbol} />;
   return (
     <LayoutConPanel panel={panel}>
       <TablaArboles seccion={seccion} datos={arboles.data} />
@@ -87,10 +96,24 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
+function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
+  return (
+    <DatosToolbar segmento={SEGMENTO_DATOS.arboles}>
+      <ArbolesFiltros
+        filtros={seccion.filtros}
+        parcelas={seccion.parcelas.data ?? []}
+        grupos={seccion.grupos.data ?? []}
+        especies={seccion.especies.data ?? []}
+        onCambiar={seccion.setFiltro}
+      />
+    </DatosToolbar>
+  );
+}
+
 /** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
 export function ArbolesSection() {
   const seccion = useArbolesSection();
-  const { arboles, parcelas, grupos, especies } = seccion;
+  const { arboles } = seccion;
   if (arboles.isError) {
     return (
       <ErrorConReintento
@@ -101,15 +124,7 @@ export function ArbolesSection() {
   }
   return (
     <>
-      <DatosToolbar segmento={SEGMENTO_DATOS.arboles}>
-        <ArbolesFiltros
-          filtros={seccion.filtros}
-          parcelas={parcelas.data ?? []}
-          grupos={grupos.data ?? []}
-          especies={especies.data ?? []}
-          onCambiar={seccion.setFiltro}
-        />
-      </DatosToolbar>
+      <ToolbarArboles seccion={seccion} />
       <CuerpoArboles seccion={seccion} />
     </>
   );

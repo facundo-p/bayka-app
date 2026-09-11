@@ -5,7 +5,11 @@ import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePerfiles } from '../../hooks/usePerfiles';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
-import { listarArboles, type ArbolDetalle } from '../../queries/dataExplorerQueries';
+import {
+  listarArboles,
+  type ArbolDetalle,
+  type ParcelaConStats,
+} from '../../queries/dataExplorerQueries';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
@@ -35,6 +39,15 @@ function mapaPorId<T extends { id: string }>(filas: T[] | undefined, valor: (fil
   return new Map((filas ?? []).map((fila) => [fila.id, valor(fila)]));
 }
 
+/** Código de parcela y nombre de técnico por id, para las columnas y el panel. */
+function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
+  const perfiles = usePerfiles();
+  return {
+    codigosParcela: mapaPorId(parcelas, (parcela) => parcela.codigo),
+    nombresUsuario: mapaPorId(perfiles.data, (perfil) => perfil.nombre),
+  };
+}
+
 /**
  * Estado y datos de la sección Árboles: filtros en la URL, página, catálogos
  * de los selects y el árbol abierto en el panel. El componente queda solo con
@@ -47,16 +60,15 @@ export function useArbolesSection() {
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtrosDatos.filtros.parcelaId);
   const especies = useCatalogoEspecies();
-  const perfiles = usePerfiles();
+  const mapas = useMapasArboles(parcelas.data);
   const paginaArboles = usePaginaArboles(id, filtrosDatos.filtros);
   return {
     ...filtrosDatos,
     ...paginaArboles,
+    ...mapas,
     parcelas,
     grupos,
     especies,
-    codigosParcela: mapaPorId(parcelas.data, (parcela) => parcela.codigo),
-    nombresUsuario: mapaPorId(perfiles.data, (perfil) => perfil.nombre),
     arbolSeleccionado,
     setArbolSeleccionado,
   };

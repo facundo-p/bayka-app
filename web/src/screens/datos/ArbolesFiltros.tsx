@@ -71,7 +71,9 @@ export function ArbolesFiltros({
         onChange={(evento) => onCambiar('speciesId', evento.target.value)}
       >
         <option value="">Especie: todas</option>
-        <option value={ESPECIE_SIN_IDENTIFICAR}>{`${ESPECIE_NO_RESUELTA} (sin identificar)`}</option>
+        <option
+          value={ESPECIE_SIN_IDENTIFICAR}
+        >{`${ESPECIE_NO_RESUELTA} (sin identificar)`}</option>
         {especies.map((especie) => (
           <option key={especie.id} value={especie.id}>
             {etiquetaCodigoNombre(especie)}

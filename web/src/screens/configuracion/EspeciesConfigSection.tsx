@@ -3,15 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { BuscadorEspecies, MaestroEspecies, SpeciesChecklist } from '../../components';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
-import {
-  listarEspeciesConUso,
-  type EspecieCatalogo,
-  type EspecieConUso,
-} from '../../queries/especieQueries';
+import { listarEspeciesConUso } from '../../queries/especieQueries';
 import { CabeceraConfig } from './CabeceraConfig';
 import { CardConfig } from './CardConfig';
 import { ErrorAccion } from './ErrorAccion';
-import { useChecklistEspecies } from './useChecklistEspecies';
+import { useChecklistEspecies, type DatosChecklist } from './useChecklistEspecies';
 import styles from './SeccionesConfig.module.css';
 
 const TITULO = 'Especies habilitadas';
@@ -21,10 +17,11 @@ const PIE =
 
 type Checklist = ReturnType<typeof useChecklistEspecies>;
 
-interface ContenidoEspeciesProps {
-  plantationId: string;
-  catalogo: EspecieCatalogo[];
-  especies: EspecieConUso[];
+function useEspeciesDePlantacion(plantationId: string) {
+  return useQuery({
+    queryKey: CLAVE_QUERY.plantacionEspecies(plantationId),
+    queryFn: () => listarEspeciesConUso(plantationId),
+  });
 }
 
 function CabeceraEspecies({ checklist, chip }: { checklist: Checklist; chip: string }) {
@@ -54,15 +51,15 @@ function AvisosEspecies({ checklist }: { checklist: Checklist }) {
   );
 }
 
-function ContenidoEspecies({ plantationId, catalogo, especies }: ContenidoEspeciesProps) {
-  const checklist = useChecklistEspecies(plantationId, catalogo, especies);
-  const chip = `${especies.length} habilitadas · ${catalogo.length} en catálogo`;
+function ContenidoEspecies(datos: DatosChecklist) {
+  const checklist = useChecklistEspecies(datos);
+  const chip = `${datos.especies.length} habilitadas · ${datos.catalogo.length} en catálogo`;
   return (
     <>
       <CabeceraEspecies checklist={checklist} chip={chip} />
       <div className={styles.cuerpoEspecies}>
         <SpeciesChecklist
-          catalogo={catalogo}
+          catalogo={datos.catalogo}
           habilitadas={checklist.contexto.habilitadas}
           bloqueadas={checklist.contexto.bloqueadas}
           onToggle={checklist.alternar}
@@ -79,10 +76,7 @@ function ContenidoEspecies({ plantationId, catalogo, especies }: ContenidoEspeci
 export function EspeciesConfigSection() {
   const { id = '' } = useParams();
   const catalogo = useCatalogoEspecies();
-  const especies = useQuery({
-    queryKey: CLAVE_QUERY.plantacionEspecies(id),
-    queryFn: () => listarEspeciesConUso(id),
-  });
+  const especies = useEspeciesDePlantacion(id);
   return (
     <CardConfig
       className={styles.cardEspecies}

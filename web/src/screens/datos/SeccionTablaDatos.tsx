@@ -60,7 +60,9 @@ function TablaSeccion<T extends { id: string }>({
 export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaDatosProps<T>) {
   const { segmento, consultas, filas, children, ...tabla } = props;
   if (algunaConError(consultas)) {
-    return <ErrorConReintento mensaje={tabla.textos.error} onReintentar={reintentarTodas(consultas)} />;
+    return (
+      <ErrorConReintento mensaje={tabla.textos.error} onReintentar={reintentarTodas(consultas)} />
+    );
   }
   const recuento = filas && `${formatearEntero(filas.length)} ${tabla.textos.unidad}`;
   return (
@@ -68,7 +70,11 @@ export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaD
       <DatosToolbar segmento={segmento} recuento={recuento}>
         {children}
       </DatosToolbar>
-      {filas ? <TablaSeccion filas={filas} {...tabla} /> : <Cargando label={tabla.textos.cargando} />}
+      {filas ? (
+        <TablaSeccion filas={filas} {...tabla} />
+      ) : (
+        <Cargando label={tabla.textos.cargando} />
+      )}
     </>
   );
 }

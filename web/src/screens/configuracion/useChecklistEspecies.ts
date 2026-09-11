@@ -6,17 +6,21 @@ import {
   filtrarCatalogo,
   planificarAccionMasiva,
   type ContextoSeleccion,
+  type PlanSeleccion,
 } from '../../lib/speciesChecklistSelection';
 import type { EspecieCatalogo, EspecieConUso } from '../../queries/especieQueries';
 import { useSincronizarEspecies, useToggleEspecie } from './useMutacionesEspecies';
 
 const MENSAJE_ERROR_GUARDAR = 'No se pudo guardar el cambio de especie.';
 
-function useContextoSeleccion(
-  catalogo: EspecieCatalogo[],
-  especies: EspecieConUso[],
-  busqueda: string,
-): ContextoSeleccion {
+export interface DatosChecklist {
+  plantationId: string;
+  catalogo: EspecieCatalogo[];
+  especies: EspecieConUso[];
+}
+
+function useContextoSeleccion(datos: DatosChecklist, busqueda: string): ContextoSeleccion {
+  const { catalogo, especies } = datos;
   const habilitadas = useMemo(() => new Set(especies.map((especie) => especie.id)), [especies]);
   // Con árboles registrados no se pueden desmarcar (paridad mobile).
   const bloqueadas = useMemo(
@@ -30,52 +34,35 @@ function useContextoSeleccion(
   return { idsVisibles, habilitadas, bloqueadas };
 }
 
+function avisoDelPlan({ bloqueadasMantenidas }: PlanSeleccion): string | null {
+  return bloqueadasMantenidas > 0 ? avisoBloqueadas(bloqueadasMantenidas) : null;
+}
+
 /** El maestro opera sobre las visibles y avisa cuántas bloqueadas quedaron marcadas. */
-function useAccionMasiva(
-  plantationId: string,
-  catalogo: EspecieCatalogo[],
-  contexto: ContextoSeleccion,
-  ordenInicial: number,
-) {
+function useAccionMasiva(datos: DatosChecklist, contexto: ContextoSeleccion) {
   const [aviso, setAviso] = useState<string | null>(null);
-  const sincronizar = useSincronizarEspecies(plantationId, catalogo);
+  const sincronizar = useSincronizarEspecies(datos.plantationId, datos.catalogo);
   const estado = estadoMaestro(contexto);
   const alternarTodas = () => {
-    const { idsHabilitar, idsQuitar, bloqueadasMantenidas } = planificarAccionMasiva(
-      contexto,
-      accionDesdeEstado(estado),
-    );
-    setAviso(bloqueadasMantenidas > 0 ? avisoBloqueadas(bloqueadasMantenidas) : null);
+    const plan = planificarAccionMasiva(contexto, accionDesdeEstado(estado));
+    setAviso(avisoDelPlan(plan));
+    const { idsHabilitar, idsQuitar } = plan;
     if (idsHabilitar.length === 0 && idsQuitar.length === 0) return;
-    sincronizar.mutate({ idsHabilitar, idsQuitar, ordenInicial });
+    sincronizar.mutate({ idsHabilitar, idsQuitar, ordenInicial: datos.especies.length });
   };
-  return {
-    estado,
-    aviso,
-    limpiarAviso: () => setAviso(null),
-    alternarTodas,
-    fallo: sincronizar.isError,
-  };
+  const limpiarAviso = () => setAviso(null);
+  return { estado, aviso, limpiarAviso, alternarTodas, fallo: sincronizar.isError };
 }
 
 /** Estado del checklist de especies de una plantación: búsqueda, maestro y guardado. */
-export function useChecklistEspecies(
-  plantationId: string,
-  catalogo: EspecieCatalogo[],
-  especies: EspecieConUso[],
-) {
+export function useChecklistEspecies(datos: DatosChecklist) {
   const [busqueda, setBusqueda] = useState('');
-  const contexto = useContextoSeleccion(catalogo, especies, busqueda);
-  const { limpiarAviso, fallo, ...masiva } = useAccionMasiva(
-    plantationId,
-    catalogo,
-    contexto,
-    especies.length,
-  );
-  const toggle = useToggleEspecie(plantationId, catalogo);
+  const contexto = useContextoSeleccion(datos, busqueda);
+  const { limpiarAviso, fallo, ...masiva } = useAccionMasiva(datos, contexto);
+  const toggle = useToggleEspecie(datos.plantationId, datos.catalogo);
   const alternar = (speciesId: string, habilitar: boolean) => {
     limpiarAviso();
-    toggle.mutate({ speciesId, habilitar, orden: especies.length });
+    toggle.mutate({ speciesId, habilitar, orden: datos.especies.length });
   };
   const mensajeError = toggle.isError || fallo ? MENSAJE_ERROR_GUARDAR : null;
   return { ...masiva, busqueda, setBusqueda, contexto, alternar, mensajeError };

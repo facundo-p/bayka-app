@@ -13,7 +13,7 @@ import type { Plantacion } from '../../queries/plantationQueries';
 import { CabeceraConfig } from './CabeceraConfig';
 import { ErrorAccion } from './ErrorAccion';
 import { FilaConfig } from './FilaConfig';
-import { PRESETS_FRECUENCIA, useFrecuenciaGps } from './useFrecuenciaGps';
+import { PRESETS_FRECUENCIA, useCampoExacto, useFrecuenciaGps } from './useFrecuenciaGps';
 import { useVisibilidadEnApp } from './useVisibilidadEnApp';
 import styles from './SeccionesConfig.module.css';
 
@@ -27,9 +27,9 @@ const OPCIONES_FRECUENCIA = PRESETS_FRECUENCIA.map((numero) => ({
 const AYUDA_VISIBILIDAD =
   'Si se desactiva, no verán esta plantación; sus datos pendientes igual sincronizan';
 
-type ConfigGps = ReturnType<typeof useFrecuenciaGps>;
+type EstadoGps = ReturnType<typeof useFrecuenciaGps>;
 
-function FilaObligatoria({ gps }: { gps: ConfigGps }) {
+function FilaObligatoria({ gps }: { gps: EstadoGps }) {
   const ayuda = gps.obligatoria
     ? 'El técnico no puede registrar sin GPS'
     : 'La captura de GPS es opcional';
@@ -46,7 +46,8 @@ function FilaObligatoria({ gps }: { gps: ConfigGps }) {
 }
 
 /** "o exacto" y su campo bajan de renglón juntos: separados no se entienden. */
-function CampoExacto({ gps }: { gps: ConfigGps }) {
+function CampoExacto({ gps }: { gps: EstadoGps }) {
+  const campo = useCampoExacto(gps.frecuencia, gps.aplicarFrecuencia);
   return (
     <div className={styles.grupoExacto}>
       <span className={styles.oExacto} aria-hidden>
@@ -59,14 +60,14 @@ function CampoExacto({ gps }: { gps: ConfigGps }) {
           type="number"
           min={1}
           step={1}
-          {...gps.campoExacto}
+          {...campo}
         />
       </div>
     </div>
   );
 }
 
-function FilaFrecuencia({ gps }: { gps: ConfigGps }) {
+function FilaFrecuencia({ gps }: { gps: EstadoGps }) {
   return (
     <FilaConfig etiqueta="Frecuencia de captura" ayuda="Cada cuántos árboles se toma un punto GPS">
       <SegmentedControl

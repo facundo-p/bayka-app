@@ -17,6 +17,12 @@ export function pluralizar(cantidad: number, singular: string, plural: string): 
 }
 
 /** Opción de un select de entidades con código, ej. "P1 — Norte". */
-export function etiquetaCodigoNombre({ codigo, nombre }: { codigo: string; nombre: string }): string {
+export function etiquetaCodigoNombre({
+  codigo,
+  nombre,
+}: {
+  codigo: string;
+  nombre: string;
+}): string {
   return `${codigo} — ${nombre}`;
 }

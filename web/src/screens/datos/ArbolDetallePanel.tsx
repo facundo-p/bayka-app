@@ -93,7 +93,10 @@ function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
     <dl className={styles.meta}>
       <MetaDato etiqueta="Parcela" valor={parcelaCodigo ?? SIN_DATO} />
       <MetaDato etiqueta="Grupo" valor={arbol.grupoCodigo} />
-      <MetaDato etiqueta="Posición" valor={arbol.posicion != null ? String(arbol.posicion) : SIN_DATO} />
+      <MetaDato
+        etiqueta="Posición"
+        valor={arbol.posicion != null ? String(arbol.posicion) : SIN_DATO}
+      />
       <MetaDato etiqueta="Registrado" valor={formatearFechaCorta(arbol.createdAt)} />
       <MetaDato etiqueta="Técnico" valor={tecnicoNombre ?? SIN_DATO} />
     </dl>

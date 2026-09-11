@@ -18,6 +18,8 @@ const SIN_PRESET = -1;
 
 const ERROR_GUARDAR = 'No se pudo guardar la configuración GPS.';
 
+type ConfigGps = { frecuencia: number; obligatoria: boolean };
+
 function esFrecuenciaValida(valor: number): boolean {
   return Number.isInteger(valor) && valor >= 1;
 }
@@ -26,13 +28,22 @@ function presetDe(frecuencia: number): number {
   return (PRESETS_FRECUENCIA as readonly number[]).includes(frecuencia) ? frecuencia : SIN_PRESET;
 }
 
+function configInicial(plantacion: Plantacion): ConfigGps {
+  return { frecuencia: plantacion.gpsCaptureFrequency, obligatoria: plantacion.gpsCaptureRequired };
+}
+
 function useGuardarConfigGps(plantationId: string) {
   const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacion(plantationId));
-  return useMutation({
-    mutationFn: (config: { frecuencia: number; obligatoria: boolean }) =>
-      actualizarConfigGps(plantationId, config),
+  const mutacion = useMutation({
+    mutationFn: (config: ConfigGps) => actualizarConfigGps(plantationId, config),
     onSuccess: invalidar,
   });
+  const mensajeError = mensajeErrorConocido(
+    mutacion.error,
+    MENSAJE_GPS_SIN_MIGRACION,
+    ERROR_GUARDAR,
+  );
+  return { guardar: mutacion.mutate, guardando: mutacion.isPending, mensajeError };
 }
 
 /**
@@ -40,7 +51,7 @@ function useGuardarConfigGps(plantationId: string) {
  * no en cada tecla: mientras se escribe vive un borrador, y un valor inválido
  * al confirmar no llega a la base y el campo vuelve a la frecuencia vigente.
  */
-function useCampoExacto(frecuencia: number, aplicar: (valor: number) => void) {
+export function useCampoExacto(frecuencia: number, aplicar: (valor: number) => void) {
   const [borrador, setBorrador] = useState<string | null>(null);
   const value = borrador ?? String(frecuencia);
   const confirmar = () => {
@@ -57,36 +68,22 @@ function useCampoExacto(frecuencia: number, aplicar: (valor: number) => void) {
   return { value, onChange, onBlur: confirmar, onKeyDown };
 }
 
-/** Obligatoriedad y frecuencia comparten payload, así que comparten estado. */
+/** Obligatoriedad y frecuencia comparten payload: cada cambio guarda las dos. */
 export function useFrecuenciaGps(plantacion: Plantacion) {
-  const [frecuencia, setFrecuencia] = useState(plantacion.gpsCaptureFrequency);
-  const [obligatoria, setObligatoria] = useState(plantacion.gpsCaptureRequired);
-  const guardar = useGuardarConfigGps(plantacion.id);
-  const aplicarFrecuencia = (nueva: number) => {
-    setFrecuencia(nueva);
-    guardar.mutate({ frecuencia: nueva, obligatoria });
+  const [config, setConfig] = useState(() => configInicial(plantacion));
+  const { guardar, ...guardado } = useGuardarConfigGps(plantacion.id);
+  const aplicar = (cambios: Partial<ConfigGps>) => {
+    const proxima = { ...config, ...cambios };
+    setConfig(proxima);
+    guardar(proxima);
   };
-  const aplicarObligatoria = (valor: boolean) => {
-    setObligatoria(valor);
-    guardar.mutate({ frecuencia, obligatoria: valor });
-  };
-  const campoExacto = useCampoExacto(frecuencia, aplicarFrecuencia);
-  const presetActivo = presetDe(frecuencia);
-  const mensajeError = mensajeErrorConocido(
-    guardar.error,
-    MENSAJE_GPS_SIN_MIGRACION,
-    ERROR_GUARDAR,
-  );
-  const exactoActivo = presetActivo === SIN_PRESET;
-  const guardando = guardar.isPending;
+  const presetActivo = presetDe(config.frecuencia);
   return {
+    ...guardado,
+    ...config,
     presetActivo,
-    exactoActivo,
-    obligatoria,
-    campoExacto,
-    guardando,
-    mensajeError,
-    aplicarFrecuencia,
-    aplicarObligatoria,
+    exactoActivo: presetActivo === SIN_PRESET,
+    aplicarFrecuencia: (frecuencia: number) => aplicar({ frecuencia }),
+    aplicarObligatoria: (obligatoria: boolean) => aplicar({ obligatoria }),
   };
 }

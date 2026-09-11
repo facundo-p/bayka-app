@@ -26,7 +26,10 @@ function useGruposSection() {
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
   const verArboles = (grupo: GrupoConDetalle) =>
-    irA(SEGMENTO_DATOS.arboles, filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id }));
+    irA(
+      SEGMENTO_DATOS.arboles,
+      filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id }),
+    );
   return {
     parcelaId: filtros.parcelaId,
     parcelas,

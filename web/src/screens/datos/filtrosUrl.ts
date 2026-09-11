@@ -49,6 +49,13 @@ export function hayFiltroActivo(filtros: FiltrosUi): boolean {
   return CAMPOS.some((campo) => filtros[campo] !== FILTROS_INICIALES[campo]);
 }
 
+/** Cambiar de parcela suelta el grupo: el scope viejo deja de tener sentido. */
+export function conFiltro(filtros: FiltrosUi, campo: CampoFiltro, valor: string): FiltrosEscritos {
+  const proximos: FiltrosEscritos = { ...filtros, [campo]: valor };
+  if (campo === 'parcelaId') proximos.groupId = '';
+  return proximos;
+}
+
 /** Search params de un conjunto de filtros; los vacíos no se escriben. */
 export function filtrosAParams(filtros: FiltrosEscritos): URLSearchParams {
   const params = new URLSearchParams();
