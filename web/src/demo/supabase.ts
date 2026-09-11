@@ -20,7 +20,7 @@ import {
 
 /** Parámetro de URL que arranca sin sesión. Es la única forma de ver el login
  *  acá: con sesión redirige al listado, así que sin esto una captura de
- *  `/login` es en realidad una captura de `/plantaciones`. */
+ *  del login es en realidad una captura del listado de plantaciones. */
 export const PARAMETRO_SIN_SESION = 'sinSesion';
 
 type RespuestaDemo = {

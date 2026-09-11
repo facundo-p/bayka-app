@@ -19,7 +19,7 @@ import {
 } from '../components';
 import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
-import { rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
+import { RUTA, rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
 import type { Plantacion } from '../queries/plantationQueries';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
 import { useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
@@ -39,7 +39,7 @@ function tabsDePlantacion(id: string): TabItem[] {
 
 function VolverAlListado() {
   return (
-    <Link to="/plantaciones" className={styles.volver}>
+    <Link to={RUTA.plantaciones} className={styles.volver}>
       ← Volver a plantaciones
     </Link>
   );
@@ -192,7 +192,7 @@ function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
   return (
     <CabeceraSeccion
       raiz="Plantaciones"
-      raizA="/plantaciones"
+      raizA={RUTA.plantaciones}
       titulo={plantacion.lugar}
       meta={lineaMeta(plantacion)}
     >

@@ -5,7 +5,7 @@
  * árboles se buscan por `sub_id`, no por ID global.
  */
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
-import { PARAM_URL, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
+import { PARAM_URL, RUTA, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
 import { supabase } from '../lib/supabase';
 import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
@@ -66,7 +66,7 @@ async function buscarEspecies(texto: string): Promise<ResultadoBusqueda[]> {
       id: especie.id,
       titulo: especie.nombre,
       meta: especie.nombreCientifico ?? especie.codigo,
-      to: '/especies',
+      to: RUTA.especies,
     }));
 }
 
@@ -81,7 +81,7 @@ async function buscarUsuarios(texto: string): Promise<ResultadoBusqueda[]> {
       id: usuario.id,
       titulo: nombre,
       meta: etiquetaRol(usuario.rol),
-      to: '/usuarios',
+      to: RUTA.usuarios,
     }));
 }
 

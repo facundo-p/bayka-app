@@ -2,6 +2,7 @@ import { Leaf, Sprout, Users } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
 import { CommandMenuProvider, useCommandMenu } from '../hooks/useCommandMenu';
+import { RUTA } from '../lib/rutas';
 import { ROL } from '../repositories/profileRepository';
 import { CommandMenu } from './CommandMenu/CommandMenu';
 import { CommandMenuTrigger } from './CommandMenuTrigger';
@@ -18,7 +19,7 @@ function Sidebar() {
 
   return (
     <aside className={styles.sidebar}>
-      <Link to="/plantaciones" className={styles.brand}>
+      <Link to={RUTA.plantaciones} className={styles.brand}>
         <img src="/logo-bayka.png" alt="Bayka" className={styles.logo} />
         <span className={styles.brandOverline}>Plataforma de Gestión</span>
       </Link>
@@ -28,14 +29,14 @@ function Sidebar() {
       <nav className={styles.nav}>
         <span className={styles.navOverline}>Organización</span>
         <NavItem
-          to="/plantaciones"
+          to={RUTA.plantaciones}
           icon={<Sprout size={TAMANO_ICONO.lg} />}
           label="Plantaciones"
           activeOnDetail
         />
-        <NavItem to="/especies" icon={<Leaf size={TAMANO_ICONO.lg} />} label="Especies" />
+        <NavItem to={RUTA.especies} icon={<Leaf size={TAMANO_ICONO.lg} />} label="Especies" />
         {esSuperadmin && (
-          <NavItem to="/usuarios" icon={<Users size={TAMANO_ICONO.lg} />} label="Usuarios" />
+          <NavItem to={RUTA.usuarios} icon={<Users size={TAMANO_ICONO.lg} />} label="Usuarios" />
         )}
       </nav>
 
@@ -48,7 +49,7 @@ function Sidebar() {
   );
 }
 
-/** Vive dentro del gate de sesión: montado en `/login` consultaría plantaciones
+/** Vive dentro del gate de sesión: montado en el login consultaría plantaciones
  *  como anónimo y dejaría un `[]` cacheado que después ven todas las pantallas. */
 export function AppLayout() {
   return (

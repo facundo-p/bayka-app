@@ -15,7 +15,7 @@ export const RUTA = {
 } as const;
 
 /** Patrón del detalle para el router; el id llega como `useParams().id`. */
-export const PATRON_DETALLE_PLANTACION = `${RUTA.plantaciones}/:id`;
+export const PATRON_DETALLE_PLANTACION = `${RUTA.plantaciones}/:id` as const;
 
 /** Tabs del detalle con segmento propio; el dashboard es la ruta índice. */
 export const TAB_DETALLE = {

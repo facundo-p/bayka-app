@@ -7,6 +7,7 @@ import {
   suscribirseACambiosDeSesion,
 } from '../services/authService';
 import { MENSAJES as MENSAJES_ADMIN_USERS } from '../../../supabase/functions/admin-users/nucleo';
+import { RUTA } from '../lib/rutas';
 import { validarNuevaPassword } from '../lib/validarPassword';
 import styles from './EstablecerPasswordScreen.module.css';
 
@@ -90,7 +91,7 @@ function Exito() {
     <div className={styles.exito} role="status">
       <p>{MENSAJE_EXITO}</p>
       <p className={styles.nota}>{NOTA_TECNICOS}</p>
-      <Link to="/login" className={styles.enlace}>
+      <Link to={RUTA.login} className={styles.enlace}>
         Ir al ingreso de la web
       </Link>
     </div>

@@ -5,7 +5,7 @@ import { BannerEntornoPruebas } from './components/BannerEntornoPruebas';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { queryClient } from './lib/queryClient';
-import { SEGMENTO_DATOS, TAB_DETALLE } from './lib/rutas';
+import { PATRON_DETALLE_PLANTACION, RUTA, SEGMENTO_DATOS, TAB_DETALLE } from './lib/rutas';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
@@ -24,14 +24,14 @@ import { ParcelasSection } from './screens/datos/ParcelasSection';
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginScreen />} />
+      <Route path={RUTA.login} element={<LoginScreen />} />
       {/* Destino del link de invitación: pública, un técnico también la usa. */}
-      <Route path="/establecer-password" element={<EstablecerPasswordScreen />} />
+      <Route path={RUTA.establecerPassword} element={<EstablecerPasswordScreen />} />
       <Route element={<RequireAccess />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate to="/plantaciones" replace />} />
-          <Route path="/plantaciones" element={<PlantacionesScreen />} />
-          <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
+          <Route path="/" element={<Navigate to={RUTA.plantaciones} replace />} />
+          <Route path={RUTA.plantaciones} element={<PlantacionesScreen />} />
+          <Route path={PATRON_DETALLE_PLANTACION} element={<PlantacionDetailScreen />}>
             <Route index element={<DashboardTab />} />
             <Route path={TAB_DETALLE.datos} element={<DatosTab />}>
               <Route index element={<Navigate to={SEGMENTO_DATOS.parcelas} replace />} />
@@ -41,10 +41,10 @@ export function AppRoutes() {
             </Route>
             <Route path={TAB_DETALLE.configuracion} element={<ConfiguracionTab />} />
           </Route>
-          <Route path="/especies" element={<EspeciesScreen />} />
-          <Route path="/novedades" element={<NovedadesScreen />} />
+          <Route path={RUTA.especies} element={<EspeciesScreen />} />
+          <Route path={RUTA.novedades} element={<NovedadesScreen />} />
           <Route element={<RequireSuperadmin />}>
-            <Route path="/usuarios" element={<UsuariosScreen />} />
+            <Route path={RUTA.usuarios} element={<UsuariosScreen />} />
           </Route>
         </Route>
       </Route>

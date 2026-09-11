@@ -5,6 +5,7 @@ import { useNovedadesNoVistas } from '../hooks/useNovedadesNoVistas';
 import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
+import { RUTA } from '../lib/rutas';
 import type { Perfil } from '../repositories/profileRepository';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
@@ -18,7 +19,7 @@ function EnlaceNovedades() {
     ? `Novedades, versión ${VERSION_APP}, hay novedades nuevas`
     : `Novedades, versión ${VERSION_APP}`;
   return (
-    <Link to="/novedades" className={styles.novedades} aria-label={etiqueta}>
+    <Link to={RUTA.novedades} className={styles.novedades} aria-label={etiqueta}>
       Novedades · {VERSION_APP}
       {hayNoVistas && <span className={styles.dot} aria-hidden />}
     </Link>
