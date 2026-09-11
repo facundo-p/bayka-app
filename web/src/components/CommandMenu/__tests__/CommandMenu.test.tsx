@@ -212,3 +212,62 @@ test('Escape cierra la paleta', async () => {
     expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
   );
 });
+
+test('el click afuera cierra la paleta y devuelve el foco al trigger; adentro no', async () => {
+  renderRutasEn('/plantaciones');
+  const usuario = userEvent.setup();
+  await screen.findAllByText('La Maluka');
+  const trigger = screen.getByRole('button', { name: /Buscar/ });
+  await usuario.click(trigger);
+  const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
+
+  await usuario.click(within(dialog).getByPlaceholderText(/Buscar plantaciones/));
+  expect(dialog).toBeInTheDocument();
+
+  await usuario.click(dialog.parentElement!);
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
+  );
+  expect(trigger).toHaveFocus();
+});
+
+test('elegir un resultado lo guarda en recientes, y al reabrir reemplazan a las sugerencias', async () => {
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'Maluka');
+  await usuario.click(await within(dialog).findByRole('option', { name: /La Maluka/ }));
+
+  await screen.findByRole('heading', { name: 'La Maluka' });
+  const guardados = JSON.parse(window.localStorage.getItem('bayka.command-menu.recientes')!);
+  expect(guardados).toEqual([expect.objectContaining({ titulo: 'La Maluka' })]);
+
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  const reabierto = await screen.findByRole('dialog', { name: 'Buscar' });
+  expect(within(reabierto).getByRole('option', { name: /La Maluka/ })).toBeInTheDocument();
+  expect(within(reabierto).queryByText('Sugerencias')).not.toBeInTheDocument();
+});
+
+test('elegir una acción navega pero no la guarda en recientes', async () => {
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'Ir a Especies');
+  await usuario.click(await within(dialog).findByRole('option', { name: /Ir a Especies/ }));
+
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Buscar' })).not.toBeInTheDocument(),
+  );
+  expect(window.localStorage.getItem('bayka.command-menu.recientes')).toBeNull();
+});
+
+test('quitar el chip de scope saca "Ir a Configuración…" de las acciones', async () => {
+  const dialog = await abrirPaletaEnPlantacion();
+  const usuario = userEvent.setup();
+
+  await usuario.click(within(dialog).getByRole('button', { name: /en La Maluka/ }));
+  expect(within(dialog).queryByRole('button', { name: /en La Maluka/ })).not.toBeInTheDocument();
+
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'configuracion');
+  expect(
+    within(dialog).queryByRole('option', { name: /Ir a Configuración…/ }),
+  ).not.toBeInTheDocument();
+});
