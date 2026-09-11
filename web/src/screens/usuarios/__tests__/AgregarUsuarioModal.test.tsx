@@ -108,8 +108,6 @@ test('muestra el error del servidor y no cierra el modal', async () => {
   await usuario.type(screen.getByLabelText('Email'), 'ana@bayka.org');
   await usuario.click(screen.getByRole('button', { name: 'Enviar invitación' }));
 
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Ya existe un usuario con ese email',
-  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('Ya existe un usuario con ese email');
   expect(onClose).not.toHaveBeenCalled();
 });

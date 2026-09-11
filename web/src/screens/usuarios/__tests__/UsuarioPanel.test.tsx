@@ -163,7 +163,12 @@ test('muestra la advertencia al promover a otro usuario a superadmin', async () 
 test('cambiar nombre, email y rol a la vez llama a los tres en paralelo con los valores nuevos', async () => {
   const usuarioEvento = userEvent.setup();
   const onCerrar = renderPanel({
-    usuarioObjetivo: usuario({ id: 'user-9', nombre: 'Equis', email: 'x@bayka.org', rol: 'tecnico' }),
+    usuarioObjetivo: usuario({
+      id: 'user-9',
+      nombre: 'Equis',
+      email: 'x@bayka.org',
+      rol: 'tecnico',
+    }),
   });
 
   const campoNombre = screen.getByLabelText('Nombre');

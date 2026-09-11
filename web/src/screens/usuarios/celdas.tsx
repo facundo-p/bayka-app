@@ -37,9 +37,7 @@ export function CeldaUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
         {/* Email como identificador secundario; perfiles previos al backfill
             de la migración 026 caen a la organización. */}
         {(usuario.email ?? usuario.organizacionNombre) && (
-          <span className={styles.organizacion}>
-            {usuario.email ?? usuario.organizacionNombre}
-          </span>
+          <span className={styles.organizacion}>{usuario.email ?? usuario.organizacionNombre}</span>
         )}
       </span>
     </div>

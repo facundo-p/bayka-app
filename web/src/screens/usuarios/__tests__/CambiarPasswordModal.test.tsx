@@ -85,7 +85,9 @@ test('con contraseñas válidas llama a cambiarPassword con el id del usuario y 
 });
 
 test('muestra el error del servidor y no cierra el modal', async () => {
-  vi.mocked(cambiarPassword).mockRejectedValue(new Error('No se pudo completar la operación. Probá de nuevo.'));
+  vi.mocked(cambiarPassword).mockRejectedValue(
+    new Error('No se pudo completar la operación. Probá de nuevo.'),
+  );
   const usuarioEvento = userEvent.setup();
   const onClose = renderModal();
 

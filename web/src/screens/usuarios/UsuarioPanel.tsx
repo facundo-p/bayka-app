@@ -169,11 +169,7 @@ function BloqueAcciones({
     <PanelBloque titulo="Acciones">
       <div className={styles.acciones}>
         {items.map((item) => (
-          <BotonAccion
-            key={item.accion}
-            item={item}
-            onAccion={() => onAccion(item.accion)}
-          />
+          <BotonAccion key={item.accion} item={item} onAccion={() => onAccion(item.accion)} />
         ))}
       </div>
       <p className={styles.ayuda}>{AYUDA_DESACTIVAR}</p>
