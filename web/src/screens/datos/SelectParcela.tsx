@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Select } from '../../components';
+import { Select, type Opcion } from '../../components';
 import { etiquetaCodigoNombre } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 
@@ -22,6 +22,10 @@ function useResetIdFantasma({ parcelas, value, onChange }: SelectParcelaProps) {
   }, [parcelas.length, idFantasma, onChange]);
 }
 
+function opcionesParcela(parcelas: ParcelaConStats[]): Array<Opcion<string>> {
+  return parcelas.map((parcela) => ({ value: parcela.id, label: etiquetaCodigoNombre(parcela) }));
+}
+
 /** Filtro por parcela de las toolbars de Grupos y Árboles. */
 export function SelectParcela(props: SelectParcelaProps) {
   const { parcelas, value, onChange, className } = props;
@@ -33,13 +37,9 @@ export function SelectParcela(props: SelectParcelaProps) {
       className={className}
       value={value}
       onChange={(evento) => onChange(evento.target.value)}
+      opciones={opcionesParcela(parcelas)}
     >
       <option value="">Parcela: todas</option>
-      {parcelas.map((parcela) => (
-        <option key={parcela.id} value={parcela.id}>
-          {etiquetaCodigoNombre(parcela)}
-        </option>
-      ))}
     </Select>
   );
 }

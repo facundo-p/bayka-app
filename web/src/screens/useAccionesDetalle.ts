@@ -67,26 +67,26 @@ function useDescargasDetalle(plantacion: Plantacion) {
   return { kml, xlsx, csv, mensaje: xlsx.mensaje ?? csv.mensaje ?? kml.mensaje };
 }
 
+/** Mientras la consulta no responde no se ofrece generar: solo con un `false` explícito. */
+function useIdsPendientes(plantationId: string): boolean {
+  const { data: generados } = useQuery({
+    queryKey: CLAVE_QUERY.idsGenerados(plantationId),
+    queryFn: () => idsGenerados(plantationId),
+  });
+  return generados === false;
+}
+
 /** Descargas, generación de IDs y si la barra va plegada en un solo «⋯». */
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
   const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
   const [generandoIds, setGenerandoIds] = useState(false);
   const plegado = useMediaQuery(BP.tablet);
-  const { data: generados } = useQuery({
-    queryKey: CLAVE_QUERY.idsGenerados(plantacion.id),
-    queryFn: () => idsGenerados(plantacion.id),
-  });
   const acciones: AccionesProps = {
     ...descargas,
-    idsPendientes: generados === false,
+    idsPendientes: useIdsPendientes(plantacion.id),
     onEditar,
     onGenerarIds: () => setGenerandoIds(true),
   };
-  return {
-    acciones,
-    mensaje,
-    plegado,
-    generandoIds,
-    cerrarGenerarIds: () => setGenerandoIds(false),
-  };
+  const cerrarGenerarIds = () => setGenerandoIds(false);
+  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds };
 }

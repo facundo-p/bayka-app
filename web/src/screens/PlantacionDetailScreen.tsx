@@ -96,18 +96,24 @@ function MenuExportar(props: AccionesProps) {
   );
 }
 
+function BotonEditar({ onEditar }: { onEditar: () => void }) {
+  return (
+    <BotonIcono
+      variante="contornoTransparente"
+      tamano="sm"
+      etiqueta="Editar"
+      title="Editar"
+      onClick={onEditar}
+    >
+      <Pencil size={TAMANO_ICONO.md} aria-hidden />
+    </BotonIcono>
+  );
+}
+
 function AccionesDesplegadas(props: AccionesProps) {
   return (
     <>
-      <BotonIcono
-        variante="contornoTransparente"
-        tamano="sm"
-        etiqueta="Editar"
-        title="Editar"
-        onClick={props.onEditar}
-      >
-        <Pencil size={TAMANO_ICONO.md} aria-hidden />
-      </BotonIcono>
+      <BotonEditar onEditar={props.onEditar} />
       <MenuExportar {...props} />
       {props.idsPendientes && (
         <Button variant="primary" size="sm" onClick={props.onGenerarIds}>
@@ -153,25 +159,21 @@ function AccionesPlegadas(props: AccionesProps) {
   );
 }
 
-/** Lado derecho de la barra. El mensaje de las descargas cuelga debajo del
- *  botón para no ensanchar la barra. */
-function AccionesDetalle({
-  plantacion,
-  onEditar,
-}: {
+interface AccionesDetalleProps {
   plantacion: Plantacion;
   onEditar: () => void;
-}) {
+}
+
+/** Lado derecho de la barra. El mensaje de las descargas cuelga debajo del
+ *  botón para no ensanchar la barra. */
+function AccionesDetalle({ plantacion, onEditar }: AccionesDetalleProps) {
   const detalle = useAccionesDetalle(plantacion, onEditar);
+  const Acciones = detalle.plegado ? AccionesPlegadas : AccionesDesplegadas;
   return (
     <div className={styles.acciones}>
       <TabNav label="Secciones de la plantación" tabs={tabsDePlantacion(plantacion.id)} />
       <Divisor />
-      {detalle.plegado ? (
-        <AccionesPlegadas {...detalle.acciones} />
-      ) : (
-        <AccionesDesplegadas {...detalle.acciones} />
-      )}
+      <Acciones {...detalle.acciones} />
       {detalle.mensaje && (
         <span className={styles.mensajeAccion} role="alert">
           {detalle.mensaje}
@@ -198,13 +200,30 @@ function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
   );
 }
 
-/** Shell del detalle: una sola barra con título, tabs y acciones; cada tab
- *  se renderiza en el Outlet y llena el alto restante. */
+/** Una sola barra con título, tabs y acciones; cada tab se renderiza en el
+ *  Outlet y llena el alto restante. */
+function DetallePlantacion({ plantacion }: { plantacion: Plantacion }) {
+  const [editando, setEditando] = useState(false);
+  return (
+    <section>
+      <Topbar
+        densidad="compacta"
+        left={<CabeceraPlantacion plantacion={plantacion} />}
+        right={<AccionesDetalle plantacion={plantacion} onEditar={() => setEditando(true)} />}
+      />
+      <div className={styles.contenido}>
+        <Outlet />
+      </div>
+      {editando && (
+        <PlantacionFormModal plantacion={plantacion} onClose={() => setEditando(false)} />
+      )}
+    </section>
+  );
+}
+
 export function PlantacionDetailScreen() {
   const { id = '' } = useParams();
-  const [editando, setEditando] = useState(false);
   const { data, isPending, isError, refetch } = usePlantacion(id);
-
   if (isPending) return <Cargando />;
   if (isError) {
     return (
@@ -215,17 +234,5 @@ export function PlantacionDetailScreen() {
     );
   }
   if (!data) return <PlantacionNoEncontrada />;
-  return (
-    <section className={styles.pantalla}>
-      <Topbar
-        densidad="compacta"
-        left={<CabeceraPlantacion plantacion={data} />}
-        right={<AccionesDetalle plantacion={data} onEditar={() => setEditando(true)} />}
-      />
-      <div className={styles.contenido}>
-        <Outlet />
-      </div>
-      {editando && <PlantacionFormModal plantacion={data} onClose={() => setEditando(false)} />}
-    </section>
-  );
+  return <DetallePlantacion plantacion={data} />;
 }

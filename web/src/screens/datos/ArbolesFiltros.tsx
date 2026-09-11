@@ -1,4 +1,4 @@
-import { CampoBusqueda, Select } from '../../components';
+import { CampoBusqueda, Select, type Opcion } from '../../components';
 import { etiquetaCodigoNombre } from '../../lib/formato';
 import type { EspecieCatalogo } from '../../queries/especieQueries';
 import type { GrupoConDetalle, ParcelaConStats } from '../../queries/dataExplorerQueries';
@@ -16,24 +16,97 @@ interface ArbolesFiltrosProps {
   onCambiar: (campo: keyof FiltrosUi, valor: string) => void;
 }
 
-/**
- * Filtros compactos del listado de árboles, en línea dentro de la toolbar:
- * búsqueda + Parcela + Grupo + Especie + GPS + Foto. Labels accesibles pero
- * ocultos. Con seis controles la fila envuelve en pantallas angostas.
- */
-export function ArbolesFiltros({
-  filtros,
-  parcelas,
-  grupos,
-  especies,
-  onCambiar,
-}: ArbolesFiltrosProps) {
+type Enlace = Pick<ArbolesFiltrosProps, 'filtros' | 'onCambiar'>;
+
+interface SelectFiltroProps extends Enlace {
+  campo: keyof FiltrosUi;
+  label: string;
+  className: string;
+  opciones: ReadonlyArray<Opcion<string>>;
+  disabled?: boolean;
+  title?: string;
+}
+
+const SELECT_GPS = {
+  campo: 'gps',
+  label: 'GPS',
+  className: styles.filtroGps,
+  opciones: [
+    { value: FILTRO_GPS.todos, label: 'GPS: todos' },
+    { value: FILTRO_GPS.con, label: 'Con GPS' },
+    { value: FILTRO_GPS.sin, label: 'Sin GPS' },
+  ],
+} as const;
+
+const SELECT_FOTO = {
+  campo: 'foto',
+  label: 'Foto',
+  className: styles.filtroFoto,
+  opciones: [
+    { value: FILTRO_FOTO.todas, label: 'Foto: todas' },
+    { value: FILTRO_FOTO.con, label: 'Con foto' },
+    { value: FILTRO_FOTO.sin, label: 'Sin foto' },
+  ],
+} as const;
+
+const SELECT_ESPECIE = {
+  campo: 'speciesId',
+  label: 'Especie',
+  className: styles.filtroEspecie,
+} as const;
+
+function opcionesEspecie(especies: EspecieCatalogo[]): Array<Opcion<string>> {
+  return [
+    { value: '', label: 'Especie: todas' },
+    { value: ESPECIE_SIN_IDENTIFICAR, label: `${ESPECIE_NO_RESUELTA} (sin identificar)` },
+    ...especies.map((especie) => ({ value: especie.id, label: etiquetaCodigoNombre(especie) })),
+  ];
+}
+
+function opcionesGrupo(grupos: GrupoConDetalle[]): Array<Opcion<string>> {
+  return [
+    { value: '', label: 'Grupo: todos' },
+    ...grupos.map((grupo) => ({ value: grupo.id, label: grupo.codigo })),
+  ];
+}
+
+/** Select de la fila de filtros: label oculto y el valor atado a un campo de la URL. */
+function SelectFiltro({ campo, filtros, onCambiar, ...select }: SelectFiltroProps) {
+  return (
+    <Select
+      labelOculto
+      value={filtros[campo]}
+      onChange={(evento) => onCambiar(campo, evento.target.value)}
+      {...select}
+    />
+  );
+}
+
+function FiltroGrupo({ grupos, ...enlace }: Enlace & { grupos: GrupoConDetalle[] }) {
   // Un grupo solo acota dentro de una parcela: sin parcela no hay qué listar.
   // Se habilita igual si la URL trae un grupo, para no dejar un filtro activo
   // que no se pueda ver ni quitar.
-  const grupoHabilitado = Boolean(filtros.parcelaId || filtros.groupId);
+  const habilitado = Boolean(enlace.filtros.parcelaId || enlace.filtros.groupId);
   return (
-    <div className={styles.filtrosCompactos}>
+    <SelectFiltro
+      campo="groupId"
+      label="Grupo"
+      className={styles.filtroGrupo}
+      opciones={opcionesGrupo(grupos)}
+      disabled={!habilitado}
+      title={habilitado ? undefined : 'Elegí una parcela para filtrar por grupo'}
+      {...enlace}
+    />
+  );
+}
+
+interface BusquedaYParcelaProps extends Enlace {
+  parcelas: ParcelaConStats[];
+}
+
+function BusquedaYParcela({ parcelas, filtros, onCambiar }: BusquedaYParcelaProps) {
+  return (
+    <>
       <CampoBusqueda
         densidad="compacta"
         label="Buscar por ID o SubID"
@@ -47,61 +120,20 @@ export function ArbolesFiltros({
         value={filtros.parcelaId}
         onChange={(valor) => onCambiar('parcelaId', valor)}
       />
-      <Select
-        label="Grupo"
-        labelOculto
-        className={styles.filtroGrupo}
-        value={filtros.groupId}
-        disabled={!grupoHabilitado}
-        title={grupoHabilitado ? undefined : 'Elegí una parcela para filtrar por grupo'}
-        onChange={(evento) => onCambiar('groupId', evento.target.value)}
-      >
-        <option value="">Grupo: todos</option>
-        {grupos.map((grupo) => (
-          <option key={grupo.id} value={grupo.id}>
-            {grupo.codigo}
-          </option>
-        ))}
-      </Select>
-      <Select
-        label="Especie"
-        labelOculto
-        className={styles.filtroEspecie}
-        value={filtros.speciesId}
-        onChange={(evento) => onCambiar('speciesId', evento.target.value)}
-      >
-        <option value="">Especie: todas</option>
-        <option
-          value={ESPECIE_SIN_IDENTIFICAR}
-        >{`${ESPECIE_NO_RESUELTA} (sin identificar)`}</option>
-        {especies.map((especie) => (
-          <option key={especie.id} value={especie.id}>
-            {etiquetaCodigoNombre(especie)}
-          </option>
-        ))}
-      </Select>
-      <Select
-        label="GPS"
-        labelOculto
-        className={styles.filtroGps}
-        value={filtros.gps}
-        onChange={(evento) => onCambiar('gps', evento.target.value)}
-      >
-        <option value={FILTRO_GPS.todos}>GPS: todos</option>
-        <option value={FILTRO_GPS.con}>Con GPS</option>
-        <option value={FILTRO_GPS.sin}>Sin GPS</option>
-      </Select>
-      <Select
-        label="Foto"
-        labelOculto
-        className={styles.filtroFoto}
-        value={filtros.foto}
-        onChange={(evento) => onCambiar('foto', evento.target.value)}
-      >
-        <option value={FILTRO_FOTO.todas}>Foto: todas</option>
-        <option value={FILTRO_FOTO.con}>Con foto</option>
-        <option value={FILTRO_FOTO.sin}>Sin foto</option>
-      </Select>
+    </>
+  );
+}
+
+/** Filtros del listado de árboles, en línea dentro de la toolbar. Con seis
+ *  controles la fila envuelve en pantallas angostas. */
+export function ArbolesFiltros({ parcelas, grupos, especies, ...enlace }: ArbolesFiltrosProps) {
+  return (
+    <div className={styles.filtrosCompactos}>
+      <BusquedaYParcela parcelas={parcelas} {...enlace} />
+      <FiltroGrupo grupos={grupos} {...enlace} />
+      <SelectFiltro {...SELECT_ESPECIE} opciones={opcionesEspecie(especies)} {...enlace} />
+      <SelectFiltro {...SELECT_GPS} {...enlace} />
+      <SelectFiltro {...SELECT_FOTO} {...enlace} />
     </div>
   );
 }
