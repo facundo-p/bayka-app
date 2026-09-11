@@ -29,17 +29,12 @@ function BloqueError({ consultas, mensaje }: { consultas: EstadoConsulta[]; mens
   );
 }
 
-/** Card con lista de Configuración: cabecera + carga, error o contenido. */
-export function CardConfig({
-  className,
-  consultas,
-  mensajeError,
-  children,
-  ...textos
-}: CardConfigProps) {
+type EstadoCargaProps = Omit<CardConfigProps, 'className' | 'children'>;
+
+function EstadoCarga({ consultas, mensajeError, ...textos }: EstadoCargaProps) {
   const cabecera = <CabeceraConfig {...textos} />;
   return (
-    <section className={className}>
+    <>
       {algunaCargando(consultas) && (
         <>
           {cabecera}
@@ -52,6 +47,15 @@ export function CardConfig({
           <BloqueError consultas={consultas} mensaje={mensajeError} />
         </>
       )}
+    </>
+  );
+}
+
+/** Card con lista de Configuración: cabecera + carga, error o contenido. */
+export function CardConfig({ className, children, ...estado }: CardConfigProps) {
+  return (
+    <section className={className}>
+      <EstadoCarga {...estado} />
       {children}
     </section>
   );

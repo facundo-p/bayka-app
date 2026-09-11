@@ -34,13 +34,8 @@ interface SeccionTablaDatosProps<T> extends TablaSeccionProps<T> {
   children?: ReactNode;
 }
 
-function TablaSeccion<T extends { id: string }>({
-  filas,
-  textos,
-  columnas,
-  onRowClick,
-  vacioConFiltros,
-}: TablaSeccionProps<T> & { filas: T[] }) {
+function TablaSeccion<T extends { id: string }>(props: TablaSeccionProps<T> & { filas: T[] }) {
+  const { filas, textos, columnas, onRowClick, vacioConFiltros } = props;
   const visibles = useColumnasVisibles(columnas);
   if (filas.length === 0 && vacioConFiltros) return <VacioConFiltros {...vacioConFiltros} />;
   return (
@@ -65,16 +60,13 @@ export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaD
     );
   }
   const recuento = filas && `${formatearEntero(filas.length)} ${tabla.textos.unidad}`;
+  const cuerpo = filas ? <TablaSeccion filas={filas} {...tabla} /> : null;
   return (
     <>
       <DatosToolbar segmento={segmento} recuento={recuento}>
         {children}
       </DatosToolbar>
-      {filas ? (
-        <TablaSeccion filas={filas} {...tabla} />
-      ) : (
-        <Cargando label={tabla.textos.cargando} />
-      )}
+      {cuerpo ?? <Cargando label={tabla.textos.cargando} />}
     </>
   );
 }

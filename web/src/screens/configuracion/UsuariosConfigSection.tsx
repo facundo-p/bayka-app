@@ -105,13 +105,12 @@ function PieModal({ onCerrar, children }: { onCerrar: () => void; children: Reac
   );
 }
 
-function FilaAsignado({
-  asignado,
-  onQuitar,
-}: {
+interface FilaAsignadoProps {
   asignado: UsuarioAsignado;
   onQuitar: (asignado: UsuarioAsignado) => void;
-}) {
+}
+
+function FilaAsignado({ asignado, onQuitar }: FilaAsignadoProps) {
   const nombre = nombreVisible(asignado.nombre, asignado.userId);
   return (
     <li className={styles.filaTecnico}>
@@ -245,6 +244,18 @@ function ListaAsignados({ asignados, onQuitar }: ListaAsignadosProps) {
   );
 }
 
+/** La lista y el modal de quitar comparten a quién se está quitando. */
+function TecnicosAsignados({ plantationId, asignados }: Omit<ContenidoUsuariosProps, 'perfiles'>) {
+  const [aQuitar, setAQuitar] = useState<UsuarioAsignado | null>(null);
+  const cerrar = () => setAQuitar(null);
+  return (
+    <>
+      <ListaAsignados asignados={asignados} onQuitar={setAQuitar} />
+      {aQuitar && <ModalQuitar plantationId={plantationId} asignado={aQuitar} onCerrar={cerrar} />}
+    </>
+  );
+}
+
 interface ContenidoUsuariosProps {
   plantationId: string;
   perfiles: PerfilResumen[];
@@ -252,39 +263,34 @@ interface ContenidoUsuariosProps {
 }
 
 function ContenidoUsuarios({ plantationId, perfiles, asignados }: ContenidoUsuariosProps) {
-  const [aQuitar, setAQuitar] = useState<UsuarioAsignado | null>(null);
   const [asignando, setAsignando] = useState(false);
-  const disponibles = perfilesNoAsignados(perfiles, asignados);
   return (
     <>
       <CabeceraTecnicos cantidad={asignados.length} onAsignar={() => setAsignando(true)} />
-      <ListaAsignados asignados={asignados} onQuitar={setAQuitar} />
+      <TecnicosAsignados plantationId={plantationId} asignados={asignados} />
       {asignando && (
         <ModalAsignar
           plantationId={plantationId}
-          disponibles={disponibles}
+          disponibles={perfilesNoAsignados(perfiles, asignados)}
           onCerrar={() => setAsignando(false)}
-        />
-      )}
-      {aQuitar && (
-        <ModalQuitar
-          plantationId={plantationId}
-          asignado={aQuitar}
-          onCerrar={() => setAQuitar(null)}
         />
       )}
     </>
   );
 }
 
+function useAsignados(plantationId: string) {
+  return useQuery({
+    queryKey: CLAVE_QUERY.plantacionUsuarios(plantationId),
+    queryFn: () => listarAsignados(plantationId),
+  });
+}
+
 /** Control de acceso de la app: solo los usuarios asignados ven la plantación. */
 export function UsuariosConfigSection() {
   const { id = '' } = useParams();
   const perfiles = usePerfiles();
-  const asignados = useQuery({
-    queryKey: CLAVE_QUERY.plantacionUsuarios(id),
-    queryFn: () => listarAsignados(id),
-  });
+  const asignados = useAsignados(id);
   return (
     <CardConfig
       className={styles.cardTecnicos}

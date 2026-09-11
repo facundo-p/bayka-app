@@ -102,12 +102,8 @@ interface ContenidoDashboardProps {
   puntos: PuntoGps[];
 }
 
-function ContenidoDashboard({
-  fuente,
-  objetivoArboles,
-  parcelas,
-  puntos,
-}: ContenidoDashboardProps) {
+function ContenidoDashboard(props: ContenidoDashboardProps) {
+  const { fuente, objetivoArboles, parcelas, puntos } = props;
   const filtro = useFiltroParcela(parcelas);
   const parcelaId = filtro.parcela?.id ?? null;
   const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
