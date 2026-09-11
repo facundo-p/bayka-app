@@ -12,6 +12,7 @@ import {
 } from '../../components';
 import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
 import { formatearEntero } from '../../lib/formato';
+import { rutaPlantacion } from '../../lib/rutas';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
@@ -78,7 +79,7 @@ function BloqueConteos({ especie }: { especie: EspecieConCatalogoUso }) {
 function enlacePlantacion(plantacion: PlantacionDeEspecie): EnlacePanel {
   return {
     clave: plantacion.id,
-    ruta: `/plantaciones/${plantacion.id}`,
+    ruta: rutaPlantacion(plantacion.id),
     texto: plantacion.nombre,
     detalle: formatearEntero(plantacion.arboles),
   };

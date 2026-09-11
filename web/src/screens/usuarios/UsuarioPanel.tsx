@@ -14,6 +14,7 @@ import {
 import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { formatearFechaDia } from '../../lib/fechas';
 import { etiquetaRol, nombreVisible } from '../../lib/presentacionUsuario';
+import { rutaPlantacion } from '../../lib/rutas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeUsuario,
@@ -103,7 +104,7 @@ function CampoRol({
 function enlaceAsignada(plantacion: PlantacionDeUsuario): EnlacePanel {
   return {
     clave: plantacion.id,
-    ruta: `/plantaciones/${plantacion.id}`,
+    ruta: rutaPlantacion(plantacion.id),
     texto: plantacion.nombre,
     detalle: etiquetaRol(plantacion.rolEnPlantacion),
   };

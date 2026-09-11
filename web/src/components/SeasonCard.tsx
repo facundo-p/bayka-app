@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones, obtenerTemporadaActivaId } from '../queries/plantationQueries';
 import { formatearEntero, PORCENTAJE_COMPLETO, porcentajeDeObjetivo } from '../lib/formato';
+import { rutaPlantacion } from '../lib/rutas';
 import { BarraProgreso } from './BarraProgreso';
 import styles from './SeasonCard.module.css';
 
@@ -29,7 +30,7 @@ export function SeasonCard() {
   if (!temporada) return null;
   const avance = porcentajeDeObjetivo(temporada.arboles, temporada.objetivoArboles);
   return (
-    <Link to={`/plantaciones/${temporada.id}`} className={styles.card}>
+    <Link to={rutaPlantacion(temporada.id)} className={styles.card}>
       <span className={styles.overline}>Temporada activa</span>
       <div className={styles.periodoFila}>
         <span className={styles.punto} aria-hidden />

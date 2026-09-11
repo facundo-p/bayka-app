@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router';
 import { CardTabla, Table } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { pluralizar } from '../../lib/formato';
+import { rutaPlantacion } from '../../lib/rutas';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import { COLUMNAS_PLANTACIONES } from './columnas';
 
@@ -21,7 +22,7 @@ export function ListadoPlantaciones({ visibles }: { visibles: PlantacionConStats
         columns={columnas}
         rows={visibles}
         getRowKey={(plantacion) => plantacion.id}
-        onRowClick={(plantacion) => void navigate(`/plantaciones/${plantacion.id}`)}
+        onRowClick={(plantacion) => void navigate(rutaPlantacion(plantacion.id))}
         emptyMessage="Ninguna plantación coincide con los filtros"
       />
     </CardTabla>
