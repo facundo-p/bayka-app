@@ -19,7 +19,8 @@ const TEXTOS: TextosConsulta = {
   },
 };
 
-export function UsuariosScreen() {
+/** Todas las personas y las que pasan los filtros de la barra. */
+function useUsuariosFiltrados() {
   const consulta = useQuery({
     queryKey: CLAVE_QUERY.usuarios(),
     queryFn: listarUsuariosConAsignaciones,
@@ -29,29 +30,48 @@ export function UsuariosScreen() {
     filtrarUsuarios,
     FILTROS_INICIALES_USUARIOS,
   );
+  return { consulta, usuarios: consulta.data ?? [], controles, visibles };
+}
+
+/** El modal abierto: el de una acción rápida o el alta. */
+function useModalesUsuarios() {
   const [accionActiva, setAccionActiva] = useState<AccionActiva | null>(null);
   const [agregarAbierto, setAgregarAbierto] = useState(false);
-  const modales = (
+  return {
+    accionActiva,
+    agregarAbierto,
+    abrirAccion: setAccionActiva,
+    cerrarAccion: () => setAccionActiva(null),
+    abrirAgregar: () => setAgregarAbierto(true),
+    cerrarAgregar: () => setAgregarAbierto(false),
+  };
+}
+
+function ModalesUsuarios({ modales }: { modales: ReturnType<typeof useModalesUsuarios> }) {
+  return (
     <>
-      {accionActiva && <ModalDeAccion {...accionActiva} onClose={() => setAccionActiva(null)} />}
-      {agregarAbierto && <AgregarUsuarioModal onClose={() => setAgregarAbierto(false)} />}
+      {modales.accionActiva && (
+        <ModalDeAccion {...modales.accionActiva} onClose={modales.cerrarAccion} />
+      )}
+      {modales.agregarAbierto && <AgregarUsuarioModal onClose={modales.cerrarAgregar} />}
     </>
   );
+}
+
+export function UsuariosScreen() {
+  const { consulta, usuarios, controles, visibles } = useUsuariosFiltrados();
+  const modales = useModalesUsuarios();
   return (
     <PantallaListado
       titulo="Usuarios"
       meta={consulta.data && calcularMeta(consulta.data)}
-      accion={{ etiqueta: 'Agregar usuario', alActivar: () => setAgregarAbierto(true) }}
+      accion={{ etiqueta: 'Agregar usuario', alActivar: modales.abrirAgregar }}
       barra={<UsuariosToolbar controles={controles} visibles={visibles} />}
       consulta={consulta}
       textos={TEXTOS}
-      modales={modales}
+      modales={<ModalesUsuarios modales={modales} />}
     >
-      <ListadoUsuarios
-        usuarios={consulta.data ?? []}
-        visibles={visibles}
-        onAccion={setAccionActiva}
-      />
+      <ListadoUsuarios usuarios={usuarios} visibles={visibles} onAccion={modales.abrirAccion} />
     </PantallaListado>
   );
 }

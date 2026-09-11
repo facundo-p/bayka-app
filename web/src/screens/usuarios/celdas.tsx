@@ -3,6 +3,8 @@ import { iniciales } from '../../lib/iniciales';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL, type Rol } from '../../repositories/profileRepository';
+import { itemsDeMenu, type AccionActiva, type ContextoAcciones } from './acciones';
+import { MenuAccionesUsuario } from './MenuAccionesUsuario';
 import styles from './Usuarios.module.css';
 
 /** Clase del avatar según rol (mismos tripletes que el Badge de rol). */
@@ -55,4 +57,24 @@ export function CeldaTexto({
   clase?: string;
 }) {
   return <span className={cx(clase, !usuario.activo && styles.textoInactivo)}>{texto}</span>;
+}
+
+interface CeldaAccionesProps {
+  usuario: UsuarioConAsignaciones;
+  contexto: ContextoAcciones;
+  onAccion: (activa: AccionActiva) => void;
+}
+
+/** El menú "⋯" de la fila. */
+export function CeldaAcciones({ usuario, contexto, onAccion }: CeldaAccionesProps) {
+  return (
+    // La fila abre el panel: el menú frena el click para no hacer las dos cosas.
+    <span onClick={(evento) => evento.stopPropagation()}>
+      <MenuAccionesUsuario
+        nombre={nombreVisible(usuario.nombre, usuario.id)}
+        items={itemsDeMenu(usuario, contexto.idActual, contexto.superadminsActivos)}
+        onAccion={(accion) => onAccion({ usuario, accion })}
+      />
+    </span>
+  );
 }
