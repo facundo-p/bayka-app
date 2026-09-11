@@ -166,6 +166,31 @@ test('sin texto y con recientes: un único encabezado "Recientes"', async () => 
   expect(encabezadosVacio(dialog)).toEqual(['Recientes']);
 });
 
+test('sin texto, recientes ni plantaciones: mensaje neutro, sin encabezados ni comillas vacías', async () => {
+  estadoMock.resolverConsulta = (consulta) =>
+    consulta.tabla === 'plantations' ? { data: [], count: 0 } : responder(consulta);
+  renderRutasEn('/plantaciones');
+  await screen.findByRole('button', { name: /Buscar/ });
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
+
+  expect(
+    await within(dialog).findByText('Todavía no hay recientes ni plantaciones para sugerir.'),
+  ).toBeInTheDocument();
+  expect(encabezadosVacio(dialog)).toEqual([]);
+  expect(within(dialog).queryByText(/Sin resultados/)).not.toBeInTheDocument();
+});
+
+test('con texto y sin resultados: «Sin resultados para “…”» con lo que se buscó', async () => {
+  estadoMock.resolverConsulta = (consulta) =>
+    consulta.tabla === 'trees' ? { data: [], count: 0 } : responder(consulta);
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'zzz');
+
+  expect(await within(dialog).findByText('Sin resultados para “zzz”.')).toBeInTheDocument();
+});
+
 test('flecha abajo + Enter navega al resultado resaltado', async () => {
   const dialog = await abrirPaleta();
   const usuario = userEvent.setup();
