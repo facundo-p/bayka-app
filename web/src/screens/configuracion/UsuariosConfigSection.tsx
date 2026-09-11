@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useParams } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
@@ -6,8 +6,6 @@ import {
   Badge,
   BotonIcono,
   Button,
-  Cargando,
-  ErrorConReintento,
   Modal,
   SelectConDetalle,
   type OpcionConDetalle,
@@ -15,6 +13,7 @@ import {
 import { useInvalidarAsignacion } from '../../hooks/useInvalidarAsignacion';
 import { usePerfiles } from '../../hooks/usePerfiles';
 import { iniciales } from '../../lib/iniciales';
+import { mensajeErrorConocido } from '../../lib/mensajeErrorConocido';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarAsignados,
@@ -28,6 +27,8 @@ import {
 } from '../../repositories/plantationUserRepository';
 import { ROL } from '../../repositories/profileRepository';
 import { CabeceraConfig } from './CabeceraConfig';
+import { CardConfig } from './CardConfig';
+import { ErrorAccion } from './ErrorAccion';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './SeccionesConfig.module.css';
 
@@ -71,11 +72,37 @@ function opcionesDeUsuario(perfiles: PerfilResumen[]): OpcionConDetalle[] {
   }));
 }
 
-function mensajeErrorAsignar(error: Error | null): string | null {
-  if (!error) return null;
-  return error.message === MENSAJE_USUARIO_YA_ASIGNADO
-    ? error.message
-    : 'No se pudo asignar el usuario.';
+const TITULO = 'Técnicos asignados';
+const SUBTITULO = 'Quién puede registrar en esta plantación';
+const ERROR_ASIGNAR = 'No se pudo asignar el usuario.';
+const ERROR_QUITAR = 'No se pudo quitar el usuario.';
+
+/** El modal cierra recién cuando la card, el listado y Usuarios se invalidaron. */
+function useMutacionYCerrar(
+  plantationId: string,
+  userId: string,
+  mutationFn: () => Promise<unknown>,
+  onCerrar: () => void,
+) {
+  const invalidar = useInvalidarAsignacion(plantationId, userId);
+  return useMutation({
+    mutationFn,
+    onSuccess: async () => {
+      await invalidar();
+      onCerrar();
+    },
+  });
+}
+
+function PieModal({ onCerrar, children }: { onCerrar: () => void; children: ReactNode }) {
+  return (
+    <div className={styles.acciones}>
+      <Button variant="secondary" onClick={onCerrar}>
+        Cancelar
+      </Button>
+      {children}
+    </div>
+  );
 }
 
 function FilaAsignado({
@@ -105,141 +132,137 @@ function FilaAsignado({
   );
 }
 
-function ModalAsignar({
-  plantationId,
-  disponibles,
-  onCerrar,
-}: {
+interface SelectTecnicoProps {
+  disponibles: PerfilResumen[];
+  value: string;
+  onChange: (userId: string) => void;
+}
+
+function SelectTecnico({ disponibles, value, onChange }: SelectTecnicoProps) {
+  return (
+    <SelectConDetalle
+      label="Técnico"
+      value={value}
+      onChange={onChange}
+      opciones={opcionesDeUsuario(disponibles)}
+      placeholder="Elegí un técnico"
+      placeholderBusqueda="Buscar por nombre o email"
+      textoVacio="No quedan técnicos para asignar."
+      textoSinCoincidencias="Ningún técnico coincide."
+      hint={AYUDA_ASIGNAR}
+    />
+  );
+}
+
+interface ModalAsignarProps {
   plantationId: string;
   disponibles: PerfilResumen[];
   onCerrar: () => void;
-}) {
-  const [userId, setUserId] = useState('');
-  const invalidar = useInvalidarAsignacion(plantationId, userId);
-  const mutacion = useMutation({
-    mutationFn: () => asignarUsuario(plantationId, userId),
-    onSuccess: async () => {
-      await invalidar();
-      onCerrar();
-    },
-  });
-  const mensajeError = mensajeErrorAsignar(mutacion.error);
+}
 
+function ModalAsignar({ plantationId, disponibles, onCerrar }: ModalAsignarProps) {
+  const [userId, setUserId] = useState('');
+  const asignar = () => asignarUsuario(plantationId, userId);
+  const mutacion = useMutacionYCerrar(plantationId, userId, asignar, onCerrar);
   return (
     <Modal open title="Asignar técnico" onClose={onCerrar}>
       <div className={styles.formModal}>
-        <SelectConDetalle
-          label="Técnico"
-          value={userId}
-          onChange={setUserId}
-          opciones={opcionesDeUsuario(disponibles)}
-          placeholder="Elegí un técnico"
-          placeholderBusqueda="Buscar por nombre o email"
-          textoVacio="No quedan técnicos para asignar."
-          textoSinCoincidencias="Ningún técnico coincide."
-          hint={AYUDA_ASIGNAR}
-        />
+        <SelectTecnico disponibles={disponibles} value={userId} onChange={setUserId} />
       </div>
-      {mensajeError && (
-        <p className={styles.errorAccion} role="alert">
-          {mensajeError}
-        </p>
-      )}
-      <div className={styles.acciones}>
-        <Button variant="secondary" onClick={onCerrar}>
-          Cancelar
-        </Button>
+      <ErrorAccion
+        mensaje={mensajeErrorConocido(mutacion.error, MENSAJE_USUARIO_YA_ASIGNADO, ERROR_ASIGNAR)}
+      />
+      <PieModal onCerrar={onCerrar}>
         <Button onClick={() => mutacion.mutate()} disabled={!userId} loading={mutacion.isPending}>
           Asignar
         </Button>
-      </div>
+      </PieModal>
     </Modal>
   );
 }
 
-function ModalQuitar({
-  plantationId,
-  asignado,
-  onCerrar,
-}: {
+interface ModalQuitarProps {
   plantationId: string;
   asignado: UsuarioAsignado;
   onCerrar: () => void;
-}) {
-  const invalidar = useInvalidarAsignacion(plantationId, asignado.userId);
-  const mutacion = useMutation({
-    mutationFn: () => desasignarUsuario(plantationId, asignado.userId),
-    onSuccess: async () => {
-      await invalidar();
-      onCerrar();
-    },
-  });
+}
 
+function ModalQuitar({ plantationId, asignado, onCerrar }: ModalQuitarProps) {
+  const quitar = () => desasignarUsuario(plantationId, asignado.userId);
+  const mutacion = useMutacionYCerrar(plantationId, asignado.userId, quitar, onCerrar);
   return (
     <Modal open title="Quitar usuario" onClose={onCerrar}>
       <p className={styles.textoConfirmacion}>
         {nombreVisible(asignado.nombre, asignado.userId)} dejará de ver esta plantación en la app.
         Sus árboles registrados se conservan.
       </p>
-      {mutacion.isError && (
-        <p className={styles.errorAccion} role="alert">
-          No se pudo quitar el usuario.
-        </p>
-      )}
-      <div className={styles.acciones}>
-        <Button variant="secondary" onClick={onCerrar}>
-          Cancelar
-        </Button>
+      <ErrorAccion mensaje={mutacion.isError ? ERROR_QUITAR : null} />
+      <PieModal onCerrar={onCerrar}>
         <Button variant="danger" loading={mutacion.isPending} onClick={() => mutacion.mutate()}>
           Quitar
         </Button>
-      </div>
+      </PieModal>
     </Modal>
   );
 }
 
-const TITULO = 'Técnicos asignados';
-const SUBTITULO = 'Quién puede registrar en esta plantación';
+function CabeceraTecnicos({ cantidad, onAsignar }: { cantidad: number; onAsignar: () => void }) {
+  const asignar = (
+    <button type="button" className={styles.botonAsignar} onClick={onAsignar}>
+      <Plus size={TAMANO_ICONO.md} aria-hidden />
+      Asignar técnico
+    </button>
+  );
+  return (
+    <CabeceraConfig
+      titulo={TITULO}
+      subtitulo={SUBTITULO}
+      chip={`${cantidad} asignados`}
+      acciones={asignar}
+    />
+  );
+}
 
-function ContenidoUsuarios({
-  plantationId,
-  perfiles,
-  asignados,
-}: {
+interface ListaAsignadosProps {
+  asignados: UsuarioAsignado[];
+  onQuitar: (asignado: UsuarioAsignado) => void;
+}
+
+function ListaAsignados({ asignados, onQuitar }: ListaAsignadosProps) {
+  if (asignados.length === 0) {
+    return (
+      <p className={styles.listaVacia}>
+        Sin técnicos asignados: nadie ve esta plantación en la app.
+      </p>
+    );
+  }
+  return (
+    <ul className={styles.listaTecnicos}>
+      {asignados.map((asignado) => (
+        <FilaAsignado key={asignado.userId} asignado={asignado} onQuitar={onQuitar} />
+      ))}
+    </ul>
+  );
+}
+
+interface ContenidoUsuariosProps {
   plantationId: string;
   perfiles: PerfilResumen[];
   asignados: UsuarioAsignado[];
-}) {
+}
+
+function ContenidoUsuarios({ plantationId, perfiles, asignados }: ContenidoUsuariosProps) {
   const [aQuitar, setAQuitar] = useState<UsuarioAsignado | null>(null);
   const [asignando, setAsignando] = useState(false);
+  const disponibles = perfilesNoAsignados(perfiles, asignados);
   return (
     <>
-      <CabeceraConfig
-        titulo={TITULO}
-        subtitulo={SUBTITULO}
-        chip={`${asignados.length} asignados`}
-        acciones={
-          <button type="button" className={styles.botonAsignar} onClick={() => setAsignando(true)}>
-            <Plus size={TAMANO_ICONO.md} aria-hidden />
-            Asignar técnico
-          </button>
-        }
-      />
-      {asignados.length === 0 ? (
-        <p className={styles.listaVacia}>
-          Sin técnicos asignados: nadie ve esta plantación en la app.
-        </p>
-      ) : (
-        <ul className={styles.listaTecnicos}>
-          {asignados.map((asignado) => (
-            <FilaAsignado key={asignado.userId} asignado={asignado} onQuitar={setAQuitar} />
-          ))}
-        </ul>
-      )}
+      <CabeceraTecnicos cantidad={asignados.length} onAsignar={() => setAsignando(true)} />
+      <ListaAsignados asignados={asignados} onQuitar={setAQuitar} />
       {asignando && (
         <ModalAsignar
           plantationId={plantationId}
-          disponibles={perfilesNoAsignados(perfiles, asignados)}
+          disponibles={disponibles}
           onCerrar={() => setAsignando(false)}
         />
       )}
@@ -262,30 +285,17 @@ export function UsuariosConfigSection() {
     queryKey: CLAVE_QUERY.plantacionUsuarios(id),
     queryFn: () => listarAsignados(id),
   });
-  const reintentar = () => void Promise.all([perfiles.refetch(), asignados.refetch()]);
-
   return (
-    <section className={styles.cardTecnicos}>
-      {(perfiles.isPending || asignados.isPending) && (
-        <>
-          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
-          <Cargando />
-        </>
-      )}
-      {(perfiles.isError || asignados.isError) && (
-        <>
-          <CabeceraConfig titulo={TITULO} subtitulo={SUBTITULO} />
-          <div className={styles.bloqueEstado}>
-            <ErrorConReintento
-              mensaje="No se pudieron cargar los usuarios."
-              onReintentar={reintentar}
-            />
-          </div>
-        </>
-      )}
+    <CardConfig
+      className={styles.cardTecnicos}
+      titulo={TITULO}
+      subtitulo={SUBTITULO}
+      consultas={[perfiles, asignados]}
+      mensajeError="No se pudieron cargar los usuarios."
+    >
       {perfiles.data && asignados.data && (
         <ContenidoUsuarios plantationId={id} perfiles={perfiles.data} asignados={asignados.data} />
       )}
-    </section>
+    </CardConfig>
   );
 }
