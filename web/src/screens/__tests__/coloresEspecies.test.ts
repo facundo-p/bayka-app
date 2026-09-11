@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import type { DistribucionEspecie } from '../../queries/dashboardQueries';
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
-import { asignarColoresEspecies, mapaColorPorCodigo } from '../dashboard/coloresEspecies';
+import { asignarColoresEspecies } from '../dashboard/coloresEspecies';
 
 const NN: DistribucionEspecie = { codigo: 'NN', nombre: 'Sin identificar', cantidad: 10 };
 const QB: DistribucionEspecie = { codigo: 'QB', nombre: 'Quebracho', cantidad: 30 };
@@ -27,15 +27,5 @@ describe('asignarColoresEspecies', () => {
     expect(conNN.find((especie) => especie.codigo === 'AL')?.color).toBe(colorEspeciePorCodigo('AL'));
     expect(otroOrden.find((especie) => especie.codigo === 'QB')?.color).toBe(colorEspeciePorCodigo('QB'));
     expect(otroOrden.find((especie) => especie.codigo === 'AL')?.color).toBe(colorEspeciePorCodigo('AL'));
-  });
-});
-
-describe('mapaColorPorCodigo', () => {
-  test('indexa codigo → color estable por código', () => {
-    const mapa = mapaColorPorCodigo(asignarColoresEspecies([QB, NN, AL]));
-    expect(mapa.get('QB')).toBe(colorEspeciePorCodigo('QB'));
-    expect(mapa.get('NN')).toBe(COLOR_GRAFICO_NN);
-    expect(mapa.get('AL')).toBe(colorEspeciePorCodigo('AL'));
-    expect([...mapa.keys()]).toEqual(['QB', 'NN', 'AL']);
   });
 });

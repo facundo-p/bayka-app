@@ -1,47 +1,65 @@
-import type { FiltrosUi } from './filtrosArboles';
-import { FILTROS_INICIALES } from './filtrosArboles';
+import { FILTRO_FOTO, FILTRO_GPS, FILTROS_INICIALES, type FiltrosUi } from './filtrosArboles';
 
-/** Claves de query string que persisten el scope entre sub-tabs de Datos. */
-export const PARAM_PARCELA = 'parcela';
-export const PARAM_GRUPO = 'grupo';
-export const PARAM_ESPECIE = 'especie';
-export const PARAM_GPS = 'gps';
-export const PARAM_FOTO = 'foto';
-export const PARAM_BUSQUEDA = 'q';
+/** Claves de query string que persisten el scope entre las secciones de Datos. */
+export const PARAM_URL = {
+  parcela: 'parcela',
+  grupo: 'grupo',
+  especie: 'especie',
+  gps: 'gps',
+  foto: 'foto',
+  busqueda: 'q',
+} as const;
 
-/** Mapeo campo de filtro UI → clave en la URL. */
-const CAMPO_A_PARAM: Record<keyof FiltrosUi, string> = {
-  parcelaId: PARAM_PARCELA,
-  groupId: PARAM_GRUPO,
-  speciesId: PARAM_ESPECIE,
-  gps: PARAM_GPS,
-  foto: PARAM_FOTO,
-  busqueda: PARAM_BUSQUEDA,
+type ParamUrl = (typeof PARAM_URL)[keyof typeof PARAM_URL];
+type CampoFiltro = keyof FiltrosUi;
+
+/** Lo que escribe la UI: se valida recién al volver a leerlo de la URL. */
+export type FiltrosEscritos = Partial<Record<CampoFiltro, string>>;
+
+const CAMPO_A_PARAM: Record<CampoFiltro, ParamUrl> = {
+  parcelaId: PARAM_URL.parcela,
+  groupId: PARAM_URL.grupo,
+  speciesId: PARAM_URL.especie,
+  gps: PARAM_URL.gps,
+  foto: PARAM_URL.foto,
+  busqueda: PARAM_URL.busqueda,
 };
 
-/** Lee los filtros desde los search params de la URL (vacío = sin filtro). */
+const CAMPOS = Object.keys(CAMPO_A_PARAM) as CampoFiltro[];
+
+/** Campos de valores cerrados: uno ajeno en la URL (editada a mano) cuenta como "todos". */
+const VALORES_VALIDOS: Partial<Record<CampoFiltro, readonly string[]>> = {
+  gps: Object.values(FILTRO_GPS),
+  foto: Object.values(FILTRO_FOTO),
+};
+
+function leerCampo(params: URLSearchParams, campo: CampoFiltro): string {
+  const valor = params.get(CAMPO_A_PARAM[campo]);
+  const validos = VALORES_VALIDOS[campo];
+  if (valor === null || (validos && !validos.includes(valor))) return FILTROS_INICIALES[campo];
+  return valor;
+}
+
 export function leerFiltrosDeUrl(params: URLSearchParams): FiltrosUi {
-  return {
-    parcelaId: params.get(PARAM_PARCELA) ?? '',
-    groupId: params.get(PARAM_GRUPO) ?? '',
-    speciesId: params.get(PARAM_ESPECIE) ?? '',
-    gps: params.get(PARAM_GPS) ?? '',
-    foto: params.get(PARAM_FOTO) ?? '',
-    busqueda: params.get(PARAM_BUSQUEDA) ?? '',
-  };
+  // El cast lo respalda VALORES_VALIDOS, que acota gps y foto a sus uniones.
+  return Object.fromEntries(CAMPOS.map((campo) => [campo, leerCampo(params, campo)])) as FiltrosUi;
 }
 
-/** true si algún filtro está activo (distinto del estado inicial). */
 export function hayFiltroActivo(filtros: FiltrosUi): boolean {
-  return (Object.keys(FILTROS_INICIALES) as Array<keyof FiltrosUi>).some(
-    (campo) => filtros[campo] !== FILTROS_INICIALES[campo],
-  );
+  return CAMPOS.some((campo) => filtros[campo] !== FILTROS_INICIALES[campo]);
 }
 
-/** Construye los search params para un conjunto de filtros (omite los vacíos). */
-export function filtrosAParams(filtros: Partial<FiltrosUi>): URLSearchParams {
+/** Cambiar de parcela suelta el grupo: el scope viejo deja de tener sentido. */
+export function conFiltro(filtros: FiltrosUi, campo: CampoFiltro, valor: string): FiltrosEscritos {
+  const proximos: FiltrosEscritos = { ...filtros, [campo]: valor };
+  if (campo === 'parcelaId') proximos.groupId = '';
+  return proximos;
+}
+
+/** Search params de un conjunto de filtros; los vacíos no se escriben. */
+export function filtrosAParams(filtros: FiltrosEscritos): URLSearchParams {
   const params = new URLSearchParams();
-  for (const campo of Object.keys(CAMPO_A_PARAM) as Array<keyof FiltrosUi>) {
+  for (const campo of CAMPOS) {
     const valor = filtros[campo];
     if (valor) params.set(CAMPO_A_PARAM[campo], valor);
   }

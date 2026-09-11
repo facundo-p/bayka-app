@@ -18,6 +18,7 @@ import { ArbolesSection } from './screens/datos/ArbolesSection';
 import { DatosTab } from './screens/datos/DatosTab';
 import { GruposSection } from './screens/datos/GruposSection';
 import { ParcelasSection } from './screens/datos/ParcelasSection';
+import { SEGMENTO_DATOS } from './screens/datos/seccionesDatos';
 
 /** Rutas sin router: permite testearlas con MemoryRouter. */
 export function AppRoutes() {
@@ -33,10 +34,10 @@ export function AppRoutes() {
           <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
             <Route index element={<DashboardTab />} />
             <Route path="datos" element={<DatosTab />}>
-              <Route index element={<Navigate to="parcelas" replace />} />
-              <Route path="parcelas" element={<ParcelasSection />} />
-              <Route path="grupos" element={<GruposSection />} />
-              <Route path="arboles" element={<ArbolesSection />} />
+              <Route index element={<Navigate to={SEGMENTO_DATOS.parcelas} replace />} />
+              <Route path={SEGMENTO_DATOS.parcelas} element={<ParcelasSection />} />
+              <Route path={SEGMENTO_DATOS.grupos} element={<GruposSection />} />
+              <Route path={SEGMENTO_DATOS.arboles} element={<ArbolesSection />} />
             </Route>
             <Route path="configuracion" element={<ConfiguracionTab />} />
           </Route>

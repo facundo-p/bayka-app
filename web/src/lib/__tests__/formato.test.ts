@@ -1,4 +1,4 @@
-import { concordar, formatearEntero, pluralizar } from '../formato';
+import { concordar, etiquetaCodigoNombre, formatearEntero, pluralizar } from '../formato';
 
 test('concordar: singular solo con uno, plural con cero y con más', () => {
   expect(concordar(1, 'árbol', 'árboles')).toBe('árbol');
@@ -9,6 +9,10 @@ test('concordar: singular solo con uno, plural con cero y con más', () => {
 test('pluralizar: cantidad formateada más el sustantivo concordado', () => {
   expect(pluralizar(1, 'plantación', 'plantaciones')).toBe('1 plantación');
   expect(pluralizar(1260, 'árbol', 'árboles')).toBe('1.260 árboles');
+});
+
+test('etiquetaCodigoNombre separa código y nombre con raya', () => {
+  expect(etiquetaCodigoNombre({ codigo: 'P1', nombre: 'Norte' })).toBe('P1 — Norte');
 });
 
 test('agrega separador de miles es-AR (punto)', () => {

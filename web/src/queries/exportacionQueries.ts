@@ -3,9 +3,6 @@
 import { supabase } from '../lib/supabase';
 import { leerPaginado } from './leerPaginado';
 
-/** Etiqueta para árboles sin especie: evita perder la fila (compartida por CSV y XLSX). */
-export const ESPECIE_NO_RESUELTA = 'N/N';
-
 /** Preserva los nulls de la base; la normalización ("N/N", celdas vacías) es responsabilidad del serializador, no de la query. */
 export type FilaExportacion = {
   /** `global_id` (ID final, null si aún no se generó) y `plantacion_id` (ID parcial, null si no tiene). */

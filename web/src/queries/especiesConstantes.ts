@@ -11,3 +11,6 @@ export const ESPECIE_SIN_IDENTIFICAR = 'NN';
 
 /** Nombre visible del segmento/grupo de árboles sin especie. */
 export const NOMBRE_SIN_IDENTIFICAR = 'Sin identificar';
+
+/** Etiqueta del árbol sin especie en listados y exportaciones. */
+export const ESPECIE_NO_RESUELTA = 'N/N';

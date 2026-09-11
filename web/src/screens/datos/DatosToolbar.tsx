@@ -1,14 +1,12 @@
 import type { ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router';
-import { BarraHerramientas, SegmentedControl } from '../../components';
+import { useLocation } from 'react-router';
+import { BarraHerramientas, SegmentedControl, type Opcion } from '../../components';
+import { SEGMENTO_DATOS, useIrASeccion, type SegmentoDatos } from './seccionesDatos';
 
-/** Sección activa de la tab Datos (coincide con el sub-segmento de la ruta). */
-export type SegmentoDatos = 'arboles' | 'grupos' | 'parcelas';
-
-const OPCIONES: Array<{ value: SegmentoDatos; label: string }> = [
-  { value: 'parcelas', label: 'Parcelas' },
-  { value: 'grupos', label: 'Grupos' },
-  { value: 'arboles', label: 'Árboles' },
+const OPCIONES: ReadonlyArray<Opcion<SegmentoDatos>> = [
+  { value: SEGMENTO_DATOS.parcelas, label: 'Parcelas' },
+  { value: SEGMENTO_DATOS.grupos, label: 'Grupos' },
+  { value: SEGMENTO_DATOS.arboles, label: 'Árboles' },
 ];
 
 interface DatosToolbarProps {
@@ -19,33 +17,29 @@ interface DatosToolbarProps {
   children?: ReactNode;
 }
 
+function SelectorSeccion({ segmento }: { segmento: SegmentoDatos }) {
+  const irA = useIrASeccion();
+  const location = useLocation();
+  // Los filtros viajan en el querystring: sobreviven al cambio de sección.
+  const cambiar = (proximo: SegmentoDatos) => irA(proximo, new URLSearchParams(location.search));
+  return (
+    <SegmentedControl
+      options={OPCIONES}
+      value={segmento}
+      onChange={cambiar}
+      size="sm"
+      aria-label="Sección de datos"
+    />
+  );
+}
+
 /**
- * Toolbar única de la tab Datos: selector de sección + filtros + recuento.
- * Reemplaza al sub-TabNav apilado para ganar densidad. Árboles no pasa
- * `recuento`: su pie ya dice "Mostrando 1–30 de 30" y tiene la paginación.
+ * Toolbar de la tab Datos: selector de sección + filtros + recuento. Árboles no
+ * pasa `recuento`: su pie ya dice "Mostrando 1–30 de 30" y tiene la paginación.
  */
 export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps) {
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  // Navega a la sección hermana conservando el querystring (filtros + scope).
-  const cambiarSegmento = (proximo: SegmentoDatos) => {
-    void navigate(`../${proximo}${location.search}`);
-  };
-
   return (
-    <BarraHerramientas
-      encabezado={
-        <SegmentedControl
-          options={OPCIONES}
-          value={segmento}
-          onChange={cambiarSegmento}
-          size="sm"
-          aria-label="Sección de datos"
-        />
-      }
-      recuento={recuento}
-    >
+    <BarraHerramientas encabezado={<SelectorSeccion segmento={segmento} />} recuento={recuento}>
       {children}
     </BarraHerramientas>
   );

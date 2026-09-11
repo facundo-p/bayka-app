@@ -23,8 +23,8 @@ export type FiltrosUi = {
   parcelaId: string;
   groupId: string;
   speciesId: string;
-  gps: string;
-  foto: string;
+  gps: FiltroGps;
+  foto: FiltroFoto;
   busqueda: string;
 };
 

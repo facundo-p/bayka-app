@@ -15,8 +15,3 @@ export function asignarColoresEspecies(porEspecie: DistribucionEspecie[]): Espec
     color: colorEspeciePorCodigo(especie.codigo),
   }));
 }
-
-/** Mapa codigo → color para resolver el color de un punto/especie por código. */
-export function mapaColorPorCodigo(coloreadas: EspecieColoreada[]): Map<string, string> {
-  return new Map(coloreadas.map((especie) => [especie.codigo, especie.color]));
-}

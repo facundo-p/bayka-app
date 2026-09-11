@@ -1,11 +1,15 @@
 import { FILTROS_INICIALES } from '../filtrosArboles';
-import {
-  filtrosAParams,
-  hayFiltroActivo,
-  leerFiltrosDeUrl,
-  PARAM_BUSQUEDA,
-  PARAM_PARCELA,
-} from '../filtrosUrl';
+import { conFiltro, filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from '../filtrosUrl';
+
+test('conFiltro cambia el campo y, si es la parcela, suelta el grupo', () => {
+  const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', groupId: 'g1', speciesId: 'e1' };
+  expect(conFiltro(filtros, 'speciesId', 'e2')).toMatchObject({ groupId: 'g1', speciesId: 'e2' });
+  expect(conFiltro(filtros, 'parcelaId', 'p2')).toMatchObject({
+    parcelaId: 'p2',
+    groupId: '',
+    speciesId: 'e1',
+  });
+});
 
 test('leerFiltrosDeUrl mapea cada query param a su campo (vacío si falta)', () => {
   const params = new URLSearchParams('parcela=p1&grupo=g1&especie=e1&gps=con&foto=sin&q=A-12');
@@ -20,19 +24,27 @@ test('leerFiltrosDeUrl mapea cada query param a su campo (vacío si falta)', () 
   expect(leerFiltrosDeUrl(new URLSearchParams())).toEqual(FILTROS_INICIALES);
 });
 
+test('un gps o foto ajeno en la URL cuenta como "todos"', () => {
+  const filtros = leerFiltrosDeUrl(new URLSearchParams('gps=quizas&foto=1&parcela=p1'));
+  expect(filtros.gps).toBe('');
+  expect(filtros.foto).toBe('');
+  expect(filtros.parcelaId).toBe('p1');
+});
+
 test('filtrosAParams omite los campos vacíos y usa las claves de URL', () => {
   const params = filtrosAParams({ parcelaId: 'p1', busqueda: 'A-12', groupId: '' });
-  expect(params.get(PARAM_PARCELA)).toBe('p1');
-  expect(params.get(PARAM_BUSQUEDA)).toBe('A-12');
+  expect(params.get('parcela')).toBe('p1');
+  expect(params.get('q')).toBe('A-12');
   expect(params.has('grupo')).toBe(false);
 });
 
 test('hayFiltroActivo distingue el estado inicial de uno con filtro', () => {
   expect(hayFiltroActivo(FILTROS_INICIALES)).toBe(false);
   expect(hayFiltroActivo({ ...FILTROS_INICIALES, parcelaId: 'p1' })).toBe(true);
+  expect(hayFiltroActivo({ ...FILTROS_INICIALES, gps: 'sin' })).toBe(true);
 });
 
 test('roundtrip: filtrosAParams → leerFiltrosDeUrl preserva los valores', () => {
-  const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', speciesId: 'NN' };
+  const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', speciesId: 'NN', foto: 'con' as const };
   expect(leerFiltrosDeUrl(filtrosAParams(filtros))).toEqual(filtros);
 });

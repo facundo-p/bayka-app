@@ -7,16 +7,14 @@ import type {
   ParcelaConStats,
   TipoGrupo,
 } from '../../queries/dataExplorerQueries';
+import { codigoParcelaDe, nombreTecnicoDe, SIN_DATO } from './arbolFormato';
 import { CeldaDescripcion, CeldaEspecie, CeldaFoto, CeldaGps } from './celdas';
 import styles from './SeccionesDatos.module.css';
 
 /*
- * Columnas de las tres tablas de la tab Datos, con sus celdas.
- *
- * Viven acá y no en cada sección para que se puedan importar sin arrastrar la
- * pantalla entera: el test que trinquetea las dos reglas duras del ocultamiento
- * —nunca se cae la columna de identidad ni la de acciones— las necesita sueltas.
- * Es además el patrón de las otras tres tablas de la app.
+ * Columnas de las tres tablas de la tab Datos. Viven aparte de las secciones
+ * para que el test del ocultamiento —nunca se cae la columna de identidad ni
+ * la de acciones— las importe sin montar la pantalla.
  */
 
 /* ─── Parcelas ─────────────────────────────────────────────────────────── */
@@ -56,7 +54,6 @@ export const COLUMNAS_PARCELAS: Array<TableColumn<ParcelaConStats>> = [
 
 /* ─── Grupos ───────────────────────────────────────────────────────────── */
 
-/* Etiquetas en español de los tipos de grupo. */
 const ETIQUETA_TIPO: Record<TipoGrupo, string> = { linea: 'Línea', bosquete: 'Bosquete' };
 
 export const COLUMNAS_GRUPOS: Array<TableColumn<GrupoConDetalle>> = [
@@ -94,56 +91,79 @@ export const COLUMNAS_GRUPOS: Array<TableColumn<GrupoConDetalle>> = [
 
 /* ─── Árboles ──────────────────────────────────────────────────────────── */
 
+const COLUMNAS_IDENTIDAD_ARBOL: Array<TableColumn<ArbolDetalle>> = [
+  {
+    key: 'subId',
+    header: 'SubID',
+    render: (arbol) => <span className={styles.subId}>{arbol.subId}</span>,
+  },
+  { key: 'especie', header: 'Especie', render: (arbol) => <CeldaEspecie arbol={arbol} /> },
+];
+
+const COLUMNAS_REGISTRO_ARBOL: Array<TableColumn<ArbolDetalle>> = [
+  {
+    key: 'grupo',
+    header: 'Grupo',
+    render: (arbol) => <span className={styles.codigo}>{arbol.grupoCodigo}</span>,
+  },
+  {
+    key: 'posicion',
+    fueraEnMovil: true,
+    header: 'Pos.',
+    align: 'center',
+    render: (arbol) => <span className={styles.numero}>{arbol.posicion ?? SIN_DATO}</span>,
+  },
+  {
+    key: 'gps',
+    fueraEnMovil: true,
+    fueraConPanel: true,
+    header: 'GPS',
+    render: (arbol) => <CeldaGps arbol={arbol} />,
+  },
+  {
+    key: 'foto',
+    fueraEnMovil: true,
+    header: 'Foto',
+    render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} />,
+  },
+  {
+    key: 'createdAt',
+    fueraEnMovil: true,
+    fueraConPanel: true,
+    header: 'Registrado',
+    render: (arbol) => formatearFechaCorta(arbol.createdAt),
+  },
+];
+
+function columnaParcela(codigosParcela: Map<string, string>): TableColumn<ArbolDetalle> {
+  return {
+    key: 'parcela',
+    header: 'Parcela',
+    render: (arbol) => {
+      const codigo = codigoParcelaDe(arbol, codigosParcela);
+      return codigo ? <span className={styles.codigo}>{codigo}</span> : SIN_DATO;
+    },
+  };
+}
+
+function columnaTecnico(nombresUsuario: Map<string, string>): TableColumn<ArbolDetalle> {
+  return {
+    key: 'usuario',
+    fueraEnMovil: true,
+    fueraConPanel: true,
+    header: 'Técnico',
+    render: (arbol) => nombreTecnicoDe(arbol, nombresUsuario) ?? SIN_DATO,
+  };
+}
+
 export function columnasArboles(
   codigosParcela: Map<string, string>,
   nombresUsuario: Map<string, string>,
 ): Array<TableColumn<ArbolDetalle>> {
-  const columnas: Array<TableColumn<ArbolDetalle>> = [
-    {
-      key: 'subId',
-      header: 'SubID',
-      render: (arbol) => <span className={styles.subId}>{arbol.subId}</span>,
-    },
-    { key: 'especie', header: 'Especie', render: (arbol) => <CeldaEspecie arbol={arbol} /> },
-    {
-      key: 'parcela',
-      header: 'Parcela',
-      render: (arbol) =>
-        arbol.parcelaId && codigosParcela.get(arbol.parcelaId) ? (
-          <span className={styles.codigo}>{codigosParcela.get(arbol.parcelaId)}</span>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      key: 'grupo',
-      header: 'Grupo',
-      render: (arbol) => <span className={styles.codigo}>{arbol.grupoCodigo}</span>,
-    },
-    {
-      key: 'posicion',
-      fueraEnMovil: true,
-      header: 'Pos.',
-      align: 'center',
-      render: (arbol) => <span className={styles.numero}>{arbol.posicion ?? '—'}</span>,
-    },
-    { key: 'gps', fueraEnMovil: true, fueraConPanel: true, header: 'GPS', render: (arbol) => <CeldaGps arbol={arbol} /> },
-    { key: 'foto', fueraEnMovil: true, header: 'Foto', render: (arbol) => <CeldaFoto fotoUrl={arbol.fotoUrl} /> },
-    {
-      key: 'createdAt',
-      fueraEnMovil: true,
-      fueraConPanel: true,
-      header: 'Registrado',
-      render: (arbol) => formatearFechaCorta(arbol.createdAt),
-    },
-    {
-      key: 'usuario',
-      fueraEnMovil: true,
-      fueraConPanel: true,
-      header: 'Técnico',
-      render: (arbol) =>
-        (arbol.usuarioRegistro && nombresUsuario.get(arbol.usuarioRegistro)) || '—',
-    },
+  return [
+    ...COLUMNAS_IDENTIDAD_ARBOL,
+    columnaParcela(codigosParcela),
+    ...COLUMNAS_REGISTRO_ARBOL,
+    columnaTecnico(nombresUsuario),
   ];
-  return columnas;
 }
