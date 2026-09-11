@@ -1,6 +1,5 @@
 import { varsCss } from '../../lib/cssVars';
-import { formatearEntero } from '../../lib/formato';
-import { porcentaje } from '../../queries/dashboardQueries';
+import { formatearEntero, porcentaje } from '../../lib/formato';
 import type { EspecieColoreada } from './coloresEspecies';
 import styles from './SpeciesDistribution.module.css';
 

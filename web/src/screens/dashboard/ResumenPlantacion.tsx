@@ -1,7 +1,7 @@
 import { AlertTriangle } from 'lucide-react';
 import { cx } from '../../lib/classNames';
 import { varsCss } from '../../lib/cssVars';
-import { formatearEntero } from '../../lib/formato';
+import { formatearEntero, porcentajeDeObjetivo } from '../../lib/formato';
 import type { KpisArboles } from '../../queries/dashboardQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ResumenPlantacion.module.css';
@@ -15,10 +15,16 @@ export interface AlcanceMetrica {
 
 interface ResumenPlantacionProps {
   datos: KpisArboles;
-  objetivo: number;
-  porcentaje: number;
+  /** Meta de árboles de la temporada; null si la plantación no la definió. */
+  objetivo: number | null;
   /** Sin esto la card mide toda la plantación y no muestra la fila de alcance. */
   alcance?: AlcanceMetrica;
+}
+
+/** Sin meta no hay "de 0 · 0%": se avisa que falta. */
+function textoMeta(objetivo: number | null, avance: number | null): string {
+  if (avance === null || objetivo === null) return 'Meta no definida';
+  return `de ${formatearEntero(objetivo)} · Meta de la temporada`;
 }
 
 function FilaAlcance({ codigo, nombre, onVerTodos }: AlcanceMetrica) {
@@ -83,14 +89,8 @@ function CeldaSinIdentificar({ cantidad }: { cantidad: number }) {
 }
 
 /** Card azul del dashboard: total de árboles contra la meta, y las tres tasas. */
-export function ResumenPlantacion({
-  datos,
-  objetivo,
-  porcentaje,
-  alcance,
-}: ResumenPlantacionProps) {
-  // Sin objetivo definido: ocultamos progreso/cifras (evita "de 0 · 0%") y avisamos que falta la meta.
-  const tieneObjetivo = objetivo > 0;
+export function ResumenPlantacion({ datos, objetivo, alcance }: ResumenPlantacionProps) {
+  const avance = porcentajeDeObjetivo(datos.totalArboles, objetivo);
   return (
     <section className={styles.card} aria-label="Resumen de la plantación">
       <div className={styles.blob} aria-hidden />
@@ -101,15 +101,11 @@ export function ResumenPlantacion({
         </div>
         <div className={styles.filaValor}>
           <span className={styles.valor}>{formatearEntero(datos.totalArboles)}</span>
-          <span className={styles.meta}>
-            {tieneObjetivo
-              ? `de ${formatearEntero(objetivo)} · Meta de la temporada`
-              : 'Meta no definida'}
-          </span>
+          <span className={styles.meta}>{textoMeta(objetivo, avance)}</span>
         </div>
-        {tieneObjetivo && (
+        {avance !== null && (
           <div className={styles.track}>
-            <div className={styles.fill} style={varsCss({ ancho: `${porcentaje}%` })} />
+            <div className={styles.fill} style={varsCss({ ancho: `${avance}%` })} />
           </div>
         )}
       </div>

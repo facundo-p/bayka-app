@@ -3,6 +3,7 @@
  * mínimas) agregada en cliente (~7600 árboles/plantación); evita RPCs y mantiene la lógica
  * testeable como funciones puras. Migrar a RPC con `group by` si el volumen crece.
  */
+import { porcentaje } from '../lib/formato';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
 import { tieneFotoSubida } from '../services/fotoService';
@@ -49,11 +50,6 @@ export type DashboardData = KpisArboles & {
   porParcela: DistribucionParcela[];
   porMes: RegistrosMes[];
 };
-
-/** Porcentaje entero redondeado; 0 si el total es 0. */
-export function porcentaje(parte: number, total: number): number {
-  return total === 0 ? 0 : Math.round((parte / total) * 100);
-}
 
 function contarPor<Elemento, Clave>(
   elementos: Elemento[],

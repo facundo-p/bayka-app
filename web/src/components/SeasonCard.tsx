@@ -6,13 +6,8 @@ import {
   obtenerTemporadaActivaId,
 } from '../queries/plantationQueries';
 import { varsCss } from '../lib/cssVars';
-import { formatearEntero } from '../lib/formato';
+import { formatearEntero, PORCENTAJE_COMPLETO, porcentajeDeObjetivo } from '../lib/formato';
 import styles from './SeasonCard.module.css';
-
-function porcentajeObjetivo(arboles: number, objetivo: number | null): number | null {
-  if (!objetivo || objetivo <= 0) return null;
-  return Math.min(100, Math.round((arboles / objetivo) * 100));
-}
 
 /** Card "Temporada activa" del sidebar: la última plantación activa en la que se
  *  cargaron árboles (registro más reciente). No renderiza nada si no la hay. */
@@ -27,8 +22,8 @@ export function SeasonCard() {
   const temporada = data.find((plantacion) => plantacion.id === temporadaId);
   if (!temporada) return null;
 
-  const pct = porcentajeObjetivo(temporada.arboles, temporada.objetivoArboles);
-  const ancho = pct ?? Math.min(100, temporada.arboles > 0 ? 100 : 0);
+  const pct = porcentajeDeObjetivo(temporada.arboles, temporada.objetivoArboles);
+  const ancho = pct ?? (temporada.arboles > 0 ? PORCENTAJE_COMPLETO : 0);
 
   return (
     <Link to={`/plantaciones/${temporada.id}`} className={styles.card}>
