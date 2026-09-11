@@ -63,6 +63,10 @@ function titulos(contenido: ContenidoPaleta): string[] {
   );
 }
 
+function encabezados(contenido: ContenidoPaleta): string[] {
+  return contenido.secciones.map((seccion) => seccion.titulo);
+}
+
 beforeEach(() => {
   window.localStorage.clear();
   listarPlantacionesMock.mockReset();
@@ -78,8 +82,31 @@ test('sin texto ni recientes: sugiere plantaciones bajo el encabezado "Sugerenci
   const { result } = renderSecciones('');
 
   await waitFor(() => expect(titulos(result.current)).toEqual(['San Sebastián', 'La Carolina']));
-  expect(result.current.encabezadoVacio).toBe('Sugerencias');
-  expect(result.current.secciones.map((seccion) => seccion.clave)).toEqual(['recientes']);
+  expect(encabezados(result.current)).toEqual(['Sugerencias']);
+  expect(result.current.avisoVacio).toBeNull();
+});
+
+test('sin texto, mientras cargan las plantaciones: aviso de carga', () => {
+  listarPlantacionesMock.mockReturnValue(new Promise(() => {}));
+  const { result } = renderSecciones('');
+
+  expect(result.current.secciones).toEqual([]);
+  expect(result.current.avisoVacio).toBe('cargando');
+});
+
+test('sin texto, sin recientes ni plantaciones: no hay nada para sugerir', async () => {
+  listarPlantacionesMock.mockResolvedValue([]);
+  const { result } = renderSecciones('');
+
+  await waitFor(() => expect(result.current.avisoVacio).toBe('nada-que-sugerir'));
+  expect(result.current.secciones).toEqual([]);
+});
+
+test('con texto y sin resultados: la búsqueda no encontró nada', async () => {
+  const { result } = renderSecciones('zzz');
+
+  await waitFor(() => expect(buscarMock).toHaveBeenCalledWith('zzz', undefined));
+  expect(result.current.avisoVacio).toBe('sin-resultados');
 });
 
 test('sin texto y con recientes guardados: muestra los recientes, no las sugerencias', async () => {
@@ -88,17 +115,17 @@ test('sin texto y con recientes guardados: muestra los recientes, no las sugeren
 
   await waitFor(() => expect(listarPlantacionesMock).toHaveBeenCalled());
   expect(titulos(result.current)).toEqual(['LP12 · Loma-P12']);
-  expect(result.current.encabezadoVacio).toBe('Recientes');
+  expect(encabezados(result.current)).toEqual(['Recientes']);
 });
 
 test('solo espacios cuenta como búsqueda vacía', async () => {
   const { result } = renderSecciones('   ');
 
   await waitFor(() => expect(result.current.itemsPlanos).toHaveLength(2));
-  expect(result.current.encabezadoVacio).toBe('Sugerencias');
+  expect(encabezados(result.current)).toEqual(['Sugerencias']);
 });
 
-test('con texto: acciones que coinciden y resultados remotos agrupados, sin encabezado vacío', async () => {
+test('con texto: acciones que coinciden y resultados remotos agrupados', async () => {
   buscarMock.mockResolvedValue([PARCELA_LOMA]);
   const { result } = renderSecciones('especies');
 
@@ -109,7 +136,7 @@ test('con texto: acciones que coinciden y resultados remotos agrupados, sin enca
     ]),
   );
   expect(titulos(result.current)).toEqual(['Ir a Especies', 'LP12 · Loma-P12']);
-  expect(result.current.encabezadoVacio).toBeNull();
+  expect(encabezados(result.current)).toEqual(['Acciones', 'Parcelas']);
   expect(buscarMock).toHaveBeenLastCalledWith('especies', undefined);
 });
 

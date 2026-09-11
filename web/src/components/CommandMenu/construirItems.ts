@@ -20,7 +20,8 @@ export type Seccion = {
 /** Sección antes de numerar sus ítems. */
 type Grupo = Omit<Seccion, 'items'> & { items: ItemPaleta[] };
 
-export const SECCION_RECIENTES = { clave: 'recientes', titulo: 'Recientes' } as const;
+const SECCION_RECIENTES = { clave: 'recientes', titulo: 'Recientes' } as const;
+const SECCION_SUGERENCIAS = { clave: 'sugerencias', titulo: 'Sugerencias' } as const;
 const SECCION_ACCIONES = { clave: 'acciones', titulo: 'Acciones' } as const;
 
 export function esAccion(item: ItemPaleta): item is ItemAccion {
@@ -83,15 +84,21 @@ type EntradasPaleta = {
   acciones: AccionRapida[];
   resultados: ResultadoBusqueda[];
   recientes: ResultadoBusqueda[];
+  sugerencias: ResultadoBusqueda[];
   hayTexto: boolean;
 };
 
+/** Sin texto se ve una sola lista con su propio encabezado: los recientes o, si todavía no
+ *  hay, las sugerencias. */
+function grupoSinTexto({ recientes, sugerencias }: EntradasPaleta): Grupo {
+  if (recientes.length > 0) return { ...SECCION_RECIENTES, items: recientes.map(itemDeResultado) };
+  return { ...SECCION_SUGERENCIAS, items: sugerencias.map(itemDeResultado) };
+}
+
 /** Arma las secciones a renderizar y la lista plana ordenada para el teclado.
- *  Con texto: acciones + resultados agrupados. Sin texto: recientes. */
+ *  Con texto: acciones + resultados agrupados. Sin texto: recientes o sugerencias. */
 export function construirItems(entradas: EntradasPaleta): ReturnType<typeof numerar> {
-  if (!entradas.hayTexto) {
-    return numerar([{ ...SECCION_RECIENTES, items: entradas.recientes.map(itemDeResultado) }]);
-  }
+  if (!entradas.hayTexto) return numerar([grupoSinTexto(entradas)]);
   return numerar([
     { ...SECCION_ACCIONES, items: entradas.acciones.map(itemDeAccion) },
     ...gruposPorTipo(entradas.resultados),

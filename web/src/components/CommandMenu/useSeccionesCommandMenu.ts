@@ -5,35 +5,45 @@ import { listarPlantaciones } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
 import { useCommandMenu } from '../../hooks/useCommandMenu';
 import { accionesRapidas, filtrarAcciones } from './accionesRapidas';
-import { SECCION_RECIENTES, construirItems, type ItemPaleta, type Seccion } from './construirItems';
+import { construirItems, type ItemPaleta, type Seccion } from './construirItems';
 import { sugerencias } from './sugerencias';
 import { useResultadosBusqueda } from './useResultadosBusqueda';
 
-const TITULO_SUGERENCIAS = 'Sugerencias';
+/** Qué muestra la lista cuando no tiene ítems. */
+export const AVISO_VACIO = {
+  sinResultados: 'sin-resultados',
+  cargando: 'cargando',
+  nadaQueSugerir: 'nada-que-sugerir',
+} as const;
+export type AvisoVacio = (typeof AVISO_VACIO)[keyof typeof AVISO_VACIO];
 
 export type ContenidoPaleta = {
   secciones: Seccion[];
   /** Orden del teclado: el `indice` de cada ítem de `secciones` apunta acá. */
   itemsPlanos: ItemPaleta[];
-  /** Encabezado de la lista sin texto; `null` mientras se busca. */
-  encabezadoVacio: string | null;
+  /** `null` mientras haya ítems. */
+  avisoVacio: AvisoVacio | null;
 };
 
-/** Sin recientes guardados, el estado vacío sugiere plantaciones. */
-function useRecientesOSugerencias(recientes: ResultadoBusqueda[]): ResultadoBusqueda[] {
-  const { data: plantaciones } = useQuery({
+function usePlantacionesSugeridas(): { sugeridas: ResultadoBusqueda[]; cargando: boolean } {
+  const { data: plantaciones, isPending } = useQuery({
     queryKey: CLAVE_QUERY.plantaciones(),
     queryFn: listarPlantaciones,
   });
-  return useMemo(
-    () => (recientes.length > 0 ? recientes : sugerencias(plantaciones ?? [])),
-    [recientes, plantaciones],
-  );
+  const sugeridas = useMemo(() => sugerencias(plantaciones ?? []), [plantaciones]);
+  return { sugeridas, cargando: isPending };
 }
 
-function encabezadoVacio(hayTexto: boolean, hayRecientes: boolean): string | null {
-  if (hayTexto) return null;
-  return hayRecientes ? SECCION_RECIENTES.titulo : TITULO_SUGERENCIAS;
+/** Sin texto no hubo búsqueda: la lista vacía es que las sugerencias todavía cargan o que
+ *  no hay recientes ni plantaciones para sugerir. */
+function avisoDeListaVacia(
+  items: ItemPaleta[],
+  hayTexto: boolean,
+  cargando: boolean,
+): AvisoVacio | null {
+  if (items.length > 0) return null;
+  if (hayTexto) return AVISO_VACIO.sinResultados;
+  return cargando ? AVISO_VACIO.cargando : AVISO_VACIO.nadaQueSugerir;
 }
 
 /** Secciones de la paleta para `busqueda`: sin texto, recientes o sugerencias; con texto,
@@ -41,15 +51,15 @@ function encabezadoVacio(hayTexto: boolean, hayRecientes: boolean): string | nul
 export function useSeccionesCommandMenu(busqueda: string): ContenidoPaleta {
   const { scope, recientes } = useCommandMenu();
   const resultados = useResultadosBusqueda(busqueda, scope ?? undefined);
-  const recientesOSugerencias = useRecientesOSugerencias(recientes);
+  const { sugeridas, cargando } = usePlantacionesSugeridas();
   const hayTexto = busqueda.trim().length > 0;
   const acciones = useMemo(
     () => filtrarAcciones(accionesRapidas(scope), busqueda),
     [scope, busqueda],
   );
   const armado = useMemo(
-    () => construirItems({ acciones, resultados, recientes: recientesOSugerencias, hayTexto }),
-    [acciones, resultados, recientesOSugerencias, hayTexto],
+    () => construirItems({ acciones, resultados, recientes, sugerencias: sugeridas, hayTexto }),
+    [acciones, resultados, recientes, sugeridas, hayTexto],
   );
-  return { ...armado, encabezadoVacio: encabezadoVacio(hayTexto, recientes.length > 0) };
+  return { ...armado, avisoVacio: avisoDeListaVacia(armado.itemsPlanos, hayTexto, cargando) };
 }

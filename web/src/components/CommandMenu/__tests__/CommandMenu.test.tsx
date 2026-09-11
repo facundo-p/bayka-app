@@ -140,6 +140,57 @@ test('estado vacío muestra el chip de scope y sugerencias dentro de la plantaci
   expect(within(dialog).getByText('Sugerencias')).toBeInTheDocument();
 });
 
+/** Encabezados del estado vacío que pinta la lista, en orden. */
+function encabezadosVacio(dialog: HTMLElement): string[] {
+  const lista = within(dialog).getByRole('listbox');
+  return within(lista)
+    .queryAllByText(/^(Recientes|Sugerencias)$/)
+    .map((nodo) => nodo.textContent ?? '');
+}
+
+test('sin texto ni recientes: un único encabezado "Sugerencias"', async () => {
+  const dialog = await abrirPaleta();
+
+  await within(dialog).findByRole('option', { name: /La Maluka/ });
+  expect(encabezadosVacio(dialog)).toEqual(['Sugerencias']);
+});
+
+test('sin texto y con recientes: un único encabezado "Recientes"', async () => {
+  window.localStorage.setItem(
+    'bayka.command-menu.recientes',
+    JSON.stringify([{ tipo: 'arbol', id: 'tree-1', titulo: 'PAL23ANC12', to: '/arboles/tree-1' }]),
+  );
+  const dialog = await abrirPaleta();
+
+  await within(dialog).findByRole('option', { name: /PAL23ANC12/ });
+  expect(encabezadosVacio(dialog)).toEqual(['Recientes']);
+});
+
+test('sin texto, recientes ni plantaciones: mensaje neutro, sin encabezados ni comillas vacías', async () => {
+  estadoMock.resolverConsulta = (consulta) =>
+    consulta.tabla === 'plantations' ? { data: [], count: 0 } : responder(consulta);
+  renderRutasEn('/plantaciones');
+  await screen.findByRole('button', { name: /Buscar/ });
+  fireEvent.keyDown(document, { key: 'k', metaKey: true });
+  const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
+
+  expect(
+    await within(dialog).findByText('Todavía no hay recientes ni plantaciones para sugerir.'),
+  ).toBeInTheDocument();
+  expect(encabezadosVacio(dialog)).toEqual([]);
+  expect(within(dialog).queryByText(/Sin resultados/)).not.toBeInTheDocument();
+});
+
+test('con texto y sin resultados: «Sin resultados para “…”» con lo que se buscó', async () => {
+  estadoMock.resolverConsulta = (consulta) =>
+    consulta.tabla === 'trees' ? { data: [], count: 0 } : responder(consulta);
+  const dialog = await abrirPaleta();
+  const usuario = userEvent.setup();
+  await usuario.type(within(dialog).getByPlaceholderText(/Buscar plantaciones/), 'zzz');
+
+  expect(await within(dialog).findByText('Sin resultados para “zzz”.')).toBeInTheDocument();
+});
+
 test('flecha abajo + Enter navega al resultado resaltado', async () => {
   const dialog = await abrirPaleta();
   const usuario = userEvent.setup();

@@ -1,7 +1,13 @@
+import { Cargando } from '../Cargando';
 import { SeccionPaleta } from './SeccionPaleta';
-import type { ContenidoPaleta } from './useSeccionesCommandMenu';
+import { AVISO_VACIO, type AvisoVacio, type ContenidoPaleta } from './useSeccionesCommandMenu';
 import type { ListboxPaleta } from './useListboxPaleta';
 import styles from './CommandMenu.module.css';
+
+const MENSAJE_VACIO = {
+  sinResultados: (texto: string) => `Sin resultados para “${texto}”.`,
+  nadaQueSugerir: 'Todavía no hay recientes ni plantaciones para sugerir.',
+} as const;
 
 interface ListaResultadosProps {
   contenido: ContenidoPaleta;
@@ -9,11 +15,19 @@ interface ListaResultadosProps {
   listbox: ListboxPaleta;
 }
 
+function AvisoListaVacia({ aviso, texto }: { aviso: AvisoVacio; texto: string }) {
+  if (aviso === AVISO_VACIO.cargando) return <Cargando />;
+  const mensaje =
+    aviso === AVISO_VACIO.sinResultados
+      ? MENSAJE_VACIO.sinResultados(texto)
+      : MENSAJE_VACIO.nadaQueSugerir;
+  return <p className={styles.vacio}>{mensaje}</p>;
+}
+
 export function ListaResultados({ contenido, texto, listbox }: ListaResultadosProps) {
-  const { secciones, itemsPlanos, encabezadoVacio } = contenido;
+  const { secciones, avisoVacio } = contenido;
   return (
     <div {...listbox.propsLista()} aria-label="Resultados" className={styles.lista}>
-      {encabezadoVacio && <p className={styles.overline}>{encabezadoVacio}</p>}
       {secciones.map((seccion) => (
         <SeccionPaleta
           key={seccion.clave}
@@ -22,7 +36,7 @@ export function ListaResultados({ contenido, texto, listbox }: ListaResultadosPr
           onElegir={listbox.elegir}
         />
       ))}
-      {itemsPlanos.length === 0 && <p className={styles.vacio}>Sin resultados para “{texto}”.</p>}
+      {avisoVacio && <AvisoListaVacia aviso={avisoVacio} texto={texto} />}
     </div>
   );
 }
