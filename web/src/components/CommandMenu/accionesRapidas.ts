@@ -1,6 +1,7 @@
 import { Leaf, Plus, Settings, Sparkles, Sprout, Users, type LucideIcon } from 'lucide-react';
 import type { ScopeContextual } from '../../hooks/useCommandMenu';
 import { coincideBusqueda } from '../../lib/normalizarTexto';
+import { rutaPlantacion, TAB_DETALLE } from '../../lib/rutasPlantacion';
 
 /** Acción rápida de la paleta: navegación simple (sin backend nuevo). */
 export type AccionRapida = {
@@ -24,7 +25,7 @@ export function accionesRapidas(scope: ScopeContextual | null): AccionRapida[] {
       id: 'ir-configuracion',
       titulo: 'Ir a Configuración…',
       Icono: Settings,
-      to: `/plantaciones/${scope.plantationId}/configuracion`,
+      to: rutaPlantacion(scope.plantationId, TAB_DETALLE.configuracion),
     });
   }
   return base;

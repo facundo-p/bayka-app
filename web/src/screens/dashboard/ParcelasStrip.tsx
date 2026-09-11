@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { BotonIcono } from '../../components';
 import { cx } from '../../lib/classNames';
 import { formatearEntero } from '../../lib/formato';
+import { TAB_DETALLE } from '../../lib/rutasPlantacion';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ParcelasStrip.module.css';
 
@@ -70,7 +71,7 @@ export function ParcelasStrip({
         <h3 className={styles.titulo}>Parcelas</h3>
         <span className={styles.recuento}>{`${parcelas.length} · clic para filtrar`}</span>
         <div className={styles.controles}>
-          <Link to="datos" className={styles.enlace}>
+          <Link to={TAB_DETALLE.datos} className={styles.enlace}>
             Ver datos →
           </Link>
           <BotonIcono
