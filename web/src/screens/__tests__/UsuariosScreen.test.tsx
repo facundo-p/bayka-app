@@ -90,9 +90,7 @@ test('un admin no ve el link Usuarios y la sección le muestra el aviso de super
   configurarUsuariosMock();
   renderRutasEn('/usuarios');
 
-  expect(
-    await screen.findByText('Sección solo para superadministradores'),
-  ).toBeInTheDocument();
+  expect(await screen.findByText('Sección solo para superadministradores')).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Ir a Plantaciones' })).toBeInTheDocument();
   // No hay tabla: la pantalla de usuarios no se montó.
@@ -107,9 +105,7 @@ test('un superadmin ve el link, la meta con conteos y la tabla con roles', async
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
   // Meta de la cabecera computada por rol (1 superadmin, 1 admin, 1 técnico).
-  expect(
-    screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico'),
-  ).toBeInTheDocument();
+  expect(screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico')).toBeInTheDocument();
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   // Badges de rol con etiqueta en español (dentro de la tabla).
@@ -195,7 +191,12 @@ test('"Agregar usuario" invita por email con el rol elegido y refresca el listad
   expect(estadoMock.invocaciones).toEqual([
     {
       funcion: 'admin-users',
-      cuerpo: { accion: 'crear', nombre: 'Nueva Persona', email: 'nueva@bayka.org', rol: 'tecnico' },
+      cuerpo: {
+        accion: 'crear',
+        nombre: 'Nueva Persona',
+        email: 'nueva@bayka.org',
+        rol: 'tecnico',
+      },
     },
   ]);
   // La invalidación vuelve a pedir el listado de perfiles.
@@ -312,10 +313,7 @@ test('el único superadmin del sistema no es degradable', async () => {
   const dialogo = await abrirPanel(usuario, 'Selva Súper');
   const selectRol = within(dialogo).getByLabelText('Rol');
   expect(selectRol).toBeDisabled();
-  expect(selectRol).toHaveAttribute(
-    'title',
-    'Único superadmin: promové otro antes de degradarlo',
-  );
+  expect(selectRol).toHaveAttribute('title', 'Único superadmin: promové otro antes de degradarlo');
 });
 
 test('un error del trigger del server se muestra legible en el modal', async () => {
@@ -449,10 +447,7 @@ test('cambiar la contraseña de OTRO superadmin está deshabilitado (la propia n
   const menuOtra = await abrirMenu(usuario, 'Otra Súper');
   const itemOtra = menuOtra.getByRole('menuitem', { name: 'Cambiar contraseña' });
   expect(itemOtra).toBeDisabled();
-  expect(itemOtra).toHaveAttribute(
-    'title',
-    'No podés cambiar la contraseña de otro superadmin',
-  );
+  expect(itemOtra).toHaveAttribute('title', 'No podés cambiar la contraseña de otro superadmin');
 
   const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
   expect(menuPropio.getByRole('menuitem', { name: 'Cambiar contraseña' })).toBeEnabled();
@@ -487,10 +482,7 @@ test('desactivarse a sí mismo está deshabilitado; un inactivo ofrece Reactivar
   const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
   const itemDesactivar = menuPropio.getByRole('menuitem', { name: 'Desactivar' });
   expect(itemDesactivar).toBeDisabled();
-  expect(itemDesactivar).toHaveAttribute(
-    'title',
-    'Un superadmin no puede desactivarse a sí mismo',
-  );
+  expect(itemDesactivar).toHaveAttribute('title', 'Un superadmin no puede desactivarse a sí mismo');
 
   // Teo está inactivo: su menú ofrece Reactivar (no Desactivar).
   const menuTeo = await abrirMenu(usuario, 'Teo Técnico');
