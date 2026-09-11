@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
 import { usePerfiles } from '../../hooks/usePerfiles';
+import { nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarArboles,
@@ -44,7 +45,7 @@ function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
   const perfiles = usePerfiles();
   return {
     codigosParcela: mapaPorId(parcelas, (parcela) => parcela.codigo),
-    nombresUsuario: mapaPorId(perfiles.data, (perfil) => perfil.nombre),
+    nombresUsuario: mapaPorId(perfiles.data, (perfil) => nombreVisible(perfil.nombre, perfil.id)),
   };
 }
 

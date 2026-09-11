@@ -76,6 +76,13 @@ test('arma los mapas de código de parcela y nombre de usuario', async () => {
   expect(result.current.nombresUsuario.get('user-1')).toBe('Ana');
 });
 
+test('un técnico sin nombre figura con su id corto', async () => {
+  vi.mocked(listarPerfiles).mockResolvedValue([{ ...PERFIL, id: 'abcdefgh-9999', nombre: '' }]);
+  const { result } = renderConRuta();
+
+  await waitFor(() => expect(result.current.nombresUsuario.get('abcdefgh-9999')).toBe('abcdefgh'));
+});
+
 test('cambiar el filtro de foto vuelve la página a 1', async () => {
   const { result } = renderConRuta();
   await waitFor(() => expect(result.current.arboles.isPending).toBe(false));

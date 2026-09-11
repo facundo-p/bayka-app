@@ -4,6 +4,7 @@
  * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
  * árboles se buscan por `sub_id`, no por ID global.
  */
+import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
 import { PARAM_URL, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutasPlantacion';
 import { supabase } from '../lib/supabase';
 import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
@@ -72,13 +73,14 @@ async function buscarEspecies(texto: string): Promise<ResultadoBusqueda[]> {
 async function buscarUsuarios(texto: string): Promise<ResultadoBusqueda[]> {
   const usuarios = await listarUsuariosConAsignaciones();
   return usuarios
-    .filter((usuario) => coincide(texto, usuario.nombre))
+    .map((usuario) => ({ usuario, nombre: nombreVisible(usuario.nombre, usuario.id) }))
+    .filter(({ nombre }) => coincide(texto, nombre))
     .slice(0, TOPE_LISTA)
-    .map((usuario) => ({
+    .map(({ usuario, nombre }) => ({
       tipo: 'usuario',
       id: usuario.id,
-      titulo: usuario.nombre,
-      meta: usuario.rol,
+      titulo: nombre,
+      meta: etiquetaRol(usuario.rol),
       to: '/usuarios',
     }));
 }

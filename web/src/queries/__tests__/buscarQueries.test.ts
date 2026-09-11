@@ -100,7 +100,7 @@ test('agrega coincidencias de listas cacheadas (plantación, especie, usuario)',
     to: '/plantaciones/plant-1',
   });
   const usuario = resultados.find((resultado) => resultado.tipo === 'usuario');
-  expect(usuario).toMatchObject({ titulo: 'Ana Admin', meta: 'admin', to: '/usuarios' });
+  expect(usuario).toMatchObject({ titulo: 'Ana Admin', meta: 'Administrador', to: '/usuarios' });
 });
 
 test('encuentra un árbol por sub_id y navega a su contexto de datos', async () => {

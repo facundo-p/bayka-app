@@ -1,5 +1,6 @@
 import { screen } from '@testing-library/react';
 import {
+  PERFIL_ADMIN,
   PERFIL_TECNICO,
   prepararSesion,
   prepararSesionAdmin,
@@ -39,6 +40,13 @@ test('autenticado: el footer del sidebar muestra nombre, rol y botón de salir',
   // El rol se muestra con su etiqueta en español en el footer del sidebar.
   expect(screen.getByText('Administrador')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+});
+
+test('autenticado sin nombre: el footer muestra el id corto en vez de quedar vacío', async () => {
+  prepararSesion({ ...PERFIL_ADMIN, id: 'abcdefgh-1234', nombre: '   ' });
+  renderAt('/plantaciones');
+  expect(await screen.findByText('abcdefgh')).toBeInTheDocument();
+  expect(screen.getByText('Administrador')).toBeInTheDocument();
 });
 
 test('sin sesión: redirige a /login y muestra el formulario', async () => {

@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useNovedadesNoVistas } from '../hooks/useNovedadesNoVistas';
 import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
-import { etiquetaRol } from '../lib/presentacionUsuario';
+import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
 import type { Perfil } from '../repositories/profileRepository';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
@@ -26,13 +26,14 @@ function EnlaceNovedades() {
 }
 
 function IdentidadPerfil({ perfil }: { perfil: Perfil }) {
+  const nombre = nombreVisible(perfil.nombre, perfil.id);
   return (
     <>
       <div className={styles.avatar} aria-hidden>
-        {iniciales(perfil.nombre)}
+        {iniciales(nombre)}
       </div>
       <div className={styles.datos}>
-        <span className={styles.nombre}>{perfil.nombre}</span>
+        <span className={styles.nombre}>{nombre}</span>
         <span className={styles.rol}>{etiquetaRol(perfil.rol)}</span>
       </div>
     </>
