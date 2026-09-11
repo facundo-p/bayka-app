@@ -11,6 +11,7 @@ import { DatosToolbar } from './DatosToolbar';
 import { SelectParcela } from './SelectParcela';
 import { VacioConFiltros } from './VacioConFiltros';
 import { filtrosAParams } from './filtrosUrl';
+import { rutaSeccion, SEGMENTO_DATOS } from './seccionesDatos';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 import { COLUMNAS_GRUPOS } from './columnas';
@@ -29,7 +30,7 @@ export function GruposSection() {
   /** Drill-down: abrir los árboles del grupo manteniendo el scope de parcela. */
   const verArboles = (grupo: GrupoConDetalle) => {
     const params = filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id });
-    void navigate(`../arboles?${params.toString()}`);
+    void navigate(rutaSeccion(SEGMENTO_DATOS.arboles, params));
   };
 
   if (parcelas.isError || grupos.isError) {
@@ -40,7 +41,7 @@ export function GruposSection() {
   const recuento = grupos.data ? `${formatearEntero(grupos.data.length)} grupos` : undefined;
   return (
     <>
-      <DatosToolbar segmento="grupos" recuento={recuento}>
+      <DatosToolbar segmento={SEGMENTO_DATOS.grupos} recuento={recuento}>
         <SelectParcela
           parcelas={parcelas.data ?? []}
           value={filtros.parcelaId}

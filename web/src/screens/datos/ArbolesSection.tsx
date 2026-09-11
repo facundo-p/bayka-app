@@ -13,6 +13,7 @@ import type { PerfilResumen } from '../../queries/usuarioQueries';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { DatosToolbar } from './DatosToolbar';
+import { SEGMENTO_DATOS } from './seccionesDatos';
 import { VacioConFiltros } from './VacioConFiltros';
 import { useArbolesSection } from './useArbolesSection';
 import { columnasArboles } from './columnas';
@@ -107,7 +108,7 @@ export function ArbolesSection() {
   }
   return (
     <>
-      <DatosToolbar segmento="arboles">
+      <DatosToolbar segmento={SEGMENTO_DATOS.arboles}>
         <ArbolesFiltros
           filtros={filtros}
           parcelas={parcelas.data ?? []}

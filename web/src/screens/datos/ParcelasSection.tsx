@@ -9,6 +9,7 @@ import { formatearEntero } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { DatosToolbar } from './DatosToolbar';
 import { filtrosAParams } from './filtrosUrl';
+import { rutaSeccion, SEGMENTO_DATOS } from './seccionesDatos';
 import { useParcelasDatos } from './useDatosQueries';
 import { COLUMNAS_PARCELAS } from './columnas';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
@@ -22,8 +23,7 @@ export function ParcelasSection() {
 
   /** Drill-down: abrir los grupos de la parcela pre-filtrados por ella. */
   const verGrupos = (parcela: ParcelaConStats) => {
-    const params = filtrosAParams({ parcelaId: parcela.id });
-    void navigate(`../grupos?${params.toString()}`);
+    void navigate(rutaSeccion(SEGMENTO_DATOS.grupos, filtrosAParams({ parcelaId: parcela.id })));
   };
 
   if (isError) {
@@ -37,7 +37,7 @@ export function ParcelasSection() {
   const recuento = data ? `${formatearEntero(data.length)} parcelas` : undefined;
   return (
     <>
-      <DatosToolbar segmento="parcelas" recuento={recuento} />
+      <DatosToolbar segmento={SEGMENTO_DATOS.parcelas} recuento={recuento} />
       {isPending ? (
         <Cargando label="Cargando parcelas…" />
       ) : (
