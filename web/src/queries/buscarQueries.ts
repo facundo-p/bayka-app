@@ -5,7 +5,7 @@
  * árboles se buscan por `sub_id`, no por ID global.
  */
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
-import { PARAM_URL, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutasPlantacion';
+import { PARAM_URL, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
 import { supabase } from '../lib/supabase';
 import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';

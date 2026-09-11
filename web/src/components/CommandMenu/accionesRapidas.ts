@@ -1,7 +1,7 @@
 import { Leaf, Plus, Settings, Sparkles, Sprout, Users, type LucideIcon } from 'lucide-react';
 import type { ScopeContextual } from '../../hooks/useCommandMenu';
 import { coincideBusqueda } from '../../lib/normalizarTexto';
-import { rutaPlantacion, TAB_DETALLE } from '../../lib/rutasPlantacion';
+import { rutaPlantacion, TAB_DETALLE } from '../../lib/rutas';
 
 /** Acción rápida de la paleta: navegación simple (sin backend nuevo). */
 export type AccionRapida = {

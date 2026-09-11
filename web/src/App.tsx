@@ -5,7 +5,7 @@ import { BannerEntornoPruebas } from './components/BannerEntornoPruebas';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { queryClient } from './lib/queryClient';
-import { SEGMENTO_DATOS, TAB_DETALLE } from './lib/rutasPlantacion';
+import { SEGMENTO_DATOS, TAB_DETALLE } from './lib/rutas';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';

@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { BotonIcono } from '../../components';
 import { cx } from '../../lib/classNames';
 import { formatearEntero } from '../../lib/formato';
-import { TAB_DETALLE } from '../../lib/rutasPlantacion';
+import { TAB_DETALLE } from '../../lib/rutas';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './ParcelasStrip.module.css';
 

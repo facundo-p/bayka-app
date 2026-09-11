@@ -19,7 +19,7 @@ import {
 } from '../components';
 import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
-import { rutaPlantacion, TAB_DETALLE } from '../lib/rutasPlantacion';
+import { rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
 import type { Plantacion } from '../queries/plantationQueries';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
 import { useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';

@@ -1,9 +1,21 @@
 /**
- * Rutas del detalle de plantación. Viven fuera de `screens/` porque las arman
- * también quienes navegan desde afuera del detalle, como la búsqueda global.
+ * Rutas de la web. Viven fuera de `screens/` porque las arman también quienes
+ * navegan desde afuera de cada pantalla, como la búsqueda global.
  */
 
-const RAIZ_PLANTACIONES = '/plantaciones';
+/** Raíz de cada pantalla. `establecerPassword` es además el destino del link
+ *  de invitación que arma la función `admin-users`. */
+export const RUTA = {
+  login: '/login',
+  establecerPassword: '/establecer-password',
+  plantaciones: '/plantaciones',
+  especies: '/especies',
+  novedades: '/novedades',
+  usuarios: '/usuarios',
+} as const;
+
+/** Patrón del detalle para el router; el id llega como `useParams().id`. */
+export const PATRON_DETALLE_PLANTACION = `${RUTA.plantaciones}/:id`;
 
 /** Tabs del detalle con segmento propio; el dashboard es la ruta índice. */
 export const TAB_DETALLE = {
@@ -41,7 +53,7 @@ function conQuery(ruta: string, params?: URLSearchParams): string {
 
 /** Detalle de una plantación; sin tab, su dashboard. */
 export function rutaPlantacion(plantacionId: string, tab?: TabDetalle): string {
-  const detalle = `${RAIZ_PLANTACIONES}/${plantacionId}`;
+  const detalle = `${RUTA.plantaciones}/${plantacionId}`;
   return tab ? `${detalle}/${tab}` : detalle;
 }
 

@@ -1,5 +1,5 @@
 import { useParams } from 'react-router';
-import { SEGMENTO_DATOS } from '../../lib/rutasPlantacion';
+import { SEGMENTO_DATOS } from '../../lib/rutas';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { COLUMNAS_PARCELAS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';

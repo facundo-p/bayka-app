@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router';
 import { BarraHerramientas, SegmentedControl, type Opcion } from '../../components';
-import { SEGMENTO_DATOS, type SegmentoDatos } from '../../lib/rutasPlantacion';
+import { SEGMENTO_DATOS, type SegmentoDatos } from '../../lib/rutas';
 import { useIrASeccion } from './useIrASeccion';
 
 const OPCIONES: ReadonlyArray<Opcion<SegmentoDatos>> = [

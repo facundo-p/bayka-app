@@ -3,7 +3,7 @@ import { Cargando, CardTabla, ErrorConReintento, Table, type TableColumn } from 
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { algunaConError, reintentarTodas, type EstadoConsulta } from '../../lib/consultas';
 import { formatearEntero } from '../../lib/formato';
-import type { SegmentoDatos } from '../../lib/rutasPlantacion';
+import type { SegmentoDatos } from '../../lib/rutas';
 import { DatosToolbar } from './DatosToolbar';
 import { VacioConFiltros } from './VacioConFiltros';
 

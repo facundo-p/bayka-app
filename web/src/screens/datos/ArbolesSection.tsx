@@ -8,7 +8,7 @@ import {
 } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { formatearEntero } from '../../lib/formato';
-import { SEGMENTO_DATOS } from '../../lib/rutasPlantacion';
+import { SEGMENTO_DATOS } from '../../lib/rutas';
 import {
   ARBOLES_POR_PAGINA,
   type ArbolDetalle,
