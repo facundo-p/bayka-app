@@ -23,16 +23,6 @@
   white-space: nowrap;
 }
 
-.puntoEspecie {
-  display: inline-block;
-  width: var(--tamano-punto);
-  height: var(--tamano-punto);
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  background-color: var(--color);
-}
-
 .codigo {
   font-family: var(--font-mono);
 }
@@ -63,30 +53,6 @@
 
 /* ─── Panel lateral ──────────────────────────────────────────────────── */
 
-.panelIdentidad {
-  display: flex;
-  align-items: center;
-  gap: var(--space-lg);
-  min-width: 0;
-}
-
-.panelPunto {
-  display: inline-block;
-  width: var(--tamano-punto-lg);
-  height: var(--tamano-punto-lg);
-  border-radius: var(--radius-full);
-  flex-shrink: 0;
-  /* --color llega por inline style: dato por instancia. */
-  background-color: var(--color);
-}
-
-.panelTitulo {
-  margin: 0;
-  font-size: var(--text-title);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-heading);
-}
-
 /* Chip con el código actual de la especie, junto al título. */
 .chipCodigo {
   padding: var(--space-xs) var(--space-md);
@@ -98,23 +64,7 @@
 }
 
 .form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
-}
-
-.form input {
-  min-height: var(--control-height-input);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
-}
-
-.form label {
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: formCompacto from '../../components/Formulario.module.css';
 }
 
 .campoCodigo {
@@ -126,24 +76,15 @@
 }
 
 .advertencia {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-estado-pending);
+  composes: advertencia from '../../components/Formulario.module.css';
 }
 
 .errorEnvio {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-danger);
+  composes: errorEnvio from '../../components/Formulario.module.css';
 }
 
-/* Overline compartido por los bloques de contexto del panel. */
 .overline {
-  font-size: var(--text-xs);
-  font-weight: var(--font-weight-semibold);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overline from '../../theme/utilidades.module.css';
 }
 
 /* Caja de conteos: dos columnas con el número en serif grande. */
@@ -169,46 +110,4 @@
   font-size: var(--text-kpi-sm);
   line-height: var(--line-height-tight);
   color: var(--color-text-heading);
-}
-
-.bloque {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-.listaUso {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.filaUso {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-lg);
-  padding: var(--space-md) 0;
-  border-bottom: var(--border-thin) solid var(--color-divider);
-}
-
-.enlaceUso {
-  font-size: var(--text-md);
-  color: var(--color-text-body);
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.enlaceUso:hover {
-  color: var(--color-primary);
-}
-
-.numeroUso {
-  flex-shrink: 0;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
 }

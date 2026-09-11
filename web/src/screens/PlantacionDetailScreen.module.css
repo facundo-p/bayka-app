@@ -18,26 +18,6 @@
   max-width: 100%;
 }
 
-/* Botón cuadrado solo-ícono: Editar en la barra ancha y el «⋯» que los
-   agrupa en la angosta. El nombre lo da el aria-label. */
-.botonIcono {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-  background: none;
-  border: var(--border-thin) solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.botonIcono:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
-
 /* "Sin puntos GPS" / "sin árboles": cuelga bajo el botón para no ensanchar la barra. */
 .mensajeAccion {
   position: absolute;
@@ -89,13 +69,4 @@
 
 .volver:hover {
   color: var(--color-primary);
-}
-
-/* Plegadas, el «⋯» es el ÚNICO acceso a las cinco acciones de la plantación:
-   ahí sí vale el destino táctil completo. */
-@media (max-width: 900px) {
-  .botonIcono {
-    width: var(--control-height);
-    height: var(--control-height);
-  }
 }

@@ -8,10 +8,10 @@ const TABS = [
   { to: '/plantaciones/1/datos', label: 'Datos' },
 ];
 
-function renderTabs(ruta: string, variant?: 'principal' | 'secundaria' | 'segmentada') {
+function renderTabs(ruta: string) {
   render(
     <MemoryRouter initialEntries={[ruta]}>
-      <TabNav tabs={TABS} label="Secciones" variant={variant} />
+      <TabNav tabs={TABS} label="Secciones" />
     </MemoryRouter>,
   );
 }
@@ -23,11 +23,10 @@ test('marca activa la tab de la ruta actual', () => {
   expect(screen.getByRole('link', { name: 'Dashboard' }).className).not.toContain(styles.tabActiva);
 });
 
-test('la variante segmentada es la misma navegación con piel de píldora', () => {
-  renderTabs('/plantaciones/1', 'segmentada');
+test('la tab index se marca en su ruta exacta y la navegación tiene nombre', () => {
+  renderTabs('/plantaciones/1');
 
-  expect(screen.getByRole('navigation', { name: 'Secciones' }).className).toContain(
-    styles.navSegmentada,
-  );
+  expect(screen.getByRole('navigation', { name: 'Secciones' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Dashboard' }).className).toContain(styles.tabActiva);
+  expect(screen.getByRole('link', { name: 'Datos' }).className).not.toContain(styles.tabActiva);
 });

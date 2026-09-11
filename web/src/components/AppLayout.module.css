@@ -39,10 +39,7 @@
 }
 
 .brandOverline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
 }
 
 .nav {
@@ -52,10 +49,7 @@
 }
 
 .navOverline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
   padding: 0 var(--space-xl) var(--space-md);
 }
 
@@ -90,20 +84,14 @@
   flex-direction: column;
 }
 
-/* Con menos alto que esto (un 1366×768, o media pantalla) los paneles quedan
-   aplastados: vuelve el scroll de documento y cada pantalla toma su alto natural. */
-@media (max-height: 760px) {
+/* Con poco alto (un 1366×768, o media pantalla) los paneles quedan
+   aplastados, y con poco ancho el sidebar pasa a barra: en los dos casos
+   vuelve el scroll de documento y cada pantalla toma su alto natural. */
+@media (max-height: 760px), (max-width: 900px) {
   .shell {
     height: auto;
     min-height: 100vh;
     overflow: visible;
-    align-items: flex-start;
-  }
-
-  .sidebar {
-    position: sticky;
-    top: var(--alto-banner-entorno);
-    height: calc(100vh - var(--alto-banner-entorno));
   }
 
   .content,
@@ -113,21 +101,24 @@
   }
 }
 
+@media (max-height: 760px) {
+  .shell {
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: var(--alto-banner-entorno);
+    height: calc(100vh - var(--alto-banner-entorno));
+  }
+}
+
 /* ─── Responsive: el sidebar pasa a barra superior horizontal ────────── */
 
 @media (max-width: 900px) {
   .shell {
     flex-direction: column;
     align-items: stretch;
-    height: auto;
-    min-height: 100vh;
-    overflow: visible;
-  }
-
-  .content,
-  .main,
-  .main > * {
-    display: block;
   }
 
   .sidebar {

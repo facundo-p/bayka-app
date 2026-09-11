@@ -1,13 +1,11 @@
 /* Card de tabla: llena el alto disponible, con el pie clavado abajo. */
 .cardTabla {
+  composes: superficieCard from '../theme/utilidades.module.css';
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
 /* Único lugar con scroll: la tabla dentro de la card (el thead queda sticky). */

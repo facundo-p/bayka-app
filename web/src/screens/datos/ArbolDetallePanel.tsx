@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cargando, MapaPuntos, PanelLateral } from '../../components';
-import { varsCss } from '../../lib/cssVars';
+import { Cargando, MapaPuntos, PanelBloque, PanelLateral, PuntoColor } from '../../components';
 import { formatearFechaCorta } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
@@ -21,16 +20,12 @@ function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
   const codigo = arbol.especieCodigo ?? 'N/N';
   const nombre = arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
   return (
-    <div className={styles.bloque}>
-      <span className={styles.etiqueta}>Especie</span>
+    <PanelBloque titulo="Especie">
       <span className={styles.especie}>
-        <span
-          className={styles.puntoEspecie}
-          style={varsCss({ color: colorEspeciePorCodigo(arbol.especieCodigo) })}
-        />
+        <PuntoColor color={colorEspeciePorCodigo(arbol.especieCodigo)} tamano="lg" />
         {`${codigo} · ${nombre}`}
       </span>
-    </div>
+    </PanelBloque>
   );
 }
 
@@ -48,14 +43,13 @@ function FotoSubida({ fotoUrl, alt }: { fotoUrl: string; alt: string }) {
 /** Foto del árbol: imagen firmada si está subida, si no un texto tenue. */
 function BloqueFoto({ arbol }: { arbol: ArbolDetalle }) {
   return (
-    <div className={styles.bloque}>
-      <span className={styles.etiqueta}>Foto</span>
+    <PanelBloque titulo="Foto">
       {tieneFotoSubida(arbol.fotoUrl) ? (
         <FotoSubida fotoUrl={arbol.fotoUrl} alt={`Foto del árbol ${arbol.subId}`} />
       ) : (
         <span className={styles.tenue}>Sin foto</span>
       )}
-    </div>
+    </PanelBloque>
   );
 }
 
@@ -63,10 +57,9 @@ function BloqueFoto({ arbol }: { arbol: ArbolDetalle }) {
 function BloqueGps({ arbol }: { arbol: ArbolDetalle }) {
   if (arbol.latitude == null || arbol.longitude == null) {
     return (
-      <div className={styles.bloque}>
-        <span className={styles.etiqueta}>GPS</span>
+      <PanelBloque titulo="GPS">
         <span className={styles.tenue}>Sin coordenada GPS</span>
-      </div>
+      </PanelBloque>
     );
   }
   const codigo = arbol.especieCodigo ?? ESPECIE_SIN_IDENTIFICAR;
@@ -78,8 +71,7 @@ function BloqueGps({ arbol }: { arbol: ArbolDetalle }) {
     parcelaId: arbol.parcelaId,
   };
   return (
-    <div className={styles.bloque}>
-      <span className={styles.etiqueta}>GPS</span>
+    <PanelBloque titulo="GPS">
       <MapaPuntos
         variante="compacto"
         puntos={[punto]}
@@ -91,7 +83,7 @@ function BloqueGps({ arbol }: { arbol: ArbolDetalle }) {
           <span className={styles.precision}> ±{Math.round(arbol.gpsAccuracy)}m</span>
         )}
       </span>
-    </div>
+    </PanelBloque>
   );
 }
 

@@ -1,0 +1,62 @@
+/* Sin tamaño, la caja es el ícono con un aro de --space-sm. */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: var(--space-sm);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.sm {
+  width: var(--control-height-sm);
+  height: var(--control-height-sm);
+  padding: 0;
+}
+
+/* Destino táctil completo, para cuando es el único acceso a sus acciones. */
+.md {
+  width: var(--control-height);
+  height: var(--control-height);
+  padding: 0;
+}
+
+.fantasma {
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+}
+
+.fantasma:hover:not(:disabled),
+.fantasma[aria-expanded='true'] {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+
+.contorno {
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+}
+
+.contorno:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-heading);
+}
+
+/* Sobre una barra con fondo propio, como la topbar translúcida. */
+.contornoTransparente {
+  composes: contorno;
+  background-color: transparent;
+}
+
+.destructiva:hover:not(:disabled) {
+  color: var(--color-danger);
+}
+
+.boton:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}

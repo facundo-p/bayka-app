@@ -67,32 +67,21 @@
 }
 
 .overline {
+  composes: overlineRegular from '../../theme/utilidades.module.css';
   margin: 0;
   padding: 0 var(--space-md);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: var(--letter-spacing-overline);
-  color: var(--color-text-faint);
 }
 
 .fila {
-  display: flex;
-  align-items: center;
+  composes: filaBoton from '../listaFlotante.module.css';
   gap: var(--space-lg);
   width: 100%;
-  padding: var(--space-md) var(--space-md);
-  border: none;
-  border-radius: var(--radius-control);
-  background-color: transparent;
+  padding-inline: var(--space-md);
   color: var(--color-text-primary);
-  font-family: var(--font-body);
-  font-size: var(--text-md);
-  text-align: left;
-  cursor: pointer;
 }
 
 .filaResaltada {
-  background-color: var(--color-surface-tint);
+  composes: filaResaltada from '../listaFlotante.module.css';
 }
 
 .filaIcono {
@@ -101,10 +90,8 @@
 }
 
 .filaTitulo {
+  composes: truncar from '../../theme/utilidades.module.css';
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .filaMeta {
@@ -114,8 +101,6 @@
 }
 
 .vacio {
-  margin: 0;
-  padding: var(--space-2xl) var(--space-md);
-  color: var(--color-text-muted);
-  font-size: var(--text-md);
+  composes: vacio from '../listaFlotante.module.css';
+  padding-inline: var(--space-md);
 }

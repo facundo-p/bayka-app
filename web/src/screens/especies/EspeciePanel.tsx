@@ -1,15 +1,23 @@
 import { useState, type FormEvent } from 'react';
-import { Link } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Button, Input, PanelLateral } from '../../components';
+import {
+  Button,
+  Input,
+  PanelBloque,
+  PanelIdentidad,
+  PanelLateral,
+  PanelListaEnlaces,
+  PuntoColor,
+  type EnlacePanel,
+} from '../../components';
 import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
-import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeEspecie,
   type EspecieConCatalogoUso,
+  type PlantacionDeEspecie,
 } from '../../queries/especieQueries';
 import {
   CodigoEspecieDuplicadoError,
@@ -43,14 +51,11 @@ function valoresIniciales(especie: EspecieConCatalogoUso | null): EspecieFormVal
 /** Identidad del panel: punto de color + título + chip con el código actual. */
 function CabeceraEspecie({ especie }: { especie: EspecieConCatalogoUso | null }) {
   return (
-    <div className={styles.panelIdentidad}>
-      <span
-        className={styles.panelPunto}
-        style={varsCss({ color: colorEspeciePorCodigo(especie?.codigo ?? null) })}
-      />
-      <h2 className={styles.panelTitulo}>{especie ? 'Editar especie' : 'Nueva especie'}</h2>
-      {especie && <span className={styles.chipCodigo}>{especie.codigo}</span>}
-    </div>
+    <PanelIdentidad
+      marca={<PuntoColor color={colorEspeciePorCodigo(especie?.codigo ?? null)} tamano="lg" />}
+      titulo={especie ? 'Editar especie' : 'Nueva especie'}
+      complemento={especie && <span className={styles.chipCodigo}>{especie.codigo}</span>}
+    />
   );
 }
 
@@ -70,6 +75,15 @@ function BloqueConteos({ especie }: { especie: EspecieConCatalogoUso }) {
   );
 }
 
+function enlacePlantacion(plantacion: PlantacionDeEspecie): EnlacePanel {
+  return {
+    clave: plantacion.id,
+    ruta: `/plantaciones/${plantacion.id}`,
+    texto: plantacion.nombre,
+    detalle: formatearEntero(plantacion.arboles),
+  };
+}
+
 /** Plantaciones que habilitan la especie, con sus árboles a la derecha. */
 function BloqueHabilitadaEn({ especieId }: { especieId: string }) {
   const plantaciones = useQuery({
@@ -78,19 +92,9 @@ function BloqueHabilitadaEn({ especieId }: { especieId: string }) {
   });
   if (!plantaciones.data || plantaciones.data.length === 0) return null;
   return (
-    <div className={styles.bloque}>
-      <span className={styles.overline}>Habilitada en</span>
-      <ul className={styles.listaUso}>
-        {plantaciones.data.map((plantacion) => (
-          <li key={plantacion.id} className={styles.filaUso}>
-            <Link to={`/plantaciones/${plantacion.id}`} className={styles.enlaceUso}>
-              {plantacion.nombre}
-            </Link>
-            <span className={styles.numeroUso}>{formatearEntero(plantacion.arboles)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <PanelBloque titulo="Habilitada en">
+      <PanelListaEnlaces enlaces={plantaciones.data.map(enlacePlantacion)} detalleNumerico />
+    </PanelBloque>
   );
 }
 

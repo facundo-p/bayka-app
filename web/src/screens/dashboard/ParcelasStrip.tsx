@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router';
+import { BotonIcono } from '../../components';
 import { cx } from '../../lib/classNames';
 import { formatearEntero } from '../../lib/formato';
 import { TAMANO_ICONO } from '../../theme/iconos';
@@ -72,22 +73,22 @@ export function ParcelasStrip({
           <Link to="datos" className={styles.enlace}>
             Ver datos →
           </Link>
-          <button
-            type="button"
-            className={styles.flecha}
-            aria-label="Parcelas anteriores"
+          <BotonIcono
+            variante="contorno"
+            tamano="sm"
+            etiqueta="Parcelas anteriores"
             onClick={() => desplazar(-1)}
           >
             <ChevronLeft size={TAMANO_ICONO.md} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={styles.flecha}
-            aria-label="Parcelas siguientes"
+          </BotonIcono>
+          <BotonIcono
+            variante="contorno"
+            tamano="sm"
+            etiqueta="Parcelas siguientes"
             onClick={() => desplazar(1)}
           >
             <ChevronRight size={TAMANO_ICONO.md} aria-hidden />
-          </button>
+          </BotonIcono>
         </div>
       </div>
       <div className={styles.riel} ref={rielRef}>

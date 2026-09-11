@@ -119,20 +119,11 @@ input.buscador {
 }
 
 .nombre {
+  composes: truncar from '../theme/utilidades.module.css';
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--text-md);
   color: var(--color-text-body);
-}
-
-.cientifico {
-  flex-shrink: 0;
-  font-size: var(--text-sm);
-  font-style: italic;
-  color: var(--color-text-faint);
 }
 
 /* Marca de bloqueo: dice por qué la fila no se puede desmarcar. */

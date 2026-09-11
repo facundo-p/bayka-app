@@ -53,16 +53,9 @@
   cursor: not-allowed;
 }
 
-/* Punto de color que precede a la especie. El color es data-driven (inline). */
+/* La celda es texto corrido, no un flex: el hueco con el nombre lo pone el punto. */
 .puntoEspecie {
-  display: inline-block;
-  width: var(--tamano-punto);
-  height: var(--tamano-punto);
   margin-right: var(--space-md);
-  border-radius: var(--radius-full);
-  vertical-align: middle;
-  /* --color llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  background-color: var(--color);
 }
 
 /* Celda de especie: punto + texto en una línea. */
@@ -93,11 +86,9 @@
 
 /* Descripción truncada a una línea; el title muestra el texto completo. */
 .descripcion {
+  composes: truncar from '../../theme/utilidades.module.css';
   display: inline-block;
   max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   vertical-align: bottom;
   color: var(--color-text-secondary);
 }

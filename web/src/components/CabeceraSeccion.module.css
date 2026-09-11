@@ -21,30 +21,26 @@ a.raiz:hover {
   color: var(--color-text-faint);
 }
 
-/* Título y meta son `nowrap`: sin truncado la caja llega a 0px y el texto se
-   sigue pintando encima del vecino. El ellipsis es lo que convierte el
+/* Título y meta van en un renglón: sin truncado la caja llega a 0px y el texto
+   se sigue pintando encima del vecino. El ellipsis es lo que convierte el
    desborde en recorte legible. */
 .titulo {
+  composes: truncar from '../theme/utilidades.module.css';
   margin: 0;
   flex: 0 1 auto;
   min-width: 5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: var(--text-detail-title);
   line-height: var(--line-height-tight);
   color: var(--color-text-heading);
-  white-space: nowrap;
 }
 
 /* Cede antes que el título: es contexto, no identidad. */
 .meta {
+  composes: truncar from '../theme/utilidades.module.css';
   flex: 1 1 0;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   font-size: var(--text-sm);
   color: var(--color-text-muted);
-  white-space: nowrap;
 }
 
 /*

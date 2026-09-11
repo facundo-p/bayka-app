@@ -1,14 +1,22 @@
 import { useState } from 'react';
-import { Link } from 'react-router';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Ban, Key, Mail } from 'lucide-react';
-import { Button, Input, PanelLateral, Select } from '../../components';
+import {
+  Button,
+  Input,
+  PanelBloque,
+  PanelIdentidad,
+  PanelLateral,
+  PanelListaEnlaces,
+  Select,
+  type EnlacePanel,
+} from '../../components';
 import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
-import { cx } from '../../lib/classNames';
 import { formatearFechaDia } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeUsuario,
+  type PlantacionDeUsuario,
   type UsuarioConAsignaciones,
 } from '../../queries/usuarioQueries';
 import { actualizarNombre, cambiarRol, ROL, type Rol } from '../../repositories/profileRepository';
@@ -40,15 +48,15 @@ function accedeATodas(rol: Rol): boolean {
 
 function CabeceraUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
   return (
-    <div className={styles.panelIdentidad}>
-      <Avatar usuario={usuario} clase={styles.avatarGrande} />
-      <span className={styles.panelTextos}>
-        <h2 className={styles.panelTitulo}>{nombreVisible(usuario)}</h2>
-        <span className={styles.panelMeta}>
+    <PanelIdentidad
+      marca={<Avatar usuario={usuario} clase={styles.avatarGrande} />}
+      titulo={nombreVisible(usuario)}
+      meta={
+        <>
           {ETIQUETA_ROL[usuario.rol]} · desde {formatearFechaDia(usuario.createdAt)}
-        </span>
-      </span>
-    </div>
+        </>
+      }
+    />
   );
 }
 
@@ -90,6 +98,28 @@ function CampoRol({
   );
 }
 
+function enlaceAsignada(plantacion: PlantacionDeUsuario): EnlacePanel {
+  return {
+    clave: plantacion.id,
+    ruta: `/plantaciones/${plantacion.id}`,
+    texto: plantacion.nombre,
+    detalle: ETIQUETA_ROL[plantacion.rolEnPlantacion],
+  };
+}
+
+/** Las plantaciones de la persona, o por qué no hay lista. */
+function ListaAsignadas({
+  todas,
+  asignadas,
+}: {
+  todas: boolean;
+  asignadas: PlantacionDeUsuario[];
+}) {
+  if (todas) return <p className={styles.textoBloque}>{ACCESO_TOTAL}</p>;
+  if (asignadas.length === 0) return <p className={styles.textoBloque}>{SIN_ASIGNACIONES}</p>;
+  return <PanelListaEnlaces enlaces={asignadas.map(enlaceAsignada)} />;
+}
+
 /** A qué plantaciones accede la persona; los roles de gestión, a todas. */
 function BloquePlantaciones({ usuario }: { usuario: UsuarioConAsignaciones }) {
   const todas = accedeATodas(usuario.rol);
@@ -100,28 +130,9 @@ function BloquePlantaciones({ usuario }: { usuario: UsuarioConAsignaciones }) {
   });
   const asignadas = plantaciones.data ?? [];
   return (
-    <div className={styles.bloque}>
-      <div className={styles.bloqueCabecera}>
-        <span className={styles.overline}>Plantaciones asignadas</span>
-        {!todas && <span className={styles.numeroBloque}>{asignadas.length}</span>}
-      </div>
-      {todas ? (
-        <p className={styles.textoBloque}>{ACCESO_TOTAL}</p>
-      ) : asignadas.length === 0 ? (
-        <p className={styles.textoBloque}>{SIN_ASIGNACIONES}</p>
-      ) : (
-        <ul className={styles.listaUso}>
-          {asignadas.map((plantacion) => (
-            <li key={plantacion.id} className={styles.filaUso}>
-              <Link to={`/plantaciones/${plantacion.id}`} className={styles.enlaceUso}>
-                {plantacion.nombre}
-              </Link>
-              <span className={styles.rolUso}>{ETIQUETA_ROL[plantacion.rolEnPlantacion]}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <PanelBloque titulo="Plantaciones asignadas" contador={todas ? undefined : asignadas.length}>
+      <ListaAsignadas todas={todas} asignadas={asignadas} />
+    </PanelBloque>
   );
 }
 
@@ -129,16 +140,17 @@ function BloquePlantaciones({ usuario }: { usuario: UsuarioConAsignaciones }) {
 function BotonAccion({ item, onAccion }: { item: ItemMenu; onAccion: () => void }) {
   const Icono = ICONO_ACCION[item.accion];
   return (
-    <button
+    <Button
       type="button"
-      className={cx(styles.botonAccion, item.destructiva && styles.botonDestructivo)}
+      variant={item.destructiva ? 'destructiva' : 'contorno'}
+      size="sm"
       disabled={item.motivo !== null}
       title={item.motivo ?? undefined}
       onClick={onAccion}
     >
       {Icono && <Icono size={TAMANO_ICONO.md} aria-hidden />}
       {item.etiqueta}
-    </button>
+    </Button>
   );
 }
 
@@ -151,8 +163,7 @@ function BloqueAcciones({
   onAccion: (accion: AccionUsuario) => void;
 }) {
   return (
-    <div className={styles.bloque}>
-      <span className={styles.overline}>Acciones</span>
+    <PanelBloque titulo="Acciones">
       <div className={styles.acciones}>
         {items.map((item) => (
           <BotonAccion
@@ -163,7 +174,7 @@ function BloqueAcciones({
         ))}
       </div>
       <p className={styles.ayuda}>{AYUDA_DESACTIVAR}</p>
-    </div>
+    </PanelBloque>
   );
 }
 

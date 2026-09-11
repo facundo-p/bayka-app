@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
-import { varsCss } from '../lib/cssVars';
 import { formatearEntero } from '../lib/formato';
 import type { PuntoGps } from '../queries/mapaQueries';
 import { MapaPuntos } from './mapa/MapaPuntos';
+import { PuntoColor } from './PuntoColor';
 import styles from './PlantationMap.module.css';
 
 /** Cantidad de especies que entran en la leyenda (las principales por orden). */
@@ -28,7 +28,7 @@ function Leyenda({ leyenda }: { leyenda: EspecieLeyenda[] }) {
     <div className={styles.leyenda}>
       {leyenda.slice(0, MAX_LEYENDA).map(({ codigo, nombre, color }) => (
         <span key={codigo} className={styles.item}>
-          <span className={styles.punto} style={varsCss({ color })} />
+          <PuntoColor color={color} tamano="lg" conAro />
           {nombre}
         </span>
       ))}

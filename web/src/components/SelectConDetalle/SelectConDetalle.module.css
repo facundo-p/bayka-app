@@ -19,22 +19,21 @@
 }
 
 .valorPrincipal {
+  composes: truncar from '../../theme/utilidades.module.css';
   flex-shrink: 0;
   max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Detalle tenue (ej. el email), igual en el disparador y en la lista. */
-.valorSecundario,
-.opcionSecundario {
+.valorSecundario {
+  composes: truncar from '../../theme/utilidades.module.css';
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: var(--text-sm);
   color: var(--color-text-faint);
+}
+
+.opcionSecundario {
+  composes: valorSecundario;
 }
 
 .placeholder {
@@ -44,6 +43,7 @@
 /* Fixed + portal: el overflow del modal no lo recorta. La posición llega por
    variables desde usePosicionAnclada. */
 .popover {
+  composes: caja from '../listaFlotante.module.css';
   position: fixed;
   top: var(--arriba);
   bottom: var(--abajo);
@@ -54,10 +54,7 @@
   width: var(--ancho);
   max-height: min(var(--alto-disponible), var(--alto-max-desplegable));
   overflow: hidden;
-  border: var(--border-thin) solid var(--color-border);
   border-radius: var(--radius-lg);
-  background-color: var(--color-surface);
-  box-shadow: var(--shadow-modal);
 }
 
 .cabecera {
@@ -78,16 +75,13 @@
 }
 
 .opcion {
-  display: flex;
-  align-items: center;
+  composes: fila from '../listaFlotante.module.css';
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-xl);
-  border-radius: var(--radius-control);
-  cursor: pointer;
+  padding-inline: var(--space-xl);
 }
 
 .opcionResaltada {
-  background-color: var(--color-surface-tint);
+  composes: filaResaltada from '../listaFlotante.module.css';
 }
 
 .opcionTexto {
@@ -98,9 +92,7 @@
 }
 
 .opcionPrincipal {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  composes: truncar from '../../theme/utilidades.module.css';
   font-weight: var(--font-weight-medium);
   color: var(--color-text-body);
 }
@@ -115,8 +107,6 @@
 }
 
 .vacio {
-  margin: 0;
-  padding: var(--space-2xl) var(--space-xl);
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
+  composes: vacio from '../listaFlotante.module.css';
+  padding-inline: var(--space-xl);
 }

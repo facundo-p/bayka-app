@@ -6,6 +6,7 @@ import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
 import { ROL, type Perfil } from '../repositories/profileRepository';
 import { TAMANO_ICONO } from '../theme/iconos';
+import { BotonIcono } from './BotonIcono';
 import styles from './UserMenu.module.css';
 
 const ETIQUETA_ROL: Record<Perfil['rol'], string> = {
@@ -45,14 +46,9 @@ export function UserMenu() {
           <span className={styles.nombre}>{perfil.nombre}</span>
           <span className={styles.rol}>{ETIQUETA_ROL[perfil.rol]}</span>
         </div>
-        <button
-          type="button"
-          className={styles.salir}
-          onClick={() => void signOut()}
-          aria-label="Cerrar sesión"
-        >
+        <BotonIcono variante="fantasma" etiqueta="Cerrar sesión" onClick={() => void signOut()}>
           <LogOut size={TAMANO_ICONO.lg} aria-hidden />
-        </button>
+        </BotonIcono>
       </div>
       <EnlaceNovedades />
     </div>

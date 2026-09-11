@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
+import { PuntoColor } from '../../components';
 import { cx } from '../../lib/classNames';
-import { varsCss } from '../../lib/cssVars';
 import { formatearEntero } from '../../lib/formato';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
@@ -28,10 +28,7 @@ export function CeldaTexto({
 export function CeldaCodigo({ especie }: { especie: EspecieConCatalogoUso }) {
   return (
     <CeldaTexto especie={especie} clase={styles.codigoCelda}>
-      <span
-        className={styles.puntoEspecie}
-        style={varsCss({ color: colorEspeciePorCodigo(especie.codigo) })}
-      />
+      <PuntoColor color={colorEspeciePorCodigo(especie.codigo)} />
       <span className={styles.codigo}>{especie.codigo}</span>
     </CeldaTexto>
   );

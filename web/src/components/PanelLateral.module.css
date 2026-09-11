@@ -13,13 +13,11 @@
 
 /* Misma card que la de la tabla: el panel es su par, no una capa encima. */
 .panel {
+  composes: superficieCard from '../theme/utilidades.module.css';
   display: flex;
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
 .cabecera {
@@ -33,25 +31,6 @@
 .identidad {
   flex: 1;
   min-width: 0;
-}
-
-.cerrar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-  background: none;
-  border: none;
-  border-radius: var(--radius-control);
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.cerrar:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
 }
 
 /* Único lugar con scroll del panel: los campos y bloques de contexto. */
@@ -74,6 +53,99 @@
   padding: var(--space-xl) var(--space-3xl);
   border-top: var(--border-thin) solid var(--color-border);
   background-color: var(--color-surface-sunken);
+}
+
+/* ─── Partes del contenido ───────────────────────────────────────────── */
+
+.identidadFila {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+/* Marca con dos renglones al lado: más aire con la marca y entre renglones. */
+.identidadConMeta {
+  gap: var(--space-xl);
+}
+
+.identidadTextos {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.identidadTitulo {
+  composes: tituloCard from '../theme/utilidades.module.css';
+}
+
+.identidadConMeta .identidadTitulo {
+  line-height: var(--line-height-snug);
+}
+
+.identidadMeta {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.bloqueCabecera {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-lg);
+}
+
+.bloqueTitulo {
+  composes: overline from '../theme/utilidades.module.css';
+}
+
+.bloqueContador {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.enlaces {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.enlaceFila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  padding: var(--space-md) 0;
+  border-bottom: var(--border-thin) solid var(--color-divider);
+}
+
+.enlace {
+  composes: truncar from '../theme/utilidades.module.css';
+  min-width: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-body);
+}
+
+.enlace:hover {
+  color: var(--color-primary);
+}
+
+.enlaceDetalle {
+  flex-shrink: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.enlaceDetalleNumerico {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Ventana angosta: el panel deja de ser columna y se apila bajo el listado. */

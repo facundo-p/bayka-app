@@ -14,11 +14,7 @@
 }
 
 .titulo {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-heading);
+  composes: tituloCard from '../../theme/utilidades.module.css';
 }
 
 .recuento {
@@ -40,25 +36,6 @@
   color: var(--color-primary-accent);
 }
 
-.flecha {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-strong);
-  border-radius: var(--radius-control);
-  color: var(--color-text-secondary);
-  cursor: pointer;
-}
-
-.flecha:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
-
 /* Riel horizontal con snap por card; la barra se oculta (mandan las flechas). */
 .riel {
   display: flex;
@@ -74,6 +51,7 @@
 }
 
 .miniCard {
+  composes: superficieCard from '../../theme/utilidades.module.css';
   flex: none;
   width: 160px;
   scroll-snap-align: start;
@@ -81,9 +59,6 @@
   flex-direction: column;
   gap: var(--space-xs);
   padding: var(--space-xl) var(--space-xl-plus);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
   appearance: none;
   font: inherit;
   text-align: left;
@@ -94,9 +69,10 @@
   background-color: var(--color-surface-sunken);
 }
 
-/* Solo cambia color, no el grosor del borde: el layout no se corre al filtrar. */
-.seleccionada,
-.seleccionada:hover {
+/* Solo cambia color, no el grosor del borde: el layout no se corre al filtrar.
+   Con dos clases para ganarle a la superficie compuesta sin depender del orden. */
+.miniCard.seleccionada,
+.miniCard.seleccionada:hover {
   background-color: var(--color-secondary-bg);
   border-color: var(--color-secondary-border);
 }
@@ -128,9 +104,7 @@
 }
 
 .nombre {
+  composes: truncar from '../../theme/utilidades.module.css';
   font-size: var(--text-sm);
   color: var(--color-text-body);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }

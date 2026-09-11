@@ -20,7 +20,7 @@ import { Button } from './Button';
 import { Input } from './Input';
 import { Modal } from './Modal';
 import { Textarea } from './Textarea';
-import styles from './PlantacionFormModal.module.css';
+import styles from './Formulario.module.css';
 
 /** Campos editables de una plantación por el formulario web; los de la migración
  *  024 pueden venir null/ausentes si la migración no está aplicada → inputs
