@@ -6,12 +6,11 @@ interface SelectParcelaProps {
   parcelas: ParcelaConStats[];
   value: string;
   onChange: (parcelaId: string) => void;
-  /** Oculta el label visualmente (uso dentro de la toolbar densa). */
-  labelOculto?: boolean;
+  className?: string;
 }
 
-/** Filtro por parcela compartido por las secciones Grupos y Árboles. */
-export function SelectParcela({ parcelas, value, onChange, labelOculto }: SelectParcelaProps) {
+/** Filtro por parcela de las toolbars de Grupos y Árboles. */
+export function SelectParcela({ parcelas, value, onChange, className }: SelectParcelaProps) {
   // Un `parcela=<id>` en la URL que no existe entre las opciones (p. ej. de otra
   // plantación) dejaría el select en una opción fantasma vacía; lo reseteamos a
   // "todas". Solo con parcelas ya cargadas, para no limpiar durante la carga.
@@ -23,11 +22,12 @@ export function SelectParcela({ parcelas, value, onChange, labelOculto }: Select
   return (
     <Select
       label="Parcela"
-      labelOculto={labelOculto}
+      labelOculto
+      className={className}
       value={value}
       onChange={(evento) => onChange(evento.target.value)}
     >
-      <option value="">{labelOculto ? 'Parcela: todas' : 'Todas las parcelas'}</option>
+      <option value="">Parcela: todas</option>
       {parcelas.map((parcela) => (
         <option key={parcela.id} value={parcela.id}>
           {`${parcela.codigo} — ${parcela.nombre}`}

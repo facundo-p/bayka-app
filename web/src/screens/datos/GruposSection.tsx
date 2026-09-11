@@ -45,7 +45,6 @@ export function GruposSection() {
           parcelas={parcelas.data ?? []}
           value={filtros.parcelaId}
           onChange={(valor) => setFiltro('parcelaId', valor)}
-          labelOculto
         />
       </DatosToolbar>
       {grupos.isPending ? (

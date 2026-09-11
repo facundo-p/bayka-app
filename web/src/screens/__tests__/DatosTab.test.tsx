@@ -267,6 +267,17 @@ describe('sección Árboles', () => {
     expect(screen.queryByLabelText(/^Quitar /)).not.toBeInTheDocument();
   });
 
+  test('una parcela de la URL que no existe se resetea a todas', async () => {
+    renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-fantasma');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    // Con la parcela fantasma el grupo quedaría habilitado y la tabla filtrada por ella.
+    await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeDisabled());
+    expect(consultasListaArboles().at(-1)?.filtros).not.toContainEqual(
+      expect.objectContaining({ columna: 'groups.parcela_id' }),
+    );
+  });
+
   test('cambiar de parcela resetea el grupo', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');

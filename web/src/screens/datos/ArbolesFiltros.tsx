@@ -6,6 +6,7 @@ import {
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
 import { FILTRO_FOTO, FILTRO_GPS, type FiltrosUi } from './filtrosArboles';
+import { SelectParcela } from './SelectParcela';
 import styles from './SeccionesDatos.module.css';
 
 interface ArbolesFiltrosProps {
@@ -42,20 +43,12 @@ export function ArbolesFiltros({
         value={filtros.busqueda}
         onChange={(texto) => onCambiar('busqueda', texto)}
       />
-      <Select
-        label="Parcela"
-        labelOculto
+      <SelectParcela
+        parcelas={parcelas}
         className={styles.filtroParcela}
         value={filtros.parcelaId}
-        onChange={(evento) => onCambiar('parcelaId', evento.target.value)}
-      >
-        <option value="">Parcela: todas</option>
-        {parcelas.map((parcela) => (
-          <option key={parcela.id} value={parcela.id}>
-            {`${parcela.codigo} — ${parcela.nombre}`}
-          </option>
-        ))}
-      </Select>
+        onChange={(valor) => onCambiar('parcelaId', valor)}
+      />
       <Select
         label="Grupo"
         labelOculto
