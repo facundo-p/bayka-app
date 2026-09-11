@@ -1,68 +1,60 @@
-import { useNavigate, useParams } from 'react-router';
-import {
-  Cargando,
-  CardTabla,
-  ErrorConReintento,
-  Table,
-} from '../../components';
-import { formatearEntero } from '../../lib/formato';
+import { useParams } from 'react-router';
 import type { GrupoConDetalle } from '../../queries/dataExplorerQueries';
-import { DatosToolbar } from './DatosToolbar';
-import { SelectParcela } from './SelectParcela';
-import { VacioConFiltros } from './VacioConFiltros';
+import { COLUMNAS_GRUPOS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
-import { rutaSeccion, SEGMENTO_DATOS } from './seccionesDatos';
+import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
+import { SEGMENTO_DATOS, useIrASeccion } from './seccionesDatos';
+import { SelectParcela } from './SelectParcela';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
-import { COLUMNAS_GRUPOS } from './columnas';
-import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 
-/** Sección Grupos de la tab Datos: tabla filtrable por parcela con drill-down. */
-export function GruposSection() {
-  const columnas = useColumnasVisibles(COLUMNAS_GRUPOS);
+const TEXTOS: TextosSeccion = {
+  unidad: 'grupos',
+  cargando: 'Cargando grupos…',
+  error: 'No se pudieron cargar los grupos.',
+  pie: 'Clic en una fila abre los árboles del grupo',
+  vacio: 'Sin grupos para mostrar',
+};
+
+const VACIO_CON_FILTROS = 'Ningún grupo coincide con los filtros';
+
+/** El drill-down a Árboles conserva el scope de parcela. */
+function useGruposSection() {
   const { id = '' } = useParams();
-  const navigate = useNavigate();
+  const irA = useIrASeccion();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
-  const reintentar = () => void Promise.all([parcelas.refetch(), grupos.refetch()]);
-
-  /** Drill-down: abrir los árboles del grupo manteniendo el scope de parcela. */
-  const verArboles = (grupo: GrupoConDetalle) => {
-    const params = filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id });
-    void navigate(rutaSeccion(SEGMENTO_DATOS.arboles, params));
+  const verArboles = (grupo: GrupoConDetalle) =>
+    irA(SEGMENTO_DATOS.arboles, filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id }));
+  return {
+    parcelaId: filtros.parcelaId,
+    parcelas,
+    grupos,
+    verArboles,
+    elegirParcela: (valor: string) => setFiltro('parcelaId', valor),
+    vacioConFiltros: hayFiltro ? { mensaje: VACIO_CON_FILTROS, onLimpiar: limpiar } : undefined,
   };
+}
 
-  if (parcelas.isError || grupos.isError) {
-    return (
-      <ErrorConReintento mensaje="No se pudieron cargar los grupos." onReintentar={reintentar} />
-    );
-  }
-  const recuento = grupos.data ? `${formatearEntero(grupos.data.length)} grupos` : undefined;
+/** Grupos de la plantación, filtrables por parcela; cada fila abre sus árboles. */
+export function GruposSection() {
+  const seccion = useGruposSection();
   return (
-    <>
-      <DatosToolbar segmento={SEGMENTO_DATOS.grupos} recuento={recuento}>
-        <SelectParcela
-          parcelas={parcelas.data ?? []}
-          value={filtros.parcelaId}
-          onChange={(valor) => setFiltro('parcelaId', valor)}
-        />
-      </DatosToolbar>
-      {grupos.isPending ? (
-        <Cargando label="Cargando grupos…" />
-      ) : grupos.data.length === 0 && hayFiltro ? (
-        <VacioConFiltros mensaje="Ningún grupo coincide con los filtros" onLimpiar={limpiar} />
-      ) : (
-        <CardTabla pie="Clic en una fila abre los árboles del grupo">
-          <Table
-            columns={columnas}
-            rows={grupos.data}
-            getRowKey={(grupo) => grupo.id}
-            onRowClick={verArboles}
-            emptyMessage="Sin grupos para mostrar"
-          />
-        </CardTabla>
-      )}
-    </>
+    <SeccionTablaDatos
+      segmento={SEGMENTO_DATOS.grupos}
+      consultas={[seccion.parcelas, seccion.grupos]}
+      filas={seccion.grupos.data}
+      textos={TEXTOS}
+      columnas={COLUMNAS_GRUPOS}
+      onRowClick={seccion.verArboles}
+      vacioConFiltros={seccion.vacioConFiltros}
+    >
+      <SelectParcela
+        parcelas={seccion.parcelas.data ?? []}
+        value={seccion.parcelaId}
+        onChange={seccion.elegirParcela}
+      />
+    </SeccionTablaDatos>
   );
 }

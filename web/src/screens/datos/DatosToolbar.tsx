@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { useLocation, useNavigate } from 'react-router';
+import { useLocation } from 'react-router';
 import { BarraHerramientas, SegmentedControl } from '../../components';
-import { rutaSeccion, SEGMENTO_DATOS, type SegmentoDatos } from './seccionesDatos';
+import { SEGMENTO_DATOS, useIrASeccion, type SegmentoDatos } from './seccionesDatos';
 
 const OPCIONES: Array<{ value: SegmentoDatos; label: string }> = [
   { value: SEGMENTO_DATOS.parcelas, label: 'Parcelas' },
@@ -22,11 +22,11 @@ interface DatosToolbarProps {
  * pasa `recuento`: su pie ya dice "Mostrando 1–30 de 30" y tiene la paginación.
  */
 export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps) {
-  const navigate = useNavigate();
+  const irA = useIrASeccion();
   const location = useLocation();
   // Los filtros viajan en el querystring: sobreviven al cambio de sección.
   const cambiarSegmento = (proximo: SegmentoDatos) =>
-    void navigate(rutaSeccion(proximo, new URLSearchParams(location.search)));
+    irA(proximo, new URLSearchParams(location.search));
 
   return (
     <BarraHerramientas
