@@ -19,6 +19,7 @@ test('sin texto: arma una única sección de recientes con sus índices', () => 
     acciones: [ACCION],
     resultados: [resultado({ id: 'no-deberia-aparecer' })],
     recientes,
+    sugerencias: [resultado({ id: 'sugerencia-tapada' })],
     hayTexto: false,
   });
 
@@ -31,11 +32,27 @@ test('sin texto: arma una única sección de recientes con sus índices', () => 
   ]);
 });
 
-test('sin texto y sin recientes: no arma ninguna sección', () => {
+test('sin texto ni recientes: arma una única sección de sugerencias', () => {
+  const sugerencias = [resultado({ id: 's1' })];
   const { secciones, itemsPlanos } = construirItems({
     acciones: [ACCION],
     resultados: [],
     recientes: [],
+    sugerencias,
+    hayTexto: false,
+  });
+
+  expect(secciones).toHaveLength(1);
+  expect(secciones[0]).toMatchObject({ clave: 'sugerencias', titulo: 'Sugerencias' });
+  expect(itemsPlanos).toEqual([{ clase: 'resultado', resultado: sugerencias[0] }]);
+});
+
+test('sin texto, recientes ni sugerencias: no arma ninguna sección ni encabezado', () => {
+  const { secciones, itemsPlanos } = construirItems({
+    acciones: [ACCION],
+    resultados: [],
+    recientes: [],
+    sugerencias: [],
     hayTexto: false,
   });
   expect(secciones).toEqual([]);
@@ -51,6 +68,7 @@ test('con texto: sección de acciones primero, luego resultados agrupados por ti
     // Orden de entrada deliberadamente distinto al orden esperado de salida.
     resultados: [especie, arbol, plantacion],
     recientes: [],
+    sugerencias: [],
     hayTexto: true,
   });
 
@@ -73,6 +91,7 @@ test('con texto: los índices son continuos a través de todas las secciones', (
     acciones: [ACCION],
     resultados: [resultado({ id: 'p1', tipo: 'plantacion' }), resultado({ id: 'p2', tipo: 'plantacion' })],
     recientes: [],
+    sugerencias: [],
     hayTexto: true,
   });
   const todosLosIndices = secciones.flatMap((seccion) => seccion.items.map((entrada) => entrada.indice));
@@ -84,6 +103,7 @@ test('con texto: un tipo sin resultados no genera su sección', () => {
     acciones: [],
     resultados: [resultado({ id: 'p1', tipo: 'plantacion' })],
     recientes: [],
+    sugerencias: [],
     hayTexto: true,
   });
   expect(secciones.map((seccion) => seccion.clave)).toEqual(['plantacion']);
@@ -94,6 +114,7 @@ test('con texto y sin acciones: no arma la sección de acciones', () => {
     acciones: [],
     resultados: [],
     recientes: [],
+    sugerencias: [],
     hayTexto: true,
   });
   expect(secciones).toEqual([]);

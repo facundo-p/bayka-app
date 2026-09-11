@@ -140,6 +140,32 @@ test('estado vacío muestra el chip de scope y sugerencias dentro de la plantaci
   expect(within(dialog).getByText('Sugerencias')).toBeInTheDocument();
 });
 
+/** Encabezados del estado vacío que pinta la lista, en orden. */
+function encabezadosVacio(dialog: HTMLElement): string[] {
+  const lista = within(dialog).getByRole('listbox');
+  return within(lista)
+    .queryAllByText(/^(Recientes|Sugerencias)$/)
+    .map((nodo) => nodo.textContent ?? '');
+}
+
+test('sin texto ni recientes: un único encabezado "Sugerencias"', async () => {
+  const dialog = await abrirPaleta();
+
+  await within(dialog).findByRole('option', { name: /La Maluka/ });
+  expect(encabezadosVacio(dialog)).toEqual(['Sugerencias']);
+});
+
+test('sin texto y con recientes: un único encabezado "Recientes"', async () => {
+  window.localStorage.setItem(
+    'bayka.command-menu.recientes',
+    JSON.stringify([{ tipo: 'arbol', id: 'tree-1', titulo: 'PAL23ANC12', to: '/arboles/tree-1' }]),
+  );
+  const dialog = await abrirPaleta();
+
+  await within(dialog).findByRole('option', { name: /PAL23ANC12/ });
+  expect(encabezadosVacio(dialog)).toEqual(['Recientes']);
+});
+
 test('flecha abajo + Enter navega al resultado resaltado', async () => {
   const dialog = await abrirPaleta();
   const usuario = userEvent.setup();

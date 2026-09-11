@@ -10,10 +10,9 @@ interface ListaResultadosProps {
 }
 
 export function ListaResultados({ contenido, texto, listbox }: ListaResultadosProps) {
-  const { secciones, itemsPlanos, encabezadoVacio } = contenido;
+  const { secciones, itemsPlanos } = contenido;
   return (
     <div {...listbox.propsLista()} aria-label="Resultados" className={styles.lista}>
-      {encabezadoVacio && <p className={styles.overline}>{encabezadoVacio}</p>}
       {secciones.map((seccion) => (
         <SeccionPaleta
           key={seccion.clave}
