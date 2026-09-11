@@ -9,12 +9,12 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · próxima versión
-<!-- sincronizado-hasta: 6733b7e #383 -->
+<!-- sincronizado-hasta: 5563f0a #437 -->
 
 - **Detalle de plantación más claro.** Tablero, Datos y Configuración entran en
   una sola pantalla, las descargas se juntan en el menú "Exportar", cada
   especie muestra su porcentaje y las parcelas se recorren con flechas.
-  <!-- #344 #358 #363 #365 #371 -->
+  <!-- #344 #358 #363 #365 #371 #420 #435 -->
   - En la web de pruebas, entrá a una plantación.
   - Tocá "Exportar" y recorré las parcelas con las flechas del tablero.
   - Pasá a Configuración y revisá "Comportamiento en la app" y las especies.
@@ -28,32 +28,32 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Esperá ver: con la parcela cambian el total, las especies y el mapa; con
     "Ver todos" vuelve la plantación entera y aparecen todas las parcelas.
 - **Compará árboles sin cerrar ventanas.** El detalle de un árbol se abre al
-  costado de la tabla; tocá otra fila y cambia al instante. <!-- #350 -->
+  costado de la tabla; tocá otra fila y cambia al instante. <!-- #350 #420 -->
   - En la web de pruebas, abrí una plantación y andá a Datos → Árboles.
   - Tocá una fila y después otra.
   - Esperá ver: el panel de la derecha cambia de árbol, la tabla sigue visible
     y la fila abierta queda resaltada.
 - **Nuevos filtros en Árboles.** Filtrá por grupo (después de elegir la parcela)
-  y por árboles con o sin foto. <!-- #356 -->
+  y por árboles con o sin foto. <!-- #356 #425 -->
   - En la web de pruebas, andá a Datos → Árboles de una plantación.
   - Elegí una parcela, después un grupo, y probá "Con foto" y "Sin foto".
   - Esperá ver: Grupo se habilita recién al elegir la parcela y la tabla se
     achica con cada filtro.
 - **Especies y usuarios se editan al costado.** Al tocar una especie o una
   persona se abre un panel con sus datos y en qué plantaciones está, y las
-  listas suman filtros y búsqueda. <!-- #348 #363 -->
+  listas suman filtros y búsqueda. <!-- #348 #363 #408 #420 #424 #432 -->
   - En la web de pruebas, andá a Especies, filtrá "Sin uso" y tocá una especie.
   - En Usuarios, buscá a alguien por su email y tocá su fila.
   - Esperá ver: el panel lateral con "Habilitada en" para la especie y
     "Plantaciones asignadas" para la persona, sin que se tape la lista.
 - **Buscá plantaciones más rápido.** El listado de Plantaciones busca por lugar
   o temporada y filtra por estado y temporada. Ya no está el filtro por fecha
-  de creación. <!-- #352 #363 -->
+  de creación. <!-- #352 #363 #424 -->
   - En la web de pruebas, andá a Plantaciones.
   - Escribí una temporada en el buscador y elegí "Finalizadas".
   - Esperá ver: solo las plantaciones que coinciden, con el recuento al pie.
 - **Asignar técnicos sin confusiones.** El selector muestra el email de cada
-  persona, tiene buscador y ofrece solo técnicos activos. <!-- #374 -->
+  persona, tiene buscador y ofrece solo técnicos activos. <!-- #374 #402 -->
   - En la web de pruebas, abrí una plantación → Configuración → "Asignar
     técnico".
   - Buscá a alguien por su email.
@@ -70,11 +70,20 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     exportar.
 - **Novedades de cada versión.** Abajo en el menú lateral ves con qué versión
   estás trabajando; un punto te avisa cuando hay algo nuevo y al entrar ves
-  qué cambió en cada versión. <!-- #335 -->
+  qué cambió en cada versión. <!-- #335 #415 -->
   - En la web de pruebas, mirá el pie del menú lateral y tocá "Novedades".
   - Probá también la búsqueda rápida: Ctrl/⌘ K → "Ver novedades".
   - Esperá ver: esta misma pantalla, con la versión en uso y una tarjeta por
     versión; al volver, el punto del menú se apaga.
+- **Roles con nombre completo.** Los administradores ahora figuran como
+  "Administrador" en Usuarios y en Configuración, y la búsqueda rápida muestra
+  el rol de cada persona escrito completo. Si a alguien le falta el nombre,
+  aparece con un código corto en vez de quedar en blanco. <!-- #432 -->
+  - En la web de pruebas, entrá a Usuarios y tocá "Agregar usuario".
+  - Abrí el selector de rol; después apretá Ctrl/⌘ K y escribí el nombre de
+    una persona.
+  - Esperá ver: "Administrador" en la columna Rol y en el selector, y el rol
+    completo ("Técnico", "Administrador") junto a cada persona en la búsqueda.
 - **Tus plantaciones aparecen apenas entrás.** Ya no hace falta recargar la
   página después de iniciar sesión para ver las plantaciones y la temporada
   activa. <!-- #341 -->
@@ -108,6 +117,29 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **Logo prolijo.** El logo del menú lateral ya no aparece estirado. <!-- #329 -->
   - En la web de pruebas, desde la compu, mirá el logo arriba del menú lateral.
   - Esperá ver: el logo con su proporción original.
+- **Búsqueda rápida más precisa.** Encuentra las acciones aunque las escribas
+  sin tildes, y al abrirla sin escribir muestra un solo título.
+  <!-- #402 #423 -->
+  - En la web de pruebas, entrá a una plantación, apretá Ctrl/⌘ K y escribí
+    "configuracion", sin tilde.
+  - Borrá lo escrito.
+  - Esperá ver: "Ir a Configuración…" entre las acciones y, con el buscador
+    vacío, un solo título arriba de la lista ("Recientes" o "Sugerencias").
+- **Recuentos en singular.** Con una sola unidad, los números ya no aparecen en
+  plural: "1 grupo", "1 especie", "1 árbol", "1 habilitada". <!-- #435 -->
+  - En la web de pruebas, abrí una plantación → Datos → Grupos y elegí una
+    parcela que tenga un solo grupo.
+  - Pasá al Tablero y buscá esa parcela entre las tarjetas.
+  - Esperá ver: "1 grupo" en su tarjeta, no "1 grupos".
+- **Los cambios se ven enseguida en toda la web.** Al editar una especie,
+  asignar un técnico o editar a una persona, las demás pantallas muestran el
+  dato nuevo sin esperar ni recargar. <!-- #408 -->
+  - En la web de pruebas, entrá a Usuarios y mirá la columna Plantaciones de
+    un técnico.
+  - Enseguida asignalo a otra plantación (Configuración → "Asignar técnico")
+    y volvé a Usuarios sin recargar.
+  - Esperá ver: la columna Plantaciones ya suma una. Para dejarlo como
+    estaba, quitalo con la ✕ de su fila en Configuración.
 - **Aviso cuando te quitan de una plantación.** Si un administrador te quita
   de una plantación, al sincronizar la app te avisa y tus datos descargados
   quedan para consulta, sin perderse. <!-- #318 #334 -->
