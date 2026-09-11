@@ -1,4 +1,15 @@
-import { formatearEntero } from '../formato';
+import { concordar, formatearEntero, pluralizar } from '../formato';
+
+test('concordar: singular solo con uno, plural con cero y con más', () => {
+  expect(concordar(1, 'árbol', 'árboles')).toBe('árbol');
+  expect(concordar(0, 'árbol', 'árboles')).toBe('árboles');
+  expect(concordar(2, 'árbol', 'árboles')).toBe('árboles');
+});
+
+test('pluralizar: cantidad formateada más el sustantivo concordado', () => {
+  expect(pluralizar(1, 'plantación', 'plantaciones')).toBe('1 plantación');
+  expect(pluralizar(1260, 'árbol', 'árboles')).toBe('1.260 árboles');
+});
 
 test('agrega separador de miles es-AR (punto)', () => {
   expect(formatearEntero(12345)).toBe('12.345');
