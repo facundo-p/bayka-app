@@ -15,6 +15,12 @@ vi.mock('../../lib/supabase', async () => {
 vi.mock('../../components/mapa/MapaPuntos', () => ({
   MapaPuntos: () => <div>Mapa del árbol</div>,
 }));
+vi.mock('../../components/PlantationMap', () => ({
+  PlantationMap: () => <div>Mapa de la plantación</div>,
+}));
+
+/** El drill-down monta el dashboard entero antes de llegar a Datos. */
+const ESPERA_RUTA_MS = 5000;
 
 const FILA_PLANTACION = {
   id: 'plant-1',
@@ -408,6 +414,39 @@ describe('sección Árboles', () => {
     await waitFor(() =>
       expect(screen.queryByRole('complementary', PANEL_A001)).not.toBeInTheDocument(),
     );
+  });
+
+  test('drill-down desde el dashboard: parcela y grupo se suman a los filtros de Árboles', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+    await usuario.click(
+      await screen.findByRole('link', { name: /Ver datos/ }, { timeout: ESPERA_RUTA_MS }),
+    );
+
+    await usuario.click(await screen.findByRole('cell', { name: 'Norte' }));
+    await screen.findByRole('cell', { name: 'Línea 1' });
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+
+    await usuario.click(filaDe('Línea 1'));
+    await screen.findByRole('cell', { name: 'A-001' });
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+    expect(screen.getByLabelText('Grupo')).toHaveValue('gr-1');
+
+    await usuario.selectOptions(screen.getByLabelText('Especie'), 'sp-1');
+    await waitFor(() =>
+      expect(consultasListaArboles().at(-1)?.filtros).toEqual(
+        expect.arrayContaining([
+          { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
+          { metodo: 'eq', columna: 'group_id', valor: 'gr-1' },
+          { metodo: 'eq', columna: 'species_id', valor: 'sp-1' },
+        ]),
+      ),
+    );
+
+    // Volver a Grupos por el selector conserva el scope de parcela.
+    await usuario.click(screen.getByRole('radio', { name: 'Grupos' }));
+    await screen.findByRole('cell', { name: 'Línea 1' });
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
   });
 
   test('clickear otra fila cambia el panel en vez de cerrarlo', async () => {
