@@ -1,10 +1,11 @@
 import { useParams } from 'react-router';
+import { SEGMENTO_DATOS } from '../../lib/rutasPlantacion';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 import { COLUMNAS_PARCELAS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
 import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
-import { SEGMENTO_DATOS, useIrASeccion } from './seccionesDatos';
 import { useParcelasDatos } from './useDatosQueries';
+import { useIrASeccion } from './useIrASeccion';
 
 const TEXTOS: TextosSeccion = {
   unidad: 'parcelas',

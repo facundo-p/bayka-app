@@ -4,6 +4,7 @@
  * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
  * árboles se buscan por `sub_id`, no por ID global.
  */
+import { PARAM_URL, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutasPlantacion';
 import { supabase } from '../lib/supabase';
 import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
@@ -50,7 +51,7 @@ async function buscarPlantaciones(texto: string): Promise<ResultadoBusqueda[]> {
       id: plantacion.id,
       titulo: plantacion.lugar,
       meta: plantacion.periodo,
-      to: `/plantaciones/${plantacion.id}`,
+      to: rutaPlantacion(plantacion.id),
     }));
 }
 
@@ -105,7 +106,7 @@ async function buscarParcelas(texto: string, scope?: ScopeBusqueda): Promise<Res
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
     meta: fila.plantations?.lugar ?? undefined,
-    to: `/plantaciones/${fila.plantation_id}/datos/parcelas`,
+    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.parcelas),
   }));
 }
 
@@ -131,7 +132,7 @@ async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<Resul
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
     meta: fila.parcelas?.codigo ? `Parcela ${fila.parcelas.codigo}` : undefined,
-    to: `/plantaciones/${fila.plantation_id}/datos/grupos`,
+    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.grupos),
   }));
 }
 
@@ -141,6 +142,11 @@ type FilaArbolBusqueda = {
   species: { nombre: string } | null;
   groups: { plantation_id: string; codigo: string } | null;
 };
+
+/** Deep-link al listado de Árboles con el SubID ya cargado en su buscador. */
+function busquedaDeSubId(subId: string): URLSearchParams {
+  return new URLSearchParams({ [PARAM_URL.busqueda]: subId });
+}
 
 async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
@@ -158,8 +164,7 @@ async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<Resu
       id: fila.id,
       titulo: fila.sub_id,
       meta: fila.species?.nombre ?? fila.groups?.codigo,
-      // El listado de árboles lee `q` del querystring (filtrosUrl.ts): deep-link con el SubID pre-filtrado.
-      to: `/plantaciones/${fila.groups!.plantation_id}/datos/arboles?q=${encodeURIComponent(fila.sub_id)}`,
+      to: rutaDatos(fila.groups!.plantation_id, SEGMENTO_DATOS.arboles, busquedaDeSubId(fila.sub_id)),
     }));
 }
 

@@ -19,6 +19,7 @@ import {
 } from '../components';
 import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
+import { rutaPlantacion, TAB_DETALLE } from '../lib/rutasPlantacion';
 import type { Plantacion } from '../queries/plantationQueries';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
 import { useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
@@ -30,9 +31,9 @@ const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar l
 
 function tabsDePlantacion(id: string): TabItem[] {
   return [
-    { to: `/plantaciones/${id}`, label: 'Dashboard', end: true },
-    { to: `/plantaciones/${id}/datos`, label: 'Datos' },
-    { to: `/plantaciones/${id}/configuracion`, label: 'Configuración' },
+    { to: rutaPlantacion(id), label: 'Dashboard', end: true },
+    { to: rutaPlantacion(id, TAB_DETALLE.datos), label: 'Datos' },
+    { to: rutaPlantacion(id, TAB_DETALLE.configuracion), label: 'Configuración' },
   ];
 }
 

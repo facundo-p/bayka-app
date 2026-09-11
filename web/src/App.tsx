@@ -5,6 +5,7 @@ import { BannerEntornoPruebas } from './components/BannerEntornoPruebas';
 import { RequireAccess, RequireSuperadmin } from './components/RequireAccess';
 import { AuthProvider } from './hooks/useAuth';
 import { queryClient } from './lib/queryClient';
+import { SEGMENTO_DATOS, TAB_DETALLE } from './lib/rutasPlantacion';
 import { LoginScreen } from './screens/LoginScreen';
 import { EstablecerPasswordScreen } from './screens/EstablecerPasswordScreen';
 import { EspeciesScreen } from './screens/EspeciesScreen';
@@ -18,7 +19,6 @@ import { ArbolesSection } from './screens/datos/ArbolesSection';
 import { DatosTab } from './screens/datos/DatosTab';
 import { GruposSection } from './screens/datos/GruposSection';
 import { ParcelasSection } from './screens/datos/ParcelasSection';
-import { SEGMENTO_DATOS } from './screens/datos/seccionesDatos';
 
 /** Rutas sin router: permite testearlas con MemoryRouter. */
 export function AppRoutes() {
@@ -33,13 +33,13 @@ export function AppRoutes() {
           <Route path="/plantaciones" element={<PlantacionesScreen />} />
           <Route path="/plantaciones/:id" element={<PlantacionDetailScreen />}>
             <Route index element={<DashboardTab />} />
-            <Route path="datos" element={<DatosTab />}>
+            <Route path={TAB_DETALLE.datos} element={<DatosTab />}>
               <Route index element={<Navigate to={SEGMENTO_DATOS.parcelas} replace />} />
               <Route path={SEGMENTO_DATOS.parcelas} element={<ParcelasSection />} />
               <Route path={SEGMENTO_DATOS.grupos} element={<GruposSection />} />
               <Route path={SEGMENTO_DATOS.arboles} element={<ArbolesSection />} />
             </Route>
-            <Route path="configuracion" element={<ConfiguracionTab />} />
+            <Route path={TAB_DETALLE.configuracion} element={<ConfiguracionTab />} />
           </Route>
           <Route path="/especies" element={<EspeciesScreen />} />
           <Route path="/novedades" element={<NovedadesScreen />} />

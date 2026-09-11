@@ -8,6 +8,7 @@ import {
 } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { formatearEntero } from '../../lib/formato';
+import { SEGMENTO_DATOS } from '../../lib/rutasPlantacion';
 import {
   ARBOLES_POR_PAGINA,
   type ArbolDetalle,
@@ -18,7 +19,6 @@ import { ArbolesFiltros } from './ArbolesFiltros';
 import { codigoParcelaDe, nombreTecnicoDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
-import { SEGMENTO_DATOS } from './seccionesDatos';
 import { useArbolesSection } from './useArbolesSection';
 import { VacioConFiltros } from './VacioConFiltros';
 
