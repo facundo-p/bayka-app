@@ -1,5 +1,5 @@
-import { varsCss } from '../../lib/cssVars';
-import { formatearEntero, porcentaje } from '../../lib/formato';
+import { BarraProgreso } from '../../components/BarraProgreso';
+import { formatearEntero, PORCENTAJE_COMPLETO, porcentaje } from '../../lib/formato';
 import type { EspecieColoreada } from './coloresEspecies';
 import styles from './SpeciesDistribution.module.css';
 
@@ -27,7 +27,6 @@ function FilaEspecie({
   maximo: number;
   total: number;
 }) {
-  const ancho = `${(especie.cantidad / maximo) * 100}%`;
   return (
     <li className={styles.fila}>
       <div className={styles.encabezadoFila}>
@@ -36,9 +35,12 @@ function FilaEspecie({
         <span className={styles.share}>{`${porcentaje(especie.cantidad, total)}%`}</span>
         <span className={styles.cantidad}>{formatearEntero(especie.cantidad)}</span>
       </div>
-      <div className={styles.barra}>
-        <div className={styles.relleno} style={varsCss({ ancho, color: especie.color })} />
-      </div>
+      {/* Relativa a la especie más cargada, no al total: la primera va llena. */}
+      <BarraProgreso
+        alto="md"
+        color={especie.color}
+        porcentaje={(especie.cantidad / maximo) * PORCENTAJE_COMPLETO}
+      />
     </li>
   );
 }

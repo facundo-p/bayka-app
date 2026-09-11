@@ -5,8 +5,8 @@ import {
   listarPlantaciones,
   obtenerTemporadaActivaId,
 } from '../queries/plantationQueries';
-import { varsCss } from '../lib/cssVars';
 import { formatearEntero, PORCENTAJE_COMPLETO, porcentajeDeObjetivo } from '../lib/formato';
+import { BarraProgreso } from './BarraProgreso';
 import styles from './SeasonCard.module.css';
 
 /** Card "Temporada activa" del sidebar: la última plantación activa en la que se
@@ -33,9 +33,7 @@ export function SeasonCard() {
         <span className={styles.periodo}>{temporada.periodo}</span>
       </div>
       <span className={styles.lugar}>{temporada.lugar}</span>
-      <div className={styles.barra}>
-        <div className={styles.relleno} style={varsCss({ ancho: `${ancho}%` })} />
-      </div>
+      <BarraProgreso alto="md" porcentaje={ancho} />
       <span className={styles.pie}>
         {formatearEntero(temporada.arboles)} árboles
         {pct !== null && ` · ${pct}%`}

@@ -1,0 +1,49 @@
+/* El carril recorta al relleno con su mismo radio. */
+.barra {
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.sm {
+  height: var(--alto-barra-progreso-sm);
+}
+
+.md {
+  height: var(--alto-barra-progreso-md);
+}
+
+.lg {
+  height: var(--alto-barra-progreso-lg);
+}
+
+.superficie {
+  background-color: var(--color-surface-sunken);
+}
+
+.sobrePrimario {
+  background-color: var(--color-on-primary-track);
+}
+
+.relleno {
+  height: 100%;
+  border-radius: var(--radius-full);
+  /* --ancho y --color llegan por inline style: datos por instancia (ver
+     src/lib/cssVars.ts), no valores de diseño. */
+  width: var(--ancho);
+}
+
+.secundario {
+  background-color: var(--color-secondary);
+}
+
+.primarioSuave {
+  background-color: var(--color-primary-bg-muted);
+}
+
+.degradado {
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-plantation-light));
+}
+
+.colorPropio {
+  background: var(--color);
+}

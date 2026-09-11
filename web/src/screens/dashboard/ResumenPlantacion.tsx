@@ -1,6 +1,6 @@
 import { AlertTriangle } from 'lucide-react';
+import { BarraProgreso, type RellenoBarra } from '../../components/BarraProgreso';
 import { cx } from '../../lib/classNames';
-import { varsCss } from '../../lib/cssVars';
 import { formatearEntero, porcentajeDeObjetivo } from '../../lib/formato';
 import type { KpisArboles } from '../../queries/dashboardQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
@@ -45,11 +45,11 @@ function FilaAlcance({ codigo, nombre, onVerTodos }: AlcanceMetrica) {
 function CeldaTasa({
   etiqueta,
   porcentaje,
-  claseBarra,
+  relleno,
 }: {
   etiqueta: string;
   porcentaje: number;
-  claseBarra: string;
+  relleno: RellenoBarra;
 }) {
   return (
     <div className={styles.celda}>
@@ -57,12 +57,7 @@ function CeldaTasa({
         <span className={styles.overline}>{etiqueta}</span>
         <span className={styles.celdaValor}>{`${porcentaje}%`}</span>
       </div>
-      <div className={styles.barra}>
-        <div
-          className={cx(styles.relleno, claseBarra)}
-          style={varsCss({ ancho: `${porcentaje}%` })}
-        />
-      </div>
+      <BarraProgreso alto="sm" fondo="sobrePrimario" relleno={relleno} porcentaje={porcentaje} />
     </div>
   );
 }
@@ -104,21 +99,15 @@ export function ResumenPlantacion({ datos, objetivo, alcance }: ResumenPlantacio
           <span className={styles.meta}>{textoMeta(objetivo, avance)}</span>
         </div>
         {avance !== null && (
-          <div className={styles.track}>
-            <div className={styles.fill} style={varsCss({ ancho: `${avance}%` })} />
-          </div>
+          <BarraProgreso alto="lg" fondo="sobrePrimario" relleno="degradado" porcentaje={avance} />
         )}
       </div>
       <div className={styles.celdas}>
-        <CeldaTasa
-          etiqueta="Con GPS"
-          porcentaje={datos.porcentajeConGps}
-          claseBarra={styles.rellenoGps}
-        />
+        <CeldaTasa etiqueta="Con GPS" porcentaje={datos.porcentajeConGps} relleno="secundario" />
         <CeldaTasa
           etiqueta="Con foto"
           porcentaje={datos.porcentajeConFoto}
-          claseBarra={styles.rellenoFoto}
+          relleno="primarioSuave"
         />
         <CeldaSinIdentificar cantidad={datos.arbolesNN} />
       </div>
