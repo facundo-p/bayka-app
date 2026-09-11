@@ -15,3 +15,8 @@ export function concordar(cantidad: number, singular: string, plural: string): s
 export function pluralizar(cantidad: number, singular: string, plural: string): string {
   return `${formatearEntero(cantidad)} ${concordar(cantidad, singular, plural)}`;
 }
+
+/** Opción de un select de entidades con código, ej. "P1 — Norte". */
+export function etiquetaCodigoNombre({ codigo, nombre }: { codigo: string; nombre: string }): string {
+  return `${codigo} — ${nombre}`;
+}

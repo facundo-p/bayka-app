@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Select } from '../../components';
+import { etiquetaCodigoNombre } from '../../lib/formato';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
 
 interface SelectParcelaProps {
@@ -30,7 +31,7 @@ export function SelectParcela({ parcelas, value, onChange, className }: SelectPa
       <option value="">Parcela: todas</option>
       {parcelas.map((parcela) => (
         <option key={parcela.id} value={parcela.id}>
-          {`${parcela.codigo} — ${parcela.nombre}`}
+          {etiquetaCodigoNombre(parcela)}
         </option>
       ))}
     </Select>

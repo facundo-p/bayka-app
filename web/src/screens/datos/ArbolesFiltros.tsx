@@ -1,10 +1,8 @@
 import { CampoBusqueda, Select } from '../../components';
+import { etiquetaCodigoNombre } from '../../lib/formato';
 import type { EspecieCatalogo } from '../../queries/especieQueries';
-import {
-  ESPECIE_SIN_IDENTIFICAR,
-  type GrupoConDetalle,
-  type ParcelaConStats,
-} from '../../queries/dataExplorerQueries';
+import type { GrupoConDetalle, ParcelaConStats } from '../../queries/dataExplorerQueries';
+import { ESPECIE_NO_RESUELTA, ESPECIE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { FILTRO_FOTO, FILTRO_GPS, type FiltrosUi } from './filtrosArboles';
 import { SelectParcela } from './SelectParcela';
 import styles from './SeccionesDatos.module.css';
@@ -73,10 +71,10 @@ export function ArbolesFiltros({
         onChange={(evento) => onCambiar('speciesId', evento.target.value)}
       >
         <option value="">Especie: todas</option>
-        <option value={ESPECIE_SIN_IDENTIFICAR}>N/N (sin identificar)</option>
+        <option value={ESPECIE_SIN_IDENTIFICAR}>{`${ESPECIE_NO_RESUELTA} (sin identificar)`}</option>
         {especies.map((especie) => (
           <option key={especie.id} value={especie.id}>
-            {`${especie.codigo} — ${especie.nombre}`}
+            {etiquetaCodigoNombre(especie)}
           </option>
         ))}
       </Select>
