@@ -6,18 +6,23 @@ import {
   Paginacion,
   Table,
 } from '../../components';
-import { ARBOLES_POR_PAGINA } from '../../queries/dataExplorerQueries';
+import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { formatearEntero } from '../../lib/formato';
-import type { ArbolDetalle, PaginaArboles } from '../../queries/dataExplorerQueries';
-import type { PerfilResumen } from '../../queries/usuarioQueries';
+import {
+  ARBOLES_POR_PAGINA,
+  type ArbolDetalle,
+  type PaginaArboles,
+} from '../../queries/dataExplorerQueries';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
+import { codigoParcelaDe, nombreTecnicoDe } from './arbolFormato';
+import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
 import { SEGMENTO_DATOS } from './seccionesDatos';
-import { VacioConFiltros } from './VacioConFiltros';
 import { useArbolesSection } from './useArbolesSection';
-import { columnasArboles } from './columnas';
-import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
+import { VacioConFiltros } from './VacioConFiltros';
+
+type SeccionArboles = ReturnType<typeof useArbolesSection>;
 
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
 function rangoVisible(pagina: number, total: number): string {
@@ -26,78 +31,66 @@ function rangoVisible(pagina: number, total: number): string {
   return `Mostrando ${formatearEntero(desde)}–${formatearEntero(hasta)} de ${formatearEntero(total)}`;
 }
 
-function TablaArboles({
-  datos,
-  codigosParcela,
-  perfiles,
-  pagina,
-  onCambiarPagina,
-  onRowClick,
-  seleccionadoId,
-}: {
-  datos: PaginaArboles;
-  codigosParcela: Map<string, string>;
-  perfiles: PerfilResumen[];
-  pagina: number;
-  onCambiarPagina: (pagina: number) => void;
-  onRowClick: (arbol: ArbolDetalle) => void;
-  seleccionadoId: string | undefined;
-}) {
-  const nombresUsuario = new Map(perfiles.map((perfil) => [perfil.id, perfil.nombre]));
+function pieTabla(pagina: number, datos: PaginaArboles): string | undefined {
+  if (datos.total === 0) return undefined;
+  return `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle al costado`;
+}
+
+function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: PaginaArboles }) {
+  const { pagina, setPagina, arbolSeleccionado } = seccion;
   const columnas = useColumnasVisibles(
-    columnasArboles(codigosParcela, nombresUsuario),
-    seleccionadoId !== undefined,
+    columnasArboles(seccion.codigosParcela, seccion.nombresUsuario),
+    arbolSeleccionado !== null,
   );
-  const hayArboles = datos.total > 0;
+  const paginacion = (
+    <Paginacion pagina={pagina} totalPaginas={datos.totalPaginas} onCambiar={setPagina} />
+  );
   return (
-    <CardTabla
-      pie={
-        hayArboles
-          ? `${rangoVisible(pagina, datos.total)} · clic en una fila abre el detalle al costado`
-          : undefined
-      }
-      acciones={
-        hayArboles && (
-          <Paginacion
-            pagina={pagina}
-            totalPaginas={datos.totalPaginas}
-            onCambiar={onCambiarPagina}
-          />
-        )
-      }
-    >
+    <CardTabla pie={pieTabla(pagina, datos)} acciones={datos.total > 0 && paginacion}>
       <Table
         columns={columnas}
         rows={datos.arboles}
         getRowKey={(arbol) => arbol.id}
-        claveSeleccionada={seleccionadoId}
+        claveSeleccionada={arbolSeleccionado?.id}
         emptyMessage="Sin árboles para mostrar"
-        onRowClick={onRowClick}
+        onRowClick={seccion.setArbolSeleccionado}
       />
     </CardTabla>
   );
 }
 
+function PanelArbolSeleccionado({ seccion, arbol }: { seccion: SeccionArboles; arbol: ArbolDetalle }) {
+  return (
+    <ArbolDetallePanel
+      arbol={arbol}
+      parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
+      tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
+      onCerrar={() => seccion.setArbolSeleccionado(null)}
+    />
+  );
+}
+
+function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
+  const { arboles, arbolSeleccionado } = seccion;
+  if (!arboles.data) return <Cargando label="Cargando árboles…" />;
+  if (arboles.data.total === 0 && seccion.hayFiltro) {
+    return <VacioConFiltros mensaje="Ningún árbol coincide con los filtros" onLimpiar={seccion.limpiar} />;
+  }
+  // La key remonta el panel al cambiar de fila: la foto y el mapa se rearman.
+  const panel = arbolSeleccionado && (
+    <PanelArbolSeleccionado key={arbolSeleccionado.id} seccion={seccion} arbol={arbolSeleccionado} />
+  );
+  return (
+    <LayoutConPanel panel={panel}>
+      <TablaArboles seccion={seccion} datos={arboles.data} />
+    </LayoutConPanel>
+  );
+}
+
 /** Sección Árboles de la tab Datos: toolbar + filtros + tabla paginada server-side. */
 export function ArbolesSection() {
-  const {
-    filtros,
-    setFiltro,
-    hayFiltro,
-    limpiar,
-    parcelas,
-    grupos,
-    especies,
-    perfiles,
-    arboles,
-    codigosParcela,
-    nombresUsuario,
-    pagina,
-    setPagina,
-    arbolSeleccionado,
-    setArbolSeleccionado,
-  } = useArbolesSection();
-
+  const seccion = useArbolesSection();
+  const { arboles, parcelas, grupos, especies } = seccion;
   if (arboles.isError) {
     return (
       <ErrorConReintento
@@ -110,52 +103,14 @@ export function ArbolesSection() {
     <>
       <DatosToolbar segmento={SEGMENTO_DATOS.arboles}>
         <ArbolesFiltros
-          filtros={filtros}
+          filtros={seccion.filtros}
           parcelas={parcelas.data ?? []}
           grupos={grupos.data ?? []}
           especies={especies.data ?? []}
-          onCambiar={setFiltro}
+          onCambiar={seccion.setFiltro}
         />
       </DatosToolbar>
-      {arboles.isPending ? (
-        <Cargando label="Cargando árboles…" />
-      ) : arboles.data.total === 0 && hayFiltro ? (
-        <VacioConFiltros mensaje="Ningún árbol coincide con los filtros" onLimpiar={limpiar} />
-      ) : (
-        <LayoutConPanel
-          panel={
-            arbolSeleccionado && (
-              <ArbolDetallePanel
-                // Remonta el panel al cambiar de fila: la foto y el mapa se
-                // rearman con el árbol nuevo.
-                key={arbolSeleccionado.id}
-                arbol={arbolSeleccionado}
-                parcelaCodigo={
-                  (arbolSeleccionado.parcelaId &&
-                    codigosParcela.get(arbolSeleccionado.parcelaId)) ||
-                  null
-                }
-                tecnicoNombre={
-                  (arbolSeleccionado.usuarioRegistro &&
-                    nombresUsuario.get(arbolSeleccionado.usuarioRegistro)) ||
-                  null
-                }
-                onCerrar={() => setArbolSeleccionado(null)}
-              />
-            )
-          }
-        >
-          <TablaArboles
-            datos={arboles.data}
-            codigosParcela={codigosParcela}
-            perfiles={perfiles.data ?? []}
-            pagina={pagina}
-            onCambiarPagina={setPagina}
-            onRowClick={setArbolSeleccionado}
-            seleccionadoId={arbolSeleccionado?.id}
-          />
-        </LayoutConPanel>
-      )}
+      <CuerpoArboles seccion={seccion} />
     </>
   );
 }

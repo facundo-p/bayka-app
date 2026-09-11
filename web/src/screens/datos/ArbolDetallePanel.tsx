@@ -6,7 +6,7 @@ import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { obtenerUrlFoto, tieneFotoSubida } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
-import { tieneGps, type ArbolConGps } from './arbolFormato';
+import { SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
 import { Coordenadas, EspecieConPunto } from './celdas';
 import styles from './ArbolDetallePanel.module.css';
 
@@ -16,8 +16,6 @@ interface ArbolDetallePanelProps {
   tecnicoNombre: string | null;
   onCerrar: () => void;
 }
-
-const SIN_DATO = '—';
 
 function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
   return (

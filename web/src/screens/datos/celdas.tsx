@@ -4,11 +4,11 @@ import { tieneFotoSubida } from '../../services/fotoService';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { TAMANO_ICONO } from '../../theme/iconos';
-import { etiquetaEspecie, tieneGps, type ArbolConGps } from './arbolFormato';
+import { etiquetaEspecie, SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
 import styles from './SeccionesDatos.module.css';
 
 export function CeldaDescripcion({ descripcion }: { descripcion: string | null }) {
-  if (!descripcion) return <>—</>;
+  if (!descripcion) return <>{SIN_DATO}</>;
   return (
     <span className={styles.descripcion} title={descripcion}>
       {descripcion}
@@ -32,7 +32,7 @@ export function Coordenadas({ arbol, className }: { arbol: ArbolConGps; classNam
 }
 
 export function CeldaGps({ arbol }: { arbol: ArbolDetalle }) {
-  if (!tieneGps(arbol)) return '—';
+  if (!tieneGps(arbol)) return SIN_DATO;
   return <Coordenadas arbol={arbol} className={styles.gps} />;
 }
 

@@ -6,7 +6,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { usePerfiles } from '../../hooks/usePerfiles';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarArboles, type ArbolDetalle } from '../../queries/dataExplorerQueries';
-import { aFiltrosArboles } from './filtrosArboles';
+import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
@@ -14,56 +14,49 @@ import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 /** Retardo del debounce de la búsqueda por ID, en ms. */
 const RETARDO_BUSQUEDA_MS = 300;
 
+/** Página server-side de árboles con los filtros aplicados. */
+function usePaginaArboles(plantationId: string, filtros: FiltrosUi) {
+  const [pagina, setPagina] = useState(1);
+  const busqueda = useDebounce(filtros.busqueda, RETARDO_BUSQUEDA_MS);
+  const aplicados = { ...filtros, busqueda };
+  const arboles = useQuery({
+    queryKey: CLAVE_QUERY.datosArboles(plantationId, aplicados, pagina),
+    queryFn: () => listarArboles(plantationId, aFiltrosArboles(aplicados), pagina),
+    placeholderData: keepPreviousData,
+  });
+  // Cualquier cambio de filtro vuelve a la página 1. La clave es el querystring
+  // de los filtros aplicados: un filtro nuevo entra solo, sin sumarlo acá.
+  const claveFiltros = filtrosAParams(aplicados).toString();
+  useEffect(() => setPagina(1), [claveFiltros]);
+  return { arboles, pagina, setPagina };
+}
+
+function mapaPorId<T extends { id: string }>(filas: T[] | undefined, valor: (fila: T) => string) {
+  return new Map((filas ?? []).map((fila) => [fila.id, valor(fila)]));
+}
+
 /**
- * Estado y datos de la sección Árboles: filtros persistidos en URL, búsqueda
- * con debounce, las cinco queries (parcelas/grupos/especies/perfiles/árboles)
- * y el detalle seleccionado. El componente que lo consume queda solo con
+ * Estado y datos de la sección Árboles: filtros en la URL, página, catálogos
+ * de los selects y el árbol abierto en el panel. El componente queda solo con
  * presentación.
  */
 export function useArbolesSection() {
   const { id = '' } = useParams();
-  const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
-  const [pagina, setPagina] = useState(1);
+  const filtrosDatos = useFiltrosDatos();
   const [arbolSeleccionado, setArbolSeleccionado] = useState<ArbolDetalle | null>(null);
-  const busquedaDebounced = useDebounce(filtros.busqueda, RETARDO_BUSQUEDA_MS);
-  const filtrosQuery = { ...filtros, busqueda: busquedaDebounced };
-
   const parcelas = useParcelasDatos(id);
-  const grupos = useGruposDatos(id, filtros.parcelaId);
+  const grupos = useGruposDatos(id, filtrosDatos.filtros.parcelaId);
   const especies = useCatalogoEspecies();
   const perfiles = usePerfiles();
-  const arboles = useQuery({
-    queryKey: CLAVE_QUERY.datosArboles(id, filtrosQuery, pagina),
-    queryFn: () => listarArboles(id, aFiltrosArboles(filtrosQuery), pagina),
-    placeholderData: keepPreviousData,
-  });
-
-  const codigosParcela = new Map(
-    (parcelas.data ?? []).map((parcela) => [parcela.id, parcela.codigo]),
-  );
-  const nombresUsuario = new Map(
-    (perfiles.data ?? []).map((perfil) => [perfil.id, perfil.nombre]),
-  );
-
-  // Cualquier cambio de filtro vuelve a la página 1. La clave es el querystring
-  // de los filtros aplicados: un filtro nuevo entra solo, sin sumarlo acá.
-  const claveFiltros = filtrosAParams(filtrosQuery).toString();
-  useEffect(() => setPagina(1), [claveFiltros]);
-
+  const paginaArboles = usePaginaArboles(id, filtrosDatos.filtros);
   return {
-    filtros,
-    setFiltro,
-    hayFiltro,
-    limpiar,
+    ...filtrosDatos,
+    ...paginaArboles,
     parcelas,
     grupos,
     especies,
-    perfiles,
-    arboles,
-    codigosParcela,
-    nombresUsuario,
-    pagina,
-    setPagina,
+    codigosParcela: mapaPorId(parcelas.data, (parcela) => parcela.codigo),
+    nombresUsuario: mapaPorId(perfiles.data, (perfil) => perfil.nombre),
     arbolSeleccionado,
     setArbolSeleccionado,
   };
