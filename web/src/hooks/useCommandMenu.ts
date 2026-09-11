@@ -107,13 +107,10 @@ function useRecientes() {
   return { recientes, registrarReciente };
 }
 
-export function CommandMenuProvider({ children }: { children: ReactNode }) {
-  const { abierto, abrir, cerrar } = useAperturaPorAtajo();
+/** El scope quitado se reactiva al cambiar de plantación (otro id) o al reabrir. */
+function useScopeQuitable(abierto: boolean) {
   const scopeContextual = useScopeContextual();
-  const { recientes, registrarReciente } = useRecientes();
   const [scopeQuitado, setScopeQuitado] = useState<string | null>(null);
-
-  // El scope se reactiva al cambiar de plantación (otro id) o al reabrir.
   useEffect(() => {
     if (abierto) setScopeQuitado(null);
   }, [abierto]);
@@ -124,7 +121,13 @@ export function CommandMenuProvider({ children }: { children: ReactNode }) {
     () => setScopeQuitado(scopeContextual?.plantationId ?? null),
     [scopeContextual],
   );
+  return { scope, limpiarScope };
+}
 
+export function CommandMenuProvider({ children }: { children: ReactNode }) {
+  const { abierto, abrir, cerrar } = useAperturaPorAtajo();
+  const { scope, limpiarScope } = useScopeQuitable(abierto);
+  const { recientes, registrarReciente } = useRecientes();
   const valor = useMemo(
     () => ({ abierto, abrir, cerrar, scope, limpiarScope, recientes, registrarReciente }),
     [abierto, abrir, cerrar, scope, limpiarScope, recientes, registrarReciente],
