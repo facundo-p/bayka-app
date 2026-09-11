@@ -1,11 +1,11 @@
 import { Badge, type TableColumn } from '../../components';
 import { formatearFechaDia } from '../../lib/fechas';
+import { etiquetaRol, nombreVisible } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { itemsDeMenu, type AccionActiva } from './acciones';
 import { CeldaTexto, CeldaUsuario } from './celdas';
 import { resumenPlantaciones } from './filtros';
 import { MenuAccionesUsuario } from './MenuAccionesUsuario';
-import { ETIQUETA_ROL, nombreVisible } from './presentacion';
 import styles from './Usuarios.module.css';
 
 const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo' } as const;
@@ -15,7 +15,7 @@ const COLUMNAS_BASE: Array<TableColumn<UsuarioConAsignaciones>> = [
   {
     key: 'rol',
     header: 'Rol',
-    render: (usuario) => <Badge variant={usuario.rol}>{ETIQUETA_ROL[usuario.rol]}</Badge>,
+    render: (usuario) => <Badge variant={usuario.rol}>{etiquetaRol(usuario.rol)}</Badge>,
   },
   {
     key: 'estado',
@@ -62,7 +62,7 @@ export function columnasUsuarios(
         // La fila abre el panel: el menú frena el click para no hacer las dos cosas.
         <span onClick={(evento) => evento.stopPropagation()}>
           <MenuAccionesUsuario
-            nombre={nombreVisible(usuario)}
+            nombre={nombreVisible(usuario.nombre, usuario.id)}
             items={itemsDeMenu(usuario, idActual, superadminsActivos)}
             onAccion={(accion) => onAccion({ usuario, accion })}
           />

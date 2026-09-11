@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Button, Modal, PasswordInput } from '../../components';
+import { nombreVisible } from '../../lib/presentacionUsuario';
 import { validarNuevaPassword } from '../../lib/validarPassword';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { cambiarPassword } from '../../services/adminUsersService';
-import { nombreVisible } from './presentacion';
 import styles from './ModalUsuarios.module.css';
 
 const NOTA_PASSWORD = 'La persona va a poder ingresar de inmediato con la contraseña nueva.';
@@ -16,6 +16,7 @@ export function CambiarPasswordModal({
   usuario: UsuarioConAsignaciones;
   onClose: () => void;
 }) {
+  const nombre = nombreVisible(usuario.nombre, usuario.id);
   const [password, setPassword] = useState('');
   const [confirmacion, setConfirmacion] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export function CambiarPasswordModal({
   }
 
   return (
-    <Modal open title={`Cambiar contraseña de ${nombreVisible(usuario)}`} onClose={onClose}>
+    <Modal open title={`Cambiar contraseña de ${nombre}`} onClose={onClose}>
       <form className={styles.form} onSubmit={manejarSubmit}>
         <PasswordInput
           label="Contraseña nueva"

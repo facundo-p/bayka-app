@@ -114,7 +114,7 @@ test('un superadmin ve el link, la meta con conteos y la tabla con roles', async
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   // Badges de rol con etiqueta en español (dentro de la tabla).
   expect(tabla.getByText('Superadmin')).toBeInTheDocument();
-  expect(tabla.getByText('Admin')).toBeInTheDocument();
+  expect(tabla.getByText('Administrador')).toBeInTheDocument();
   expect(tabla.getByText('Técnico')).toBeInTheDocument();
   // Plantaciones: superadmin y admin son miembros automáticos de todas (#67).
   expect(tabla.getAllByText('Todas')).toHaveLength(2);

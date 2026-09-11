@@ -1,8 +1,8 @@
 import { cx } from '../../lib/classNames';
 import { iniciales } from '../../lib/iniciales';
+import { nombreVisible } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL, type Rol } from '../../repositories/profileRepository';
-import { nombreVisible } from './presentacion';
 import styles from './Usuarios.module.css';
 
 /** Clase del avatar según rol (mismos tripletes que el Badge de rol). */
@@ -22,7 +22,7 @@ export function Avatar({
 }) {
   return (
     <span className={cx(clase, CLASE_AVATAR_ROL[usuario.rol])} aria-hidden>
-      {iniciales(nombreVisible(usuario))}
+      {iniciales(nombreVisible(usuario.nombre, usuario.id))}
     </span>
   );
 }
@@ -33,7 +33,7 @@ export function CeldaUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
     <div className={cx(styles.usuario, !usuario.activo && styles.inactivo)}>
       <Avatar usuario={usuario} />
       <span className={styles.usuarioTexto}>
-        <span className={styles.nombre}>{nombreVisible(usuario)}</span>
+        <span className={styles.nombre}>{nombreVisible(usuario.nombre, usuario.id)}</span>
         {/* Email como identificador secundario; perfiles previos al backfill
             de la migración 026 caen a la organización. */}
         {(usuario.email ?? usuario.organizacionNombre) && (

@@ -62,21 +62,6 @@
   color: var(--color-on-primary-soft);
 }
 
-.track {
-  height: var(--alto-barra-progreso-lg);
-  background-color: var(--color-on-primary-track);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  background: linear-gradient(90deg, var(--color-secondary), var(--color-plantation-light));
-  /* --ancho llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  width: var(--ancho);
-}
-
 /* ─── Fila de alcance (parcela seleccionada) ───────────────────────────── */
 
 .alcance {
@@ -166,27 +151,6 @@
 
 .valorAlerta {
   color: var(--color-warn-dot);
-}
-
-.barra {
-  height: var(--alto-barra-progreso-sm);
-  background-color: var(--color-on-primary-track);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.relleno {
-  height: 100%;
-  border-radius: var(--radius-full);
-  width: var(--ancho);
-}
-
-.rellenoGps {
-  background-color: var(--color-secondary);
-}
-
-.rellenoFoto {
-  background-color: var(--color-primary-bg-muted);
 }
 
 .hint {

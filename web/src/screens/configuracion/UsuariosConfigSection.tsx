@@ -14,6 +14,7 @@ import { useInvalidarAsignacion } from '../../hooks/useInvalidarAsignacion';
 import { usePerfiles } from '../../hooks/usePerfiles';
 import { iniciales } from '../../lib/iniciales';
 import { mensajeErrorConocido } from '../../lib/mensajeErrorConocido';
+import { etiquetaRol, nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarAsignados,
@@ -32,24 +33,7 @@ import { ErrorAccion } from './ErrorAccion';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './SeccionesConfig.module.css';
 
-const ETIQUETA_ROL: Record<string, string> = {
-  [ROL.TECNICO]: 'Técnico',
-  [ROL.ADMIN]: 'Admin',
-  [ROL.SUPERADMIN]: 'Superadmin',
-};
-
-const LARGO_ID_CORTO = 8;
-
 const AYUDA_ASIGNAR = 'Se asigna como técnico. Los admins ya ven todas las plantaciones.';
-
-function etiquetaRol(rol: string): string {
-  return ETIQUETA_ROL[rol] ?? rol;
-}
-
-/** Nombre visible: si el perfil no tiene nombre, el id corto. */
-function nombreVisible(nombre: string, id: string): string {
-  return nombre.trim() || id.slice(0, LARGO_ID_CORTO);
-}
 
 function perfilesNoAsignados(
   perfiles: PerfilResumen[],

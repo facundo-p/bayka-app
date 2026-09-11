@@ -5,7 +5,7 @@ import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { ROL, type Rol } from '../../repositories/profileRepository';
 import { crearUsuario } from '../../services/adminUsersService';
 import { emailValido } from '../../../../supabase/functions/admin-users/nucleo';
-import { ADVERTENCIA_SUPERADMIN, ROLES } from './presentacion';
+import { ADVERTENCIA_SUPERADMIN, OPCIONES_ROL } from './presentacion';
 import styles from './ModalUsuarios.module.css';
 
 const NOTA_INVITACION = 'Le va a llegar un email para definir su contraseña.';
@@ -40,13 +40,8 @@ function CuerpoAgregarUsuario({
         label="Rol"
         value={valores.rol}
         onChange={(evento) => onCambiar({ ...valores, rol: evento.target.value as Rol })}
-      >
-        {ROLES.map(({ valor, etiqueta }) => (
-          <option key={valor} value={valor}>
-            {etiqueta}
-          </option>
-        ))}
-      </Select>
+        opciones={OPCIONES_ROL}
+      />
       {valores.rol === ROL.SUPERADMIN && (
         <p className={styles.advertencia} role="status">
           {ADVERTENCIA_SUPERADMIN}

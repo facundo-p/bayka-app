@@ -103,19 +103,3 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
 }
-
-.barra {
-  height: var(--alto-barra-progreso-md);
-  background-color: var(--color-surface-sunken);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.relleno {
-  height: 100%;
-  border-radius: var(--radius-full);
-  /* --ancho y --color llegan por inline style: datos por instancia (ver
-     src/lib/cssVars.ts), no valores de diseño. */
-  width: var(--ancho);
-  background: var(--color);
-}

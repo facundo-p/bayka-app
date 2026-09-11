@@ -30,11 +30,6 @@ function SinArboles() {
   );
 }
 
-/** Progreso del total hacia el objetivo; 0% si el objetivo no está definido. */
-function porcentajeObjetivo(total: number, objetivo: number): number {
-  return objetivo > 0 ? Math.round((total / objetivo) * 100) : 0;
-}
-
 /** Puntos de una parcela; sin selección devuelve el MISMO array (si cambia la
  *  referencia, el mapa vuelve a encuadrar aunque no haya filtrado nada). */
 function filtrarPuntos(puntos: PuntoGps[], parcelaId: string | null): PuntoGps[] {
@@ -47,19 +42,14 @@ type FiltroParcela = ReturnType<typeof useFiltroParcela>;
 interface ColumnaMetricasProps {
   datos: ReturnType<typeof calcularDashboard>;
   especies: EspecieColoreada[];
-  objetivo: number;
+  objetivo: number | null;
   filtro: FiltroParcela;
 }
 
 function ColumnaMetricas({ datos, especies, objetivo, filtro }: ColumnaMetricasProps) {
   return (
     <div className={styles.columna}>
-      <ResumenPlantacion
-        datos={datos}
-        objetivo={objetivo}
-        porcentaje={porcentajeObjetivo(datos.totalArboles, objetivo)}
-        alcance={filtro.alcance}
-      />
+      <ResumenPlantacion datos={datos} objetivo={objetivo} alcance={filtro.alcance} />
       <SpeciesDistribution
         especies={especies}
         total={datos.totalArboles}
@@ -103,7 +93,7 @@ interface ContenidoDashboardProps {
 }
 
 function ContenidoDashboard(props: ContenidoDashboardProps) {
-  const { fuente, objetivoArboles, parcelas, puntos } = props;
+  const { fuente, objetivoArboles: objetivo, parcelas, puntos } = props;
   const filtro = useFiltroParcela(parcelas);
   const parcelaId = filtro.parcela?.id ?? null;
   const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
@@ -111,7 +101,6 @@ function ContenidoDashboard(props: ContenidoDashboardProps) {
   // salida a "Ver todos", no una pantalla sin retorno.
   if (fuente.arboles.length === 0) return <SinArboles />;
   const especies = asignarColoresEspecies(datos.porEspecie);
-  const objetivo = objetivoArboles ?? 0;
   return (
     <div className={styles.dashboard}>
       <ColumnaMetricas datos={datos} especies={especies} objetivo={objetivo} filtro={filtro} />

@@ -1,35 +1,33 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
-import {
-  listarPlantaciones,
-  obtenerTemporadaActivaId,
-} from '../queries/plantationQueries';
-import { varsCss } from '../lib/cssVars';
-import { formatearEntero } from '../lib/formato';
+import { listarPlantaciones, obtenerTemporadaActivaId } from '../queries/plantationQueries';
+import { formatearEntero, PORCENTAJE_COMPLETO, porcentajeDeObjetivo } from '../lib/formato';
+import { BarraProgreso } from './BarraProgreso';
 import styles from './SeasonCard.module.css';
 
-function porcentajeObjetivo(arboles: number, objetivo: number | null): number | null {
-  if (!objetivo || objetivo <= 0) return null;
-  return Math.min(100, Math.round((arboles / objetivo) * 100));
-}
-
-/** Card "Temporada activa" del sidebar: la última plantación activa en la que se
- *  cargaron árboles (registro más reciente). No renderiza nada si no la hay. */
-export function SeasonCard() {
+/** La última plantación activa en la que se cargaron árboles (registro más reciente). */
+function useTemporadaActiva() {
   const { data } = useQuery({ queryKey: CLAVE_QUERY.plantaciones(), queryFn: listarPlantaciones });
   const { data: temporadaId } = useQuery({
     queryKey: CLAVE_QUERY.temporadaActiva(),
     queryFn: obtenerTemporadaActivaId,
   });
-  if (!data || !temporadaId) return null;
+  if (!temporadaId) return undefined;
+  return data?.find((plantacion) => plantacion.id === temporadaId);
+}
 
-  const temporada = data.find((plantacion) => plantacion.id === temporadaId);
+/** Sin meta, la barra se llena en cuanto hay árboles: la temporada ya arrancó. */
+function anchoBarra(arboles: number, avance: number | null): number {
+  if (avance !== null) return avance;
+  return arboles > 0 ? PORCENTAJE_COMPLETO : 0;
+}
+
+/** Card "Temporada activa" del sidebar. No renderiza nada si no hay temporada. */
+export function SeasonCard() {
+  const temporada = useTemporadaActiva();
   if (!temporada) return null;
-
-  const pct = porcentajeObjetivo(temporada.arboles, temporada.objetivoArboles);
-  const ancho = pct ?? Math.min(100, temporada.arboles > 0 ? 100 : 0);
-
+  const avance = porcentajeDeObjetivo(temporada.arboles, temporada.objetivoArboles);
   return (
     <Link to={`/plantaciones/${temporada.id}`} className={styles.card}>
       <span className={styles.overline}>Temporada activa</span>
@@ -38,12 +36,10 @@ export function SeasonCard() {
         <span className={styles.periodo}>{temporada.periodo}</span>
       </div>
       <span className={styles.lugar}>{temporada.lugar}</span>
-      <div className={styles.barra}>
-        <div className={styles.relleno} style={varsCss({ ancho: `${ancho}%` })} />
-      </div>
+      <BarraProgreso alto="md" porcentaje={anchoBarra(temporada.arboles, avance)} />
       <span className={styles.pie}>
         {formatearEntero(temporada.arboles)} árboles
-        {pct !== null && ` · ${pct}%`}
+        {avance !== null && ` · ${avance}%`}
       </span>
     </Link>
   );

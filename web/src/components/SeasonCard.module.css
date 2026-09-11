@@ -39,21 +39,6 @@
   color: var(--color-text-heading);
 }
 
-.barra {
-  height: var(--space-sm);
-  border-radius: var(--radius-full);
-  background-color: var(--color-surface-sunken);
-  overflow: hidden;
-}
-
-.relleno {
-  height: 100%;
-  background-color: var(--color-secondary);
-  border-radius: var(--radius-full);
-  /* --ancho llega por inline style: dato por instancia (ver src/lib/cssVars.ts). */
-  width: var(--ancho);
-}
-
 .pie {
   font-size: var(--text-xs);
   color: var(--color-text-muted);

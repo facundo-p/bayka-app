@@ -13,6 +13,7 @@ import {
 } from '../../components';
 import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { formatearFechaDia } from '../../lib/fechas';
+import { etiquetaRol, nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   listarPlantacionesDeUsuario,
@@ -30,7 +31,7 @@ import {
   type ItemMenu,
 } from './acciones';
 import { Avatar } from './celdas';
-import { ADVERTENCIA_SUPERADMIN, ETIQUETA_ROL, nombreVisible, ROLES } from './presentacion';
+import { ADVERTENCIA_SUPERADMIN, OPCIONES_ROL } from './presentacion';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Usuarios.module.css';
 
@@ -56,10 +57,10 @@ function CabeceraUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
   return (
     <PanelIdentidad
       marca={<Avatar usuario={usuario} clase={styles.avatarGrande} />}
-      titulo={nombreVisible(usuario)}
+      titulo={nombreVisible(usuario.nombre, usuario.id)}
       meta={
         <>
-          {ETIQUETA_ROL[usuario.rol]} · desde {formatearFechaDia(usuario.createdAt)}
+          {etiquetaRol(usuario.rol)} · desde {formatearFechaDia(usuario.createdAt)}
         </>
       }
     />
@@ -88,13 +89,8 @@ function CampoRol({
         title={motivo ?? undefined}
         hint={motivo ?? undefined}
         onChange={(evento) => onCambiar(evento.target.value as Rol)}
-      >
-        {ROLES.map(({ valor, etiqueta }) => (
-          <option key={valor} value={valor}>
-            {etiqueta}
-          </option>
-        ))}
-      </Select>
+        opciones={OPCIONES_ROL}
+      />
       {rol === ROL.SUPERADMIN && rolOriginal !== ROL.SUPERADMIN && (
         <p className={styles.advertencia} role="status">
           {ADVERTENCIA_SUPERADMIN}
@@ -109,7 +105,7 @@ function enlaceAsignada(plantacion: PlantacionDeUsuario): EnlacePanel {
     clave: plantacion.id,
     ruta: `/plantaciones/${plantacion.id}`,
     texto: plantacion.nombre,
-    detalle: ETIQUETA_ROL[plantacion.rolEnPlantacion],
+    detalle: etiquetaRol(plantacion.rolEnPlantacion),
   };
 }
 
@@ -238,7 +234,7 @@ export function UsuarioPanel({
 
   return (
     <PanelLateral
-      etiqueta={`Detalle de ${nombreVisible(usuario)}`}
+      etiqueta={`Detalle de ${nombreVisible(usuario.nombre, usuario.id)}`}
       cabecera={<CabeceraUsuario usuario={usuario} />}
       onCerrar={onCerrar}
       pie={

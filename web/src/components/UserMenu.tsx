@@ -4,16 +4,11 @@ import { useAuth } from '../hooks/useAuth';
 import { useNovedadesNoVistas } from '../hooks/useNovedadesNoVistas';
 import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
-import { ROL, type Perfil } from '../repositories/profileRepository';
+import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
+import type { Perfil } from '../repositories/profileRepository';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
 import styles from './UserMenu.module.css';
-
-const ETIQUETA_ROL: Record<Perfil['rol'], string> = {
-  [ROL.SUPERADMIN]: 'Superadmin',
-  [ROL.ADMIN]: 'Administrador',
-  [ROL.TECNICO]: 'Técnico',
-};
 
 /** Link a Novedades con la versión deployada; el dot avisa que hay una versión
  *  que este navegador todavía no vio. */
@@ -30,22 +25,30 @@ function EnlaceNovedades() {
   );
 }
 
+function IdentidadPerfil({ perfil }: { perfil: Perfil }) {
+  const nombre = nombreVisible(perfil.nombre, perfil.id);
+  return (
+    <>
+      <div className={styles.avatar} aria-hidden>
+        {iniciales(nombre)}
+      </div>
+      <div className={styles.datos}>
+        <span className={styles.nombre}>{nombre}</span>
+        <span className={styles.rol}>{etiquetaRol(perfil.rol)}</span>
+      </div>
+    </>
+  );
+}
+
 /** Footer del sidebar: avatar con iniciales + nombre + rol + cerrar sesión, y
  *  debajo el acceso a Novedades. */
 export function UserMenu() {
   const { perfil, signOut } = useAuth();
   if (!perfil) return null;
-
   return (
     <div className={styles.footer}>
       <div className={styles.fila}>
-        <div className={styles.avatar} aria-hidden>
-          {iniciales(perfil.nombre)}
-        </div>
-        <div className={styles.datos}>
-          <span className={styles.nombre}>{perfil.nombre}</span>
-          <span className={styles.rol}>{ETIQUETA_ROL[perfil.rol]}</span>
-        </div>
+        <IdentidadPerfil perfil={perfil} />
         <BotonIcono variante="fantasma" etiqueta="Cerrar sesión" onClick={() => void signOut()}>
           <LogOut size={TAMANO_ICONO.lg} aria-hidden />
         </BotonIcono>

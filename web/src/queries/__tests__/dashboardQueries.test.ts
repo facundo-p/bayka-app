@@ -9,7 +9,6 @@ import {
   calcularKpis,
   filtrarPorParcela,
   obtenerFuenteDashboard,
-  porcentaje,
   type ArbolDashboard,
 } from '../dashboardQueries';
 
@@ -37,17 +36,6 @@ const ESPECIES = [
   { id: 'sp-1', codigo: 'QB', nombre: 'Quebracho', nombreCientifico: null },
   { id: 'sp-2', codigo: 'AL', nombre: 'Algarrobo', nombreCientifico: null },
 ];
-
-describe('porcentaje', () => {
-  test('redondea al entero más cercano', () => {
-    expect(porcentaje(1, 3)).toBe(33);
-    expect(porcentaje(2, 3)).toBe(67);
-  });
-
-  test('total 0 devuelve 0 (nunca NaN)', () => {
-    expect(porcentaje(0, 0)).toBe(0);
-  });
-});
 
 describe('calcularKpis', () => {
   test('cuenta NN y especies, y redondea los porcentajes de GPS y foto', () => {
