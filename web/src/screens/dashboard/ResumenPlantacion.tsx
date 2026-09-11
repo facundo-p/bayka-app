@@ -41,16 +41,39 @@ function FilaAlcance({ codigo, nombre, onVerTodos }: AlcanceMetrica) {
   );
 }
 
-/** Celda de tasa: overline + porcentaje + barra al pie. */
-function CeldaTasa({
-  etiqueta,
-  porcentaje,
-  relleno,
-}: {
+function Encabezado({ alcance }: { alcance?: AlcanceMetrica }) {
+  return (
+    <div className={styles.filaEncabezado}>
+      <span className={styles.overline}>Árboles registrados</span>
+      {alcance && <FilaAlcance {...alcance} />}
+    </div>
+  );
+}
+
+/** Total contra la meta, con la barra de avance solo si hay meta. */
+function AvanceMeta({ total, objetivo }: { total: number; objetivo: number | null }) {
+  const avance = porcentajeDeObjetivo(total, objetivo);
+  return (
+    <>
+      <div className={styles.filaValor}>
+        <span className={styles.valor}>{formatearEntero(total)}</span>
+        <span className={styles.meta}>{textoMeta(objetivo, avance)}</span>
+      </div>
+      {avance !== null && (
+        <BarraProgreso alto="lg" fondo="sobrePrimario" relleno="degradado" porcentaje={avance} />
+      )}
+    </>
+  );
+}
+
+interface CeldaTasaProps {
   etiqueta: string;
   porcentaje: number;
   relleno: RellenoBarra;
-}) {
+}
+
+/** Celda de tasa: overline + porcentaje + barra al pie. */
+function CeldaTasa({ etiqueta, porcentaje, relleno }: CeldaTasaProps) {
   return (
     <div className={styles.celda}>
       <div className={styles.celdaFila}>
@@ -83,34 +106,26 @@ function CeldaSinIdentificar({ cantidad }: { cantidad: number }) {
   );
 }
 
+function CeldasTasas({ datos }: { datos: KpisArboles }) {
+  return (
+    <div className={styles.celdas}>
+      <CeldaTasa etiqueta="Con GPS" porcentaje={datos.porcentajeConGps} relleno="secundario" />
+      <CeldaTasa etiqueta="Con foto" porcentaje={datos.porcentajeConFoto} relleno="primarioSuave" />
+      <CeldaSinIdentificar cantidad={datos.arbolesNN} />
+    </div>
+  );
+}
+
 /** Card azul del dashboard: total de árboles contra la meta, y las tres tasas. */
 export function ResumenPlantacion({ datos, objetivo, alcance }: ResumenPlantacionProps) {
-  const avance = porcentajeDeObjetivo(datos.totalArboles, objetivo);
   return (
     <section className={styles.card} aria-label="Resumen de la plantación">
       <div className={styles.blob} aria-hidden />
       <div className={styles.bloqueSuperior}>
-        <div className={styles.filaEncabezado}>
-          <span className={styles.overline}>Árboles registrados</span>
-          {alcance && <FilaAlcance {...alcance} />}
-        </div>
-        <div className={styles.filaValor}>
-          <span className={styles.valor}>{formatearEntero(datos.totalArboles)}</span>
-          <span className={styles.meta}>{textoMeta(objetivo, avance)}</span>
-        </div>
-        {avance !== null && (
-          <BarraProgreso alto="lg" fondo="sobrePrimario" relleno="degradado" porcentaje={avance} />
-        )}
+        <Encabezado alcance={alcance} />
+        <AvanceMeta total={datos.totalArboles} objetivo={objetivo} />
       </div>
-      <div className={styles.celdas}>
-        <CeldaTasa etiqueta="Con GPS" porcentaje={datos.porcentajeConGps} relleno="secundario" />
-        <CeldaTasa
-          etiqueta="Con foto"
-          porcentaje={datos.porcentajeConFoto}
-          relleno="primarioSuave"
-        />
-        <CeldaSinIdentificar cantidad={datos.arbolesNN} />
-      </div>
+      <CeldasTasas datos={datos} />
     </section>
   );
 }

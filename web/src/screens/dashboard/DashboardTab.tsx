@@ -93,7 +93,7 @@ interface ContenidoDashboardProps {
 }
 
 function ContenidoDashboard(props: ContenidoDashboardProps) {
-  const { fuente, objetivoArboles, parcelas, puntos } = props;
+  const { fuente, objetivoArboles: objetivo, parcelas, puntos } = props;
   const filtro = useFiltroParcela(parcelas);
   const parcelaId = filtro.parcela?.id ?? null;
   const datos = useMemo(() => calcularDashboard(fuente, parcelaId), [fuente, parcelaId]);
@@ -103,12 +103,7 @@ function ContenidoDashboard(props: ContenidoDashboardProps) {
   const especies = asignarColoresEspecies(datos.porEspecie);
   return (
     <div className={styles.dashboard}>
-      <ColumnaMetricas
-        datos={datos}
-        especies={especies}
-        objetivo={objetivoArboles}
-        filtro={filtro}
-      />
+      <ColumnaMetricas datos={datos} especies={especies} objetivo={objetivo} filtro={filtro} />
       <ColumnaMapa puntos={puntos} parcelas={parcelas} especies={especies} filtro={filtro} />
     </div>
   );

@@ -5,6 +5,7 @@ import { useNovedadesNoVistas } from '../hooks/useNovedadesNoVistas';
 import { VERSION_APP } from '../lib/entorno';
 import { iniciales } from '../lib/iniciales';
 import { etiquetaRol } from '../lib/presentacionUsuario';
+import type { Perfil } from '../repositories/profileRepository';
 import { TAMANO_ICONO } from '../theme/iconos';
 import { BotonIcono } from './BotonIcono';
 import styles from './UserMenu.module.css';
@@ -24,22 +25,29 @@ function EnlaceNovedades() {
   );
 }
 
+function IdentidadPerfil({ perfil }: { perfil: Perfil }) {
+  return (
+    <>
+      <div className={styles.avatar} aria-hidden>
+        {iniciales(perfil.nombre)}
+      </div>
+      <div className={styles.datos}>
+        <span className={styles.nombre}>{perfil.nombre}</span>
+        <span className={styles.rol}>{etiquetaRol(perfil.rol)}</span>
+      </div>
+    </>
+  );
+}
+
 /** Footer del sidebar: avatar con iniciales + nombre + rol + cerrar sesión, y
  *  debajo el acceso a Novedades. */
 export function UserMenu() {
   const { perfil, signOut } = useAuth();
   if (!perfil) return null;
-
   return (
     <div className={styles.footer}>
       <div className={styles.fila}>
-        <div className={styles.avatar} aria-hidden>
-          {iniciales(perfil.nombre)}
-        </div>
-        <div className={styles.datos}>
-          <span className={styles.nombre}>{perfil.nombre}</span>
-          <span className={styles.rol}>{etiquetaRol(perfil.rol)}</span>
-        </div>
+        <IdentidadPerfil perfil={perfil} />
         <BotonIcono variante="fantasma" etiqueta="Cerrar sesión" onClick={() => void signOut()}>
           <LogOut size={TAMANO_ICONO.lg} aria-hidden />
         </BotonIcono>
