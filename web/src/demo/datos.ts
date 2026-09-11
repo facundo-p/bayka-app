@@ -55,32 +55,126 @@ type Grupo = {
   created_at: string;
 };
 
-const TIPO_GRUPO = { linea: 'linea', bosquete: 'bosquete' } as const satisfies Record<string, TipoGrupo>;
+const TIPO_GRUPO = { linea: 'linea', bosquete: 'bosquete' } as const satisfies Record<
+  string,
+  TipoGrupo
+>;
 
 export const SESION_DEMO = { user: { id: 'u1', email: 'demo@bayka.app' } };
 
 const ORGANIZACION = { id: 'org-1', nombre: 'Bayka' };
 
 const PERFILES: FilaDemo[] = [
-  { id: 'u1', nombre: 'Facundo Pichinini', rol: 'superadmin', email: 'demo@bayka.app', activo: true, created_at: '2024-01-18T12:00:00Z' },
-  { id: 'u2', nombre: 'Sofía Bianchi', rol: 'admin', email: 'sofia@bayka.app', activo: true, created_at: '2024-04-18T12:00:00Z' },
-  { id: 'u3', nombre: 'Martín Oyola', rol: 'tecnico', email: 'martin@bayka.app', activo: true, created_at: '2024-06-02T12:00:00Z' },
-  { id: 'u4', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true, created_at: '2024-09-11T12:00:00Z' },
-  { id: 'u5', nombre: 'Ramiro Ledesma', rol: 'tecnico', email: 'ramiro@bayka.app', activo: false, created_at: '2025-02-27T12:00:00Z' },
-  { id: 'u6', nombre: 'Valentina Cáceres', rol: 'tecnico', email: 'valentina@bayka.app', activo: true, created_at: '2025-05-06T12:00:00Z' },
+  {
+    id: 'u1',
+    nombre: 'Facundo Pichinini',
+    rol: 'superadmin',
+    email: 'demo@bayka.app',
+    activo: true,
+    created_at: '2024-01-18T12:00:00Z',
+  },
+  {
+    id: 'u2',
+    nombre: 'Sofía Bianchi',
+    rol: 'admin',
+    email: 'sofia@bayka.app',
+    activo: true,
+    created_at: '2024-04-18T12:00:00Z',
+  },
+  {
+    id: 'u3',
+    nombre: 'Martín Oyola',
+    rol: 'tecnico',
+    email: 'martin@bayka.app',
+    activo: true,
+    created_at: '2024-06-02T12:00:00Z',
+  },
+  {
+    id: 'u4',
+    nombre: 'Lucía Ferreyra',
+    rol: 'tecnico',
+    email: 'lucia@bayka.app',
+    activo: true,
+    created_at: '2024-09-11T12:00:00Z',
+  },
+  {
+    id: 'u5',
+    nombre: 'Ramiro Ledesma',
+    rol: 'tecnico',
+    email: 'ramiro@bayka.app',
+    activo: false,
+    created_at: '2025-02-27T12:00:00Z',
+  },
+  {
+    id: 'u6',
+    nombre: 'Valentina Cáceres',
+    rol: 'tecnico',
+    email: 'valentina@bayka.app',
+    activo: true,
+    created_at: '2025-05-06T12:00:00Z',
+  },
 ].map((perfil) => ({ ...perfil, organizacion_id: ORGANIZACION.id }));
 
 /** Carga los árboles de las plantaciones sin técnicos asignados. */
 const ADMIN_DEMO = 'u2';
 
 const PLANTACIONES: Plantacion[] = [
-  { id: 'p1', lugar: 'San Sebastián', periodo: '2025-2026', estado: 'activa', created_at: '2025-03-12T12:00:00Z', visible_in_app: true },
-  { id: 'p2', lugar: 'Estancia La Escondida', periodo: '2025-2026', estado: 'activa', created_at: '2025-04-04T12:00:00Z', visible_in_app: true },
-  { id: 'p3', lugar: 'Campo Los Molles', periodo: '2025-2026', estado: 'activa', created_at: '2025-05-19T12:00:00Z', visible_in_app: true },
-  { id: 'p4', lugar: 'Puerto Valle', periodo: '2024-2025', estado: 'finalizada', created_at: '2024-02-08T12:00:00Z', visible_in_app: true },
-  { id: 'p5', lugar: 'Rincón del Socorro', periodo: '2024-2025', estado: 'finalizada', created_at: '2024-03-22T12:00:00Z', visible_in_app: false },
-  { id: 'p6', lugar: 'La Carolina', periodo: '2024-2025', estado: 'activa', created_at: '2024-07-30T12:00:00Z', visible_in_app: true },
-  { id: 'p7', lugar: 'Arroyo Ceibo', periodo: '2023-2024', estado: 'finalizada', created_at: '2023-01-15T12:00:00Z', visible_in_app: false },
+  {
+    id: 'p1',
+    lugar: 'San Sebastián',
+    periodo: '2025-2026',
+    estado: 'activa',
+    created_at: '2025-03-12T12:00:00Z',
+    visible_in_app: true,
+  },
+  {
+    id: 'p2',
+    lugar: 'Estancia La Escondida',
+    periodo: '2025-2026',
+    estado: 'activa',
+    created_at: '2025-04-04T12:00:00Z',
+    visible_in_app: true,
+  },
+  {
+    id: 'p3',
+    lugar: 'Campo Los Molles',
+    periodo: '2025-2026',
+    estado: 'activa',
+    created_at: '2025-05-19T12:00:00Z',
+    visible_in_app: true,
+  },
+  {
+    id: 'p4',
+    lugar: 'Puerto Valle',
+    periodo: '2024-2025',
+    estado: 'finalizada',
+    created_at: '2024-02-08T12:00:00Z',
+    visible_in_app: true,
+  },
+  {
+    id: 'p5',
+    lugar: 'Rincón del Socorro',
+    periodo: '2024-2025',
+    estado: 'finalizada',
+    created_at: '2024-03-22T12:00:00Z',
+    visible_in_app: false,
+  },
+  {
+    id: 'p6',
+    lugar: 'La Carolina',
+    periodo: '2024-2025',
+    estado: 'activa',
+    created_at: '2024-07-30T12:00:00Z',
+    visible_in_app: true,
+  },
+  {
+    id: 'p7',
+    lugar: 'Arroyo Ceibo',
+    periodo: '2023-2024',
+    estado: 'finalizada',
+    created_at: '2023-01-15T12:00:00Z',
+    visible_in_app: false,
+  },
 ];
 
 function plantacionPorId(id: string): Plantacion {
@@ -108,7 +202,11 @@ const PLANTACIONES_CON_ARBOLES = Object.keys(ARBOLES_POR_PLANTACION);
 
 const TOTALES_DE_ARBOLES = Object.entries(ARBOLES_POR_PLANTACION).flatMap(
   ([plantation_id, porEspecie]) =>
-    Object.entries(porEspecie).map(([species_id, arboles]) => ({ plantation_id, species_id, arboles })),
+    Object.entries(porEspecie).map(([species_id, arboles]) => ({
+      plantation_id,
+      species_id,
+      arboles,
+    })),
 );
 
 function arbolesDePlantacion(plantationId: string): number {
@@ -119,7 +217,12 @@ function arbolesDePlantacion(plantationId: string): number {
 const ESPECIES: Especie[] = [
   { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
   { id: 's2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
-  { id: 's3', codigo: 'LAP', nombre: 'Lapacho rosado', nombre_cientifico: 'Handroanthus impetiginosus' },
+  {
+    id: 's3',
+    codigo: 'LAP',
+    nombre: 'Lapacho rosado',
+    nombre_cientifico: 'Handroanthus impetiginosus',
+  },
   { id: 's4', codigo: 'TIM', nombre: 'Timbó', nombre_cientifico: 'Enterolobium contortisiliquum' },
   { id: 's5', codigo: 'GUA', nombre: 'Guatambú', nombre_cientifico: 'Balfourodendron riedelianum' },
   { id: 's6', codigo: 'CED', nombre: 'Cedro misionero', nombre_cientifico: 'Cedrela fissilis' },
@@ -175,14 +278,57 @@ function registradorDe(plantationId: string): string {
 /** Escritas a mano por los casos que importan al layout: nombre largo, parcela
  *  sin descripción, bosquete finalizado. */
 const PARCELAS_A_MANO: Parcela[] = [
-  { id: 'pa1', plantation_id: 'p1', nombre: 'Loma-P12', codigo: 'LP12', descripcion: 'Loma alta, suelo arenoso', created_at: '2025-03-14T12:00:00Z', deleted_at: null },
-  { id: 'pa2', plantation_id: 'p1', nombre: 'Bajo del Arroyo', codigo: 'BA03', descripcion: null, created_at: '2025-03-16T12:00:00Z', deleted_at: null },
+  {
+    id: 'pa1',
+    plantation_id: 'p1',
+    nombre: 'Loma-P12',
+    codigo: 'LP12',
+    descripcion: 'Loma alta, suelo arenoso',
+    created_at: '2025-03-14T12:00:00Z',
+    deleted_at: null,
+  },
+  {
+    id: 'pa2',
+    plantation_id: 'p1',
+    nombre: 'Bajo del Arroyo',
+    codigo: 'BA03',
+    descripcion: null,
+    created_at: '2025-03-16T12:00:00Z',
+    deleted_at: null,
+  },
 ];
 
 const GRUPOS_A_MANO: Grupo[] = [
-  { id: 'g1', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 10', codigo: 'L10', tipo: TIPO_GRUPO.linea, estado: 'activa', created_at: '2025-04-02T12:00:00Z' },
-  { id: 'g2', parcela_id: 'pa1', plantation_id: 'p1', nombre: 'Línea 11', codigo: 'L11', tipo: TIPO_GRUPO.linea, estado: 'activa', created_at: '2025-04-02T13:00:00Z' },
-  { id: 'g3', parcela_id: 'pa2', plantation_id: 'p1', nombre: 'Bosquete 1', codigo: 'B01', tipo: TIPO_GRUPO.bosquete, estado: 'finalizada', created_at: '2025-04-05T12:00:00Z' },
+  {
+    id: 'g1',
+    parcela_id: 'pa1',
+    plantation_id: 'p1',
+    nombre: 'Línea 10',
+    codigo: 'L10',
+    tipo: TIPO_GRUPO.linea,
+    estado: 'activa',
+    created_at: '2025-04-02T12:00:00Z',
+  },
+  {
+    id: 'g2',
+    parcela_id: 'pa1',
+    plantation_id: 'p1',
+    nombre: 'Línea 11',
+    codigo: 'L11',
+    tipo: TIPO_GRUPO.linea,
+    estado: 'activa',
+    created_at: '2025-04-02T13:00:00Z',
+  },
+  {
+    id: 'g3',
+    parcela_id: 'pa2',
+    plantation_id: 'p1',
+    nombre: 'Bosquete 1',
+    codigo: 'B01',
+    tipo: TIPO_GRUPO.bosquete,
+    estado: 'finalizada',
+    created_at: '2025-04-05T12:00:00Z',
+  },
 ];
 
 /** Al resto de las plantaciones con árboles se les generan parcelas y líneas:
@@ -230,10 +376,14 @@ function parcelaGenerada(plantacion: Plantacion, numero: number): ParcelaGenerad
 
 const CON_PARCELAS_A_MANO = new Set(PARCELAS_A_MANO.map((parcela) => parcela.plantation_id));
 
-const GENERADAS: ParcelaGenerada[] = PLANTACIONES_CON_ARBOLES.filter((id) => !CON_PARCELAS_A_MANO.has(id))
+const GENERADAS: ParcelaGenerada[] = PLANTACIONES_CON_ARBOLES.filter(
+  (id) => !CON_PARCELAS_A_MANO.has(id),
+)
   .map(plantacionPorId)
   .flatMap((plantacion) =>
-    numerados(PARCELAS_GENERADAS_POR_PLANTACION).map((numero) => parcelaGenerada(plantacion, numero)),
+    numerados(PARCELAS_GENERADAS_POR_PLANTACION).map((numero) =>
+      parcelaGenerada(plantacion, numero),
+    ),
   );
 
 const PARCELAS: Parcela[] = [...PARCELAS_A_MANO, ...GENERADAS.map(({ parcela }) => parcela)];
@@ -292,7 +442,11 @@ function gpsDeMuestra(grupo: Grupo, indiceGrupo: number, indice: number): FilaDe
 
 /** Se alternan: subida al bucket, local sin sincronizar y sin foto. */
 function fotoDeMuestra(grupo: Grupo, arbolId: string, indice: number): string | null {
-  const estados = [`plantations/${grupo.plantation_id}/trees/${arbolId}.jpg`, FOTO_SIN_SINCRONIZAR, null];
+  const estados = [
+    `plantations/${grupo.plantation_id}/trees/${arbolId}.jpg`,
+    FOTO_SIN_SINCRONIZAR,
+    null,
+  ];
   return estados[indice % estados.length];
 }
 

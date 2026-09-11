@@ -5,7 +5,10 @@ import { pluralizar, type Sustantivo } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import { ESTADO_PLANTACION, type PlantacionConStats } from '../../queries/plantationQueries';
 
-const ARBOL_REGISTRADO: Sustantivo = { singular: 'árbol registrado', plural: 'árboles registrados' };
+const ARBOL_REGISTRADO: Sustantivo = {
+  singular: 'árbol registrado',
+  plural: 'árboles registrados',
+};
 
 /** `todas` es el sentinela del segmentado; el resto son estados de dominio. */
 export const FILTRO_ESTADO = {

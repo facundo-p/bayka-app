@@ -56,9 +56,12 @@ test('ignora teclas que no son de navegación', () => {
 });
 
 test('al cambiar la cantidad de ítems, vuelve a resaltar el primero', () => {
-  const { result, rerender } = renderHook(({ cantidad }) => useNavegacionTeclado(cantidad, vi.fn()), {
-    initialProps: { cantidad: 3 },
-  });
+  const { result, rerender } = renderHook(
+    ({ cantidad }) => useNavegacionTeclado(cantidad, vi.fn()),
+    {
+      initialProps: { cantidad: 3 },
+    },
+  );
   act(() => result.current.alPresionar(evento('ArrowDown')));
   expect(result.current.resaltado).toBe(1);
   rerender({ cantidad: 5 });

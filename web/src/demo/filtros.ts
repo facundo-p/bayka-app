@@ -124,7 +124,5 @@ function columnasDe(filtro: FiltroDemo): string[] {
 
 /** Si la fila tiene todas las columnas por las que se filtra. */
 export function modelaTodos(fila: FilaDemo, filtros: FiltroDemo[]): boolean {
-  return filtros
-    .flatMap(columnasDe)
-    .every((columna) => leerRuta(fila, columna) !== NO_MODELADA);
+  return filtros.flatMap(columnasDe).every((columna) => leerRuta(fila, columna) !== NO_MODELADA);
 }

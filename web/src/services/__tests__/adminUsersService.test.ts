@@ -28,7 +28,11 @@ test.each([
     () => reenviarInvitacion('teo@bayka.org'),
     { accion: 'reenviarInvitacion', email: 'teo@bayka.org' },
   ],
-  ['desactivarUsuario', () => desactivarUsuario('user-3'), { accion: 'desactivar', userId: 'user-3' }],
+  [
+    'desactivarUsuario',
+    () => desactivarUsuario('user-3'),
+    { accion: 'desactivar', userId: 'user-3' },
+  ],
   ['reactivarUsuario', () => reactivarUsuario('user-3'), { accion: 'reactivar', userId: 'user-3' }],
   [
     'cambiarPassword',
@@ -67,9 +71,7 @@ test('un error HTTP con cuerpo del contrato usa el mensaje del server', async ()
 
 test('una falla de red sin cuerpo interpretable usa el mensaje genérico', async () => {
   estadoMock.respuestaInvoke = { data: null, error: { message: 'fetch failed' } };
-  await expect(reenviarInvitacion('teo@bayka.org')).rejects.toThrow(
-    MENSAJE_ADMIN_USERS_GENERICO,
-  );
+  await expect(reenviarInvitacion('teo@bayka.org')).rejects.toThrow(MENSAJE_ADMIN_USERS_GENERICO);
 });
 
 test('el 429 del rate limit conserva su mensaje accionable', async () => {

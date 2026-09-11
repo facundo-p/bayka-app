@@ -89,7 +89,9 @@ function resolver(estado: EstadoConsulta): RespuestaDemo {
   return { data: recortar(filas, estado.ventana), error: null, count: filas.length };
 }
 
-function metodosDeFiltro(agregar: (filtro: FiltroDemo) => ConsultaDemo): Record<Operador, MetodoDeFiltro> {
+function metodosDeFiltro(
+  agregar: (filtro: FiltroDemo) => ConsultaDemo,
+): Record<Operador, MetodoDeFiltro> {
   const metodos = Object.values(OPERADOR).map((operador) => [
     operador,
     (columna: string, valor: unknown) => agregar({ columna, operador, valor }),

@@ -90,7 +90,9 @@ async function esperarOpcionesEstables(dialog: HTMLElement): Promise<string[]> {
     previas = cantidad;
     expect(estable).toBe(true);
   });
-  return within(dialog).getAllByRole('option').map((opcion) => opcion.id);
+  return within(dialog)
+    .getAllByRole('option')
+    .map((opcion) => opcion.id);
 }
 
 /** Abre la paleta con ⌘K y espera el dialog. */

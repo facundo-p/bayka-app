@@ -47,7 +47,8 @@ const ANCHO_PADDING = 2;
 
 /** Largo en caracteres del valor de una celda (null → 0). */
 function largoCelda(celda: Cell): number {
-  const valor = celda != null && typeof celda === 'object' && 'value' in celda ? celda.value : celda;
+  const valor =
+    celda != null && typeof celda === 'object' && 'value' in celda ? celda.value : celda;
   return valor == null ? 0 : String(valor).length;
 }
 

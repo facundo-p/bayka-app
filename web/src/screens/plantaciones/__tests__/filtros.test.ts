@@ -108,13 +108,13 @@ describe('estado y temporada', () => {
 
   test('búsqueda, estado y temporada componen con AND', () => {
     // Corrientes es la única activa de 2024-2025 que además coincide con "co".
-    expect(
-      ids({ busqueda: 'co', estado: FILTRO_ESTADO.activas, temporada: '2024-2025' }),
-    ).toEqual(['p3']);
+    expect(ids({ busqueda: 'co', estado: FILTRO_ESTADO.activas, temporada: '2024-2025' })).toEqual([
+      'p3',
+    ]);
     // Salta es finalizada: el estado la excluye aunque la temporada coincida.
-    expect(ids({ estado: FILTRO_ESTADO.activas, temporada: '2024-2025', busqueda: 'salta' })).toEqual(
-      [],
-    );
+    expect(
+      ids({ estado: FILTRO_ESTADO.activas, temporada: '2024-2025', busqueda: 'salta' }),
+    ).toEqual([]);
   });
 });
 
@@ -169,7 +169,9 @@ describe('resumen y conteos', () => {
   });
 
   test('el resumen usa el singular cuando corresponde', () => {
-    expect(resumenPlantaciones([MENDOZA])).toBe('1 plantación · 1 temporada · 120 árboles registrados');
+    expect(resumenPlantaciones([MENDOZA])).toBe(
+      '1 plantación · 1 temporada · 120 árboles registrados',
+    );
   });
 
   test('el resumen del listado vacío no rompe', () => {

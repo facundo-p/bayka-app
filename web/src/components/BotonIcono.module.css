@@ -7,7 +7,9 @@
   padding: var(--space-sm);
   border-radius: var(--radius-control);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .sm {

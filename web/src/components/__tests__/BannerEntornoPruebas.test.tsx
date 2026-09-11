@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import { BannerEntornoPruebas } from '../BannerEntornoPruebas';
 
-const mockEntorno = vi.hoisted(() => ({ ES_ENTORNO_DE_PRUEBAS: true, ETIQUETA_BUILD: 'v1.1.0 · a1b2c3d' }));
+const mockEntorno = vi.hoisted(() => ({
+  ES_ENTORNO_DE_PRUEBAS: true,
+  ETIQUETA_BUILD: 'v1.1.0 · a1b2c3d',
+}));
 vi.mock('../../lib/entorno', () => mockEntorno);
 
 describe('BannerEntornoPruebas', () => {

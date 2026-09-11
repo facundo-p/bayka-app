@@ -51,9 +51,7 @@ test('seed inválido (0) muestra el error y no llama a generarIds', async () => 
   await usuario.type(input, '0');
   await usuario.click(screen.getByRole('button', { name: 'Generar' }));
 
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Ingresá un número entero mayor a 0.',
-  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('Ingresá un número entero mayor a 0.');
   expect(vi.mocked(generarIds)).not.toHaveBeenCalled();
 });
 
@@ -65,9 +63,7 @@ test('seed inválido (vacío) muestra el error y no llama a generarIds', async (
   await usuario.clear(input);
   await usuario.click(screen.getByRole('button', { name: 'Generar' }));
 
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Ingresá un número entero mayor a 0.',
-  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('Ingresá un número entero mayor a 0.');
   expect(vi.mocked(generarIds)).not.toHaveBeenCalled();
 });
 
@@ -80,9 +76,7 @@ test('seed inválido (negativo) muestra el error y no llama a generarIds', async
   await usuario.type(input, '-5');
   await usuario.click(screen.getByRole('button', { name: 'Generar' }));
 
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Ingresá un número entero mayor a 0.',
-  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('Ingresá un número entero mayor a 0.');
   expect(vi.mocked(generarIds)).not.toHaveBeenCalled();
 });
 

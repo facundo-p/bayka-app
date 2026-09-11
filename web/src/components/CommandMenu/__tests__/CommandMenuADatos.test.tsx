@@ -67,7 +67,9 @@ let consultas: ConsultaCapturada[];
 
 /** El detalle filtra por id con maybeSingle → devolver la fila única. */
 function resolverPlantations(consulta: ConsultaCapturada): RespuestaMock {
-  const porId = consulta.filtros.some((filtro) => filtro.metodo === 'eq' && filtro.columna === 'id');
+  const porId = consulta.filtros.some(
+    (filtro) => filtro.metodo === 'eq' && filtro.columna === 'id',
+  );
   return porId ? { data: FILA_PLANTACION } : { data: [FILA_PLANTACION], count: 1 };
 }
 
@@ -133,6 +135,10 @@ test('un resultado de árbol abre Árboles con su SubID en el buscador', async (
     (consulta) => consulta.tabla === 'trees' && Boolean(consulta.columnas?.startsWith('*')),
   );
   expect(listado.at(-1)?.filtros).toContainEqual(
-    expect.objectContaining({ metodo: 'ilike', columna: 'sub_id', valor: expect.stringMatching(/PAL23ANC12/i) }),
+    expect.objectContaining({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: expect.stringMatching(/PAL23ANC12/i),
+    }),
   );
 });

@@ -36,9 +36,7 @@ describe('obtenerUrlFoto', () => {
   test('firma un path directo del bucket por una hora', async () => {
     const url = await obtenerUrlFoto(PATH_FOTO);
 
-    expect(estadoMock.firmas).toEqual([
-      { bucket: 'tree-photos', path: PATH_FOTO, segundos: 3600 },
-    ]);
+    expect(estadoMock.firmas).toEqual([{ bucket: 'tree-photos', path: PATH_FOTO, segundos: 3600 }]);
     expect(url).toBe(`https://firmada.test/${PATH_FOTO}`);
   });
 

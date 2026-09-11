@@ -1,7 +1,4 @@
-import {
-  LONGITUD_MINIMA_PASSWORD,
-  MENSAJES,
-} from '../../../supabase/functions/admin-users/nucleo';
+import { LONGITUD_MINIMA_PASSWORD, MENSAJES } from '../../../supabase/functions/admin-users/nucleo';
 
 export const MENSAJE_NO_COINCIDEN = 'Las contraseñas no coinciden';
 

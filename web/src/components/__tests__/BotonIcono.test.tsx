@@ -19,7 +19,13 @@ test('la etiqueta es el nombre accesible y no envía el form que lo contiene', a
 
 test('pasa disabled y los atributos que inyecta el disparador de un menú', () => {
   render(
-    <BotonIcono variante="contorno" tamano="sm" etiqueta="Página anterior" disabled aria-expanded={false}>
+    <BotonIcono
+      variante="contorno"
+      tamano="sm"
+      etiqueta="Página anterior"
+      disabled
+      aria-expanded={false}
+    >
       <svg />
     </BotonIcono>,
   );

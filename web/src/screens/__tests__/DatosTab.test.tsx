@@ -249,8 +249,9 @@ describe('sección Árboles', () => {
 
     await usuario.selectOptions(screen.getByLabelText('Parcela'), 'parc-1');
     await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeEnabled());
-    expect(within(screen.getByLabelText('Grupo')).getByRole('option', { name: 'L1' }))
-      .toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText('Grupo')).getByRole('option', { name: 'L1' }),
+    ).toBeInTheDocument();
 
     await usuario.selectOptions(screen.getByLabelText('Grupo'), 'gr-1');
     await screen.findByRole('cell', { name: 'A-001' });

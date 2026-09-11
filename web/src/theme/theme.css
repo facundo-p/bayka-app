@@ -35,7 +35,7 @@
   --color-primary-bg-light: #f4f8fb;
   --color-primary-bg-muted: #a3c4db;
   --color-primary-border: #c5dae8;
-  --color-primary-accent: #3b7db5;     /* azul medio — enlaces, serie, barra foto */
+  --color-primary-accent: #3b7db5; /* azul medio — enlaces, serie, barra foto */
 
   /* ─── Secundario (verde oliva de marca) ────────────────────────────── */
   --color-secondary: #99b95b;
@@ -43,41 +43,41 @@
   --color-secondary-border: #c5d89a;
 
   /* ─── Plantaciones (acento verde oliva) ────────────────────────────── */
-  --color-plantation-dark: #6b8f3c;    /* oliva oscuro — números de acento, dato */
+  --color-plantation-dark: #6b8f3c; /* oliva oscuro — números de acento, dato */
   --color-plantation-light: #b3cf7e;
   --color-plantation-bg-light: #fafcf5;
   --color-plantation-border: #d4e3b0;
 
   /* ─── Texto (jerarquía cálida) ─────────────────────────────────────── */
-  --color-text-heading: #0a3760;       /* títulos (azul de marca) */
-  --color-text-primary: #2a2d27;       /* cuerpo (cálido) */
-  --color-text-body: #3a3d36;          /* celdas de tabla */
-  --color-text-secondary: #6e6a5e;     /* secundario cálido */
-  --color-text-muted: #9a927e;         /* metadatos */
-  --color-text-faint: #a79f8c;         /* overlines, sublabels */
-  --color-text-disabled: #bdb49d;      /* placeholders, paginación inactiva */
+  --color-text-heading: #0a3760; /* títulos (azul de marca) */
+  --color-text-primary: #2a2d27; /* cuerpo (cálido) */
+  --color-text-body: #3a3d36; /* celdas de tabla */
+  --color-text-secondary: #6e6a5e; /* secundario cálido */
+  --color-text-muted: #9a927e; /* metadatos */
+  --color-text-faint: #a79f8c; /* overlines, sublabels */
+  --color-text-disabled: #bdb49d; /* placeholders, paginación inactiva */
 
   /* ─── Superficies cálidas ──────────────────────────────────────────── */
-  --color-background: #f4f2ea;         /* lienzo de la app */
+  --color-background: #f4f2ea; /* lienzo de la app */
   --color-background-alt: #f5f5f4;
-  --color-sidebar-bg: #fbfaf5;         /* fondo del sidebar */
-  --color-surface: #ffffff;            /* cards, modales */
-  --color-surface-sunken: #faf8f1;     /* head de tabla, inputs suaves, footers */
-  --color-surface-tint: #eef3ee;       /* item de nav activo, chip de código */
+  --color-sidebar-bg: #fbfaf5; /* fondo del sidebar */
+  --color-surface: #ffffff; /* cards, modales */
+  --color-surface-sunken: #faf8f1; /* head de tabla, inputs suaves, footers */
+  --color-surface-tint: #eef3ee; /* item de nav activo, chip de código */
   --color-white: #ffffff;
 
   /* ─── Bordes / divisores cálidos ───────────────────────────────────── */
-  --color-border: #e7e1d4;             /* hairline general */
-  --color-border-card: #e9e3d6;        /* borde de cards */
-  --color-border-strong: #cfc7b2;      /* hover de inputs, borde punteado */
+  --color-border: #e7e1d4; /* hairline general */
+  --color-border-card: #e9e3d6; /* borde de cards */
+  --color-border-strong: #cfc7b2; /* hover de inputs, borde punteado */
   --color-border-muted: #cbd5e1;
-  --color-divider: #f4f1e8;            /* divisor de filas en listas */
+  --color-divider: #f4f1e8; /* divisor de filas en listas */
 
   /* ─── Semánticos ───────────────────────────────────────────────────── */
   --color-danger: #dc2626;
   --color-danger-light: #ef4444;
   --color-danger-bg: #fef2f2;
-  --color-danger-border: #f0c9c9;      /* borde de acciones destructivas outline */
+  --color-danger-border: #f0c9c9; /* borde de acciones destructivas outline */
   --color-info: #2563eb;
 
   /* ─── Estados de dominio (chips activa/finalizada/pendiente) ───────── */
@@ -90,9 +90,9 @@
   --color-estado-finalizada-border: #c5dae8;
 
   /* ─── N/N — sin resolver / pendiente (ámbar) ───────────────────────── */
-  --color-warn-dot: #e0a83b;           /* punto N/N en mapa, leyenda */
-  --color-warn-fg: #c79a3e;            /* texto de alerta */
-  --color-warn-fg-strong: #b97f1e;     /* número de alerta */
+  --color-warn-dot: #e0a83b; /* punto N/N en mapa, leyenda */
+  --color-warn-fg: #c79a3e; /* texto de alerta */
+  --color-warn-fg-strong: #b97f1e; /* número de alerta */
   --color-warn-bg: #fffaf0;
   --color-warn-border: #f0e0b8;
 
@@ -118,17 +118,17 @@
   --color-topbar-bg: rgba(244, 242, 234, 0.82);
 
   /* ─── Blancos sobre el azul de marca (card resumen del dashboard) ─── */
-  --color-on-primary-strong: rgba(255, 255, 255, 0.7);   /* overlines */
-  --color-on-primary-soft: rgba(255, 255, 255, 0.75);    /* texto secundario */
-  --color-on-primary-faint: rgba(255, 255, 255, 0.72);   /* nombre en el chip de alcance */
-  --color-on-primary-track: rgba(255, 255, 255, 0.18);   /* fondo de barras de progreso */
-  --color-on-primary-chip: rgba(255, 255, 255, 0.14);    /* fondo del chip de alcance */
-  --color-on-primary-line: rgba(255, 255, 255, 0.14);    /* divisores entre celdas */
-  --color-on-primary-border: rgba(255, 255, 255, 0.42);  /* borde del botón "Ver todos" */
+  --color-on-primary-strong: rgba(255, 255, 255, 0.7); /* overlines */
+  --color-on-primary-soft: rgba(255, 255, 255, 0.75); /* texto secundario */
+  --color-on-primary-faint: rgba(255, 255, 255, 0.72); /* nombre en el chip de alcance */
+  --color-on-primary-track: rgba(255, 255, 255, 0.18); /* fondo de barras de progreso */
+  --color-on-primary-chip: rgba(255, 255, 255, 0.14); /* fondo del chip de alcance */
+  --color-on-primary-line: rgba(255, 255, 255, 0.14); /* divisores entre celdas */
+  --color-on-primary-border: rgba(255, 255, 255, 0.42); /* borde del botón "Ver todos" */
 
   /* ─── Tipografías ──────────────────────────────────────────────────── */
-  --font-heading: 'Linux Biolinum', Georgia, serif;   /* títulos + números grandes */
-  --font-body: 'Poppins', system-ui, sans-serif;      /* cuerpo, labels, botones */
+  --font-heading: 'Linux Biolinum', Georgia, serif; /* títulos + números grandes */
+  --font-body: 'Poppins', system-ui, sans-serif; /* cuerpo, labels, botones */
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace; /* IDs, códigos, GPS */
 
   /* ─── Escala de espaciado ──────────────────────────────────────────── */
@@ -143,8 +143,8 @@
   --space-5xl: 32px;
   --space-6xl: 40px;
   /* Pasos intermedios que pide el rediseño del detalle; no rompen la escala. */
-  --space-xl-plus: 14px;   /* entre xl (12) y 2xl (16) */
-  --space-4xl-plus: 28px;  /* entre 4xl (24) y 5xl (32) */
+  --space-xl-plus: 14px; /* entre xl (12) y 2xl (16) */
+  --space-4xl-plus: 28px; /* entre 4xl (24) y 5xl (32) */
 
   /* ─── Radios ───────────────────────────────────────────────────────── */
   --radius-sm: 6px;
@@ -154,12 +154,12 @@
   --radius-round: 20px;
   --radius-full: 9999px;
   /* Semánticos: los que coinciden con un escalón lo referencian. */
-  --radius-control: 9px;                /* botones, inputs, chips de filtro */
-  --radius-card: var(--radius-xl);      /* cards de panel */
-  --radius-card-sm: 14px;               /* cards de KPI / tabla */
-  --radius-pill: var(--radius-round);   /* badges de estado/rol */
-  --radius-code: var(--radius-sm);      /* chip de código mono */
-  --radius-segment: 7px;                /* opción de control segmentado, dentro de un --radius-control */
+  --radius-control: 9px; /* botones, inputs, chips de filtro */
+  --radius-card: var(--radius-xl); /* cards de panel */
+  --radius-card-sm: 14px; /* cards de KPI / tabla */
+  --radius-pill: var(--radius-round); /* badges de estado/rol */
+  --radius-code: var(--radius-sm); /* chip de código mono */
+  --radius-segment: 7px; /* opción de control segmentado, dentro de un --radius-control */
 
   /* ─── Tamaños de fuente ────────────────────────────────────────────── */
   --text-xs: 11px;
@@ -172,24 +172,24 @@
   /* Escala grande del rediseño (serif): número hero del dashboard, KPI, título de página. */
   --text-kpi: 32px;
   --text-page-title: 38px;
-  --text-detail-title: 22px;   /* h1 del detalle dentro de la topbar */
-  --text-kpi-sm: 26px;         /* celdas del resumen, número de mini-card de parcela */
+  --text-detail-title: 22px; /* h1 del detalle dentro de la topbar */
+  --text-kpi-sm: 26px; /* celdas del resumen, número de mini-card de parcela */
   --text-hero-num: 64px;
 
   /* ─── Peso, interlineado y espaciado de letra ──────────────────────── */
   --font-weight-regular: 400;
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
-  --line-height-none: 1;           /* números grandes */
-  --line-height-tight: 1.1;        /* títulos */
+  --line-height-none: 1; /* números grandes */
+  --line-height-tight: 1.1; /* títulos */
   --line-height-snug: 1.2;
-  --line-height-relaxed: 1.55;     /* texto corrido */
+  --line-height-relaxed: 1.55; /* texto corrido */
   --letter-spacing-wide: 1px;
   --letter-spacing-overline: 1.2px; /* rótulos en mayúsculas */
 
   /* ─── Sombras ──────────────────────────────────────────────────────── */
   --shadow-card: 0 1px 3px rgba(10, 55, 96, 0.08);
-  --shadow-modal: 0 24px 60px rgba(10, 30, 55, 0.28);   /* overlay ⌘K + modales */
+  --shadow-modal: 0 24px 60px rgba(10, 30, 55, 0.28); /* overlay ⌘K + modales */
 
   /* ─── Layout ───────────────────────────────────────────────────────── */
   /*
@@ -209,11 +209,11 @@
    * Regla que atraviesa toda la escala: ninguna fila puede tener min-content
    * mayor que el viewport. O envuelve, o tiene overflow-x propio.
    */
-  --sidebar-width: 252px;          /* sidebar del rediseño */
+  --sidebar-width: 252px; /* sidebar del rediseño */
   /* Fluido en vez de escalonado: 38px fijos se comían 76px de un viewport de
      360. Es un escalar puro, interpola bien y no necesita breakpoint. */
   --page-pad-x: clamp(16px, 3vw, 38px);
-  --ancho-panel-lateral: 400px;    /* columna de detalle al costado del listado */
+  --ancho-panel-lateral: 400px; /* columna de detalle al costado del listado */
   /* Piso de alto de una card con lista: apilada no hay alto que repartir y un
      `flex:1` con piso en 0 la deja con el alto del encabezado. */
   --alto-min-card-lista: 420px;
@@ -226,8 +226,8 @@
   --ancho-filtro-md: 150px;
   --ancho-filtro-sm: 130px;
   --ancho-filtro-xs: 120px;
-  --alto-min-mapa: 320px;          /* mapa del dashboard */
-  --alto-mapa-compacto: 220px;     /* mapa del panel lateral */
+  --alto-min-mapa: 320px; /* mapa del dashboard */
+  --alto-mapa-compacto: 220px; /* mapa del panel lateral */
   --topbar-blur: saturate(1.1) blur(10px);
   --border-thin: 1px;
   --border-accent: 3px;
@@ -236,25 +236,25 @@
   --border-medium: 2px;
   --control-height: 44px;
   --control-height-sm: 32px;
-  --control-height-input: 36px;    /* input del panel lateral */
+  --control-height-input: 36px; /* input del panel lateral */
   --modal-max-width: 420px;
-  --alto-max-desplegable: 320px;   /* lista de un selector con búsqueda */
+  --alto-max-desplegable: 320px; /* lista de un selector con búsqueda */
   --spinner-size-sm: 16px;
   --spinner-size-md: 24px;
-  --pad-riel: 3px;                 /* hueco entre un riel segmentado y sus opciones */
+  --pad-riel: 3px; /* hueco entre un riel segmentado y sus opciones */
   --tamano-avatar: 32px;
-  --tamano-punto: 8px;             /* punto de color de especie en tablas */
-  --tamano-punto-lg: 10px;         /* ídem en paneles y leyenda del mapa */
+  --tamano-punto: 8px; /* punto de color de especie en tablas */
+  --tamano-punto-lg: 10px; /* ídem en paneles y leyenda del mapa */
   --alto-barra-progreso-lg: 8px;
   --alto-barra-progreso-md: 6px;
   --alto-barra-progreso-sm: 4px;
 
   /* ─── Capas (z-index) ──────────────────────────────────────────────── */
-  --z-flotante: 10;                /* menús y avisos anclados a un botón */
+  --z-flotante: 10; /* menús y avisos anclados a un botón */
   --z-topbar: 20;
   --z-banner-entorno: 30;
   --z-modal: 100;
-  --z-popover: 110;                /* listas desplegables que se abren dentro de un modal */
+  --z-popover: 110; /* listas desplegables que se abren dentro de un modal */
 
   /* ─── Banner "Entorno de pruebas" (#287) ─────────────────────────── */
   /* Alto de la franja: 0 en prod. <html data-entorno="pruebas"> lo sube a

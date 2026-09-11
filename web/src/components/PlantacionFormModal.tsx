@@ -68,9 +68,10 @@ type CamposProps = {
 function campoProps(campo: keyof PlantacionFormValues, props: CamposProps) {
   return {
     value: props.valores[campo],
-    error: campo === 'lugar' || campo === 'periodo' || campo === 'objetivoArboles'
-      ? props.errores[campo]
-      : undefined,
+    error:
+      campo === 'lugar' || campo === 'periodo' || campo === 'objetivoArboles'
+        ? props.errores[campo]
+        : undefined,
     onChange: (event: { target: { value: string } }) => props.onCambiar(campo, event.target.value),
   };
 }

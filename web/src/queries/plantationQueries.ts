@@ -1,8 +1,5 @@
 import { supabase } from '../lib/supabase';
-import {
-  GPS_CAPTURE_FREQUENCY_DEFAULT,
-  GPS_CAPTURE_REQUIRED_DEFAULT,
-} from '../lib/gpsDefaults';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../lib/gpsDefaults';
 
 /** Única fuente de verdad de los estados; `EstadoPlantacion` se deriva de acá (evita literales sueltos desincronizados). */
 export const ESTADO_PLANTACION = {
@@ -105,11 +102,7 @@ export async function listarPlantaciones(): Promise<PlantacionConStats[]> {
 
 /** Carga una plantación por id; null si no existe (o la RLS no la deja ver). */
 export async function obtenerPlantacion(id: string): Promise<Plantacion | null> {
-  const { data, error } = await supabase
-    .from('plantations')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  const { data, error } = await supabase.from('plantations').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
   return data ? mapearPlantacion(data as FilaPlantacion) : null;
 }

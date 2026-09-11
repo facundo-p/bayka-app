@@ -79,7 +79,10 @@ describe('listarPuntosGps', () => {
     capturarConsultas((consulta: ConsultaCapturada): RespuestaMock => {
       if (consulta.tabla === 'trees') {
         return {
-          error: { message: 'column trees.latitude does not exist', code: PG_ERROR.UNDEFINED_COLUMN },
+          error: {
+            message: 'column trees.latitude does not exist',
+            code: PG_ERROR.UNDEFINED_COLUMN,
+          },
         };
       }
       return { data: [] };

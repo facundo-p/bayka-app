@@ -147,9 +147,7 @@ test('el panel se cierra con la X y la fila abierta queda marcada', async () => 
   expect(panel).toBeInTheDocument();
 
   await usuario.click(screen.getByRole('button', { name: 'Cerrar Editar especie' }));
-  expect(
-    screen.queryByRole('complementary', { name: 'Editar especie' }),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByRole('complementary', { name: 'Editar especie' })).not.toBeInTheDocument();
 });
 
 test('con el catálogo vacío muestra el vacío total, no el de la búsqueda', async () => {
@@ -169,9 +167,7 @@ test('ante un error muestra el mensaje con botón de reintento', async () => {
   };
   renderRutasEn('/especies');
 
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'No se pudieron cargar las especies.',
-  );
+  expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar las especies.');
   expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
 });
 
@@ -183,7 +179,5 @@ test('el recuento de la barra concuerda en singular', async () => {
 
   expect(enMain().getByText(textoCompleto('2 especies · 1.234 árboles'))).toBeInTheDocument();
   await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
-  expect(
-    await enMain().findByText(textoCompleto('1 especie · 1.234 árboles')),
-  ).toBeInTheDocument();
+  expect(await enMain().findByText(textoCompleto('1 especie · 1.234 árboles'))).toBeInTheDocument();
 });

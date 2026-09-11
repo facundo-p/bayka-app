@@ -16,7 +16,12 @@ vi.mock('../../../queries/dataExplorerQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/dataExplorerQueries')>(
     '../../../queries/dataExplorerQueries',
   );
-  return { ...real, listarArboles: vi.fn(), listarParcelasConStats: vi.fn(), listarGrupos: vi.fn() };
+  return {
+    ...real,
+    listarArboles: vi.fn(),
+    listarParcelasConStats: vi.fn(),
+    listarGrupos: vi.fn(),
+  };
 });
 vi.mock('../../../queries/especieQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/especieQueries')>(
@@ -31,7 +36,15 @@ vi.mock('../../../queries/usuarioQueries', async () => {
   return { ...real, listarPerfiles: vi.fn() };
 });
 
-const PARCELA = { id: 'parc-1', nombre: 'Norte', codigo: 'P1', descripcion: null, createdAt: '', grupos: 1, arboles: 1 };
+const PARCELA = {
+  id: 'parc-1',
+  nombre: 'Norte',
+  codigo: 'P1',
+  descripcion: null,
+  createdAt: '',
+  grupos: 1,
+  arboles: 1,
+};
 const PERFIL = {
   id: 'user-1',
   nombre: 'Ana',

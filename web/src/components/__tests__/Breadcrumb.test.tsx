@@ -10,10 +10,7 @@ function renderConRouter(ui: React.ReactElement) {
 test('los items con to son enlaces y el último es texto plano current', () => {
   renderConRouter(
     <Breadcrumb
-      items={[
-        { label: 'Plantaciones', to: '/plantaciones' },
-        { label: 'Otoño 2026 — La Maluka' },
-      ]}
+      items={[{ label: 'Plantaciones', to: '/plantaciones' }, { label: 'Otoño 2026 — La Maluka' }]}
     />,
   );
   const enlace = screen.getByRole('link', { name: 'Plantaciones' });
@@ -25,7 +22,12 @@ test('los items con to son enlaces y el último es texto plano current', () => {
 
 test('el último item nunca se renderiza como link aunque tenga to', () => {
   renderConRouter(
-    <Breadcrumb items={[{ label: 'Inicio', to: '/' }, { label: 'Final', to: '/final' }]} />,
+    <Breadcrumb
+      items={[
+        { label: 'Inicio', to: '/' },
+        { label: 'Final', to: '/final' },
+      ]}
+    />,
   );
   expect(screen.queryByRole('link', { name: 'Final' })).not.toBeInTheDocument();
   expect(screen.getByText('Final').className).toContain(styles.current);

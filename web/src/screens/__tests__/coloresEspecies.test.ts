@@ -23,9 +23,17 @@ describe('asignarColoresEspecies', () => {
   test('el color de una especie no depende del orden ni de la presencia de N/N', () => {
     const conNN = asignarColoresEspecies([QB, NN, AL]);
     const otroOrden = asignarColoresEspecies([AL, QB]);
-    expect(conNN.find((especie) => especie.codigo === 'QB')?.color).toBe(colorEspeciePorCodigo('QB'));
-    expect(conNN.find((especie) => especie.codigo === 'AL')?.color).toBe(colorEspeciePorCodigo('AL'));
-    expect(otroOrden.find((especie) => especie.codigo === 'QB')?.color).toBe(colorEspeciePorCodigo('QB'));
-    expect(otroOrden.find((especie) => especie.codigo === 'AL')?.color).toBe(colorEspeciePorCodigo('AL'));
+    expect(conNN.find((especie) => especie.codigo === 'QB')?.color).toBe(
+      colorEspeciePorCodigo('QB'),
+    );
+    expect(conNN.find((especie) => especie.codigo === 'AL')?.color).toBe(
+      colorEspeciePorCodigo('AL'),
+    );
+    expect(otroOrden.find((especie) => especie.codigo === 'QB')?.color).toBe(
+      colorEspeciePorCodigo('QB'),
+    );
+    expect(otroOrden.find((especie) => especie.codigo === 'AL')?.color).toBe(
+      colorEspeciePorCodigo('AL'),
+    );
   });
 });

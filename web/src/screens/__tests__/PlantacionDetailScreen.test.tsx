@@ -135,7 +135,7 @@ function configurarDetalleMock(): void {
 
 beforeEach(() => {
   prepararSesionAdmin();
-  asignadas =[filaAsignada('user-2', 'tecnico')];
+  asignadas = [filaAsignada('user-2', 'tecnico')];
   consultas = [];
   totalArboles = 0;
   conIdArboles = 0;
@@ -356,7 +356,9 @@ test('el selector solo ofrece técnicos sin asignar, con su email', async () => 
   await screen.findByText('Beto Técnico');
 
   const lista = await abrirListaDeTecnicos(usuario);
-  expect(within(lista).getByRole('option', { name: 'Dora Surco dora@bayka.org' })).toBeInTheDocument();
+  expect(
+    within(lista).getByRole('option', { name: 'Dora Surco dora@bayka.org' }),
+  ).toBeInTheDocument();
   // Beto ya está asignado; Carla es admin, miembro automático de todas las plantaciones.
   expect(within(lista).queryByRole('option', { name: /Beto Técnico/ })).not.toBeInTheDocument();
   expect(within(lista).queryByRole('option', { name: /Carla Campo/ })).not.toBeInTheDocument();
@@ -368,8 +370,20 @@ test('el selector no ofrece usuarios dados de baja', async () => {
     consulta.tabla === 'profiles'
       ? {
           data: [
-            { id: 'user-4', nombre: 'Dora Surco', rol: 'tecnico', email: 'dora@bayka.org', activo: true },
-            { id: 'user-5', nombre: 'Dina Baja', rol: 'tecnico', email: 'dina@bayka.org', activo: false },
+            {
+              id: 'user-4',
+              nombre: 'Dora Surco',
+              rol: 'tecnico',
+              email: 'dora@bayka.org',
+              activo: true,
+            },
+            {
+              id: 'user-5',
+              nombre: 'Dina Baja',
+              rol: 'tecnico',
+              email: 'dina@bayka.org',
+              activo: false,
+            },
           ],
         }
       : resolverBase(consulta);
