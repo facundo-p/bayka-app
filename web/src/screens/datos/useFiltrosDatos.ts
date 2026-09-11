@@ -1,7 +1,12 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import type { FiltrosUi } from './filtrosArboles';
-import { filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from './filtrosUrl';
+import {
+  filtrosAParams,
+  hayFiltroActivo,
+  leerFiltrosDeUrl,
+  type FiltrosEscritos,
+} from './filtrosUrl';
 
 /**
  * Filtros del explorador de datos persistidos en la URL: sobreviven el cambio
@@ -14,7 +19,7 @@ export function useFiltrosDatos() {
   /** Cambiar de parcela resetea el grupo (deja de tener sentido el scope viejo). */
   const setFiltro = useCallback(
     (campo: keyof FiltrosUi, valor: string) => {
-      const proximos: FiltrosUi = {
+      const proximos: FiltrosEscritos = {
         ...filtros,
         [campo]: valor,
         ...(campo === 'parcelaId' ? { groupId: '' } : {}),

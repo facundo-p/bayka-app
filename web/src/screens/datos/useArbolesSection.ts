@@ -7,6 +7,7 @@ import { usePerfiles } from '../../hooks/usePerfiles';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarArboles, type ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { aFiltrosArboles } from './filtrosArboles';
+import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
@@ -44,18 +45,10 @@ export function useArbolesSection() {
     (perfiles.data ?? []).map((perfil) => [perfil.id, perfil.nombre]),
   );
 
-  /** Cualquier cambio de filtro vuelve a la página 1. */
-  useEffect(
-    () => setPagina(1),
-    [
-      filtros.parcelaId,
-      filtros.groupId,
-      filtros.speciesId,
-      filtros.gps,
-      filtros.foto,
-      busquedaDebounced,
-    ],
-  );
+  // Cualquier cambio de filtro vuelve a la página 1. La clave es el querystring
+  // de los filtros aplicados: un filtro nuevo entra solo, sin sumarlo acá.
+  const claveFiltros = filtrosAParams(filtrosQuery).toString();
+  useEffect(() => setPagina(1), [claveFiltros]);
 
   return {
     filtros,
