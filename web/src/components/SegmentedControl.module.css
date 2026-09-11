@@ -25,7 +25,9 @@
   color: var(--color-text-secondary);
   font-family: var(--font-body);
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .sm {

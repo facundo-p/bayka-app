@@ -1,9 +1,4 @@
-import {
-  aFiltrosArboles,
-  FILTRO_FOTO,
-  FILTRO_GPS,
-  FILTROS_INICIALES,
-} from '../filtrosArboles';
+import { aFiltrosArboles, FILTRO_FOTO, FILTRO_GPS, FILTROS_INICIALES } from '../filtrosArboles';
 
 test('filtros iniciales están todos vacíos', () => {
   expect(FILTROS_INICIALES).toEqual({

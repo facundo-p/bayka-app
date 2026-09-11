@@ -59,9 +59,7 @@ function resolverPlantationSpecies(consulta: ConsultaCapturada): RespuestaMock {
     const filtroEspecie = consulta.filtros.find((filtro) => filtro.columna === 'species_id');
     // eq (toggle) → un id; in (batch) → array de ids.
     const ids =
-      filtroEspecie?.metodo === 'in'
-        ? (filtroEspecie.valor as string[])
-        : [filtroEspecie?.valor];
+      filtroEspecie?.metodo === 'in' ? (filtroEspecie.valor as string[]) : [filtroEspecie?.valor];
     asignadas = asignadas.filter((fila) => !ids.includes(fila.species_id));
     return { data: null };
   }

@@ -170,7 +170,9 @@ function Arnes() {
   const navigate = useNavigate();
   return (
     <div>
-      <span data-testid="scope">{commandMenu.scope ? commandMenu.scope.plantationId : 'sin-scope'}</span>
+      <span data-testid="scope">
+        {commandMenu.scope ? commandMenu.scope.plantationId : 'sin-scope'}
+      </span>
       <button onClick={commandMenu.limpiarScope}>limpiar</button>
       <button onClick={commandMenu.abrir}>abrir</button>
       <button onClick={() => navigate('/plantaciones/plant-2')}>ir-a-plant-2</button>

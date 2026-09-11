@@ -64,7 +64,9 @@ export function PlantationMap({ puntos, leyenda, parcelaFiltro }: PlantationMapP
       </div>
       {puntos.length === 0 ? (
         <div className={styles.vacio}>
-          {parcelaFiltro ? `Sin puntos GPS en la parcela ${parcelaFiltro}` : 'Sin puntos GPS todavía'}
+          {parcelaFiltro
+            ? `Sin puntos GPS en la parcela ${parcelaFiltro}`
+            : 'Sin puntos GPS todavía'}
         </div>
       ) : (
         <MapaPuntos puntos={puntos} colorPorCodigo={colorPorCodigo} variante="panel" />

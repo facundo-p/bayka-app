@@ -12,13 +12,7 @@ import { listarCatalogo } from './especieQueries';
 import { listarPlantaciones } from './plantationQueries';
 import { listarUsuariosConAsignaciones } from './usuarioQueries';
 
-export type TipoResultado =
-  | 'plantacion'
-  | 'parcela'
-  | 'grupo'
-  | 'arbol'
-  | 'especie'
-  | 'usuario';
+export type TipoResultado = 'plantacion' | 'parcela' | 'grupo' | 'arbol' | 'especie' | 'usuario';
 
 export type ResultadoBusqueda = {
   tipo: TipoResultado;
@@ -166,14 +160,16 @@ async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<Resu
       id: fila.id,
       titulo: fila.sub_id,
       meta: fila.species?.nombre ?? fila.groups?.codigo,
-      to: rutaDatos(fila.groups!.plantation_id, SEGMENTO_DATOS.arboles, busquedaDeSubId(fila.sub_id)),
+      to: rutaDatos(
+        fila.groups!.plantation_id,
+        SEGMENTO_DATOS.arboles,
+        busquedaDeSubId(fila.sub_id),
+      ),
     }));
 }
 
 /** Ejecuta un grupo tolerando fallos: si lanza, devuelve [] (no rompe la paleta). */
-async function tolerante(
-  promesa: Promise<ResultadoBusqueda[]>,
-): Promise<ResultadoBusqueda[]> {
+async function tolerante(promesa: Promise<ResultadoBusqueda[]>): Promise<ResultadoBusqueda[]> {
   try {
     return await promesa;
   } catch {
@@ -182,10 +178,7 @@ async function tolerante(
 }
 
 /** Búsqueda combinada: [] si el texto es muy corto; cada grupo corre en paralelo y tolera errores. */
-export async function buscar(
-  texto: string,
-  scope?: ScopeBusqueda,
-): Promise<ResultadoBusqueda[]> {
+export async function buscar(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   const normalizado = texto.trim().toLowerCase();
   if (normalizado.length < MINIMO_CARACTERES) return [];
   const grupos = await Promise.all([

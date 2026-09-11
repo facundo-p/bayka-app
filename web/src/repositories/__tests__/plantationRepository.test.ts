@@ -19,7 +19,13 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-const PERFIL: Perfil = { id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true, organizacionId: 'org-1' };
+const PERFIL: Perfil = {
+  id: 'user-1',
+  nombre: 'Ana',
+  rol: 'admin',
+  activo: true,
+  organizacionId: 'org-1',
+};
 
 const INPUT_COMPLETO: PlantacionInput = {
   lugar: 'Mendoza',
@@ -161,7 +167,10 @@ describe('actualizarConfigGps', () => {
 
   test('columna inexistente (023 sin aplicar) lanza el mensaje de migración', async () => {
     capturarConsultas(() => ({
-      error: { message: 'column "gps_capture_frequency" does not exist', code: PG_ERROR.UNDEFINED_COLUMN },
+      error: {
+        message: 'column "gps_capture_frequency" does not exist',
+        code: PG_ERROR.UNDEFINED_COLUMN,
+      },
     }));
     await expect(
       actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: true }),

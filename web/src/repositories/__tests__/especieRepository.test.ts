@@ -13,10 +13,21 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-const INPUT: EspecieInput = { codigo: 'ANC', nombre: 'Anchico', nombreCientifico: 'Parapiptadenia rigida' };
-const INPUT_SIN_CIENTIFICO: EspecieInput = { codigo: 'IBI', nombre: 'Ibirá Pitá', nombreCientifico: null };
+const INPUT: EspecieInput = {
+  codigo: 'ANC',
+  nombre: 'Anchico',
+  nombreCientifico: 'Parapiptadenia rigida',
+};
+const INPUT_SIN_CIENTIFICO: EspecieInput = {
+  codigo: 'IBI',
+  nombre: 'Ibirá Pitá',
+  nombreCientifico: null,
+};
 
-const ERROR_DUPLICADO = { message: 'duplicate key value violates unique constraint', code: PG_ERROR.UNIQUE_VIOLATION };
+const ERROR_DUPLICADO = {
+  message: 'duplicate key value violates unique constraint',
+  code: PG_ERROR.UNIQUE_VIOLATION,
+};
 
 beforeEach(resetEstadoMock);
 

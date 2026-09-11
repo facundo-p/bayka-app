@@ -43,7 +43,9 @@ test('una tarjeta por entrada, con sus ítems', async () => {
   renderRutasEn('/novedades');
 
   const main = await esperarMain();
-  expect(await main.findByRole('heading', { name: 'Web 1.1.0 · 21 de agosto de 2026' })).toBeInTheDocument();
+  expect(
+    await main.findByRole('heading', { name: 'Web 1.1.0 · 21 de agosto de 2026' }),
+  ).toBeInTheDocument();
   expect(main.getByText(/Contraseña visible\./)).toBeInTheDocument();
 });
 
@@ -51,7 +53,9 @@ test('la sección en pruebas avisa que todavía no está en producción', async 
   renderRutasEn('/novedades');
 
   const main = await esperarMain();
-  expect(await main.findByRole('heading', { name: 'En pruebas · próxima versión' })).toBeInTheDocument();
+  expect(
+    await main.findByRole('heading', { name: 'En pruebas · próxima versión' }),
+  ).toBeInTheDocument();
   expect(main.getByText('Todavía no está en producción')).toBeInTheDocument();
 });
 
@@ -87,6 +91,8 @@ test('entrar guarda la firma con la marca de sincronización', async () => {
 test('el footer del sidebar linkea a novedades con el dot encendido', async () => {
   renderRutasEn('/plantaciones');
 
-  const enlace = await screen.findByRole('link', { name: /Novedades, versión v.*hay novedades nuevas/ });
+  const enlace = await screen.findByRole('link', {
+    name: /Novedades, versión v.*hay novedades nuevas/,
+  });
   expect(enlace).toHaveAttribute('href', '/novedades');
 });

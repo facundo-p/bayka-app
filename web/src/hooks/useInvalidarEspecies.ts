@@ -15,7 +15,5 @@ const CLAVES_CON_ESPECIES = [
 export function useInvalidarEspecies() {
   const queryClient = useQueryClient();
   return () =>
-    Promise.all(
-      CLAVES_CON_ESPECIES.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-    );
+    Promise.all(CLAVES_CON_ESPECIES.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
 }

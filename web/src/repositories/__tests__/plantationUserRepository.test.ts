@@ -40,7 +40,10 @@ describe('asignarUsuario', () => {
 
   test('duplicado (unique_violation) lanza el mensaje para el usuario', async () => {
     capturarConsultas(() => ({
-      error: { message: 'duplicate key value violates unique constraint', code: PG_ERROR.UNIQUE_VIOLATION },
+      error: {
+        message: 'duplicate key value violates unique constraint',
+        code: PG_ERROR.UNIQUE_VIOLATION,
+      },
     }));
     await expect(asignarUsuario('plant-1', 'user-2')).rejects.toThrow(MENSAJE_USUARIO_YA_ASIGNADO);
   });

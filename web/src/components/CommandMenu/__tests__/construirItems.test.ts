@@ -89,12 +89,17 @@ test('con texto: sección de acciones primero, luego resultados agrupados por ti
 test('con texto: los índices son continuos a través de todas las secciones', () => {
   const { secciones } = construirItems({
     acciones: [ACCION],
-    resultados: [resultado({ id: 'p1', tipo: 'plantacion' }), resultado({ id: 'p2', tipo: 'plantacion' })],
+    resultados: [
+      resultado({ id: 'p1', tipo: 'plantacion' }),
+      resultado({ id: 'p2', tipo: 'plantacion' }),
+    ],
     recientes: [],
     sugerencias: [],
     hayTexto: true,
   });
-  const todosLosIndices = secciones.flatMap((seccion) => seccion.items.map((entrada) => entrada.indice));
+  const todosLosIndices = secciones.flatMap((seccion) =>
+    seccion.items.map((entrada) => entrada.indice),
+  );
   expect(todosLosIndices).toEqual([0, 1, 2]);
 });
 

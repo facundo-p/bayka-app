@@ -68,9 +68,27 @@ const CATALOGO = [
 /** parc-3 no tiene árboles: es el caso borde del filtro. Ojo que el mock
  *  responde el mismo conteo para las tres en la tira de parcelas. */
 const FILAS_PARCELAS = [
-  { id: 'parc-1', nombre: 'Norte', codigo: 'P1', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
-  { id: 'parc-2', nombre: 'Sur', codigo: 'P2', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
-  { id: 'parc-3', nombre: 'Este', codigo: 'P3', descripcion: null, created_at: '2026-06-01T00:00:00Z' },
+  {
+    id: 'parc-1',
+    nombre: 'Norte',
+    codigo: 'P1',
+    descripcion: null,
+    created_at: '2026-06-01T00:00:00Z',
+  },
+  {
+    id: 'parc-2',
+    nombre: 'Sur',
+    codigo: 'P2',
+    descripcion: null,
+    created_at: '2026-06-01T00:00:00Z',
+  },
+  {
+    id: 'parc-3',
+    nombre: 'Este',
+    codigo: 'P3',
+    descripcion: null,
+    created_at: '2026-06-01T00:00:00Z',
+  },
 ];
 
 /** La card azul de resumen: total, tasas y fila de alcance viven acá adentro.
@@ -86,9 +104,27 @@ function totalResumen(): HTMLElement {
 
 /** Puntos GPS del mapa: 2 en parc-1, 1 en parc-2 (para poder filtrar). */
 const FILAS_PUNTOS = [
-  { latitude: -27.1, longitude: -55.2, species_id: 'sp-1', species: { codigo: 'QB', nombre: 'Quebracho' }, groups: { parcela_id: 'parc-1' } },
-  { latitude: -27.2, longitude: -55.3, species_id: 'sp-1', species: { codigo: 'QB', nombre: 'Quebracho' }, groups: { parcela_id: 'parc-1' } },
-  { latitude: -27.4, longitude: -55.5, species_id: 'sp-2', species: { codigo: 'AL', nombre: 'Algarrobo' }, groups: { parcela_id: 'parc-2' } },
+  {
+    latitude: -27.1,
+    longitude: -55.2,
+    species_id: 'sp-1',
+    species: { codigo: 'QB', nombre: 'Quebracho' },
+    groups: { parcela_id: 'parc-1' },
+  },
+  {
+    latitude: -27.2,
+    longitude: -55.3,
+    species_id: 'sp-1',
+    species: { codigo: 'QB', nombre: 'Quebracho' },
+    groups: { parcela_id: 'parc-1' },
+  },
+  {
+    latitude: -27.4,
+    longitude: -55.5,
+    species_id: 'sp-2',
+    species: { codigo: 'AL', nombre: 'Algarrobo' },
+    groups: { parcela_id: 'parc-2' },
+  },
 ];
 
 function esConteo(consulta: ConsultaCapturada): boolean {
@@ -123,7 +159,11 @@ describe('DashboardTab', () => {
     renderRutasEn('/plantaciones/plant-1');
 
     // Número grande (total de árboles) y overline.
-    await screen.findByRole('region', { name: 'Resumen de la plantación' }, { timeout: ESPERA_RUTA_MS });
+    await screen.findByRole(
+      'region',
+      { name: 'Resumen de la plantación' },
+      { timeout: ESPERA_RUTA_MS },
+    );
     const card = resumen();
     expect(within(card).getByText('5')).toBeInTheDocument();
     expect(within(card).getByText('Árboles registrados')).toBeInTheDocument();
@@ -185,7 +225,11 @@ describe('DashboardTab', () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
-    await screen.findByRole('region', { name: 'Resumen de la plantación' }, { timeout: ESPERA_RUTA_MS });
+    await screen.findByRole(
+      'region',
+      { name: 'Resumen de la plantación' },
+      { timeout: ESPERA_RUTA_MS },
+    );
     expect(within(resumen()).getByText('5')).toBeInTheDocument();
     expect(within(resumen()).getByText('60%')).toBeInTheDocument();
     expect(screen.getByText('Algarrobo')).toBeInTheDocument();
@@ -233,7 +277,11 @@ describe('DashboardTab', () => {
     renderRutasEn('/plantaciones/plant-1');
 
     expect(
-      await screen.findByText('Todavía no hay árboles registrados', {}, { timeout: ESPERA_RUTA_MS }),
+      await screen.findByText(
+        'Todavía no hay árboles registrados',
+        {},
+        { timeout: ESPERA_RUTA_MS },
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByText('Por especie')).not.toBeInTheDocument();
     expect(screen.queryByText('Con GPS')).not.toBeInTheDocument();

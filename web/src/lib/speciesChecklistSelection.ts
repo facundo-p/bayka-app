@@ -27,10 +27,7 @@ export interface PlanSeleccion {
 }
 
 /** Filtra el catálogo por nombre/código/científico, sin distinguir mayúsculas. */
-export function filtrarCatalogo(
-  catalogo: EspecieCatalogo[],
-  busqueda: string,
-): EspecieCatalogo[] {
+export function filtrarCatalogo(catalogo: EspecieCatalogo[], busqueda: string): EspecieCatalogo[] {
   const texto = busqueda.trim().toLowerCase();
   if (!texto) return catalogo;
   return catalogo.filter((especie) =>

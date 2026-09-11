@@ -58,11 +58,7 @@ describe('useColumnasVisibles', () => {
  * justo el defecto que se midió en Usuarios a 1024 antes de esta serie—.
  */
 describe('lo que nunca se cae en móvil', () => {
-  const usuarios = columnasUsuarios(
-    () => {},
-    'u1',
-    2,
-  );
+  const usuarios = columnasUsuarios(() => {}, 'u1', 2);
   const arboles = columnasArboles(new Map(), new Map());
 
   // Las seis tablas de la app, no las que resultaron fáciles de importar.

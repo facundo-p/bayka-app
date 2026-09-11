@@ -29,7 +29,12 @@ export function PanelLateral({ cabecera, pie, etiqueta, onCerrar, children }: Pa
     <aside className={styles.panel} aria-label={etiqueta}>
       <div className={styles.cabecera}>
         <div className={styles.identidad}>{cabecera}</div>
-        <BotonIcono variante="fantasma" tamano="sm" etiqueta={`Cerrar ${etiqueta}`} onClick={onCerrar}>
+        <BotonIcono
+          variante="fantasma"
+          tamano="sm"
+          etiqueta={`Cerrar ${etiqueta}`}
+          onClick={onCerrar}
+        >
           <X size={TAMANO_ICONO.lg} aria-hidden />
         </BotonIcono>
       </div>

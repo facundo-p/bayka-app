@@ -87,9 +87,7 @@ test('Enter confirma igual que el blur, sin duplicar el guardado', async () => {
 
 test('un valor inválido al perder el foco no persiste y el input vuelve al último valor válido', async () => {
   renderSeccion();
-  const input = await screen.findByLabelText<HTMLInputElement>(
-    'O un valor exacto: cada N árboles',
-  );
+  const input = await screen.findByLabelText<HTMLInputElement>('O un valor exacto: cada N árboles');
 
   fireEvent.change(input, { target: { value: '0' } });
   fireEvent.blur(input);

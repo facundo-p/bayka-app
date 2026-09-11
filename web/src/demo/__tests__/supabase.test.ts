@@ -9,7 +9,10 @@ import {
   listarParcelasConStats,
 } from '../../queries/dataExplorerQueries';
 import { condicionIlikeOr } from '../../queries/escaparBusqueda';
-import { listarEspeciesDePlantacion, listarPlantacionesDeEspecie } from '../../queries/especieQueries';
+import {
+  listarEspeciesDePlantacion,
+  listarPlantacionesDeEspecie,
+} from '../../queries/especieQueries';
 import { listarPuntosGps } from '../../queries/mapaQueries';
 
 // Como en `dev:demo`: las queries reales corren contra el cliente falso.
@@ -48,7 +51,11 @@ describe('cliente demo: selects con embebidos', () => {
   });
 
   it('no agrega un embebido sin FK modelada', async () => {
-    const { data } = await supabase.from('plantations').select('id, groups(id)').eq('id', 'p1').single();
+    const { data } = await supabase
+      .from('plantations')
+      .select('id, groups(id)')
+      .eq('id', 'p1')
+      .single();
 
     expect(data).not.toHaveProperty('groups');
   });
@@ -96,20 +103,25 @@ describe('cliente demo: conteos por parcela', () => {
     ]);
   });
 
-  it.each(['p1', 'p2', 'p4'])('en %s cada parcela suma los árboles de sus grupos', async (plantacion) => {
-    const [parcelas, grupos] = await Promise.all([
-      listarParcelasConStats(plantacion),
-      listarGrupos(plantacion),
-    ]);
-    const sumaDeGrupos = (parcelaId: string) =>
-      grupos.filter((grupo) => grupo.parcelaId === parcelaId).reduce((total, grupo) => total + grupo.arboles, 0);
+  it.each(['p1', 'p2', 'p4'])(
+    'en %s cada parcela suma los árboles de sus grupos',
+    async (plantacion) => {
+      const [parcelas, grupos] = await Promise.all([
+        listarParcelasConStats(plantacion),
+        listarGrupos(plantacion),
+      ]);
+      const sumaDeGrupos = (parcelaId: string) =>
+        grupos
+          .filter((grupo) => grupo.parcelaId === parcelaId)
+          .reduce((total, grupo) => total + grupo.arboles, 0);
 
-    expect(parcelas.length).toBeGreaterThan(0);
-    for (const parcela of parcelas) {
-      expect(parcela.arboles).toBeGreaterThan(0);
-      expect(parcela.arboles).toBe(sumaDeGrupos(parcela.id));
-    }
-  });
+      expect(parcelas.length).toBeGreaterThan(0);
+      for (const parcela of parcelas) {
+        expect(parcela.arboles).toBeGreaterThan(0);
+        expect(parcela.arboles).toBe(sumaDeGrupos(parcela.id));
+      }
+    },
+  );
 });
 
 describe('cliente demo: árboles de muestra', () => {
@@ -122,7 +134,9 @@ describe('cliente demo: árboles de muestra', () => {
       const habilitadas = especies.map(({ codigo }) => codigo);
 
       expect(arboles.length, plantacion).toBeGreaterThan(0);
-      expect(arboles.every(({ especieCodigo }) => habilitadas.includes(especieCodigo ?? ''))).toBe(true);
+      expect(arboles.every(({ especieCodigo }) => habilitadas.includes(especieCodigo ?? ''))).toBe(
+        true,
+      );
     }
   });
 
@@ -136,7 +150,10 @@ describe('cliente demo: árboles de muestra', () => {
   });
 
   it('el dashboard y el mapa de p2 tienen árboles', async () => {
-    const [fuente, puntos] = await Promise.all([obtenerFuenteDashboard('p2'), listarPuntosGps('p2')]);
+    const [fuente, puntos] = await Promise.all([
+      obtenerFuenteDashboard('p2'),
+      listarPuntosGps('p2'),
+    ]);
 
     expect(fuente.arboles).toHaveLength(32);
     expect(fuente.parcelas).toHaveLength(2);
@@ -148,14 +165,19 @@ describe('cliente demo: or(), ilike y paginación', () => {
   it('la búsqueda de parcelas encuentra por nombre sin importar mayúsculas', async () => {
     const resultados = await buscar('loma');
 
-    expect(resultados.map(({ tipo, titulo }) => [tipo, titulo])).toEqual([['parcela', 'LP12 · Loma-P12']]);
+    expect(resultados.map(({ tipo, titulo }) => [tipo, titulo])).toEqual([
+      ['parcela', 'LP12 · Loma-P12'],
+    ]);
   });
 
   it('la búsqueda de grupos filtra por código y los árboles respetan el tope', async () => {
     const resultados = await buscar('l1', { plantationId: 'p1' });
     const deTipo = (tipo: string) => resultados.filter((resultado) => resultado.tipo === tipo);
 
-    expect(deTipo('grupo').map(({ titulo }) => titulo)).toEqual(['L10 · Línea 10', 'L11 · Línea 11']);
+    expect(deTipo('grupo').map(({ titulo }) => titulo)).toEqual([
+      'L10 · Línea 10',
+      'L11 · Línea 11',
+    ]);
     expect(deTipo('arbol')).toHaveLength(8);
   });
 
@@ -184,7 +206,10 @@ describe('cliente demo: or(), ilike y paginación', () => {
   });
 
   it('range recorta la página y count es el total', async () => {
-    const { data, count } = await supabase.from('trees').select('id', { count: 'exact' }).range(0, 9);
+    const { data, count } = await supabase
+      .from('trees')
+      .select('id', { count: 'exact' })
+      .range(0, 9);
 
     expect(data).toHaveLength(10);
     expect(count).toBe(216);

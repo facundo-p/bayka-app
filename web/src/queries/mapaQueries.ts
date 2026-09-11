@@ -50,12 +50,13 @@ function consultarPuntos(plantationId: string, desde: number, hasta: number) {
 /** Lectura paginada (sin tope de 1000); si `latitude`/`longitude` (migración 023) no existen, devuelve [] en vez de romper. */
 export async function listarPuntosGps(plantationId: string): Promise<PuntoGps[]> {
   try {
-    const filas = await leerPaginado<FilaPuntoGps>((desde, hasta) =>
-      // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
-      consultarPuntos(plantationId, desde, hasta) as unknown as PromiseLike<{
-        data: FilaPuntoGps[] | null;
-        error: { message: string; code?: string } | null;
-      }>,
+    const filas = await leerPaginado<FilaPuntoGps>(
+      (desde, hasta) =>
+        // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
+        consultarPuntos(plantationId, desde, hasta) as unknown as PromiseLike<{
+          data: FilaPuntoGps[] | null;
+          error: { message: string; code?: string } | null;
+        }>,
     );
     return filas.map(mapearPunto);
   } catch (error) {

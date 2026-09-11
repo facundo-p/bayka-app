@@ -63,10 +63,9 @@ describe('construirKml', () => {
   });
 
   test('escapa caracteres XML reservados en nombres y códigos', () => {
-    const kml = construirKml(
-      [punto({ codigo: 'A&B', nombre: `Ñandubay <"'> & árbol` })],
-      { nombreDocumento: 'Doc & <título>' },
-    );
+    const kml = construirKml([punto({ codigo: 'A&B', nombre: `Ñandubay <"'> & árbol` })], {
+      nombreDocumento: 'Doc & <título>',
+    });
     expect(kml).toContain('Ñandubay &lt;&quot;&apos;&gt; &amp; árbol');
     expect(kml).toContain('Doc &amp; &lt;título&gt;');
     expect(kml).toContain('A&amp;B');

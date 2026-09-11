@@ -104,9 +104,7 @@ test('la búsqueda filtra por lugar y actualiza el recuento', async () => {
   await waitFor(() => expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument());
   expect(enTabla().getByText('Salta')).toBeInTheDocument();
   // El pie de la card sigue al subconjunto filtrado; la cabecera, al total.
-  expect(
-    enMain().getByText('1 plantación · clic en una fila abre el detalle'),
-  ).toBeInTheDocument();
+  expect(enMain().getByText('1 plantación · clic en una fila abre el detalle')).toBeInTheDocument();
   expect(
     enMain().getByText('2 plantaciones · 2 temporadas · 200 árboles registrados'),
   ).toBeInTheDocument();
@@ -136,10 +134,7 @@ test('el orden por lugar reordena las filas', async () => {
     .map((fila) => within(fila).getByText(/Mendoza|Salta/).textContent);
   expect(porArboles).toEqual(['Mendoza', 'Salta']);
 
-  await usuario.selectOptions(
-    enMain().getByLabelText('Ordenar plantaciones'),
-    'Orden: creada ↓',
-  );
+  await usuario.selectOptions(enMain().getByLabelText('Ordenar plantaciones'), 'Orden: creada ↓');
   const porCreada = enTabla()
     .getAllByRole('row')
     .slice(1)

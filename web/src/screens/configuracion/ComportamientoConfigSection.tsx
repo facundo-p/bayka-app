@@ -1,4 +1,3 @@
-import { useParams } from 'react-router';
 import {
   Card,
   Cargando,
@@ -7,6 +6,7 @@ import {
   SegmentedControl,
   Toggle,
 } from '../../components';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePlantacion } from '../../hooks/usePlantacion';
 import { cx } from '../../lib/classNames';
 import type { Plantacion } from '../../queries/plantationQueries';
@@ -120,7 +120,7 @@ function FilasComportamiento({ plantacion }: { plantacion: Plantacion }) {
 
 /** Cómo se comporta la plantación en Bayka App: captura de GPS y visibilidad. */
 export function ComportamientoConfigSection() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const plantacion = usePlantacion(id);
   return (
     <Card>

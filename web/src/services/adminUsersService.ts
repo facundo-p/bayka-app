@@ -4,10 +4,7 @@
  */
 import { supabase } from '../lib/supabase';
 import type { Rol } from '../repositories/profileRepository';
-import {
-  MENSAJES,
-  type CuerpoAdminUsers,
-} from '../../../supabase/functions/admin-users/nucleo';
+import { MENSAJES, type CuerpoAdminUsers } from '../../../supabase/functions/admin-users/nucleo';
 
 /** Solo para cuando no se pudo leer ningún mensaje del backend (red, respuesta no-JSON). */
 export const MENSAJE_ADMIN_USERS_GENERICO = MENSAJES.errorGenerico;

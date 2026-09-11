@@ -21,7 +21,8 @@ export function conEmbebidos(fila: FilaDemo, embebidos: Embebido[]): FilaDemo {
   const resuelta = { ...fila };
   for (const embebido of embebidos) {
     const columna = COLUMNA_QUE_APUNTA_A[embebido.tabla];
-    if (columna && columna in fila) resuelta[embebido.tabla] = filaApuntada(fila[columna], embebido);
+    if (columna && columna in fila)
+      resuelta[embebido.tabla] = filaApuntada(fila[columna], embebido);
   }
   return resuelta;
 }

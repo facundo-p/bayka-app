@@ -36,9 +36,7 @@ test('familia invalida todas las variantes de una fábrica y ninguna otra famili
 });
 
 test('el primer segmento de cada familia es único', () => {
-  const prefijos = Object.values(CLAVE_QUERY).map(
-    (fabrica) => (fabrica as () => QueryKey)()[0],
-  );
+  const prefijos = Object.values(CLAVE_QUERY).map((fabrica) => (fabrica as () => QueryKey)()[0]);
 
   expect(new Set(prefijos).size).toBe(prefijos.length);
 });

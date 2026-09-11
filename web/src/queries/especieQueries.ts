@@ -130,9 +130,7 @@ export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
     listarCatalogo(),
     contarPlantacionesPorEspecie(),
   ]);
-  const arboles = await Promise.all(
-    catalogo.map((especie) => contarArbolesDeEspecie(especie.id)),
-  );
+  const arboles = await Promise.all(catalogo.map((especie) => contarArbolesDeEspecie(especie.id)));
   return catalogo.map((especie, indice) => ({
     ...especie,
     plantaciones: plantacionesPorEspecie.get(especie.id) ?? 0,
@@ -154,10 +152,7 @@ type FilaPlantacionDeEspecie = {
 };
 
 /** Árboles de una especie dentro de una plantación (count head vía groups). */
-async function contarArbolesEnPlantacion(
-  plantationId: string,
-  speciesId: string,
-): Promise<number> {
+async function contarArbolesEnPlantacion(plantationId: string, speciesId: string): Promise<number> {
   const { count, error } = await supabase
     .from('trees')
     .select('id, groups!inner(plantation_id)', { count: 'exact', head: true })

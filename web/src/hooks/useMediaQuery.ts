@@ -24,7 +24,8 @@ export const BP = Object.freeze(
  * una constante, el guard no protege a quien reemplace `window.matchMedia`
  * después de la carga —que es exactamente lo que hacen los tests.
  */
-const hayMatchMedia = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+const hayMatchMedia = () =>
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function';
 
 /** `true` mientras la consulta se cumple. Se re-renderiza al cruzar el umbral. */
 export function useMediaQuery(consulta: Breakpoint): boolean {

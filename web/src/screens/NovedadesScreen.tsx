@@ -2,7 +2,11 @@ import { useEffect } from 'react';
 import { Badge, Card, EmptyState, Topbar } from '../components';
 import { VERSION_APP } from '../lib/entorno';
 import { ENTRADAS } from '../lib/novedades';
-import { esEntradaEnPruebas, type EntradaNovedades, type ItemNovedad } from '../lib/parsearNovedades';
+import {
+  esEntradaEnPruebas,
+  type EntradaNovedades,
+  type ItemNovedad,
+} from '../lib/parsearNovedades';
 import { marcarNovedadesVistas } from '../hooks/useNovedadesNoVistas';
 import styles from './NovedadesScreen.module.css';
 

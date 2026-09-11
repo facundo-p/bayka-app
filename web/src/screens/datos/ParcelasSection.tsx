@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { ParcelaConStats } from '../../queries/dataExplorerQueries';
@@ -18,7 +18,7 @@ const TEXTOS: TextosSeccion = {
 
 /** Parcelas activas con sus conteos; cada fila abre sus grupos. */
 export function ParcelasSection() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const irA = useIrASeccion();
   const parcelas = useParcelasDatos(id);
   const verGrupos = (parcela: ParcelaConStats) =>

@@ -16,9 +16,7 @@ test('nombreArchivoDescarga arma <prefijo>-<lugar>-<periodo>.<extension>', () =>
 });
 
 test('nombreArchivoDescarga omite partes vacías tras el slug', () => {
-  expect(nombreArchivoDescarga('arboles', '', '2025-2026', 'csv')).toBe(
-    'arboles-2025-2026.csv',
-  );
+  expect(nombreArchivoDescarga('arboles', '', '2025-2026', 'csv')).toBe('arboles-2025-2026.csv');
   expect(nombreArchivoDescarga('arboles', '', '', 'csv')).toBe('arboles-.csv');
 });
 

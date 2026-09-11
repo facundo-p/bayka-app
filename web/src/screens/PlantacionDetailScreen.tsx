@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Outlet, useParams } from 'react-router';
+import { Link, Outlet } from 'react-router';
 import { ChevronDown, Download, MoreHorizontal, Pencil, Plus } from 'lucide-react';
 import {
   BotonIcono,
@@ -17,6 +17,7 @@ import {
   type ItemDesplegable,
   type TabItem,
 } from '../components';
+import { useIdPlantacion } from '../hooks/useIdPlantacion';
 import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
 import { RUTA, rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
@@ -223,7 +224,7 @@ function DetallePlantacion({ plantacion }: { plantacion: Plantacion }) {
 }
 
 export function PlantacionDetailScreen() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const { data, isPending, isError, refetch } = usePlantacion(id);
   if (isPending) return <Cargando />;
   if (isError) {

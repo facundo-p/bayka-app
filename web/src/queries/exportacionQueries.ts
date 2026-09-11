@@ -73,16 +73,17 @@ function mapearFila(fila: FilaCruda): FilaExportacion {
  * para evitar el tope de 1000 filas de PostgREST.
  */
 export async function listarFilasExportacion(plantationId: string): Promise<FilaExportacion[]> {
-  const filas = await leerPaginado<FilaCruda>((desde, hasta) =>
-    supabase
-      .from('trees')
-      .select(SELECT_EXPORTACION)
-      .eq('groups.plantation_id', plantationId)
-      .order('global_id', { ascending: true })
-      .range(desde, hasta) as unknown as PromiseLike<{
-      data: FilaCruda[] | null;
-      error: { message: string; code?: string } | null;
-    }>,
+  const filas = await leerPaginado<FilaCruda>(
+    (desde, hasta) =>
+      supabase
+        .from('trees')
+        .select(SELECT_EXPORTACION)
+        .eq('groups.plantation_id', plantationId)
+        .order('global_id', { ascending: true })
+        .range(desde, hasta) as unknown as PromiseLike<{
+        data: FilaCruda[] | null;
+        error: { message: string; code?: string } | null;
+      }>,
   );
   return filas.map(mapearFila);
 }

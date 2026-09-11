@@ -117,9 +117,7 @@ export function filtrarPorParcela(
   arboles: ArbolDashboard[],
   parcelaId: string | null,
 ): ArbolDashboard[] {
-  return parcelaId === null
-    ? arboles
-    : arboles.filter((arbol) => arbol.parcelaId === parcelaId);
+  return parcelaId === null ? arboles : arboles.filter((arbol) => arbol.parcelaId === parcelaId);
 }
 
 export function agruparPorMes(arboles: ArbolDashboard[]): RegistrosMes[] {
@@ -153,7 +151,12 @@ function mapearArbolDashboard(fila: FilaArbolDashboard): ArbolDashboard {
 const COLUMNAS_ARBOL_BASE = 'species_id, foto_url, created_at, group_id';
 const EMBED_GRUPO = 'groups!inner(plantation_id, parcela_id)';
 
-function consultarArbolesDashboard(plantationId: string, columnas: string, desde: number, hasta: number) {
+function consultarArbolesDashboard(
+  plantationId: string,
+  columnas: string,
+  desde: number,
+  hasta: number,
+) {
   return supabase
     .from('trees')
     .select(`${columnas}, ${EMBED_GRUPO}`)
@@ -167,8 +170,7 @@ function consultarArbolesDashboard(plantationId: string, columnas: string, desde
  */
 async function listarArbolesDashboard(plantationId: string): Promise<ArbolDashboard[]> {
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
-  const aFilas = (filas: unknown[]) =>
-    (filas as FilaArbolDashboard[]).map(mapearArbolDashboard);
+  const aFilas = (filas: unknown[]) => (filas as FilaArbolDashboard[]).map(mapearArbolDashboard);
   try {
     return aFilas(
       await leerPaginado((desde, hasta) =>

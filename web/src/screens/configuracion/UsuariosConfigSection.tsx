@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { useParams } from 'react-router';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
 import {
@@ -273,7 +273,7 @@ function useAsignados(plantationId: string) {
 
 /** Control de acceso de la app: solo los usuarios asignados ven la plantación. */
 export function UsuariosConfigSection() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const perfiles = usePerfiles();
   const asignados = useAsignados(id);
   return (

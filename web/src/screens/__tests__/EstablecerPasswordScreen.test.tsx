@@ -50,9 +50,7 @@ test('guarda la contraseña y muestra el éxito con la nota para técnicos', asy
   await usuario.type(screen.getByLabelText('Repetir contraseña'), 'segura123');
   await usuario.click(screen.getByRole('button', { name: 'Guardar contraseña' }));
 
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(/Contraseña lista/),
-  );
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Contraseña lista/));
   expect(estadoMock.actualizacionesUsuario).toEqual([{ password: 'segura123' }]);
   expect(screen.getByText(/ingresá desde la app Bayka/)).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Ir al ingreso de la web' })).toBeInTheDocument();

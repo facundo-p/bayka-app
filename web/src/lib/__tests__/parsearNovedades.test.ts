@@ -75,7 +75,9 @@ describe('parsearNovedades: entradas publicadas', () => {
 
 describe('parsearNovedades: contrato', () => {
   test('ignora todo lo anterior al primer ##, incluido el h1 y los bullets sueltos', () => {
-    const crudo = ['# Titulo', '', '- bullet huérfano', '', '## Web 1.0.0', '', '- real'].join('\n');
+    const crudo = ['# Titulo', '', '- bullet huérfano', '', '## Web 1.0.0', '', '- real'].join(
+      '\n',
+    );
 
     expect(parsearNovedades(crudo)).toEqual([
       { titulo: 'Web 1.0.0', items: [{ detalle: 'real' }] },

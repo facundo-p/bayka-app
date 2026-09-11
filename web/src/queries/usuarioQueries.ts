@@ -166,9 +166,7 @@ type FilaPlantacionDeUsuario = {
  * admin no tienen filas acá: son miembros automáticos de todas (#67), así que
  * quien consuma esto debe resolver ese caso sin llamar a la query.
  */
-export async function listarPlantacionesDeUsuario(
-  userId: string,
-): Promise<PlantacionDeUsuario[]> {
+export async function listarPlantacionesDeUsuario(userId: string): Promise<PlantacionDeUsuario[]> {
   const { data, error } = await supabase
     .from('plantation_users')
     .select('plantation_id, rol_en_plantacion, plantations(id, lugar)')

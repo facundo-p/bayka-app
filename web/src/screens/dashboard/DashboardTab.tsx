@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { Cargando, EmptyState, ErrorConReintento } from '../../components';
 import { PlantationMap } from '../../components/PlantationMap';
@@ -8,6 +7,7 @@ import {
   obtenerFuenteDashboard,
   type FuenteDashboard,
 } from '../../queries/dashboardQueries';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePlantacion } from '../../hooks/usePlantacion';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
@@ -128,7 +128,7 @@ function useDatosDashboard(plantationId: string) {
 
 /** Tab Dashboard del detalle de plantación: hero, KPIs, mapa y panel de especies. */
 export function DashboardTab() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const { dashboard, ...contexto } = useDatosDashboard(id);
   if (dashboard.isPending) return <Cargando />;
   if (dashboard.isError) {
