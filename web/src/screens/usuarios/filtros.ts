@@ -27,6 +27,14 @@ export type FiltrosUsuarios = {
   estado: FiltroEstado;
 };
 
+/** Los filtros de la barra, sin el texto del buscador. */
+export type FiltrosBarraUsuarios = Omit<FiltrosUsuarios, 'busqueda'>;
+
+export const FILTROS_INICIALES_USUARIOS: FiltrosBarraUsuarios = {
+  rol: FILTRO_ROL.todos,
+  estado: FILTRO_ESTADO.todos,
+};
+
 /** Coincidencia case-insensitive contra nombre y email. */
 function coincide(usuario: UsuarioConAsignaciones, termino: string): boolean {
   const aguja = termino.trim().toLowerCase();

@@ -1,7 +1,7 @@
 import { Badge, type TableColumn } from '../../components';
 import { formatearFechaDia } from '../../lib/fechas';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
-import { itemsDeMenu, type AccionUsuario } from './acciones';
+import { itemsDeMenu, type AccionActiva } from './acciones';
 import { CeldaTexto, CeldaUsuario } from './celdas';
 import { resumenPlantaciones } from './filtros';
 import { MenuAccionesUsuario } from './MenuAccionesUsuario';
@@ -48,7 +48,7 @@ const COLUMNAS_BASE: Array<TableColumn<UsuarioConAsignaciones>> = [
 
 /** Columnas del listado + el menú "⋯" de acciones rápidas por fila. */
 export function columnasUsuarios(
-  onAccion: (usuario: UsuarioConAsignaciones, accion: AccionUsuario) => void,
+  onAccion: (activa: AccionActiva) => void,
   idActual: string | undefined,
   superadminsActivos: number,
 ): Array<TableColumn<UsuarioConAsignaciones>> {
@@ -64,7 +64,7 @@ export function columnasUsuarios(
           <MenuAccionesUsuario
             nombre={nombreVisible(usuario)}
             items={itemsDeMenu(usuario, idActual, superadminsActivos)}
-            onAccion={(accion) => onAccion(usuario, accion)}
+            onAccion={(accion) => onAccion({ usuario, accion })}
           />
         </span>
       ),

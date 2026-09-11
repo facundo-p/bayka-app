@@ -1,61 +1,53 @@
+import { useMemo } from 'react';
 import {
   BarraHerramientas,
   CampoBusqueda,
-  RecuentoNumero,
+  RecuentoItem,
   SegmentedControl,
   Select,
+  type Opcion,
 } from '../../components';
-import { formatearEntero } from '../../lib/formato';
+import type { ControlesFiltros } from '../../hooks/useFiltrosListado';
+import type { PlantacionConStats } from '../../queries/plantationQueries';
 import {
+  contarArboles,
   FILTRO_ESTADO,
   ORDEN_PLANTACION,
   TEMPORADA_TODAS,
+  temporadasDisponibles,
   type FiltroEstado,
+  type FiltrosBarraPlantaciones,
   type OrdenPlantacion,
 } from './filtros';
 
-const OPCIONES_ESTADO: Array<{ value: FiltroEstado; label: string }> = [
+const OPCIONES_ESTADO: Array<Opcion<FiltroEstado>> = [
   { value: FILTRO_ESTADO.todas, label: 'Todas' },
   { value: FILTRO_ESTADO.activas, label: 'Activas' },
   { value: FILTRO_ESTADO.finalizadas, label: 'Finalizadas' },
 ];
 
-const OPCIONES_ORDEN: Array<{ value: OrdenPlantacion; label: string }> = [
+const OPCIONES_ORDEN: Array<Opcion<OrdenPlantacion>> = [
   { value: ORDEN_PLANTACION.arboles, label: 'Orden: árboles ↓' },
   { value: ORDEN_PLANTACION.lugar, label: 'Orden: lugar A-Z' },
   { value: ORDEN_PLANTACION.creada, label: 'Orden: creada ↓' },
 ];
 
+function opcionesTemporada(temporadas: string[]): Array<Opcion<string>> {
+  return temporadas.map((temporada) => ({ value: temporada, label: temporada }));
+}
+
 interface PlantacionesToolbarProps {
-  busqueda: string;
-  estado: FiltroEstado;
-  temporada: string;
-  orden: OrdenPlantacion;
-  onBuscar: (texto: string) => void;
-  onEstado: (estado: FiltroEstado) => void;
-  onTemporada: (temporada: string) => void;
-  onOrden: (orden: OrdenPlantacion) => void;
-  /** Temporadas del dataset completo, para poblar el Select. */
-  temporadas: string[];
-  /** Plantaciones visibles y sus árboles, tras aplicar los filtros. */
-  plantaciones: number;
-  arboles: number;
+  controles: ControlesFiltros<FiltrosBarraPlantaciones>;
+  /** El listado completo: de él salen las temporadas del Select. */
+  todas: PlantacionConStats[] | undefined;
+  /** Las que pasan los filtros: de ellas sale el recuento. */
+  visibles: PlantacionConStats[];
 }
 
 /** Toolbar de Plantaciones: búsqueda, estado, temporada, orden y recuento. */
-export function PlantacionesToolbar({
-  busqueda,
-  estado,
-  temporada,
-  orden,
-  onBuscar,
-  onEstado,
-  onTemporada,
-  onOrden,
-  temporadas,
-  plantaciones,
-  arboles,
-}: PlantacionesToolbarProps) {
+export function PlantacionesToolbar({ controles, todas, visibles }: PlantacionesToolbarProps) {
+  const { busqueda, onBuscar, filtros, onFiltro } = controles;
+  const temporadas = useMemo(() => temporadasDisponibles(todas ?? []), [todas]);
   return (
     <BarraHerramientas
       encabezado={
@@ -68,16 +60,15 @@ export function PlantacionesToolbar({
       }
       recuento={
         <>
-          <RecuentoNumero>{formatearEntero(plantaciones)}</RecuentoNumero>{' '}
-          {plantaciones === 1 ? 'plantación' : 'plantaciones'} ·{' '}
-          <RecuentoNumero>{formatearEntero(arboles)}</RecuentoNumero> árboles
+          <RecuentoItem cantidad={visibles.length} singular="plantación" plural="plantaciones" /> ·{' '}
+          <RecuentoItem cantidad={contarArboles(visibles)} singular="árbol" plural="árboles" />
         </>
       }
     >
       <SegmentedControl
         options={OPCIONES_ESTADO}
-        value={estado}
-        onChange={onEstado}
+        value={filtros.estado}
+        onChange={(estado) => onFiltro('estado', estado)}
         size="sm"
         aria-label="Filtrar por estado"
       />
@@ -86,29 +77,20 @@ export function PlantacionesToolbar({
         <Select
           label="Filtrar por temporada"
           labelOculto
-          value={temporada}
-          onChange={(evento) => onTemporada(evento.target.value)}
+          value={filtros.temporada}
+          onChange={(evento) => onFiltro('temporada', evento.target.value)}
+          opciones={opcionesTemporada(temporadas)}
         >
           <option value={TEMPORADA_TODAS}>Temporada: todas</option>
-          {temporadas.map((valor) => (
-            <option key={valor} value={valor}>
-              {valor}
-            </option>
-          ))}
         </Select>
       )}
       <Select
         label="Ordenar plantaciones"
         labelOculto
-        value={orden}
-        onChange={(evento) => onOrden(evento.target.value as OrdenPlantacion)}
-      >
-        {OPCIONES_ORDEN.map(({ value, label }) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
-      </Select>
+        value={filtros.orden}
+        onChange={(evento) => onFiltro('orden', evento.target.value as OrdenPlantacion)}
+        opciones={OPCIONES_ORDEN}
+      />
     </BarraHerramientas>
   );
 }

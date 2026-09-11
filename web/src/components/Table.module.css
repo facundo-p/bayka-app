@@ -41,6 +41,21 @@
   background-color: var(--color-secondary-bg);
 }
 
+/* ─── Contenido de las celdas ────────────────────────────────────────── */
+
+/* Dígitos de ancho fijo: las cifras alinean en la columna. */
+.numero {
+  font-variant-numeric: tabular-nums;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.chevron {
+  color: var(--color-text-faint);
+}
+
 .center {
   text-align: center;
 }

@@ -1,11 +1,10 @@
 import { useRef, type KeyboardEvent } from 'react';
 import { cx } from '../lib/classNames';
 import { TECLA } from '../lib/teclas';
+import type { Opcion } from './opcion';
 import styles from './SegmentedControl.module.css';
 
-interface SegmentedOption<T extends string | number> {
-  value: T;
-  label: string;
+interface OpcionSegmentada<T extends string | number> extends Opcion<T> {
   sublabel?: string;
   disabled?: boolean;
 }
@@ -16,7 +15,7 @@ type NombreAccesible =
   | { 'aria-labelledby': string; 'aria-label'?: never };
 
 type SegmentedControlProps<T extends string | number> = {
-  options: SegmentedOption<T>[];
+  options: ReadonlyArray<OpcionSegmentada<T>>;
   value: T;
   onChange: (value: T) => void;
   size?: 'md' | 'sm';

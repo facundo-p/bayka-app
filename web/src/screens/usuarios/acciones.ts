@@ -7,11 +7,18 @@ import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL } from '../../repositories/profileRepository';
 
-export type AccionUsuario =
-  | 'cambiarPassword'
-  | 'reenviarInvitacion'
-  | 'desactivar'
-  | 'reactivar';
+/** Acciones rápidas sobre una persona: las del menú "⋯" y las del panel lateral. */
+export const ACCION_USUARIO = {
+  cambiarPassword: 'cambiarPassword',
+  reenviarInvitacion: 'reenviarInvitacion',
+  desactivar: 'desactivar',
+  reactivar: 'reactivar',
+} as const;
+
+export type AccionUsuario = (typeof ACCION_USUARIO)[keyof typeof ACCION_USUARIO];
+
+/** Una acción elegida sobre una persona: abre su modal. */
+export type AccionActiva = { usuario: UsuarioConAsignaciones; accion: AccionUsuario };
 
 export type ItemMenu = {
   accion: AccionUsuario;
@@ -79,22 +86,22 @@ export function itemsDeMenu(
 ): ItemMenu[] {
   return [
     {
-      accion: 'cambiarPassword',
+      accion: ACCION_USUARIO.cambiarPassword,
       etiqueta: 'Cambiar contraseña',
       motivo: motivoCambiarPassword(usuario, idActual),
     },
     {
-      accion: 'reenviarInvitacion',
+      accion: ACCION_USUARIO.reenviarInvitacion,
       etiqueta: 'Reenviar invitación',
       motivo: motivoReenviarInvitacion(usuario),
     },
     usuario.activo
       ? {
-          accion: 'desactivar',
+          accion: ACCION_USUARIO.desactivar,
           etiqueta: 'Desactivar',
           motivo: motivoDesactivar(usuario, idActual, superadminsActivos),
           destructiva: true,
         }
-      : { accion: 'reactivar', etiqueta: 'Reactivar', motivo: null },
+      : { accion: ACCION_USUARIO.reactivar, etiqueta: 'Reactivar', motivo: null },
   ];
 }

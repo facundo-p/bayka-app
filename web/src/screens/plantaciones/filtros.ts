@@ -31,6 +31,15 @@ export type FiltrosPlantaciones = {
   orden: OrdenPlantacion;
 };
 
+/** Los filtros de la barra, sin el texto del buscador. */
+export type FiltrosBarraPlantaciones = Omit<FiltrosPlantaciones, 'busqueda'>;
+
+export const FILTROS_INICIALES_PLANTACIONES: FiltrosBarraPlantaciones = {
+  estado: FILTRO_ESTADO.todas,
+  temporada: TEMPORADA_TODAS,
+  orden: ORDEN_PLANTACION.arboles,
+};
+
 /** Temporadas presentes en el dataset, de la más reciente a la más vieja. */
 export function temporadasDisponibles(plantaciones: PlantacionConStats[]): string[] {
   const unicas = new Set(plantaciones.map((plantacion) => plantacion.periodo).filter(Boolean));

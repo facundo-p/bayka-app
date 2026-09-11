@@ -1,5 +1,5 @@
 export { Badge } from './Badge';
-export { BarraHerramientas, RecuentoNumero } from './BarraHerramientas';
+export { BarraHerramientas, RecuentoItem } from './BarraHerramientas';
 export { BotonIcono } from './BotonIcono';
 export { Breadcrumb } from './Breadcrumb';
 export { CabeceraSeccion } from './CabeceraSeccion';
@@ -10,9 +10,11 @@ export { CardTabla } from './CardTabla';
 export { CheckboxField } from './CheckboxField';
 export { Cargando } from './Cargando';
 export { CommandMenuTrigger } from './CommandMenuTrigger';
+export { columnaChevron } from './columnaChevron';
 export { Divisor } from './Divisor';
 export { EmptyState } from './EmptyState';
 export { ErrorConReintento } from './ErrorConReintento';
+export { EstadoConsulta, type ConsultaListado, type TextosConsulta } from './EstadoConsulta';
 export { EstadoPlantacionBadge } from './EstadoPlantacionBadge';
 export { Input } from './Input';
 export { MapaPuntos } from './mapa/MapaPuntos';
@@ -27,7 +29,9 @@ export {
   PanelListaEnlaces,
   type EnlacePanel,
 } from './PanelLateral';
+export type { Opcion } from './opcion';
 export { PageHeader } from './PageHeader';
+export { PantallaListado } from './PantallaListado';
 export { PasswordInput } from './PasswordInput';
 export { PlantationMap } from './PlantationMap';
 export { Paginacion } from './Paginacion';

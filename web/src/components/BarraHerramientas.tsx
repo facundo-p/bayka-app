@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { concordar, formatearEntero } from '../lib/formato';
 import { Divisor } from './Divisor';
 import styles from './BarraHerramientas.module.css';
 
@@ -28,7 +29,19 @@ export function BarraHerramientas({ encabezado, children, recuento }: BarraHerra
   );
 }
 
-/** Número destacado dentro del recuento: mono, para que alinee entre pantallas. */
-export function RecuentoNumero({ children }: { children: ReactNode }) {
-  return <strong className={styles.recuentoNumero}>{children}</strong>;
+interface RecuentoItemProps {
+  cantidad: number;
+  singular: string;
+  plural: string;
+}
+
+/** Un término del recuento: la cifra en mono, para que alinee entre pantallas,
+ *  y el sustantivo concordado. */
+export function RecuentoItem({ cantidad, singular, plural }: RecuentoItemProps) {
+  return (
+    <>
+      <strong className={styles.recuentoNumero}>{formatearEntero(cantidad)}</strong>{' '}
+      {concordar(cantidad, singular, plural)}
+    </>
+  );
 }
