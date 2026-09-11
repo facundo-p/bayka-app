@@ -1,81 +1,73 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { Button, Modal } from '../../components';
-import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
+import { AccionesModal, ErrorEnvio } from './formulario';
+import {
+  useConfirmacion,
+  type EstadoConfirmacion,
+  type OpcionesConfirmacion,
+} from './useConfirmacion';
 import styles from './ModalUsuarios.module.css';
 
-/** Confirmación genérica para acciones de usuario (desactivar, reactivar,
- *  reenviar invitación): describe el efecto, ejecuta y refresca el listado.
- *  Con textoExito, al terminar muestra el resultado en lugar de cerrarse. */
-export function ConfirmarModal({
-  titulo,
-  descripcion,
-  confirmarEtiqueta,
-  destructiva = false,
-  accion,
-  textoExito,
-  onClose,
-}: {
+interface ConfirmarModalProps extends OpcionesConfirmacion {
   titulo: string;
   descripcion: string;
   confirmarEtiqueta: string;
   destructiva?: boolean;
-  accion: () => Promise<void>;
-  textoExito?: string;
-  onClose: () => void;
-}) {
-  const invalidarUsuarios = useInvalidarUsuarios();
-  const [error, setError] = useState<string | null>(null);
-  const [completada, setCompletada] = useState(false);
-  const mutacion = useMutation({
-    mutationFn: accion,
-    onSuccess: async () => {
-      await invalidarUsuarios();
-      if (textoExito) setCompletada(true);
-      else onClose();
-    },
-    onError: (errorEnvio: Error) => setError(errorEnvio.message),
-  });
+}
 
-  if (completada && textoExito) {
-    return (
-      <Modal open title={titulo} onClose={onClose}>
-        <div className={styles.form}>
-          <p className={styles.info} role="status">
-            {textoExito}
-          </p>
-          <div className={styles.acciones}>
-            <Button type="button" onClick={onClose}>
-              Listo
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    );
-  }
+/** Terminada la acción: el resultado y un solo botón para cerrar. */
+function ResultadoConfirmacion({ texto, onClose }: { texto: string; onClose: () => void }) {
+  return (
+    <>
+      <p className={styles.info} role="status">
+        {texto}
+      </p>
+      <div className={styles.acciones}>
+        <Button type="button" onClick={onClose}>
+          Listo
+        </Button>
+      </div>
+    </>
+  );
+}
 
+interface PreguntaConfirmacionProps {
+  modal: ConfirmarModalProps;
+  estado: EstadoConfirmacion;
+}
+
+function PreguntaConfirmacion({ modal, estado }: PreguntaConfirmacionProps) {
+  return (
+    <>
+      <p className={styles.info}>{modal.descripcion}</p>
+      <ErrorEnvio mensaje={estado.error} />
+      <AccionesModal onCancelar={modal.onClose}>
+        <Button
+          type="button"
+          variant={modal.destructiva ? 'danger' : 'primary'}
+          loading={estado.confirmando}
+          onClick={estado.confirmar}
+        >
+          {modal.confirmarEtiqueta}
+        </Button>
+      </AccionesModal>
+    </>
+  );
+}
+
+/** Confirmación genérica para acciones de usuario (desactivar, reactivar,
+ *  reenviar invitación): describe el efecto, ejecuta y refresca el listado.
+ *  Con textoExito, al terminar muestra el resultado en lugar de cerrarse. */
+export function ConfirmarModal(props: ConfirmarModalProps) {
+  const estado = useConfirmacion(props);
+  const { titulo, textoExito, onClose } = props;
   return (
     <Modal open title={titulo} onClose={onClose}>
       <div className={styles.form}>
-        <p className={styles.info}>{descripcion}</p>
-        {error && (
-          <p className={styles.errorEnvio} role="alert">
-            {error}
-          </p>
+        {estado.completada && textoExito ? (
+          <ResultadoConfirmacion texto={textoExito} onClose={onClose} />
+        ) : (
+          <PreguntaConfirmacion modal={props} estado={estado} />
         )}
-        <div className={styles.acciones}>
-          <Button type="button" variant="secondary" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant={destructiva ? 'danger' : 'primary'}
-            loading={mutacion.isPending}
-            onClick={() => mutacion.mutate()}
-          >
-            {confirmarEtiqueta}
-          </Button>
-        </div>
       </div>
     </Modal>
   );

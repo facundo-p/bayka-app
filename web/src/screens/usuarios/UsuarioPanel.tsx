@@ -1,9 +1,7 @@
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Ban, Key, Mail } from 'lucide-react';
 import {
   Button,
-  Input,
   PanelBloque,
   PanelIdentidad,
   PanelLateral,
@@ -11,7 +9,6 @@ import {
   Select,
   type EnlacePanel,
 } from '../../components';
-import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { formatearFechaDia } from '../../lib/fechas';
 import { etiquetaRol, nombreVisible } from '../../lib/presentacionUsuario';
 import { rutaPlantacion } from '../../lib/rutas';
@@ -21,9 +18,7 @@ import {
   type PlantacionDeUsuario,
   type UsuarioConAsignaciones,
 } from '../../queries/usuarioQueries';
-import { actualizarNombre, cambiarRol, ROL, type Rol } from '../../repositories/profileRepository';
-import { cambiarEmail } from '../../services/adminUsersService';
-import { emailValido } from '../../../../supabase/functions/admin-users/nucleo';
+import { ROL, type Rol } from '../../repositories/profileRepository';
 import {
   ACCION_USUARIO,
   itemsDeMenu,
@@ -32,7 +27,9 @@ import {
   type ItemMenu,
 } from './acciones';
 import { Avatar } from './celdas';
-import { ADVERTENCIA_SUPERADMIN, OPCIONES_ROL } from './presentacion';
+import { AvisoSuperadmin, CamposContacto, ErrorEnvio } from './formulario';
+import { OPCIONES_ROL } from './presentacion';
+import { useEdicionUsuario, type EdicionUsuario } from './useEdicionUsuario';
 import { TAMANO_ICONO } from '../../theme/iconos';
 import styles from './Usuarios.module.css';
 
@@ -40,6 +37,8 @@ const AYUDA_DESACTIVAR =
   'Al desactivar pierde el acceso; sus datos de campo se conservan y se puede reactivar.';
 const SIN_ASIGNACIONES = 'Sin plantaciones asignadas';
 const ACCESO_TOTAL = 'Acceso a todas las plantaciones';
+/** El submit vive en el pie, fuera del form: los une el atributo form. */
+const ID_FORM_USUARIO = 'form-usuario';
 
 /** Ícono de cada acción rápida del panel (las mismas que el menú "⋯"). */
 const ICONO_ACCION: Record<AccionUsuario, typeof Key> = {
@@ -68,19 +67,16 @@ function CabeceraUsuario({ usuario }: { usuario: UsuarioConAsignaciones }) {
   );
 }
 
-/** Campo de rol: deshabilitado con el motivo visible cuando el guard aplica
- *  (espeja el trigger del server); advierte al promover a superadmin. */
-function CampoRol({
-  rol,
-  rolOriginal,
-  motivo,
-  onCambiar,
-}: {
+interface CampoRolProps {
   rol: Rol;
   rolOriginal: Rol;
   motivo: string | null;
   onCambiar: (rol: Rol) => void;
-}) {
+}
+
+/** Campo de rol: deshabilitado con el motivo visible cuando el guard aplica
+ *  (espeja el trigger del server); advierte al promover a superadmin. */
+function CampoRol({ rol, rolOriginal, motivo, onCambiar }: CampoRolProps) {
   return (
     <>
       <Select
@@ -93,10 +89,49 @@ function CampoRol({
         opciones={OPCIONES_ROL}
       />
       {rol === ROL.SUPERADMIN && rolOriginal !== ROL.SUPERADMIN && (
-        <p className={styles.advertencia} role="status">
-          {ADVERTENCIA_SUPERADMIN}
-        </p>
+        <AvisoSuperadmin className={styles.advertencia} />
       )}
+    </>
+  );
+}
+
+interface FormularioUsuarioProps {
+  edicion: EdicionUsuario;
+  rolOriginal: Rol;
+  motivoRol: string | null;
+}
+
+function FormularioUsuario({ edicion, rolOriginal, motivoRol }: FormularioUsuarioProps) {
+  return (
+    <form id={ID_FORM_USUARIO} className={styles.form} onSubmit={edicion.enviar}>
+      <CamposContacto campos={edicion} />
+      <CampoRol
+        rol={edicion.valores.rol}
+        rolOriginal={rolOriginal}
+        motivo={motivoRol}
+        onCambiar={(rol) => edicion.cambiar('rol', rol)}
+      />
+      <ErrorEnvio mensaje={edicion.errorEnvio} className={styles.errorEnvio} />
+    </form>
+  );
+}
+
+/** Guardar se habilita con algún cambio válido. */
+function PieEdicion({ edicion, onCancelar }: { edicion: EdicionUsuario; onCancelar: () => void }) {
+  return (
+    <>
+      <Button type="button" variant="secondary" size="sm" onClick={onCancelar}>
+        Cancelar
+      </Button>
+      <Button
+        type="submit"
+        form={ID_FORM_USUARIO}
+        size="sm"
+        disabled={!edicion.valido}
+        loading={edicion.guardando}
+      >
+        Guardar
+      </Button>
     </>
   );
 }
@@ -157,23 +192,15 @@ function BotonAccion({ item, onAccion }: { item: ItemMenu; onAccion: () => void 
   );
 }
 
+type BloqueAccionesProps = Omit<UsuarioPanelProps, 'onCerrar'>;
+
 /** Acciones que no pasan por el formulario: abren sus propios modales. */
-function BloqueAcciones({
-  items,
-  onAccion,
-}: {
-  items: ItemMenu[];
-  onAccion: (accion: AccionUsuario) => void;
-}) {
+function BloqueAcciones({ usuario, idActual, superadminsActivos, onAccion }: BloqueAccionesProps) {
   return (
     <PanelBloque titulo="Acciones">
       <div className={styles.acciones}>
-        {items.map((item) => (
-          <BotonAccion
-            key={item.accion}
-            item={item}
-            onAccion={() => onAccion(item.accion)}
-          />
+        {itemsDeMenu(usuario, idActual, superadminsActivos).map((item) => (
+          <BotonAccion key={item.accion} item={item} onAccion={() => onAccion(item.accion)} />
         ))}
       </div>
       <p className={styles.ayuda}>{AYUDA_DESACTIVAR}</p>
@@ -190,104 +217,23 @@ interface UsuarioPanelProps {
 }
 
 /**
- * Panel lateral de una persona: edita nombre (directo a profiles), email (vía
- * edge function, que lo cambia en Auth y el trigger sincroniza profiles) y rol
- * (directo a profiles, con el trigger del server como guard final). Solo envía
- * lo que cambió.
+ * Panel lateral de una persona: edita nombre, email y rol (el trigger del
+ * server es el guard final del rol) y ofrece las acciones rápidas.
  */
-export function UsuarioPanel({
-  usuario,
-  idActual,
-  superadminsActivos,
-  onAccion,
-  onCerrar,
-}: UsuarioPanelProps) {
-  const invalidarUsuarios = useInvalidarUsuarios();
-  const [nombre, setNombre] = useState(usuario.nombre);
-  const [email, setEmail] = useState(usuario.email ?? '');
-  const [rol, setRol] = useState<Rol>(usuario.rol);
-  const [errorEnvio, setErrorEnvio] = useState<string | null>(null);
-
-  const motivoRol = motivoCambiarRol(usuario, idActual, superadminsActivos);
-  const nombreCambio = nombre.trim() !== usuario.nombre;
-  const emailCambio = email.trim() !== (usuario.email ?? '');
-  const rolCambio = motivoRol === null && rol !== usuario.rol;
-  const valido =
-    nombre.trim() !== '' &&
-    (nombreCambio || emailCambio || rolCambio) &&
-    (!emailCambio || emailValido(email.trim()));
-
-  const mutacion = useMutation({
-    // Los tres campos tocan backends independientes: en paralelo.
-    mutationFn: async () => {
-      await Promise.all([
-        nombreCambio ? actualizarNombre(usuario.id, nombre.trim()) : null,
-        emailCambio ? cambiarEmail(usuario.id, email.trim()) : null,
-        rolCambio ? cambiarRol(usuario.id, rol) : null,
-      ]);
-    },
-    // Siempre invalidar: si una parte cambió y otra falló (p.ej. nombre OK,
-    // email duplicado), la lista igual debe reflejar lo que sí se guardó.
-    onSettled: () => invalidarUsuarios(),
-    onSuccess: onCerrar,
-    onError: (error: Error) => setErrorEnvio(error.message),
-  });
-
+export function UsuarioPanel(props: UsuarioPanelProps) {
+  const { usuario, onCerrar } = props;
+  const motivoRol = motivoCambiarRol(usuario, props.idActual, props.superadminsActivos);
+  const edicion = useEdicionUsuario(usuario, motivoRol === null, onCerrar);
   return (
     <PanelLateral
       etiqueta={`Detalle de ${nombreVisible(usuario.nombre, usuario.id)}`}
       cabecera={<CabeceraUsuario usuario={usuario} />}
       onCerrar={onCerrar}
-      pie={
-        <>
-          <Button type="button" variant="secondary" size="sm" onClick={onCerrar}>
-            Cancelar
-          </Button>
-          <Button
-            type="submit"
-            form="form-usuario"
-            size="sm"
-            disabled={!valido}
-            loading={mutacion.isPending}
-          >
-            Guardar
-          </Button>
-        </>
-      }
+      pie={<PieEdicion edicion={edicion} onCancelar={onCerrar} />}
     >
-      {/* El submit vive en el pie, fuera del form: los une el atributo form. */}
-      <form
-        id="form-usuario"
-        className={styles.form}
-        onSubmit={(evento) => {
-          evento.preventDefault();
-          mutacion.mutate();
-        }}
-      >
-        <Input
-          label="Nombre"
-          required
-          value={nombre}
-          onChange={(evento) => setNombre(evento.target.value)}
-        />
-        <Input
-          label="Email"
-          type="email"
-          value={email}
-          onChange={(evento) => setEmail(evento.target.value)}
-        />
-        <CampoRol rol={rol} rolOriginal={usuario.rol} motivo={motivoRol} onCambiar={setRol} />
-        {errorEnvio && (
-          <p className={styles.errorEnvio} role="alert">
-            {errorEnvio}
-          </p>
-        )}
-      </form>
+      <FormularioUsuario edicion={edicion} rolOriginal={usuario.rol} motivoRol={motivoRol} />
       <BloquePlantaciones usuario={usuario} />
-      <BloqueAcciones
-        items={itemsDeMenu(usuario, idActual, superadminsActivos)}
-        onAccion={onAccion}
-      />
+      <BloqueAcciones {...props} />
     </PanelLateral>
   );
 }

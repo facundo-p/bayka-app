@@ -17,6 +17,13 @@ export const ACCION_USUARIO = {
 
 export type AccionUsuario = (typeof ACCION_USUARIO)[keyof typeof ACCION_USUARIO];
 
+/** Lo que miran los guards además de la persona: quién opera y cuántos
+ *  superadmins activos hay, contados sobre todas las personas sin filtrar. */
+export interface ContextoAcciones {
+  idActual: string | undefined;
+  superadminsActivos: number;
+}
+
 /** Una acción elegida sobre una persona: abre su modal. */
 export type AccionActiva = { usuario: UsuarioConAsignaciones; accion: AccionUsuario };
 
@@ -77,6 +84,23 @@ export function motivoReenviarInvitacion(usuario: UsuarioConAsignaciones): strin
   return usuario.email ? null : MOTIVO_SIN_EMAIL;
 }
 
+/** Desactivar a una persona activa, con sus guards, o reactivar a una inactiva. */
+function itemDeEstado(
+  usuario: UsuarioConAsignaciones,
+  idActual: string | undefined,
+  superadminsActivos: number,
+): ItemMenu {
+  if (!usuario.activo) {
+    return { accion: ACCION_USUARIO.reactivar, etiqueta: 'Reactivar', motivo: null };
+  }
+  return {
+    accion: ACCION_USUARIO.desactivar,
+    etiqueta: 'Desactivar',
+    motivo: motivoDesactivar(usuario, idActual, superadminsActivos),
+    destructiva: true,
+  };
+}
+
 /** Acciones rápidas de una fila, con cada una habilitada o su motivo. Editar no
  *  está: se edita clickeando la fila, que abre el panel lateral. */
 export function itemsDeMenu(
@@ -95,13 +119,6 @@ export function itemsDeMenu(
       etiqueta: 'Reenviar invitación',
       motivo: motivoReenviarInvitacion(usuario),
     },
-    usuario.activo
-      ? {
-          accion: ACCION_USUARIO.desactivar,
-          etiqueta: 'Desactivar',
-          motivo: motivoDesactivar(usuario, idActual, superadminsActivos),
-          destructiva: true,
-        }
-      : { accion: ACCION_USUARIO.reactivar, etiqueta: 'Reactivar', motivo: null },
+    itemDeEstado(usuario, idActual, superadminsActivos),
   ];
 }

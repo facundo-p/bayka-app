@@ -32,46 +32,59 @@ const OPCIONES_ESTADO: Array<Opcion<FiltroEstado>> = [
   { value: FILTRO_ESTADO.inactivos, label: 'Inactivos' },
 ];
 
+type ControlesUsuarios = ControlesFiltros<FiltrosBarraUsuarios>;
+
 interface UsuariosToolbarProps {
-  controles: ControlesFiltros<FiltrosBarraUsuarios>;
+  controles: ControlesUsuarios;
   /** Las personas que pasan los filtros: de ellas sale el recuento. */
   visibles: UsuarioConAsignaciones[];
 }
 
+function RecuentoUsuarios({ visibles }: { visibles: UsuarioConAsignaciones[] }) {
+  return (
+    <>
+      <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.persona} /> ·{' '}
+      <RecuentoItem cantidad={contarActivas(visibles)} sustantivo={ACTIVA} />
+    </>
+  );
+}
+
+function FiltrosUsuarios({ controles }: { controles: ControlesUsuarios }) {
+  return (
+    <>
+      <SegmentedControl
+        options={OPCIONES_ROL}
+        value={controles.filtros.rol}
+        onChange={(rol) => controles.onFiltro('rol', rol)}
+        size="sm"
+        aria-label="Filtrar por rol"
+      />
+      <SegmentedControl
+        options={OPCIONES_ESTADO}
+        value={controles.filtros.estado}
+        onChange={(estado) => controles.onFiltro('estado', estado)}
+        size="sm"
+        aria-label="Filtrar por estado"
+      />
+    </>
+  );
+}
+
 /** Toolbar de Usuarios: búsqueda, rol, estado y recuento, un solo renglón. */
 export function UsuariosToolbar({ controles, visibles }: UsuariosToolbarProps) {
-  const { busqueda, onBuscar, filtros, onFiltro } = controles;
   return (
     <BarraHerramientas
       encabezado={
         <CampoBusqueda
           label="Buscar usuarios"
           placeholder="Buscar por nombre o email…"
-          value={busqueda}
-          onChange={onBuscar}
+          value={controles.busqueda}
+          onChange={controles.onBuscar}
         />
       }
-      recuento={
-        <>
-          <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.persona} /> ·{' '}
-          <RecuentoItem cantidad={contarActivas(visibles)} sustantivo={ACTIVA} />
-        </>
-      }
+      recuento={<RecuentoUsuarios visibles={visibles} />}
     >
-      <SegmentedControl
-        options={OPCIONES_ROL}
-        value={filtros.rol}
-        onChange={(rol) => onFiltro('rol', rol)}
-        size="sm"
-        aria-label="Filtrar por rol"
-      />
-      <SegmentedControl
-        options={OPCIONES_ESTADO}
-        value={filtros.estado}
-        onChange={(estado) => onFiltro('estado', estado)}
-        size="sm"
-        aria-label="Filtrar por estado"
-      />
+      <FiltrosUsuarios controles={controles} />
     </BarraHerramientas>
   );
 }

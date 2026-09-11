@@ -1,11 +1,10 @@
 import { Badge, type TableColumn } from '../../components';
 import { formatearFechaDia } from '../../lib/fechas';
-import { etiquetaRol, nombreVisible } from '../../lib/presentacionUsuario';
+import { etiquetaRol } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
-import { itemsDeMenu, type AccionActiva } from './acciones';
-import { CeldaTexto, CeldaUsuario } from './celdas';
+import type { AccionActiva, ContextoAcciones } from './acciones';
+import { CeldaAcciones, CeldaTexto, CeldaUsuario } from './celdas';
 import { resumenPlantaciones } from './filtros';
-import { MenuAccionesUsuario } from './MenuAccionesUsuario';
 import styles from './Usuarios.module.css';
 
 const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo' } as const;
@@ -49,25 +48,15 @@ const COLUMNAS_BASE: Array<TableColumn<UsuarioConAsignaciones>> = [
 /** Columnas del listado + el menú "⋯" de acciones rápidas por fila. */
 export function columnasUsuarios(
   onAccion: (activa: AccionActiva) => void,
-  idActual: string | undefined,
-  superadminsActivos: number,
+  contexto: ContextoAcciones,
 ): Array<TableColumn<UsuarioConAsignaciones>> {
-  return [
-    ...COLUMNAS_BASE,
-    {
-      key: 'acciones',
-      header: '',
-      align: 'right',
-      render: (usuario) => (
-        // La fila abre el panel: el menú frena el click para no hacer las dos cosas.
-        <span onClick={(evento) => evento.stopPropagation()}>
-          <MenuAccionesUsuario
-            nombre={nombreVisible(usuario.nombre, usuario.id)}
-            items={itemsDeMenu(usuario, idActual, superadminsActivos)}
-            onAccion={(accion) => onAccion({ usuario, accion })}
-          />
-        </span>
-      ),
-    },
-  ];
+  const acciones: TableColumn<UsuarioConAsignaciones> = {
+    key: 'acciones',
+    header: '',
+    align: 'right',
+    render: (usuario) => (
+      <CeldaAcciones usuario={usuario} contexto={contexto} onAccion={onAccion} />
+    ),
+  };
+  return [...COLUMNAS_BASE, acciones];
 }
