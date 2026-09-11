@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { GrupoConDetalle } from '../../queries/dataExplorerQueries';
@@ -22,7 +22,7 @@ const VACIO_CON_FILTROS = 'Ningún grupo coincide con los filtros';
 
 /** El drill-down a Árboles conserva el scope de parcela. */
 function useGruposSection() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const irA = useIrASeccion();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
   const parcelas = useParcelasDatos(id);

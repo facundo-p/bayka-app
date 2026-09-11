@@ -1,7 +1,7 @@
-import { useParams } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { BuscadorEspecies, MaestroEspecies, SpeciesChecklist } from '../../components';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { listarEspeciesConUso } from '../../queries/especieQueries';
 import { CabeceraConfig } from './CabeceraConfig';
@@ -75,7 +75,7 @@ function ContenidoEspecies(datos: DatosChecklist) {
 
 /** Qué especies pueden registrar los técnicos en esta plantación. */
 export function EspeciesConfigSection() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const catalogo = useCatalogoEspecies();
   const especies = useEspeciesDePlantacion(id);
   return (

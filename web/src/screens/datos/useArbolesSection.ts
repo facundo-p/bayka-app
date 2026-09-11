@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePerfiles } from '../../hooks/usePerfiles';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -55,7 +55,7 @@ function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
  * presentación.
  */
 export function useArbolesSection() {
-  const { id = '' } = useParams();
+  const id = useIdPlantacion();
   const filtrosDatos = useFiltrosDatos();
   const [arbolSeleccionado, setArbolSeleccionado] = useState<ArbolDetalle | null>(null);
   const parcelas = useParcelasDatos(id);

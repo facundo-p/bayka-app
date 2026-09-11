@@ -11,7 +11,7 @@ import {
 import { useMatch } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { CLAVE_STORAGE, guardarLocal, leerLocal } from '../lib/almacenamientoLocal';
-import { PATRON_DETALLE_PLANTACION } from '../lib/rutas';
+import { PARAM_ID_PLANTACION, PATRON_DETALLE_PLANTACION } from '../lib/rutas';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones } from '../queries/plantationQueries';
 import type { ResultadoBusqueda, ScopeBusqueda } from '../queries/buscarQueries';
@@ -82,7 +82,7 @@ function useAperturaPorAtajo() {
 /** Scope derivado del detalle de plantación en la URL; etiqueta = lugar (de cache). */
 function useScopeContextual(): ScopeContextual | null {
   const match = useMatch(`${PATRON_DETALLE_PLANTACION}/*` as const);
-  const plantationId = match?.params.id;
+  const plantationId = match?.params[PARAM_ID_PLANTACION];
   const { data } = useQuery({
     queryKey: CLAVE_QUERY.plantaciones(),
     queryFn: listarPlantaciones,

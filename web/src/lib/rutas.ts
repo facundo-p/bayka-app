@@ -14,8 +14,11 @@ export const RUTA = {
   usuarios: '/usuarios',
 } as const;
 
-/** Patrón del detalle para el router; el id llega como `useParams().id`. */
-export const PATRON_DETALLE_PLANTACION = `${RUTA.plantaciones}/:id` as const;
+/** Parámetro de ruta con el id de la plantación; los de query son `PARAM_URL`. */
+export const PARAM_ID_PLANTACION = 'id';
+
+/** Patrón del detalle para el router; el id se lee con `useIdPlantacion`. */
+export const PATRON_DETALLE_PLANTACION = `${RUTA.plantaciones}/:${PARAM_ID_PLANTACION}` as const;
 
 /** Tabs del detalle con segmento propio; el dashboard es la ruta índice. */
 export const TAB_DETALLE = {
