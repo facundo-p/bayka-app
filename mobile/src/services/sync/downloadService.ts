@@ -4,10 +4,9 @@ import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
 import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esSinAcceso } from './types';
-import { pullFromServer } from './pullService';
+import { pullFromServer, webManagedFlags } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
-import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
@@ -28,14 +27,6 @@ export type ServerPlantationRow = {
   visible_in_app?: boolean | null;
   photo_capture_all_trees?: boolean | null;
 };
-
-/** Flags administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
-function webManagedFlags(serverPlantation: ServerPlantationRow) {
-  return {
-    visibleInApp: serverPlantation.visible_in_app ?? true,
-    photoCaptureAllTrees: serverPlantation.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
-  };
-}
 
 /** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
 export async function downloadPlantation(
