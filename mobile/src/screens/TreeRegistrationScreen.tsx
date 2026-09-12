@@ -10,7 +10,6 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { useTreeRegistration } from '../hooks/useTreeRegistration';
 import { useSpeciesOrder } from '../hooks/useSpeciesOrder';
-import { useNNFlow } from '../hooks/useNNFlow';
 import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
 import LastThreeTrees from '../components/LastThreeTrees';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
@@ -71,6 +70,7 @@ export default function TreeRegistrationScreen() {
     plantacionId: plantacionId ?? '',
     grupoCodigo: grupoCodigo ?? '',
     userId,
+    pickPhoto,
     getLastGpsFix: gpsWatcher.getLastFix,
     onError: showWriteError,
   });
@@ -82,17 +82,6 @@ export default function TreeRegistrationScreen() {
     refreshWatcher: gpsWatcher.refresh,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
-  const nnFlow = useNNFlow({
-    grupoId: grupoId ?? '',
-    grupoCodigo: grupoCodigo ?? '',
-    userId,
-    isReadOnly: treeReg.isReadOnly,
-    unresolvedNN: treeReg.unresolvedNN,
-    pickPhoto,
-    gpsCaptureFrequency: treeReg.gpsCaptureFrequency,
-    getLastGpsFix: gpsWatcher.getLastFix,
-    onError: showWriteError,
-  });
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -238,7 +227,7 @@ export default function TreeRegistrationScreen() {
                   onSelectSpecies={({ especieId, especieCodigo }) =>
                     treeReg.registerTree(especieId, especieCodigo)
                   }
-                  onNNPress={() => nnFlow.registerNN()}
+                  onNNPress={() => treeReg.registerNN()}
                   disabled={isReadOnly || gpsGate.blocked}
                 />
               </Animated.View>
@@ -283,7 +272,7 @@ export default function TreeRegistrationScreen() {
         deletingTreeId={deletingTreeId}
         onClose={() => setShowTreeList(false)}
         onViewPhoto={(treeId, uri) => setViewingPhoto({ uri, treeId })}
-        onAttachPhoto={(treeId) => treeReg.addPhotoToTree(treeId, pickPhoto)}
+        onAttachPhoto={(treeId) => treeReg.addPhotoToTree(treeId)}
         onDeleteTree={handleDeleteTree}
         onSelectTree={(treeId) => { setShowTreeList(false); setEditingTreeId(treeId); }}
       />
@@ -294,7 +283,7 @@ export default function TreeRegistrationScreen() {
         canEdit={canEditTree}
         canDelete={canDeleteTree}
         onClose={() => setEditingTreeId(null)}
-        onCapturePhoto={(treeId) => treeReg.addPhotoToTree(treeId, pickPhoto)}
+        onCapturePhoto={(treeId) => treeReg.addPhotoToTree(treeId)}
         onRemovePhoto={(treeId) => treeReg.removePhoto(treeId)}
         onCaptureGps={(treeId) => treeReg.captureTreeGps(treeId)}
         onDelete={(treeId, posicion) => {

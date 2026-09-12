@@ -193,6 +193,26 @@ describe('downloadPlantation', () => {
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: true }));
     expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ visibleInApp: true });
   });
+
+  it('mapea photo_capture_all_trees del server al campo local photoCaptureAllTrees (#439)', async () => {
+    const sp = { ...makeServerPlantation('p-foto'), photo_capture_all_trees: true };
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: true }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: true });
+  });
+
+  it('defaultea photoCaptureAllTrees=false cuando el server no trae la columna (035 sin aplicar)', async () => {
+    const sp = makeServerPlantation('p-sin-foto-flag');
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: false }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: false });
+  });
 });
 
 describe('batchDownload', () => {

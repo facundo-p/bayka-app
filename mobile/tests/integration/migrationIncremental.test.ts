@@ -8,10 +8,10 @@
  * Contrato asumido (issue #312, aprobado): ningún device operativo quedó en un estado anterior a
  * este fix — todos ya están en idx >= 15 (max created_at >= 1774300000000, el `when` de la 0015).
  * Este test simula exactamente ese piso: un device que ya migró 0000-0015 y luego recibe una
- * actualización con el journal completo (hasta 0018). Verifica que 0008-0014 (renumeradas a
+ * actualización con el journal completo (hasta 0019). Verifica que 0008-0014 (renumeradas a
  * `when` entre las de 0007 y 0015, ver drizzle/meta/_journal.json) NO se reaplican — evitando los
  * "duplicate column"/"table already exists" que dispararían si drizzle intentara correrlas de
- * nuevo — y que 0016-0018 sí se aplican.
+ * nuevo — y que 0016-0019 sí se aplican.
  */
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -48,7 +48,7 @@ function buildTruncatedMigrationsFolder(upToIdx: number): string {
   return dir;
 }
 
-test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0018 al actualizar', () => {
+test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualizar', () => {
   const sqlite = new Database(':memory:');
   const db = drizzle(sqlite);
 
@@ -64,7 +64,7 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0018 al actualiza
   expect(afterPhase1).toHaveLength(DEVICE_FLOOR_IDX + 1);
   expect(Math.max(...afterPhase1.map((r) => Number(r.created_at)))).toBe(DEVICE_FLOOR_WHEN);
 
-  // Fase 2: la app se actualiza y trae el journal completo (hasta 0018).
+  // Fase 2: la app se actualiza y trae el journal completo (hasta 0019).
   expect(() => migrate(db, { migrationsFolder: DRIZZLE_DIR })).not.toThrow();
 
   const afterPhase2 = appliedMigrations(sqlite);
@@ -75,6 +75,7 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0018 al actualiza
       'gps_capture_frequency_server',
       'gps_capture_required_server',
       'visible_in_app',
+      'photo_capture_all_trees',
     ]),
   );
 

@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../lib/gpsDefaults';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../lib/photoDefaults';
 
 /** Única fuente de verdad de los estados; `EstadoPlantacion` se deriva de acá (evita literales sueltos desincronizados). */
 export const ESTADO_PLANTACION = {
@@ -9,7 +10,7 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
-/** Campos opcionales: de las migraciones 023 (GPS) y 024, que pueden no estar aplicadas. */
+/** Campos opcionales: de las migraciones 023 (GPS), 024 y 035 (foto), que pueden no estar aplicadas. */
 type FilaPlantacion = {
   id: string;
   lugar: string;
@@ -19,6 +20,7 @@ type FilaPlantacion = {
   visible_in_app?: boolean | null;
   gps_capture_frequency?: number | null;
   gps_capture_required?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
   descripcion?: string | null;
   fecha_inicio?: string | null;
   objetivo_arboles?: number | null;
@@ -32,6 +34,8 @@ export type Plantacion = {
   visibleInApp: boolean;
   gpsCaptureFrequency: number;
   gpsCaptureRequired: boolean;
+  /** Todos los botones de la botonera piden foto, como N/N (#439). */
+  photoCaptureAllTrees: boolean;
   createdAt: string;
   descripcion: string | null;
   fechaInicio: string | null;
@@ -80,6 +84,7 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
     visibleInApp: fila.visible_in_app ?? true,
     gpsCaptureFrequency: fila.gps_capture_frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT,
     gpsCaptureRequired: fila.gps_capture_required ?? GPS_CAPTURE_REQUIRED_DEFAULT,
+    photoCaptureAllTrees: fila.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
     createdAt: fila.created_at,
     ...camposFormulario(fila),
   };

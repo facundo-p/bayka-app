@@ -27,20 +27,24 @@ export async function getGroupById(grupoId: string) {
     .where(eq(groups.id, grupoId));
 }
 
-export interface PlantationGpsConfig {
+/** Config de captura de la plantación que gobierna el registro de árboles (GPS + foto). */
+export interface PlantationCaptureConfig {
   /** Capturar GPS cada N árboles. */
-  frequency: number;
-  /** Si la captura es obligatoria para registrar árboles. */
-  required: boolean;
+  gpsFrequency: number;
+  /** Si la captura GPS es obligatoria para registrar árboles. */
+  gpsRequired: boolean;
+  /** Si todos los botones de especie piden foto, como N/N (#439). */
+  photoAllTrees: boolean;
 }
 
-export async function getPlantationGpsConfig(
+export async function getPlantationCaptureConfig(
   plantacionId: string,
-): Promise<PlantationGpsConfig | null> {
+): Promise<PlantationCaptureConfig | null> {
   const rows = await db
     .select({
-      frequency: plantations.gpsCaptureFrequency,
-      required: plantations.gpsCaptureRequired,
+      gpsFrequency: plantations.gpsCaptureFrequency,
+      gpsRequired: plantations.gpsCaptureRequired,
+      photoAllTrees: plantations.photoCaptureAllTrees,
     })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));

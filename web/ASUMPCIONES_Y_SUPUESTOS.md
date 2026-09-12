@@ -95,6 +95,11 @@ nueva la agrega acá.
   `gps_capture_frequency` (entero ≥ 1, default 10) y `gps_capture_required`
   (boolean, default true), columnas creadas por la migración 023 del milestone
   GPS. La web no introduce parámetros GPS nuevos.
+- **A21 — `photo_capture_all_trees`** (migración 035, #439): si está activo,
+  en la app cada botón de especie pide foto antes de registrar, como N/N.
+  Default `false`. Lo edita solo la web; la app lo lee por sync y el server
+  siempre gana. La obligatoriedad de esa foto para árboles identificados es
+  una constante en mobile (`PHOTO_CAPTURE_REQUIRED_DEFAULT`), no una columna.
 
 ## 5. Funcional
 

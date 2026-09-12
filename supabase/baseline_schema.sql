@@ -425,6 +425,7 @@ CREATE TABLE IF NOT EXISTS "public"."plantations" (
     "fecha_inicio" "date",
     "objetivo_arboles" integer,
     "visible_in_app" boolean DEFAULT true NOT NULL,
+    "photo_capture_all_trees" boolean DEFAULT false NOT NULL,
     CONSTRAINT "plantations_estado_check" CHECK (("estado" = ANY (ARRAY['activa'::"text", 'finalizada'::"text"]))),
     CONSTRAINT "plantations_gps_capture_frequency_check" CHECK (("gps_capture_frequency" >= 1)),
     CONSTRAINT "plantations_objetivo_arboles_check" CHECK (("objetivo_arboles" >= 1))

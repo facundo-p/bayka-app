@@ -1,6 +1,7 @@
 import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 
 export const species = sqliteTable('species', {
@@ -36,6 +37,10 @@ export const plantations = sqliteTable('plantations', {
   gpsCaptureRequiredServer: integer('gps_capture_required_server', { mode: 'boolean' }),
   // Visibilidad administrada desde la web de gestión: técnicos no ven plantaciones ocultas; el sync no se ve afectado.
   visibleInApp: integer('visible_in_app', { mode: 'boolean' }).notNull().default(true),
+  // Foto en todos los botones de la botonera (#439), administrada desde la web. Default duplicado en 0019 (local) y 035 (Supabase).
+  photoCaptureAllTrees: integer('photo_capture_all_trees', { mode: 'boolean' })
+    .notNull()
+    .default(PHOTO_CAPTURE_ALL_TREES_DEFAULT),
 });
 
 export const parcelas = sqliteTable('parcelas', {
