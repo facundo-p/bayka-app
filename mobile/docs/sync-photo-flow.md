@@ -42,14 +42,15 @@ Esto garantiza que el servidor siempre tiene una referencia válida en un solo p
 |-------|-------------|-----------|
 | `especieId` | UUID de la especie | `null` |
 | `especieCodigo` | Código de especie | `'NN'` |
-| `fotoUrl` | `null` (sin foto al crear) | `file://...` (foto obligatoria) |
+| `fotoUrl` | `null`, o `file://...` si la plantación tiene "foto en todos los botones" (#439) | `file://...` (foto obligatoria) |
 | `fotoSynced` | `false` (default) | `false` (default) |
 
 Después de crear: `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true`.
 
-**Archivo:** `useNNFlow.ts` → `registerNN()`
+**Archivo:** `useTreeRegistration.ts` → `registerNN()` / `registerTree()` (camino único)
+- Resuelve la política de foto (`services/photo/photoCaptureRules.ts`): N/N siempre pide y exige foto; especie solo si la plantación activó `photoCaptureAllTrees`
 - Abre la cámara → `pickPhoto()` → `file://...`
-- Llama `insertTree({ especieId: null, especieCodigo: 'NN', fotoUrl: photoUri })`
+- Llama `insertTreeWithGps({ especieId, especieCodigo, fotoUrl })` (N/N: `especieId: null`, `especieCodigo: 'NN'`)
 
 ### 2. Adjuntar/cambiar foto
 

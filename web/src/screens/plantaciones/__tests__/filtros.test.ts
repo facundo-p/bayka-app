@@ -21,6 +21,7 @@ function plantacion(over: Partial<PlantacionConStats>): PlantacionConStats {
     visibleInApp: true,
     gpsCaptureFrequency: 0,
     gpsCaptureRequired: false,
+    photoCaptureAllTrees: false,
     createdAt: '2026-06-12T12:00:00Z',
     descripcion: null,
     fechaInicio: null,

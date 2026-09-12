@@ -134,6 +134,13 @@
       "when": 1786570630000,
       "tag": "0018_groups_parcela_id_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1789171200000,
+      "tag": "0019_plantations_photo_capture_all_trees",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE
 import { pullFromServer } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
@@ -15,7 +16,7 @@ interface DownloadOptions {
   onPhase?: (p: DownloadPhaseProgress) => void;
 }
 
-/** Fila de plantations tal como llega del server (snake_case); visible_in_app opcional, tolera servers sin esa columna. */
+/** Fila de plantations tal como llega del server (snake_case); los flags de la web son opcionales, toleran servers sin esas columnas. */
 export type ServerPlantationRow = {
   id: string;
   organizacion_id: string;
@@ -25,7 +26,16 @@ export type ServerPlantationRow = {
   creado_por: string;
   created_at: string;
   visible_in_app?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
 };
+
+/** Flags administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
+function webManagedFlags(serverPlantation: ServerPlantationRow) {
+  return {
+    visibleInApp: serverPlantation.visible_in_app ?? true,
+    photoCaptureAllTrees: serverPlantation.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
+  };
+}
 
 /** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
 export async function downloadPlantation(
@@ -47,8 +57,7 @@ export async function downloadPlantation(
       pendingSync: false,
       lugarServer: serverPlantation.lugar,
       periodoServer: serverPlantation.periodo,
-      // Ausente en la respuesta (server sin la columna) → visible.
-      visibleInApp: serverPlantation.visible_in_app ?? true,
+      ...webManagedFlags(serverPlantation),
     })
     .onConflictDoUpdate({
       target: plantations.id,
@@ -57,7 +66,7 @@ export async function downloadPlantation(
         pendingSync: false,
         lugarServer: serverPlantation.lugar,
         periodoServer: serverPlantation.periodo,
-        visibleInApp: serverPlantation.visible_in_app ?? true,
+        ...webManagedFlags(serverPlantation),
       },
     });
 

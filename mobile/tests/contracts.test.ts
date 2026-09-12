@@ -21,6 +21,7 @@ jest.mock('xlsx', () => ({
 }));
 
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/gpsCapture';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT, PHOTO_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/photoCapture';
 import { UNKNOWN_SPECIES_CODE } from '../src/utils/speciesHelpers';
 import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
@@ -53,6 +54,14 @@ describe('contracts · gps-defaults', () => {
     const contrato = leerContrato('gps-defaults.json');
     expect(GPS_CAPTURE_FREQUENCY_DEFAULT).toBe(contrato.frequency);
     expect(GPS_CAPTURE_REQUIRED_DEFAULT).toBe(contrato.required);
+  });
+});
+
+describe('contracts · photo-defaults', () => {
+  it('PHOTO_CAPTURE_ALL_TREES_DEFAULT / PHOTO_CAPTURE_REQUIRED_DEFAULT coinciden con el contrato', () => {
+    const contrato = leerContrato('photo-defaults.json');
+    expect(PHOTO_CAPTURE_ALL_TREES_DEFAULT).toBe(contrato.allTrees);
+    expect(PHOTO_CAPTURE_REQUIRED_DEFAULT).toBe(contrato.required);
   });
 });
 

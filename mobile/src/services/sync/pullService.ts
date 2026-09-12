@@ -4,6 +4,7 @@ import { groups, trees, plantationUsers, plantationSpecies, plantations, species
 import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 import { fetchAllRows, runInTransaction } from './paginate';
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
@@ -85,8 +86,10 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     serverUpdate.gpsCaptureRequiredServer = remotePlantation.gps_capture_required;
   }
 
-  // Visibilidad la administra solo la web: el server siempre gana; columna ausente → visible.
+  // Visibilidad y foto en todos los botones las administra solo la web: el server siempre gana; columna ausente → default.
   serverUpdate.visibleInApp = remotePlantation.visible_in_app ?? true;
+  serverUpdate.photoCaptureAllTrees =
+    remotePlantation.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT;
 
   const [local] = await db
     .select({ pendingEdit: plantations.pendingEdit })
