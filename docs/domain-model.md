@@ -201,10 +201,11 @@ ubicacion_lat / ubicacion_lng (opcional, centroide aproximado)
 objetivo_arboles (opcional, meta para dashboard)
 visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
+photo_capture_all_trees (default false: si todos los botones de la botonera piden foto, como N/N; migración 035)
 ```
 
-Los campos opcionales y la visibilidad se gestionan desde la web de gestión
-(migración 024).
+Los campos opcionales, la visibilidad y la foto en todos los botones se
+gestionan desde la web de gestión (migraciones 024 y 035).
 
 ### Estados posibles
 

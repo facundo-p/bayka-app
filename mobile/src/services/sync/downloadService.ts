@@ -4,7 +4,7 @@ import { sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
 import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esSinAcceso } from './types';
-import { pullFromServer } from './pullService';
+import { pullFromServer, webManagedFlags } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
 
@@ -15,7 +15,7 @@ interface DownloadOptions {
   onPhase?: (p: DownloadPhaseProgress) => void;
 }
 
-/** Fila de plantations tal como llega del server (snake_case); visible_in_app opcional, tolera servers sin esa columna. */
+/** Fila de plantations tal como llega del server (snake_case); los flags de la web son opcionales, toleran servers sin esas columnas. */
 export type ServerPlantationRow = {
   id: string;
   organizacion_id: string;
@@ -25,6 +25,7 @@ export type ServerPlantationRow = {
   creado_por: string;
   created_at: string;
   visible_in_app?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
 };
 
 /** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
@@ -47,8 +48,7 @@ export async function downloadPlantation(
       pendingSync: false,
       lugarServer: serverPlantation.lugar,
       periodoServer: serverPlantation.periodo,
-      // Ausente en la respuesta (server sin la columna) → visible.
-      visibleInApp: serverPlantation.visible_in_app ?? true,
+      ...webManagedFlags(serverPlantation),
     })
     .onConflictDoUpdate({
       target: plantations.id,
@@ -57,7 +57,7 @@ export async function downloadPlantation(
         pendingSync: false,
         lugarServer: serverPlantation.lugar,
         periodoServer: serverPlantation.periodo,
-        visibleInApp: serverPlantation.visible_in_app ?? true,
+        ...webManagedFlags(serverPlantation),
       },
     });
 

@@ -23,6 +23,10 @@ export const MENSAJE_GPS_SIN_MIGRACION =
 export const MENSAJE_VISIBILIDAD_SIN_MIGRACION =
   'Visibilidad no disponible: falta aplicar la migración 024';
 
+/** Migración 035 sin aplicar: falta la columna `photo_capture_all_trees`. */
+export const MENSAJE_FOTO_SIN_MIGRACION =
+  'Foto en todos los botones no disponible: falta aplicar la migración 035';
+
 type Payload = Record<string, string | number | boolean>;
 type ErrorSupabase = { message: string; code?: string } | null;
 type ResultadoSupabase = { data: unknown; error: ErrorSupabase };
@@ -130,6 +134,11 @@ export async function actualizarConfigGps(id: string, config: ConfigGps): Promis
 /** Toggle de UX, NO frontera de seguridad: el filtrado es client-side; quien puede leer la plantación la sigue leyendo oculta. */
 export async function actualizarVisibilidad(id: string, visible: boolean): Promise<void> {
   await actualizarCampos(id, { visible_in_app: visible }, MENSAJE_VISIBILIDAD_SIN_MIGRACION);
+}
+
+/** Con el flag activo, en la app todos los botones de la botonera piden foto, como N/N (#439). Afecta solo registros futuros. */
+export async function actualizarFotoEnTodos(id: string, activo: boolean): Promise<void> {
+  await actualizarCampos(id, { photo_capture_all_trees: activo }, MENSAJE_FOTO_SIN_MIGRACION);
 }
 
 /**

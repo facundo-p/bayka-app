@@ -14,6 +14,8 @@ import { CabeceraConfig } from './CabeceraConfig';
 import { ErrorAccion } from './ErrorAccion';
 import { FilaConfig } from './FilaConfig';
 import { PRESETS_FRECUENCIA, useCampoExacto, useFrecuenciaGps } from './useFrecuenciaGps';
+import { useFotoEnTodos } from './useFotoEnTodos';
+import { useToggleConfigPlantacion } from './useToggleConfigPlantacion';
 import { useVisibilidadEnApp } from './useVisibilidadEnApp';
 import styles from './SeccionesConfig.module.css';
 
@@ -26,6 +28,35 @@ const OPCIONES_FRECUENCIA = PRESETS_FRECUENCIA.map((numero) => ({
 
 const AYUDA_VISIBILIDAD =
   'Si se desactiva, no verán esta plantación; sus datos pendientes igual sincronizan';
+
+const ETIQUETA_FOTO = 'Foto en todos los botones';
+
+type EstadoToggle = ReturnType<typeof useToggleConfigPlantacion>;
+
+/** Fila de un toggle de la plantación que guarda al cambiar, con su error debajo. */
+function FilaToggle({
+  etiqueta,
+  ayuda,
+  toggle,
+}: {
+  etiqueta: string;
+  ayuda: string;
+  toggle: EstadoToggle;
+}) {
+  return (
+    <>
+      <FilaConfig etiqueta={etiqueta} ayuda={ayuda}>
+        <Toggle
+          aria-label={etiqueta}
+          checked={toggle.activo}
+          disabled={toggle.guardando}
+          onChange={toggle.cambiar}
+        />
+      </FilaConfig>
+      <ErrorAccion mensaje={toggle.mensajeError} />
+    </>
+  );
+}
 
 type EstadoGps = ReturnType<typeof useFrecuenciaGps>;
 
@@ -92,20 +123,22 @@ function FilasGps({ plantacion }: { plantacion: Plantacion }) {
   );
 }
 
+function FilaFotoEnTodos({ plantacion }: { plantacion: Plantacion }) {
+  const foto = useFotoEnTodos(plantacion);
+  const ayuda = foto.activo
+    ? 'Cada botón de especie pide foto antes de registrar, como N/N'
+    : 'Solo N/N pide foto';
+  return <FilaToggle etiqueta={ETIQUETA_FOTO} ayuda={ayuda} toggle={foto} />;
+}
+
 function FilaVisibilidad({ plantacion }: { plantacion: Plantacion }) {
   const visibilidad = useVisibilidadEnApp(plantacion);
   return (
-    <>
-      <FilaConfig etiqueta="Visible para técnicos en la app" ayuda={AYUDA_VISIBILIDAD}>
-        <Toggle
-          aria-label="Visible para técnicos en la app"
-          checked={visibilidad.visible}
-          disabled={visibilidad.guardando}
-          onChange={visibilidad.cambiar}
-        />
-      </FilaConfig>
-      <ErrorAccion mensaje={visibilidad.mensajeError} />
-    </>
+    <FilaToggle
+      etiqueta="Visible para técnicos en la app"
+      ayuda={AYUDA_VISIBILIDAD}
+      toggle={visibilidad}
+    />
   );
 }
 
@@ -113,12 +146,13 @@ function FilasComportamiento({ plantacion }: { plantacion: Plantacion }) {
   return (
     <div className={styles.filasComportamiento}>
       <FilasGps plantacion={plantacion} />
+      <FilaFotoEnTodos plantacion={plantacion} />
       <FilaVisibilidad plantacion={plantacion} />
     </div>
   );
 }
 
-/** Cómo se comporta la plantación en Bayka App: captura de GPS y visibilidad. */
+/** Cómo se comporta la plantación en Bayka App: captura de GPS, foto en la botonera y visibilidad. */
 export function ComportamientoConfigSection() {
   const id = useIdPlantacion();
   const plantacion = usePlantacion(id);
@@ -126,7 +160,7 @@ export function ComportamientoConfigSection() {
     <Card>
       <CabeceraConfig
         titulo="Comportamiento en la app"
-        subtitulo="GPS y visibilidad para los técnicos"
+        subtitulo="GPS, fotos y visibilidad para los técnicos"
       />
       {plantacion.isPending && <Cargando />}
       {plantacion.isError && (

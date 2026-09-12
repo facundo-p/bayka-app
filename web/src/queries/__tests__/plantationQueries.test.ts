@@ -33,6 +33,7 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       visibleInApp: false,
       gpsCaptureFrequency: 10,
       gpsCaptureRequired: true,
+      photoCaptureAllTrees: false,
       createdAt: '2026-06-12T12:00:00Z',
       arboles: 120,
       parcelas: 3,
@@ -66,6 +67,12 @@ test('mapea la config GPS cuando la 023 está aplicada (sin columnas usa default
   const [plantacion] = await listarPlantaciones();
   expect(plantacion.gpsCaptureFrequency).toBe(5);
   expect(plantacion.gpsCaptureRequired).toBe(false);
+});
+
+test('mapea photo_capture_all_trees cuando la 035 está aplicada (sin columna asume false)', async () => {
+  configurarPlantacionesMock([{ ...FILA_MENDOZA, photo_capture_all_trees: true }]);
+  const [plantacion] = await listarPlantaciones();
+  expect(plantacion.photoCaptureAllTrees).toBe(true);
 });
 
 test('sin visible_in_app (migración 024 no aplicada) asume visible', async () => {

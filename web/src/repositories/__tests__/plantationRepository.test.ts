@@ -5,10 +5,12 @@ import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import type { Perfil } from '../profileRepository';
 import {
   actualizarConfigGps,
+  actualizarFotoEnTodos,
   actualizarVisibilidad,
   crearPlantacion,
   editarPlantacion,
   existePlantacion,
+  MENSAJE_FOTO_SIN_MIGRACION,
   MENSAJE_GPS_SIN_MIGRACION,
   MENSAJE_VISIBILIDAD_SIN_MIGRACION,
   type PlantacionInput,
@@ -150,6 +152,31 @@ describe('editarPlantacion', () => {
 
     expect(consultas).toHaveLength(2);
     expect(Object.keys(consultas[1].payload as object).sort()).toEqual(['lugar', 'periodo']);
+  });
+});
+
+describe('actualizarFotoEnTodos', () => {
+  test('actualiza photo_capture_all_trees de la plantación', async () => {
+    const consultas = capturarConsultas(() => ({ data: null }));
+    await actualizarFotoEnTodos('plant-1', true);
+
+    const [update] = consultas;
+    expect(update.tabla).toBe('plantations');
+    expect(update.operacion).toBe('update');
+    expect(update.payload).toEqual({ photo_capture_all_trees: true });
+    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
+  });
+
+  test('columna inexistente (035 sin aplicar) lanza el mensaje de migración', async () => {
+    capturarConsultas(() => ({
+      error: {
+        message: 'column "photo_capture_all_trees" does not exist',
+        code: PG_ERROR.UNDEFINED_COLUMN,
+      },
+    }));
+    await expect(actualizarFotoEnTodos('plant-1', true)).rejects.toThrow(
+      MENSAJE_FOTO_SIN_MIGRACION,
+    );
   });
 });
 

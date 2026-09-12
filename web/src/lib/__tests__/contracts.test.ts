@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../gpsDefaults';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../photoDefaults';
 import { ESPECIE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import { ROL } from '../../repositories/profileRepository';
@@ -24,6 +25,13 @@ describe('contracts · gps-defaults', () => {
     const contrato = leerContrato('gps-defaults.json');
     expect(GPS_CAPTURE_FREQUENCY_DEFAULT).toBe(contrato.frequency);
     expect(GPS_CAPTURE_REQUIRED_DEFAULT).toBe(contrato.required);
+  });
+});
+
+describe('contracts · photo-defaults', () => {
+  it('PHOTO_CAPTURE_ALL_TREES_DEFAULT coincide con el contrato', () => {
+    const contrato = leerContrato('photo-defaults.json');
+    expect(PHOTO_CAPTURE_ALL_TREES_DEFAULT).toBe(contrato.allTrees);
   });
 });
 

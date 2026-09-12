@@ -155,7 +155,7 @@ Si `uploadPhotoToStorage` falla para un árbol:
 
 ### Caso 8: Árbol N/N sin foto (si fuera posible)
 
-Actualmente el flujo de `registerNN` en `useNNFlow` **requiere tomar una foto** antes de crear el árbol. Si `pickPhoto()` retorna null (el usuario cancela la cámara), el árbol no se crea.
+El flujo de `registerNN` en `useTreeRegistration` **requiere tomar una foto** antes de crear el árbol (`NN_PHOTO_POLICY` en `services/photo/photoCaptureRules.ts`). Si `pickPhoto()` retorna null (el usuario cancela la cámara), el árbol no se crea. Con "foto en todos los botones" activo en la plantación (#439), los botones de especie pasan por la misma política: la foto se pide siempre y hoy también es obligatoria (`PHOTO_CAPTURE_REQUIRED_DEFAULT`).
 
 Si por algún error un árbol N/N se crea sin foto:
 - `fotoUrl = null`, `fotoSynced = false`

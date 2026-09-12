@@ -4,6 +4,7 @@ import { groups, trees, plantationUsers, plantationSpecies, plantations, species
 import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 import { fetchAllRows, runInTransaction } from './paginate';
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
@@ -57,6 +58,14 @@ async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
   return (data ?? []).length > 0;
 }
 
+/** Flags de plantación administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
+export function webManagedFlags(remote: { visible_in_app?: boolean | null; photo_capture_all_trees?: boolean | null }) {
+  return {
+    visibleInApp: remote.visible_in_app ?? true,
+    photoCaptureAllTrees: remote.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
+  };
+}
+
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
   const { data: remotePlantation, error } = await supabase
@@ -85,8 +94,7 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     serverUpdate.gpsCaptureRequiredServer = remotePlantation.gps_capture_required;
   }
 
-  // Visibilidad la administra solo la web: el server siempre gana; columna ausente → visible.
-  serverUpdate.visibleInApp = remotePlantation.visible_in_app ?? true;
+  Object.assign(serverUpdate, webManagedFlags(remotePlantation));
 
   const [local] = await db
     .select({ pendingEdit: plantations.pendingEdit })

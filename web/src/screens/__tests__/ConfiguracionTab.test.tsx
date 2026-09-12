@@ -6,6 +6,7 @@ import { renderRutasEn } from '../../test/renderConRutas';
 import { espiarInvalidaciones } from '../../test/espiarInvalidaciones';
 import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import {
+  MENSAJE_FOTO_SIN_MIGRACION,
   MENSAJE_GPS_SIN_MIGRACION,
   MENSAJE_VISIBILIDAD_SIN_MIGRACION,
 } from '../../repositories/plantationRepository';
@@ -118,6 +119,7 @@ beforeEach(() => {
     visible_in_app: true,
     gps_capture_frequency: 10,
     gps_capture_required: true,
+    photo_capture_all_trees: false,
   };
   asignadas = [
     { species_id: 'sp-1', orden_visual: 0 },
@@ -419,6 +421,37 @@ describe('sección Técnicos', () => {
     expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
     expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
     expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuario-plantaciones', 'tec-1'] });
+  });
+});
+
+describe('sección Foto en todos los botones', () => {
+  test('guarda al cambiar y refleja el nuevo estado del toggle', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    await usuario.click(toggle);
+
+    const update = consultas.find(
+      (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
+    );
+    expect(update?.payload).toEqual({ photo_capture_all_trees: true });
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+  });
+
+  test('si falta la migración 035 muestra el mensaje de migración', async () => {
+    const usuario = userEvent.setup();
+    errorUpdatePlantations = {
+      message: 'column "photo_capture_all_trees" does not exist',
+      code: PG_ERROR.UNDEFINED_COLUMN,
+    };
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
+
+    await usuario.click(toggle);
+
+    expect(await screen.findByText(MENSAJE_FOTO_SIN_MIGRACION)).toBeInTheDocument();
   });
 });
 

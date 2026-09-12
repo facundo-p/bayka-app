@@ -9,6 +9,7 @@ function plantacion(parcial: Partial<PlantacionConStats> & { id: string }): Plan
     visibleInApp: true,
     gpsCaptureFrequency: 10,
     gpsCaptureRequired: true,
+    photoCaptureAllTrees: false,
     createdAt: '2026-01-01T00:00:00Z',
     descripcion: null,
     fechaInicio: null,

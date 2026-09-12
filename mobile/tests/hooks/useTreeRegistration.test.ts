@@ -45,12 +45,17 @@ const { useTrees } = require('../../src/hooks/useTrees');
 import { renderHook, act } from '@testing-library/react-native';
 import { useTreeRegistration } from '../../src/hooks/useTreeRegistration';
 
+const pickPhoto = jest.fn<Promise<string | null>, [unknown?]>();
+
 const DEFAULT_PARAMS = {
   grupoId: 'sg-1',
   plantacionId: 'plant-1',
   grupoCodigo: 'L1',
   userId: 'user-1',
+  pickPhoto,
 };
+
+const FOTO = 'file:///foto.jpg';
 
 const mockGroup = {
   id: 'sg-1',
@@ -60,11 +65,28 @@ const mockGroup = {
   usuarioCreador: 'user-1',
 };
 
+/**
+ * useLiveData recibe una arrow que llama a la query; se la distingue por el nombre
+ * de la query en su fuente. Sin config de captura, el hook cae a los defaults.
+ */
+function mockLiveQueries({ group = mockGroup, captureConfig = null }: {
+  group?: typeof mockGroup;
+  captureConfig?: { gpsFrequency: number; gpsRequired: boolean; photoAllTrees: boolean } | null;
+} = {}) {
+  (useLiveData as jest.Mock).mockImplementation((queryFn: () => unknown) => {
+    const fuente = String(queryFn);
+    if (fuente.includes('getPlantationCaptureConfig')) return { data: captureConfig };
+    if (fuente.includes('getGroupById')) return { data: [group] };
+    return { data: undefined };
+  });
+}
+
 describe('useTreeRegistration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    (useLiveData as jest.Mock).mockReturnValue({ data: [mockGroup] });
+    mockLiveQueries();
+    pickPhoto.mockResolvedValue(FOTO);
     (canEdit as jest.Mock).mockReturnValue(true);
     (useTrees as jest.Mock).mockReturnValue({
       allTrees: [],
@@ -90,14 +112,13 @@ describe('useTreeRegistration', () => {
         grupoCodigo: 'L1',
         especieId: 'esp-1',
         especieCodigo: 'ANC',
+        fotoUrl: null,
         userId: 'user-1',
       });
     });
 
     it('does NOT call insertTree when subgroup is read-only (finalizada)', async () => {
-      (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockGroup, estado: 'finalizada' }],
-      });
+      mockLiveQueries({ group: { ...mockGroup, estado: 'finalizada' } });
       (canEdit as jest.Mock).mockReturnValue(false);
 
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -123,6 +144,105 @@ describe('useTreeRegistration', () => {
     });
   });
 
+  // #439: con "foto en todos los botones" la botonera pasa por la misma política que N/N.
+  describe('registerTree · foto en todos los botones', () => {
+    const CONFIG_FOTO = { gpsFrequency: 10, gpsRequired: true, photoAllTrees: true };
+
+    it('con el flag apagado no abre el selector de foto', async () => {
+      mockLiveQueries({ captureConfig: { ...CONFIG_FOTO, photoAllTrees: false } });
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        await result.current.registerTree('esp-1', 'ANC');
+      });
+
+      expect(result.current.photoCaptureAllTrees).toBe(false);
+      expect(pickPhoto).not.toHaveBeenCalled();
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: null }));
+    });
+
+    it('con el flag prendido pide foto y la guarda en el árbol', async () => {
+      mockLiveQueries({ captureConfig: CONFIG_FOTO });
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        await result.current.registerTree('esp-1', 'ANC');
+      });
+
+      expect(result.current.photoCaptureAllTrees).toBe(true);
+      expect(pickPhoto).toHaveBeenCalledWith({ optional: false });
+      expect(insertTree).toHaveBeenCalledWith(expect.objectContaining({ especieId: 'esp-1', fotoUrl: FOTO }));
+    });
+
+    it('con el flag prendido y sin foto no registra (la foto es obligatoria)', async () => {
+      mockLiveQueries({ captureConfig: CONFIG_FOTO });
+      pickPhoto.mockResolvedValue(null);
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        await result.current.registerTree('esp-1', 'ANC');
+      });
+
+      expect(insertTree).not.toHaveBeenCalled();
+    });
+
+    it('en solo lectura no abre el selector aunque el flag esté prendido', async () => {
+      mockLiveQueries({ group: { ...mockGroup, estado: 'finalizada' }, captureConfig: CONFIG_FOTO });
+      (canEdit as jest.Mock).mockReturnValue(false);
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        await result.current.registerTree('esp-1', 'ANC');
+      });
+
+      expect(pickPhoto).not.toHaveBeenCalled();
+      expect(insertTree).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('registerNN', () => {
+    it('pide foto obligatoria y registra sin especie con código NN', async () => {
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        await result.current.registerNN();
+      });
+
+      expect(pickPhoto).toHaveBeenCalledWith({ optional: false });
+      expect(insertTree).toHaveBeenCalledWith({
+        grupoId: 'sg-1',
+        grupoCodigo: 'L1',
+        especieId: null,
+        especieCodigo: 'NN',
+        fotoUrl: FOTO,
+        userId: 'user-1',
+      });
+    });
+
+    it('sin foto no registra', async () => {
+      pickPhoto.mockResolvedValue(null);
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => {
+        await result.current.registerNN();
+      });
+
+      expect(insertTree).not.toHaveBeenCalled();
+    });
+
+    it('un throw del insert notifica el mensaje real vía onError', async () => {
+      (insertTree as jest.Mock).mockRejectedValue(new Error('Grupo sg-1 sin parcela: dato inválido'));
+      const onError = jest.fn();
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, onError }));
+
+      await act(async () => {
+        await result.current.registerNN();
+      });
+
+      expect(onError).toHaveBeenCalledWith('Grupo sg-1 sin parcela: dato inválido');
+    });
+  });
+
   describe('undoLast', () => {
     it('calls deleteLastTree with grupoId when subgroup is active', async () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -135,9 +255,7 @@ describe('useTreeRegistration', () => {
     });
 
     it('does NOT call deleteLastTree when subgroup is read-only', async () => {
-      (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockGroup, estado: 'sincronizada' }],
-      });
+      mockLiveQueries({ group: { ...mockGroup, estado: 'sincronizada' } });
       (canEdit as jest.Mock).mockReturnValue(false);
 
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -244,9 +362,7 @@ describe('useTreeRegistration', () => {
     });
 
     it('isReadOnly is true when subgroup is finalizada', () => {
-      (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockGroup, estado: 'finalizada' }],
-      });
+      mockLiveQueries({ group: { ...mockGroup, estado: 'finalizada' } });
       (canEdit as jest.Mock).mockReturnValue(false);
 
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
@@ -255,9 +371,7 @@ describe('useTreeRegistration', () => {
     });
 
     it('canReactivate is true when user is creator and state is finalizada', () => {
-      (useLiveData as jest.Mock).mockReturnValue({
-        data: [{ ...mockGroup, estado: 'finalizada', usuarioCreador: 'user-1' }],
-      });
+      mockLiveQueries({ group: { ...mockGroup, estado: 'finalizada', usuarioCreador: 'user-1' } });
       (canEdit as jest.Mock).mockReturnValue(false);
 
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
