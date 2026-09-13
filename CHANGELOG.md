@@ -10,7 +10,7 @@ contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
 ## Sin publicar
-<!-- sincronizado-hasta: 5563f0a #437 -->
+<!-- sincronizado-hasta: cfcbb7b #440 -->
 
 ### Web
 
@@ -19,6 +19,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - Filtro del dashboard por parcela, con todas las parcelas en la tira (#332)
 - Sección "En pruebas" en `/novedades`, solo en entorno de pruebas, y skill `/novedades` (#376, #415)
 - Teclas Inicio/Fin en ⌘K y en el selector de técnico (#402)
+- Toggle "Foto en todos los botones" en Configuración → "Comportamiento en la app", sobre un hook genérico de toggles de plantación que también usa la visibilidad (#440)
 
 #### Cambiado
 - Rediseño del detalle de plantación: cabecera única, menú Exportar, % por especie, riel de parcelas y Configuración reorganizada (#344, #358, #363, #365, #371, #420, #435)
@@ -49,6 +50,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
 #### Agregado
 - Revocación de acceso: el pull chequea la membresía antes del replace, devuelve "sin acceso", conserva los datos locales y saltea el push (#318, #334)
+- Con "Foto en todos los botones" activo, cada especie pide foto antes de registrar con la misma política que N/N; la obligatoriedad para identificados es `PHOTO_CAPTURE_REQUIRED_DEFAULT` con contrato en `contracts/photo-defaults.json` (#440)
 
 #### Cambiado
 - Alta de plantación local-first en una transacción, con push inmediato best-effort; se retiran el rollback remoto y la migración 031 (#313, #320)
@@ -69,6 +71,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - CR de optimización: claves de query y rutas centralizadas, tokens y CSS compartido, listados, detalle, ⌘K y Usuarios en funciones de ≤20 líneas, y tests frágiles corregidos (#396, #398, #417, #420, #422, #424, #425, #427, #432, #433, #436, #437)
 - Auditoría responsive `npm run audit:responsive` en módulos, con el detalle de lo que empeora, la métrica de texto que se sale de su caja y `/novedades` con los pasos desplegados (#407, #415, #419)
 - CI: ESLint de mobile, lint de los scripts de la raíz y de la auditoría, y `prettier --check` en web (#404, #411, #414, #419, #436, #437)
+- Migración 035 `plantations.photo_capture_all_trees` (solo web, el pull siempre toma el valor del server) con test pgTAP, y migración local 0019 (#440)
 
 ## 2026-09-01 · web 1.1.0
 

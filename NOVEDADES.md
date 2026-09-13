@@ -9,8 +9,16 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · próxima versión
-<!-- sincronizado-hasta: 5563f0a #437 -->
+<!-- sincronizado-hasta: cfcbb7b #440 -->
 
+- **Pedí foto en todos los botones de una plantación.** Desde Configuración
+  podés hacer que los técnicos saquen foto al registrar cualquier especie, no
+  solo N/N. <!-- #440 -->
+  - En la web de pruebas, abrí una plantación → Configuración → "Comportamiento
+    en la app".
+  - Activá "Foto en todos los botones" y recargá la página.
+  - Esperá ver: el interruptor sigue activado y la ayuda dice "Cada botón de
+    especie pide foto antes de registrar, como N/N".
 - **Detalle de plantación más claro.** Tablero, Datos y Configuración entran en
   una sola pantalla, las descargas se juntan en el menú "Exportar", cada
   especie muestra su porcentaje y las parcelas se recorren con flechas.
@@ -140,6 +148,17 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     y volvé a Usuarios sin recargar.
   - Esperá ver: la columna Plantaciones ya suma una. Para dejarlo como
     estaba, quitalo con la ✕ de su fila en Configuración.
+- **Foto en cada especie, si la plantación lo pide.** Con "Foto en todos los
+  botones" activado, tocar cualquier especie abre el selector de foto antes de
+  registrar el árbol, igual que N/N; si cancelás, el árbol no se registra.
+  <!-- #440 -->
+  - En la web de pruebas, activá "Foto en todos los botones" en una plantación
+    (Configuración → "Comportamiento en la app").
+  - En la app Bayka TEST, sincronizá esa plantación, entrá a un grupo y tocá
+    una especie: primero "Cancelar", después sacá una foto.
+  - Esperá ver: el selector "Agregar foto" las dos veces; con "Cancelar" no
+    aparece ningún árbol nuevo y con foto se registra con su foto. Con el
+    interruptor apagado, la especie se registra directo, como siempre.
 - **Aviso cuando te quitan de una plantación.** Si un administrador te quita
   de una plantación, al sincronizar la app te avisa y tus datos descargados
   quedan para consulta, sin perderse. <!-- #318 #334 -->
