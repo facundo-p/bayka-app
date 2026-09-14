@@ -50,6 +50,21 @@ if [ "$VARIANT" = "test" ]; then
   grep -q "PEGAR_" .env.staging && { echo "ERROR: mobile/.env.staging tiene placeholders sin completar" >&2; exit 1; }
 fi
 
+# Sin EAS_PROJECT_ID el APK sale con `updates.url` vacía y no recibe ningún OTA, sin
+# avisar (#384). Se chequea con la misma cadena de dotenv que arma app.config.js.
+node -e '
+  const path = require("path");
+  for (const archivo of ["../.env", ".env", ".env.staging"]) {
+    require("dotenv").config({ path: path.resolve(archivo), override: true });
+  }
+  const id = process.env.EAS_PROJECT_ID || "";
+  process.exit(id && !id.includes("<") ? 0 : 1);
+' >/dev/null 2>&1 || {
+  echo "ERROR: falta EAS_PROJECT_ID en .env (raíz); el APK no recibiría updates OTA" >&2
+  echo "       Está en el dashboard de expo.dev → proyecto Bayka → Project ID" >&2
+  exit 1
+}
+
 # --- Prebuild limpio de la variante ------------------------------------------
 echo ">>> [$VARIANT] expo prebuild --clean"
 npx expo prebuild -p android --clean

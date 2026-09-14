@@ -16,6 +16,15 @@ const VARIANTE = Object.freeze({ test: 'test', prod: 'prod' });
 // scripts/build-apk.sh test (ver skill build-apk-local).
 const IS_TEST = process.env.APP_VARIANT === VARIANTE.test;
 
+// Canal de EAS Update por variante (#384). Contrato con los channel de eas.json.
+// Un build sin canal grabado no recibe ningún OTA: EAS Update empareja por canal
+// + runtime version + plataforma. En los builds de EAS el canal lo graba el
+// profile (que además tiene `preview`, sin variante local equivalente); en los
+// locales nadie lo grababa, y este header es el único que lo pone en el
+// AndroidManifest, vía prebuild.
+const CANAL_OTA = Object.freeze({ test: 'test', prod: 'production' });
+const ES_BUILD_DE_EAS = process.env.EAS_BUILD === 'true';
+
 if (IS_TEST) {
   require('dotenv').config({ path: path.resolve(__dirname, '.env.staging'), override: true });
 }
@@ -51,6 +60,9 @@ module.exports = ({ config }) => ({
   },
   updates: {
     url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID || ''}`,
+    ...(ES_BUILD_DE_EAS
+      ? {}
+      : { requestHeaders: { 'expo-channel-name': IS_TEST ? CANAL_OTA.test : CANAL_OTA.prod } }),
   },
   extra: {
     // Variante de build (#287): src/config/entorno.ts la lee en runtime para
