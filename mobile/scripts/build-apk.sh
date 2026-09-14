@@ -23,12 +23,14 @@ case "$VARIANT" in
     export APP_VARIANT=""
     EXPECTED_PKG="com.bayka.app"
     EXPECTED_LABEL="Bayka App"
+    EXPECTED_CANAL="production"
     ARTIFACT="build-output.apk"
     ;;
   test)
     export APP_VARIANT="test"
     EXPECTED_PKG="com.bayka.app.test"
     EXPECTED_LABEL="Bayka TEST"
+    EXPECTED_CANAL="test"
     ARTIFACT="build-output-test.apk"
     ;;
   *)
@@ -89,11 +91,23 @@ if [ "$PKG" != "$EXPECTED_PKG" ] || [ "$LABEL" != "$EXPECTED_LABEL" ]; then
   exit 1
 fi
 
+# El canal de OTA se grabó en el manifest o no, y desde la app no hay forma de
+# saberlo (#384): se reporta acá. Informativo, no corta el build.
+CANAL="?"
+if echo "$("$AAPT" dump xmltree "$ARTIFACT" AndroidManifest.xml 2>/dev/null)" \
+  | grep "expo-channel-name" | grep -q "$EXPECTED_CANAL"; then
+  CANAL="$EXPECTED_CANAL"
+else
+  echo "AVISO: no se pudo confirmar el canal '$EXPECTED_CANAL' en el manifest del APK." >&2
+  echo "       Si es así, este APK no recibiría updates OTA (ver #384)." >&2
+fi
+
 echo ""
 echo "APK $VARIANT listo!"
 echo "  APK:     mobile/$ARTIFACT"
 echo "  Package: $PKG"
 echo "  Label:   $LABEL"
+echo "  Canal:   $CANAL"
 echo "  Size:    $(du -h "$ARTIFACT" | cut -f1)"
 echo ""
 echo "Instalar en dispositivo conectado:  adb install -r mobile/$ARTIFACT"

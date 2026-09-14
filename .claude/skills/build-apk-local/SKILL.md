@@ -90,8 +90,9 @@ Correr con `run_in_background: true` y timeout 600000ms. Single-ABI arm64-v8a ta
 (distribución): `ABIS=all scripts/build-apk.sh <variante>` — el retry interno de
 gradlew cubre la race de worklets (ver Troubleshooting).
 
-El script termina imprimiendo package, label y tamaño **ya verificados** (falla si el
-APK no corresponde a la variante). Instalar: `adb install -r mobile/<artefacto>`.
+El script termina imprimiendo package, label, canal de OTA y tamaño **ya verificados**
+(falla si el APK no corresponde a la variante; avisa sin cortar si no puede confirmar
+el canal). Instalar: `adb install -r mobile/<artefacto>`.
 
 ## 3. Notas y gotchas
 
