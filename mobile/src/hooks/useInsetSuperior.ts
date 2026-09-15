@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ES_ENTORNO_DE_PRUEBAS } from '../config/entorno';
 import {
   InsetSuperiorContexto,
-  OCUPANTE_DEL_INSET,
   ocupanteDelInsetSuperior,
   type OcupanteDelInset,
 } from '../components/insetSuperior';
@@ -16,10 +15,7 @@ import {
 export function useInsetSuperior(elemento: OcupanteDelInset): number {
   const insets = useSafeAreaInsets();
   const { hayAvisoDeActualizacion } = useContext(InsetSuperiorContexto);
-  // El aviso solo se monta cuando existe, así que desde adentro no necesita
-  // preguntarlo: el contexto está para los que van abajo y no pueden verlo.
-  const hayAviso = hayAvisoDeActualizacion || elemento === OCUPANTE_DEL_INSET.aviso;
-  const ocupante = ocupanteDelInsetSuperior(ES_ENTORNO_DE_PRUEBAS, hayAviso);
+  const ocupante = ocupanteDelInsetSuperior(ES_ENTORNO_DE_PRUEBAS, hayAvisoDeActualizacion);
 
   return ocupante === elemento ? insets.top : 0;
 }

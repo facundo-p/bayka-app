@@ -25,7 +25,7 @@ import { syncLog } from '../utils/syncLogger';
 import { OCUPANTE_DEL_INSET } from './insetSuperior';
 import { bannerActualizacionListaStyles as styles } from './BannerActualizacionLista.styles';
 
-// El reinicio cierra lo que el técnico tenga abierto: el texto lo dice (§15).
+// El texto dice qué se pierde: el reinicio cierra lo que el técnico tenga abierto.
 const TEXTO_DISPONIBLE = 'Hay una actualización lista. Al reiniciar se cierra lo que estés haciendo.';
 const TEXTO_SINCRONIZANDO = 'Actualización lista · esperando que termine la sincronización';
 const TEXTO_BOTON = 'Reiniciar';

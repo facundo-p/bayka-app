@@ -7,10 +7,12 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import BannerActualizacionLista from '../../src/components/BannerActualizacionLista';
+import { InsetSuperiorContexto } from '../../src/components/insetSuperior';
 import {
   marcandoActividadDeSync,
   __resetActividadDeSync,
 } from '../../src/services/sync/syncActivityStore';
+import { spacing } from '../../src/theme';
 
 const MOCK_INSET_TOP = 40;
 jest.mock('react-native-safe-area-context', () => ({
@@ -27,7 +29,13 @@ jest.mock('expo-updates', () => ({
 }));
 
 const onDescartar = jest.fn();
-const renderBanner = () => render(<BannerActualizacionLista onDescartar={onDescartar} />);
+// El provider es parte del contrato del componente: sin él nadie le cede el inset.
+const renderBanner = () =>
+  render(
+    <InsetSuperiorContexto.Provider value={{ hayAvisoDeActualizacion: true }}>
+      <BannerActualizacionLista onDescartar={onDescartar} />
+    </InsetSuperiorContexto.Provider>,
+  );
 
 describe('BannerActualizacionLista', () => {
   beforeEach(() => {
@@ -45,8 +53,10 @@ describe('BannerActualizacionLista', () => {
   it('ocupa el inset de la status bar: va arriba, no al pie', () => {
     const { getByTestId } = renderBanner();
     const estilo = StyleSheet.flatten(getByTestId('banner-actualizacion-lista').props.style);
-    expect(estilo.paddingTop).toBeGreaterThanOrEqual(MOCK_INSET_TOP);
-    expect(estilo.paddingBottom).toBeLessThan(MOCK_INSET_TOP);
+    expect(estilo.paddingTop).toBe(MOCK_INSET_TOP + spacing.sm);
+    // Exacto y no "< inset": con un >= laxo, volver a comerse el inset de la barra
+    // de gestos pasaría el test.
+    expect(estilo.paddingBottom).toBe(spacing.sm);
   });
 
   it('avisa que el reinicio cierra lo que el usuario esté haciendo', () => {

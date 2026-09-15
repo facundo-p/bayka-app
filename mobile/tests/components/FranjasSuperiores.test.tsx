@@ -35,14 +35,21 @@ function renderConHeader() {
   );
 }
 
-function paddingTopDe(nodo: { props: { style: StyleProp<ViewStyle> } }): number {
+type Nodo = { props: { style: StyleProp<ViewStyle>; testID?: string } };
+
+function paddingTopDe(nodo: Nodo): number {
   return StyleSheet.flatten(nodo.props.style).paddingTop as number;
 }
 
-/** El header es el último nodo raíz: las franjas van antes que el navigator. */
+/** Las franjas y el header, en el orden en que se ven. */
+function nodosRaiz(toJSON: () => unknown): Nodo[] {
+  const raiz = toJSON() as Nodo[] | Nodo;
+  return Array.isArray(raiz) ? raiz : [raiz];
+}
+
+/** El header va último: las franjas se renderizan antes que el navigator. */
 function paddingTopDelHeader(toJSON: () => unknown): number {
-  const raiz = toJSON() as { props: { style: StyleProp<ViewStyle> } }[] | { props: { style: StyleProp<ViewStyle> } };
-  const nodos = Array.isArray(raiz) ? raiz : [raiz];
+  const nodos = nodosRaiz(toJSON);
   return paddingTopDe(nodos[nodos.length - 1]);
 }
 
@@ -53,9 +60,10 @@ describe('FranjasSuperiores', () => {
   });
 
   it('sin update pendiente no muestra el aviso y el header ocupa el inset', () => {
-    const { queryByTestId, getByText } = renderConHeader();
+    const { queryByTestId, getByText, toJSON } = renderConHeader();
     expect(queryByTestId('banner-actualizacion-lista')).toBeNull();
     expect(getByText('Plantaciones')).toBeTruthy();
+    expect(paddingTopDelHeader(toJSON)).toBe(MOCK_INSET_TOP + spacing.sm);
   });
 
   it('con un update pendiente muestra el aviso arriba del header', () => {
@@ -90,6 +98,20 @@ describe('FranjasSuperiores', () => {
 
     expect(queryByTestId('banner-actualizacion-lista')).toBeNull();
     expect(paddingTopDelHeader(toJSON)).toBe(MOCK_INSET_TOP + spacing.sm);
+  });
+
+  // El orden visual vive en el JSX y la prioridad del inset en
+  // `ocupanteDelInsetSuperior`: si se desincronizan, el inset queda en una franja
+  // del medio y arriba de ella aparece una banda vacía.
+  it('el inset lo ocupa la primera franja que se renderiza', () => {
+    entornoMock.ES_ENTORNO_DE_PRUEBAS = true;
+    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
+    const { toJSON } = renderConHeader();
+    const [primera, ...siguientes] = nodosRaiz(toJSON);
+
+    expect(primera.props.testID).toBe('banner-entorno-pruebas');
+    expect(paddingTopDe(primera)).toBe(MOCK_INSET_TOP);
+    expect(siguientes.map(paddingTopDe)).toEqual([spacing.sm, spacing.sm]);
   });
 
   it('en la app TEST el inset lo ocupa la franja de entorno, no el aviso', () => {
