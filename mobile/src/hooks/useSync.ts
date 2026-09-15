@@ -9,6 +9,8 @@ import {
   SyncPlantationResult,
   SyncProgress,
   PhotoSyncProgress,
+  DownloadPhaseProgress,
+  PHOTO_PHASE,
   GlobalSyncProgress,
   SYNC_STATE,
   SyncState,
@@ -28,6 +30,7 @@ export function useSync(plantacionId?: string) {
   const [sinAcceso, setSinAcceso] = useState(false);
   const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
+  const [phaseProgress, setPhaseProgress] = useState<DownloadPhaseProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
 
@@ -41,6 +44,7 @@ export function useSync(plantacionId?: string) {
     setSinAcceso(false);
     setAuthExpired(false);
     setPhotoProgress(null);
+    setPhaseProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
   }, []);
@@ -53,19 +57,27 @@ export function useSync(plantacionId?: string) {
     resetSyncState();
 
     try {
-      // syncPlantation does pull-then-push internally
-      setState(SYNC_STATE.pushing);
       let accesoRevocado = false;
-      const res = await syncPlantation(
-        targetPlantacionId,
-        setProgress,
-        setParcelaResults,
-        setPlantationResults,
-        (pull) => {
+      const res = await syncPlantation(targetPlantacionId, {
+        // El push arranca cuando llega su primer progreso: antes, `pushing` se
+        // seteaba de entrada y el pull entero corría mostrando "Subiendo grupos...".
+        onProgress: (p) => {
+          setState(SYNC_STATE.pushing);
+          setProgress(p);
+        },
+        onPhaseProgress: (fase) => {
+          setState(SYNC_STATE.pulling);
+          setPhaseProgress(fase);
+        },
+        onParcelaResults: setParcelaResults,
+        onPlantationResults: setPlantationResults,
+        onPullResult: (pull) => {
           accesoRevocado = esSinAcceso(pull);
           setSinAcceso(accesoRevocado);
+          setPhaseProgress(null);
+          setState(SYNC_STATE.pushing);
         },
-      );
+      });
       setResults(res);
       setPullSuccess(!accesoRevocado);
 
@@ -116,9 +128,20 @@ export function useSync(plantacionId?: string) {
             done: info.plantationDone,
             total: info.plantationTotal,
           });
-          if (info.subgroupProgress) {
+          // El orden importa: fotos gana sobre grupos y grupos sobre pull, porque
+          // cada fase reemplaza a la anterior dentro de la misma plantación.
+          if (info.photoProgress) {
+            setState(info.photoPhase === PHOTO_PHASE.uploading
+              ? SYNC_STATE.uploadingPhotos
+              : SYNC_STATE.downloadingPhotos);
+            setPhotoProgress(info.photoProgress);
+          } else if (info.subgroupProgress) {
             setState(SYNC_STATE.pushing);
             setProgress(info.subgroupProgress);
+            setPhaseProgress(null);
+          } else if (info.phaseProgress) {
+            setState(SYNC_STATE.pulling);
+            setPhaseProgress(info.phaseProgress);
           } else {
             setState(SYNC_STATE.pulling);
           }
@@ -171,6 +194,7 @@ export function useSync(plantacionId?: string) {
     parcelaFailureCount,
     plantationFailureCount,
     photoProgress,
+    phaseProgress,
     photoResult,
     globalProgress,
   };

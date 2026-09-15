@@ -26,7 +26,8 @@ export async function runInTransaction<T>(
  * .range() (mocks de test), se usa como página única.
  */
 export async function fetchAllRows<T>(
-  buildQuery: () => any
+  buildQuery: () => any,
+  onPagina?: (filasDescargadas: number) => void,
 ): Promise<{ data: T[] | null; error: any }> {
   const PAGE_SIZE = 1000;
   const all: T[] = [];
@@ -41,6 +42,9 @@ export async function fetchAllRows<T>(
     if (error) return { data: null, error };
     if (!data || data.length === 0) break;
     all.push(...(data as T[]));
+    // La paginación es la parte lenta con mala señal y no emitía nada: sin esto la
+    // pantalla queda quieta durante N/1000 round-trips.
+    onPagina?.(all.length);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }

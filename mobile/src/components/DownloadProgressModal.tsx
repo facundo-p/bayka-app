@@ -1,9 +1,11 @@
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
-import { DOWNLOAD_PHASE, DOWNLOAD_STATE } from '../services/SyncService';
-import type { DownloadResult, DownloadProgress, DownloadPhase, DownloadState } from '../services/SyncService';
+import { DOWNLOAD_STATE } from '../services/SyncService';
+import type { DownloadResult, DownloadProgress, DownloadState } from '../services/SyncService';
 import BaseModal from './BaseModal';
+import ProgressBar from './ProgressBar';
+import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { downloadProgressModalStyles as styles } from './DownloadProgressModal.styles';
 
 interface Props {
@@ -11,26 +13,6 @@ interface Props {
   progress: DownloadProgress | null;
   results: DownloadResult[];
   onDismiss: () => void;
-}
-
-const PHASE_LABEL: Record<DownloadPhase, string> = {
-  [DOWNLOAD_PHASE.species]: 'Catálogo de especies',
-  [DOWNLOAD_PHASE.parcelas]: 'Parcelas',
-  [DOWNLOAD_PHASE.groups]: 'Grupos',
-  [DOWNLOAD_PHASE.usuarios]: 'Usuarios',
-  [DOWNLOAD_PHASE.especiesPlantacion]: 'Especies asignadas',
-  [DOWNLOAD_PHASE.arboles]: 'Árboles',
-  [DOWNLOAD_PHASE.fotos]: 'Fotos',
-  [DOWNLOAD_PHASE.finalizando]: 'Finalizando',
-};
-
-function ProgressBar({ fraction }: { fraction: number }) {
-  const pct = Math.max(0, Math.min(1, fraction));
-  return (
-    <View style={styles.barTrack}>
-      <View style={[styles.barFill, { width: `${pct * 100}%` }]} />
-    </View>
-  );
 }
 
 export default function DownloadProgressModal({ state, progress, results, onDismiss }: Props) {
@@ -103,8 +85,8 @@ function DownloadingView({ progress }: { progress: DownloadProgress | null }) {
   }
   const { plantationIndex, plantationTotal, currentName, phase } = progress;
   const phaseLabel = phase ? PHASE_LABEL[phase.phase] : '';
-  const counter = phase && phase.phaseTotal > 0 ? `${phase.phaseDone} de ${phase.phaseTotal}` : '';
-  const phaseFraction = phase && phase.phaseTotal > 0 ? phase.phaseDone / phase.phaseTotal : 0;
+  const counter = phase ? contadorDeFase(phase) : '';
+  const phaseFraction = fraccionDeFase(phase);
 
   return (
     <>

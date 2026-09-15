@@ -2,21 +2,35 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, PullResult, esSinAcceso } from './types';
+import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, DownloadPhaseProgress, PhotoSyncProgress, PullResult, PHOTO_PHASE, esSinAcceso } from './types';
 import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 
+/**
+ * Callbacks de una corrida de plantación. Objeto y no parámetros posicionales: ya son
+ * cinco y el orden se volvió imposible de leer en el call site.
+ */
+export interface SyncPlantationCallbacks {
+  /** Avance del push de grupos. */
+  onProgress?: (progress: SyncProgress) => void;
+  /** Fotos que se suben dentro de cada grupo del push. */
+  onPhotoProgress?: (progress: PhotoSyncProgress) => void;
+  /** Fase del pull en curso (parcelas, grupos, árboles…). */
+  onPhaseProgress?: (fase: DownloadPhaseProgress) => void;
+  onParcelaResults?: (parcelas: SyncParcelaResult[]) => void;
+  onPlantationResults?: (plantations: SyncPlantationResult[]) => void;
+  onPullResult?: (resultado: PullResult) => void;
+}
+
 /** Orquesta pull-then-push de una plantación: refresca sesión, pull, sube grupos finalizada uno por uno acumulando resultados (sigue ante fallas), notifica al final. */
 export async function syncPlantation(
   plantacionId: string,
-  onProgress?: (progress: SyncProgress) => void,
-  onParcelaResults?: (parcelas: SyncParcelaResult[]) => void,
-  onPlantationResults?: (plantations: SyncPlantationResult[]) => void,
-  onPullResult?: (resultado: PullResult) => void
+  callbacks: SyncPlantationCallbacks = {},
 ): Promise<SyncGroupResult[]> {
+  const { onProgress, onPhotoProgress, onPhaseProgress, onParcelaResults, onPlantationResults, onPullResult } = callbacks;
   // Aborta temprano si la sesión no puede autenticar writes (evita que RLS rechace como error de permisos confuso).
   await ensureServerSession();
   // runGlobalPreSteps pushea plantaciones offline; se surfacean sus fallas porque bloquean (FK) sus parcelas/grupos.
@@ -24,7 +38,7 @@ export async function syncPlantation(
   onPlantationResults?.(plantationResults);
 
   try {
-    const pull = await pullFromServer(plantacionId);
+    const pull = await pullFromServer(plantacionId, onPhaseProgress);
     onPullResult?.(pull);
     // Sin membresía el push también lo rechaza RLS: cortar acá evita una lista
     // de errores de permisos que tapan la causa real.
@@ -47,7 +61,7 @@ export async function syncPlantation(
   }
   onParcelaResults?.(parcelaResults);
 
-  const results = await uploadSyncableGroups(plantacionId, onProgress);
+  const results = await uploadSyncableGroups(plantacionId, onProgress, onPhotoProgress);
   notifyDataChanged();
   return results;
 }
@@ -65,12 +79,25 @@ export async function syncAllPlantations(
   const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
   const allResults: { plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[] = [];
 
+  const emitir = (
+    plantationName: string,
+    plantationDone: number,
+    extra: Partial<GlobalSyncProgress> = {},
+  ) => onProgress?.({
+    plantationName,
+    plantationDone,
+    plantationTotal: localPlantations.length,
+    ...extra,
+  });
+
   for (let i = 0; i < localPlantations.length; i++) {
     const plantation = localPlantations[i];
-    onProgress?.({ plantationName: plantation.lugar, plantationDone: i, plantationTotal: localPlantations.length });
+    emitir(plantation.lugar, i);
 
     try {
-      const pull = await pullFromServer(plantation.id);
+      const pull = await pullFromServer(plantation.id, (fase) =>
+        emitir(plantation.lugar, i, { phaseProgress: fase }),
+      );
       if (esSinAcceso(pull)) {
         syncLog.info(`Sync global: "${plantation.lugar}" sin acceso, se saltea`);
         continue;
@@ -82,14 +109,11 @@ export async function syncAllPlantations(
       } catch (e) {
         syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
       }
-      const results = await uploadSyncableGroups(plantation.id, (subProgress) => {
-        onProgress?.({
-          plantationName: plantation.lugar,
-          plantationDone: i,
-          plantationTotal: localPlantations.length,
-          subgroupProgress: subProgress,
-        });
-      });
+      const results = await uploadSyncableGroups(
+        plantation.id,
+        (subProgress) => emitir(plantation.lugar, i, { subgroupProgress: subProgress }),
+        (fotos) => emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
+      );
       allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results, parcelas: parcelaResults });
     } catch (e) {
       syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
@@ -98,10 +122,15 @@ export async function syncAllPlantations(
   }
 
   if (incluirFotos) {
-    for (const plantation of localPlantations) {
+    for (let i = 0; i < localPlantations.length; i++) {
+      const plantation = localPlantations[i];
       try {
-        await uploadPendingPhotos(plantation.id);
-        await downloadPhotosForPlantation(plantation.id);
+        await uploadPendingPhotos(plantation.id, (fotos) =>
+          emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
+        );
+        await downloadPhotosForPlantation(plantation.id, (fotos) =>
+          emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.downloading }),
+        );
       } catch (e) {
         syncLog.error(`Photo sync failed for "${plantation.lugar}":`, e);
       }

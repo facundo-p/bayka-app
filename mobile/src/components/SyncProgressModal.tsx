@@ -3,9 +3,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { SYNC_STATE } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';
 import BaseModal from './BaseModal';
 import FailureList from './FailureList';
+import ProgressBar from './ProgressBar';
+import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
 
 interface Props {
@@ -23,9 +25,53 @@ interface Props {
   sinAcceso: boolean;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
+  /** Fase del pull en curso; sin esto el pull es un spinner mudo (#447). */
+  phaseProgress: DownloadPhaseProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
   globalProgress?: { plantationName: string; done: number; total: number } | null;
   onDismiss: () => void;
+}
+
+type GlobalProgress = { plantationName: string; done: number; total: number } | null | undefined;
+
+/**
+ * Cuerpo común de las cuatro fases en curso. El spinner dice "sigue vivo" aunque no
+ * haya denominador; la barra aparece solo cuando se conoce el total.
+ */
+function FaseEnCurso({
+  titulo, detalle, subdetalle, fraccion, color, globalProgress,
+}: {
+  titulo: string;
+  detalle: string;
+  subdetalle?: string;
+  fraccion: number;
+  color: string;
+  globalProgress: GlobalProgress;
+}) {
+  return (
+    <>
+      <ActivityIndicator size="large" color={color} />
+      <Text style={styles.title}>{titulo}</Text>
+      <Text style={styles.progressText}>{detalle}</Text>
+      {subdetalle ? <Text style={styles.currentName}>{subdetalle}</Text> : null}
+      {fraccion > 0 ? <ProgressBar fraction={fraccion} /> : null}
+      {globalProgress && (
+        <Text style={styles.plantationProgress}>
+          Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
+        </Text>
+      )}
+    </>
+  );
+}
+
+const TEXTO_PREPARANDO = 'Preparando...';
+
+function detalleDeFotos(photoProgress: PhotoSyncProgress | null): string {
+  return photoProgress ? `${photoProgress.completed} de ${photoProgress.total} fotos` : TEXTO_PREPARANDO;
+}
+
+function fraccionDeConteo(hecho: number | undefined, total: number | undefined): number {
+  return total && total > 0 ? (hecho ?? 0) / total : 0;
 }
 
 export default function SyncProgressModal({
@@ -42,6 +88,7 @@ export default function SyncProgressModal({
   sinAcceso,
   authExpired,
   photoProgress,
+  phaseProgress,
   photoResult,
   globalProgress,
   onDismiss,
@@ -61,58 +108,48 @@ export default function SyncProgressModal({
       onRequestClose={state === SYNC_STATE.done ? onDismiss : undefined}
     >
       {state === SYNC_STATE.pulling && (
-        <>
-          <ActivityIndicator size="large" color={colors.info} />
-          <Text style={styles.title}>Actualizando datos...</Text>
-          <Text style={styles.progressText}>Descargando novedades del servidor</Text>
-          {globalProgress && (
-            <Text style={styles.plantationProgress}>
-              Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
-            </Text>
-          )}
-        </>
+        <FaseEnCurso
+          titulo="Actualizando datos..."
+          detalle={
+            phaseProgress
+              ? [PHASE_LABEL[phaseProgress.phase], contadorDeFase(phaseProgress)].filter(Boolean).join(' · ')
+              : 'Descargando novedades del servidor'
+          }
+          fraccion={fraccionDeFase(phaseProgress)}
+          color={colors.info}
+          globalProgress={globalProgress}
+        />
       )}
 
       {state === SYNC_STATE.pushing && (
-        <>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.title}>Subiendo grupos...</Text>
-          <Text style={styles.progressText}>
-            {progress ? `${progress.completed} de ${progress.total}` : 'Preparando...'}
-          </Text>
-          {progress?.currentName ? (
-            <Text style={styles.currentName}>{progress.currentName}</Text>
-          ) : null}
-          {globalProgress && (
-            <Text style={styles.plantationProgress}>
-              Sincronizando {globalProgress.plantationName}... ({globalProgress.done + 1} de {globalProgress.total} plantaciones)
-            </Text>
-          )}
-        </>
+        <FaseEnCurso
+          titulo="Subiendo grupos..."
+          detalle={progress ? `${progress.completed} de ${progress.total}` : TEXTO_PREPARANDO}
+          subdetalle={progress?.currentName}
+          fraccion={fraccionDeConteo(progress?.completed, progress?.total)}
+          color={colors.primary}
+          globalProgress={globalProgress}
+        />
       )}
 
       {state === SYNC_STATE.uploadingPhotos && (
-        <>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.title}>Subiendo fotos...</Text>
-          <Text style={styles.progressText}>
-            {photoProgress
-              ? `${photoProgress.completed} de ${photoProgress.total} fotos`
-              : 'Preparando...'}
-          </Text>
-        </>
+        <FaseEnCurso
+          titulo="Subiendo fotos..."
+          detalle={detalleDeFotos(photoProgress)}
+          fraccion={fraccionDeConteo(photoProgress?.completed, photoProgress?.total)}
+          color={colors.primary}
+          globalProgress={globalProgress}
+        />
       )}
 
       {state === SYNC_STATE.downloadingPhotos && (
-        <>
-          <ActivityIndicator size="large" color={colors.info} />
-          <Text style={styles.title}>Descargando fotos...</Text>
-          <Text style={styles.progressText}>
-            {photoProgress
-              ? `${photoProgress.completed} de ${photoProgress.total} fotos`
-              : 'Preparando...'}
-          </Text>
-        </>
+        <FaseEnCurso
+          titulo="Descargando fotos..."
+          detalle={detalleDeFotos(photoProgress)}
+          fraccion={fraccionDeConteo(photoProgress?.completed, photoProgress?.total)}
+          color={colors.info}
+          globalProgress={globalProgress}
+        />
       )}
 
       {state === SYNC_STATE.done && sinAcceso && (

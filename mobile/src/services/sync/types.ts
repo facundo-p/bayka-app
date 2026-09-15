@@ -29,6 +29,14 @@ export interface PhotoSyncProgress {
   completed: number;
 }
 
+/** Sentido de la transferencia de fotos; `useSync` lo mapea al estado del modal. */
+export const PHOTO_PHASE = {
+  uploading: 'uploading',
+  downloading: 'downloading',
+} as const;
+
+export type PhotoPhase = (typeof PHOTO_PHASE)[keyof typeof PHOTO_PHASE];
+
 export type SyncGroupResult =
   | { success: true; groupId: string; nombre: string }
   | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null; detail?: string };
@@ -53,6 +61,11 @@ export interface GlobalSyncProgress {
   plantationDone: number;
   plantationTotal: number;
   subgroupProgress?: SyncProgress;
+  /** Fase del pull en curso; el sync global la reenvía igual que la descarga de catálogo. */
+  phaseProgress?: DownloadPhaseProgress;
+  /** Fotos de la plantación en curso, con su fase para distinguir subida de bajada. */
+  photoProgress?: PhotoSyncProgress;
+  photoPhase?: PhotoPhase;
 }
 
 export const PULL_ESTADO = {
@@ -118,6 +131,12 @@ export interface DownloadPhaseProgress {
   phase: DownloadPhase;
   phaseDone: number;
   phaseTotal: number;
+  /**
+   * `true` mientras se bajan las páginas de esa tabla: ahí todavía no se conoce el
+   * total, así que `phaseDone` son filas descargadas y `phaseTotal` es 0. Sin esto
+   * la parte de red —la lenta con mala señal— no muestra nada.
+   */
+  descargando?: boolean;
 }
 
 export interface DownloadProgress {

@@ -172,6 +172,43 @@ describe('syncAllPlantations', () => {
     );
   });
 
+  // El loop de fotos no recibía los callbacks: el modal quedaba congelado mostrando
+  // "Actualizando datos..." durante toda la fase de fotos de todas las plantaciones,
+  // que es el síntoma de "se trabó" (#447).
+  it('emite progreso de fotos durante el sync global', async () => {
+    (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(TWO_PLANTATIONS));
+    mockGetTreesWithPendingPhotos.mockResolvedValue([
+      { id: 'tree-1', fotoUrl: 'file://document/photos/a.jpg', grupoId: 'sg-1' },
+      { id: 'tree-2', fotoUrl: 'file://document/photos/b.jpg', grupoId: 'sg-1' },
+    ]);
+    (mockSupabase.storage.from as jest.Mock).mockReturnValue({
+      upload: jest.fn().mockResolvedValue({ error: null }),
+      createSignedUrl: jest.fn().mockResolvedValue({ data: null, error: { message: 'sin foto' } }),
+    });
+    const progressFn = jest.fn();
+
+    await syncAllPlantations(progressFn, true);
+
+    const conFotos = progressFn.mock.calls
+      .map(([info]) => info)
+      .filter((info) => info.photoProgress);
+    expect(conFotos.length).toBeGreaterThan(0);
+    expect(conFotos[conFotos.length - 1]).toMatchObject({
+      photoPhase: 'uploading',
+      photoProgress: { total: 2, completed: 2 },
+    });
+  });
+
+  it('sin fotos no emite progreso de fotos', async () => {
+    (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(TWO_PLANTATIONS));
+    mockGetTreesWithPendingPhotos.mockResolvedValue([]);
+    const progressFn = jest.fn();
+
+    await syncAllPlantations(progressFn, false);
+
+    expect(progressFn.mock.calls.every(([info]) => !info.photoProgress)).toBe(true);
+  });
+
   it('uploads syncable groups for each plantation', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
     mockGetSyncableGroups.mockResolvedValue([{
