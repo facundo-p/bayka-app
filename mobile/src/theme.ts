@@ -148,6 +148,7 @@ export const fontSize = {
 
 export const lineHeight = {
   xs: 14,
+  sm: 16,
 } as const;
 
 export const letterSpacing = {
