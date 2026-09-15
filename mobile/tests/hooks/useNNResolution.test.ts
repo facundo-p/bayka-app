@@ -12,7 +12,7 @@ jest.mock('../../src/repositories/TreeRepository', () => ({
 }));
 
 jest.mock('../../src/hooks/useTrees', () => ({
-  useTrees: jest.fn().mockReturnValue({ allTrees: [], lastThree: [], totalCount: 0, unresolvedNN: 0 }),
+  useTrees: jest.fn().mockReturnValue({ allTrees: [], totalCount: 0, unresolvedNN: 0 }),
 }));
 
 jest.mock('../../src/hooks/usePlantationSpecies', () => ({

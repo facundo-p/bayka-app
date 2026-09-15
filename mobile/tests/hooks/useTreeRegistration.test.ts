@@ -22,7 +22,6 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
 jest.mock('../../src/hooks/useTrees', () => ({
   useTrees: jest.fn().mockReturnValue({
     allTrees: [],
-    lastThree: [],
     totalCount: 0,
     unresolvedNN: 0,
   }),
@@ -90,7 +89,6 @@ describe('useTreeRegistration', () => {
     (canEdit as jest.Mock).mockReturnValue(true);
     (useTrees as jest.Mock).mockReturnValue({
       allTrees: [],
-      lastThree: [],
       totalCount: 0,
       unresolvedNN: 0,
     });
@@ -382,7 +380,6 @@ describe('useTreeRegistration', () => {
     it('unresolvedNN and totalCount come from useTrees', () => {
       (useTrees as jest.Mock).mockReturnValue({
         allTrees: [],
-        lastThree: [],
         totalCount: 5,
         unresolvedNN: 3,
       });

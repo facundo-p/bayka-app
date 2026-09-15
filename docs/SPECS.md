@@ -433,7 +433,7 @@ Ejemplo:
 4 TIM
 ```
 
-La pantalla de carga de árboles deberá mostrar, además de la botonera: últimos 3 árboles registrados.
+La pantalla de carga de árboles deberá mostrar, además de la botonera, una tira deslizable con todos los árboles del grupo (del más viejo al más nuevo). Tocar un árbol lo selecciona: el borrado y la captura de GPS actúan sobre el seleccionado, que por defecto es el último registrado. Borrar el último es inmediato; borrar uno del medio pide confirmación porque recalcula las posiciones de los que siguen.
 
 ---
 

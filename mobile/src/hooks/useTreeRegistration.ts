@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
@@ -50,7 +50,6 @@ export interface UseTreeRegistrationParams {
 
 export interface UseTreeRegistrationResult {
   allTrees: ReturnType<typeof useTrees>['allTrees'];
-  lastThree: ReturnType<typeof useTrees>['lastThree'];
   totalCount: number;
   unresolvedNN: number;
   sortedTrees: ReturnType<typeof useTrees>['allTrees'];
@@ -69,9 +68,7 @@ export interface UseTreeRegistrationResult {
   gpsCaptureRequired: boolean;
   /** Si todos los botones de especie piden foto, como N/N (#439). */
   photoCaptureAllTrees: boolean;
-  /** true mientras la re-captura del último árbol resuelve (deshabilitar botón). */
-  recapturingGps: boolean;
-  /** treeId cuya captura GPS está en curso (detalle de árbol), o null. */
+  /** treeId cuya captura GPS está en curso (tira o detalle de árbol), o null. */
   gpsCapturingTreeId: string | null;
   finalizing: boolean;
   reversing: boolean;
@@ -89,8 +86,6 @@ export interface UseTreeRegistrationResult {
   executeDeleteGroup: () => Promise<void>;
   executeReactivate: () => Promise<void>;
   executeDeleteTree: (treeId: string) => Promise<void>;
-  /** Re-captura el punto GPS del último árbol; false si no hubo fix. */
-  recaptureLastGps: () => Promise<boolean>;
   /** Captura/reemplaza el punto GPS de un árbol cualquiera; false si no hubo fix. */
   captureTreeGps: (treeId: string) => Promise<boolean>;
 }
@@ -115,10 +110,9 @@ export function useTreeRegistration({
   const [reversing, setReversing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deletingTreeId, setDeletingTreeId] = useState<string | null>(null);
-  const [recapturingGps, setRecapturingGps] = useState(false);
   const [gpsCapturingTreeId, setGpsCapturingTreeId] = useState<string | null>(null);
 
-  const { allTrees, lastThree, totalCount, unresolvedNN } = useTrees(grupoId);
+  const { allTrees, totalCount, unresolvedNN } = useTrees(grupoId);
 
   const { data: groupRows } = useLiveData(
     () => getGroupById(grupoId),
@@ -149,7 +143,11 @@ export function useTreeRegistration({
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
   const canReactivate = isCreator && subgroupEstado === ESTADO_GRUPO.finalizada;
 
-  const sortedTrees = [...allTrees].sort((a, b) => a.posicion - b.posicion);
+  // Estable entre renders: la tira de la botonera y su selección dependen de la identidad.
+  const sortedTrees = useMemo(
+    () => [...allTrees].sort((a, b) => a.posicion - b.posicion),
+    [allTrees],
+  );
 
   // Camino único de alta (especie o N/N): foto según política y recién después el
   // insert. El "tap" GPS es post-foto: el técnico sigue parado junto al árbol y
@@ -192,18 +190,6 @@ export function useTreeRegistration({
       ),
     [registerWithPolicy],
   );
-
-  const recaptureLastGps = useCallback(async (): Promise<boolean> => {
-    // allTrees viene en orden descendente: [0] es el último registrado.
-    const lastTree = allTrees[0];
-    if (isReadOnly || recapturingGps || !lastTree) return false;
-    setRecapturingGps(true);
-    try {
-      return await recaptureTreeGps(lastTree.id, getLastGpsFix);
-    } finally {
-      setRecapturingGps(false);
-    }
-  }, [isReadOnly, recapturingGps, allTrees, getLastGpsFix]);
 
   const undoLast = useCallback(async () => {
     if (isReadOnly) return;
@@ -306,7 +292,6 @@ export function useTreeRegistration({
 
   return {
     allTrees,
-    lastThree,
     totalCount,
     unresolvedNN,
     sortedTrees,
@@ -321,7 +306,6 @@ export function useTreeRegistration({
     gpsCaptureFrequency,
     gpsCaptureRequired,
     photoCaptureAllTrees,
-    recapturingGps,
     gpsCapturingTreeId,
     finalizing,
     reversing,
@@ -338,7 +322,6 @@ export function useTreeRegistration({
     executeDeleteGroup,
     executeReactivate,
     executeDeleteTree,
-    recaptureLastGps,
     captureTreeGps,
   };
 }
