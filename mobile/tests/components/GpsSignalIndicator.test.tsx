@@ -51,6 +51,13 @@ describe('GpsSignalIndicator', () => {
     getByText('Sin señal GPS');
   });
 
+  it('compacto: leyenda corta "Sin señal" (#458)', () => {
+    const { getByText } = render(
+      <GpsSignalIndicator lastFix={null} permissionStatus="otorgado" servicesEnabled={true} compact />,
+    );
+    getByText('Sin señal');
+  });
+
   it('GPS apagado: gris aunque haya fix previo', () => {
     const { getByTestId } = render(
       <GpsSignalIndicator lastFix={fix(2)} permissionStatus="otorgado" servicesEnabled={false} />,

@@ -11,7 +11,7 @@ import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { useTreeRegistration } from '../hooks/useTreeRegistration';
 import { useSpeciesOrder } from '../hooks/useSpeciesOrder';
 import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
-import LastThreeTrees from '../components/LastThreeTrees';
+import TreeStrip, { type TreeChipItem } from '../components/TreeStrip';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
 import PhotoViewer from '../components/PhotoViewer';
@@ -31,10 +31,10 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
-import GpsSignalIndicator from '../components/GpsSignalIndicator';
 import GpsGateBanner from '../components/GpsGateBanner';
-import LastTreeGpsRow from '../components/LastTreeGpsRow';
+import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
+import { useTreeSelection } from '../hooks/useTreeSelection';
 import { getTreeEditGating } from '../utils/treeEditGating';
 
 export default function TreeRegistrationScreen() {
@@ -82,6 +82,8 @@ export default function TreeRegistrationScreen() {
     refreshWatcher: gpsWatcher.refresh,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
+  const treeSelection = useTreeSelection(treeReg.sortedTrees);
+  const { selectedTree } = treeSelection;
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -127,13 +129,25 @@ export default function TreeRegistrationScreen() {
       'Reactivar', () => treeReg.executeReactivate(), { icon: 'refresh-outline' });
   }
 
-  async function handleRecaptureGps() {
-    const captured = await treeReg.recaptureLastGps();
+  async function handleCaptureGps() {
+    if (!selectedTree) return;
+    const hadPoint = selectedTree.latitude != null;
+    const captured = await treeReg.captureTreeGps(selectedTree.id);
     if (!captured) {
       showInfoDialog(confirm.show, 'Sin señal GPS',
-        'No se pudo obtener un punto. El punto anterior se conserva; probá de nuevo cuando mejore la señal.',
+        hadPoint
+          ? 'No se pudo obtener un punto. El punto anterior se conserva; probá de nuevo cuando mejore la señal.'
+          : 'No se pudo obtener un punto. Probá de nuevo cuando mejore la señal.',
         'locate-outline', colors.secondary);
     }
+  }
+
+  // El último se deshace al instante, como siempre. Uno del medio renumera a los
+  // que siguen: pasa por la confirmación.
+  function handleDeleteSelected(tree: TreeChipItem) {
+    const isLast = tree.id === treeReg.sortedTrees[treeReg.sortedTrees.length - 1]?.id;
+    if (isLast) void treeReg.undoLast();
+    else handleDeleteTree(tree.id, tree.posicion);
   }
 
   function handleDeleteTree(treeId: string, posicion: number) {
@@ -145,7 +159,7 @@ export default function TreeRegistrationScreen() {
   }
 
   const { dataLoaded, isReadOnly, canReactivate, totalCount, unresolvedNN,
-    sortedTrees, lastThree, finalizing, deleting, deletingTreeId } = treeReg;
+    sortedTrees, finalizing, deleting, deletingTreeId } = treeReg;
 
   // Gating del detalle de árbol (issue #155) — ver getTreeEditGating.
   const { canEdit: canEditTree, canDelete: canDeleteTree } = getTreeEditGating({
@@ -181,25 +195,22 @@ export default function TreeRegistrationScreen() {
       )}
 
       {dataLoaded && !isReadOnly && (
-        <LastThreeTrees
-          trees={lastThree}
-          onUndo={() => treeReg.undoLast()}
-          headerAccessory={
-            <GpsSignalIndicator
-              lastFix={gpsWatcher.lastFix}
-              permissionStatus={gpsWatcher.permissionStatus}
-              servicesEnabled={gpsWatcher.servicesEnabled}
+        <TreeStrip
+          trees={sortedTrees}
+          selectedId={selectedTree?.id ?? null}
+          onSelect={treeSelection.select}
+          onDelete={handleDeleteSelected}
+          footer={
+            <TreeGpsRow
+              signal={gpsWatcher}
+              tree={selectedTree && {
+                hasPoint: selectedTree.latitude != null,
+                gpsAccuracy: selectedTree.gpsAccuracy ?? null,
+              }}
+              capturing={selectedTree !== null && treeReg.gpsCapturingTreeId === selectedTree.id}
+              disabled={treeReg.gpsCapturingTreeId !== null}
+              onCapture={handleCaptureGps}
             />
-          }
-          footerAccessory={
-            lastThree.length > 0 ? (
-              <LastTreeGpsRow
-                hasPoint={lastThree[0].latitude != null}
-                gpsAccuracy={lastThree[0].gpsAccuracy ?? null}
-                recapturing={treeReg.recapturingGps}
-                onRecapture={handleRecaptureGps}
-              />
-            ) : undefined
           }
         />
       )}

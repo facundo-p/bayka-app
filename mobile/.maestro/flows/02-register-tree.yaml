@@ -34,6 +34,6 @@ appId: com.bayka.app
 - assertVisible:
     id: "tree-count"
 
-# Tap undo to remove the last tree
+# Tap the trash on the selected chip (the new tree) to remove it
 - tapOn:
-    id: "undo-button"
+    id: "delete-tree-button"

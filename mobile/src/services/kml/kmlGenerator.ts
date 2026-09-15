@@ -4,6 +4,7 @@
  */
 import type { KmlExportRow } from '../../queries/exportQueries';
 import { buildSpeciesStyles, getSpeciesStyleId } from './speciesStyles';
+import { formatGpsAccuracy } from '../../utils/gpsAccuracyFormat';
 
 export const NN_SPECIES_LABEL = 'N/N';
 
@@ -28,7 +29,7 @@ function parcelaLabel(row: KmlExportRow): string {
 }
 
 function buildDescription(row: KmlExportRow): string {
-  const precision = row.gpsAccuracy !== null ? `± ${Math.round(row.gpsAccuracy)} m` : 's/d';
+  const precision = formatGpsAccuracy(row.gpsAccuracy);
   const lineas = [
     `Especie: ${especieLabel(row)}`,
     `Grupo: ${row.grupoNombre}`,
