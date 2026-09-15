@@ -81,7 +81,9 @@ describe('deletePlantationLocally', () => {
     expect(txDeleteCalls).toContain('user_species_order');
   });
 
-  it('Test 5: if the DB throws mid-transaction, no partial data is deleted (transaction rolls back)', async () => {
+  // El rollback en sí lo prueba tests/database/transaccion.test.ts: acá el callback
+  // ni corre, solo se verifica que un fallo no dispare el refresco de la UI.
+  it('Test 5: si la transacción falla, no se notifica el cambio de datos', async () => {
     mockEnTransaccion.mockRejectedValue(new Error('DB crash'));
 
     await expect(deletePlantationLocally('plant-1')).rejects.toThrow('DB crash');

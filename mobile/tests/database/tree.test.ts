@@ -6,7 +6,6 @@ let mockSelectResults: any[] = [];
 let mockInsertValues: jest.Mock;
 let mockDeleteWhere: jest.Mock;
 let mockUpdateWhere: jest.Mock;
-let mockTransactionFn: jest.Mock;
 
 // db.select() chain is flexible: any .where() resolves to mockSelectResults,
 // which tests reassign per case.
@@ -34,7 +33,6 @@ beforeAll(() => {
   mockInsertValues = jest.fn().mockResolvedValue(undefined);
   mockDeleteWhere = jest.fn().mockResolvedValue(undefined);
   mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
-  mockTransactionFn = jest.fn();
 
   mockDb = {
     insert: jest.fn(() => ({ values: mockInsertValues })),
@@ -49,20 +47,6 @@ beforeAll(() => {
         ),
       })),
     })),
-    transaction: jest.fn(async (fn: (tx: any) => Promise<void>) => {
-      // Run with a tx that has the same shape as db
-      const tx = {
-        select: jest.fn(() => ({
-          from: jest.fn(() => ({
-            where: jest.fn(() => Promise.resolve(mockSelectResults)),
-          })),
-        })),
-        update: jest.fn(() => ({
-          set: jest.fn(() => ({ where: mockUpdateWhere })),
-        })),
-      };
-      await fn(tx);
-    }),
   };
 });
 
@@ -83,19 +67,6 @@ beforeEach(() => {
       where: jest.fn(() => Promise.resolve(mockSelectResults)),
     })),
   }));
-  mockDb.transaction = jest.fn(async (fn: (tx: any) => Promise<void>) => {
-    const tx = {
-      select: jest.fn(() => ({
-        from: jest.fn(() => ({
-          where: jest.fn(() => Promise.resolve(mockSelectResults)),
-        })),
-      })),
-      update: jest.fn(() => ({
-        set: jest.fn(() => ({ where: mockUpdateWhere })),
-      })),
-    };
-    await fn(tx);
-  });
 });
 
 import {

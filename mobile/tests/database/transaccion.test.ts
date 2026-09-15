@@ -30,15 +30,24 @@ const mockDbFalso = {
   },
 };
 
-/** `withTransactionAsync` de expo-sqlite, que sí espera y revierte. */
+/**
+ * `withTransactionAsync` de expo-sqlite, copiado de SQLiteDatabase.js: el BEGIN va
+ * ADENTRO del try, así que un BEGIN anidado —que SQLite rechaza— dispara el
+ * ROLLBACK del catch, y ese rollback revierte la transacción que ya estaba abierta.
+ */
+let mockAbierta = false;
 const mockSqliteFalso = {
   withTransactionAsync: async (task: () => Promise<void>) => {
-    mockRegistro.push('BEGIN');
     try {
+      if (mockAbierta) throw new Error('cannot start a transaction within a transaction');
+      mockAbierta = true;
+      mockRegistro.push('BEGIN');
       await task();
       mockRegistro.push('COMMIT');
+      mockAbierta = false;
     } catch (e) {
       mockRegistro.push('ROLLBACK');
+      mockAbierta = false;
       throw e;
     }
   },
@@ -53,7 +62,7 @@ jest.mock('../../src/database/client', () => ({
   },
 }));
 
-import { enTransaccion } from '../../src/database/transaccion';
+import { enTransaccion, enTransaccionPorLotes, FILAS_POR_TRANSACCION } from '../../src/database/transaccion';
 import { db } from '../../src/database/client';
 
 async function escribirDosFilas(tx: typeof mockDbFalso) {
@@ -64,6 +73,7 @@ async function escribirDosFilas(tx: typeof mockDbFalso) {
 describe('enTransaccion', () => {
   beforeEach(() => {
     mockRegistro.length = 0;
+    mockAbierta = false;
   });
 
   it('las escrituras caen adentro de la transacción', async () => {
@@ -88,6 +98,47 @@ describe('enTransaccion', () => {
     expect(mockRegistro).toEqual(['BEGIN', 'INSERT 1', 'ROLLBACK']);
   });
 
+  // Dos corridas solapadas sobre la misma conexión se destruyen: el BEGIN de la
+  // segunda falla y su ROLLBACK revierte la de la primera. Pasa de verdad — un
+  // pull-to-refresh mientras el usuario borra una plantación (#448).
+  it('serializa dos transacciones solapadas en vez de anidarlas', async () => {
+    const lenta = enTransaccion(async (tx) => {
+      await (tx as unknown as typeof mockDbFalso).escribir('lenta');
+    });
+    const rapida = enTransaccion(async (tx) => {
+      await (tx as unknown as typeof mockDbFalso).escribir('rapida');
+    });
+
+    await Promise.all([lenta, rapida]);
+
+    expect(mockRegistro).toEqual([
+      'BEGIN', 'INSERT lenta', 'COMMIT',
+      'BEGIN', 'INSERT rapida', 'COMMIT',
+    ]);
+  });
+
+  // Una corrida que falla no puede dejar la cola trabada para las que siguen.
+  it('la cola sigue andando después de una transacción que falla', async () => {
+    await expect(enTransaccion(async () => { throw new Error('boom'); })).rejects.toThrow('boom');
+    await enTransaccion(async (tx) => {
+      await (tx as unknown as typeof mockDbFalso).escribir('siguiente');
+    });
+
+    expect(mockRegistro).toEqual(['BEGIN', 'ROLLBACK', 'BEGIN', 'INSERT siguiente', 'COMMIT']);
+  });
+
+  // Anidada de verdad: esperar el turno sería un deadlock contra sí misma.
+  it('una transacción anidada se suma a la abierta, no abre otra', async () => {
+    await enTransaccion(async (tx) => {
+      await (tx as unknown as typeof mockDbFalso).escribir('externa');
+      await enTransaccion(async (interna) => {
+        await (interna as unknown as typeof mockDbFalso).escribir('interna');
+      });
+    });
+
+    expect(mockRegistro).toEqual(['BEGIN', 'INSERT externa', 'INSERT interna', 'COMMIT']);
+  });
+
   // Este es el que justifica que exista `enTransaccion`: si alguien "simplifica"
   // volviendo a `db.transaction`, el orden de arriba se rompe así.
   it('db.transaction de drizzle commitea antes de escribir una sola fila', async () => {
@@ -109,5 +160,58 @@ describe('enTransaccion', () => {
 
     await expect(falla).rejects.toThrow('se cortó la red');
     expect(mockRegistro).toEqual(['BEGIN', 'COMMIT', 'INSERT 1']);
+  });
+});
+
+describe('enTransaccionPorLotes', () => {
+  beforeEach(() => {
+    mockRegistro.length = 0;
+    mockAbierta = false;
+  });
+
+  const escribirFila = async (tx: unknown, fila: string) =>
+    (tx as typeof mockDbFalso).escribir(fila);
+
+  it('escribe adentro de la transacción, no después del commit', async () => {
+    await enTransaccionPorLotes(['a', 'b'], escribirFila);
+
+    expect(mockRegistro).toEqual(['BEGIN', 'INSERT a', 'INSERT b', 'COMMIT']);
+  });
+
+  // Un solo commit para 12.000 filas sería algo más rápido, pero deja la ventana
+  // abierta minutos: lo que escriba el resto de la app cae adentro y se pierde si
+  // la transacción revierte.
+  it('parte en lotes en vez de una transacción gigante', async () => {
+    const filas = Array.from({ length: FILAS_POR_TRANSACCION + 1 }, (_, i) => `f${i}`);
+
+    await enTransaccionPorLotes(filas, escribirFila);
+
+    expect(mockRegistro.filter((e) => e === 'BEGIN')).toHaveLength(2);
+    expect(mockRegistro.filter((e) => e.startsWith('INSERT'))).toHaveLength(filas.length);
+  });
+
+  // El progreso dispara un render de React: adentro de la transacción, la UI podría
+  // leer filas sin commitear que después desaparecen.
+  it('emite progreso entre transacciones, nunca adentro', async () => {
+    const filas = Array.from({ length: FILAS_POR_TRANSACCION + 1 }, (_, i) => `f${i}`);
+
+    await enTransaccionPorLotes(filas, escribirFila, (escritas) =>
+      mockRegistro.push(`PROGRESO ${escritas}`),
+    );
+
+    const progresos = mockRegistro
+      .map((entrada, i) => ({ entrada, i }))
+      .filter(({ entrada }) => entrada.startsWith('PROGRESO'));
+    for (const { entrada, i } of progresos) {
+      expect(mockRegistro[i - 1]).toBe('COMMIT');
+      expect(entrada).toBe(`PROGRESO ${i === progresos[0].i ? FILAS_POR_TRANSACCION : filas.length}`);
+    }
+    expect(progresos).toHaveLength(2);
+  });
+
+  it('sin filas no abre ninguna transacción', async () => {
+    await enTransaccionPorLotes([], escribirFila);
+
+    expect(mockRegistro).toEqual([]);
   });
 });

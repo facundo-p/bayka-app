@@ -32,6 +32,15 @@ jest.mock('../../src/repositories/PlantationRepository', () => ({
   deletePlantationLocally: jest.fn().mockResolvedValue(undefined),
 }));
 
+// Passthrough que marca si hay una transacción abierta: así se puede afirmar que
+// las escrituras del pull caen adentro y no después del commit (#448).
+let mockDentroDeTransaccion = false;
+jest.mock('../../src/database/transaccion', () => ({
+  FILAS_POR_TRANSACCION: jest.requireActual('../../src/database/transaccion').FILAS_POR_TRANSACCION,
+  enTransaccion: jest.fn(),
+  enTransaccionPorLotes: jest.fn(),
+}));
+
 const { db } = require('../../src/database/client');
 const { notifyDataChanged } = require('../../src/database/liveQuery');
 const { supabase } = require('../../src/supabase/client');
@@ -43,6 +52,35 @@ import {
   DownloadProgress,
 } from '../../src/services/SyncService';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
+import { enTransaccion, enTransaccionPorLotes } from '../../src/database/transaccion';
+
+/**
+ * `jest.resetAllMocks()` borra la implementación de los mocks de módulo, así que el
+ * passthrough se vuelve a poner en cada `beforeEach`.
+ */
+function setupTransaccionPassthrough() {
+  const abrir = async (cb: (tx: unknown) => Promise<unknown>) => {
+    mockDentroDeTransaccion = true;
+    try {
+      return await cb(db);
+    } finally {
+      mockDentroDeTransaccion = false;
+    }
+  };
+  (enTransaccion as jest.Mock).mockImplementation(abrir);
+  (enTransaccionPorLotes as jest.Mock).mockImplementation(
+    async (
+      filas: unknown[],
+      escribir: (tx: unknown, f: unknown) => Promise<void>,
+      onLote?: (n: number) => void,
+    ) => {
+      await abrir(async (tx) => {
+        for (const fila of filas) await escribir(tx, fila);
+      });
+      onLote?.(filas.length);
+    },
+  );
+}
 
 // Helper to build a server plantation object
 const makeServerPlantation = (id: string, lugar = 'Bosque Norte') => ({
@@ -123,6 +161,23 @@ function setupDbSelectEmpty() {
   });
 }
 
+/** Como `setupSupabaseFromEmpty`, pero el server trae `filas` para una tabla. */
+function setupSupabaseConFilas(tabla: string, filas: any[]) {
+  const encadenable = (t: string, columnas: string[]): any => {
+    const esMembresia = t === 'plantation_users' && columnas.includes('user_id');
+    const data = esMembresia ? [{ user_id: 'user-1' }] : t === tabla ? filas : [];
+    const resultado = Promise.resolve({ data, error: null }) as any;
+    resultado.eq = jest.fn((col: string) => encadenable(t, [...columnas, col]));
+    resultado.in = jest.fn((col: string) => encadenable(t, [...columnas, col]));
+    resultado.range = jest.fn(() => Promise.resolve({ data, error: null }));
+    resultado.single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return resultado;
+  };
+  (supabase.from as jest.Mock).mockImplementation((t: string) => ({
+    select: jest.fn(() => encadenable(t, [])),
+  }));
+}
+
 /** Membresía vacía: `tieneAccesoRemoto` da false y el pull devuelve "sin acceso". */
 function setupSinMembresia() {
   const encadenable = (): any => {
@@ -161,6 +216,7 @@ describe('downloadPlantation', () => {
     setupSesion();
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
+    setupTransaccionPassthrough();
   });
 
   it('Test 1: upserts plantation row into local SQLite then calls pullFromServer', async () => {
@@ -241,12 +297,42 @@ describe('downloadPlantation', () => {
   });
 });
 
+describe('pull · las escrituras van adentro de la transacción (#448)', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    setupSesion();
+    setupDbInsertSuccess();
+    setupDbSelectEmpty();
+    setupTransaccionPassthrough();
+    mockDentroDeTransaccion = false;
+  });
+
+  // Sin esto, el pull escribía fila por fila en autocommit y ningún test lo veía.
+  it('la fase de parcelas upsertea con una transacción abierta', async () => {
+    setupSupabaseConFilas('parcelas', [
+      { id: 'par-1', plantation_id: 'p-1', nombre: 'Norte', codigo: 'N', created_at: '', updated_at: '' },
+    ]);
+    const dentro: boolean[] = [];
+    (db.insert as jest.Mock).mockImplementation(() => {
+      dentro.push(mockDentroDeTransaccion);
+      return { values: jest.fn(() => ({ onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) })) };
+    });
+
+    await downloadPlantation(makeServerPlantation('p-1'));
+
+    // El primer insert es el upsert de la plantación, fuera de transacción a
+    // propósito; el de la parcela es el que tiene que caer adentro.
+    expect(dentro).toEqual([false, true]);
+  });
+});
+
 describe('downloadPlantation · pull fallido (#448)', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     setupSesion();
     setupDbInsertSuccess();
     setupSinMembresia();
+    setupTransaccionPassthrough();
     (deletePlantationLocally as jest.Mock).mockResolvedValue(undefined);
   });
 
@@ -277,6 +363,7 @@ describe('batchDownload', () => {
     setupSesion();
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
+    setupTransaccionPassthrough();
   });
 
   it('Test 3: calls downloadPlantation (db.insert) for each selected plantation in order', async () => {

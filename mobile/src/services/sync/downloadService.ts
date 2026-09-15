@@ -82,8 +82,14 @@ export async function downloadPlantation(
     // plantación nueva cuyo pull falla queda en el listado como descargada y
     // vacía (#448). Se borra con lo que haya alcanzado a bajar.
     if (!yaEstabaLocal) {
-      await deletePlantationLocally(serverPlantation.id);
-      syncLog.info('Download: pull falló, se revierte la plantación', serverPlantation.id);
+      // El revert no puede pisar la causa real: si falla, se loguea aparte y se
+      // propaga el error del pull, que es lo que hay que diagnosticar.
+      try {
+        await deletePlantationLocally(serverPlantation.id);
+        syncLog.info('Download: pull falló, se revierte la plantación', serverPlantation.id);
+      } catch (errorDelRevert) {
+        syncLog.error('Download: no se pudo revertir la plantación', serverPlantation.id, errorDelRevert);
+      }
     }
     throw e;
   }
