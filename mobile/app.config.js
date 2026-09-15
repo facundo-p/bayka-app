@@ -1,3 +1,4 @@
+const fs = require('fs');
 const path = require('path');
 const { commitDelBuild } = require('../scripts/commitDelBuild.cjs');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -24,9 +25,20 @@ const IS_TEST = process.env.APP_VARIANT === VARIANTE.test;
 // AndroidManifest, vía prebuild.
 const CANAL_OTA = Object.freeze({ test: 'test', prod: 'production' });
 const ES_BUILD_DE_EAS = process.env.EAS_BUILD === 'true';
+const RUTA_ENV_STAGING = path.resolve(__dirname, '.env.staging');
 
 if (IS_TEST) {
-  require('dotenv').config({ path: path.resolve(__dirname, '.env.staging'), override: true });
+  // Sin `.env.staging` (gitignoreado, vive en Bitwarden) dotenv no pisa nada y la
+  // variante TEST sale con las credenciales de producción de `.env`, conservando la
+  // franja roja: app de pruebas escribiendo en prod, sin ninguna señal (#444). En EAS
+  // el archivo no existe y las env las trae el profile `test` de eas.json.
+  if (!ES_BUILD_DE_EAS && !fs.existsSync(RUTA_ENV_STAGING)) {
+    throw new Error(
+      'APP_VARIANT=test sin mobile/.env.staging: el build saldría apuntando a Supabase de ' +
+        'producción. El archivo está en Bitwarden.'
+    );
+  }
+  require('dotenv').config({ path: RUTA_ENV_STAGING, override: true });
 }
 
 module.exports = ({ config }) => ({
