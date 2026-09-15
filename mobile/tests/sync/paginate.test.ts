@@ -1,42 +1,4 @@
-import { runInTransaction, fetchAllRows } from '../../src/services/sync/paginate';
-
-describe('runInTransaction', () => {
-  test('runs cb(database) directly when database.transaction is not a function', async () => {
-    const database = {};
-    const cb = jest.fn().mockResolvedValue('direct-result');
-    const result = await runInTransaction(database, cb);
-    expect(result).toBe('direct-result');
-    expect(cb).toHaveBeenCalledWith(database);
-  });
-
-  test('runs cb via database.transaction when supported', async () => {
-    const transaction = jest.fn((fn: (tx: unknown) => Promise<unknown>) => fn('tx-handle'));
-    const database = { transaction };
-    const cb = jest.fn().mockResolvedValue('tx-result');
-    const result = await runInTransaction(database, cb);
-    expect(result).toBe('tx-result');
-    expect(transaction).toHaveBeenCalledWith(cb);
-    expect(cb).toHaveBeenCalledWith('tx-handle');
-  });
-
-  test('falls back to cb(database) when the driver rejects async transaction callbacks', async () => {
-    const database = {
-      transaction: jest.fn().mockRejectedValue(new Error('Transaction function cannot return a promise')),
-    };
-    const cb = jest.fn().mockResolvedValue('fallback-result');
-    const result = await runInTransaction(database, cb);
-    expect(result).toBe('fallback-result');
-    expect(cb).toHaveBeenCalledWith(database);
-  });
-
-  test('rethrows any other error from database.transaction', async () => {
-    const database = {
-      transaction: jest.fn().mockRejectedValue(new Error('boom')),
-    };
-    const cb = jest.fn();
-    await expect(runInTransaction(database, cb)).rejects.toThrow('boom');
-  });
-});
+import { fetchAllRows } from '../../src/services/sync/paginate';
 
 describe('fetchAllRows', () => {
   test('returns a single page when it is smaller than PAGE_SIZE', async () => {

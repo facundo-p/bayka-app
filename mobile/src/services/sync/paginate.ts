@@ -1,26 +1,4 @@
 /**
- * Corre `cb(tx)` en una transacción DB si el driver la soporta; si no (mocks sin `db.transaction`,
- * o better-sqlite3 sync tirando "cannot return a promise" en tests de integración), cae a
- * `cb(db)` sin transacción. Prod (expo-sqlite) siempre soporta transacciones async.
- */
-export async function runInTransaction<T>(
-  database: any,
-  cb: (tx: any) => Promise<T>,
-): Promise<T> {
-  if (typeof database?.transaction !== 'function') {
-    return cb(database);
-  }
-  try {
-    return await database.transaction(cb);
-  } catch (e: any) {
-    if (typeof e?.message === 'string' && e.message.includes('cannot return a promise')) {
-      return cb(database);
-    }
-    throw e;
-  }
-}
-
-/**
  * Pagina una query de Supabase con .range() para saltar el límite default de 1000 filas de
  * PostgREST; `buildQuery` debe devolver un builder fresco por llamada. Fallback: si no expone
  * .range() (mocks de test), se usa como página única.

@@ -40,6 +40,14 @@ module.exports = defineConfig([
           message:
             "No compares contra códigos de error SQLSTATE literales (p.ej. '23505'/'42501'). Usá PG_ERROR de src/supabase/postgresErrorCodes.ts.",
         },
+        {
+          // `db.transaction()` de drizzle/expo-sqlite es síncrona: con un callback
+          // async commitea vacío y las filas se escriben en autocommit, sin
+          // atomicidad (#448). El patrón es reconocible, así que lo ataja eslint.
+          selector: "CallExpression > MemberExpression[property.name='transaction'][object.name='db']",
+          message:
+            "`db.transaction()` no espera callbacks async: commitea vacío. Usá enTransaccion de src/database/transaccion.ts.",
+        },
       ],
     },
   },

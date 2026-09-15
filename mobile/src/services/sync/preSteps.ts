@@ -9,7 +9,8 @@ import {
 } from '../../database/schema';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
-import { fetchAllRows, runInTransaction } from './paginate';
+import { fetchAllRows } from './paginate';
+import { enTransaccion } from '../../database/transaccion';
 import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
@@ -47,7 +48,7 @@ async function upsertSpeciesById(exec: DbExecutor, s: ServerSpecies): Promise<vo
  * @returns true si reconcilió; false si no había duplicado (el error era otro y debe propagarse).
  */
 async function reconcileSpeciesCodigoCollision(s: ServerSpecies): Promise<boolean> {
-  return runInTransaction(db, async (tx) => {
+  return enTransaccion(async (tx) => {
     const [dup] = await tx
       .select({ id: species.id })
       .from(species)

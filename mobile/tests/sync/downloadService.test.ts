@@ -28,6 +28,10 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
   getSyncableGroups: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/PlantationRepository', () => ({
+  deletePlantationLocally: jest.fn().mockResolvedValue(undefined),
+}));
+
 const { db } = require('../../src/database/client');
 const { notifyDataChanged } = require('../../src/database/liveQuery');
 const { supabase } = require('../../src/supabase/client');
@@ -38,6 +42,7 @@ import {
   DownloadResult,
   DownloadProgress,
 } from '../../src/services/SyncService';
+import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 
 // Helper to build a server plantation object
 const makeServerPlantation = (id: string, lugar = 'Bosque Norte') => ({
@@ -115,6 +120,27 @@ function setupDbSelectEmpty() {
   });
   (db.delete as jest.Mock).mockReturnValue({
     where: jest.fn().mockResolvedValue(undefined),
+  });
+}
+
+/** Membresía vacía: `tieneAccesoRemoto` da false y el pull devuelve "sin acceso". */
+function setupSinMembresia() {
+  const encadenable = (): any => {
+    const resultado = Promise.resolve({ data: [], error: null }) as any;
+    resultado.eq = jest.fn(() => encadenable());
+    resultado.in = jest.fn(() => encadenable());
+    resultado.single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return resultado;
+  };
+  (supabase.from as jest.Mock).mockImplementation(() => ({ select: jest.fn(() => encadenable()) }));
+}
+
+/** Lo que devuelve el `select` de "¿la plantación ya estaba local?". */
+function setupPlantacionLocal(filas: { id: string }[]) {
+  (db.select as jest.Mock).mockReturnValue({
+    from: jest.fn().mockReturnValue({
+      where: jest.fn().mockResolvedValue(filas),
+    }),
   });
 }
 
@@ -212,6 +238,36 @@ describe('downloadPlantation', () => {
 
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: false }));
     expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: false });
+  });
+});
+
+describe('downloadPlantation · pull fallido (#448)', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    setupSesion();
+    setupDbInsertSuccess();
+    setupSinMembresia();
+    (deletePlantationLocally as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  // La fila se inserta con `pendingSync: false` ANTES del pull: si el pull falla
+  // queda una plantación "descargada" y vacía en el listado.
+  it('revierte la plantación nueva cuyo pull falló', async () => {
+    setupPlantacionLocal([]);
+
+    await expect(downloadPlantation(makeServerPlantation('p-nueva'))).rejects.toThrow('Sin acceso');
+
+    expect(deletePlantationLocally).toHaveBeenCalledWith('p-nueva');
+  });
+
+  // Una que ya estaba descargada conserva sus datos viejos: son mejores que nada
+  // y el pull es idempotente, así que el próximo intento converge.
+  it('no toca una plantación que ya estaba local', async () => {
+    setupPlantacionLocal([{ id: 'p-vieja' }]);
+
+    await expect(downloadPlantation(makeServerPlantation('p-vieja'))).rejects.toThrow('Sin acceso');
+
+    expect(deletePlantationLocally).not.toHaveBeenCalled();
   });
 });
 

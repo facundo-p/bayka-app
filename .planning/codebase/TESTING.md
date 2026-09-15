@@ -134,8 +134,9 @@ mockDb = {
   })),
   insert: jest.fn(() => ({ values: mockInsertValues })),
   update: jest.fn(() => ({ set: jest.fn(() => ({ where: mockUpdateWhere })) })),
-  transaction: jest.fn(async (fn) => { const tx = { ... }; await fn(tx); }),
 };
+// Las transacciones NO se mockean acá: van por `enTransaccion`
+// (src/database/transaccion.ts), que recibe el propio `db`. Ver abajo.
 ```
 
 2. **Setup Pattern** — Module-level state for shared mocks:
@@ -337,7 +338,17 @@ it('maps Supabase error code to sync error', async () => {
 ```
 
 **Transaction Testing:**
+
+`db.transaction()` está prohibido por eslint: es síncrona y con un callback async
+commitea vacío (#448). Todo va por `enTransaccion`, que le pasa al callback el
+propio `db` — por eso las escrituras se verifican sobre los mocks de `db` y no
+sobre un `tx` aparte.
+
 ```typescript
+jest.mock('../../src/database/transaccion', () => ({
+  enTransaccion: jest.fn((cb) => cb(jest.requireMock('../../src/database/client').db)),
+}));
+
 it('runs in a transaction (all updates or none)', async () => {
   mockSelectResults = [
     { id: 'tree-1', posicion: 1, ... },
@@ -346,13 +357,14 @@ it('runs in a transaction (all updates or none)', async () => {
 
   await reverseTreeOrder('sg-1', 'L1');
 
-  // Verify transaction was invoked
-  expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-  
-  // Verify all updates were called
+  expect(enTransaccion).toHaveBeenCalledTimes(1);
   expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
 });
 ```
+
+El helper en sí se prueba aparte, en `tests/database/transaccion.test.ts`, contra
+dobles fieles de cada driver: el mock de arriba es *más correcto* que el driver
+real, así que no puede detectar el bug que motivó el cambio.
 
 **Mock State Reset Pattern:**
 ```typescript

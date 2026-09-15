@@ -4,6 +4,7 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
+import { enTransaccion } from '../database/transaccion';
 import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -456,7 +457,7 @@ export async function createPlantationWithParcelaLocally(
   const plantationId = Crypto.randomUUID();
   const now = new Date().toISOString();
 
-  await db.transaction(async (tx) => {
+  await enTransaccion(async (tx) => {
     await tx.insert(plantations).values({
       id: plantationId,
       organizacionId: params.organizacionId,
@@ -502,7 +503,7 @@ export async function createPlantationWithParcelaLocally(
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
-  await db.transaction(async (tx) => {
+  await enTransaccion(async (tx) => {
     await tx.delete(trees).where(
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
     );
