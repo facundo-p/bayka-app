@@ -3,21 +3,26 @@
  * Sin esto el update se aplica recién en el próximo arranque en frío, que puede
  * tardar días: el técnico no cierra la app.
  *
- * Va al pie y no arriba: como primer elemento del árbol tendría que tomar el inset
- * superior, y CustomHeader lo sumaría de nuevo dejando una franja vacía en la app de
- * producción, donde el banner de entorno no está para absorberlo.
+ * Va arriba, debajo de la franja de entorno y encima del header. Abajo quedaba por
+ * debajo de la barra de tabs, pegado a la barra de gestos de Android: un botón que
+ * descarta el trabajo en memoria no puede vivir donde el pulgar barre para volver.
  *
  * Nunca reinicia solo. `reloadAsync` se lleva el estado en memoria —un formulario
  * a medio llenar se pierde—, así que el reinicio siempre lo decide el usuario, y
  * queda bloqueado mientras hay una sincronización o descarga en curso.
+ *
+ * Quién lo muestra y quién lo descarta es `FranjasSuperiores`: el aviso cambia el
+ * inset que aplica el header, así que esa decisión no puede vivir acá adentro.
  */
 import { useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUpdates, reloadAsync } from 'expo-updates';
+import { reloadAsync } from 'expo-updates';
+
 import { useActividadDeSync } from '../hooks/useActividadDeSync';
+import { useInsetSuperior } from '../hooks/useInsetSuperior';
 import { spacing } from '../theme';
 import { syncLog } from '../utils/syncLogger';
+import { OCUPANTE_DEL_INSET } from './insetSuperior';
 import { bannerActualizacionListaStyles as styles } from './BannerActualizacionLista.styles';
 
 // El reinicio cierra lo que el técnico tenga abierto: el texto lo dice (§15).
@@ -27,17 +32,13 @@ const TEXTO_BOTON = 'Reiniciar';
 const TEXTO_DESCARTAR = '✕';
 const HIT_SLOP_DESCARTAR = 12;
 
-export default function BannerActualizacionLista() {
-  const { isUpdatePending } = useUpdates();
+export default function BannerActualizacionLista({ onDescartar }: { onDescartar: () => void }) {
   const sincronizando = useActividadDeSync();
-  const insets = useSafeAreaInsets();
-  const [descartado, setDescartado] = useState(false);
+  const insetTop = useInsetSuperior(OCUPANTE_DEL_INSET.aviso);
   const [reiniciando, setReiniciando] = useState(false);
   // `setReiniciando` recién surte efecto en el próximo render: sin esto, dos toques
   // en el mismo tick dispararían dos reinicios.
   const reinicioEnCurso = useRef(false);
-
-  if (!isUpdatePending || descartado) return null;
 
   const bloqueado = sincronizando || reiniciando;
 
@@ -61,7 +62,7 @@ export default function BannerActualizacionLista() {
   return (
     <View
       testID="banner-actualizacion-lista"
-      style={[styles.franja, { paddingBottom: insets.bottom + spacing.sm }]}
+      style={[styles.franja, { paddingTop: insetTop + spacing.sm }]}
     >
       <Text style={styles.texto} numberOfLines={3}>
         {sincronizando ? TEXTO_SINCRONIZANDO : TEXTO_DISPONIBLE}
@@ -80,7 +81,7 @@ export default function BannerActualizacionLista() {
         testID="banner-actualizacion-descartar"
         accessibilityRole="button"
         accessibilityLabel="Descartar aviso de actualización"
-        onPress={() => setDescartado(true)}
+        onPress={onDescartar}
         hitSlop={HIT_SLOP_DESCARTAR}
         style={styles.descartar}
       >

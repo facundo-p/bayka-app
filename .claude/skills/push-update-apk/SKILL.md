@@ -90,9 +90,9 @@ Channel: <channel>
 Message: <message>
 
 Los devices de ese canal con la misma version de mobile lo bajan en segundo
-plano al abrir la app. Una vez descargado aparece un aviso al pie con un boton
-para reiniciar y aplicarlo en el momento (bloqueado mientras haya una sync en
-curso); si el usuario no lo usa, se aplica en el siguiente arranque en frio.
+plano al abrir la app. Una vez descargado aparece un aviso arriba de todo con un
+boton para reiniciar y aplicarlo en el momento (bloqueado mientras haya una sync
+en curso); si el usuario no lo usa, se aplica en el siguiente arranque en frio.
 Sin reinstalar nada.
 
 En la app TEST se confirma en la franja roja, que pasa a mostrar el commit del

@@ -12,62 +12,62 @@ import {
   __resetActividadDeSync,
 } from '../../src/services/sync/syncActivityStore';
 
-const MOCK_INSET_BOTTOM = 24;
+const MOCK_INSET_TOP = 40;
 jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 40, bottom: MOCK_INSET_BOTTOM, left: 0, right: 0 }),
+  useSafeAreaInsets: () => ({ top: MOCK_INSET_TOP, bottom: 24, left: 0, right: 0 }),
 }));
 
-const mockUseUpdates = jest.fn();
+// El componente no decide si se muestra —eso es de FranjasSuperiores—, pero sí
+// aplica el inset superior cuando es el primero de la pila.
+jest.mock('../../src/config/entorno', () => ({ ES_ENTORNO_DE_PRUEBAS: false }));
+
 const mockReloadAsync = jest.fn();
 jest.mock('expo-updates', () => ({
-  useUpdates: () => mockUseUpdates(),
   reloadAsync: (...args: unknown[]) => mockReloadAsync(...args),
 }));
 
+const onDescartar = jest.fn();
+const renderBanner = () => render(<BannerActualizacionLista onDescartar={onDescartar} />);
+
 describe('BannerActualizacionLista', () => {
   beforeEach(() => {
-    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
     mockReloadAsync.mockReset().mockResolvedValue(undefined);
+    onDescartar.mockReset();
     __resetActividadDeSync();
   });
 
-  it('no renderiza nada sin un update pendiente', () => {
-    mockUseUpdates.mockReturnValue({ isUpdatePending: false });
-    const { queryByTestId } = render(<BannerActualizacionLista />);
-    expect(queryByTestId('banner-actualizacion-lista')).toBeNull();
-  });
-
-  it('con un update pendiente ofrece reiniciar', () => {
-    const { getByTestId, getByText } = render(<BannerActualizacionLista />);
+  it('ofrece reiniciar', () => {
+    const { getByTestId, getByText } = renderBanner();
     expect(getByTestId('banner-actualizacion-lista')).toBeTruthy();
     expect(getByText(/Hay una actualización lista/)).toBeTruthy();
   });
 
-  it('ocupa el inset inferior: va al pie, no arriba de la status bar', () => {
-    const { getByTestId } = render(<BannerActualizacionLista />);
+  it('ocupa el inset de la status bar: va arriba, no al pie', () => {
+    const { getByTestId } = renderBanner();
     const estilo = StyleSheet.flatten(getByTestId('banner-actualizacion-lista').props.style);
-    expect(estilo.paddingBottom).toBeGreaterThanOrEqual(MOCK_INSET_BOTTOM);
+    expect(estilo.paddingTop).toBeGreaterThanOrEqual(MOCK_INSET_TOP);
+    expect(estilo.paddingBottom).toBeLessThan(MOCK_INSET_TOP);
   });
 
   it('avisa que el reinicio cierra lo que el usuario esté haciendo', () => {
-    const { getByText } = render(<BannerActualizacionLista />);
+    const { getByText } = renderBanner();
     expect(getByText(/se cierra lo que estés haciendo/)).toBeTruthy();
   });
 
   it('el botón aplica el update', async () => {
-    const { getByTestId } = render(<BannerActualizacionLista />);
+    const { getByTestId } = renderBanner();
     fireEvent.press(getByTestId('banner-actualizacion-reiniciar'));
     await waitFor(() => expect(mockReloadAsync).toHaveBeenCalledTimes(1));
   });
 
-  it('se puede descartar', () => {
-    const { getByTestId, queryByTestId } = render(<BannerActualizacionLista />);
+  it('la ✕ avisa hacia arriba en vez de ocultarse sola', () => {
+    const { getByTestId } = renderBanner();
     fireEvent.press(getByTestId('banner-actualizacion-descartar'));
-    expect(queryByTestId('banner-actualizacion-lista')).toBeNull();
+    expect(onDescartar).toHaveBeenCalledTimes(1);
   });
 
   it('nunca reinicia solo', () => {
-    render(<BannerActualizacionLista />);
+    renderBanner();
     expect(mockReloadAsync).not.toHaveBeenCalled();
   });
 
@@ -78,7 +78,7 @@ describe('BannerActualizacionLista', () => {
     (boton.props.onClick as () => void)();
 
   it('dos toques en el mismo tick aplican el update una sola vez', async () => {
-    const { getByTestId } = render(<BannerActualizacionLista />);
+    const { getByTestId } = renderBanner();
     const boton = getByTestId('banner-actualizacion-reiniciar');
 
     dispararOnPress(boton);
@@ -89,7 +89,7 @@ describe('BannerActualizacionLista', () => {
 
   it('si el reinicio falla se puede volver a intentar', async () => {
     mockReloadAsync.mockRejectedValueOnce(new Error('no se pudo aplicar'));
-    const { getByTestId } = render(<BannerActualizacionLista />);
+    const { getByTestId } = renderBanner();
     const boton = getByTestId('banner-actualizacion-reiniciar');
 
     fireEvent.press(boton);
@@ -104,7 +104,7 @@ describe('BannerActualizacionLista', () => {
     const sync = marcandoActividadDeSync(() => new Promise<void>((r) => { terminarSync = r; }));
     const corriendo = sync();
 
-    const { getByTestId, getByText } = render(<BannerActualizacionLista />);
+    const { getByTestId, getByText } = renderBanner();
 
     await waitFor(() =>
       expect(getByText('Actualización lista · esperando que termine la sincronización')).toBeTruthy(),

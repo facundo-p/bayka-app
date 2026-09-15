@@ -130,9 +130,9 @@ APP_VARIANT=test npx eas-cli update --channel test --message "qué cambió"
   `expo.version` de `mobile/app.json`. Un bump de versión deja afuera a los
   dispositivos viejos hasta que instalen el APK nuevo.
 - El teléfono lo descarga en segundo plano al abrir la app. Una vez descargado,
-  la app muestra al pie un aviso con un botón para reiniciar y aplicarlo en el
-  momento; si no se usa, se aplica solo en el siguiente arranque en frío. El
-  botón queda bloqueado mientras haya una sincronización en curso.
+  la app muestra arriba de todo un aviso con un botón para reiniciar y aplicarlo
+  en el momento; si no se usa, se aplica solo en el siguiente arranque en frío.
+  El botón queda bloqueado mientras haya una sincronización en curso.
 - En la variante TEST se confirma en la franja roja, que pasa a mostrar el commit
   del código publicado.
 

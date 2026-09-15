@@ -2,16 +2,17 @@ import { StyleSheet } from 'react-native';
 import { borderRadius, colors, fonts, fontSize, lineHeight, spacing } from '../theme';
 
 export const bannerActualizacionListaStyles = StyleSheet.create({
-  // El paddingBottom (inset de la barra de navegación) lo aplica el componente.
+  // El paddingTop (inset de la status bar, cuando no hay franja de entorno arriba)
+  // lo aplica el componente.
   franja: {
     backgroundColor: colors.infoBg,
-    borderTopWidth: 1,
-    borderTopColor: colors.info,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.info,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingBottom: spacing.sm,
   },
   texto: {
     flex: 1,
