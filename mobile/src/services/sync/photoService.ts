@@ -22,6 +22,10 @@ export async function uploadPendingPhotos(
   onProgress?: (p: PhotoSyncProgress) => void
 ): Promise<{ uploaded: number; failed: number }> {
   const pending = await getTreesWithPendingPhotos(plantacionId);
+  // Sin pendientes no se emite nada: un `{ total: 0, completed: 0 }` es truthy y
+  // hacía que el modal saltara a "Subiendo fotos... 0 de 0" (#447).
+  if (pending.length === 0) return { uploaded: 0, failed: 0 };
+
   let uploaded = 0;
   let failed = 0;
 

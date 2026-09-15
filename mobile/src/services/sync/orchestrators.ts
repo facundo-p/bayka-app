@@ -18,8 +18,12 @@ export interface SyncPlantationCallbacks {
   onProgress?: (progress: SyncProgress) => void;
   /** Fotos que se suben dentro de cada grupo del push. */
   onPhotoProgress?: (progress: PhotoSyncProgress) => void;
-  /** Fase del pull en curso (parcelas, grupos, árboles…). */
-  onPhaseProgress?: (fase: DownloadPhaseProgress) => void;
+  /**
+   * Fase del pull en curso (parcelas, grupos, árboles…). Recibe `null` cuando el
+   * pull terminó por cualquier vía —incluida una excepción—, para que la UI no deje
+   * congelada una fase que ya pasó.
+   */
+  onPhaseProgress?: (fase: DownloadPhaseProgress | null) => void;
   onParcelaResults?: (parcelas: SyncParcelaResult[]) => void;
   onPlantationResults?: (plantations: SyncPlantationResult[]) => void;
   onPullResult?: (resultado: PullResult) => void;
@@ -45,6 +49,8 @@ export async function syncPlantation(
     if (esSinAcceso(pull)) return [];
   } catch (e) {
     syncLog.error('Pull failed:', e);
+  } finally {
+    onPhaseProgress?.(null);
   }
 
   // Push parcelas antes que groups (FK). Las fallas se surfacean vía onParcelaResults — si no, el

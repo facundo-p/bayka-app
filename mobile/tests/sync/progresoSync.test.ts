@@ -25,6 +25,22 @@ describe('fetchAllRows · progreso de paginación', () => {
     expect(reportado).toEqual([1000, 2000, 2250]);
   });
 
+  it('con una sola página reporta una vez', async () => {
+    const reportado: number[] = [];
+
+    await fetchAllRows(queryDe([250]), (filas) => reportado.push(filas));
+
+    expect(reportado).toEqual([250]);
+  });
+
+  it('con la primera página vacía no reporta nada', async () => {
+    const reportado: number[] = [];
+
+    await fetchAllRows(queryDe([0]), (filas) => reportado.push(filas));
+
+    expect(reportado).toEqual([]);
+  });
+
   it('sin callback no rompe', async () => {
     const { data } = await fetchAllRows<{ i: number }>(queryDe([5]));
     expect(data).toHaveLength(5);

@@ -199,12 +199,14 @@ describe('syncAllPlantations', () => {
     });
   });
 
-  it('sin fotos no emite progreso de fotos', async () => {
+  // Con la fase de fotos activa pero sin fotos pendientes: un cierre en 0 hacía que el
+  // modal saltara a "Subiendo fotos... 0 de 0 fotos" una vez por plantación.
+  it('con la fase de fotos activa pero sin pendientes no emite progreso de fotos', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(TWO_PLANTATIONS));
     mockGetTreesWithPendingPhotos.mockResolvedValue([]);
     const progressFn = jest.fn();
 
-    await syncAllPlantations(progressFn, false);
+    await syncAllPlantations(progressFn, true);
 
     expect(progressFn.mock.calls.every(([info]) => !info.photoProgress)).toBe(true);
   });

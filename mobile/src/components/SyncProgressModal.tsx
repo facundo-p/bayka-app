@@ -74,6 +74,17 @@ function fraccionDeConteo(hecho: number | undefined, total: number | undefined):
   return total && total > 0 ? (hecho ?? 0) / total : 0;
 }
 
+/**
+ * Qué se está fotografiando: la plantación en el sync global, el grupo en el de una
+ * sola. Sin esto el contador de fotos se reinicia entre grupos sin explicación.
+ */
+function contextoDeFotos(
+  globalProgress: GlobalProgress,
+  progress: SyncProgress | null,
+): string | undefined {
+  return globalProgress?.plantationName ?? progress?.currentName ?? undefined;
+}
+
 export default function SyncProgressModal({
   state,
   progress,
@@ -136,9 +147,10 @@ export default function SyncProgressModal({
         <FaseEnCurso
           titulo="Subiendo fotos..."
           detalle={detalleDeFotos(photoProgress)}
+          subdetalle={contextoDeFotos(globalProgress, progress)}
           fraccion={fraccionDeConteo(photoProgress?.completed, photoProgress?.total)}
           color={colors.primary}
-          globalProgress={globalProgress}
+          globalProgress={null}
         />
       )}
 
@@ -146,9 +158,10 @@ export default function SyncProgressModal({
         <FaseEnCurso
           titulo="Descargando fotos..."
           detalle={detalleDeFotos(photoProgress)}
+          subdetalle={contextoDeFotos(globalProgress, progress)}
           fraccion={fraccionDeConteo(photoProgress?.completed, photoProgress?.total)}
           color={colors.info}
-          globalProgress={globalProgress}
+          globalProgress={null}
         />
       )}
 

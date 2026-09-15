@@ -10,12 +10,12 @@ import {
   SyncProgress,
   PhotoSyncProgress,
   DownloadPhaseProgress,
-  PHOTO_PHASE,
   GlobalSyncProgress,
   SYNC_STATE,
   SyncState,
   esSinAcceso,
 } from '../services/SyncService';
+import { faseDeProgresoGlobal } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 
 export type { SyncState };
@@ -65,17 +65,28 @@ export function useSync(plantacionId?: string) {
           setState(SYNC_STATE.pushing);
           setProgress(p);
         },
+        // Las fotos de cada grupo se suben dentro del push y son el tramo más largo
+        // del flujo: sin esto el modal queda clavado en "grupo i de n" (#447).
+        onPhotoProgress: (fotos) => {
+          setState(SYNC_STATE.uploadingPhotos);
+          setPhotoProgress(fotos);
+        },
+        // `null` = el pull terminó, por éxito, sin acceso o excepción. Sin esa señal
+        // la fase quedaba congelada y el estado en `pulling` durante todo el push.
         onPhaseProgress: (fase) => {
-          setState(SYNC_STATE.pulling);
-          setPhaseProgress(fase);
+          if (fase) {
+            setState(SYNC_STATE.pulling);
+            setPhaseProgress(fase);
+            return;
+          }
+          setPhaseProgress(null);
+          if (!accesoRevocado) setState(SYNC_STATE.pushing);
         },
         onParcelaResults: setParcelaResults,
         onPlantationResults: setPlantationResults,
         onPullResult: (pull) => {
           accesoRevocado = esSinAcceso(pull);
           setSinAcceso(accesoRevocado);
-          setPhaseProgress(null);
-          setState(SYNC_STATE.pushing);
         },
       });
       setResults(res);
@@ -128,23 +139,11 @@ export function useSync(plantacionId?: string) {
             done: info.plantationDone,
             total: info.plantationTotal,
           });
-          // El orden importa: fotos gana sobre grupos y grupos sobre pull, porque
-          // cada fase reemplaza a la anterior dentro de la misma plantación.
-          if (info.photoProgress) {
-            setState(info.photoPhase === PHOTO_PHASE.uploading
-              ? SYNC_STATE.uploadingPhotos
-              : SYNC_STATE.downloadingPhotos);
-            setPhotoProgress(info.photoProgress);
-          } else if (info.subgroupProgress) {
-            setState(SYNC_STATE.pushing);
-            setProgress(info.subgroupProgress);
-            setPhaseProgress(null);
-          } else if (info.phaseProgress) {
-            setState(SYNC_STATE.pulling);
-            setPhaseProgress(info.phaseProgress);
-          } else {
-            setState(SYNC_STATE.pulling);
-          }
+          const fase = faseDeProgresoGlobal(info);
+          setState(fase.state);
+          if (fase.photoProgress) setPhotoProgress(fase.photoProgress);
+          if (fase.subgroupProgress) setProgress(fase.subgroupProgress);
+          if (fase.phaseProgress !== undefined) setPhaseProgress(fase.phaseProgress);
         },
         incluirFotos,
         setPlantationResults
