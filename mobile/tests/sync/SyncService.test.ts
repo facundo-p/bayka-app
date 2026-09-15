@@ -76,6 +76,7 @@ import { db } from '../../src/database/client';
 import { markGroupSynced, getSyncableGroups } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
+import { File as ExpoFile } from 'expo-file-system';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
@@ -84,6 +85,8 @@ const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
+
+const mockDownloadFileAsync = ExpoFile.downloadFileAsync as jest.Mock;
 
 // where() resuelve a `rows` al await y además soporta .limit(1): el gate de
 // parcela (#90, isParcelaSyncReady) consulta la parcela del grupo y debe
@@ -456,8 +459,8 @@ describe('SyncService', () => {
   });
 
   describe('downloadPhotosForPlantation — photo download (IMG-04)', () => {
-    it('Test 12: downloads remote photos using signed URLs', async () => {
-      // Mock db.select for groups query
+    /** Setup común de los tests que llegan a bajar una foto remota. */
+    const mockearUnaFotoRemota = () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockResolvedValue([{ id: 'sg-1' }]),
@@ -469,7 +472,6 @@ describe('SyncService', () => {
           ]),
         }),
       });
-
       const storageChain = {
         upload: jest.fn(),
         createSignedUrl: jest.fn().mockResolvedValue({
@@ -478,6 +480,11 @@ describe('SyncService', () => {
         }),
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      return storageChain;
+    };
+
+    it('Test 12: downloads remote photos using signed URLs', async () => {
+      const storageChain = mockearUnaFotoRemota();
 
       const result = await downloadPhotosForPlantation('plantation-1');
 
@@ -510,6 +517,33 @@ describe('SyncService', () => {
 
       expect(storageChain.createSignedUrl).not.toHaveBeenCalled();
       expect(result).toEqual({ downloaded: 0, failed: 0 });
+    });
+
+    it('descarga de forma idempotente: el nombre del archivo es determinístico (#452)', async () => {
+      mockearUnaFotoRemota();
+
+      await downloadPhotosForPlantation('plantation-1');
+
+      expect(mockDownloadFileAsync).toHaveBeenCalledWith(
+        'https://example.com/photo.jpg',
+        expect.anything(),
+        { idempotent: true },
+      );
+    });
+
+    it('con el archivo ya presente la descarga lo sobreescribe en vez de fallar (#452)', async () => {
+      // Comportamiento real de expo-file-system: sin `idempotent` tira si el archivo existe.
+      mockDownloadFileAsync.mockImplementationOnce(
+        (_url: string, _dest: unknown, options?: { idempotent?: boolean }) => {
+          if (!options?.idempotent) throw new Error('Destination file already exists');
+          return Promise.resolve(undefined);
+        },
+      );
+      mockearUnaFotoRemota();
+
+      const result = await downloadPhotosForPlantation('plantation-1');
+
+      expect(result).toEqual({ downloaded: 1, failed: 0 });
     });
 
     it('Test 14: returns { downloaded: 0, failed: 0 } when plantation has no groups', async () => {
