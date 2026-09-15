@@ -92,7 +92,10 @@ async function downloadSinglePhoto(
 
   syncLog.info(`Signed URL OK for tree ${tree.id}, downloading...`);
   const destFile = new ExpoFile(dir, `photo_${tree.id}.jpg`);
-  await ExpoFile.downloadFileAsync(data.signedUrl, destFile);
+  // El nombre es determinístico y el default de `idempotent` es false: sin esto, una
+  // descarga cortada entre el archivo y el update de la base deja la foto fallando
+  // para siempre con "file already exists" (#452).
+  await ExpoFile.downloadFileAsync(data.signedUrl, destFile, { idempotent: true });
   syncLog.info(`Download OK for tree ${tree.id}: destUri=${destFile.uri}`);
 
   const localUri = ensureFileUri(destFile.uri);

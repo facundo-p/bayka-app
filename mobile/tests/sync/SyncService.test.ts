@@ -85,6 +85,9 @@ const mockDb = db as jest.Mocked<typeof db>;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { _mockDownloadFileAsync: mockDownloadFileAsync } = require('expo-file-system');
+
 // where() resuelve a `rows` al await y además soporta .limit(1): el gate de
 // parcela (#90, isParcelaSyncReady) consulta la parcela del grupo y debe
 // encontrarla lista (pendingSync=false, sin tombstone).
@@ -510,6 +513,55 @@ describe('SyncService', () => {
 
       expect(storageChain.createSignedUrl).not.toHaveBeenCalled();
       expect(result).toEqual({ downloaded: 0, failed: 0 });
+    });
+
+    /** Setup común de los tests que llegan a bajar una foto remota. */
+    const mockearUnaFotoRemota = () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ id: 'sg-1' }]),
+        }),
+      }).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([
+            { id: 'tree-1', fotoUrl: 'plantations/p-1/trees/tree-1.jpg', grupoId: 'sg-1' },
+          ]),
+        }),
+      });
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue({
+        upload: jest.fn(),
+        createSignedUrl: jest.fn().mockResolvedValue({
+          data: { signedUrl: 'https://example.com/photo.jpg' },
+          error: null,
+        }),
+      });
+    };
+
+    it('descarga de forma idempotente: el nombre del archivo es determinístico (#452)', async () => {
+      mockearUnaFotoRemota();
+
+      await downloadPhotosForPlantation('plantation-1');
+
+      expect(mockDownloadFileAsync).toHaveBeenCalledWith(
+        'https://example.com/photo.jpg',
+        expect.anything(),
+        { idempotent: true },
+      );
+    });
+
+    it('con el archivo ya presente reintenta y no falla para siempre (#452)', async () => {
+      // Comportamiento real de expo-file-system: sin `idempotent` tira si el archivo existe.
+      mockDownloadFileAsync.mockImplementationOnce(
+        (_url: string, _dest: unknown, options?: { idempotent?: boolean }) => {
+          if (!options?.idempotent) throw new Error('Destination file already exists');
+          return Promise.resolve(undefined);
+        },
+      );
+      mockearUnaFotoRemota();
+
+      const result = await downloadPhotosForPlantation('plantation-1');
+
+      expect(result).toEqual({ downloaded: 1, failed: 0 });
     });
 
     it('Test 14: returns { downloaded: 0, failed: 0 } when plantation has no groups', async () => {
