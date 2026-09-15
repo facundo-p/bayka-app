@@ -9,10 +9,12 @@ import {
   SyncPlantationResult,
   SyncProgress,
   PhotoSyncProgress,
+  DownloadPhaseProgress,
   GlobalSyncProgress,
   SYNC_STATE,
   SyncState,
   esSinAcceso,
+  faseDeProgresoGlobal,
 } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 
@@ -28,6 +30,7 @@ export function useSync(plantacionId?: string) {
   const [sinAcceso, setSinAcceso] = useState(false);
   const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
+  const [phaseProgress, setPhaseProgress] = useState<DownloadPhaseProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
 
@@ -41,6 +44,7 @@ export function useSync(plantacionId?: string) {
     setSinAcceso(false);
     setAuthExpired(false);
     setPhotoProgress(null);
+    setPhaseProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
   }, []);
@@ -53,19 +57,38 @@ export function useSync(plantacionId?: string) {
     resetSyncState();
 
     try {
-      // syncPlantation does pull-then-push internally
-      setState(SYNC_STATE.pushing);
       let accesoRevocado = false;
-      const res = await syncPlantation(
-        targetPlantacionId,
-        setProgress,
-        setParcelaResults,
-        setPlantationResults,
-        (pull) => {
+      const res = await syncPlantation(targetPlantacionId, {
+        // El push arranca cuando llega su primer progreso: antes, `pushing` se
+        // seteaba de entrada y el pull entero corría mostrando "Subiendo grupos...".
+        onProgress: (p) => {
+          setState(SYNC_STATE.pushing);
+          setProgress(p);
+        },
+        // Las fotos de cada grupo se suben dentro del push y son el tramo más largo
+        // del flujo: sin esto el modal queda clavado en "grupo i de n" (#447).
+        onPhotoProgress: (fotos) => {
+          setState(SYNC_STATE.uploadingPhotos);
+          setPhotoProgress(fotos);
+        },
+        // `null` = el pull terminó, por éxito, sin acceso o excepción. Sin esa señal
+        // la fase quedaba congelada y el estado en `pulling` durante todo el push.
+        onPhaseProgress: (fase) => {
+          if (fase) {
+            setState(SYNC_STATE.pulling);
+            setPhaseProgress(fase);
+            return;
+          }
+          setPhaseProgress(null);
+          if (!accesoRevocado) setState(SYNC_STATE.pushing);
+        },
+        onParcelaResults: setParcelaResults,
+        onPlantationResults: setPlantationResults,
+        onPullResult: (pull) => {
           accesoRevocado = esSinAcceso(pull);
           setSinAcceso(accesoRevocado);
         },
-      );
+      });
       setResults(res);
       setPullSuccess(!accesoRevocado);
 
@@ -116,12 +139,11 @@ export function useSync(plantacionId?: string) {
             done: info.plantationDone,
             total: info.plantationTotal,
           });
-          if (info.subgroupProgress) {
-            setState(SYNC_STATE.pushing);
-            setProgress(info.subgroupProgress);
-          } else {
-            setState(SYNC_STATE.pulling);
-          }
+          const fase = faseDeProgresoGlobal(info);
+          setState(fase.state);
+          if (fase.photoProgress) setPhotoProgress(fase.photoProgress);
+          if (fase.subgroupProgress) setProgress(fase.subgroupProgress);
+          if (fase.phaseProgress !== undefined) setPhaseProgress(fase.phaseProgress);
         },
         incluirFotos,
         setPlantationResults
@@ -171,6 +193,7 @@ export function useSync(plantacionId?: string) {
     parcelaFailureCount,
     plantationFailureCount,
     photoProgress,
+    phaseProgress,
     photoResult,
     globalProgress,
   };

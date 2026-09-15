@@ -163,6 +163,7 @@ export function usePlantacionesScreen() {
     parcelaFailureCount: sync.parcelaFailureCount,
     plantationFailureCount: sync.plantationFailureCount,
     photoProgress: sync.photoProgress,
+    phaseProgress: sync.phaseProgress,
     photoResult: sync.photoResult,
     handleSessionExpiredReauth,
     hasAnyPending,

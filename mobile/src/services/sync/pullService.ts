@@ -24,6 +24,12 @@ function emitProgress(
   onProgress?.({ phase, phaseDone: done, phaseTotal: total });
 }
 
+/** Callback de paginación: reporta filas bajadas, con el total todavía desconocido. */
+function alBajarPagina(onProgress: OnPhaseProgress | undefined, phase: DownloadPhase) {
+  return (filas: number) =>
+    onProgress?.({ phase, phaseDone: filas, phaseTotal: 0, descargando: true });
+}
+
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
 /**
@@ -135,7 +141,8 @@ async function pullParcelas(
   onProgress?: OnPhaseProgress,
 ): Promise<string[]> {
   const { data: remoteParcelas, error } = await fetchAllRows<RemoteParcela>(() =>
-    supabase.from('parcelas').select('*').eq('plantation_id', plantacionId)
+    supabase.from('parcelas').select('*').eq('plantation_id', plantacionId),
+    alBajarPagina(onProgress, DOWNLOAD_PHASE.parcelas),
   );
 
   if (error) {
@@ -199,7 +206,8 @@ async function pullGroups(
   onProgress?: OnPhaseProgress,
 ): Promise<string[]> {
   const { data: remoteGroups, error } = await fetchAllRows<any>(() =>
-    supabase.from('groups').select('*').eq('plantation_id', plantacionId)
+    supabase.from('groups').select('*').eq('plantation_id', plantacionId),
+    alBajarPagina(onProgress, DOWNLOAD_PHASE.groups),
   );
 
   if (error) {
@@ -275,7 +283,8 @@ async function pullPlantationUsers(
   }
 
   const { data: remotePu, error } = await fetchAllRows<any>(() =>
-    supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId)
+    supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId),
+    alBajarPagina(onProgress, DOWNLOAD_PHASE.usuarios),
   );
 
   if (error) {
@@ -326,7 +335,8 @@ async function pullPlantationSpecies(
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
   const { data: remotePs, error } = await fetchAllRows<any>(() =>
-    supabase.from('plantation_species').select('*').eq('plantation_id', plantacionId)
+    supabase.from('plantation_species').select('*').eq('plantation_id', plantacionId),
+    alBajarPagina(onProgress, DOWNLOAD_PHASE.especiesPlantacion),
   );
 
   if (error) {
@@ -431,7 +441,8 @@ async function pullTrees(
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
   const { data: remoteTrees, error } = await fetchAllRows<any>(() =>
-    supabase.from('trees').select('*').in('group_id', remoteGroupIds)
+    supabase.from('trees').select('*').in('group_id', remoteGroupIds),
+    alBajarPagina(onProgress, DOWNLOAD_PHASE.arboles),
   );
 
   if (error) {

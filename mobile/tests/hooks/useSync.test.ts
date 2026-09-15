@@ -46,13 +46,24 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function), expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.objectContaining({
+        onProgress: expect.any(Function),
+        onPhaseProgress: expect.any(Function),
+        onParcelaResults: expect.any(Function),
+        onPlantationResults: expect.any(Function),
+        onPullResult: expect.any(Function),
+      }));
     });
 
-    it('transitions state from idle → pushing → done', async () => {
+    // El pull ocupa el principio de la corrida: antes `pushing` se seteaba de entrada
+    // y el pull entero corría mostrando "Subiendo grupos..." (#447).
+    it('transitions state from idle → pulling → pushing → done', async () => {
       let resolveSync: () => void;
-      (syncPlantation as jest.Mock).mockImplementation(() =>
+      let emitirProgresoDePush: (() => void) | undefined;
+      (syncPlantation as jest.Mock).mockImplementation((_id: string, callbacks: any) =>
         new Promise<any[]>((resolve) => {
+          emitirProgresoDePush = () =>
+            callbacks.onProgress?.({ total: 2, completed: 0, currentName: 'Línea A' });
           resolveSync = () => resolve([]);
         })
       );
@@ -63,6 +74,12 @@ describe('useSync', () => {
 
       act(() => {
         result.current.startBidirectionalSync();
+      });
+
+      expect(result.current.state).toBe('pulling');
+
+      act(() => {
+        emitirProgresoDePush!();
       });
 
       expect(result.current.state).toBe('pushing');
@@ -113,8 +130,8 @@ describe('useSync', () => {
       ];
       // 3rd callback arg delivers parcela results; return value is the (blocked) group results.
       (syncPlantation as jest.Mock).mockImplementation(
-        (_id: string, _onProgress: any, onParcelaResults?: (p: any[]) => void) => {
-          onParcelaResults?.(parcelaFailures);
+        (_id: string, callbacks: { onParcelaResults?: (p: any[]) => void }) => {
+          callbacks.onParcelaResults?.(parcelaFailures);
           return Promise.resolve([
             { success: false, groupId: 'sg-1', nombre: 'Linea 1', error: 'PARCELA_PENDING' as const, parcelaId: 'parc-1' },
           ]);
@@ -138,8 +155,8 @@ describe('useSync', () => {
       ];
       // 4th callback arg delivers plantation push results.
       (syncPlantation as jest.Mock).mockImplementation(
-        (_id: string, _onProgress: any, _onParcelas: any, onPlantationResults?: (p: any[]) => void) => {
-          onPlantationResults?.(plantationFailures);
+        (_id: string, callbacks: { onPlantationResults?: (p: any[]) => void }) => {
+          callbacks.onPlantationResults?.(plantationFailures);
           return Promise.resolve([]);
         }
       );

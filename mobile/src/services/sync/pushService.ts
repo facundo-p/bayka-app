@@ -15,7 +15,10 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
-import { SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress, classifyServerError } from './types';
+import {
+  SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
+  PhotoSyncProgress, classifyServerError,
+} from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
 
@@ -120,21 +123,27 @@ export async function uploadGroup(
     longitude?: number | null;
     gpsAccuracy?: number | null;
     gpsCapturedAt?: string | null;
-  }>
+  }>,
+  onPhotoProgress?: (progress: PhotoSyncProgress) => void,
 ) {
   // Solo resube fotos con fotoSynced=false; las que ya están en Storage (de otro device) se saltean.
   const photoMap = new Map<string, string>();
-  for (const t of sgTrees) {
-    if (isLocalUri(t.fotoUrl) && !t.fotoSynced) {
-      const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
-      const { error } = await uploadPhotoToStorage(t.fotoUrl, storagePath);
-      if (!error) {
-        photoMap.set(t.id, storagePath);
-        await markPhotoSynced(t.id);
-      } else {
-        syncLog.error(`Photo upload failed for tree ${t.id}:`, error.message);
-      }
+  const pendientes = sgTrees.filter((t) => isLocalUri(t.fotoUrl) && !t.fotoSynced);
+  // Sin esto el modal queda clavado en "grupo i de n" mientras se suben K fotos: es
+  // el tramo más largo del sync de una plantación con fotos.
+  if (pendientes.length > 0) onPhotoProgress?.({ total: pendientes.length, completed: 0 });
+
+  for (let i = 0; i < pendientes.length; i++) {
+    const t = pendientes[i];
+    const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
+    const { error } = await uploadPhotoToStorage(t.fotoUrl!, storagePath);
+    if (!error) {
+      photoMap.set(t.id, storagePath);
+      await markPhotoSynced(t.id);
+    } else {
+      syncLog.error(`Photo upload failed for tree ${t.id}:`, error.message);
     }
+    onPhotoProgress?.({ total: pendientes.length, completed: i + 1 });
   }
 
   // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
@@ -212,7 +221,8 @@ async function isParcelaSyncReady(parcelaId: string): Promise<boolean> {
 
 export async function uploadSyncableGroups(
   plantacionId: string,
-  onProgress?: (progress: SyncProgress) => void
+  onProgress?: (progress: SyncProgress) => void,
+  onPhotoProgress?: (progress: PhotoSyncProgress) => void,
 ): Promise<SyncGroupResult[]> {
   const { data: { user } } = await supabase.auth.getUser();
   const pending = await getSyncableGroups(plantacionId, user?.id);
@@ -236,7 +246,7 @@ export async function uploadSyncableGroups(
 
     const sgTrees = await db.select().from(trees).where(eq(trees.groupId, sg.id));
     try {
-      const { data, error } = await uploadGroup(sg, sgTrees);
+      const { data, error } = await uploadGroup(sg, sgTrees, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
       if (result.success) await markGroupSynced(sg.id);
       results.push(result);
@@ -244,6 +254,12 @@ export async function uploadSyncableGroups(
       syncLog.error(`Exception for "${sg.nombre}" (${sg.id}):`, e);
       results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK });
     }
+  }
+
+  // Cierre explícito: el emisor del loop reporta `completed: i` antes de subir el
+  // grupo i, así que sin esto el contador nunca llegaba a "N de N".
+  if (pending.length > 0) {
+    onProgress?.({ total: pending.length, completed: pending.length, currentName: '' });
   }
 
   return results;
