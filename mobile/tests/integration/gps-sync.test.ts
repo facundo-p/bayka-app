@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 
 // ─── Mock Supabase (prefijo mock* por hoisting de jest.mock) ─────────────────
 
@@ -78,11 +78,17 @@ jest.mock('../../src/supabase/client', () => {
 });
 
 let mockTestDb: IntegrationDb;
+let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
 let sqlite: InstanceType<typeof Database>;
 
 jest.mock('../../src/database/client', () => ({
   get db() {
     return mockTestDb;
+  },
+  // `enTransaccion` abre la transacción por acá: sin esto el test correría sin
+  // transacción y no probaría la atomicidad que dice probar (#448).
+  get sqlite() {
+    return mockSqliteDeIntegracion;
   },
 }));
 
@@ -222,6 +228,7 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
   // Prod (expo-sqlite) no activa PRAGMA foreign_keys (#265): el pull escribe
   // filas cuyo padre puede no estar local todavía.
   sqlite.pragma('foreign_keys = OFF');
