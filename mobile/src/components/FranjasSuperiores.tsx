@@ -11,16 +11,16 @@
  * el aviso no re-renderiza la app, solo a quienes consumen el contexto.
  */
 import { useMemo, useState, type ReactNode } from 'react';
-import { useUpdates } from 'expo-updates';
 
+import { useActualizacionPendiente } from '../hooks/useActualizacionPendiente';
 import BannerActualizacionLista from './BannerActualizacionLista';
 import BannerEntornoPruebas from './BannerEntornoPruebas';
 import { InsetSuperiorContexto } from './insetSuperior';
 
 export default function FranjasSuperiores({ children }: { children: ReactNode }) {
-  const { isUpdatePending } = useUpdates();
+  const actualizacionPendiente = useActualizacionPendiente();
   const [descartado, setDescartado] = useState(false);
-  const hayAvisoDeActualizacion = Boolean(isUpdatePending) && !descartado;
+  const hayAvisoDeActualizacion = actualizacionPendiente && !descartado;
   const contexto = useMemo(() => ({ hayAvisoDeActualizacion }), [hayAvisoDeActualizacion]);
 
   return (
