@@ -1,8 +1,8 @@
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
-import { ES_ENTORNO_DE_PRUEBAS } from '../config/entorno';
+import { useInsetSuperior } from '../hooks/useInsetSuperior';
+import { OCUPANTE_DEL_INSET } from './insetSuperior';
 import { customHeaderStyles as styles } from './CustomHeader.styles';
 
 interface Props {
@@ -17,9 +17,9 @@ interface Props {
 }
 
 export default function CustomHeader({ title, subtitle, onBack, rightElement, backgroundColor = colors.headerBg }: Props) {
-  const insets = useSafeAreaInsets();
-  // En la app TEST el banner de entorno (app/_layout.tsx) ya ocupa el inset superior (#287).
-  const insetTop = ES_ENTORNO_DE_PRUEBAS ? 0 : insets.top;
+  // 0 cuando hay una franja arriba que ya ocupó el inset: la de entorno en la app
+  // TEST (#287) o el aviso de OTA (#446).
+  const insetTop = useInsetSuperior(OCUPANTE_DEL_INSET.header);
 
   return (
     <View style={[styles.headerBar, { backgroundColor, paddingTop: insetTop + spacing.sm }]}>

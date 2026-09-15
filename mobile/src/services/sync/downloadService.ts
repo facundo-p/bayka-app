@@ -7,6 +7,7 @@ import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE
 import { pullFromServer, webManagedFlags } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
+import { marcandoActividadDeSync } from './syncActivityStore';
 
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
@@ -84,7 +85,7 @@ export async function downloadPlantation(
  * Descarga varias plantaciones secuencialmente; notifyDataChanged una sola vez al final (evita
  * render storms). El catálogo de species se trae una vez al inicio — los árboles lo necesitan para resolver código/nombre.
  */
-export async function batchDownload(
+async function correrBatchDownload(
   selected: ServerPlantationRow[],
   onProgress?: (progress: DownloadProgress) => void,
   options: { includePhotos?: boolean } = {},
@@ -139,3 +140,6 @@ export async function batchDownload(
 
   return results;
 }
+
+// Escribe la DB local y baja fotos igual que una sync: cuenta como actividad (#446).
+export const batchDownload = marcandoActividadDeSync(correrBatchDownload);

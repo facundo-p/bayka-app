@@ -14,8 +14,8 @@ import {
   SYNC_STATE,
   SyncState,
   esSinAcceso,
+  faseDeProgresoGlobal,
 } from '../services/SyncService';
-import { faseDeProgresoGlobal } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 
 export type { SyncState };

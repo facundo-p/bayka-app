@@ -39,6 +39,19 @@ const insets = useSafeAreaInsets();
 - ⚠️ **Modales con header a mano** (`TreeDetailModal`, `TreeListModal`, …) →
   hay que aplicar el inset explícitamente. Acá aparece el bug.
 
+### El inset superior lo aplica UNO solo
+
+Arriba del navigator puede haber franjas: "entorno de pruebas" (#287) y el aviso
+de OTA listo (#446). El inset de la status bar lo toma **la primera que esté
+presente**, y los de abajo —incluido `CustomHeader`— lo dejan en 0. Si lo aplican
+dos queda una banda vacía; si no lo aplica ninguno, el título se pega a la barra
+de notificaciones.
+
+La regla vive en `ocupanteDelInsetSuperior` (`src/components/insetSuperior.ts`) y
+se consume con `useInsetSuperior(OCUPANTE_DEL_INSET.<elemento>)`. Una franja
+nueva arriba se agrega ahí, no con un ternario en el componente: el aviso de OTA
+aparece y desaparece en runtime, así que ningún componente puede decidirlo solo.
+
 ## Checklist al crear/revisar una pantalla o modal
 
 1. ¿Tiene header propio (no `CustomHeader`)? → ¿`paddingTop: insets.top + …`?

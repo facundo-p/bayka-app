@@ -6,5 +6,6 @@ export { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService
 export { syncPlantation, syncAllPlantations } from './orchestrators';
 export { ensureServerSession, SessionExpiredError } from './sessionGuard';
 export { downloadPlantation, batchDownload } from './downloadService';
+export { hayActividadDeSync, subscribeActividadDeSync, marcandoActividadDeSync, __resetActividadDeSync } from './syncActivityStore';
 export { faseDeProgresoGlobal } from './faseDeProgreso';
 export type { FaseDeProgreso } from './faseDeProgreso';

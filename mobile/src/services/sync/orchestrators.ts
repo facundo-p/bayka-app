@@ -8,6 +8,7 @@ import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
+import { marcandoActividadDeSync } from './syncActivityStore';
 
 /**
  * Callbacks de una corrida de plantación. Objeto y no parámetros posicionales: ya son
@@ -30,7 +31,7 @@ export interface SyncPlantationCallbacks {
 }
 
 /** Orquesta pull-then-push de una plantación: refresca sesión, pull, sube grupos finalizada uno por uno acumulando resultados (sigue ante fallas), notifica al final. */
-export async function syncPlantation(
+async function correrSyncPlantation(
   plantacionId: string,
   callbacks: SyncPlantationCallbacks = {},
 ): Promise<SyncGroupResult[]> {
@@ -73,7 +74,7 @@ export async function syncPlantation(
 }
 
 /** Sincroniza todas las plantaciones locales secuencialmente (pull+push c/u); pre-steps globales (catálogo, plantaciones offline, ediciones pendientes) + sync de fotos opcional al final. */
-export async function syncAllPlantations(
+async function correrSyncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
   incluirFotos: boolean = true,
   onPlantationResults?: (plantations: SyncPlantationResult[]) => void
@@ -146,3 +147,8 @@ export async function syncAllPlantations(
   notifyDataChanged();
   return allResults;
 }
+
+// El banner de actualización OTA no puede ofrecer reiniciar la app en medio de una
+// sincronización: la marca la ponen los orquestadores, no el hook (#446).
+export const syncPlantation = marcandoActividadDeSync(correrSyncPlantation);
+export const syncAllPlantations = marcandoActividadDeSync(correrSyncAllPlantations);

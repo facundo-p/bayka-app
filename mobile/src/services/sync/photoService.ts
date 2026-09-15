@@ -8,6 +8,7 @@ import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/T
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';
+import { marcandoActividadDeSync } from './syncActivityStore';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
 
@@ -17,7 +18,7 @@ import { uploadPhotoToStorage } from './storageUpload';
  * Stores relative storage path `plantations/{id}/trees/{id}.jpg` in the Supabase trees table.
  * Marks fotoSynced=true locally on success.
  */
-export async function uploadPendingPhotos(
+async function correrUploadPendingPhotos(
   plantacionId: string,
   onProgress?: (p: PhotoSyncProgress) => void
 ): Promise<{ uploaded: number; failed: number }> {
@@ -109,7 +110,7 @@ async function downloadSinglePhoto(
  * Runs during pull flow; skips trees with local file:// URIs.
  * Updates local fotoUrl to local path and sets fotoSynced=true on success.
  */
-export async function downloadPhotosForPlantation(
+async function correrDownloadPhotosForPlantation(
   plantacionId: string,
   onProgress?: (p: PhotoSyncProgress) => void
 ): Promise<{ downloaded: number; failed: number }> {
@@ -138,3 +139,8 @@ export async function downloadPhotosForPlantation(
   onProgress?.({ total: remoteTrees.length, completed: remoteTrees.length });
   return { downloaded, failed };
 }
+
+// `useSync` las llama fuera de los orquestadores, y son la parte más larga del sync
+// de una plantación: sin marcarlas, el banner ofrecería reiniciar justo ahí (#446).
+export const uploadPendingPhotos = marcandoActividadDeSync(correrUploadPendingPhotos);
+export const downloadPhotosForPlantation = marcandoActividadDeSync(correrDownloadPhotosForPlantation);
