@@ -51,6 +51,16 @@ describe('conLimiteDeConcurrencia', () => {
     expect(arrancados).toBe(1);
   });
 
+  // Un límite inválido tiene que degradar a secuencial, nunca a "no hacer nada":
+  // eso saltearía todas las fotos pendientes devolviendo éxito.
+  it('un límite de 0 corre igual, de a uno', async () => {
+    const vistos: number[] = [];
+
+    await conLimiteDeConcurrencia([1, 2, 3], 0, async (n) => { vistos.push(n); });
+
+    expect(vistos).toEqual([1, 2, 3]);
+  });
+
   it('lista vacía: no corre nada', async () => {
     const tarea = jest.fn();
 

@@ -222,8 +222,10 @@ async function pullGroups(
 
   // #90: parcela obligatoria; el throw aborta el pull y se reporta en la UI de sync
   // (no se degrada insertando null en silencio). Se valida antes de escribir nada:
-  // un dato inválido no deja la tabla a medio llenar.
-  const sinParcela = all.find((sg: any) => sg.parcela_id == null);
+  // un dato inválido no deja la tabla a medio llenar. Los grupos con cambios
+  // locales sin subir quedan afuera del chequeo porque tampoco se escriben: su
+  // fila del server es la vieja, y el push que viene la reemplaza.
+  const sinParcela = all.find((sg: any) => sg.parcela_id == null && !pendingLocally.has(sg.id));
   if (sinParcela) {
     throw new Error(`Grupo ${sinParcela.id} sin parcela en el server: dato inválido (#90).`);
   }

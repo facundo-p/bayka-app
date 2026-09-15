@@ -1,6 +1,7 @@
 /**
- * Integration tests del pull de árboles contra SQLite real (#449): el upsert en
- * lotes y el chequeo de conflicto de especie resuelto con una sola lectura.
+ * Integration tests de las fases del pull que pasaron a escribir en lotes (#449),
+ * contra SQLite real: el upsert multi-fila, el chequeo de conflicto de especie
+ * resuelto con una sola lectura, y el guard de parcela obligatoria de los grupos.
  *
  * La suite que cubría el conflicto (`CrossDeviceSync`) está `describe.skip`
  * (#333), así que sin esto el camino quedaba sin red.
@@ -322,6 +323,34 @@ describe('pull de árboles — reglas de merge en un lote mixto', () => {
     const sinGps = await leerArbol('t-sin-gps');
     expect(sinGps.latitude).toBe(-31);
     expect(sinGps.gpsAccuracy).toBe(8);
+  });
+});
+
+describe('pull de grupos — parcela obligatoria (#90)', () => {
+  const grupoDelServer = (id: string, parcelaId: string | null) => ({
+    id, plantation_id: PLANTACION_ID, parcela_id: parcelaId, nombre: `G ${id}`, codigo: id,
+    tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: '2026-01-01T00:00:00',
+  });
+
+  it('un grupo del server sin parcela aborta el pull', async () => {
+    serverState.groups.set('g-roto', grupoDelServer('g-roto', null));
+
+    await expect(pullFromServer(PLANTACION_ID)).rejects.toThrow('sin parcela en el server');
+  });
+
+  // El pull no escribe los grupos con cambios locales sin subir, así que su fila
+  // del server —vieja e inválida— no tiene por qué abortar nada.
+  it('un grupo sin parcela pero con cambios locales pendientes no aborta', async () => {
+    await mockTestDb.insert(groups).values({
+      id: 'g-pendiente', plantacionId: PLANTACION_ID, parcelaId: 'parc-1', nombre: 'Pendiente', codigo: 'GP',
+      tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: '2026-01-01T00:00:00', pendingSync: true,
+    });
+    serverState.groups.set('g-pendiente', grupoDelServer('g-pendiente', null));
+
+    await expect(pullFromServer(PLANTACION_ID)).resolves.toEqual({ estado: 'ok' });
+
+    const [local] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-pendiente'));
+    expect(local.parcelaId).toBe('parc-1');
   });
 });
 

@@ -38,6 +38,10 @@ export async function conLimiteDeConcurrencia<T>(
     }
   };
 
-  await Promise.all(Array.from({ length: Math.min(limite, items.length) }, obrero));
+  // El `max(1)` no es paranoia: el comentario de arriba invita a bajar el límite
+  // desde el código, y un 0 sin esto no procesa NADA y devuelve como si hubiera
+  // terminado bien — todas las fotos pendientes se saltean en silencio.
+  const obreros = Math.max(1, Math.min(limite, items.length));
+  await Promise.all(Array.from({ length: obreros }, obrero));
   if (fallo) throw error;
 }
