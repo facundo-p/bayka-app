@@ -81,7 +81,8 @@ Dos variantes, instalables en paralelo en el mismo teléfono:
 - `.env` en la raíz con `EAS_PROJECT_ID`. Sin eso el APK sale sin servidor de
   updates y no recibe ningún OTA; el script corta antes de compilar.
 - `mobile/.env.staging` con las credenciales de Supabase staging, solo para la
-  variante `test`.
+  variante `test`. Sin ese archivo el build y los updates cortan con error: antes
+  salían apuntando a producción sin avisar.
 - Sesión de Expo para publicar updates: `npx eas-cli whoami` (si no, `npx eas-cli login`).
 
 ### Generar e instalar un APK
@@ -122,6 +123,9 @@ APP_VARIANT=test npx eas-cli update --channel test --message "qué cambió"
 - **`APP_VARIANT=test` es obligatorio para el canal `test`**: sin esa variable el
   update sale apuntando al Supabase de producción y sin el banner de entorno de
   pruebas. Para `production`, sin la variable.
+- El commit que muestra la franja de la app TEST sale del working tree al publicar,
+  no del código que corre el dispositivo. Para confirmar que un update llegó, el
+  commit tiene que ser distinto al del APK instalado.
 - El update solo llega a los APK que tienen ese canal grabado y la misma
   `expo.version` de `mobile/app.json`. Un bump de versión deja afuera a los
   dispositivos viejos hasta que instalen el APK nuevo.
