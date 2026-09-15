@@ -21,9 +21,12 @@ jest.mock('../../src/config/entorno', () => ({
 }));
 const entornoMock = jest.requireMock('../../src/config/entorno') as { ES_ENTORNO_DE_PRUEBAS: boolean };
 
-const mockUseUpdates = jest.fn();
+const mockActualizacionPendiente = jest.fn();
+jest.mock('../../src/hooks/useActualizacionPendiente', () => ({
+  useActualizacionPendiente: () => mockActualizacionPendiente(),
+}));
+
 jest.mock('expo-updates', () => ({
-  useUpdates: () => mockUseUpdates(),
   reloadAsync: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -55,7 +58,7 @@ function paddingTopDelHeader(toJSON: () => unknown): number {
 
 describe('FranjasSuperiores', () => {
   beforeEach(() => {
-    mockUseUpdates.mockReturnValue({ isUpdatePending: false });
+    mockActualizacionPendiente.mockReturnValue(false);
     entornoMock.ES_ENTORNO_DE_PRUEBAS = false;
   });
 
@@ -67,7 +70,7 @@ describe('FranjasSuperiores', () => {
   });
 
   it('con un update pendiente muestra el aviso arriba del header', () => {
-    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
+    mockActualizacionPendiente.mockReturnValue(true);
     const { getByTestId } = renderConHeader();
     expect(getByTestId('banner-actualizacion-lista')).toBeTruthy();
   });
@@ -76,7 +79,7 @@ describe('FranjasSuperiores', () => {
     const { getByTestId, toJSON, rerender } = renderConHeader();
     expect(paddingTopDelHeader(toJSON)).toBe(MOCK_INSET_TOP + spacing.sm);
 
-    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
+    mockActualizacionPendiente.mockReturnValue(true);
     rerender(
       <FranjasSuperiores>
         <CustomHeader title="Plantaciones" />
@@ -90,7 +93,7 @@ describe('FranjasSuperiores', () => {
   });
 
   it('la ✕ descarta el aviso y el inset vuelve al header', () => {
-    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
+    mockActualizacionPendiente.mockReturnValue(true);
     const { getByTestId, queryByTestId, toJSON } = renderConHeader();
     expect(paddingTopDelHeader(toJSON)).toBe(spacing.sm);
 
@@ -105,7 +108,7 @@ describe('FranjasSuperiores', () => {
   // del medio y arriba de ella aparece una banda vacía.
   it('el inset lo ocupa la primera franja que se renderiza', () => {
     entornoMock.ES_ENTORNO_DE_PRUEBAS = true;
-    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
+    mockActualizacionPendiente.mockReturnValue(true);
     const { toJSON } = renderConHeader();
     const [primera, ...siguientes] = nodosRaiz(toJSON);
 
@@ -116,7 +119,7 @@ describe('FranjasSuperiores', () => {
 
   it('en la app TEST el inset lo ocupa la franja de entorno, no el aviso', () => {
     entornoMock.ES_ENTORNO_DE_PRUEBAS = true;
-    mockUseUpdates.mockReturnValue({ isUpdatePending: true });
+    mockActualizacionPendiente.mockReturnValue(true);
     const { getByTestId } = renderConHeader();
 
     expect(paddingTopDe(getByTestId('banner-entorno-pruebas'))).toBe(MOCK_INSET_TOP);
