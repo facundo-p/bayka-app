@@ -76,6 +76,7 @@ import { db } from '../../src/database/client';
 import { markGroupSynced, getSyncableGroups } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
+import { File as ExpoFile } from 'expo-file-system';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
@@ -85,8 +86,7 @@ const mockDb = db as jest.Mocked<typeof db>;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { _mockDownloadFileAsync: mockDownloadFileAsync } = require('expo-file-system');
+const mockDownloadFileAsync = ExpoFile.downloadFileAsync as jest.Mock;
 
 // where() resuelve a `rows` al await y además soporta .limit(1): el gate de
 // parcela (#90, isParcelaSyncReady) consulta la parcela del grupo y debe
@@ -459,8 +459,8 @@ describe('SyncService', () => {
   });
 
   describe('downloadPhotosForPlantation — photo download (IMG-04)', () => {
-    it('Test 12: downloads remote photos using signed URLs', async () => {
-      // Mock db.select for groups query
+    /** Setup común de los tests que llegan a bajar una foto remota. */
+    const mockearUnaFotoRemota = () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockResolvedValue([{ id: 'sg-1' }]),
@@ -472,7 +472,6 @@ describe('SyncService', () => {
           ]),
         }),
       });
-
       const storageChain = {
         upload: jest.fn(),
         createSignedUrl: jest.fn().mockResolvedValue({
@@ -481,6 +480,11 @@ describe('SyncService', () => {
         }),
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      return storageChain;
+    };
+
+    it('Test 12: downloads remote photos using signed URLs', async () => {
+      const storageChain = mockearUnaFotoRemota();
 
       const result = await downloadPhotosForPlantation('plantation-1');
 
@@ -515,28 +519,6 @@ describe('SyncService', () => {
       expect(result).toEqual({ downloaded: 0, failed: 0 });
     });
 
-    /** Setup común de los tests que llegan a bajar una foto remota. */
-    const mockearUnaFotoRemota = () => {
-      (mockDb.select as jest.Mock).mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([{ id: 'sg-1' }]),
-        }),
-      }).mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({
-          where: jest.fn().mockResolvedValue([
-            { id: 'tree-1', fotoUrl: 'plantations/p-1/trees/tree-1.jpg', grupoId: 'sg-1' },
-          ]),
-        }),
-      });
-      (mockSupabase.storage.from as jest.Mock).mockReturnValue({
-        upload: jest.fn(),
-        createSignedUrl: jest.fn().mockResolvedValue({
-          data: { signedUrl: 'https://example.com/photo.jpg' },
-          error: null,
-        }),
-      });
-    };
-
     it('descarga de forma idempotente: el nombre del archivo es determinístico (#452)', async () => {
       mockearUnaFotoRemota();
 
@@ -549,7 +531,7 @@ describe('SyncService', () => {
       );
     });
 
-    it('con el archivo ya presente reintenta y no falla para siempre (#452)', async () => {
+    it('con el archivo ya presente la descarga lo sobreescribe en vez de fallar (#452)', async () => {
       // Comportamiento real de expo-file-system: sin `idempotent` tira si el archivo existe.
       mockDownloadFileAsync.mockImplementationOnce(
         (_url: string, _dest: unknown, options?: { idempotent?: boolean }) => {
