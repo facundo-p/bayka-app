@@ -14,6 +14,14 @@ jest.mock('../../src/database/client', () => {
   };
 });
 
+// `enTransaccion` reemplaza a `db.transaction`, que con callbacks async commitea
+// vacío (#448). Passthrough con `db`, que es lo que pasa el helper real.
+jest.mock('../../src/database/transaccion', () => ({
+  enTransaccion: jest.fn((cb: (tx: unknown) => Promise<unknown>) =>
+    cb(jest.requireMock('../../src/database/client').db)),
+}));
+
+
 jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
@@ -74,6 +82,7 @@ import {
   updateTreePhoto,
   deleteTreeAndRecalculate,
 } from '../../src/repositories/TreeRepository';
+import { enTransaccion } from '../../src/database/transaccion';
 
 describe('TreeRepository', () => {
   describe('insertTree', () => {
@@ -198,7 +207,7 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(enTransaccion).toHaveBeenCalledTimes(1);
     });
 
     it('updates all trees when reversing order', async () => {
@@ -220,7 +229,7 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      expect(mockDb.transaction).not.toHaveBeenCalled();
+      expect(enTransaccion).not.toHaveBeenCalled();
       expect(mockUpdateWhere).not.toHaveBeenCalled();
     });
   });
@@ -339,7 +348,7 @@ describe('TreeRepository', () => {
       await deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1');
 
       expect(mockDeleteWhere).toHaveBeenCalledTimes(1);
-      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(enTransaccion).toHaveBeenCalledTimes(1);
     });
   });
 });

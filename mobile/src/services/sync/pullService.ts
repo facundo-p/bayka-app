@@ -5,7 +5,8 @@ import { eq, and, sql, count } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
-import { fetchAllRows, runInTransaction } from './paginate';
+import { fetchAllRows } from './paginate';
+import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion';
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
@@ -163,13 +164,10 @@ async function pullParcelas(
     .where(eq(parcelas.plantacionId, plantacionId));
   const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
 
-  await runInTransaction(db, async (tx: any) => {
-    let done = 0;
-    for (const remoteParcela of all) {
+  await enTransaccionPorLotes(all, async (tx, remoteParcela) => {
       if (pendingLocally.has(remoteParcela.id)) {
         // Local push wins.
-        done++;
-        continue;
+        return;
       }
       await tx.insert(parcelas).values({
         id: remoteParcela.id,
@@ -192,10 +190,9 @@ async function pullParcelas(
           pendingSync: sql`CASE WHEN ${parcelas.pendingSync} = 1 THEN 1 ELSE 0 END`,
         },
       });
-      done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, done, all.length);
-    }
-  });
+    },
+    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, escritas, all.length),
+  );
   emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, all.length, all.length);
 
   return all.map((remoteParcela) => remoteParcela.id);
@@ -227,13 +224,10 @@ async function pullGroups(
     .where(eq(groups.plantacionId, plantacionId));
   const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
 
-  await runInTransaction(db, async (tx: any) => {
-    let done = 0;
-    for (const sg of all) {
+  await enTransaccionPorLotes(all, async (tx, sg) => {
       if (pendingLocally.has(sg.id)) {
         // Local push wins.
-        done++;
-        continue;
+        return;
       }
       if (sg.parcela_id == null) {
         // #90: parcela obligatoria; el throw aborta el pull y se reporta en la UI de sync (no se degrada insertando null en silencio).
@@ -258,10 +252,9 @@ async function pullGroups(
           nombre: sql`excluded.nombre`,
         },
       });
-      done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.groups, done, all.length);
-    }
-  });
+    },
+    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.groups, escritas, all.length),
+  );
   emitProgress(onProgress, DOWNLOAD_PHASE.groups, all.length, all.length);
 
   return all.map((sg: any) => sg.id);
@@ -300,7 +293,7 @@ async function pullPlantationUsers(
   const localPu = await db.select().from(plantationUsers)
     .where(eq(plantationUsers.plantationId, plantacionId));
 
-  await runInTransaction(db, async (tx: any) => {
+  await enTransaccion(async (tx) => {
     for (const local of localPu) {
       if (!remoteUserIds.has(local.userId)) {
         await tx.delete(plantationUsers).where(
@@ -349,9 +342,7 @@ async function pullPlantationSpecies(
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
   if (all.length === 0) return;
 
-  await runInTransaction(db, async (tx: any) => {
-    let done = 0;
-    for (const ps of all) {
+  await enTransaccionPorLotes(all, async (tx, ps) => {
       const localId = `ps-${ps.plantation_id}-${ps.species_id}`;
       await tx.insert(plantationSpecies).values({
         id: localId,
@@ -362,10 +353,9 @@ async function pullPlantationSpecies(
         target: plantationSpecies.id,
         set: { ordenVisual: sql`excluded.orden_visual` },
       });
-      done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, done, all.length);
-    }
-  });
+    },
+    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, escritas, all.length),
+  );
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, all.length, all.length);
 }
 
@@ -463,19 +453,27 @@ async function pullTrees(
   const isFreshDownload = (localCountRow?.cnt ?? 0) === 0;
   if (isFreshDownload) syncLog.info('Pull trees: fresh download — skipping per-tree conflict checks');
 
-  await runInTransaction(db, async (tx: any) => {
-    let done = 0;
-    for (const t of all) {
-      if (!isFreshDownload && await checkTreeConflict(tx, t)) {
-        done++;
-        continue;
-      }
+  await enTransaccionPorLotes(all, async (tx, t) => {
+      if (!isFreshDownload && await checkTreeConflict(tx, t)) return;
       await upsertTreeFromServerTx(tx, t);
-      done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.arboles, done, all.length);
-    }
-  });
+    },
+    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.arboles, escritas, all.length),
+  );
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
+}
+
+/**
+ * Duración de cada fase. Es la única forma de medir en device si un cambio en la
+ * escritura sirvió: jest no corre expo-sqlite, así que el número real solo aparece
+ * en el log de la app (#448).
+ */
+async function conDuracion<T>(fase: DownloadPhase, tarea: () => Promise<T>): Promise<T> {
+  const inicio = Date.now();
+  try {
+    return await tarea();
+  } finally {
+    syncLog.info(`Pull fase ${fase}: ${Date.now() - inicio}ms`);
+  }
 }
 
 // ─── Pull from server ─────────────────────────────────────────────────────────
@@ -491,12 +489,17 @@ async function correrPullFromServer(
     return PULL_SIN_ACCESO;
   }
   syncLog.info('Pull starting for plantation:', plantacionId);
+  const inicio = Date.now();
+  // La metadata es un solo UPDATE: no hay nada que medir ahí.
   await pullPlantationMetadata(plantacionId);
-  await pullParcelas(plantacionId, onProgress);
-  const remoteGroupIds = await pullGroups(plantacionId, onProgress);
-  await pullPlantationUsers(plantacionId, onProgress);
-  await pullPlantationSpecies(plantacionId, onProgress);
-  if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds, onProgress);
+  await conDuracion(DOWNLOAD_PHASE.parcelas, () => pullParcelas(plantacionId, onProgress));
+  const remoteGroupIds = await conDuracion(DOWNLOAD_PHASE.groups, () => pullGroups(plantacionId, onProgress));
+  await conDuracion(DOWNLOAD_PHASE.usuarios, () => pullPlantationUsers(plantacionId, onProgress));
+  await conDuracion(DOWNLOAD_PHASE.especiesPlantacion, () => pullPlantationSpecies(plantacionId, onProgress));
+  if (remoteGroupIds.length > 0) {
+    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(remoteGroupIds, onProgress));
+  }
+  syncLog.info(`Pull total: ${Date.now() - inicio}ms`);
   return PULL_OK;
 }
 

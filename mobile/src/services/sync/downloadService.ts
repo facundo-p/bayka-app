@@ -1,6 +1,7 @@
 import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
-import { sql } from 'drizzle-orm';
+import { deletePlantationLocally } from '../../repositories/PlantationRepository';
+import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
 import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esSinAcceso } from './types';
@@ -36,6 +37,13 @@ export async function downloadPlantation(
 ): Promise<void> {
   const { includePhotos = false, onPhase } = options;
 
+  // Una plantación que ya estaba local no se revierte si el pull falla: sus datos
+  // viejos siguen siendo mejores que nada, y el pull es idempotente.
+  const [yaEstabaLocal] = await db
+    .select({ id: plantations.id })
+    .from(plantations)
+    .where(eq(plantations.id, serverPlantation.id));
+
   await db
     .insert(plantations)
     .values({
@@ -62,11 +70,28 @@ export async function downloadPlantation(
       },
     });
 
-  const pull = await pullFromServer(serverPlantation.id, onPhase);
-  // Sin acceso no hay datos que bajar: que la descarga se reporte como fallida
-  // en vez de "listo" con la plantación vacía.
-  if (esSinAcceso(pull)) {
-    throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
+  try {
+    const pull = await pullFromServer(serverPlantation.id, onPhase);
+    // Sin acceso no hay datos que bajar: que la descarga se reporte como fallida
+    // en vez de "listo" con la plantación vacía.
+    if (esSinAcceso(pull)) {
+      throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
+    }
+  } catch (e) {
+    // La fila se insertó con `pendingSync: false` antes del pull, así que una
+    // plantación nueva cuyo pull falla queda en el listado como descargada y
+    // vacía (#448). Se borra con lo que haya alcanzado a bajar.
+    if (!yaEstabaLocal) {
+      // El revert no puede pisar la causa real: si falla, se loguea aparte y se
+      // propaga el error del pull, que es lo que hay que diagnosticar.
+      try {
+        await deletePlantationLocally(serverPlantation.id);
+        syncLog.info('Download: pull falló, se revierte la plantación', serverPlantation.id);
+      } catch (errorDelRevert) {
+        syncLog.error('Download: no se pudo revertir la plantación', serverPlantation.id, errorDelRevert);
+      }
+    }
+    throw e;
   }
 
   if (includePhotos) {

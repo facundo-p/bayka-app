@@ -7,7 +7,7 @@
  * las referencias al id del server y eliminando la fila duplicada,
  * preservando el codigo para que los SubID sigan válidos.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 import {
   createTestPlantation,
   createTestGroup,
@@ -26,6 +26,7 @@ import { localNow } from '../../src/utils/dateUtils';
 import Database from 'better-sqlite3';
 
 let mockTestDb: IntegrationDb;
+let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
 let sqlite: InstanceType<typeof Database>;
 
 // Filas que "devuelve el server" — mutable por test.
@@ -34,6 +35,11 @@ const mockState: { species: any[] } = { species: [] };
 jest.mock('../../src/database/client', () => ({
   get db() {
     return mockTestDb;
+  },
+  // `enTransaccion` abre la transacción por acá: sin esto el test correría sin
+  // transacción y no probaría la atomicidad que dice probar (#448).
+  get sqlite() {
+    return mockSqliteDeIntegracion;
   },
 }));
 
@@ -51,6 +57,7 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
   // Prod (expo-sqlite) no activa PRAGMA foreign_keys → árboles con especieId
   // huérfano pueden existir, que es el estado que reconciliamos.
   sqlite.pragma('foreign_keys = OFF');

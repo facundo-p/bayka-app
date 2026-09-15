@@ -1,4 +1,5 @@
 import { db } from '../database/client';
+import { enTransaccion } from '../database/transaccion';
 import { groups, trees, parcelas } from '../database/schema';
 import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -198,7 +199,7 @@ export async function updateGroup(
 
 /** Recalculates all tree subIds for a group inside a tx. */
 async function recalcTreesSubIds(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
+  tx: typeof db,
   grupoId: string,
   newCodigo: string,
   parcelaCodigo: string
@@ -241,7 +242,7 @@ export async function updateGroupCode(
   const parcelaCodigo = await getGroupParcelaCodigo(id);
 
   try {
-    await db.transaction(async (tx) => {
+    await enTransaccion(async (tx) => {
       await tx.update(groups)
         .set({ codigo: upperCodigo })
         .where(eq(groups.id, id));

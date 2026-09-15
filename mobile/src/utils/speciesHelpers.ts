@@ -23,9 +23,9 @@ export function getSpeciesName(tree: {
 /** Placeholder especie codigo embedded in a tree's subId when unresolved (N/N). */
 export const UNKNOWN_SPECIES_CODE = 'NN';
 
-type Queryable = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0];
+type Queryable = typeof db;
 
-/** Resolves a tree's especie codigo for subId generation: linked species' codigo, or UNKNOWN_SPECIES_CODE when especieId is null/missing. Accepts `db` or a transaction handle. */
+/** Resolves a tree's especie codigo for subId generation: linked species' codigo, or UNKNOWN_SPECIES_CODE when especieId is null/missing. Recibe `db`: la transacción es de la conexión, no un handle aparte. */
 export async function resolveEspecieCodigo(
   queryable: Queryable,
   especieId: string | null,

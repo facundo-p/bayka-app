@@ -9,17 +9,23 @@
  * Lives under tests/integration/ because it needs the integration jest config to resolve
  * better-sqlite3.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
 import { plantations, parcelas, plantationUsers } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
 
 let mockTestDb: IntegrationDb;
 let sqlite: InstanceType<typeof Database>;
+let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
 
 jest.mock('../../src/database/client', () => ({
   get db() {
     return mockTestDb;
+  },
+  // `enTransaccion` abre la transacción por acá: sin esto caería a escribir sin
+  // transacción y el test de rollback pasaría a no probar nada.
+  get sqlite() {
+    return mockSqliteDeIntegracion;
   },
 }));
 
@@ -57,33 +63,12 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
 });
 
 afterAll(() => {
   closeTestDb(sqlite);
 });
-
-/**
- * drizzle-orm/better-sqlite3's db.transaction() rejects an async callback outright (better-sqlite3
- * native transaction() throws "Transaction function cannot return a promise");
- * createPlantationWithParcelaLocally (PlantationRepository) uses one. Real devices run
- * drizzle-orm/expo-sqlite, which doesn't have this restriction — this shim reproduces that
- * behaviour for the real sqlite instance used here, so the rollback test below exercises the
- * actual insert/rollback logic instead of a mock.
- */
-function installAsyncTransactionShim(): void {
-  jest.spyOn(mockTestDb, 'transaction').mockImplementation(async (fn: any) => {
-    sqlite.exec('BEGIN');
-    try {
-      const result = await fn(mockTestDb);
-      sqlite.exec('COMMIT');
-      return result;
-    } catch (e) {
-      sqlite.exec('ROLLBACK');
-      throw e;
-    }
-  });
-}
 
 /** Arma supabase.from() para que los pasos de push reusados por el modo 'online' (uploadOfflinePlantations + uploadSyncableParcelas) resuelvan en éxito. */
 function mockSupabaseForSuccessfulPush() {
@@ -110,7 +95,6 @@ beforeEach(async () => {
   await mockTestDb.delete(plantationUsers);
   await mockTestDb.delete(plantations);
   jest.restoreAllMocks();
-  installAsyncTransactionShim();
   (supabase.from as jest.Mock).mockReset();
 });
 
@@ -152,7 +136,10 @@ describe('createPlantationWithDefaultParcela — local-first (offline)', () => {
     jest.resetModules();
     jest.doMock('../../src/config/featureFlags', () => ({ AUTO_PARCELA_DEFAULT: false }));
     // Re-establish mocks for the fresh module registry.
-    jest.doMock('../../src/database/client', () => ({ get db() { return mockTestDb; } }));
+    jest.doMock('../../src/database/client', () => ({
+      get db() { return mockTestDb; },
+      get sqlite() { return mockSqliteDeIntegracion; },
+    }));
     jest.doMock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
     jest.doMock('../../src/supabase/client', () => ({ supabase: { from: jest.fn() }, isSupabaseConfigured: false }));
     jest.doMock('../../src/services/SyncService', () => ({ pullFromServer: jest.fn() }));

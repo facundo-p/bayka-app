@@ -1,4 +1,5 @@
 import { db } from '../database/client';
+import { enTransaccion } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
 import { eq, max, asc, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
@@ -79,7 +80,7 @@ export async function reverseTreeOrder(
   const reversed = computeReversedPositions(allTrees);
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
-  await db.transaction(async (tx) => {
+  await enTransaccion(async (tx) => {
     for (const { id, newPosicion } of reversed) {
       const tree = allTrees.find((t) => t.id === id)!;
       const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
@@ -209,7 +210,7 @@ export async function deleteTreeAndRecalculate(
 
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
-  await db.transaction(async (tx) => {
+  await enTransaccion(async (tx) => {
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
