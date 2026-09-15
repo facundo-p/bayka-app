@@ -81,6 +81,19 @@ describe('syncActivityStore', () => {
     expect(notificaciones).toEqual([true, false]);
   });
 
+  it('un listener que tira no desbalancea el contador ni rompe la corrida', async () => {
+    subscribeActividadDeSync(() => {
+      throw new Error('listener roto');
+    });
+    const sano: boolean[] = [];
+    subscribeActividadDeSync((activo) => sano.push(activo));
+
+    await expect(marcandoActividadDeSync(async () => 'ok')()).resolves.toBe('ok');
+
+    expect(hayActividadDeSync()).toBe(false);
+    expect(sano).toEqual([true, false]); // el listener roto no cortó al siguiente
+  });
+
   it('desuscribirse corta las notificaciones', async () => {
     const notificaciones: boolean[] = [];
     const unsubscribe = subscribeActividadDeSync((activo) => notificaciones.push(activo));

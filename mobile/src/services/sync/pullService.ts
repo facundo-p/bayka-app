@@ -8,6 +8,7 @@ import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 import { fetchAllRows, runInTransaction } from './paginate';
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
+import { marcandoActividadDeSync } from './syncActivityStore';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -470,7 +471,7 @@ async function pullTrees(
 
 /** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK.
  *  Corta antes de tocar la base si la membresía fue revocada: la copia local se conserva tal cual. */
-export async function pullFromServer(
+async function correrPullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<PullResult> {
@@ -487,3 +488,7 @@ export async function pullFromServer(
   if (remoteGroupIds.length > 0) await pullTrees(remoteGroupIds, onProgress);
   return PULL_OK;
 }
+
+// El pull-to-refresh de plantaciones lo llama suelto, sin pasar por un orquestador,
+// y escribe la base igual (#446). Anidado dentro de una sync el contador lo absorbe.
+export const pullFromServer = marcandoActividadDeSync(correrPullFromServer);

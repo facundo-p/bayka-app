@@ -15,7 +15,15 @@ const listeners = new Set<(activo: boolean) => void>();
 
 function notificar(): void {
   const activo = corridasActivas > 0;
-  listeners.forEach((listener) => listener(activo));
+  listeners.forEach((listener) => {
+    // Un listener que tira no puede cortar la notificación a los demás ni escaparse
+    // hacia el orquestador, que reportaría como fallida una sync que salió bien.
+    try {
+      listener(activo);
+    } catch {
+      // sin logger: este módulo es hoja y el aviso del banner no justifica acoplarlo
+    }
+  });
 }
 
 export function hayActividadDeSync(): boolean {
@@ -39,8 +47,8 @@ export function marcandoActividadDeSync<A extends unknown[], R>(
 ): (...args: A) => Promise<R> {
   return async (...args: A): Promise<R> => {
     corridasActivas++;
-    if (corridasActivas === 1) notificar();
     try {
+      if (corridasActivas === 1) notificar();
       return await orquestador(...args);
     } finally {
       corridasActivas--;

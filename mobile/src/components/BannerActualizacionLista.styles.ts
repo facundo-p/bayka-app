@@ -2,10 +2,11 @@ import { StyleSheet } from 'react-native';
 import { borderRadius, colors, fonts, fontSize, lineHeight, spacing } from '../theme';
 
 export const bannerActualizacionListaStyles = StyleSheet.create({
+  // El paddingBottom (inset de la barra de navegación) lo aplica el componente.
   franja: {
     backgroundColor: colors.infoBg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.info,
+    borderTopWidth: 1,
+    borderTopColor: colors.info,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
@@ -22,8 +23,9 @@ export const bannerActualizacionListaStyles = StyleSheet.create({
   boton: {
     backgroundColor: colors.info,
     borderRadius: borderRadius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.xxl,
+    justifyContent: 'center',
+    minHeight: 44, // usable con guantes
   },
   botonDeshabilitado: {
     backgroundColor: colors.primaryBgMuted,
@@ -34,7 +36,9 @@ export const bannerActualizacionListaStyles = StyleSheet.create({
     fontSize: fontSize.sm,
   },
   descartar: {
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
+    minHeight: 44,
   },
   descartarTexto: {
     color: colors.textSecondary,

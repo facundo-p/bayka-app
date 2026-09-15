@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import {
   hayActividadDeSync,
   subscribeActividadDeSync,
-} from '../services/sync/syncActivityStore';
+} from '../services/SyncService';
 
 /** `true` mientras corre una sincronización o una descarga de catálogo (#446). */
 export function useActividadDeSync(): boolean {
-  const [activo, setActivo] = useState(hayActividadDeSync());
+  const [activo, setActivo] = useState(hayActividadDeSync);
 
   useEffect(() => {
     const unsubscribe = subscribeActividadDeSync(setActivo);

@@ -116,10 +116,10 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <StatusBar style="dark" />
       <BannerEntornoPruebas />
-      <BannerActualizacionLista />
       <PhotoCropProvider>
         <Slot />
       </PhotoCropProvider>
+      <BannerActualizacionLista />
     </SafeAreaProvider>
   );
 }
