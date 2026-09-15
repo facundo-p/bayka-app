@@ -366,6 +366,25 @@ El helper en sí se prueba aparte, en `tests/database/transaccion.test.ts`, cont
 dobles fieles de cada driver: el mock de arriba es *más correcto* que el driver
 real, así que no puede detectar el bug que motivó el cambio.
 
+`enTransaccionPorLotes` le pasa al callback **el lote entero**, no una fila: las
+escrituras masivas del pull lo resuelven con un `INSERT` multi-fila (#449). Un
+passthrough de test tiene que respetarlo:
+
+```typescript
+(enTransaccionPorLotes as jest.Mock).mockImplementation(
+  async (filas, escribirLote, onLote) => {
+    await abrir((tx) => escribirLote(tx, filas));
+    onLote?.(filas.length);
+  },
+);
+```
+
+Con un solo `set` para todo el lote, lo que antes decidía un ternario por fila
+(la foto, el punto GPS) ahora viaja en los valores y se resuelve con `excluded`.
+Eso solo se ve con un lote **mixto**: `tests/integration/pull-arboles.test.ts`
+mete en la misma tanda un árbol con foto y otro sin, y afirma que ninguno hereda
+la regla del vecino. Un test de una fila sola no distingue las dos versiones.
+
 **Mock State Reset Pattern:**
 ```typescript
 beforeAll(() => {

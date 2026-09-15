@@ -11,7 +11,7 @@ import {
   createTestSpecies,
 } from '../helpers/factories';
 import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
-import { upsertTreeFromServerTx } from '../../src/services/sync/pullService';
+import { upsertTreesFromServerTx } from '../../src/services/sync/pullService';
 import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 
@@ -71,7 +71,7 @@ describe('pull — generated ID preservation (Issue #55)', () => {
       createTestTree({ id: 'tree-1', groupId: GROUP, especieId: SP, plantacionId: 2, globalId: 5 }),
     );
 
-    await upsertTreeFromServerTx(db as any, serverTree({ plantacion_id: null, global_id: null }));
+    await upsertTreesFromServerTx(db as any, [serverTree({ plantacion_id: null, global_id: null })]);
 
     const row = await readTree('tree-1');
     expect(row.plantacionId).toBe(2);
@@ -84,7 +84,7 @@ describe('pull — generated ID preservation (Issue #55)', () => {
       createTestTree({ id: 'tree-1', groupId: GROUP, especieId: SP, plantacionId: null, globalId: null }),
     );
 
-    await upsertTreeFromServerTx(db as any, serverTree({ plantacion_id: 3, global_id: 10 }));
+    await upsertTreesFromServerTx(db as any, [serverTree({ plantacion_id: 3, global_id: 10 })]);
 
     const row = await readTree('tree-1');
     expect(row.plantacionId).toBe(3);
@@ -92,7 +92,7 @@ describe('pull — generated ID preservation (Issue #55)', () => {
   });
 
   it('inserts a brand-new tree with the server IDs', async () => {
-    await upsertTreeFromServerTx(db as any, serverTree({ plantacion_id: 7, global_id: 42 }));
+    await upsertTreesFromServerTx(db as any, [serverTree({ plantacion_id: 7, global_id: 42 })]);
 
     const row = await readTree('tree-1');
     expect(row.plantacionId).toBe(7);

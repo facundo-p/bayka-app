@@ -16,13 +16,18 @@ import { syncLog } from '../utils/syncLogger';
 type Db = typeof db;
 
 /**
- * Filas por transacción en las escrituras masivas. Un solo commit para 12.000
- * árboles sería algo más rápido, pero mientras la transacción está abierta todo
- * lo que escriba el resto de la app cae adentro y se pierde si el pull revierte.
- * De a 100 la ventana son milisegundos y ya se ganó lo que había para ganar: el
- * salto grande es dejar de commitear fila por fila.
+ * Filas por transacción —y por statement— en las escrituras masivas. Un solo
+ * commit para 12.000 árboles sería algo más rápido, pero mientras la transacción
+ * está abierta todo lo que escriba el resto de la app cae adentro y se pierde si
+ * el pull revierte. Con un `INSERT` multi-fila por lote la ventana es un
+ * statement, milisegundos, y ya se ganó lo que había para ganar.
+ *
+ * El tope real es `SQLITE_MAX_VARIABLE_NUMBER`: 32766 en el SQLite que bundlea
+ * expo-sqlite. 500 filas × la tabla más ancha (árboles, 16 columnas) son 8000
+ * parámetros — 4x de margen. `tests/database/limiteDeParametros.test.ts` falla si
+ * una tabla crece lo suficiente como para acercarse.
  */
-export const FILAS_POR_TRANSACCION = 100;
+export const FILAS_POR_TRANSACCION = 500;
 
 /**
  * Dos transacciones solapadas sobre la misma conexión se destruyen: el `BEGIN` de
@@ -67,20 +72,22 @@ export async function enTransaccion<T>(cb: (tx: Db) => Promise<T>): Promise<T> {
 }
 
 /**
- * Escribe en transacciones de a `FILAS_POR_TRANSACCION`. `onLote` corre entre
- * transacciones, no adentro: emitir progreso dispara un render de React, y un
- * render adentro de la transacción deja que la UI lea filas sin commitear.
+ * Escribe en transacciones de a `FILAS_POR_TRANSACCION`. El callback recibe el
+ * lote entero, no una fila: así puede resolverlo con un `INSERT` multi-fila en
+ * vez de N statements (#449).
+ *
+ * `onLote` corre entre transacciones, no adentro: emitir progreso dispara un
+ * render de React, y un render adentro de la transacción deja que la UI lea filas
+ * sin commitear.
  */
 export async function enTransaccionPorLotes<T>(
   filas: T[],
-  escribir: (tx: Db, fila: T) => Promise<void>,
+  escribirLote: (tx: Db, lote: T[]) => Promise<void>,
   onLote?: (escritas: number) => void,
 ): Promise<void> {
   for (let i = 0; i < filas.length; i += FILAS_POR_TRANSACCION) {
     const lote = filas.slice(i, i + FILAS_POR_TRANSACCION);
-    await enTransaccion(async (tx) => {
-      for (const fila of lote) await escribir(tx, fila);
-    });
+    await enTransaccion((tx) => escribirLote(tx, lote));
     onLote?.(i + lote.length);
   }
 }

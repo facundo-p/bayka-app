@@ -97,7 +97,7 @@ describe('SyncService — offline functions', () => {
   // ─── pullSpeciesFromServer ─────────────────────────────────────────────────
 
   describe('pullSpeciesFromServer (OFPL-04)', () => {
-    it('Test 1: calls supabase.from("species").select("*") and upserts each species into local db', async () => {
+    it('Test 1: calls supabase.from("species").select("*") and upserts the catalog in one batched insert', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue({ data: fakeSpecies, error: null }),
       });
@@ -108,16 +108,16 @@ describe('SyncService — offline functions', () => {
       const fromResult = (mockSupabase.from as jest.Mock).mock.results[0].value;
       expect(fromResult.select).toHaveBeenCalledWith('*');
 
-      // db.insert called twice (once per species)
-      expect(mockDb.insert).toHaveBeenCalledTimes(2);
+      // Un solo statement para el catálogo entero, no uno por especie (#449).
+      expect(mockDb.insert).toHaveBeenCalledTimes(1);
 
-      // Verify first species upsert
-      const firstInsert = (mockDb.insert as jest.Mock).mock.results[0].value;
-      expect(firstInsert.values).toHaveBeenCalledWith(
-        expect.objectContaining({ id: 'sp-1', codigo: 'QRC', nombre: 'Quercus robur' })
-      );
-      const firstValues = firstInsert.values.mock.results[0].value;
-      expect(firstValues.onConflictDoUpdate).toHaveBeenCalled();
+      const unicoInsert = (mockDb.insert as jest.Mock).mock.results[0].value;
+      expect(unicoInsert.values).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'sp-1', codigo: 'QRC', nombre: 'Quercus robur' }),
+        expect.objectContaining({ id: 'sp-2' }),
+      ]);
+      const valores = unicoInsert.values.mock.results[0].value;
+      expect(valores.onConflictDoUpdate).toHaveBeenCalled();
     });
 
     it('Test 2: does NOT call db.insert if supabase returns an error', async () => {

@@ -169,13 +169,26 @@ describe('enTransaccionPorLotes', () => {
     mockAbierta = false;
   });
 
-  const escribirFila = async (tx: unknown, fila: string) =>
-    (tx as typeof mockDbFalso).escribir(fila);
+  /** Un statement por lote, como los upserts multi-fila del pull (#449). */
+  const escribirLote = async (tx: unknown, lote: string[]) =>
+    (tx as typeof mockDbFalso).escribir(lote.join(','));
 
   it('escribe adentro de la transacción, no después del commit', async () => {
-    await enTransaccionPorLotes(['a', 'b'], escribirFila);
+    await enTransaccionPorLotes(['a', 'b'], escribirLote);
 
-    expect(mockRegistro).toEqual(['BEGIN', 'INSERT a', 'INSERT b', 'COMMIT']);
+    expect(mockRegistro).toEqual(['BEGIN', 'INSERT a,b', 'COMMIT']);
+  });
+
+  // Todo el lote en un statement: el callback lo recibe entero, no fila por fila.
+  it('le pasa el lote completo al callback, no una fila por vez', async () => {
+    const filas = Array.from({ length: FILAS_POR_TRANSACCION }, (_, i) => `f${i}`);
+    const lotes: string[][] = [];
+
+    await enTransaccionPorLotes(filas, async (_tx, lote) => {
+      lotes.push(lote);
+    });
+
+    expect(lotes).toEqual([filas]);
   });
 
   // Un solo commit para 12.000 filas sería algo más rápido, pero deja la ventana
@@ -184,10 +197,10 @@ describe('enTransaccionPorLotes', () => {
   it('parte en lotes en vez de una transacción gigante', async () => {
     const filas = Array.from({ length: FILAS_POR_TRANSACCION + 1 }, (_, i) => `f${i}`);
 
-    await enTransaccionPorLotes(filas, escribirFila);
+    await enTransaccionPorLotes(filas, escribirLote);
 
     expect(mockRegistro.filter((e) => e === 'BEGIN')).toHaveLength(2);
-    expect(mockRegistro.filter((e) => e.startsWith('INSERT'))).toHaveLength(filas.length);
+    expect(mockRegistro.filter((e) => e.startsWith('INSERT'))).toHaveLength(2);
   });
 
   // El progreso dispara un render de React: adentro de la transacción, la UI podría
@@ -195,7 +208,7 @@ describe('enTransaccionPorLotes', () => {
   it('emite progreso entre transacciones, nunca adentro', async () => {
     const filas = Array.from({ length: FILAS_POR_TRANSACCION + 1 }, (_, i) => `f${i}`);
 
-    await enTransaccionPorLotes(filas, escribirFila, (escritas) =>
+    await enTransaccionPorLotes(filas, escribirLote, (escritas) =>
       mockRegistro.push(`PROGRESO ${escritas}`),
     );
 
@@ -210,7 +223,7 @@ describe('enTransaccionPorLotes', () => {
   });
 
   it('sin filas no abre ninguna transacción', async () => {
-    await enTransaccionPorLotes([], escribirFila);
+    await enTransaccionPorLotes([], escribirLote);
 
     expect(mockRegistro).toEqual([]);
   });
