@@ -1,7 +1,7 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
-import { eq, and, sql, count } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { syncLog } from '../../utils/syncLogger';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
@@ -12,9 +12,6 @@ import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
-
-/** Emite progreso cada PROGRESS_EVERY filas para evitar churn de setState en pulls grandes. */
-const PROGRESS_EVERY = 100;
 
 function emitProgress(
   onProgress: OnPhaseProgress | undefined,
@@ -164,12 +161,11 @@ async function pullParcelas(
     .where(eq(parcelas.plantacionId, plantacionId));
   const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
 
-  await enTransaccionPorLotes(all, async (tx, remoteParcela) => {
-      if (pendingLocally.has(remoteParcela.id)) {
-        // Local push wins.
-        return;
-      }
-      await tx.insert(parcelas).values({
+  await enTransaccionPorLotes(all, async (tx, lote) => {
+      // Local push wins.
+      const aEscribir = lote.filter((remoteParcela) => !pendingLocally.has(remoteParcela.id));
+      if (aEscribir.length === 0) return;
+      await tx.insert(parcelas).values(aEscribir.map((remoteParcela) => ({
         id: remoteParcela.id,
         plantacionId: remoteParcela.plantation_id,
         nombre: remoteParcela.nombre,
@@ -179,7 +175,7 @@ async function pullParcelas(
         createdAt: remoteParcela.created_at,
         updatedAt: remoteParcela.updated_at,
         deletedAt: remoteParcela.deleted_at ?? null,
-      }).onConflictDoUpdate({
+      }))).onConflictDoUpdate({
         target: parcelas.id,
         set: {
           nombre: sql`excluded.nombre`,
@@ -224,16 +220,19 @@ async function pullGroups(
     .where(eq(groups.plantacionId, plantacionId));
   const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
 
-  await enTransaccionPorLotes(all, async (tx, sg) => {
-      if (pendingLocally.has(sg.id)) {
-        // Local push wins.
-        return;
-      }
-      if (sg.parcela_id == null) {
-        // #90: parcela obligatoria; el throw aborta el pull y se reporta en la UI de sync (no se degrada insertando null en silencio).
-        throw new Error(`Grupo ${sg.id} sin parcela en el server: dato inválido (#90).`);
-      }
-      await tx.insert(groups).values({
+  // #90: parcela obligatoria; el throw aborta el pull y se reporta en la UI de sync
+  // (no se degrada insertando null en silencio). Se valida antes de escribir nada:
+  // un dato inválido no deja la tabla a medio llenar.
+  const sinParcela = all.find((sg: any) => sg.parcela_id == null);
+  if (sinParcela) {
+    throw new Error(`Grupo ${sinParcela.id} sin parcela en el server: dato inválido (#90).`);
+  }
+
+  await enTransaccionPorLotes(all, async (tx, lote) => {
+      // Local push wins.
+      const aEscribir = lote.filter((sg: any) => !pendingLocally.has(sg.id));
+      if (aEscribir.length === 0) return;
+      await tx.insert(groups).values(aEscribir.map((sg: any) => ({
         id: sg.id,
         plantacionId: sg.plantation_id,
         parcelaId: sg.parcela_id,
@@ -244,7 +243,7 @@ async function pullGroups(
         usuarioCreador: sg.usuario_creador,
         createdAt: sg.created_at,
         pendingSync: false,
-      }).onConflictDoUpdate({
+      }))).onConflictDoUpdate({
         target: groups.id,
         set: {
           parcelaId: sql`excluded.parcela_id`,
@@ -293,32 +292,29 @@ async function pullPlantationUsers(
   const localPu = await db.select().from(plantationUsers)
     .where(eq(plantationUsers.plantationId, plantacionId));
 
-  await enTransaccion(async (tx) => {
-    for (const local of localPu) {
-      if (!remoteUserIds.has(local.userId)) {
-        await tx.delete(plantationUsers).where(
-          and(
-            eq(plantationUsers.plantationId, plantacionId),
-            eq(plantationUsers.userId, local.userId),
-          )
-        );
-      }
-    }
+  const revocados = localPu.filter((local) => !remoteUserIds.has(local.userId)).map((local) => local.userId);
 
-    let done = 0;
-    for (const pu of all) {
-      await tx.insert(plantationUsers).values({
-        plantationId: pu.plantation_id,
-        userId: pu.user_id,
-        rolEnPlantacion: pu.rol_en_plantacion,
-        assignedAt: pu.assigned_at,
-      }).onConflictDoUpdate({
-        target: [plantationUsers.plantationId, plantationUsers.userId],
-        set: { rolEnPlantacion: sql`excluded.rol_en_plantacion` },
-      });
-      done++;
-      if (done % PROGRESS_EVERY === 0) emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, done, all.length);
+  // Los miembros de una plantación son pocos: el replace entero entra en una
+  // transacción, con un statement por lado.
+  await enTransaccion(async (tx) => {
+    if (revocados.length > 0) {
+      await tx.delete(plantationUsers).where(
+        and(
+          eq(plantationUsers.plantationId, plantacionId),
+          inArray(plantationUsers.userId, revocados),
+        )
+      );
     }
+    if (all.length === 0) return;
+    await tx.insert(plantationUsers).values(all.map((pu: any) => ({
+      plantationId: pu.plantation_id,
+      userId: pu.user_id,
+      rolEnPlantacion: pu.rol_en_plantacion,
+      assignedAt: pu.assigned_at,
+    }))).onConflictDoUpdate({
+      target: [plantationUsers.plantationId, plantationUsers.userId],
+      set: { rolEnPlantacion: sql`excluded.rol_en_plantacion` },
+    });
   });
   emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, all.length, all.length);
 }
@@ -342,14 +338,13 @@ async function pullPlantationSpecies(
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
   if (all.length === 0) return;
 
-  await enTransaccionPorLotes(all, async (tx, ps) => {
-      const localId = `ps-${ps.plantation_id}-${ps.species_id}`;
-      await tx.insert(plantationSpecies).values({
-        id: localId,
+  await enTransaccionPorLotes(all, async (tx, lote) => {
+      await tx.insert(plantationSpecies).values(lote.map((ps: any) => ({
+        id: `ps-${ps.plantation_id}-${ps.species_id}`,
         plantacionId: ps.plantation_id,
         especieId: ps.species_id,
         ordenVisual: ps.orden_visual,
-      }).onConflictDoUpdate({
+      }))).onConflictDoUpdate({
         target: plantationSpecies.id,
         set: { ordenVisual: sql`excluded.orden_visual` },
       });
@@ -361,40 +356,17 @@ async function pullPlantationSpecies(
 
 type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
 
-/**
- * Detecta conflicto de especie: si la fila local ya tiene un especieId no-null distinto al del
- * server, la marca con conflictEspecieId para que la UI prompte.
- * @returns true si hubo conflicto (el remoto no debe upsertearse).
- */
-async function checkTreeConflict(tx: Tx, remoteTree: any): Promise<boolean> {
-  if (!remoteTree.species_id) return false;
-
-  const [localTree] = await tx.select({ especieId: trees.especieId }).from(trees).where(eq(trees.id, remoteTree.id));
-  if (!localTree || localTree.especieId === null || localTree.especieId === remoteTree.species_id) return false;
-
-  const [serverSpecies] = await tx.select({ nombre: species.nombre }).from(species).where(eq(species.id, remoteTree.species_id));
-  await tx.update(trees).set({
-    conflictEspecieId: remoteTree.species_id,
-    conflictEspecieNombre: serverSpecies?.nombre ?? 'Desconocida',
-  }).where(eq(trees.id, remoteTree.id));
-
-  syncLog.info(`Conflict detected for tree ${remoteTree.id}: local=${localTree.especieId}, server=${remoteTree.species_id}`);
-  return true;
-}
-
-export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
+/** Árbol del server en columnas locales. Las filas de un lote comparten forma: el `set` del upsert es uno solo para todas y se resuelve con `excluded`. */
+function filaDeArbol(t: any) {
   const hasFotoOnServer = isRemoteUri(t.foto_url);
-  const serverFotoUrl = hasFotoOnServer ? t.foto_url : null;
-  // El server usa group_id directo; el compat shim 012b mantiene subgroup_id como GENERATED column para APKs viejos.
-  const groupIdRemote = t.group_id ?? t.subgroup_id;
-
-  await tx.insert(trees).values({
+  return {
     id: t.id,
-    groupId: groupIdRemote,
+    // El server usa group_id directo; el compat shim 012b mantiene subgroup_id como GENERATED column para APKs viejos.
+    groupId: t.group_id ?? t.subgroup_id,
     especieId: t.species_id,
     posicion: t.posicion,
     subId: t.sub_id,
-    fotoUrl: serverFotoUrl,
+    fotoUrl: hasFotoOnServer ? t.foto_url : null,
     fotoSynced: hasFotoOnServer,
     plantacionId: t.plantacion_id ?? null,
     globalId: t.global_id ?? null,
@@ -404,14 +376,23 @@ export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
     longitude: t.longitude ?? null,
     gpsAccuracy: t.gps_accuracy ?? null,
     gpsCapturedAt: t.gps_captured_at ?? null,
-  }).onConflictDoUpdate({
+  };
+}
+
+/** Upsert de un lote de árboles del server en un solo statement. */
+export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<void> {
+  if (remotos.length === 0) return;
+
+  await tx.insert(trees).values(remotos.map(filaDeArbol)).onConflictDoUpdate({
     target: trees.id,
     set: {
       especieId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.especieId} ELSE excluded.especie_id END`,
       posicion: sql`excluded.posicion`,
       subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
       fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
-      fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`,
+      // `excluded.foto_synced` es el "hay foto en el server" de ESA fila: con un
+      // insert multi-fila la condición viaja en los valores, no en el `set`.
+      fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 ELSE ${trees.fotoSynced} END`,
       // IDs definitivos: conserva el local si ya existe (generado, no pusheado aún); adopta el del server si el local está vacío. Nunca pisa con NULL.
       plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
       globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
@@ -424,6 +405,63 @@ export async function upsertTreeFromServerTx(tx: Tx, t: any): Promise<void> {
       conflictEspecieNombre: sql`NULL`,
     },
   });
+}
+
+/** Nombre a mostrar cuando el server manda una especie que el catálogo local todavía no tiene. */
+const ESPECIE_DESCONOCIDA = 'Desconocida';
+
+/** Árbol del server cuya fila local ya tiene otra especie asignada: lo resuelve el usuario, no el pull. */
+type ConflictoDeEspecie = { remoto: any; especieLocal: string };
+
+/** `especieLocal` null o undefined = la fila local no existe o no tiene especie: no hay con qué chocar. */
+function esConflictoDeEspecie(
+  candidato: { remoto: any; especieLocal: string | null | undefined },
+): candidato is ConflictoDeEspecie {
+  if (!candidato.remoto.species_id) return false;
+  if (candidato.especieLocal == null) return false;
+  return candidato.especieLocal !== candidato.remoto.species_id;
+}
+
+/**
+ * Marca los árboles en conflicto con `conflictEspecieId` para que la UI prompte.
+ * El remoto de esas filas no se upsertea: lo decide el usuario.
+ */
+async function marcarConflictosDeEspecie(conflictivos: ConflictoDeEspecie[]): Promise<Set<string>> {
+  if (conflictivos.length === 0) return new Set();
+
+  // Un solo select de nombres para todos los conflictos, en vez de uno por árbol.
+  const idsDeEspecie = [...new Set(conflictivos.map(({ remoto }) => remoto.species_id as string))];
+  const filas = await db.select({ id: species.id, nombre: species.nombre }).from(species)
+    .where(inArray(species.id, idsDeEspecie));
+  const nombrePorEspecie = new Map(filas.map((e) => [e.id, e.nombre]));
+
+  await enTransaccionPorLotes(conflictivos, async (tx, lote) => {
+    for (const { remoto } of lote) {
+      await tx.update(trees).set({
+        conflictEspecieId: remoto.species_id,
+        conflictEspecieNombre: nombrePorEspecie.get(remoto.species_id) ?? ESPECIE_DESCONOCIDA,
+      }).where(eq(trees.id, remoto.id));
+    }
+  });
+
+  for (const { remoto, especieLocal } of conflictivos) {
+    syncLog.info(`Conflict detected for tree ${remoto.id}: local=${especieLocal}, server=${remoto.species_id}`);
+  }
+  return new Set(conflictivos.map(({ remoto }) => remoto.id as string));
+}
+
+/**
+ * Especie local de cada árbol de esos grupos, en una sola lectura (#449): antes
+ * el chequeo de conflicto costaba dos selects por árbol. Alcanza con filtrar por
+ * grupo porque un árbol nunca cambia de grupo — ni el alta ni el upsert del pull
+ * tocan `group_id` después de crearlo.
+ */
+async function especiePorArbolLocal(remoteGroupIds: string[]): Promise<Map<string, string | null>> {
+  const locales = await db
+    .select({ id: trees.id, especieId: trees.especieId })
+    .from(trees)
+    .where(inArray(trees.groupId, remoteGroupIds));
+  return new Map(locales.map((t) => [t.id, t.especieId]));
 }
 
 async function pullTrees(
@@ -445,17 +483,17 @@ async function pullTrees(
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, all.length);
   if (all.length === 0) return;
 
-  // Fast path: sin árboles locales para estos grupos (descarga fresh), se saltea el conflict check por fila (ahorra 2 reads × N).
-  const [localCountRow] = await db
-    .select({ cnt: count() })
-    .from(trees)
-    .where(sql`${trees.groupId} IN (${sql.join(remoteGroupIds.map((id) => sql`${id}`), sql`,`)})`);
-  const isFreshDownload = (localCountRow?.cnt ?? 0) === 0;
-  if (isFreshDownload) syncLog.info('Pull trees: fresh download — skipping per-tree conflict checks');
+  const especieLocal = await especiePorArbolLocal(remoteGroupIds);
+  // Descarga fresh: sin filas locales no hay nada con qué chocar.
+  if (especieLocal.size === 0) syncLog.info('Pull trees: fresh download — sin árboles locales');
 
-  await enTransaccionPorLotes(all, async (tx, t) => {
-      if (!isFreshDownload && await checkTreeConflict(tx, t)) return;
-      await upsertTreeFromServerTx(tx, t);
+  const conflictivos = all
+    .map((remoto: any) => ({ remoto, especieLocal: especieLocal.get(remoto.id) }))
+    .filter(esConflictoDeEspecie);
+  const enConflicto = await marcarConflictosDeEspecie(conflictivos);
+
+  await enTransaccionPorLotes(all, async (tx, lote) => {
+      await upsertTreesFromServerTx(tx, lote.filter((t: any) => !enConflicto.has(t.id)));
     },
     (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.arboles, escritas, all.length),
   );
