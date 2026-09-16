@@ -99,7 +99,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { pushBorrados } from '../../src/services/sync/pushService';
-import { deleteTreeAndRecalculate } from '../../src/repositories/TreeRepository';
+import { deleteLastTree, deleteTreeAndRecalculate } from '../../src/repositories/TreeRepository';
 import { deleteGroup } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { borradosPendientes } from '../../src/database/schema';
@@ -203,6 +203,16 @@ beforeEach(async () => {
 const leerArbol = async (id: string) => (await mockTestDb.select().from(trees).where(eq(trees.id, id)))[0];
 const arbolesDelGrupo = async () => mockTestDb.select().from(trees).where(eq(trees.groupId, GRUPO_ID)).orderBy(trees.posicion);
 
+/**
+ * El orden de producción: `correrSyncPlantation` hace el pull ANTES del push. Los
+ * tests tienen que respetarlo — con el orden invertido, un grupo borrado parecía
+ * resolverse y en realidad el pull lo resucitaba local.
+ */
+async function sincronizar() {
+  await pullFromServer(PLANTACION_ID);
+  await pushBorrados(PLANTACION_ID);
+}
+
 /** Grupo de 3 árboles ya sincronizado: existen local Y en el server. */
 async function grupoSincronizadoDeTres() {
   for (const i of [1, 2, 3]) {
@@ -240,10 +250,21 @@ describe('borrar un árbol de un grupo sincronizado (#467)', () => {
     await grupoSincronizadoDeTres();
     await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
 
-    await pushBorrados(PLANTACION_ID);
+    await sincronizar();
 
     expect(serverState.trees.has('t2')).toBe(false);
     expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
+  });
+
+  // El camino de borrado más usado: deshacer el último árbol cargado.
+  it('deshacer el último árbol también se propaga', async () => {
+    await grupoSincronizadoDeTres();
+
+    await deleteLastTree(GRUPO_ID);
+    await sincronizar();
+
+    expect(await leerArbol('t3')).toBeUndefined();
+    expect(serverState.trees.has('t3')).toBe(false);
   });
 
   // Si el registro se limpiara sin confirmación, el borrado se perdería para siempre.
@@ -252,14 +273,16 @@ describe('borrar un árbol de un grupo sincronizado (#467)', () => {
     await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
     rpcFalla.activo = true;
 
-    await pushBorrados(PLANTACION_ID);
+    await sincronizar();
 
     expect(serverState.trees.has('t2')).toBe(true);
     expect(await mockTestDb.select().from(borradosPendientes)).toHaveLength(1);
-
-    // Y el pull sigue sin resucitarlo mientras tanto.
-    await pullFromServer(PLANTACION_ID);
+    // Y el pull no lo resucitó mientras tanto.
     expect(await leerArbol('t2')).toBeUndefined();
+
+    rpcFalla.activo = false;
+    await sincronizar();
+    expect(serverState.trees.has('t2')).toBe(false);
   });
 
   // El registro baja la marca del grupo recién con el push del grupo; sin excluir
@@ -276,12 +299,15 @@ describe('borrar un árbol de un grupo sincronizado (#467)', () => {
 });
 
 describe('borrar un grupo entero (#467)', () => {
-  it('el pull no devuelve ni el grupo ni sus árboles', async () => {
+  // El pull corre primero, y la fila local del grupo ya no existe: `pendingSync` no
+  // puede protegerlo. Sin excluirlo por id, el pull lo resucita entero —con sus
+  // árboles— y el push después lo borra del server, dejando un grupo fantasma que
+  // ya no existe en ningún lado más que en el device.
+  it('el pull no lo resucita aunque corra antes del push', async () => {
     await grupoSincronizadoDeTres();
 
     await deleteGroup(GRUPO_ID);
-    await pushBorrados(PLANTACION_ID);
-    await pullFromServer(PLANTACION_ID);
+    await sincronizar();
 
     const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
     expect(grupo).toBeUndefined();
@@ -292,10 +318,25 @@ describe('borrar un grupo entero (#467)', () => {
     await grupoSincronizadoDeTres();
 
     await deleteGroup(GRUPO_ID);
-    await pushBorrados(PLANTACION_ID);
+    await sincronizar();
 
     expect(serverState.groups.has(GRUPO_ID)).toBe(false);
     expect(serverState.trees.size).toBe(0);
+  });
+
+  it('con el push caído tampoco vuelve, y el reintento lo termina de borrar', async () => {
+    await grupoSincronizadoDeTres();
+    rpcFalla.activo = true;
+
+    await deleteGroup(GRUPO_ID);
+    await sincronizar();
+
+    expect(await arbolesDelGrupo()).toEqual([]);
+    expect(serverState.groups.has(GRUPO_ID)).toBe(true);
+
+    rpcFalla.activo = false;
+    await sincronizar();
+    expect(serverState.groups.has(GRUPO_ID)).toBe(false);
   });
 });
 
@@ -341,6 +382,24 @@ describe('lo que NO tiene que cambiar', () => {
     await deletePlantationLocally(PLANTACION_ID);
 
     expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
+  });
+
+  /**
+   * El guard de `pendingSync` protege las ediciones locales, pero no puede frenar la
+   * fase entera: mientras el push de un grupo siga fallando, el técnico igual tiene
+   * que ver los árboles que cargó otro.
+   */
+  it('un árbol nuevo del server llega aunque el grupo esté pendiente', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+
+    serverState.trees.set('t-de-otro', { ...arbolDelServer('t-de-otro', ROBLE), posicion: 9, sub_id: 'P1LA-ROB-9' });
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await leerArbol('t-de-otro')).toBeDefined();
+    // Y lo local sigue protegido.
+    expect(await leerArbol('t2')).toBeUndefined();
+    expect((await leerArbol('t3')).posicion).toBe(2);
   });
 
   it('sin nada borrado, el push no llama al server', async () => {

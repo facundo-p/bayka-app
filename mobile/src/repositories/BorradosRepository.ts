@@ -66,16 +66,21 @@ export async function borradosDePlantacion(plantacionId: string): Promise<Borrad
   return filas as BorradoPendiente[];
 }
 
-/** Ids de árboles borrados de una plantación: el pull los excluye aunque el grupo ya no esté pendiente. */
-export async function arbolesBorradosDePlantacion(plantacionId: string): Promise<Set<string>> {
+/**
+ * Ids borrados de una plantación, por tipo. El pull los excluye aunque el grupo ya
+ * no esté pendiente — y en el caso de un grupo, la fila local ya no existe, así que
+ * `pendingSync` no puede decir nada: sin esto el pull lo resucita entero antes de
+ * que el push alcance a borrarlo en el server.
+ */
+export async function borradosPorTipo(plantacionId: string): Promise<{ arboles: Set<string>; grupos: Set<string> }> {
   const filas = await db
-    .select({ id: borradosPendientes.id })
+    .select({ id: borradosPendientes.id, tipo: borradosPendientes.tipo })
     .from(borradosPendientes)
-    .where(and(
-      eq(borradosPendientes.plantacionId, plantacionId),
-      eq(borradosPendientes.tipo, ENTIDAD_BORRADA.arbol),
-    ));
-  return new Set(filas.map((f) => f.id));
+    .where(eq(borradosPendientes.plantacionId, plantacionId));
+  return {
+    arboles: new Set(filas.filter((f) => f.tipo === ENTIDAD_BORRADA.arbol).map((f) => f.id)),
+    grupos: new Set(filas.filter((f) => f.tipo === ENTIDAD_BORRADA.grupo).map((f) => f.id)),
+  };
 }
 
 /** Se llama SOLO con la confirmación del server: si falla el push, las filas quedan para el próximo intento. */

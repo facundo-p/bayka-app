@@ -56,6 +56,11 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
   return { id, posicion: nextPosition, subId };
 }
 
+/**
+ * Deshacer el último árbol. Anota el borrado igual que `deleteTreeAndRecalculate`
+ * (#467): sin eso el pull lo resucita, y este es el camino de borrado más usado.
+ * No hace falta renumerar — se va el último.
+ */
 export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolean }> {
   const [maxResult] = await db
     .select({ maxPos: max(trees.posicion), id: trees.id })
@@ -64,7 +69,18 @@ export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolea
 
   if (maxResult?.id == null) return { deleted: false };
 
-  await db.delete(trees).where(eq(trees.id, maxResult.id));
+  const plantacionId = await plantacionDelGrupo(db, grupoId);
+  if (!plantacionId) {
+    throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
+  }
+
+  await enTransaccion(async (tx) => {
+    await tx.delete(trees).where(eq(trees.id, maxResult.id));
+    await registrarBorrado(tx, {
+      id: maxResult.id, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
+    });
+  });
+
   await markGroupPendingSync(grupoId);
   notifyDataChanged();
   return { deleted: true };

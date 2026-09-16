@@ -38,7 +38,13 @@ beforeAll(() => {
 
 function buildMockDb(selectResults: any[]) {
   return {
-    insert: jest.fn(() => ({ values: mockInsertValues })),
+    // `registrarBorrado` encadena `.onConflictDoNothing()` (#467).
+    insert: jest.fn(() => ({
+      values: jest.fn((valores: unknown) => {
+        mockInsertValues(valores);
+        return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+      }),
+    })),
     delete: jest.fn(() => ({ where: mockDeleteWhere })),
     update: jest.fn(() => ({
       set: jest.fn(() => ({ where: mockUpdateWhere })),
@@ -170,12 +176,23 @@ describe('TreeRepository', () => {
 
   describe('deleteLastTree', () => {
     it('deletes the tree with the highest posicion', async () => {
-      mockDb = buildMockDb([{ maxPos: 5, id: 'tree-5' }]);
+      mockDb = buildMockDb([{ maxPos: 5, id: 'tree-5', plantacionId: 'plant-1' }]);
 
       const result = await deleteLastTree('sg-1');
 
       expect(result.deleted).toBe(true);
       expect(mockDeleteWhere).toHaveBeenCalledTimes(1);
+    });
+
+    // Es el camino de borrado más usado: sin anotarlo, el pull lo resucita (#467).
+    it('anota el borrado para propagarlo al server', async () => {
+      mockDb = buildMockDb([{ maxPos: 5, id: 'tree-5', plantacionId: 'plant-1' }]);
+
+      await deleteLastTree('sg-1');
+
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tree-5', tipo: ENTIDAD_BORRADA.arbol, grupoId: 'sg-1' }),
+      );
     });
 
     it('returns deleted=false and does not call delete when subgroup has no trees', async () => {
@@ -188,7 +205,7 @@ describe('TreeRepository', () => {
     });
 
     it('calls notifyDataChanged only when a tree is deleted', async () => {
-      mockDb = buildMockDb([{ maxPos: 2, id: 'tree-2' }]);
+      mockDb = buildMockDb([{ maxPos: 2, id: 'tree-2', plantacionId: 'plant-1' }]);
       const { notifyDataChanged } = require('../../src/database/liveQuery');
 
       await deleteLastTree('sg-1');
