@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
@@ -62,6 +62,9 @@ export const parcelas = sqliteTable('parcelas', {
   uniqueName: uniqueIndex('parcelas_plantation_name_unique')
     .on(t.plantacionId, t.nombre)
     .where(sql`deleted_at IS NULL`),
+  // Los dos de arriba son PARCIALES: solo sirven si la query filtra deleted_at.
+  // El pull no lo hace (#449).
+  porPlantacion: index('parcelas_plantacion_id_idx').on(t.plantacionId),
 }));
 
 export const groups = sqliteTable('groups', {
@@ -80,6 +83,8 @@ export const groups = sqliteTable('groups', {
 }, (t) => ({
   uniqueCode: uniqueIndex('groups_parcela_code_unique').on(t.parcelaId, t.codigo),
   uniqueName: uniqueIndex('groups_parcela_name_unique').on(t.parcelaId, t.nombre),
+  // parcelaId no necesita índice propio: es la columna izquierda de los dos de arriba.
+  porPlantacion: index('groups_plantacion_id_idx').on(t.plantacionId),
 }));
 
 export const trees = sqliteTable('trees', {
@@ -102,14 +107,20 @@ export const trees = sqliteTable('trees', {
   longitude: real('longitude'),
   gpsAccuracy: real('gps_accuracy'),
   gpsCapturedAt: text('gps_captured_at'),
-});
+}, (t) => ({
+  // La tabla más grande, y todo la consulta por grupo: el pull, las pantallas y
+  // la bajada de fotos. SQLite no indexa las FK solo (#449).
+  porGrupo: index('trees_group_id_idx').on(t.groupId),
+}));
 
 export const plantationSpecies = sqliteTable('plantation_species', {
   id: text('id').primaryKey(),
   plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
   especieId: text('especie_id').notNull().references(() => species.id),
   ordenVisual: integer('orden_visual').notNull().default(0),
-});
+}, (t) => ({
+  porPlantacion: index('plantation_species_plantacion_id_idx').on(t.plantacionId),
+}));
 
 export const userSpeciesOrder = sqliteTable('user_species_order', {
   userId: text('user_id').notNull(),

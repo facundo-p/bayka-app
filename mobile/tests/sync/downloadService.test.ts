@@ -72,12 +72,10 @@ function setupTransaccionPassthrough() {
   (enTransaccionPorLotes as jest.Mock).mockImplementation(
     async (
       filas: unknown[],
-      escribir: (tx: unknown, f: unknown) => Promise<void>,
+      escribirLote: (tx: unknown, lote: unknown[]) => Promise<void>,
       onLote?: (n: number) => void,
     ) => {
-      await abrir(async (tx) => {
-        for (const fila of filas) await escribir(tx, fila);
-      });
+      await abrir((tx) => escribirLote(tx, filas));
       onLote?.(filas.length);
     },
   );

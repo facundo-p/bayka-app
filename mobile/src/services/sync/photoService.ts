@@ -8,12 +8,41 @@ import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/T
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';
+import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
 import { abortarSiCancelado, esCancelacion } from './cancelacion';
 import { TIMEOUT_MS, TimeoutError } from '../../supabase/fetchConTimeout';
 import { conReloj } from '../../utils/conReloj';
 import { marcandoActividadDeSync } from './syncActivityStore';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
+
+/** Derivado de la query, no escrito a mano: si el repositorio cambia de forma, esto no queda desfasado. */
+type ArbolConFotoPendiente = Awaited<ReturnType<typeof getTreesWithPendingPhotos>>[number];
+
+/** Sube la foto a Storage y deja `foto_url` apuntando al path relativo. @returns true si quedó sincronizada. */
+async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<boolean> {
+  // Path con parcela: parcela es obligatoria en groups (#90).
+  const storagePath = `plantations/${tree.plantacionId}/parcelas/${tree.parcelaId}/trees/${tree.id}.jpg`;
+
+  const { error } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
+  if (error) {
+    syncLog.error(`Photo upload failed for tree ${tree.id}:`, error.message);
+    return false;
+  }
+
+  // Update Supabase trees table with relative storage path.
+  const { error: updateError } = await supabase
+    .from('trees')
+    .update({ foto_url: storagePath })
+    .eq('id', tree.id);
+  if (updateError) {
+    syncLog.error(`foto_url update failed for tree ${tree.id}:`, updateError.message);
+    return false;
+  }
+
+  await markPhotoSynced(tree.id);
+  return true;
+}
 
 /**
  * Uploads all pending photos for a plantation to Supabase Storage.
@@ -30,38 +59,19 @@ async function correrUploadPendingPhotos(
   // hacía que el modal saltara a "Subiendo fotos... 0 de 0" (#447).
   if (pending.length === 0) return { uploaded: 0, failed: 0 };
 
+  const inicio = Date.now();
   let uploaded = 0;
   let failed = 0;
+  onProgress?.({ total: pending.length, completed: 0 });
 
-  for (let i = 0; i < pending.length; i++) {
+  await conLimiteDeConcurrencia(pending, FOTOS_EN_PARALELO, async (tree) => {
     abortarSiCancelado();
-    onProgress?.({ total: pending.length, completed: i });
-    const tree = pending[i];
-    // Path con parcela: parcela es obligatoria en groups (#90).
-    const storagePath = `plantations/${tree.plantacionId}/parcelas/${tree.parcelaId}/trees/${tree.id}.jpg`;
+    if (await uploadSinglePhoto(tree)) uploaded++; else failed++;
+    // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
+    onProgress?.({ total: pending.length, completed: uploaded + failed });
+  });
 
-    const { error } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
-    if (error) {
-      syncLog.error(`Photo upload failed for tree ${tree.id}:`, error.message);
-      failed++;
-    } else {
-      // Update Supabase trees table with relative storage path.
-      const { error: updateError } = await supabase
-        .from('trees')
-        .update({ foto_url: storagePath })
-        .eq('id', tree.id);
-
-      if (updateError) {
-        syncLog.error(`foto_url update failed for tree ${tree.id}:`, updateError.message);
-        failed++;
-      } else {
-        await markPhotoSynced(tree.id);
-        uploaded++;
-      }
-    }
-  }
-
-  onProgress?.({ total: pending.length, completed: pending.length });
+  syncLog.info(`Upload fotos: ${uploaded} ok, ${failed} fallidas en ${Date.now() - inicio}ms`);
   return { uploaded, failed };
 }
 
@@ -110,11 +120,6 @@ async function downloadSinglePhoto(
 }
 
 /**
- * Downloads remote photos for a plantation to local storage.
- * Runs during pull flow; skips trees with local file:// URIs.
- * Updates local fotoUrl to local path and sets fotoSynced=true on success.
- */
-/**
  * `ExpoFile.downloadFileAsync` es la única transferencia que el fetch con timeout
  * no cubre: no pasa por el cliente de Supabase y sus `DownloadOptions` solo tienen
  * `headers` e `idempotent` — no aceptan AbortSignal (#451).
@@ -135,6 +140,11 @@ async function bajarConTimeout(url: string, destino: InstanceType<typeof ExpoFil
   );
 }
 
+/**
+ * Downloads remote photos for a plantation to local storage.
+ * Runs during pull flow; skips trees with local file:// URIs.
+ * Updates local fotoUrl to local path and sets fotoSynced=true on success.
+ */
 async function correrDownloadPhotosForPlantation(
   plantacionId: string,
   onProgress?: (p: PhotoSyncProgress) => void
@@ -147,24 +157,26 @@ async function correrDownloadPhotosForPlantation(
 
   syncLog.info(`Download photos: ${remoteTrees.length} remote trees found`);
 
+  const inicio = Date.now();
   let downloaded = 0;
   let failed = 0;
+  onProgress?.({ total: remoteTrees.length, completed: 0 });
 
-  for (let i = 0; i < remoteTrees.length; i++) {
+  await conLimiteDeConcurrencia(remoteTrees, FOTOS_EN_PARALELO, async (tree) => {
     abortarSiCancelado();
-    onProgress?.({ total: remoteTrees.length, completed: i });
     try {
-      const success = await downloadSinglePhoto(remoteTrees[i], dir);
-      if (success) downloaded++; else failed++;
+      if (await downloadSinglePhoto(tree, dir)) downloaded++; else failed++;
     } catch (e: any) {
       // Una foto que falla —timeout incluido— no corta la tanda; una cancelación sí.
       if (esCancelacion(e)) throw e;
-      syncLog.error(`Photo download EXCEPTION for tree ${remoteTrees[i].id}: ${e?.message}`);
+      syncLog.error(`Photo download EXCEPTION for tree ${tree.id}: ${e?.message}`);
       failed++;
     }
-  }
+    // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
+    onProgress?.({ total: remoteTrees.length, completed: downloaded + failed });
+  });
 
-  onProgress?.({ total: remoteTrees.length, completed: remoteTrees.length });
+  syncLog.info(`Download fotos: ${downloaded} ok, ${failed} fallidas en ${Date.now() - inicio}ms`);
   return { downloaded, failed };
 }
 

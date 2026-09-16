@@ -10,10 +10,10 @@ import {
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
-import { enTransaccion } from '../../database/transaccion';
+import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
-import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { esTimeout } from '../../supabase/fetchConTimeout';
+import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
@@ -24,15 +24,16 @@ type ServerSpecies = { id: string; codigo: string; nombre: string; nombre_cienti
 /** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
 type DbExecutor = Pick<typeof db, 'insert' | 'update' | 'delete' | 'select'>;
 
-/** Upsert de especie del server por `id` (clave estable entre devices); actualiza codigo/nombre/cientifico en conflicto. */
-async function upsertSpeciesById(exec: DbExecutor, s: ServerSpecies): Promise<void> {
-  await exec.insert(species).values({
+/** Upsert de especies del server por `id` (clave estable entre devices) en un statement; actualiza codigo/nombre/cientifico en conflicto. */
+async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Promise<void> {
+  if (filas.length === 0) return;
+  await exec.insert(species).values(filas.map((s) => ({
     id: s.id,
     codigo: s.codigo,
     nombre: s.nombre,
     nombreCientifico: s.nombre_cientifico ?? null,
     createdAt: s.created_at,
-  }).onConflictDoUpdate({
+  }))).onConflictDoUpdate({
     target: species.id,
     set: {
       codigo: sql`excluded.codigo`,
@@ -65,7 +66,7 @@ async function reconcileSpeciesCodigoCollision(s: ServerSpecies): Promise<boolea
     await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, dup.id));
 
     await tx.delete(species).where(eq(species.id, dup.id));
-    await upsertSpeciesById(tx, s);
+    await upsertSpeciesById(tx, [s]);
     return true;
   });
 }
@@ -82,11 +83,29 @@ export async function pullSpeciesFromServer(): Promise<void> {
   let inserted = 0;
   let reconciled = 0;
   let skipped = 0;
-  // Upsert por fila (no una sola transacción): un fallo en una especie no debe abortar el resto del catálogo.
-  for (const s of data) {
+
+  // Camino rápido: el catálogo en lotes de un statement. Un lote que falla —lo
+  // esperable es un choque por UNIQUE(codigo)— se rehace fila por fila, que es el
+  // camino lento de siempre: aísla la especie problemática y reconcilia (#449).
+  const porFila: ServerSpecies[] = [];
+  for (let i = 0; i < data.length; i += FILAS_POR_TRANSACCION) {
+    abortarSiCancelado();
+    const lote = data.slice(i, i + FILAS_POR_TRANSACCION);
+    try {
+      await enTransaccion((tx) => upsertSpeciesById(tx, lote));
+      inserted += lote.length;
+    } catch (e) {
+      // El catch de "seguir ante fallas" no puede tragarse la cancelación (#451).
+      relanzarSiEsCancelacion(e);
+      porFila.push(...lote);
+    }
+  }
+
+  // Un fallo en una especie no debe abortar el resto del catálogo.
+  for (const s of porFila) {
     abortarSiCancelado();
     try {
-      await upsertSpeciesById(db, s);
+      await upsertSpeciesById(db, [s]);
       inserted++;
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
