@@ -21,6 +21,7 @@ import {
 } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
+import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -133,8 +134,9 @@ export async function uploadGroup(
   // el tramo más largo del sync de una plantación con fotos.
   if (pendientes.length > 0) onPhotoProgress?.({ total: pendientes.length, completed: 0 });
 
-  for (let i = 0; i < pendientes.length; i++) {
-    const t = pendientes[i];
+  // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
+  let completadas = 0;
+  await conLimiteDeConcurrencia(pendientes, FOTOS_EN_PARALELO, async (t) => {
     const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
     const { error } = await uploadPhotoToStorage(t.fotoUrl!, storagePath);
     if (!error) {
@@ -143,8 +145,8 @@ export async function uploadGroup(
     } else {
       syncLog.error(`Photo upload failed for tree ${t.id}:`, error.message);
     }
-    onPhotoProgress?.({ total: pendientes.length, completed: i + 1 });
-  }
+    onPhotoProgress?.({ total: pendientes.length, completed: ++completadas });
+  });
 
   // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
   // server-side; los REST calls directos ya usan groups/group_id.

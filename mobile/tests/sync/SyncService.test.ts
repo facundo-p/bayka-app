@@ -77,6 +77,7 @@ import { markGroupSynced, getSyncableGroups } from '../../src/repositories/Group
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { File as ExpoFile } from 'expo-file-system';
+import { FOTOS_EN_PARALELO } from '../../src/services/sync/concurrencia';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
@@ -446,6 +447,41 @@ describe('SyncService', () => {
       const result = await uploadPendingPhotos('plantation-1');
 
       expect(result).toEqual({ uploaded: 1, failed: 1 });
+    });
+
+    // Con N fotos en vuelo el índice del loop ya no es el avance: la primera en
+    // arrancar puede ser la última en terminar y el contador retrocedería (#449).
+    it('sube de a FOTOS_EN_PARALELO y el progreso cuenta completadas, no el índice', async () => {
+      const pending = Array.from({ length: 5 }, (_, i) => ({
+        id: `tree-${i}`, fotoUrl: `file://document/photos/photo_${i}.jpg`, grupoId: 'sg-1', plantacionId: 'plantation-1',
+      }));
+      mockGetTreesWithPendingPhotos.mockResolvedValue(pending);
+
+      let enVuelo = 0;
+      let pico = 0;
+      const storageChain = {
+        // La foto 0 termina última: la más lenta es la primera en arrancar.
+        upload: jest.fn().mockImplementation((path: string) => {
+          enVuelo++;
+          pico = Math.max(pico, enVuelo);
+          return new Promise((resolver) =>
+            setTimeout(() => { enVuelo--; resolver({ error: null }); }, path.includes('tree-0') ? 30 : 1),
+          );
+        }),
+        createSignedUrl: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+        select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      });
+
+      const completadas: number[] = [];
+      const result = await uploadPendingPhotos('plantation-1', (p) => completadas.push(p.completed));
+
+      expect(pico).toBe(FOTOS_EN_PARALELO);
+      expect(completadas).toEqual([0, 1, 2, 3, 4, 5]);
+      expect(result).toEqual({ uploaded: 5, failed: 0 });
     });
 
     it('Test 11: returns { uploaded: 0, failed: 0 } when no pending photos', async () => {

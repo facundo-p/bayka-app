@@ -141,6 +141,13 @@
       "when": 1789171200000,
       "tag": "0019_plantations_photo_capture_all_trees",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1789603200000,
+      "tag": "0020_indices_de_sync",
+      "breakpoints": true
     }
   ]
 }

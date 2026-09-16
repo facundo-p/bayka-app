@@ -21,6 +21,7 @@ import m0016 from './0016_gps_config_server_snapshot.sql';
 import m0017 from './0017_plantations_visible_in_app.sql';
 import m0018 from './0018_groups_parcela_id_not_null.sql';
 import m0019 from './0019_plantations_photo_capture_all_trees.sql';
+import m0020 from './0020_indices_de_sync.sql';
 
   export default {
     journal,
@@ -44,6 +45,7 @@ m0015,
 m0016,
 m0017,
 m0018,
-m0019
+m0019,
+m0020
     }
   }
