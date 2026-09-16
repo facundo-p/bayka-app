@@ -22,6 +22,7 @@ import {
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
+import { esTimeout } from '../../supabase/fetchConTimeout';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -99,7 +100,8 @@ export async function uploadSyncableParcelas(
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
       syncLog.error(`Parcela upload exception "${parcela.nombre}" (${parcela.id}):`, e);
-      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.NETWORK });
+      const codigo = esTimeout(e) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK;
+      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: codigo });
     }
   }
 
@@ -192,7 +194,10 @@ export function classifyRpcResult(
 ): SyncGroupResult {
   if (error) {
     syncLog.error(`RPC error for "${sg.nombre}" (${sg.id}):`, JSON.stringify(error));
-    return { success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK };
+    // El push de grupos es el camino dominante: sin esto el código TIMEOUT no
+    // llegaría nunca a la UI por acá (#451).
+    const codigo = esTimeout(error) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK;
+    return { success: false, groupId: sg.id, nombre: sg.nombre, error: codigo };
   }
   if (data?.success === true) {
     return { success: true, groupId: sg.id, nombre: sg.nombre };
@@ -256,7 +261,8 @@ export async function uploadSyncableGroups(
     } catch (e) {
       relanzarSiEsCancelacion(e);
       syncLog.error(`Exception for "${sg.nombre}" (${sg.id}):`, e);
-      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK });
+      const codigo = esTimeout(e) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK;
+      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: codigo });
     }
   }
 

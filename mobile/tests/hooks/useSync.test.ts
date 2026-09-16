@@ -382,3 +382,53 @@ describe('useSync — cancelación y timeout (#451)', () => {
     expect(result.current.cancelado).toBe(false);
   });
 });
+
+describe('useSync — un pull fallido no se reporta como éxito (#451)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('con el pull caído, pullSuccess es false aunque el push haya andado', async () => {
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullError?.(new Error('Network request failed'));
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('un timeout del pull se distingue de una caída de red cualquiera', async () => {
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullError?.(new Error(`${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /rest/v1/trees`));
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(true);
+  });
+
+  it('el sync global con todas las plantaciones caídas no dice que salió bien', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'A', results: [], parcelas: [], fallo: new Error('Network request failed') },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('el sync global sin fallas sigue reportando éxito', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'A', results: [], parcelas: [] },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(true);
+  });
+});

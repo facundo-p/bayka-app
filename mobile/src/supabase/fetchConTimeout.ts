@@ -11,10 +11,18 @@
  */
 
 export const TIMEOUT_MS = {
-  /** Query o RPC de PostgREST, y las llamadas de auth. */
+  /** Query o RPC puntual, y las llamadas de auth: si no contesta en 30s, no va a contestar. */
   query: 30_000,
-  /** Subida o bajada de una foto por Storage. */
-  foto: 120_000,
+  /**
+   * Transferencia grande: una foto de 4 MB, o una página de 1000 filas.
+   *
+   * `fetch` en React Native va sobre XHR y resuelve recién con el cuerpo entero,
+   * así que el reloj mide la transferencia completa, no el primer byte. Los 30s de
+   * una query serían un presupuesto de descarga: una página de árboles pesa ~170 KB
+   * comprimidos y con 5 kB/s —mala señal de campo, el escenario que importa— no
+   * entra. Eso rompería una descarga que estaba avanzando bien.
+   */
+  transferencia: 120_000,
 } as const;
 
 /**
@@ -48,15 +56,18 @@ export function esTimeout(error: unknown): boolean {
   return typeof mensaje === 'string' && mensaje.includes(MARCA_DE_TIMEOUT);
 }
 
-/** Path sin query string: el mensaje va a los logs y los filtros no aportan nada. */
-function recursoDe(input: RequestInfo | URL): string {
-  const url = typeof input === 'string' ? input : String((input as Request).url ?? input);
-  return url.split('?')[0];
+function urlDe(input: RequestInfo | URL): string {
+  return typeof input === 'string' ? input : String((input as Request).url ?? input);
 }
 
-/** Storage vive bajo /storage/v1/; PostgREST bajo /rest/v1/ y auth bajo /auth/v1/. */
-function esTransferenciaDeFoto(recurso: string): boolean {
-  return recurso.includes('/storage/v1/');
+/**
+ * Storage vive bajo /storage/v1/. Y `.range()` de postgrest —la paginación del
+ * pull— se traduce en `offset`+`limit` en el query string: los dos juntos son su
+ * firma, y distinguen una página de 1000 filas de un `.limit(1)` cualquiera.
+ */
+function esTransferenciaGrande(url: string): boolean {
+  if (url.includes('/storage/v1/')) return true;
+  return url.includes('offset=') && url.includes('limit=');
 }
 
 /**
@@ -66,8 +77,10 @@ function esTransferenciaDeFoto(recurso: string): boolean {
  */
 export function conTimeout(fetchBase: typeof fetch = fetch): typeof fetch {
   return async (input, init) => {
-    const recurso = recursoDe(input);
-    const ms = esTransferenciaDeFoto(recurso) ? TIMEOUT_MS.foto : TIMEOUT_MS.query;
+    const url = urlDe(input);
+    // Sin el query string: el mensaje va a los logs y los filtros no aportan nada.
+    const recurso = url.split('?')[0];
+    const ms = esTransferenciaGrande(url) ? TIMEOUT_MS.transferencia : TIMEOUT_MS.query;
 
     const control = new AbortController();
     let vencio = false;

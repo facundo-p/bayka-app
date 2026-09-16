@@ -52,6 +52,7 @@ import {
   DownloadProgress,
 } from '../../src/services/SyncService';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
+import { cancelarCorrida, iniciarCorrida, SyncCanceladoError, terminarCorrida } from '../../src/services/sync/cancelacion';
 import { enTransaccion, enTransaccionPorLotes } from '../../src/database/transaccion';
 
 /**
@@ -336,6 +337,8 @@ describe('downloadPlantation · pull fallido (#448)', () => {
     (deletePlantationLocally as jest.Mock).mockResolvedValue(undefined);
   });
 
+  afterEach(() => terminarCorrida());
+
   // La fila se inserta con `pendingSync: false` ANTES del pull: si el pull falla
   // queda una plantación "descargada" y vacía en el listado.
   it('revierte la plantación nueva cuyo pull falló', async () => {
@@ -344,6 +347,21 @@ describe('downloadPlantation · pull fallido (#448)', () => {
     await expect(downloadPlantation(makeServerPlantation('p-nueva'))).rejects.toThrow('Sin acceso');
 
     expect(deletePlantationLocally).toHaveBeenCalledWith('p-nueva');
+  });
+
+  /**
+   * La cancelación es de módulo: cortar una sync alcanza a cualquier descarga de
+   * catálogo que estuviera corriendo en paralelo. Eso se aborta y se reintenta —
+   * pero no puede disparar el borrado, que es destructivo (#451).
+   */
+  it('una cancelación aborta la descarga pero NO borra la plantación', async () => {
+    setupPlantacionLocal([]);
+    iniciarCorrida();
+    cancelarCorrida();
+
+    await expect(downloadPlantation(makeServerPlantation('p-nueva'))).rejects.toBeInstanceOf(SyncCanceladoError);
+
+    expect(deletePlantationLocally).not.toHaveBeenCalled();
   });
 
   // Una que ya estaba descargada conserva sus datos viejos: son mejores que nada

@@ -130,8 +130,8 @@ async function bajarConTimeout(url: string, destino: InstanceType<typeof ExpoFil
     // cortada antes del update de la base— hace fallar todo reintento con "file already
     // exists". Con la opción, el reintento re-descarga y sobreescribe (#452).
     ExpoFile.downloadFileAsync(url, destino, { idempotent: true }),
-    TIMEOUT_MS.foto,
-    () => new TimeoutError(destino.uri, TIMEOUT_MS.foto),
+    TIMEOUT_MS.transferencia,
+    () => new TimeoutError(destino.uri, TIMEOUT_MS.transferencia),
   );
 }
 

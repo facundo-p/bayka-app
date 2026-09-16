@@ -1,6 +1,8 @@
 import { conTimeout, esTimeout, errorDeTimeout, MARCA_DE_TIMEOUT, TIMEOUT_MS, TimeoutError } from '../../src/supabase/fetchConTimeout';
 
 const URL_QUERY = 'https://proyecto.supabase.co/rest/v1/trees?select=*&group_id=in.(a,b)';
+/** `.range()` de postgrest: offset+limit en el query string. */
+const URL_PAGINA = 'https://proyecto.supabase.co/rest/v1/trees?select=*&offset=0&limit=1000';
 const URL_FOTO = 'https://proyecto.supabase.co/storage/v1/object/tree-photos/plantations/p/t.jpg';
 
 /**
@@ -61,7 +63,35 @@ describe('conTimeout', () => {
     jest.advanceTimersByTime(TIMEOUT_MS.query);
     expect(await sigueEsperando(pedido)).toBe(true);
 
-    jest.advanceTimersByTime(TIMEOUT_MS.foto - TIMEOUT_MS.query);
+    jest.advanceTimersByTime(TIMEOUT_MS.transferencia - TIMEOUT_MS.query);
+    await afirmacion;
+  });
+
+  /**
+   * `fetch` en React Native resuelve recién con el cuerpo entero, así que el reloj
+   * de una página de 1000 filas es un presupuesto de descarga, no de espera. Con 30s
+   * una descarga que estaba avanzando bien con mala señal se rompería.
+   */
+  it('a una página paginada le da el timeout largo, no el de query', async () => {
+    const envuelto = conTimeout(fetchQueNoResponde());
+    const pedido = envuelto(URL_PAGINA);
+    const afirmacion = expect(pedido).rejects.toThrow(MARCA_DE_TIMEOUT);
+
+    jest.advanceTimersByTime(TIMEOUT_MS.query);
+    expect(await sigueEsperando(pedido)).toBe(true);
+
+    jest.advanceTimersByTime(TIMEOUT_MS.transferencia - TIMEOUT_MS.query);
+    await afirmacion;
+  });
+
+  // Un `.limit(1)` suelto (checkFreshness) es una query, no una transferencia.
+  it('un limit sin offset sigue siendo una query', async () => {
+    const envuelto = conTimeout(fetchQueNoResponde());
+    const pedido = envuelto('https://proyecto.supabase.co/rest/v1/groups?select=created_at&limit=1');
+    const afirmacion = expect(pedido).rejects.toThrow(MARCA_DE_TIMEOUT);
+
+    jest.advanceTimersByTime(TIMEOUT_MS.query);
+
     await afirmacion;
   });
 

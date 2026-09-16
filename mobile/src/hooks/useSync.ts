@@ -92,6 +92,7 @@ export function useSync(plantacionId?: string) {
 
     try {
       let accesoRevocado = false;
+      let falloElPull = false;
       const res = await syncPlantation(targetPlantacionId, {
         // El push arranca cuando llega su primer progreso: antes, `pushing` se
         // seteaba de entrada y el pull entero corría mostrando "Subiendo grupos...".
@@ -125,9 +126,13 @@ export function useSync(plantacionId?: string) {
           accesoRevocado = esSinAcceso(pull);
           setSinAcceso(accesoRevocado);
         },
+        onPullError: (e) => {
+          falloElPull = true;
+          if (esTimeout(e)) setHuboTimeout(true);
+        },
       });
       setResults(res);
-      setPullSuccess(!accesoRevocado);
+      setPullSuccess(!accesoRevocado && !falloElPull);
 
       // Sin acceso no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
       if (incluirFotos && !accesoRevocado) {
@@ -195,7 +200,11 @@ export function useSync(plantacionId?: string) {
       const flatResults = allResults.flatMap(r => r.results);
       setResults(flatResults);
       setParcelaResults(allResults.flatMap(r => r.parcelas ?? []));
-      setPullSuccess(true);
+      // Una corrida donde todas las plantaciones fallaron llegaba acá con listas
+      // vacías y se reportaba como exitosa.
+      const fallidas = allResults.filter((r) => r.fallo);
+      setPullSuccess(fallidas.length === 0);
+      if (fallidas.some((r) => esTimeout(r.fallo))) setHuboTimeout(true);
     } catch (err) {
       clasificarFalla(err);
     } finally {

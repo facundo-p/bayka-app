@@ -9,6 +9,12 @@
  * fases de fotos, que corren fuera de los orquestadores. Un pull suelto
  * (pull-to-refresh) no abre corrida y por lo tanto no es cancelable — no tiene
  * dónde ofrecerlo.
+ *
+ * Al ser de módulo, el corte alcanza a TODO lo que pase por `fetchAllRows`,
+ * incluida una descarga de catálogo que estuviera corriendo en paralelo. Eso es
+ * aceptable —se aborta, y se reintenta— con una condición que no se negocia:
+ * ningún rollback destructivo puede dispararse por una cancelación. Por eso
+ * `relanzarSiEsCancelacion` va ANTES del revert en `downloadService`.
  */
 
 /** No es un error de sync: el usuario pidió salir. Los callers lo distinguen para no reportar una falla. */
@@ -46,7 +52,12 @@ export function cancelarCorrida(): void {
   control?.abort();
 }
 
-/** Para pasarle a `.abortSignal()` de postgrest y al `{ signal }` de storage: mata la request en vuelo en vez de esperar al próximo borde. */
+/**
+ * Para `.abortSignal()` de postgrest: mata la página en vuelo en vez de esperar al
+ * próximo borde. Storage no tiene equivalente —`FileOptions` de storage-js 2.101 no
+ * acepta `signal`— así que una foto en curso se corta recién al terminar o al
+ * vencer su timeout.
+ */
 export function signalDeCancelacion(): AbortSignal | undefined {
   return control?.signal;
 }

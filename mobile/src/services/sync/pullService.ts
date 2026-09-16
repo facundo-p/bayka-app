@@ -502,6 +502,8 @@ async function correrPullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<PullResult> {
+  // Cancelado antes de arrancar: ni el chequeo de membresía tiene sentido.
+  abortarSiCancelado();
   if (!(await tieneAccesoRemoto(plantacionId))) {
     syncLog.info('Pull abortado: sin membresía en la plantación', plantacionId);
     return PULL_SIN_ACCESO;

@@ -4,7 +4,7 @@
  * se tragan la cancelación y el usuario aprieta el botón mientras la sync sigue
  * corriendo (#451).
  */
-jest.mock('../../src/database/client', () => ({ db: {}, sqlite: undefined }));
+jest.mock('../../src/database/client', () => ({ db: { select: jest.fn() }, sqlite: undefined }));
 jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
 jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn(), warn: jest.fn() },
@@ -26,7 +26,9 @@ jest.mock('../../src/services/sync/photoService', () => ({
   downloadPhotosForPlantation: jest.fn().mockResolvedValue({ downloaded: 0, failed: 0 }),
 }));
 
-import { syncPlantation } from '../../src/services/sync/orchestrators';
+import { syncAllPlantations, syncPlantation } from '../../src/services/sync/orchestrators';
+import { db } from '../../src/database/client';
+import { MARCA_DE_TIMEOUT } from '../../src/supabase/fetchConTimeout';
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from '../../src/services/sync/pushService';
 import { SyncCanceladoError } from '../../src/services/sync/cancelacion';
@@ -66,5 +68,89 @@ describe('syncPlantation — una cancelación corta la corrida', () => {
     await syncPlantation('plant-1');
 
     expect(uploadSyncableGroups).toHaveBeenCalled();
+  });
+});
+
+/**
+ * El push sigue aunque el pull falle —subir lo que el técnico cargó vale más que
+ * el pull— pero el usuario tiene que enterarse. Sin avisar, la UI le dice "Datos
+ * actualizados" a un pull que no bajó nada (#451).
+ */
+describe('syncPlantation — un pull que falla se avisa', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('avisa del pull fallido y sigue con el push', async () => {
+    const caida = new Error('Network request failed');
+    (pullFromServer as jest.Mock).mockRejectedValue(caida);
+    const onPullError = jest.fn();
+
+    await syncPlantation('plant-1', { onPullError });
+
+    expect(onPullError).toHaveBeenCalledWith(caida);
+    expect(uploadSyncableGroups).toHaveBeenCalled();
+  });
+
+  it('un timeout del pull llega como tal, no como un error genérico', async () => {
+    const timeout = new Error(`${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /rest/v1/trees`);
+    (pullFromServer as jest.Mock).mockRejectedValue(timeout);
+    const onPullError = jest.fn();
+
+    await syncPlantation('plant-1', { onPullError });
+
+    expect(onPullError).toHaveBeenCalledWith(timeout);
+  });
+
+  it('un pull que sale bien no dispara el aviso', async () => {
+    (pullFromServer as jest.Mock).mockResolvedValue({ estado: 'ok' });
+    const onPullError = jest.fn();
+
+    await syncPlantation('plant-1', { onPullError });
+
+    expect(onPullError).not.toHaveBeenCalled();
+  });
+
+  it('una cancelación del pull no se reporta como pull fallido', async () => {
+    (pullFromServer as jest.Mock).mockRejectedValue(new SyncCanceladoError());
+    const onPullError = jest.fn();
+
+    await expect(syncPlantation('plant-1', { onPullError })).rejects.toBeInstanceOf(SyncCanceladoError);
+    expect(onPullError).not.toHaveBeenCalled();
+  });
+});
+
+describe('syncAllPlantations — una plantación caída queda registrada', () => {
+  const unaPlantacionLocal = () => {
+    (db.select as jest.Mock).mockReturnValue({ from: jest.fn().mockResolvedValue([{ id: 'p1', lugar: 'Campo Norte' }]) });
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    unaPlantacionLocal();
+  });
+
+  // Sin el `fallo`, una corrida donde todo se cayó llega a la UI con listas vacías,
+  // indistinguible de una donde no había nada que sincronizar (#451).
+  it('guarda la excepción que la tumbó, no solo listas vacías', async () => {
+    const caida = new Error('Network request failed');
+    (pullFromServer as jest.Mock).mockRejectedValue(caida);
+
+    const [resultado] = await syncAllPlantations(undefined, false);
+
+    expect(resultado.fallo).toBe(caida);
+    expect(resultado.results).toEqual([]);
+  });
+
+  it('una plantación que sincroniza bien no queda marcada', async () => {
+    (pullFromServer as jest.Mock).mockResolvedValue({ estado: 'ok' });
+
+    const [resultado] = await syncAllPlantations(undefined, false);
+
+    expect(resultado.fallo).toBeUndefined();
+  });
+
+  it('cancelar corta el barrido en vez de marcar la plantación como caída', async () => {
+    (pullFromServer as jest.Mock).mockRejectedValue(new SyncCanceladoError());
+
+    await expect(syncAllPlantations(undefined, false)).rejects.toBeInstanceOf(SyncCanceladoError);
   });
 });
