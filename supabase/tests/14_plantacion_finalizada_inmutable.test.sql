@@ -33,9 +33,10 @@ insert into parcelas (id, plantation_id, nombre, codigo) values
   ('a1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000002', 'P14', 'P14'),
   ('a1000000-0000-0000-0000-000000000013', 'a1000000-0000-0000-0000-000000000012', 'P14b', 'P14b');
 
+-- Sólo los técnicos: a los admin y superadmin los enrola solo el trigger
+-- `trg_add_admin_memberships` al crear la plantación.
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('a1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-0000000000a1', 'tecnico'),
-  ('a1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-0000000000a3', 'tecnico'),
   ('a1000000-0000-0000-0000-000000000012', 'a1000000-0000-0000-0000-0000000000a1', 'tecnico');
 
 insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, usuario_creador) values
