@@ -127,6 +127,7 @@ export function useTreeRegistration({
     [plantacionId]
   );
   const plantacionEstado = plantationEstadoRows ?? ESTADO_PLANTACION.activa;
+  const estadoPlantacionCargado = plantationEstadoRows !== undefined;
 
   const { data: captureConfig } = useLiveData(
     () => getPlantationCaptureConfig(plantacionId),
@@ -140,11 +141,13 @@ export function useTreeRegistration({
   const isOwner = subgroup && userId
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador }, userId, plantacionEstado)
     : false;
-  const dataLoaded = subgroup !== null && userId !== '';
+  // Sin el estado de la plantación el default es 'activa', así que decidir antes de
+  // que cargue habilita la pantalla entera sobre una plantación finalizada (#469).
+  const dataLoaded = subgroup !== null && userId !== '' && estadoPlantacionCargado;
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
   // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
   // eso reaparecía el borrado en el listado de grupos (#469).
-  const canReactivate = getGroupGating({
+  const canReactivate = dataLoaded && getGroupGating({
     plantacionEstado,
     subgroupEstado,
     isCreator,

@@ -137,6 +137,8 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
 
   async function handleEditSubmit(values: { nombre: string; codigo: string; tipo: GroupTipo }) {
     if (!editingGroup) return { success: false as const, error: 'unknown' as const };
+    // El modal pudo quedar abierto mientras un pull finalizaba la plantación.
+    if (!permisosDeGrupo(editingGroup).canEdit) return { success: false as const, error: 'unknown' as const };
     const result = await updateGroup(editingGroup.id, values);
     if (result.success && values.codigo !== editingGroup.codigo) {
       await updateGroupCode(editingGroup.id, values.codigo, editingGroup.codigo);

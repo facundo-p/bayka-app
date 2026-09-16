@@ -18,6 +18,7 @@ import type { Plantation } from '../components/PlantationConfigCard';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
+import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
 const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 };
 
@@ -134,7 +135,10 @@ export function usePlantacionesScreen() {
     router.push(`/${routePrefix}/plantation/${navId}` as any);
   }, [plantacionPendienteNav, router, routePrefix]);
 
+  // Editar lugar/período/config escribe en `plantations`: bloqueado si está
+  // finalizada (#469). Cubre las dos entradas: long-press de la card y el gear.
   const handleEditPress = useCallback((plantation: Plantation) => {
+    if (!plantacionEsEditable(plantation.estado)) return;
     setEditingPlantation(plantation);
   }, []);
 

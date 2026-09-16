@@ -219,3 +219,29 @@ describe('usePlantacionesScreen — sesión expirada durante sync', () => {
     expect(mockSignOut).toHaveBeenCalled();
   });
 });
+
+describe('usePlantacionesScreen — edición de plantación finalizada (#469)', () => {
+  const FINALIZADA = {
+    id: 'p-fin', lugar: 'Finca Norte', periodo: '2026-A',
+    estado: 'finalizada', createdAt: '2026-01-01',
+  } as any;
+  const ACTIVA = { ...FINALIZADA, id: 'p-act', estado: 'activa' };
+
+  // Editar escribe lugar/período/config en `plantations`. La guarda va acá y no
+  // en cada render porque son dos entradas: long-press de la card y el gear.
+  it('no abre el modal de edición si la plantación está finalizada', () => {
+    const { result } = renderHook(() => usePlantacionesScreen());
+
+    act(() => result.current.handleEditPress(FINALIZADA));
+
+    expect(result.current.editingPlantation).toBeNull();
+  });
+
+  it('sí lo abre si está activa', () => {
+    const { result } = renderHook(() => usePlantacionesScreen());
+
+    act(() => result.current.handleEditPress(ACTIVA));
+
+    expect(result.current.editingPlantation).toEqual(ACTIVA);
+  });
+});

@@ -65,8 +65,14 @@ export default function ParcelasScreen() {
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
-  function openCreate() { setFormModalState({ mode: 'create', parcela: null }); }
-  function openEdit(p: ParcelaWithStats) { setFormModalState({ mode: 'edit', parcela: p }); }
+  function openCreate() {
+    if (!plantacionEditable) return;
+    setFormModalState({ mode: 'create', parcela: null });
+  }
+  function openEdit(p: ParcelaWithStats) {
+    if (!plantacionEditable) return;
+    setFormModalState({ mode: 'edit', parcela: p });
+  }
   function closeModal() { setFormModalState(null); }
 
   function navigateToGrupos(parcelaId: string) {

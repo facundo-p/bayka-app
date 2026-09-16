@@ -31,6 +31,11 @@ describe('ParcelasScreen — gating por estado finalizada', () => {
     expect(screen).toMatch(/plantacionEditable\s*\?\s*openCreate\s*:\s*null/);
   });
 
+  it('las guardas están en los handlers, no solo en el render', () => {
+    expect(screen).toMatch(/function openEdit[\s\S]{0,80}if \(!plantacionEditable\) return;/);
+    expect(screen).toMatch(/function openCreate[\s\S]{0,80}if \(!plantacionEditable\) return;/);
+  });
+
   it('no entrega onLongPress —la puerta a editar y eliminar— si no es editable', () => {
     expect(screen).toMatch(/onLongPress=\{plantacionEditable\s*\?\s*\(\)\s*=>\s*openEdit\(item\)\s*:\s*undefined\}/);
   });

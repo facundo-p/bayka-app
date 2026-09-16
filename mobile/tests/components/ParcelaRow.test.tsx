@@ -4,22 +4,26 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import ParcelaRow from '../../src/components/ParcelaRow';
+import type { ParcelaWithStats } from '../../src/queries/parcelaQueries';
 
 jest.mock('@expo/vector-icons/Ionicons', () => 'Ionicons');
 jest.mock('@expo/vector-icons/MaterialCommunityIcons', () => 'MaterialCommunityIcons');
 
-const PARCELA = {
+const PARCELA: ParcelaWithStats = {
   id: 'par-1',
   plantacionId: 'p-1',
   nombre: 'Parcela Norte',
   codigo: 'PN',
   descripcion: null,
   deletedAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
   pendingSync: false,
   pendingSyncBelow: false,
   gruposCount: 2,
-  arbolesCount: 10,
-} as any;
+  treesCount: 10,
+  nnCount: 0,
+};
 
 describe('ParcelaRow', () => {
   it('con onLongPress: lo dispara y anuncia que se puede editar', () => {
@@ -41,6 +45,13 @@ describe('ParcelaRow', () => {
     );
 
     expect(getByLabelText('Parcela Parcela Norte').props.accessibilityHint).not.toMatch(/editar/);
+  });
+
+  it('muestra los contadores de la parcela', () => {
+    const { getByText } = render(<ParcelaRow parcela={PARCELA} onPress={jest.fn()} />);
+
+    expect(getByText('2')).toBeTruthy();
+    expect(getByText('10')).toBeTruthy();
   });
 
   it('sin onLongPress: el toque simple sigue navegando', () => {

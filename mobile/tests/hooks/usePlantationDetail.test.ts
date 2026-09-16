@@ -29,7 +29,7 @@ jest.mock('../../src/hooks/useConfirm', () => ({
 jest.mock('../../src/utils/alertHelpers', () => ({ showDoubleConfirmDialog: jest.fn() }));
 
 const { useLiveData } = require('../../src/database/liveQuery');
-const { deleteGroup } = require('../../src/repositories/GroupRepository');
+const { deleteGroup, updateGroup } = require('../../src/repositories/GroupRepository');
 const { useCurrentUserId } = require('../../src/hooks/useCurrentUserId');
 const { showDoubleConfirmDialog } = require('../../src/utils/alertHelpers');
 
@@ -67,6 +67,7 @@ describe('usePlantationDetail — permisosDeGrupo', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (useCurrentUserId as jest.Mock).mockReturnValue('user-1');
+    (updateGroup as jest.Mock).mockResolvedValue({ success: true });
     mockLiveQueries();
   });
 
@@ -121,6 +122,31 @@ describe('usePlantationDetail — permisosDeGrupo', () => {
     render().current.handleDeleteGroup(GRUPO);
 
     expect(showDoubleConfirmDialog).toHaveBeenCalled();
+  });
+
+  // El modal de edición pudo quedar abierto mientras un pull finalizaba la
+  // plantación: el que escribe es el submit, no el que abre.
+  it('handleEditSubmit no escribe si la plantación se finalizó con el modal abierto', async () => {
+    const { result, rerender } = renderHook(() => usePlantationDetail('p-1', 'par-1'));
+
+    act(() => result.current.handleLongPress(GRUPO));
+    expect(result.current.editingGroup).toEqual(GRUPO);
+
+    mockLiveQueries({ plantacionEstado: 'finalizada' });
+    rerender(undefined);
+
+    await act(async () => { await result.current.handleEditSubmit({ nombre: 'X', codigo: 'X1', tipo: 'linea' as any }); });
+
+    expect(updateGroup).not.toHaveBeenCalled();
+  });
+
+  it('handleEditSubmit sí escribe con la plantación activa', async () => {
+    const result = render();
+
+    act(() => result.current.handleLongPress(GRUPO));
+    await act(async () => { await result.current.handleEditSubmit({ nombre: 'X', codigo: 'X1', tipo: 'linea' as any }); });
+
+    expect(updateGroup).toHaveBeenCalled();
   });
 
   it('handleLongPress abre la edición con la plantación activa', () => {
