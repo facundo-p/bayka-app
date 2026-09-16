@@ -65,6 +65,10 @@ type Props = {
   phaseProgress: DownloadPhaseProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
   globalProgress: GlobalSyncProgress;
+  estancado: boolean;
+  cancelado: boolean;
+  huboTimeout: boolean;
+  cancelarSync: () => void;
   resetSync: () => void;
   handleSessionExpiredReauth: () => void;
 
@@ -119,6 +123,10 @@ export default function PlantacionesModals({
   phaseProgress,
   photoResult,
   globalProgress,
+  estancado,
+  cancelado,
+  huboTimeout,
+  cancelarSync,
   resetSync,
   handleSessionExpiredReauth,
   bottomSheetVisible,
@@ -179,6 +187,10 @@ export default function PlantacionesModals({
         phaseProgress={phaseProgress}
         photoResult={photoResult}
         globalProgress={globalProgress}
+        estancado={estancado}
+        cancelado={cancelado}
+        huboTimeout={huboTimeout}
+        onCancelar={cancelarSync}
         onDismiss={resetSync}
       />
 

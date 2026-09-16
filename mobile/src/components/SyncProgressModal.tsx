@@ -1,7 +1,7 @@
 import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
-import { SYNC_STATE } from '../services/SyncService';
+import { SYNC_STATE, SYNC_ERROR, getErrorMessage } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';
 import BaseModal from './BaseModal';
@@ -29,6 +29,13 @@ interface Props {
   phaseProgress: DownloadPhaseProgress | null;
   photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
   globalProgress?: { plantationName: string; done: number; total: number } | null;
+  /** 45s sin ninguna señal de avance: recién ahí se ofrece cancelar (#451). */
+  estancado: boolean;
+  /** El usuario canceló: no es un error y no se reporta como tal. */
+  cancelado: boolean;
+  /** La corrida murió por timeout, no por falta de señal: el mensaje es otro. */
+  huboTimeout: boolean;
+  onCancelar: () => void;
   onDismiss: () => void;
 }
 
@@ -66,6 +73,13 @@ function FaseEnCurso({
 
 const TEXTO_PREPARANDO = 'Preparando...';
 
+/** Un timeout no es falta de conexión: hay señal, el que no contesta es el server (#451). */
+function mensajeDeFalla(huboTimeout: boolean): string {
+  return huboTimeout
+    ? getErrorMessage(SYNC_ERROR.TIMEOUT)
+    : 'No se pudo conectar con el servidor. Verifica tu conexión.';
+}
+
 function detalleDeFotos(photoProgress: PhotoSyncProgress | null): string {
   return photoProgress ? `${photoProgress.completed} de ${photoProgress.total} fotos` : TEXTO_PREPARANDO;
 }
@@ -102,6 +116,10 @@ export default function SyncProgressModal({
   phaseProgress,
   photoResult,
   globalProgress,
+  estancado,
+  cancelado,
+  huboTimeout,
+  onCancelar,
   onDismiss,
 }: Props) {
   if (state === SYNC_STATE.idle) return null;
@@ -165,7 +183,31 @@ export default function SyncProgressModal({
         />
       )}
 
-      {state === SYNC_STATE.done && sinAcceso && (
+      {estancado && state !== SYNC_STATE.done && (
+        <>
+          <Text style={styles.estancadoText}>
+            Hace un rato que no hay novedades. Puede ser la señal.
+          </Text>
+          <Pressable style={styles.cancelButton} onPress={onCancelar}>
+            <Text style={styles.cancelText}>Cancelar sincronizacion</Text>
+          </Pressable>
+        </>
+      )}
+
+      {state === SYNC_STATE.done && cancelado && (
+        <>
+          <Ionicons name="stop-circle" size={48} color={colors.textSecondary} />
+          <Text style={styles.title}>Sincronizacion cancelada</Text>
+          <Text style={styles.progressText}>
+            Lo que alcanzó a sincronizarse quedó guardado. Podés reintentar cuando tengas mejor señal.
+          </Text>
+          <Pressable style={styles.dismissButton} onPress={onDismiss}>
+            <Text style={styles.dismissText}>Cerrar</Text>
+          </Pressable>
+        </>
+      )}
+
+      {state === SYNC_STATE.done && !cancelado && sinAcceso && (
         <>
           <Ionicons name="lock-closed" size={48} color={colors.secondary} />
           <Text style={styles.title}>Sin acceso a la plantacion</Text>
@@ -179,7 +221,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === SYNC_STATE.done && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
+      {state === SYNC_STATE.done && !cancelado && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -192,7 +234,7 @@ export default function SyncProgressModal({
           <Text style={styles.progressText}>
             {pullSuccess
               ? 'Se descargaron los ultimos datos del servidor.'
-              : 'No se pudo conectar con el servidor. Verifica tu conexión.'}
+              : mensajeDeFalla(huboTimeout)}
           </Text>
           {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
             <Text style={styles.successText}>
@@ -205,7 +247,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === SYNC_STATE.done && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
+      {state === SYNC_STATE.done && !cancelado && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
         <>
           <Ionicons
             name={anyFailure ? 'alert-circle' : 'checkmark-circle'}

@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   syncPlantation,
   syncAllPlantations,
@@ -17,6 +17,9 @@ import {
   faseDeProgresoGlobal,
 } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
+import { cancelarCorrida, esCancelacion, iniciarCorrida, terminarCorrida } from '../services/sync/cancelacion';
+import { esTimeout } from '../supabase/fetchConTimeout';
+import { useWatchdogDeSync } from './useWatchdogDeSync';
 
 export type { SyncState };
 
@@ -33,6 +36,17 @@ export function useSync(plantacionId?: string) {
   const [phaseProgress, setPhaseProgress] = useState<DownloadPhaseProgress | null>(null);
   const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
+  const [cancelado, setCancelado] = useState(false);
+  const [huboTimeout, setHuboTimeout] = useState(false);
+
+  // Momento de la última señal de avance: lo lee el watchdog por reloj.
+  const ultimoAvance = useRef(Date.now());
+  const marcarAvance = useCallback(() => {
+    ultimoAvance.current = Date.now();
+  }, []);
+
+  const enCurso = state !== SYNC_STATE.idle && state !== SYNC_STATE.done;
+  const estancado = useWatchdogDeSync(enCurso, ultimoAvance);
 
   // Limpia todo el estado por-corrida (todo menos `state`, que fija cada caller).
   const resetSyncState = useCallback(() => {
@@ -47,6 +61,24 @@ export function useSync(plantacionId?: string) {
     setPhaseProgress(null);
     setPhotoResult(null);
     setGlobalProgress(null);
+    setCancelado(false);
+    setHuboTimeout(false);
+  }, []);
+
+  /**
+   * Arranque y cierre de una corrida cancelable. Va acá y no en los orquestadores
+   * porque el botón vive acá, y porque así también quedan adentro las fases de
+   * fotos, que se llaman fuera de ellos.
+   */
+  const clasificarFalla = useCallback((err: unknown) => {
+    if (esCancelacion(err)) {
+      setCancelado(true);
+      return;
+    }
+    console.error('[Sync] falló:', err);
+    setPullSuccess(false);
+    if (esTimeout(err)) setHuboTimeout(true);
+    if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
   }, []);
 
   // Shared by startBidirectionalSync (uses the hook's own plantacionId) and
@@ -55,6 +87,8 @@ export function useSync(plantacionId?: string) {
   const runPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean) => {
     setState(SYNC_STATE.pulling);
     resetSyncState();
+    iniciarCorrida();
+    marcarAvance();
 
     try {
       let accesoRevocado = false;
@@ -62,18 +96,21 @@ export function useSync(plantacionId?: string) {
         // El push arranca cuando llega su primer progreso: antes, `pushing` se
         // seteaba de entrada y el pull entero corría mostrando "Subiendo grupos...".
         onProgress: (p) => {
+          marcarAvance();
           setState(SYNC_STATE.pushing);
           setProgress(p);
         },
         // Las fotos de cada grupo se suben dentro del push y son el tramo más largo
         // del flujo: sin esto el modal queda clavado en "grupo i de n" (#447).
         onPhotoProgress: (fotos) => {
+          marcarAvance();
           setState(SYNC_STATE.uploadingPhotos);
           setPhotoProgress(fotos);
         },
         // `null` = el pull terminó, por éxito, sin acceso o excepción. Sin esa señal
         // la fase quedaba congelada y el estado en `pulling` durante todo el push.
         onPhaseProgress: (fase) => {
+          marcarAvance();
           if (fase) {
             setState(SYNC_STATE.pulling);
             setPhaseProgress(fase);
@@ -95,9 +132,13 @@ export function useSync(plantacionId?: string) {
       // Sin acceso no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
       if (incluirFotos && !accesoRevocado) {
         setState(SYNC_STATE.uploadingPhotos);
-        const uploadRes = await uploadPendingPhotos(targetPlantacionId, setPhotoProgress);
+        const avisarFotos = (fotos: PhotoSyncProgress) => {
+          marcarAvance();
+          setPhotoProgress(fotos);
+        };
+        const uploadRes = await uploadPendingPhotos(targetPlantacionId, avisarFotos);
         setState(SYNC_STATE.downloadingPhotos);
-        const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, setPhotoProgress);
+        const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, avisarFotos);
         setPhotoResult({
           uploaded: uploadRes.uploaded,
           uploadFailed: uploadRes.failed,
@@ -106,14 +147,13 @@ export function useSync(plantacionId?: string) {
         });
       }
     } catch (err) {
-      console.error('[Sync] Plantation sync failed:', err);
-      setPullSuccess(false);
-      if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
+      clasificarFalla(err);
     } finally {
+      terminarCorrida();
       setState(SYNC_STATE.done);
       notifyDataChanged();
     }
-  }, [resetSyncState]);
+  }, [resetSyncState, marcarAvance, clasificarFalla]);
 
   const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
     if (!plantacionId) {
@@ -130,10 +170,13 @@ export function useSync(plantacionId?: string) {
   const startGlobalSync = useCallback(async (incluirFotos: boolean = true) => {
     setState(SYNC_STATE.pulling);
     resetSyncState();
+    iniciarCorrida();
+    marcarAvance();
 
     try {
       const allResults = await syncAllPlantations(
         (info: GlobalSyncProgress) => {
+          marcarAvance();
           setGlobalProgress({
             plantationName: info.plantationName,
             done: info.plantationDone,
@@ -154,14 +197,13 @@ export function useSync(plantacionId?: string) {
       setParcelaResults(allResults.flatMap(r => r.parcelas ?? []));
       setPullSuccess(true);
     } catch (err) {
-      console.error('[Sync] Global sync failed:', err);
-      setPullSuccess(false);
-      if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
+      clasificarFalla(err);
     } finally {
+      terminarCorrida();
       setState(SYNC_STATE.done);
       notifyDataChanged();
     }
-  }, [resetSyncState]);
+  }, [resetSyncState, marcarAvance, clasificarFalla]);
 
   const reset = useCallback(() => {
     setState(SYNC_STATE.idle);
@@ -177,6 +219,11 @@ export function useSync(plantacionId?: string) {
   return {
     state,
     progress,
+    /** La sync lleva 45s sin avanzar: el modal ofrece el botón de cancelar (#451). */
+    estancado,
+    cancelar: cancelarCorrida,
+    cancelado,
+    huboTimeout,
     results,
     parcelaResults,
     plantationResults,
