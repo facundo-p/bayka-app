@@ -8,6 +8,8 @@ import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 import { getTreeEditGating } from '../utils/treeEditGating';
+import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
 import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
@@ -271,15 +273,28 @@ export async function reactivateGroup(id: string): Promise<void> {
   notifyDataChanged();
 }
 
+/**
+ * Borra el grupo y sus árboles, y anota el borrado para propagarlo (#467). Los
+ * árboles no se anotan uno por uno: borrar el grupo en el server se los lleva por
+ * cascada (`trees_group_id_fkey ON DELETE CASCADE`).
+ */
 export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; treeCount: number }> {
   const [treeResult] = await db.select({ count: count() })
     .from(trees)
     .where(eq(trees.groupId, grupoId));
 
   const treeCount = treeResult?.count ?? 0;
+  const plantacionId = await plantacionDelGrupo(db, grupoId);
 
-  await db.delete(trees).where(eq(trees.groupId, grupoId));
-  await db.delete(groups).where(eq(groups.id, grupoId));
+  await enTransaccion(async (tx) => {
+    await tx.delete(trees).where(eq(trees.groupId, grupoId));
+    await tx.delete(groups).where(eq(groups.id, grupoId));
+    if (plantacionId) {
+      await registrarBorrado(tx, {
+        id: grupoId, tipo: ENTIDAD_BORRADA.grupo, grupoId: null, plantacionId,
+      });
+    }
+  });
 
   notifyDataChanged();
   return { deleted: true, treeCount };

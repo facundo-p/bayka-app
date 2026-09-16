@@ -8,6 +8,8 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
+import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri } from '../utils/photoUri';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 
@@ -54,6 +56,11 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
   return { id, posicion: nextPosition, subId };
 }
 
+/**
+ * Deshacer el último árbol. Anota el borrado igual que `deleteTreeAndRecalculate`
+ * (#467): sin eso el pull lo resucita, y este es el camino de borrado más usado.
+ * No hace falta renumerar — se va el último.
+ */
 export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolean }> {
   const [maxResult] = await db
     .select({ maxPos: max(trees.posicion), id: trees.id })
@@ -62,7 +69,18 @@ export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolea
 
   if (maxResult?.id == null) return { deleted: false };
 
-  await db.delete(trees).where(eq(trees.id, maxResult.id));
+  const plantacionId = await plantacionDelGrupo(db, grupoId);
+  if (!plantacionId) {
+    throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
+  }
+
+  await enTransaccion(async (tx) => {
+    await tx.delete(trees).where(eq(trees.id, maxResult.id));
+    await registrarBorrado(tx, {
+      id: maxResult.id, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
+    });
+  });
+
   await markGroupPendingSync(grupoId);
   notifyDataChanged();
   return { deleted: true };
@@ -196,21 +214,36 @@ export async function clearTreeConflict(treeId: string): Promise<void> {
   notifyDataChanged();
 }
 
-/** Borra un árbol y recalcula posición+subId de los restantes en el grupo para que queden consecutivos (1,2,3...). */
+/**
+ * Borra un árbol y recalcula posición+subId de los restantes en el grupo para que
+ * queden consecutivos (1,2,3...).
+ *
+ * El borrado, su registro para propagarlo al server y la renumeración van en UNA
+ * transacción (#467): si el registro quedara afuera, un corte entre el delete y el
+ * insert deja el borrado sin propagar y el próximo pull resucita el árbol con su
+ * numeración vieja, duplicando SubIDs.
+ */
 export async function deleteTreeAndRecalculate(
   treeId: string,
   grupoId: string,
   grupoCodigo: string
 ): Promise<void> {
-  await db.delete(trees).where(eq(trees.id, treeId));
-
-  const remaining = await db.select().from(trees)
-    .where(eq(trees.groupId, grupoId))
-    .orderBy(asc(trees.posicion));
-
+  const plantacionId = await plantacionDelGrupo(db, grupoId);
+  if (!plantacionId) {
+    throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
+  }
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
   await enTransaccion(async (tx) => {
+    await tx.delete(trees).where(eq(trees.id, treeId));
+    await registrarBorrado(tx, {
+      id: treeId, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
+    });
+
+    const remaining = await tx.select().from(trees)
+      .where(eq(trees.groupId, grupoId))
+      .orderBy(asc(trees.posicion));
+
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
