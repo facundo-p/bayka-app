@@ -17,6 +17,8 @@ export const SYNC_ERROR = {
   PARCELA_PENDING: 'PARCELA_PENDING',
   /** RLS rechazó la operación (42501). */
   PERMISSION: 'PERMISSION',
+  /** La plantación está finalizada y es inmutable (#469); distinto de PERMISSION, que es no ser miembro. */
+  PLANTACION_FINALIZADA: 'PLANTACION_FINALIZADA',
   /** Legacy: falla de red sin código de postgres. */
   NETWORK: 'NETWORK',
   /** La request no respondió dentro del timeout (#451). Distinto de NETWORK: hay señal, el que no contesta es el server. */
@@ -177,6 +179,8 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   [SYNC_ERROR.GENERIC_CONFLICT]: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
   [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
   [SYNC_ERROR.PERMISSION]: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
+  // El dato NO se pierde: queda en el device y se sube si la plantación se reabre.
+  [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantacion fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
   [SYNC_ERROR.NETWORK]: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
   [SYNC_ERROR.TIMEOUT]: 'El servidor no respondio a tiempo. Puede ser la señal: intenta de nuevo con mejor cobertura.',
   [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intenta de nuevo.',

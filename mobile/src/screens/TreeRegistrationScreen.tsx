@@ -35,7 +35,7 @@ import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
 import { useTreeSelection } from '../hooks/useTreeSelection';
-import { getTreeEditGating } from '../utils/treeEditGating';
+import { getTreeEditGating } from '../utils/permisosDeEdicion';
 
 export default function TreeRegistrationScreen() {
   const { id: grupoId } = useLocalSearchParams<{

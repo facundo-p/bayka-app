@@ -17,7 +17,7 @@ type Props = {
   expanded: boolean;
   onToggleExpanded: () => void;
   onParcelaPress: (parcelaId: string) => void;
-  onParcelaLongPress: (parcela: ParcelaWithStats) => void;
+  onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
   // Pass-through to PlantationCard
   cardProps: Omit<
     React.ComponentProps<typeof PlantationCard>,

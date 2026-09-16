@@ -68,14 +68,17 @@ const mockGroup = {
  * useLiveData recibe una arrow que llama a la query; se la distingue por el nombre
  * de la query en su fuente. Sin config de captura, el hook cae a los defaults.
  */
-function mockLiveQueries({ group = mockGroup, captureConfig = null }: {
+function mockLiveQueries({ group = mockGroup, captureConfig = null, plantacionEstado = 'activa', estadoCargado = true }: {
   group?: typeof mockGroup;
   captureConfig?: { gpsFrequency: number; gpsRequired: boolean; photoAllTrees: boolean } | null;
+  plantacionEstado?: string;
+  estadoCargado?: boolean;
 } = {}) {
   (useLiveData as jest.Mock).mockImplementation((queryFn: () => unknown) => {
     const fuente = String(queryFn);
     if (fuente.includes('getPlantationCaptureConfig')) return { data: captureConfig };
     if (fuente.includes('getGroupById')) return { data: [group] };
+    if (fuente.includes('getPlantationEstado')) return { data: estadoCargado ? plantacionEstado : undefined };
     return { data: undefined };
   });
 }
@@ -375,6 +378,31 @@ describe('useTreeRegistration', () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
 
       expect(result.current.canReactivate).toBe(true);
+    });
+
+    // #469: reactivar devolvía el grupo a 'activa', y con eso reaparecía el borrado
+    // de grupo en el listado — dentro de una plantación que ya era inmutable.
+    it('canReactivate is false when the plantation is finalizada', () => {
+      mockLiveQueries({
+        group: { ...mockGroup, estado: 'finalizada', usuarioCreador: 'user-1' },
+        plantacionEstado: 'finalizada',
+      });
+      (canEdit as jest.Mock).mockReturnValue(false);
+
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      expect(result.current.canReactivate).toBe(false);
+    });
+
+    // El default de plantacionEstado es 'activa': decidir antes de que la query
+    // resuelva habilita la pantalla entera sobre una finalizada (#469).
+    it('dataLoaded espera al estado de la plantación, no solo al grupo', () => {
+      mockLiveQueries({ group: { ...mockGroup, estado: 'finalizada' }, estadoCargado: false });
+
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      expect(result.current.dataLoaded).toBe(false);
+      expect(result.current.canReactivate).toBe(false);
     });
 
     it('unresolvedNN and totalCount come from useTrees', () => {

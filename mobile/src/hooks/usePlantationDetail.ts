@@ -4,7 +4,7 @@
  * Encapsulates subgroup list, N/N counts, tree counts, plantation estado,
  * and subgroup editing/deletion logic.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useLiveData } from '../database/liveQuery';
 import {
   deleteGroup,
@@ -23,7 +23,9 @@ import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
-import { ESTADO_PLANTACION, ESTADO_GRUPO } from '../constants/estados';
+import { ESTADO_PLANTACION } from '../constants/estados';
+import { getGroupGating, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
+import type { GroupGating } from '../utils/permisosDeEdicion';
 import { findById as findParcelaById } from '../repositories/ParcelaRepository';
 import type { Parcela } from '../repositories/ParcelaRepository';
 
@@ -93,13 +95,24 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     sg => !groupFilter || sg.estado === groupFilter
   );
 
+  // Sin el estado de la plantación no se puede decidir nada: hasta que carga, todo
+  // denegado. Permitir y corregir después abre la ventana para un toque temprano.
+  const permisosDeGrupo = useCallback((subgroup: Group): GroupGating => {
+    if (!estadoLoaded) return SIN_PERMISOS_DE_GRUPO;
+    return getGroupGating({
+      plantacionEstado,
+      subgroupEstado: subgroup.estado,
+      isCreator: userId ? subgroup.usuarioCreador === userId : false,
+    });
+  }, [estadoLoaded, plantacionEstado, userId]);
+
   function handleLongPress(subgroup: Group) {
-    const isOwner = userId ? subgroup.usuarioCreador === userId : false;
-    if (!isOwner || subgroup.estado !== ESTADO_GRUPO.activa) return;
+    if (!permisosDeGrupo(subgroup).canEdit) return;
     setEditingGroup(subgroup);
   }
 
   function handleDeleteGroup(subgroup: Group) {
+    if (!permisosDeGrupo(subgroup).canDelete) return;
     const treeCount = treeCountMap.get(subgroup.id) ?? 0;
     const warningMessage = treeCount > 0
       ? `Este grupo tiene ${treeCount} árbol${treeCount > 1 ? 'es' : ''} cargado${treeCount > 1 ? 's' : ''}. Esta acción no se puede deshacer.`
@@ -126,6 +139,8 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
 
   async function handleEditSubmit(values: { nombre: string; codigo: string; tipo: GroupTipo }) {
     if (!editingGroup) return { success: false as const, error: 'unknown' as const };
+    // El modal pudo quedar abierto mientras un pull finalizaba la plantación.
+    if (!permisosDeGrupo(editingGroup).canEdit) return { success: false as const, error: 'unknown' as const };
     const result = await updateGroup(editingGroup.id, values);
     if (result.success && values.codigo !== editingGroup.codigo) {
       await updateGroupCode(editingGroup.id, values.codigo, editingGroup.codigo);
@@ -157,6 +172,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     userId,
     setGroupFilter,
     setEditingGroup,
+    permisosDeGrupo,
     handleLongPress,
     handleDeleteGroup,
     handleEditSubmit,

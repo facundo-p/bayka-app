@@ -55,21 +55,40 @@ jest.mock('../../src/supabase/client', () => {
       auth: {
         getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-tecnico-1' } } } }),
       },
-      // Doble de `sincronizar_borrados`: borra por id, como la función SQL.
+      // Doble de `sincronizar_borrados`: borra por id, como la función SQL, y
+      // rechaza las filas de una plantación finalizada devolviendo sus ids (#469).
       rpc: (nombre: string, args: any) => {
         if (nombre !== 'sincronizar_borrados') return Promise.resolve({ data: null, error: { message: `rpc ${nombre} no mockeado` } });
         if (mockRpcFalla.activo) return Promise.resolve({ data: null, error: { message: 'Network request failed' } });
+
+        // Un id que no existe en el server NO es un rechazo: no hay nada que borrar.
+        const escribible = (grupoId: string | undefined) => {
+          const grupo = grupoId ? mockServerState.groups.get(grupoId) : undefined;
+          const plantacion = grupo ? mockServerState.plantations.get(grupo.plantation_id) : undefined;
+          return plantacion?.estado !== 'finalizada';
+        };
+
         let arboles = 0;
         let grupos = 0;
+        const rechazados: string[] = [];
         for (const b of args.p_borrados as Array<{ id: string; tipo: string }>) {
-          if (b.tipo === 'arbol' && mockServerState.trees.delete(b.id)) arboles++;
-          if (b.tipo === 'grupo' && mockServerState.groups.delete(b.id)) {
+          if (b.tipo === 'arbol') {
+            const arbol = mockServerState.trees.get(b.id);
+            if (!arbol) continue;
+            if (!escribible(arbol.group_id)) { rechazados.push(b.id); continue; }
+            mockServerState.trees.delete(b.id);
+            arboles++;
+          }
+          if (b.tipo === 'grupo') {
+            if (!mockServerState.groups.has(b.id)) continue;
+            if (!escribible(b.id)) { rechazados.push(b.id); continue; }
+            mockServerState.groups.delete(b.id);
             grupos++;
             // Cascada: trees_group_id_fkey ON DELETE CASCADE.
             for (const [id, t] of mockServerState.trees) if (t.group_id === b.id) mockServerState.trees.delete(id);
           }
         }
-        return Promise.resolve({ data: { success: true, arboles, grupos }, error: null });
+        return Promise.resolve({ data: { success: true, arboles, grupos, rechazados }, error: null });
       },
     },
   };
@@ -407,5 +426,92 @@ describe('lo que NO tiene que cambiar', () => {
 
     await expect(pushBorrados(PLANTACION_ID)).resolves.toBeUndefined();
     expect(serverState.trees.size).toBe(3);
+  });
+});
+
+describe('la plantación se finaliza antes de que el borrado llegue (#469)', () => {
+  /** El borrado se hizo con la plantación activa; alguien la finalizó después. */
+  async function finalizarEnElServer() {
+    serverState.plantations.set(PLANTACION_ID, {
+      ...serverState.plantations.get(PLANTACION_ID),
+      estado: 'finalizada',
+    });
+  }
+
+  it('el server no borra el árbol', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    await finalizarEnElServer();
+
+    await sincronizar();
+
+    expect(serverState.trees.has('t2')).toBe(true);
+  });
+
+  // Lo importante: el borrado NO se descarta. Si se reabre la plantación (#470),
+  // el próximo sync lo sube.
+  it('el borrado queda pendiente en el registro', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    await finalizarEnElServer();
+
+    await sincronizar();
+
+    expect(await mockTestDb.select().from(borradosPendientes)).toHaveLength(1);
+  });
+
+  it('y el pull sigue sin resucitarlo mientras tanto', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    await finalizarEnElServer();
+
+    await sincronizar();
+    await sincronizar();
+
+    expect(await leerArbol('t2')).toBeUndefined();
+  });
+
+  it('al reabrirse, el mismo borrado se propaga sin intervención', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    await finalizarEnElServer();
+    await sincronizar();
+
+    serverState.plantations.set(PLANTACION_ID, {
+      ...serverState.plantations.get(PLANTACION_ID),
+      estado: 'activa',
+    });
+    await sincronizar();
+
+    expect(serverState.trees.has('t2')).toBe(false);
+    expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
+  });
+
+  // Lote mixto: uno rechazado por la finalización y otro que ya no está en el
+  // server. Limpiar por lote —todo o nada— dejaría el segundo pendiente para
+  // siempre, y con él el pull escondiendo ese árbol sin fin.
+  it('limpia el id que ya no está aunque otro del mismo lote sea rechazado', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    await deleteTreeAndRecalculate('t3', GRUPO_ID, 'LA');
+    serverState.trees.delete('t3');
+    await finalizarEnElServer();
+
+    await sincronizar();
+
+    const pendientes = await mockTestDb.select().from(borradosPendientes);
+    expect(pendientes.map((b: any) => b.id)).toEqual(['t2']);
+  });
+
+  // Un id que ya no está en el server no es un rechazo: si quedara pendiente, el
+  // registro no se vaciaría nunca y el pull escondería ese árbol para siempre.
+  it('un id que ya no está en el server se limpia igual', async () => {
+    await grupoSincronizadoDeTres();
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    serverState.trees.delete('t2');
+
+    await sincronizar();
+
+    expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
   });
 });

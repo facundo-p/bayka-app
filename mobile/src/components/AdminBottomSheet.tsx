@@ -12,6 +12,7 @@ import { colors, spacing } from '../theme';
 import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
+import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -169,7 +170,7 @@ export default function AdminBottomSheet({
 
           <View style={styles.actionList}>
             {/* #94: reemplaza a Sincronizar, que ahora vive como botón en la card */}
-            {isAdmin && (
+            {isAdmin && plantacionEsEditable(plantation.estado) && (
               <ActionItem
                 icon="create-outline"
                 label="Editar lugar y periodo"

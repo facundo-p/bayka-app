@@ -26,6 +26,7 @@ import ScreenContainer from '../components/ScreenContainer';
 import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
 import OrangeDot from '../components/OrangeDot';
+import { ESTADO_GRUPO } from '../constants/estados';
 import { plantationDetailScreenStyles as styles } from './PlantationDetailScreen.styles';
 
 export default function PlantationDetailScreen() {
@@ -51,6 +52,7 @@ export default function PlantationDetailScreen() {
     userId,
     setGroupFilter,
     setEditingGroup,
+    permisosDeGrupo,
     handleLongPress,
     handleDeleteGroup,
     handleEditSubmit,
@@ -84,14 +86,14 @@ export default function PlantationDetailScreen() {
     const nnCount = nnCountMap.get(item.id) ?? 0;
     const treeCount = treeCountMap.get(item.id) ?? 0;
     const isOwner = userId ? item.usuarioCreador === userId : false;
-    const showDelete = isOwner && item.estado === 'activa';
+    const { canDelete: showDelete } = permisosDeGrupo(item);
     const creatorName = userNames[item.usuarioCreador];
 
     return (
       <Animated.View entering={FadeInDown.delay(index * 60).duration(250)}>
         <Pressable
           testID={`subgroup-card-${item.id}`}
-          style={({ pressed }) => [styles.card, !isOwner && styles.cardOtherUser, item.estado !== 'activa' && styles.cardReadOnly, pressed && styles.cardPressed]}
+          style={({ pressed }) => [styles.card, !isOwner && styles.cardOtherUser, item.estado !== ESTADO_GRUPO.activa && styles.cardReadOnly, pressed && styles.cardPressed]}
           onPress={() => handleGroupPress(item)}
           onLongPress={() => handleLongPress(item)}
         >

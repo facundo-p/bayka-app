@@ -19,7 +19,7 @@ export type ParcelaRowVariant = 'standalone' | 'inline';
 interface Props {
   parcela: ParcelaWithStats;
   onPress: () => void;
-  onLongPress: () => void;
+  onLongPress?: () => void;
   variant?: ParcelaRowVariant;
 }
 
@@ -63,7 +63,7 @@ export default function ParcelaRow({ parcela, onPress, onLongPress, variant = 's
       onLongPress={onLongPress}
       style={({ pressed }) => [baseStyle, pressed && styles.rowPressed]}
       accessibilityLabel={`Parcela ${parcela.nombre}`}
-      accessibilityHint="Tocar para ver grupos. Mantener presionado para editar."
+      accessibilityHint={onLongPress ? 'Tocar para ver grupos. Mantener presionado para editar.' : 'Tocar para ver grupos.'}
     >
       <View style={styles.leftContent}>
         <ParcelaHeading nombre={parcela.nombre} codigo={parcela.codigo} />
