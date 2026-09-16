@@ -35,7 +35,12 @@ beforeAll(() => {
   mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
 
   mockDb = {
-    insert: jest.fn(() => ({ values: mockInsertValues })),
+    insert: jest.fn(() => ({
+      values: jest.fn((valores: unknown) => {
+        mockInsertValues(valores);
+        return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+      }),
+    })),
     delete: jest.fn(() => ({ where: mockDeleteWhere })),
     update: jest.fn(() => ({
       set: jest.fn(() => ({ where: mockUpdateWhere })),
@@ -57,7 +62,12 @@ beforeEach(() => {
   mockDeleteWhere = jest.fn().mockResolvedValue(undefined);
   mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
 
-  mockDb.insert = jest.fn(() => ({ values: mockInsertValues }));
+  mockDb.insert = jest.fn(() => ({
+    values: jest.fn((valores: unknown) => {
+      mockInsertValues(valores);
+      return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+    }),
+  }));
   mockDb.delete = jest.fn(() => ({ where: mockDeleteWhere }));
   mockDb.update = jest.fn(() => ({
     set: jest.fn(() => ({ where: mockUpdateWhere })),
@@ -152,7 +162,7 @@ describe('TreeRepository', () => {
 
   describe('deleteLastTree', () => {
     it('deletes only the last tree by posicion (TREE-07)', async () => {
-      mockSelectResults = [{ maxPos: 5, id: 'tree-5' }];
+      mockSelectResults = [{ maxPos: 5, id: 'tree-5', plantacionId: 'plant-1' }];
 
       const result = await deleteLastTree('sg-1');
 

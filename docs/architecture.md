@@ -269,6 +269,8 @@ Usuario inicia sincronización
 ↓
 Sistema detecta grupos pendientes (pendingSync = true)
 ↓
+Propaga los borrados anotados (RPC sincronizar_borrados)
+↓
 Sube Parcelas pendientes, luego Grupo + Árboles (RPC sync_subgroup)
 ↓
 Servidor valida datos (código de grupo único por parcela)
@@ -278,6 +280,17 @@ Grupo marcado como sincronizado localmente (pendingSync = false)
 
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
+
+**Los borrados viajan aparte** (#467). Borrar un árbol o un grupo solo borra en
+SQLite; el pull upsertea todo lo que el server tiene, así que sin propagarlos la
+fila volvía en la misma sincronización. Se anotan en `borrados_pendientes`, el pull
+los excluye y el push los manda por `sincronizar_borrados`, que es un RPC
+`SECURITY DEFINER` porque **no hay policy de DELETE sobre `trees` ni `groups`**: un
+delete desde el cliente sería un no-op silencioso.
+
+El registro es explícito —una fila por id— y no una semántica de reemplazo: el
+device puede tener un set parcial y "borrá todo lo que no te mandé" borraría del
+server datos que nunca vio.
 
 ---
 

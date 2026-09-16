@@ -123,7 +123,9 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
       'Eliminar grupo',
       warningMessage,
       'Confirmar eliminación',
-      'Esta es la confirmación final. El grupo y todos sus árboles serán eliminados permanentemente.',
+      // Antes decía "permanentemente" y era mentira: el borrado vivía solo en el
+      // device y el pull lo resucitaba. Ahora se propaga, pero recién al sincronizar.
+      'Esta es la confirmación final. El grupo y todos sus árboles se eliminan del dispositivo, y del servidor en la próxima sincronización.',
       async () => {
         setDeletingId(subgroup.id);
         try {

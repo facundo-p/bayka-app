@@ -5,7 +5,7 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
-import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder } from '../database/schema';
+import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes } from '../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import { pullFromServer } from '../services/SyncService';
@@ -512,6 +512,10 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     await tx.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
     await tx.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantacionId));
     await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.plantacionId, plantacionId));
+    // Los borrados anotados se abandonan con la plantación: sacarla del device no
+    // toca Supabase, así que no hay nada que propagar. Y si quedaran, al volver a
+    // descargarla el pull escondería esos árboles para siempre (#467).
+    await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
   });
   notifyDataChanged();
