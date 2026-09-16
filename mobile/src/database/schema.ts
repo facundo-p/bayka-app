@@ -131,6 +131,25 @@ export const userSpeciesOrder = sqliteTable('user_species_order', {
   pk: uniqueIndex('user_species_order_pk').on(t.userId, t.plantacionId, t.especieId),
 }));
 
+/**
+ * Borrados hechos localmente que todavía no llegaron al server (#467). El pull los
+ * excluye y el push los propaga; al confirmar el server, la fila se va de acá.
+ *
+ * Registro y no un `deleted_at` en `trees`: un tombstone obligaría a filtrar en
+ * todas las lecturas de árboles, que están por todo el código.
+ */
+export const borradosPendientes = sqliteTable('borrados_pendientes', {
+  /** El id del árbol o del grupo borrado. */
+  id: text('id').primaryKey(),
+  tipo: text('tipo').notNull(),
+  /** Solo árboles: permite excluirlos del pull sin tocar la tabla `trees`. */
+  grupoId: text('grupo_id'),
+  plantacionId: text('plantacion_id').notNull(),
+  borradoEn: text('borrado_en').notNull(),
+}, (t) => ({
+  porPlantacion: index('borrados_pendientes_plantacion_idx').on(t.plantacionId),
+}));
+
 export const plantationUsers = sqliteTable('plantation_users', {
   plantationId: text('plantation_id').notNull().references(() => plantations.id),
   userId: text('user_id').notNull(),

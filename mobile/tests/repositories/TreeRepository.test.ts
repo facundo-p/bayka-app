@@ -83,6 +83,7 @@ import {
   deleteTreeAndRecalculate,
 } from '../../src/repositories/TreeRepository';
 import { enTransaccion } from '../../src/database/transaccion';
+import { ENTIDAD_BORRADA } from '../../src/constants/entidadBorrada';
 
 describe('TreeRepository', () => {
   describe('insertTree', () => {
@@ -305,50 +306,96 @@ describe('TreeRepository', () => {
   });
 
   describe('deleteTreeAndRecalculate', () => {
-    it('deletes tree and runs transaction to recalculate positions', async () => {
-      const remainingTrees = [
-        { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
-        { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
-      ];
+    const remainingTrees = [
+      { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+      { id: 'tree-3', grupoId: 'sg-1', posicion: 3, especieId: null, subId: 'L1NN3', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
+    ];
 
-      // Mock: delete then select remaining then transaction
-      let selectCallCount = 0;
+    /**
+     * Los selects se responden por orden de llamada, que es el del código:
+     * plantación del grupo, parcela del grupo, código de la parcela, y recién ahí
+     * los árboles que quedan.
+     */
+    function mockearSelects() {
+      const respuestas: any[][] = [
+        [{ plantacionId: 'plant-1' }],
+        [{ parcelaId: 'p1' }],
+        [{ codigo: 'PC' }],
+      ];
+      return jest.fn(() => ({
+        from: jest.fn(() => ({
+          where: jest.fn(() => {
+            const result: any = Promise.resolve(respuestas.shift() ?? remainingTrees);
+            result.orderBy = jest.fn(() => Promise.resolve(remainingTrees));
+            return result;
+          }),
+        })),
+      }));
+    }
+
+    beforeEach(() => {
       mockDb = {
         delete: jest.fn(() => ({ where: mockDeleteWhere })),
-        insert: jest.fn(() => ({ values: mockInsertValues })),
-        update: jest.fn(() => ({
-          set: jest.fn(() => ({ where: mockUpdateWhere })),
+        // El registro del borrado encadena `.onConflictDoNothing()`; el mock
+        // compartido del archivo devuelve una promesa pelada.
+        insert: jest.fn(() => ({
+          values: jest.fn((valores: unknown) => {
+            mockInsertValues(valores);
+            return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+          }),
         })),
-        // `where()` is both awaitable (array — used by getGroupParcelaCodigo's
-        // group/parcela lookup) and chainable via `.orderBy()` (remaining trees).
-        select: jest.fn(() => ({
-          from: jest.fn(() => ({
-            where: jest.fn(() => {
-              const result: any = Promise.resolve(remainingTrees);
-              result.orderBy = jest.fn(() => Promise.resolve(remainingTrees));
-              return result;
-            }),
-          })),
-        })),
-        transaction: jest.fn(async (fn: (tx: any) => Promise<void>) => {
-          const tx = {
-            select: jest.fn(() => ({
-              from: jest.fn(() => ({
-                where: jest.fn(() => Promise.resolve([])),
-              })),
-            })),
-            update: jest.fn(() => ({
-              set: jest.fn(() => ({ where: mockUpdateWhere })),
-            })),
-          };
-          await fn(tx);
-        }),
+        update: jest.fn(() => ({ set: jest.fn(() => ({ where: mockUpdateWhere })) })),
+        select: mockearSelects(),
       };
+    });
 
+    it('deletes tree and runs transaction to recalculate positions', async () => {
       await deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1');
 
       expect(mockDeleteWhere).toHaveBeenCalledTimes(1);
       expect(enTransaccion).toHaveBeenCalledTimes(1);
+    });
+
+    // Sin el registro, el borrado vive solo en SQLite: el pull lo resucita en la
+    // misma sincronización y la renumeración deja SubIDs duplicados (#467).
+    it('anota el borrado para propagarlo al server', async () => {
+      await deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1');
+
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tree-1', tipo: ENTIDAD_BORRADA.arbol, grupoId: 'sg-1', plantacionId: 'plant-1' }),
+      );
+    });
+
+    // Si el registro quedara fuera de la transacción, un corte entre el delete y el
+    // insert deja el borrado sin propagar y vuelve el bug.
+    it('el borrado y su registro van en la misma transacción', async () => {
+      let dentro = false;
+      (enTransaccion as jest.Mock).mockImplementationOnce(async (cb: (tx: unknown) => Promise<unknown>) => {
+        dentro = true;
+        try {
+          return await cb(jest.requireMock('../../src/database/client').db);
+        } finally {
+          dentro = false;
+        }
+      });
+      const vistos: boolean[] = [];
+      mockDeleteWhere.mockImplementation(() => { vistos.push(dentro); return Promise.resolve(undefined); });
+      mockInsertValues.mockImplementation(() => { vistos.push(dentro); });
+
+      await deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1');
+
+      expect(vistos).toEqual([true, true]);
+    });
+
+    // El grupo es de donde sale la plantación: sin él no hay a quién propagarle el
+    // borrado, y anotarlo mal sería peor que no anotarlo.
+    it('un grupo inexistente corta antes de borrar nada', async () => {
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => ({ where: jest.fn(() => Promise.resolve([])) })),
+      }));
+
+      await expect(deleteTreeAndRecalculate('tree-1', 'sg-fantasma', 'L1')).rejects.toThrow('inexistente');
+      expect(mockDeleteWhere).not.toHaveBeenCalled();
     });
   });
 });

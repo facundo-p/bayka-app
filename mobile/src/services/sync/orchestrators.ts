@@ -6,7 +6,7 @@ import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress,
 import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
-import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
+import { pushBorrados, uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 import { marcandoActividadDeSync } from './syncActivityStore';
 
@@ -52,6 +52,14 @@ async function correrSyncPlantation(
     syncLog.error('Pull failed:', e);
   } finally {
     onPhaseProgress?.(null);
+  }
+
+  // Los borrados primero: si el grupo que se borró todavía está en el server, el
+  // push de abajo lo volvería a upsertear (#467).
+  try {
+    await pushBorrados(plantacionId);
+  } catch (e) {
+    syncLog.error('Push borrados failed:', e);
   }
 
   // Push parcelas antes que groups (FK). Las fallas se surfacean vía onParcelaResults — si no, el
@@ -109,6 +117,12 @@ async function correrSyncAllPlantations(
         syncLog.info(`Sync global: "${plantation.lugar}" sin acceso, se saltea`);
         continue;
       }
+      try {
+        await pushBorrados(plantation.id);
+      } catch (e) {
+        syncLog.error(`Push borrados failed for "${plantation.lugar}":`, e);
+      }
+
       // Push parcelas antes que groups (FK). Surfaceamos sus fallas.
       let parcelaResults: SyncParcelaResult[] = [];
       try {

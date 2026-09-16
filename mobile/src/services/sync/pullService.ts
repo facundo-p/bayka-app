@@ -10,6 +10,7 @@ import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { arbolesBorradosDePlantacion } from '../../repositories/BorradosRepository';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -194,10 +195,16 @@ async function pullParcelas(
   return all.map((remoteParcela) => remoteParcela.id);
 }
 
+/** Ids remotos de los grupos, y cuáles de ellos tienen cambios locales sin subir. */
+interface GruposDelPull {
+  ids: string[];
+  pendientes: Set<string>;
+}
+
 async function pullGroups(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
-): Promise<string[]> {
+): Promise<GruposDelPull> {
   const { data: remoteGroups, error } = await fetchAllRows<any>(() =>
     supabase.from('groups').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.groups),
@@ -206,12 +213,12 @@ async function pullGroups(
   if (error) {
     syncLog.error('Pull groups error:', JSON.stringify(error));
     emitProgress(onProgress, DOWNLOAD_PHASE.groups, 0, 0);
-    return [];
+    return { ids: [], pendientes: new Set() };
   }
   const all = remoteGroups ?? [];
   syncLog.info('Pull groups:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.groups, 0, all.length);
-  if (all.length === 0) return [];
+  if (all.length === 0) return { ids: [], pendientes: new Set() };
 
   // Pre-fetch de ids con cambios pendientes (igual que pullParcelas): el pull no debe pisar un grupo dirty (p.ej. una transición activa→finalizada sin subir).
   const localRows = await db
@@ -258,7 +265,9 @@ async function pullGroups(
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.groups, all.length, all.length);
 
-  return all.map((sg: any) => sg.id);
+  // `pendientes` viaja a la fase de árboles: hasta acá el pull respetaba los grupos
+  // sucios pero igual les pisaba los árboles (#467).
+  return { ids: all.map((sg: any) => sg.id), pendientes: pendingLocally };
 }
 
 async function pullPlantationUsers(
@@ -466,10 +475,27 @@ async function especiePorArbolLocal(remoteGroupIds: string[]): Promise<Map<strin
   return new Map(locales.map((t) => [t.id, t.especieId]));
 }
 
+/**
+ * Árboles que el pull NO debe tocar (#467):
+ *
+ * - los de un grupo con cambios locales sin subir — es el mismo criterio que ya
+ *   aplican `pullParcelas` y `pullGroups`, y sin él la renumeración de un borrado
+ *   se revierte a medias: la `posicion` vuelve a la del server y el `sub_id` local
+ *   se queda, dejando SubIDs que no corresponden a su posición;
+ * - los borrados que todavía no se propagaron, aunque el grupo ya no esté
+ *   pendiente: el push baja la marca y sin esto el pull siguiente los resucita.
+ */
+function omitirDelPull(gruposPendientes: Set<string>, arbolesBorrados: Set<string>) {
+  return (remoto: any): boolean =>
+    gruposPendientes.has(remoto.group_id ?? remoto.subgroup_id) || arbolesBorrados.has(remoto.id);
+}
+
 async function pullTrees(
-  remoteGroupIds: string[],
+  plantacionId: string,
+  grupos: GruposDelPull,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
+  const remoteGroupIds = grupos.ids;
   const { data: remoteTrees, error } = await fetchAllRows<any>(() =>
     supabase.from('trees').select('*').in('group_id', remoteGroupIds),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.arboles),
@@ -485,16 +511,21 @@ async function pullTrees(
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, all.length);
   if (all.length === 0) return;
 
+  const omitir = omitirDelPull(grupos.pendientes, await arbolesBorradosDePlantacion(plantacionId));
+  const aEscribir = all.filter((t: any) => !omitir(t));
+  const omitidos = all.length - aEscribir.length;
+  if (omitidos > 0) syncLog.info(`Pull trees: ${omitidos} omitidos (grupo con cambios locales o borrado sin propagar)`);
+
   const especieLocal = await especiePorArbolLocal(remoteGroupIds);
   // Descarga fresh: sin filas locales no hay nada con qué chocar.
   if (especieLocal.size === 0) syncLog.info('Pull trees: fresh download — sin árboles locales');
 
-  const conflictivos = all
+  const conflictivos = aEscribir
     .map((remoto: any) => ({ remoto, especieLocal: especieLocal.get(remoto.id) }))
     .filter(esConflictoDeEspecie);
   const enConflicto = await marcarConflictosDeEspecie(conflictivos);
 
-  await enTransaccionPorLotes(all, async (tx, lote) => {
+  await enTransaccionPorLotes(aEscribir, async (tx, lote) => {
       await upsertTreesFromServerTx(tx, lote.filter((t: any) => !enConflicto.has(t.id)));
     },
     (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.arboles, escritas, all.length),
@@ -533,11 +564,11 @@ async function correrPullFromServer(
   // La metadata es un solo UPDATE: no hay nada que medir ahí.
   await pullPlantationMetadata(plantacionId);
   await conDuracion(DOWNLOAD_PHASE.parcelas, () => pullParcelas(plantacionId, onProgress));
-  const remoteGroupIds = await conDuracion(DOWNLOAD_PHASE.groups, () => pullGroups(plantacionId, onProgress));
+  const grupos = await conDuracion(DOWNLOAD_PHASE.groups, () => pullGroups(plantacionId, onProgress));
   await conDuracion(DOWNLOAD_PHASE.usuarios, () => pullPlantationUsers(plantacionId, onProgress));
   await conDuracion(DOWNLOAD_PHASE.especiesPlantacion, () => pullPlantationSpecies(plantacionId, onProgress));
-  if (remoteGroupIds.length > 0) {
-    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(remoteGroupIds, onProgress));
+  if (grupos.ids.length > 0) {
+    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(plantacionId, grupos, onProgress));
   }
   syncLog.info(`Pull total: ${Date.now() - inicio}ms`);
   return PULL_OK;

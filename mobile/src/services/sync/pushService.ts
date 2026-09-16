@@ -22,6 +22,7 @@ import {
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
+import { borradosDePlantacion, limpiarBorrados } from '../../repositories/BorradosRepository';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -103,6 +104,38 @@ export async function uploadSyncableParcelas(
   }
 
   return results;
+}
+
+// ─── Propagación de borrados ─────────────────────────────────────────────────
+
+/**
+ * Sube al server los borrados anotados localmente (#467).
+ *
+ * Va por RPC y no por un `.delete()` de PostgREST porque **no hay policy de DELETE
+ * sobre `trees` ni sobre `groups`**: el delete del cliente sería un no-op
+ * silencioso, la misma trampa de #319.
+ *
+ * El registro se limpia SOLO con la confirmación del server. Si falla, las filas
+ * quedan para el próximo intento — borrar algo que ya no está es un no-op, así que
+ * reintentar es seguro.
+ */
+export async function pushBorrados(plantacionId: string): Promise<void> {
+  const pendientes = await borradosDePlantacion(plantacionId);
+  if (pendientes.length === 0) return;
+
+  // Solo id y tipo: la membresía la valida el server contra la plantación real de
+  // cada fila, no contra lo que diga el payload.
+  const { data, error } = await supabase.rpc('sincronizar_borrados', {
+    p_borrados: pendientes.map((b) => ({ id: b.id, tipo: b.tipo })),
+  });
+
+  if (error || data?.success !== true) {
+    syncLog.error('Push borrados falló:', JSON.stringify(error ?? data));
+    return;
+  }
+
+  await limpiarBorrados(pendientes.map((b) => b.id));
+  syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
 }
 
 // ─── Upload a single Group ─────────────────────────────────────────────────
