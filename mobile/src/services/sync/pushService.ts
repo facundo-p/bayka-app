@@ -134,8 +134,16 @@ export async function pushBorrados(plantacionId: string): Promise<void> {
     return;
   }
 
-  await limpiarBorrados(pendientes.map((b) => b.id));
+  // Los rechazados son de una plantación finalizada (#469): quedan pendientes por
+  // si se reabre. El resto se limpia aunque no se haya borrado nada — un id que ya
+  // no está en el server no vuelve nunca.
+  const rechazados = new Set<string>(Array.isArray(data.rechazados) ? data.rechazados : []);
+  await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)));
+
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
+  if (rechazados.size > 0) {
+    syncLog.info(`Push borrados: ${rechazados.size} pendientes, plantación finalizada`);
+  }
 }
 
 // ─── Upload a single Group ─────────────────────────────────────────────────
@@ -230,9 +238,13 @@ export function classifyRpcResult(
     return { success: true, groupId: sg.id, nombre: sg.nombre };
   }
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
-  // DUPLICATE_CODE y PERMISSION son los códigos que sync_subgroup devuelve explícitamente
-  // (unicidad por parcela / guard de membresía).
-  const RPC_CODES: SyncErrorCode[] = [SYNC_ERROR.DUPLICATE_CODE, SYNC_ERROR.PERMISSION];
+  // Los códigos que sync_subgroup devuelve explícitamente: unicidad por parcela,
+  // guard de membresía, y plantación finalizada (#469).
+  const RPC_CODES: SyncErrorCode[] = [
+    SYNC_ERROR.DUPLICATE_CODE,
+    SYNC_ERROR.PERMISSION,
+    SYNC_ERROR.PLANTACION_FINALIZADA,
+  ];
   const errorCode: SyncErrorCode = RPC_CODES.includes(data?.error) ? data.error : SYNC_ERROR.UNKNOWN;
   return { success: false, groupId: sg.id, nombre: sg.nombre, error: errorCode };
 }

@@ -16,6 +16,7 @@ jest.mock('../../src/database/liveQuery', () => ({
 }));
 
 import { classifyRpcResult } from '../../src/services/sync/pushService';
+import { getErrorMessage } from '../../src/services/sync/types';
 
 const sg = { id: 'group-1', nombre: 'G1', parcelaId: 'parcela-1' };
 
@@ -38,6 +39,18 @@ describe('classifyRpcResult', () => {
   test('RPC rechaza con PERMISSION (guard de membresía #67) → passthrough', () => {
     const result = classifyRpcResult(sg, { success: false, error: 'PERMISSION' }, null);
     expect(result).toMatchObject({ success: false, error: 'PERMISSION' });
+  });
+
+  // No puede caer en UNKNOWN ni confundirse con PERMISSION: el técnico SÍ es
+  // miembro, y el mensaje que le corresponde es otro (#469).
+  test('RPC rechaza con PLANTACION_FINALIZADA → passthrough', () => {
+    const result = classifyRpcResult(sg, { success: false, error: 'PLANTACION_FINALIZADA' }, null);
+    expect(result).toMatchObject({ success: false, error: 'PLANTACION_FINALIZADA' });
+  });
+
+  test('el mensaje de PLANTACION_FINALIZADA aclara que el dato no se perdió', () => {
+    expect(getErrorMessage('PLANTACION_FINALIZADA')).toMatch(/dispositivo/i);
+    expect(getErrorMessage('PLANTACION_FINALIZADA')).not.toEqual(getErrorMessage('PERMISSION'));
   });
 
   test('código desconocido del RPC → UNKNOWN', () => {
