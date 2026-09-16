@@ -9,7 +9,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · próxima versión
-<!-- sincronizado-hasta: cfcbb7b #440 -->
+<!-- sincronizado-hasta: d379d3a #463 -->
 
 - **Pedí foto en todos los botones de una plantación.** Desde Configuración
   podés hacer que los técnicos saquen foto al registrar cualquier especie, no
@@ -180,6 +180,56 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   - Volvé a tener señal y sincronizá.
   - Esperá ver: la plantación aparece enseguida con su "Parcela 1" y, después
     de sincronizar, también en la web de pruebas.
+- **Registrá árboles viendo todos los del grupo.** La barra de abajo pasa a ser
+  una tira deslizable con todos los árboles cargados, del primero al último.
+  Tocá cualquiera para seleccionarlo: el tacho y el botón de GPS actúan sobre
+  ese árbol, así podés capturar el punto de uno viejo o borrar uno del medio.
+  Debajo, la precisión actual queda siempre en el mismo lugar. <!-- #462 -->
+  - En la app Bayka TEST, entrá a un grupo y registrá cinco o seis árboles.
+  - Deslizá la tira y tocá un chip viejo, por ejemplo el de la posición 1.
+  - Con ese chip elegido, tocá "Capturar" y después el tacho del chip.
+  - Esperá ver: la tira muestra todos los árboles, el chip elegido queda
+    resaltado, el botón pasa a "± N m Recapturar" con el pin en el chip, y
+    borrar uno del medio pide confirmación porque renumera a los que siguen.
+- **La app te avisa cuando hay una actualización lista.** Cuando termina de
+  bajar una actualización, aparece arriba de todo una franja celeste con el
+  botón "Reiniciar", para aplicarla en el momento en vez de esperar al próximo
+  arranque. Nunca se reinicia sola, y el botón queda bloqueado mientras haya
+  una sincronización o una descarga en curso. <!-- #454 #461 -->
+  - En la app Bayka TEST, dejá la app abierta después de que se publique una
+    actualización nueva.
+  - Mientras está el aviso, tocá "Sincronizar" en una plantación.
+  - Esperá ver: la franja dice "Hay una actualización lista. Al reiniciar se
+    cierra lo que estés haciendo."; durante la sincronización pasa a
+    "Actualización lista · esperando que termine la sincronización" con
+    "Reiniciar" apagado, y la ✕ la descarta hasta el próximo arranque.
+- **La sincronización te dice en qué va y tarda menos.** El cartel deja de
+  quedarse quieto: muestra la etapa con su contador y una barra, y las fotos
+  avanzan con "N de M". Además las plantaciones grandes sincronizan más
+  rápido, sobre todo la segunda vez. <!-- #456 #457 #463 -->
+  - En la app Bayka TEST, tocá el ícono de sincronizar todas las plantaciones.
+  - Mirá el cartel de principio a fin, sin tocar nada, en una plantación con
+    muchos árboles y fotos.
+  - Esperá ver: se suceden "Parcelas", "Grupos", "Usuarios", "Especies
+    asignadas" y "Árboles" con su contador, después "Descargando fotos..." con
+    "N de M fotos", y nunca pasan más de unos segundos sin que algo cambie.
+- **Una foto que fallaba siempre ahora baja bien.** Si la descarga de una foto
+  se cortaba por la mitad, esa foto quedaba contada como fallida en todas las
+  sincronizaciones siguientes. Ahora el reintento la baja completa.
+  <!-- #455 -->
+  - En la app Bayka TEST, sincronizá una plantación con fotos y, mientras dice
+    "Descargando fotos...", cerrá la app desde el selector de aplicaciones.
+  - Volvé a entrar y sincronizá esa plantación de nuevo.
+  - Esperá ver: termina con las fotos descargadas, sin el aviso de fotos que no
+    pudieron descargarse repitiéndose en cada intento.
+- **Una descarga cortada ya no deja una plantación vacía.** Si falla la
+  descarga de una plantación nueva, deja de aparecer en el listado como si
+  estuviera descargada. <!-- #457 -->
+  - En la app Bayka TEST, entrá a "Gestionar plantaciones descargadas" y elegí
+    una que no tengas descargada.
+  - Tocá "Descargar seleccion" y poné el teléfono en modo avión apenas arranca.
+  - Esperá ver: después del error esa plantación no queda en el listado, y las
+    que ya tenías descargadas siguen con sus datos.
 
 ## Web 1.1.0 · 21 de agosto de 2026
 

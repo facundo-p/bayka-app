@@ -1,4 +1,5 @@
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
+import { esTimeout } from '../../supabase/fetchConTimeout';
 
 /**
  * Códigos de error de sync (grupo + parcela). En el push de grupos DUPLICATE_CODE y
@@ -18,6 +19,8 @@ export const SYNC_ERROR = {
   PERMISSION: 'PERMISSION',
   /** Legacy: falla de red sin código de postgres. */
   NETWORK: 'NETWORK',
+  /** La request no respondió dentro del timeout (#451). Distinto de NETWORK: hay señal, el que no contesta es el server. */
+  TIMEOUT: 'TIMEOUT',
   /** Legacy: todo lo demás, con code/message crudo en `detail`. */
   UNKNOWN: 'UNKNOWN',
 } as const;
@@ -27,6 +30,13 @@ export type SyncErrorCode = (typeof SYNC_ERROR)[keyof typeof SYNC_ERROR];
 export interface PhotoSyncProgress {
   total: number;
   completed: number;
+  /**
+   * Bytes efectivamente transferidos en esta fase. El cálculo de KB/s vive en la
+   * UI, no acá: el servicio solo acumula (#450).
+   */
+  bytes?: number;
+  /** Momento en que arrancó la fase, en ms. Con `bytes` alcanza para el promedio. */
+  desde?: number;
 }
 
 /** Sentido de la transferencia de fotos; `useSync` lo mapea al estado del modal. */
@@ -168,6 +178,7 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
   [SYNC_ERROR.PERMISSION]: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
   [SYNC_ERROR.NETWORK]: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
+  [SYNC_ERROR.TIMEOUT]: 'El servidor no respondio a tiempo. Puede ser la señal: intenta de nuevo con mejor cobertura.',
   [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intenta de nuevo.',
 };
 
@@ -182,11 +193,14 @@ export function rawErrorDetail(error: { code?: string; message?: string } | null
 
 /**
  * Clasifica errores de push que NO son conflicto de unicidad (23505); compartido por parcela y
- * plantación: 42501 (RLS) → PERMISSION; fetch/network sin código postgres → NETWORK; resto →
- * UNKNOWN (con code/message crudo en `detail`).
+ * plantación: timeout → TIMEOUT; 42501 (RLS) → PERMISSION; fetch/network sin código postgres →
+ * NETWORK; resto → UNKNOWN (con code/message crudo en `detail`).
  */
 export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
   const detail = rawErrorDetail(error);
+  // Antes que nada: un timeout llega sin código de postgres y caería en NETWORK,
+  // indistinguible de "no hay señal", que es un problema distinto para el técnico.
+  if (esTimeout(error)) return { error: SYNC_ERROR.TIMEOUT, detail };
   if (error?.code === PG_ERROR.INSUFFICIENT_PRIVILEGE) return { error: SYNC_ERROR.PERMISSION, detail };
   const msg = String(error?.message ?? '').toLowerCase();
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {

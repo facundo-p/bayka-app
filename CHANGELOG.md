@@ -10,7 +10,7 @@ contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
 ## Sin publicar
-<!-- sincronizado-hasta: cfcbb7b #440 -->
+<!-- sincronizado-hasta: d379d3a #463 -->
 
 ### Web
 
@@ -51,13 +51,23 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 #### Agregado
 - Revocación de acceso: el pull chequea la membresía antes del replace, devuelve "sin acceso", conserva los datos locales y saltea el push (#318, #334)
 - Con "Foto en todos los botones" activo, cada especie pide foto antes de registrar con la misma política que N/N; la obligatoriedad para identificados es `PHOTO_CAPTURE_REQUIRED_DEFAULT` con contrato en `contracts/photo-defaults.json` (#440)
+- Aviso de OTA descargado con botón "Reiniciar" que decide el usuario, bloqueado mientras corre una sincronización o una descarga; la detección usa `useSyncExternalStore` sobre `addUpdatesStateChangeListener`, porque `useUpdates` perdía el update que terminaba entre el render y la suscripción (#454, #461)
+- Tira deslizable con todos los árboles del grupo y árbol seleccionado: el tacho y la captura de GPS actúan sobre el chip elegido, con auto-scroll al final al registrar (#462)
 
 #### Cambiado
 - Alta de plantación local-first en una transacción, con push inmediato best-effort; se retiran el rollback remoto y la migración 031 (#313, #320)
 - Ajustes y Perfil con `CustomHeader` y safe-area (#337)
+- La barra de registro unifica sus dos filas: "Precisión actual" con el semáforo fijo a la izquierda y el botón Capturar/Recapturar con la precisión del árbol a la derecha; se retiran `LastThreeTrees` y `LastTreeGpsRow` (#462)
+- El sync informa la fase del pull con contador y barra, las fotos del push y del sync global emiten progreso, y `pushing` arranca con su primer progreso en vez de taparle el cartel al pull (#456)
+- Pull en lotes de 500 con upsert multi-fila, conflicto de especie resuelto con una lectura en memoria, índices de sync (migración 0020) y fotos con pool de 3 (#463)
+- El inset de la status bar lo aplica una sola franja según `ocupanteDelInsetSuperior` (entorno → aviso → header), en lugar del ternario contra `ES_ENTORNO_DE_PRUEBAS` dentro de `CustomHeader` (#454)
 
 #### Corregido
 - El KML omite el nombre de parcelas eliminadas (#331)
+- Una foto cuya descarga se interrumpió ya no falla para siempre: `downloadFileAsync` con `{ idempotent: true }` (#455)
+- Las transacciones eran un no-op (`db.transaction` de expo-sqlite es síncrona): `enTransaccion`/`enTransaccionPorLotes` sobre `withTransactionAsync`, serializadas por cola, con `.transaction()` prohibido por eslint en `src/` (#457)
+- Una plantación nueva cuya descarga falla se revierte, en vez de quedar en el listado vacía y marcada como descargada (#457)
+- El contador de grupos llega a "N de N" al terminar el push (#456)
 
 ### Otros
 - Migración 030: hardening, índices y NOT NULL; suite pgTAP y re-baseline 001–029 (#313)
@@ -72,6 +82,9 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - Auditoría responsive `npm run audit:responsive` en módulos, con el detalle de lo que empeora, la métrica de texto que se sale de su caja y `/novedades` con los pasos desplegados (#407, #415, #419)
 - CI: ESLint de mobile, lint de los scripts de la raíz y de la auditoría, y `prettier --check` en web (#404, #411, #414, #419, #436, #437)
 - Migración 035 `plantations.photo_capture_all_trees` (solo web, el pull siempre toma el valor del server) con test pgTAP, y migración local 0019 (#440)
+- Los APK locales graban el canal de EAS Update (`test` / `production`) en `updates.requestHeaders`, y `build-apk.sh` corta si falta `EAS_PROJECT_ID` (#441)
+- README con la sección "APK Android": variantes prod y test, requisitos, build local y publicación de OTA (#443)
+- `app.config.js` corta con error si la variante TEST no encuentra `mobile/.env.staging`, en vez de salir apuntando a Supabase de producción en silencio (#445)
 
 ## 2026-09-01 · web 1.1.0
 

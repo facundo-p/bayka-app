@@ -1,6 +1,7 @@
 import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { deletePlantationLocally } from '../../repositories/PlantationRepository';
+import { relanzarSiEsCancelacion } from './cancelacion';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
@@ -78,6 +79,10 @@ export async function downloadPlantation(
       throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
     }
   } catch (e) {
+    // Primero: cancelar una sync corta todo lo que pase por `fetchAllRows`,
+    // incluida una descarga de catálogo en paralelo. Eso NO es un pull fallido y
+    // no puede disparar el borrado (#451).
+    relanzarSiEsCancelacion(e);
     // La fila se insertó con `pendingSync: false` antes del pull, así que una
     // plantación nueva cuyo pull falla queda en el listado como descargada y
     // vacía (#448). Se borra con lo que haya alcanzado a bajar.

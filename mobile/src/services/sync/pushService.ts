@@ -23,6 +23,8 @@ import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
 import { borradosDePlantacion, limpiarBorrados } from '../../repositories/BorradosRepository';
+import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
+import { esTimeout } from '../../supabase/fetchConTimeout';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -98,8 +100,10 @@ export async function uploadSyncableParcelas(
       // En cualquier error: NO markSynced — pending_sync queda en true.
       results.push(result);
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       syncLog.error(`Parcela upload exception "${parcela.nombre}" (${parcela.id}):`, e);
-      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.NETWORK });
+      const codigo = esTimeout(e) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK;
+      results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: codigo });
     }
   }
 
@@ -165,20 +169,24 @@ export async function uploadGroup(
   const pendientes = sgTrees.filter((t) => isLocalUri(t.fotoUrl) && !t.fotoSynced);
   // Sin esto el modal queda clavado en "grupo i de n" mientras se suben K fotos: es
   // el tramo más largo del sync de una plantación con fotos.
-  if (pendientes.length > 0) onPhotoProgress?.({ total: pendientes.length, completed: 0 });
+  const inicio = Date.now();
+  if (pendientes.length > 0) onPhotoProgress?.({ total: pendientes.length, completed: 0, bytes: 0, desde: inicio });
 
   // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
   let completadas = 0;
+  let bytesSubidos = 0;
   await conLimiteDeConcurrencia(pendientes, FOTOS_EN_PARALELO, async (t) => {
+    abortarSiCancelado();
     const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
-    const { error } = await uploadPhotoToStorage(t.fotoUrl!, storagePath);
+    const { error, bytes } = await uploadPhotoToStorage(t.fotoUrl!, storagePath);
     if (!error) {
       photoMap.set(t.id, storagePath);
+      bytesSubidos += bytes;
       await markPhotoSynced(t.id);
     } else {
       syncLog.error(`Photo upload failed for tree ${t.id}:`, error.message);
     }
-    onPhotoProgress?.({ total: pendientes.length, completed: ++completadas });
+    onPhotoProgress?.({ total: pendientes.length, completed: ++completadas, bytes: bytesSubidos, desde: inicio });
   });
 
   // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
@@ -224,7 +232,10 @@ export function classifyRpcResult(
 ): SyncGroupResult {
   if (error) {
     syncLog.error(`RPC error for "${sg.nombre}" (${sg.id}):`, JSON.stringify(error));
-    return { success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK };
+    // El push de grupos es el camino dominante: sin esto el código TIMEOUT no
+    // llegaría nunca a la UI por acá (#451).
+    const codigo = esTimeout(error) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK;
+    return { success: false, groupId: sg.id, nombre: sg.nombre, error: codigo };
   }
   if (data?.success === true) {
     return { success: true, groupId: sg.id, nombre: sg.nombre };
@@ -286,8 +297,10 @@ export async function uploadSyncableGroups(
       if (result.success) await markGroupSynced(sg.id);
       results.push(result);
     } catch (e) {
+      relanzarSiEsCancelacion(e);
       syncLog.error(`Exception for "${sg.nombre}" (${sg.id}):`, e);
-      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK });
+      const codigo = esTimeout(e) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK;
+      results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: codigo });
     }
   }
 
