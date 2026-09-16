@@ -13,18 +13,27 @@ import { marcandoActividadDeSync } from './syncActivityStore';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
 
+/**
+ * Resultado de mover una foto. `bytes` y `ok` van separados a propósito: un driver
+ * que no informa el tamaño —o un archivo de 0 bytes— no puede hacer que una
+ * transferencia exitosa cuente como fallida (#450).
+ */
+type Transferencia = { ok: boolean; bytes: number };
+
+const FALLO: Transferencia = { ok: false, bytes: 0 };
+
 /** Derivado de la query, no escrito a mano: si el repositorio cambia de forma, esto no queda desfasado. */
 type ArbolConFotoPendiente = Awaited<ReturnType<typeof getTreesWithPendingPhotos>>[number];
 
-/** Sube la foto a Storage y deja `foto_url` apuntando al path relativo. @returns true si quedó sincronizada. */
-async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<boolean> {
+/** Sube la foto a Storage y deja `foto_url` apuntando al path relativo. */
+async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<Transferencia> {
   // Path con parcela: parcela es obligatoria en groups (#90).
   const storagePath = `plantations/${tree.plantacionId}/parcelas/${tree.parcelaId}/trees/${tree.id}.jpg`;
 
-  const { error } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
+  const { error, bytes } = await uploadPhotoToStorage(tree.fotoUrl, storagePath);
   if (error) {
     syncLog.error(`Photo upload failed for tree ${tree.id}:`, error.message);
-    return false;
+    return FALLO;
   }
 
   // Update Supabase trees table with relative storage path.
@@ -34,11 +43,11 @@ async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<boolean> 
     .eq('id', tree.id);
   if (updateError) {
     syncLog.error(`foto_url update failed for tree ${tree.id}:`, updateError.message);
-    return false;
+    return FALLO;
   }
 
   await markPhotoSynced(tree.id);
-  return true;
+  return { ok: true, bytes };
 }
 
 /**
@@ -59,15 +68,18 @@ async function correrUploadPendingPhotos(
   const inicio = Date.now();
   let uploaded = 0;
   let failed = 0;
-  onProgress?.({ total: pending.length, completed: 0 });
+  let bytes = 0;
+  onProgress?.({ total: pending.length, completed: 0, bytes: 0, desde: inicio });
 
   await conLimiteDeConcurrencia(pending, FOTOS_EN_PARALELO, async (tree) => {
-    if (await uploadSinglePhoto(tree)) uploaded++; else failed++;
+    const subida = await uploadSinglePhoto(tree);
+    if (subida.ok) uploaded++; else failed++;
+    bytes += subida.bytes;
     // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
-    onProgress?.({ total: pending.length, completed: uploaded + failed });
+    onProgress?.({ total: pending.length, completed: uploaded + failed, bytes, desde: inicio });
   });
 
-  syncLog.info(`Upload fotos: ${uploaded} ok, ${failed} fallidas en ${Date.now() - inicio}ms`);
+  syncLog.info(`Upload fotos: ${uploaded} ok, ${failed} fallidas, ${bytes} bytes en ${Date.now() - inicio}ms`);
   return { uploaded, failed };
 }
 
@@ -95,14 +107,14 @@ async function getRemoteTreesForPlantation(
 async function downloadSinglePhoto(
   tree: { id: string; fotoUrl: string },
   dir: InstanceType<typeof Directory>
-): Promise<boolean> {
+): Promise<Transferencia> {
   const { data, error } = await supabase.storage
     .from('tree-photos')
     .createSignedUrl(tree.fotoUrl, 3600);
 
   if (error || !data?.signedUrl) {
     syncLog.error(`Signed URL FAILED for tree ${tree.id}: ${error?.message ?? 'no signedUrl returned'}`);
-    return false;
+    return FALLO;
   }
 
   syncLog.info(`Signed URL OK for tree ${tree.id}, downloading...`);
@@ -116,7 +128,8 @@ async function downloadSinglePhoto(
 
   const localUri = ensureFileUri(destFile.uri);
   await db.update(trees).set({ fotoUrl: localUri, fotoSynced: true }).where(eq(trees.id, tree.id));
-  return true;
+  // `size` ya lo tiene el archivo recién escrito: no es una lectura extra (#450).
+  return { ok: true, bytes: destFile.size ?? 0 };
 }
 
 /**
@@ -139,20 +152,23 @@ async function correrDownloadPhotosForPlantation(
   const inicio = Date.now();
   let downloaded = 0;
   let failed = 0;
-  onProgress?.({ total: remoteTrees.length, completed: 0 });
+  let bytes = 0;
+  onProgress?.({ total: remoteTrees.length, completed: 0, bytes: 0, desde: inicio });
 
   await conLimiteDeConcurrencia(remoteTrees, FOTOS_EN_PARALELO, async (tree) => {
     try {
-      if (await downloadSinglePhoto(tree, dir)) downloaded++; else failed++;
+      const bajada = await downloadSinglePhoto(tree, dir);
+      if (bajada.ok) downloaded++; else failed++;
+      bytes += bajada.bytes;
     } catch (e: any) {
       syncLog.error(`Photo download EXCEPTION for tree ${tree.id}: ${e?.message}`);
       failed++;
     }
     // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
-    onProgress?.({ total: remoteTrees.length, completed: downloaded + failed });
+    onProgress?.({ total: remoteTrees.length, completed: downloaded + failed, bytes, desde: inicio });
   });
 
-  syncLog.info(`Download fotos: ${downloaded} ok, ${failed} fallidas en ${Date.now() - inicio}ms`);
+  syncLog.info(`Download fotos: ${downloaded} ok, ${failed} fallidas, ${bytes} bytes en ${Date.now() - inicio}ms`);
   return { downloaded, failed };
 }
 

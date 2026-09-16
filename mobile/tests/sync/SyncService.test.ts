@@ -78,6 +78,7 @@ import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositori
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { File as ExpoFile } from 'expo-file-system';
 import { FOTOS_EN_PARALELO } from '../../src/services/sync/concurrencia';
+import type { PhotoSyncProgress } from '../../src/services/sync/types';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
@@ -484,6 +485,54 @@ describe('SyncService', () => {
       expect(result).toEqual({ uploaded: 5, failed: 0 });
     });
 
+    // El indicador de velocidad se alimenta de acá: el archivo ya se materializa
+    // entero para subirlo, así que los bytes no cuestan una lectura de más (#450).
+    it('acumula los bytes subidos y la marca de arranque en el progreso', async () => {
+      const pending = [
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+        { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ];
+      mockGetTreesWithPendingPhotos.mockResolvedValue(pending);
+      const storageChain = {
+        upload: jest.fn().mockResolvedValue({ error: null }),
+        createSignedUrl: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+        select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
+      });
+
+      const progresos: PhotoSyncProgress[] = [];
+      await uploadPendingPhotos('plantation-1', (p) => progresos.push({ ...p }));
+
+      const ultimo = progresos[progresos.length - 1];
+      // El doble de ExpoFile devuelve un arrayBuffer de tamaño fijo por foto.
+      expect(ultimo.bytes).toBeGreaterThan(0);
+      expect(ultimo.desde).toEqual(expect.any(Number));
+      // Monótono: los bytes nunca retroceden entre emisiones.
+      const bytes = progresos.map((p) => p.bytes ?? 0);
+      expect(bytes).toEqual([...bytes].sort((a, b) => a - b));
+    });
+
+    // Lo que no llegó al servidor no es velocidad de transferencia.
+    it('una subida fallida no suma bytes', async () => {
+      mockGetTreesWithPendingPhotos.mockResolvedValue([
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ]);
+      const storageChain = {
+        upload: jest.fn().mockResolvedValue({ error: { message: 'Upload failed' } }),
+        createSignedUrl: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+
+      const progresos: PhotoSyncProgress[] = [];
+      const result = await uploadPendingPhotos('plantation-1', (p) => progresos.push({ ...p }));
+
+      expect(result).toEqual({ uploaded: 0, failed: 1 });
+      expect(progresos[progresos.length - 1].bytes).toBe(0);
+    });
+
     it('Test 11: returns { uploaded: 0, failed: 0 } when no pending photos', async () => {
       mockGetTreesWithPendingPhotos.mockResolvedValue([]);
 
@@ -527,6 +576,23 @@ describe('SyncService', () => {
       expect(storageChain.createSignedUrl).toHaveBeenCalledTimes(1);
       expect(result.downloaded).toBe(1);
       expect(result.failed).toBe(0);
+    });
+
+    // Los bytes son para la velocidad, no para decidir si la foto llegó: un driver
+    // que no informa `size` no puede convertir un éxito en una falla (#450).
+    it('una foto que llega sin tamaño informado igual cuenta como descargada', async () => {
+      mockearUnaFotoRemota();
+      const storageChain = {
+        createSignedUrl: jest.fn().mockResolvedValue({ data: { signedUrl: 'https://signed.url/x.jpg' }, error: null }),
+        upload: jest.fn(),
+      };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+
+      const progresos: PhotoSyncProgress[] = [];
+      const result = await downloadPhotosForPlantation('plantation-1', (p) => progresos.push({ ...p }));
+
+      expect(result).toEqual({ downloaded: 1, failed: 0 });
+      expect(progresos[progresos.length - 1].bytes).toBe(0);
     });
 
     it('Test 13: skips trees with local file:// fotoUrl', async () => {

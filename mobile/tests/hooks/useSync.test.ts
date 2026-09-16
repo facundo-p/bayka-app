@@ -327,3 +327,24 @@ describe('useSync', () => {
     });
   });
 });
+
+describe('useSync — el progreso de fotos no queda pegado entre fases (#450)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // Una fase sin fotos no emite nada, así que el estado viejo sobrevive: con la
+  // velocidad adentro, eso se ve como una transferencia arrastrándose.
+  it('la bajada sin fotos no hereda el contador de la subida', async () => {
+    (syncPlantation as jest.Mock).mockResolvedValue([]);
+    const { uploadPendingPhotos, downloadPhotosForPlantation } = require('../../src/services/SyncService');
+    (uploadPendingPhotos as jest.Mock).mockImplementation(async (_id: string, onProgress: any) => {
+      onProgress?.({ total: 2, completed: 2, bytes: 4_000_000, desde: Date.now() });
+      return { uploaded: 2, failed: 0 };
+    });
+    (downloadPhotosForPlantation as jest.Mock).mockResolvedValue({ downloaded: 0, failed: 0 });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(true); });
+
+    expect(result.current.photoProgress).toBeNull();
+  });
+});

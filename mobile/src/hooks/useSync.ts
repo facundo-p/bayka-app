@@ -94,9 +94,15 @@ export function useSync(plantacionId?: string) {
 
       // Sin acceso no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
       if (incluirFotos && !accesoRevocado) {
+        // Limpiar entre fases: una fase sin fotos no emite nada (#447), así que sin
+        // esto el modal sigue mostrando el contador —y ahora la velocidad— de la
+        // fase anterior, que con el tiempo corriendo se lee como si algo estuviera
+        // avanzando a paso de hormiga (#450).
         setState(SYNC_STATE.uploadingPhotos);
+        setPhotoProgress(null);
         const uploadRes = await uploadPendingPhotos(targetPlantacionId, setPhotoProgress);
         setState(SYNC_STATE.downloadingPhotos);
+        setPhotoProgress(null);
         const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, setPhotoProgress);
         setPhotoResult({
           uploaded: uploadRes.uploaded,
