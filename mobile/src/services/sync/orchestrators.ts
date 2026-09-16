@@ -9,6 +9,7 @@ import { pullFromServer } from './pullService';
 import { uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { relanzarSiEsCancelacion } from './cancelacion';
 
 /**
  * Callbacks de una corrida de plantación. Objeto y no parámetros posicionales: ya son
@@ -49,6 +50,7 @@ async function correrSyncPlantation(
     // de errores de permisos que tapan la causa real.
     if (esSinAcceso(pull)) return [];
   } catch (e) {
+    relanzarSiEsCancelacion(e);
     syncLog.error('Pull failed:', e);
   } finally {
     onPhaseProgress?.(null);
@@ -64,6 +66,7 @@ async function correrSyncPlantation(
       syncLog.info(`Push parcelas: ${failed}/${parcelaResults.length} failed; groups dependientes saltarán`);
     }
   } catch (e) {
+    relanzarSiEsCancelacion(e);
     syncLog.error('Push parcelas failed:', e);
   }
   onParcelaResults?.(parcelaResults);
@@ -114,6 +117,7 @@ async function correrSyncAllPlantations(
       try {
         parcelaResults = await uploadSyncableParcelas(plantation.id);
       } catch (e) {
+        relanzarSiEsCancelacion(e);
         syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
       }
       const results = await uploadSyncableGroups(
@@ -123,6 +127,7 @@ async function correrSyncAllPlantations(
       );
       allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results, parcelas: parcelaResults });
     } catch (e) {
+      relanzarSiEsCancelacion(e);
       syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
       allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [], parcelas: [] });
     }
@@ -139,6 +144,7 @@ async function correrSyncAllPlantations(
           emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.downloading }),
         );
       } catch (e) {
+        relanzarSiEsCancelacion(e);
         syncLog.error(`Photo sync failed for "${plantation.lugar}":`, e);
       }
     }

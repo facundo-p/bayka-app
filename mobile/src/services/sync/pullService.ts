@@ -10,6 +10,7 @@ import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { abortarSiCancelado } from './cancelacion';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -23,6 +24,21 @@ function emitProgress(
   total: number,
 ): void {
   onProgress?.({ phase, phaseDone: done, phaseTotal: total });
+}
+
+/**
+ * Progreso de un lote escrito, más el corte de cancelación. `onLote` corre ENTRE
+ * transacciones: es el único punto donde abortar no deja la base a medias (#451).
+ */
+function alEscribirLote(
+  onProgress: OnPhaseProgress | undefined,
+  phase: DownloadPhase,
+  total: number,
+) {
+  return (escritas: number) => {
+    emitProgress(onProgress, phase, escritas, total);
+    abortarSiCancelado();
+  };
 }
 
 /** Callback de paginación: reporta filas bajadas, con el total todavía desconocido. */
@@ -191,7 +207,7 @@ async function pullParcelas(
         },
       });
     },
-    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, escritas, all.length),
+    alEscribirLote(onProgress, DOWNLOAD_PHASE.parcelas, all.length),
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, all.length, all.length);
 
@@ -253,7 +269,7 @@ async function pullGroups(
         },
       });
     },
-    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.groups, escritas, all.length),
+    alEscribirLote(onProgress, DOWNLOAD_PHASE.groups, all.length),
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.groups, all.length, all.length);
 
@@ -354,7 +370,7 @@ async function pullPlantationSpecies(
         set: { ordenVisual: sql`excluded.orden_visual` },
       });
     },
-    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, escritas, all.length),
+    alEscribirLote(onProgress, DOWNLOAD_PHASE.especiesPlantacion, all.length),
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, all.length, all.length);
 }
@@ -457,7 +473,7 @@ async function pullTrees(
       if (!isFreshDownload && await checkTreeConflict(tx, t)) return;
       await upsertTreeFromServerTx(tx, t);
     },
-    (escritas) => emitProgress(onProgress, DOWNLOAD_PHASE.arboles, escritas, all.length),
+    alEscribirLote(onProgress, DOWNLOAD_PHASE.arboles, all.length),
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
 }
@@ -468,6 +484,8 @@ async function pullTrees(
  * en el log de la app (#448).
  */
 async function conDuracion<T>(fase: DownloadPhase, tarea: () => Promise<T>): Promise<T> {
+  // Entre fases: la anterior ya commiteó y la siguiente todavía no abrió nada.
+  abortarSiCancelado();
   const inicio = Date.now();
   try {
     return await tarea();

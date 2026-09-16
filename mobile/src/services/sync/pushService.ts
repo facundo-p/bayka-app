@@ -21,6 +21,7 @@ import {
 } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
+import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -96,6 +97,7 @@ export async function uploadSyncableParcelas(
       // En cualquier error: NO markSynced — pending_sync queda en true.
       results.push(result);
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       syncLog.error(`Parcela upload exception "${parcela.nombre}" (${parcela.id}):`, e);
       results.push({ success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.NETWORK });
     }
@@ -134,6 +136,7 @@ export async function uploadGroup(
   if (pendientes.length > 0) onPhotoProgress?.({ total: pendientes.length, completed: 0 });
 
   for (let i = 0; i < pendientes.length; i++) {
+    abortarSiCancelado();
     const t = pendientes[i];
     const storagePath = `plantations/${sg.plantacionId}/parcelas/${sg.parcelaId}/trees/${t.id}.jpg`;
     const { error } = await uploadPhotoToStorage(t.fotoUrl!, storagePath);
@@ -251,6 +254,7 @@ export async function uploadSyncableGroups(
       if (result.success) await markGroupSynced(sg.id);
       results.push(result);
     } catch (e) {
+      relanzarSiEsCancelacion(e);
       syncLog.error(`Exception for "${sg.nombre}" (${sg.id}):`, e);
       results.push({ success: false, groupId: sg.id, nombre: sg.nombre, error: SYNC_ERROR.NETWORK });
     }

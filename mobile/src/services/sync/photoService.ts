@@ -8,6 +8,9 @@ import { getTreesWithPendingPhotos, markPhotoSynced } from '../../repositories/T
 import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';
+import { abortarSiCancelado, esCancelacion } from './cancelacion';
+import { TIMEOUT_MS, TimeoutError } from '../../supabase/fetchConTimeout';
+import { conReloj } from '../../utils/conReloj';
 import { marcandoActividadDeSync } from './syncActivityStore';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
@@ -31,6 +34,7 @@ async function correrUploadPendingPhotos(
   let failed = 0;
 
   for (let i = 0; i < pending.length; i++) {
+    abortarSiCancelado();
     onProgress?.({ total: pending.length, completed: i });
     const tree = pending[i];
     // Path con parcela: parcela es obligatoria en groups (#90).
@@ -97,11 +101,7 @@ async function downloadSinglePhoto(
 
   syncLog.info(`Signed URL OK for tree ${tree.id}, downloading...`);
   const destFile = new ExpoFile(dir, `photo_${tree.id}.jpg`);
-  // El nombre es determinístico y el default de `idempotent` es false: sin esto,
-  // cualquier descarga previa que dejó el archivo —truncada a mitad, o completa pero
-  // cortada antes del update de la base— hace fallar todo reintento con "file already
-  // exists". Con la opción, el reintento re-descarga y sobreescribe (#452).
-  await ExpoFile.downloadFileAsync(data.signedUrl, destFile, { idempotent: true });
+  await bajarConTimeout(data.signedUrl, destFile);
   syncLog.info(`Download OK for tree ${tree.id}: destUri=${destFile.uri}`);
 
   const localUri = ensureFileUri(destFile.uri);
@@ -114,6 +114,27 @@ async function downloadSinglePhoto(
  * Runs during pull flow; skips trees with local file:// URIs.
  * Updates local fotoUrl to local path and sets fotoSynced=true on success.
  */
+/**
+ * `ExpoFile.downloadFileAsync` es la única transferencia que el fetch con timeout
+ * no cubre: no pasa por el cliente de Supabase y sus `DownloadOptions` solo tienen
+ * `headers` e `idempotent` — no aceptan AbortSignal (#451).
+ *
+ * Se corta con un reloj. La descarga nativa sigue su curso —no hay cómo pararla—
+ * pero el archivo a medias que deje no molesta: el reintento va con
+ * `idempotent: true` y lo sobreescribe (#452).
+ */
+async function bajarConTimeout(url: string, destino: InstanceType<typeof ExpoFile>): Promise<void> {
+  await conReloj(
+    // El nombre es determinístico y el default de `idempotent` es false: sin esto,
+    // cualquier descarga previa que dejó el archivo —truncada a mitad, o completa pero
+    // cortada antes del update de la base— hace fallar todo reintento con "file already
+    // exists". Con la opción, el reintento re-descarga y sobreescribe (#452).
+    ExpoFile.downloadFileAsync(url, destino, { idempotent: true }),
+    TIMEOUT_MS.foto,
+    () => new TimeoutError(destino.uri, TIMEOUT_MS.foto),
+  );
+}
+
 async function correrDownloadPhotosForPlantation(
   plantacionId: string,
   onProgress?: (p: PhotoSyncProgress) => void
@@ -130,11 +151,14 @@ async function correrDownloadPhotosForPlantation(
   let failed = 0;
 
   for (let i = 0; i < remoteTrees.length; i++) {
+    abortarSiCancelado();
     onProgress?.({ total: remoteTrees.length, completed: i });
     try {
       const success = await downloadSinglePhoto(remoteTrees[i], dir);
       if (success) downloaded++; else failed++;
     } catch (e: any) {
+      // Una foto que falla —timeout incluido— no corta la tanda; una cancelación sí.
+      if (esCancelacion(e)) throw e;
       syncLog.error(`Photo download EXCEPTION for tree ${remoteTrees[i].id}: ${e?.message}`);
       failed++;
     }
