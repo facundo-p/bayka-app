@@ -30,6 +30,13 @@ export type SyncErrorCode = (typeof SYNC_ERROR)[keyof typeof SYNC_ERROR];
 export interface PhotoSyncProgress {
   total: number;
   completed: number;
+  /**
+   * Bytes efectivamente transferidos en esta fase. El cálculo de KB/s vive en la
+   * UI, no acá: el servicio solo acumula (#450).
+   */
+  bytes?: number;
+  /** Momento en que arrancó la fase, en ms. Con `bytes` alcanza para el promedio. */
+  desde?: number;
 }
 
 /** Sentido de la transferencia de fotos; `useSync` lo mapea al estado del modal. */
