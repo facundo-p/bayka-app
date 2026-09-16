@@ -114,12 +114,13 @@ select throws_ok(
   '42501', null, 'no se crean parcelas en una plantación finalizada');
 
 -- El "Eliminar parcela" del móvil es un tombstone, o sea un UPDATE de deleted_at.
+-- El UPDATE no explota: la policy lo deja en cero filas, así que se mira el efecto.
+update parcelas set deleted_at = now()
+  where id = 'a1000000-0000-0000-0000-000000000003';
+
 select is(
-  (with intento as (
-     update parcelas set deleted_at = now()
-     where id = 'a1000000-0000-0000-0000-000000000003' returning 1)
-   select count(*)::int from intento),
-  0, 'no se tombstonea una parcela de una plantación finalizada');
+  (select deleted_at from parcelas where id = 'a1000000-0000-0000-0000-000000000003'),
+  null, 'no se tombstonea una parcela de una plantación finalizada');
 
 select lives_ok(
   $$insert into parcelas (id, plantation_id, nombre, codigo)
