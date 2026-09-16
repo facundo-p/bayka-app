@@ -59,7 +59,9 @@ export default function ParcelasScreen() {
   const { plantationRows, estadoLoaded, isFinalizada, totalNN } = usePlantationDetail(pid);
   const { blockedByNN } = usePendingSyncCount(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
-  const canAddParcela = estadoLoaded && !isFinalizada;
+  // Una plantación finalizada es inmutable: tampoco se editan ni se borran sus
+  // parcelas, que el push sube como tombstone (#469).
+  const plantacionEditable = estadoLoaded && !isFinalizada;
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
@@ -80,7 +82,7 @@ export default function ParcelasScreen() {
       <ParcelaRow
         parcela={item}
         onPress={() => navigateToGrupos(item.id)}
-        onLongPress={() => openEdit(item)}
+        onLongPress={plantacionEditable ? () => openEdit(item) : undefined}
       />
     );
   }
@@ -92,7 +94,7 @@ export default function ParcelasScreen() {
         subtitle={lugar || undefined}
         onBack={goBack}
         rightElement={
-          canAddParcela ? (
+          plantacionEditable ? (
             <HeaderActionButton
               icon="add"
               onPress={openCreate}
@@ -103,7 +105,7 @@ export default function ParcelasScreen() {
       />
       <NNResolutionBanner totalNN={totalNN} blockedByNN={blockedByNN} onResolve={openNNResolution} />
       {parcelas.length === 0 ? (
-        <EmptyState onCreate={canAddParcela ? openCreate : null} />
+        <EmptyState onCreate={plantacionEditable ? openCreate : null} />
       ) : (
         <FlatList
           data={parcelas}

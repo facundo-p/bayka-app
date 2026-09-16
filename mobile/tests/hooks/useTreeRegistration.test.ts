@@ -68,14 +68,16 @@ const mockGroup = {
  * useLiveData recibe una arrow que llama a la query; se la distingue por el nombre
  * de la query en su fuente. Sin config de captura, el hook cae a los defaults.
  */
-function mockLiveQueries({ group = mockGroup, captureConfig = null }: {
+function mockLiveQueries({ group = mockGroup, captureConfig = null, plantacionEstado = 'activa' }: {
   group?: typeof mockGroup;
   captureConfig?: { gpsFrequency: number; gpsRequired: boolean; photoAllTrees: boolean } | null;
+  plantacionEstado?: string;
 } = {}) {
   (useLiveData as jest.Mock).mockImplementation((queryFn: () => unknown) => {
     const fuente = String(queryFn);
     if (fuente.includes('getPlantationCaptureConfig')) return { data: captureConfig };
     if (fuente.includes('getGroupById')) return { data: [group] };
+    if (fuente.includes('getPlantationEstado')) return { data: plantacionEstado };
     return { data: undefined };
   });
 }
@@ -375,6 +377,20 @@ describe('useTreeRegistration', () => {
       const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
 
       expect(result.current.canReactivate).toBe(true);
+    });
+
+    // #469: reactivar devolvía el grupo a 'activa', y con eso reaparecía el borrado
+    // de grupo en el listado — dentro de una plantación que ya era inmutable.
+    it('canReactivate is false when the plantation is finalizada', () => {
+      mockLiveQueries({
+        group: { ...mockGroup, estado: 'finalizada', usuarioCreador: 'user-1' },
+        plantacionEstado: 'finalizada',
+      });
+      (canEdit as jest.Mock).mockReturnValue(false);
+
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      expect(result.current.canReactivate).toBe(false);
     });
 
     it('unresolvedNN and totalCount come from useTrees', () => {

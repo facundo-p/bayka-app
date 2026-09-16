@@ -100,7 +100,7 @@ function ExpandedSection({
             parcela={p}
             variant="inline"
             onPress={() => onParcelaPress?.(p.id)}
-            onLongPress={() => onParcelaLongPress?.(p)}
+            onLongPress={onParcelaLongPress ? () => onParcelaLongPress(p) : undefined}
           />
           {idx < parcelas.length - 1 && <View style={styles.expandedDivider} />}
         </View>

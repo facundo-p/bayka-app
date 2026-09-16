@@ -30,6 +30,7 @@ import {
 } from '../repositories/GroupRepository';
 import type { GroupEstado } from '../repositories/GroupRepository';
 import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
+import { getGroupGating } from '../utils/permisosDeEdicion';
 
 export interface UseTreeRegistrationParams {
   grupoId: string;
@@ -141,7 +142,13 @@ export function useTreeRegistration({
     : false;
   const dataLoaded = subgroup !== null && userId !== '';
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
-  const canReactivate = isCreator && subgroupEstado === ESTADO_GRUPO.finalizada;
+  // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
+  // eso reaparecía el borrado en el listado de grupos (#469).
+  const canReactivate = getGroupGating({
+    plantacionEstado,
+    subgroupEstado,
+    isCreator,
+  }).canReactivate;
 
   // Estable entre renders: la tira de la botonera y su selección dependen de la identidad.
   const sortedTrees = useMemo(

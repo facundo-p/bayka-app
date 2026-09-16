@@ -7,7 +7,7 @@ import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
-import { getTreeEditGating } from '../utils/treeEditGating';
+import { getTreeEditGating } from '../utils/permisosDeEdicion';
 import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
 import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
@@ -150,7 +150,7 @@ export async function finalizeGroup(grupoId: string): Promise<{ success: true }>
   return { success: true };
 }
 
-// Ownership guard inline en screens; delega a treeEditGating (#155) — subgroupEstado no afecta canEdit ahí, solo canDelete.
+// Ownership guard para screens: subgroupEstado no afecta canEdit, solo canDelete.
 export function canEdit(
   group: { usuarioCreador: string },
   userId: string,

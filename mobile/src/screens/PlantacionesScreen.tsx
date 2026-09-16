@@ -11,6 +11,7 @@ import TexturedBackground from '../components/TexturedBackground';
 import PlantacionesModals from '../components/PlantacionesModals';
 import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../components/PlantationConfigCard';
+import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
 export default function PlantacionesScreen() {
   const s = usePlantacionesScreen();
@@ -76,7 +77,9 @@ export default function PlantacionesScreen() {
                   expanded={s.expandedPlantationId === item.id}
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
-                  onParcelaLongPress={(p) => s.handleParcelaInlineLongPress(item.id, p)}
+                  onParcelaLongPress={plantacionEsEditable(item.estado)
+                    ? (p) => s.handleParcelaInlineLongPress(item.id, p)
+                    : undefined}
                   cardProps={{
                     lugar: item.lugar,
                     periodo: item.periodo,
