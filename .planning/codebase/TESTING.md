@@ -381,7 +381,7 @@ passthrough de test tiene que respetarlo:
 
 Con un solo `set` para todo el lote, lo que antes decidía un ternario por fila
 (la foto, el punto GPS) ahora viaja en los valores y se resuelve con `excluded`.
-Eso solo se ve con un lote **mixto**: `tests/integration/pull-arboles.test.ts`
+Eso solo se ve con un lote **mixto**: `tests/integration/pull-lotes.test.ts`
 mete en la misma tanda un árbol con foto y otro sin, y afirma que ninguno hereda
 la regla del vecino. Un test de una fila sola no distingue las dos versiones.
 
