@@ -9,6 +9,7 @@ import FailureList from './FailureList';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
+import { formatearVelocidad } from '../utils/velocidadDeTransferencia';
 
 interface Props {
   state: SyncState;
@@ -66,8 +67,16 @@ function FaseEnCurso({
 
 const TEXTO_PREPARANDO = 'Preparando...';
 
+/**
+ * "12 de 40 fotos · ~180 KB/s". La velocidad aparece recién cuando hay una foto
+ * completa con qué calcularla: el técnico necesita saber si la demora es la
+ * conexión o el volumen (#450).
+ */
 function detalleDeFotos(photoProgress: PhotoSyncProgress | null): string {
-  return photoProgress ? `${photoProgress.completed} de ${photoProgress.total} fotos` : TEXTO_PREPARANDO;
+  if (!photoProgress) return TEXTO_PREPARANDO;
+  const contador = `${photoProgress.completed} de ${photoProgress.total} fotos`;
+  const velocidad = formatearVelocidad(photoProgress, Date.now());
+  return velocidad ? `${contador} · ${velocidad}` : contador;
 }
 
 function fraccionDeConteo(hecho: number | undefined, total: number | undefined): number {
