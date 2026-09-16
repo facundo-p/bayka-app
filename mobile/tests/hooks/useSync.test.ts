@@ -30,6 +30,8 @@ const { notifyDataChanged } = require('../../src/database/liveQuery');
 
 import { renderHook, act } from '@testing-library/react-native';
 import { useSync } from '../../src/hooks/useSync';
+import { SyncCanceladoError } from '../../src/services/sync/cancelacion';
+import { MARCA_DE_TIMEOUT } from '../../src/supabase/fetchConTimeout';
 
 describe('useSync', () => {
   beforeEach(() => {
@@ -325,6 +327,109 @@ describe('useSync', () => {
       expect(result.current.state).toBe('idle');
       expect(result.current.results).toEqual([]);
     });
+  });
+});
+
+describe('useSync — cancelación y timeout (#451)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // Cancelar es algo que pidió el usuario: mostrarle "Error al actualizar" lo deja
+  // pensando que se rompió algo.
+  it('cancelar no se reporta como una falla de sync', async () => {
+    (syncPlantation as jest.Mock).mockRejectedValue(new SyncCanceladoError());
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.cancelado).toBe(true);
+    expect(result.current.pullSuccess).toBeNull();
+    expect(result.current.authExpired).toBe(false);
+  });
+
+  it('un timeout se distingue de una falla de red cualquiera', async () => {
+    const timeout = new Error(`${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /rest/v1/trees`);
+    (syncPlantation as jest.Mock).mockRejectedValue(timeout);
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(true);
+    expect(result.current.pullSuccess).toBe(false);
+    expect(result.current.cancelado).toBe(false);
+  });
+
+  it('una falla de red no se reporta como timeout', async () => {
+    (syncPlantation as jest.Mock).mockRejectedValue(new Error('Network request failed'));
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(false);
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  // El estado de cancelación tiene que limpiarse, o la corrida siguiente arranca
+  // mostrando "Sincronizacion cancelada".
+  it('la corrida siguiente arranca sin la marca de cancelada', async () => {
+    (syncPlantation as jest.Mock).mockRejectedValueOnce(new SyncCanceladoError());
+    const { result } = renderHook(() => useSync('plant-1'));
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+    expect(result.current.cancelado).toBe(true);
+
+    (syncPlantation as jest.Mock).mockResolvedValue([]);
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.cancelado).toBe(false);
+  });
+});
+
+describe('useSync — un pull fallido no se reporta como éxito (#451)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('con el pull caído, pullSuccess es false aunque el push haya andado', async () => {
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullError?.(new Error('Network request failed'));
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('un timeout del pull se distingue de una caída de red cualquiera', async () => {
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullError?.(new Error(`${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /rest/v1/trees`));
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(true);
+  });
+
+  it('el sync global con todas las plantaciones caídas no dice que salió bien', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'A', results: [], parcelas: [], fallo: new Error('Network request failed') },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('el sync global sin fallas sigue reportando éxito', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'A', results: [], parcelas: [] },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(true);
   });
 });
 

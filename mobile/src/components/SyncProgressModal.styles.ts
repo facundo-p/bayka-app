@@ -41,6 +41,28 @@ export const syncProgressModalStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.danger,
   },
+  // Aviso de estancamiento: informa, no alarma — la sync puede seguir viva.
+  estancadoText: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.md,
+  },
+  // Secundario a propósito: cancelar es la salida, no la acción esperada.
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: colors.danger,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xxxl,
+    marginTop: spacing.sm,
+  },
+  cancelText: {
+    color: colors.danger,
+    fontSize: fontSize.base,
+    fontFamily: fonts.semiBold,
+  },
   dismissButton: {
     backgroundColor: colors.primary,
     borderRadius: borderRadius.lg,

@@ -1,4 +1,5 @@
 import { supabase } from '../../supabase/client';
+import { esTimeout } from '../../supabase/fetchConTimeout';
 
 /**
  * Thrown by ensureServerSession when there is no Supabase session capable of
@@ -37,6 +38,10 @@ export async function ensureServerSession(): Promise<void> {
   }
 
   const refreshed = await supabase.auth.refreshSession();
+  // Un timeout no dice NADA sobre la sesión: la request nunca llegó. Reportarlo
+  // como vencida manda al técnico a re-loguearse sin motivo, y justo cuando está
+  // sin señal (#451).
+  if (refreshed?.error && esTimeout(refreshed.error)) throw refreshed.error;
   if (refreshed?.error || !refreshed?.data?.session) {
     throw new SessionExpiredError();
   }

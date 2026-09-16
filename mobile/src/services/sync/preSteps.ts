@@ -11,6 +11,8 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
+import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
+import { esTimeout } from '../../supabase/fetchConTimeout';
 import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
@@ -87,21 +89,26 @@ export async function pullSpeciesFromServer(): Promise<void> {
   // camino lento de siempre: aísla la especie problemática y reconcilia (#449).
   const porFila: ServerSpecies[] = [];
   for (let i = 0; i < data.length; i += FILAS_POR_TRANSACCION) {
+    abortarSiCancelado();
     const lote = data.slice(i, i + FILAS_POR_TRANSACCION);
     try {
       await enTransaccion((tx) => upsertSpeciesById(tx, lote));
       inserted += lote.length;
-    } catch {
+    } catch (e) {
+      // El catch de "seguir ante fallas" no puede tragarse la cancelación (#451).
+      relanzarSiEsCancelacion(e);
       porFila.push(...lote);
     }
   }
 
   // Un fallo en una especie no debe abortar el resto del catálogo.
   for (const s of porFila) {
+    abortarSiCancelado();
     try {
       await upsertSpeciesById(db, [s]);
       inserted++;
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       // Probable choque por UNIQUE(codigo) con una especie local de distinto id.
       try {
         if (await reconcileSpeciesCodigoCollision(s)) {
@@ -188,10 +195,12 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
       results.push({ success: true, plantacionId: p.id, nombre: p.lugar });
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       syncLog.error('Upload plantation exception:', p.id, e?.message ?? e);
       results.push({
         success: false, plantacionId: p.id, nombre: p.lugar,
-        error: SYNC_ERROR.NETWORK, detail: rawErrorDetail({ message: String(e?.message ?? e) }),
+        error: esTimeout(e) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK,
+        detail: rawErrorDetail({ message: String(e?.message ?? e) }),
       });
     }
   }
@@ -235,6 +244,7 @@ export async function uploadPendingEdits(): Promise<void> {
         })
         .where(eq(plantations.id, p.id));
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       syncLog.error('Upload pending edit exception:', p.id, e?.message);
     }
   }
@@ -244,9 +254,11 @@ export async function uploadPendingEdits(): Promise<void> {
 
 export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   await supabase.auth.getSession();
-  try { await pullSpeciesFromServer(); } catch (e) { syncLog.error('Pull species failed:', e); }
+  // Los pre-steps corren ANTES del primer evento de progreso: si se cuelgan acá, el
+  // watchdog ofrece cancelar y sin estos re-lanzados el botón no haría nada (#451).
+  try { await pullSpeciesFromServer(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Pull species failed:', e); }
   let plantationResults: SyncPlantationResult[] = [];
-  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
-  try { await uploadPendingEdits(); } catch (e) { syncLog.error('Upload pending edits failed:', e); }
+  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
+  try { await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
   return plantationResults;
 }
