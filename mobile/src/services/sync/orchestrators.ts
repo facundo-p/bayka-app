@@ -9,6 +9,7 @@ import { pullFromServer } from './pullService';
 import { pushBorrados, uploadSyncableGroups, uploadSyncableParcelas } from './pushService';
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { relanzarSiEsCancelacion } from './cancelacion';
 
 /**
  * Callbacks de una corrida de plantación. Objeto y no parámetros posicionales: ya son
@@ -28,6 +29,12 @@ export interface SyncPlantationCallbacks {
   onParcelaResults?: (parcelas: SyncParcelaResult[]) => void;
   onPlantationResults?: (plantations: SyncPlantationResult[]) => void;
   onPullResult?: (resultado: PullResult) => void;
+  /**
+   * El pull falló (red, timeout). El push sigue igual —subir lo que el técnico
+   * cargó vale más que el pull— pero sin avisar, la UI dice "Datos actualizados"
+   * para un pull que no bajó nada (#451).
+   */
+  onPullError?: (error: unknown) => void;
 }
 
 /** Orquesta pull-then-push de una plantación: refresca sesión, pull, sube grupos finalizada uno por uno acumulando resultados (sigue ante fallas), notifica al final. */
@@ -35,7 +42,7 @@ async function correrSyncPlantation(
   plantacionId: string,
   callbacks: SyncPlantationCallbacks = {},
 ): Promise<SyncGroupResult[]> {
-  const { onProgress, onPhotoProgress, onPhaseProgress, onParcelaResults, onPlantationResults, onPullResult } = callbacks;
+  const { onProgress, onPhotoProgress, onPhaseProgress, onParcelaResults, onPlantationResults, onPullResult, onPullError } = callbacks;
   // Aborta temprano si la sesión no puede autenticar writes (evita que RLS rechace como error de permisos confuso).
   await ensureServerSession();
   // runGlobalPreSteps pushea plantaciones offline; se surfacean sus fallas porque bloquean (FK) sus parcelas/grupos.
@@ -49,7 +56,9 @@ async function correrSyncPlantation(
     // de errores de permisos que tapan la causa real.
     if (esSinAcceso(pull)) return [];
   } catch (e) {
+    relanzarSiEsCancelacion(e);
     syncLog.error('Pull failed:', e);
+    onPullError?.(e);
   } finally {
     onPhaseProgress?.(null);
   }
@@ -72,6 +81,7 @@ async function correrSyncPlantation(
       syncLog.info(`Push parcelas: ${failed}/${parcelaResults.length} failed; groups dependientes saltarán`);
     }
   } catch (e) {
+    relanzarSiEsCancelacion(e);
     syncLog.error('Push parcelas failed:', e);
   }
   onParcelaResults?.(parcelaResults);
@@ -81,18 +91,31 @@ async function correrSyncPlantation(
   return results;
 }
 
+export interface ResultadoDePlantacion {
+  plantationId: string;
+  plantationName: string;
+  results: SyncGroupResult[];
+  parcelas: SyncParcelaResult[];
+  /**
+   * La excepción que tumbó a esta plantación, si la hubo. Sin esto una corrida en
+   * la que TODO falló llega a la UI con listas vacías, indistinguible de una en la
+   * que no había nada que sincronizar, y el modal dice "completa" (#451).
+   */
+  fallo?: unknown;
+}
+
 /** Sincroniza todas las plantaciones locales secuencialmente (pull+push c/u); pre-steps globales (catálogo, plantaciones offline, ediciones pendientes) + sync de fotos opcional al final. */
 async function correrSyncAllPlantations(
   onProgress?: (info: GlobalSyncProgress) => void,
   incluirFotos: boolean = true,
   onPlantationResults?: (plantations: SyncPlantationResult[]) => void
-): Promise<{ plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[]> {
+): Promise<ResultadoDePlantacion[]> {
   await ensureServerSession();
   const plantationResults = await runGlobalPreSteps();
   onPlantationResults?.(plantationResults);
 
   const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
-  const allResults: { plantationId: string; plantationName: string; results: SyncGroupResult[]; parcelas: SyncParcelaResult[] }[] = [];
+  const allResults: ResultadoDePlantacion[] = [];
 
   const emitir = (
     plantationName: string,
@@ -128,6 +151,7 @@ async function correrSyncAllPlantations(
       try {
         parcelaResults = await uploadSyncableParcelas(plantation.id);
       } catch (e) {
+        relanzarSiEsCancelacion(e);
         syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
       }
       const results = await uploadSyncableGroups(
@@ -137,8 +161,9 @@ async function correrSyncAllPlantations(
       );
       allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results, parcelas: parcelaResults });
     } catch (e) {
+      relanzarSiEsCancelacion(e);
       syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
-      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [], parcelas: [] });
+      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [], parcelas: [], fallo: e });
     }
   }
 
@@ -153,6 +178,7 @@ async function correrSyncAllPlantations(
           emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.downloading }),
         );
       } catch (e) {
+        relanzarSiEsCancelacion(e);
         syncLog.error(`Photo sync failed for "${plantation.lugar}":`, e);
       }
     }

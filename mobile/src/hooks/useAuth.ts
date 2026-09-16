@@ -15,16 +15,14 @@ import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginE
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
 import { ROL } from '../constants/roles';
+import { conReloj } from '../utils/conReloj';
 
 const ROLE_FETCH_TIMEOUT = 5000;
 const LOGIN_TIMEOUT = 8000;
 
 /** Race a promise against a timeout. Rejects with 'timeout' on expiry. */
 function withTimeout<T>(promiseOrThenable: PromiseLike<T>, ms: number): Promise<T> {
-  return Promise.race([
-    Promise.resolve(promiseOrThenable),
-    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
-  ]);
+  return conReloj(promiseOrThenable, ms, () => new Error('timeout'));
 }
 
 // ─── Module-level state (shared across all useAuth instances) ───────────────
