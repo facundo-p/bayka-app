@@ -54,7 +54,7 @@ de la transacción de la que hace rollback:
 ## Tests
 
 `01`-`02` membresía en INSERT (groups/parcelas), `03` guard de
-`sync_subgroup`, `04` gate por rol de `generate_tree_ids`, `05`
+`sync_subgroup`, `04` gate por rol, organización y archivado de `generate_tree_ids` (042), `05`
 `update_tree_ids` removida, `06` resto de 030, `07` mismo fix en `trees`
 INSERT, `09` helpers de estado/seed de `global_id` (032, #309), `10` SELECT
 scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
@@ -66,8 +66,11 @@ inmutable (037, #469), `15` plantación archivada: matriz de roles de
 superadmin (038, #477), `16` eliminar plantación: matriz de rol × con/sin
 datos × archivada, nombre de confirmación, cascade completo, registro en
 `plantaciones_eliminadas` y los cuatro valores de `estado_remoto_plantaciones`
-(039, #478), `25` asignaciones de técnicos: exigen plantación existente y no
-archivada, una finalizada las admite (047, #522).
+(039, #478), `20` `is_admin()` exige perfil activo: un admin o
+superadmin inactivo no lee por la vía admin (043, #506), `23` perfil inactivo:
+no pasa las policies de admin, `is_superadmin()` ni `is_plantation_member()`,
+incluidos `sync_subgroup` y Storage (045, #508), `25` asignaciones de técnicos:
+exigen plantación existente y no archivada, una finalizada las admite (047, #522).
 
 ## Hallazgo fuera de alcance (no corregido)
 
