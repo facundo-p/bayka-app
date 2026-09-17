@@ -505,7 +505,9 @@ describe('archivado', () => {
     await usuario.click(within(menu).getByRole('menuitem', { name: 'Archivar plantación' }));
     const dialogo = await screen.findByRole('dialog', { name: 'Archivar Mendoza' });
     expect(within(dialogo).getByText(/deja de aparecer en los listados/)).toBeInTheDocument();
-    expect(within(dialogo).getByText(/no los va a poder subir hasta que se desarchive/)).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(/no los va a poder subir hasta que se desarchive/),
+    ).toBeInTheDocument();
 
     await usuario.click(within(dialogo).getByRole('button', { name: 'Archivar' }));
 
@@ -531,7 +533,9 @@ describe('archivado', () => {
     const menu = await abrirMasAcciones(usuario);
     await usuario.click(within(menu).getByRole('menuitem', { name: 'Desarchivar plantación' }));
     const dialogo = await screen.findByRole('dialog', { name: 'Desarchivar Mendoza' });
-    expect(within(dialogo).getByText(/Su estado \(activa o finalizada\) no cambia/)).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(/Su estado \(activa o finalizada\) no cambia/),
+    ).toBeInTheDocument();
     await usuario.click(within(dialogo).getByRole('button', { name: 'Desarchivar' }));
 
     await waitFor(() => expect(screen.queryByText('Archivada')).not.toBeInTheDocument());

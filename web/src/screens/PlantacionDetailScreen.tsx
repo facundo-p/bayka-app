@@ -194,7 +194,11 @@ function itemsPlegados(props: AccionesProps): ItemDesplegable[] {
  *  completo. */
 function AccionesPlegadas(props: AccionesProps) {
   return (
-    <MenuMasAcciones etiqueta="Acciones de la plantación" items={itemsPlegados(props)} tamano="md" />
+    <MenuMasAcciones
+      etiqueta="Acciones de la plantación"
+      items={itemsPlegados(props)}
+      tamano="md"
+    />
   );
 }
 

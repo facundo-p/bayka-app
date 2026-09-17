@@ -3,10 +3,7 @@
  * dice la confirmación. Puro: se testea sin renderizar.
  */
 import { esArchivada, type Plantacion } from '../../queries/plantationQueries';
-import {
-  archivarPlantacion,
-  desarchivarPlantacion,
-} from '../../repositories/plantationRepository';
+import { archivarPlantacion, desarchivarPlantacion } from '../../repositories/plantationRepository';
 import { ROL, type Perfil } from '../../repositories/profileRepository';
 
 export const ACCION_ARCHIVADO = {
