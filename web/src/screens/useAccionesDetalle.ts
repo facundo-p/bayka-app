@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../hooks/useAuth';
 import { useDescarga } from '../hooks/useDescarga';
 import { BP, useMediaQuery } from '../hooks/useMediaQuery';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
@@ -11,6 +12,12 @@ import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
 import { descargarXlsxExportacion } from '../services/exportarXlsx';
+import {
+  accionDeArchivado,
+  CONFIRMACION_ARCHIVADO,
+  motivoEdicion,
+  puedeArchivar,
+} from './plantaciones/archivado';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
@@ -54,9 +61,13 @@ export interface AccionesProps {
   csv: Descarga;
   /** Las planillas necesitan los IDs definitivos; el KML no. */
   idsPendientes: boolean;
+  /** null = se puede editar; texto = por qué no (plantación archivada). Exportar sigue disponible. */
+  motivoEdicion: string | null;
   onEditar: () => void;
   /** Solo la web genera los IDs, server-side vía RPC (#232). */
   onGenerarIds: () => void;
+  /** Archivar o desarchivar; null si el perfil no puede. */
+  archivado: { etiqueta: string; onElegir: () => void } | null;
 }
 
 /** Las tres descargas de la barra, con el mensaje que devuelva cualquiera. */
@@ -76,17 +87,34 @@ function useIdsPendientes(plantationId: string): boolean {
   return generados === false;
 }
 
-/** Descargas, generación de IDs y si la barra va plegada en un solo «⋯». */
+/** La acción de archivado que le toca a la plantación, y si su confirmación está abierta. */
+function useArchivadoDetalle(plantacion: Plantacion) {
+  const { perfil } = useAuth();
+  const [confirmandoArchivado, setConfirmandoArchivado] = useState(false);
+  const archivado = puedeArchivar(perfil)
+    ? {
+        etiqueta: CONFIRMACION_ARCHIVADO[accionDeArchivado(plantacion)].etiquetaMenu,
+        onElegir: () => setConfirmandoArchivado(true),
+      }
+    : null;
+  const cerrarArchivado = () => setConfirmandoArchivado(false);
+  return { archivado, confirmandoArchivado, cerrarArchivado };
+}
+
+/** Descargas, generación de IDs, archivado y si la barra va plegada en un solo «⋯». */
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
   const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
+  const { archivado, ...confirmacionArchivado } = useArchivadoDetalle(plantacion);
   const [generandoIds, setGenerandoIds] = useState(false);
-  const plegado = useMediaQuery(BP.tablet);
   const acciones: AccionesProps = {
     ...descargas,
     idsPendientes: useIdsPendientes(plantacion.id),
+    motivoEdicion: motivoEdicion(plantacion),
     onEditar,
     onGenerarIds: () => setGenerandoIds(true),
+    archivado,
   };
   const cerrarGenerarIds = () => setGenerandoIds(false);
-  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds };
+  const plegado = useMediaQuery(BP.tablet);
+  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds, ...confirmacionArchivado };
 }

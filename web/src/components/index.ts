@@ -1,3 +1,4 @@
+export { Aviso } from './Aviso';
 export { Badge } from './Badge';
 export { BarraHerramientas, RecuentoItem } from './BarraHerramientas';
 export { BotonIcono } from './BotonIcono';
@@ -9,6 +10,7 @@ export { Card } from './Card';
 export { CardTabla } from './CardTabla';
 export { CheckboxField } from './CheckboxField';
 export { Cargando } from './Cargando';
+export { ConfirmarModal } from './ConfirmarModal';
 export { CommandMenuTrigger } from './CommandMenuTrigger';
 export { columnaChevron } from './columnaChevron';
 export { Divisor } from './Divisor';

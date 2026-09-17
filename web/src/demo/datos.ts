@@ -30,6 +30,7 @@ type Plantacion = {
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app: boolean;
+  archivada_en: string | null;
 };
 
 type Especie = { id: string; codigo: string; nombre: string; nombre_cientifico: string | null };
@@ -126,6 +127,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'activa',
     created_at: '2025-03-12T12:00:00Z',
     visible_in_app: true,
+    archivada_en: null,
   },
   {
     id: 'p2',
@@ -134,6 +136,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'activa',
     created_at: '2025-04-04T12:00:00Z',
     visible_in_app: true,
+    archivada_en: null,
   },
   {
     id: 'p3',
@@ -142,6 +145,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'activa',
     created_at: '2025-05-19T12:00:00Z',
     visible_in_app: true,
+    archivada_en: null,
   },
   {
     id: 'p4',
@@ -150,6 +154,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'finalizada',
     created_at: '2024-02-08T12:00:00Z',
     visible_in_app: true,
+    archivada_en: null,
   },
   {
     id: 'p5',
@@ -158,6 +163,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'finalizada',
     created_at: '2024-03-22T12:00:00Z',
     visible_in_app: false,
+    archivada_en: null,
   },
   {
     id: 'p6',
@@ -166,6 +172,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'activa',
     created_at: '2024-07-30T12:00:00Z',
     visible_in_app: true,
+    archivada_en: null,
   },
   {
     id: 'p7',
@@ -174,6 +181,7 @@ const PLANTACIONES: Plantacion[] = [
     estado: 'finalizada',
     created_at: '2023-01-15T12:00:00Z',
     visible_in_app: false,
+    archivada_en: '2024-06-01T12:00:00Z',
   },
 ];
 
@@ -506,4 +514,7 @@ export const TABLAS: Record<string, TablaDemo> = {
 /** Respuestas de `supabase.rpc(...)`. */
 export const RPC: Record<string, unknown> = {
   stats_plantaciones: STATS_PLANTACIONES,
+  // Sin estado: el modal cierra bien, pero la demo no persiste el cambio.
+  archivar_plantacion: { success: true },
+  desarchivar_plantacion: { success: true },
 };

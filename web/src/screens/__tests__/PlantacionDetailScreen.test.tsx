@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
@@ -57,6 +57,8 @@ let totalArboles: number;
 let conIdArboles: number;
 /** Filas que devuelve la query de exportación (select con `plantacion_id`). */
 let filasExport: unknown[];
+/** `archivada_en` de la plantación; los RPC de archivado lo cambian como la base. */
+let archivadaEn: string | null;
 
 type Usuario = ReturnType<typeof userEvent.setup>;
 
@@ -118,9 +120,18 @@ function configurarDetalleMock(): void {
     if (consulta.operacion === 'rpc' && consulta.tabla === 'next_global_id_seed') {
       return { data: 1001 };
     }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'archivar_plantacion') {
+      archivadaEn = '2026-09-17T12:00:00Z';
+      return { data: { success: true } };
+    }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'desarchivar_plantacion') {
+      archivadaEn = null;
+      return { data: { success: true } };
+    }
     if (consulta.tabla === 'plantations') {
       const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
-      return { data: filtroId?.valor === FILA_PLANTACION.id ? FILA_PLANTACION : null };
+      const fila = { ...FILA_PLANTACION, archivada_en: archivadaEn };
+      return { data: filtroId?.valor === FILA_PLANTACION.id ? fila : null };
     }
     if (consulta.tabla === 'profiles') return { data: PERFILES };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
@@ -140,6 +151,7 @@ beforeEach(() => {
   totalArboles = 0;
   conIdArboles = 0;
   filasExport = [];
+  archivadaEn = null;
   configurarDetalleMock();
 });
 
@@ -477,4 +489,73 @@ test('plegado, "Generar IDs" abre el modal de confirmación', async () => {
   expect(await screen.findByRole('dialog', { name: 'Generar IDs' })).toHaveTextContent(
     'Esta acción no se puede deshacer.',
   );
+});
+
+describe('archivado', () => {
+  async function abrirMasAcciones(usuario: Usuario) {
+    await usuario.click(await screen.findByRole('button', { name: 'Más acciones' }));
+    return screen.getByRole('menu', { name: 'Más acciones' });
+  }
+
+  test('archivar avisa qué pasa, llama al RPC y deja la plantación en solo lectura', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const menu = await abrirMasAcciones(usuario);
+    await usuario.click(within(menu).getByRole('menuitem', { name: 'Archivar plantación' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Archivar Mendoza' });
+    expect(within(dialogo).getByText(/deja de aparecer en los listados/)).toBeInTheDocument();
+    expect(within(dialogo).getByText(/no los va a poder subir hasta que se desarchive/)).toBeInTheDocument();
+
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Archivar' }));
+
+    expect(await screen.findByText(/Plantación archivada: no aparece/)).toBeInTheDocument();
+    const rpc = consultas.find((consulta) => consulta.tabla === 'archivar_plantacion');
+    expect(rpc?.payload).toEqual({ p_id: 'plant-1' });
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled();
+  });
+
+  test('una archivada muestra badge y aviso, deshabilita Editar y ofrece desarchivar', async () => {
+    archivadaEn = '2026-09-01T12:00:00Z';
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    expect(await screen.findByText('Archivada')).toBeInTheDocument();
+    expect(screen.getByText(/Plantación archivada: no aparece/)).toBeInTheDocument();
+    const editar = screen.getByRole('button', { name: 'Editar' });
+    expect(editar).toBeDisabled();
+    expect(editar).toHaveAttribute('title', 'Plantación archivada: desarchivala para editarla');
+    // Exportar sigue disponible.
+    expect(screen.getByRole('button', { name: 'Exportar' })).toBeEnabled();
+
+    const menu = await abrirMasAcciones(usuario);
+    await usuario.click(within(menu).getByRole('menuitem', { name: 'Desarchivar plantación' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Desarchivar Mendoza' });
+    expect(within(dialogo).getByText(/Su estado \(activa o finalizada\) no cambia/)).toBeInTheDocument();
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Desarchivar' }));
+
+    await waitFor(() => expect(screen.queryByText('Archivada')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeEnabled();
+  });
+
+  test('en una archivada la configuración queda deshabilitada', async () => {
+    archivadaEn = '2026-09-01T12:00:00Z';
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+
+    await screen.findByRole('heading', { name: 'Técnicos asignados' });
+    expect(screen.getByRole('group')).toBeDisabled();
+  });
+
+  test('plegado, archivar va dentro del mismo «⋯» y Editar lleva el motivo', async () => {
+    simularAncho(ANCHO.tablet);
+    archivadaEn = '2026-09-01T12:00:00Z';
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+    await screen.findByRole('heading', { name: 'Mendoza' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
+    const menu = screen.getByRole('menu', { name: 'Acciones de la plantación' });
+    expect(within(menu).getByRole('menuitem', { name: 'Editar plantación' })).toBeDisabled();
+    expect(within(menu).getByRole('menuitem', { name: 'Desarchivar plantación' })).toBeEnabled();
+  });
 });
