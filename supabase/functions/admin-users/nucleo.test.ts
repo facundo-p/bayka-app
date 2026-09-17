@@ -1,11 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import {
-  MENSAJES,
-  ROL,
-  manejarAdminUsers,
-  type Deps,
-  type PerfilDb,
-} from './nucleo';
+import { MENSAJES, ROL, manejarAdminUsers, type Deps, type PerfilDb } from './nucleo';
 
 function perfil(id: string, nombre: string, rol: string): PerfilDb {
   return { id, nombre, rol, activo: true, email: `${id}@bayka.org`, eliminado_en: null };
@@ -53,7 +47,12 @@ function ordenDeLlamadas(deps: Deps, nombres: Array<keyof Deps>): Array<keyof De
   return orden.sort((a, b) => a.n - b.n).map(({ nombre }) => nombre);
 }
 
-const CREAR = { accion: 'crear', nombre: 'Nueva', email: 'nueva@bayka.org', rol: 'tecnico' } as const;
+const CREAR = {
+  accion: 'crear',
+  nombre: 'Nueva',
+  email: 'nueva@bayka.org',
+  rol: 'tecnico',
+} as const;
 
 describe('autorización', () => {
   test.each([

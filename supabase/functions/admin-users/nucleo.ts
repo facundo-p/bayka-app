@@ -79,7 +79,11 @@ export type RegistrosUsuario = { arboles: number; grupos: number; plantaciones: 
 
 export type PreviewEliminacion = RegistrosUsuario & { modo: ModoEliminacion };
 
-export function modoEliminacion({ arboles, grupos, plantaciones }: RegistrosUsuario): ModoEliminacion {
+export function modoEliminacion({
+  arboles,
+  grupos,
+  plantaciones,
+}: RegistrosUsuario): ModoEliminacion {
   return arboles + grupos + plantaciones > 0 ? MODO_ELIMINACION.logico : MODO_ELIMINACION.real;
 }
 
@@ -157,7 +161,10 @@ function validarCuerpo(cuerpo: CuerpoAdminUsers): Respuesta | null {
       return emailValido(cuerpo.email) ? null : fallo(400, MENSAJES.emailInvalido);
     case 'cambiarPassword':
       if (!userIdValido(cuerpo.userId)) return fallo(400, MENSAJES.solicitudInvalida);
-      if (typeof cuerpo.password !== 'string' || cuerpo.password.length < LONGITUD_MINIMA_PASSWORD) {
+      if (
+        typeof cuerpo.password !== 'string' ||
+        cuerpo.password.length < LONGITUD_MINIMA_PASSWORD
+      ) {
         return fallo(400, MENSAJES.passwordCorta);
       }
       return null;
@@ -263,7 +270,10 @@ async function previsualizarEliminacion(userId: string, deps: Deps): Promise<Res
   const { rechazo } = await buscarModificable(userId, deps);
   if (rechazo) return rechazo;
   const registros = await deps.contarRegistros(userId);
-  return { status: 200, body: { ok: true, preview: { ...registros, modo: modoEliminacion(registros) } } };
+  return {
+    status: 200,
+    body: { ok: true, preview: { ...registros, modo: modoEliminacion(registros) } },
+  };
 }
 
 /**
