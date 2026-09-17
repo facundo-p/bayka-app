@@ -8,7 +8,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
-import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
@@ -154,13 +154,30 @@ export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promis
   notifyDataChanged();
 }
 
-/** Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea fotoSynced=false para forzar re-upload a Storage. */
+/**
+ * Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea
+ * fotoSynced=false para forzar re-upload a Storage.
+ *
+ * Quitarla se anota para propagarlo (#498): el push del grupo no puede poner la
+ * foto en null en el server, y el pull la restauraría. Va en la misma transacción
+ * que el update, por lo mismo que los borrados de fila.
+ */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
-  await db.update(trees)
-    .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
-    .where(eq(trees.id, treeId));
   const [treeRow] = await db.select({ grupoId: trees.groupId }).from(trees).where(eq(trees.id, treeId));
-  if (treeRow) await markGroupPendingSync(treeRow.grupoId);
+  if (!treeRow) return;
+  const plantacionId = await plantacionDelGrupo(db, treeRow.grupoId);
+
+  await enTransaccion(async (tx) => {
+    await tx.update(trees)
+      .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
+      .where(eq(trees.id, treeId));
+    if (fotoUrl) {
+      await descartarFotoQuitada(tx, treeId);
+    } else if (plantacionId) {
+      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: treeRow.grupoId, plantacionId });
+    }
+  });
+  await markGroupPendingSync(treeRow.grupoId);
   notifyDataChanged();
 }
 

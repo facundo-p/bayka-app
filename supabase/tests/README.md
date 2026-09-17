@@ -67,7 +67,8 @@ superadmin (038, #477), `18` DELETE de fotos en `tree-photos` exige admin y
 membresía en la plantación del path (041, #481), `19` `profiles.eliminado_en`:
 solo la cambia service_role, un eliminado nunca está activo ni recibe
 membresías admin (040, #479), `20` `is_admin()` exige perfil activo: un admin
-o superadmin inactivo no lee por la vía admin (043, #506).
+o superadmin inactivo no lee por la vía admin (043, #506), `22` RPC
+`quitar_fotos_arboles` (044, #498).
 
 ## Hallazgo fuera de alcance (no corregido)
 

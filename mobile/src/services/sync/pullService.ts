@@ -10,7 +10,7 @@ import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion
 import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
-import { borradosPorTipo } from '../../repositories/BorradosRepository';
+import { borradosPorTipo, type BorradosPorTipo } from '../../repositories/BorradosRepository';
 import { abortarSiCancelado } from './cancelacion';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
@@ -525,9 +525,18 @@ function omitirDelPull(
   };
 }
 
+/**
+ * Una foto quitada localmente sigue en el server hasta que el push la propaga. Se
+ * baja la fila sin foto: con la foto, el pull la restaura y se vuelve a descargar
+ * (#498).
+ */
+function sinFotoQuitada(fotosQuitadas: Set<string>) {
+  return (remoto: any) => (fotosQuitadas.has(remoto.id) ? { ...remoto, foto_url: null } : remoto);
+}
+
 async function pullTrees(
   grupos: GruposDelPull,
-  arbolesBorrados: Set<string>,
+  borrados: BorradosPorTipo,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
   const remoteGroupIds = grupos.ids;
@@ -548,8 +557,8 @@ async function pullTrees(
 
   const especieLocal = await especiePorArbolLocal(remoteGroupIds);
 
-  const omitir = omitirDelPull(grupos.pendientes, arbolesBorrados, especieLocal);
-  const aEscribir = all.filter((t: any) => !omitir(t));
+  const omitir = omitirDelPull(grupos.pendientes, borrados.arboles, especieLocal);
+  const aEscribir = all.filter((t: any) => !omitir(t)).map(sinFotoQuitada(borrados.fotos));
   const omitidos = all.length - aEscribir.length;
   if (omitidos > 0) syncLog.info(`Pull trees: ${omitidos} omitidos (edición local sin subir o borrado sin propagar)`);
   // Descarga fresh: sin filas locales no hay nada con qué chocar.
@@ -608,7 +617,7 @@ async function correrPullFromServer(
   await conDuracion(DOWNLOAD_PHASE.usuarios, () => pullPlantationUsers(plantacionId, onProgress));
   await conDuracion(DOWNLOAD_PHASE.especiesPlantacion, () => pullPlantationSpecies(plantacionId, onProgress));
   if (grupos.ids.length > 0) {
-    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados.arboles, onProgress));
+    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados, onProgress));
   }
   syncLog.info(`Pull total: ${Date.now() - inicio}ms`);
   return PULL_OK;
