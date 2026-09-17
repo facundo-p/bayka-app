@@ -10,7 +10,7 @@ import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isLocalUri } from '../utils/photoUri';
+import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 
 export interface InsertTreeParams {
@@ -197,6 +197,16 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
     plantacionId: string;
     parcelaId: string | null;
   }>;
+}
+
+/** URIs de fotos guardadas en el device para los árboles de la plantación, sincronizadas o no. */
+export async function getLocalPhotoUrisForPlantation(plantacionId: string): Promise<string[]> {
+  const rows = await db
+    .select({ fotoUrl: trees.fotoUrl })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(and(eq(groups.plantacionId, plantacionId), sqlIsLocalUri(trees.fotoUrl)));
+  return rows.map((r) => r.fotoUrl).filter(isLocalUri);
 }
 
 /** Marks a tree's photo as synced (uploaded to Supabase Storage). */
