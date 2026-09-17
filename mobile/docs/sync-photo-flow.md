@@ -5,7 +5,7 @@
 ```
 Dispositivo A                      Supabase                     Dispositivo B
      |                                |                               |
-     |-- 1. pull (subgroups, trees) --|                               |
+     |-- 1. pull (groups, trees) -----|                               |
      |-- 2. upload fotos a Storage -->|                               |
      |-- 3. push (RPC con foto_url) ->|                               |
      |                                |                               |
@@ -19,15 +19,15 @@ Dispositivo A                      Supabase                     Dispositivo B
 ### Principio fundamental
 
 **Las fotos se suben a Storage ANTES del RPC.** El payload del RPC siempre contiene
-la ruta de Storage (`plantations/{id}/trees/{id}.jpg`) o `null`, nunca `file://`.
+la ruta de Storage o `null`, nunca `file://`.
 Esto garantiza que el servidor siempre tiene una referencia válida en un solo paso atómico.
 
 ### Conceptos clave
 
 - **Storage bucket**: `tree-photos`
-- **Ruta en Storage**: `plantations/{plantation_id}/trees/{tree_id}.jpg`
+- **Ruta en Storage**: `plantations/{plantation_id}/parcelas/{parcela_id}/trees/{tree_id}.jpg` (las fotos viejas pueden tener la ruta sin parcela)
 - **foto_url local**: `file://...` (ruta en el dispositivo, varía entre dispositivos)
-- **foto_url servidor**: `plantations/{plantation_id}/trees/{tree_id}.jpg` (ruta relativa en Storage)
+- **foto_url servidor**: la ruta relativa en Storage
 - **fotoSynced**: flag booleano en la tabla local `trees`. `true` = la foto local está sincronizada con Storage
 
 ---
@@ -45,7 +45,7 @@ Esto garantiza que el servidor siempre tiene una referencia válida en un solo p
 | `fotoUrl` | `null`, o `file://...` si la plantación tiene "foto en todos los botones" (#439) | `file://...` (foto obligatoria) |
 | `fotoSynced` | `false` (default) | `false` (default) |
 
-Después de crear: `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true`.
+Después de crear: `markGroupPendingSync(grupoId)` → `pendingSync = true`.
 
 **Archivo:** `useTreeRegistration.ts` → `registerNN()` / `registerTree()` (camino único)
 - Resuelve la política de foto (`services/photo/photoCaptureRules.ts`): N/N siempre pide y exige foto; especie solo si la plantación activó `photoCaptureAllTrees`
@@ -57,7 +57,7 @@ Después de crear: `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true
 **Archivo:** `TreeRepository.ts` → `updateTreePhoto(treeId, fotoUrl)`
 
 - Setea `fotoUrl` y **siempre resetea `fotoSynced = false`** (fuerza re-upload)
-- Llama `markSubGroupPendingSync(subgrupoId)`
+- Llama `markGroupPendingSync(grupoId)`
 - Poner una foto descarta la quitada pendiente del mismo árbol (ver abajo)
 
 ### 2b. Quitar la foto (#498)
@@ -86,21 +86,31 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 - **Otros devices:** conservan su copia local (`file://`), porque el pull preserva
   siempre la foto local.
 
-### 3. Finalización del subgrupo
+### 3. Finalización del grupo
 
-**Archivo:** `SubGroupRepository.ts` → `finalizeSubGroup(subgrupoId)`
+**Archivo:** `GroupRepository.ts` → `finalizeGroup(grupoId)`
 
 - Setea `estado = 'finalizada'`
-- Llama `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true`
-- **Permite N/N sin resolver** — la finalización no bloquea por N/N. El gate de finalización de la *plantación* (no del subgrupo) es el que bloquea.
+- Llama `markGroupPendingSync(grupoId)` → `pendingSync = true`
+- **Permite N/N sin resolver** — la finalización no bloquea por N/N. El gate de finalización de la *plantación* (no del grupo) es el que bloquea.
+
+La app no deja crear, editar ni borrar grupos y árboles de una plantación finalizada o archivada (`utils/permisosDeEdicion.ts`). Lo que quedó cargado y sin subir antes de que pasara lo rechaza el server: ver [Rechazo por plantación finalizada o archivada](#rechazo-por-plantación-finalizada-o-archivada).
 
 ---
 
 ## Upload Flow (Dispositivo → Servidor)
 
+**Orquestación:** `services/sync/orchestrators.ts` → `syncPlantation(plantacionId)`
+
+```
+pullFromServer → pushBorrados → uploadSyncableParcelas → uploadSyncableGroups
+```
+
+Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPlantation` si quedó marcado "Incluir fotos".
+
 ### Paso 1: Pull
 
-**Archivo:** `SyncService.ts` → `pullFromServer(plantacionId)`
+**Archivo:** `services/sync/pullService.ts` → `pullFromServer(plantacionId)`
 
 Antes de bajar nada, el pull consulta `estado_remoto_plantaciones` (#478). Si la
 plantación está **eliminada** en el servidor o el usuario está **sin acceso**, el pull
@@ -112,74 +122,56 @@ la marca se limpia si el servidor vuelve a responder `ok`/`archivada`. Con un se
 sin el RPC se cae al chequeo de membresía en `plantation_users`; ante un error de red
 se asume acceso.
 
-Descarga datos del servidor y upsert en local. Para cada árbol:
+Descarga datos del servidor y hace upsert en local. Para cada árbol (`upsertTreesFromServerTx`):
 
 ```ts
-// Detecta si el servidor tiene una foto válida (no file://)
-const hasFotoOnServer = !!t.foto_url && !t.foto_url.startsWith('file://');
-
 // Preserva foto local si existe
-fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`
+fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`
 
 // fotoSynced: true si el servidor tiene storage path, sino preserva el valor local
-fotoSynced: hasFotoOnServer ? sql`1` : sql`${trees.fotoSynced}`
+fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 ELSE ${trees.fotoSynced} END`
 ```
 
-Para subgrupos:
-```ts
-// Preserva pendingSync local (no pisar cambios pendientes)
-pendingSync: sql`CASE WHEN ${subgroups.pendingSync} = 1 THEN 1 ELSE 0 END`
-```
+Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el push sube después.
 
-### Paso 1b: Borrados y fotos quitadas
+### Paso 2: Borrados, fotos quitadas y parcelas
 
-**Archivo:** `pushService.ts` → `pushBorrados(plantacionId)`
+**Archivo:** `services/sync/pushService.ts`
 
-Corre antes de subir parcelas y grupos. Propaga los árboles y grupos borrados
-(`sincronizar_borrados`) y las fotos quitadas (`quitar_fotos_arboles`). Cada RPC
-recibe solo sus tipos.
+- `pushBorrados(plantacionId)` manda los borrados anotados por el RPC `sincronizar_borrados` (#467) y las fotos quitadas por `quitar_fotos_arboles` (#498). Cada RPC recibe solo sus tipos.
+- `uploadSyncableParcelas(plantacionId)` hace upsert de las parcelas con `pendingSync = true`. Un grupo cuya parcela no subió se reporta como `PARCELA_PENDING`.
 
-### Paso 2: Upload de subgrupos
+### Paso 3: Upload de grupos
 
-**Archivo:** `SyncService.ts` → `uploadSubGroup(sg, sgTrees)`
+**Archivo:** `services/sync/pushService.ts` → `uploadSyncableGroups` → `uploadGroup(sg, sgTrees)`
 
-El flujo dentro de uploadSubGroup:
-
-1. **Para cada árbol con foto local (`file://`):**
+1. **Para cada árbol con foto local (`file://`) y `fotoSynced = false`:**
    - Sube la foto a Storage: `uploadPhotoToStorage(fotoUrl, storagePath)`
-   - Si éxito: guarda `storagePath` en un mapa. `fotoSynced` todavía no se marca (ver paso 4)
+   - Si éxito: guarda `storagePath` en un mapa. `fotoSynced` todavía no se marca (ver punto 4)
    - Si falla: log del error. El árbol irá con `foto_url: null` en el RPC. La foto queda local (`fotoSynced = false`) para retry en la próxima sync.
 
 2. **Construye el payload del RPC:**
    ```ts
-   foto_url: photoMap.get(t.id)           // Subido recién → storage path
-     ?? (t.fotoUrl && !t.fotoUrl.startsWith('file://') ? t.fotoUrl : null)
-     // Ya tenía storage path → lo envía
-     // Es file:// o null → envía null
+   foto_url: photoMap.get(t.id) ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null)
+   // Subida recién → storage path; ya tenía storage path → lo envía; file:// o null → null
    ```
 
-3. **Llama al RPC `sync_subgroup`:**
-   - INSERT subgroup con `estado = 'sincronizada'`
-   - INSERT trees con `ON CONFLICT DO UPDATE SET species_id, sub_id, foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url)`
-   - El COALESCE garantiza que un re-sync no borra un `foto_url` existente si el nuevo es null. Quitar una foto va por `quitar_fotos_arboles` (paso 1b)
+3. **Llama al RPC `sync_subgroup`** (ver [RPC: sync_subgroup](#rpc-sync_subgroup)). Quitar una foto no va por acá, sino por `quitar_fotos_arboles` (paso 2).
 
-4. **Si éxito:** marca `fotoSynced = true` en las fotos del mapa y `markSubGroupSynced(sg.id)` → `pendingSync = false`, `estado = 'sincronizada'`. Si el RPC falla, las fotos quedan con `fotoSynced = false`: el reintento las resube al mismo path (upsert) y las vuelve a mandar en `foto_url` (#489)
+4. **Clasifica la respuesta** con `classifyRpcResult(sg, data, error)`:
+   - Éxito: marca `fotoSynced = true` en las fotos del mapa y `markGroupSynced(sg.id)` → `pendingSync = false`. No toca `estado` (#60).
+   - Rechazo: el grupo sigue con `pendingSync = true` y el código va al resultado del sync. Las fotos quedan con `fotoSynced = false`: el reintento las resube al mismo path (upsert) y las vuelve a mandar en `foto_url` (#489).
 
-### Paso 3: Retry de fotos pendientes
+### Paso 4: Retry de fotos pendientes
 
-**Archivo:** `SyncService.ts` → `uploadPendingPhotos(plantacionId)`
+**Archivo:** `services/sync/photoService.ts` → `uploadPendingPhotos(plantacionId)`
 
-Corre **después** de todos los subgrupos. Busca árboles con:
-- `fotoUrl IS NOT NULL`
-- `fotoSynced = false`
-- `fotoUrl` que empiece con `file://`
+Corre **después** del sync de grupos. Busca árboles con foto local (`file://`) y `fotoSynced = false`: las que fallaron en el paso 3.1.
+Para cada una: sube a Storage → `UPDATE trees SET foto_url` en el servidor → marca `fotoSynced` local.
 
-Esto captura fotos que fallaron en el paso 2.1 (upload dentro de uploadSubGroup).
-Para cada una: sube a Storage → actualiza servidor → marca fotoSynced local.
+### Paso 5: Download de fotos (bidireccional)
 
-### Paso 4: Download de fotos (bidireccional)
-
-**Archivo:** `SyncService.ts` → `downloadPhotosForPlantation(plantacionId)`
+**Archivo:** `services/sync/photoService.ts` → `downloadPhotosForPlantation(plantacionId)`
 
 Busca árboles locales con `fotoUrl` que NO empiece con `file://` (rutas de Storage
 descargadas del servidor pero sin archivo local). Para cada uno:
@@ -189,13 +181,32 @@ descargadas del servidor pero sin archivo local). Para cada uno:
 
 ---
 
+## Rechazo por plantación finalizada o archivada
+
+Una plantación **finalizada** (#469) solo la escribe un superadmin. Una **archivada** (#477) no la escribe nadie. El server decide con `motivo_no_escribible(id)` (migración 038): devuelve `PLANTACION_ARCHIVADA`, `PLANTACION_FINALIZADA` o `null`, y si aplican las dos gana archivada. Las policies de escritura usan `plantacion_escribible(id)`, que es `motivo_no_escribible(id) IS NULL`.
+
+Lo que el device cargó antes de enterarse **no se pierde**: queda local, pendiente, y se sube cuando la plantación se reabre o desarchiva.
+
+| Paso | Qué devuelve el server | Qué hace la app |
+|------|------------------------|-----------------|
+| `sync_subgroup` | `{ success: false, error: 'PLANTACION_ARCHIVADA' }` o `'PLANTACION_FINALIZADA'` | `classifyRpcResult` conserva el código y el grupo sigue pendiente. `getErrorMessage` (`services/sync/types.ts`) le dice al usuario que pida desarchivar o reabrir. |
+| `sincronizar_borrados` | `rechazados: uuid[]` y `rechazos: [{ id, error }]` | `pushBorrados` limpia solo lo aceptado; los rechazados siguen anotados. `motivosDeRechazo` loguea los motivos. |
+| Upsert de parcelas | Error de RLS (`42501`) | `classifyParcelaRpcResult` lo clasifica como `PERMISSION`, no como plantación bloqueada (#511). |
+| `UPDATE trees SET foto_url` (paso 4) | 0 filas y sin error: la policy UPDATE no deja ver la fila | Se marca `fotoSynced` igual (#482). |
+
+Storage no mira el estado de la plantación (#512): las fotos suben aunque después el RPC rechace el grupo, y `uploadGroup` ya las marcó `fotoSynced = true` (#489).
+
+Un server sin la 038 no manda `rechazos`: `motivosDeRechazo` asume finalizada, el único motivo posible antes de #477.
+
+---
+
 ## Download Flow (Servidor → Dispositivo B)
 
-**Archivo:** `SyncService.ts` → `downloadPlantation(serverPlantation)`
+**Archivo:** `services/sync/downloadService.ts` → `downloadPlantation(serverPlantation)`
 
 1. Upsert plantación localmente
 2. `pullFromServer(plantationId)` — descarga subgrupos, árboles, usuarios, especies
-3. `downloadPhotosForPlantation(plantationId)` — descarga fotos de Storage
+3. `downloadPhotosForPlantation(plantationId)` — descarga fotos de Storage, solo con `includePhotos`
 
 **Estado local después de download:**
 
@@ -217,7 +228,7 @@ descargadas del servidor pero sin archivo local). Para cada uno:
 1. Busca el código de la especie seleccionada
 2. Regenera el `subId` con el nuevo código de especie
 3. `UPDATE trees SET especieId, subId` — **NO toca fotoUrl ni fotoSynced**
-4. `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true`
+4. `markGroupPendingSync(grupoId)` → `pendingSync = true`
 
 **Archivo:** `useNNResolution.ts` → `handleGuardar()`
 
@@ -229,12 +240,12 @@ Cuando el usuario sincroniza después de resolver N/N:
 
 1. **Pull:** descarga estado actual del servidor
    - Si el servidor tiene otra especie (conflicto): almacena en `conflictEspecieId`
-2. **Push:** `getSyncableSubGroups` devuelve el subgrupo (`pendingSync = true`)
-   - `uploadSubGroup` envía `species_id` = especie resuelta
+2. **Push:** `getSyncableGroups` devuelve el grupo (`pendingSync = true`)
+   - `uploadGroup` envía `species_id` = especie resuelta
    - `foto_url` = storage path (ya existente) o null
    - RPC actualiza `species_id` y `sub_id` en el servidor
    - `COALESCE(EXCLUDED.foto_url, trees.foto_url)` preserva foto existente
-3. **markSubGroupSynced:** `pendingSync = false`, `estado = 'sincronizada'`
+3. **markGroupSynced:** `pendingSync = false`
 
 ### Resolución cross-device
 
@@ -243,9 +254,8 @@ Cuando el usuario sincroniza después de resolver N/N:
 1. Device B descarga plantación → árbol tiene `especieId = null`, foto descargada
 2. User B resuelve N/N → `resolveNNTree` cambia `especieId`, marca `pendingSync = true`
 3. User B sincroniza:
-   - `getSyncableSubGroups` devuelve el subgrupo (no filtra por userId ni estado)
-   - RPC actualiza `species_id` y `sub_id` en el servidor
-   - RLS policy `"Plantation members can update trees"` permite el update (verifica membership via `plantation_users`)
+   - `getSyncableGroups` devuelve el grupo (no filtra por userId ni estado)
+   - RPC actualiza `species_id` y `sub_id` en el servidor si User B es miembro y la plantación es escribible
 
 ### Conflictos de resolución
 
@@ -260,17 +270,16 @@ Cuando el usuario sincroniza después de resolver N/N:
 
 ---
 
-## getSyncableSubGroups
+## getSyncableGroups
 
-**Archivo:** `SubGroupRepository.ts`
+**Archivo:** `GroupRepository.ts`
 
 ```ts
-// Retorna TODOS los subgrupos con pendingSync=true
-// Sin filtro por estado: sincronizada con cambios pendientes también debe sincronizarse
-// Sin filtro por userId: cualquier miembro de la plantación puede sincronizar
+// Todos los grupos con pendingSync=true, sin filtro por estado ni por usuario:
+// cualquier miembro de la plantación puede subir cambios pendientes.
 const conditions = [
-  eq(subgroups.plantacionId, plantacionId),
-  eq(subgroups.pendingSync, true),
+  eq(groups.plantacionId, plantacionId),
+  eq(groups.pendingSync, true),
 ];
 ```
 
@@ -304,28 +313,36 @@ Muestra resultados separados:
 
 ## RPC: sync_subgroup
 
-**Archivo:** `supabase/migrations/009_sync_subgroup_update_trees.sql`
+**Archivo:** `supabase/migrations/038_plantacion_archivada.sql` (última redefinición)
 
 ```sql
--- 1. Verifica DUPLICATE_CODE (otro subgrupo con mismo código en la plantación)
--- 2. INSERT subgroups ON CONFLICT DO NOTHING (estado = 'sincronizada')
--- 3. INSERT trees ON CONFLICT DO UPDATE:
---    species_id = EXCLUDED.species_id     -- actualiza especie (resolución N/N)
---    sub_id = EXCLUDED.sub_id             -- actualiza subId (regenerado)
---    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url)  -- no borra foto existente
+-- 1. Sin fila en plantation_users para auth.uid()     → PERMISSION
+-- 2. motivo_no_escribible(plantation_id) no null      → PLANTACION_ARCHIVADA | PLANTACION_FINALIZADA
+-- 3. Otro grupo con el mismo código en la parcela     → DUPLICATE_CODE
+-- 4. INSERT groups ON CONFLICT (id) DO UPDATE SET estado
+-- 5. INSERT trees ON CONFLICT (id) DO UPDATE:
+--    species_id, sub_id                                   -- resolución N/N
+--    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url) -- no borra foto existente
+--    plantacion_id, global_id y GPS también con COALESCE
+-- Cualquier excepción                                  → UNKNOWN
 ```
 
-### SECURITY INVOKER
+Respuesta: `{ success: true }` o `{ success: false, error }`.
 
-El RPC usa `SECURITY INVOKER` — las policies RLS se aplican con el usuario autenticado.
+### SECURITY DEFINER
 
-### Policies relevantes
+El RPC corre como `postgres`, sin RLS: por eso valida membresía y estado de la plantación antes de escribir.
 
-| Policy | Tabla | Operación | Condición |
-|--------|-------|-----------|-----------|
-| "Users can insert own trees" | trees | INSERT | `auth.uid() = usuario_registro` |
-| "Plantation members can update trees" | trees | UPDATE | Membership via `plantation_users` join |
-| "Authenticated users can read trees" | trees | SELECT | `authenticated` |
+### Policies relevantes (escrituras directas, fuera del RPC)
+
+Exigen membresía (`is_plantation_member`) y `plantacion_escribible` (037):
+
+| Policy | Tabla | Operación |
+|--------|-------|-----------|
+| "Plantation members can insert trees" | trees | INSERT |
+| "Plantation members can update trees" | trees | UPDATE |
+| "Plantation members can insert parcelas" | parcelas | INSERT |
+| "Plantation members can update parcelas" | parcelas | UPDATE |
 
 ---
 
@@ -371,7 +388,7 @@ versionada; ver `tests/database/noAdHocSchemaPatches.test.ts` y
 ### Bug 4: markSubGroupSynced no seteaba estado
 - **Síntoma**: migraciones no distinguían subgrupos sincronizados
 - **Causa raíz**: estado local quedaba en 'finalizada' después de sync
-- **Fix**: `markSubGroupSynced` setea `estado: 'sincronizada'`
+- **Fix**: `markSubGroupSynced` setea `estado: 'sincronizada'` (revertido en #60: `markGroupSynced` solo limpia `pendingSync`)
 
 ### Bug 5: Migración one-time re-marcaba subgrupos ya sincronizados
 - **Síntoma**: orange dot persistente en plantaciones sincronizadas
