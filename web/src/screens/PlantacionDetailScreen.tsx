@@ -27,11 +27,7 @@ import { esArchivada, type Plantacion } from '../queries/plantationQueries';
 import { ArchivadoModal } from './plantaciones/ArchivadoModal';
 import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
-import {
-  MODAL_ADMINISTRACION,
-  useAccionesDetalle,
-  type AccionesProps,
-} from './useAccionesDetalle';
+import { MODAL_ADMINISTRACION, useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
 import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PlantacionDetailScreen.module.css';
 
@@ -198,7 +194,11 @@ function itemsPlegados(props: AccionesProps): ItemDesplegable[] {
  *  completo. */
 function AccionesPlegadas(props: AccionesProps) {
   return (
-    <MenuMasAcciones etiqueta="Acciones de la plantación" items={itemsPlegados(props)} tamano="md" />
+    <MenuMasAcciones
+      etiqueta="Acciones de la plantación"
+      items={itemsPlegados(props)}
+      tamano="md"
+    />
   );
 }
 

@@ -174,7 +174,6 @@ export async function existePlantacion(
   return (count ?? 0) > 0;
 }
 
-
 /** Errores de negocio que devuelven en `{ success: false, error }`. */
 export const ERRORES_ARCHIVADO = {
   /** No es admin/superadmin activo de la organización de la plantación. */
