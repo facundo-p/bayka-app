@@ -202,6 +202,7 @@ objetivo_arboles (opcional, meta para dashboard)
 visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
 photo_capture_all_trees (default false: si todos los botones de la botonera piden foto, como N/N; migración 035)
+archivada_en / archivada_por (null si no está archivada; migración 038)
 ```
 
 Los campos opcionales, la visibilidad y la foto en todos los botones se
@@ -213,6 +214,32 @@ gestionan desde la web de gestión (migraciones 024 y 035).
 activa
 finalizada
 ```
+
+### Archivada
+
+Archivar es independiente del estado: una plantación activa o finalizada puede
+estar además archivada, y desarchivarla la devuelve al estado que tenía (#477).
+
+```
+oculta de los listados de la web, la búsqueda global y el catálogo de la app
+solo lectura para todos, superadmin incluido
+archivan y desarchivan admin y superadmin activos de su organización
+```
+
+### Quién puede escribir
+
+El server decide con `plantacion_escribible(id)`, que usan las policies de
+escritura y los RPC de sync:
+
+```
+archivada   → nadie
+finalizada  → solo superadmin
+activa      → los permisos normales de cada tabla
+```
+
+Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
+(archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
+cuando la plantación vuelve a ser escribible.
 
 ### Relaciones
 
