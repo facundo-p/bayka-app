@@ -5,6 +5,7 @@ import { groups, trees, plantations, plantationSpecies, species, plantationUsers
 import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
+import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 
 /** canFinalize needs ≥1 subgroup, all groups finalizada+synced, and zero unresolved N/N trees. */
 export async function checkFinalizationGate(
@@ -49,13 +50,15 @@ export async function checkFinalizationGate(
   };
 }
 
-/** Returns the current estado of a plantation. */
-export async function getPlantationEstado(plantacionId: string): Promise<string | null> {
+/** Estado y archivado de la plantación: lo que deciden los permisos de edición. Null si no está local. */
+export async function getPlantationEstadoDeEdicion(
+  plantacionId: string,
+): Promise<EstadoDeEdicionDePlantacion | null> {
   const rows = await db
-    .select({ estado: plantations.estado })
+    .select({ estado: plantations.estado, archivadaEn: plantations.archivadaEn })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
-  return rows[0]?.estado ?? null;
+  return rows[0] ?? null;
 }
 
 /** Returns all technicians in the admin's organization. */

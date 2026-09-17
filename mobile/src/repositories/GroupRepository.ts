@@ -8,6 +8,7 @@ import { localNow } from '../utils/dateUtils';
 import { generateSubId } from '../utils/idGenerator';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 import { getTreeEditGating } from '../utils/permisosDeEdicion';
+import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
@@ -156,10 +157,10 @@ export async function finalizeGroup(grupoId: string): Promise<{ success: true }>
 export function canEdit(
   group: { usuarioCreador: string },
   userId: string,
-  plantacionEstado: string
+  plantacion: EstadoDeEdicionDePlantacion
 ): boolean {
   return getTreeEditGating({
-    plantacionEstado,
+    plantacion,
     subgroupEstado: ESTADO_GRUPO.activa,
     isCreator: group.usuarioCreador === userId,
   }).canEdit;

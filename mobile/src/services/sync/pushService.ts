@@ -138,16 +138,30 @@ export async function pushBorrados(plantacionId: string): Promise<void> {
     return;
   }
 
-  // Los rechazados son de una plantación finalizada (#469): quedan pendientes por
-  // si se reabre. El resto se limpia aunque no se haya borrado nada — un id que ya
-  // no está en el server no vuelve nunca.
+  // Los rechazados son de una plantación finalizada o archivada (#469, #477):
+  // quedan pendientes por si se reabre o desarchiva. El resto se limpia aunque no
+  // se haya borrado nada — un id que ya no está en el server no vuelve nunca.
   const rechazados = new Set<string>(Array.isArray(data.rechazados) ? data.rechazados : []);
   await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)));
 
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
   if (rechazados.size > 0) {
-    syncLog.info(`Push borrados: ${rechazados.size} pendientes, plantación finalizada`);
+    syncLog.info(`Push borrados: ${rechazados.size} pendientes, ${motivosDeRechazo(data.rechazos)}`);
   }
+}
+
+/**
+ * "PLANTACION_ARCHIVADA ×2, PLANTACION_FINALIZADA ×1". `rechazos` llega desde #477:
+ * un server anterior solo manda `rechazados`, y ahí el motivo era siempre finalizada.
+ */
+export function motivosDeRechazo(rechazos: unknown): string {
+  if (!Array.isArray(rechazos)) return SYNC_ERROR.PLANTACION_FINALIZADA;
+  const porMotivo = new Map<string, number>();
+  for (const { error } of rechazos as { error?: string }[]) {
+    const motivo = error ?? SYNC_ERROR.UNKNOWN;
+    porMotivo.set(motivo, (porMotivo.get(motivo) ?? 0) + 1);
+  }
+  return [...porMotivo].map(([motivo, n]) => `${motivo} ×${n}`).join(', ');
 }
 
 // ─── Upload a single Group ─────────────────────────────────────────────────
@@ -250,11 +264,12 @@ export function classifyRpcResult(
   }
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
   // Los códigos que sync_subgroup devuelve explícitamente: unicidad por parcela,
-  // guard de membresía, y plantación finalizada (#469).
+  // guard de membresía, y plantación finalizada o archivada (#469, #477).
   const RPC_CODES: SyncErrorCode[] = [
     SYNC_ERROR.DUPLICATE_CODE,
     SYNC_ERROR.PERMISSION,
     SYNC_ERROR.PLANTACION_FINALIZADA,
+    SYNC_ERROR.PLANTACION_ARCHIVADA,
   ];
   const errorCode: SyncErrorCode = RPC_CODES.includes(data?.error) ? data.error : SYNC_ERROR.UNKNOWN;
   return { success: false, groupId: sg.id, nombre: sg.nombre, error: errorCode };

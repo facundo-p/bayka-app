@@ -15,7 +15,7 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-import { classifyRpcResult } from '../../src/services/sync/pushService';
+import { classifyRpcResult, motivosDeRechazo } from '../../src/services/sync/pushService';
 import { getErrorMessage } from '../../src/services/sync/types';
 
 const sg = { id: 'group-1', nombre: 'G1', parcelaId: 'parcela-1' };
@@ -53,8 +53,38 @@ describe('classifyRpcResult', () => {
     expect(getErrorMessage('PLANTACION_FINALIZADA')).not.toEqual(getErrorMessage('PERMISSION'));
   });
 
+  // Archivada gana sobre finalizada en el server (#477): el mensaje pide desarchivar.
+  test('RPC rechaza con PLANTACION_ARCHIVADA → passthrough', () => {
+    const result = classifyRpcResult(sg, { success: false, error: 'PLANTACION_ARCHIVADA' }, null);
+    expect(result).toMatchObject({ success: false, error: 'PLANTACION_ARCHIVADA' });
+  });
+
+  test('el mensaje de PLANTACION_ARCHIVADA es propio y aclara que el dato no se perdió', () => {
+    const mensaje = getErrorMessage('PLANTACION_ARCHIVADA');
+    expect(mensaje).toMatch(/dispositivo/i);
+    expect(mensaje).toMatch(/desarchive/i);
+    expect(mensaje).not.toEqual(getErrorMessage('PERMISSION'));
+    expect(mensaje).not.toEqual(getErrorMessage('PLANTACION_FINALIZADA'));
+  });
+
   test('código desconocido del RPC → UNKNOWN', () => {
     const result = classifyRpcResult(sg, { success: false, error: 'ALGO_NUEVO' }, null);
     expect(result).toMatchObject({ success: false, error: 'UNKNOWN' });
+  });
+});
+
+// Solo para el log de pushBorrados: qué se limpia lo siguen decidiendo los `rechazados`.
+describe('motivosDeRechazo', () => {
+  test('agrupa los rechazos por motivo (#477)', () => {
+    const rechazos = [
+      { id: 'a', error: 'PLANTACION_ARCHIVADA' },
+      { id: 'b', error: 'PLANTACION_ARCHIVADA' },
+      { id: 'c', error: 'PLANTACION_FINALIZADA' },
+    ];
+    expect(motivosDeRechazo(rechazos)).toBe('PLANTACION_ARCHIVADA ×2, PLANTACION_FINALIZADA ×1');
+  });
+
+  test('server sin `rechazos` → el único motivo posible era finalizada', () => {
+    expect(motivosDeRechazo(undefined)).toBe('PLANTACION_FINALIZADA');
   });
 });

@@ -76,6 +76,7 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
       'gps_capture_required_server',
       'visible_in_app',
       'photo_capture_all_trees',
+      'archivada_en',
     ]),
   );
 

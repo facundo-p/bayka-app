@@ -29,6 +29,7 @@ export type ServerPlantationRow = {
   created_at: string;
   visible_in_app?: boolean | null;
   photo_capture_all_trees?: boolean | null;
+  archivada_en?: string | null;
 };
 
 /** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
