@@ -75,7 +75,9 @@ inactivo no lee por la vía admin (043, #506), `22` RPC `quitar_fotos_arboles`
 `is_superadmin()` ni `is_plantation_member()`, incluidos `sync_subgroup` y
 Storage (045, #508), `24` INSERT/UPDATE/upsert de fotos en `tree-photos` exigen
 plantación escribible (046, #512), `25` asignaciones de técnicos: exigen
-plantación existente y no archivada, una finalizada las admite (047, #522).
+plantación existente y no archivada, una finalizada las admite (047, #522),
+`26` escrituras de admin acotadas a la organización: plantaciones, especies y
+asignaciones con dos organizaciones, y perfiles vía superadmin (048, #543).
 
 ## Hallazgo fuera de alcance (no corregido)
 
