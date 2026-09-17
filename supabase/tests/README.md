@@ -61,7 +61,8 @@ scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
 (033, #310), `11` alta de plantaciones con `INSERT … RETURNING` bajo esa
 RLS (034, #379), `12` columna `photo_capture_all_trees` con su default (035,
 #439), `18` DELETE de fotos en `tree-photos` exige admin y membresía en la
-plantación del path (041, #481).
+plantación del path (041, #481), `20` `is_admin()` exige perfil activo: un
+admin o superadmin inactivo no lee por la vía admin (043, #506).
 
 ## Hallazgo fuera de alcance (no corregido)
 
