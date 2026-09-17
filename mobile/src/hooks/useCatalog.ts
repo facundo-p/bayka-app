@@ -11,11 +11,10 @@ import { useProfileData } from './useProfileData';
 import { useNetStatus } from './useNetStatus';
 import { useRoutePrefix } from './useRoutePrefix';
 import { useConfirm } from './useConfirm';
-import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
-import { getServerCatalog, getLocalPlantationIds, getUnsyncedGroupSummary, ServerPlantation } from '../queries/catalogQueries';
-import { deletePlantationLocally } from '../repositories/PlantationRepository';
+import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
+import { getServerCatalog, getLocalPlantationIds, ServerPlantation } from '../queries/catalogQueries';
 import { batchDownload, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState } from '../services/SyncService';
-import { colors } from '../theme';
+import { contarPorEstado } from '../utils/conteoPorEstado';
 
 export function useCatalog() {
   const userId = useCurrentUserId();
@@ -92,50 +91,14 @@ export function useCatalog() {
     }
   }
 
-  async function handleDeletePlantation(plantationId: string) {
-    const item = catalogItems.find((c) => c.id === plantationId);
-    if (!item) return;
-
-    const { activaCount, finalizadaCount } = await getUnsyncedGroupSummary(plantationId);
-    const hasUnsynced = activaCount + finalizadaCount > 0;
-
-    if (hasUnsynced) {
-      const totalUnsynced = activaCount + finalizadaCount;
-      showDoubleConfirmDialog(
-        confirm.show,
-        'Atencion: datos sin sincronizar',
-        `Esta plantacion tiene ${totalUnsynced} grupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
-        'Eliminar de todas formas',
-        'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.',
-        async () => {
-          await deletePlantationLocally(plantationId);
-        },
-      );
-    } else {
-      showConfirmDialog(
-        confirm.show,
-        'Eliminar del dispositivo',
-        `La plantacion "${item.lugar}" sera eliminada de tu celular. Podras volver a descargarla desde el catalogo.`,
-        'Eliminar',
-        async () => {
-          await deletePlantationLocally(plantationId);
-        },
-        { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' },
-      );
-    }
-  }
+  const handleDeletePlantation = useEliminarDelDispositivo(confirm.show);
 
   function handleDismiss() {
     setDownloadState(DOWNLOAD_STATE.idle);
     setSelectedIds(new Set());
   }
 
-  const estadoCounts = { activa: 0, finalizada: 0 };
-  catalogItems.forEach((p) => {
-    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
-      estadoCounts[p.estado as keyof typeof estadoCounts]++;
-    }
-  });
+  const estadoCounts = contarPorEstado(catalogItems);
 
   const filteredCatalog = catalogItems.filter(
     (p) => !activeFilter || p.estado === activeFilter

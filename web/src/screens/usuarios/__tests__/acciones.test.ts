@@ -5,6 +5,7 @@ import {
   motivoCambiarPassword,
   motivoCambiarRol,
   motivoDesactivar,
+  motivoEliminar,
   motivoReenviarInvitacion,
 } from '../acciones';
 
@@ -15,6 +16,7 @@ function usuario(sobreescritura: Partial<UsuarioConAsignaciones>): UsuarioConAsi
     rol: 'tecnico',
     email: 'x@bayka.org',
     activo: true,
+    eliminadoEn: null,
     organizacionId: 'org-1',
     organizacionNombre: 'Bayka',
     plantacionesAsignadas: 0,
@@ -65,10 +67,37 @@ test('motivoReenviarInvitacion exige email registrado', () => {
   expect(motivoReenviarInvitacion(usuario({}))).toBeNull();
 });
 
-test('itemsDeMenu ofrece Desactivar a activos y Reactivar a inactivos', () => {
+test('itemsDeMenu ofrece Desactivar a activos y Reactivar a inactivos, y Eliminar a ambos', () => {
   const acciones = (activo: boolean) =>
     itemsDeMenu(usuario({ activo }), YO, 2).map((item) => item.accion);
   // Editar no está: se edita clickeando la fila, que abre el panel lateral.
-  expect(acciones(true)).toEqual(['cambiarPassword', 'reenviarInvitacion', 'desactivar']);
-  expect(acciones(false)).toEqual(['cambiarPassword', 'reenviarInvitacion', 'reactivar']);
+  expect(acciones(true)).toEqual([
+    'cambiarPassword',
+    'reenviarInvitacion',
+    'desactivar',
+    'eliminar',
+  ]);
+  expect(acciones(false)).toEqual([
+    'cambiarPassword',
+    'reenviarInvitacion',
+    'reactivar',
+    'eliminar',
+  ]);
+});
+
+test('motivoEliminar: mismos guards que desactivar, con su propio texto', () => {
+  expect(motivoEliminar(usuario({ id: YO }), YO, 2)).toBe(
+    'Un superadmin no puede eliminarse a sí mismo',
+  );
+  expect(motivoEliminar(usuario({ rol: 'superadmin' }), YO, 1)).toBe(
+    'No podés eliminar al último superadmin activo',
+  );
+  expect(motivoEliminar(usuario({ rol: 'superadmin' }), YO, 2)).toBeNull();
+  expect(motivoEliminar(usuario({}), YO, 1)).toBeNull();
+});
+
+test('itemsDeMenu: un eliminado no ofrece ninguna acción', () => {
+  expect(
+    itemsDeMenu(usuario({ activo: false, eliminadoEn: '2026-09-01T00:00:00Z' }), YO, 2),
+  ).toEqual([]);
 });

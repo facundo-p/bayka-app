@@ -9,10 +9,11 @@ import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
-import { abortarSiCancelado, esCancelacion } from './cancelacion';
+import { abortarSiCancelado, esCancelacion, relanzarSiEsCancelacion } from './cancelacion';
 import { TIMEOUT_MS, TimeoutError } from '../../supabase/fetchConTimeout';
 import { conReloj } from '../../utils/conReloj';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
 
@@ -39,18 +40,28 @@ async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<Transfere
     return FALLO;
   }
 
-  // Update Supabase trees table with relative storage path.
-  const { error: updateError } = await supabase
-    .from('trees')
-    .update({ foto_url: storagePath })
-    .eq('id', tree.id);
-  if (updateError) {
-    syncLog.error(`foto_url update failed for tree ${tree.id}:`, updateError.message);
-    return FALLO;
-  }
+  if (!(await apuntarFotoUrlEnServer(tree.id, storagePath))) return FALLO;
 
   await markPhotoSynced(tree.id);
   return { ok: true, bytes };
+}
+
+/** `true` solo si el server confirmó el cambio en la fila del árbol. */
+async function apuntarFotoUrlEnServer(treeId: string, storagePath: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('trees')
+    .update({ foto_url: storagePath })
+    .eq('id', treeId)
+    .select('id');
+  if (error) {
+    syncLog.error(`foto_url update failed for tree ${treeId}:`, error.message);
+    return false;
+  }
+  if (sinFilasAfectadas(data)) {
+    syncLog.error(`foto_url update failed for tree ${treeId}:`, DETALLE_SIN_FILAS_AFECTADAS);
+    return false;
+  }
+  return true;
 }
 
 /**
@@ -76,7 +87,7 @@ async function correrUploadPendingPhotos(
 
   await conLimiteDeConcurrencia(pending, FOTOS_EN_PARALELO, async (tree) => {
     abortarSiCancelado();
-    const subida = await uploadSinglePhoto(tree);
+    const subida = await subirFotoSinCortarLaTanda(tree);
     if (subida.ok) uploaded++; else failed++;
     bytes += subida.bytes;
     // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
@@ -85,6 +96,17 @@ async function correrUploadPendingPhotos(
 
   syncLog.info(`Upload fotos: ${uploaded} ok, ${failed} fallidas, ${bytes} bytes en ${Date.now() - inicio}ms`);
   return { uploaded, failed };
+}
+
+/** Una excepción cuenta la foto como fallida sin cortar la tanda; una cancelación sí la corta (#502). */
+async function subirFotoSinCortarLaTanda(tree: ArbolConFotoPendiente): Promise<Transferencia> {
+  try {
+    return await uploadSinglePhoto(tree);
+  } catch (e: any) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error(`Photo upload EXCEPTION for tree ${tree.id}: ${e?.message}`);
+    return FALLO;
+  }
 }
 
 // ─── Download photos helpers ─────────────────────────────────────────────────

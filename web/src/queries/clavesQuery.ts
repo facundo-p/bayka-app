@@ -10,6 +10,8 @@ export const CLAVE_QUERY = {
   plantacion: (plantationId: string) => ['plantacion', plantationId] as const,
   temporadaActiva: () => ['temporada-activa'] as const,
   idsGenerados: (plantationId: string) => ['ids-generados', plantationId] as const,
+  previewEliminacionPlantacion: (plantationId: string) =>
+    ['preview-eliminacion-plantacion', plantationId] as const,
   seedSugerido: () => ['seed-sugerido'] as const,
 
   dashboard: (plantationId: string) => ['dashboard', plantationId] as const,
@@ -29,6 +31,7 @@ export const CLAVE_QUERY = {
   perfiles: () => ['perfiles'] as const,
   usuarios: () => ['usuarios'] as const,
   usuarioPlantaciones: (userId: string) => ['usuario-plantaciones', userId] as const,
+  previewEliminacionUsuario: (userId: string) => ['preview-eliminacion-usuario', userId] as const,
   plantacionUsuarios: (plantationId: string) => ['plantacion-usuarios', plantationId] as const,
 } as const;
 

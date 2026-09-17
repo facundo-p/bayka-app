@@ -20,6 +20,22 @@ export const PG_ERROR = {
   INSUFFICIENT_PRIVILEGE: '42501',
   /** undefined_table — la tabla no existe (esquema desfasado). */
   UNDEFINED_TABLE: '42P01',
+  /** undefined_function — la función no existe (server sin la migración del RPC). */
+  UNDEFINED_FUNCTION: '42883',
 } as const;
 
 export type PgErrorCode = (typeof PG_ERROR)[keyof typeof PG_ERROR];
+
+/**
+ * Códigos propios de PostgREST (no son SQLSTATE) que también llegan en `error.code`.
+ * Ref: https://docs.postgrest.org/en/stable/references/errors.html
+ */
+export const POSTGREST_ERROR = {
+  /** PostgREST no encuentra la función en su schema cache (RPC inexistente o firma distinta). */
+  FUNCTION_NOT_FOUND: 'PGRST202',
+} as const;
+
+/** El RPC no existe en el server: hay que caer al camino anterior. */
+export function esFuncionInexistente(error: { code?: string; message?: string } | null | undefined): boolean {
+  return error?.code === PG_ERROR.UNDEFINED_FUNCTION || error?.code === POSTGREST_ERROR.FUNCTION_NOT_FOUND;
+}
