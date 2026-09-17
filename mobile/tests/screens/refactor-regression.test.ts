@@ -67,6 +67,11 @@ describe('CatalogScreen — localIds reactivity', () => {
   it('does not use useState for localIds', () => {
     expect(hook).not.toMatch(/useState.*localIds|localIds.*useState/);
   });
+
+  // El catálogo no ofrece "Eliminar del dispositivo"; esa acción vive en la lista local (#520).
+  it('does not expose handleDeletePlantation', () => {
+    expect(hook).not.toContain('handleDeletePlantation');
+  });
 });
 
 // --- Regression: safe area handled by ScreenContainer/ScreenHeader/CustomHeader wrappers, not per-screen ---
