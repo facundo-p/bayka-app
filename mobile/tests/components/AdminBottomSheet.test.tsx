@@ -42,7 +42,7 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
   return {
     visible: true,
     plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null },
-    meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+    meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
     isAdmin: true,
     onDismiss: jest.fn(),
     onEdit: jest.fn(),
@@ -93,7 +93,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: '2026-09-17T12:00:00+00:00', eliminadaEnServidorEn: null },
-          meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );
@@ -109,7 +109,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: '2026-09-17T12:00:00.000Z' },
-          meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );
@@ -125,7 +125,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: '2026-09-17T12:00:00+00:00', eliminadaEnServidorEn: null },
-          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );
@@ -151,15 +151,23 @@ describe('AdminBottomSheet', () => {
 
   it('shows disabled Finalizar helper when canFinalize=false', () => {
     const { getByText } = render(
-      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 } })} />
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' } })} />
     );
 
     expect(getByText('Para finalizar, todos los grupos deben estar sincronizados')).toBeTruthy();
   });
 
+  it('con pendientes sin subir, la ayuda dice qué falta sincronizar (#537)', () => {
+    const { getByText } = render(
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '2 fotos sin subir' } })} />
+    );
+
+    expect(getByText('Sincroniza antes de finalizar: 2 fotos sin subir')).toBeTruthy();
+  });
+
   it('shows enabled Finalizar when canFinalize=true', () => {
     const { queryByText } = render(
-      <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 } })} />
+      <AdminBottomSheet {...makeProps({ meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' } })} />
     );
 
     expect(queryByText('Para finalizar, todos los grupos deben estar sincronizados')).toBeNull();
@@ -183,7 +191,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null },
-          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );
@@ -198,7 +206,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null },
-          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );
@@ -213,7 +221,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null },
-          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );
@@ -226,7 +234,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'sincronizada', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null },
-          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
         })}
       />
     );

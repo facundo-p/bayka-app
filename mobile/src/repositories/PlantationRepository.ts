@@ -17,6 +17,10 @@ import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION } from '../constants/estados';
 import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
 import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
+import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
+import { tienePendientes } from '../utils/finalizarPlantacion';
+import { getLocalPhotoUrisForPlantation } from './TreeRepository';
+import { borrarFotosLocales } from '../services/PhotoService';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -323,8 +327,21 @@ export class FinalizePlantationLocalSyncError extends Error {
   }
 }
 
+/** Finalizar con datos sin subir los deja sin poder subirse nunca (#537). Se chequea acá y no solo en la UI. */
+export class FinalizePlantationPendientesError extends Error {
+  readonly pendientes: ResumenDePendientes;
+  constructor(pendientes: ResumenDePendientes) {
+    super('La plantación tiene datos sin sincronizar');
+    this.name = 'FinalizePlantationPendientesError';
+    this.pendientes = pendientes;
+  }
+}
+
 /** Marca la plantación 'finalizada' en Supabase Y en SQLite local: el update de server propaga a otros devices, el local mantiene la UI reactiva sin esperar el pull. */
 export async function finalizePlantation(plantacionId: string): Promise<void> {
+  const pendientes = await getResumenDePendientes(plantacionId);
+  if (tienePendientes(pendientes)) throw new FinalizePlantationPendientesError(pendientes);
+
   const { error } = await supabase
     .from('plantations')
     .update({ estado: ESTADO_PLANTACION.finalizada })
@@ -485,7 +502,7 @@ export async function createPlantationWithParcelaLocally(
       organizacionId: params.organizacionId,
       lugar: params.lugar,
       periodo: params.periodo,
-      estado: 'activa',
+      estado: ESTADO_PLANTACION.activa,
       creadoPor: params.creadoPor,
       createdAt: now,
       pendingSync: true,
@@ -518,13 +535,14 @@ export async function createPlantationWithParcelaLocally(
   });
 
   notifyDataChanged();
-  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: 'activa' };
+  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: ESTADO_PLANTACION.activa };
 }
 
 // --- deletePlantationLocally ------------------------------------------------
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
+  const fotos = await getLocalPhotoUrisForPlantation(plantacionId);
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
@@ -540,5 +558,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
   });
+  // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).
+  borrarFotosLocales(fotos);
   notifyDataChanged();
 }
