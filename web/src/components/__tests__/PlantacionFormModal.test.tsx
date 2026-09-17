@@ -28,15 +28,25 @@ beforeEach(() => {
   vi.mocked(existePlantacion).mockResolvedValue(false);
 });
 
+const SALTA: PlantacionEditable = {
+  id: 'plant-1',
+  lugar: 'Salta',
+  periodo: '2024-2025',
+  descripcion: 'Finca sur',
+  fechaInicio: null,
+  objetivoArboles: null,
+};
+
 function renderModal(plantacion: PlantacionEditable | null = null) {
   const onClose = vi.fn();
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
   render(
     <QueryClientProvider client={queryClient}>
       <PlantacionFormModal plantacion={plantacion} onClose={onClose} />
     </QueryClientProvider>,
   );
-  return onClose;
+  return { onClose, invalidateQueries };
 }
 
 async function completarObligatorios(usuario: ReturnType<typeof userEvent.setup>) {
@@ -46,7 +56,7 @@ async function completarObligatorios(usuario: ReturnType<typeof userEvent.setup>
 
 test('crear feliz: valida, llama al repository con el perfil y cierra', async () => {
   const usuario = userEvent.setup();
-  const onClose = renderModal();
+  const { onClose } = renderModal();
 
   await completarObligatorios(usuario);
   await usuario.type(screen.getByLabelText('Objetivo de árboles'), '1000');
@@ -77,7 +87,7 @@ test('con campos inválidos muestra errores por campo y no guarda', async () => 
 test('duplicado: advierte sin bloquear y crea recién con "Crear igualmente"', async () => {
   vi.mocked(existePlantacion).mockResolvedValue(true);
   const usuario = userEvent.setup();
-  const onClose = renderModal();
+  const { onClose } = renderModal();
 
   await completarObligatorios(usuario);
   await usuario.click(screen.getByRole('button', { name: 'Crear' }));
@@ -94,14 +104,7 @@ test('duplicado: advierte sin bloquear y crea recién con "Crear igualmente"', a
 
 test('editar: precarga los valores (nulls de la 024 → vacíos) y llama a editarPlantacion', async () => {
   const usuario = userEvent.setup();
-  const onClose = renderModal({
-    id: 'plant-1',
-    lugar: 'Salta',
-    periodo: '2024-2025',
-    descripcion: 'Finca sur',
-    fechaInicio: null,
-    objetivoArboles: null,
-  });
+  const { onClose } = renderModal(SALTA);
 
   expect(screen.getByLabelText('Lugar *')).toHaveValue('Salta');
   expect(screen.getByLabelText('Descripción')).toHaveValue('Finca sur');
@@ -116,10 +119,34 @@ test('editar: precarga los valores (nulls de la 024 → vacíos) y llama a edita
   expect(vi.mocked(existePlantacion)).toHaveBeenCalledWith('Salta', '2024-2025', 'plant-1');
 });
 
+test('crear invalida el listado de plantaciones', async () => {
+  const usuario = userEvent.setup();
+  const { onClose, invalidateQueries } = renderModal();
+
+  await completarObligatorios(usuario);
+  await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(invalidateQueries).toHaveBeenCalledTimes(1);
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+});
+
+test('editar invalida el listado y el detalle de esa plantación', async () => {
+  const usuario = userEvent.setup();
+  const { onClose, invalidateQueries } = renderModal(SALTA);
+
+  await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(invalidateQueries).toHaveBeenCalledTimes(2);
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+  expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['plantacion', 'plant-1'] });
+});
+
 test('error de red: muestra mensaje claro, conserva lo tipeado y no cierra', async () => {
   vi.mocked(crearPlantacion).mockRejectedValue(new Error('network'));
   const usuario = userEvent.setup();
-  const onClose = renderModal();
+  const { onClose } = renderModal();
 
   await completarObligatorios(usuario);
   await usuario.click(screen.getByRole('button', { name: 'Crear' }));

@@ -1,6 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 
-// Separate keys to stay under expo-secure-store's 2048-byte limit (Pitfall 4)
+// Separate keys to stay under expo-secure-store's 2048-byte limit
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
 const REFRESH_TOKEN_KEY = 'supabase_refresh_token';
 const ROLE_KEY = 'user_role';

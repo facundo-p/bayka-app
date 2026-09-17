@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import styles from './SeccionesConfig.module.css';
 
 interface CabeceraConfigProps {
@@ -5,17 +6,19 @@ interface CabeceraConfigProps {
   subtitulo: string;
   /** Chip a la derecha del título (ej. "8 habilitadas"). */
   chip?: string;
+  /** Controles de la card (buscador, maestro, "+ Asignar"), en la misma línea. */
+  acciones?: ReactNode;
 }
 
-/** Cabecera común de las cards de Configuración: título serif + chip + subtítulo. */
-export function CabeceraConfig({ titulo, subtitulo, chip }: CabeceraConfigProps) {
+/** Cabecera común de las cards de Configuración: título + subtítulo + controles,
+ *  todo en un renglón para que el cuerpo se quede con el alto. */
+export function CabeceraConfig({ titulo, subtitulo, chip, acciones }: CabeceraConfigProps) {
   return (
     <header className={styles.cabecera}>
-      <div className={styles.cabeceraFila}>
-        <h2 className={styles.titulo}>{titulo}</h2>
-        {chip && <span className={styles.chip}>{chip}</span>}
-      </div>
+      <h2 className={styles.titulo}>{titulo}</h2>
       <p className={styles.subtitulo}>{subtitulo}</p>
+      {chip && <span className={styles.chip}>{chip}</span>}
+      {acciones && <div className={styles.cabeceraAcciones}>{acciones}</div>}
     </header>
   );
 }

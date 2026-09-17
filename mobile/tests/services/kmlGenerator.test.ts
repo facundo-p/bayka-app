@@ -78,9 +78,7 @@ describe('buildKml', () => {
       row({ especieNombre: 'Pino A', subId: 'P1' }),
       row({ especieNombre: 'Pino-A', subId: 'P2' }),
     ]);
-    // Mismo styleId para ambos nombres.
     expect(getSpeciesStyleId('Pino A')).toBe(getSpeciesStyleId('Pino-A'));
-    // Un solo <Style> con ese id (no dos con el mismo id y distinto color).
     const styleCount = kml.split(`<Style id="${getSpeciesStyleId('Pino A')}">`).length - 1;
     expect(styleCount).toBe(1);
   });
@@ -93,6 +91,13 @@ describe('buildKml', () => {
     const kml = buildKml('Campo', [row({ especieNombre: null })]);
     expect(kml).toContain('Especie: N/N');
     expect(kml).toContain(`<styleUrl>#${getSpeciesStyleId('N/N')}</styleUrl>`);
+  });
+
+  it('parcela borrada: el punto se conserva bajo "Sin parcela", sin el nombre viejo', () => {
+    const kml = buildKml('Campo Norte', [row({ parcelaNombre: null })]);
+    expect(kml).toContain('<name>Sin parcela</name>');
+    expect(kml).toContain('Parcela: Sin parcela');
+    expect(kml).toContain('<name>PL1EUC1</name>');
   });
 
   it('la descripción incluye especie, grupo, parcela, posición, precisión y fecha', () => {

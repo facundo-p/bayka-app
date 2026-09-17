@@ -22,7 +22,7 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-// We must import the repo AFTER the mock is declared
+// Import repo after the mock is declared
 import {
   createParcela,
   updateParcela,
@@ -131,8 +131,7 @@ describe('ParcelaRepository', () => {
       const plantacionId = await seedPlantation();
       const c = await createParcela({ plantacionId, nombre: 'Lote 1', codigo: 'L1' });
       if (!c.success) throw new Error('seed failed');
-      // Mark synced first so we can detect pending flip
-      await markParcelaSynced(c.id);
+      await markParcelaSynced(c.id); // mark synced first to detect the pending flip
       const before = await findById(c.id);
       await new Promise((res) => setTimeout(res, 10));
       const r = await updateParcela(c.id, { nombre: 'Lote 1 Edit', codigo: 'L1' });
@@ -179,7 +178,6 @@ describe('ParcelaRepository', () => {
       const plantacionId = await seedPlantation();
       const c = await createParcela({ plantacionId, nombre: 'Lote 1', codigo: 'L1' });
       if (!c.success) throw new Error('seed failed');
-      // Insert one group with parcelaId pointing to the new parcela
       await mockTestDb.insert(groups).values({
         id: 'g-1',
         plantacionId,
@@ -222,13 +220,11 @@ describe('ParcelaRepository', () => {
       expect(after!.pendingSync).toBe(true);
     });
 
-    // DEFERRED: "restore que causaria colision unicidad" requires the SQLite
-    // unique indexes on (plantacion_id, nombre/codigo) to be PARTIAL indexes
-    // that exclude tombstoned rows. Until then, the SQL constraint blocks
-    // duplicates BEFORE the repo guard can fire, so the collision scenario
-    // is unreachable from app code paths. The repo's validateParcelaUniqueness
-    // logic (filters deletedAt IS NULL) is exercised by createParcela /
-    // updateParcela tests above. Tracked for Phase 16-03 or later.
+    // DEFERRED: "restore que causaría colisión de unicidad" no es alcanzable hoy:
+    // los índices únicos SQLite (plantacion_id, nombre/codigo) no son parciales,
+    // así que el constraint SQL bloquea el duplicado antes de que el guard del
+    // repo pueda actuar. Esa lógica (filtra deletedAt IS NULL) ya se ejercita
+    // en los tests de createParcela/updateParcela de arriba.
 
     test('restore sobre id inexistente → not_found', async () => {
       const r = await restoreParcela('does-not-exist');

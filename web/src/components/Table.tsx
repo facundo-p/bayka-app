@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { cx } from '../lib/classNames';
 import { EmptyState } from './EmptyState';
 import styles from './Table.module.css';
 
@@ -8,6 +9,15 @@ export interface TableColumn<T> {
   /** Sin render, se muestra el valor de `row[key]` como texto. */
   render?: (row: T) => ReactNode;
   align?: 'left' | 'center' | 'right';
+  /**
+   * Secundaria: se cae en pantalla de teléfono, donde no entran todas. El dato
+   * sigue estando en el detalle de la fila. La marca vive acá y no en una lista
+   * de claves aparte para que no puedan desincronizarse.
+   * Quién la aplica: `useColumnasVisibles`.
+   */
+  fueraEnMovil?: boolean;
+  /** Redundante mientras el panel lateral la muestra en grande. */
+  fueraConPanel?: boolean;
 }
 
 interface TableProps<T> {
@@ -15,6 +25,8 @@ interface TableProps<T> {
   rows: T[];
   getRowKey: (row: T) => string | number;
   onRowClick?: (row: T) => void;
+  /** Clave de la fila abierta en el panel lateral: se resalta. */
+  claveSeleccionada?: string | number;
   emptyMessage?: string;
 }
 
@@ -40,6 +52,7 @@ export function Table<T>({
   rows,
   getRowKey,
   onRowClick,
+  claveSeleccionada,
   emptyMessage = 'Sin datos para mostrar',
 }: TableProps<T>) {
   if (rows.length === 0) return <EmptyState title={emptyMessage} />;
@@ -48,22 +61,28 @@ export function Table<T>({
       <thead>
         <tr>
           {columns.map((column) => (
-            <th key={column.key} className={alignClass(column.align)}>
+            <th key={column.key} className={cx(styles.encabezado, alignClass(column.align))}>
               {column.header}
             </th>
           ))}
         </tr>
       </thead>
       <tbody>
-        {rows.map((row) => (
-          <tr
-            key={getRowKey(row)}
-            className={onRowClick ? styles.clickableRow : undefined}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
-          >
-            {renderCells(columns, row)}
-          </tr>
-        ))}
+        {rows.map((row) => {
+          const clave = getRowKey(row);
+          return (
+            <tr
+              key={clave}
+              className={cx(
+                onRowClick && styles.clickableRow,
+                claveSeleccionada != null && clave === claveSeleccionada && styles.filaSeleccionada,
+              )}
+              onClick={onRowClick ? () => onRowClick(row) : undefined}
+            >
+              {renderCells(columns, row)}
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

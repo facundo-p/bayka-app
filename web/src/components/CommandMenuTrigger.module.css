@@ -36,3 +36,12 @@
   border-radius: var(--radius-code);
   padding: 2px var(--space-sm);
 }
+
+/* En el sidebar apilado ocupa el ancho; en la barra horizontal ese `100%` se
+   queda con la fila entera y empuja a los otros cuatro bloques a una fila cada
+   uno —es lo que hacía que la barra midiera más a 768 que a 900—. */
+@media (max-width: 900px) {
+  .trigger {
+    width: auto;
+  }
+}

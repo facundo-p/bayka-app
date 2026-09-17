@@ -1,3 +1,4 @@
+import { rutaPlantacion } from '../../lib/rutas';
 import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
@@ -11,7 +12,7 @@ function aResultado(plantacion: PlantacionConStats): ResultadoBusqueda {
     id: plantacion.id,
     titulo: plantacion.lugar,
     meta: plantacion.periodo,
-    to: `/plantaciones/${plantacion.id}`,
+    to: rutaPlantacion(plantacion.id),
   };
 }
 

@@ -14,7 +14,17 @@ export function useNewGroup(plantacionId: string | undefined, parcelaId?: string
 
   useEffect(() => {
     if (!plantacionId) return;
-    getLastGroupName(plantacionId).then(setLastGroupName);
+    let stale = false;
+    getLastGroupName(plantacionId)
+      .then((name) => {
+        if (!stale) setLastGroupName(name);
+      })
+      .catch(() => {
+        if (!stale) setLastGroupName(null);
+      });
+    return () => {
+      stale = true;
+    };
   }, [plantacionId]);
 
   async function handleCreateGroup(values: { nombre: string; codigo: string; tipo: GroupTipo }) {

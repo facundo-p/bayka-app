@@ -1,12 +1,8 @@
 import { supabase } from '../lib/supabase';
-import {
-  GPS_CAPTURE_FREQUENCY_DEFAULT,
-  GPS_CAPTURE_REQUIRED_DEFAULT,
-} from '../lib/gpsDefaults';
+import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../lib/gpsDefaults';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../lib/photoDefaults';
 
-/** Estados posibles de una plantación. ÚNICA fuente de verdad de estos valores:
- *  el tipo `EstadoPlantacion` se deriva de acá, así que valor y tipo no se
- *  pueden desincronizar y nadie los redefine como literales sueltos. */
+/** Única fuente de verdad de los estados; `EstadoPlantacion` se deriva de acá (evita literales sueltos desincronizados). */
 export const ESTADO_PLANTACION = {
   activa: 'activa',
   finalizada: 'finalizada',
@@ -14,9 +10,7 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
-/** Fila cruda de `plantations`. Los campos opcionales llegan con las
- *  migraciones 023 (GPS) y 024, que pueden no estar aplicadas todavía:
- *  se tolera su ausencia. */
+/** Campos opcionales: de las migraciones 023 (GPS), 024 y 035 (foto), que pueden no estar aplicadas. */
 type FilaPlantacion = {
   id: string;
   lugar: string;
@@ -26,6 +20,7 @@ type FilaPlantacion = {
   visible_in_app?: boolean | null;
   gps_capture_frequency?: number | null;
   gps_capture_required?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
   descripcion?: string | null;
   fecha_inicio?: string | null;
   objetivo_arboles?: number | null;
@@ -39,6 +34,8 @@ export type Plantacion = {
   visibleInApp: boolean;
   gpsCaptureFrequency: number;
   gpsCaptureRequired: boolean;
+  /** Todos los botones de la botonera piden foto, como N/N (#439). */
+  photoCaptureAllTrees: boolean;
   createdAt: string;
   descripcion: string | null;
   fechaInicio: string | null;
@@ -70,8 +67,7 @@ type FilaStats = {
 
 const SIN_STATS = { arboles: 0, parcelas: 0, usuarios: 0 };
 
-/** Contadores de todas las plantaciones en una sola query agregada: los
- *  counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
+/** Una sola query agregada: counts head por plantación (3×N simultáneos) saturaban el pooler (503). */
 async function statsPorPlantacion(): Promise<Map<string, FilaStats>> {
   const { data, error } = await supabase.rpc('stats_plantaciones');
   if (error) throw new Error(error.message);
@@ -88,6 +84,7 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
     visibleInApp: fila.visible_in_app ?? true,
     gpsCaptureFrequency: fila.gps_capture_frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT,
     gpsCaptureRequired: fila.gps_capture_required ?? GPS_CAPTURE_REQUIRED_DEFAULT,
+    photoCaptureAllTrees: fila.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
     createdAt: fila.created_at,
     ...camposFormulario(fila),
   };
@@ -110,20 +107,12 @@ export async function listarPlantaciones(): Promise<PlantacionConStats[]> {
 
 /** Carga una plantación por id; null si no existe (o la RLS no la deja ver). */
 export async function obtenerPlantacion(id: string): Promise<Plantacion | null> {
-  const { data, error } = await supabase
-    .from('plantations')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  const { data, error } = await supabase.from('plantations').select('*').eq('id', id).maybeSingle();
   if (error) throw new Error(error.message);
   return data ? mapearPlantacion(data as FilaPlantacion) : null;
 }
 
-/**
- * Id de la plantación 'activa' con el registro de árbol MÁS RECIENTE (la última
- * temporada en la que se cargaron árboles), o null si ninguna activa tiene
- * árboles. Define la "Temporada activa" del sidebar.
- */
+/** Plantación 'activa' con el árbol más reciente (última temporada con carga); define la "Temporada activa" del sidebar. */
 export async function obtenerTemporadaActivaId(): Promise<string | null> {
   const { data, error } = await supabase
     .from('trees')
@@ -132,7 +121,7 @@ export async function obtenerTemporadaActivaId(): Promise<string | null> {
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) throw new Error(error.message);
-  // El embed many-to-one llega como objeto en runtime (el cliente lo tipa array).
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   const fila = ((data ?? []) as unknown as Array<{ groups: { plantation_id: string } | null }>)[0];
   return fila?.groups?.plantation_id ?? null;
 }

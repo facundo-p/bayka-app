@@ -1,8 +1,11 @@
 export * from './types';
 export { pullSpeciesFromServer, uploadOfflinePlantations, uploadPendingEdits } from './preSteps';
 export { pullFromServer } from './pullService';
-export { uploadGroup, uploadSyncableParcelas, uploadSyncableGroups, classifyParcelaRpcResult } from './pushService';
+export { uploadGroup, uploadSyncableParcelas, uploadSyncableGroups, classifyParcelaRpcResult, pushBorrados } from './pushService';
 export { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 export { syncPlantation, syncAllPlantations } from './orchestrators';
 export { ensureServerSession, SessionExpiredError } from './sessionGuard';
 export { downloadPlantation, batchDownload } from './downloadService';
+export { hayActividadDeSync, subscribeActividadDeSync, marcandoActividadDeSync, __resetActividadDeSync } from './syncActivityStore';
+export { faseDeProgresoGlobal } from './faseDeProgreso';
+export type { FaseDeProgreso } from './faseDeProgreso';

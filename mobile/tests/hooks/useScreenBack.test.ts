@@ -1,8 +1,7 @@
 /**
  * #85 — el back del SO desde listados caía en Catálogo: el stack `plantation`
- * acumula pantallas (catalog queda colgado) y un pop del SO iba a la equivocada.
- * Fix: useScreenBack — header + back de hardware van al MISMO destino explícito
- * (el padre lógico), interceptando el back del SO. Tests estáticos sobre source.
+ * acumula pantallas y un pop del SO iba a la equivocada. Fix: useScreenBack
+ * hace que header y back de hardware vayan al mismo destino explícito.
  */
 import * as fs from 'fs';
 import * as path from 'path';

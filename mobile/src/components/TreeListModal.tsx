@@ -1,9 +1,10 @@
-import { Modal, View, Text, FlatList, Pressable, StyleSheet } from 'react-native';
+import { Modal, View, Text, FlatList, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, fonts } from '../theme';
+import { colors, spacing } from '../theme';
 import TreeRowItem from './TreeRowItem';
 import type { TreeItemData } from './TreeRowItem';
+import { treeListModalStyles as styles } from './TreeListModal.styles';
 
 export type { TreeItemData as TreeListItem };
 
@@ -61,15 +62,3 @@ export default function TreeListModal({
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: spacing.xxl, backgroundColor: colors.surface,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
-  },
-  title: { fontSize: fontSize.xxl, fontFamily: fonts.heading, color: colors.text },
-  listContent: { padding: spacing.xl, gap: spacing.sm },
-  empty: { textAlign: 'center', color: colors.textMuted, marginTop: spacing['6xl'], fontSize: fontSize.lg, fontFamily: fonts.regular },
-});

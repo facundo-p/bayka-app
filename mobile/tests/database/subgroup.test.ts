@@ -1,5 +1,4 @@
-// Tests for GroupRepository — implemented in Plan 02-02
-// Covers: SUBG-01, SUBG-02, SUBG-03, SUBG-05, SUBG-07
+// Tests for GroupRepository
 
 // Mock drizzle-orm/expo-sqlite (used by useGroupsForPlantation)
 jest.mock('drizzle-orm/expo-sqlite', () => ({
@@ -47,12 +46,11 @@ describe('GroupRepository', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Reset mock implementations
     mockInsertValues = jest.fn().mockResolvedValue(undefined);
     mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
     mockSelectLimit = jest.fn().mockResolvedValue([]);
 
-    // Re-wire the db mock to use the fresh mocks
+    // clearAllMocks resets implementations too, so the db mock needs re-wiring
     const { db } = require('../../src/database/client');
     (db.insert as jest.Mock).mockImplementation(() => ({ values: mockInsertValues }));
     (db.update as jest.Mock).mockImplementation(() => ({
@@ -191,7 +189,7 @@ describe('GroupRepository', () => {
     });
 
     it('allows finalization even with unresolved N/N trees (SUBG-05)', async () => {
-      // Per spec §4.10: N/N blocks sync, not finalization
+      // N/N sin resolver bloquea el sync, no la finalización.
       const result = await finalizeGroup('subgroup-1');
 
       expect(result.success).toBe(true);

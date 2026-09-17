@@ -5,7 +5,7 @@
   padding: var(--space-xs) var(--space-lg);
   border-radius: var(--radius-pill);
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   line-height: 1.4;
 }
 
@@ -38,6 +38,16 @@
 .warning {
   background-color: var(--color-yellow-medium);
   color: var(--color-text-primary);
+}
+
+/* Rótulo en mayúsculas junto a un título: toma el interlineado del texto. */
+.aviso {
+  background-color: var(--color-warn-bg);
+  color: var(--color-warn-fg-strong);
+  border: var(--border-thin) solid var(--color-warn-border);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: normal;
 }
 
 .neutral {

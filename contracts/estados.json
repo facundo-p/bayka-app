@@ -1,0 +1,5 @@
+{
+  "_comment": "Fuente de verdad de los estados de plantación. Cambiar esto implica actualizar las copias runtime (web/src/queries/plantationQueries.ts ESTADO_PLANTACION, mobile/src/constants/estados.ts ESTADO_PLANTACION) y sus contract tests en el mismo cambio. El estado de grupo 'sincronizada' es un flag solo-cliente sin contraparte server y no vive acá.",
+  "activa": "activa",
+  "finalizada": "finalizada"
+}

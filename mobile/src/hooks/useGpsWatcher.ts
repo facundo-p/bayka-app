@@ -21,26 +21,17 @@ export interface UseGpsWatcherResult {
   permissionStatus: GpsPermissionStatus;
   /** null mientras no se chequeó; false = GPS del dispositivo apagado. */
   servicesEnabled: boolean | null;
-  /** Re-chequea permiso/servicios SIN abrir diálogo y arranca el watcher si
-   *  corresponde (ej. tras destrabar GPS desde Ajustes del SO). */
+  /** Re-chequea permiso/servicios sin abrir diálogo y arranca el watcher si corresponde (ej. tras destrabar GPS desde Ajustes del SO). */
   refresh: () => void;
 }
 
 /**
- * Mantiene el GPS caliente mientras la pantalla está enfocada (se detiene al
- * salir, por batería) y expone el último fix. Degrada sin errores si el permiso
- * se deniega o el GPS está apagado: ningún flujo se bloquea acá (el bloqueo por
- * obligatoriedad lo decide useGpsGate).
- *
- * Crash-safety (bug #115): el permiso se pide UNA sola vez (con diálogo); al
- * volver del background se RE-CHEQUEA sin diálogo y NO se reinicia un watcher
- * que ya está corriendo. Sin esto, cada transición a 'active' (incluida la que
- * dispara el propio diálogo de permiso) reiniciaba el watcher y re-pedía el
- * permiso en ráfaga → titileo del ícono de ubicación y crash al inicio.
- *
- * `enabled` (toggle de medición de GPS, #120/#121): con la medición desactivada
- * el watcher no corre ni pide permiso (ahorro de batería). Al re-activarla
- * estando la pantalla enfocada, arranca y vuelve a pedir permiso una vez.
+ * Mantiene el GPS caliente mientras la pantalla está enfocada, expone el último fix; degrada sin
+ * error si no hay permiso o el GPS está apagado (el bloqueo por obligatoriedad lo decide useGpsGate).
+ * Crash-safety (#115): el permiso se pide una sola vez con diálogo; al volver del background se
+ * re-chequea sin diálogo y NO se reinicia un watcher ya corriendo (si no, cada 'active' reiniciaba
+ * el watcher y re-pedía permiso en ráfaga).
+ * `enabled` (#120/#121): desactivada, no corre ni pide permiso; al reactivarla enfocada, re-arranca pidiendo permiso una vez.
  */
 export function useGpsWatcher(enabled: boolean = true): UseGpsWatcherResult {
   const [lastFix, setLastFix] = useState<GpsFix | null>(null);
@@ -61,11 +52,7 @@ export function useGpsWatcher(enabled: boolean = true): UseGpsWatcherResult {
     subscriptionRef.current = null;
   }, []);
 
-  /**
-   * Arranca el watcher si hay permiso + servicios y no está ya corriendo.
-   * `prompt` true solo en el primer intento al enfocar (pide permiso con diálogo);
-   * en resume es false (lee el permiso sin abrir diálogo).
-   */
+  /** Arranca el watcher si hay permiso+servicios y no está corriendo. `prompt` true solo al enfocar (pide con diálogo); en resume es false (lee sin diálogo). */
   const ensureWatching = useCallback(async (prompt: boolean) => {
     if (!enabledRef.current) {
       stopWatching();
@@ -123,9 +110,7 @@ export function useGpsWatcher(enabled: boolean = true): UseGpsWatcherResult {
     }, [ensureWatching, stopWatching]),
   );
 
-  // Reacciona al toggle de medición de GPS (useFocusEffect no re-corre por
-  // cambio de prop). Al desactivar: detiene y limpia el estado. Al re-activar
-  // con la pantalla enfocada: re-arranca pidiendo permiso una vez.
+  // useFocusEffect no re-corre por cambio de prop; este effect reacciona al toggle de `enabled` (ver doc del hook).
   useEffect(() => {
     enabledRef.current = enabled;
     if (!enabled) {

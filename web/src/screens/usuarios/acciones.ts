@@ -7,12 +7,25 @@ import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ROL } from '../../repositories/profileRepository';
 
-export type AccionUsuario =
-  | 'editar'
-  | 'cambiarPassword'
-  | 'reenviarInvitacion'
-  | 'desactivar'
-  | 'reactivar';
+/** Acciones rápidas sobre una persona: las del menú "⋯" y las del panel lateral. */
+export const ACCION_USUARIO = {
+  cambiarPassword: 'cambiarPassword',
+  reenviarInvitacion: 'reenviarInvitacion',
+  desactivar: 'desactivar',
+  reactivar: 'reactivar',
+} as const;
+
+export type AccionUsuario = (typeof ACCION_USUARIO)[keyof typeof ACCION_USUARIO];
+
+/** Lo que miran los guards además de la persona: quién opera y cuántos
+ *  superadmins activos hay, contados sobre todas las personas sin filtrar. */
+export interface ContextoAcciones {
+  idActual: string | undefined;
+  superadminsActivos: number;
+}
+
+/** Una acción elegida sobre una persona: abre su modal. */
+export type AccionActiva = { usuario: UsuarioConAsignaciones; accion: AccionUsuario };
 
 export type ItemMenu = {
   accion: AccionUsuario;
@@ -71,31 +84,41 @@ export function motivoReenviarInvitacion(usuario: UsuarioConAsignaciones): strin
   return usuario.email ? null : MOTIVO_SIN_EMAIL;
 }
 
-/** Menú completo de una fila, con cada acción habilitada o su motivo. */
+/** Desactivar a una persona activa, con sus guards, o reactivar a una inactiva. */
+function itemDeEstado(
+  usuario: UsuarioConAsignaciones,
+  idActual: string | undefined,
+  superadminsActivos: number,
+): ItemMenu {
+  if (!usuario.activo) {
+    return { accion: ACCION_USUARIO.reactivar, etiqueta: 'Reactivar', motivo: null };
+  }
+  return {
+    accion: ACCION_USUARIO.desactivar,
+    etiqueta: 'Desactivar',
+    motivo: motivoDesactivar(usuario, idActual, superadminsActivos),
+    destructiva: true,
+  };
+}
+
+/** Acciones rápidas de una fila, con cada una habilitada o su motivo. Editar no
+ *  está: se edita clickeando la fila, que abre el panel lateral. */
 export function itemsDeMenu(
   usuario: UsuarioConAsignaciones,
   idActual: string | undefined,
   superadminsActivos: number,
 ): ItemMenu[] {
   return [
-    { accion: 'editar', etiqueta: 'Editar', motivo: null },
     {
-      accion: 'cambiarPassword',
+      accion: ACCION_USUARIO.cambiarPassword,
       etiqueta: 'Cambiar contraseña',
       motivo: motivoCambiarPassword(usuario, idActual),
     },
     {
-      accion: 'reenviarInvitacion',
+      accion: ACCION_USUARIO.reenviarInvitacion,
       etiqueta: 'Reenviar invitación',
       motivo: motivoReenviarInvitacion(usuario),
     },
-    usuario.activo
-      ? {
-          accion: 'desactivar',
-          etiqueta: 'Desactivar',
-          motivo: motivoDesactivar(usuario, idActual, superadminsActivos),
-          destructiva: true,
-        }
-      : { accion: 'reactivar', etiqueta: 'Reactivar', motivo: null },
+    itemDeEstado(usuario, idActual, superadminsActivos),
   ];
 }

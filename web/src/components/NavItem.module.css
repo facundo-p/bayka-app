@@ -7,7 +7,9 @@
   border-radius: var(--radius-control);
   font-size: var(--text-md);
   color: var(--color-text-secondary);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .item:hover {
@@ -23,7 +25,7 @@
   background-color: var(--color-surface-tint);
   border-left-color: var(--color-secondary);
   color: var(--color-primary);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
 }
 
 .activo:hover {

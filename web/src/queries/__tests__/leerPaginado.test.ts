@@ -33,6 +33,9 @@ test('una sola página parcial corta sin pedir más', async () => {
 });
 
 test('propaga el error preservando el code de Postgres', async () => {
-  const error = leerPaginado(async () => ({ data: null, error: { message: 'falló', code: '42703' } }));
+  const error = leerPaginado(async () => ({
+    data: null,
+    error: { message: 'falló', code: '42703' },
+  }));
   await expect(error).rejects.toMatchObject({ message: 'falló', code: '42703' });
 });

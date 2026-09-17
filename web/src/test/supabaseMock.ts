@@ -1,12 +1,4 @@
-/**
- * Mock compartido del cliente Supabase para tests de auth.
- * Uso en cada test file (la factory async evita problemas de hoisting):
- *
- *   vi.mock('../lib/supabase', async () => {
- *     const { supabaseMock } = await import('./test/supabaseMock');
- *     return { supabase: supabaseMock };
- *   });
- */
+/** Mock compartido del cliente Supabase para tests de auth; mockear con `vi.mock('../lib/supabase', ...)` importando `supabaseMock` en la factory async (evita hoisting). */
 import { vi } from 'vitest';
 import {
   crearConsultaMock,
@@ -44,15 +36,12 @@ export const estadoMock: {
   resolverConsulta: ResolverConsulta | null;
   /** Error a devolver al firmar URLs de Storage (null = firma OK). */
   errorFirma: { message: string } | null;
-  /** URLs firmadas pedidas durante el test. */
   firmas: FirmaCapturada[];
   /** Respuesta de functions.invoke (null = { ok: true } sin error). */
   respuestaInvoke: { data: unknown; error: unknown } | null;
-  /** Invocaciones a edge functions capturadas. */
   invocaciones: InvocacionCapturada[];
   /** Error a devolver en auth.updateUser (null = éxito). */
   errorUpdateUser: { message: string } | null;
-  /** Payloads de auth.updateUser capturados. */
   actualizacionesUsuario: Array<Record<string, unknown>>;
 } = {
   sesion: null,
@@ -103,8 +92,25 @@ export const PERFIL_SUPERADMIN: PerfilFilaMock = {
   rol: 'superadmin',
 };
 
+/** Estado limpio con la sesión de `perfil` ya abierta, como si hubiera entrado antes del render. */
+export function prepararSesion(perfil: PerfilFilaMock): void {
+  resetEstadoMock();
+  estadoMock.sesion = { user: { id: perfil.id } };
+  estadoMock.perfilFila = perfil;
+}
+
+export function prepararSesionAdmin(): void {
+  prepararSesion(PERFIL_ADMIN);
+}
+
 function emitir(evento: string): void {
   for (const oyente of oyentes) oyente(evento, estadoMock.sesion);
+}
+
+/** Dispara un evento de auth con la sesión actual (refresh de token, logout
+ *  desde otra pestaña): eventos que no nacen de signIn/signOut de esta pestaña. */
+export function emitirEventoAuth(evento: string): void {
+  emitir(evento);
 }
 
 export const supabaseMock = {
@@ -162,9 +168,7 @@ export const supabaseMock = {
   },
 };
 
-/** El lookup del perfil de auth es un select de `profiles` filtrado por id;
- *  los listados consultan sin ese filtro y las mutaciones (cambiarRol) no
- *  son selects: ambos van al resolver del test. */
+/** Lookup de perfil de auth: select de `profiles` filtrado por id; el resto (listados, mutaciones) va al resolver del test. */
 function esPerfilDeAuth(consulta: ConsultaCapturada): boolean {
   return (
     consulta.tabla === 'profiles' &&
@@ -173,8 +177,7 @@ function esPerfilDeAuth(consulta: ConsultaCapturada): boolean {
   );
 }
 
-/** El perfil de auth se resuelve con el estado de sesión; el resto delega en
- *  el resolver configurado por el test (o devuelve vacío). */
+/** Perfil de auth resuelto desde el estado mock; el resto delega en el resolver del test (o vacío). */
 function resolverPorDefecto(consulta: ConsultaCapturada) {
   if (esPerfilDeAuth(consulta)) {
     return estadoMock.errorPerfil

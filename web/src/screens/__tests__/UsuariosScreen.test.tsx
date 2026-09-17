@@ -4,21 +4,19 @@ import {
   PERFIL_ADMIN,
   PERFIL_SUPERADMIN,
   estadoMock,
-  resetEstadoMock,
+  prepararSesion,
 } from '../../test/supabaseMock';
+import { MENSAJES } from '../../../../supabase/functions/admin-users/nucleo';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
-beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_SUPERADMIN;
-});
+beforeEach(() => prepararSesion(PERFIL_SUPERADMIN));
 
 const USUARIOS = [
   {
@@ -81,14 +79,18 @@ function tablaUsuarios() {
   return within(screen.getByRole('table'));
 }
 
+/** Clic en la fila: abre el detalle de esa persona en el panel lateral. */
+async function abrirPanel(usuario: ReturnType<typeof userEvent.setup>, nombre: string) {
+  await usuario.click(tablaUsuarios().getByText(nombre));
+  return screen.getByRole('complementary', { name: `Detalle de ${nombre}` });
+}
+
 test('un admin no ve el link Usuarios y la sección le muestra el aviso de superadmin', async () => {
   estadoMock.perfilFila = PERFIL_ADMIN;
   configurarUsuariosMock();
   renderRutasEn('/usuarios');
 
-  expect(
-    await screen.findByText('Sección solo para superadministradores'),
-  ).toBeInTheDocument();
+  expect(await screen.findByText('Sección solo para superadministradores')).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'Usuarios' })).not.toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Ir a Plantaciones' })).toBeInTheDocument();
   // No hay tabla: la pantalla de usuarios no se montó.
@@ -96,25 +98,22 @@ test('un admin no ve el link Usuarios y la sección le muestra el aviso de super
   expect(screen.queryByRole('button', { name: /^Acciones de / })).not.toBeInTheDocument();
 });
 
-test('un superadmin ve el link, el subtítulo con conteos y la tabla con roles', async () => {
+test('un superadmin ve el link, la meta con conteos y la tabla con roles', async () => {
   configurarUsuariosMock();
   renderRutasEn('/usuarios');
 
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Usuarios' })).toBeInTheDocument();
-  // Subtítulo computado por rol (1 superadmin, 1 admin, 1 técnico).
-  expect(
-    screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico'),
-  ).toBeInTheDocument();
+  // Meta de la cabecera computada por rol (1 superadmin, 1 admin, 1 técnico).
+  expect(screen.getByText('3 personas · 1 superadmin · 1 admin · 1 técnico')).toBeInTheDocument();
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   // Badges de rol con etiqueta en español (dentro de la tabla).
   expect(tabla.getByText('Superadmin')).toBeInTheDocument();
-  expect(tabla.getByText('Admin')).toBeInTheDocument();
+  expect(tabla.getByText('Administrador')).toBeInTheDocument();
   expect(tabla.getByText('Técnico')).toBeInTheDocument();
-  // Plantaciones: superadmin "Todas"; Ana tiene 2; el resto "Sin plantaciones".
-  expect(tabla.getByText('Todas')).toBeInTheDocument();
-  expect(tabla.getByText('2 plantaciones')).toBeInTheDocument();
+  // Plantaciones: superadmin y admin son miembros automáticos de todas (#67).
+  expect(tabla.getAllByText('Todas')).toHaveLength(2);
   expect(tabla.getByText('Sin plantaciones')).toBeInTheDocument();
 });
 
@@ -139,17 +138,17 @@ test('muestra el estado con badge y el filtro por estado compone con el de rol',
   expect(tablaUsuarios().getByText('Inactivo')).toBeInTheDocument();
 
   // Inactivos: queda sólo Teo.
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por estado'), 'inactivos');
+  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
   expect(tablaUsuarios().getByText('Teo Técnico')).toBeInTheDocument();
   expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
 
   // Compone con el filtro de rol: Admins + Inactivos = vacío (sin tabla).
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por rol'), 'admins');
+  await usuario.click(screen.getByRole('radio', { name: 'Admins' }));
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
   expect(screen.getByText('No hay usuarios con esos filtros')).toBeInTheDocument();
 
   // Activos + Admins: vuelven Ana y Sofía.
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por estado'), 'activos');
+  await usuario.click(screen.getByRole('radio', { name: 'Activos' }));
   expect(tablaUsuarios().getByText('Ana Admin')).toBeInTheDocument();
   expect(tablaUsuarios().getByText('Sofía Súper')).toBeInTheDocument();
 });
@@ -160,7 +159,7 @@ test('el filtro Técnicos deja sólo a los técnicos', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  await usuario.selectOptions(screen.getByLabelText('Filtrar por rol'), 'tecnicos');
+  await usuario.click(screen.getByRole('radio', { name: 'Técnicos' }));
   const tabla = tablaUsuarios();
   expect(tabla.getByText('Teo Técnico')).toBeInTheDocument();
   expect(tabla.queryByText('Ana Admin')).not.toBeInTheDocument();
@@ -192,7 +191,12 @@ test('"Agregar usuario" invita por email con el rol elegido y refresca el listad
   expect(estadoMock.invocaciones).toEqual([
     {
       funcion: 'admin-users',
-      cuerpo: { accion: 'crear', nombre: 'Nueva Persona', email: 'nueva@bayka.org', rol: 'tecnico' },
+      cuerpo: {
+        accion: 'crear',
+        nombre: 'Nueva Persona',
+        email: 'nueva@bayka.org',
+        rol: 'tecnico',
+      },
     },
   ]);
   // La invalidación vuelve a pedir el listado de perfiles.
@@ -243,9 +247,7 @@ test('editar rol: advierte al promover a superadmin, actualiza e invalida la lis
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
 
   // Sin cambios no hay nada que guardar.
   expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
@@ -255,7 +257,11 @@ test('editar rol: advierte al promover a superadmin, actualiza e invalida la lis
   );
 
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('complementary', { name: 'Detalle de Ana Admin' }),
+    ).not.toBeInTheDocument(),
+  );
 
   const update = consultas.find((consulta) => consulta.operacion === 'update');
   expect(update?.tabla).toBe('profiles');
@@ -275,9 +281,7 @@ test('el superadmin no puede cambiar su propio rol, pero sí su nombre', async (
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
-  await usuario.click(menuPropio.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Sofía Súper' });
+  const dialogo = await abrirPanel(usuario, 'Sofía Súper');
 
   const selectRol = within(dialogo).getByLabelText('Rol');
   expect(selectRol).toBeDisabled();
@@ -306,15 +310,10 @@ test('el único superadmin del sistema no es degradable', async () => {
   renderRutasEn('/usuarios');
   await screen.findByText('Selva Súper');
 
-  const menuSelva = await abrirMenu(usuario, 'Selva Súper');
-  await usuario.click(menuSelva.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Selva Súper' });
+  const dialogo = await abrirPanel(usuario, 'Selva Súper');
   const selectRol = within(dialogo).getByLabelText('Rol');
   expect(selectRol).toBeDisabled();
-  expect(selectRol).toHaveAttribute(
-    'title',
-    'Único superadmin: promové otro antes de degradarlo',
-  );
+  expect(selectRol).toHaveAttribute('title', 'Único superadmin: promové otro antes de degradarlo');
 });
 
 test('un error del trigger del server se muestra legible en el modal', async () => {
@@ -323,9 +322,7 @@ test('un error del trigger del server se muestra legible en el modal', async () 
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
   await usuario.selectOptions(within(dialogo).getByLabelText('Rol'), 'tecnico');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
 
@@ -340,9 +337,7 @@ test('editar guarda el nombre directo y el email vía la edge function', async (
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
 
   const inputNombre = within(dialogo).getByLabelText('Nombre');
   await usuario.clear(inputNombre);
@@ -351,7 +346,11 @@ test('editar guarda el nombre directo y el email vía la edge function', async (
   await usuario.clear(inputEmail);
   await usuario.type(inputEmail, 'ana.nueva@bayka.org');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.queryByRole('complementary', { name: 'Detalle de Ana Admin' }),
+    ).not.toBeInTheDocument(),
+  );
 
   const update = consultas.find(
     (consulta) => consulta.tabla === 'profiles' && consulta.operacion === 'update',
@@ -366,15 +365,13 @@ test('editar guarda el nombre directo y el email vía la edge function', async (
   ]);
 });
 
-test('editar sin cambios no permite guardar', async () => {
+test('abrir el panel sin cambiar nada no permite guardar', async () => {
   configurarUsuariosMock();
   const usuario = userEvent.setup();
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
   expect(within(dialogo).getByRole('button', { name: 'Guardar' })).toBeDisabled();
 });
 
@@ -389,16 +386,14 @@ test('editar con email fallido igual refresca la lista (invalidación en onSettl
   renderRutasEn('/usuarios');
   await screen.findByText('Ana Admin');
 
-  const menu = await abrirMenu(usuario, 'Ana Admin');
-  await usuario.click(menu.getByRole('menuitem', { name: 'Editar' }));
-  const dialogo = screen.getByRole('dialog', { name: 'Editar a Ana Admin' });
+  const dialogo = await abrirPanel(usuario, 'Ana Admin');
   await usuario.clear(within(dialogo).getByLabelText('Nombre'));
   await usuario.type(within(dialogo).getByLabelText('Nombre'), 'Ana Nueva');
   await usuario.clear(within(dialogo).getByLabelText('Email'));
   await usuario.type(within(dialogo).getByLabelText('Email'), 'dup@bayka.org');
   await usuario.click(within(dialogo).getByRole('button', { name: 'Guardar' }));
 
-  // El error se muestra y el modal queda abierto...
+  // El error se muestra y el panel queda abierto...
   expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
     'Ya existe un usuario con ese email',
   );
@@ -452,10 +447,7 @@ test('cambiar la contraseña de OTRO superadmin está deshabilitado (la propia n
   const menuOtra = await abrirMenu(usuario, 'Otra Súper');
   const itemOtra = menuOtra.getByRole('menuitem', { name: 'Cambiar contraseña' });
   expect(itemOtra).toBeDisabled();
-  expect(itemOtra).toHaveAttribute(
-    'title',
-    'No podés cambiar la contraseña de otro superadmin',
-  );
+  expect(itemOtra).toHaveAttribute('title', 'No podés cambiar la contraseña de otro superadmin');
 
   const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
   expect(menuPropio.getByRole('menuitem', { name: 'Cambiar contraseña' })).toBeEnabled();
@@ -470,7 +462,7 @@ test('desactivar pide confirmación explicando efectos y ejecuta', async () => {
   const menu = await abrirMenu(usuario, 'Ana Admin');
   await usuario.click(menu.getByRole('menuitem', { name: 'Desactivar' }));
   const dialogo = screen.getByRole('dialog', { name: 'Desactivar a Ana Admin' });
-  // §15: qué se pierde (acceso) y qué se conserva (datos de campo).
+  // Qué se pierde (acceso) y qué se conserva (datos de campo).
   expect(within(dialogo).getByText(/va a perder el acceso/)).toBeInTheDocument();
   expect(within(dialogo).getByText(/se conservan/)).toBeInTheDocument();
 
@@ -490,10 +482,7 @@ test('desactivarse a sí mismo está deshabilitado; un inactivo ofrece Reactivar
   const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
   const itemDesactivar = menuPropio.getByRole('menuitem', { name: 'Desactivar' });
   expect(itemDesactivar).toBeDisabled();
-  expect(itemDesactivar).toHaveAttribute(
-    'title',
-    'Un superadmin no puede desactivarse a sí mismo',
-  );
+  expect(itemDesactivar).toHaveAttribute('title', 'Un superadmin no puede desactivarse a sí mismo');
 
   // Teo está inactivo: su menú ofrece Reactivar (no Desactivar).
   const menuTeo = await abrirMenu(usuario, 'Teo Técnico');
@@ -505,6 +494,24 @@ test('desactivarse a sí mismo está deshabilitado; un inactivo ofrece Reactivar
   expect(estadoMock.invocaciones).toEqual([
     { funcion: 'admin-users', cuerpo: { accion: 'reactivar', userId: 'user-3' } },
   ]);
+});
+
+test('reenviar invitación: el rate limit se muestra con su mensaje, no con el genérico', async () => {
+  configurarUsuariosMock();
+  estadoMock.respuestaInvoke = {
+    data: null,
+    error: { context: { json: async () => ({ ok: false, error: MENSAJES.limiteEmails }) } },
+  };
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Reenviar invitación' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Reenviar invitación a Ana Admin' });
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Reenviar' }));
+
+  expect(await within(dialogo).findByRole('alert')).toHaveTextContent(MENSAJES.limiteEmails);
 });
 
 test('reenviar invitación: deshabilitada sin email; con email envía y confirma', async () => {
@@ -528,4 +535,36 @@ test('reenviar invitación: deshabilitada sin email; con email envía y confirma
   expect(estadoMock.invocaciones).toEqual([
     { funcion: 'admin-users', cuerpo: { accion: 'reenviarInvitacion', email: 'ana@bayka.org' } },
   ]);
+});
+
+test('sin personas muestra el vacío total, no el de los filtros', async () => {
+  configurarUsuariosMock([]);
+  renderRutasEn('/usuarios');
+
+  expect(await screen.findByText('Sin usuarios')).toBeInTheDocument();
+  expect(
+    screen.getByText('Las personas de tu organización van a aparecer acá.'),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('No hay usuarios con esos filtros')).not.toBeInTheDocument();
+});
+
+test('ante un error muestra el mensaje con botón de reintento', async () => {
+  estadoMock.resolverConsulta = () => {
+    throw new Error('falló la red');
+  };
+  renderRutasEn('/usuarios');
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar los usuarios.');
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+});
+
+test('el recuento de la barra sigue a los filtros y concuerda en singular', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  expect(screen.getByText(textoCompleto('3 personas · 2 activas'))).toBeInTheDocument();
+  await usuario.click(screen.getByRole('radio', { name: 'Inactivos' }));
+  expect(screen.getByText(textoCompleto('1 persona · 0 activas'))).toBeInTheDocument();
 });

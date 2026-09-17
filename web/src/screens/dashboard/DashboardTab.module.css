@@ -1,58 +1,45 @@
 /*
- * Estilos del dashboard de plantación: tres filas de grilla (hero+KPIs,
- * mapa+especies, tira de parcelas).
+ * Dashboard en dos columnas que llenan el alto disponible: resumen + especies
+ * a la izquierda, mapa + parcelas a la derecha. El scroll queda dentro de las
+ * cards, nunca en el documento.
  */
 
 .dashboard {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 540px minmax(0, 1fr);
+  gap: var(--space-3xl);
+}
+
+.columna {
   display: flex;
   flex-direction: column;
   gap: var(--space-3xl);
+  /* min-width:0 imprescindible: sin esto el contenedor de Leaflet (ancho
+     intrínseco grande) no deja achicar su columna. */
+  min-width: 0;
+  min-height: 0;
 }
 
-/* ─── Fila A: hero + columna de KPIs ───────────────────────────────────── */
-.filaA {
-  display: grid;
-  grid-template-columns: 1.2fr 1fr;
-  gap: var(--space-3xl);
-}
-
-@media (max-width: 900px) {
-  .filaA {
-    grid-template-columns: 1fr;
+/* Los 540px fijos se los cobra el mapa, que es la columna elástica: medido a
+   1280 le quedaban 348px contra los 540 del listado. Debajo de la notebook las
+   dos columnas se reparten en partes iguales. */
+@media (max-width: 1400px) {
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
-/* Cada StatCard con flex:1 iguala el alto de la columna al del hero. */
-.stats {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
-}
+/* Ya no entran dos columnas útiles: se apilan y cada card toma su alto natural.
+   Lo que sobra lo scrollea `.contenido` (PlantacionDetailScreen). */
+@media (max-width: 1200px) {
+  .dashboard {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: auto;
+  }
 
-.stats > * {
-  flex: 1;
-}
-
-/* ─── Fila B: mapa + por especie ───────────────────────────────────────── */
-.filaB {
-  display: grid;
-  grid-template-columns: 1.55fr 1fr;
-  gap: var(--space-3xl);
-  /* Mapa y "Por especie" comparten alto fijo (--alto-panel-dashboard);
-     la lista de especies scrollea adentro. */
-  align-items: start;
-}
-
-/* min-width:0 imprescindible: sin esto, el contenedor de Leaflet (ancho
-   intrínseco grande) no deja achicar su celda y se come la columna de
-   "Por especie", reventando la proporción 1.55fr/1fr. */
-.filaA > *,
-.filaB > * {
-  min-width: 0;
-}
-
-@media (max-width: 900px) {
-  .filaB {
-    grid-template-columns: 1fr;
+  .columna {
+    min-height: auto;
   }
 }

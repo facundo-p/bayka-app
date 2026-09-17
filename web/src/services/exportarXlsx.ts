@@ -1,16 +1,12 @@
 /*
- * Genera un XLSX nativo de exportación de plantación con `write-excel-file`
- * (librería mantenida y liviana; se sigue evitando `xlsx`@npm por sus CVEs).
- *
- * Espeja el esquema canónico de mobile (D-18-08): mismas 9 columnas, mismo
- * orden y mismas normalizaciones que el CSV (`exportarCsv.ts`). La ventaja
- * real sobre el CSV: ID Global / ID Parcial viajan tipados como número.
- *
- * `COLUMNAS_XLSX` es un mapeo puro fila→celdas (testeable sin tocar la
- * librería); la descarga arma el Blob y delega en `descargarBlob`.
+ * XLSX nativo de exportación con `write-excel-file` (liviana, evita `xlsx`@npm por sus CVEs).
+ * Espeja el esquema de mobile: mismas 9 columnas y normalizaciones que el CSV; a diferencia
+ * de este, ID Global/ID Parcial viajan tipados como número. `COLUMNAS_XLSX` es un mapeo puro
+ * fila→celdas (testeable); la descarga arma el Blob y delega en `descargarBlob`.
  */
 import type { Cell, Column } from 'write-excel-file/browser';
-import { ESPECIE_NO_RESUELTA, type FilaExportacion } from '../queries/exportacionQueries';
+import { ESPECIE_NO_RESUELTA } from '../queries/especiesConstantes';
+import type { FilaExportacion } from '../queries/exportacionQueries';
 import { descargarBlob, nombreArchivoDescarga } from './descargas';
 
 const EXTENSION_XLSX = 'xlsx';
@@ -27,8 +23,7 @@ function celdaTexto(valor: string): Cell {
   return { value: valor, type: String };
 }
 
-/** Las 9 columnas en el orden canónico (D-18-08): parcela null → vacía,
- *  especie null → "N/N". */
+/** Las 9 columnas en el orden canónico: parcela null → vacía, especie null → "N/N". */
 export const COLUMNAS_XLSX: Column<FilaExportacion>[] = [
   { header: 'ID Global', cell: (fila) => celdaNumero(fila.idGlobal) },
   { header: 'ID Parcial', cell: (fila) => celdaNumero(fila.idParcial) },
@@ -46,22 +41,18 @@ export function nombreArchivoXlsx(lugar: string, periodo: string): string {
   return nombreArchivoDescarga('export', lugar, periodo, EXTENSION_XLSX);
 }
 
-// Ajuste de ancho de columnas (#54): tope para que un valor larguísimo no
-// produzca una columna inusable, más un pequeño respiro visual.
+// Ancho de columna con tope (#54): evita que un valor larguísimo genere una columna inusable, + padding visual.
 const ANCHO_MAX_COLUMNA = 100;
 const ANCHO_PADDING = 2;
 
 /** Largo en caracteres del valor de una celda (null → 0). */
 function largoCelda(celda: Cell): number {
-  const valor = celda != null && typeof celda === 'object' && 'value' in celda ? celda.value : celda;
+  const valor =
+    celda != null && typeof celda === 'object' && 'value' in celda ? celda.value : celda;
   return valor == null ? 0 : String(valor).length;
 }
 
-/**
- * Columnas con ancho ajustado al contenido (#54): por columna, el mayor largo
- * entre el encabezado y todas las celdas, con tope de ANCHO_MAX_COLUMNA más
- * padding. Misma regla que mobile (`excelColumnWidths` en ExportService).
- */
+/** Ancho por columna = mayor largo entre encabezado y celdas, topeado (#54); misma regla que mobile. */
 export function columnasConAncho(filas: FilaExportacion[]): Column<FilaExportacion>[] {
   return COLUMNAS_XLSX.map((columna) => {
     let largoMaximo = largoCelda(columna.header);
@@ -73,9 +64,7 @@ export function columnasConAncho(filas: FilaExportacion[]): Column<FilaExportaci
   });
 }
 
-/** Arma el XLSX (hoja "Plantacion") y dispara la descarga. La librería se
- *  importa dinámicamente para no sumarla al bundle inicial (~21 kB gzip):
- *  se descarga recién en la primera exportación. */
+/** Arma el XLSX y dispara la descarga; la librería se importa dinámicamente para no sumarla al bundle inicial. */
 export async function descargarXlsxExportacion(
   filas: FilaExportacion[],
   lugar: string,

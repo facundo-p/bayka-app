@@ -44,17 +44,6 @@ export const downloadProgressModalStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textMuted,
   },
-  barTrack: {
-    width: '100%',
-    height: 8,
-    backgroundColor: colors.border,
-    borderRadius: borderRadius.sm,
-    overflow: 'hidden',
-  },
-  barFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-  },
   progressText: {
     fontSize: fontSize.base,
     fontFamily: fonts.regular,

@@ -1,16 +1,13 @@
 /**
- * Códigos de error SQLSTATE de Postgres que PostgREST/Supabase exponen en
- * `error.code`. Centralizados acá para NO hardcodear strings opacos (`'23505'`)
- * en la lógica de sync — un literal suelto no se autodocumenta, es difícil de
- * grepear y nadie nota si cambia o si otro backend emite otro código.
+ * Códigos SQLSTATE de Postgres que PostgREST/Supabase exponen en `error.code`.
+ * Centralizados para no hardcodear literales opacos (`'23505'`) en la lógica de sync:
+ * un literal suelto no se autodocumenta, es difícil de grepear y nadie nota si cambia.
  *
- * Son códigos del estándar SQLSTATE de Postgres (5 caracteres), contrato estable
- * de PostgREST: no cambian entre versiones del driver ni del locale.
- * Ref: https://www.postgresql.org/docs/current/errcodes-appendix.html
+ * Estándar SQLSTATE (5 caracteres), contrato estable de PostgREST — no cambia entre
+ * versiones del driver ni del locale. Ref: https://www.postgresql.org/docs/current/errcodes-appendix.html
  *
- * REGLA: cualquier comparación contra `error.code` debe usar estas constantes,
- * nunca el literal. Si necesitás un código nuevo, agregalo acá con su nombre y
- * descripción.
+ * Toda comparación contra `error.code` debe usar estas constantes, nunca el literal.
+ * Código nuevo: agregalo acá con nombre y descripción.
  */
 export const PG_ERROR = {
   /** unique_violation — choque con una constraint UNIQUE (p.ej. código de parcela duplicado). */

@@ -1,7 +1,7 @@
-import { View, FlatList, StyleSheet } from 'react-native';
+import { View, FlatList } from 'react-native';
 import SpeciesButton from './SpeciesButton';
 import type { PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
-import { spacing } from '../theme';
+import { speciesButtonGridStyles as styles } from './SpeciesButtonGrid.styles';
 
 interface Props {
   species: PlantationSpeciesItem[];
@@ -71,9 +71,3 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
     />
   );
 }
-
-const styles = StyleSheet.create({
-  grid: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
-  row: { gap: spacing.sm, marginBottom: spacing.sm },
-  cell: { flex: 1 },
-});

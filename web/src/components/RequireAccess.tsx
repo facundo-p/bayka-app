@@ -1,5 +1,6 @@
 import { Link, Navigate, Outlet } from 'react-router';
 import { useAuth } from '../hooks/useAuth';
+import { RUTA } from '../lib/rutas';
 import { ROL } from '../repositories/profileRepository';
 import { SinAccesoScreen } from '../screens/SinAccesoScreen';
 import { EmptyState } from './EmptyState';
@@ -16,7 +17,7 @@ export function RequireAccess() {
       </div>
     );
   }
-  if (estado === 'anonimo') return <Navigate to="/login" replace />;
+  if (estado === 'anonimo') return <Navigate to={RUTA.login} replace />;
   if (estado === 'sin-acceso') return <SinAccesoScreen />;
   return <Outlet />;
 }
@@ -32,7 +33,7 @@ export function RequireSuperadmin() {
         title="Sección solo para superadministradores"
         description="Tu rol no tiene acceso a la gestión de usuarios."
       >
-        <Link to="/plantaciones" className={styles.enlace}>
+        <Link to={RUTA.plantaciones} className={styles.enlace}>
           Ir a Plantaciones
         </Link>
       </EmptyState>

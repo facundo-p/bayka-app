@@ -1,7 +1,8 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, spacing } from '../theme';
 import BaseModal from './BaseModal';
+import { confirmModalStyles as styles } from './ConfirmModal.styles';
 
 export type ConfirmModalButton = {
   label: string;
@@ -75,61 +76,3 @@ export default function ConfirmModal({
     </BaseModal>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    marginHorizontal: spacing['5xl'],
-    maxWidth: 340,
-  },
-  iconCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xxl,
-  },
-  title: {
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.heading,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-  message: {
-    fontSize: fontSize.base,
-    fontFamily: fonts.regular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: spacing['4xl'],
-  },
-  buttonGroup: {
-    width: '100%',
-    gap: spacing.md,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl + 2,
-    borderRadius: borderRadius.lg,
-  },
-  buttonPrimary: {
-    backgroundColor: colors.primary,
-  },
-  buttonDanger: {
-    backgroundColor: colors.danger,
-  },
-  buttonCancel: {
-    backgroundColor: colors.background,
-  },
-  buttonText: {
-    fontSize: fontSize.lg,
-    fontFamily: fonts.semiBold,
-    color: colors.white,
-  },
-  buttonTextCancel: {
-    color: colors.textMuted,
-  },
-});

@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 import { leerPaginado } from './leerPaginado';
 
-/** Especie del catálogo global (tabla `species`). */
 export type EspecieCatalogo = {
   id: string;
   codigo: string;
@@ -48,7 +47,6 @@ function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
   };
 }
 
-/** Catálogo global completo, ordenado por código. */
 export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
   const { data, error } = await supabase
     .from('species')
@@ -78,8 +76,7 @@ export async function listarEspeciesDePlantacion(
     .eq('plantation_id', plantationId)
     .order('orden_visual', { ascending: true });
   if (error) throw new Error(error.message);
-  // El cliente sin typegen tipa el embed como array, pero la FK species_id →
-  // species es many-to-one: en runtime llega un objeto.
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   return ((data ?? []) as unknown as FilaAsignada[]).map(mapearAsignada);
 }
 
@@ -94,11 +91,7 @@ async function tieneArbolesEspecie(plantationId: string, speciesId: string): Pro
   return (count ?? 0) > 0;
 }
 
-/**
- * Especies habilitadas + uso. Un count head por especie en paralelo: una
- * plantación habilita pocas especies, así que el costo es marginal (mismo
- * criterio que los counts del listado de plantaciones).
- */
+/** Especies + uso: un count head por especie en paralelo (pocas por plantación, costo marginal). */
 export async function listarEspeciesConUso(plantationId: string): Promise<EspecieConUso[]> {
   const especies = await listarEspeciesDePlantacion(plantationId);
   const usos = await Promise.all(
@@ -108,12 +101,8 @@ export async function listarEspeciesConUso(plantationId: string): Promise<Especi
 }
 
 /**
- * Cuántas plantaciones habilitan cada especie (clave = species_id).
- *
- * Criterio de "se usa": especie HABILITADA en N plantaciones (una fila en
- * plantation_species por par plantación-especie). Es la lectura barata y
- * RLS-safe: leemos todas las filas visibles y contamos en cliente, sin
- * count-por-especie en el servidor.
+ * Cuántas plantaciones habilitan cada especie (clave = species_id): "se usa" = habilitada, no con árboles.
+ * Lectura barata y RLS-safe, contando en cliente en vez de un count-por-especie en el servidor.
  */
 async function contarPlantacionesPorEspecie(): Promise<Map<string, number>> {
   const filas = await leerPaginado<{ species_id: string }>((desde, hasta) =>
@@ -135,23 +124,62 @@ async function contarArbolesDeEspecie(speciesId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-/**
- * Catálogo global + uso por especie. Un count head de árboles por especie en
- * paralelo: el catálogo son ~14 especies, así que el costo es marginal (mismo
- * criterio que los counts del listado de plantaciones). Mantiene el orden por
- * código de `listarCatalogo`.
- */
+/** Catálogo + uso: count head de árboles por especie en paralelo (~14 especies, costo marginal); mantiene el orden de `listarCatalogo`. */
 export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
   const [catalogo, plantacionesPorEspecie] = await Promise.all([
     listarCatalogo(),
     contarPlantacionesPorEspecie(),
   ]);
-  const arboles = await Promise.all(
-    catalogo.map((especie) => contarArbolesDeEspecie(especie.id)),
-  );
+  const arboles = await Promise.all(catalogo.map((especie) => contarArbolesDeEspecie(especie.id)));
   return catalogo.map((especie, indice) => ({
     ...especie,
     plantaciones: plantacionesPorEspecie.get(especie.id) ?? 0,
     arboles: arboles[indice] ?? 0,
   }));
+}
+
+/** Plantación que habilita una especie, con sus árboles de esa especie. */
+export type PlantacionDeEspecie = {
+  id: string;
+  nombre: string;
+  arboles: number;
+};
+
+/** Fila del join plantation_species → plantations (embed de PostgREST). */
+type FilaPlantacionDeEspecie = {
+  plantation_id: string;
+  plantations: { id: string; lugar: string } | null;
+};
+
+/** Árboles de una especie dentro de una plantación (count head vía groups). */
+async function contarArbolesEnPlantacion(plantationId: string, speciesId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('trees')
+    .select('id, groups!inner(plantation_id)', { count: 'exact', head: true })
+    .eq('groups.plantation_id', plantationId)
+    .eq('species_id', speciesId);
+  return contarOLanzar(count, error);
+}
+
+/** Dónde está habilitada una especie, de mayor a menor cantidad de árboles. */
+export async function listarPlantacionesDeEspecie(
+  especieId: string,
+): Promise<PlantacionDeEspecie[]> {
+  const { data, error } = await supabase
+    .from('plantation_species')
+    .select('plantation_id, plantations(id, lugar)')
+    .eq('species_id', especieId);
+  if (error) throw new Error(error.message);
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
+  const filas = (data ?? []) as unknown as FilaPlantacionDeEspecie[];
+  const arboles = await Promise.all(
+    filas.map((fila) => contarArbolesEnPlantacion(fila.plantation_id, especieId)),
+  );
+  return filas
+    .map((fila, indice) => ({
+      id: fila.plantation_id,
+      nombre: fila.plantations?.lugar ?? '',
+      arboles: arboles[indice] ?? 0,
+    }))
+    .sort((a, b) => b.arboles - a.arboles);
 }

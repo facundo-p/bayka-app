@@ -33,6 +33,7 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       visibleInApp: false,
       gpsCaptureFrequency: 10,
       gpsCaptureRequired: true,
+      photoCaptureAllTrees: false,
       createdAt: '2026-06-12T12:00:00Z',
       arboles: 120,
       parcelas: 3,
@@ -46,7 +47,12 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
 
 test('mapea los campos del formulario cuando la 024 está aplicada', async () => {
   configurarPlantacionesMock([
-    { ...FILA_MENDOZA, descripcion: 'Finca norte', fecha_inicio: '2026-07-01', objetivo_arboles: 500 },
+    {
+      ...FILA_MENDOZA,
+      descripcion: 'Finca norte',
+      fecha_inicio: '2026-07-01',
+      objetivo_arboles: 500,
+    },
   ]);
   const [plantacion] = await listarPlantaciones();
   expect(plantacion.descripcion).toBe('Finca norte');
@@ -61,6 +67,12 @@ test('mapea la config GPS cuando la 023 está aplicada (sin columnas usa default
   const [plantacion] = await listarPlantaciones();
   expect(plantacion.gpsCaptureFrequency).toBe(5);
   expect(plantacion.gpsCaptureRequired).toBe(false);
+});
+
+test('mapea photo_capture_all_trees cuando la 035 está aplicada (sin columna asume false)', async () => {
+  configurarPlantacionesMock([{ ...FILA_MENDOZA, photo_capture_all_trees: true }]);
+  const [plantacion] = await listarPlantaciones();
+  expect(plantacion.photoCaptureAllTrees).toBe(true);
 });
 
 test('sin visible_in_app (migración 024 no aplicada) asume visible', async () => {
@@ -102,11 +114,18 @@ test('temporada activa: id de la plantación activa con el árbol más reciente'
   const consultas: ConsultaCapturada[] = [];
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
-    return { data: [{ created_at: '2026-06-20T10:00:00Z', groups: { plantation_id: 'plant-9' } }], error: null };
+    return {
+      data: [{ created_at: '2026-06-20T10:00:00Z', groups: { plantation_id: 'plant-9' } }],
+      error: null,
+    };
   };
   await expect(obtenerTemporadaActivaId()).resolves.toBe('plant-9');
   const trees = consultas.find((consulta) => consulta.tabla === 'trees');
-  expect(trees?.filtros).toContainEqual({ metodo: 'eq', columna: 'groups.plantations.estado', valor: 'activa' });
+  expect(trees?.filtros).toContainEqual({
+    metodo: 'eq',
+    columna: 'groups.plantations.estado',
+    valor: 'activa',
+  });
 });
 
 test('temporada activa: null si ninguna activa tiene árboles', async () => {

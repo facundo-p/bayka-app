@@ -1,9 +1,9 @@
 import { Check, Minus } from 'lucide-react';
 import { Input } from './Input';
 import { cx } from '../lib/classNames';
-import { colorEspeciePorCodigo } from '../theme/coloresEspecie';
 import { filtrarCatalogo, type EstadoMaestro } from '../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../queries/especieQueries';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './SpeciesChecklist.module.css';
 
 interface SpeciesChecklistProps {
@@ -13,20 +13,38 @@ interface SpeciesChecklistProps {
   /** Habilitadas que no se pueden desmarcar (tienen árboles registrados). */
   bloqueadas?: Set<string>;
   onToggle: (speciesId: string, habilitar: boolean) => void;
-  /** Tri-estado del maestro sobre las filas visibles (lo calcula el contenedor). */
-  estadoMaestro: EstadoMaestro;
-  /** Marca/desmarca todas las filas visibles. */
-  onMaestro: () => void;
   busqueda: string;
-  onBuscar: (texto: string) => void;
 }
 
 const TITULO_BLOQUEADA = 'Tiene árboles registrados';
-const LABEL_MAESTRO = 'Todas las especies';
+const MARCA_BLOQUEADA = 'con árboles';
+const LABEL_MAESTRO = 'Marcar todas';
 const SIN_RESULTADOS = 'Ninguna especie coincide con la búsqueda';
+/** Más grueso que el default de lucide: a 14px el tilde fino no se lee sobre el fondo marcado. */
+const GROSOR_TILDE = 3;
+
+/** Buscador del checklist; vive en la cabecera de la card, no sobre la lista. */
+export function BuscadorEspecies({
+  busqueda,
+  onBuscar,
+}: {
+  busqueda: string;
+  onBuscar: (texto: string) => void;
+}) {
+  return (
+    <Input
+      label="Buscar especie"
+      labelOculto
+      className={styles.buscador}
+      placeholder="Buscar especie…"
+      value={busqueda}
+      onChange={(event) => onBuscar(event.target.value)}
+    />
+  );
+}
 
 /** Checkbox maestro tri-estado: marca/desmarca todas las visibles a la vez. */
-function MaestroTodas({
+export function MaestroEspecies({
   estado,
   deshabilitado,
   onMaestro,
@@ -44,7 +62,7 @@ function MaestroTodas({
       aria-checked={parcial ? 'mixed' : marcada}
       aria-label={LABEL_MAESTRO}
       disabled={deshabilitado}
-      className={cx(styles.fila, styles.filaMaestra)}
+      className={styles.maestro}
       onClick={onMaestro}
     >
       <span
@@ -52,12 +70,12 @@ function MaestroTodas({
         aria-hidden
       >
         {parcial ? (
-          <Minus size={14} strokeWidth={3} />
+          <Minus size={TAMANO_ICONO.sm} strokeWidth={GROSOR_TILDE} />
         ) : (
-          marcada && <Check size={14} strokeWidth={3} />
+          marcada && <Check size={TAMANO_ICONO.sm} strokeWidth={GROSOR_TILDE} />
         )}
       </span>
-      <span className={styles.nombreMaestra}>{LABEL_MAESTRO}</span>
+      {LABEL_MAESTRO}
     </button>
   );
 }
@@ -84,74 +102,52 @@ function FilaEspecie({
         aria-checked={marcada}
         aria-label={especie.nombre}
         disabled={bloqueada}
-        title={bloqueada ? TITULO_BLOQUEADA : undefined}
-        className={styles.fila}
+        // La fila ya no muestra el nombre científico (no entra en dos columnas):
+        // queda en el title, y el buscador lo sigue matcheando.
+        title={bloqueada ? TITULO_BLOQUEADA : (especie.nombreCientifico ?? undefined)}
+        className={cx(styles.fila, marcada && styles.filaMarcada)}
         onClick={alternar}
       >
         <span className={cx(styles.checkbox, marcada && styles.checkboxMarcado)} aria-hidden>
-          {marcada && <Check size={14} strokeWidth={3} />}
+          {marcada && <Check size={TAMANO_ICONO.sm} strokeWidth={GROSOR_TILDE} />}
         </span>
-        <span
-          className={styles.punto}
-          style={{ backgroundColor: colorEspeciePorCodigo(especie.codigo) }}
-          aria-hidden
-        />
         <span className={styles.codigo}>{especie.codigo}</span>
         <span className={styles.nombre}>{especie.nombre}</span>
-        {especie.nombreCientifico && (
-          <span className={styles.cientifico}>{especie.nombreCientifico}</span>
-        )}
+        {bloqueada && <span className={styles.conArboles}>{MARCA_BLOQUEADA}</span>}
       </button>
     </li>
   );
 }
 
-/** Checklist buscable de especies del catálogo (presentacional). */
+/** Lista del checklist en dos columnas; el buscador y el maestro van aparte. */
 export function SpeciesChecklist({
   catalogo,
   habilitadas,
   bloqueadas,
   onToggle,
-  estadoMaestro,
-  onMaestro,
   busqueda,
-  onBuscar,
 }: SpeciesChecklistProps) {
   const filtrado = filtrarCatalogo(catalogo, busqueda);
   // Catálogo con especies pero filtro sin coincidencias: aviso claro en vez de
   // una lista vacía muda. Si el catálogo entero está vacío, la lista queda sola.
-  const sinResultados = filtrado.length === 0 && catalogo.length > 0;
+  if (filtrado.length === 0 && catalogo.length > 0) {
+    return (
+      <p className={styles.sinResultados} role="status">
+        {SIN_RESULTADOS}
+      </p>
+    );
+  }
   return (
-    <div className={styles.contenedor}>
-      <Input
-        label="Buscar especie"
-        labelOculto
-        placeholder="Buscar especie por nombre o código…"
-        value={busqueda}
-        onChange={(event) => onBuscar(event.target.value)}
-      />
-      <MaestroTodas
-        estado={estadoMaestro}
-        deshabilitado={filtrado.length === 0}
-        onMaestro={onMaestro}
-      />
-      {sinResultados ? (
-        <p className={styles.sinResultados} role="status">
-          {SIN_RESULTADOS}
-        </p>
-      ) : (
-        <ul className={styles.lista}>
-          {filtrado.map((especie) => (
-            <FilaEspecie
-              key={especie.id}
-              especie={especie}
-              marcada={habilitadas.has(especie.id)}
-              bloqueada={bloqueadas?.has(especie.id) ?? false}
-              onToggle={onToggle}
-            />
-          ))}
-        </ul>
-      )}
-    </div>
+    <ul className={styles.lista}>
+      {filtrado.map((especie) => (
+        <FilaEspecie
+          key={especie.id}
+          especie={especie}
+          marcada={habilitadas.has(especie.id)}
+          bloqueada={bloqueadas?.has(especie.id) ?? false}
+          onToggle={onToggle}
+        />
+      ))}
+    </ul>
   );
 }

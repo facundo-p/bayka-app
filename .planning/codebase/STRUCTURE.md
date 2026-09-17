@@ -80,7 +80,7 @@ bayka-app-redesign/
 │   │   │   ├── useCatalog.ts               # Catalog download/import
 │   │   │   ├── useSpeciesConfig.ts         # Species order management
 │   │   │   ├── useNNResolution.ts          # N/N tree resolution
-│   │   │   └── 18 others: useNNFlow, useNewSubgroup, useConfirm, etc.
+│   │   │   └── 17 others: useNewSubgroup, useConfirm, etc.
 │   │   │
 │   │   ├── screens/                 # Screen components (NOT route files)
 │   │   │   ├── PlantacionesScreen.tsx      # Plantation list (shared by admin/tecnico)

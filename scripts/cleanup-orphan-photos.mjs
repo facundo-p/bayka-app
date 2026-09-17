@@ -1,35 +1,21 @@
 /**
- * cleanup-orphan-photos.mjs — Phase 15 v1.1 window.
- *
- * Borra archivos físicos en bucket `tree-photos` que están bajo carpetas
- * `plantations/<UUID>/` donde <UUID> NO matchea ninguna plantation actual
- * en la DB. Cubre:
- *   - Carpetas de las 11 test plantations borradas por 013.
- *   - Carpetas de las 21 source plantations borradas por 015.
- *   - Cualquier huérfana legacy.
- *
- * NO toca carpetas de plantations vivas (las 3 consolidadas + 1 deprecated).
- *
- * Para las 3 consolidadas, las fotos viejas en
- * `plantations/<consolidated_id>/trees/...` (antes del nivel parcelas) NO
- * están — los archivos viejos están bajo los UUIDs de los sources que ya no
- * existen en DB. Las nuevas viven en `plantations/<consolidated_id>/parcelas/
- * <parcela_id>/trees/...` y se preservan.
- *
- * Idempotente.
+ * Borra en batch, vía Storage API, las carpetas `plantations/<uuid>/` del bucket `tree-photos`
+ * cuyo uuid ya no existe en la tabla plantations. Borrar filas de storage.objects por SQL deja
+ * los archivos físicos huérfanos; por eso va por API. Idempotente; no toca plantaciones vivas.
  *
  * Uso:
- *   SUPABASE_SERVICE_KEY=<service_role> node scripts/cleanup-orphan-photos.mjs [--dry-run]
+ *   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=<service_role> \
+ *     node scripts/cleanup-orphan-photos.mjs [--dry-run]
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://apktttwrmhamfudjeklu.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const BUCKET = 'tree-photos';
 
-if (!SUPABASE_KEY) {
-  console.error('Set SUPABASE_SERVICE_KEY env var');
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Set SUPABASE_URL and SUPABASE_SERVICE_KEY env vars');
   process.exit(1);
 }
 

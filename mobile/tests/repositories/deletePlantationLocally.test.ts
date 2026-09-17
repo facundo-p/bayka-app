@@ -1,5 +1,4 @@
-// Tests for deletePlantationLocally — cascade delete of plantation and all related data
-// Covers: DEL-01-cascade-delete
+// Cascade delete of a plantation and all related data
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -11,9 +10,14 @@ jest.mock('../../src/supabase/client', () => ({
 
 jest.mock('../../src/database/client', () => ({
   db: {
-    transaction: jest.fn(),
     delete: jest.fn(),
   },
+}));
+
+// `enTransaccion` reemplaza a `db.transaction`, que con callbacks async commitea
+// vacío (#448). Passthrough con `db`, que es lo que pasa el helper real.
+jest.mock('../../src/database/transaccion', () => ({
+  enTransaccion: jest.fn(),
 }));
 
 jest.mock('../../src/database/liveQuery', () => ({
@@ -26,34 +30,29 @@ jest.mock('../../src/services/SyncService', () => ({
 
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { db } from '../../src/database/client';
+import { enTransaccion } from '../../src/database/transaccion';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 
 const mockDb = db as jest.Mocked<typeof db>;
+const mockEnTransaccion = enTransaccion as jest.Mock;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 
 describe('deletePlantationLocally', () => {
   let txDeleteCalls: string[];
-  let mockTx: any;
 
   beforeEach(() => {
     jest.resetAllMocks();
     txDeleteCalls = [];
 
-    // Build a transaction mock that records which tables get deleted
-    mockTx = {
-      delete: jest.fn().mockImplementation((table: any) => {
-        // Extract table name from the drizzle table object
-        const tableName = table?.[Symbol.for('drizzle:Name')] ?? table?._.name ?? 'unknown';
-        txDeleteCalls.push(tableName);
-        return {
-          where: jest.fn().mockResolvedValue(undefined),
-        };
-      }),
-    };
-
-    (mockDb.transaction as jest.Mock).mockImplementation(async (fn) => {
-      await fn(mockTx);
+    // El helper le pasa al callback el propio `db`, así que el registro de borrados
+    // va sobre `db.delete`.
+    (mockDb.delete as jest.Mock).mockImplementation((table: any) => {
+      const tableName = table?.[Symbol.for('drizzle:Name')] ?? table?._.name ?? 'unknown';
+      txDeleteCalls.push(tableName);
+      return { where: jest.fn().mockResolvedValue(undefined) };
     });
+
+    mockEnTransaccion.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(mockDb));
   });
 
   it('Test 1: deletes the plantation row itself', async () => {
@@ -82,12 +81,13 @@ describe('deletePlantationLocally', () => {
     expect(txDeleteCalls).toContain('user_species_order');
   });
 
-  it('Test 5: if the DB throws mid-transaction, no partial data is deleted (transaction rolls back)', async () => {
-    (mockDb.transaction as jest.Mock).mockRejectedValue(new Error('DB crash'));
+  // El rollback en sí lo prueba tests/database/transaccion.test.ts: acá el callback
+  // ni corre, solo se verifica que un fallo no dispare el refresco de la UI.
+  it('Test 5: si la transacción falla, no se notifica el cambio de datos', async () => {
+    mockEnTransaccion.mockRejectedValue(new Error('DB crash'));
 
     await expect(deletePlantationLocally('plant-1')).rejects.toThrow('DB crash');
 
-    // notifyDataChanged should NOT be called on error
     expect(mockNotifyDataChanged).not.toHaveBeenCalled();
   });
 
@@ -97,12 +97,17 @@ describe('deletePlantationLocally', () => {
     expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('deletes all 7 tables inside the transaction (incluye parcelas, #90)', async () => {
+  // El conteo exacto es a propósito: una tabla nueva que se olvide de limpiar acá
+  // deja filas huérfanas de una plantación que ya no existe.
+  it('deletes all 8 tables inside the transaction (incluye parcelas #90 y borrados #467)', async () => {
     await deletePlantationLocally('plant-1');
 
-    // Should delete exactly 7 tables
-    expect(txDeleteCalls).toHaveLength(7);
-    expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+    expect(txDeleteCalls).toEqual(expect.arrayContaining([
+      'trees', 'groups', 'parcelas', 'plantation_species',
+      'plantation_users', 'user_species_order', 'borrados_pendientes', 'plantations',
+    ]));
+    expect(txDeleteCalls).toHaveLength(8);
+    expect(mockEnTransaccion).toHaveBeenCalledTimes(1);
   });
 
   it('deletes trees before groups, and groups before parcelas (FK safety)', async () => {

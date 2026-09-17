@@ -18,14 +18,36 @@ diagnosticar fallas.
 
 | | `prod` | `test` |
 |---|---|---|
-| Nombre / ícono | "Bayka App", ícono normal | "Bayka TEST", franja roja TEST |
+| Nombre / ícono | "Bayka App", ícono normal | "Bayka TEST", franja roja TEST, banner "ENTORNO DE PRUEBAS · vX · <commit>" arriba de cada pantalla (#287, #321) |
 | applicationId | `com.bayka.app` | `com.bayka.app.test` (conviven en un device) |
 | Supabase | prod (según `mobile/.env`) | **staging** (según `mobile/.env.staging`) |
 | Artefacto | `mobile/build-output.apk` | `mobile/build-output-test.apk` |
+| Canal de OTA | `production` | `test` |
 
 La variante se decide con `APP_VARIANT=test` en `app.config.js`; el script la exporta
 en prebuild Y gradlew. `mobile/.env.staging` está gitignoreado — si falta, las
 credenciales de staging están en el Bitwarden del cliente (checklist #244).
+
+## Updates OTA: el canal va grabado en el APK
+
+`app.config.js` pone `updates.requestHeaders['expo-channel-name']` según la variante
+(#384) y el prebuild lo escribe en el AndroidManifest. Sin eso el APK no recibe
+**ningún** update de `push-update-apk`, y no hay forma de notarlo desde la app: el
+device pregunta sin decir de qué canal y el servidor no le contesta nada.
+
+Consecuencias prácticas:
+
+- Un APK compilado **antes** de #384 no recibe OTA. Hay que compilar e instalar uno
+  nuevo a mano, una última vez, en cada device. Desde ese, los cambios de JS/assets
+  viajan solos.
+- El script valida que `EAS_PROJECT_ID` esté en `.env`: sin él `updates.url` sale
+  vacía y el APK tampoco recibiría nada.
+- El canal solo empareja con updates de la **misma** `expo.version` (política
+  `runtimeVersion: appVersion`). Un bump de versión de mobile deja a los devices
+  viejos afuera hasta que instalen el APK nuevo.
+- En los builds de EAS el canal lo sigue poniendo el `channel` del profile de
+  `eas.json` (ahí existe además `preview`, que no tiene variante local): `app.config.js`
+  omite el header cuando detecta `EAS_BUILD=true`, así no hay dos fuentes peleando.
 
 ## Versionado
 
@@ -68,8 +90,9 @@ Correr con `run_in_background: true` y timeout 600000ms. Single-ABI arm64-v8a ta
 (distribución): `ABIS=all scripts/build-apk.sh <variante>` — el retry interno de
 gradlew cubre la race de worklets (ver Troubleshooting).
 
-El script termina imprimiendo package, label y tamaño **ya verificados** (falla si el
-APK no corresponde a la variante). Instalar: `adb install -r mobile/<artefacto>`.
+El script termina imprimiendo package, label, canal de OTA y tamaño **ya verificados**
+(falla si el APK no corresponde a la variante; avisa sin cortar si no puede confirmar
+el canal). Instalar: `adb install -r mobile/<artefacto>`.
 
 ## 3. Notas y gotchas
 

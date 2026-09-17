@@ -1,0 +1,62 @@
+/* El SubID es la identidad del árbol: mono, como en la tabla. */
+.titulo {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: var(--text-title);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-heading);
+}
+
+.etiqueta {
+  composes: overline from '../../theme/utilidades.module.css';
+}
+
+/* Especie: punto de color + "código · nombre" en una línea. El hueco lo pone
+   el margen del punto, el mismo que en la celda de la tabla. */
+.especie {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.foto {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius-card-sm);
+}
+
+/* Coordenadas GPS en mono bajo el mapa del detalle. */
+.coordenadas {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Texto tenue de ausencia (sin foto / sin GPS). */
+.tenue {
+  font-size: var(--text-md);
+  color: var(--color-text-muted);
+}
+
+/* Grilla de metadatos: etiqueta tenue arriba, valor debajo. */
+.meta {
+  display: grid;
+  /* El dato más ancho mide 91px; con 140 quedan dos columnas en el panel y una
+     sola cuando se angosta, sin cortar ninguna etiqueta. */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-xl) var(--space-2xl);
+  margin: 0;
+}
+
+.metaDato {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.metaValor {
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}

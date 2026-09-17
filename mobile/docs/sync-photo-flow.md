@@ -42,14 +42,15 @@ Esto garantiza que el servidor siempre tiene una referencia válida en un solo p
 |-------|-------------|-----------|
 | `especieId` | UUID de la especie | `null` |
 | `especieCodigo` | Código de especie | `'NN'` |
-| `fotoUrl` | `null` (sin foto al crear) | `file://...` (foto obligatoria) |
+| `fotoUrl` | `null`, o `file://...` si la plantación tiene "foto en todos los botones" (#439) | `file://...` (foto obligatoria) |
 | `fotoSynced` | `false` (default) | `false` (default) |
 
 Después de crear: `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true`.
 
-**Archivo:** `useNNFlow.ts` → `registerNN()`
+**Archivo:** `useTreeRegistration.ts` → `registerNN()` / `registerTree()` (camino único)
+- Resuelve la política de foto (`services/photo/photoCaptureRules.ts`): N/N siempre pide y exige foto; especie solo si la plantación activó `photoCaptureAllTrees`
 - Abre la cámara → `pickPhoto()` → `file://...`
-- Llama `insertTree({ especieId: null, especieCodigo: 'NN', fotoUrl: photoUri })`
+- Llama `insertTreeWithGps({ especieId, especieCodigo, fotoUrl })` (N/N: `especieId: null`, `especieCodigo: 'NN'`)
 
 ### 2. Adjuntar/cambiar foto
 
@@ -294,33 +295,22 @@ El RPC usa `SECURITY INVOKER` — las policies RLS se aplican con el usuario aut
 
 ---
 
-## Safety nets en client.ts
+## Migraciones de esquema
 
-Migraciones idempotentes que corren al abrir la app, por si las migraciones de Drizzle fallaron:
-
-```ts
-// Migración 0008: foto_synced
-ALTER TABLE trees ADD COLUMN foto_synced integer NOT NULL DEFAULT 0;
-
-// Migración 0009: pending_sync
-ALTER TABLE subgroups ADD COLUMN pending_sync integer NOT NULL DEFAULT 0;
-// + marca subgrupos finalizados como pendientes (solo si la columna se acaba de crear)
-
-// Migración 0010: conflict columns
-ALTER TABLE trees ADD COLUMN conflict_especie_id text;
-ALTER TABLE trees ADD COLUMN conflict_especie_nombre text;
-
-// PRAGMA user_version = 4: limpia todos los pendingSync (one-time fix)
-```
+Drizzle es la única fuente de cambios de esquema (#312): el journal es monótono
+(`when` de cada entry es siempre mayor al de la anterior) y todo device operativo
+está en idx >= 0015. No hay parches ad-hoc de columnas fuera de una migración
+versionada; ver `tests/database/noAdHocSchemaPatches.test.ts` y
+`tests/database/journalMonotonic.test.ts`.
 
 ---
 
 ## Bugs encontrados y corregidos (Fase 14 UAT)
 
-### Bug 1: Safety net de migración 0010 ausente
+### Bug 1: Migración 0010 no se había aplicado en un device existente
 - **Síntoma**: crash al insertar árbol después de actualizar la app
 - **Causa raíz**: columnas de conflicto no existían en DB existente
-- **Fix**: safety net en `client.ts`
+- **Fix**: journal de Drizzle monótono (#312) — ver "Migraciones de esquema" arriba
 
 ### Bug 2: Pull borraba pendingSync
 - **Síntoma**: subgrupos con N/N nunca se sincronizan

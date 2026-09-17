@@ -1,5 +1,4 @@
-// Tests for PlantationSpeciesRepository — unit tests using mock-based approach
-// Covers: getSpeciesForPlantation
+// Unit tests for PlantationSpeciesRepository (mock-based)
 
 jest.mock('../../src/database/client', () => {
   return {

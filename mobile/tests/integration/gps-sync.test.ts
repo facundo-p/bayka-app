@@ -1,19 +1,14 @@
 /**
- * Integration tests: captura GPS — schema + sync (issue #96)
- *
- * Cubre con SQLite real (migraciones drizzle completas, incluida la 0015):
- *  1. Defaults de plantations: gps_capture_frequency=10, gps_capture_required=true
- *  2. Round-trip local de columnas GPS en trees
- *  3. Push: payload del RPC sync_subgroup incluye las 4 columnas GPS
- *  4. Pull: árbol del server con coordenadas llega al local
- *  5. Pull: NO pisa coordenadas locales con NULL del server (re-captura pendiente)
- *  6. Pull metadata: refresca config GPS aun con pendingEdit=true, sin pisar lugar
+ * Integration tests: captura GPS — schema + sync (issue #96).
+ * SQLite real (migraciones drizzle completas, incluida la 0015): defaults de
+ * plantations, round-trip de columnas GPS en trees, payload del RPC
+ * sync_subgroup, y pull (llegada de coordenadas, no pisar con NULL, config).
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 
 // ─── Mock Supabase (prefijo mock* por hoisting de jest.mock) ─────────────────
 
@@ -68,6 +63,9 @@ jest.mock('../../src/supabase/client', () => {
         };
       },
       auth: {
+        // El pull chequea la membresía propia antes de tocar la base (#317).
+        getSession: () =>
+          Promise.resolve({ data: { session: { user: { id: 'user-tecnico-1' } } } }),
         getUser: () => Promise.resolve({ data: { user: { id: 'user-tecnico-1' } } }),
       },
       rpc(fn: string, args: any) {
@@ -80,11 +78,17 @@ jest.mock('../../src/supabase/client', () => {
 });
 
 let mockTestDb: IntegrationDb;
+let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
 let sqlite: InstanceType<typeof Database>;
 
 jest.mock('../../src/database/client', () => ({
   get db() {
     return mockTestDb;
+  },
+  // `enTransaccion` abre la transacción por acá: sin esto el test correría sin
+  // transacción y no probaría la atomicidad que dice probar (#448).
+  get sqlite() {
+    return mockSqliteDeIntegracion;
   },
 }));
 
@@ -117,6 +121,13 @@ async function seedLocalPlantation(overrides: Partial<typeof plantations.$inferI
     createdAt: NOW,
     pendingSync: false,
     ...overrides,
+  });
+  // Membresía en el server: sin ella el pull corta con "sin acceso" (#317).
+  mockServerState.plantation_users.set(`pu-${PLANTATION_ID}`, {
+    plantation_id: PLANTATION_ID,
+    user_id: 'user-tecnico-1',
+    rol_en_plantacion: 'tecnico',
+    assigned_at: NOW,
   });
 }
 
@@ -217,6 +228,10 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
+  // Prod (expo-sqlite) no activa PRAGMA foreign_keys (#265): el pull escribe
+  // filas cuyo padre puede no estar local todavía.
+  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {

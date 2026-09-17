@@ -1,8 +1,6 @@
 /**
  * Dashboard query functions — role-gated plantation list and stat computations.
  * Extracted from PlantacionesScreen to enable unit testing.
- *
- * Covers requirements: DASH-01, DASH-02, DASH-03, DASH-04, DASH-05, DASH-06
  */
 import { db } from '../database/client';
 import { plantations, plantationUsers, groups, trees } from '../database/schema';
@@ -10,13 +8,9 @@ import { eq, and, count, asc, sql, getTableColumns, isNull } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
 /**
- * DASH-01 / DASH-02
- * Returns the list of plantations the user can access.
- * - Admin (isAdmin=true): all plantations, incluidas las ocultas en la app
- *   (la UI las marca con un badge).
- * - Tecnico (isAdmin=false): only plantations the user is assigned to via
- *   plantation_users, excluyendo las ocultas desde la web. El filtro es solo
- *   de listado: los datos pendientes de una plantación oculta igual sincronizan.
+ * Admin ve todas las plantaciones, incluidas las ocultas en la app (la UI las
+ * marca con badge). Tecnico solo ve las asignadas y no ocultas — el filtro es
+ * de listado nomás: una plantación oculta igual sincroniza sus pendientes.
  */
 export async function getPlantationsForRole(isAdmin: boolean, userId: string | null) {
   if (isAdmin) {
@@ -36,12 +30,7 @@ export async function getPlantationsForRole(isAdmin: boolean, userId: string | n
     .orderBy(asc(plantations.lugar));
 }
 
-/**
- * DASH-04
- * Returns tree count per plantation for trees in groups with pending local changes,
- * filtered by the current user's registrations.
- * Used to show "unsynced" tree count on each plantation card.
- */
+/** Per-plantation tree count for pending groups, scoped to the current user's own registrations. */
 export async function getUnsyncedTreeCounts(userId: string | null) {
   if (!userId) return [];
   return db
@@ -60,11 +49,7 @@ export async function getUnsyncedTreeCounts(userId: string | null) {
     .groupBy(groups.plantacionId);
 }
 
-/**
- * DASH-05
- * Returns total tree count per plantation registered by the current user.
- * Unlike getUnsyncedTreeCounts, this counts ALL trees regardless of subgroup estado.
- */
+/** Like getUnsyncedTreeCounts but counts ALL of the user's trees regardless of subgroup estado. */
 export async function getUserTotalTreeCounts(userId: string | null) {
   if (!userId) return [];
   return db
@@ -78,11 +63,7 @@ export async function getUserTotalTreeCounts(userId: string | null) {
     .groupBy(groups.plantacionId);
 }
 
-/**
- * SYNC-07
- * Returns count of Groups with pendingSync=true per plantation.
- * Used to show pending sync count on each plantation card.
- */
+/** Returns count of Groups with pendingSync=true per plantation. */
 export async function getPendingSyncCounts() {
   return db
     .select({
@@ -94,11 +75,7 @@ export async function getPendingSyncCounts() {
     .groupBy(groups.plantacionId);
 }
 
-/**
- * DASH-06
- * Returns tree count per plantation for trees registered by the current user TODAY.
- * Uses localToday() + LIKE for timezone-safe matching (same logic as plantationDetailQueries).
- */
+/** Today's tree count per plantation for the current user; see plantationDetailQueries for the same LIKE-based date match. */
 export async function getTodayTreeCounts(userId: string | null) {
   if (!userId) return [];
   const todayPrefix = localToday();
@@ -119,7 +96,6 @@ export async function getTodayTreeCounts(userId: string | null) {
 }
 
 /**
- * DASH-03 (synced portion)
  * Returns tree count per plantation for trees in synced Groups (pendingSync=false).
  */
 export async function getSyncedTreeCounts() {
@@ -134,11 +110,7 @@ export async function getSyncedTreeCounts() {
     .groupBy(groups.plantacionId);
 }
 
-/**
- * DASH-03
- * Returns total tree count per plantation regardless of user.
- * JOINs through groups to get plantacionId (trees.plantacionId is unused/null).
- */
+/** Total tree count per plantation (all users); JOINs through groups since trees.plantacionId is unused/null. */
 export async function getTotalTreeCounts() {
   return db
     .select({
@@ -150,11 +122,7 @@ export async function getTotalTreeCounts() {
     .groupBy(groups.plantacionId);
 }
 
-/**
- * D-12
- * Returns count of unresolved N/N trees per plantation.
- * Used by dashboard to show N/N warning indicators on plantation cards.
- */
+/** Returns count of unresolved N/N trees per plantation. */
 export async function getUnresolvedNNCountsPerPlantation() {
   return db
     .select({

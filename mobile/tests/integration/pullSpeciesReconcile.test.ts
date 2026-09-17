@@ -1,16 +1,13 @@
 /**
  * Integration tests: pullSpeciesFromServer — reconciliación de especies.
- * SQLite real vía better-sqlite3 + migraciones drizzle.
- *
- * Cubre el escenario B2 del bug de export: el server trae una especie con un
- * `id` distinto al de una fila local que ya usa ese `codigo` (catálogo embebido
- * con id sintético vs. UUID del server). El upsert por id chocaba contra
- * UNIQUE(codigo) y se salteaba → los árboles que apuntaban al id del server
- * quedaban huérfanos y se caían del export. Ahora se reconcilia: se re-apuntan
- * las referencias al id del server y se elimina la fila duplicada (preservando
- * el codigo, así los SubID siguen válidos).
+ * El server puede traer una especie con `id` distinto al de una fila local
+ * que ya usa ese `codigo` (catálogo embebido con id sintético vs. UUID del
+ * server); el upsert por id chocaba contra UNIQUE(codigo) y los árboles que
+ * apuntaban al id del server quedaban huérfanos. Se reconcilia re-apuntando
+ * las referencias al id del server y eliminando la fila duplicada,
+ * preservando el codigo para que los SubID sigan válidos.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 import {
   createTestPlantation,
   createTestGroup,
@@ -29,6 +26,7 @@ import { localNow } from '../../src/utils/dateUtils';
 import Database from 'better-sqlite3';
 
 let mockTestDb: IntegrationDb;
+let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
 let sqlite: InstanceType<typeof Database>;
 
 // Filas que "devuelve el server" — mutable por test.
@@ -37,6 +35,11 @@ const mockState: { species: any[] } = { species: [] };
 jest.mock('../../src/database/client', () => ({
   get db() {
     return mockTestDb;
+  },
+  // `enTransaccion` abre la transacción por acá: sin esto el test correría sin
+  // transacción y no probaría la atomicidad que dice probar (#448).
+  get sqlite() {
+    return mockSqliteDeIntegracion;
   },
 }));
 
@@ -54,6 +57,7 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
+  mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
   // Prod (expo-sqlite) no activa PRAGMA foreign_keys → árboles con especieId
   // huérfano pueden existir, que es el estado que reconciliamos.
   sqlite.pragma('foreign_keys = OFF');

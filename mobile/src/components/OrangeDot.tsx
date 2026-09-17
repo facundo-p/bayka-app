@@ -1,14 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
-import { colors } from '../theme';
+import { View, ViewStyle } from 'react-native';
+import { orangeDotStyles as styles } from './OrangeDot.styles';
 
 type Props = { size?: number; style?: ViewStyle };
-
-const styles = StyleSheet.create({
-  dot: {
-    backgroundColor: colors.syncPending,
-  },
-});
 
 export default function OrangeDot({ size = 8, style }: Props) {
   const sizeStyle = {

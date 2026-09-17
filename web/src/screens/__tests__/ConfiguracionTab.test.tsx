@@ -1,10 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { espiarInvalidaciones } from '../../test/espiarInvalidaciones';
 import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import {
+  MENSAJE_FOTO_SIN_MIGRACION,
   MENSAJE_GPS_SIN_MIGRACION,
   MENSAJE_VISIBILIDAD_SIN_MIGRACION,
 } from '../../repositories/plantationRepository';
@@ -20,9 +22,15 @@ const CATALOGO = [
   { id: 'sp-1', codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
 ];
 
+const PERFILES = [
+  { id: 'tec-1', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true },
+  { id: 'tec-2', nombre: 'Pablo Ríos', rol: 'tecnico', email: 'pablo@bayka.app', activo: true },
+];
+
 /** Estado mutable del mock: los updates/inserts lo modifican como la base. */
 let filaPlantacion: Record<string, unknown>;
 let asignadas: Array<{ species_id: string; orden_visual: number }>;
+let tecnicosAsignados: string[];
 let arbolesPorEspecie: Record<string, number>;
 let errorUpdatePlantations: { message: string; code?: string } | null;
 let consultas: ConsultaCapturada[];
@@ -52,13 +60,34 @@ function resolverPlantationSpecies(consulta: ConsultaCapturada): RespuestaMock {
     const filtroEspecie = consulta.filtros.find((filtro) => filtro.columna === 'species_id');
     // eq (toggle) → un id; in (batch) → array de ids.
     const ids =
-      filtroEspecie?.metodo === 'in'
-        ? (filtroEspecie.valor as string[])
-        : [filtroEspecie?.valor];
+      filtroEspecie?.metodo === 'in' ? (filtroEspecie.valor as string[]) : [filtroEspecie?.valor];
     asignadas = asignadas.filter((fila) => !ids.includes(fila.species_id));
     return { data: null };
   }
   return { data: asignadas.map(filaAsignadaConEmbed) };
+}
+
+function filaTecnicoAsignado(userId: string) {
+  const perfil = PERFILES.find((candidato) => candidato.id === userId);
+  return {
+    user_id: userId,
+    rol_en_plantacion: 'tecnico',
+    assigned_at: '2026-06-12T12:00:00Z',
+    profiles: { nombre: perfil?.nombre ?? '', rol: 'tecnico' },
+  };
+}
+
+function resolverPlantationUsers(consulta: ConsultaCapturada): RespuestaMock {
+  if (consulta.operacion === 'insert') {
+    tecnicosAsignados.push((consulta.payload as { user_id: string }).user_id);
+    return { data: null };
+  }
+  if (consulta.operacion === 'delete') {
+    const userId = consulta.filtros.find((filtro) => filtro.columna === 'user_id')?.valor;
+    tecnicosAsignados = tecnicosAsignados.filter((id) => id !== userId);
+    return { data: null };
+  }
+  return { data: tecnicosAsignados.map(filaTecnicoAsignado) };
 }
 
 function resolverTrees(consulta: ConsultaCapturada): RespuestaMock {
@@ -73,14 +102,14 @@ function configurarMock(): void {
     if (consulta.tabla === 'plantation_species') return resolverPlantationSpecies(consulta);
     if (consulta.tabla === 'trees') return resolverTrees(consulta);
     if (consulta.tabla === 'species') return { data: CATALOGO };
+    if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
+    if (consulta.tabla === 'profiles') return { data: PERFILES };
     return { data: [], count: 0 };
   };
 }
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
+  prepararSesionAdmin();
   filaPlantacion = {
     id: 'plant-1',
     lugar: 'Mendoza',
@@ -90,12 +119,14 @@ beforeEach(() => {
     visible_in_app: true,
     gps_capture_frequency: 10,
     gps_capture_required: true,
+    photo_capture_all_trees: false,
   };
   asignadas = [
     { species_id: 'sp-1', orden_visual: 0 },
     { species_id: 'sp-2', orden_visual: 1 },
   ];
   arbolesPorEspecie = { 'sp-1': 3 };
+  tecnicosAsignados = [];
   errorUpdatePlantations = null;
   consultas = [];
   configurarMock();
@@ -170,7 +201,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
   test('parcial: marca todas las visibles e inserta las faltantes', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
     // sp-1 y sp-2 habilitadas de 3 visibles → indeterminado.
     expect(maestro).toHaveAttribute('aria-checked', 'mixed');
 
@@ -181,7 +212,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     expect(consultasEspecies('insert')[0].payload).toEqual([
       { plantation_id: 'plant-1', species_id: 'sp-3', orden_visual: 2 },
     ]);
-    expect(await screen.findByText('3 habilitadas')).toBeInTheDocument();
+    expect(await screen.findByText(/^3 habilitadas ·/)).toBeInTheDocument();
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
   });
 
@@ -193,7 +224,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
       { species_id: 'sp-3', orden_visual: 2 },
     ];
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
 
     await usuario.click(maestro);
@@ -217,7 +248,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     ];
     arbolesPorEspecie = { 'sp-1': 3, 'sp-2': 1, 'sp-3': 5 };
     renderRutasEn('/plantaciones/plant-1/configuracion');
-    const maestro = await screen.findByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = await screen.findByRole('checkbox', { name: 'Marcar todas' });
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
 
     await usuario.click(maestro);
@@ -236,13 +267,13 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await screen.findByRole('checkbox', { name: 'Ceibo' });
     // Sólo sp-2 y sp-3 habilitadas → parcial; una marcada las lleva a todas.
-    const maestro = screen.getByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = screen.getByRole('checkbox', { name: 'Marcar todas' });
     await usuario.click(maestro); // marcar sp-1 → todas
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
 
     await usuario.click(maestro); // desmarcar todas (ninguna bloqueada)
 
-    await waitFor(() => expect(screen.getByText('0 habilitadas')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/^0 habilitadas ·/)).toBeInTheDocument());
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
@@ -253,7 +284,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     await usuario.type(screen.getByPlaceholderText(/Buscar especie/), 'ceib');
 
     // Sólo Ceibo (sp-3, no habilitada) visible → maestro vacío.
-    const maestro = screen.getByRole('checkbox', { name: 'Todas las especies' });
+    const maestro = screen.getByRole('checkbox', { name: 'Marcar todas' });
     expect(maestro).toHaveAttribute('aria-checked', 'false');
     await usuario.click(maestro);
 
@@ -319,7 +350,7 @@ describe('sección GPS', () => {
     await screen.findByRole('checkbox', { name: 'Quebracho' });
 
     expect(screen.getByText('El técnico no puede registrar sin GPS')).toBeInTheDocument();
-    await usuario.click(screen.getByRole('switch', { name: 'Captura obligatoria' }));
+    await usuario.click(screen.getByRole('switch', { name: 'Captura de GPS obligatoria' }));
 
     await waitFor(() => expect(updatesGps()).toHaveLength(1));
     expect(updatesGps()[0].payload).toMatchObject({ gps_capture_required: false });
@@ -348,7 +379,79 @@ describe('sección Técnicos', () => {
 
     await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
     const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
-    expect(within(dialogo).getByLabelText('Usuario')).toBeInTheDocument();
+    expect(within(dialogo).getByRole('button', { name: /^Técnico/ })).toBeInTheDocument();
+    expect(within(dialogo).queryByText('Rol en plantación')).not.toBeInTheDocument();
+  });
+
+  test('asignar un técnico lo suma a la card y refresca Usuarios y su panel', async () => {
+    const invalidaciones = espiarInvalidaciones();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    expect(await screen.findByText('0 asignados')).toBeInTheDocument();
+
+    await usuario.click(screen.getByRole('button', { name: /Asignar técnico/ }));
+    const dialogo = screen.getByRole('dialog', { name: 'Asignar técnico' });
+    await usuario.click(within(dialogo).getByRole('button', { name: /^Técnico/ }));
+    await usuario.click(screen.getByRole('option', { name: /Pablo Ríos/ }));
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Asignar' }));
+
+    expect(await screen.findByText('1 asignado')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Quitar Pablo Ríos' })).toBeInTheDocument();
+    expect(invalidaciones).toHaveBeenCalledTimes(4);
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantacion-usuarios', 'plant-1'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuario-plantaciones', 'tec-2'] });
+  });
+
+  test('quitar un técnico lo saca de la card y refresca Usuarios y su panel', async () => {
+    tecnicosAsignados = ['tec-1'];
+    const invalidaciones = espiarInvalidaciones();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+
+    await usuario.click(await screen.findByRole('button', { name: 'Quitar Lucía Ferreyra' }));
+    const dialogo = screen.getByRole('dialog', { name: 'Quitar usuario' });
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Quitar' }));
+
+    expect(await screen.findByText('0 asignados')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Quitar Lucía Ferreyra' })).not.toBeInTheDocument();
+    expect(invalidaciones).toHaveBeenCalledTimes(4);
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantacion-usuarios', 'plant-1'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['plantaciones'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+    expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuario-plantaciones', 'tec-1'] });
+  });
+});
+
+describe('sección Foto en todos los botones', () => {
+  test('guarda al cambiar y refleja el nuevo estado del toggle', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    await usuario.click(toggle);
+
+    const update = consultas.find(
+      (consulta) => consulta.tabla === 'plantations' && consulta.operacion === 'update',
+    );
+    expect(update?.payload).toEqual({ photo_capture_all_trees: true });
+    await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
+  });
+
+  test('si falta la migración 035 muestra el mensaje de migración', async () => {
+    const usuario = userEvent.setup();
+    errorUpdatePlantations = {
+      message: 'column "photo_capture_all_trees" does not exist',
+      code: PG_ERROR.UNDEFINED_COLUMN,
+    };
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+    const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
+
+    await usuario.click(toggle);
+
+    expect(await screen.findByText(MENSAJE_FOTO_SIN_MIGRACION)).toBeInTheDocument();
   });
 });
 

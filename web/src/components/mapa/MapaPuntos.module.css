@@ -1,22 +1,24 @@
 /* `position:relative; z-index:0` atrapa los z-index internos de Leaflet para
  * que no se monten sobre la topbar sticky. */
 .contenedor {
+  composes: superficieCard from '../../theme/utilidades.module.css';
   position: relative;
   z-index: 0;
   overflow: hidden;
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
 }
 
-/* En el dashboard llena el alto restante de la card (alto fijo del panel). */
+/* En el dashboard llena el alto restante de la card.
+ * El piso no es decorativo: a ≤900 la pantalla deja de ser flex column
+ * (AppLayout) y un `flex:1` con piso en 0 resuelve a 0px — el mapa y sus
+ * controles de zoom desaparecían sin que nada se solapara ni desbordara. */
 .panel {
   flex: 1;
-  min-height: 0;
+  min-height: var(--alto-min-mapa);
 }
 
-/* En el modal de detalle de árbol, alto fijo compacto. */
+/* En el panel lateral de detalle de árbol, alto fijo compacto. */
 .compacto {
-  height: 220px;
+  height: var(--alto-mapa-compacto);
 }
 
 /* Contenedor del mapa: la clase se aplica sobre el div raíz del proveedor.

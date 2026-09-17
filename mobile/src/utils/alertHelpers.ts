@@ -8,9 +8,7 @@ type ShowFn = (config: {
   buttons: ConfirmModalButton[];
 }) => void;
 
-/**
- * Info dialog (single OK button)
- */
+/** Info dialog (single OK button). */
 export function showInfoDialog(
   show: ShowFn,
   title: string,
@@ -29,9 +27,7 @@ export function showInfoDialog(
   });
 }
 
-/**
- * Confirm dialog (Cancel + Action)
- */
+/** Confirm dialog (Cancel + Action). */
 export function showConfirmDialog(
   show: ShowFn,
   title: string,
@@ -56,9 +52,7 @@ export function showConfirmDialog(
   });
 }
 
-/**
- * Double confirm dialog (Cancel + Confirm → second confirmation)
- */
+/** Double confirm dialog (Cancel + Confirm → second confirmation). */
 export function showDoubleConfirmDialog(
   show: ShowFn,
   title: string,
@@ -77,7 +71,6 @@ export function showDoubleConfirmDialog(
       {
         label: confirmLabel,
         onPress: () => {
-          // Show second confirmation
           show({
             icon: 'alert-circle-outline' as any,
             iconColor: '#c62828',
@@ -100,9 +93,7 @@ export function showDoubleConfirmDialog(
   });
 }
 
-/**
- * Options dialog (Cancel + multiple options)
- */
+/** Options dialog (Cancel + multiple options). */
 export function showOptionsDialog(
   show: ShowFn,
   title: string,

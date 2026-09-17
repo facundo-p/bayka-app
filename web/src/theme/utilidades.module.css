@@ -1,0 +1,45 @@
+/*
+ * Utilidades de tipografía y superficie, para consumir con `composes:`.
+ *
+ * Quien compone no redeclara lo que la utilidad ya fija: Vite copia este
+ * archivo dentro de cada módulo que lo compone, y una copia que se inyecte
+ * después le gana a la redeclaración aunque esté más abajo en su módulo. Un
+ * valor distinto va con un selector más específico o como variante acá.
+ */
+
+/* Rótulo en mayúsculas que encabeza un bloque, una columna o una sección. */
+.overline {
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-overline);
+  color: var(--color-text-faint);
+}
+
+.overlineRegular {
+  composes: overline;
+  font-weight: var(--font-weight-regular);
+}
+
+/* Título serif de una card o un panel. */
+.tituloCard {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: var(--text-title);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-heading);
+}
+
+.superficieCard {
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border-card);
+  border-radius: var(--radius-card-sm);
+}
+
+/* Una línea con puntos suspensivos. Dentro de un flex, el elemento necesita
+   `min-width: 0` para poder achicarse. */
+.truncar {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

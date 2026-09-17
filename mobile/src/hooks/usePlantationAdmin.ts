@@ -19,12 +19,13 @@ import {
   updatePlantation,
   finalizePlantation,
   discardPlantationEdit,
+  FinalizePlantationLocalSyncError,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
-// FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
+import { ESTADO_PLANTACION } from '../constants/estados';
 import type { Plantation } from '../components/PlantationConfigCard';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
   let idsGenerated = false;
   let unresolvedNNCount = 0;
   let unresolvedNNGroups = 0;
-  if (plantation.estado === 'activa') {
+  if (plantation.estado === ESTADO_PLANTACION.activa) {
     try {
       const gate = await checkFinalizationGate(plantation.id);
       canFinalize = gate.canFinalize;
@@ -53,7 +54,7 @@ export async function fetchPlantationMeta(plantation: Plantation): Promise<Expan
       console.error('[fetchPlantationMeta] checkFinalizationGate failed:', e);
     }
   }
-  if (plantation.estado === 'finalizada') {
+  if (plantation.estado === ESTADO_PLANTACION.finalizada) {
     try {
       idsGenerated = await hasIdsGenerated(plantation.id);
     } catch (e) {
@@ -105,7 +106,11 @@ export function usePlantationAdmin() {
                 try {
                   await finalizePlantation(plantacionId);
                 } catch (e: any) {
-                  showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantacion.', 'alert-circle-outline', colors.danger);
+                  if (e instanceof FinalizePlantationLocalSyncError) {
+                    showInfoDialog(showConfirm, 'Plantacion finalizada', 'La plantacion se finalizo en el servidor. Este dispositivo se actualizara en la proxima sincronizacion.', 'cloud-done-outline', colors.info);
+                  } else {
+                    showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantacion.', 'alert-circle-outline', colors.danger);
+                  }
                 }
               },
             },
@@ -176,7 +181,6 @@ export function usePlantationAdmin() {
     }
   }
 
-  // FEATURE: auto-parcela trial — call createPlantationWithDefaultParcela; if dropped revert to PlantationRepository.create directly
   async function handleCreateSubmit(
     lugar: string,
     periodo: string,
@@ -185,24 +189,17 @@ export function usePlantationAdmin() {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
     }
-    const base = { lugar, periodo, organizacionId, creadoPor: userId, gps };
+    // El alta es local-first; con red se empuja en el acto y si falla queda pendiente de sync.
     const net = await NetInfo.fetch();
-    if (net.isConnected === false) {
-      const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
-      return result.id;
-    } else {
-      try {
-        const result = await createPlantationWithDefaultParcela({ ...base, mode: 'online' });
-        return result.id;
-      } catch (e: any) {
-        if (e?.message?.includes('Network request failed')) {
-          const result = await createPlantationWithDefaultParcela({ ...base, mode: 'offline' });
-          return result.id;
-        } else {
-          throw e;
-        }
-      }
-    }
+    const result = await createPlantationWithDefaultParcela({
+      lugar,
+      periodo,
+      organizacionId,
+      creadoPor: userId,
+      gps,
+      mode: net.isConnected === false ? 'offline' : 'online',
+    });
+    return result.id;
   }
 
   async function handleAssignTech(plantacionId: string): Promise<boolean> {
@@ -242,11 +239,9 @@ export function usePlantationAdmin() {
   }
 
   return {
-    // State
     plantationList: plantationList as Plantation[] | null,
     exportingId,
     confirmProps,
-    // Actions
     handleFinalize,
     handleExportCsv,
     handleExportExcel,

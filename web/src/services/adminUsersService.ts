@@ -1,20 +1,17 @@
 /**
- * Cliente de la edge function admin-users: todas las operaciones del ABM que
- * requieren service_role (invitación, ban, contraseña, email) pasan por acá.
- * Los mensajes de error en español vienen del backend y se muestran tal cual;
- * cualquier falla no interpretable se vuelve genérica.
+ * Cliente de la edge function admin-users (requiere service_role: invitación, ban, contraseña,
+ * email); los mensajes de error en español vienen del backend, con fallback genérico.
  */
 import { supabase } from '../lib/supabase';
 import type { Rol } from '../repositories/profileRepository';
-import type { CuerpoAdminUsers } from '../../../supabase/functions/admin-users/nucleo';
+import { MENSAJES, type CuerpoAdminUsers } from '../../../supabase/functions/admin-users/nucleo';
 
-export const MENSAJE_ADMIN_USERS_GENERICO =
-  'No se pudo completar la operación. Probá de nuevo.';
+/** Solo para cuando no se pudo leer ningún mensaje del backend (red, respuesta no-JSON). */
+export const MENSAJE_ADMIN_USERS_GENERICO = MENSAJES.errorGenerico;
 
 type RespuestaAdminUsers = { ok: boolean; error?: string };
 
-/** El SDK adjunta la Response del server en error.context: de ahí sale el
- *  mensaje del contrato cuando la función respondió con status de error. */
+/** El SDK adjunta la Response del server en error.context: de ahí sale el mensaje cuando el status es de error. */
 async function mensajeDelError(error: unknown): Promise<string | null> {
   const contexto = (error as { context?: Response } | null)?.context;
   if (!contexto || typeof contexto.json !== 'function') return null;

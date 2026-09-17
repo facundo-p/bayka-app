@@ -55,14 +55,12 @@ async function seed() {
     if (authError) {
       if (authError.message.includes('already been registered')) {
         console.log(`  User ${user.email} already exists — skipping auth creation`);
-        // Look up existing user ID
         const { data: listData } = await supabase.auth.admin.listUsers();
         const existing = listData?.users.find(u => u.email === user.email);
         if (!existing) {
           console.error(`  Could not find existing user ${user.email}`);
           continue;
         }
-        // Upsert profile for existing user
         const { error: profileError } = await supabase.from('profiles').upsert({
           id: existing.id,
           nombre: user.nombre,

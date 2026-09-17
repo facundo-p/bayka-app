@@ -1,0 +1,118 @@
+/* ─── Celdas de la tabla ─────────────────────────────────────────────── */
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xl);
+}
+
+/* Persona inactiva: la celda de identidad se atenúa entera (avatar incluido). */
+.inactivo {
+  opacity: 0.6;
+}
+
+.textoInactivo {
+  color: var(--color-text-muted);
+}
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--tamano-avatar);
+  height: var(--tamano-avatar);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Color del avatar por rol (mismos tripletes que el Badge). */
+.avatarSuperadmin {
+  background-color: var(--color-rol-superadmin-bg);
+  color: var(--color-rol-superadmin-fg);
+}
+
+.avatarAdmin {
+  background-color: var(--color-rol-admin-bg);
+  color: var(--color-rol-admin-fg);
+}
+
+.avatarTecnico {
+  background-color: var(--color-rol-tecnico-bg);
+  color: var(--color-rol-tecnico-fg);
+}
+
+.usuarioTexto {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nombre {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-body);
+}
+
+/* Línea secundaria tenue: email, o la organización en perfiles sin backfill. */
+.organizacion {
+  font-size: var(--text-sm);
+  color: var(--color-text-faint);
+}
+
+.alta {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* ─── Panel lateral ──────────────────────────────────────────────────── */
+
+.avatarGrande {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: var(--space-6xl);
+  height: var(--space-6xl);
+  border-radius: var(--radius-full);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.form {
+  composes: formCompacto from '../../components/Formulario.module.css';
+}
+
+/* Rol bloqueado por un guard: el fondo hundido lo marca como no editable. */
+.form select:disabled {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+}
+
+.advertencia {
+  composes: advertencia from '../../components/Formulario.module.css';
+}
+
+.errorEnvio {
+  composes: errorEnvio from '../../components/Formulario.module.css';
+}
+
+/* Bloque de plantaciones sin lista: acceso a todas o ninguna asignada. */
+.textoBloque {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+/* Acciones rápidas: Button contorno; la destructiva en rojo. */
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.ayuda {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}

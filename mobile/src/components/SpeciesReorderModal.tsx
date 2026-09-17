@@ -1,10 +1,11 @@
-import { Modal, View, Pressable, Text, StyleSheet } from 'react-native';
+import { Modal, View, Pressable, Text } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import SpeciesReorderList from './SpeciesReorderList';
 import type { ReorderItem } from './SpeciesReorderList';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, spacing } from '../theme';
+import { speciesReorderModalStyles as styles } from './SpeciesReorderModal.styles';
 
 interface Props {
   visible: boolean;
@@ -39,25 +40,3 @@ export default function SpeciesReorderModal({ visible, items, onReorder, onCance
     </Modal>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: spacing.xxl, paddingTop: spacing['4xl'], paddingBottom: spacing.lg, gap: spacing.xs },
-  title: { fontSize: fontSize.xxl, fontFamily: fonts.heading, color: colors.text },
-  hint: { fontSize: fontSize.sm, color: colors.textMuted, fontStyle: 'italic', fontFamily: fonts.regular },
-  footer: {
-    flexDirection: 'row', gap: spacing.xl, padding: spacing.xxl,
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
-  },
-  cancelBtn: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl,
-    borderRadius: borderRadius.lg, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border,
-  },
-  cancelText: { color: colors.textMuted, fontSize: fontSize.base, fontFamily: fonts.semiBold },
-  saveBtn: {
-    flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    paddingVertical: spacing.xl, borderRadius: borderRadius.lg,
-    backgroundColor: colors.plantationHeaderBg, gap: spacing.sm,
-  },
-  saveText: { color: colors.white, fontSize: fontSize.base, fontFamily: fonts.semiBold },
-});

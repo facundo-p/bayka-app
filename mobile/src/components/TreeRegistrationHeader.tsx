@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text } from 'react-native';
 import CustomHeader from './CustomHeader';
 import TreeIcon from './TreeIcon';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { treeRegistrationHeaderStyles as styles } from './TreeRegistrationHeader.styles';
 
 interface Props {
   title: string;
@@ -37,28 +37,3 @@ export default function TreeRegistrationHeader({
     />
   );
 }
-
-const styles = StyleSheet.create({
-  right: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    marginLeft: spacing.md,
-  },
-  count: {
-    color: colors.plantationCountFaded,
-    fontSize: fontSize.title,
-    fontFamily: fonts.bold,
-  },
-  nnBadge: {
-    backgroundColor: colors.secondaryBg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.lg,
-  },
-  nnText: {
-    color: colors.secondary,
-    fontSize: fontSize.xs,
-    fontFamily: fonts.bold,
-  },
-});

@@ -1,6 +1,6 @@
 /**
  * useNewParcela — encapsulates parcela creation/update/delete logic for
- * ParcelaFormModal (CLAUDE.md §9 — zero queries in screens/components).
+ * ParcelaFormModal.
  *
  * Mirrors useNewGroup shape but without `lastParcelaName` hint: technicians
  * do not request that hint for parcelas (conscious difference from Grupo).

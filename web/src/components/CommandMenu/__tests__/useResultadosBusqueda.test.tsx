@@ -99,3 +99,19 @@ test('ignora la respuesta obsoleta cuando el texto ya cambió (race)', async () 
   });
   expect(result.current).toEqual(RESULTADO_NUEVO);
 });
+
+test('si la búsqueda falla, descarta los resultados anteriores', async () => {
+  buscarMock.mockResolvedValueOnce(RESULTADO_VIEJO).mockRejectedValueOnce(new Error('sin red'));
+  const { result, rerender } = renderHook(({ texto }) => useResultadosBusqueda(texto), {
+    initialProps: { texto: 'a' },
+  });
+  await vaciarMicrotareas();
+  expect(result.current).toEqual(RESULTADO_VIEJO);
+
+  rerender({ texto: 'ab' });
+  await act(async () => {
+    vi.advanceTimersByTime(200);
+  });
+  await vaciarMicrotareas();
+  expect(result.current).toEqual([]);
+});

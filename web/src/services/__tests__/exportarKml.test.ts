@@ -6,7 +6,14 @@ import { construirKml, nombreArchivoKml } from '../exportarKml';
 const OPCIONES = { nombreDocumento: 'Puntos GPS – Sitio (2025)' };
 
 function punto(parcial: Partial<PuntoGps>): PuntoGps {
-  return { lat: -31.4, lng: -64.2, codigo: 'QB', nombre: 'Quebracho', ...parcial };
+  return {
+    lat: -31.4,
+    lng: -64.2,
+    codigo: 'QB',
+    nombre: 'Quebracho',
+    parcelaId: null,
+    ...parcial,
+  };
 }
 
 /** #rrggbb → color KML aabbggrr (alfa opaco + BGR), como lo arma el servicio. */
@@ -56,10 +63,9 @@ describe('construirKml', () => {
   });
 
   test('escapa caracteres XML reservados en nombres y códigos', () => {
-    const kml = construirKml(
-      [punto({ codigo: 'A&B', nombre: `Ñandubay <"'> & árbol` })],
-      { nombreDocumento: 'Doc & <título>' },
-    );
+    const kml = construirKml([punto({ codigo: 'A&B', nombre: `Ñandubay <"'> & árbol` })], {
+      nombreDocumento: 'Doc & <título>',
+    });
     expect(kml).toContain('Ñandubay &lt;&quot;&apos;&gt; &amp; árbol');
     expect(kml).toContain('Doc &amp; &lt;título&gt;');
     expect(kml).toContain('A&amp;B');

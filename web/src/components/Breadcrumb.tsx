@@ -30,7 +30,10 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
                 {item.label}
               </Link>
             ) : (
-              <span className={cx(styles.item, esUltimo && styles.current)} aria-current={esUltimo ? 'page' : undefined}>
+              <span
+                className={cx(styles.item, esUltimo && styles.current)}
+                aria-current={esUltimo ? 'page' : undefined}
+              >
                 {item.label}
               </span>
             )}

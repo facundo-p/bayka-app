@@ -2,8 +2,8 @@
  * HeaderActionButton — botón de acción del header (lado derecho) con el criterio
  * único "Outline puro" sobre la barra verde: círculo transparente, borde blanco
  * 1.5px, icono blanco 22. Todos los botones de acción del header (nueva
- * plantación/parcela/grupo, sync, catálogo) DEBEN usar este componente — un solo
- * lugar para el estilo (CLAUDE.md §8 / regla 8.1). Tokens en theme.ts. Issue #70.
+ * plantación/parcela/grupo, sync, catálogo) DEBEN usar este componente.
+ * Tokens en theme.ts.
  *
  * `variant`:
  *  - 'default' → borde + icono blancos

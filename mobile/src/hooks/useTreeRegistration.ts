@@ -1,12 +1,21 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
-import { getGroupById, getPlantationGpsConfig } from '../queries/plantationDetailQueries';
+import { getGroupById, getPlantationCaptureConfig } from '../queries/plantationDetailQueries';
 import { getPlantationEstado } from '../queries/adminQueries';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { insertTreeWithGps, recaptureTreeGps } from '../services/gps/gpsCaptureService';
 import type { GpsFix } from '../services/gps/locationClient';
+import {
+  NN_PHOTO_POLICY,
+  resolvePhotoForRegistration,
+  speciesPhotoPolicy,
+  type PhotoPolicy,
+  type PickPhoto,
+} from '../services/photo/photoCaptureRules';
+import { UNKNOWN_SPECIES_CODE } from '../utils/speciesHelpers';
 import {
   deleteLastTree,
   reverseTreeOrder,
@@ -20,12 +29,16 @@ import {
   reactivateGroup,
 } from '../repositories/GroupRepository';
 import type { GroupEstado } from '../repositories/GroupRepository';
+import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
+import { getGroupGating } from '../utils/permisosDeEdicion';
 
 export interface UseTreeRegistrationParams {
   grupoId: string;
   plantacionId: string;
   grupoCodigo: string;
   userId: string;
+  /** Selector de foto de la pantalla: lo usan N/N, la botonera con "foto en todos los botones" y el detalle de árbol. */
+  pickPhoto: PickPhoto;
   /** Último fix del watcher GPS de la pantalla (lectura estable, sin re-render). */
   getLastGpsFix?: () => GpsFix | null;
   /**
@@ -37,9 +50,7 @@ export interface UseTreeRegistrationParams {
 }
 
 export interface UseTreeRegistrationResult {
-  // Data
   allTrees: ReturnType<typeof useTrees>['allTrees'];
-  lastThree: ReturnType<typeof useTrees>['lastThree'];
   totalCount: number;
   unresolvedNN: number;
   sortedTrees: ReturnType<typeof useTrees>['allTrees'];
@@ -56,33 +67,26 @@ export interface UseTreeRegistrationResult {
   gpsCaptureFrequency: number;
   /** Si la plantación exige GPS operativo para registrar árboles (#102). */
   gpsCaptureRequired: boolean;
-  /** true mientras la re-captura del último árbol resuelve (deshabilitar botón). */
-  recapturingGps: boolean;
-  /** treeId cuya captura GPS está en curso (detalle de árbol), o null. */
+  /** Si todos los botones de especie piden foto, como N/N (#439). */
+  photoCaptureAllTrees: boolean;
+  /** treeId cuya captura GPS está en curso (tira o detalle de árbol), o null. */
   gpsCapturingTreeId: string | null;
-  // Loading states
   finalizing: boolean;
   reversing: boolean;
   deleting: boolean;
   deletingTreeId: string | null;
-  // Actions
   registerTree: (especieId: string, especieCodigo: string) => Promise<void>;
+  /** Alta de N/N: foto obligatoria, sin especie. */
+  registerNN: () => Promise<void>;
   undoLast: () => Promise<void>;
-  addPhotoToTree: (treeId: string, pickPhoto: () => Promise<string | null>) => Promise<void>;
+  addPhotoToTree: (treeId: string) => Promise<void>;
   updatePhoto: (treeId: string, newUri: string) => Promise<void>;
   removePhoto: (treeId: string) => Promise<void>;
-  reverseOrder: (onConfirmed: () => void) => void;
-  confirmFinalize: (onSuccess: () => void) => void;
-  confirmDeleteGroup: (onConfirmed: () => void) => void;
-  reactivate: (onConfirmed: () => void) => void;
-  deleteTree: (treeId: string, posicion: number, onConfirmed: () => void) => void;
   executeReverseOrder: () => Promise<void>;
   executeFinalize: () => Promise<void>;
   executeDeleteGroup: () => Promise<void>;
   executeReactivate: () => Promise<void>;
   executeDeleteTree: (treeId: string) => Promise<void>;
-  /** Re-captura el punto GPS del último árbol; false si no hubo fix. */
-  recaptureLastGps: () => Promise<boolean>;
   /** Captura/reemplaza el punto GPS de un árbol cualquiera; false si no hubo fix. */
   captureTreeGps: (treeId: string) => Promise<boolean>;
 }
@@ -92,6 +96,7 @@ export function useTreeRegistration({
   plantacionId,
   grupoCodigo,
   userId,
+  pickPhoto,
   getLastGpsFix,
   onError,
 }: UseTreeRegistrationParams): UseTreeRegistrationResult {
@@ -106,65 +111,95 @@ export function useTreeRegistration({
   const [reversing, setReversing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deletingTreeId, setDeletingTreeId] = useState<string | null>(null);
-  const [recapturingGps, setRecapturingGps] = useState(false);
   const [gpsCapturingTreeId, setGpsCapturingTreeId] = useState<string | null>(null);
 
-  const { allTrees, lastThree, totalCount, unresolvedNN } = useTrees(grupoId);
+  const { allTrees, totalCount, unresolvedNN } = useTrees(grupoId);
 
   const { data: groupRows } = useLiveData(
     () => getGroupById(grupoId),
     [grupoId]
   );
   const subgroup = groupRows?.[0] ?? null;
-  const subgroupEstado = (subgroup?.estado ?? 'activa') as GroupEstado;
+  const subgroupEstado = (subgroup?.estado ?? ESTADO_GRUPO.activa) as GroupEstado;
 
   const { data: plantationEstadoRows } = useLiveData(
     () => getPlantationEstado(plantacionId),
     [plantacionId]
   );
-  const plantacionEstado = plantationEstadoRows ?? 'activa';
+  const plantacionEstado = plantationEstadoRows ?? ESTADO_PLANTACION.activa;
+  const estadoPlantacionCargado = plantationEstadoRows !== undefined;
 
-  const { data: gpsConfig } = useLiveData(
-    () => getPlantationGpsConfig(plantacionId),
+  const { data: captureConfig } = useLiveData(
+    () => getPlantationCaptureConfig(plantacionId),
     [plantacionId]
   );
-  const gpsCaptureFrequency = gpsConfig?.frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT;
-  const gpsCaptureRequired = gpsConfig?.required ?? GPS_CAPTURE_REQUIRED_DEFAULT;
+  const gpsCaptureFrequency = captureConfig?.gpsFrequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT;
+  const gpsCaptureRequired = captureConfig?.gpsRequired ?? GPS_CAPTURE_REQUIRED_DEFAULT;
+  const photoCaptureAllTrees = captureConfig?.photoAllTrees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT;
 
   const isCreator = subgroup && userId ? subgroup.usuarioCreador === userId : false;
   const isOwner = subgroup && userId
     ? canEdit({ usuarioCreador: subgroup.usuarioCreador }, userId, plantacionEstado)
     : false;
-  const dataLoaded = subgroup !== null && userId !== '';
-  const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== 'activa') : false;
-  const canReactivate = isCreator && subgroupEstado === 'finalizada';
+  // Sin el estado de la plantación el default es 'activa', así que decidir antes de
+  // que cargue habilita la pantalla entera sobre una plantación finalizada (#469).
+  const dataLoaded = subgroup !== null && userId !== '' && estadoPlantacionCargado;
+  const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
+  // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
+  // eso reaparecía el borrado en el listado de grupos (#469).
+  const canReactivate = dataLoaded && getGroupGating({
+    plantacionEstado,
+    subgroupEstado,
+    isCreator,
+  }).canReactivate;
 
-  const sortedTrees = [...allTrees].sort((a, b) => a.posicion - b.posicion);
+  // Estable entre renders: la tira de la botonera y su selección dependen de la identidad.
+  const sortedTrees = useMemo(
+    () => [...allTrees].sort((a, b) => a.posicion - b.posicion),
+    [allTrees],
+  );
 
-  const registerTree = useCallback(async (especieId: string, especieCodigo: string) => {
+  // Camino único de alta (especie o N/N): foto según política y recién después el
+  // insert. El "tap" GPS es post-foto: el técnico sigue parado junto al árbol y
+  // el watcher pudo pausarse mientras la cámara tuvo el foco.
+  const registerWithPolicy = useCallback(async (
+    policy: PhotoPolicy,
+    especie: { especieId: string | null; especieCodigo: string },
+    fallbackError: string,
+  ) => {
     if (isReadOnly || !userId) return;
+    const photo = await resolvePhotoForRegistration(policy, pickPhoto);
+    if (!photo.proceed) return;
     try {
       await insertTreeWithGps(
-        { grupoId, grupoCodigo, especieId, especieCodigo, userId },
+        { grupoId, grupoCodigo, ...especie, fotoUrl: photo.fotoUrl, userId },
         gpsCaptureFrequency,
         getLastGpsFix,
       );
     } catch (e) {
-      notifyError(e, 'No se pudo registrar el árbol.');
+      notifyError(e, fallbackError);
     }
-  }, [isReadOnly, userId, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
+  }, [isReadOnly, userId, pickPhoto, grupoId, grupoCodigo, gpsCaptureFrequency, getLastGpsFix, notifyError]);
 
-  const recaptureLastGps = useCallback(async (): Promise<boolean> => {
-    // allTrees viene en orden descendente: [0] es el último registrado.
-    const lastTree = allTrees[0];
-    if (isReadOnly || recapturingGps || !lastTree) return false;
-    setRecapturingGps(true);
-    try {
-      return await recaptureTreeGps(lastTree.id, getLastGpsFix);
-    } finally {
-      setRecapturingGps(false);
-    }
-  }, [isReadOnly, recapturingGps, allTrees, getLastGpsFix]);
+  const registerTree = useCallback(
+    (especieId: string, especieCodigo: string) =>
+      registerWithPolicy(
+        speciesPhotoPolicy(photoCaptureAllTrees),
+        { especieId, especieCodigo },
+        'No se pudo registrar el árbol.',
+      ),
+    [registerWithPolicy, photoCaptureAllTrees],
+  );
+
+  const registerNN = useCallback(
+    () =>
+      registerWithPolicy(
+        NN_PHOTO_POLICY,
+        { especieId: null, especieCodigo: UNKNOWN_SPECIES_CODE },
+        'No se pudo registrar el árbol N/N.',
+      ),
+    [registerWithPolicy],
+  );
 
   const undoLast = useCallback(async () => {
     if (isReadOnly) return;
@@ -184,10 +219,7 @@ export function useTreeRegistration({
     }
   }, [getLastGpsFix]);
 
-  const addPhotoToTree = useCallback(async (
-    treeId: string,
-    pickPhoto: () => Promise<string | null>
-  ) => {
+  const addPhotoToTree = useCallback(async (treeId: string) => {
     const photoUri = await pickPhoto();
     if (!photoUri) return;
     try {
@@ -195,7 +227,7 @@ export function useTreeRegistration({
     } catch (e) {
       notifyError(e, 'No se pudo guardar la foto.');
     }
-  }, [notifyError]);
+  }, [pickPhoto, notifyError]);
 
   const updatePhoto = useCallback(async (treeId: string, newUri: string) => {
     try {
@@ -268,30 +300,8 @@ export function useTreeRegistration({
     }
   }, [grupoId, grupoCodigo, notifyError]);
 
-  // Placeholder action starters — actual confirm logic stays in screen using confirm hook
-  const reverseOrder = useCallback((onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
-  const confirmFinalize = useCallback((onSuccess: () => void) => {
-    onSuccess();
-  }, []);
-
-  const confirmDeleteGroup = useCallback((onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
-  const reactivate = useCallback((onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
-  const deleteTree = useCallback((treeId: string, posicion: number, onConfirmed: () => void) => {
-    onConfirmed();
-  }, []);
-
   return {
     allTrees,
-    lastThree,
     totalCount,
     unresolvedNN,
     sortedTrees,
@@ -305,28 +315,23 @@ export function useTreeRegistration({
     canReactivate,
     gpsCaptureFrequency,
     gpsCaptureRequired,
-    recapturingGps,
+    photoCaptureAllTrees,
     gpsCapturingTreeId,
     finalizing,
     reversing,
     deleting,
     deletingTreeId,
     registerTree,
+    registerNN,
     undoLast,
     addPhotoToTree,
     updatePhoto,
     removePhoto,
-    reverseOrder,
-    confirmFinalize,
-    confirmDeleteGroup,
-    reactivate,
-    deleteTree,
     executeReverseOrder,
     executeFinalize,
     executeDeleteGroup,
     executeReactivate,
     executeDeleteTree,
-    recaptureLastGps,
     captureTreeGps,
   };
 }

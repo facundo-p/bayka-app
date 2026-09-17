@@ -1,8 +1,10 @@
 // Tests for useSync hook
-// Covers: startBidirectionalSync (calls syncPlantation), startGlobalSync (calls syncAllPlantations),
-//         notifyDataChanged in finally, state transitions
 
+// Se stubea el comportamiento (las funciones de sync), no el contrato: las constantes
+// salen de sync/types, que no tiene side effects. Si se mockea el módulo entero,
+// SYNC_STATE llega undefined al hook.
 jest.mock('../../src/services/SyncService', () => ({
+  ...jest.requireActual('../../src/services/sync/types'),
   syncPlantation: jest.fn(),
   syncAllPlantations: jest.fn(),
   uploadPendingPhotos: jest.fn().mockResolvedValue({ uploaded: 0, failed: 0 }),
@@ -28,6 +30,8 @@ const { notifyDataChanged } = require('../../src/database/liveQuery');
 
 import { renderHook, act } from '@testing-library/react-native';
 import { useSync } from '../../src/hooks/useSync';
+import { SyncCanceladoError } from '../../src/services/sync/cancelacion';
+import { MARCA_DE_TIMEOUT } from '../../src/supabase/fetchConTimeout';
 
 describe('useSync', () => {
   beforeEach(() => {
@@ -44,13 +48,24 @@ describe('useSync', () => {
         await result.current.startBidirectionalSync();
       });
 
-      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.any(Function), expect.any(Function), expect.any(Function));
+      expect(syncPlantation).toHaveBeenCalledWith('plant-1', expect.objectContaining({
+        onProgress: expect.any(Function),
+        onPhaseProgress: expect.any(Function),
+        onParcelaResults: expect.any(Function),
+        onPlantationResults: expect.any(Function),
+        onPullResult: expect.any(Function),
+      }));
     });
 
-    it('transitions state from idle → pushing → done', async () => {
+    // El pull ocupa el principio de la corrida: antes `pushing` se seteaba de entrada
+    // y el pull entero corría mostrando "Subiendo grupos..." (#447).
+    it('transitions state from idle → pulling → pushing → done', async () => {
       let resolveSync: () => void;
-      (syncPlantation as jest.Mock).mockImplementation(() =>
+      let emitirProgresoDePush: (() => void) | undefined;
+      (syncPlantation as jest.Mock).mockImplementation((_id: string, callbacks: any) =>
         new Promise<any[]>((resolve) => {
+          emitirProgresoDePush = () =>
+            callbacks.onProgress?.({ total: 2, completed: 0, currentName: 'Línea A' });
           resolveSync = () => resolve([]);
         })
       );
@@ -63,7 +78,12 @@ describe('useSync', () => {
         result.current.startBidirectionalSync();
       });
 
-      // State should be 'pushing' while promise is pending
+      expect(result.current.state).toBe('pulling');
+
+      act(() => {
+        emitirProgresoDePush!();
+      });
+
       expect(result.current.state).toBe('pushing');
 
       await act(async () => {
@@ -110,11 +130,10 @@ describe('useSync', () => {
       const parcelaFailures = [
         { success: false, parcelaId: 'parc-1', nombre: 'Lote A', error: 'UNKNOWN' as const },
       ];
-      // syncPlantation delivers parcela results through its 3rd callback arg, then
-      // returns the (blocked) group results.
+      // 3rd callback arg delivers parcela results; return value is the (blocked) group results.
       (syncPlantation as jest.Mock).mockImplementation(
-        (_id: string, _onProgress: any, onParcelaResults?: (p: any[]) => void) => {
-          onParcelaResults?.(parcelaFailures);
+        (_id: string, callbacks: { onParcelaResults?: (p: any[]) => void }) => {
+          callbacks.onParcelaResults?.(parcelaFailures);
           return Promise.resolve([
             { success: false, groupId: 'sg-1', nombre: 'Linea 1', error: 'PARCELA_PENDING' as const, parcelaId: 'parc-1' },
           ]);
@@ -138,8 +157,8 @@ describe('useSync', () => {
       ];
       // 4th callback arg delivers plantation push results.
       (syncPlantation as jest.Mock).mockImplementation(
-        (_id: string, _onProgress: any, _onParcelas: any, onPlantationResults?: (p: any[]) => void) => {
-          onPlantationResults?.(plantationFailures);
+        (_id: string, callbacks: { onPlantationResults?: (p: any[]) => void }) => {
+          callbacks.onPlantationResults?.(plantationFailures);
           return Promise.resolve([]);
         }
       );
@@ -308,5 +327,129 @@ describe('useSync', () => {
       expect(result.current.state).toBe('idle');
       expect(result.current.results).toEqual([]);
     });
+  });
+});
+
+describe('useSync — cancelación y timeout (#451)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // Cancelar es algo que pidió el usuario: mostrarle "Error al actualizar" lo deja
+  // pensando que se rompió algo.
+  it('cancelar no se reporta como una falla de sync', async () => {
+    (syncPlantation as jest.Mock).mockRejectedValue(new SyncCanceladoError());
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.cancelado).toBe(true);
+    expect(result.current.pullSuccess).toBeNull();
+    expect(result.current.authExpired).toBe(false);
+  });
+
+  it('un timeout se distingue de una falla de red cualquiera', async () => {
+    const timeout = new Error(`${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /rest/v1/trees`);
+    (syncPlantation as jest.Mock).mockRejectedValue(timeout);
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(true);
+    expect(result.current.pullSuccess).toBe(false);
+    expect(result.current.cancelado).toBe(false);
+  });
+
+  it('una falla de red no se reporta como timeout', async () => {
+    (syncPlantation as jest.Mock).mockRejectedValue(new Error('Network request failed'));
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(false);
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  // El estado de cancelación tiene que limpiarse, o la corrida siguiente arranca
+  // mostrando "Sincronizacion cancelada".
+  it('la corrida siguiente arranca sin la marca de cancelada', async () => {
+    (syncPlantation as jest.Mock).mockRejectedValueOnce(new SyncCanceladoError());
+    const { result } = renderHook(() => useSync('plant-1'));
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+    expect(result.current.cancelado).toBe(true);
+
+    (syncPlantation as jest.Mock).mockResolvedValue([]);
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.cancelado).toBe(false);
+  });
+});
+
+describe('useSync — un pull fallido no se reporta como éxito (#451)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('con el pull caído, pullSuccess es false aunque el push haya andado', async () => {
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullError?.(new Error('Network request failed'));
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('un timeout del pull se distingue de una caída de red cualquiera', async () => {
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullError?.(new Error(`${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /rest/v1/trees`));
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(false); });
+
+    expect(result.current.huboTimeout).toBe(true);
+  });
+
+  it('el sync global con todas las plantaciones caídas no dice que salió bien', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'A', results: [], parcelas: [], fallo: new Error('Network request failed') },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('el sync global sin fallas sigue reportando éxito', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'A', results: [], parcelas: [] },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.pullSuccess).toBe(true);
+  });
+});
+
+describe('useSync — el progreso de fotos no queda pegado entre fases (#450)', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // Una fase sin fotos no emite nada, así que el estado viejo sobrevive: con la
+  // velocidad adentro, eso se ve como una transferencia arrastrándose.
+  it('la bajada sin fotos no hereda el contador de la subida', async () => {
+    (syncPlantation as jest.Mock).mockResolvedValue([]);
+    const { uploadPendingPhotos, downloadPhotosForPlantation } = require('../../src/services/SyncService');
+    (uploadPendingPhotos as jest.Mock).mockImplementation(async (_id: string, onProgress: any) => {
+      onProgress?.({ total: 2, completed: 2, bytes: 4_000_000, desde: Date.now() });
+      return { uploaded: 2, failed: 0 };
+    });
+    (downloadPhotosForPlantation as jest.Mock).mockResolvedValue({ downloaded: 0, failed: 0 });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(true); });
+
+    expect(result.current.photoProgress).toBeNull();
   });
 });

@@ -73,8 +73,11 @@ describe('AdminBottomSheet', () => {
     expect(queryByText('Sincronizar')).toBeNull();
   });
 
-  it('renders Editar also for finalizada (any estado)', () => {
-    const { getByText } = render(
+  // Antes se ofrecía en cualquier estado, heredado del reagrupamiento de #94.
+  // Editar escribe lugar/período/config en `plantations`, así que cae bajo la
+  // inmutabilidad de la plantación finalizada (#469).
+  it('no ofrece Editar sobre una plantación finalizada', () => {
+    const { queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
           plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
@@ -82,7 +85,7 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(getByText('Editar lugar y periodo')).toBeTruthy();
+    expect(queryByText('Editar lugar y periodo')).toBeNull();
   });
 
   it('calls onEdit when Editar tapped', () => {
@@ -183,7 +186,6 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    // sincronizada estado no longer exists — no actions rendered
     expect(queryByText('Exportar CSV')).toBeNull();
     expect(queryByText('Exportar Excel')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
@@ -206,7 +208,6 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet {...makeProps({ visible: false })} />
     );
 
-    // Modal not visible — inner content should not be rendered
     expect(queryByText('Finca Norte')).toBeNull();
   });
 });

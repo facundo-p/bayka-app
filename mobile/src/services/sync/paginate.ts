@@ -1,57 +1,50 @@
-/**
- * Runs `cb(tx)` inside a database transaction when supported. Falls back to
- * `cb(db)` (no transaction) in two cases:
- *   1. `db.transaction` is undefined (unit-test mocks with partial db objects).
- *   2. The driver throws "Transaction function cannot return a promise"
- *      (better-sqlite3 sync API in integration tests — it doesn't allow async
- *      callbacks even though drizzle/expo-sqlite in prod does).
- * Prod expo-sqlite always supports async transactions, so this preserves
- * the transactional speedup at runtime.
- */
-export async function runInTransaction<T>(
-  database: any,
-  cb: (tx: any) => Promise<T>,
-): Promise<T> {
-  if (typeof database?.transaction !== 'function') {
-    return cb(database);
-  }
-  try {
-    return await database.transaction(cb);
-  } catch (e: any) {
-    if (typeof e?.message === 'string' && e.message.includes('cannot return a promise')) {
-      return cb(database);
-    }
-    throw e;
-  }
-}
+import { abortarSiCancelado, estaCancelado, signalDeCancelacion, SyncCanceladoError } from './cancelacion';
+import { errorDeTimeout, esTimeout } from '../../supabase/fetchConTimeout';
 
 /**
- * Paginates a Supabase query through .range() to bypass the PostgREST 1000-row
- * default limit. `buildQuery` must return a fresh query builder on each call;
- * the helper appends .range(from, to) per page and concatenates results.
- *
- * Fallback: if buildQuery() returns something without .range() (test mocks
- * that resolve directly to {data, error}), the helper awaits the result as a
- * single page. Real PostgREST builders always expose .range().
+ * Pagina una query de Supabase con .range() para saltar el límite default de 1000 filas de
+ * PostgREST; `buildQuery` debe devolver un builder fresco por llamada. Fallback: si no expone
+ * .range() (mocks de test), se usa como página única.
  */
 export async function fetchAllRows<T>(
-  buildQuery: () => any
+  buildQuery: () => any,
+  onPagina?: (filasDescargadas: number) => void,
 ): Promise<{ data: T[] | null; error: any }> {
   const PAGE_SIZE = 1000;
   const all: T[] = [];
   let from = 0;
   // Safety cap: 1M rows. If exceeded, something is wrong upstream.
   while (from < 1_000_000) {
-    const query = buildQuery();
+    abortarSiCancelado();
+    // El signal mata la página EN VUELO; sin él la cancelación recién se nota al
+    // volver de la request, que con mala señal son los 30s del timeout (#451).
+    const query = conSignalDeCancelacion(buildQuery());
     const pageResult = typeof query?.range === 'function'
       ? await query.range(from, from + PAGE_SIZE - 1)
       : await query;
     const { data, error } = pageResult;
+    // postgrest devuelve el abort como `{ error }`, no como throw: sin esto una
+    // cancelación se reporta al usuario como un error del servidor.
+    if (error && estaCancelado()) throw new SyncCanceladoError();
+    // Un timeout no es "esta tabla vino vacía". Devolverlo como `{ error }` hace
+    // que la fase lo loguee y siga, y el pull termina incompleto reportado como
+    // exitoso: el throw corta el sync con el mensaje correcto (#451).
+    if (esTimeout(error)) throw errorDeTimeout(error);
     if (error) return { data: null, error };
     if (!data || data.length === 0) break;
     all.push(...(data as T[]));
+    // La paginación es la parte lenta con mala señal y no emitía nada: sin esto la
+    // pantalla queda quieta durante N/1000 round-trips.
+    onPagina?.(all.length);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
   return { data: all, error: null };
+}
+
+/** `.abortSignal()` existe en el builder de postgrest; los mocks de test no lo tienen. */
+function conSignalDeCancelacion(query: any): any {
+  const signal = signalDeCancelacion();
+  if (!signal || typeof query?.abortSignal !== 'function') return query;
+  return query.abortSignal(signal);
 }

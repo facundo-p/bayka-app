@@ -1,6 +1,4 @@
 // Tests for adminQueries — admin read queries for plantation management
-// Covers: checkFinalizationGate (all states including sincronizada),
-// hasIdsGenerated, hasTreesForSpecies
 
 jest.mock('../../src/database/client', () => ({
   db: {
@@ -88,8 +86,8 @@ describe('adminQueries', () => {
     });
 
     it('canFinalize=true cuando todos los subgrupos están sincronizada + pendingSync=false', async () => {
-      // After Phase 14: groups go finalizada → sincronizada on sync.
-      // sincronizada is a valid "done" state for plantation finalization.
+      // sincronizada is a valid "done" state for finalization (groups move
+      // finalizada → sincronizada after sync).
       setupFinalizationMocks(
         [
           { nombre: 'Línea A', estado: 'sincronizada', pendingSync: false },

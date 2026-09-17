@@ -1,0 +1,5 @@
+{
+  "_comment": "Fuente de verdad de defaults de captura GPS. Cambiar esto implica actualizar las copias runtime (mobile/src/constants/gpsCapture.ts, web/src/lib/gpsDefaults.ts) y sus contract tests en el mismo cambio.",
+  "frequency": 10,
+  "required": true
+}

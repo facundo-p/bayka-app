@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
@@ -29,5 +30,28 @@ export default tseslint.config(
         },
       ],
     },
+  },
+  {
+    // Scripts de Node de la raíz. ESLint ignora lo que está fuera de web/, así
+    // que `lint` los pasa desde la raíz con `-c`, que toma el cwd como base de
+    // los patrones. El sourceType sale de la extensión (default de ESLint) y sus
+    // tests en TS caen en el bloque de arriba. Desde web/ también toma los .mjs
+    // de la auditoría, que corren en Node.
+    files: ['scripts/**/*.{cjs,mjs}'],
+    languageOptions: { globals: globals.node },
+    rules: js.configs.recommended.rules,
+  },
+  {
+    // Lo que la auditoría corre en la página: lo inyecta `addScriptTag` o lo
+    // serializa `pagina.evaluate`. Por eso vive aparte de los .mjs de Node.
+    files: ['scripts/auditoria/*.navegador.js'],
+    languageOptions: { globals: globals.browser },
+    rules: js.configs.recommended.rules,
+  },
+  {
+    // `addScriptTag` lo inyecta como script clásico: sus funciones quedan
+    // globales de la página, no son exports de un módulo.
+    files: ['scripts/auditoria/medir.navegador.js'],
+    languageOptions: { sourceType: 'script' },
   },
 );

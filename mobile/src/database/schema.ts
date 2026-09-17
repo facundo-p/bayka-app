@@ -1,6 +1,7 @@
-import { sqliteTable, text, integer, real, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
+import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 
 export const species = sqliteTable('species', {
@@ -23,22 +24,23 @@ export const plantations = sqliteTable('plantations', {
   pendingEdit: integer('pending_edit', { mode: 'boolean' }).notNull().default(false),
   lugarServer: text('lugar_server'),
   periodoServer: text('periodo_server'),
-  // Config GPS por plantación (default también duplicado en las migraciones
-  // 0015 local y 023 de Supabase; si cambia, revisar los tres lugares).
+  // Default duplicado en migraciones 0015 (local) y 023 (Supabase); revisar los tres lugares si cambia.
   gpsCaptureFrequency: integer('gps_capture_frequency')
     .notNull()
     .default(GPS_CAPTURE_FREQUENCY_DEFAULT),
   gpsCaptureRequired: integer('gps_capture_required', { mode: 'boolean' })
     .notNull()
     .default(GPS_CAPTURE_REQUIRED_DEFAULT),
-  // Snapshot del último valor conocido del server (como lugarServer/periodoServer):
-  // permite que discardPlantationEdit revierta una edición offline de la config GPS.
-  // Nullable: null = sin snapshot todavía. Migración local 0016.
+  // Snapshot del server (como lugarServer/periodoServer) para que discardPlantationEdit
+  // revierta ediciones offline de la config GPS. Null = sin snapshot todavía (migración 0016).
   gpsCaptureFrequencyServer: integer('gps_capture_frequency_server'),
   gpsCaptureRequiredServer: integer('gps_capture_required_server', { mode: 'boolean' }),
-  // Visibilidad administrada desde la web de gestión: los técnicos no ven
-  // plantaciones ocultas en el listado; el sync no se ve afectado.
+  // Visibilidad administrada desde la web de gestión: técnicos no ven plantaciones ocultas; el sync no se ve afectado.
   visibleInApp: integer('visible_in_app', { mode: 'boolean' }).notNull().default(true),
+  // Foto en todos los botones de la botonera (#439), administrada desde la web. Default duplicado en 0019 (local) y 035 (Supabase).
+  photoCaptureAllTrees: integer('photo_capture_all_trees', { mode: 'boolean' })
+    .notNull()
+    .default(PHOTO_CAPTURE_ALL_TREES_DEFAULT),
 });
 
 export const parcelas = sqliteTable('parcelas', {
@@ -52,22 +54,24 @@ export const parcelas = sqliteTable('parcelas', {
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
 }, (t) => ({
-  // PARTIAL unique indexes: tombstones (deleted_at NOT NULL) están excluidos del
-  // uniqueness check para permitir reusar nombre/codigo de parcelas borradas.
-  // D-16-19: soft-delete + partial unique = espacio de nombres reciclable.
+  // PARTIAL unique indexes: tombstones (deleted_at NOT NULL) quedan excluidos del
+  // uniqueness check, para poder reusar nombre/codigo de parcelas borradas.
   uniqueCode: uniqueIndex('parcelas_plantation_code_unique')
     .on(t.plantacionId, t.codigo)
     .where(sql`deleted_at IS NULL`),
   uniqueName: uniqueIndex('parcelas_plantation_name_unique')
     .on(t.plantacionId, t.nombre)
     .where(sql`deleted_at IS NULL`),
+  // Los dos de arriba son PARCIALES: solo sirven si la query filtra deleted_at.
+  // El pull no lo hace (#449).
+  porPlantacion: index('parcelas_plantacion_id_idx').on(t.plantacionId),
 }));
 
 export const groups = sqliteTable('groups', {
   id: text('id').primaryKey(),
   plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
   // #90: todo grupo tiene parcela — la ausencia es dato inválido, no caso
-  // válido (los datos legacy pre-P15 ya se migraron).
+  // válido (los datos legacy ya se migraron).
   parcelaId: text('parcela_id').notNull().references(() => parcelas.id),
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
@@ -79,6 +83,8 @@ export const groups = sqliteTable('groups', {
 }, (t) => ({
   uniqueCode: uniqueIndex('groups_parcela_code_unique').on(t.parcelaId, t.codigo),
   uniqueName: uniqueIndex('groups_parcela_name_unique').on(t.parcelaId, t.nombre),
+  // parcelaId no necesita índice propio: es la columna izquierda de los dos de arriba.
+  porPlantacion: index('groups_plantacion_id_idx').on(t.plantacionId),
 }));
 
 export const trees = sqliteTable('trees', {
@@ -101,14 +107,20 @@ export const trees = sqliteTable('trees', {
   longitude: real('longitude'),
   gpsAccuracy: real('gps_accuracy'),
   gpsCapturedAt: text('gps_captured_at'),
-});
+}, (t) => ({
+  // La tabla más grande, y todo la consulta por grupo: el pull, las pantallas y
+  // la bajada de fotos. SQLite no indexa las FK solo (#449).
+  porGrupo: index('trees_group_id_idx').on(t.groupId),
+}));
 
 export const plantationSpecies = sqliteTable('plantation_species', {
   id: text('id').primaryKey(),
   plantacionId: text('plantacion_id').notNull().references(() => plantations.id),
   especieId: text('especie_id').notNull().references(() => species.id),
   ordenVisual: integer('orden_visual').notNull().default(0),
-});
+}, (t) => ({
+  porPlantacion: index('plantation_species_plantacion_id_idx').on(t.plantacionId),
+}));
 
 export const userSpeciesOrder = sqliteTable('user_species_order', {
   userId: text('user_id').notNull(),
@@ -117,6 +129,25 @@ export const userSpeciesOrder = sqliteTable('user_species_order', {
   ordenVisual: integer('orden_visual').notNull(),
 }, (t) => ({
   pk: uniqueIndex('user_species_order_pk').on(t.userId, t.plantacionId, t.especieId),
+}));
+
+/**
+ * Borrados hechos localmente que todavía no llegaron al server (#467). El pull los
+ * excluye y el push los propaga; al confirmar el server, la fila se va de acá.
+ *
+ * Registro y no un `deleted_at` en `trees`: un tombstone obligaría a filtrar en
+ * todas las lecturas de árboles, que están por todo el código.
+ */
+export const borradosPendientes = sqliteTable('borrados_pendientes', {
+  /** El id del árbol o del grupo borrado. */
+  id: text('id').primaryKey(),
+  tipo: text('tipo').notNull(),
+  /** Solo árboles: permite excluirlos del pull sin tocar la tabla `trees`. */
+  grupoId: text('grupo_id'),
+  plantacionId: text('plantacion_id').notNull(),
+  borradoEn: text('borrado_en').notNull(),
+}, (t) => ({
+  porPlantacion: index('borrados_pendientes_plantacion_idx').on(t.plantacionId),
 }));
 
 export const plantationUsers = sqliteTable('plantation_users', {

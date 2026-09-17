@@ -10,9 +10,7 @@ export interface ReversedPosition {
 
 /**
  * Computes reversed positions for all trees in a Group.
- * Formula: newPosicion = total - oldPosicion + 1
- * A tree at position 1 becomes position N; position N becomes 1.
- * Returns same array length, empty if input is empty.
+ * Formula: newPosicion = total - oldPosicion + 1 (position 1 becomes N, N becomes 1).
  */
 export function computeReversedPositions(
   treeList: TreePositionEntry[]

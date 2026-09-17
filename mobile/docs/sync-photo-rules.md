@@ -155,7 +155,7 @@ Si `uploadPhotoToStorage` falla para un árbol:
 
 ### Caso 8: Árbol N/N sin foto (si fuera posible)
 
-Actualmente el flujo de `registerNN` en `useNNFlow` **requiere tomar una foto** antes de crear el árbol. Si `pickPhoto()` retorna null (el usuario cancela la cámara), el árbol no se crea.
+El flujo de `registerNN` en `useTreeRegistration` **requiere tomar una foto** antes de crear el árbol (`NN_PHOTO_POLICY` en `services/photo/photoCaptureRules.ts`). Si `pickPhoto()` retorna null (el usuario cancela la cámara), el árbol no se crea. Con "foto en todos los botones" activo en la plantación (#439), los botones de especie pasan por la misma política: la foto se pide siempre y hoy también es obligatoria (`PHOTO_CAPTURE_REQUIRED_DEFAULT`).
 
 Si por algún error un árbol N/N se crea sin foto:
 - `fotoUrl = null`, `fotoSynced = false`
@@ -164,7 +164,11 @@ Si por algún error un árbol N/N se crea sin foto:
 
 ### Caso 9: Instalar una versión nueva sobre una existente
 
-Las migraciones de Drizzle pueden fallar silenciosamente en Expo. Por eso existen "safety nets" en `client.ts` que crean las columnas manualmente si no existen. Estos safety nets son idempotentes (si la columna ya existe, el ALTER TABLE falla silenciosamente y se ignora).
+Drizzle es la única fuente de cambios de esquema (#312), sin parches ad-hoc: el
+journal de migraciones es monótono (`when` siempre mayor al de la entry
+anterior), y el contrato asume que todo device operativo ya está en idx >= 0015
+— por eso una migración nueva nunca puede quedar "por debajo" de una ya
+aplicada y saltearse silenciosamente.
 
 ### Caso 10: App sin conexión durante la sincronización
 

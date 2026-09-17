@@ -1,22 +1,19 @@
 import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
-import type { RolEnPlantacion } from '../queries/usuarioQueries';
+import { ROL } from './profileRepository';
 
 export const MENSAJE_USUARIO_YA_ASIGNADO = 'El usuario ya está asignado';
 
 /**
- * Asigna el usuario a la plantación: le da acceso desde la app mobile.
+ * Asigna el técnico a la plantación: le da acceso desde la app mobile.
+ * Siempre como técnico: los admins ya son miembros automáticos por trigger (#67).
  * Si ya estaba asignado (PK compuesta), lanza con un mensaje para el usuario.
  */
-export async function asignarUsuario(
-  plantationId: string,
-  userId: string,
-  rolEnPlantacion: RolEnPlantacion,
-): Promise<void> {
+export async function asignarUsuario(plantationId: string, userId: string): Promise<void> {
   const { error } = await supabase.from('plantation_users').insert({
     plantation_id: plantationId,
     user_id: userId,
-    rol_en_plantacion: rolEnPlantacion,
+    rol_en_plantacion: ROL.TECNICO,
   });
   if (!error) return;
   if (error.code === PG_ERROR.UNIQUE_VIOLATION) throw new Error(MENSAJE_USUARIO_YA_ASIGNADO);

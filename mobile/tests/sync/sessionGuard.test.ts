@@ -14,6 +14,7 @@ jest.mock('../../src/supabase/client', () => ({
 
 const { supabase } = require('../../src/supabase/client');
 import { ensureServerSession, SessionExpiredError } from '../../src/services/sync/sessionGuard';
+import { esTimeout, MARCA_DE_TIMEOUT } from '../../src/supabase/fetchConTimeout';
 
 const getSession = supabase.auth.getSession as jest.Mock;
 const refreshSession = supabase.auth.refreshSession as jest.Mock;
@@ -56,6 +57,35 @@ describe('ensureServerSession', () => {
   it('throws when an expired session cannot be refreshed', async () => {
     getSession.mockResolvedValue({ data: { session: { expires_at: PAST } } });
     refreshSession.mockResolvedValue({ data: { session: null }, error: { message: 'refresh_token_not_found' } });
+
+    await expect(ensureServerSession()).rejects.toBeInstanceOf(SessionExpiredError);
+  });
+});
+
+/**
+ * `refreshSession` es el primer candidato a colgarse en el campo. Reportar ese
+ * timeout como sesión vencida manda al técnico a re-loguearse sin motivo, y justo
+ * cuando no tiene señal para hacerlo (#451).
+ */
+describe('ensureServerSession — timeout vs sesión vencida', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('un timeout en el refresh NO se reporta como sesión vencida', async () => {
+    getSession.mockResolvedValue({ data: { session: { expires_at: PAST } } });
+    refreshSession.mockResolvedValue({
+      error: { message: `AuthRetryableFetchError: ${MARCA_DE_TIMEOUT}: sin respuesta en 30000ms — /auth/v1/token` },
+      data: { session: null },
+    });
+
+    const fallo = await ensureServerSession().catch((e) => e);
+
+    expect(fallo).not.toBeInstanceOf(SessionExpiredError);
+    expect(esTimeout(fallo)).toBe(true);
+  });
+
+  it('un error que no es timeout sigue siendo sesión vencida', async () => {
+    getSession.mockResolvedValue({ data: { session: { expires_at: PAST } } });
+    refreshSession.mockResolvedValue({ error: { message: 'Invalid Refresh Token' }, data: { session: null } });
 
     await expect(ensureServerSession()).rejects.toBeInstanceOf(SessionExpiredError);
   });

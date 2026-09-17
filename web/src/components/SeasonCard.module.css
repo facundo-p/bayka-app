@@ -1,11 +1,9 @@
 .card {
+  composes: superficieCard from '../theme/utilidades.module.css';
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
   padding: var(--space-2xl);
-  background-color: var(--color-surface);
-  border: var(--border-thin) solid var(--color-border-card);
-  border-radius: var(--radius-card-sm);
   transition: border-color 0.15s ease;
 }
 
@@ -14,10 +12,7 @@
 }
 
 .overline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
 }
 
 .periodoFila {
@@ -44,20 +39,17 @@
   color: var(--color-text-heading);
 }
 
-.barra {
-  height: var(--space-sm);
-  border-radius: var(--radius-full);
-  background-color: var(--color-surface-sunken);
-  overflow: hidden;
-}
-
-.relleno {
-  height: 100%;
-  background-color: var(--color-secondary);
-  border-radius: var(--radius-full);
-}
-
 .pie {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+
+/* En teléfono la barra superior apila sus bloques y esta card es el más alto
+   (134px) de los cinco. Es informativa y además un atajo: su destino sigue a un
+   toque desde Plantaciones, así que se retira para que el contenido no arranque
+   abajo del fold. Único consumidor: el sidebar de AppLayout. */
+@media (max-width: 600px) {
+  .card {
+    display: none;
+  }
 }

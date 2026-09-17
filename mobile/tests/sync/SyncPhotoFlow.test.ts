@@ -1,9 +1,6 @@
 // TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
-// See .planning/phases/16-code-layer-rename-parcelas-data-sync/deferred-items.md
-// Tests for photo sync logic and Phase 14 bug fixes.
-// Covers: hasFotoOnServer, pendingSync preservation, fotoUrl preservation,
-// markGroupSynced estado, getSyncableGroups filter, getTreesWithPendingPhotos,
-// N/N trees in upload payload.
+// Photo sync tests: hasFotoOnServer, pendingSync/fotoUrl preservation on pull,
+// markGroupSynced estado, getSyncableGroups filter, getTreesWithPendingPhotos, N/N upload payload.
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -245,18 +242,16 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
         }),
       });
 
-      // Act
       await pullFromServer('plantation-1');
 
-      // Assert: the tree insert should have fotoSynced = false because file:// is not a real server photo
+      // Assert: fotoSynced must be false — file:// isn't a real server photo
+      // (hasFotoOnServer = !!foto_url && !foto_url.startsWith('file://')).
       const treeCalls = insertValuesSpy.mock.calls;
       const treeInsertCall = treeCalls.find((call: any[]) =>
         call[0]?.id === 'tree-1'
       );
 
       expect(treeInsertCall).toBeDefined();
-      // hasFotoOnServer = !!foto_url && !foto_url.startsWith('file://')
-      // For file:///data/... → hasFotoOnServer = false → fotoSynced = false
       expect(treeInsertCall![0].fotoSynced).toBe(false);
     });
   });
@@ -265,12 +260,8 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
   describe('Pull preserva flag pendingSync local', () => {
     it('subgrupo con pendingSync=true local no se resetea a false en pull', async () => {
-      // This test verifies the CASE WHEN SQL logic in pullFromServer:
-      // pendingSync: sql`CASE WHEN ${groups.pendingSync} = 1 THEN 1 ELSE 0 END`
-      // We verify that the onConflictDoUpdate set includes the CASE WHEN pattern
-      // by checking that the insert values use pendingSync: false (initial value)
-      // while the conflict update preserves the existing local value.
-
+      // Verifies pullFromServer's CASE WHEN SQL — insert uses pendingSync: false as the
+      // initial value, while onConflictDoUpdate's set preserves the existing local value.
       const remoteGroup = {
         id: 'sg-1',
         plantation_id: 'plantation-1',
@@ -331,8 +322,7 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
       expect(sgInsert).toBeDefined();
       expect(sgInsert![0].pendingSync).toBe(false);
 
-      // Verify onConflictDoUpdate was called with a set that includes pendingSync
-      // (the CASE WHEN SQL is what preserves it — we verify the key exists in set)
+      // onConflictDoUpdate's set must include pendingSync (the CASE WHEN preserves it).
       const conflictCall = onConflictSpy.mock.calls.find((call: any[]) =>
         call[0]?.target !== undefined || call[0]?.set?.pendingSync !== undefined
       );
@@ -345,10 +335,8 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
   describe('Pull preserva fotoUrl local file://', () => {
     it('árbol con fotoUrl file:// local no se sobreescribe con foto del servidor', async () => {
-      // This test verifies the CASE WHEN SQL in pullFromServer:
-      // fotoUrl: sql`CASE WHEN ${trees.fotoUrl} LIKE 'file://%' THEN ${trees.fotoUrl} ELSE excluded.foto_url END`
-      // The conflict update set should include fotoUrl with the CASE WHEN pattern.
-
+      // Verifies pullFromServer's CASE WHEN SQL keeps a local file:// fotoUrl over
+      // the server's value — the conflict update set must include fotoUrl.
       const remoteTree = {
         id: 'tree-1',
         subgroup_id: 'sg-1',
@@ -407,13 +395,12 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
       await pullFromServer('plantation-1');
 
-      // Verify tree insert was called and onConflictDoUpdate set includes fotoUrl
       const treeInsert = valuesSpy.mock.calls.find((call: any[]) =>
         call[0]?.id === 'tree-1'
       );
       expect(treeInsert).toBeDefined();
 
-      // The onConflictDoUpdate set should include the fotoUrl CASE WHEN logic
+      // onConflictDoUpdate's set must include the fotoUrl CASE WHEN logic.
       const treeConflict = onConflictSpy.mock.calls.find((call: any[]) =>
         call[0]?.set?.fotoUrl !== undefined
       );
@@ -426,11 +413,9 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
   describe('markGroupSynced establece estado sincronizada', () => {
     it('después de sync exitoso, estado cambia a sincronizada y pendingSync=false', async () => {
-      // markGroupSynced is mocked, so we test it by verifying the mock's expected
-      // behavior matches what's documented in GroupRepository:
-      // set({ pendingSync: false, estado: 'sincronizada' })
-
-      // We test through syncPlantation: on RPC success, markGroupSynced is called with sg id
+      // markGroupSynced is mocked (its real effect — set pendingSync:false, estado:'sincronizada'
+      // — is covered by GroupRepository's own test); here we check syncPlantation calls it on
+      // RPC success with the right group id.
       const sg = makeSg('sg-1');
       mockGetSyncableGroups.mockResolvedValue([sg]);
 
@@ -444,9 +429,6 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
       await syncPlantation('plantation-1');
 
       expect(mockMarkGroupSynced).toHaveBeenCalledWith('sg-1');
-      // The actual implementation sets estado='sincronizada', pendingSync=false
-      // This is verified by the repository's own unit test, but here we ensure
-      // the service calls the right function after successful sync
     });
   });
 
@@ -454,11 +436,8 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
   describe('getSyncableGroups filtra correctamente', () => {
     it('retorna subgrupos con pendingSync=true sin importar estado', async () => {
-      // getSyncableGroups returns ANY subgroup with pendingSync=true:
-      // - finalizada + pendingSync=true (first sync)
-      // - sincronizada + pendingSync=true (re-sync after N/N resolution)
-      // It does NOT filter by estado or userId — any plantation member can sync.
-
+      // getSyncableGroups returns any subgroup with pendingSync=true (finalizada on first
+      // sync, sincronizada on re-sync after N/N resolution) — it doesn't filter by estado or userId.
       const finalizadaPending = makeSg('sg-1', { estado: 'finalizada', pendingSync: true });
       const sincronizadaPending = makeSg('sg-2', { estado: 'sincronizada', pendingSync: true });
       mockGetSyncableGroups.mockResolvedValue([finalizadaPending, sincronizadaPending]);
@@ -480,8 +459,7 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
     });
 
     it('no filtra por userId — cualquier miembro puede sincronizar', async () => {
-      // Subgroup created by user-2, but sync is called by user-1 (different user)
-      // getSyncableGroups should still return it
+      // Created by user-2, sync called by user-1 — should still be returned/synced.
       const otherUserSg = makeSg('sg-other', { usuarioCreador: 'user-2', pendingSync: true });
       mockGetSyncableGroups.mockResolvedValue([otherUserSg]);
 
@@ -507,11 +485,8 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
       const validPending = [
         { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', groupId: 'sg-1', plantacionId: 'plantation-1' },
       ];
-      // Trees that should be excluded:
-      // - tree with remote fotoUrl (not file://)
-      // - tree with fotoSynced=true (already uploaded)
-      // - tree in subgroup with pendingSync=true (subgroup not yet synced)
-      // - tree with null fotoUrl (no photo)
+      // Excluded: remote (non-file://) fotoUrl, fotoSynced=true, subgroup still pendingSync,
+      // or null fotoUrl.
       mockGetTreesWithPendingPhotos.mockResolvedValue(validPending);
 
       const storageChain = {

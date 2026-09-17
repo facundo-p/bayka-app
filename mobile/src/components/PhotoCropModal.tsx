@@ -114,14 +114,11 @@ export default function PhotoCropModal({ raw, onCancel, onSave, onRetry }: Props
           )}
           {box && stage && (
             <>
-              {/* Atenuado fuera del marco */}
               <View pointerEvents="none" style={[styles.dim, { left: 0, top: 0, width: stage.w, height: box.y }]} />
               <View pointerEvents="none" style={[styles.dim, { left: 0, top: box.y + box.h, width: stage.w, height: Math.max(0, stage.h - (box.y + box.h)) }]} />
               <View pointerEvents="none" style={[styles.dim, { left: 0, top: box.y, width: box.x, height: box.h }]} />
               <View pointerEvents="none" style={[styles.dim, { left: box.x + box.w, top: box.y, width: Math.max(0, stage.w - (box.x + box.w)), height: box.h }]} />
-              {/* Marco movible */}
               <View {...movePan.panHandlers} style={[styles.frame, { left: box.x, top: box.y, width: box.w, height: box.h }]} />
-              {/* Esquinas */}
               {CORNERS.map((corner) => (
                 <View key={corner} {...cornerPans[corner].panHandlers} style={[styles.handle, cornerStyle(corner)]}>
                   <View style={styles.handleDot} />

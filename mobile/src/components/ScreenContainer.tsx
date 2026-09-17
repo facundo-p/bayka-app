@@ -1,14 +1,12 @@
 /**
- * ScreenContainer — consistent container wrapper for all screens.
+ * ScreenContainer — consistent flex container wrapper for all screens.
  *
- * All screens in this app live inside the Tabs navigator, whose tab bar
- * already handles the bottom safe-area inset. This component therefore
- * does NOT add paddingBottom — it only provides a consistent flex container
- * and optionally the textured background used on dashboard-style screens.
+ * No paddingBottom: all screens live inside the Tabs navigator, whose tab
+ * bar already handles the bottom safe-area inset.
  */
-import { View, ViewStyle, StyleSheet } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import TexturedBackground from './TexturedBackground';
-import { colors } from '../theme';
+import { screenContainerStyles as styles } from './ScreenContainer.styles';
 
 type Props = {
   children: React.ReactNode;
@@ -32,12 +30,3 @@ export default function ScreenContainer({ children, withTexture = false, style }
   return content;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  transparent: {
-    backgroundColor: 'transparent',
-  },
-});

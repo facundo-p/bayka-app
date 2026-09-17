@@ -1,109 +1,65 @@
-import { useNavigate, useParams } from 'react-router';
-import {
-  Cargando,
-  ErrorConReintento,
-  EstadoPlantacionBadge,
-  Table,
-  type TableColumn,
-} from '../../components';
-import { formatearFechaCorta } from '../../lib/fechas';
-import { formatearEntero } from '../../lib/formato';
-import type { GrupoConDetalle, TipoGrupo } from '../../queries/dataExplorerQueries';
-import { DatosToolbar } from './DatosToolbar';
-import { ScopeChips } from './ScopeChips';
-import { SelectParcela } from './SelectParcela';
-import { VacioConFiltros } from './VacioConFiltros';
+import { useIdPlantacion } from '../../hooks/useIdPlantacion';
+import { SEGMENTO_DATOS } from '../../lib/rutas';
+import { SUSTANTIVO } from '../../lib/sustantivos';
+import type { GrupoConDetalle } from '../../queries/dataExplorerQueries';
+import { COLUMNAS_GRUPOS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
+import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
+import { SelectParcela } from './SelectParcela';
 import { useFiltrosDatos } from './useFiltrosDatos';
+import { useIrASeccion } from './useIrASeccion';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
-import styles from './SeccionesDatos.module.css';
 
-/* Etiquetas en español de los tipos de grupo. */
-const ETIQUETA_TIPO: Record<TipoGrupo, string> = { linea: 'Línea', bosquete: 'Bosquete' };
+const TEXTOS: TextosSeccion = {
+  unidad: SUSTANTIVO.grupo,
+  cargando: 'Cargando grupos…',
+  error: 'No se pudieron cargar los grupos.',
+  pie: 'Clic en una fila abre los árboles del grupo',
+  vacio: 'Sin grupos para mostrar',
+};
 
-const COLUMNAS: Array<TableColumn<GrupoConDetalle>> = [
-  {
-    key: 'codigo',
-    header: 'Código',
-    render: (grupo) => <span className={styles.codigo}>{grupo.codigo}</span>,
-  },
-  { key: 'nombre', header: 'Nombre' },
-  {
-    key: 'parcelaCodigo',
-    header: 'Parcela',
-    render: (grupo) => <span className={styles.codigo}>{grupo.parcelaCodigo}</span>,
-  },
-  { key: 'tipo', header: 'Tipo', render: (grupo) => ETIQUETA_TIPO[grupo.tipo] },
-  {
-    key: 'estado',
-    header: 'Estado',
-    // Grupos y plantaciones comparten los estados activa/finalizada: mismo badge.
-    render: (grupo) => <EstadoPlantacionBadge estado={grupo.estado} />,
-  },
-  {
-    key: 'arboles',
-    header: 'Árboles',
-    align: 'center',
-    render: (grupo) => <span className={styles.numero}>{formatearEntero(grupo.arboles)}</span>,
-  },
-  {
-    key: 'createdAt',
-    header: 'Creado',
-    render: (grupo) => formatearFechaCorta(grupo.createdAt),
-  },
-];
+const VACIO_CON_FILTROS = 'Ningún grupo coincide con los filtros';
 
-/** Sección Grupos de la tab Datos: tabla filtrable por parcela con drill-down. */
-export function GruposSection() {
-  const { id = '' } = useParams();
-  const navigate = useNavigate();
+/** El drill-down a Árboles conserva el scope de parcela. */
+function useGruposSection() {
+  const id = useIdPlantacion();
+  const irA = useIrASeccion();
   const { filtros, setFiltro, hayFiltro, limpiar } = useFiltrosDatos();
-  const quitarParcela = () => setFiltro('parcelaId', '');
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
-  const reintentar = () => void Promise.all([parcelas.refetch(), grupos.refetch()]);
-
-  /** Drill-down: abrir los árboles del grupo manteniendo el scope de parcela. */
-  const verArboles = (grupo: GrupoConDetalle) => {
-    const params = filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id });
-    void navigate(`../arboles?${params.toString()}`);
-  };
-
-  const parcelaEnScope = parcelas.data?.find((parcela) => parcela.id === filtros.parcelaId);
-  const chips = parcelaEnScope
-    ? [{ etiqueta: `Parcela ${parcelaEnScope.codigo}`, onQuitar: quitarParcela }]
-    : [];
-
-  if (parcelas.isError || grupos.isError) {
-    return (
-      <ErrorConReintento mensaje="No se pudieron cargar los grupos." onReintentar={reintentar} />
+  const verArboles = (grupo: GrupoConDetalle) =>
+    irA(
+      SEGMENTO_DATOS.arboles,
+      filtrosAParams({ parcelaId: filtros.parcelaId, groupId: grupo.id }),
     );
-  }
-  const recuento = grupos.data ? `${formatearEntero(grupos.data.length)} grupos` : undefined;
+  return {
+    parcelaId: filtros.parcelaId,
+    parcelas,
+    grupos,
+    verArboles,
+    elegirParcela: (valor: string) => setFiltro('parcelaId', valor),
+    vacioConFiltros: hayFiltro ? { mensaje: VACIO_CON_FILTROS, onLimpiar: limpiar } : undefined,
+  };
+}
+
+/** Grupos de la plantación, filtrables por parcela; cada fila abre sus árboles. */
+export function GruposSection() {
+  const seccion = useGruposSection();
   return (
-    <>
-      <DatosToolbar segmento="grupos" recuento={recuento}>
-        <SelectParcela
-          parcelas={parcelas.data ?? []}
-          value={filtros.parcelaId}
-          onChange={(valor) => setFiltro('parcelaId', valor)}
-          labelOculto
-        />
-      </DatosToolbar>
-      <ScopeChips chips={chips} />
-      {grupos.isPending ? (
-        <Cargando label="Cargando grupos…" />
-      ) : grupos.data.length === 0 && hayFiltro ? (
-        <VacioConFiltros mensaje="Ningún grupo coincide con los filtros" onLimpiar={limpiar} />
-      ) : (
-        <Table
-          columns={COLUMNAS}
-          rows={grupos.data}
-          getRowKey={(grupo) => grupo.id}
-          onRowClick={verArboles}
-          emptyMessage="Sin grupos para mostrar"
-        />
-      )}
-    </>
+    <SeccionTablaDatos
+      segmento={SEGMENTO_DATOS.grupos}
+      consultas={[seccion.parcelas, seccion.grupos]}
+      filas={seccion.grupos.data}
+      textos={TEXTOS}
+      columnas={COLUMNAS_GRUPOS}
+      onRowClick={seccion.verArboles}
+      vacioConFiltros={seccion.vacioConFiltros}
+    >
+      <SelectParcela
+        parcelas={seccion.parcelas.data ?? []}
+        value={seccion.parcelaId}
+        onChange={seccion.elegirParcela}
+      />
+    </SeccionTablaDatos>
   );
 }

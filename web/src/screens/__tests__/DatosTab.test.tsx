@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
+import { prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
@@ -15,6 +15,12 @@ vi.mock('../../lib/supabase', async () => {
 vi.mock('../../components/mapa/MapaPuntos', () => ({
   MapaPuntos: () => <div>Mapa del árbol</div>,
 }));
+vi.mock('../../components/PlantationMap', () => ({
+  PlantationMap: () => <div>Mapa de la plantación</div>,
+}));
+
+/** El drill-down monta el dashboard entero antes de llegar a Datos. */
+const ESPERA_RUTA_MS = 5000;
 
 const FILA_PLANTACION = {
   id: 'plant-1',
@@ -117,9 +123,7 @@ function resolver(consulta: ConsultaCapturada): RespuestaMock {
 }
 
 beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
+  prepararSesionAdmin();
   consultas = capturarConsultas(resolver);
 });
 
@@ -234,33 +238,169 @@ describe('sección Árboles', () => {
     });
   });
 
+  test('el filtro de Grupo arranca deshabilitado y se puebla al elegir parcela', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    // Un grupo solo acota dentro de una parcela: sin parcela no hay qué listar.
+    const grupo = screen.getByLabelText('Grupo');
+    expect(grupo).toBeDisabled();
+
+    await usuario.selectOptions(screen.getByLabelText('Parcela'), 'parc-1');
+    await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeEnabled());
+    expect(
+      within(screen.getByLabelText('Grupo')).getByRole('option', { name: 'L1' }),
+    ).toBeInTheDocument();
+
+    await usuario.selectOptions(screen.getByLabelText('Grupo'), 'gr-1');
+    await screen.findByRole('cell', { name: 'A-001' });
+    expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
+      metodo: 'eq',
+      columna: 'group_id',
+      valor: 'gr-1',
+    });
+  });
+
+  test('llegar desde Grupos deja los dos selects con el scope heredado', async () => {
+    renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+    const grupo = screen.getByLabelText('Grupo');
+    expect(grupo).toBeEnabled();
+    expect(grupo).toHaveValue('gr-1');
+    // Los chips de scope los reemplazan estos dos selects.
+    expect(screen.queryByLabelText(/^Quitar /)).not.toBeInTheDocument();
+  });
+
+  test('una parcela de la URL que no existe se resetea a todas', async () => {
+    renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-fantasma');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    // Con la parcela fantasma el grupo quedaría habilitado y la tabla filtrada por ella.
+    await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeDisabled());
+    expect(consultasListaArboles().at(-1)?.filtros).not.toContainEqual(
+      expect.objectContaining({ columna: 'groups.parcela_id' }),
+    );
+  });
+
+  test('cambiar de parcela resetea el grupo', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.selectOptions(screen.getByLabelText('Parcela'), '');
+    await waitFor(() => expect(screen.getByLabelText('Grupo')).toHaveValue(''));
+    expect(consultasListaArboles().at(-1)?.filtros).not.toContainEqual(
+      expect.objectContaining({ columna: 'group_id' }),
+    );
+  });
+
+  test('"Con foto" excluye las fotos locales sin sincronizar', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.selectOptions(screen.getByLabelText('Foto'), 'con');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    // Mismo criterio que el ✓ de la columna: no basta con que no sea nulo.
+    const filtros = consultasListaArboles().at(-1)?.filtros;
+    expect(filtros).toContainEqual({
+      metodo: 'not',
+      columna: 'foto_url',
+      operador: 'is',
+      valor: null,
+    });
+    expect(filtros).toContainEqual({
+      metodo: 'not',
+      columna: 'foto_url',
+      operador: 'like',
+      valor: 'file://%',
+    });
+    expect(filtros).toContainEqual({
+      metodo: 'not',
+      columna: 'foto_url',
+      operador: 'like',
+      valor: 'content://%',
+    });
+  });
+
+  test('"Sin foto" incluye las nulas y las locales, en un solo OR', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    await usuario.selectOptions(screen.getByLabelText('Foto'), 'sin');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
+      metodo: 'or',
+      columna: '',
+      valor: 'foto_url.is.null,foto_url.like."file://%",foto_url.like."content://%"',
+    });
+  });
+
   test('la paginación pide el rango siguiente y muestra el estado', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
-    expect(screen.getByText('Página 1 de 3 · total 120 árboles')).toBeInTheDocument();
+    // El total y la página viven solo en el pie de la card: la toolbar ya no
+    // repite el recuento.
+    expect(screen.getByText(/Mostrando 1–50 de 120/)).toBeInTheDocument();
+    expect(screen.getByText('1 / 3')).toBeInTheDocument();
+    expect(screen.queryByText(/página 1 de 3/)).not.toBeInTheDocument();
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 0, hasta: 49 });
 
-    await usuario.click(screen.getByRole('button', { name: 'Siguiente' }));
+    await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
 
-    expect(await screen.findByText('Página 2 de 3 · total 120 árboles')).toBeInTheDocument();
+    expect(await screen.findByText(/Mostrando 51–100 de 120/)).toBeInTheDocument();
+    expect(screen.getByText('2 / 3')).toBeInTheDocument();
     expect(consultasListaArboles().at(-1)?.rango).toEqual({ desde: 50, hasta: 99 });
   });
 
-  test('al hacer click en una fila se abre el detalle con especie y coordenadas', async () => {
+  /** El detalle vive en un <aside> al costado de la tabla (el sidebar del shell
+   *  también es un aside: hay que nombrarlo). */
+  const PANEL_A001 = { name: 'Detalle del árbol A-001' };
+
+  test('al hacer click en una fila se abre el detalle al costado, con especie y coordenadas', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
     await usuario.click(filaDe('A-001'));
 
-    const dialogo = await screen.findByRole('dialog', { name: 'A-001' });
-    expect(within(dialogo).getByText('QB · Quebracho')).toBeInTheDocument();
-    expect(within(dialogo).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
-    expect(within(dialogo).getByText(/±5m/)).toBeInTheDocument();
+    const panel = await screen.findByRole('complementary', PANEL_A001);
+    expect(within(panel).getByText('QB · Quebracho')).toBeInTheDocument();
+    expect(within(panel).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
+    expect(within(panel).getByText(/±5m/)).toBeInTheDocument();
     // El mapa real está mockeado; basta su placeholder.
-    expect(within(dialogo).getByText('Mapa del árbol')).toBeInTheDocument();
+    expect(within(panel).getByText('Mapa del árbol')).toBeInTheDocument();
+    // La tabla sigue visible al lado: el detalle no la tapa.
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  test('con el panel abierto la tabla suelta las columnas que el panel repite', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1/datos/arboles');
+    await screen.findByRole('cell', { name: 'A-001' });
+
+    const encabezados = () =>
+      within(screen.getByRole('table'))
+        .getAllByRole('columnheader')
+        .map((celda) => celda.textContent);
+    expect(encabezados()).toEqual(expect.arrayContaining(['GPS', 'Registrado', 'Técnico']));
+
+    await usuario.click(filaDe('A-001'));
+    await screen.findByRole('complementary', PANEL_A001);
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['GPS']));
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['Registrado']));
+    expect(encabezados()).not.toEqual(expect.arrayContaining(['Técnico']));
+
+    await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001' }));
+    await waitFor(() => expect(encabezados()).toEqual(expect.arrayContaining(['GPS'])));
   });
 
   test('el detalle se cierra con la tecla ESC', async () => {
@@ -269,28 +409,59 @@ describe('sección Árboles', () => {
     await screen.findByRole('cell', { name: 'A-001' });
 
     await usuario.click(filaDe('A-001'));
-    await screen.findByRole('dialog', { name: 'A-001' });
+    await screen.findByRole('complementary', PANEL_A001);
 
     await usuario.keyboard('{Escape}');
     await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'A-001' })).not.toBeInTheDocument(),
+      expect(screen.queryByRole('complementary', PANEL_A001)).not.toBeInTheDocument(),
     );
   });
 
-  test('el detalle se cierra al hacer click en el overlay (fuera de la card)', async () => {
+  test('drill-down desde el dashboard: parcela y grupo se suman a los filtros de Árboles', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+    await usuario.click(
+      await screen.findByRole('link', { name: /Ver datos/ }, { timeout: ESPERA_RUTA_MS }),
+    );
+
+    await usuario.click(await screen.findByRole('cell', { name: 'Norte' }));
+    await screen.findByRole('cell', { name: 'Línea 1' });
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+
+    await usuario.click(filaDe('Línea 1'));
+    await screen.findByRole('cell', { name: 'A-001' });
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+    expect(screen.getByLabelText('Grupo')).toHaveValue('gr-1');
+
+    await usuario.selectOptions(screen.getByLabelText('Especie'), 'sp-1');
+    await waitFor(() =>
+      expect(consultasListaArboles().at(-1)?.filtros).toEqual(
+        expect.arrayContaining([
+          { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
+          { metodo: 'eq', columna: 'group_id', valor: 'gr-1' },
+          { metodo: 'eq', columna: 'species_id', valor: 'sp-1' },
+        ]),
+      ),
+    );
+
+    // Volver a Grupos por el selector conserva el scope de parcela.
+    await usuario.click(screen.getByRole('radio', { name: 'Grupos' }));
+    await screen.findByRole('cell', { name: 'Línea 1' });
+    expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
+  });
+
+  test('clickear otra fila cambia el panel en vez de cerrarlo', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
     await screen.findByRole('cell', { name: 'A-001' });
 
     await usuario.click(filaDe('A-001'));
-    const dialogo = await screen.findByRole('dialog', { name: 'A-001' });
-    // El overlay envuelve la card: un click ahí (no dentro del diálogo) cierra.
-    const overlay = dialogo.parentElement;
-    if (!overlay) throw new Error('El diálogo no tiene overlay contenedor');
-    await usuario.click(overlay);
+    await screen.findByRole('complementary', PANEL_A001);
 
-    await waitFor(() =>
-      expect(screen.queryByRole('dialog', { name: 'A-001' })).not.toBeInTheDocument(),
-    );
+    await usuario.click(filaDe('A-002'));
+    expect(
+      await screen.findByRole('complementary', { name: 'Detalle del árbol A-002' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('complementary', PANEL_A001)).not.toBeInTheDocument();
   });
 });

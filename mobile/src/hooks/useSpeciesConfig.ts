@@ -1,8 +1,5 @@
 /**
  * useSpeciesConfig — all data logic for ConfigureSpeciesScreen.
- *
- * Extracts species loading and toggle logic so the screen contains zero
- * direct db imports (CLAUDE.md rule 9).
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from './useConfirm';

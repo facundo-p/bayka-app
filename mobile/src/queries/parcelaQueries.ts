@@ -1,11 +1,4 @@
-/**
- * Query functions for parcela views and stats.
- * Reusable aggregations (CLAUDE.md §9 — no SQL in screens/hooks).
- *
- * ALL read paths filter `deletedAt IS NULL` by default (D-16-19). Sync
- * internals call ParcelaRepository.findById({ includeDeleted: true }) when
- * they need to surface tombstoned rows.
- */
+/** Query functions para vistas y stats de parcela. Todos los reads filtran deletedAt IS NULL; sync usa ParcelaRepository.findById({ includeDeleted: true }) para ver tombstones. */
 import { db } from '../database/client';
 import { parcelas, groups, trees } from '../database/schema';
 import { eq, and, asc, count, isNull, sql } from 'drizzle-orm';
@@ -33,7 +26,7 @@ export async function countGroupsByParcela(
   return rows.map((r) => ({ parcelaId: r.parcelaId, count: r.cnt }));
 }
 
-/** Count trees per parcela for one plantation (excluding tombstoned parcelas). */
+/** Count trees per parcela for one plantation (same tombstone exclusion as above). */
 export async function countTreesByParcela(
   plantacionId: string,
 ): Promise<Array<{ parcelaId: string; count: number }>> {
@@ -46,7 +39,7 @@ export async function countTreesByParcela(
   return rows.map((r) => ({ parcelaId: r.parcelaId, count: r.cnt }));
 }
 
-/** Count N/N (trees con especieId NULL) per parcela for one plantation. */
+/** Count N/N (especieId NULL) trees per parcela for one plantation. */
 export async function countNNByParcela(
   plantacionId: string,
 ): Promise<Array<{ parcelaId: string; count: number }>> {
@@ -63,13 +56,7 @@ export async function countNNByParcela(
   return rows.map((r) => ({ parcelaId: r.parcelaId, count: r.cnt }));
 }
 
-/**
- * Build parcela ids that have any pending child. Pending = group con
- * pending_sync=true, o árbol con foto LOCAL aún no subida al server.
- *
- * Un árbol sin foto en el server (foto_url=null) NO es pending — fotoSynced=false
- * en ese caso significa "no hay foto que sincronizar", no "foto pendiente".
- */
+/** Ids de parcela con algún hijo pendiente: group con pending_sync=true, o árbol con foto local sin subir. foto_url=null + fotoSynced=false NO es pending — significa "sin foto que sincronizar". */
 async function findParcelaIdsWithPendingChildren(plantacionId: string): Promise<Set<string>> {
   const groupRows = await db.select({ parcelaId: groups.parcelaId }).from(groups)
     .where(and(eq(groups.plantacionId, plantacionId), eq(groups.pendingSync, true)));
@@ -87,11 +74,7 @@ async function findParcelaIdsWithPendingChildren(plantacionId: string): Promise<
   return ids;
 }
 
-/**
- * Lists active parcelas with per-parcela aggregated stats (gruposCount,
- * treesCount, pendingSyncBelow). Ordered by createdAt ASC. Tombstoned parcelas
- * are excluded.
- */
+/** Parcelas activas con stats agregadas (gruposCount, treesCount, pendingSyncBelow), ordenadas por createdAt ASC; excluye tombstoned. */
 export async function listByPlantacionWithStats(
   plantacionId: string,
 ): Promise<ParcelaWithStats[]> {
@@ -114,10 +97,7 @@ export async function listByPlantacionWithStats(
   }));
 }
 
-/**
- * Stats for a single parcela. Returns null if the parcela is tombstoned or
- * missing.
- */
+/** Stats de una parcela; null si está tombstoned o no existe. */
 export async function getParcelaStats(parcelaId: string): Promise<ParcelaStats | null> {
   const [parcela] = await db.select({ id: parcelas.id, plantacionId: parcelas.plantacionId })
     .from(parcelas)

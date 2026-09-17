@@ -1,5 +1,4 @@
 // Tests for offline plantation functions in PlantationRepository
-// Covers: OFPL-01, OFPL-02, OFPL-03
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
@@ -46,8 +45,8 @@ describe('PlantationRepository — offline functions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default db.insert chain: values() se awaitea directo (plantación) o se
-    // encadena .onConflictDoNothing() (membresía local del creador, #67).
+    // values() se awaitea directo (plantación) o se encadena .onConflictDoNothing()
+    // (membresía local del creador, #67).
     (mockDb.insert as jest.Mock).mockReturnValue({
       values: jest.fn().mockReturnValue(
         Object.assign(Promise.resolve(undefined), {
@@ -56,19 +55,16 @@ describe('PlantationRepository — offline functions', () => {
       ),
     });
 
-    // Default db.delete chain
     (mockDb.delete as jest.Mock).mockReturnValue({
       where: jest.fn().mockResolvedValue(undefined),
     });
 
-    // Default db.update chain
     (mockDb.update as jest.Mock).mockReturnValue({
       set: jest.fn().mockReturnValue({
         where: jest.fn().mockResolvedValue(undefined),
       }),
     });
 
-    // Default db.select chain
     (mockDb.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
         where: jest.fn().mockResolvedValue([]),
@@ -127,20 +123,13 @@ describe('PlantationRepository — offline functions', () => {
     });
 
     it('Test 4 (OFPL-03): local FK constraint satisfied — subgroup can reference offline plantation', async () => {
-      // Simulates: createPlantationLocally inserts the plantation locally, then
-      // a Group insert with that plantationId succeeds because the row exists in local SQLite.
-      // In real SQLite this is enforced by the FK constraint. Here we test that:
-      // 1. createPlantationLocally returns a valid id
-      // 2. db.insert is called with that id (plantation row exists locally)
-      // 3. A subsequent db.insert for a subgroup with that plantationId would NOT throw
-      //    (no FK violation because the plantation row is in local SQLite with pendingSync=true)
+      // La plantación queda insertada localmente con pendingSync=true, así que un
+      // subgroup insert que la referencie no viola el FK constraint de SQLite.
 
       const plantation = await createPlantationLocally('Zona Sur', '2026', 'org-1', 'user-2');
 
-      // plantation.id is the local UUID that satisfies the FK
       expect(plantation.id).toBe('mock-uuid-123');
 
-      // Now simulate a subgroup insert referencing the offline plantation
       const subgroupInsertValues = {
         id: 'sg-uuid-1',
         plantacionId: plantation.id,
@@ -152,16 +141,11 @@ describe('PlantationRepository — offline functions', () => {
         createdAt: new Date().toISOString(),
       };
 
-      // The plantation row was inserted locally — subgroup can reference it without FK error
-      // (In tests we verify the plantation was inserted, not the FK enforcement itself
-      //  since we use mocks; the integration guarantee is that pendingSync=true plantation
-      //  rows are real SQLite rows that satisfy FK constraints)
       const insertResult = (mockDb.insert as jest.Mock).mock.results[0].value;
       expect(insertResult.values).toHaveBeenCalledWith(
         expect.objectContaining({ pendingSync: true })
       );
 
-      // Subgroup insert would succeed because plantation row exists locally
       await expect(
         Promise.resolve(mockDb.insert(null as any).values(subgroupInsertValues))
       ).resolves.not.toThrow();
@@ -179,10 +163,7 @@ describe('PlantationRepository — offline functions', () => {
 
       await saveSpeciesConfigLocally('plantation-1', items);
 
-      // Verify delete was called (replaces existing species)
       expect(mockDb.delete).toHaveBeenCalled();
-
-      // Verify insert was called with mapped items
       expect(mockDb.insert).toHaveBeenCalled();
       const insertResult = (mockDb.insert as jest.Mock).mock.results[0].value;
       expect(insertResult.values).toHaveBeenCalledWith(
@@ -196,13 +177,8 @@ describe('PlantationRepository — offline functions', () => {
     it('Test 6: with empty items — calls delete but NOT insert, still calls notifyDataChanged', async () => {
       await saveSpeciesConfigLocally('plantation-1', []);
 
-      // Delete should still be called to clear existing species
       expect(mockDb.delete).toHaveBeenCalled();
-
-      // Insert should NOT be called (no items to insert)
       expect(mockDb.insert).not.toHaveBeenCalled();
-
-      // notifyDataChanged still called
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
 
@@ -212,7 +188,6 @@ describe('PlantationRepository — offline functions', () => {
 
       await saveSpeciesConfigLocally('plantation-1', items);
 
-      // Supabase should not be touched
       expect(supabase.from).not.toHaveBeenCalled();
     });
 

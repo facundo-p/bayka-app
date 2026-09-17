@@ -25,31 +25,32 @@ function capturarConsultas(responder: () => RespuestaMock): ConsultaCapturada[] 
 }
 
 describe('asignarUsuario', () => {
-  test('inserta la asignación con plantación, usuario y rol', async () => {
+  test('inserta la asignación siempre como técnico', async () => {
     const consultas = capturarConsultas(() => ({ data: null }));
-    await asignarUsuario('plant-1', 'user-2', 'admin');
+    await asignarUsuario('plant-1', 'user-2');
 
     expect(consultas[0].tabla).toBe('plantation_users');
     expect(consultas[0].operacion).toBe('insert');
     expect(consultas[0].payload).toEqual({
       plantation_id: 'plant-1',
       user_id: 'user-2',
-      rol_en_plantacion: 'admin',
+      rol_en_plantacion: 'tecnico',
     });
   });
 
   test('duplicado (unique_violation) lanza el mensaje para el usuario', async () => {
     capturarConsultas(() => ({
-      error: { message: 'duplicate key value violates unique constraint', code: PG_ERROR.UNIQUE_VIOLATION },
+      error: {
+        message: 'duplicate key value violates unique constraint',
+        code: PG_ERROR.UNIQUE_VIOLATION,
+      },
     }));
-    await expect(asignarUsuario('plant-1', 'user-2', 'tecnico')).rejects.toThrow(
-      MENSAJE_USUARIO_YA_ASIGNADO,
-    );
+    await expect(asignarUsuario('plant-1', 'user-2')).rejects.toThrow(MENSAJE_USUARIO_YA_ASIGNADO);
   });
 
   test('otros errores propagan el mensaje original', async () => {
     capturarConsultas(() => ({ error: { message: 'sin permisos' } }));
-    await expect(asignarUsuario('plant-1', 'user-2', 'tecnico')).rejects.toThrow('sin permisos');
+    await expect(asignarUsuario('plant-1', 'user-2')).rejects.toThrow('sin permisos');
   });
 });
 

@@ -1,0 +1,35 @@
+/* Ancla de la lupa, que va dentro del campo. */
+.campo {
+  position: relative;
+  /* Sin grow: el ancho es predecible y sobra lugar para los filtros. Cede
+     antes que ellos porque un buscador angosto sigue siendo usable y un
+     select recortado no. */
+  flex: 0 1 var(--ancho-buscador);
+  min-width: var(--ancho-buscador-min);
+  max-width: 100%;
+}
+
+/* Comparte renglón con otros cinco filtros y con el selector de sección: al
+   ancho normal empujaría un envolvimiento más arriba de 1440. */
+.compacta {
+  flex-basis: var(--ancho-buscador-compacto);
+}
+
+.icono {
+  position: absolute;
+  top: 50%;
+  left: var(--space-xl);
+  transform: translateY(-50%);
+  color: var(--color-text-faint);
+  pointer-events: none;
+}
+
+/*
+ * Anidado a propósito: el padding izquierdo es el hueco de la lupa, y la
+ * declaración tiene que ganarle a la de `FormField.control`, que es de la
+ * misma especificidad y se inyecta después por ser otro módulo. Con `.input`
+ * suelto la lupa termina dibujada encima de la primera letra.
+ */
+.campo .input {
+  padding-left: var(--space-5xl);
+}

@@ -1,10 +1,7 @@
 /**
- * PhotoViewer — visor de fotos full-screen con zoom (pinch / pan / doble-tap).
- * Componente único reutilizado en toda la app donde se visualiza una foto:
- * resolución de N/N, detalle de árbol y registro de árboles.
- *
- * Acciones opcionales (`onReplace`/`onRemove`): si se pasan, muestra una barra
- * inferior para reemplazar/eliminar la foto (modo edición). Si no, es solo lectura.
+ * PhotoViewer — visor full-screen con zoom (pinch/pan/doble-tap), reutilizado
+ * donde se visualiza una foto (N/N, detalle de árbol, registro de árboles).
+ * `onReplace`/`onRemove` opcionales agregan una barra de edición; si no, es solo lectura.
  */
 import { Modal, View, Text, Pressable } from 'react-native';
 import Animated, {

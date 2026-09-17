@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { SpeciesChecklist } from '../SpeciesChecklist';
+import { MaestroEspecies, SpeciesChecklist } from '../SpeciesChecklist';
+import type { EstadoMaestro } from '../../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../../queries/especieQueries';
 
 const CATALOGO: EspecieCatalogo[] = [
@@ -10,34 +11,33 @@ const CATALOGO: EspecieCatalogo[] = [
 ];
 
 function renderChecklist(overrides?: {
+  catalogo?: EspecieCatalogo[];
   habilitadas?: Set<string>;
   bloqueadas?: Set<string>;
   busqueda?: string;
-  estadoMaestro?: 'todas' | 'ninguna' | 'parcial';
   onToggle?: (id: string, habilitar: boolean) => void;
-  onMaestro?: () => void;
 }) {
   const onToggle = overrides?.onToggle ?? vi.fn();
   render(
     <SpeciesChecklist
-      catalogo={CATALOGO}
+      catalogo={overrides?.catalogo ?? CATALOGO}
       habilitadas={overrides?.habilitadas ?? new Set(['sp-1'])}
       bloqueadas={overrides?.bloqueadas}
       onToggle={onToggle}
-      estadoMaestro={overrides?.estadoMaestro ?? 'parcial'}
-      onMaestro={overrides?.onMaestro ?? vi.fn()}
       busqueda={overrides?.busqueda ?? ''}
-      onBuscar={vi.fn()}
     />,
   );
   return onToggle;
 }
 
-test('marca las habilitadas y muestra el nombre científico en itálica', () => {
+test('marca las habilitadas y deja el nombre científico en el title', () => {
   renderChecklist();
   expect(screen.getByRole('checkbox', { name: 'Algarrobo' })).toBeChecked();
   expect(screen.getByRole('checkbox', { name: 'Ceibo' })).not.toBeChecked();
-  expect(screen.getByText('Schinopsis balansae')).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Ceibo' })).toHaveAttribute(
+    'title',
+    'Erythrina crista-galli',
+  );
 });
 
 test('togglear una especie no habilitada llama onToggle con habilitar=true', async () => {
@@ -62,6 +62,9 @@ test('una especie bloqueada está deshabilitada y no dispara onToggle', async ()
   });
   const checkbox = screen.getByRole('checkbox', { name: 'Algarrobo' });
   expect(checkbox).toBeDisabled();
+  expect(checkbox).toHaveAttribute('title', 'Tiene árboles registrados');
+  // La marca visible dice por qué no se puede desmarcar.
+  expect(screen.getByText('con árboles')).toBeInTheDocument();
   await usuario.click(checkbox);
   expect(onToggle).not.toHaveBeenCalled();
 });
@@ -80,68 +83,36 @@ test('con catálogo no vacío pero búsqueda sin coincidencias muestra el "sin r
 });
 
 test('con catálogo vacío no muestra el "sin resultados" (solo lista vacía)', () => {
-  render(
-    <SpeciesChecklist
-      catalogo={[]}
-      habilitadas={new Set()}
-      onToggle={vi.fn()}
-      estadoMaestro="ninguna"
-      onMaestro={vi.fn()}
-      busqueda=""
-      onBuscar={vi.fn()}
-    />,
-  );
+  renderChecklist({ catalogo: [], habilitadas: new Set() });
   expect(screen.queryByText('Ninguna especie coincide con la búsqueda')).not.toBeInTheDocument();
 });
 
-test('el maestro refleja el tri-estado con aria-checked (mixed/true/false)', () => {
-  const { rerender } = render(
-    <SpeciesChecklist
-      catalogo={CATALOGO}
-      habilitadas={new Set(['sp-1'])}
-      onToggle={vi.fn()}
-      estadoMaestro="parcial"
-      onMaestro={vi.fn()}
-      busqueda=""
-      onBuscar={vi.fn()}
-    />,
+function renderMaestro(estado: EstadoMaestro, deshabilitado = false, onMaestro = vi.fn()) {
+  const utilidades = render(
+    <MaestroEspecies estado={estado} deshabilitado={deshabilitado} onMaestro={onMaestro} />,
   );
-  const maestro = () => screen.getByRole('checkbox', { name: 'Todas las especies' });
+  return { ...utilidades, onMaestro };
+}
+
+test('el maestro refleja el tri-estado con aria-checked (mixed/true/false)', () => {
+  const { rerender } = renderMaestro('parcial');
+  const maestro = () => screen.getByRole('checkbox', { name: 'Marcar todas' });
   expect(maestro()).toHaveAttribute('aria-checked', 'mixed');
 
-  const props = {
-    catalogo: CATALOGO,
-    habilitadas: new Set(['sp-1']),
-    onToggle: vi.fn(),
-    onMaestro: vi.fn(),
-    busqueda: '',
-    onBuscar: vi.fn(),
-  };
-  rerender(<SpeciesChecklist {...props} estadoMaestro="todas" />);
+  rerender(<MaestroEspecies estado="todas" deshabilitado={false} onMaestro={vi.fn()} />);
   expect(maestro()).toHaveAttribute('aria-checked', 'true');
-  rerender(<SpeciesChecklist {...props} estadoMaestro="ninguna" />);
+  rerender(<MaestroEspecies estado="ninguna" deshabilitado={false} onMaestro={vi.fn()} />);
   expect(maestro()).toHaveAttribute('aria-checked', 'false');
 });
 
 test('el maestro llama onMaestro al hacer click', async () => {
   const usuario = userEvent.setup();
-  const onMaestro = vi.fn();
-  renderChecklist({ onMaestro });
-  await usuario.click(screen.getByRole('checkbox', { name: 'Todas las especies' }));
+  const { onMaestro } = renderMaestro('parcial');
+  await usuario.click(screen.getByRole('checkbox', { name: 'Marcar todas' }));
   expect(onMaestro).toHaveBeenCalledTimes(1);
 });
 
-test('el maestro queda deshabilitado con el catálogo vacío', () => {
-  render(
-    <SpeciesChecklist
-      catalogo={[]}
-      habilitadas={new Set()}
-      onToggle={vi.fn()}
-      estadoMaestro="ninguna"
-      onMaestro={vi.fn()}
-      busqueda=""
-      onBuscar={vi.fn()}
-    />,
-  );
-  expect(screen.getByRole('checkbox', { name: 'Todas las especies' })).toBeDisabled();
+test('el maestro queda deshabilitado cuando no hay filas visibles', () => {
+  renderMaestro('ninguna', true);
+  expect(screen.getByRole('checkbox', { name: 'Marcar todas' })).toBeDisabled();
 });

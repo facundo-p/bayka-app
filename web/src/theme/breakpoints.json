@@ -1,0 +1,11 @@
+{
+  "ancho": {
+    "notebook": 1400,
+    "compacta": 1200,
+    "tablet": 900,
+    "movil": 600
+  },
+  "alto": {
+    "ventanaBaja": 760
+  }
+}

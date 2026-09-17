@@ -1,10 +1,6 @@
 // TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
-// See .planning/phases/16-code-layer-rename-parcelas-data-sync/deferred-items.md
-// Tests for cross-device sync scenarios found during Plant 3 testing.
-// Covers: file:// path rejection on pull, fotoSynced skip logic in upload,
-// cross-device N/N resolution, getSyncableGroups with sincronizada state,
-// and full foto_url lifecycle across devices.
-//
+// Cross-device sync tests: file:// rejection on pull, fotoSynced skip on upload,
+// N/N resolution across devices, getSyncableGroups with sincronizada state, foto_url lifecycle.
 // These tests MUST FAIL with current code and PASS after fixes.
 
 jest.mock('../../src/supabase/client', () => ({
@@ -294,19 +290,16 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         remoteTrees: [remoteTree],
       });
 
-      // Act
       await pullFromServer('plantation-1');
 
-      // Assert: the tree insert should have fotoUrl=null (not the file:// path)
-      // because file:// from another device is meaningless on this device.
+      // Assert: fotoUrl must be null — file:// from another device is meaningless here.
       const treeCalls = insertValuesSpy.mock.calls;
       const treeInsertCall = treeCalls.find((call: any[]) =>
         call[0]?.id === 'tree-1'
       );
 
       expect(treeInsertCall).toBeDefined();
-      // BUG: Current code stores file:// as fotoUrl directly from server.
-      // Fix: pullFromServer should set fotoUrl=null when foto_url starts with file://
+      // BUG: server file:// must map to fotoUrl=null (fix in pullFromServer).
       expect(treeInsertCall![0].fotoUrl).toBeNull();
     });
 
@@ -339,7 +332,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         remoteTrees: [remoteTree],
       });
 
-      // Act
       await pullFromServer('plantation-1');
 
       // Assert: storage path is preserved as-is
@@ -380,7 +372,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         remoteTrees: [remoteTree],
       });
 
-      // Act
       await pullFromServer('plantation-1');
 
       // Assert: null stays null
@@ -406,21 +397,18 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // Act
       await uploadGroup(sg, [tree]);
 
-      // Assert: uploadPhotoToStorage should NOT be called (no storage.from('tree-photos').upload)
-      // because the photo is already synced
+      // Assert: uploadPhotoToStorage must NOT be called — the photo is already synced.
       const storageFromCalls = (mockSupabase.storage.from as jest.Mock).mock.calls;
       expect(storageFromCalls).toHaveLength(0);
 
-      // The RPC should still be called — but foto_url should NOT be the file:// path
+      // RPC is still called, but foto_url must not be the file:// path.
       expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);
       const rpcPayload = (mockSupabase.rpc as jest.Mock).mock.calls[0][1];
       const treeInPayload = rpcPayload.p_trees[0];
 
-      // Since fotoSynced=true but fotoUrl is file://, the payload should use null
-      // (file:// paths must never reach the server)
+      // fotoSynced=true + fotoUrl file:// → payload must send null (file:// must never reach the server).
       expect(treeInPayload.foto_url === null || !treeInPayload.foto_url.startsWith('file://')).toBe(true);
     });
 
@@ -434,7 +422,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // Act
       await uploadGroup(sg, [tree]);
 
       // Assert: uploadPhotoToStorage IS called
@@ -502,7 +489,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // Act
       await uploadGroup(sg, [resolvedTree]);
 
       // Assert: RPC payload has species_id='species-xyz', sub_id regenerated
@@ -513,8 +499,8 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
 
     it('device B no re-sube foto de árbol descargado al resolver N/N', async () => {
-      // Arrange: tree was downloaded (fotoUrl=file://, fotoSynced=true), then N/N resolved
-      // resolveNNTree only changes especieId and subId — NOT fotoUrl or fotoSynced
+      // Arrange: tree was downloaded (fotoUrl=file://, fotoSynced=true), then N/N resolved.
+      // resolveNNTree only changes especieId and subId — not fotoUrl or fotoSynced.
       const sg = makeSg('sg-1', {
         estado: 'sincronizada',
         pendingSync: true,
@@ -528,7 +514,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // Act
       await uploadGroup(sg, [downloadedAndResolvedTree]);
 
       // Assert: photo should NOT be re-uploaded because fotoSynced=true
@@ -561,7 +546,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         }),
       });
 
-      // Act
       const results = await syncPlantation('plantation-1');
 
       // Assert: syncPlantation processes the sincronizada subgroup
@@ -573,13 +557,8 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
 
     it('subgrupo activa con pendingSync=true NO es retornado por getSyncableGroups', async () => {
-      // Arrange: getSyncableGroups filters by pendingSync=true only,
-      // but activa groups should NOT appear because they haven't been finalized.
-      // The mock simulates the expected behavior: getSyncableGroups returns
-      // only groups with pendingSync=true (both finalizada and sincronizada).
-      // An activa subgroup with pendingSync=true WOULD be returned by the query
-      // since getSyncableGroups doesn't filter by estado — this is correct
-      // because the sync service handles whatever it receives.
+      // Arrange: getSyncableGroups only filters by pendingSync, not estado — an "activa"
+      // subgroup with pendingSync=true is still returned; the service processes whatever it gets.
       const activaSg = makeSg('sg-activa', {
         estado: 'activa',
         pendingSync: true,
@@ -589,7 +568,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         pendingSync: true,
       });
 
-      // Simulating getSyncableGroups returning both (it only filters by pendingSync)
       mockGetSyncableGroups.mockResolvedValue([activaSg, finalizadaSg]);
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
@@ -599,7 +577,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         }),
       });
 
-      // Act
       const results = await syncPlantation('plantation-1');
 
       // Assert: both are processed (service doesn't filter, repo does)
@@ -621,7 +598,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // Act
       await uploadGroup(sg, [tree]);
 
       // Assert: photo uploaded to storage
@@ -671,7 +647,6 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
       });
       (mockDb.update as jest.Mock).mockReturnValue({ set: setMock });
 
-      // Act
       const result = await downloadPhotosForPlantation('plantation-1');
 
       // Assert: photo downloaded
@@ -694,11 +669,8 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
 
     it('Device B: resolver N/N no toca fotoUrl ni fotoSynced', async () => {
-      // This test verifies the contract of resolveNNTree at the service level.
-      // resolveNNTree only updates especieId and subId.
-      // After resolution, the tree should still have the same fotoUrl and fotoSynced.
-
-      // Arrange: tree downloaded, then N/N resolved
+      // Verifies resolveNNTree's contract: it only updates especieId/subId,
+      // leaving fotoUrl and fotoSynced untouched.
       const sg = makeSg('sg-1', {
         estado: 'sincronizada',
         pendingSync: true,
@@ -730,11 +702,9 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
 
     it('Device B: re-sync después de resolver N/N preserva foto_url en servidor', async () => {
-      // Arrange: tree was downloaded (fotoSynced=true), resolved N/N, re-syncing
-      // The tree's fotoUrl is file:// (local), fotoSynced=true
-      // Since fotoSynced=true, photo is NOT re-uploaded
-      // The RPC payload should send null for foto_url (file:// can't go to server)
-      // The server's COALESCE should preserve the existing foto_url
+      // Arrange: tree downloaded (fotoSynced=true, fotoUrl file://) then N/N-resolved, now re-syncing.
+      // Since fotoSynced=true the photo isn't re-uploaded, so the RPC payload's foto_url must be
+      // null (file:// can't go to the server) — the server's COALESCE keeps the existing value.
       const sg = makeSg('sg-1', {
         estado: 'sincronizada',
         pendingSync: true,
@@ -748,17 +718,14 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // Act
       await uploadGroup(sg, [tree]);
 
-      // Assert: RPC called — foto_url in payload should be null (not file://)
-      // because the photo is already on the server and file:// must never leak
+      // Assert: foto_url in the payload must be null — the photo is already on the
+      // server and file:// must never leak.
       const rpcPayload = (mockSupabase.rpc as jest.Mock).mock.calls[0][1];
       const treePayload = rpcPayload.p_trees[0];
 
-      // BUG: Current code sends file:// to server when fotoSynced=true but fotoUrl is file://
-      // Fix: uploadGroup should map file:// + fotoSynced=true → null in payload
-      // (server COALESCE preserves existing value when null is sent)
+      // BUG: fotoSynced=true + fotoUrl file:// must map to null in payload (uploadGroup fix).
       expect(treePayload.foto_url).toBeNull();
       expect(treePayload.foto_url === null || !treePayload.foto_url.startsWith('file://')).toBe(true);
     });
@@ -768,9 +735,8 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
   describe('Pull no sobreescribe especieId resuelto localmente', () => {
     it('pull no sobreescribe especieId resuelto localmente cuando servidor tiene null', async () => {
-      // Scenario: Device B resolved N/N (local especieId='species-resolved'),
-      // but server still has species_id=null (not yet synced).
-      // Pull must NOT overwrite local especieId to null.
+      // Scenario: local especieId is resolved but the server still has species_id=null
+      // (not yet synced) — pull must not overwrite it to null.
       const remoteSg = {
         id: 'sg-1',
         plantation_id: 'plantation-1',
@@ -796,29 +762,25 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
       const { onConflictSpy } = setupPullMocks({
         remoteGroups: [remoteSg],
         remoteTrees: [remoteTree],
-        // Conflict detection: server species_id is null, so the if(t.species_id)
-        // block is skipped entirely. The upsert runs with onConflictDoUpdate.
+        // species_id is null, so the if(t.species_id) conflict check is skipped
+        // and the upsert runs with onConflictDoUpdate.
       });
 
       await pullFromServer('plantation-1');
 
-      // The onConflictDoUpdate set clause should use CASE WHEN to preserve
-      // local especieId when it's not null. We verify the SQL contains the
-      // CASE WHEN pattern rather than a blind overwrite.
+      // onConflictDoUpdate's set clause uses CASE WHEN to preserve a non-null
+      // local especieId rather than blindly overwriting it.
       expect(onConflictSpy).toHaveBeenCalled();
       const onConflictArg = onConflictSpy.mock.calls.find((call: any[]) =>
         call[0]?.target?.name === 'id' || call[0]?.set?.especieId
       );
-      // The key assertion: onConflictDoUpdate was called (tree was upserted,
-      // not skipped), which means the CASE WHEN SQL in the set clause is what
-      // protects the local value.
+      // Called (tree upserted, not skipped) is what confirms the CASE WHEN protects the local value.
       expect(onConflictSpy.mock.calls.length).toBeGreaterThan(0);
     });
 
     it('pull preserva fotoUrl file:// local y no la reemplaza con storage path', async () => {
-      // Scenario: Device B downloaded photos (fotoUrl=file://...), then pull
-      // runs again. The CASE WHEN in onConflictDoUpdate should preserve
-      // the local file:// path instead of overwriting with the server storage path.
+      // Scenario: photos already downloaded (fotoUrl=file://...), pull runs again —
+      // CASE WHEN in onConflictDoUpdate must keep the local file:// path over the server's storage path.
       const remoteSg = {
         id: 'sg-1',
         plantation_id: 'plantation-1',
@@ -850,19 +812,14 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       await pullFromServer('plantation-1');
 
-      // Verify upsert was called (not skipped by conflict detection)
+      // Upsert must run (not skipped by conflict detection); the CASE WHEN SQL that
+      // preserves file:// locally is validated at the integration level.
       expect(onConflictSpy).toHaveBeenCalled();
-      // The CASE WHEN in the SQL preserves file:// locally — this test
-      // validates the upsert runs (the SQL logic is tested at integration level)
     });
 
     it('resolución de N/N sobrevive el ciclo pull-then-push', async () => {
-      // Full cycle test:
-      // 1. Local tree has especieId='species-resolved' (user resolved N/N)
-      // 2. Pull runs: server has species_id=null → CASE WHEN preserves local
-      // 3. Push runs: sends especieId='species-resolved' to server
-      //
-      // Step 1+2: Pull phase
+      // Full cycle: local especieId resolved via N/N → pull preserves it (server has
+      // null) → push sends the resolved especieId. Step 1+2: pull phase.
       const remoteSg = {
         id: 'sg-cycle',
         plantation_id: 'plantation-1',
@@ -918,8 +875,8 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
     });
 
     it('pull detecta conflicto cuando servidor y local tienen especieId diferentes (no null)', async () => {
-      // Both server and local have non-null but different species.
-      // Conflict detection (lines 489-501) should fire → skip upsert, set conflict markers.
+      // Server and local have different non-null species — conflict detection must
+      // fire, skipping the upsert and setting conflict markers.
       const remoteSg = {
         id: 'sg-conflict',
         plantation_id: 'plantation-1',
@@ -949,17 +906,13 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
         localTreeLookup: [{ especieId: 'species-local' }], // Different from server
       });
 
-      // Mock species lookup for conflict marker
+      // db.select call order: 1) plantation metadata, 2) subgroup insert (setupPullMocks),
+      // 3) conflict detection lookup, 4) species name lookup for the conflict marker.
       const selectMock = mockDb.select as jest.Mock;
-      // First call: plantation metadata (pendingEdit check)
-      // Second call: subgroup insert (handled by setupPullMocks)
-      // Third call: conflict detection — local tree lookup (returns different species)
-      // Fourth call: species name lookup for conflict marker
       const originalSelect = selectMock.getMockImplementation();
       let callCount = 0;
       selectMock.mockImplementation((...args: any[]) => {
         callCount++;
-        // Species name lookup for conflict marker
         if (callCount > 2) {
           return {
             from: jest.fn().mockReturnValue({
@@ -984,10 +937,9 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       await pullFromServer('plantation-1');
 
-      // Conflict detected → db.update should be called with conflict markers
+      // Conflict detected → db.update called with conflict markers; the conflicted
+      // tree's insert is skipped (conflict detection moves on to the next tree).
       expect(mockDb.update).toHaveBeenCalled();
-      // The tree insert should NOT include the conflicted tree
-      // (conflict detection continues to next tree, skipping the upsert)
     });
   });
 });

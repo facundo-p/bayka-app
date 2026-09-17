@@ -1,70 +1,56 @@
-/* Bloque de título del detalle. */
-.titulo {
-  padding: var(--space-5xl) var(--page-pad-x) 0;
-}
+/* ─── Acciones: tabs + editar + exportar ─────────────────────────────── */
 
-/* Chip de estado + nombre + Editar, todo en la misma línea. */
-.encabezadoFila {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2xl);
-  flex-wrap: wrap;
-}
-
-.lugar {
-  margin: 0;
-  font-size: var(--text-page-title);
-  color: var(--color-text-heading);
-  line-height: 1.1;
-}
-
-.editar {
+.acciones {
+  /* Ancla del mensaje de descarga, que cuelga fuera de la barra. */
+  position: relative;
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-sm);
-  margin-left: auto;
-  padding: var(--space-sm) var(--space-lg);
-  background: none;
-  border: var(--border-thin) solid var(--color-border-strong);
+  justify-content: flex-end;
+  gap: var(--space-md);
+  max-width: 100%;
+}
+
+/* "Sin puntos GPS" / "sin árboles": cuelga bajo el botón para no ensanchar la barra. */
+.mensajeAccion {
+  position: absolute;
+  top: calc(100% + var(--space-md));
+  right: 0;
+  z-index: var(--z-flotante);
+  max-width: 320px;
+  padding: var(--space-md) var(--space-xl);
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border);
   border-radius: var(--radius-control);
-  font-family: var(--font-body);
+  box-shadow: var(--shadow-card);
   font-size: var(--text-md);
   color: var(--color-text-secondary);
-  cursor: pointer;
 }
 
-.editar:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-heading);
-}
+/* ─── Contenido de cada tab (Outlet) ─────────────────────────────────── */
 
-.meta {
-  margin: var(--space-md) 0 0;
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
-}
-
-/* Contenedor de las tabs: poco aire arriba, borde inferior, baja densidad. */
-.tabs {
-  margin-top: var(--space-3xl);
-  padding: 0 var(--page-pad-x);
-}
-
-/* Contenido de cada tab (Outlet). */
 .contenido {
-  padding: 0 var(--page-pad-x);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
 
-/* Acciones de la topbar: botones alineados + mensaje inline (sin puntos GPS). */
-.acciones {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-lg);
+/* Apiladas, las tabs no entran en la ventana y `.shell` recorta lo que sobra
+   —los pies de las últimas cards quedaban fuera de alcance—. El scroll vive
+   acá, no en cada tab, y la barra de arriba queda fija. */
+@media (max-width: 1200px) {
+  .contenido {
+    overflow-y: auto;
+  }
 }
 
-.mensajeAccion {
-  font-size: var(--text-md);
-  color: var(--color-text-muted);
+/* Acá vuelve el scroll de documento (AppLayout) y este contenedor sobra. */
+@media (max-width: 900px) {
+  .contenido {
+    overflow-y: visible;
+  }
 }
 
 .volver {

@@ -14,6 +14,12 @@ intuitiva
 
 Estas guías deben respetarse durante el desarrollo.
 
+> **Alcance: la app de campo (`mobile/`).** Todo lo que sigue está escrito para
+> el uso en plantación —guantes, sol, poco tiempo— y para React Native. Para la
+> web de gestión, el criterio responsive y los patrones de layout están en
+> [responsive-web.md](./responsive-web.md); §19 (tareas atómicas), §15
+> (acciones irreversibles) y §20 (creación de entidades) sí aplican a las dos.
+
 ---
 
 # 1. Contexto de Uso

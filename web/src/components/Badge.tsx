@@ -3,12 +3,12 @@ import { cx } from '../lib/classNames';
 import type { EstadoPlantacion } from '../queries/plantationQueries';
 import styles from './Badge.module.css';
 
-/* Estados de dominio en español (activa/finalizada/pendiente) + roles + genéricos.
- * Los valores de estado se derivan de EstadoPlantacion (fuente única). */
+/* Estados de dominio (activa/finalizada/pendiente) + roles + genéricos; se derivan de EstadoPlantacion. */
 type BadgeVariant =
   | EstadoPlantacion
   | 'pendiente'
   | 'warning'
+  | 'aviso'
   | 'neutral'
   | 'superadmin'
   | 'admin'
@@ -16,7 +16,7 @@ type BadgeVariant =
 
 interface BadgeProps {
   variant?: BadgeVariant;
-  /** Punto de color a la izquierda (pills de estado del rediseño). */
+  /** Punto de color a la izquierda (para pills de estado). */
   dot?: boolean;
   children: ReactNode;
 }

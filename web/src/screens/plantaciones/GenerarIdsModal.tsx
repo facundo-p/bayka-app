@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, Input, Modal } from '../../components';
+import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import { generarIds, seedSugerido } from '../../queries/idsQueries';
-import styles from './GenerarIdsModal.module.css';
+import styles from '../../components/Formulario.module.css';
 
 const MENSAJE_SEED_INVALIDO = 'Ingresá un número entero mayor a 0.';
 const ADVERTENCIA_IRREVERSIBLE = 'Esta acción no se puede deshacer.';
@@ -13,13 +14,16 @@ function useGenerarIds(plantationId: string, onClose: () => void) {
   const queryClient = useQueryClient();
   const [seedEditado, setSeedEditado] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { data: sugerido } = useQuery({ queryKey: ['seed-sugerido'], queryFn: seedSugerido });
+  const { data: sugerido } = useQuery({
+    queryKey: CLAVE_QUERY.seedSugerido(),
+    queryFn: seedSugerido,
+  });
   const seed = seedEditado ?? (sugerido != null ? String(sugerido) : '');
 
   const mutacion = useMutation({
     mutationFn: (seedElegido: number) => generarIds(plantationId, seedElegido),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['ids-generados', plantationId] });
+      await queryClient.invalidateQueries({ queryKey: CLAVE_QUERY.idsGenerados(plantationId) });
       onClose();
     },
     onError: (errorRpc: Error) => setError(errorRpc.message),
@@ -37,8 +41,8 @@ function useGenerarIds(plantationId: string, onClose: () => void) {
 
 /**
  * Confirmación de generación de IDs finales (issue #232): seed sugerido
- * (MAX global + 1) editable, advertencia de irreversibilidad (guía UX §15) y
- * ejecución del RPC transaccional server-side.
+ * (MAX global + 1) editable, advertencia de irreversibilidad y ejecución
+ * del RPC transaccional server-side.
  */
 export function GenerarIdsModal({
   plantationId,

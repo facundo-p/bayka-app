@@ -46,9 +46,8 @@ beforeEach(async () => {
 });
 
 /**
- * Replicates the exact deletePlantationLocally logic from PlantationRepository.ts
- * Uses sqlite.transaction() (synchronous) — same atomicity as db.transaction()
- * but compatible with the better-sqlite3 synchronous API.
+ * Replicates deletePlantationLocally from PlantationRepository.ts using
+ * sqlite.transaction() (synchronous) for atomicity, compatible with better-sqlite3.
  */
 function deletePlantationLocally(plantacionId: string): void {
   const deleteTrees = sqlite.prepare(
@@ -109,7 +108,6 @@ describe('Cascade delete', () => {
   test('deletePlantationLocally removes plantation_species and plantation_users rows', async () => {
     const plantation = createTestPlantation();
     await db.insert(plantations).values(plantation);
-    // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
     await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
     const sp = createTestSpecies({ codigo: 'EUC' });
@@ -146,7 +144,6 @@ describe('Cascade delete', () => {
   test('after delete, no orphan records remain for any related table', async () => {
     const plantation = createTestPlantation();
     await db.insert(plantations).values(plantation);
-    // #90: parcela obligatoria — los groups de la factory referencian 'parcela-default'.
     await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: plantation.id }));
 
     const sp = createTestSpecies({ codigo: 'PIN' });
@@ -171,7 +168,6 @@ describe('Cascade delete', () => {
 
     deletePlantationLocally(plantation.id);
 
-    // Verify no orphan records in any related table
     const [treeResult] = await db.select({ cnt: count() }).from(trees);
     expect(treeResult.cnt).toBe(0);
 

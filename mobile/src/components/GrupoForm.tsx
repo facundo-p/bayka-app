@@ -24,10 +24,10 @@ interface Props {
 }
 
 /**
- * Formulario de grupo con botonera inline (bottom-sheet de edición de grupo).
- * Para la creación, NuevoGrupoScreen compone useGrupoForm + GrupoFields con la
- * botonera en un footer fijo (KeyboardAwareFormBody), para que "Crear grupo" no
- * quede tapado por el teclado (#89). Ambos comparten estado vía useGrupoForm.
+ * Formulario de grupo con botonera inline (bottom-sheet de edición). Para la
+ * creación, NuevoGrupoScreen compone useGrupoForm + GrupoFields con la
+ * botonera en un footer fijo para que "Crear grupo" no quede tapado por el
+ * teclado (#89). Ambos comparten estado vía useGrupoForm.
  */
 export default function GrupoForm({ mode, initialValues, onSubmit, onCancel, lastGroupName }: Props) {
   const form = useGrupoForm({ mode, initialValues, onSubmit });

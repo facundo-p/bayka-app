@@ -34,10 +34,8 @@ export default function NuevoGrupoScreen() {
 
   if (!parcelaId) return null;
 
-  // Mismo template full-screen que Parcela/Plantación (#89): header verde con X,
-  // cuerpo keyboard-aware y footer fijo con Cancelar + Crear. Al ser un Modal
-  // tapa el tab bar (sin gap extra). El back del SO cierra (router.back) igual
-  // que la flecha/X y el botón Cancelar.
+  // Mismo patrón que Parcela/Plantación (#89): modal full-screen, teclado-aware;
+  // el back del SO cierra igual que la X/Cancelar.
   return (
     <EntityFormModal
       visible

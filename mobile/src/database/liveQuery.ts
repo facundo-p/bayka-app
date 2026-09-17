@@ -31,19 +31,16 @@ export function useLiveData<T>(
     fetcher().then(setData).catch(console.error);
   }, deps);
 
-  // Fetch on mount and when deps change
   useEffect(() => {
     refresh();
   }, [refresh]);
 
-  // Refresh when screen gains focus
   useFocusEffect(
     useCallback(() => {
       refresh();
     }, [refresh])
   );
 
-  // Subscribe to global data change notifications
   useEffect(() => {
     listeners.add(refresh);
     return () => {

@@ -1,18 +1,17 @@
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
-import { patronContiene } from './escaparBusqueda';
+import { citarValorOr, patronContiene } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
+import { ESQUEMAS_FOTO_LOCAL } from './fotoConstantes';
 import { leerPaginado } from './leerPaginado';
 import type { EstadoPlantacion } from './plantationQueries';
 
 export type TipoGrupo = 'linea' | 'bosquete';
-/** El estado de un grupo comparte el dominio del de su plantación. */
 export type EstadoGrupo = EstadoPlantacion;
 
 /** Valor especial del filtro de especie: árboles sin identificar (species_id null). */
 export { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 
-/** Tamaño de página del listado de árboles. */
 export const ARBOLES_POR_PAGINA = 50;
 
 export type ParcelaConStats = {
@@ -65,7 +64,8 @@ export type FiltrosArboles = {
   speciesId?: string;
   /** true = solo con GPS, false = solo sin GPS, undefined = todos. */
   conGps?: boolean;
-  /** Búsqueda parcial por sub_id. */
+  /** true = solo con foto subida, false = solo sin ella, undefined = todos. */
+  conFoto?: boolean;
   busqueda?: string;
 };
 
@@ -143,11 +143,7 @@ async function parcelaConStats(fila: FilaParcela): Promise<ParcelaConStats> {
   };
 }
 
-/**
- * Parcelas activas (excluye soft-deleted) con counts de grupos y árboles.
- * Dos counts head por parcela en paralelo: una plantación tiene pocas
- * parcelas, así que el costo es marginal.
- */
+/** Parcelas activas con counts de grupos/árboles: dos counts head en paralelo por parcela (costo marginal). */
 export async function listarParcelasConStats(plantationId: string): Promise<ParcelaConStats[]> {
   const { data, error } = await supabase
     .from('parcelas')
@@ -159,12 +155,7 @@ export async function listarParcelasConStats(plantationId: string): Promise<Parc
   return Promise.all(((data ?? []) as FilaParcela[]).map(parcelaConStats));
 }
 
-/**
- * Cuenta árboles por grupo: trae los group_id de todos los árboles de la
- * plantación y agrega en cliente con un Map. Con hasta ~250 grupos, un count
- * head por grupo serían ~250 viajes (N+1); una lectura paginada con `.range()`
- * trae todo el dataset sin el tope de 1000 de PostgREST.
- */
+/** Agrega en cliente (no count head por grupo, ~250 grupos → N+1); paginado para evitar el tope de 1000 de PostgREST. */
 async function contarArbolesPorGrupo(plantationId: string): Promise<Map<string, number>> {
   const filas = await leerPaginado<{ group_id: string }>((desde, hasta) =>
     supabase
@@ -209,8 +200,7 @@ export async function listarGrupos(
     contarArbolesPorGrupo(plantationId),
   ]);
   if (error) throw new Error(error.message);
-  // El cliente sin typegen tipa el embed como array, pero la FK parcela_id →
-  // parcelas es many-to-one: en runtime llega un objeto.
+  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   const filas = (data ?? []) as unknown as FilaGrupo[];
   return filas.map((fila) => mapearGrupo(fila, conteos.get(fila.id) ?? 0));
 }
@@ -227,6 +217,33 @@ function consultaBaseArboles(plantationId: string) {
 
 type ConsultaArboles = ReturnType<typeof consultaBaseArboles>;
 
+/** Patrón LIKE de un esquema local, ej. `file://%`. */
+function patronEsquemaLocal(esquema: string): string {
+  return `${esquema}%`;
+}
+
+/**
+ * "Con foto" = foto subida al bucket, igual que `tieneFotoSubida`: no basta con
+ * que `foto_url` no sea nulo, porque una foto que el celular todavía no
+ * sincronizó guarda un `file://` que no se puede mostrar.
+ */
+function aplicarFiltroFoto(consulta: ConsultaArboles, conFoto: boolean): ConsultaArboles {
+  if (conFoto) {
+    consulta = consulta.not('foto_url', 'is', null);
+    for (const esquema of ESQUEMAS_FOTO_LOCAL) {
+      consulta = consulta.not('foto_url', 'like', patronEsquemaLocal(esquema));
+    }
+    return consulta;
+  }
+  const condiciones = [
+    'foto_url.is.null',
+    ...ESQUEMAS_FOTO_LOCAL.map(
+      (esquema) => `foto_url.like.${citarValorOr(patronEsquemaLocal(esquema))}`,
+    ),
+  ];
+  return consulta.or(condiciones.join(','));
+}
+
 function aplicarFiltrosArboles(
   consulta: ConsultaArboles,
   filtros: FiltrosArboles,
@@ -237,6 +254,7 @@ function aplicarFiltrosArboles(
   else if (filtros.speciesId) consulta = consulta.eq('species_id', filtros.speciesId);
   if (filtros.conGps === true) consulta = consulta.not('latitude', 'is', null);
   if (filtros.conGps === false) consulta = consulta.is('latitude', null);
+  if (filtros.conFoto !== undefined) consulta = aplicarFiltroFoto(consulta, filtros.conFoto);
   if (filtros.busqueda) consulta = consulta.ilike('sub_id', patronContiene(filtros.busqueda));
   return consulta;
 }

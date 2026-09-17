@@ -9,75 +9,62 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-/** El conteo "sólo con id" se distingue por el filtro sobre global_id. */
-function configurarConteos(total: number, conId: number) {
-  estadoMock.resolverConsulta = (consulta) => {
-    const soloConId = consulta.filtros.some((filtro) => filtro.columna === 'global_id');
-    return { count: soloConId ? conId : total, error: null };
-  };
-}
+// ─── idsGenerados ─────────────────────────────────────────────────────────────
 
 test('true cuando todos los árboles tienen global_id', async () => {
-  configurarConteos(5, 5);
+  estadoMock.resolverConsulta = () => ({
+    data: [{ total: 5, con_id: 5, generados: true }],
+  });
   await expect(idsGenerados('p1')).resolves.toBe(true);
 });
 
 test('false si el set es parcial (sync incompleto)', async () => {
-  configurarConteos(5, 3);
+  estadoMock.resolverConsulta = () => ({
+    data: [{ total: 5, con_id: 3, generados: false }],
+  });
   await expect(idsGenerados('p1')).resolves.toBe(false);
 });
 
 test('false si la plantación no tiene árboles', async () => {
-  configurarConteos(0, 0);
+  estadoMock.resolverConsulta = () => ({
+    data: [{ total: 0, con_id: 0, generados: false }],
+  });
   await expect(idsGenerados('p1')).resolves.toBe(false);
 });
 
-test('cuenta con global_id no nulo y acota por plantación', async () => {
+test('false si el RPC devuelve un array vacío', async () => {
+  estadoMock.resolverConsulta = () => ({ data: [] });
+  await expect(idsGenerados('p1')).resolves.toBe(false);
+});
+
+test('invoca el RPC plantation_ids_status con la plantación', async () => {
   const consultas: ConsultaCapturada[] = [];
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
-    return { count: 1, error: null };
+    return { data: [{ total: 1, con_id: 1, generados: true }] };
   };
   await idsGenerados('p1');
-  const conId = consultas.find((consulta) =>
-    consulta.filtros.some((filtro) => filtro.columna === 'global_id'),
-  );
-  expect(conId?.opciones).toEqual({ count: 'exact', head: true });
-  expect(conId?.filtros).toContainEqual({
-    metodo: 'not',
-    columna: 'global_id',
-    operador: 'is',
-    valor: null,
-  });
-  expect(conId?.filtros).toContainEqual({
-    metodo: 'eq',
-    columna: 'groups.plantation_id',
-    valor: 'p1',
+  expect(consultas[0]).toMatchObject({
+    tabla: 'plantation_ids_status',
+    operacion: 'rpc',
+    payload: { p_plantation_id: 'p1' },
   });
 });
 
 // ─── seedSugerido ────────────────────────────────────────────────────────────
 
-test('seedSugerido devuelve MAX(global_id) + 1 (orden descendente + limit 1)', async () => {
+test('seedSugerido devuelve el valor del RPC next_global_id_seed', async () => {
   const consultas: ConsultaCapturada[] = [];
   estadoMock.resolverConsulta = (consulta) => {
     consultas.push(consulta);
-    return { data: [{ global_id: 41 }] };
+    return { data: 42 };
   };
   await expect(seedSugerido()).resolves.toBe(42);
-  expect(consultas[0].tabla).toBe('trees');
-  expect(consultas[0].filtros).toContainEqual({
-    metodo: 'not',
-    columna: 'global_id',
-    operador: 'is',
-    valor: null,
-  });
-  expect(consultas[0].orden).toEqual({ columna: 'global_id', ascending: false });
-  expect(consultas[0].limite).toBe(1);
+  expect(consultas[0]).toMatchObject({ tabla: 'next_global_id_seed', operacion: 'rpc' });
 });
 
-test('seedSugerido arranca en 1 cuando ningún árbol tiene global_id', async () => {
-  estadoMock.resolverConsulta = () => ({ data: [] });
+test('seedSugerido arranca en 1 cuando el RPC devuelve 1', async () => {
+  estadoMock.resolverConsulta = () => ({ data: 1 });
   await expect(seedSugerido()).resolves.toBe(1);
 });
 

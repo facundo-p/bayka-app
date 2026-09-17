@@ -20,17 +20,18 @@
  * después de que 015 elimine las 21 source plantations.
  *
  * Uso:
- *   SUPABASE_SERVICE_KEY=<service_role> node scripts/migrate-photo-paths.mjs [--dry-run]
+ *   SUPABASE_URL=https://<ref>.supabase.co SUPABASE_SERVICE_KEY=<service_role> \
+ *     node scripts/migrate-photo-paths.mjs [--dry-run]
  */
 
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://apktttwrmhamfudjeklu.supabase.co';
+const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const BUCKET = 'tree-photos';
 
-if (!SUPABASE_KEY) {
-  console.error('Set SUPABASE_SERVICE_KEY env var (service_role key from Supabase dashboard)');
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('Set SUPABASE_URL and SUPABASE_SERVICE_KEY env vars');
   process.exit(1);
 }
 

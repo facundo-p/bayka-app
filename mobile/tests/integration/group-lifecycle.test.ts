@@ -1,5 +1,4 @@
 // TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
-// See .planning/phases/16-code-layer-rename-parcelas-data-sync/deferred-items.md
 /**
  * Integration tests: Group lifecycle
  * Tests: activa -> finalizada -> sincronizada state machine
@@ -29,7 +28,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear data in FK order (trees -> groups -> plantations)
+  // Clear data in FK order (groups -> plantations)
   await db.delete(groups);
   await db.delete(plantations);
 });

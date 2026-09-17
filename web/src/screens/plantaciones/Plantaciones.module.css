@@ -1,0 +1,48 @@
+/* ─── Celdas de la tabla ─────────────────────────────────────────────── */
+
+/* Lugar: ícono cuadrado + texto. */
+.celdaLugar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+.iconoLugar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-4xl-plus);
+  height: var(--space-4xl-plus);
+  flex-shrink: 0;
+  border-radius: var(--radius-control);
+  background-color: var(--color-surface-sunken);
+  color: var(--color-secondary);
+}
+
+.lugarTexto {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-body);
+}
+
+/* Va con `.mono` de Table. */
+.temporada {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Visible: ojo + "Sí" (oculta usa Badge). */
+.visibleSi {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Va con `.mono` y `.numero` de Table. */
+.arboles {
+  color: var(--color-primary);
+}
+
+.fecha {
+  color: var(--color-text-muted);
+}

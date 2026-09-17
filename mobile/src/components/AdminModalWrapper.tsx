@@ -1,7 +1,8 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, fontSize, spacing, fonts } from '../theme';
+import { colors, spacing } from '../theme';
+import { adminModalWrapperStyles as styles } from './AdminModalWrapper.styles';
 
 type Props = {
   title: string;
@@ -28,21 +29,3 @@ export default function AdminModalWrapper({ title, onClose, children }: Props) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  body: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xxl,
-    backgroundColor: colors.primary,
-    paddingBottom: spacing.xxl,
-    paddingHorizontal: spacing.xxl,
-  },
-  headerTitle: {
-    color: colors.white,
-    fontSize: fontSize.xxl,
-    fontFamily: fonts.heading,
-  },
-});

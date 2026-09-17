@@ -1,5 +1,4 @@
 // Tests for ExportService — CSV and Excel file generation and sharing
-// Covers: EXPO-01, EXPO-02, EXPO-PARC-01, EXPO-PARC-02 (9-column header, D-18-08)
 
 jest.mock('../../src/queries/exportQueries', () => ({
   getExportRows: jest.fn(),
@@ -123,9 +122,8 @@ describe('ExportService', () => {
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       const lines = writtenContent.split('\n');
-      // Line 1 (index 1) = first data row
       const firstRowCols = lines[1].split(',');
-      // index: 0 globalId, 1 idParcial, 2 Zona, 3 Plantación, 4 Parcela, 5 Grupo, ...
+      // Columnas: 0 globalId, 1 idParcial, 2 Zona, 3 Plantación, 4 Parcela, 5 Grupo, ...
       expect(firstRowCols[4]).toBe('Parcela 1');
       expect(firstRowCols[3]).toBe('Zona Norte'); // Plantación
     });
@@ -135,8 +133,6 @@ describe('ExportService', () => {
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       expect(writtenContent).not.toContain('null');
-      // Verify the second row's Parcela column (after Plantación "Zona, Sur" quoted)
-      // Easiest: split and check column 4 of the row containing globalId 11
       const lines = writtenContent.split('\n');
       const row11 = lines.find((l) => l.startsWith('11,'));
       expect(row11).toBeDefined();
@@ -209,14 +205,13 @@ describe('ExportService', () => {
       );
     });
 
-    // ─── Anchos de columna ajustados al contenido (#54) ─────────────────────
+    // ─── Anchos de columna ajustados al contenido ────────────────────────────
 
     it('setea ws[!cols] = max(encabezado, valores) + 2 por columna (#54)', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       const ws = (XLSX.utils.json_to_sheet as jest.Mock).mock.results[0].value;
-      // sampleRows: p.ej. 'ID Parcial' gana el header (10+2); 'Especie' gana
-      // 'Eucalipto, blanco' (17+2); 'Parcela' gana 'Parcela 1' (9+2).
+      // Ancho = max(largo header, largo de cada valor) + 2 de padding, por columna.
       expect(ws['!cols']).toEqual([
         { wch: 11 }, // ID Global (header 9)
         { wch: 12 }, // ID Parcial (header 10)
@@ -292,7 +287,7 @@ describe('ExportService', () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       expect(mockPullSpecies).toHaveBeenCalledTimes(1);
-      // El refresco debe ocurrir antes de getExportRows.
+      // Debe ocurrir antes de getExportRows.
       expect(mockPullSpecies.mock.invocationCallOrder[0])
         .toBeLessThan(mockGetExportRows.mock.invocationCallOrder[0]);
     });

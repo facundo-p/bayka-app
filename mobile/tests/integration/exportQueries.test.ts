@@ -1,12 +1,8 @@
 /**
  * Integration tests: exportQueries.getExportRows
  * Real SQLite via better-sqlite3 + drizzle migrations.
- *
- * Verifies:
- *  - INNER JOIN a parcelas (#90: parcela obligatoria) → parcelaNombre siempre presente
- *  - El schema rechaza groups sin parcela (NOT NULL, migración 0018)
- *  - Rows ordered by globalId ASC
- * Covers: EXPO-PARC-01, EXPO-PARC-02
+ * Covers el nombre de parcela (null si está tombstoned, como en la web), el
+ * NOT NULL de groups.parcela_id (migración 0018) y el orden por globalId ASC.
  */
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -35,8 +31,7 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
-  // Prod (expo-sqlite) no activa PRAGMA foreign_keys → árboles con especieId
-  // huérfano pueden existir. Reproducimos ese estado en el test.
+  // Prod (expo-sqlite) no activa PRAGMA foreign_keys → puede haber árboles con especieId huérfano.
   sqlite.pragma('foreign_keys = OFF');
 });
 
@@ -129,9 +124,48 @@ describe('exportQueries.getExportRows', () => {
     expect(rows[1].parcelaNombre).toBe('Parcela 1');
   });
 
+  it('una parcela tombstoned no filtra su nombre al export (alineado con la web)', async () => {
+    const plantation = createTestPlantation({ lugar: 'Campo Test' });
+    await mockTestDb.insert(plantations).values(plantation);
+
+    await mockTestDb.insert(parcelas).values({
+      id: 'parc-borrada',
+      plantacionId: plantation.id,
+      nombre: 'Parcela Vieja',
+      codigo: 'PV',
+      descripcion: null,
+      pendingSync: false,
+      createdAt: localNow(),
+      updatedAt: localNow(),
+      deletedAt: localNow(),
+    });
+
+    await mockTestDb.insert(groups).values({
+      id: 'g-borrada',
+      plantacionId: plantation.id,
+      parcelaId: 'parc-borrada',
+      nombre: 'Linea Z',
+      codigo: 'LZ',
+      tipo: 'linea',
+      estado: 'activa',
+      usuarioCreador: 'u1',
+      createdAt: localNow(),
+      pendingSync: false,
+    });
+
+    const especieId = await seedSpecies('PI');
+    await seedTree('g-borrada', especieId, 20, 1);
+
+    const rows = await getExportRows(plantation.id);
+
+    // El árbol sigue en la planilla; lo que desaparece es el nombre de la parcela.
+    expect(rows).toHaveLength(1);
+    expect(rows[0].parcelaNombre).toBeNull();
+    expect(rows[0].grupoNombre).toBe('Linea Z');
+  });
+
   it('el schema rechaza un grupo sin parcela (NOT NULL, #90 / migración 0018)', async () => {
-    // DB propia y fresca: valida el resultado de la migración 0018 sin depender
-    // del estado compartido del archivo (evita flakes por interferencia).
+    // DB propia y fresca: evita flakes por estado compartido con otros tests.
     const propia = createTestDb();
     try {
       const columnas = propia.sqlite
@@ -209,8 +243,8 @@ describe('exportQueries.getExportRows', () => {
     expect(rows.map((r) => r.globalId)).toEqual([10, 20, 30]);
   });
 
-  // ─── LEFT JOIN a species: el árbol NUNCA debe perderse ──────────────────────
-  // Antes el INNER JOIN descartaba en silencio árboles con especie null/huérfana.
+  // ─── LEFT JOIN a species: el árbol nunca debe perderse (antes el INNER JOIN
+  // descartaba en silencio árboles con especie null/huérfana) ─────────────────
 
   async function seedPlantationWithGroup(lugar: string): Promise<string> {
     const plantation = createTestPlantation({ lugar });

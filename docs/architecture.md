@@ -224,6 +224,8 @@ grupos sincronizados
 fotos de árboles (Supabase Storage, bucket tree-photos)
 ```
 
+Schema, migraciones y cómo crear un ambiente desde cero: [docs/db-baseline.md](./db-baseline.md).
+
 ---
 
 # 5. Flujo de Datos
@@ -267,6 +269,8 @@ Usuario inicia sincronización
 ↓
 Sistema detecta grupos pendientes (pendingSync = true)
 ↓
+Propaga los borrados anotados (RPC sincronizar_borrados)
+↓
 Sube Parcelas pendientes, luego Grupo + Árboles (RPC sync_subgroup)
 ↓
 Servidor valida datos (código de grupo único por parcela)
@@ -276,6 +280,17 @@ Grupo marcado como sincronizado localmente (pendingSync = false)
 
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
+
+**Los borrados viajan aparte** (#467). Borrar un árbol o un grupo solo borra en
+SQLite; el pull upsertea todo lo que el server tiene, así que sin propagarlos la
+fila volvía en la misma sincronización. Se anotan en `borrados_pendientes`, el pull
+los excluye y el push los manda por `sincronizar_borrados`, que es un RPC
+`SECURITY DEFINER` porque **no hay policy de DELETE sobre `trees` ni `groups`**: un
+delete desde el cliente sería un no-op silencioso.
+
+El registro es explícito —una fila por id— y no una semántica de reemplazo: el
+device puede tener un set parcial y "borrá todo lo que no te mandé" borraría del
+server datos que nunca vio.
 
 ---
 
@@ -482,10 +497,12 @@ operación offline
 
 # 10. Generación de IDs
 
-Los IDs finales se generan al finalizar la plantación, **desde la app** (admin):
-`generateIds()` asigna en SQLite local, en una transacción atómica, el ID parcial
-(1..N por plantación) y el ID global (secuencial org-wide desde una semilla que el
-admin define; el sistema sugiere max + 1).
+Los IDs finales se generan **desde la web de gestión, server-side** (issue #232),
+no desde la app. El RPC `generate_tree_ids` (mig. 029) corre en una transacción
+Postgres: ordena los árboles de la plantación (por `groups.created_at`,
+`trees.posicion`, `groups.id` como desempate) y asigna el ID parcial (1..N por
+plantación) y el ID global (secuencial org-wide, desde una semilla que sugiere
+`MAX(global_id) + 1` o la que indique el admin).
 
 Tipos de ID:
 
@@ -494,17 +511,10 @@ ID parcial de plantación  (plantacion_id)
 ID global Bayka           (global_id)
 ```
 
-**Persistencia en el server en el mismo paso.** "Generar IDs" **requiere conexión**
-(se gatea en la UI). Tras asignar los IDs en local, se suben a Supabase de inmediato
-con un RPC dedicado y liviano (`update_tree_ids`, mig. 020): un bulk UPDATE de
-`plantacion_id`/`global_id` por id, sin re-subir grupos/árboles completos.
-
-**Invariante:** los IDs existen en local ⟺ están subidos al server. Si el push
-falla o queda parcial, se **revierten** los IDs locales (vuelven a NULL): la
-plantación queda como si nunca se hubieran generado, el botón **"Generar IDs"**
-vuelve a estar disponible (es el único mecanismo para subirlos) y el export queda
-oculto hasta que estén confirmados en el server. No se usa `pendingSync` ni la
-sincronización de toda la plantación (que ya está finalizada).
+**La app los recibe por el pull normal**, no los genera ni los sube: el upsert de
+`trees` adopta `plantacion_id`/`global_id` del server si el valor local está vacío.
+El RPC viejo `update_tree_ids` (mig. 020), que la app usaba para subir IDs
+generados localmente, quedó sin callers y se eliminó en la mig. 030.
 
 El gate de export exige que TODOS los árboles tengan ID.
 

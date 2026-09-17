@@ -5,10 +5,12 @@ import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import type { Perfil } from '../profileRepository';
 import {
   actualizarConfigGps,
+  actualizarFotoEnTodos,
   actualizarVisibilidad,
   crearPlantacion,
   editarPlantacion,
   existePlantacion,
+  MENSAJE_FOTO_SIN_MIGRACION,
   MENSAJE_GPS_SIN_MIGRACION,
   MENSAJE_VISIBILIDAD_SIN_MIGRACION,
   type PlantacionInput,
@@ -19,7 +21,13 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-const PERFIL: Perfil = { id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true, organizacionId: 'org-1' };
+const PERFIL: Perfil = {
+  id: 'user-1',
+  nombre: 'Ana',
+  rol: 'admin',
+  activo: true,
+  organizacionId: 'org-1',
+};
 
 const INPUT_COMPLETO: PlantacionInput = {
   lugar: 'Mendoza',
@@ -147,6 +155,31 @@ describe('editarPlantacion', () => {
   });
 });
 
+describe('actualizarFotoEnTodos', () => {
+  test('actualiza photo_capture_all_trees de la plantación', async () => {
+    const consultas = capturarConsultas(() => ({ data: null }));
+    await actualizarFotoEnTodos('plant-1', true);
+
+    const [update] = consultas;
+    expect(update.tabla).toBe('plantations');
+    expect(update.operacion).toBe('update');
+    expect(update.payload).toEqual({ photo_capture_all_trees: true });
+    expect(update.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-1' }]);
+  });
+
+  test('columna inexistente (035 sin aplicar) lanza el mensaje de migración', async () => {
+    capturarConsultas(() => ({
+      error: {
+        message: 'column "photo_capture_all_trees" does not exist',
+        code: PG_ERROR.UNDEFINED_COLUMN,
+      },
+    }));
+    await expect(actualizarFotoEnTodos('plant-1', true)).rejects.toThrow(
+      MENSAJE_FOTO_SIN_MIGRACION,
+    );
+  });
+});
+
 describe('actualizarConfigGps', () => {
   test('actualiza frecuencia y obligatoriedad de la plantación', async () => {
     const consultas = capturarConsultas(() => ({ data: null }));
@@ -161,7 +194,10 @@ describe('actualizarConfigGps', () => {
 
   test('columna inexistente (023 sin aplicar) lanza el mensaje de migración', async () => {
     capturarConsultas(() => ({
-      error: { message: 'column "gps_capture_frequency" does not exist', code: PG_ERROR.UNDEFINED_COLUMN },
+      error: {
+        message: 'column "gps_capture_frequency" does not exist',
+        code: PG_ERROR.UNDEFINED_COLUMN,
+      },
     }));
     await expect(
       actualizarConfigGps('plant-1', { frecuencia: 5, obligatoria: true }),

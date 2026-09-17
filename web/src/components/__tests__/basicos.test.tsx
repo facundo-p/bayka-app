@@ -24,6 +24,23 @@ test('Select asocia label, lista opciones y muestra error', () => {
   expect(screen.getByRole('alert')).toHaveTextContent('Elegí una');
 });
 
+test('Select arma las `opciones` después de los children', () => {
+  render(
+    <Select
+      label="Temporada"
+      opciones={[
+        { value: '2025', label: '2025-2026' },
+        { value: '2024', label: '2024-2025' },
+      ]}
+    >
+      <option value="">Todas</option>
+    </Select>,
+  );
+  const opciones = screen.getAllByRole('option');
+  expect(opciones.map((opcion) => opcion.textContent)).toEqual(['Todas', '2025-2026', '2024-2025']);
+  expect(opciones[1]).toHaveValue('2025');
+});
+
 test('Spinner expone role status y la clase de tamaño', () => {
   render(<Spinner size="sm" />);
   expect(screen.getByRole('status').className).toContain(spinnerStyles.sm);

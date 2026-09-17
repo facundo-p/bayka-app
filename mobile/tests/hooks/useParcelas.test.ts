@@ -1,10 +1,7 @@
 /**
- * Tests for useParcelas hook — mock-based, validates that the hook is a thin
- * orchestrator over parcelaQueries.listByPlantacionWithStats via useLiveData.
- *
- * We do NOT render React here — instead we mock useLiveData to capture the
- * fetcher passed to it, then assert behavior by invoking the fetcher and
- * inspecting the return shape under different states.
+ * Tests for useParcelas — mock-based: mocks useLiveData to capture the
+ * fetcher it's given, then invokes it directly to assert the hook is a thin
+ * orchestrator over parcelaQueries.listByPlantacionWithStats.
  */
 
 const mockUseLiveData = jest.fn();
@@ -31,8 +28,7 @@ describe('useParcelas', () => {
     mockUseLiveData.mockReturnValue({ data: undefined });
     const result = useParcelas(undefined);
     expect(result).toEqual({ parcelas: [], isLoading: false, error: null });
-    // useLiveData is still invoked (hook rules), but with a no-op fetcher
-    // that resolves to []. We assert by invoking the fetcher manually.
+    // Still invokes useLiveData (hook rules) with a no-op fetcher; asserted by calling it directly.
     const fetcher = mockUseLiveData.mock.calls[0][0];
     return expect(fetcher()).resolves.toEqual([]);
   });
@@ -82,10 +78,7 @@ describe('useParcelas', () => {
   });
 
   test('parcela tombstoneada NO aparece (delegado al query layer — verificamos passthrough)', () => {
-    // The hook does not filter; it trusts listByPlantacionWithStats to omit
-    // tombstones. We assert that whatever the query returns is returned
-    // verbatim — and the query test (parcela-queries.test.ts) already
-    // verifies the filter.
+    // Hook trusts listByPlantacionWithStats to filter tombstones (verified in parcela-queries.test.ts); this only checks passthrough.
     const active = {
       id: 'p-active', plantacionId: 'plant-1', nombre: 'A', codigo: 'A',
       descripcion: null, pendingSync: false, createdAt: '2026-01-01', updatedAt: '2026-01-01',

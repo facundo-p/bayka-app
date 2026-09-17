@@ -10,6 +10,9 @@ import {
 } from 'react';
 import { useMatch } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
+import { CLAVE_STORAGE, guardarLocal, leerLocal } from '../lib/almacenamientoLocal';
+import { PARAM_ID_PLANTACION, PATRON_DETALLE_PLANTACION } from '../lib/rutas';
+import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { listarPlantaciones } from '../queries/plantationQueries';
 import type { ResultadoBusqueda, ScopeBusqueda } from '../queries/buscarQueries';
 
@@ -28,7 +31,6 @@ type CommandMenuContexto = {
 
 const Contexto = createContext<CommandMenuContexto | null>(null);
 
-const CLAVE_RECIENTES = 'bayka.command-menu.recientes';
 const TOPE_RECIENTES = 6;
 
 /** ¿El foco está en un campo de texto editable? (no en el input de la paleta). */
@@ -44,22 +46,19 @@ function esAtajoComando(evento: KeyboardEvent): boolean {
   return (evento.metaKey || evento.ctrlKey) && evento.key.toLowerCase() === 'k';
 }
 
-/** Lee recientes de localStorage tolerando SSR / JSON inválido / acceso negado. */
+/** Un JSON corrupto arranca vacío en vez de romper la paleta. */
 function leerRecientes(): ResultadoBusqueda[] {
+  const crudo = leerLocal(CLAVE_STORAGE.recientesCommandMenu);
+  if (!crudo) return [];
   try {
-    const crudo = window.localStorage.getItem(CLAVE_RECIENTES);
-    return crudo ? (JSON.parse(crudo) as ResultadoBusqueda[]) : [];
+    return JSON.parse(crudo) as ResultadoBusqueda[];
   } catch {
     return [];
   }
 }
 
 function guardarRecientes(recientes: ResultadoBusqueda[]): void {
-  try {
-    window.localStorage.setItem(CLAVE_RECIENTES, JSON.stringify(recientes));
-  } catch {
-    /* localStorage no disponible: los recientes quedan solo en memoria. */
-  }
+  guardarLocal(CLAVE_STORAGE.recientesCommandMenu, JSON.stringify(recientes));
 }
 
 /** Estado abierto/cerrado + atajo global ⌘K (ignora foco en texto). */
@@ -80,11 +79,15 @@ function useAperturaPorAtajo() {
   return { abierto, abrir, cerrar };
 }
 
-/** Scope derivado de la ruta `/plantaciones/:id`; etiqueta = lugar (de cache). */
+/** Scope derivado del detalle de plantación en la URL; etiqueta = lugar (de cache). */
 function useScopeContextual(): ScopeContextual | null {
-  const match = useMatch('/plantaciones/:id/*');
-  const plantationId = match?.params.id;
-  const { data } = useQuery({ queryKey: ['plantaciones'], queryFn: listarPlantaciones });
+  const match = useMatch(`${PATRON_DETALLE_PLANTACION}/*` as const);
+  const plantationId = match?.params[PARAM_ID_PLANTACION];
+  const { data } = useQuery({
+    queryKey: CLAVE_QUERY.plantaciones(),
+    queryFn: listarPlantaciones,
+    enabled: Boolean(plantationId),
+  });
   return useMemo(() => {
     if (!plantationId) return null;
     const lugar = data?.find((plantacion) => plantacion.id === plantationId)?.lugar ?? '';
@@ -105,13 +108,10 @@ function useRecientes() {
   return { recientes, registrarReciente };
 }
 
-export function CommandMenuProvider({ children }: { children: ReactNode }) {
-  const { abierto, abrir, cerrar } = useAperturaPorAtajo();
+/** El scope quitado se reactiva al cambiar de plantación (otro id) o al reabrir. */
+function useScopeQuitable(abierto: boolean) {
   const scopeContextual = useScopeContextual();
-  const { recientes, registrarReciente } = useRecientes();
   const [scopeQuitado, setScopeQuitado] = useState<string | null>(null);
-
-  // El scope se reactiva al cambiar de plantación (otro id) o al reabrir.
   useEffect(() => {
     if (abierto) setScopeQuitado(null);
   }, [abierto]);
@@ -122,7 +122,13 @@ export function CommandMenuProvider({ children }: { children: ReactNode }) {
     () => setScopeQuitado(scopeContextual?.plantationId ?? null),
     [scopeContextual],
   );
+  return { scope, limpiarScope };
+}
 
+export function CommandMenuProvider({ children }: { children: ReactNode }) {
+  const { abierto, abrir, cerrar } = useAperturaPorAtajo();
+  const { scope, limpiarScope } = useScopeQuitable(abierto);
+  const { recientes, registrarReciente } = useRecientes();
   const valor = useMemo(
     () => ({ abierto, abrir, cerrar, scope, limpiarScope, recientes, registrarReciente }),
     [abierto, abrir, cerrar, scope, limpiarScope, recientes, registrarReciente],

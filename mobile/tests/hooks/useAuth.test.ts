@@ -1,5 +1,4 @@
 // Tests for useAuth hook
-// Covers: signIn (online), signIn (offline fallback), signOut, role from SecureStore
 
 import * as SecureStore from 'expo-secure-store';
 import { setOffline, setOnline } from '../helpers/networkHelper';
@@ -57,7 +56,6 @@ describe('useAuth', () => {
     jest.clearAllMocks();
     setOnline();
 
-    // Default: no existing session
     (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: null } });
     (supabase.auth.onAuthStateChange as jest.Mock).mockReturnValue({
       data: { subscription: { unsubscribe: jest.fn() } },
@@ -83,7 +81,6 @@ describe('useAuth', () => {
         error: null,
       });
 
-      // Mock supabase.from for profile fetch
       (supabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
@@ -266,7 +263,6 @@ describe('useAuth', () => {
 
   describe('role', () => {
     it('reads role from SecureStore cache when available during init', async () => {
-      // Mock profile fetch to return 'admin' role
       (supabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockReturnValue({
@@ -282,7 +278,6 @@ describe('useAuth', () => {
 
       const { result } = renderHook(() => useAuth());
 
-      // Wait for init
       await act(async () => {
         await new Promise((r) => setTimeout(r, 50));
       });
@@ -383,7 +378,6 @@ describe('useAuth', () => {
 
   describe('cross-instance broadcast', () => {
     it('signIn on one instance updates session/role on another instance', async () => {
-      // Setup: mock successful offline signIn
       setOffline();
       (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
       (readCachedSession as jest.Mock).mockResolvedValue({
@@ -391,31 +385,27 @@ describe('useAuth', () => {
         refresh_token: 'cached-refresh',
       });
 
-      // Render two hook instances (simulating two components)
+      // Two hook instances simulate two components sharing auth state.
       const { result: instance1 } = renderHook(() => useAuth());
       const { result: instance2 } = renderHook(() => useAuth());
 
-      // Both start with null session
       expect(instance1.current.session).toBeNull();
       expect(instance2.current.session).toBeNull();
 
-      // SignIn on instance1
       await act(async () => {
         await instance1.current.signIn('test@test.com', 'password');
       });
 
-      // Wait for broadcast propagation
+      // Wait for broadcast propagation.
       await act(async () => {
         await new Promise(r => setTimeout(r, 50));
       });
 
-      // Instance2 should also have the session now (via broadcast)
       expect(instance2.current.session).not.toBeNull();
       expect(instance2.current.role).toBe('tecnico');
     });
 
     it('signOut on one instance clears session on another instance', async () => {
-      // First, sign in on instance1 so both have a session
       setOffline();
       (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
       (readCachedSession as jest.Mock).mockResolvedValue({
@@ -434,10 +424,8 @@ describe('useAuth', () => {
         await new Promise(r => setTimeout(r, 50));
       });
 
-      // Both should have session
       expect(instance2.current.session).not.toBeNull();
 
-      // SignOut on instance1
       await act(async () => {
         await instance1.current.signOut();
       });
@@ -446,7 +434,6 @@ describe('useAuth', () => {
         await new Promise(r => setTimeout(r, 50));
       });
 
-      // Instance2 should also be cleared
       expect(instance2.current.session).toBeNull();
       expect(instance2.current.role).toBeNull();
     });

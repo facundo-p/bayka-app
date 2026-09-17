@@ -1,66 +1,61 @@
 /*
  * Estilos compartidos por las secciones de la tab Datos
- * (Parcelas, Grupos, Árboles): fila de filtros y celdas especiales.
+ * (Parcelas, Grupos, Árboles): layout, fila de filtros y celdas especiales.
  */
 
-/* Toolbar única: selector de sección + filtros en línea + recuento. */
-.toolbar {
+/* Columna acotada: la card de tabla llena el alto y scrollea por dentro. */
+.pantalla {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  gap: var(--space-lg);
-  flex-wrap: wrap;
-  margin-bottom: var(--space-2xl);
+  flex-direction: column;
+  gap: var(--space-xl-plus);
 }
 
-/* Divisor vertical fino entre el selector de sección y los filtros. */
-.divisor {
-  align-self: stretch;
-  width: var(--border-thin);
-  background-color: var(--color-border);
-}
-
-/* Recuento de la entidad, alineado a la derecha de la toolbar. */
-.recuento {
-  margin-left: auto;
-  color: var(--color-text-secondary);
-  font-size: var(--text-md);
-}
-
-/* Cluster de filtros compacto que vive dentro de la toolbar. */
+/* Cluster de filtros compacto que vive dentro de la toolbar.
+   `flex-grow: 1` para que tome el espacio libre de su fila: sin él los seis
+   controles envolvían a 1920 con 342px vacíos al lado. */
 .filtrosCompactos {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
   flex-wrap: wrap;
+  flex-grow: 1;
+  gap: var(--space-md);
+  min-width: 0;
 }
 
-/* Controles compactos de la toolbar (sin labels apilados). */
-.filtrosCompactos > * {
-  min-width: 130px;
+/* Anchos por control: el más informativo (parcela) es el más ancho. */
+.filtroParcela {
+  width: var(--ancho-filtro-lg);
 }
 
-/* Achica los inputs/selects: control más bajo y texto a la par del entorno
-   (antes el texto del filtro era más grande que el resto de la toolbar). */
-.filtrosCompactos input,
-.filtrosCompactos select {
-  min-height: var(--control-height-sm);
-  padding: 0 var(--space-lg);
-  border-radius: var(--radius-control);
-  font-size: var(--text-md);
+.filtroGrupo {
+  width: var(--ancho-filtro-md);
 }
 
-.busqueda {
-  min-width: 220px;
+.filtroEspecie {
+  width: var(--ancho-filtro-md);
 }
 
-/* Punto de color que precede a la especie. El color es data-driven (inline). */
+.filtroGps {
+  width: var(--ancho-filtro-xs);
+}
+
+.filtroFoto {
+  width: var(--ancho-filtro-sm);
+}
+
+/* Filtro sin sentido todavía (Grupo sin parcela elegida): se ve apagado, no
+   invisible, así queda claro que aparece al elegir parcela. */
+.filtrosCompactos select:disabled {
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* La celda es texto corrido, no un flex: el hueco con el nombre lo pone el punto. */
 .puntoEspecie {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
   margin-right: var(--space-md);
-  border-radius: var(--radius-full);
-  vertical-align: middle;
 }
 
 /* Celda de especie: punto + texto en una línea. */
@@ -89,18 +84,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* La tabla de árboles tiene 9 columnas: scroll horizontal en pantallas angostas. */
-.tablaAncha {
-  overflow-x: auto;
-}
-
 /* Descripción truncada a una línea; el title muestra el texto completo. */
 .descripcion {
+  composes: truncar from '../../theme/utilidades.module.css';
   display: inline-block;
   max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   vertical-align: bottom;
   color: var(--color-text-secondary);
 }

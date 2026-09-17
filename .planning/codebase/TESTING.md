@@ -134,8 +134,9 @@ mockDb = {
   })),
   insert: jest.fn(() => ({ values: mockInsertValues })),
   update: jest.fn(() => ({ set: jest.fn(() => ({ where: mockUpdateWhere })) })),
-  transaction: jest.fn(async (fn) => { const tx = { ... }; await fn(tx); }),
 };
+// Las transacciones NO se mockean acá: van por `enTransaccion`
+// (src/database/transaccion.ts), que recibe el propio `db`. Ver abajo.
 ```
 
 2. **Setup Pattern** — Module-level state for shared mocks:
@@ -337,7 +338,17 @@ it('maps Supabase error code to sync error', async () => {
 ```
 
 **Transaction Testing:**
+
+`db.transaction()` está prohibido por eslint: es síncrona y con un callback async
+commitea vacío (#448). Todo va por `enTransaccion`, que le pasa al callback el
+propio `db` — por eso las escrituras se verifican sobre los mocks de `db` y no
+sobre un `tx` aparte.
+
 ```typescript
+jest.mock('../../src/database/transaccion', () => ({
+  enTransaccion: jest.fn((cb) => cb(jest.requireMock('../../src/database/client').db)),
+}));
+
 it('runs in a transaction (all updates or none)', async () => {
   mockSelectResults = [
     { id: 'tree-1', posicion: 1, ... },
@@ -346,13 +357,33 @@ it('runs in a transaction (all updates or none)', async () => {
 
   await reverseTreeOrder('sg-1', 'L1');
 
-  // Verify transaction was invoked
-  expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-  
-  // Verify all updates were called
+  expect(enTransaccion).toHaveBeenCalledTimes(1);
   expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
 });
 ```
+
+El helper en sí se prueba aparte, en `tests/database/transaccion.test.ts`, contra
+dobles fieles de cada driver: el mock de arriba es *más correcto* que el driver
+real, así que no puede detectar el bug que motivó el cambio.
+
+`enTransaccionPorLotes` le pasa al callback **el lote entero**, no una fila: las
+escrituras masivas del pull lo resuelven con un `INSERT` multi-fila (#449). Un
+passthrough de test tiene que respetarlo:
+
+```typescript
+(enTransaccionPorLotes as jest.Mock).mockImplementation(
+  async (filas, escribirLote, onLote) => {
+    await abrir((tx) => escribirLote(tx, filas));
+    onLote?.(filas.length);
+  },
+);
+```
+
+Con un solo `set` para todo el lote, lo que antes decidía un ternario por fila
+(la foto, el punto GPS) ahora viaja en los valores y se resuelve con `excluded`.
+Eso solo se ve con un lote **mixto**: `tests/integration/pull-lotes.test.ts`
+mete en la misma tanda un árbol con foto y otro sin, y afirma que ninguno hereda
+la regla del vecino. Un test de una fila sola no distingue las dos versiones.
 
 **Mock State Reset Pattern:**
 ```typescript

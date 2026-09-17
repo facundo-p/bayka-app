@@ -1,10 +1,6 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
-import {
-  listarAsignados,
-  listarPerfiles,
-  listarUsuariosConAsignaciones,
-} from '../usuarioQueries';
+import { listarAsignados, listarPerfiles, listarUsuariosConAsignaciones } from '../usuarioQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -21,16 +17,24 @@ const FILA_ASIGNADO = {
 };
 
 describe('listarPerfiles', () => {
-  test('consulta profiles ordenado por nombre y devuelve las filas', async () => {
+  test('consulta profiles con email, ordenado por nombre, y devuelve las filas', async () => {
     const consultas: ConsultaCapturada[] = [];
+    const fila = {
+      id: 'user-1',
+      nombre: 'Ana',
+      rol: 'admin',
+      email: 'ana@bayka.org',
+      activo: true,
+    };
     estadoMock.resolverConsulta = (consulta) => {
       consultas.push(consulta);
-      return { data: [{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }], error: null };
+      return { data: [fila], error: null };
     };
     const perfiles = await listarPerfiles();
 
-    expect(perfiles).toEqual([{ id: 'user-1', nombre: 'Ana', rol: 'admin', activo: true }]);
+    expect(perfiles).toEqual([fila]);
     expect(consultas[0].tabla).toBe('profiles');
+    expect(consultas[0].columnas).toBe('id, nombre, rol, email, activo');
     expect(consultas[0].orden).toEqual({ columna: 'nombre', ascending: true });
   });
 
@@ -42,9 +46,33 @@ describe('listarPerfiles', () => {
 
 describe('listarUsuariosConAsignaciones', () => {
   const FILAS_PERFILES = [
-    { id: 'user-1', nombre: 'Ana', rol: 'admin', email: 'ana@bayka.org', activo: true, organizacion_id: 'org-1', created_at: '2026-01-10T12:00:00Z' },
-    { id: 'user-2', nombre: 'Beto', rol: 'tecnico', email: null, activo: false, organizacion_id: 'org-2', created_at: '2026-02-20T12:00:00Z' },
-    { id: 'user-3', nombre: 'Cami', rol: 'superadmin', email: 'cami@bayka.org', activo: true, organizacion_id: null, created_at: '2026-03-30T12:00:00Z' },
+    {
+      id: 'user-1',
+      nombre: 'Ana',
+      rol: 'admin',
+      email: 'ana@bayka.org',
+      activo: true,
+      organizacion_id: 'org-1',
+      created_at: '2026-01-10T12:00:00Z',
+    },
+    {
+      id: 'user-2',
+      nombre: 'Beto',
+      rol: 'tecnico',
+      email: null,
+      activo: false,
+      organizacion_id: 'org-2',
+      created_at: '2026-02-20T12:00:00Z',
+    },
+    {
+      id: 'user-3',
+      nombre: 'Cami',
+      rol: 'superadmin',
+      email: 'cami@bayka.org',
+      activo: true,
+      organizacion_id: null,
+      created_at: '2026-03-30T12:00:00Z',
+    },
   ];
 
   function configurarTablas() {

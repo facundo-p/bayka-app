@@ -62,6 +62,83 @@ maestro test mobile/.maestro/flows/
 - **E2E (Maestro):** deshabilitado; solo manual vía `workflow_dispatch`
   (`.github/workflows/e2e.yml`)
 
+## APK Android
+
+Dos variantes, instalables en paralelo en el mismo teléfono:
+
+| | `prod` | `test` |
+|---|---|---|
+| Nombre | Bayka App | Bayka TEST |
+| applicationId | `com.bayka.app` | `com.bayka.app.test` |
+| Backend | Supabase de producción | Supabase de staging |
+| Canal de updates | `production` | `test` |
+| Artefacto | `mobile/build-output.apk` | `mobile/build-output-test.apk` |
+
+### Requisitos
+
+- Android SDK (`ANDROID_HOME`), Java 17 y Node LTS par (v20/v22 — los majors
+  impares rompen el build).
+- `.env` en la raíz con `EAS_PROJECT_ID`. Sin eso el APK sale sin servidor de
+  updates y no recibe ningún OTA; el script corta antes de compilar.
+- `mobile/.env.staging` con las credenciales de Supabase staging, solo para la
+  variante `test`. Sin ese archivo el build y los updates cortan con error: antes
+  salían apuntando a producción sin avisar.
+- Sesión de Expo para publicar updates: `npx eas-cli whoami` (si no, `npx eas-cli login`).
+
+### Generar e instalar un APK
+
+```bash
+git checkout staging && git pull origin staging   # main para el APK de producción
+cd mobile
+scripts/build-apk.sh test                         # o: prod
+adb install -r build-output-test.apk
+```
+
+El script regenera el proyecto nativo, compila (solo arm64 por defecto; `ABIS=all`
+para todas las ABIs) y verifica el artefacto. Al terminar imprime package, label y
+**canal de updates**: si el canal no es el de la variante, ese APK no va a recibir
+ningún OTA.
+
+Hace falta compilar un APK nuevo cuando cambia algo **nativo**: dependencias con
+código nativo, plugins de config, permisos, íconos o el número de versión. Los
+cambios de JS/TS y assets no lo necesitan.
+
+Android solo deja instalar encima si la firma coincide. Entre builds locales
+`adb install -r` conserva los datos de la app; cambiar el método de firma obliga a
+desinstalar primero, y eso borra la base local (se pierde lo que no esté sincronizado).
+
+### Actualizar sin reinstalar (OTA)
+
+Los cambios de JS/TS y assets se publican con EAS Update y llegan solos a los
+dispositivos:
+
+```bash
+cd mobile
+npx eas-cli channel:list                  # el canal tiene que existir
+npx eas-cli channel:create test           # solo la primera vez
+
+APP_VARIANT=test npx eas-cli update --channel test --message "qué cambió"
+```
+
+- **`APP_VARIANT=test` es obligatorio para el canal `test`**: sin esa variable el
+  update sale apuntando al Supabase de producción y sin el banner de entorno de
+  pruebas. Para `production`, sin la variable.
+- El commit que muestra la franja de la app TEST sale del working tree al publicar,
+  no del código que corre el dispositivo. Para confirmar que un update llegó, el
+  commit tiene que ser distinto al del APK instalado.
+- El update solo llega a los APK que tienen ese canal grabado y la misma
+  `expo.version` de `mobile/app.json`. Un bump de versión deja afuera a los
+  dispositivos viejos hasta que instalen el APK nuevo.
+- El teléfono lo descarga en segundo plano al abrir la app. Una vez descargado,
+  la app muestra arriba de todo un aviso con un botón para reiniciar y aplicarlo
+  en el momento; si no se usa, se aplica solo en el siguiente arranque en frío.
+  El botón queda bloqueado mientras haya una sincronización en curso.
+- En la variante TEST se confirma en la franja roja, que pasa a mostrar el commit
+  del código publicado.
+
+El OTA es solo para hotfixes dentro de una versión ya publicada. Un release con
+cambios de mobile lleva APK nuevo con `versionCode` +1.
+
 ## Releases
 
 Versionado por app (`web-vX.Y.Z` / `mobile-vX.Y.Z`), novedades en `CHANGELOG.md`.

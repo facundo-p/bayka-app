@@ -2,13 +2,13 @@ import { useId, useState, type ComponentProps } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { cx } from '../lib/classNames';
 import { FormField } from './FormField';
+import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PasswordInput.module.css';
 
 /** Etiquetas accesibles del toggle: son el nombre del botón para el lector de
  *  pantalla (el ícono es decorativo), por eso viven nombradas y no inline. */
 const ETIQUETA_MOSTRAR = 'Mostrar contraseña';
 const ETIQUETA_OCULTAR = 'Ocultar contraseña';
-const TAMANO_ICONO = 18;
 
 type PasswordInputProps = Omit<ComponentProps<'input'>, 'type'> & {
   label: string;
@@ -53,7 +53,7 @@ export function PasswordInput({
           aria-label={visible ? ETIQUETA_OCULTAR : ETIQUETA_MOSTRAR}
           aria-pressed={visible}
         >
-          <Icono size={TAMANO_ICONO} aria-hidden />
+          <Icono size={TAMANO_ICONO.lg} aria-hidden />
         </button>
       </div>
     </FormField>

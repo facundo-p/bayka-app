@@ -1,7 +1,7 @@
 /**
- * Styles for ParcelaFormModal — solo lo específico de Parcela (#89).
+ * Styles for ParcelaFormModal — solo lo específico de Parcela.
  * El chrome (header/footer/scroll) vive en EntityFormModal /
- * KeyboardAwareFormBody / FormActions. Tokens from theme.ts (CLAUDE.md §8).
+ * KeyboardAwareFormBody / FormActions. Tokens from theme.ts.
  */
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';

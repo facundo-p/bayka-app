@@ -4,74 +4,160 @@
  * card, formularios de toggle/frecuencia, lista de técnicos y modales.
  */
 
-/* ─── Cabecera de card (título serif + chip + subtítulo) ─────────────── */
+/* ─── Cabecera de card: título + subtítulo + chip + controles ─────────────
+ * Un renglón mientras haya lugar. Cuando no lo hay, los controles bajan a un
+ * segundo renglón en vez de salirse de la card (donde el overflow los recorta
+ * y quedan inalcanzables).
+ */
 .cabecera {
-  margin-bottom: var(--space-3xl);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-xl);
+  flex-shrink: 0;
+  padding: var(--space-3xl) var(--space-3xl) var(--space-xl);
 }
 
-.cabeceraFila {
+.cabeceraAcciones {
+  margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2xl);
+  justify-content: flex-end;
+  gap: var(--space-xl);
 }
 
 .titulo {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  line-height: 1.1;
-  color: var(--color-text-heading);
+  composes: tituloCard from '../../theme/utilidades.module.css';
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .chip {
   flex-shrink: 0;
+  white-space: nowrap;
   padding: var(--space-xs) var(--space-xl);
   border-radius: var(--radius-pill);
   background-color: var(--color-secondary-bg);
   border: var(--border-thin) solid var(--color-secondary-border);
   font-size: var(--text-xs);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
 }
 
+/* Se trunca antes que empujar los controles fuera del renglón; con base 0 no
+   cuenta para decidir el wrap, así que es lo primero que cede. */
 .subtitulo {
-  margin: var(--space-sm) 0 0;
-  font-size: var(--text-md);
+  composes: truncar from '../../theme/utilidades.module.css';
+  margin: 0;
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
-/* ─── Form de GPS / Visibilidad (toggles + frecuencia) ───────────────── */
-.formGps {
+/* ─── Cards que toman el alto del layout y scrollean por dentro ──────── */
+/* El piso es lo que sostiene la lista cuando la card deja de tener un alto que
+   repartir: sin él el checklist quedaba en una ventana de 36px. */
+.cardEspecies,
+.cardTecnicos {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3xl);
+  min-height: var(--alto-min-card-lista);
+  overflow: hidden;
+  background-color: var(--color-surface);
+  border: var(--border-thin) solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
 
-.filaToggle {
+/* Menos filas que el checklist de especies: le alcanza con un piso más bajo. */
+.cardTecnicos {
+  flex: 1;
+  min-height: 260px;
+}
+
+/* Único lugar con scroll de la card de especies. */
+.cuerpoEspecies {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-xl) var(--space-xl);
+}
+
+/* ─── Comportamiento en la app (GPS + visibilidad) ───────────────────── */
+.filasComportamiento {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2xl);
+  flex-direction: column;
+}
+
+/*
+ * Escalera de plegado, de más ancho a más angosto: el control entero a la
+ * derecha del texto; el control partido en dos renglones dentro suyo; el
+ * control debajo del texto. Sin esto el cluster de frecuencia (~478px) no
+ * entra en la columna derecha y se sale de la card pisando el texto.
+ */
+.filaConfig {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-lg) var(--space-2xl);
+  padding: var(--space-xl-plus) 0;
+  border-bottom: var(--border-thin) solid var(--color-divider);
+}
+
+/* La última fila cierra la card: sin línea colgando. */
+.filaConfig:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.filaConfigTexto {
+  flex: 1 1 10rem;
+}
+
+.filaConfigControl {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-lg) var(--space-xl);
+  margin-left: auto;
+  min-width: 0;
+}
+
+/* "o exacto" y su campo bajan de renglón juntos: separados no se entienden. */
+.grupoExacto {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+.oExacto {
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .etiqueta {
   margin: 0;
   font-size: var(--text-md);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-body);
 }
 
-.bloqueFrecuencia {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-  padding-top: var(--space-3xl);
-  border-top: var(--border-thin) solid var(--color-divider);
+/* Ancho de un número de dos dígitos: es "cada N árboles", no un campo libre. */
+.campoExacto {
+  flex-shrink: 0;
+  width: 72px;
 }
 
-.campoExacto {
-  max-width: 240px;
+.campoExacto input {
+  min-height: var(--control-height-sm);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius-control);
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
 }
 
 /* La frecuencia no cae en ningún preset: el input es el control vigente. */
@@ -81,11 +167,28 @@
 
 /* ─── Lista de técnicos asignados ────────────────────────────────────── */
 .listaTecnicos {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--space-3xl) var(--space-xl);
   list-style: none;
+}
+
+/* Estado vacío: ocupa el lugar de la lista, con su mismo inset lateral y
+   centrado en el alto que sobra —si no, queda solo arriba con 200px muertos—. */
+.listaVacia {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 var(--space-3xl) var(--space-xl);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }
 
 .filaTecnico {
@@ -107,7 +210,7 @@
   background-color: var(--color-primary);
   color: var(--color-white);
   font-size: var(--text-sm);
-  font-weight: 600;
+  font-weight: var(--font-weight-semibold);
 }
 
 .nombreTecnico {
@@ -116,39 +219,20 @@
   color: var(--color-text-body);
 }
 
-.quitarTecnico {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  border-radius: var(--radius-control);
-  background-color: transparent;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.quitarTecnico:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--color-danger);
-}
-
 .botonAsignar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
-  margin-top: var(--space-2xl);
-  padding: var(--space-xl);
+  height: var(--control-height-sm);
+  padding: 0 var(--space-xl);
   border: var(--border-thin) dashed var(--color-border-strong);
   border-radius: var(--radius-control);
   background-color: transparent;
   color: var(--color-text-secondary);
   font-family: var(--font-body);
   font-size: var(--text-md);
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   cursor: pointer;
 }
 
@@ -159,17 +243,13 @@
 
 /* ─── Form dentro de modal (asignar técnico) ─────────────────────────── */
 .formModal {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xl);
+  composes: form from '../../components/Formulario.module.css';
   margin-bottom: var(--space-3xl);
 }
 
 /* ─── Compartidos (errores, ayudas, modales de confirmación) ─────────── */
 .errorAccion {
-  margin: 0;
-  font-size: var(--text-md);
-  color: var(--color-danger);
+  composes: errorEnvio from '../../components/Formulario.module.css';
 }
 
 .avisoInfo {
@@ -184,7 +264,7 @@
 
 .textoAyuda {
   margin: var(--space-xs) 0 0;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   color: var(--color-text-muted);
 }
 
@@ -197,4 +277,32 @@
   display: flex;
   justify-content: flex-end;
   gap: var(--space-xl);
+}
+
+/* ─── Inset de los hijos directos de la card ─────────────────────────────
+ * Estas cards no tienen padding: el inset lateral lo pone cada hijo, porque el
+ * pie de Especies va a sangre (borde y fondo de lado a lado) y un padding de
+ * card lo rompería. Los mensajes de abajo no traen inset propio —`.avisoInfo` y
+ * `.errorAccion` se comparten con los modales, donde el inset lo pone el modal—,
+ * así que acá se lo agrega la card (#370).
+ */
+.cardEspecies > .avisoInfo,
+.cardEspecies > .errorAccion {
+  margin: 0 var(--space-3xl) var(--space-lg);
+}
+
+/* `ErrorConReintento` no tiene padding propio y acá cuelga de la card. */
+.bloqueEstado {
+  padding: 0 var(--space-3xl) var(--space-3xl);
+}
+
+/* Pie fijo del checklist: la regla que explica las especies bloqueadas. */
+.pieEspecies {
+  margin: 0;
+  flex-shrink: 0;
+  padding: var(--space-lg) var(--space-3xl);
+  border-top: var(--border-thin) solid var(--color-border);
+  background-color: var(--color-surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }

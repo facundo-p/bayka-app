@@ -1,17 +1,18 @@
 .shell {
   display: flex;
-  align-items: flex-start;
-  min-height: 100vh;
+  /* Alto de ventana: el scroll ocurre dentro de las cards, nunca en el
+     documento. El padding deja lugar al banner de entorno (#287; 0 en prod) y
+     entra en el height, que es border-box. */
+  height: 100vh;
+  overflow: hidden;
+  padding-top: var(--alto-banner-entorno);
 }
 
 /* ─── Sidebar (papel cálido, fijo y sticky) ──────────────────────────── */
 
 .sidebar {
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
-  height: 100vh;
   flex-shrink: 0;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--space-4xl);
@@ -32,13 +33,13 @@
   height: 34px;
   width: auto;
   display: block;
+  /* `.brand` es flex column: sin esto el ítem se estira al ancho del contenedor
+     y el PNG (300x89) pierde la proporción. */
+  align-self: flex-start;
 }
 
 .brandOverline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
 }
 
 .nav {
@@ -48,10 +49,7 @@
 }
 
 .navOverline {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  color: var(--color-text-faint);
+  composes: overlineRegular from '../theme/utilidades.module.css';
   padding: 0 var(--space-xl) var(--space-md);
 }
 
@@ -60,15 +58,59 @@
   margin-top: auto;
 }
 
-/* ─── Área principal (scrollea con el documento) ─────────────────────── */
+/* ─── Área principal (columna acotada; scrollea por dentro) ──────────── */
 
 .content {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .main {
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* La pantalla del Outlet es la columna acotada: su cuerpo scrollea por dentro.
+   Acá y no en cada *.module.css, para no repetirlo en las cinco pantallas. */
+.main > * {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Con poco alto (un 1366×768, o media pantalla) los paneles quedan
+   aplastados, y con poco ancho el sidebar pasa a barra: en los dos casos
+   vuelve el scroll de documento y cada pantalla toma su alto natural. */
+@media (max-height: 760px), (max-width: 900px) {
+  .shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .content,
+  .main,
+  .main > * {
+    display: block;
+  }
+}
+
+@media (max-height: 760px) {
+  .shell {
+    align-items: flex-start;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: var(--alto-banner-entorno);
+    height: calc(100vh - var(--alto-banner-entorno));
+  }
 }
 
 /* ─── Responsive: el sidebar pasa a barra superior horizontal ────────── */
@@ -103,10 +145,25 @@
     display: none;
   }
 
-  /* En barra horizontal, la card de temporada y el footer ocupan demasiado:
-     se ocultan; los datos siguen accesibles dentro de cada plantación. */
+  /* En barra horizontal no hay "fondo" que empujar: el footer se va a la
+     derecha de su fila. */
   .footer {
     margin-top: 0;
     margin-left: auto;
+  }
+}
+
+/* Barra de teléfono: los cinco bloques de la barra se apilan y comen 500px de
+   900 —el contenido arrancaba al 91% del alto, sin que nada se solape ni
+   desborde, así que ninguna métrica lo veía—. Se achican las separaciones y la
+   card de temporada se retira (ver SeasonCard.module.css). */
+@media (max-width: 600px) {
+  .sidebar {
+    gap: var(--space-lg);
+    padding: var(--space-lg) var(--page-pad-x);
+  }
+
+  .brand {
+    gap: 0;
   }
 }

@@ -18,3 +18,15 @@ test('loading deshabilita el botón y muestra el spinner', () => {
   expect(button).toBeDisabled();
   expect(screen.getByRole('status')).toBeInTheDocument();
 });
+
+test('la variante destructiva queda deshabilitada con su motivo en el title', () => {
+  render(
+    <Button variant="destructiva" disabled title="No podés desactivarte">
+      Desactivar
+    </Button>,
+  );
+  const button = screen.getByRole('button', { name: 'Desactivar' });
+  expect(button.className).toContain(styles.destructiva);
+  expect(button).toBeDisabled();
+  expect(button).toHaveAttribute('title', 'No podés desactivarte');
+});

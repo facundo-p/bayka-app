@@ -23,12 +23,14 @@ case "$VARIANT" in
     export APP_VARIANT=""
     EXPECTED_PKG="com.bayka.app"
     EXPECTED_LABEL="Bayka App"
+    EXPECTED_CANAL="production"
     ARTIFACT="build-output.apk"
     ;;
   test)
     export APP_VARIANT="test"
     EXPECTED_PKG="com.bayka.app.test"
     EXPECTED_LABEL="Bayka TEST"
+    EXPECTED_CANAL="test"
     ARTIFACT="build-output-test.apk"
     ;;
   *)
@@ -49,6 +51,21 @@ if [ "$VARIANT" = "test" ]; then
   [ -f .env.staging ] || { echo "ERROR: falta mobile/.env.staging (env de Supabase staging; está en Bitwarden)" >&2; exit 1; }
   grep -q "PEGAR_" .env.staging && { echo "ERROR: mobile/.env.staging tiene placeholders sin completar" >&2; exit 1; }
 fi
+
+# Sin EAS_PROJECT_ID el APK sale con `updates.url` vacía y no recibe ningún OTA, sin
+# avisar (#384). Se chequea con la misma cadena de dotenv que arma app.config.js.
+node -e '
+  const path = require("path");
+  for (const archivo of ["../.env", ".env", ".env.staging"]) {
+    require("dotenv").config({ path: path.resolve(archivo), override: true });
+  }
+  const id = process.env.EAS_PROJECT_ID || "";
+  process.exit(id && !id.includes("<") ? 0 : 1);
+' >/dev/null 2>&1 || {
+  echo "ERROR: falta EAS_PROJECT_ID en .env (raíz); el APK no recibiría updates OTA" >&2
+  echo "       Está en el dashboard de expo.dev → proyecto Bayka → Project ID" >&2
+  exit 1
+}
 
 # --- Prebuild limpio de la variante ------------------------------------------
 echo ">>> [$VARIANT] expo prebuild --clean"
@@ -74,11 +91,23 @@ if [ "$PKG" != "$EXPECTED_PKG" ] || [ "$LABEL" != "$EXPECTED_LABEL" ]; then
   exit 1
 fi
 
+# El canal de OTA se grabó en el manifest o no, y desde la app no hay forma de
+# saberlo (#384): se reporta acá. Informativo, no corta el build.
+CANAL="?"
+if echo "$("$AAPT" dump xmltree "$ARTIFACT" AndroidManifest.xml 2>/dev/null)" \
+  | grep "expo-channel-name" | grep -q "$EXPECTED_CANAL"; then
+  CANAL="$EXPECTED_CANAL"
+else
+  echo "AVISO: no se pudo confirmar el canal '$EXPECTED_CANAL' en el manifest del APK." >&2
+  echo "       Si es así, este APK no recibiría updates OTA (ver #384)." >&2
+fi
+
 echo ""
 echo "APK $VARIANT listo!"
 echo "  APK:     mobile/$ARTIFACT"
 echo "  Package: $PKG"
 echo "  Label:   $LABEL"
+echo "  Canal:   $CANAL"
 echo "  Size:    $(du -h "$ARTIFACT" | cut -f1)"
 echo ""
 echo "Instalar en dispositivo conectado:  adb install -r mobile/$ARTIFACT"

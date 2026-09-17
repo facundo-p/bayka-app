@@ -1,0 +1,38 @@
+.contenedor {
+  position: relative;
+  display: inline-block;
+}
+
+.menu {
+  composes: caja from './listaFlotante.module.css';
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-xs));
+  z-index: var(--z-flotante);
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-sm);
+  border-radius: var(--radius-control);
+}
+
+.item {
+  composes: filaBoton from './listaFlotante.module.css';
+  gap: var(--space-lg);
+  padding-inline: var(--space-xl);
+  color: var(--color-text-body);
+  white-space: nowrap;
+}
+
+.item:hover:not(:disabled) {
+  background-color: var(--color-surface-sunken);
+}
+
+.item:disabled {
+  color: var(--color-text-faint);
+  cursor: not-allowed;
+}
+
+.destructiva:not(:disabled) {
+  color: var(--color-danger);
+}

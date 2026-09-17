@@ -1,0 +1,80 @@
+/* ─── Celdas de la tabla ─────────────────────────────────────────────── */
+
+.codigoCelda {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-md);
+  white-space: nowrap;
+}
+
+/* Nombre científico: itálica, color tenue. '—' cuando es null. */
+.cientifico {
+  font-style: italic;
+  color: var(--color-text-faint);
+}
+
+/* Fila sin uso (0 plantaciones y 0 árboles): texto atenuado. */
+.filaSinUso {
+  color: var(--color-text-muted);
+}
+
+/* ─── Panel lateral ──────────────────────────────────────────────────── */
+
+/* Chip con el código actual de la especie, junto al título. */
+.chipCodigo {
+  padding: var(--space-xs) var(--space-md);
+  border-radius: var(--radius-code);
+  background-color: var(--color-surface-tint);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+}
+
+.form {
+  composes: formCompacto from '../../components/Formulario.module.css';
+}
+
+.campoCodigo {
+  font-family: var(--font-mono);
+}
+
+.campoCientifico {
+  font-style: italic;
+}
+
+.advertencia {
+  composes: advertencia from '../../components/Formulario.module.css';
+}
+
+.errorEnvio {
+  composes: errorEnvio from '../../components/Formulario.module.css';
+}
+
+.overline {
+  composes: overline from '../../theme/utilidades.module.css';
+}
+
+/* Caja de conteos: dos columnas con el número en serif grande. */
+.conteos {
+  display: grid;
+  /* El conteo más ancho mide 97px; con 160 entran los dos en el panel (358px)
+     y pasan a uno solo cuando el panel se angosta. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-2xl);
+  padding: var(--space-2xl);
+  border-radius: var(--radius-control);
+  background-color: var(--color-surface-sunken);
+}
+
+.conteo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.conteoValor {
+  font-family: var(--font-heading);
+  font-size: var(--text-kpi-sm);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-heading);
+}

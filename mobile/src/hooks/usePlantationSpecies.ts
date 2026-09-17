@@ -20,7 +20,6 @@ export function usePlantationSpecies(plantacionId: string) {
 
     const adminSpecies = await getSpeciesForPlantation(plantacionId);
 
-    // Check if user has a custom order
     if (userId) {
       const userOrder = await getUserSpeciesOrder(userId, plantacionId);
       if (userOrder.length > 0) {
@@ -36,7 +35,6 @@ export function usePlantationSpecies(plantacionId: string) {
       }
     }
 
-    // Fallback: admin order
     setSpecies(adminSpecies);
     setLoading(false);
   }, [plantacionId, userId]);

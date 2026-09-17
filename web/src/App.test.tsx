@@ -1,6 +1,13 @@
 import { screen } from '@testing-library/react';
-import { PERFIL_ADMIN, PERFIL_TECNICO, estadoMock, resetEstadoMock } from './test/supabaseMock';
+import {
+  PERFIL_ADMIN,
+  PERFIL_TECNICO,
+  prepararSesion,
+  prepararSesionAdmin,
+  resetEstadoMock,
+} from './test/supabaseMock';
 import { renderRutasEn as renderAt } from './test/renderConRutas';
+import { capturarConsultas } from './test/capturarConsultas';
 
 vi.mock('./lib/supabase', async () => {
   const { supabaseMock } = await import('./test/supabaseMock');
@@ -9,13 +16,8 @@ vi.mock('./lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-function simularAdminLogueado() {
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
-}
-
 test('autenticado: muestra el logo de marca y los links de navegación', async () => {
-  simularAdminLogueado();
+  prepararSesionAdmin();
   renderAt('/');
   expect(await screen.findByRole('img', { name: 'Bayka' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Plantaciones' })).toBeInTheDocument();
@@ -24,7 +26,7 @@ test('autenticado: muestra el logo de marca y los links de navegación', async (
 });
 
 test('autenticado: la ruta raíz redirige al listado de Plantaciones', async () => {
-  simularAdminLogueado();
+  prepararSesionAdmin();
   renderAt('/');
   expect(await screen.findByRole('heading', { name: 'Plantaciones' })).toBeInTheDocument();
   // Sin datos configurados, el listado real muestra su estado vacío.
@@ -32,12 +34,19 @@ test('autenticado: la ruta raíz redirige al listado de Plantaciones', async () 
 });
 
 test('autenticado: el footer del sidebar muestra nombre, rol y botón de salir', async () => {
-  simularAdminLogueado();
+  prepararSesionAdmin();
   renderAt('/plantaciones');
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
   // El rol se muestra con su etiqueta en español en el footer del sidebar.
   expect(screen.getByText('Administrador')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+});
+
+test('autenticado sin nombre: el footer muestra el id corto en vez de quedar vacío', async () => {
+  prepararSesion({ ...PERFIL_ADMIN, id: 'abcdefgh-1234', nombre: '   ' });
+  renderAt('/plantaciones');
+  expect(await screen.findByText('abcdefgh')).toBeInTheDocument();
+  expect(screen.getByText('Administrador')).toBeInTheDocument();
 });
 
 test('sin sesión: redirige a /login y muestra el formulario', async () => {
@@ -47,15 +56,21 @@ test('sin sesión: redirige a /login y muestra el formulario', async () => {
 });
 
 test('perfil tecnico: muestra la pantalla sin acceso', async () => {
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_TECNICO;
+  prepararSesion(PERFIL_TECNICO);
   renderAt('/plantaciones');
   expect(await screen.findByText('Sin acceso')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
 });
 
 test('autenticado: /login redirige a Plantaciones', async () => {
-  simularAdminLogueado();
+  prepararSesionAdmin();
   renderAt('/login');
   expect(await screen.findByRole('heading', { name: 'Plantaciones' })).toBeInTheDocument();
+});
+
+test('sin sesión: no se consultan plantaciones (cachearía vacío y lo vería el login)', async () => {
+  const consultas = capturarConsultas(() => ({ data: [] }));
+  renderAt('/login');
+  expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
+  expect(consultas.filter((consulta) => consulta.tabla === 'plantations')).toEqual([]);
 });

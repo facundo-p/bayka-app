@@ -1,14 +1,15 @@
 import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
-import { sql } from 'drizzle-orm';
+import { deletePlantationLocally } from '../../repositories/PlantationRepository';
+import { relanzarSiEsCancelacion } from './cancelacion';
+import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { DownloadProgress, DownloadResult, DownloadPhaseProgress } from './types';
-import { pullFromServer } from './pullService';
+import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esSinAcceso } from './types';
+import { pullFromServer, webManagedFlags } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
-
-// ─── Download a single plantation from server ─────────────────────────────────
+import { marcandoActividadDeSync } from './syncActivityStore';
 
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
@@ -17,10 +18,7 @@ interface DownloadOptions {
   onPhase?: (p: DownloadPhaseProgress) => void;
 }
 
-/**
- * Fila de plantations tal como llega del server (snake_case).
- * visible_in_app es opcional: tolera servers sin la migración que la agrega.
- */
+/** Fila de plantations tal como llega del server (snake_case); los flags de la web son opcionales, toleran servers sin esas columnas. */
 export type ServerPlantationRow = {
   id: string;
   organizacion_id: string;
@@ -30,17 +28,22 @@ export type ServerPlantationRow = {
   creado_por: string;
   created_at: string;
   visible_in_app?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
 };
 
-/**
- * Downloads a single plantation by upserting its row into local SQLite,
- * then calling pullFromServer to sync groups, species, and users.
- */
+/** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
 export async function downloadPlantation(
   serverPlantation: ServerPlantationRow,
   options: DownloadOptions = {},
 ): Promise<void> {
   const { includePhotos = false, onPhase } = options;
+
+  // Una plantación que ya estaba local no se revierte si el pull falla: sus datos
+  // viejos siguen siendo mejores que nada, y el pull es idempotente.
+  const [yaEstabaLocal] = await db
+    .select({ id: plantations.id })
+    .from(plantations)
+    .where(eq(plantations.id, serverPlantation.id));
 
   await db
     .insert(plantations)
@@ -55,8 +58,7 @@ export async function downloadPlantation(
       pendingSync: false,
       lugarServer: serverPlantation.lugar,
       periodoServer: serverPlantation.periodo,
-      // Ausente en la respuesta (server sin la columna) → visible.
-      visibleInApp: serverPlantation.visible_in_app ?? true,
+      ...webManagedFlags(serverPlantation),
     })
     .onConflictDoUpdate({
       target: plantations.id,
@@ -65,16 +67,42 @@ export async function downloadPlantation(
         pendingSync: false,
         lugarServer: serverPlantation.lugar,
         periodoServer: serverPlantation.periodo,
-        visibleInApp: serverPlantation.visible_in_app ?? true,
+        ...webManagedFlags(serverPlantation),
       },
     });
 
-  await pullFromServer(serverPlantation.id, onPhase);
+  try {
+    const pull = await pullFromServer(serverPlantation.id, onPhase);
+    // Sin acceso no hay datos que bajar: que la descarga se reporte como fallida
+    // en vez de "listo" con la plantación vacía.
+    if (esSinAcceso(pull)) {
+      throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
+    }
+  } catch (e) {
+    // Primero: cancelar una sync corta todo lo que pase por `fetchAllRows`,
+    // incluida una descarga de catálogo en paralelo. Eso NO es un pull fallido y
+    // no puede disparar el borrado (#451).
+    relanzarSiEsCancelacion(e);
+    // La fila se insertó con `pendingSync: false` antes del pull, así que una
+    // plantación nueva cuyo pull falla queda en el listado como descargada y
+    // vacía (#448). Se borra con lo que haya alcanzado a bajar.
+    if (!yaEstabaLocal) {
+      // El revert no puede pisar la causa real: si falla, se loguea aparte y se
+      // propaga el error del pull, que es lo que hay que diagnosticar.
+      try {
+        await deletePlantationLocally(serverPlantation.id);
+        syncLog.info('Download: pull falló, se revierte la plantación', serverPlantation.id);
+      } catch (errorDelRevert) {
+        syncLog.error('Download: no se pudo revertir la plantación', serverPlantation.id, errorDelRevert);
+      }
+    }
+    throw e;
+  }
 
   if (includePhotos) {
     try {
       await downloadPhotosForPlantation(serverPlantation.id, (p) => {
-        onPhase?.({ phase: 'fotos', phaseDone: p.completed, phaseTotal: p.total });
+        onPhase?.({ phase: DOWNLOAD_PHASE.fotos, phaseDone: p.completed, phaseTotal: p.total });
       });
     } catch (e) {
       syncLog.error('Download: Photo download failed for plantation:', serverPlantation.id, e);
@@ -83,16 +111,11 @@ export async function downloadPlantation(
   }
 }
 
-// ─── Batch download plantations ───────────────────────────────────────────────
-
 /**
- * Downloads multiple plantations sequentially. Calls notifyDataChanged once
- * at the end to prevent render storms.
- *
- * Species catalog is pulled once at the start (before the loop) — trees rely
- * on local species rows for code/name resolution.
+ * Descarga varias plantaciones secuencialmente; notifyDataChanged una sola vez al final (evita
+ * render storms). El catálogo de species se trae una vez al inicio — los árboles lo necesitan para resolver código/nombre.
  */
-export async function batchDownload(
+async function correrBatchDownload(
   selected: ServerPlantationRow[],
   onProgress?: (progress: DownloadProgress) => void,
   options: { includePhotos?: boolean } = {},
@@ -117,7 +140,7 @@ export async function batchDownload(
 
   // Initial event so the modal shows a state before the first plantation starts.
   if (selected.length > 0) {
-    emitProgress(1, selected[0].lugar, { phase: 'species', phaseDone: 0, phaseTotal: 0 });
+    emitProgress(1, selected[0].lugar, { phase: DOWNLOAD_PHASE.species, phaseDone: 0, phaseTotal: 0 });
   }
 
   try {
@@ -147,3 +170,6 @@ export async function batchDownload(
 
   return results;
 }
+
+// Escribe la DB local y baja fotos igual que una sync: cuenta como actividad (#446).
+export const batchDownload = marcandoActividadDeSync(correrBatchDownload);

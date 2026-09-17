@@ -1,22 +1,19 @@
 /**
  * Query functions for plantation detail screen and related views.
  * All stats, counts, and data fetching for a single plantation.
- * Screens import these — no inline db queries in screens.
  */
 import { db } from '../database/client';
 import { plantations, parcelas, groups, trees } from '../database/schema';
 import { eq, and, count, asc, isNull, sql } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
 
-/** Get plantation lugar (name) by ID */
 export async function getPlantationLugar(plantacionId: string) {
   return db.select({ lugar: plantations.lugar })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
 }
 
-/** Get all groups for a plantation, ordered alphabetically by name.
- *  If `parcelaId` is provided, scopes results to that parcela. */
+/** If `parcelaId` is provided, scopes results to that parcela. */
 export async function getGroupsForPlantation(plantacionId: string, parcelaId?: string) {
   const conds = [eq(groups.plantacionId, plantacionId)];
   if (parcelaId) conds.push(eq(groups.parcelaId, parcelaId));
@@ -25,27 +22,29 @@ export async function getGroupsForPlantation(plantacionId: string, parcelaId?: s
     .orderBy(asc(groups.nombre));
 }
 
-/** Get a single subgroup by ID */
 export async function getGroupById(grupoId: string) {
   return db.select().from(groups)
     .where(eq(groups.id, grupoId));
 }
 
-export interface PlantationGpsConfig {
+/** Config de captura de la plantación que gobierna el registro de árboles (GPS + foto). */
+export interface PlantationCaptureConfig {
   /** Capturar GPS cada N árboles. */
-  frequency: number;
-  /** Si la captura es obligatoria para registrar árboles. */
-  required: boolean;
+  gpsFrequency: number;
+  /** Si la captura GPS es obligatoria para registrar árboles. */
+  gpsRequired: boolean;
+  /** Si todos los botones de especie piden foto, como N/N (#439). */
+  photoAllTrees: boolean;
 }
 
-/** Config GPS de la plantación (frecuencia de captura y obligatoriedad). */
-export async function getPlantationGpsConfig(
+export async function getPlantationCaptureConfig(
   plantacionId: string,
-): Promise<PlantationGpsConfig | null> {
+): Promise<PlantationCaptureConfig | null> {
   const rows = await db
     .select({
-      frequency: plantations.gpsCaptureFrequency,
-      required: plantations.gpsCaptureRequired,
+      gpsFrequency: plantations.gpsCaptureFrequency,
+      gpsRequired: plantations.gpsCaptureRequired,
+      photoAllTrees: plantations.photoCaptureAllTrees,
     })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
@@ -66,7 +65,6 @@ export async function getNNCountsPerGroup(plantacionId: string) {
     .groupBy(trees.groupId);
 }
 
-/** Count total trees per subgroup in a plantation */
 export async function getTreeCountsPerGroup(plantacionId: string) {
   return db.select({
     grupoId: trees.groupId,
@@ -116,7 +114,7 @@ export async function getUnsyncedTreesForUser(plantacionId: string, userId: stri
   return result[0]?.total ?? 0;
 }
 
-/** Get all unresolved N/N trees across groups in a plantation (for plantation-wide N/N resolution) */
+/** All unresolved N/N (especieId null) trees across groups in a plantation. */
 export async function getNNTreesForPlantation(plantacionId: string) {
   return db.select({
     id: trees.id,

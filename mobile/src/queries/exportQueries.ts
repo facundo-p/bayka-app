@@ -1,61 +1,43 @@
 /**
  * Export query — returns all required columns for plantation export.
- *
- * Covers: EXPO-03, EXPO-PARC-01, EXPO-PARC-02
  */
 import { db } from '../database/client';
 import { trees, groups, plantations, parcelas, species } from '../database/schema';
 import { eq, and, asc, isNotNull } from 'drizzle-orm';
 
 /**
- * Row shape for the CSV/Excel export.
- *
- * NOTE on `lugar` vs `plantacionLugar` (D-18-09):
- * Both currently resolve to `plantations.lugar`. The "Zona" column is kept
- * for backwards compatibility while "Plantación" is the new column.
- * If the team decides to collapse them, it's a 1-line refactor (drop one field
- * + drop the matching column in ExportService).
- *
- * `parcelaNombre` no es nullable (#90): todo grupo tiene parcela (INNER JOIN);
- * el caso "grupo sin parcela" es dato inválido, no un caso a normalizar.
- *
- * `especieNombre` es nullable por el LEFT JOIN a `species`: un árbol cuya
- * `especieId` es null o apunta a una especie ausente del catálogo local (especie
- * huérfana por sync incompleto) NO debe desaparecer del export — el INNER JOIN
- * previo lo descartaba en silencio. El consumidor lo etiqueta "N/N" para que el
- * problema sea visible en la planilla en vez de perder el árbol.
+ * Fila para el export CSV/Excel. lugar/plantacionLugar resuelven ambos a plantations.lugar ("Zona"
+ * es legacy, "Plantación" la columna nueva). parcelaNombre y especieNombre son nullables: un árbol
+ * nunca debe caerse del export por una parcela borrada o una especie ausente, se serializan
+ * vacío y "N/N" respectivamente (mismo criterio que la web).
  */
 export interface ExportRow {
   globalId: number | null;
   idParcial: number | null;
   lugar: string;
   plantacionLugar: string;
-  parcelaNombre: string;
+  parcelaNombre: string | null;
   grupoNombre: string;
   subId: string;
   periodo: string;
   especieNombre: string | null;
 }
 
-/**
- * EXPO-03 / EXPO-PARC-01 / EXPO-PARC-02
- * Returns all tree rows with required export columns, ordered by globalId ASC.
- * JOIN: trees → groups → plantations → parcelas (#90: parcela obligatoria);
- * LEFT JOIN a species.
- *
- * `species` va por LEFT JOIN a propósito: con INNER JOIN, un árbol con
- * `especieId` null o huérfano (especie no presente en el catálogo local) se
- * caía del export sin aviso. Con LEFT JOIN el árbol siempre sale y el consumidor
- * lo marca "N/N".
- */
+/** Null si la parcela está tombstoned: su nombre no debe aparecer en la planilla. */
+function nombreVigente(nombre: string | null, borradaEn: string | null): string | null {
+  return borradaEn === null ? nombre : null;
+}
+
+/** Filas de export ordenadas por globalId ASC; ver `ExportRow` para el porqué de los JOIN. */
 export async function getExportRows(plantacionId: string): Promise<ExportRow[]> {
-  return db
+  const filas = await db
     .select({
       globalId: trees.globalId,
       idParcial: trees.plantacionId,
       lugar: plantations.lugar,
       plantacionLugar: plantations.lugar,
       parcelaNombre: parcelas.nombre,
+      parcelaBorradaEn: parcelas.deletedAt,
       grupoNombre: groups.nombre,
       subId: trees.subId,
       periodo: plantations.periodo,
@@ -64,40 +46,41 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
-    .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
+    .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .leftJoin(species, eq(trees.especieId, species.id))
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(trees.globalId));
+
+  return filas.map(({ parcelaBorradaEn, ...fila }) => ({
+    ...fila,
+    parcelaNombre: nombreVigente(fila.parcelaNombre, parcelaBorradaEn),
+  }));
 }
 
-/**
- * Row del export KML: solo árboles CON coordenadas. `especieNombre` nullable
- * (N/N sin resolver se exporta con etiqueta "N/N"); `parcelaNombre` no (#90).
- */
+/** Fila del export KML (solo árboles con coordenadas); especieNombre y parcelaNombre nullables:
+ *  el generador les pone etiqueta ("N/N" / "Sin parcela") en vez de perder el punto. */
 export interface KmlExportRow {
   subId: string;
   posicion: number;
   especieNombre: string | null;
   grupoNombre: string;
-  parcelaNombre: string;
+  parcelaNombre: string | null;
   latitude: number;
   longitude: number;
   gpsAccuracy: number | null;
   gpsCapturedAt: string | null;
 }
 
-/**
- * Árboles con punto GPS de la plantación, ordenados por parcela → grupo →
- * posición (el generador KML agrupa en folders preservando este orden).
- */
+/** Árboles con GPS, ordenados parcela → grupo → posición (el generador KML agrupa en folders preservando este orden). */
 export async function getKmlExportRows(plantacionId: string): Promise<KmlExportRow[]> {
-  const rows = await db
+  const filas = await db
     .select({
       subId: trees.subId,
       posicion: trees.posicion,
       especieNombre: species.nombre,
       grupoNombre: groups.nombre,
       parcelaNombre: parcelas.nombre,
+      parcelaBorradaEn: parcelas.deletedAt,
       latitude: trees.latitude,
       longitude: trees.longitude,
       gpsAccuracy: trees.gpsAccuracy,
@@ -105,7 +88,7 @@ export async function getKmlExportRows(plantacionId: string): Promise<KmlExportR
     })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
-    .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
+    .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .leftJoin(species, eq(trees.especieId, species.id))
     .where(and(
       eq(groups.plantacionId, plantacionId),
@@ -113,5 +96,9 @@ export async function getKmlExportRows(plantacionId: string): Promise<KmlExportR
       isNotNull(trees.longitude),
     ))
     .orderBy(asc(parcelas.nombre), asc(groups.nombre), asc(trees.posicion));
-  return rows as KmlExportRow[];
+
+  return filas.map(({ parcelaBorradaEn, ...fila }) => ({
+    ...fila,
+    parcelaNombre: nombreVigente(fila.parcelaNombre, parcelaBorradaEn),
+  })) as KmlExportRow[];
 }

@@ -50,7 +50,6 @@ describe('useProfileData', () => {
     });
 
     const { result } = renderHook(() => useProfileData());
-    // Initially loading=true
     expect(result.current.loading).toBe(true);
 
     await waitFor(() => {
@@ -79,8 +78,7 @@ describe('useProfileData', () => {
       data: { user: { id: 'user-1', email: 'juan@example.com' } },
     });
 
-    // The hook uses a joined query: from('profiles').select('nombre, rol, organizacion_id, organizations(nombre)')
-    // The organizations data comes nested in the profile response
+    // Joined query: select(...organizations(nombre)) nests organizations data in the response.
     (supabase.from as jest.Mock).mockImplementation((table: string) => {
       if (table === 'profiles') {
         return makeSupabaseChain({

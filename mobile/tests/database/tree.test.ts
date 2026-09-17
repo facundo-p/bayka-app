@@ -1,5 +1,4 @@
-// Tests for TreeRepository — implemented in Plan 02-02
-// Covers: TREE-02, TREE-03, TREE-07, NN-04, REVR-01, REVR-02
+// Tests for TreeRepository
 
 // --- DB mock infrastructure ---
 
@@ -7,11 +6,9 @@ let mockSelectResults: any[] = [];
 let mockInsertValues: jest.Mock;
 let mockDeleteWhere: jest.Mock;
 let mockUpdateWhere: jest.Mock;
-let mockTransactionFn: jest.Mock;
 
-// db.select() returns chain: .from().where() OR .from().where().orderBy()...
-// We make it flexible: each .where() resolves to mockSelectResults.
-// Tests can override by reassigning mockSelectResults before each case.
+// db.select() chain is flexible: any .where() resolves to mockSelectResults,
+// which tests reassign per case.
 
 jest.mock('../../src/database/client', () => {
   return {
@@ -21,6 +18,14 @@ jest.mock('../../src/database/client', () => {
   };
 });
 
+// `enTransaccion` reemplaza a `db.transaction`, que con callbacks async commitea
+// vacío (#448). Passthrough con `db`, que es lo que pasa el helper real.
+jest.mock('../../src/database/transaccion', () => ({
+  enTransaccion: jest.fn((cb: (tx: unknown) => Promise<unknown>) =>
+    cb(jest.requireMock('../../src/database/client').db)),
+}));
+
+
 // mockDb defined after jest.mock (hoisted)
 let mockDb: any;
 
@@ -28,10 +33,14 @@ beforeAll(() => {
   mockInsertValues = jest.fn().mockResolvedValue(undefined);
   mockDeleteWhere = jest.fn().mockResolvedValue(undefined);
   mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
-  mockTransactionFn = jest.fn();
 
   mockDb = {
-    insert: jest.fn(() => ({ values: mockInsertValues })),
+    insert: jest.fn(() => ({
+      values: jest.fn((valores: unknown) => {
+        mockInsertValues(valores);
+        return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+      }),
+    })),
     delete: jest.fn(() => ({ where: mockDeleteWhere })),
     update: jest.fn(() => ({
       set: jest.fn(() => ({ where: mockUpdateWhere })),
@@ -43,20 +52,6 @@ beforeAll(() => {
         ),
       })),
     })),
-    transaction: jest.fn(async (fn: (tx: any) => Promise<void>) => {
-      // Run with a tx that has the same shape as db
-      const tx = {
-        select: jest.fn(() => ({
-          from: jest.fn(() => ({
-            where: jest.fn(() => Promise.resolve(mockSelectResults)),
-          })),
-        })),
-        update: jest.fn(() => ({
-          set: jest.fn(() => ({ where: mockUpdateWhere })),
-        })),
-      };
-      await fn(tx);
-    }),
   };
 });
 
@@ -67,7 +62,12 @@ beforeEach(() => {
   mockDeleteWhere = jest.fn().mockResolvedValue(undefined);
   mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
 
-  mockDb.insert = jest.fn(() => ({ values: mockInsertValues }));
+  mockDb.insert = jest.fn(() => ({
+    values: jest.fn((valores: unknown) => {
+      mockInsertValues(valores);
+      return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+    }),
+  }));
   mockDb.delete = jest.fn(() => ({ where: mockDeleteWhere }));
   mockDb.update = jest.fn(() => ({
     set: jest.fn(() => ({ where: mockUpdateWhere })),
@@ -77,19 +77,6 @@ beforeEach(() => {
       where: jest.fn(() => Promise.resolve(mockSelectResults)),
     })),
   }));
-  mockDb.transaction = jest.fn(async (fn: (tx: any) => Promise<void>) => {
-    const tx = {
-      select: jest.fn(() => ({
-        from: jest.fn(() => ({
-          where: jest.fn(() => Promise.resolve(mockSelectResults)),
-        })),
-      })),
-      update: jest.fn(() => ({
-        set: jest.fn(() => ({ where: mockUpdateWhere })),
-      })),
-    };
-    await fn(tx);
-  });
 });
 
 import {
@@ -99,6 +86,7 @@ import {
   resolveNNTree,
   updateTreePhoto,
 } from '../../src/repositories/TreeRepository';
+import { enTransaccion } from '../../src/database/transaccion';
 
 describe('TreeRepository', () => {
   describe('insertTree', () => {
@@ -126,7 +114,6 @@ describe('TreeRepository', () => {
     });
 
     it('inserts tree with auto-incremented position (TREE-02, TREE-03)', async () => {
-      // Existing tree at posicion=3
       mockSelectResults = [{ maxPos: 3, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -175,7 +162,7 @@ describe('TreeRepository', () => {
 
   describe('deleteLastTree', () => {
     it('deletes only the last tree by posicion (TREE-07)', async () => {
-      mockSelectResults = [{ maxPos: 5, id: 'tree-5' }];
+      mockSelectResults = [{ maxPos: 5, id: 'tree-5', plantacionId: 'plant-1' }];
 
       const result = await deleteLastTree('sg-1');
 
@@ -203,7 +190,7 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
+      expect(enTransaccion).toHaveBeenCalledTimes(1);
     });
 
     it('updates all posicion values using formula total-N+1 (REVR-01, REVR-02)', async () => {
@@ -215,9 +202,8 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      // transaction should have been called
-      expect(mockDb.transaction).toHaveBeenCalledTimes(1);
-      // update called at least 3 times (once per tree in tx) + 1 for markGroupPendingSync
+      expect(enTransaccion).toHaveBeenCalledTimes(1);
+      // 3 updates (once per tree in tx) + 1 for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
@@ -230,7 +216,6 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      // Verify updates were called with recalculated subIds
       // tree-1 (pos=1) → newPosicion = 2-1+1 = 2 → 'L1NN2'
       // tree-2 (pos=2) → newPosicion = 2-2+1 = 1 → 'L1NN1'
       // Plus 1 for markGroupPendingSync
@@ -243,7 +228,7 @@ describe('TreeRepository', () => {
 
       await reverseTreeOrder('sg-1', 'L1');
 
-      expect(mockDb.transaction).not.toHaveBeenCalled();
+      expect(enTransaccion).not.toHaveBeenCalled();
     });
   });
 

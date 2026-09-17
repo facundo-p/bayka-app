@@ -1,6 +1,9 @@
 import { StyleSheet } from 'react-native';
 import { colors, fontSize, fonts, spacing, borderRadius } from '../theme';
 
+/** Entran "Sin señal" y "± 99 m" sin que el pill cambie de ancho. */
+const COMPACT_MIN_WIDTH = 80;
+
 export const gpsSignalIndicatorStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
@@ -11,6 +14,10 @@ export const gpsSignalIndicatorStyles = StyleSheet.create({
     borderRadius: borderRadius.round,
     borderWidth: 1,
     backgroundColor: colors.surface,
+  },
+  compact: {
+    minWidth: COMPACT_MIN_WIDTH,
+    justifyContent: 'center',
   },
   dot: {
     width: 8,

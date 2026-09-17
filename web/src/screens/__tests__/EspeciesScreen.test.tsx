@@ -1,24 +1,15 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PERFIL_ADMIN, estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { renderRutasEn } from '../../test/renderConRutas';
+import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
+import { enMain, renderRutasEn } from '../../test/renderConRutas';
+import { textoCompleto } from '../../test/textoCompleto';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
   return { supabase: supabaseMock };
 });
 
-beforeEach(() => {
-  resetEstadoMock();
-  estadoMock.sesion = { user: { id: 'user-1' } };
-  estadoMock.perfilFila = PERFIL_ADMIN;
-});
-
-/** El contenido de la pantalla vive en <main>; acotamos ahí las aserciones
- *  para no chocar con la card de temporada del sidebar. */
-function enMain() {
-  return within(screen.getByRole('main'));
-}
+beforeEach(prepararSesionAdmin);
 
 const FILAS_ESPECIES = [
   { id: 'sp-1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
@@ -43,19 +34,22 @@ function configurarEspeciesMock(): void {
   };
 }
 
-test('renderiza H1, subtítulo y una fila de especie con su uso', async () => {
+test('renderiza la cabecera con el uso del catálogo y una fila de especie', async () => {
   configurarEspeciesMock();
   renderRutasEn('/especies');
 
   await screen.findByText('Anchico');
   const main = enMain();
   expect(main.getByRole('heading', { name: 'Especies' })).toBeInTheDocument();
-  expect(main.getByText('Catálogo global · 2 especies nativas')).toBeInTheDocument();
+  // La cabecera resume el catálogo: total y cuántas están en uso.
+  expect(main.getByText('Catálogo global · 2 especies nativas · 1 en uso')).toBeInTheDocument();
   expect(main.getByText('Anchico')).toBeInTheDocument();
   expect(main.getByText('ANC')).toBeInTheDocument();
   expect(main.getByText('Parapiptadenia rigida')).toBeInTheDocument();
-  // Anchico: 1 plantación, 1.234 árboles.
-  expect(main.getByText('1.234')).toBeInTheDocument();
+  // Anchico: 1 plantación, 1.234 árboles (el recuento de la toolbar repite el total).
+  const filaAnchico = main.getByText('Anchico').closest('tr');
+  if (!filaAnchico) throw new Error('No se encontró la fila de Anchico');
+  expect(within(filaAnchico).getByText('1.234')).toBeInTheDocument();
 });
 
 test('muestra el uso por especie: plantaciones y árboles (0/0 la sin uso)', async () => {
@@ -101,7 +95,7 @@ test('una búsqueda sin coincidencias muestra el vacío del listado', async () =
   expect(enMain().queryByText('Anchico')).not.toBeInTheDocument();
 });
 
-test('"Nueva especie" abre el modal en modo alta (campos vacíos)', async () => {
+test('"Nueva especie" abre el panel en modo alta (campos vacíos)', async () => {
   configurarEspeciesMock();
   const usuario = userEvent.setup();
   renderRutasEn('/especies');
@@ -114,7 +108,7 @@ test('"Nueva especie" abre el modal en modo alta (campos vacíos)', async () => 
   expect(screen.getByLabelText('Nombre común *')).toHaveValue('');
 });
 
-test('click en una fila abre el modal de edición precargado con esa especie', async () => {
+test('click en una fila abre el panel de edición precargado con esa especie', async () => {
   configurarEspeciesMock();
   const usuario = userEvent.setup();
   renderRutasEn('/especies');
@@ -125,4 +119,65 @@ test('click en una fila abre el modal de edición precargado con esa especie', a
   expect(screen.getByLabelText('Código *')).toHaveValue('ANC');
   expect(screen.getByLabelText('Nombre común *')).toHaveValue('Anchico');
   expect(screen.getByLabelText('Nombre científico')).toHaveValue('Parapiptadenia rigida');
+});
+
+test('el filtro de uso separa las especies usadas de las que no', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+  await screen.findByText('Anchico');
+
+  // Ibirá Pitá no está en ninguna plantación y no tiene árboles.
+  await usuario.click(enMain().getByRole('radio', { name: 'Sin uso' }));
+  await waitFor(() => expect(enMain().queryByText('Anchico')).not.toBeInTheDocument());
+  expect(enMain().getByText('Ibirá Pitá')).toBeInTheDocument();
+
+  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  await waitFor(() => expect(enMain().queryByText('Ibirá Pitá')).not.toBeInTheDocument());
+  expect(enMain().getByText('Anchico')).toBeInTheDocument();
+});
+
+test('el panel se cierra con la X y la fila abierta queda marcada', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+
+  await usuario.click(await screen.findByText('Anchico'));
+  const panel = screen.getByRole('complementary', { name: 'Editar especie' });
+  expect(panel).toBeInTheDocument();
+
+  await usuario.click(screen.getByRole('button', { name: 'Cerrar Editar especie' }));
+  expect(screen.queryByRole('complementary', { name: 'Editar especie' })).not.toBeInTheDocument();
+});
+
+test('con el catálogo vacío muestra el vacío total, no el de la búsqueda', async () => {
+  estadoMock.resolverConsulta = () => ({ data: [], error: null, count: 0 });
+  renderRutasEn('/especies');
+
+  expect(await screen.findByText('Sin especies')).toBeInTheDocument();
+  expect(screen.getByText('El catálogo de especies va a aparecer acá.')).toBeInTheDocument();
+  expect(
+    screen.queryByText('No hay especies que coincidan con la búsqueda'),
+  ).not.toBeInTheDocument();
+});
+
+test('ante un error muestra el mensaje con botón de reintento', async () => {
+  estadoMock.resolverConsulta = () => {
+    throw new Error('falló la red');
+  };
+  renderRutasEn('/especies');
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('No se pudieron cargar las especies.');
+  expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+});
+
+test('el recuento de la barra concuerda en singular', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+  await screen.findByText('Anchico');
+
+  expect(enMain().getByText(textoCompleto('2 especies · 1.234 árboles'))).toBeInTheDocument();
+  await usuario.click(enMain().getByRole('radio', { name: 'En uso' }));
+  expect(await enMain().findByText(textoCompleto('1 especie · 1.234 árboles'))).toBeInTheDocument();
 });

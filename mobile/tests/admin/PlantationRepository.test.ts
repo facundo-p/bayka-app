@@ -1,5 +1,4 @@
 // Tests for PlantationRepository — admin mutation functions
-// Covers: PLAN-01, PLAN-02, PLAN-03, PLAN-05
 // (La generación de IDs se movió a la web server-side — issue #232.)
 
 jest.mock('../../src/supabase/client', () => ({
@@ -27,9 +26,14 @@ jest.mock('../../src/services/SyncService', () => ({
   pullFromServer: jest.fn(),
 }));
 
+jest.mock('../../src/utils/syncLogger', () => ({
+  syncLog: { info: jest.fn(), error: jest.fn() },
+}));
+
 import {
   createPlantation,
   finalizePlantation,
+  FinalizePlantationLocalSyncError,
   saveSpeciesConfig,
   assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
@@ -38,11 +42,13 @@ import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { pullFromServer } from '../../src/services/SyncService';
+import { syncLog } from '../../src/utils/syncLogger';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockPullFromServer = pullFromServer as jest.Mock;
+const mockSyncLog = syncLog as jest.Mocked<typeof syncLog>;
 
 const fakePlantation = {
   id: 'plantation-uuid-1',
@@ -58,10 +64,8 @@ describe('PlantationRepository', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Default: pullFromServer succeeds
     mockPullFromServer.mockResolvedValue(undefined);
 
-    // Default supabase.from chain
     (mockSupabase.from as jest.Mock).mockReturnValue({
       insert: jest.fn().mockReturnValue({
         select: jest.fn().mockReturnValue({
@@ -81,7 +85,7 @@ describe('PlantationRepository', () => {
       }),
     });
 
-    // Default db.insert chain (upsert de plantación + membresía local #67)
+    // Upsert de plantación + membresía local (#67).
     (mockDb.insert as jest.Mock).mockReturnValue({
       values: jest.fn().mockReturnValue({
         onConflictDoUpdate: jest.fn().mockResolvedValue(undefined),
@@ -89,14 +93,12 @@ describe('PlantationRepository', () => {
       }),
     });
 
-    // Default db.update chain
     (mockDb.update as jest.Mock).mockReturnValue({
       set: jest.fn().mockReturnValue({
         where: jest.fn().mockResolvedValue(undefined),
       }),
     });
 
-    // Default db.select chain
     (mockDb.select as jest.Mock).mockReturnValue({
       from: jest.fn().mockReturnValue({
         innerJoin: jest.fn().mockReturnValue({
@@ -158,12 +160,10 @@ describe('PlantationRepository', () => {
     it('Test 3: updates estado to "finalizada" on BOTH supabase and local SQLite', async () => {
       await finalizePlantation('plantation-1');
 
-      // Verify Supabase update call
       expect(mockSupabase.from).toHaveBeenCalledWith('plantations');
       const fromResult = (mockSupabase.from as jest.Mock).mock.results[0].value;
       expect(fromResult.update).toHaveBeenCalledWith({ estado: 'finalizada' });
 
-      // Verify local SQLite update call
       expect(mockDb.update).toHaveBeenCalled();
       const updateResult = (mockDb.update as jest.Mock).mock.results[0].value;
       expect(updateResult.set).toHaveBeenCalledWith({ estado: 'finalizada' });
@@ -173,6 +173,34 @@ describe('PlantationRepository', () => {
       await finalizePlantation('plantation-1');
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it('Test 5: server ok + local fails — throws FinalizePlantationLocalSyncError, logs, does NOT notify', async () => {
+      (mockDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockRejectedValue(new Error('SQLITE_BUSY')),
+        }),
+      });
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow(FinalizePlantationLocalSyncError);
+
+      // El server ya quedó finalizado: no debe repetirse el update remoto ni notificar UI a medias.
+      expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
+      expect(mockSyncLog.error).toHaveBeenCalledWith(expect.stringContaining('plantation-1'), expect.any(Error));
+    });
+
+    it('Test 6: server fails — local SQLite untouched, error del server se propaga', async () => {
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ error: new Error('permission denied') }),
+        }),
+      });
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow('permission denied');
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
     });
   });
 
@@ -187,16 +215,12 @@ describe('PlantationRepository', () => {
 
       await saveSpeciesConfig('plantation-1', items);
 
-      // Verify delete called on plantation_species
       expect(mockSupabase.from).toHaveBeenCalledWith('plantation_species');
       const fromCalls = (mockSupabase.from as jest.Mock).mock.calls;
       const psCall = fromCalls.find((args) => args[0] === 'plantation_species');
       expect(psCall).toBeTruthy();
 
-      // Verify pullFromServer called
       expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-
-      // Verify notifyDataChanged called
       expect(mockNotifyDataChanged).toHaveBeenCalled();
     });
   });
@@ -228,5 +252,4 @@ describe('PlantationRepository', () => {
       expect(mockNotifyDataChanged).toHaveBeenCalled();
     });
   });
-
 });

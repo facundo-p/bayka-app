@@ -1,5 +1,3 @@
-// Tests for catalogQueries
-// Covers: CATL-01, CATL-04, CATL-06
 // Role-gated server catalog query and local plantation ID lookup
 
 jest.mock('../../src/supabase/client', () => ({
@@ -34,11 +32,7 @@ const makePlantation = (id: string): any => ({
   created_at: '2026-01-01T00:00:00Z',
 });
 
-/**
- * Build a Supabase chain where the terminal method is `order()`.
- * Used for admin plantations path: select().eq().order()
- * Uses non-jest functions to survive clearAllMocks().
- */
+// Admin plantations chain (select().eq().order()); non-jest functions survive clearAllMocks()
 function makeOrderTerminalChain(resolvedValue: any) {
   const chain: any = {};
   chain.select = () => chain;
@@ -48,10 +42,7 @@ function makeOrderTerminalChain(resolvedValue: any) {
   return chain;
 }
 
-/**
- * Build a Supabase chain where `eq()` is the terminal (resolves).
- * Used for plantation_users tecnico path: select().eq()
- */
+// Tecnico plantation_users chain, terminal at eq() (select().eq())
 function makeEqTerminalChain(resolvedValue: any) {
   const eqSpy = jest.fn().mockResolvedValue(resolvedValue);
   const chain: any = {
@@ -61,10 +52,7 @@ function makeEqTerminalChain(resolvedValue: any) {
   return chain;
 }
 
-/**
- * Build a Supabase chain where `in()` is the terminal (resolves).
- * Used for groups and trees count queries: select().in()
- */
+// Groups/trees count chain, terminal at in() (select().eq().in())
 function makeInTerminalChain(resolvedValue: any) {
   const chain: any = {};
   chain.select = () => chain;
@@ -84,7 +72,6 @@ describe('catalogQueries', () => {
     it('Test 1: admin path queries plantations filtered by organizacion_id', async () => {
       const remotePlantations = [makePlantation('p-1'), makePlantation('p-2')];
 
-      // Track eq calls on the plantations chain
       const eqCalls: any[] = [];
       const plantationsChain: any = {};
       plantationsChain.select = () => plantationsChain;
@@ -111,7 +98,6 @@ describe('catalogQueries', () => {
       const assignedPu = [{ plantation_id: 'p-1' }];
       const remotePlantations = [makePlantation('p-1')];
 
-      // Track eq calls for plantation_users chain
       const puEqCalls: any[] = [];
       const puChain: any = {
         select: () => puChain,
@@ -144,7 +130,7 @@ describe('catalogQueries', () => {
       const results = await getServerCatalog(false, 'user-tec', 'org-1');
 
       expect(results).toEqual([]);
-      // Only 1 supabase.from call (plantation_users) — no plantations call
+      // No plantations call — only plantation_users
       expect(supabase.from).toHaveBeenCalledTimes(1);
     });
   });

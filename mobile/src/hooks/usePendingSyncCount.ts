@@ -17,8 +17,6 @@ import {
  * - pendingGroupsCount / pendingParcelasCount / pendingPhotosCount: desglose
  *   por entidad (parcelas incluyen tombstones pendientes)
  *
- * D-16-15 + Finding #10 PLAN-CHECK: las queries viven en
- * `queries/pendingSyncQueries.ts` (CLAUDE.md §9 — cero SQL en hooks).
  * Issue #71: las fotos pendientes suman a pendingCount — antes el dot las
  * ignoraba y quedaba inconsistente con el trabajo pendiente real.
  */
@@ -50,8 +48,7 @@ export function usePendingSyncCount(plantacionId?: string) {
   const pendingParcelasCount = pendingParcelasData?.[0]?.cnt ?? 0;
   const pendingPhotosCount = pendingPhotosData?.[0]?.cnt ?? 0;
 
-  // D-16-15: parcelas pendientes suman al contador global del OrangeDot.
-  // Issue #71: fotos pendientes también.
+  // Parcelas y fotos pendientes también suman al contador global (issue #71).
   const pendingCount = pendingGroupsCount + pendingParcelasCount + pendingPhotosCount;
   const syncableCount = pendingGroupsCount - blockedByNN;
 

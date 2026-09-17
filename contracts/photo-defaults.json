@@ -1,0 +1,5 @@
+{
+  "_comment": "Fuente de verdad de defaults de captura de foto en la botonera (#439). Cambiar esto implica actualizar las copias runtime (mobile/src/constants/photoCapture.ts, web/src/lib/photoDefaults.ts), los DEFAULT de las migraciones 0019 (SQLite) y 035 (Supabase) y sus contract tests en el mismo cambio.",
+  "allTrees": false,
+  "required": true
+}

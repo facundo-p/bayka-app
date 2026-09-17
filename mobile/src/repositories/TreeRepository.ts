@@ -1,4 +1,5 @@
 import { db } from '../database/client';
+import { enTransaccion } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
 import { eq, max, asc, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
@@ -7,7 +8,10 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
+import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri } from '../utils/photoUri';
+import { resolveEspecieCodigo } from '../utils/speciesHelpers';
 
 export interface InsertTreeParams {
   grupoId: string;
@@ -25,7 +29,7 @@ export interface InsertTreeResult {
 }
 
 export async function insertTree(params: InsertTreeParams): Promise<InsertTreeResult> {
-  // CRITICAL: Always query MAX from DB — never trust React state (Pitfall 2)
+  // Siempre consulta MAX desde la DB, nunca confiar en React state.
   const [maxResult] = await db
     .select({ maxPos: max(trees.posicion) })
     .from(trees)
@@ -52,6 +56,11 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
   return { id, posicion: nextPosition, subId };
 }
 
+/**
+ * Deshacer el último árbol. Anota el borrado igual que `deleteTreeAndRecalculate`
+ * (#467): sin eso el pull lo resucita, y este es el camino de borrado más usado.
+ * No hace falta renumerar — se va el último.
+ */
 export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolean }> {
   const [maxResult] = await db
     .select({ maxPos: max(trees.posicion), id: trees.id })
@@ -60,7 +69,18 @@ export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolea
 
   if (maxResult?.id == null) return { deleted: false };
 
-  await db.delete(trees).where(eq(trees.id, maxResult.id));
+  const plantacionId = await plantacionDelGrupo(db, grupoId);
+  if (!plantacionId) {
+    throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
+  }
+
+  await enTransaccion(async (tx) => {
+    await tx.delete(trees).where(eq(trees.id, maxResult.id));
+    await registrarBorrado(tx, {
+      id: maxResult.id, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
+    });
+  });
+
   await markGroupPendingSync(grupoId);
   notifyDataChanged();
   return { deleted: true };
@@ -78,18 +98,10 @@ export async function reverseTreeOrder(
   const reversed = computeReversedPositions(allTrees);
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
-  await db.transaction(async (tx) => {
+  await enTransaccion(async (tx) => {
     for (const { id, newPosicion } of reversed) {
       const tree = allTrees.find((t) => t.id === id)!;
-
-      let especieCodigo = 'NN';
-      if (tree.especieId) {
-        const [sp] = await tx.select({ codigo: speciesTable.codigo })
-          .from(speciesTable)
-          .where(eq(speciesTable.id, tree.especieId));
-        especieCodigo = sp?.codigo ?? 'NN';
-      }
-
+      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
@@ -133,12 +145,7 @@ export interface TreeGpsPoint {
   gpsCapturedAt: string;
 }
 
-/**
- * Adjunta (o reemplaza) el punto GPS de un árbol. Llega async después del alta
- * (el fix puede resolver cuando el técnico ya registró el siguiente árbol).
- * Re-marca el grupo pendiente de sync: si el fix resuelve después de un push
- * (o el grupo ya estaba sincronizado, caso re-captura), nada más lo re-subiría.
- */
+/** Adjunta/reemplaza el punto GPS de un árbol; llega async después del alta (el fix puede resolver tarde). Re-marca el grupo pendiente para que el push lo suba si ya se había sincronizado. */
 export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promise<void> {
   const [treeRow] = await db.select({ grupoId: trees.groupId }).from(trees).where(eq(trees.id, treeId));
   if (!treeRow) return; // árbol deshecho antes de que llegara el fix
@@ -147,12 +154,7 @@ export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promis
   notifyDataChanged();
 }
 
-/**
- * Attaches, replaces, or removes the photo for any tree.
- * Pass empty string to remove the photo.
- * CRITICAL (Pitfall 6): Always reset fotoSynced to false on photo replacement —
- * the new local file must be re-uploaded to Storage.
- */
+/** Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea fotoSynced=false para forzar re-upload a Storage. */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
   await db.update(trees)
     .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
@@ -162,11 +164,7 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   notifyDataChanged();
 }
 
-/**
- * Returns trees with local photos not yet uploaded to Storage.
- * Only includes trees in synced groups (pendingSync=false) for the given plantation.
- * Filters to file:// URIs only — remote paths from pull should not be re-uploaded (Pitfall 2).
- */
+/** Árboles con fotos locales sin subir a Storage en toda la plantación (cualquier grupo, sincronizado o no); filtra a file:// (rutas remotas del pull no se re-suben). */
 export async function getTreesWithPendingPhotos(plantacionId: string): Promise<Array<{
   id: string;
   fotoUrl: string;
@@ -187,9 +185,7 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
     .where(
       and(
         eq(groups.plantacionId, plantacionId),
-        // Removed: eq(groups.pendingSync, false)
-        // Photo upload must work regardless of subgroup sync state.
-        // Trees from failed RPC calls also need their photos uploaded.
+        // Sin filtro por pendingSync del grupo: el upload de fotos debe funcionar sin importar el estado de sync, incluso con árboles de RPCs fallidos.
         isNotNull(trees.fotoUrl),
         eq(trees.fotoSynced, false)
       )
@@ -203,47 +199,55 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
   }>;
 }
 
-/**
- * Marks a tree's photo as synced (uploaded to Supabase Storage).
- */
+/** Marks a tree's photo as synced (uploaded to Supabase Storage). */
 export async function markPhotoSynced(treeId: string): Promise<void> {
   await db.update(trees)
     .set({ fotoSynced: true })
     .where(eq(trees.id, treeId));
 }
 
+/** Limpia el marcador de conflicto N/N (especie server vs local detectada en pull); aplica tanto al aceptar la resolución del server como al mantener la local. */
+export async function clearTreeConflict(treeId: string): Promise<void> {
+  await db.update(trees)
+    .set({ conflictEspecieId: null, conflictEspecieNombre: null })
+    .where(eq(trees.id, treeId));
+  notifyDataChanged();
+}
+
 /**
- * Deletes a single tree and recalculates positions + subIds for all
- * remaining trees in the subgroup so they stay consecutive (1, 2, 3...).
+ * Borra un árbol y recalcula posición+subId de los restantes en el grupo para que
+ * queden consecutivos (1,2,3...).
+ *
+ * El borrado, su registro para propagarlo al server y la renumeración van en UNA
+ * transacción (#467): si el registro quedara afuera, un corte entre el delete y el
+ * insert deja el borrado sin propagar y el próximo pull resucita el árbol con su
+ * numeración vieja, duplicando SubIDs.
  */
 export async function deleteTreeAndRecalculate(
   treeId: string,
   grupoId: string,
   grupoCodigo: string
 ): Promise<void> {
-  await db.delete(trees).where(eq(trees.id, treeId));
-
-  // Fetch remaining trees ordered by current position
-  const remaining = await db.select().from(trees)
-    .where(eq(trees.groupId, grupoId))
-    .orderBy(asc(trees.posicion));
-
+  const plantacionId = await plantacionDelGrupo(db, grupoId);
+  if (!plantacionId) {
+    throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
+  }
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
-  // Recalculate positions and subIds
-  await db.transaction(async (tx) => {
+  await enTransaccion(async (tx) => {
+    await tx.delete(trees).where(eq(trees.id, treeId));
+    await registrarBorrado(tx, {
+      id: treeId, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
+    });
+
+    const remaining = await tx.select().from(trees)
+      .where(eq(trees.groupId, grupoId))
+      .orderBy(asc(trees.posicion));
+
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
-
-      let especieCodigo = 'NN';
-      if (tree.especieId) {
-        const [sp] = await tx.select({ codigo: speciesTable.codigo })
-          .from(speciesTable)
-          .where(eq(speciesTable.id, tree.especieId));
-        especieCodigo = sp?.codigo ?? 'NN';
-      }
-
+      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })

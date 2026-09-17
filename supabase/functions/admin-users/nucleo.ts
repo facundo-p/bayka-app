@@ -1,8 +1,4 @@
-/**
- * Lógica de admin-users con dependencias inyectadas: el entry de Deno
- * (index.ts) le pasa los clientes reales de Supabase; los tests, mocks.
- * Este archivo no importa nada para poder testearse fuera de Deno (vitest).
- */
+/** Lógica de admin-users con deps inyectadas (index.ts pasa clientes reales, los tests mocks); sin imports, testeable fuera de Deno. */
 
 export const ROL = {
   ADMIN: 'admin',
@@ -30,12 +26,17 @@ export const MENSAJES = {
   rolInvalido: 'Rol inválido',
   nombreRequerido: 'El nombre es obligatorio',
   passwordCorta: `La contraseña debe tener al menos ${LONGITUD_MINIMA_PASSWORD} caracteres`,
+  limiteEmails: 'Alcanzaste el límite de emails. Esperá unos minutos y probá de nuevo.',
   errorGenerico: 'No se pudo completar la operación. Probá de nuevo.',
 } as const;
 
-/** Los errores de duplicado del Auth Admin API dicen "... already ... registered"
- *  (el texto exacto varía entre crear y actualizar email). Contrato de GoTrue. */
+/** Errores de duplicado de GoTrue: "... already ... registered" (texto varía entre crear/actualizar). */
 const PATRON_AUTH_YA_REGISTRADO = /already.*registered/i;
+
+/** Cuota de emails de GoTrue: "email rate limit exceeded" y "over_email_send_rate_limit"
+ *  (rate_limit_email_sent), más el "only request this after N seconds" de
+ *  smtp_max_frequency. El texto cambia entre versiones: si no matchea, cae al 500. */
+const PATRON_AUTH_RATE_LIMIT = /rate.?limit|only request this after/i;
 
 export type PerfilDb = { id: string; nombre: string; rol: string; activo: boolean };
 
@@ -113,9 +114,10 @@ function validarCuerpo(cuerpo: CuerpoAdminUsers): Respuesta | null {
   }
 }
 
-/** Traduce un error del Auth Admin API a la respuesta del contrato. */
 function falloDeAuth(error: string): Respuesta {
   if (PATRON_AUTH_YA_REGISTRADO.test(error)) return fallo(409, MENSAJES.emailDuplicado);
+  // Un rate limit no es un fallo del sistema: reintentar consume más cuota.
+  if (PATRON_AUTH_RATE_LIMIT.test(error)) return fallo(429, MENSAJES.limiteEmails);
   return fallo(500, MENSAJES.errorGenerico);
 }
 
@@ -168,8 +170,7 @@ async function cambiarEmail(
 ): Promise<Respuesta> {
   const objetivo = await deps.buscarPerfil(userId);
   if (!objetivo) return fallo(404, MENSAJES.usuarioInexistente);
-  // Mismo guard que cambiarPassword: sin él, cambiar el email de otro
-  // superadmin a una casilla propia + reenviarInvitacion = toma de cuenta.
+  // Mismo guard que cambiarPassword: sin él, cambiar email de otro superadmin + reenviarInvitacion = toma de cuenta.
   if (objetivo.rol === ROL.SUPERADMIN && objetivo.id !== caller.id) {
     return fallo(403, MENSAJES.emailDeOtroSuperadmin);
   }
@@ -186,8 +187,7 @@ async function ejecutarAccion(
     case 'crear': {
       const invitacion = await deps.invitar(cuerpo.email, { nombre: cuerpo.nombre.trim() });
       if (invitacion.error) return falloDeAuth(invitacion.error);
-      // El trigger crea siempre 'tecnico'; el rol elevado se setea acá con
-      // service_role (nunca desde la metadata, controlable por el cliente).
+      // El trigger crea siempre 'tecnico'; el rol elevado se setea acá con service_role (no desde la metadata, controlable por el cliente).
       if (cuerpo.rol !== ROL.TECNICO && invitacion.userId) {
         const asignacion = await deps.asignarRol(invitacion.userId, cuerpo.rol);
         if (asignacion.error) return fallo(500, MENSAJES.errorGenerico);
@@ -196,7 +196,7 @@ async function ejecutarAccion(
     }
     case 'reenviarInvitacion': {
       const envio = await deps.enviarRecuperacion(cuerpo.email);
-      return envio.error ? fallo(500, MENSAJES.errorGenerico) : ok();
+      return envio.error ? falloDeAuth(envio.error) : ok();
     }
     case 'desactivar':
       return desactivar(caller, cuerpo.userId, deps);
@@ -209,7 +209,6 @@ async function ejecutarAccion(
   }
 }
 
-/** Punto de entrada de la lógica: autoriza al caller y despacha la acción. */
 export async function manejarAdminUsers(
   jwt: string | null,
   cuerpo: unknown,

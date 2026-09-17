@@ -1,9 +1,9 @@
 /**
- * ParcelaRow — presentational row for a parcela (D-17-05/-06/-22).
+ * ParcelaRow — presentational row for a parcela.
  *
- * Reusable in standalone list (ParcelasScreen) and inline (PlantationCard expansion, Plan 17-02).
- * Does NOT render `descripcion` (D-17-05).
- * Touch target ≥44×44 (D-17-22).
+ * Reusable in standalone list (ParcelasScreen) and inline (PlantationCard expansion).
+ * Does NOT render `descripcion`.
+ * Touch target ≥44×44.
  */
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -19,7 +19,7 @@ export type ParcelaRowVariant = 'standalone' | 'inline';
 interface Props {
   parcela: ParcelaWithStats;
   onPress: () => void;
-  onLongPress: () => void;
+  onLongPress?: () => void;
   variant?: ParcelaRowVariant;
 }
 
@@ -63,7 +63,7 @@ export default function ParcelaRow({ parcela, onPress, onLongPress, variant = 's
       onLongPress={onLongPress}
       style={({ pressed }) => [baseStyle, pressed && styles.rowPressed]}
       accessibilityLabel={`Parcela ${parcela.nombre}`}
-      accessibilityHint="Tocar para ver grupos. Mantener presionado para editar."
+      accessibilityHint={onLongPress ? 'Tocar para ver grupos. Mantener presionado para editar.' : 'Tocar para ver grupos.'}
     >
       <View style={styles.leftContent}>
         <ParcelaHeading nombre={parcela.nombre} codigo={parcela.codigo} />

@@ -1,8 +1,5 @@
-/**
- * Tests de pendingSyncQueries — foco en countPendingTreePhotos (issue #71):
- * el conteo global (sin plantacionId) debe ejecutar la query real, no
- * devolver 0 hardcodeado como antes.
- */
+// countPendingTreePhotos: el conteo global (sin plantacionId) debe ejecutar la
+// query real, no devolver 0 hardcodeado como antes (#71).
 
 jest.mock('../../src/database/client', () => ({
   db: {

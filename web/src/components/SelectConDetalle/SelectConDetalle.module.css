@@ -1,0 +1,112 @@
+/* El disparador se ve igual que Select: control + chevron propio. */
+.disparador {
+  composes: select from '../Select.module.css';
+  display: flex;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+}
+
+.disparadorError {
+  composes: selectError from '../Select.module.css';
+}
+
+.valor {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+  min-width: 0;
+}
+
+.valorPrincipal {
+  composes: truncar from '../../theme/utilidades.module.css';
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+/* Detalle tenue (ej. el email), igual en el disparador y en la lista. */
+.valorSecundario {
+  composes: truncar from '../../theme/utilidades.module.css';
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-faint);
+}
+
+.opcionSecundario {
+  composes: valorSecundario;
+}
+
+.placeholder {
+  color: var(--color-text-disabled);
+}
+
+/* Fixed + portal: el overflow del modal no lo recorta. La posición llega por
+   variables desde usePosicionAnclada. */
+.popover {
+  composes: caja from '../listaFlotante.module.css';
+  position: fixed;
+  top: var(--arriba);
+  bottom: var(--abajo);
+  left: var(--izquierda);
+  z-index: var(--z-popover);
+  display: flex;
+  flex-direction: column;
+  width: var(--ancho);
+  max-height: min(var(--alto-disponible), var(--alto-max-desplegable));
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.cabecera {
+  padding: var(--space-md);
+  border-bottom: var(--border-thin) solid var(--color-border);
+}
+
+.busqueda {
+  min-height: var(--control-height-input);
+  font-size: var(--text-md);
+}
+
+.lista {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-xs);
+}
+
+.opcion {
+  composes: fila from '../listaFlotante.module.css';
+  gap: var(--space-md);
+  padding-inline: var(--space-xl);
+}
+
+.opcionResaltada {
+  composes: filaResaltada from '../listaFlotante.module.css';
+}
+
+.opcionTexto {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.opcionPrincipal {
+  composes: truncar from '../../theme/utilidades.module.css';
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-body);
+}
+
+.opcionElegida {
+  color: var(--color-primary);
+}
+
+.check {
+  flex-shrink: 0;
+  color: var(--color-primary);
+}
+
+.vacio {
+  composes: vacio from '../listaFlotante.module.css';
+  padding-inline: var(--space-xl);
+}

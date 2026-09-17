@@ -9,8 +9,11 @@ import {
 } from '../../database/schema';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
-import { fetchAllRows, runInTransaction } from './paginate';
-import { SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
+import { fetchAllRows } from './paginate';
+import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
+import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
+import { esTimeout } from '../../supabase/fetchConTimeout';
+import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
@@ -21,18 +24,16 @@ type ServerSpecies = { id: string; codigo: string; nombre: string; nombre_cienti
 /** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
 type DbExecutor = Pick<typeof db, 'insert' | 'update' | 'delete' | 'select'>;
 
-/**
- * Upsert de una especie del server por `id` (la clave estable entre dispositivos).
- * Actualiza codigo/nombre/cientifico ante conflicto de `id`.
- */
-async function upsertSpeciesById(exec: DbExecutor, s: ServerSpecies): Promise<void> {
-  await exec.insert(species).values({
+/** Upsert de especies del server por `id` (clave estable entre devices) en un statement; actualiza codigo/nombre/cientifico en conflicto. */
+async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Promise<void> {
+  if (filas.length === 0) return;
+  await exec.insert(species).values(filas.map((s) => ({
     id: s.id,
     codigo: s.codigo,
     nombre: s.nombre,
     nombreCientifico: s.nombre_cientifico ?? null,
     createdAt: s.created_at,
-  }).onConflictDoUpdate({
+  }))).onConflictDoUpdate({
     target: species.id,
     set: {
       codigo: sql`excluded.codigo`,
@@ -43,51 +44,34 @@ async function upsertSpeciesById(exec: DbExecutor, s: ServerSpecies): Promise<vo
 }
 
 /**
- * Reconcilia una colisión por `UNIQUE(codigo)`: el server trae la especie con un
- * `id` distinto al de una fila local que ya usa ese `codigo` (típico: catálogo
- * embebido con `id` sintético vs. UUID del server). Con el INNER JOIN viejo, los
- * árboles que apuntaban al `id` del server quedaban huérfanos y se caían del
- * export; salteándola en el upsert, nunca se arreglaba.
- *
- * Re-apunta TODAS las referencias del `id` local duplicado al `id` del server y
- * elimina la fila duplicada, dentro de una transacción (atómico: ante cualquier
- * error revierte y el caller la cuenta como salteada). El `codigo` se preserva
- * (es el mismo), así que los SubID — que embeben el codigo, no el id — siguen
- * siendo válidos.
- *
- * Devuelve true si reconcilió; false si no había duplicado por codigo (el error
- * original era otro y debe propagarse al log de salteadas).
+ * Reconcilia una colisión UNIQUE(codigo): el server trae una especie con `id` distinto al de una fila
+ * local que ya usa ese `codigo`. Re-apunta todas las referencias del id local duplicado al id del
+ * server y borra la fila duplicada, en una transacción atómica. El `codigo` se preserva, así que los
+ * SubID (que lo embeben, no el id) siguen siendo válidos.
+ * @returns true si reconcilió; false si no había duplicado (el error era otro y debe propagarse).
  */
 async function reconcileSpeciesCodigoCollision(s: ServerSpecies): Promise<boolean> {
-  return runInTransaction(db, async (tx) => {
+  return enTransaccion(async (tx) => {
     const [dup] = await tx
       .select({ id: species.id })
       .from(species)
       .where(and(eq(species.codigo, s.codigo), ne(species.id, s.id)));
     if (!dup) return false;
 
-    // Re-apuntar referencias del id duplicado al id del server.
     await tx.update(trees).set({ especieId: s.id }).where(eq(trees.especieId, dup.id));
     await tx.update(trees).set({ conflictEspecieId: s.id }).where(eq(trees.conflictEspecieId, dup.id));
     await tx.update(plantationSpecies).set({ especieId: s.id }).where(eq(plantationSpecies.especieId, dup.id));
-    // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría
-    // colisionar. Es solo orden visual (cosmético) → se borra la referencia vieja.
+    // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
+    // solo orden visual, se borra la referencia vieja.
     await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, dup.id));
 
     await tx.delete(species).where(eq(species.id, dup.id));
-    await upsertSpeciesById(tx, s);
+    await upsertSpeciesById(tx, [s]);
     return true;
   });
 }
 
-/**
- * OFPL-04
- * Fetches all species from Supabase and upserts them into local SQLite.
- * Non-blocking: if Supabase returns an error, silently returns (stale catalog is acceptable).
- * CRITICAL: Solo elimina filas de especie al RECONCILIAR un duplicado por codigo
- * (re-apuntando antes todas sus referencias); el codigo se preserva, así que los
- * SubID no se corrompen.
- */
+/** Trae especies de Supabase y las upsertea en SQLite; si falla, retorna en silencio (catálogo stale es aceptable). Solo borra una especie al reconciliar un duplicado por codigo, tras re-apuntar sus referencias. */
 export async function pullSpeciesFromServer(): Promise<void> {
   const { data, error } = await fetchAllRows<ServerSpecies>(() =>
     supabase.from('species').select('*')
@@ -99,13 +83,32 @@ export async function pullSpeciesFromServer(): Promise<void> {
   let inserted = 0;
   let reconciled = 0;
   let skipped = 0;
-  // Un upsert por fila: un fallo en una especie no debe abortar el resto del
-  // catálogo (envolver todo en una sola transacción haría rollback de todo).
-  for (const s of data) {
+
+  // Camino rápido: el catálogo en lotes de un statement. Un lote que falla —lo
+  // esperable es un choque por UNIQUE(codigo)— se rehace fila por fila, que es el
+  // camino lento de siempre: aísla la especie problemática y reconcilia (#449).
+  const porFila: ServerSpecies[] = [];
+  for (let i = 0; i < data.length; i += FILAS_POR_TRANSACCION) {
+    abortarSiCancelado();
+    const lote = data.slice(i, i + FILAS_POR_TRANSACCION);
     try {
-      await upsertSpeciesById(db, s);
+      await enTransaccion((tx) => upsertSpeciesById(tx, lote));
+      inserted += lote.length;
+    } catch (e) {
+      // El catch de "seguir ante fallas" no puede tragarse la cancelación (#451).
+      relanzarSiEsCancelacion(e);
+      porFila.push(...lote);
+    }
+  }
+
+  // Un fallo en una especie no debe abortar el resto del catálogo.
+  for (const s of porFila) {
+    abortarSiCancelado();
+    try {
+      await upsertSpeciesById(db, [s]);
       inserted++;
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       // Probable choque por UNIQUE(codigo) con una especie local de distinto id.
       try {
         if (await reconcileSpeciesCodigoCollision(s)) {
@@ -126,16 +129,10 @@ export async function pullSpeciesFromServer(): Promise<void> {
 // ─── Upload offline-created plantations ───────────────────────────────────────
 
 /**
- * OFPL-05 / OFPL-06
- * Uploads locally-created plantations (pendingSync=true) to Supabase.
- * For each pending plantation:
- * 1. Inserts plantation row (idempotent — 23505 = already exists on server, continue)
- * 2. Upserts plantation_species rows
- * 3. Marks pendingSync=false locally
- *
- * Returns a result per plantation so the caller can surface failures: a failed
- * plantation push silently blocks its parcelas/groups (FK), so the error must
- * reach the user instead of being swallowed.
+ * Sube plantaciones creadas offline (pendingSync=true): insert idempotente (23505 = ya existe en
+ * server, continúa) + upsert de plantation_species + pendingSync=false. Devuelve un resultado por
+ * plantación: un fallo bloquea silenciosamente sus parcelas/grupos (FK), así que el error debe
+ * llegar al usuario, no tragarse.
  */
 export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
   const pending = await db
@@ -146,11 +143,9 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
   const results: SyncPlantationResult[] = [];
 
   for (const p of pending) {
-    // Todo el push por-plantación va en try/catch: un error que LANZA (fetch
-    // failure que se propaga, no `{ error }`) también debe surfacearse, no
-    // tragarse en runGlobalPreSteps dejando results vacío.
+    // Errores que LANZAN (no solo `{ error }`) también deben surfacearse, no tragarse dejando
+    // results vacío en runGlobalPreSteps.
     try {
-      // Step 1: Upload plantation row (idempotent)
       const { error: plantError } = await supabase
         .from('plantations')
         .insert({
@@ -173,7 +168,6 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         continue;
       }
 
-      // Step 2: Upload plantation_species (upsert)
       const localPs = await db
         .select()
         .from(plantationSpecies)
@@ -194,7 +188,6 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         }
       }
 
-      // Step 3: Mark as synced locally
       await db
         .update(plantations)
         .set({ pendingSync: false })
@@ -202,10 +195,12 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
       results.push({ success: true, plantacionId: p.id, nombre: p.lugar });
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       syncLog.error('Upload plantation exception:', p.id, e?.message ?? e);
       results.push({
         success: false, plantacionId: p.id, nombre: p.lugar,
-        error: 'NETWORK', detail: rawErrorDetail({ message: String(e?.message ?? e) }),
+        error: esTimeout(e) ? SYNC_ERROR.TIMEOUT : SYNC_ERROR.NETWORK,
+        detail: rawErrorDetail({ message: String(e?.message ?? e) }),
       });
     }
   }
@@ -215,14 +210,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
 // ─── Upload pending plantation edits ─────────────────────────────────────────
 
-/**
- * Pushes locally-edited plantation metadata (lugar/periodo) to Supabase.
- * For each plantation with pendingEdit=true:
- * 1. Updates Supabase with current local lugar/periodo
- * 2. Clears pendingEdit and updates *Server columns locally
- *
- * Non-fatal: failed uploads are logged and skipped.
- */
+/** Pushea lugar/periodo/GPS editados offline (pendingEdit=true) a Supabase y limpia pendingEdit + columnas *Server local; fallos se loguean y se saltean. */
 export async function uploadPendingEdits(): Promise<void> {
   const pending = await db
     .select()
@@ -236,8 +224,7 @@ export async function uploadPendingEdits(): Promise<void> {
         .update({
           lugar: p.lugar,
           periodo: p.periodo,
-          // La edición offline puede incluir config GPS; subir el valor local
-          // vigente es idempotente cuando no se editó (espeja al server).
+          // Sube el valor GPS local vigente (idempotente si no se editó: espeja al server).
           gps_capture_frequency: p.gpsCaptureFrequency,
           gps_capture_required: p.gpsCaptureRequired,
         })
@@ -257,6 +244,7 @@ export async function uploadPendingEdits(): Promise<void> {
         })
         .where(eq(plantations.id, p.id));
     } catch (e: any) {
+      relanzarSiEsCancelacion(e);
       syncLog.error('Upload pending edit exception:', p.id, e?.message);
     }
   }
@@ -266,9 +254,11 @@ export async function uploadPendingEdits(): Promise<void> {
 
 export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   await supabase.auth.getSession();
-  try { await pullSpeciesFromServer(); } catch (e) { syncLog.error('Pull species failed:', e); }
+  // Los pre-steps corren ANTES del primer evento de progreso: si se cuelgan acá, el
+  // watchdog ofrece cancelar y sin estos re-lanzados el botón no haría nada (#451).
+  try { await pullSpeciesFromServer(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Pull species failed:', e); }
   let plantationResults: SyncPlantationResult[] = [];
-  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { syncLog.error('Upload offline plantations failed:', e); }
-  try { await uploadPendingEdits(); } catch (e) { syncLog.error('Upload pending edits failed:', e); }
+  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
+  try { await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
   return plantationResults;
 }

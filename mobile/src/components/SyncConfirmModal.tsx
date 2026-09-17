@@ -19,8 +19,8 @@ type Props = {
 
 export default function SyncConfirmModal({ visible, title = 'Sincronizar', plantacionId, onConfirm, onClose }: Props) {
   const { incluirFotos, toggleIncluirFotos } = useSyncSetting();
-  // Issue #71: mostrar QUÉ está pendiente hace diagnosticable un indicador
-  // naranja residual (antes solo se veía el conteo total, sin desglose).
+  // #71: desglosar qué está pendiente (no solo el total) hace diagnosticable
+  // un indicador naranja residual.
   const { pendingGroupsCount, pendingParcelasCount, pendingPhotosCount } = usePendingSyncCount(plantacionId);
   const breakdown = formatPendingBreakdown({
     grupos: pendingGroupsCount,

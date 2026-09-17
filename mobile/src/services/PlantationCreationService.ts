@@ -1,34 +1,24 @@
-// FEATURE: auto-parcela trial — remove block if dropped
 /**
- * PlantationCreationService — orchestrates plantation creation with optional
- * default parcela ("Parcela 1" / "P1") behind the AUTO_PARCELA_DEFAULT flag.
- *
- * This file is the ONLY production code-path that auto-creates the default
- * parcela. The single user-initiated call site is
- * `usePlantationAdmin.handleCreateSubmit`. Pull / sync paths (downloadService,
- * pullService) MUST NOT invoke this helper — server-side plantations bring
- * their own parcelas via `pullParcelas` (Phase 16-03).
- *
- * Atomicity: wraps both inserts in `db.transaction` (D-18-04). If
- * `createParcela` returns `{success:false}`, throws to trigger rollback
- * (D-18-06). The online variant performs a Supabase call inside the tx; on
- * failure of the parcela step after Supabase succeeded, the local rollback
- * leaves the server row orphan-free locally — see Plan 18-01 Risk #3.
- *
- * To remove the trial: delete this file, delete the import + call in
- * usePlantationAdmin.ts, revert handleCreateSubmit to call createPlantation /
- * createPlantationLocally directly.
+ * PlantationCreationService — crea una plantación + membresía admin + (si AUTO_PARCELA_DEFAULT)
+ * su parcela default ("Parcela 1"/"P1") LOCAL-FIRST, siempre en una sola transacción SQLite
+ * (#300): la parcela default ya era local-only (ParcelaRepository.createParcela escribe con
+ * pendingSync), así que el alta "online" nunca fue atómica de por sí — ahora online y offline
+ * comparten el mismo camino local; solo difieren en si se intenta un push inmediato después.
+ * En modo 'online' el push es best-effort: si falla (red/servidor) no se throwea, la plantación
+ * queda pendingSync y el próximo sync la reintenta — igual que el alta offline.
+ * Único call site: usePlantationAdmin.handleCreateSubmit — los paths de pull/sync no deben
+ * usarlo (las plantaciones de server traen sus parcelas vía pullParcelas).
+ * Para eliminar: borrar este archivo + su import/call en usePlantationAdmin.ts, y volver a llamar
+ * createPlantationWithParcelaLocally directo.
  */
-import { db } from '../database/client';
-import { plantations, plantationUsers } from '../database/schema';
-import { eq } from 'drizzle-orm';
 import {
-  createPlantation,
-  createPlantationLocally,
+  createPlantationWithParcelaLocally,
   PlantationGpsSettings,
 } from '../repositories/PlantationRepository';
-import { createParcela } from '../repositories/ParcelaRepository';
+import { uploadOfflinePlantations } from './sync/preSteps';
+import { uploadSyncableParcelas } from './sync/pushService';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
+import { syncLog } from '../utils/syncLogger';
 
 export type CreatePlantationMode = 'online' | 'offline';
 
@@ -37,6 +27,7 @@ export interface CreatePlantationParams {
   periodo: string;
   organizacionId: string;
   creadoPor: string;
+  /** 'online': caller ya chequeó NetInfo y pide un push inmediato tras el alta local. */
   mode: CreatePlantationMode;
   /** Config GPS elegida por el admin en el form (defaults del schema si falta). */
   gps?: PlantationGpsSettings;
@@ -50,53 +41,36 @@ export interface CreatePlantationResult {
 }
 
 /**
- * FEATURE: auto-parcela trial — remove block if dropped
- * Inserts the default parcela for a freshly created plantation. Throws on
- * failure so the surrounding transaction rolls back.
+ * Empuja la plantación recién creada (y su parcela default) a Supabase reusando los pasos de
+ * sync existentes: uploadOfflinePlantations (idempotente ante 23505 — la plantación ya existe)
+ * y uploadSyncableParcelas (solo las parcelas de esta plantación). Nunca throwea: un fallo de
+ * red/servidor deja pendingSync=true, y el próximo sync la reintenta.
  */
-async function insertDefaultParcela(plantacionId: string): Promise<void> {
-  const r = await createParcela({
-    plantacionId,
-    nombre: 'Parcela 1',
-    codigo: 'P1',
-    descripcion: null,
-  });
-  if (!r.success) {
-    throw new Error(`Default parcela creation failed: ${r.error}`);
+async function tryPushNow(plantationId: string): Promise<void> {
+  try {
+    await uploadOfflinePlantations();
+    await uploadSyncableParcelas(plantationId);
+  } catch (e) {
+    syncLog.error(`createPlantationWithDefaultParcela: push inmediato falló para ${plantationId}, queda pendingSync`, e);
   }
 }
 
-/**
- * Creates a plantation (online or offline) and, when AUTO_PARCELA_DEFAULT is
- * true, a default parcela atomically. Returns the plantation shape that
- * matches `createPlantation` / `createPlantationLocally` so the call site is
- * drop-in.
- */
+/** Crea una plantación (y, si AUTO_PARCELA_DEFAULT, su parcela default) local-first; en modo 'online' intenta pushear de inmediato (best-effort). Retorna la misma forma que antes (drop-in). */
 export async function createPlantationWithDefaultParcela(
   params: CreatePlantationParams,
 ): Promise<CreatePlantationResult> {
-  // NOTE: drizzle's better-sqlite3 driver runs `db.transaction` synchronously,
-  // so async work inside the callback does NOT participate in the SQLite
-  // transaction. We do manual cleanup on parcela failure to keep behavior
-  // consistent across runtimes (Plan 18-01 Risk #3, D-18-04 best-effort).
-  const plantation =
-    params.mode === 'online'
-      ? await createPlantation(params.lugar, params.periodo, params.organizacionId, params.creadoPor, params.gps)
-      : await createPlantationLocally(params.lugar, params.periodo, params.organizacionId, params.creadoPor, params.gps);
-  // FEATURE: auto-parcela trial — remove block if dropped
-  if (AUTO_PARCELA_DEFAULT) {
-    try {
-      await insertDefaultParcela(plantation.id);
-    } catch (e) {
-      // Rollback manual: borra la plantación local para no dejar una huérfana
-      // sin su parcela default. La membresía local del creador (#67) se borra
-      // primero (FK plantation_users → plantations sin ON DELETE CASCADE).
-      // La fila server (modo online) no se puede revertir desde acá — Plan
-      // 18-01 Risk #3.
-      await db.delete(plantationUsers).where(eq(plantationUsers.plantationId, plantation.id));
-      await db.delete(plantations).where(eq(plantations.id, plantation.id));
-      throw e;
-    }
+  const plantation = await createPlantationWithParcelaLocally({
+    lugar: params.lugar,
+    periodo: params.periodo,
+    organizacionId: params.organizacionId,
+    creadoPor: params.creadoPor,
+    gps: params.gps,
+    parcela: AUTO_PARCELA_DEFAULT ? { nombre: 'Parcela 1', codigo: 'P1' } : null,
+  });
+
+  if (params.mode === 'online') {
+    await tryPushNow(plantation.id);
   }
+
   return plantation;
 }

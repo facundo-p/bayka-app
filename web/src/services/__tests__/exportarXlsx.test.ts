@@ -92,9 +92,7 @@ describe('columnasConAncho (#54)', () => {
 
   test('no muta COLUMNAS_XLSX (devuelve copias con width)', () => {
     columnasConAncho([fila()]);
-    expect(
-      COLUMNAS_XLSX.every((columna) => !('width' in columna)),
-    ).toBe(true);
+    expect(COLUMNAS_XLSX.every((columna) => !('width' in columna))).toBe(true);
   });
 });
 

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../../hooks/useAuth';
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { LoginScreen } from '../LoginScreen';
@@ -14,11 +15,13 @@ beforeEach(resetEstadoMock);
 
 function renderLogin() {
   return render(
-    <MemoryRouter initialEntries={['/login']}>
-      <AuthProvider>
-        <LoginScreen />
-      </AuthProvider>
-    </MemoryRouter>,
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter initialEntries={['/login']}>
+        <AuthProvider>
+          <LoginScreen />
+        </AuthProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

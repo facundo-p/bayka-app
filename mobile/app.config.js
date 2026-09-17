@@ -1,6 +1,12 @@
+const fs = require('fs');
 const path = require('path');
+const { commitDelBuild } = require('../scripts/commitDelBuild.cjs');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
+// Valores de APP_VARIANT y de extra.appVariant: contrato con APP_VARIANT_TEST
+// (src/config/entorno.ts), eas.json y scripts/build-apk.sh.
+const VARIANTE = Object.freeze({ test: 'test', prod: 'prod' });
 
 // Variante TEST (#253): APP_VARIANT=test → app "Bayka TEST" con applicationId
 // propio (convive con la de producción en el mismo device) apuntando a
@@ -9,9 +15,30 @@ require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 // viven en mobile/.env.staging (gitignoreado) y PISAN las de .env.
 // Uso: exportar APP_VARIANT=test en prebuild Y en gradlew — o directamente
 // scripts/build-apk.sh test (ver skill build-apk-local).
-const IS_TEST = process.env.APP_VARIANT === 'test';
+const IS_TEST = process.env.APP_VARIANT === VARIANTE.test;
+
+// Canal de EAS Update por variante (#384). Contrato con los channel de eas.json.
+// Un build sin canal grabado no recibe ningún OTA: EAS Update empareja por canal
+// + runtime version + plataforma. En los builds de EAS el canal lo graba el
+// profile (que además tiene `preview`, sin variante local equivalente); en los
+// locales nadie lo grababa, y este header es el único que lo pone en el
+// AndroidManifest, vía prebuild.
+const CANAL_OTA = Object.freeze({ test: 'test', prod: 'production' });
+const ES_BUILD_DE_EAS = process.env.EAS_BUILD === 'true';
+const RUTA_ENV_STAGING = path.resolve(__dirname, '.env.staging');
+
 if (IS_TEST) {
-  require('dotenv').config({ path: path.resolve(__dirname, '.env.staging'), override: true });
+  // Sin `.env.staging` (gitignoreado, vive en Bitwarden) dotenv no pisa nada y la
+  // variante TEST sale con las credenciales de producción de `.env`, conservando la
+  // franja roja: app de pruebas escribiendo en prod, sin ninguna señal (#444). En EAS
+  // el archivo no existe y las env las trae el profile `test` de eas.json.
+  if (!ES_BUILD_DE_EAS && !fs.existsSync(RUTA_ENV_STAGING)) {
+    throw new Error(
+      'APP_VARIANT=test sin mobile/.env.staging: el build saldría apuntando a Supabase de ' +
+        'producción. El archivo está en Bitwarden.'
+    );
+  }
+  require('dotenv').config({ path: RUTA_ENV_STAGING, override: true });
 }
 
 module.exports = ({ config }) => ({
@@ -45,8 +72,16 @@ module.exports = ({ config }) => ({
   },
   updates: {
     url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID || ''}`,
+    ...(ES_BUILD_DE_EAS
+      ? {}
+      : { requestHeaders: { 'expo-channel-name': IS_TEST ? CANAL_OTA.test : CANAL_OTA.prod } }),
   },
   extra: {
+    // Variante de build (#287): src/config/entorno.ts la lee en runtime para
+    // mostrar el banner "Entorno de pruebas" solo en la app TEST.
+    appVariant: IS_TEST ? VARIANTE.test : VARIANTE.prod,
+    // El banner con el commit solo existe en la app TEST (#321).
+    ...(IS_TEST ? { commit: commitDelBuild(process.env.EAS_BUILD_GIT_COMMIT_HASH) } : {}),
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     eas: {

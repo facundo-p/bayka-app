@@ -1,5 +1,4 @@
-// Tests for downloadPlantation and batchDownload in SyncService
-// Covers: CATL-01, CATL-04, CATL-06 (download side)
+// Tests for downloadPlantation and batchDownload (download side) in SyncService.
 
 jest.mock('../../src/database/client', () => ({
   db: {
@@ -29,6 +28,19 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
   getSyncableGroups: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/PlantationRepository', () => ({
+  deletePlantationLocally: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Passthrough que marca si hay una transacción abierta: así se puede afirmar que
+// las escrituras del pull caen adentro y no después del commit (#448).
+let mockDentroDeTransaccion = false;
+jest.mock('../../src/database/transaccion', () => ({
+  FILAS_POR_TRANSACCION: jest.requireActual('../../src/database/transaccion').FILAS_POR_TRANSACCION,
+  enTransaccion: jest.fn(),
+  enTransaccionPorLotes: jest.fn(),
+}));
+
 const { db } = require('../../src/database/client');
 const { notifyDataChanged } = require('../../src/database/liveQuery');
 const { supabase } = require('../../src/supabase/client');
@@ -39,6 +51,35 @@ import {
   DownloadResult,
   DownloadProgress,
 } from '../../src/services/SyncService';
+import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
+import { cancelarCorrida, iniciarCorrida, SyncCanceladoError, terminarCorrida } from '../../src/services/sync/cancelacion';
+import { enTransaccion, enTransaccionPorLotes } from '../../src/database/transaccion';
+
+/**
+ * `jest.resetAllMocks()` borra la implementación de los mocks de módulo, así que el
+ * passthrough se vuelve a poner en cada `beforeEach`.
+ */
+function setupTransaccionPassthrough() {
+  const abrir = async (cb: (tx: unknown) => Promise<unknown>) => {
+    mockDentroDeTransaccion = true;
+    try {
+      return await cb(db);
+    } finally {
+      mockDentroDeTransaccion = false;
+    }
+  };
+  (enTransaccion as jest.Mock).mockImplementation(abrir);
+  (enTransaccionPorLotes as jest.Mock).mockImplementation(
+    async (
+      filas: unknown[],
+      escribirLote: (tx: unknown, lote: unknown[]) => Promise<void>,
+      onLote?: (n: number) => void,
+    ) => {
+      await abrir((tx) => escribirLote(tx, filas));
+      onLote?.(filas.length);
+    },
+  );
+}
 
 // Helper to build a server plantation object
 const makeServerPlantation = (id: string, lugar = 'Bosque Norte') => ({
@@ -62,38 +103,46 @@ function setupDbInsertSuccess() {
   return { valuesSpy, onConflictSpy };
 }
 
-/**
- * Sets up supabase.from to return empty data (simulates empty pullFromServer).
- * Handles all chain patterns used by pullFromServer:
- * - .select().eq().single() (plantation metadata)
- * - .select().eq() (groups, plantation_users, plantation_species)
- * - .select().in() (trees)
- *
- * The eq() mock returns a thenable that resolves to { data: [], error: null }
- * and also exposes .single() for the plantation metadata query.
- */
-function setupSupabaseFromEmpty() {
-  const eqResult = { data: [], error: null };
-  const eqMock = jest.fn().mockImplementation(() => {
-    const result = Promise.resolve(eqResult);
-    (result as any).single = jest.fn().mockResolvedValue({ data: null, error: null });
-    return result;
-  });
-  (supabase.from as jest.Mock).mockReturnValue({
-    select: jest.fn().mockReturnValue({
-      eq: eqMock,
-      in: jest.fn().mockResolvedValue({ data: [], error: null }),
-    }),
+/** El pull chequea la membresía propia antes de tocar la base (#317). */
+function setupSesion() {
+  (supabase.auth.getSession as jest.Mock).mockResolvedValue({
+    data: { session: { user: { id: 'user-1' } } },
   });
 }
 
 /**
- * Sets up db.select, db.update, and db.delete chains used by pullFromServer.
- * pullFromServer calls:
- * - db.select({...}).from().where() for pendingEdit check and plantation_users
- * - db.select().from().where() for plantation_users
- * - db.update().set().where() for plantation metadata
- * - db.delete().where() for removed plantation_users
+ * Sets up supabase.from to return empty data (simulates empty pullFromServer).
+ * eq() es encadenable y a la vez awaitable, y expone .single(), cubriendo los
+ * patrones que usa pullFromServer: .eq().single(), .eq(), .eq().eq(), .in().
+ *
+ * Ojo: con data vacío el chequeo de membresía de #317 devolvería "sin acceso",
+ * así que la fila de membresía se sirve aparte.
+ */
+function setupSupabaseFromEmpty() {
+  // El chequeo de membresía filtra por user_id; el replace de plantation_users
+  // del pull filtra solo por plantation_id y sigue viendo el server vacío.
+  const esChequeoDeMembresia = (tabla: string, columnas: string[]) =>
+    tabla === 'plantation_users' && columnas.includes('user_id');
+
+  const encadenable = (tabla: string, columnas: string[]): any => {
+    const resultado = Promise.resolve({
+      data: esChequeoDeMembresia(tabla, columnas) ? [{ user_id: 'user-1' }] : [],
+      error: null,
+    }) as any;
+    resultado.eq = jest.fn((col: string) => encadenable(tabla, [...columnas, col]));
+    resultado.in = jest.fn((col: string) => encadenable(tabla, [...columnas, col]));
+    resultado.single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return resultado;
+  };
+  (supabase.from as jest.Mock).mockImplementation((tabla: string) => ({
+    select: jest.fn(() => encadenable(tabla, [])),
+  }));
+}
+
+/**
+ * Sets up db.select/update/delete chains used by pullFromServer: select for the
+ * pendingEdit check and plantation_users, update for plantation metadata, delete
+ * for removed plantation_users.
  */
 function setupDbSelectEmpty() {
   (db.select as jest.Mock).mockReturnValue({
@@ -111,6 +160,44 @@ function setupDbSelectEmpty() {
   });
 }
 
+/** Como `setupSupabaseFromEmpty`, pero el server trae `filas` para una tabla. */
+function setupSupabaseConFilas(tabla: string, filas: any[]) {
+  const encadenable = (t: string, columnas: string[]): any => {
+    const esMembresia = t === 'plantation_users' && columnas.includes('user_id');
+    const data = esMembresia ? [{ user_id: 'user-1' }] : t === tabla ? filas : [];
+    const resultado = Promise.resolve({ data, error: null }) as any;
+    resultado.eq = jest.fn((col: string) => encadenable(t, [...columnas, col]));
+    resultado.in = jest.fn((col: string) => encadenable(t, [...columnas, col]));
+    resultado.range = jest.fn(() => Promise.resolve({ data, error: null }));
+    resultado.single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return resultado;
+  };
+  (supabase.from as jest.Mock).mockImplementation((t: string) => ({
+    select: jest.fn(() => encadenable(t, [])),
+  }));
+}
+
+/** Membresía vacía: `tieneAccesoRemoto` da false y el pull devuelve "sin acceso". */
+function setupSinMembresia() {
+  const encadenable = (): any => {
+    const resultado = Promise.resolve({ data: [], error: null }) as any;
+    resultado.eq = jest.fn(() => encadenable());
+    resultado.in = jest.fn(() => encadenable());
+    resultado.single = jest.fn().mockResolvedValue({ data: null, error: null });
+    return resultado;
+  };
+  (supabase.from as jest.Mock).mockImplementation(() => ({ select: jest.fn(() => encadenable()) }));
+}
+
+/** Lo que devuelve el `select` de "¿la plantación ya estaba local?". */
+function setupPlantacionLocal(filas: { id: string }[]) {
+  (db.select as jest.Mock).mockReturnValue({
+    from: jest.fn().mockReturnValue({
+      where: jest.fn().mockResolvedValue(filas),
+    }),
+  });
+}
+
 /**
  * Sets up db.insert to throw an error (simulates upsert failure).
  */
@@ -125,8 +212,10 @@ function setupDbInsertFailure() {
 describe('downloadPlantation', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    setupSesion();
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
+    setupTransaccionPassthrough();
   });
 
   it('Test 1: upserts plantation row into local SQLite then calls pullFromServer', async () => {
@@ -135,9 +224,7 @@ describe('downloadPlantation', () => {
 
     await downloadPlantation(sp);
 
-    // Verify db.insert was called (upsert step)
     expect(db.insert).toHaveBeenCalled();
-    // Verify values was called with correct camelCase field mapping
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({
       id: 'p-1',
       organizacionId: 'org-1',
@@ -147,9 +234,8 @@ describe('downloadPlantation', () => {
       creadoPor: 'user-admin',
       createdAt: '2026-01-01T00:00:00Z',
     }));
-    // Verify onConflictDoUpdate was called (upsert pattern)
     expect(onConflictSpy).toHaveBeenCalled();
-    // Verify pullFromServer was called (supabase.from is called by pullFromServer)
+    // pullFromServer runs too (it calls supabase.from).
     expect(supabase.from).toHaveBeenCalled();
   });
 
@@ -163,9 +249,8 @@ describe('downloadPlantation', () => {
 
     expect(onConflictSpy).toHaveBeenCalledTimes(1);
     const conflictArgs = onConflictSpy.mock.calls[0][0];
-    // Verify the target is provided (plantations.id column reference)
+    // target must be the plantations.id column reference
     expect(conflictArgs).toHaveProperty('target');
-    // Verify set has estado
     expect(conflictArgs).toHaveProperty('set');
     expect(conflictArgs.set).toHaveProperty('estado');
   });
@@ -189,13 +274,112 @@ describe('downloadPlantation', () => {
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: true }));
     expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ visibleInApp: true });
   });
+
+  it('mapea photo_capture_all_trees del server al campo local photoCaptureAllTrees (#439)', async () => {
+    const sp = { ...makeServerPlantation('p-foto'), photo_capture_all_trees: true };
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: true }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: true });
+  });
+
+  it('defaultea photoCaptureAllTrees=false cuando el server no trae la columna (035 sin aplicar)', async () => {
+    const sp = makeServerPlantation('p-sin-foto-flag');
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: false }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: false });
+  });
+});
+
+describe('pull · las escrituras van adentro de la transacción (#448)', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    setupSesion();
+    setupDbInsertSuccess();
+    setupDbSelectEmpty();
+    setupTransaccionPassthrough();
+    mockDentroDeTransaccion = false;
+  });
+
+  // Sin esto, el pull escribía fila por fila en autocommit y ningún test lo veía.
+  it('la fase de parcelas upsertea con una transacción abierta', async () => {
+    setupSupabaseConFilas('parcelas', [
+      { id: 'par-1', plantation_id: 'p-1', nombre: 'Norte', codigo: 'N', created_at: '', updated_at: '' },
+    ]);
+    const dentro: boolean[] = [];
+    (db.insert as jest.Mock).mockImplementation(() => {
+      dentro.push(mockDentroDeTransaccion);
+      return { values: jest.fn(() => ({ onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) })) };
+    });
+
+    await downloadPlantation(makeServerPlantation('p-1'));
+
+    // El primer insert es el upsert de la plantación, fuera de transacción a
+    // propósito; el de la parcela es el que tiene que caer adentro.
+    expect(dentro).toEqual([false, true]);
+  });
+});
+
+describe('downloadPlantation · pull fallido (#448)', () => {
+  beforeEach(() => {
+    jest.resetAllMocks();
+    setupSesion();
+    setupDbInsertSuccess();
+    setupSinMembresia();
+    setupTransaccionPassthrough();
+    (deletePlantationLocally as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => terminarCorrida());
+
+  // La fila se inserta con `pendingSync: false` ANTES del pull: si el pull falla
+  // queda una plantación "descargada" y vacía en el listado.
+  it('revierte la plantación nueva cuyo pull falló', async () => {
+    setupPlantacionLocal([]);
+
+    await expect(downloadPlantation(makeServerPlantation('p-nueva'))).rejects.toThrow('Sin acceso');
+
+    expect(deletePlantationLocally).toHaveBeenCalledWith('p-nueva');
+  });
+
+  /**
+   * La cancelación es de módulo: cortar una sync alcanza a cualquier descarga de
+   * catálogo que estuviera corriendo en paralelo. Eso se aborta y se reintenta —
+   * pero no puede disparar el borrado, que es destructivo (#451).
+   */
+  it('una cancelación aborta la descarga pero NO borra la plantación', async () => {
+    setupPlantacionLocal([]);
+    iniciarCorrida();
+    cancelarCorrida();
+
+    await expect(downloadPlantation(makeServerPlantation('p-nueva'))).rejects.toBeInstanceOf(SyncCanceladoError);
+
+    expect(deletePlantationLocally).not.toHaveBeenCalled();
+  });
+
+  // Una que ya estaba descargada conserva sus datos viejos: son mejores que nada
+  // y el pull es idempotente, así que el próximo intento converge.
+  it('no toca una plantación que ya estaba local', async () => {
+    setupPlantacionLocal([{ id: 'p-vieja' }]);
+
+    await expect(downloadPlantation(makeServerPlantation('p-vieja'))).rejects.toThrow('Sin acceso');
+
+    expect(deletePlantationLocally).not.toHaveBeenCalled();
+  });
 });
 
 describe('batchDownload', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    setupSesion();
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
+    setupTransaccionPassthrough();
   });
 
   it('Test 3: calls downloadPlantation (db.insert) for each selected plantation in order', async () => {
@@ -225,9 +409,8 @@ describe('batchDownload', () => {
 
     await batchDownload(plantations, onProgress);
 
-    // Multiple emissions per plantation (per-phase progress + start). Reduce
-    // to the first event for each plantation to verify they are emitted in
-    // the expected order with the right name + index.
+    // Multiple events fire per plantation (per-phase progress + start) — reduce to
+    // the first per plantation to check order and name/index.
     const firstEventPerPlantation = progressCalls.filter(
       (p, i, arr) => i === 0 || p.currentName !== arr[i - 1].currentName,
     );
@@ -279,7 +462,6 @@ describe('batchDownload', () => {
 
     await batchDownload(plantations);
 
-    // notifyDataChanged must be called exactly once (after the entire loop)
     expect(notifyDataChanged).toHaveBeenCalledTimes(1);
   });
 
@@ -301,7 +483,6 @@ describe('batchDownload', () => {
     expect(results).toHaveLength(2);
     expect(results[0]).toMatchObject({ success: true, id: 'p-1', nombre: 'Alpha' });
     expect(results[1]).toMatchObject({ success: false, id: 'p-2', nombre: 'Beta' });
-    // Verify shape of returned type
     expect(typeof results[0].nombre).toBe('string');
     expect(typeof results[0].success).toBe('boolean');
     expect(typeof results[0].id).toBe('string');

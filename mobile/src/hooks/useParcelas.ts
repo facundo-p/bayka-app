@@ -1,7 +1,7 @@
 /**
  * useParcelas — reactive list of parcelas for a plantation with per-parcela
  * stats. Pure orchestrator: invokes parcelaQueries.listByPlantacionWithStats
- * via useLiveData. Zero SQL in this hook (CLAUDE.md §9).
+ * via useLiveData.
  *
  * Tombstoned parcelas never surface (filtered by the underlying query).
  *

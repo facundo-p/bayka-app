@@ -1,11 +1,7 @@
 /**
- * Tests de usePendingSyncMap — mock-based (patrón useParcelas.test).
- * Issue #71 follow-up: el dot por tarjeta debe contar lo mismo que el ícono
- * general (grupos del usuario + parcelas incl. tombstones + fotos), para que
- * una parcela pendiente sea visible en su plantación y sincronizar solo esa
- * plantación apague el indicador global.
- *
- * Orden de llamadas a useLiveData en el hook: 1. grupos  2. parcelas  3. fotos
+ * Tests de usePendingSyncMap (patrón useParcelas.test). Issue #71: el dot por
+ * tarjeta debe sumar igual que el ícono global, para apagarse al sincronizar
+ * esa plantación. Orden de useLiveData: grupos, parcelas, fotos.
  */
 
 const mockUseLiveData = jest.fn();
