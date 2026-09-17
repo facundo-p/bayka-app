@@ -49,8 +49,12 @@ PostgREST wraps every postgres error en un objeto con shape estable
    - Si columnas contienen `nombre` → `DUPLICATE_NAME`.
    - Cualquier otro → `GENERIC_CONFLICT` (fallback explícito).
    - `details` ausente / regex falla → `GENERIC_CONFLICT`.
-3. Sin `code` y mensaje incluye `fetch`/`network` → `NETWORK`.
-4. Otro caso → `UNKNOWN`.
+3. `error.code === '42501'` (RLS) → `PERMISSION`. `uploadSyncableParcelas` lo
+   reinterpreta con el estado local de la plantación: archivada →
+   `PLANTACION_ARCHIVADA`, finalizada → `PLANTACION_FINALIZADA` (#511). RLS no
+   distingue esos casos de la falta de membresía.
+4. Sin `code` y mensaje incluye `fetch`/`network` → `NETWORK`.
+5. Otro caso → `UNKNOWN`.
 
 **NUNCA** usar substring matching sobre `error.message` — el mensaje no es
 estable entre versiones de postgres ni locales.
