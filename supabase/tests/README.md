@@ -70,7 +70,9 @@ datos × archivada, nombre de confirmación, cascade completo, registro en
 superadmin inactivo no lee por la vía admin (043, #506), `23` perfil inactivo:
 no pasa las policies de admin, `is_superadmin()` ni `is_plantation_member()`,
 incluidos `sync_subgroup` y Storage (045, #508), `25` asignaciones de técnicos:
-exigen plantación existente y no archivada, una finalizada las admite (047, #522).
+exigen plantación existente y no archivada, una finalizada las admite (047, #522),
+`26` escrituras de admin acotadas a la organización: plantaciones, especies y
+asignaciones con dos organizaciones, y perfiles vía superadmin (048, #543).
 
 ## Hallazgo fuera de alcance (no corregido)
 

@@ -336,6 +336,10 @@ del rol global. Lo que distingue es el origen de la fila:
   ser admin.
 - `tecnico`: asignación manual desde la web o la app. Solo se asignan técnicos (#372).
 
+Por PostgREST, un admin solo asigna o quita filas `tecnico`, en plantaciones de su
+organización y con usuarios de su organización (#543). Las filas `admin` las
+mantienen solo los triggers.
+
 ---
 
 # 8. Parcela
