@@ -30,6 +30,8 @@ export type UsuarioConAsignaciones = {
   email: string | null;
   /** false = baja reversible (soft-delete); el ban real vive en Auth. */
   activo: boolean;
+  /** Fecha de la eliminación lógica, irreversible; null si no fue eliminado. */
+  eliminadoEn: string | null;
   organizacionId: string | null;
   organizacionNombre: string;
   plantacionesAsignadas: number;
@@ -50,6 +52,7 @@ type FilaUsuario = {
   rol: Rol;
   email: string | null;
   activo: boolean;
+  eliminado_en: string | null;
   organizacion_id: string | null;
   created_at: string;
 };
@@ -99,6 +102,7 @@ function mapearUsuario(
     rol: fila.rol,
     email: fila.email,
     activo: fila.activo,
+    eliminadoEn: fila.eliminado_en,
     organizacionId: fila.organizacion_id,
     organizacionNombre: fila.organizacion_id
       ? (organizaciones.get(fila.organizacion_id) ?? '')
@@ -113,7 +117,7 @@ export async function listarUsuariosConAsignaciones(): Promise<UsuarioConAsignac
   const [{ data, error }, asignaciones, organizaciones] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, nombre, rol, email, activo, organizacion_id, created_at')
+      .select('id, nombre, rol, email, activo, eliminado_en, organizacion_id, created_at')
       .order('nombre', { ascending: true }),
     contarAsignacionesPorUsuario(),
     mapearNombresDeOrganizaciones(),

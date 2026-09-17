@@ -30,6 +30,7 @@ const OPCIONES_ESTADO: Array<Opcion<FiltroEstado>> = [
   { value: FILTRO_ESTADO.todos, label: 'Estado: todos' },
   { value: FILTRO_ESTADO.activos, label: 'Activos' },
   { value: FILTRO_ESTADO.inactivos, label: 'Inactivos' },
+  { value: FILTRO_ESTADO.eliminados, label: 'Eliminados' },
 ];
 
 type ControlesUsuarios = ControlesFiltros<FiltrosBarraUsuarios>;

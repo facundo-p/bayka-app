@@ -29,6 +29,7 @@ export const CLAVE_QUERY = {
   perfiles: () => ['perfiles'] as const,
   usuarios: () => ['usuarios'] as const,
   usuarioPlantaciones: (userId: string) => ['usuario-plantaciones', userId] as const,
+  previewEliminacion: (userId: string) => ['preview-eliminacion', userId] as const,
   plantacionUsuarios: (plantationId: string) => ['plantacion-usuarios', plantationId] as const,
 } as const;
 
