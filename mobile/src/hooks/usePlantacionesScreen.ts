@@ -14,13 +14,13 @@ import { useAuth } from './useAuth';
 import { usePendingSyncCount } from './usePendingSyncCount';
 import { usePendingSyncMap } from './usePendingSyncMap';
 import type { ExpandedMeta } from './usePlantationAdmin';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
-const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 };
+const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
 export function usePlantacionesScreen() {
   const router = useRouter();
@@ -136,9 +136,9 @@ export function usePlantacionesScreen() {
   }, [plantacionPendienteNav, router, routePrefix]);
 
   // Editar lugar/período/config escribe en `plantations`: bloqueado si está
-  // finalizada (#469). Cubre las dos entradas: long-press de la card y el gear.
+  // finalizada o archivada (#469, #477). Cubre las dos entradas: long-press de la card y el gear.
   const handleEditPress = useCallback((plantation: Plantation) => {
-    if (!plantacionEsEditable(plantation.estado)) return;
+    if (!plantacionEsEditable(plantation)) return;
     setEditingPlantation(plantation);
   }, []);
 
@@ -165,6 +165,8 @@ export function usePlantacionesScreen() {
     resetSync: sync.reset,
     pullSuccess: sync.pullSuccess,
     sinAcceso: sync.sinAcceso,
+    eliminada: sync.eliminada,
+    omitidas: sync.omitidas,
     authExpired: sync.authExpired,
     successCount: sync.successCount,
     failureCount: sync.failureCount,

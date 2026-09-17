@@ -7,7 +7,9 @@ import {
   actualizarConfigGps,
   actualizarFotoEnTodos,
   actualizarVisibilidad,
+  archivarPlantacion,
   crearPlantacion,
+  desarchivarPlantacion,
   editarPlantacion,
   existePlantacion,
   MENSAJE_FOTO_SIN_MIGRACION,
@@ -109,16 +111,29 @@ describe('crearPlantacion', () => {
     expect(Object.keys(inserts[1].payload as object)).not.toContain('objetivo_arboles');
   });
 
-  test('si falla la parcela default borra la plantación (rollback best-effort) y lanza', async () => {
+  test('si falla la parcela default borra la plantación por RPC (rollback best-effort) y lanza', async () => {
     const consultas = capturarConsultas((consulta) => {
       if (consulta.tabla === 'parcelas') return { error: { message: 'falló la parcela' } };
       return responderOk(consulta);
     });
 
     await expect(crearPlantacion(INPUT_BASE, PERFIL)).rejects.toThrow('falló la parcela');
-    const borrado = consultas.find((consulta) => consulta.operacion === 'delete');
-    expect(borrado?.tabla).toBe('plantations');
-    expect(borrado?.filtros).toEqual([{ metodo: 'eq', columna: 'id', valor: 'plant-nuevo' }]);
+    // Un DELETE directo afecta 0 filas sin error: no hay policy DELETE (#480).
+    expect(consultas.some((consulta) => consulta.operacion === 'delete')).toBe(false);
+    const borrado = consultas.find((consulta) => consulta.operacion === 'rpc');
+    expect(borrado).toEqual(
+      expect.objectContaining({ tabla: 'eliminar_plantacion', payload: { p_id: 'plant-nuevo' } }),
+    );
+  });
+
+  test('si el rollback también falla, se propaga el error original', async () => {
+    capturarConsultas((consulta) => {
+      if (consulta.tabla === 'parcelas') return { error: { message: 'falló la parcela' } };
+      if (consulta.operacion === 'rpc') throw new Error('sin red');
+      return responderOk(consulta);
+    });
+
+    await expect(crearPlantacion(INPUT_BASE, PERFIL)).rejects.toThrow('falló la parcela');
   });
 
   test('otros errores del insert no se reintentan y se propagan', async () => {
@@ -251,5 +266,32 @@ describe('existePlantacion', () => {
     const consultas = capturarConsultas(() => ({ count: 0 }));
     expect(await existePlantacion('Mendoza', '2025-2026')).toBe(false);
     expect(consultas[0].filtros.map((filtro) => filtro.metodo)).toEqual(['ilike', 'ilike']);
+  });
+});
+
+describe('archivar / desarchivar', () => {
+  test.each([
+    ['archivar_plantacion', archivarPlantacion],
+    ['desarchivar_plantacion', desarchivarPlantacion],
+  ])('%s: llama al RPC con el id', async (rpc, accion) => {
+    const consultas = capturarConsultas(() => ({ data: { success: true } }));
+    await accion('plant-1');
+    expect(consultas).toEqual([
+      expect.objectContaining({ tabla: rpc, operacion: 'rpc', payload: { p_id: 'plant-1' } }),
+    ]);
+  });
+
+  test('NOT_AUTHORIZED se traduce a un mensaje de permisos', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'NOT_AUTHORIZED' } }));
+    await expect(archivarPlantacion('plant-1')).rejects.toThrow(/no tiene permisos/);
+  });
+
+  test('un error de red o un código desconocido dan el mensaje genérico', async () => {
+    capturarConsultas(() => ({ error: { message: 'fetch failed' } }));
+    await expect(desarchivarPlantacion('plant-1')).rejects.toThrow(
+      'No se pudo completar la acción',
+    );
+    capturarConsultas(() => ({ data: { success: false, error: 'OTRO' } }));
+    await expect(archivarPlantacion('plant-1')).rejects.toThrow('No se pudo completar la acción');
   });
 });

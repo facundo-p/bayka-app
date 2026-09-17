@@ -5,21 +5,20 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import ExpandablePlantationCard from '../components/ExpandablePlantationCard';
 import FilterCards from '../components/FilterCards';
+import { filtrosDeEstado } from '../components/filtrosDeEstado';
 import CustomHeader from '../components/CustomHeader';
 import HeaderActionButton from '../components/HeaderActionButton';
 import TexturedBackground from '../components/TexturedBackground';
 import PlantacionesModals from '../components/PlantacionesModals';
 import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { esEliminadaEnServidor } from '../constants/estados';
 
 export default function PlantacionesScreen() {
   const s = usePlantacionesScreen();
 
-  const filterConfigs = [
-    { key: 'activa', label: 'Activas', count: s.estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
-    { key: 'finalizada', label: 'Finalizadas', count: s.estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
-  ];
+  const filterConfigs = filtrosDeEstado(s.estadoCounts);
 
   return (
     <TexturedBackground>
@@ -77,7 +76,7 @@ export default function PlantacionesScreen() {
                   expanded={s.expandedPlantationId === item.id}
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
-                  onParcelaLongPress={plantacionEsEditable(item.estado)
+                  onParcelaLongPress={plantacionEsEditable(item)
                     ? (p) => s.handleParcelaInlineLongPress(item.id, p)
                     : undefined}
                   cardProps={{
@@ -91,6 +90,7 @@ export default function PlantacionesScreen() {
                     hasPendingSync: (s.pendingSyncBoolMap.get(item.id) ?? 0) > 0,
                     nnCount: s.nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
+                    eliminadaEnServidor: esEliminadaEnServidor(item),
                     onPress: () => s.router.push(`/${s.routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
                     // Long-press abre la edición, como en las demás cards (#94).
                     onLongPress: s.isAdmin ? () => s.handleEditPress(item as Plantation) : undefined,

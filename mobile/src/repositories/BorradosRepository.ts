@@ -1,5 +1,6 @@
 /**
- * Registro de borrados a propagar al server (#467).
+ * Registro de borrados a propagar al server (#467), incluidas las fotos quitadas
+ * de árboles que siguen existiendo (#498).
  *
  * Borrar un árbol o un grupo solo borraba en SQLite: el pull upserteaba de vuelta
  * la fila del server en la misma sincronización, y la renumeración terminaba
@@ -30,6 +31,9 @@ export interface BorradoPendiente {
  * Anota un borrado. Recibe el ejecutor para poder correr DENTRO de la misma
  * transacción que borra la fila: si no fuera atómico, un corte entre el delete y
  * el registro deja el borrado sin propagar y vuelve el bug.
+ *
+ * El id es la clave: borrar un árbol con la foto quitada pendiente pisa ese
+ * registro, porque borrar la fila ya se lleva la foto (#498). Al revés no pasa.
  */
 export async function registrarBorrado(
   exec: DbExecutor,
@@ -41,7 +45,19 @@ export async function registrarBorrado(
     grupoId: borrado.grupoId,
     plantacionId: borrado.plantacionId,
     borradoEn: localNow(),
-  }).onConflictDoNothing();
+  }).onConflictDoUpdate({
+    target: borradosPendientes.id,
+    set: { tipo: borrado.tipo, grupoId: borrado.grupoId },
+    setWhere: eq(borradosPendientes.tipo, ENTIDAD_BORRADA.foto),
+  });
+}
+
+/** Poner otra foto deja sin efecto la que se había quitado: la nueva se sube por el camino normal. */
+export async function descartarFotoQuitada(exec: DbExecutor, arbolId: string): Promise<void> {
+  await exec.delete(borradosPendientes).where(and(
+    eq(borradosPendientes.id, arbolId),
+    eq(borradosPendientes.tipo, ENTIDAD_BORRADA.foto),
+  ));
 }
 
 /** La plantación de un grupo, para anotar el borrado. `trees.plantacionId` no sirve: es el id numérico del server, no el UUID. */
@@ -53,7 +69,10 @@ export async function plantacionDelGrupo(exec: DbExecutor, grupoId: string): Pro
   return grupo?.plantacionId ?? null;
 }
 
-export async function borradosDePlantacion(plantacionId: string): Promise<BorradoPendiente[]> {
+export async function borradosDePlantacion(
+  plantacionId: string,
+  tipos: readonly EntidadBorrada[],
+): Promise<BorradoPendiente[]> {
   const filas = await db
     .select({
       id: borradosPendientes.id,
@@ -62,8 +81,15 @@ export async function borradosDePlantacion(plantacionId: string): Promise<Borrad
       plantacionId: borradosPendientes.plantacionId,
     })
     .from(borradosPendientes)
-    .where(eq(borradosPendientes.plantacionId, plantacionId));
+    .where(and(eq(borradosPendientes.plantacionId, plantacionId), inArray(borradosPendientes.tipo, [...tipos])));
   return filas as BorradoPendiente[];
+}
+
+export interface BorradosPorTipo {
+  arboles: Set<string>;
+  grupos: Set<string>;
+  /** Árboles con la foto quitada: el pull no tiene que restaurarla (#498). */
+  fotos: Set<string>;
 }
 
 /**
@@ -72,19 +98,28 @@ export async function borradosDePlantacion(plantacionId: string): Promise<Borrad
  * `pendingSync` no puede decir nada: sin esto el pull lo resucita entero antes de
  * que el push alcance a borrarlo en el server.
  */
-export async function borradosPorTipo(plantacionId: string): Promise<{ arboles: Set<string>; grupos: Set<string> }> {
+export async function borradosPorTipo(plantacionId: string): Promise<BorradosPorTipo> {
   const filas = await db
     .select({ id: borradosPendientes.id, tipo: borradosPendientes.tipo })
     .from(borradosPendientes)
     .where(eq(borradosPendientes.plantacionId, plantacionId));
+  const idsDe = (tipo: EntidadBorrada) => new Set(filas.filter((f) => f.tipo === tipo).map((f) => f.id));
   return {
-    arboles: new Set(filas.filter((f) => f.tipo === ENTIDAD_BORRADA.arbol).map((f) => f.id)),
-    grupos: new Set(filas.filter((f) => f.tipo === ENTIDAD_BORRADA.grupo).map((f) => f.id)),
+    arboles: idsDe(ENTIDAD_BORRADA.arbol),
+    grupos: idsDe(ENTIDAD_BORRADA.grupo),
+    fotos: idsDe(ENTIDAD_BORRADA.foto),
   };
 }
 
-/** Se llama SOLO con la confirmación del server: si falla el push, las filas quedan para el próximo intento. */
-export async function limpiarBorrados(ids: string[]): Promise<void> {
+/**
+ * Se llama SOLO con la confirmación del server: si falla el push, las filas quedan
+ * para el próximo intento. Filtra por tipo porque, mientras el push viaja, borrar
+ * el árbol puede convertir una foto quitada en un borrado de fila con el mismo id.
+ */
+export async function limpiarBorrados(ids: string[], tipos: readonly EntidadBorrada[]): Promise<void> {
   if (ids.length === 0) return;
-  await db.delete(borradosPendientes).where(inArray(borradosPendientes.id, ids));
+  await db.delete(borradosPendientes).where(and(
+    inArray(borradosPendientes.id, ids),
+    inArray(borradosPendientes.tipo, [...tipos]),
+  ));
 }

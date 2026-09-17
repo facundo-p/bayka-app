@@ -42,6 +42,7 @@ function plantacion(id: string, lugar: string, arboles: number): PlantacionConSt
     periodo: '2025-2026',
     estado: 'activa',
     createdAt: '2025-03-12T12:00:00Z',
+    archivadaEn: null,
   } as unknown as PlantacionConStats;
 }
 

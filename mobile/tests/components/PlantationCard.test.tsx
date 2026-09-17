@@ -31,6 +31,8 @@ jest.mock('../../src/theme', () => ({
     textPrimary: '#1E293B',
     backgroundAlt: '#F5F5F4',
     borderMuted: '#CBD5E1',
+    stateEliminada: '#DC2626',
+    dangerBg: '#FEF2F2',
   },
   spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
@@ -162,5 +164,20 @@ describe('PlantationCard badge "Oculta en app"', () => {
       <PlantationCard {...makeProps({ isAdmin: false, visibleInApp: false })} />
     );
     expect(queryByText('Oculta en app')).toBeNull();
+  });
+});
+
+describe('PlantationCard eliminada en el servidor (#478)', () => {
+  it('muestra el badge para cualquier rol y conserva "eliminar del dispositivo"', () => {
+    const { getByText, getByLabelText } = render(
+      <PlantationCard {...makeProps({ isAdmin: false, eliminadaEnServidor: true })} />
+    );
+    expect(getByText('Eliminada en el servidor')).toBeTruthy();
+    expect(getByLabelText('Eliminar plantacion del dispositivo')).toBeTruthy();
+  });
+
+  it('sin la marca no hay badge', () => {
+    const { queryByText } = render(<PlantationCard {...makeProps()} />);
+    expect(queryByText('Eliminada en el servidor')).toBeNull();
   });
 });

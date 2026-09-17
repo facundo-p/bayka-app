@@ -8,7 +8,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
-import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
@@ -157,24 +157,41 @@ export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promis
 }
 
 /**
- * Borra el archivo de una foto que ya ninguna fila referencia (#490). Va después de
- * que la operación de DB termine bien: con rollback la fila seguiría apuntándolo.
+ * Borra el archivo de una foto que ya ninguna fila referencia (#490). Va después
+ * de que la transacción cierre bien: con rollback la fila seguiría apuntándolo.
  */
 function borrarFotoLocal(fotoUrl: string | null | undefined): void {
   if (fotoUrl) borrarFotosLocales([fotoUrl]);
 }
 
-/** Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea fotoSynced=false para forzar re-upload a Storage. */
+/**
+ * Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea
+ * fotoSynced=false para forzar re-upload a Storage.
+ *
+ * Quitarla se anota para propagarlo (#498): el push del grupo no puede poner la
+ * foto en null en el server, y el pull la restauraría. Va en la misma transacción
+ * que el update, por lo mismo que los borrados de fila.
+ */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
   const nueva = fotoUrl || null;
   const [treeRow] = await db.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl })
     .from(trees).where(eq(trees.id, treeId));
-  await db.update(trees)
-    .set({ fotoUrl: nueva, fotoSynced: false })
-    .where(eq(trees.id, treeId));
+  if (!treeRow) return;
+  const plantacionId = await plantacionDelGrupo(db, treeRow.grupoId);
+
+  await enTransaccion(async (tx) => {
+    await tx.update(trees)
+      .set({ fotoUrl: nueva, fotoSynced: false })
+      .where(eq(trees.id, treeId));
+    if (fotoUrl) {
+      await descartarFotoQuitada(tx, treeId);
+    } else if (plantacionId) {
+      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: treeRow.grupoId, plantacionId });
+    }
+  });
   // Mismo path: el archivo "anterior" es el que queda en la fila.
-  if (treeRow?.fotoUrl !== nueva) borrarFotoLocal(treeRow?.fotoUrl);
-  if (treeRow) await markGroupPendingSync(treeRow.grupoId);
+  if (treeRow.fotoUrl !== nueva) borrarFotoLocal(treeRow.fotoUrl);
+  await markGroupPendingSync(treeRow.grupoId);
   notifyDataChanged();
 }
 

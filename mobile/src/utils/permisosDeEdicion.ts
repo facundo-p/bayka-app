@@ -1,18 +1,30 @@
-import { ESTADO_PLANTACION, ESTADO_GRUPO } from '../constants/estados';
+import { ESTADO_PLANTACION, ESTADO_GRUPO, esArchivada, esEliminadaEnServidor } from '../constants/estados';
+
+/** Lo que decide si una plantación admite cambios desde la app. */
+export interface EstadoDeEdicionDePlantacion {
+  estado: string;
+  archivadaEn: string | null;
+  eliminadaEnServidorEn: string | null;
+}
 
 /**
  * Una plantación finalizada es inmutable desde la app: ni ediciones ni borrados,
  * propios o ajenos (#469). Reabrirla es exclusivo del superadmin, desde la web (#470).
+ * Archivada o eliminada en el servidor tampoco admiten cambios, para ningún rol (#477, #478).
  */
-export function plantacionEsEditable(plantacionEstado: string): boolean {
-  return plantacionEstado !== ESTADO_PLANTACION.finalizada;
+export function plantacionEsEditable(plantacion: EstadoDeEdicionDePlantacion): boolean {
+  return (
+    !esEliminadaEnServidor(plantacion) &&
+    !esArchivada(plantacion) &&
+    plantacion.estado !== ESTADO_PLANTACION.finalizada
+  );
 }
 
 /**
  * Permisos sobre los árboles de un grupo:
- * - Plantación finalizada o usuario no-creador → sólo lectura.
- * - Grupo activo + plantación activa + creador → editar foto/GPS y eliminar.
- * - Grupo finalizado + plantación activa + creador → editar foto/GPS, sin eliminar.
+ * - Plantación no editable o usuario no-creador → sólo lectura.
+ * - Grupo activo + plantación editable + creador → editar foto/GPS y eliminar.
+ * - Grupo finalizado + plantación editable + creador → editar foto/GPS, sin eliminar.
  */
 export interface TreeEditGating {
   canEdit: boolean;
@@ -20,11 +32,11 @@ export interface TreeEditGating {
 }
 
 export function getTreeEditGating(params: {
-  plantacionEstado: string;
+  plantacion: EstadoDeEdicionDePlantacion;
   subgroupEstado: string;
   isCreator: boolean;
 }): TreeEditGating {
-  const canEdit = plantacionEsEditable(params.plantacionEstado) && params.isCreator;
+  const canEdit = plantacionEsEditable(params.plantacion) && params.isCreator;
   const canDelete = canEdit && params.subgroupEstado === ESTADO_GRUPO.activa;
   return { canEdit, canDelete };
 }
@@ -41,11 +53,11 @@ export interface GroupGating {
 }
 
 export function getGroupGating(params: {
-  plantacionEstado: string;
+  plantacion: EstadoDeEdicionDePlantacion;
   subgroupEstado: string;
   isCreator: boolean;
 }): GroupGating {
-  const habilitado = plantacionEsEditable(params.plantacionEstado) && params.isCreator;
+  const habilitado = plantacionEsEditable(params.plantacion) && params.isCreator;
   const sobreGrupoActivo = habilitado && params.subgroupEstado === ESTADO_GRUPO.activa;
   return {
     canEdit: sobreGrupoActivo,

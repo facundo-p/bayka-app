@@ -14,6 +14,8 @@ function isFailure<T extends SyncFailable>(result: T): result is Failed<T> {
 interface FailureListProps<T extends SyncFailable> {
   /** Singular noun for the section title (e.g. 'parcela', 'grupo'). */
   label: string;
+  /** Plural irregular; por defecto `label` + 's'. */
+  plural?: string;
   results: T[];
   getKey: (failure: Failed<T>) => string;
 }
@@ -25,6 +27,7 @@ interface FailureListProps<T extends SyncFailable> {
  */
 export default function FailureList<T extends SyncFailable>({
   label,
+  plural,
   results,
   getKey,
 }: FailureListProps<T>) {
@@ -34,7 +37,7 @@ export default function FailureList<T extends SyncFailable>({
   return (
     <View style={styles.failureSection}>
       <Text style={styles.failureTitle}>
-        {failures.length} {label}{failures.length > 1 ? 's' : ''} con error:
+        {failures.length} {failures.length > 1 ? (plural ?? `${label}s`) : label} con error:
       </Text>
       {failures.map((failure) => (
         <View key={getKey(failure)} style={styles.failureItem}>

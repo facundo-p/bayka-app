@@ -202,7 +202,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-1',
-        'activa'
+        { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(true);
     });
@@ -211,7 +211,16 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-1',
-        'finalizada'
+        { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null }
+      );
+      expect(result).toBe(false);
+    });
+
+    it('returns false when plantation is archivada (#477)', () => {
+      const result = canEdit(
+        { usuarioCreador: 'user-1' },
+        'user-1',
+        { estado: 'activa', archivadaEn: '2026-09-17T12:00:00+00:00', eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });
@@ -220,7 +229,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-2',
-        'activa'
+        { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });
@@ -229,7 +238,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-2',
-        'finalizada'
+        { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });

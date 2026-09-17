@@ -29,6 +29,22 @@ function saveToPhotos(srcUri: string): string {
 }
 
 /**
+ * La app guarda las fotos sueltas en su carpeta, sin subcarpetas. Chequear solo el
+ * prefijo deja pasar `photos/../otra-cosa` (#527); se decodifica antes porque
+ * `%2e%2e` también sube de carpeta.
+ */
+function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
+  if (!uri.startsWith(carpeta)) return false;
+  let nombre: string;
+  try {
+    nombre = decodeURIComponent(uri.slice(carpeta.length));
+  } catch {
+    return false;
+  }
+  return nombre !== '' && nombre !== '.' && nombre !== '..' && !/[\\/]/.test(nombre);
+}
+
+/**
  * Borra archivos de fotos del device. Best-effort: un archivo que no se puede borrar
  * se loguea y no corta el resto.
  *
@@ -36,10 +52,18 @@ function saveToPhotos(srcUri: string): string {
  * `content://` de la galería no son archivos de la app.
  */
 export function borrarFotosLocales(uris: readonly string[]): void {
-  // Con barra final: el uri del directorio puede venir con o sin ella.
-  const carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
+  let carpeta: string;
+  try {
+    // Con barra final: el uri del directorio puede venir con o sin ella.
+    carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
+  } catch (e) {
+    // Corre después del commit: una excepción acá haría fallar una operación de
+    // datos que ya se hizo.
+    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
+    return;
+  }
   for (const uri of uris) {
-    if (!uri.startsWith(carpeta)) continue;
+    if (!esArchivoSueltoDe(carpeta, uri)) continue;
     try {
       const archivo = new File(uri);
       if (archivo.exists) archivo.delete();
