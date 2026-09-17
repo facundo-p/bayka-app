@@ -16,6 +16,7 @@ import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION } from '../constants/estados';
 import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
+import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
@@ -363,17 +364,25 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
 // ─── saveSpeciesConfig ────────────────────────────────────────────────────────
 
-/** Reemplaza el species config en Supabase (no es atómico: borra y después inserta) y sincroniza a SQLite vía pullFromServer. */
+/** Reemplaza el species config en Supabase en una sola transacción y sincroniza a SQLite vía pullFromServer. */
 export async function saveSpeciesConfig(
   plantacionId: string,
   items: Array<{ especieId: string; ordenVisual: number }>
 ): Promise<void> {
-  await escribirSiEsEscribible(plantacionId, BLOQUEAN_ESPECIES, () => reemplazarEspeciesRemotas(plantacionId, items));
+  await reemplazarConfiguracion({
+    rpc: RPC_REEMPLAZAR_ESPECIES,
+    args: {
+      p_plantacion: plantacionId,
+      p_especies: items.map((item) => ({ species_id: item.especieId, orden_visual: item.ordenVisual })),
+    },
+    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ESPECIES, () => reemplazarEspeciesSinRpc(plantacionId, items)),
+  });
   await pullFromServer(plantacionId);
   notifyDataChanged();
 }
 
-async function reemplazarEspeciesRemotas(
+/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
+async function reemplazarEspeciesSinRpc(
   plantacionId: string,
   items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
@@ -421,17 +430,22 @@ export async function saveSpeciesConfigLocally(
 
 // ─── assignTechnicians ────────────────────────────────────────────────────────
 
-/** Reemplaza las asignaciones de técnicos (filtra por rol_en_plantacion='tecnico' para no borrar membresías admin, #67) y sincroniza vía pullFromServer. */
+/** Reemplaza las asignaciones de técnicos en una sola transacción, sin tocar las membresías admin (#67), y sincroniza vía pullFromServer. */
 export async function assignTechnicians(
   plantacionId: string,
   userIds: string[]
 ): Promise<void> {
-  await escribirSiEsEscribible(plantacionId, BLOQUEAN_ASIGNACIONES, () => reemplazarTecnicosRemotos(plantacionId, userIds));
+  await reemplazarConfiguracion({
+    rpc: RPC_REEMPLAZAR_TECNICOS,
+    args: { p_plantacion: plantacionId, p_user_ids: userIds },
+    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ASIGNACIONES, () => reemplazarTecnicosSinRpc(plantacionId, userIds)),
+  });
   await pullFromServer(plantacionId);
   notifyDataChanged();
 }
 
-async function reemplazarTecnicosRemotos(plantacionId: string, userIds: string[]): Promise<void> {
+/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
+async function reemplazarTecnicosSinRpc(plantacionId: string, userIds: string[]): Promise<void> {
   const { error: deleteError, count: deleteCount } = await supabase
     .from('plantation_users')
     .delete()

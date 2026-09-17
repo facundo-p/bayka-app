@@ -77,7 +77,9 @@ Storage (045, #508), `24` INSERT/UPDATE/upsert de fotos en `tree-photos` exigen
 plantación escribible (046, #512), `25` asignaciones de técnicos: exigen
 plantación existente y no archivada, una finalizada las admite (047, #522),
 `26` escrituras de admin acotadas a la organización: plantaciones, especies y
-asignaciones con dos organizaciones, y perfiles vía superadmin (048, #543).
+asignaciones con dos organizaciones, y perfiles vía superadmin (048, #543), `27`
+reemplazo de especies y técnicos por RPC: gates de rol, organización y estado,
+rechazos sin efectos y membresías admin e inactivas intactas (049, #544).
 
 ## Hallazgo fuera de alcance (no corregido)
 
