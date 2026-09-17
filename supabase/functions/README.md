@@ -63,3 +63,34 @@ triggers).
 El SMTP default de Supabase permite ~2 emails/hora: suficiente para probar,
 insuficiente para operar. Para uso real configurar SMTP propio
 (dashboard → Authentication → SMTP Settings).
+
+## admin-plantaciones
+
+Borrado real de plantaciones (#478). Necesita service_role para borrar las
+fotos de Storage; el borrado de los datos se autoriza en SQL.
+
+| Acción | Payload | Efecto |
+|--------|---------|--------|
+| `eliminar` | `{accion, plantacionId, nombreConfirmacion?}` | RPC `eliminar_plantacion` **con el JWT del caller**; si sale bien, borra con service_role todo `tree-photos/plantations/{id}/` (listado recursivo, tandas de 100) y marca `plantaciones_eliminadas.fotos_limpias = true`. Responde `{ok, resumen, fotosPendientes}` |
+| `limpiarFotos` | `{accion, plantacionId?}` | Solo superadmin activo. Reintenta el borrado de fotos de las eliminadas de su organización con `fotos_limpias = false`. Responde `{ok, limpiadas, pendientes}` |
+
+- **Autorización de `eliminar`:** la decide el RPC (admin sin datos; con datos,
+  superadmin, archivada y con el nombre). Sus códigos se traducen a mensajes
+  en español (403 sin permiso, 409 reglas de negocio).
+- **Falla de Storage:** los datos ya se borraron, así que responde éxito con
+  `fotosPendientes: true`; la fila queda con `fotos_limpias = false` para
+  `limpiarFotos`.
+- **`plantacionId` tiene que ser un uuid:** un id vacío armaría un prefijo que
+  abarca las fotos de todas las plantaciones.
+
+Misma estructura que `admin-users`: `nucleo.ts` sin imports (tests en la suite
+vitest de la web) e `index.ts` como entry de Deno.
+
+### Deploy
+
+```bash
+supabase functions deploy admin-plantaciones
+```
+
+`SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta
+la plataforma. Requiere la migración `039_eliminar_plantacion.sql` aplicada.

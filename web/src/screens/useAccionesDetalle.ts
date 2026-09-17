@@ -18,6 +18,7 @@ import {
   motivoEdicion,
   puedeArchivar,
 } from './plantaciones/archivado';
+import { ETIQUETA_MENU_ELIMINAR } from './plantaciones/eliminacion';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
@@ -66,9 +67,24 @@ export interface AccionesProps {
   onEditar: () => void;
   /** Solo la web genera los IDs, server-side vía RPC (#232). */
   onGenerarIds: () => void;
-  /** Archivar o desarchivar; null si el perfil no puede. */
-  archivado: { etiqueta: string; onElegir: () => void } | null;
+  /** Archivar/desarchivar y eliminar; vacío si el perfil no puede. */
+  administracion: AccionMenu[];
 }
+
+export type AccionMenu = {
+  clave: string;
+  etiqueta: string;
+  onElegir: () => void;
+  destructiva?: boolean;
+};
+
+/** Modales de administración que abre el menú «Más acciones». */
+export const MODAL_ADMINISTRACION = {
+  archivado: 'archivado',
+  eliminacion: 'eliminacion',
+} as const;
+
+export type ModalAdministracion = (typeof MODAL_ADMINISTRACION)[keyof typeof MODAL_ADMINISTRACION];
 
 /** Las tres descargas de la barra, con el mensaje que devuelva cualquiera. */
 function useDescargasDetalle(plantacion: Plantacion) {
@@ -87,24 +103,40 @@ function useIdsPendientes(plantationId: string): boolean {
   return generados === false;
 }
 
-/** La acción de archivado que le toca a la plantación, y si su confirmación está abierta. */
-function useArchivadoDetalle(plantacion: Plantacion) {
-  const { perfil } = useAuth();
-  const [confirmandoArchivado, setConfirmandoArchivado] = useState(false);
-  const archivado = puedeArchivar(perfil)
-    ? {
-        etiqueta: CONFIRMACION_ARCHIVADO[accionDeArchivado(plantacion)].etiquetaMenu,
-        onElegir: () => setConfirmandoArchivado(true),
-      }
-    : null;
-  const cerrarArchivado = () => setConfirmandoArchivado(false);
-  return { archivado, confirmandoArchivado, cerrarArchivado };
+function accionesAdministracion(
+  plantacion: Plantacion,
+  abrir: (modal: ModalAdministracion) => void,
+): AccionMenu[] {
+  return [
+    {
+      clave: MODAL_ADMINISTRACION.archivado,
+      etiqueta: CONFIRMACION_ARCHIVADO[accionDeArchivado(plantacion)].etiquetaMenu,
+      onElegir: () => abrir(MODAL_ADMINISTRACION.archivado),
+    },
+    {
+      clave: MODAL_ADMINISTRACION.eliminacion,
+      etiqueta: ETIQUETA_MENU_ELIMINAR,
+      destructiva: true,
+      onElegir: () => abrir(MODAL_ADMINISTRACION.eliminacion),
+    },
+  ];
 }
 
-/** Descargas, generación de IDs, archivado y si la barra va plegada en un solo «⋯». */
+/** Archivar/desarchivar y eliminar, con qué modal está abierto. Eliminar
+ *  puede derivar en archivar, por eso comparten el estado. */
+function useAdministracionDetalle(plantacion: Plantacion) {
+  const { perfil } = useAuth();
+  const [modalAdministracion, setModal] = useState<ModalAdministracion | null>(null);
+  const administracion = puedeArchivar(perfil) ? accionesAdministracion(plantacion, setModal) : [];
+  const abrirArchivado = () => setModal(MODAL_ADMINISTRACION.archivado);
+  const cerrarModal = () => setModal(null);
+  return { administracion, modalAdministracion, abrirArchivado, cerrarModal };
+}
+
+/** Descargas, generación de IDs, administración y si la barra va plegada en un solo «⋯». */
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
   const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
-  const { archivado, ...confirmacionArchivado } = useArchivadoDetalle(plantacion);
+  const { administracion, ...modales } = useAdministracionDetalle(plantacion);
   const [generandoIds, setGenerandoIds] = useState(false);
   const acciones: AccionesProps = {
     ...descargas,
@@ -112,9 +144,9 @@ export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void)
     motivoEdicion: motivoEdicion(plantacion),
     onEditar,
     onGenerarIds: () => setGenerandoIds(true),
-    archivado,
+    administracion,
   };
   const cerrarGenerarIds = () => setGenerandoIds(false);
   const plegado = useMediaQuery(BP.tablet);
-  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds, ...confirmacionArchivado };
+  return { acciones, mensaje, plegado, generandoIds, cerrarGenerarIds, ...modales };
 }

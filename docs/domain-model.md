@@ -258,6 +258,26 @@ Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
 (archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
 cuando la plantación vuelve a ser escribible.
 
+### Eliminada
+
+El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,
+especies y técnicos asignados, más las fotos de Storage. Solo se hace por el RPC
+`eliminar_plantacion`, vía la edge function `admin-plantaciones`.
+
+"Datos" = al menos un grupo o un árbol. Parcelas, especies y técnicos
+asignados son configuración y no cuentan.
+
+```
+sin datos  → admin o superadmin activo de su organización, confirmación simple
+con datos  → solo superadmin, solo si ya está archivada, escribiendo el nombre
+```
+
+Queda registro en `plantaciones_eliminadas` (quién, cuándo, conteos y si las
+fotos ya se borraron). La app lo consulta con `estado_remoto_plantaciones` para
+distinguir "eliminada" de "sin acceso": la plantación queda en el celular en
+solo lectura, marcada "Eliminada en el servidor", y lo pendiente ya no se puede
+subir; el usuario decide cuándo borrarla del dispositivo.
+
 ### Relaciones
 
 ```

@@ -25,8 +25,9 @@ import { formatearFechaCorta } from '../lib/fechas';
 import { RUTA, rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
 import { esArchivada, type Plantacion } from '../queries/plantationQueries';
 import { ArchivadoModal } from './plantaciones/ArchivadoModal';
+import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
-import { useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
+import { MODAL_ADMINISTRACION, useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
 import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PlantacionDetailScreen.module.css';
 
@@ -120,9 +121,8 @@ function BotonEditar({ onEditar, motivo }: { onEditar: () => void; motivo: strin
   );
 }
 
-function itemsArchivado({ archivado }: AccionesProps): ItemDesplegable[] {
-  if (!archivado) return [];
-  return [{ clave: 'archivado', etiqueta: archivado.etiqueta, onSeleccionar: archivado.onElegir }];
+function itemsAdministracion({ administracion }: AccionesProps): ItemDesplegable[] {
+  return administracion.map(({ onElegir, ...item }) => ({ ...item, onSeleccionar: onElegir }));
 }
 
 interface MenuMasAccionesProps {
@@ -152,7 +152,7 @@ function MenuMasAcciones({ etiqueta, items, tamano }: MenuMasAccionesProps) {
 }
 
 function AccionesDesplegadas(props: AccionesProps) {
-  const secundarias = itemsArchivado(props);
+  const secundarias = itemsAdministracion(props);
   return (
     <>
       <BotonEditar onEditar={props.onEditar} motivo={props.motivoEdicion} />
@@ -185,7 +185,7 @@ function itemsPlegados(props: AccionesProps): ItemDesplegable[] {
   if (props.idsPendientes) {
     items.push({ clave: 'ids', etiqueta: 'Generar IDs', motivo, onSeleccionar: onGenerarIds });
   }
-  return [...items, ...itemsArchivado(props)];
+  return [...items, ...itemsAdministracion(props)];
 }
 
 /** Barra angosta: las mismas acciones en un solo «⋯». Desplegadas se comen
@@ -200,6 +200,27 @@ function AccionesPlegadas(props: AccionesProps) {
       tamano="md"
     />
   );
+}
+
+interface ModalAdministracionDetalleProps {
+  plantacion: Plantacion;
+  detalle: ReturnType<typeof useAccionesDetalle>;
+}
+
+function ModalAdministracionDetalle({ plantacion, detalle }: ModalAdministracionDetalleProps) {
+  if (detalle.modalAdministracion === MODAL_ADMINISTRACION.archivado) {
+    return <ArchivadoModal plantacion={plantacion} onClose={detalle.cerrarModal} />;
+  }
+  if (detalle.modalAdministracion === MODAL_ADMINISTRACION.eliminacion) {
+    return (
+      <EliminarPlantacionModal
+        plantacion={plantacion}
+        onClose={detalle.cerrarModal}
+        onArchivar={detalle.abrirArchivado}
+      />
+    );
+  }
+  return null;
 }
 
 interface AccionesDetalleProps {
@@ -225,9 +246,7 @@ function AccionesDetalle({ plantacion, onEditar }: AccionesDetalleProps) {
       {detalle.generandoIds && (
         <GenerarIdsModal plantationId={plantacion.id} onClose={detalle.cerrarGenerarIds} />
       )}
-      {detalle.confirmandoArchivado && (
-        <ArchivadoModal plantacion={plantacion} onClose={detalle.cerrarArchivado} />
-      )}
+      <ModalAdministracionDetalle plantacion={plantacion} detalle={detalle} />
     </div>
   );
 }

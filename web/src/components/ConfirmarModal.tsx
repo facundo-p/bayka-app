@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   useConfirmacion,
   type EstadoConfirmacion,
@@ -13,9 +14,11 @@ interface ConfirmarModalProps extends OpcionesConfirmacion {
   descripcion: string;
   confirmarEtiqueta: string;
   destructiva?: boolean;
+  /** Contenido extra entre la descripción y los botones, p. ej. un campo a completar. */
+  children?: ReactNode;
   /** Advertencia destacada debajo de la descripción (qué se pierde, si es irreversible). */
   aviso?: string;
-  /** Deshabilita confirmar, p. ej. mientras falta un dato para decidir. */
+  /** Deshabilita confirmar hasta que se cumpla una condición del caller. */
   deshabilitada?: boolean;
 }
 
@@ -44,6 +47,7 @@ function PreguntaConfirmacion({ modal, estado }: PreguntaConfirmacionProps) {
   return (
     <>
       <p className={styles.info}>{modal.descripcion}</p>
+      {modal.children}
       {modal.aviso && <p className={styles.advertencia}>{modal.aviso}</p>}
       <ErrorEnvio mensaje={estado.error} />
       <AccionesModal onCancelar={modal.onClose}>

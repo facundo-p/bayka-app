@@ -7,7 +7,7 @@ import {
   trees,
   userSpeciesOrder,
 } from '../../database/schema';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
@@ -242,7 +242,8 @@ export async function uploadPendingEdits(): Promise<void> {
   const pending = await db
     .select()
     .from(plantations)
-    .where(eq(plantations.pendingEdit, true));
+    // Eliminada en el server (#478): no hay fila que actualizar, la edición queda local.
+    .where(and(eq(plantations.pendingEdit, true), isNull(plantations.eliminadaEnServidorEn)));
 
   for (const p of pending) {
     try {

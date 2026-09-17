@@ -13,7 +13,7 @@ import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
-import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
+import { ESTADO_PLANTACION, esArchivada, esEliminadaEnServidor } from '../constants/estados';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -180,8 +180,8 @@ export default function AdminBottomSheet({
               />
             )}
 
-            {/* Archivada (#477): sin especies, técnicos ni finalizar. */}
-            {isAdmin && plantation.estado === ESTADO_PLANTACION.activa && !esArchivada(plantation) && (
+            {/* Archivada o eliminada en el servidor (#477, #478): sin especies, técnicos ni finalizar. */}
+            {isAdmin && plantation.estado === ESTADO_PLANTACION.activa && !esArchivada(plantation) && !esEliminadaEnServidor(plantation) && (
               <>
                 <View style={styles.divider} />
                 <ActionItem

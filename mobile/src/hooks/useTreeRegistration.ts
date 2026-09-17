@@ -37,6 +37,7 @@ import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 const PLANTACION_EDITABLE_POR_DEFECTO: EstadoDeEdicionDePlantacion = {
   estado: ESTADO_PLANTACION.activa,
   archivadaEn: null,
+  eliminadaEnServidorEn: null,
 };
 
 export interface UseTreeRegistrationParams {

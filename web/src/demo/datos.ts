@@ -526,4 +526,15 @@ export const RPC: Record<string, unknown> = {
   // Sin estado: el modal cierra bien, pero la demo no persiste el cambio.
   archivar_plantacion: { success: true },
   desarchivar_plantacion: { success: true },
+  // Siempre la variante más completa del modal (con datos, escribir el nombre).
+  previsualizar_eliminacion_plantacion: {
+    success: true,
+    parcelas: 3,
+    grupos: 12,
+    arboles: 480,
+    arboles_con_foto: 35,
+    tiene_datos: true,
+    puede: true,
+    motivo: null,
+  },
 };
