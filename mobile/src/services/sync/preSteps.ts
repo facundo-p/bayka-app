@@ -15,6 +15,7 @@ import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 import { esTimeout } from '../../supabase/fetchConTimeout';
 import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
+import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
 
 // ─── Pull species catalog from server ────────────────────────────────────────
 
@@ -210,6 +211,32 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
 // ─── Upload pending plantation edits ─────────────────────────────────────────
 
+type PlantacionLocal = typeof plantations.$inferSelect;
+
+/** `true` solo si el server confirmó el cambio en la fila de la plantación. */
+async function pushEdicionPlantacion(p: PlantacionLocal): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('plantations')
+    .update({
+      lugar: p.lugar,
+      periodo: p.periodo,
+      // Sube el valor GPS local vigente (idempotente si no se editó: espeja al server).
+      gps_capture_frequency: p.gpsCaptureFrequency,
+      gps_capture_required: p.gpsCaptureRequired,
+    })
+    .eq('id', p.id)
+    .select('id');
+  if (error) {
+    syncLog.error('Upload pending edit failed:', p.id, error.message);
+    return false;
+  }
+  if (sinFilasAfectadas(data)) {
+    syncLog.error('Upload pending edit failed:', p.id, DETALLE_SIN_FILAS_AFECTADAS);
+    return false;
+  }
+  return true;
+}
+
 /** Pushea lugar/periodo/GPS editados offline (pendingEdit=true) a Supabase y limpia pendingEdit + columnas *Server local; fallos se loguean y se saltean. */
 export async function uploadPendingEdits(): Promise<void> {
   const pending = await db
@@ -219,21 +246,7 @@ export async function uploadPendingEdits(): Promise<void> {
 
   for (const p of pending) {
     try {
-      const { error } = await supabase
-        .from('plantations')
-        .update({
-          lugar: p.lugar,
-          periodo: p.periodo,
-          // Sube el valor GPS local vigente (idempotente si no se editó: espeja al server).
-          gps_capture_frequency: p.gpsCaptureFrequency,
-          gps_capture_required: p.gpsCaptureRequired,
-        })
-        .eq('id', p.id);
-
-      if (error) {
-        syncLog.error('Upload pending edit failed:', p.id, error.message);
-        continue;
-      }
+      if (!(await pushEdicionPlantacion(p))) continue;
 
       await db
         .update(plantations)

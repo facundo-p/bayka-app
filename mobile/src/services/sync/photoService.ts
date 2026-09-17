@@ -13,6 +13,7 @@ import { abortarSiCancelado, esCancelacion } from './cancelacion';
 import { TIMEOUT_MS, TimeoutError } from '../../supabase/fetchConTimeout';
 import { conReloj } from '../../utils/conReloj';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
 
 // ─── Upload pending photos ───────────────────────────────────────────────────
 
@@ -39,18 +40,28 @@ async function uploadSinglePhoto(tree: ArbolConFotoPendiente): Promise<Transfere
     return FALLO;
   }
 
-  // Update Supabase trees table with relative storage path.
-  const { error: updateError } = await supabase
-    .from('trees')
-    .update({ foto_url: storagePath })
-    .eq('id', tree.id);
-  if (updateError) {
-    syncLog.error(`foto_url update failed for tree ${tree.id}:`, updateError.message);
-    return FALLO;
-  }
+  if (!(await apuntarFotoUrlEnServer(tree.id, storagePath))) return FALLO;
 
   await markPhotoSynced(tree.id);
   return { ok: true, bytes };
+}
+
+/** `true` solo si el server confirmó el cambio en la fila del árbol. */
+async function apuntarFotoUrlEnServer(treeId: string, storagePath: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('trees')
+    .update({ foto_url: storagePath })
+    .eq('id', treeId)
+    .select('id');
+  if (error) {
+    syncLog.error(`foto_url update failed for tree ${treeId}:`, error.message);
+    return false;
+  }
+  if (sinFilasAfectadas(data)) {
+    syncLog.error(`foto_url update failed for tree ${treeId}:`, DETALLE_SIN_FILAS_AFECTADAS);
+    return false;
+  }
+  return true;
 }
 
 /**
