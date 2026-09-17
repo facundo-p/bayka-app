@@ -34,7 +34,9 @@ export async function eliminarPlantacion(
 export type ResultadoLimpiezaFotos = { limpiadas: number; pendientes: number };
 
 /** Reintenta borrar las fotos que quedaron de una plantación eliminada. Solo superadmin. */
-export async function limpiarFotosPendientes(plantacionId: string): Promise<ResultadoLimpiezaFotos> {
+export async function limpiarFotosPendientes(
+  plantacionId: string,
+): Promise<ResultadoLimpiezaFotos> {
   const respuesta = await invocarEdgeFunction<CuerpoRespuesta>(
     FUNCION,
     { accion: ACCION.limpiarFotos, plantacionId },

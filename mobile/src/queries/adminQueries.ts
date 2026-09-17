@@ -6,27 +6,48 @@ import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
+import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueries';
+import { tienePendientes } from '../utils/finalizarPlantacion';
 
-/** canFinalize needs ≥1 subgroup, all groups finalizada+synced, and zero unresolved N/N trees. */
-export async function checkFinalizationGate(
-  plantacionId: string
-): Promise<{
+export type FinalizationGate = {
   canFinalize: boolean;
-  blocking: Array<{ nombre: string; estado: string; pendingSync: boolean }>;
+  blocking: { nombre: string; estado: string; pendingSync: boolean }[];
   hasGroups: boolean;
   unresolvedNNCount: number;
   unresolvedNNGroups: number;
-}> {
-  const allGroups = await db
-    .select({ nombre: groups.nombre, estado: groups.estado, pendingSync: groups.pendingSync })
-    .from(groups)
-    .where(eq(groups.plantacionId, plantacionId));
+  pendientes: ResumenDePendientes;
+};
+
+/** canFinalize needs ≥1 subgroup, all groups finalizada+synced, zero unresolved N/N trees and nothing left to upload. */
+export async function checkFinalizationGate(plantacionId: string): Promise<FinalizationGate> {
+  const [allGroups, nn, pendientes] = await Promise.all([
+    getGruposDePlantacion(plantacionId),
+    getNNSinResolver(plantacionId),
+    getResumenDePendientes(plantacionId),
+  ]);
 
   // "Done" = finalizada o sincronizada.
   const blocking = allGroups.filter(s =>
     (s.estado !== ESTADO_GRUPO.finalizada && s.estado !== ESTADO_GRUPO.sincronizada) || s.pendingSync
   );
 
+  return {
+    canFinalize: allGroups.length > 0 && blocking.length === 0 && nn.unresolvedNNCount === 0 && !tienePendientes(pendientes),
+    blocking,
+    hasGroups: allGroups.length > 0,
+    ...nn,
+    pendientes,
+  };
+}
+
+function getGruposDePlantacion(plantacionId: string) {
+  return db
+    .select({ nombre: groups.nombre, estado: groups.estado, pendingSync: groups.pendingSync })
+    .from(groups)
+    .where(eq(groups.plantacionId, plantacionId));
+}
+
+async function getNNSinResolver(plantacionId: string) {
   const nnRows = await db.select({
     grupoId: trees.groupId,
     cnt: count(),
@@ -38,15 +59,9 @@ export async function checkFinalizationGate(
     ))
     .groupBy(trees.groupId);
 
-  const unresolvedNNCount = nnRows.reduce((sum, r) => sum + r.cnt, 0);
-  const unresolvedNNGroups = nnRows.length;
-
   return {
-    canFinalize: allGroups.length > 0 && blocking.length === 0 && unresolvedNNCount === 0,
-    blocking,
-    hasGroups: allGroups.length > 0,
-    unresolvedNNCount,
-    unresolvedNNGroups,
+    unresolvedNNCount: nnRows.reduce((sum, r) => sum + r.cnt, 0),
+    unresolvedNNGroups: nnRows.length,
   };
 }
 

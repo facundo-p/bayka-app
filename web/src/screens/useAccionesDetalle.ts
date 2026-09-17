@@ -71,7 +71,12 @@ export interface AccionesProps {
   administracion: AccionMenu[];
 }
 
-export type AccionMenu = { clave: string; etiqueta: string; onElegir: () => void; destructiva?: boolean };
+export type AccionMenu = {
+  clave: string;
+  etiqueta: string;
+  onElegir: () => void;
+  destructiva?: boolean;
+};
 
 /** Modales de administración que abre el menú «Más acciones». */
 export const MODAL_ADMINISTRACION = {

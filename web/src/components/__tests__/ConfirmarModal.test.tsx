@@ -87,16 +87,18 @@ test('resultadoExtra aparece solo en el estado completado', async () => {
   expect(await screen.findByText('Acción de seguimiento')).toBeInTheDocument();
 });
 
-test('muestra el contenido extra y respeta confirmarDeshabilitado', async () => {
+test('muestra el contenido extra y el aviso y, deshabilitada, no deja confirmar', async () => {
   const usuario = userEvent.setup();
   const { accion } = renderModal({
     children: <p>Contenido extra</p>,
-    confirmarDeshabilitado: true,
+    aviso: 'No se puede deshacer.',
+    deshabilitada: true,
   });
 
   expect(screen.getByText('Contenido extra')).toBeInTheDocument();
-  const boton = screen.getByRole('button', { name: 'Desactivar' });
-  expect(boton).toBeDisabled();
-  await usuario.click(boton);
+  expect(screen.getByText('No se puede deshacer.')).toBeInTheDocument();
+  const confirmar = screen.getByRole('button', { name: 'Desactivar' });
+  expect(confirmar).toBeDisabled();
+  await usuario.click(confirmar);
   expect(accion).not.toHaveBeenCalled();
 });

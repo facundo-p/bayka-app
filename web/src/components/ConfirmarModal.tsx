@@ -16,8 +16,10 @@ interface ConfirmarModalProps extends OpcionesConfirmacion {
   destructiva?: boolean;
   /** Contenido extra entre la descripción y los botones, p. ej. un campo a completar. */
   children?: ReactNode;
-  /** Deshabilita el botón de confirmar hasta que se cumpla una condición del caller. */
-  confirmarDeshabilitado?: boolean;
+  /** Advertencia destacada debajo de la descripción (qué se pierde, si es irreversible). */
+  aviso?: string;
+  /** Deshabilita confirmar hasta que se cumpla una condición del caller. */
+  deshabilitada?: boolean;
   /** Contenido extra bajo el texto de éxito, p. ej. una acción de seguimiento. */
   resultadoExtra?: ReactNode;
 }
@@ -55,13 +57,14 @@ function PreguntaConfirmacion({ modal, estado }: PreguntaConfirmacionProps) {
     <>
       <p className={styles.info}>{modal.descripcion}</p>
       {modal.children}
+      {modal.aviso && <p className={styles.advertencia}>{modal.aviso}</p>}
       <ErrorEnvio mensaje={estado.error} />
       <AccionesModal onCancelar={modal.onClose}>
         <Button
           type="button"
           variant={modal.destructiva ? 'danger' : 'primary'}
           loading={estado.confirmando}
-          disabled={modal.confirmarDeshabilitado}
+          disabled={modal.deshabilitada}
           onClick={estado.confirmar}
         >
           {modal.confirmarEtiqueta}

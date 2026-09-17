@@ -48,7 +48,10 @@ describe('limpiarFotosPendientes (#523)', () => {
     estadoMock.respuestaInvoke = { data: { ok: true, limpiadas: 1, pendientes: 0 }, error: null };
     const resultado = await limpiarFotosPendientes('plant-1');
     expect(estadoMock.invocaciones).toEqual([
-      { funcion: 'admin-plantaciones', cuerpo: { accion: 'limpiarFotos', plantacionId: 'plant-1' } },
+      {
+        funcion: 'admin-plantaciones',
+        cuerpo: { accion: 'limpiarFotos', plantacionId: 'plant-1' },
+      },
     ]);
     expect(resultado).toEqual({ limpiadas: 1, pendientes: 0 });
   });

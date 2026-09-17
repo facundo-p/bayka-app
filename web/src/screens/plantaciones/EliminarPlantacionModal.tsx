@@ -126,7 +126,7 @@ function ConfirmarEliminacion({ plantacion, preview, onClose }: ConfirmarElimina
       descripcion={pideNombre ? copyConfirmarNombre(lugar, preview) : copySinDatos(lugar)}
       confirmarEtiqueta="Eliminar"
       destructiva
-      confirmarDeshabilitado={pideNombre && !nombreCoincide(nombre, lugar)}
+      deshabilitada={pideNombre && !nombreCoincide(nombre, lugar)}
       accion={() => eliminacion.eliminar(pideNombre ? nombre : undefined)}
       alCompletar={eliminacion.alCompletar}
       textoExito={textoEliminada(eliminacion.resultado?.fotosPendientes ?? false)}
@@ -142,7 +142,7 @@ function ConfirmarEliminacion({ plantacion, preview, onClose }: ConfirmarElimina
 export function EliminarPlantacionModal(props: EliminarPlantacionModalProps) {
   const { plantacion, onClose } = props;
   const preview = useQuery({
-    queryKey: CLAVE_QUERY.previewEliminacion(plantacion.id),
+    queryKey: CLAVE_QUERY.previewEliminacionPlantacion(plantacion.id),
     queryFn: () => previsualizarEliminacion(plantacion.id),
     gcTime: 0,
   });

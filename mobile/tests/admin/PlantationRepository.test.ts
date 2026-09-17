@@ -4,6 +4,7 @@
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
+    rpc: jest.fn(),
     auth: { getSession: jest.fn() },
   },
   isSupabaseConfigured: true,
@@ -30,10 +31,15 @@ jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn() },
 }));
 
+jest.mock('../../src/queries/catalogQueries', () => ({
+  getResumenDePendientes: jest.fn(),
+}));
+
 import {
   createPlantation,
   finalizePlantation,
   FinalizePlantationLocalSyncError,
+  FinalizePlantationPendientesError,
   saveSpeciesConfig,
   assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
@@ -43,6 +49,7 @@ import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { pullFromServer } from '../../src/services/SyncService';
 import { syncLog } from '../../src/utils/syncLogger';
+import { getResumenDePendientes } from '../../src/queries/catalogQueries';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -65,6 +72,7 @@ describe('PlantationRepository', () => {
     jest.clearAllMocks();
 
     mockPullFromServer.mockResolvedValue(undefined);
+    (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
     (mockSupabase.from as jest.Mock).mockReturnValue({
       insert: jest.fn().mockReturnValue({
@@ -157,6 +165,23 @@ describe('PlantationRepository', () => {
   // ─── finalizePlantation ───────────────────────────────────────────────────
 
   describe('finalizePlantation', () => {
+    const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+
+    beforeEach(() => {
+      (getResumenDePendientes as jest.Mock).mockResolvedValue(SIN_PENDIENTES);
+    });
+
+    it('con fotos sin subir: rechaza sin tocar server ni SQLite, porque ya no se podrían subir (#537)', async () => {
+      const pendientes = { ...SIN_PENDIENTES, fotos: 1 };
+      (getResumenDePendientes as jest.Mock).mockResolvedValue(pendientes);
+
+      const error = await finalizePlantation('plantation-1').catch((e) => e);
+
+      expect(error).toBeInstanceOf(FinalizePlantationPendientesError);
+      expect(error.pendientes).toEqual(pendientes);
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
     it('Test 3: updates estado to "finalizada" on BOTH supabase and local SQLite', async () => {
       await finalizePlantation('plantation-1');
 
@@ -250,6 +275,88 @@ describe('PlantationRepository', () => {
 
       expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
       expect(mockNotifyDataChanged).toHaveBeenCalled();
+    });
+  });
+
+  // ─── Plantación que dejó de ser escribible (#522) ─────────────────────────
+
+  describe('escrituras de configuración sobre una plantación no escribible', () => {
+    function mockMotivo(...respuestas: (string | null)[]) {
+      const rpc = mockSupabase.rpc as jest.Mock;
+      for (const motivo of respuestas) rpc.mockResolvedValueOnce({ data: motivo, error: null });
+    }
+
+    function mockUsersInsert(error: { code: string; message: string } | null) {
+      const eqRol = jest.fn().mockResolvedValue({ error: null, count: 0 });
+      const insertMock = jest.fn().mockResolvedValue({ error });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        delete: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ eq: eqRol }) }),
+        insert: insertMock,
+      });
+      return insertMock;
+    }
+
+    it('saveSpeciesConfig: eliminada antes de guardar → mensaje claro y no escribe', async () => {
+      mockMotivo('PLANTACION_INEXISTENTE');
+
+      await expect(saveSpeciesConfig('plantation-1', [{ especieId: 'species-1', ordenVisual: 0 }]))
+        .rejects.toThrow('La plantación ya no existe en el servidor. Los cambios no se guardaron.');
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('motivo_no_escribible', { p_plantation_id: 'plantation-1' });
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+      expect(mockPullFromServer).not.toHaveBeenCalled();
+    });
+
+    it('saveSpeciesConfig: finalizada sin ser superadmin también bloquea', async () => {
+      mockMotivo('PLANTACION_FINALIZADA');
+
+      await expect(saveSpeciesConfig('plantation-1', []))
+        .rejects.toThrow('La plantación está finalizada: solo un superadmin puede cambiar su configuración. Los cambios no se guardaron.');
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+    });
+
+    it('assignTechnicians: archivada → mensaje claro y no escribe', async () => {
+      mockMotivo('PLANTACION_ARCHIVADA');
+
+      await expect(assignTechnicians('plantation-1', []))
+        .rejects.toThrow('La plantación está archivada y no acepta cambios. Los cambios no se guardaron.');
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+    });
+
+    it('assignTechnicians: una finalizada admite asignaciones', async () => {
+      mockMotivo('PLANTACION_FINALIZADA');
+      mockUsersInsert(null);
+
+      await assignTechnicians('plantation-1', ['user-1']);
+
+      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
+    });
+
+    it('assignTechnicians: eliminada entre el chequeo y la escritura → traduce el FK a mensaje claro', async () => {
+      mockMotivo(null, 'PLANTACION_INEXISTENTE');
+      mockUsersInsert({ code: '23503', message: 'insert or update violates foreign key constraint' });
+
+      await expect(assignTechnicians('plantation-1', ['user-1']))
+        .rejects.toThrow('La plantación ya no existe en el servidor. Los cambios no se guardaron.');
+      expect(mockPullFromServer).not.toHaveBeenCalled();
+    });
+
+    it('un error que no es de la plantación se propaga tal cual', async () => {
+      mockMotivo(null, null);
+      const error = { code: '08006', message: 'connection failure' };
+      mockUsersInsert(error);
+
+      await expect(assignTechnicians('plantation-1', ['user-1'])).rejects.toBe(error);
+    });
+
+    it('si el chequeo falla (server sin el RPC, sin red) no bloquea: decide la escritura', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
+      const insertMock = mockUsersInsert(null);
+
+      await assignTechnicians('plantation-1', ['user-1']);
+
+      expect(insertMock).toHaveBeenCalled();
+      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
     });
   });
 });

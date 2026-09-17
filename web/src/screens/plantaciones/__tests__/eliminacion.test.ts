@@ -102,7 +102,9 @@ describe('limpieza de fotos (#523)', () => {
   });
 
   test('el texto dice si quedaron fotos', () => {
-    expect(textoLimpiezaFotos({ limpiadas: 1, pendientes: 0 })).toBe('No quedan fotos pendientes de borrar.');
+    expect(textoLimpiezaFotos({ limpiadas: 1, pendientes: 0 })).toBe(
+      'No quedan fotos pendientes de borrar.',
+    );
     expect(textoLimpiezaFotos({ limpiadas: 0, pendientes: 1 })).toBe(
       'Algunas fotos siguen sin poder borrarse. Probá de nuevo más tarde.',
     );
