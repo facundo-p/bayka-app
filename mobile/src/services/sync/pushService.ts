@@ -79,8 +79,7 @@ export function classifyParcelaRpcResult(
     return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
   }
 
-  // No-conflict (42501/network/unknown): detail lleva el código postgres crudo para errores
-  // opacos (p.ej. 23503 FK si la plantación padre aún no está en el server).
+  // Sin conflicto de unicidad: detail lleva el código postgres crudo para diagnosticar.
   const { error: code, detail } = classifyServerError(error);
   return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: code, detail };
 }
