@@ -20,7 +20,7 @@ import type { Parcela } from '../repositories/ParcelaRepository';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
-const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 };
+const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
 export function usePlantacionesScreen() {
   const router = useRouter();

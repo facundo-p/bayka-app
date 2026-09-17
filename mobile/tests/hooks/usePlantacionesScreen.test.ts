@@ -98,7 +98,7 @@ import { usePlantacionesScreen } from '../../src/hooks/usePlantacionesScreen';
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockFetchPlantationMeta.mockResolvedValue({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 });
+  mockFetchPlantationMeta.mockResolvedValue({ canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
 });
 
 describe('usePlantacionesScreen — computed flags', () => {
@@ -180,7 +180,7 @@ describe('usePlantacionesScreen — expansión de card y bottom sheet', () => {
   });
 
   it('handleOpenGear carga el meta y abre el bottom sheet', async () => {
-    mockFetchPlantationMeta.mockResolvedValue({ canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 });
+    mockFetchPlantationMeta.mockResolvedValue({ canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' });
     const { result } = renderHook(() => usePlantacionesScreen());
     const plantation = { id: 'p1', lugar: 'Lote 1' } as any;
 

@@ -30,10 +30,15 @@ jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn() },
 }));
 
+jest.mock('../../src/queries/catalogQueries', () => ({
+  getResumenDePendientes: jest.fn(),
+}));
+
 import {
   createPlantation,
   finalizePlantation,
   FinalizePlantationLocalSyncError,
+  FinalizePlantationPendientesError,
   saveSpeciesConfig,
   assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
@@ -43,6 +48,7 @@ import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { pullFromServer } from '../../src/services/SyncService';
 import { syncLog } from '../../src/utils/syncLogger';
+import { getResumenDePendientes } from '../../src/queries/catalogQueries';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -157,6 +163,23 @@ describe('PlantationRepository', () => {
   // ─── finalizePlantation ───────────────────────────────────────────────────
 
   describe('finalizePlantation', () => {
+    const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+
+    beforeEach(() => {
+      (getResumenDePendientes as jest.Mock).mockResolvedValue(SIN_PENDIENTES);
+    });
+
+    it('con fotos sin subir: rechaza sin tocar server ni SQLite, porque ya no se podrían subir (#537)', async () => {
+      const pendientes = { ...SIN_PENDIENTES, fotos: 1 };
+      (getResumenDePendientes as jest.Mock).mockResolvedValue(pendientes);
+
+      const error = await finalizePlantation('plantation-1').catch((e) => e);
+
+      expect(error).toBeInstanceOf(FinalizePlantationPendientesError);
+      expect(error.pendientes).toEqual(pendientes);
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
     it('Test 3: updates estado to "finalizada" on BOTH supabase and local SQLite', async () => {
       await finalizePlantation('plantation-1');
 
