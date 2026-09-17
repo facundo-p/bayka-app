@@ -9,7 +9,7 @@ import { File as ExpoFile, Directory, Paths } from 'expo-file-system';
 import { PhotoSyncProgress } from './types';
 import { uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
-import { abortarSiCancelado, esCancelacion } from './cancelacion';
+import { abortarSiCancelado, esCancelacion, relanzarSiEsCancelacion } from './cancelacion';
 import { TIMEOUT_MS, TimeoutError } from '../../supabase/fetchConTimeout';
 import { conReloj } from '../../utils/conReloj';
 import { marcandoActividadDeSync } from './syncActivityStore';
@@ -87,7 +87,7 @@ async function correrUploadPendingPhotos(
 
   await conLimiteDeConcurrencia(pending, FOTOS_EN_PARALELO, async (tree) => {
     abortarSiCancelado();
-    const subida = await uploadSinglePhoto(tree);
+    const subida = await subirFotoSinCortarLaTanda(tree);
     if (subida.ok) uploaded++; else failed++;
     bytes += subida.bytes;
     // Completadas, no índice del loop: con N fotos en vuelo el índice retrocede.
@@ -96,6 +96,17 @@ async function correrUploadPendingPhotos(
 
   syncLog.info(`Upload fotos: ${uploaded} ok, ${failed} fallidas, ${bytes} bytes en ${Date.now() - inicio}ms`);
   return { uploaded, failed };
+}
+
+/** Una excepción cuenta la foto como fallida sin cortar la tanda; una cancelación sí la corta (#502). */
+async function subirFotoSinCortarLaTanda(tree: ArbolConFotoPendiente): Promise<Transferencia> {
+  try {
+    return await uploadSinglePhoto(tree);
+  } catch (e: any) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error(`Photo upload EXCEPTION for tree ${tree.id}: ${e?.message}`);
+    return FALLO;
+  }
 }
 
 // ─── Download photos helpers ─────────────────────────────────────────────────

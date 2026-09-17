@@ -79,6 +79,7 @@ import { notifyDataChanged } from '../../src/database/liveQuery';
 import { File as ExpoFile } from 'expo-file-system';
 import { FOTOS_EN_PARALELO } from '../../src/services/sync/concurrencia';
 import type { PhotoSyncProgress } from '../../src/services/sync/types';
+import { SyncCanceladoError } from '../../src/services/sync/cancelacion';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
@@ -628,6 +629,43 @@ describe('SyncService', () => {
 
       expect(result).toEqual({ uploaded: 0, failed: 0 });
       expect(mockSupabase.storage.from).not.toHaveBeenCalled();
+    });
+
+    // Sin captura por foto, conLimiteDeConcurrencia deja de tomar fotos y propaga (#502).
+    describe('una foto que tira excepción', () => {
+      const pendientes = [
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+        { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ];
+
+      beforeEach(() => {
+        mockGetTreesWithPendingPhotos.mockResolvedValue(pendientes);
+        (mockSupabase.storage.from as jest.Mock).mockReturnValue({ upload: jest.fn().mockResolvedValue({ error: null }) });
+        // El update de foto_url afecta su fila, se lea con o sin `.select('id')`.
+        const afectada = { data: [{ id: 'tree' }], error: null };
+        (mockSupabase.from as jest.Mock).mockReturnValue({
+          update: jest.fn(() => ({
+            eq: jest.fn(() => Object.assign(Promise.resolve(afectada), { select: jest.fn().mockResolvedValue(afectada) })),
+          })),
+        });
+      });
+
+      it('cuenta como fallida y el resto de la tanda sigue', async () => {
+        mockMarkPhotoSynced.mockImplementation(async (id: string) => {
+          if (id === 'tree-1') throw new Error('SQLITE_BUSY');
+        });
+
+        const result = await uploadPendingPhotos('plantation-1');
+
+        expect(result).toEqual({ uploaded: 1, failed: 1 });
+        expect(mockMarkPhotoSynced).toHaveBeenCalledWith('tree-2');
+      });
+
+      it('una cancelación sigue cortando la tanda', async () => {
+        mockMarkPhotoSynced.mockRejectedValue(new SyncCanceladoError());
+
+        await expect(uploadPendingPhotos('plantation-1')).rejects.toThrow(SyncCanceladoError);
+      });
     });
   });
 
