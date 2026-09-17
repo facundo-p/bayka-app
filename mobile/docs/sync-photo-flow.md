@@ -58,6 +58,7 @@ Después de crear: `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true
 
 - Setea `fotoUrl` y **siempre resetea `fotoSynced = false`** (Pitfall 6: fuerza re-upload)
 - Llama `markSubGroupPendingSync(subgrupoId)`
+- Después del update borra el archivo local de la foto anterior (best-effort, solo dentro de `photos/`), salvo que el path no haya cambiado. Borrar un árbol o un grupo también borra sus archivos, después de la transacción (#490)
 
 ### 3. Finalización del subgrupo
 

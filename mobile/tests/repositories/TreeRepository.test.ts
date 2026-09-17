@@ -26,6 +26,10 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
+jest.mock('../../src/services/PhotoService', () => ({
+  borrarFotosLocales: jest.fn(),
+}));
+
 let mockDb: any;
 
 beforeAll(() => {
@@ -90,6 +94,11 @@ import {
 } from '../../src/repositories/TreeRepository';
 import { enTransaccion } from '../../src/database/transaccion';
 import { ENTIDAD_BORRADA } from '../../src/constants/entidadBorrada';
+import { borrarFotosLocales } from '../../src/services/PhotoService';
+
+const mockBorrarFotos = borrarFotosLocales as jest.Mock;
+const FOTO_VIEJA = 'file://document/photos/photo_1.jpg';
+const FOTO_NUEVA = 'file://document/photos/photo_2.jpg';
 
 describe('TreeRepository', () => {
   describe('insertTree', () => {
@@ -204,6 +213,36 @@ describe('TreeRepository', () => {
       expect(mockDeleteWhere).not.toHaveBeenCalled();
     });
 
+    // Sin esto el archivo de la foto queda ocupando espacio para siempre (#490).
+    it('borra el archivo de la foto después de la transacción', async () => {
+      mockDb = buildMockDb([{ maxPos: 5, id: 'tree-5', fotoUrl: FOTO_VIEJA, plantacionId: 'plant-1' }]);
+      const orden: string[] = [];
+      mockDeleteWhere.mockImplementation(() => { orden.push('delete'); return Promise.resolve(undefined); });
+      mockBorrarFotos.mockImplementation(() => { orden.push('borrar'); });
+
+      await deleteLastTree('sg-1');
+
+      expect(mockBorrarFotos).toHaveBeenCalledWith([FOTO_VIEJA]);
+      expect(orden).toEqual(['delete', 'borrar']);
+    });
+
+    it('si la transacción falla, no borra el archivo', async () => {
+      mockDb = buildMockDb([{ maxPos: 5, id: 'tree-5', fotoUrl: FOTO_VIEJA, plantacionId: 'plant-1' }]);
+      (enTransaccion as jest.Mock).mockRejectedValueOnce(new Error('DB crash'));
+
+      await expect(deleteLastTree('sg-1')).rejects.toThrow('DB crash');
+
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
+    it('un árbol sin foto no intenta borrar archivos', async () => {
+      mockDb = buildMockDb([{ maxPos: 5, id: 'tree-5', fotoUrl: null, plantacionId: 'plant-1' }]);
+
+      await deleteLastTree('sg-1');
+
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
     it('calls notifyDataChanged only when a tree is deleted', async () => {
       mockDb = buildMockDb([{ maxPos: 2, id: 'tree-2', plantacionId: 'plant-1' }]);
       const { notifyDataChanged } = require('../../src/database/liveQuery');
@@ -302,6 +341,54 @@ describe('TreeRepository', () => {
       expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
     });
 
+    // Reemplazar o quitar la foto dejaba el archivo anterior en el device (#490).
+    it('al reemplazar la foto borra el archivo anterior después del update', async () => {
+      mockDb = buildMockDb([{ fotoUrl: FOTO_VIEJA, grupoId: 'sg-1' }]);
+      const orden: string[] = [];
+      mockUpdateWhere.mockImplementation(() => { orden.push('update'); return Promise.resolve(undefined); });
+      mockBorrarFotos.mockImplementation(() => { orden.push('borrar'); });
+
+      await updateTreePhoto('tree-1', FOTO_NUEVA);
+
+      expect(mockBorrarFotos).toHaveBeenCalledWith([FOTO_VIEJA]);
+      // El segundo update es el pendingSync del grupo.
+      expect(orden.slice(0, 2)).toEqual(['update', 'borrar']);
+    });
+
+    it('al quitar la foto borra el archivo anterior', async () => {
+      mockDb = buildMockDb([{ fotoUrl: FOTO_VIEJA, grupoId: 'sg-1' }]);
+
+      await updateTreePhoto('tree-1', '');
+
+      expect(mockBorrarFotos).toHaveBeenCalledWith([FOTO_VIEJA]);
+    });
+
+    // El archivo "anterior" es el mismo que queda en la fila.
+    it('con el mismo path no borra el archivo nuevo', async () => {
+      mockDb = buildMockDb([{ fotoUrl: FOTO_NUEVA, grupoId: 'sg-1' }]);
+
+      await updateTreePhoto('tree-1', FOTO_NUEVA);
+
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
+    it('sin foto anterior no intenta borrar archivos', async () => {
+      mockDb = buildMockDb([{ fotoUrl: null, grupoId: 'sg-1' }]);
+
+      await updateTreePhoto('tree-1', FOTO_NUEVA);
+
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
+    it('si el update falla, no borra el archivo anterior', async () => {
+      mockDb = buildMockDb([{ fotoUrl: FOTO_VIEJA, grupoId: 'sg-1' }]);
+      mockUpdateWhere.mockRejectedValueOnce(new Error('DB crash'));
+
+      await expect(updateTreePhoto('tree-1', FOTO_NUEVA)).rejects.toThrow('DB crash');
+
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
+    });
+
     it('resets fotoSynced to false when updating photo', async () => {
       let capturedSet: any = null;
       mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
@@ -330,14 +417,15 @@ describe('TreeRepository', () => {
 
     /**
      * Los selects se responden por orden de llamada, que es el del código:
-     * plantación del grupo, parcela del grupo, código de la parcela, y recién ahí
-     * los árboles que quedan.
+     * plantación del grupo, parcela del grupo, código de la parcela, foto del árbol,
+     * y recién ahí los árboles que quedan.
      */
     function mockearSelects() {
       const respuestas: any[][] = [
         [{ plantacionId: 'plant-1' }],
         [{ parcelaId: 'p1' }],
         [{ codigo: 'PC' }],
+        [{ fotoUrl: FOTO_VIEJA }],
       ];
       return jest.fn(() => ({
         from: jest.fn(() => ({
@@ -402,6 +490,26 @@ describe('TreeRepository', () => {
       await deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1');
 
       expect(vistos).toEqual([true, true]);
+    });
+
+    // Sin esto el archivo de la foto queda ocupando espacio para siempre (#490).
+    it('borra el archivo de la foto después de la transacción', async () => {
+      const orden: string[] = [];
+      mockDeleteWhere.mockImplementation(() => { orden.push('delete'); return Promise.resolve(undefined); });
+      mockBorrarFotos.mockImplementation(() => { orden.push('borrar'); });
+
+      await deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1');
+
+      expect(mockBorrarFotos).toHaveBeenCalledWith([FOTO_VIEJA]);
+      expect(orden).toEqual(['delete', 'borrar']);
+    });
+
+    it('si la transacción falla, no borra el archivo', async () => {
+      (enTransaccion as jest.Mock).mockRejectedValueOnce(new Error('DB crash'));
+
+      await expect(deleteTreeAndRecalculate('tree-1', 'sg-1', 'L1')).rejects.toThrow('DB crash');
+
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
     });
 
     // El grupo es de donde sale la plantación: sin él no hay a quién propagarle el
