@@ -202,7 +202,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-1',
-        { estado: 'activa', archivadaEn: null }
+        { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(true);
     });
@@ -211,7 +211,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-1',
-        { estado: 'finalizada', archivadaEn: null }
+        { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });
@@ -220,7 +220,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-1',
-        { estado: 'activa', archivadaEn: '2026-09-17T12:00:00+00:00' }
+        { estado: 'activa', archivadaEn: '2026-09-17T12:00:00+00:00', eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });
@@ -229,7 +229,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-2',
-        { estado: 'activa', archivadaEn: null }
+        { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });
@@ -238,7 +238,7 @@ describe('GroupRepository', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-2',
-        { estado: 'finalizada', archivadaEn: null }
+        { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null }
       );
       expect(result).toBe(false);
     });

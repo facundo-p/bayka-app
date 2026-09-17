@@ -273,10 +273,15 @@ Propaga los borrados anotados (RPC sincronizar_borrados)
 ↓
 Sube Parcelas pendientes, luego Grupo + Árboles (RPC sync_subgroup)
 ↓
-Servidor valida datos (código de grupo único por parcela)
+Servidor valida membresía, que la plantación sea escribible y el código de grupo único por parcela
 ↓
 Grupo marcado como sincronizado localmente (pendingSync = false)
 ```
+
+**Plantación finalizada o archivada** (#469, #477): el server rechaza el push con
+`PLANTACION_FINALIZADA` o `PLANTACION_ARCHIVADA`. Lo pendiente no se pierde:
+queda en el celular y se sube cuando la plantación vuelve a ser escribible.
+Detalle por paso en `mobile/docs/sync-photo-flow.md`.
 
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
@@ -503,6 +508,10 @@ Postgres: ordena los árboles de la plantación (por `groups.created_at`,
 `trees.posicion`, `groups.id` como desempate) y asigna el ID parcial (1..N por
 plantación) y el ID global (secuencial org-wide, desde una semilla que sugiere
 `MAX(global_id) + 1` o la que indique el admin).
+
+Solo lo corre un admin o superadmin activo de la organización de la plantación
+(mig. 042). Una plantación archivada devuelve `PLANTACION_ARCHIVADA`; una
+finalizada sí genera IDs, porque es el momento normal de hacerlo.
 
 Tipos de ID:
 

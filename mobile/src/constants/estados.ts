@@ -25,6 +25,14 @@ export function esArchivada(plantacion: { archivadaEn: string | null }): boolean
   return plantacion.archivadaEn != null;
 }
 
+/**
+ * Eliminada en el servidor (#478): la copia local queda solo para consulta y no se
+ * sincroniza. La marca la pone el pull; no tiene espejo en Supabase.
+ */
+export function esEliminadaEnServidor(plantacion: { eliminadaEnServidorEn: string | null }): boolean {
+  return plantacion.eliminadaEnServidorEn != null;
+}
+
 /** Estados de grupo: superset de ESTADO_PLANTACION + 'sincronizada', flag solo-cliente sin
  *  contraparte server (el server la mapea a 'finalizada'; por eso no vive en el contrato). */
 export const ESTADO_GRUPO = {

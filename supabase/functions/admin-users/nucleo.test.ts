@@ -1,16 +1,23 @@
 import { describe, expect, test, vi } from 'vitest';
-import {
-  MENSAJES,
-  ROL,
-  manejarAdminUsers,
-  type Deps,
-  type PerfilDb,
-} from './nucleo';
+import { MENSAJES, ROL, manejarAdminUsers, type Deps, type PerfilDb } from './nucleo';
 
-const SUPERADMIN: PerfilDb = { id: 'super-1', nombre: 'Sofía', rol: ROL.SUPERADMIN, activo: true };
-const OTRO_SUPERADMIN: PerfilDb = { id: 'super-2', nombre: 'Selva', rol: ROL.SUPERADMIN, activo: true };
-const ADMIN: PerfilDb = { id: 'admin-1', nombre: 'Ana', rol: ROL.ADMIN, activo: true };
-const TECNICO: PerfilDb = { id: 'tec-1', nombre: 'Teo', rol: ROL.TECNICO, activo: true };
+function perfil(id: string, nombre: string, rol: string): PerfilDb {
+  return { id, nombre, rol, activo: true, email: `${id}@bayka.org`, eliminado_en: null };
+}
+
+const SUPERADMIN = perfil('super-1', 'Sofía', ROL.SUPERADMIN);
+const OTRO_SUPERADMIN = perfil('super-2', 'Selva', ROL.SUPERADMIN);
+const ADMIN = perfil('admin-1', 'Ana', ROL.ADMIN);
+const TECNICO = perfil('tec-1', 'Teo', ROL.TECNICO);
+const ELIMINADO: PerfilDb = {
+  ...TECNICO,
+  activo: false,
+  email: 'eliminado+tec-1@bayka.invalid',
+  eliminado_en: '2026-09-01T00:00:00Z',
+};
+
+const SIN_REGISTROS = { arboles: 0, grupos: 0, plantaciones: 0 };
+const CON_REGISTROS = { arboles: 12, grupos: 2, plantaciones: 0 };
 
 /** Deps felices por defecto; cada test pisa lo que necesita. */
 function crearDeps(caller: PerfilDb | null = SUPERADMIN): Deps {
@@ -22,12 +29,30 @@ function crearDeps(caller: PerfilDb | null = SUPERADMIN): Deps {
     asignarRol: vi.fn(async () => ({ error: null })),
     enviarRecuperacion: vi.fn(async () => ({ error: null })),
     banear: vi.fn(async () => ({ error: null })),
+    banearParaSiempre: vi.fn(async () => ({ error: null })),
     actualizarAuth: vi.fn(async () => ({ error: null })),
     marcarActivo: vi.fn(async () => ({ error: null })),
+    marcarEliminado: vi.fn(async () => ({ error: null })),
+    contarRegistros: vi.fn(async () => SIN_REGISTROS),
+    borrarMembresias: vi.fn(async () => ({ error: null })),
+    borrarUsuario: vi.fn(async () => ({ error: null })),
   };
 }
 
-const CREAR = { accion: 'crear', nombre: 'Nueva', email: 'nueva@bayka.org', rol: 'tecnico' } as const;
+/** Orden de llamada de los mocks dados, por nombre. */
+function ordenDeLlamadas(deps: Deps, nombres: Array<keyof Deps>): Array<keyof Deps> {
+  const orden = nombres.flatMap((nombre) =>
+    (deps[nombre] as ReturnType<typeof vi.fn>).mock.invocationCallOrder.map((n) => ({ nombre, n })),
+  );
+  return orden.sort((a, b) => a.n - b.n).map(({ nombre }) => nombre);
+}
+
+const CREAR = {
+  accion: 'crear',
+  nombre: 'Nueva',
+  email: 'nueva@bayka.org',
+  rol: 'tecnico',
+} as const;
 
 describe('autorización', () => {
   test.each([
@@ -334,4 +359,201 @@ describe('mapeo de errores de Auth', () => {
       expect(respuesta.body.error).toBe(caso.mensaje());
     });
   }
+});
+
+describe('previsualizarEliminacion', () => {
+  test.each([
+    ['sin registros → real', SIN_REGISTROS, 'real'],
+    ['con árboles o grupos → lógico', CON_REGISTROS, 'logico'],
+    ['solo plantaciones creadas → lógico', { arboles: 0, grupos: 0, plantaciones: 1 }, 'logico'],
+  ])('%s', async (_caso, registros, modo) => {
+    const deps = crearDeps();
+    deps.contarRegistros = vi.fn(async () => registros);
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'previsualizarEliminacion', userId: TECNICO.id },
+      deps,
+    );
+    expect(respuesta).toEqual({ status: 200, body: { ok: true, preview: { ...registros, modo } } });
+    expect(deps.contarRegistros).toHaveBeenCalledWith(TECNICO.id);
+  });
+
+  test('de un usuario ya eliminado → 409', async () => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => ELIMINADO);
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'previsualizarEliminacion', userId: ELIMINADO.id },
+      deps,
+    );
+    expect(respuesta.status).toBe(409);
+    expect(respuesta.body.error).toBe(MENSAJES.usuarioEliminado);
+  });
+});
+
+const PASOS_ELIMINACION: Array<keyof Deps> = [
+  'banear',
+  'banearParaSiempre',
+  'marcarActivo',
+  'borrarMembresias',
+  'actualizarAuth',
+  'marcarEliminado',
+  'borrarUsuario',
+];
+
+describe('eliminar', () => {
+  const ELIMINAR_TECNICO = { accion: 'eliminar', userId: TECNICO.id } as const;
+
+  test('sin registros: borra membresías y después el usuario de Auth', async () => {
+    const deps = crearDeps();
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta).toEqual({ status: 200, body: { ok: true } });
+    expect(ordenDeLlamadas(deps, PASOS_ELIMINACION)).toEqual(['borrarMembresias', 'borrarUsuario']);
+    expect(deps.borrarUsuario).toHaveBeenCalledWith(TECNICO.id);
+  });
+
+  test('con registros: ban, inactivo, membresías, email liberado y marca, en ese orden', async () => {
+    const deps = crearDeps();
+    deps.contarRegistros = vi.fn(async () => CON_REGISTROS);
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.body.ok).toBe(true);
+    expect(ordenDeLlamadas(deps, PASOS_ELIMINACION)).toEqual([
+      'banearParaSiempre',
+      'marcarActivo',
+      'borrarMembresias',
+      'actualizarAuth',
+      'marcarEliminado',
+    ]);
+    expect(deps.marcarActivo).toHaveBeenCalledWith(TECNICO.id, false);
+    expect(deps.actualizarAuth).toHaveBeenCalledWith(TECNICO.id, {
+      email: 'eliminado+tec-1@bayka.invalid',
+    });
+  });
+
+  test('con registros: si el ban falla no toca nada más', async () => {
+    const deps = crearDeps();
+    deps.contarRegistros = vi.fn(async () => CON_REGISTROS);
+    deps.banearParaSiempre = vi.fn(async () => ({ error: 'auth down' }));
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.status).toBe(500);
+    expect(respuesta.body.error).toBe(MENSAJES.errorGenerico);
+    expect(ordenDeLlamadas(deps, PASOS_ELIMINACION)).toEqual(['banearParaSiempre']);
+  });
+
+  test('con registros: si falla el cambio de email no marca eliminado (queda reintentable)', async () => {
+    const deps = crearDeps();
+    deps.contarRegistros = vi.fn(async () => CON_REGISTROS);
+    deps.actualizarAuth = vi.fn(async () => ({ error: 'auth down' }));
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.status).toBe(500);
+    expect(deps.marcarEliminado).not.toHaveBeenCalled();
+  });
+
+  test('reintento con el email ya reemplazado: no lo vuelve a cambiar', async () => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => ({
+      ...TECNICO,
+      activo: false,
+      email: 'eliminado+tec-1@bayka.invalid',
+    }));
+    deps.contarRegistros = vi.fn(async () => CON_REGISTROS);
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.body.ok).toBe(true);
+    expect(deps.actualizarAuth).not.toHaveBeenCalled();
+    expect(deps.marcarEliminado).toHaveBeenCalledWith(TECNICO.id);
+  });
+
+  test('sin registros: si falla borrar membresías no borra el usuario', async () => {
+    const deps = crearDeps();
+    deps.borrarMembresias = vi.fn(async () => ({ error: 'db down' }));
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.status).toBe(500);
+    expect(deps.borrarUsuario).not.toHaveBeenCalled();
+  });
+
+  test('a sí mismo → bloqueado', async () => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => SUPERADMIN);
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'eliminar', userId: SUPERADMIN.id },
+      deps,
+    );
+    expect(respuesta.status).toBe(409);
+    expect(respuesta.body.error).toBe(MENSAJES.autoEliminacion);
+    expect(deps.contarRegistros).not.toHaveBeenCalled();
+  });
+
+  test('último superadmin activo → bloqueado', async () => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => OTRO_SUPERADMIN);
+    deps.contarSuperadminsActivos = vi.fn(async () => 1);
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'eliminar', userId: OTRO_SUPERADMIN.id },
+      deps,
+    );
+    expect(respuesta.body.error).toBe(MENSAJES.ultimoSuperadminEliminar);
+    expect(ordenDeLlamadas(deps, PASOS_ELIMINACION)).toEqual([]);
+  });
+
+  test('ya eliminado → 409 sin tocar nada', async () => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => ELIMINADO);
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.body.error).toBe(MENSAJES.usuarioEliminado);
+    expect(ordenDeLlamadas(deps, PASOS_ELIMINACION)).toEqual([]);
+  });
+
+  test('caller admin → 403', async () => {
+    const deps = crearDeps(ADMIN);
+    const respuesta = await manejarAdminUsers('jwt', ELIMINAR_TECNICO, deps);
+    expect(respuesta.status).toBe(403);
+    expect(deps.contarRegistros).not.toHaveBeenCalled();
+  });
+
+  test('sin userId → 400', async () => {
+    const respuesta = await manejarAdminUsers('jwt', { accion: 'eliminar' }, crearDeps());
+    expect(respuesta.status).toBe(400);
+    expect(respuesta.body.error).toBe(MENSAJES.solicitudInvalida);
+  });
+});
+
+describe('un usuario eliminado no admite cambios', () => {
+  test.each([
+    ['desactivar', { accion: 'desactivar', userId: ELIMINADO.id }],
+    ['reactivar', { accion: 'reactivar', userId: ELIMINADO.id }],
+    ['cambiarPassword', { accion: 'cambiarPassword', userId: ELIMINADO.id, password: 'segura123' }],
+    ['cambiarEmail', { accion: 'cambiarEmail', userId: ELIMINADO.id, email: 'vuelve@bayka.org' }],
+  ])('%s → 409', async (_accion, cuerpo) => {
+    const deps = crearDeps();
+    deps.buscarPerfil = vi.fn(async () => ELIMINADO);
+    const respuesta = await manejarAdminUsers('jwt', cuerpo, deps);
+    expect(respuesta.status).toBe(409);
+    expect(respuesta.body.error).toBe(MENSAJES.usuarioEliminado);
+    expect(ordenDeLlamadas(deps, PASOS_ELIMINACION)).toEqual([]);
+  });
+
+  test('reenviarInvitacion a su email reemplazado → 400 sin enviar nada', async () => {
+    const deps = crearDeps();
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'reenviarInvitacion', email: 'eliminado+tec-1@bayka.invalid' },
+      deps,
+    );
+    expect(respuesta.status).toBe(400);
+    expect(respuesta.body.error).toBe(MENSAJES.emailInvalido);
+    expect(deps.enviarRecuperacion).not.toHaveBeenCalled();
+  });
+
+  test('ningún usuario vivo puede tomar un email del dominio de eliminados', async () => {
+    const deps = crearDeps();
+    const respuesta = await manejarAdminUsers(
+      'jwt',
+      { accion: 'cambiarEmail', userId: TECNICO.id, email: 'x@BAYKA.invalid' },
+      deps,
+    );
+    expect(respuesta.body.error).toBe(MENSAJES.emailInvalido);
+    expect(deps.actualizarAuth).not.toHaveBeenCalled();
+  });
 });

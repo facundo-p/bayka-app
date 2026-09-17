@@ -45,6 +45,7 @@ export default function PlantationDetailScreen() {
     estadoLoaded,
     isFinalizada,
     isArchivada,
+    isEliminada,
     plantacionEditable,
     userNames,
     deletingId,
@@ -136,6 +137,7 @@ export default function PlantationDetailScreen() {
         estadoLoaded={estadoLoaded}
         isFinalizada={isFinalizada}
         isArchivada={isArchivada}
+        isEliminada={isEliminada}
         groupFilter={groupFilter}
         groupFilterConfigs={groupFilterConfigs}
         onToggleFilter={(key) => setGroupFilter(prev => prev === key ? null : key)}

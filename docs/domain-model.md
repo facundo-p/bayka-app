@@ -111,6 +111,7 @@ password_hash
 nombre
 rol
 activo
+eliminado_en
 fecha_creacion
 ```
 
@@ -122,8 +123,24 @@ defaults seguros (rol `tecnico`, organización Bayka).
 
 `activo` implementa la baja reversible: desactivar un usuario marca
 `activo = false` y lo banea en Auth (vía la edge function `admin-users`), sin
-tocar sus datos de campo (árboles, grupos). No existe el hard-delete de
-usuarios: las FKs de `trees`/`subgroups` lo impiden a propósito.
+tocar sus datos de campo (árboles, grupos).
+
+Eliminar un usuario (solo superadmin, vía `admin-users`) es irreversible y
+depende de sus datos. Las FKs de `trees.usuario_registro`,
+`groups.usuario_creador` y `plantations.creado_por` impiden borrarlo si
+registró algo:
+
+- **Sin datos:** borrado real. Se borran sus membresías y el auth user; el
+  profile cae por cascade.
+- **Con datos:** borrado lógico.
+  - Queda baneado para siempre, con `activo = false` y
+    `profiles.eliminado_en` con la fecha.
+  - Pierde sus membresías.
+  - Su email pasa a `eliminado+<id>@bayka.invalid`, así el original queda libre
+    para invitarlo de nuevo como un usuario nuevo.
+  - Su nombre se conserva para el historial.
+  - `eliminado_en` solo lo cambia service_role (`trg_protect_profile_fields`), y
+    un check garantiza que un eliminado nunca esté activo.
 
 ### Relaciones
 
@@ -240,6 +257,30 @@ activa      → los permisos normales de cada tabla
 Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
 (archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
 cuando la plantación vuelve a ser escribible.
+
+Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
+responde `42501` sin motivo. La app lo traduce con el estado local de la
+plantación; si está activa, queda como `PERMISSION`.
+
+### Eliminada
+
+El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,
+especies y técnicos asignados, más las fotos de Storage. Solo se hace por el RPC
+`eliminar_plantacion`, vía la edge function `admin-plantaciones`.
+
+"Datos" = al menos un grupo o un árbol. Parcelas, especies y técnicos
+asignados son configuración y no cuentan.
+
+```
+sin datos  → admin o superadmin activo de su organización, confirmación simple
+con datos  → solo superadmin, solo si ya está archivada, escribiendo el nombre
+```
+
+Queda registro en `plantaciones_eliminadas` (quién, cuándo, conteos y si las
+fotos ya se borraron). La app lo consulta con `estado_remoto_plantaciones` para
+distinguir "eliminada" de "sin acceso": la plantación queda en el celular en
+solo lectura, marcada "Eliminada en el servidor", y lo pendiente ya no se puede
+subir; el usuario decide cuándo borrarla del dispositivo.
 
 ### Relaciones
 

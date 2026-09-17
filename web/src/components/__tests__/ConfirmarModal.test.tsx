@@ -76,3 +76,19 @@ test('si la acción falla muestra el error, no cierra ni corre alCompletar', asy
   expect(onClose).not.toHaveBeenCalled();
   expect(alCompletar).not.toHaveBeenCalled();
 });
+
+test('muestra el contenido extra y el aviso y, deshabilitada, no deja confirmar', async () => {
+  const usuario = userEvent.setup();
+  const { accion } = renderModal({
+    children: <p>Contenido extra</p>,
+    aviso: 'No se puede deshacer.',
+    deshabilitada: true,
+  });
+
+  expect(screen.getByText('Contenido extra')).toBeInTheDocument();
+  expect(screen.getByText('No se puede deshacer.')).toBeInTheDocument();
+  const confirmar = screen.getByRole('button', { name: 'Desactivar' });
+  expect(confirmar).toBeDisabled();
+  await usuario.click(confirmar);
+  expect(accion).not.toHaveBeenCalled();
+});

@@ -23,7 +23,7 @@ import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
-import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
+import { ESTADO_PLANTACION, esArchivada, esEliminadaEnServidor } from '../constants/estados';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import { getGroupGating, plantacionEsEditable, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion, GroupGating } from '../utils/permisosDeEdicion';
@@ -34,7 +34,7 @@ import type { Parcela } from '../repositories/ParcelaRepository';
 export type { Group, GroupTipo };
 
 /** Plantación que no está en SQLite: sin estado ni archivado, como antes de #477. */
-const PLANTACION_SIN_DATOS: EstadoDeEdicionDePlantacion = { estado: '', archivadaEn: null };
+const PLANTACION_SIN_DATOS: EstadoDeEdicionDePlantacion = { estado: '', archivadaEn: null, eliminadaEnServidorEn: null };
 
 export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const userId = useCurrentUserId();
@@ -66,7 +66,8 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const estadoLoaded = estadoData !== undefined;
   const isFinalizada = estadoDeEdicion.estado === ESTADO_PLANTACION.finalizada;
   const isArchivada = esArchivada(estadoDeEdicion);
-  // Finalizada o archivada: tampoco se crean, editan ni borran parcelas ni grupos.
+  const isEliminada = esEliminadaEnServidor(estadoDeEdicion);
+  // Finalizada, archivada o eliminada en el server: tampoco se crean, editan ni borran parcelas ni grupos.
   const plantacionEditable = estadoLoaded && plantacionEsEditable(estadoDeEdicion);
 
   const creatorIds = useMemo(() => {
@@ -166,6 +167,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     estadoLoaded,
     isFinalizada,
     isArchivada,
+    isEliminada,
     plantacionEditable,
     userNames,
     deletingId,
