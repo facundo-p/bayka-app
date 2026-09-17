@@ -56,8 +56,35 @@ Después de crear: `markGroupPendingSync(grupoId)` → `pendingSync = true`.
 
 **Archivo:** `TreeRepository.ts` → `updateTreePhoto(treeId, fotoUrl)`
 
-- Setea `fotoUrl` y **siempre resetea `fotoSynced = false`** (Pitfall 6: fuerza re-upload)
+- Setea `fotoUrl` y **siempre resetea `fotoSynced = false`** (fuerza re-upload)
 - Llama `markGroupPendingSync(grupoId)`
+- Poner una foto descarta la quitada pendiente del mismo árbol (ver abajo)
+
+### 2b. Quitar la foto (#498)
+
+`updateTreePhoto(treeId, '')` deja `fotoUrl = null` y, en la misma transacción,
+anota en `borrados_pendientes` una fila `tipo = 'foto'` con el id del árbol.
+
+Sin ese registro la foto volvía: `sync_subgroup` hace
+`foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url)` (un null nunca borra) y
+el pull, que corre antes del push, adoptaba el path del server y la volvía a bajar.
+
+| Paso | Qué hace con la foto quitada |
+|------|------------------------------|
+| Pull (`pullTrees`) | Baja la fila del árbol con `foto_url = null`: no restaura ni re-descarga |
+| Push (`pushBorrados`) | Llama `quitar_fotos_arboles(ids)` (migración 044), que pone `trees.foto_url = NULL` |
+| Confirmación | Limpia el registro, salvo los ids `rechazados` (plantación no escribible), que quedan pendientes |
+
+- **Id compartido con el borrado del árbol:** `borrados_pendientes.id` es la
+  clave. Si después se borra el árbol, el registro pasa a `tipo = 'arbol'`: borrar
+  la fila ya se lleva la foto.
+- **Árbol que nunca llegó al server:** el RPC no encuentra la fila, no la rechaza
+  y el registro se limpia.
+- **Objeto de Storage:** NO se borra. La policy de DELETE de `tree-photos` exige
+  admin, así que un técnico no podría. Queda huérfano hasta que se suba otra foto
+  (mismo path, `upsert`).
+- **Otros devices:** conservan su copia local (`file://`), porque el pull preserva
+  siempre la foto local.
 
 ### 3. Finalización del grupo
 
@@ -85,6 +112,16 @@ Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPla
 
 **Archivo:** `services/sync/pullService.ts` → `pullFromServer(plantacionId)`
 
+Antes de bajar nada, el pull consulta `estado_remoto_plantaciones` (#478). Si la
+plantación está **eliminada** en el servidor o el usuario está **sin acceso**, el pull
+devuelve ese estado sin tocar la copia local, y la corrida saltea el push de grupos,
+parcelas y borrados **y la subida y bajada de fotos** de esa plantación: las fotos
+locales sin subir quedan en el dispositivo y no se pueden sincronizar. Una eliminada
+queda marcada localmente (`plantations.eliminada_en_servidor_en`) y en solo lectura;
+la marca se limpia si el servidor vuelve a responder `ok`/`archivada`. Con un server
+sin el RPC se cae al chequeo de membresía en `plantation_users`; ante un error de red
+se asume acceso.
+
 Descarga datos del servidor y hace upsert en local. Para cada árbol (`upsertTreesFromServerTx`):
 
 ```ts
@@ -97,11 +134,11 @@ fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 ELSE ${trees.fotoSynce
 
 Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el push sube después.
 
-### Paso 2: Borrados y parcelas
+### Paso 2: Borrados, fotos quitadas y parcelas
 
 **Archivo:** `services/sync/pushService.ts`
 
-- `pushBorrados(plantacionId)` manda los borrados anotados por el RPC `sincronizar_borrados` (#467).
+- `pushBorrados(plantacionId)` manda los borrados anotados por el RPC `sincronizar_borrados` (#467) y las fotos quitadas por `quitar_fotos_arboles` (#498). Cada RPC recibe solo sus tipos.
 - `uploadSyncableParcelas(plantacionId)` hace upsert de las parcelas con `pendingSync = true`. Un grupo cuya parcela no subió se reporta como `PARCELA_PENDING`.
 
 ### Paso 3: Upload de grupos
@@ -110,7 +147,7 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
 
 1. **Para cada árbol con foto local (`file://`) y `fotoSynced = false`:**
    - Sube la foto a Storage: `uploadPhotoToStorage(fotoUrl, storagePath)`
-   - Si éxito: guarda `storagePath` en un mapa y marca `fotoSynced = true` localmente
+   - Si éxito: guarda `storagePath` en un mapa. `fotoSynced` todavía no se marca (ver punto 4)
    - Si falla: log del error. El árbol irá con `foto_url: null` en el RPC. La foto queda local (`fotoSynced = false`) para retry en la próxima sync.
 
 2. **Construye el payload del RPC:**
@@ -119,11 +156,11 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
    // Subida recién → storage path; ya tenía storage path → lo envía; file:// o null → null
    ```
 
-3. **Llama al RPC `sync_subgroup`** (ver [RPC: sync_subgroup](#rpc-sync_subgroup)).
+3. **Llama al RPC `sync_subgroup`** (ver [RPC: sync_subgroup](#rpc-sync_subgroup)). Quitar una foto no va por acá, sino por `quitar_fotos_arboles` (paso 2).
 
 4. **Clasifica la respuesta** con `classifyRpcResult(sg, data, error)`:
-   - Éxito: `markGroupSynced(sg.id)` → `pendingSync = false`. No toca `estado` (#60).
-   - Rechazo: el grupo sigue con `pendingSync = true` y el código va al resultado del sync.
+   - Éxito: marca `fotoSynced = true` en las fotos del mapa y `markGroupSynced(sg.id)` → `pendingSync = false`. No toca `estado` (#60).
+   - Rechazo: el grupo sigue con `pendingSync = true` y el código va al resultado del sync. Las fotos quedan con `fotoSynced = false`: el reintento las resube al mismo path (upsert) y las vuelve a mandar en `foto_url` (#489).
 
 ### Paso 4: Retry de fotos pendientes
 
@@ -270,6 +307,7 @@ Muestra resultados separados:
 - `uploadFailed`: fotos que no pudieron subirse a Storage
 - `downloadFailed`: fotos que no pudieron descargarse de Storage
 - Antes estaban combinados en un solo `failed`, mostrando "no pudieron subirse" para fallas de descarga
+- En la sync global, lista por nombre las plantaciones salteadas por estar eliminadas en el servidor o sin acceso (`omitidas`)
 
 ---
 

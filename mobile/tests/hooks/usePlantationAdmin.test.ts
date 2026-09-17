@@ -61,7 +61,7 @@ import { useProfileData } from '../../src/hooks/useProfileData';
 import { useLiveData } from '../../src/database/liveQuery';
 import { finalizePlantation, FinalizePlantationLocalSyncError } from '../../src/repositories/PlantationRepository';
 import { showInfoDialog } from '../../src/utils/alertHelpers';
-import type { Plantation } from '../../src/components/PlantationConfigCard';
+import type { Plantation } from '../../src/types/plantation';
 
 const mockCheckGate = checkFinalizationGate as jest.MockedFunction<typeof checkFinalizationGate>;
 const mockHasIds = hasIdsGenerated as jest.MockedFunction<typeof hasIdsGenerated>;
@@ -74,6 +74,7 @@ function makePlantation(estado: string, overrides?: Partial<Plantation>): Planta
     estado,
     createdAt: '2026-01-01',
     archivadaEn: null,
+    eliminadaEnServidorEn: null,
     ...overrides,
   };
 }

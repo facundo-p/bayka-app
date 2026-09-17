@@ -6,6 +6,8 @@ import {
   cambiarPassword,
   crearUsuario,
   desactivarUsuario,
+  eliminarUsuario,
+  previsualizarEliminacion,
   reactivarUsuario,
   reenviarInvitacion,
 } from '../adminUsersService';
@@ -34,6 +36,7 @@ test.each([
     { accion: 'desactivar', userId: 'user-3' },
   ],
   ['reactivarUsuario', () => reactivarUsuario('user-3'), { accion: 'reactivar', userId: 'user-3' }],
+  ['eliminarUsuario', () => eliminarUsuario('user-3'), { accion: 'eliminar', userId: 'user-3' }],
   [
     'cambiarPassword',
     () => cambiarPassword('user-3', 'segura123'),
@@ -80,4 +83,17 @@ test('el 429 del rate limit conserva su mensaje accionable', async () => {
     error: { context: { json: async () => ({ ok: false, error: MENSAJES.limiteEmails }) } },
   };
   await expect(reenviarInvitacion('teo@bayka.org')).rejects.toThrow(MENSAJES.limiteEmails);
+});
+
+test('previsualizarEliminacion devuelve el preview del server', async () => {
+  const preview = { arboles: 3, grupos: 1, plantaciones: 0, modo: 'logico' };
+  estadoMock.respuestaInvoke = { data: { ok: true, preview }, error: null };
+  await expect(previsualizarEliminacion('user-3')).resolves.toEqual(preview);
+  expect(estadoMock.invocaciones).toEqual([
+    { funcion: 'admin-users', cuerpo: { accion: 'previsualizarEliminacion', userId: 'user-3' } },
+  ]);
+});
+
+test('previsualizarEliminacion sin preview en la respuesta lanza el genérico', async () => {
+  await expect(previsualizarEliminacion('user-3')).rejects.toThrow(MENSAJE_ADMIN_USERS_GENERICO);
 });
