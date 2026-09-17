@@ -26,7 +26,7 @@ function archivo(uri: string, del: jest.Mock = jest.fn()) {
   return del;
 }
 
-describe('borrarFotosLocales (#484)', () => {
+describe('borrarFotosLocales (#484, #527)', () => {
   beforeEach(() => mockArchivos.clear());
 
   it('borra los archivos de la carpeta de fotos', () => {
@@ -51,6 +51,35 @@ describe('borrarFotosLocales (#484)', () => {
     borrarFotosLocales(ajenas);
 
     borrados.forEach((borrar) => expect(borrar).not.toHaveBeenCalled());
+  });
+
+  // Empezar con la carpeta no alcanza: `..` sale de ella, también codificado (#527).
+  it('no borra paths que salen de la carpeta de fotos o entran en subcarpetas', () => {
+    const escapes = [
+      'file:///data/files/photos/../SQLite/bayka.db',
+      'file:///data/files/photos/..',
+      'file:///data/files/photos/%2e%2e/SQLite/bayka.db',
+      'file:///data/files/photos/%2E%2E%2FSQLite%2Fbayka.db',
+      'file:///data/files/photos/..%5CSQLite%5Cbayka.db',
+      'file:///data/files/photos/sub/photo_1.jpg',
+      'file:///data/files/photos/',
+      'file:///data/files/photos/%E0%A4%A.jpg',
+    ];
+    const borrados = escapes.map((uri) => archivo(uri));
+
+    borrarFotosLocales(escapes);
+
+    borrados.forEach((borrar) => expect(borrar).not.toHaveBeenCalled());
+  });
+
+  // El nombre puede traer puntos: lo que se rechaza es el segmento `..`, no el carácter.
+  it('un nombre de archivo con puntos sigue siendo una foto propia', () => {
+    const uri = 'file:///data/files/photos/..photo_1.v2.jpg';
+    const borrar = archivo(uri);
+
+    borrarFotosLocales([uri]);
+
+    expect(borrar).toHaveBeenCalledTimes(1);
   });
 
   it('un archivo que ya no existe se saltea', () => {
