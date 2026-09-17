@@ -60,7 +60,10 @@ INSERT, `09` helpers de estado/seed de `global_id` (032, #309), `10` SELECT
 scoped por membresía/organización, incluida `storage.objects` de `tree-photos`
 (033, #310), `11` alta de plantaciones con `INSERT … RETURNING` bajo esa
 RLS (034, #379), `12` columna `photo_capture_all_trees` con su default (035,
-#439).
+#439), `13` `sincronizar_borrados` (036, #467), `14` plantación finalizada
+inmutable (037, #469), `15` plantación archivada: matriz de roles de
+`archivar_plantacion`/`desarchivar_plantacion` y solo lectura también para
+superadmin (038, #477).
 
 ## Hallazgo fuera de alcance (no corregido)
 
