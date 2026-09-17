@@ -4,10 +4,7 @@
  */
 import { pluralizar } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
-import {
-  MOTIVO_NO_ELIMINABLE,
-  type PreviewEliminacion,
-} from '../../queries/eliminacionQueries';
+import { MOTIVO_NO_ELIMINABLE, type PreviewEliminacion } from '../../queries/eliminacionQueries';
 
 export const VISTA_ELIMINACION = {
   /** Sin grupos ni árboles: confirmación simple. */
