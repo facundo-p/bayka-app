@@ -259,7 +259,10 @@ Queda registro en `plantaciones_eliminadas` (quién, cuándo, conteos y si las
 fotos ya se borraron). La app lo consulta con `estado_remoto_plantaciones` para
 distinguir "eliminada" de "sin acceso": la plantación queda en el celular en
 solo lectura, marcada "Eliminada en el servidor", y lo pendiente ya no se puede
-subir; el usuario decide cuándo borrarla del dispositivo.
+subir; el usuario decide cuándo borrarla del dispositivo. Por eso lo pendiente
+de una eliminada no enciende el punto naranja (ni el global, ni el de su
+tarjeta, ni "listos para sincronizar"): su estado lo cuenta el badge, y lo que
+se pierde, el aviso de eliminarla del dispositivo (#518).
 
 ### Relaciones
 
