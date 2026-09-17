@@ -125,6 +125,11 @@ defaults seguros (rol `tecnico`, organización Bayka).
 tocar sus datos de campo (árboles, grupos). No existe el hard-delete de
 usuarios: las FKs de `trees`/`subgroups` lo impiden a propósito.
 
+Un perfil inactivo no pasa ningún permiso por rol ni por membresía aunque
+conserve un access token vigente: `is_admin()`, `is_superadmin()` e
+`is_plantation_member()` exigen `activo`. Las filas de `plantation_users` no se
+borran, así que reactivarlo le devuelve el acceso tal cual estaba.
+
 ### Relaciones
 
 ```
