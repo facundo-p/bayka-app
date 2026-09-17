@@ -165,26 +165,28 @@ export function motivosDeRechazo(rechazos: unknown): string {
 
 // ─── Upload a single Group ─────────────────────────────────────────────────
 
-/** Sube fotos a Storage antes del RPC para que foto_url siempre lleve el path de Storage (nunca null/file://) en un solo paso atómico. */
-export async function uploadGroup(
+type ArbolDeGrupo = {
+  id: string;
+  groupId: string;
+  especieId: string | null;
+  posicion: number;
+  subId: string;
+  fotoUrl: string | null;
+  fotoSynced: boolean;
+  usuarioRegistro: string;
+  createdAt: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  gpsAccuracy?: number | null;
+  gpsCapturedAt?: string | null;
+};
+
+/** Sube a Storage las fotos locales pendientes y devuelve treeId → path. No las marca: eso espera al RPC. */
+async function subirFotosDelGrupo(
   sg: Group,
-  sgTrees: Array<{
-    id: string;
-    groupId: string;
-    especieId: string | null;
-    posicion: number;
-    subId: string;
-    fotoUrl: string | null;
-    fotoSynced: boolean;
-    usuarioRegistro: string;
-    createdAt: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    gpsAccuracy?: number | null;
-    gpsCapturedAt?: string | null;
-  }>,
+  sgTrees: ArbolDeGrupo[],
   onPhotoProgress?: (progress: PhotoSyncProgress) => void,
-) {
+): Promise<Map<string, string>> {
   // Solo resube fotos con fotoSynced=false; las que ya están en Storage (de otro device) se saltean.
   const photoMap = new Map<string, string>();
   const pendientes = sgTrees.filter((t) => isLocalUri(t.fotoUrl) && !t.fotoSynced);
@@ -203,16 +205,18 @@ export async function uploadGroup(
     if (!error) {
       photoMap.set(t.id, storagePath);
       bytesSubidos += bytes;
-      await markPhotoSynced(t.id);
     } else {
       syncLog.error(`Photo upload failed for tree ${t.id}:`, error.message);
     }
     onPhotoProgress?.({ total: pendientes.length, completed: ++completadas, bytes: bytesSubidos, desde: inicio });
   });
+  return photoMap;
+}
 
-  // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
-  // server-side; los REST calls directos ya usan groups/group_id.
-  const p_subgroup = {
+// COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
+// server-side; los REST calls directos ya usan groups/group_id.
+function payloadDeGrupo(sg: Group) {
+  return {
     id: sg.id,
     plantation_id: sg.plantacionId,
     parcela_id: sg.parcelaId,
@@ -223,10 +227,12 @@ export async function uploadGroup(
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
   };
+}
 
-  // sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
-  // (RPC generate_tree_ids, #232) y llegan por el pull.
-  const p_trees = sgTrees.map((t) => ({
+// sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
+// (RPC generate_tree_ids, #232) y llegan por el pull.
+function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>) {
+  return sgTrees.map((t) => ({
     id: t.id,
     subgroup_id: t.groupId,
     species_id: t.especieId ?? null,
@@ -240,8 +246,29 @@ export async function uploadGroup(
     gps_accuracy: t.gpsAccuracy ?? null,
     gps_captured_at: t.gpsCapturedAt ?? null,
   }));
+}
 
-  return supabase.rpc('sync_subgroup', { p_subgroup, p_trees });
+/**
+ * Sube fotos a Storage antes del RPC para que foto_url lleve el path de Storage (nunca file://).
+ *
+ * `fotoSynced` se marca recién con el RPC confirmado (#489): si se marcara antes y el
+ * RPC fallara, el reintento saltearía la foto y mandaría foto_url null. Resubirla es
+ * seguro porque el path es determinístico y la subida usa upsert.
+ */
+export async function uploadGroup(
+  sg: Group,
+  sgTrees: ArbolDeGrupo[],
+  onPhotoProgress?: (progress: PhotoSyncProgress) => void,
+) {
+  const photoMap = await subirFotosDelGrupo(sg, sgTrees, onPhotoProgress);
+  const respuesta = await supabase.rpc('sync_subgroup', {
+    p_subgroup: payloadDeGrupo(sg),
+    p_trees: payloadDeArboles(sgTrees, photoMap),
+  });
+  if (!respuesta.error && respuesta.data?.success === true) {
+    for (const treeId of photoMap.keys()) await markPhotoSynced(treeId);
+  }
+  return respuesta;
 }
 
 // ─── RPC result classification (groups) ──────────────────────────────────────

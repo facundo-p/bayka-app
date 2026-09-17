@@ -272,6 +272,75 @@ describe('SyncService', () => {
     });
   });
 
+  // Marcarla antes del RPC hacía que el reintento la salteara y mandara foto_url null (#489).
+  describe('uploadGroup — la foto se marca sincronizada solo tras el RPC exitoso', () => {
+    const sg = { ...makeSg('sg-1'), pendingSync: true };
+    const arbolConFoto = {
+      ...makeTrees('sg-1')[0],
+      fotoUrl: 'file://document/photos/photo_1.jpg',
+      fotoSynced: false,
+    };
+    const pathEnStorage = 'plantations/plantation-1/parcelas/parcela-1/trees/tree-1.jpg';
+
+    beforeEach(() => {
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue({
+        upload: jest.fn().mockResolvedValue({ error: null }),
+      });
+    });
+
+    it('RPC exitoso: marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(mockMarkPhotoSynced).toHaveBeenCalledWith('tree-1');
+    });
+
+    it('RPC con error de red: NO marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Network request failed' } });
+
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+    });
+
+    it('RPC rechazado por el server: NO marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: false, error: 'UNKNOWN' }, error: null });
+
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+    });
+
+    it('RPC que tira excepción: NO marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockRejectedValue(new Error('timeout'));
+
+      await expect(uploadGroup(sg, [arbolConFoto])).rejects.toThrow('timeout');
+
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+    });
+
+    it('el reintento resube al mismo path con upsert y manda foto_url', async () => {
+      const upload = jest.fn().mockResolvedValue({ error: null });
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue({ upload });
+      (mockSupabase.rpc as jest.Mock)
+        .mockResolvedValueOnce({ data: { success: false, error: 'UNKNOWN' }, error: null })
+        .mockResolvedValueOnce({ data: { success: true }, error: null });
+
+      await uploadGroup(sg, [arbolConFoto]);
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(upload).toHaveBeenCalledTimes(2);
+      for (const [path, , opciones] of upload.mock.calls) {
+        expect(path).toBe(pathEnStorage);
+        expect(opciones).toEqual(expect.objectContaining({ upsert: true }));
+      }
+      const payloadReintento = (mockSupabase.rpc as jest.Mock).mock.calls[1][1];
+      expect(payloadReintento.p_trees[0].foto_url).toBe(pathEnStorage);
+      expect(mockMarkPhotoSynced).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('estado real en el payload (no hardcode)', () => {
     async function rpcEstadoFor(estado: string): Promise<string> {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
