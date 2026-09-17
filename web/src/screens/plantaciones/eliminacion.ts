@@ -8,6 +8,8 @@ import {
   MOTIVO_NO_ELIMINABLE,
   type PreviewEliminacion,
 } from '../../queries/eliminacionQueries';
+import { ROL, type Perfil } from '../../repositories/profileRepository';
+import type { ResultadoLimpiezaFotos } from '../../services/adminPlantacionesService';
 
 export const VISTA_ELIMINACION = {
   /** Sin grupos ni árboles: confirmación simple. */
@@ -98,4 +100,15 @@ export const MENSAJE_FOTOS_PENDIENTES =
 
 export function textoEliminada(fotosPendientes: boolean): string {
   return fotosPendientes ? MENSAJE_FOTOS_PENDIENTES : MENSAJE_ELIMINADA;
+}
+
+/** Espeja el guard de `limpiarFotos` en la edge function. */
+export function puedeLimpiarFotos(perfil: Pick<Perfil, 'rol' | 'activo'> | null): boolean {
+  return perfil !== null && perfil.activo && perfil.rol === ROL.SUPERADMIN;
+}
+
+export function textoLimpiezaFotos({ pendientes }: ResultadoLimpiezaFotos): string {
+  return pendientes === 0
+    ? 'No quedan fotos pendientes de borrar.'
+    : 'Algunas fotos siguen sin poder borrarse. Probá de nuevo más tarde.';
 }

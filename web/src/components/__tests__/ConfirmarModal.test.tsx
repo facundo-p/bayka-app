@@ -77,6 +77,16 @@ test('si la acción falla muestra el error, no cierra ni corre alCompletar', asy
   expect(alCompletar).not.toHaveBeenCalled();
 });
 
+test('resultadoExtra aparece solo en el estado completado', async () => {
+  const usuario = userEvent.setup();
+  renderModal({ textoExito: 'Listo.', resultadoExtra: <p>Acción de seguimiento</p> });
+
+  expect(screen.queryByText('Acción de seguimiento')).not.toBeInTheDocument();
+  await usuario.click(screen.getByRole('button', { name: 'Desactivar' }));
+
+  expect(await screen.findByText('Acción de seguimiento')).toBeInTheDocument();
+});
+
 test('muestra el contenido extra y respeta confirmarDeshabilitado', async () => {
   const usuario = userEvent.setup();
   const { accion } = renderModal({

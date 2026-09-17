@@ -18,15 +18,24 @@ interface ConfirmarModalProps extends OpcionesConfirmacion {
   children?: ReactNode;
   /** Deshabilita el botón de confirmar hasta que se cumpla una condición del caller. */
   confirmarDeshabilitado?: boolean;
+  /** Contenido extra bajo el texto de éxito, p. ej. una acción de seguimiento. */
+  resultadoExtra?: ReactNode;
+}
+
+interface ResultadoConfirmacionProps {
+  texto: string;
+  extra?: ReactNode;
+  onClose: () => void;
 }
 
 /** Terminada la acción: el resultado y un solo botón para cerrar. */
-function ResultadoConfirmacion({ texto, onClose }: { texto: string; onClose: () => void }) {
+function ResultadoConfirmacion({ texto, extra, onClose }: ResultadoConfirmacionProps) {
   return (
     <>
       <p className={styles.info} role="status">
         {texto}
       </p>
+      {extra}
       <div className={styles.acciones}>
         <Button type="button" onClick={onClose}>
           Listo
@@ -66,12 +75,12 @@ function PreguntaConfirmacion({ modal, estado }: PreguntaConfirmacionProps) {
  *  Con textoExito, al terminar muestra el resultado en lugar de cerrarse. */
 export function ConfirmarModal(props: ConfirmarModalProps) {
   const estado = useConfirmacion(props);
-  const { titulo, textoExito, onClose } = props;
+  const { titulo, textoExito, resultadoExtra, onClose } = props;
   return (
     <Modal open title={titulo} onClose={onClose}>
       <div className={styles.form}>
         {estado.completada && textoExito ? (
-          <ResultadoConfirmacion texto={textoExito} onClose={onClose} />
+          <ResultadoConfirmacion texto={textoExito} extra={resultadoExtra} onClose={onClose} />
         ) : (
           <PreguntaConfirmacion modal={props} estado={estado} />
         )}

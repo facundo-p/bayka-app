@@ -7,8 +7,10 @@ import {
   nombreCoincide,
   ofreceArchivar,
   permiteBorrar,
+  puedeLimpiarFotos,
   textoConteos,
   textoEliminada,
+  textoLimpiezaFotos,
   vistaEliminacion,
 } from '../eliminacion';
 
@@ -88,5 +90,21 @@ describe('textos', () => {
   test('el resultado avisa si quedaron fotos', () => {
     expect(textoEliminada(false)).toBe('La plantación se eliminó.');
     expect(textoEliminada(true)).toMatch(/algunas fotos no se pudieron borrar/);
+  });
+});
+
+describe('limpieza de fotos (#523)', () => {
+  test('solo un superadmin activo puede reintentarla', () => {
+    expect(puedeLimpiarFotos({ rol: 'superadmin', activo: true })).toBe(true);
+    expect(puedeLimpiarFotos({ rol: 'superadmin', activo: false })).toBe(false);
+    expect(puedeLimpiarFotos({ rol: 'admin', activo: true })).toBe(false);
+    expect(puedeLimpiarFotos(null)).toBe(false);
+  });
+
+  test('el texto dice si quedaron fotos', () => {
+    expect(textoLimpiezaFotos({ limpiadas: 1, pendientes: 0 })).toBe('No quedan fotos pendientes de borrar.');
+    expect(textoLimpiezaFotos({ limpiadas: 0, pendientes: 1 })).toBe(
+      'Algunas fotos siguen sin poder borrarse. Probá de nuevo más tarde.',
+    );
   });
 });

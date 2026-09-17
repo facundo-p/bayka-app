@@ -64,7 +64,9 @@ fotos de Storage; el borrado de los datos se autoriza en SQL.
   en español (403 sin permiso, 409 reglas de negocio).
 - **Falla de Storage:** los datos ya se borraron, así que responde éxito con
   `fotosPendientes: true`; la fila queda con `fotos_limpias = false` para
-  `limpiarFotos`.
+  `limpiarFotos`. En la web, un superadmin lo reintenta con el botón
+  "Reintentar limpieza de fotos" del resultado de eliminar (#523); para
+  pendientes viejas no hay UI y se invoca sin `plantacionId`.
 - **`plantacionId` tiene que ser un uuid:** un id vacío armaría un prefijo que
   abarca las fotos de todas las plantaciones.
 
