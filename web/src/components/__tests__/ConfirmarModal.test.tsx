@@ -76,3 +76,17 @@ test('si la acción falla muestra el error, no cierra ni corre alCompletar', asy
   expect(onClose).not.toHaveBeenCalled();
   expect(alCompletar).not.toHaveBeenCalled();
 });
+
+test('muestra el contenido extra y respeta confirmarDeshabilitado', async () => {
+  const usuario = userEvent.setup();
+  const { accion } = renderModal({
+    children: <p>Contenido extra</p>,
+    confirmarDeshabilitado: true,
+  });
+
+  expect(screen.getByText('Contenido extra')).toBeInTheDocument();
+  const boton = screen.getByRole('button', { name: 'Desactivar' });
+  expect(boton).toBeDisabled();
+  await usuario.click(boton);
+  expect(accion).not.toHaveBeenCalled();
+});

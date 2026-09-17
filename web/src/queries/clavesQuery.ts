@@ -10,6 +10,7 @@ export const CLAVE_QUERY = {
   plantacion: (plantationId: string) => ['plantacion', plantationId] as const,
   temporadaActiva: () => ['temporada-activa'] as const,
   idsGenerados: (plantationId: string) => ['ids-generados', plantationId] as const,
+  previewEliminacion: (plantationId: string) => ['preview-eliminacion', plantationId] as const,
   seedSugerido: () => ['seed-sugerido'] as const,
 
   dashboard: (plantationId: string) => ['dashboard', plantationId] as const,

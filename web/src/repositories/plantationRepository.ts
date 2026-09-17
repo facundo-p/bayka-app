@@ -27,6 +27,16 @@ export const MENSAJE_VISIBILIDAD_SIN_MIGRACION =
 export const MENSAJE_FOTO_SIN_MIGRACION =
   'Foto en todos los botones no disponible: falta aplicar la migración 035';
 
+/**
+ * Archivar va por RPC porque la policy UPDATE no deja tocar una archivada (#477);
+ * eliminar, porque no hay policy DELETE y las reglas viven en SQL (#478).
+ */
+const RPC_PLANTACION = {
+  archivar: 'archivar_plantacion',
+  desarchivar: 'desarchivar_plantacion',
+  eliminar: 'eliminar_plantacion',
+} as const;
+
 type Payload = Record<string, string | number | boolean>;
 type ErrorSupabase = { message: string; code?: string } | null;
 type ResultadoSupabase = { data: unknown; error: ErrorSupabase };
@@ -64,10 +74,13 @@ async function ejecutarConReintentoSin024(
   return reintento.data;
 }
 
-/** Best-effort: si el delete también falla queda una plantación huérfana, pero se prioriza el error original. */
+/**
+ * Best-effort: si el borrado también falla queda una plantación huérfana, pero se prioriza el error original.
+ * Va por RPC porque no hay policy DELETE sobre `plantations` (#480); recién creada no tiene datos, así que alcanza con ser admin.
+ */
 async function borrarPlantacionHuerfana(plantationId: string): Promise<void> {
   try {
-    await supabase.from('plantations').delete().eq('id', plantationId);
+    await supabase.rpc(RPC_PLANTACION.eliminar, { p_id: plantationId });
   } catch {
     // Sin red no hay más por hacer; el error original ya se propaga.
   }
@@ -161,11 +174,6 @@ export async function existePlantacion(
   return (count ?? 0) > 0;
 }
 
-/** Van por RPC: la policy UPDATE no deja tocar una plantación archivada (#477). */
-const RPC_ARCHIVADO = {
-  archivar: 'archivar_plantacion',
-  desarchivar: 'desarchivar_plantacion',
-} as const;
 
 /** Errores de negocio que devuelven en `{ success: false, error }`. */
 export const ERRORES_ARCHIVADO = {
@@ -194,10 +202,10 @@ async function ejecutarArchivado(rpc: string, id: string): Promise<void> {
 }
 
 export function archivarPlantacion(id: string): Promise<void> {
-  return ejecutarArchivado(RPC_ARCHIVADO.archivar, id);
+  return ejecutarArchivado(RPC_PLANTACION.archivar, id);
 }
 
 /** No cambia `estado`: una finalizada sigue finalizada. */
 export function desarchivarPlantacion(id: string): Promise<void> {
-  return ejecutarArchivado(RPC_ARCHIVADO.desarchivar, id);
+  return ejecutarArchivado(RPC_PLANTACION.desarchivar, id);
 }
