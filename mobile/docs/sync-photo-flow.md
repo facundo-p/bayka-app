@@ -75,6 +75,16 @@ Después de crear: `markSubGroupPendingSync(subgrupoId)` → `pendingSync = true
 
 **Archivo:** `SyncService.ts` → `pullFromServer(plantacionId)`
 
+Antes de bajar nada, el pull consulta `estado_remoto_plantaciones` (#478). Si la
+plantación está **eliminada** en el servidor o el usuario está **sin acceso**, el pull
+devuelve ese estado sin tocar la copia local, y la corrida saltea el push de grupos,
+parcelas y borrados **y la subida y bajada de fotos** de esa plantación: las fotos
+locales sin subir quedan en el dispositivo y no se pueden sincronizar. Una eliminada
+queda marcada localmente (`plantations.eliminada_en_servidor_en`) y en solo lectura;
+la marca se limpia si el servidor vuelve a responder `ok`/`archivada`. Con un server
+sin el RPC se cae al chequeo de membresía en `plantation_users`; ante un error de red
+se asume acceso.
+
 Descarga datos del servidor y upsert en local. Para cada árbol:
 
 ```ts
@@ -253,6 +263,7 @@ Muestra resultados separados:
 - `uploadFailed`: fotos que no pudieron subirse a Storage
 - `downloadFailed`: fotos que no pudieron descargarse de Storage
 - Antes estaban combinados en un solo `failed`, mostrando "no pudieron subirse" para fallas de descarga
+- En la sync global, lista por nombre las plantaciones salteadas por estar eliminadas en el servidor o sin acceso (`omitidas`)
 
 ---
 

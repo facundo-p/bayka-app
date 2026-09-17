@@ -80,6 +80,25 @@ export const plantationCardStyles = StyleSheet.create({
     color: colors.textMuted,
   },
 
+  // Chip "Eliminada en el servidor" (#478), para todos los roles.
+  eliminadaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    backgroundColor: colors.dangerBg,
+    borderWidth: 1,
+    borderColor: colors.stateEliminada + '66',
+    borderRadius: borderRadius.full,
+    ...chipSizes.sm,
+    marginBottom: spacing.lg,
+  },
+  eliminadaBadgeText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.semiBold,
+    color: colors.stateEliminada,
+  },
+
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',

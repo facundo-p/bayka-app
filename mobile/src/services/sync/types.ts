@@ -90,6 +90,8 @@ export const PULL_ESTADO = {
    * en cada paso y el pull lo lee como "el server está vacío".
    */
   sinAcceso: 'sin-acceso',
+  /** La plantación fue eliminada en el server (#478): la copia local queda solo para consulta. */
+  eliminada: 'eliminada',
 } as const;
 
 export type PullEstado = (typeof PULL_ESTADO)[keyof typeof PULL_ESTADO];
@@ -100,9 +102,48 @@ export type PullResult = { estado: PullEstado };
 export const PULL_OK: PullResult = { estado: PULL_ESTADO.ok };
 export const PULL_SIN_ACCESO: PullResult = { estado: PULL_ESTADO.sinAcceso };
 
+export const PULL_ELIMINADA: PullResult = { estado: PULL_ESTADO.eliminada };
+
 /** La membresía fue revocada: la copia local queda solo para consulta (#317). */
 export const esSinAcceso = (resultado: PullResult): boolean =>
   resultado.estado === PULL_ESTADO.sinAcceso;
+
+/** La plantación ya no existe en el server (#478). */
+export const esEliminada = (resultado: PullResult): boolean =>
+  resultado.estado === PULL_ESTADO.eliminada;
+
+/** No hay nada que bajar ni subir: ni pull de datos, ni push, ni fotos. */
+export const esPullSinDatos = (resultado: PullResult): boolean =>
+  esSinAcceso(resultado) || esEliminada(resultado);
+
+/**
+ * Valores de `estado` del RPC `estado_remoto_plantaciones` (#478). Contrato con el
+ * server: `sin_acceso` va con guion bajo, a diferencia de `PULL_ESTADO.sinAcceso`.
+ */
+export const ESTADO_REMOTO = {
+  ok: 'ok',
+  archivada: 'archivada',
+  eliminada: 'eliminada',
+  sinAcceso: 'sin_acceso',
+} as const;
+
+export type EstadoRemoto = (typeof ESTADO_REMOTO)[keyof typeof ESTADO_REMOTO];
+
+export const RPC_ESTADO_REMOTO_PLANTACIONES = 'estado_remoto_plantaciones';
+
+/** Existe en el server y el usuario es miembro: lo único que desmarca una eliminada. */
+export const existeConAcceso = (estado: string | null | undefined): boolean =>
+  estado === ESTADO_REMOTO.ok || estado === ESTADO_REMOTO.archivada;
+
+/**
+ * Estado remoto → resultado del pull. Un valor desconocido (server más nuevo) o
+ * ausente asume acceso, igual que un error de red: solo se corta ante evidencia.
+ */
+export function pullDesdeEstadoRemoto(estado: string | null | undefined): PullResult {
+  if (estado === ESTADO_REMOTO.eliminada) return PULL_ELIMINADA;
+  if (estado === ESTADO_REMOTO.sinAcceso) return PULL_SIN_ACCESO;
+  return PULL_OK;
+}
 
 export const DOWNLOAD_PHASE = {
   /** Catálogo global; corre una sola vez al arrancar el batch. */

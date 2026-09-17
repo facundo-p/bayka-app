@@ -43,6 +43,8 @@ export const plantations = sqliteTable('plantations', {
     .default(PHOTO_CAPTURE_ALL_TREES_DEFAULT),
   // Archivada desde la web (#477): null = no archivada. Ver esArchivada.
   archivadaEn: text('archivada_en'),
+  // Solo local (#478): cuándo el server respondió por primera vez que la plantación fue eliminada. Null = existe.
+  eliminadaEnServidorEn: text('eliminada_en_servidor_en'),
 });
 
 export const parcelas = sqliteTable('parcelas', {

@@ -13,7 +13,7 @@ import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from './PlantationConfigCard';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
 
 type GlobalSyncProgress = { plantationName: string; done: number; total: number } | null;
 
@@ -60,6 +60,8 @@ type Props = {
   plantationFailureCount: number;
   pullSuccess: boolean | null;
   sinAcceso: boolean;
+  eliminada: boolean;
+  omitidas: PlantacionesOmitidas;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   phaseProgress: DownloadPhaseProgress | null;
@@ -118,6 +120,8 @@ export default function PlantacionesModals({
   plantationFailureCount,
   pullSuccess,
   sinAcceso,
+  eliminada,
+  omitidas,
   authExpired,
   photoProgress,
   phaseProgress,
@@ -182,6 +186,8 @@ export default function PlantacionesModals({
         plantationFailureCount={plantationFailureCount}
         pullSuccess={pullSuccess}
         sinAcceso={sinAcceso}
+        eliminada={eliminada}
+        omitidas={omitidas}
         authExpired={authExpired}
         photoProgress={photoProgress}
         phaseProgress={phaseProgress}

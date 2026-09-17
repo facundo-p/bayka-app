@@ -22,6 +22,8 @@ export type Plantation = {
   gpsCaptureRequired?: boolean;
   /** Null = no archivada (#477). */
   archivadaEn: string | null;
+  /** Null = existe en el server (#478). */
+  eliminadaEnServidorEn: string | null;
 };
 
 type Props = {

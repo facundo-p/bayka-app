@@ -4,10 +4,11 @@
  */
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
-import { plantations, groups } from '../database/schema';
+import { plantations, groups, borradosPendientes } from '../database/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { fetchAllRows } from '../services/sync/paginate';
 import { ESTADO_GRUPO, esArchivada } from '../constants/estados';
+import { countFotosSinSubirDePlantacion, countPendingParcelas } from './pendingSyncQueries';
 
 export type ServerPlantation = {
   id: string;
@@ -170,4 +171,42 @@ export async function getUnsyncedGroupSummary(
     activaCount: rows.find((r) => r.estado === ESTADO_GRUPO.activa)?.cnt ?? 0,
     finalizadaCount: rows.find((r) => r.estado === ESTADO_GRUPO.finalizada)?.cnt ?? 0,
   };
+}
+
+/** Todo lo que quedó sin subir en una plantación: lo que se pierde al eliminarla del dispositivo (#478). */
+export type ResumenDePendientes = UnsyncedSummary & {
+  /** Incluye tombstones: un borrado de parcela sin subir también se pierde. */
+  parcelas: number;
+  fotos: number;
+  /** Borrados de grupos y árboles sin propagar al server. */
+  borrados: number;
+};
+
+async function countBorradosPendientes(plantacionId: string): Promise<number> {
+  const rows = await db
+    .select({ cnt: count() })
+    .from(borradosPendientes)
+    .where(eq(borradosPendientes.plantacionId, plantacionId));
+  return rows[0]?.cnt ?? 0;
+}
+
+export async function getResumenDePendientes(plantacionId: string): Promise<ResumenDePendientes> {
+  const [grupos, parcelas, fotos, borrados] = await Promise.all([
+    getUnsyncedGroupSummary(plantacionId),
+    countPendingParcelas({ plantacionId }),
+    countFotosSinSubirDePlantacion(plantacionId),
+    countBorradosPendientes(plantacionId),
+  ]);
+  return { ...grupos, parcelas: parcelas[0]?.cnt ?? 0, fotos: fotos[0]?.cnt ?? 0, borrados };
+}
+
+/** Lo que el aviso de "eliminar del dispositivo" necesita de la plantación local. Null si no está. */
+export async function getPlantacionParaEliminarDelDispositivo(
+  plantacionId: string,
+): Promise<{ lugar: string; eliminadaEnServidorEn: string | null } | null> {
+  const rows = await db
+    .select({ lugar: plantations.lugar, eliminadaEnServidorEn: plantations.eliminadaEnServidorEn })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+  return rows[0] ?? null;
 }

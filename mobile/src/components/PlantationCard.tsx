@@ -36,6 +36,8 @@ type Props = {
   // Visibilidad configurada desde la web; el badge "Oculta en app" solo lo ve
   // el admin (los técnicos directamente no reciben plantaciones ocultas).
   visibleInApp?: boolean;
+  /** Eliminada en el servidor (#478): queda solo para consulta o para eliminar del dispositivo. */
+  eliminadaEnServidor?: boolean;
   // Inline expansion props (all optional; expand row only renders when
   // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
@@ -162,6 +164,15 @@ function ActionStrip({
   );
 }
 
+function EliminadaBadge() {
+  return (
+    <View style={styles.eliminadaBadge}>
+      <Ionicons name="trash-outline" size={iconSizes.badge} color={colors.stateEliminada} />
+      <Text style={styles.eliminadaBadgeText}>Eliminada en el servidor</Text>
+    </View>
+  );
+}
+
 function StatsRow({
   totalCount,
   syncedCount,
@@ -218,6 +229,7 @@ export default function PlantationCard({
   onSync,
   onGear,
   visibleInApp = true,
+  eliminadaEnServidor = false,
   parcelasCount = 0,
   expanded = false,
   onToggleExpanded,
@@ -248,6 +260,8 @@ export default function PlantationCard({
             <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
           </View>
           <Text style={styles.subtitle}>{periodo}</Text>
+
+          {eliminadaEnServidor && <EliminadaBadge />}
 
           {isAdmin && !visibleInApp && (
             <View style={styles.hiddenBadge}>

@@ -7,11 +7,22 @@ import { syncLog } from '../../utils/syncLogger';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion';
-import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
+import {
+  DOWNLOAD_PHASE,
+  ESTADO_REMOTO,
+  PULL_OK,
+  PULL_SIN_ACCESO,
+  RPC_ESTADO_REMOTO_PLANTACIONES,
+  esPullSinDatos,
+  existeConAcceso,
+  pullDesdeEstadoRemoto,
+} from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
 import { borradosPorTipo } from '../../repositories/BorradosRepository';
 import { abortarSiCancelado } from './cancelacion';
+import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
+import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -47,26 +58,20 @@ function alBajarPagina(onProgress: OnPhaseProgress | undefined, phase: DownloadP
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
-/**
- * ¿El server todavía reconoce mi membresía? Es el mismo criterio que las
- * policies de SELECT (`is_plantation_member`), incluidos los admins, que reciben
- * su fila por trigger.
- *
- * Solo devuelve false ante evidencia positiva de revocación: si no hay sesión,
- * si la consulta falla (offline) o si la plantación todavía no se pusheó, se
- * asume acceso y el pull sigue su camino de siempre.
- */
-async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
+/** Plantación creada offline que todavía no subió: el server no la conoce aún. */
+async function tienePushPendiente(plantacionId: string): Promise<boolean> {
   const [local] = await db
     .select({ pendingSync: plantations.pendingSync })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
-  if (local?.pendingSync) return true;
+  return local?.pendingSync ?? false;
+}
 
-  const { data: sesion } = await supabase.auth.getSession();
-  const userId = sesion?.session?.user?.id;
-  if (!userId) return true;
-
+/**
+ * Chequeo de membresía de servers sin `estado_remoto_plantaciones`. Mismo criterio
+ * que las policies de SELECT (`is_plantation_member`); no distingue eliminada.
+ */
+async function membresiaRemota(plantacionId: string, userId: string): Promise<PullResult> {
   const { data, error } = await supabase
     .from('plantation_users')
     .select('user_id')
@@ -75,9 +80,42 @@ async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
     .eq('user_id', userId);
   if (error) {
     syncLog.error('Chequeo de membresía falló:', JSON.stringify(error));
-    return true;
+    return PULL_OK;
   }
-  return (data ?? []).length > 0;
+  return (data ?? []).length > 0 ? PULL_OK : PULL_SIN_ACCESO;
+}
+
+/** Deja la marca local alineada con lo que respondió el server. */
+async function registrarEstadoRemoto(plantacionId: string, estado: string | undefined): Promise<void> {
+  if (estado === ESTADO_REMOTO.eliminada) await marcarEliminadaEnServidor(plantacionId);
+  else if (existeConAcceso(estado)) await desmarcarEliminadaEnServidor(plantacionId);
+}
+
+async function consultarEstadoRemoto(plantacionId: string, userId: string): Promise<PullResult> {
+  const { data, error } = await supabase.rpc(RPC_ESTADO_REMOTO_PLANTACIONES, { p_ids: [plantacionId] });
+  if (error) {
+    if (esFuncionInexistente(error)) return membresiaRemota(plantacionId, userId);
+    syncLog.error('Chequeo de estado remoto falló:', JSON.stringify(error));
+    return PULL_OK;
+  }
+  const estado: string | undefined = (data ?? [])[0]?.estado;
+  await registrarEstadoRemoto(plantacionId, estado);
+  return pullDesdeEstadoRemoto(estado);
+}
+
+/**
+ * ¿La plantación sigue existiendo en el server y el usuario es miembro? (#317, #478)
+ *
+ * Solo corta ante evidencia positiva: si no hay sesión, si la consulta falla
+ * (offline) o si la plantación todavía no se pusheó, se asume acceso y el pull
+ * sigue su camino de siempre.
+ */
+async function accesoRemoto(plantacionId: string): Promise<PullResult> {
+  if (await tienePushPendiente(plantacionId)) return PULL_OK;
+  const { data: sesion } = await supabase.auth.getSession();
+  const userId = sesion?.session?.user?.id;
+  if (!userId) return PULL_OK;
+  return consultarEstadoRemoto(plantacionId, userId);
 }
 
 /** Flags de plantación administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
@@ -587,16 +625,17 @@ async function conDuracion<T>(fase: DownloadPhase, tarea: () => Promise<T>): Pro
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
 /** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK.
- *  Corta antes de tocar la base si la membresía fue revocada: la copia local se conserva tal cual. */
+ *  Corta antes de tocar la base si la membresía fue revocada o la plantación se eliminó: la copia local se conserva tal cual. */
 async function correrPullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<PullResult> {
-  // Cancelado antes de arrancar: ni el chequeo de membresía tiene sentido.
+  // Cancelado antes de arrancar: ni el chequeo de acceso tiene sentido.
   abortarSiCancelado();
-  if (!(await tieneAccesoRemoto(plantacionId))) {
-    syncLog.info('Pull abortado: sin membresía en la plantación', plantacionId);
-    return PULL_SIN_ACCESO;
+  const acceso = await accesoRemoto(plantacionId);
+  if (esPullSinDatos(acceso)) {
+    syncLog.info(`Pull abortado (${acceso.estado}):`, plantacionId);
+    return acceso;
   }
   syncLog.info('Pull starting for plantation:', plantacionId);
   const inicio = Date.now();
