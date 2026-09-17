@@ -15,6 +15,8 @@ import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION } from '../constants/estados';
+import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
+import { tienePendientes } from '../utils/finalizarPlantacion';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -321,8 +323,21 @@ export class FinalizePlantationLocalSyncError extends Error {
   }
 }
 
+/** Finalizar con datos sin subir los deja sin poder subirse nunca (#537). Se chequea acá y no solo en la UI. */
+export class FinalizePlantationPendientesError extends Error {
+  readonly pendientes: ResumenDePendientes;
+  constructor(pendientes: ResumenDePendientes) {
+    super('La plantación tiene datos sin sincronizar');
+    this.name = 'FinalizePlantationPendientesError';
+    this.pendientes = pendientes;
+  }
+}
+
 /** Marca la plantación 'finalizada' en Supabase Y en SQLite local: el update de server propaga a otros devices, el local mantiene la UI reactiva sin esperar el pull. */
 export async function finalizePlantation(plantacionId: string): Promise<void> {
+  const pendientes = await getResumenDePendientes(plantacionId);
+  if (tienePendientes(pendientes)) throw new FinalizePlantationPendientesError(pendientes);
+
   const { error } = await supabase
     .from('plantations')
     .update({ estado: ESTADO_PLANTACION.finalizada })

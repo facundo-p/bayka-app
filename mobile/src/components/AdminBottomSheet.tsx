@@ -13,6 +13,7 @@ import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { ayudaFinalizarConPendientes } from '../utils/finalizarPlantacion';
 import { ESTADO_PLANTACION, esArchivada, esEliminadaEnServidor } from '../constants/estados';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
@@ -116,9 +117,11 @@ export default function AdminBottomSheet({
     ? 'Sincroniza los cambios antes de finalizar'
     : hasUnresolvedNN
       ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNGroups} grupo${meta.unresolvedNNGroups !== 1 ? 's' : ''}`
-      : !meta.canFinalize
-        ? 'Para finalizar, todos los grupos deben estar sincronizados'
-        : undefined;
+      : meta.pendientesSinSubir
+        ? ayudaFinalizarConPendientes(meta.pendientesSinSubir)
+        : !meta.canFinalize
+          ? 'Para finalizar, todos los grupos deben estar sincronizados'
+          : undefined;
 
   return (
     <Modal
