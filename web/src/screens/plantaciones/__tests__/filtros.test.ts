@@ -22,6 +22,7 @@ function plantacion(over: Partial<PlantacionConStats>): PlantacionConStats {
     gpsCaptureFrequency: 0,
     gpsCaptureRequired: false,
     photoCaptureAllTrees: false,
+    archivadaEn: null,
     createdAt: '2026-06-12T12:00:00Z',
     descripcion: null,
     fechaInicio: null,
@@ -186,5 +187,31 @@ describe('resumen y conteos', () => {
     expect(resumenPlantaciones([plantacion({ arboles })])).toBe(
       `1 plantación · 1 temporada · ${texto}`,
     );
+  });
+});
+
+describe('archivadas', () => {
+  const ARCHIVADA = plantacion({
+    id: 'p4',
+    lugar: 'Tucumán',
+    estado: 'finalizada',
+    arboles: 50,
+    archivadaEn: '2026-09-01T12:00:00Z',
+  });
+  const CON_ARCHIVADA = [...TODAS, ARCHIVADA];
+
+  function idsCon(estado: FiltrosPlantaciones['estado']): string[] {
+    return filtrarPlantaciones(CON_ARCHIVADA, { ...SIN_FILTROS, estado }).map((p) => p.id);
+  }
+
+  test('solo aparecen en su propio filtro', () => {
+    expect(idsCon(FILTRO_ESTADO.archivadas)).toEqual(['p4']);
+    expect(idsCon(FILTRO_ESTADO.todas)).not.toContain('p4');
+    expect(idsCon(FILTRO_ESTADO.activas)).not.toContain('p4');
+    expect(idsCon(FILTRO_ESTADO.finalizadas)).toEqual(['p2']);
+  });
+
+  test('el resumen de la cabecera no las cuenta', () => {
+    expect(resumenPlantaciones(CON_ARCHIVADA)).toBe(resumenPlantaciones(TODAS));
   });
 });

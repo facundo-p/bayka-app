@@ -39,8 +39,18 @@ const mockPlantationNNTrees: Array<{
   conflictEspecieNombre?: string | null;
 }> = [];
 
+const mockEstadoDeEdicion: { estado: string; archivadaEn: string | null } = { estado: 'activa', archivadaEn: null };
+
+jest.mock('../../src/queries/adminQueries', () => ({
+  getPlantationEstadoDeEdicion: jest.fn(),
+}));
+
 jest.mock('../../src/database/liveQuery', () => ({
-  useLiveData: jest.fn().mockImplementation(() => ({ data: mockPlantationNNTrees })),
+  useLiveData: jest.fn().mockImplementation((queryFn: () => unknown) => (
+    String(queryFn).includes('getPlantationEstadoDeEdicion')
+      ? { data: mockEstadoDeEdicion }
+      : { data: mockPlantationNNTrees }
+  )),
   notifyDataChanged: jest.fn(),
 }));
 
@@ -50,6 +60,37 @@ import { useNNResolution } from '../../src/hooks/useNNResolution';
 beforeEach(() => {
   jest.clearAllMocks();
   mockPlantationNNTrees.length = 0;
+  mockEstadoDeEdicion.estado = 'activa';
+  mockEstadoDeEdicion.archivadaEn = null;
+});
+
+describe('useNNResolution — plantación no editable', () => {
+  const nn = { id: 'tree-1', posicion: 1, subId: 'L1NN1', fotoUrl: null, especieId: null, grupoId: 'sg-1', grupoCodigo: 'L1' };
+
+  test('plantación activa → puede resolver', () => {
+    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
+
+    expect(result.current.canResolve).toBe(true);
+  });
+
+  test('plantación archivada → no puede resolver ni guardar (#477)', async () => {
+    mockEstadoDeEdicion.archivadaEn = '2026-09-17T12:00:00+00:00';
+    mockPlantationNNTrees.push(nn);
+    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
+
+    act(() => result.current.handleSelectSpecies('esp-1'));
+    await act(async () => { await result.current.handleGuardar(jest.fn()); });
+
+    expect(result.current.canResolve).toBe(false);
+    expect(mockResolveNNTree).not.toHaveBeenCalled();
+  });
+
+  test('plantación finalizada → no puede resolver', () => {
+    mockEstadoDeEdicion.estado = 'finalizada';
+    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
+
+    expect(result.current.canResolve).toBe(false);
+  });
 });
 
 describe('useNNResolution — conflict resolution', () => {

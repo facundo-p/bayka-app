@@ -4,7 +4,7 @@ import { nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY, familia } from '../../queries/clavesQuery';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { eliminarUsuario, previsualizarEliminacion } from '../../services/adminUsersService';
-import { ConfirmarModal } from './ConfirmarModal';
+import { ConfirmarModal } from '../../components/ConfirmarModal';
 import { AVISO_ELIMINAR, copyEliminar, TEXTO_REVISANDO_DATOS } from './confirmaciones';
 
 function descripcion(nombre: string, preview: UseQueryResult<PreviewEliminacion, Error>): string {

@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router';
 import { useTrees } from './useTrees';
 import { useLiveData } from '../database/liveQuery';
 import { getGroupById, getPlantationCaptureConfig } from '../queries/plantationDetailQueries';
-import { getPlantationEstado } from '../queries/adminQueries';
+import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { insertTreeWithGps, recaptureTreeGps } from '../services/gps/gpsCaptureService';
@@ -31,6 +31,13 @@ import {
 import type { GroupEstado } from '../repositories/GroupRepository';
 import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 import { getGroupGating } from '../utils/permisosDeEdicion';
+import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
+
+/** Default hasta que carga o si la plantación no está local: activa y sin archivar. */
+const PLANTACION_EDITABLE_POR_DEFECTO: EstadoDeEdicionDePlantacion = {
+  estado: ESTADO_PLANTACION.activa,
+  archivadaEn: null,
+};
 
 export interface UseTreeRegistrationParams {
   grupoId: string;
@@ -56,8 +63,8 @@ export interface UseTreeRegistrationResult {
   sortedTrees: ReturnType<typeof useTrees>['allTrees'];
   subgroup: { id: string; codigo: string; tipo: string; estado: string; usuarioCreador: string } | null;
   subgroupEstado: GroupEstado;
-  /** Estado de la plantación ('activa' | 'finalizada' | 'sincronizada'). */
-  plantacionEstado: string;
+  /** Estado y archivado de la plantación: deciden los permisos de edición. */
+  plantacion: EstadoDeEdicionDePlantacion;
   isOwner: boolean;
   isCreator: boolean;
   dataLoaded: boolean;
@@ -122,12 +129,12 @@ export function useTreeRegistration({
   const subgroup = groupRows?.[0] ?? null;
   const subgroupEstado = (subgroup?.estado ?? ESTADO_GRUPO.activa) as GroupEstado;
 
-  const { data: plantationEstadoRows } = useLiveData(
-    () => getPlantationEstado(plantacionId),
+  const { data: estadoDeEdicionRow } = useLiveData(
+    () => getPlantationEstadoDeEdicion(plantacionId),
     [plantacionId]
   );
-  const plantacionEstado = plantationEstadoRows ?? ESTADO_PLANTACION.activa;
-  const estadoPlantacionCargado = plantationEstadoRows !== undefined;
+  const plantacion = estadoDeEdicionRow ?? PLANTACION_EDITABLE_POR_DEFECTO;
+  const estadoPlantacionCargado = estadoDeEdicionRow !== undefined;
 
   const { data: captureConfig } = useLiveData(
     () => getPlantationCaptureConfig(plantacionId),
@@ -139,16 +146,16 @@ export function useTreeRegistration({
 
   const isCreator = subgroup && userId ? subgroup.usuarioCreador === userId : false;
   const isOwner = subgroup && userId
-    ? canEdit({ usuarioCreador: subgroup.usuarioCreador }, userId, plantacionEstado)
+    ? canEdit({ usuarioCreador: subgroup.usuarioCreador }, userId, plantacion)
     : false;
-  // Sin el estado de la plantación el default es 'activa', así que decidir antes de
+  // Sin el estado de la plantación el default es editable, así que decidir antes de
   // que cargue habilita la pantalla entera sobre una plantación finalizada (#469).
   const dataLoaded = subgroup !== null && userId !== '' && estadoPlantacionCargado;
   const isReadOnly = dataLoaded ? (!isOwner || subgroupEstado !== ESTADO_GRUPO.activa) : false;
   // Reactivar dentro de una plantación finalizada devolvía el grupo a 'activa' y con
   // eso reaparecía el borrado en el listado de grupos (#469).
   const canReactivate = dataLoaded && getGroupGating({
-    plantacionEstado,
+    plantacion,
     subgroupEstado,
     isCreator,
   }).canReactivate;
@@ -307,7 +314,7 @@ export function useTreeRegistration({
     sortedTrees,
     subgroup,
     subgroupEstado,
-    plantacionEstado,
+    plantacion,
     isOwner,
     isCreator,
     dataLoaded,

@@ -163,7 +163,7 @@ export default function TreeRegistrationScreen() {
 
   // Gating del detalle de árbol (issue #155) — ver getTreeEditGating.
   const { canEdit: canEditTree, canDelete: canDeleteTree } = getTreeEditGating({
-    plantacionEstado: treeReg.plantacionEstado,
+    plantacion: treeReg.plantacion,
     subgroupEstado: treeReg.subgroupEstado,
     isCreator: treeReg.isCreator,
   });

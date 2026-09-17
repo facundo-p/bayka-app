@@ -24,7 +24,7 @@ import type { Parcela } from '../repositories/ParcelaRepository';
 
 type FormModalState = { mode: 'create'; parcela: null } | { mode: 'edit'; parcela: Parcela } | null;
 
-function EmptyState({ onCreate }: { onCreate: (() => void) | null }) {
+function EmptyState({ onCreate, isArchivada }: { onCreate: (() => void) | null; isArchivada: boolean }) {
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconWrap}>
@@ -34,7 +34,7 @@ function EmptyState({ onCreate }: { onCreate: (() => void) | null }) {
       <Text style={styles.emptySubtitle}>
         {onCreate
           ? 'Creá la primera parcela para empezar a organizar grupos y árboles.'
-          : 'La plantación está finalizada: no se pueden agregar parcelas.'}
+          : `La plantación está ${isArchivada ? 'archivada' : 'finalizada'}: no se pueden agregar parcelas.`}
       </Text>
       {onCreate && (
         <Pressable
@@ -56,12 +56,11 @@ export default function ParcelasScreen() {
   const routePrefix = useRoutePrefix();
   const pid = plantacionId ?? '';
   const { parcelas } = useParcelas(pid);
-  const { plantationRows, estadoLoaded, isFinalizada, totalNN } = usePlantationDetail(pid);
+  const { plantationRows, plantacionEditable, isArchivada, totalNN } = usePlantationDetail(pid);
   const { blockedByNN } = usePendingSyncCount(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
-  // Una plantación finalizada es inmutable: tampoco se editan ni se borran sus
-  // parcelas, que el push sube como tombstone (#469).
-  const plantacionEditable = estadoLoaded && !isFinalizada;
+  // Finalizada o archivada: tampoco se editan ni se borran sus parcelas, que el
+  // push sube como tombstone (#469, #477).
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
@@ -111,7 +110,7 @@ export default function ParcelasScreen() {
       />
       <NNResolutionBanner totalNN={totalNN} blockedByNN={blockedByNN} onResolve={openNNResolution} />
       {parcelas.length === 0 ? (
-        <EmptyState onCreate={plantacionEditable ? openCreate : null} />
+        <EmptyState onCreate={plantacionEditable ? openCreate : null} isArchivada={isArchivada} />
       ) : (
         <FlatList
           data={parcelas}

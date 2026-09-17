@@ -13,6 +13,7 @@ import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
 import type { Plantation } from './PlantationConfigCard';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -170,7 +171,7 @@ export default function AdminBottomSheet({
 
           <View style={styles.actionList}>
             {/* #94: reemplaza a Sincronizar, que ahora vive como botón en la card */}
-            {isAdmin && plantacionEsEditable(plantation.estado) && (
+            {isAdmin && plantacionEsEditable(plantation) && (
               <ActionItem
                 icon="create-outline"
                 label="Editar lugar y periodo"
@@ -179,7 +180,8 @@ export default function AdminBottomSheet({
               />
             )}
 
-            {isAdmin && plantation.estado === 'activa' && (
+            {/* Archivada (#477): sin especies, técnicos ni finalizar. */}
+            {isAdmin && plantation.estado === ESTADO_PLANTACION.activa && !esArchivada(plantation) && (
               <>
                 <View style={styles.divider} />
                 <ActionItem

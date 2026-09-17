@@ -81,15 +81,20 @@ async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
 }
 
 /** Flags de plantación administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
-export function webManagedFlags(remote: { visible_in_app?: boolean | null; photo_capture_all_trees?: boolean | null }) {
+export function webManagedFlags(remote: {
+  visible_in_app?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
+  archivada_en?: string | null;
+}) {
   return {
     visibleInApp: remote.visible_in_app ?? true,
     photoCaptureAllTrees: remote.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
+    archivadaEn: remote.archivada_en ?? null,
   };
 }
 
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
-  // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
+  // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app, archivada_en) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
   const { data: remotePlantation, error } = await supabase
     .from('plantations')
     .select('*')

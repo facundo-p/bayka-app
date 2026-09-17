@@ -73,6 +73,7 @@ function makePlantation(estado: string, overrides?: Partial<Plantation>): Planta
     periodo: '2026-A',
     estado,
     createdAt: '2026-01-01',
+    archivadaEn: null,
     ...overrides,
   };
 }
@@ -143,6 +144,22 @@ describe('usePlantationAdmin.handleFinalize', () => {
     (useCurrentUserId as jest.Mock).mockReturnValue('test-user-id');
     (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
     (useLiveData as jest.Mock).mockReturnValue({ data: null });
+  });
+
+  it('plantación archivada → no finaliza ni consulta el gate (#477)', async () => {
+    (useLiveData as jest.Mock).mockReturnValue({
+      data: [makePlantation('activa', { id: 'plantation-1', archivadaEn: '2026-09-17T12:00:00+00:00' })],
+    });
+    const mockShow = jest.fn();
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: mockShow });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    await act(async () => {
+      await result.current.handleFinalize('plantation-1');
+    });
+
+    expect(mockCheckGate).not.toHaveBeenCalled();
+    expect(mockShow).not.toHaveBeenCalled();
   });
 
   it('FinalizePlantationLocalSyncError → info dialog aclarando que el server ya finalizó', async () => {

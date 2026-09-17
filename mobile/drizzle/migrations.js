@@ -23,6 +23,7 @@ import m0018 from './0018_groups_parcela_id_not_null.sql';
 import m0019 from './0019_plantations_photo_capture_all_trees.sql';
 import m0020 from './0020_indices_de_sync.sql';
 import m0021 from './0021_borrados_pendientes.sql';
+import m0022 from './0022_plantations_archivada_en.sql';
 
   export default {
     journal,
@@ -48,6 +49,7 @@ m0017,
 m0018,
 m0019,
 m0020,
-m0021
+m0021,
+m0022
     }
   }

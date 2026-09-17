@@ -1,7 +1,7 @@
 import { Button, Modal, PasswordInput } from '../../components';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
-import { AccionesModal, ErrorEnvio } from './formulario';
+import { AccionesModal, ErrorEnvio } from '../../components/FormularioModal';
 import { useCambioPassword, type CambioPassword } from './useCambioPassword';
 import styles from './ModalUsuarios.module.css';
 

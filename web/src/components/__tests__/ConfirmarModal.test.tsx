@@ -1,12 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import { ConfirmarModal } from '../ConfirmarModal';
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof ConfirmarModal>> = {}) {
   const onClose = vi.fn();
   const accion = vi.fn().mockResolvedValue(undefined);
+  const alCompletar = vi.fn().mockResolvedValue(undefined);
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
@@ -15,12 +15,13 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof ConfirmarMod
         descripcion="Esta acción se puede revertir más tarde."
         confirmarEtiqueta="Desactivar"
         accion={accion}
+        alCompletar={alCompletar}
         onClose={onClose}
         {...overrides}
       />
     </QueryClientProvider>,
   );
-  return { onClose, accion };
+  return { onClose, accion, alCompletar };
 }
 
 test('renderiza título, descripción y botón de confirmación', () => {
@@ -39,17 +40,14 @@ test('sin textoExito: confirmar ejecuta la acción y cierra', async () => {
   expect(accion).toHaveBeenCalledTimes(1);
 });
 
-test('confirmar invalida la lista de usuarios y los perfiles', async () => {
-  const invalidaciones = espiarInvalidaciones();
+test('confirmar corre alCompletar antes de cerrar', async () => {
   const usuario = userEvent.setup();
-  const { onClose } = renderModal();
+  const { onClose, alCompletar } = renderModal();
 
   await usuario.click(screen.getByRole('button', { name: 'Desactivar' }));
 
   await waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(invalidaciones).toHaveBeenCalledTimes(2);
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['perfiles'] });
+  expect(alCompletar).toHaveBeenCalledTimes(1);
 });
 
 test('con textoExito: confirmar muestra el estado completado en vez de cerrar', async () => {
@@ -66,10 +64,9 @@ test('con textoExito: confirmar muestra el estado completado en vez de cerrar', 
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
-test('si la acción falla muestra el error, no cierra ni invalida', async () => {
-  const invalidaciones = espiarInvalidaciones();
+test('si la acción falla muestra el error, no cierra ni corre alCompletar', async () => {
   const usuario = userEvent.setup();
-  const { onClose } = renderModal({
+  const { onClose, alCompletar } = renderModal({
     accion: vi.fn().mockRejectedValue(new Error('No se pudo desactivar al usuario.')),
   });
 
@@ -77,7 +74,7 @@ test('si la acción falla muestra el error, no cierra ni invalida', async () => 
 
   expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo desactivar al usuario.');
   expect(onClose).not.toHaveBeenCalled();
-  expect(invalidaciones).not.toHaveBeenCalled();
+  expect(alCompletar).not.toHaveBeenCalled();
 });
 
 test('muestra el aviso y, deshabilitada, no deja confirmar', async () => {

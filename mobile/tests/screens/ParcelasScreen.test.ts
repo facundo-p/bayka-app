@@ -1,5 +1,5 @@
 // Alta, edición y borrado de parcela quedan deshabilitados con la plantación
-// finalizada (#469), mismo criterio que Grupos.
+// finalizada o archivada (#469, #477), mismo criterio que Grupos.
 //
 // Son aserciones sobre el fuente, no sobre el render: la pantalla arrastra router,
 // modales y varias queries. El comportamiento del guard está en
@@ -14,13 +14,11 @@ function readSrc(relativePath: string): string {
 describe('ParcelasScreen — gating por estado finalizada', () => {
   const screen = readSrc('screens/ParcelasScreen.tsx');
 
-  it('toma estadoLoaded e isFinalizada de usePlantationDetail', () => {
-    expect(screen).toMatch(/usePlantationDetail\(pid\)/);
-    expect(screen).toMatch(/estadoLoaded[\s\S]*isFinalizada/);
-  });
-
-  it('deriva plantacionEditable = estadoLoaded && !isFinalizada', () => {
-    expect(screen).toMatch(/plantacionEditable\s*=\s*estadoLoaded\s*&&\s*!isFinalizada/);
+  // El hook lo deriva con plantacionEsEditable, que cubre finalizada y archivada:
+  // ver tests/hooks/usePlantationDetail.test.ts.
+  it('toma plantacionEditable de usePlantationDetail, sin derivarlo a mano', () => {
+    expect(screen).toMatch(/\{[^}]*plantacionEditable[^}]*\}\s*=\s*usePlantationDetail\(pid\)/);
+    expect(screen).not.toMatch(/isFinalizada/);
   });
 
   it('oculta el "+" del header cuando no se puede agregar', () => {
@@ -47,6 +45,6 @@ describe('PlantacionesScreen — parcela inline del card expandido', () => {
   // Segunda entrada a la misma edición: desde el listado de plantaciones, sin
   // pasar por la pantalla de parcelas.
   it('no entrega onParcelaLongPress sobre una plantación finalizada', () => {
-    expect(screen).toMatch(/onParcelaLongPress=\{plantacionEsEditable\(item\.estado\)/);
+    expect(screen).toMatch(/onParcelaLongPress=\{plantacionEsEditable\(item\)/);
   });
 });

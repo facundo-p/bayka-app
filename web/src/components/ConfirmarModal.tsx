@@ -1,11 +1,12 @@
-import { Button, Modal } from '../../components';
-import { AccionesModal, ErrorEnvio } from './formulario';
 import {
   useConfirmacion,
   type EstadoConfirmacion,
   type OpcionesConfirmacion,
-} from './useConfirmacion';
-import styles from './ModalUsuarios.module.css';
+} from '../hooks/useConfirmacion';
+import { Button } from './Button';
+import { AccionesModal, ErrorEnvio } from './FormularioModal';
+import { Modal } from './Modal';
+import styles from './Formulario.module.css';
 
 interface ConfirmarModalProps extends OpcionesConfirmacion {
   titulo: string;
@@ -60,8 +61,7 @@ function PreguntaConfirmacion({ modal, estado }: PreguntaConfirmacionProps) {
   );
 }
 
-/** Confirmación genérica para acciones de usuario (desactivar, reactivar,
- *  reenviar invitación, eliminar): describe el efecto, ejecuta y refresca el listado.
+/** Confirmación genérica: describe el efecto, ejecuta y corre `alCompletar`.
  *  Con textoExito, al terminar muestra el resultado en lugar de cerrarse. */
 export function ConfirmarModal(props: ConfirmarModalProps) {
   const estado = useConfirmacion(props);

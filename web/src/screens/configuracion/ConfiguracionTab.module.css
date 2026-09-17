@@ -1,5 +1,10 @@
-/* Dos columnas que llenan el alto: las listas scrollean dentro de su card. */
+/* Dos columnas que llenan el alto: las listas scrollean dentro de su card.
+   Es un fieldset para deshabilitar todo junto: sin su borde ni márgenes. */
 .grilla {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
   flex: 1;
   min-height: 0;
   display: grid;

@@ -1,6 +1,7 @@
 import { Button, Modal, Select } from '../../components';
 import { ROL, type Rol } from '../../repositories/profileRepository';
-import { AccionesModal, AvisoSuperadmin, CamposContacto, ErrorEnvio } from './formulario';
+import { AccionesModal, ErrorEnvio } from '../../components/FormularioModal';
+import { AvisoSuperadmin, CamposContacto } from './formulario';
 import { OPCIONES_ROL } from './presentacion';
 import { useAltaUsuario, type AltaUsuario } from './useAltaUsuario';
 import styles from './ModalUsuarios.module.css';

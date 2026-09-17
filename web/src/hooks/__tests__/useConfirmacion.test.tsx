@@ -1,6 +1,5 @@
 import { act, waitFor } from '@testing-library/react';
-import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
-import { renderHookConQuery } from '../../../test/renderHookConQuery';
+import { renderHookConQuery } from '../../test/renderHookConQuery';
 import { useConfirmacion, type OpcionesConfirmacion } from '../useConfirmacion';
 
 function montar(opciones: Partial<OpcionesConfirmacion> = {}) {
@@ -10,17 +9,24 @@ function montar(opciones: Partial<OpcionesConfirmacion> = {}) {
   return { ...hook, onClose, accion };
 }
 
-test('sin texto de éxito: ejecuta, refresca las dos claves de personas y cierra', async () => {
-  const invalidaciones = espiarInvalidaciones();
-  const { result, onClose, accion } = montar();
+test('sin texto de éxito: ejecuta, corre alCompletar y cierra', async () => {
+  const alCompletar = vi.fn().mockResolvedValue(undefined);
+  const { result, onClose, accion } = montar({ alCompletar });
 
   act(() => result.current.confirmar());
 
   await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
   expect(accion).toHaveBeenCalledTimes(1);
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
-  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['perfiles'] });
+  expect(alCompletar).toHaveBeenCalledTimes(1);
   expect(result.current.completada).toBe(false);
+});
+
+test('sin alCompletar también cierra', async () => {
+  const { result, onClose } = montar();
+
+  act(() => result.current.confirmar());
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 });
 
 test('con texto de éxito queda completada en vez de cerrar', async () => {
