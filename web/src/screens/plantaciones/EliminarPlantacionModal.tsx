@@ -7,6 +7,7 @@ import { ErrorEnvio } from '../../components/FormularioModal';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import styles from '../../components/Formulario.module.css';
+import { useAuth } from '../../hooks/useAuth';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
   previsualizarEliminacion,
@@ -21,11 +22,14 @@ import {
   nombreCoincide,
   ofreceArchivar,
   permiteBorrar,
+  puedeLimpiarFotos,
   textoEliminada,
   VISTA_ELIMINACION,
   vistaEliminacion,
   type VistaEliminacion,
 } from './eliminacion';
+import type { ResultadoEliminacion } from '../../services/adminPlantacionesService';
+import { ReintentarLimpiezaFotos } from './ReintentarLimpiezaFotos';
 import { useEliminarPlantacion } from './useEliminarPlantacion';
 
 interface EliminarPlantacionModalProps {
@@ -102,10 +106,18 @@ interface ConfirmarEliminacionProps {
   onClose: () => void;
 }
 
+/** Con fotos pendientes, un superadmin puede reintentar la limpieza ahí mismo. */
+function useReintentoDeLimpieza(plantacionId: string, resultado: ResultadoEliminacion | null) {
+  const { perfil } = useAuth();
+  if (!resultado?.fotosPendientes || !puedeLimpiarFotos(perfil)) return undefined;
+  return <ReintentarLimpiezaFotos plantacionId={plantacionId} />;
+}
+
 /** Sin datos, confirmación simple; con datos, además hay que escribir el nombre. */
 function ConfirmarEliminacion({ plantacion, preview, onClose }: ConfirmarEliminacionProps) {
   const [nombre, setNombre] = useState('');
   const eliminacion = useEliminarPlantacion(plantacion.id, onClose);
+  const reintento = useReintentoDeLimpieza(plantacion.id, eliminacion.resultado);
   const { lugar } = plantacion;
   const pideNombre = preview.tieneDatos;
   return (
@@ -118,6 +130,7 @@ function ConfirmarEliminacion({ plantacion, preview, onClose }: ConfirmarElimina
       accion={() => eliminacion.eliminar(pideNombre ? nombre : undefined)}
       alCompletar={eliminacion.alCompletar}
       textoExito={textoEliminada(eliminacion.resultado?.fotosPendientes ?? false)}
+      resultadoExtra={reintento}
       onClose={eliminacion.cerrar}
     >
       {pideNombre && <CampoNombre lugar={lugar} valor={nombre} onCambiar={setNombre} />}

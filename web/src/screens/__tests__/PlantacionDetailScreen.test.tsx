@@ -693,6 +693,74 @@ describe('eliminar', () => {
     });
   });
 
+  test('superadmin reintenta la limpieza de fotos desde el resultado (#523)', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+    const reintentar = await within(dialogo).findByRole('button', {
+      name: 'Reintentar limpieza de fotos',
+    });
+
+    estadoMock.respuestaInvoke = { data: { ok: true, limpiadas: 1, pendientes: 0 }, error: null };
+    await usuario.click(reintentar);
+
+    expect(
+      await within(dialogo).findByText('No quedan fotos pendientes de borrar.'),
+    ).toBeInTheDocument();
+    expect(estadoMock.invocaciones[1]).toEqual({
+      funcion: 'admin-plantaciones',
+      cuerpo: { accion: 'limpiarFotos', plantacionId: 'plant-1' },
+    });
+    expect(
+      within(dialogo).queryByRole('button', { name: 'Reintentar limpieza de fotos' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('si la limpieza falla, el error se muestra y se puede reintentar', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+    const reintentar = await within(dialogo).findByRole('button', {
+      name: 'Reintentar limpieza de fotos',
+    });
+
+    estadoMock.respuestaInvoke = { data: null, error: { message: 'fetch failed' } };
+    await usuario.click(reintentar);
+
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+      'No se pudo completar la operación',
+    );
+    expect(
+      within(dialogo).getByRole('button', { name: 'Reintentar limpieza de fotos' }),
+    ).toBeEnabled();
+  });
+
+  test('un admin ve el aviso de fotos pendientes pero no puede reintentar', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+
+    expect(
+      await within(dialogo).findByText(/algunas fotos no se pudieron borrar/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialogo).queryByRole('button', { name: 'Reintentar limpieza de fotos' }),
+    ).not.toBeInTheDocument();
+  });
+
   test('un rechazo del server se muestra y no cierra', async () => {
     estadoMock.respuestaInvoke = {
       data: null,
