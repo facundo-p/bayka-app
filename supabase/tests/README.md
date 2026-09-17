@@ -71,7 +71,9 @@ la plantación del path (041, #481), `19` `profiles.eliminado_en`: solo la
 cambia service_role, un eliminado nunca está activo ni recibe membresías admin
 (040, #479), `20` `is_admin()` exige perfil activo: un admin o superadmin
 inactivo no lee por la vía admin (043, #506), `22` RPC `quitar_fotos_arboles`
-(044, #498).
+(044, #498), `23` perfil inactivo: no pasa las policies de admin,
+`is_superadmin()` ni `is_plantation_member()`, incluidos `sync_subgroup` y
+Storage (045, #508).
 
 ## Hallazgo fuera de alcance (no corregido)
 
