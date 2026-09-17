@@ -22,7 +22,8 @@ import {
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
 import { conLimiteDeConcurrencia, FOTOS_EN_PARALELO } from './concurrencia';
-import { borradosDePlantacion, limpiarBorrados } from '../../repositories/BorradosRepository';
+import { borradosDePlantacion, limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
+import { ENTIDADES_DE_FILA, FOTOS_QUITADAS, type EntidadBorrada } from '../../constants/entidadBorrada';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 import { esTimeout } from '../../supabase/fetchConTimeout';
 
@@ -113,18 +114,24 @@ export async function uploadSyncableParcelas(
 // ─── Propagación de borrados ─────────────────────────────────────────────────
 
 /**
- * Sube al server los borrados anotados localmente (#467).
+ * Sube al server los borrados anotados localmente: árboles y grupos (#467) y
+ * fotos quitadas (#498).
  *
- * Va por RPC y no por un `.delete()` de PostgREST porque **no hay policy de DELETE
- * sobre `trees` ni sobre `groups`**: el delete del cliente sería un no-op
- * silencioso, la misma trampa de #319.
+ * Va por RPC y no por PostgREST: **no hay policy de DELETE sobre `trees` ni sobre
+ * `groups`**, y un update que no matchea tampoco da error (#319). El RPC devuelve
+ * qué rechazó, que es lo que decide qué se limpia.
  *
  * El registro se limpia SOLO con la confirmación del server. Si falla, las filas
- * quedan para el próximo intento — borrar algo que ya no está es un no-op, así que
+ * quedan para el próximo intento — reaplicar un borrado es un no-op, así que
  * reintentar es seguro.
  */
 export async function pushBorrados(plantacionId: string): Promise<void> {
-  const pendientes = await borradosDePlantacion(plantacionId);
+  await pushBorradosDeFilas(plantacionId);
+  await pushFotosQuitadas(plantacionId);
+}
+
+async function pushBorradosDeFilas(plantacionId: string): Promise<void> {
+  const pendientes = await borradosDePlantacion(plantacionId, ENTIDADES_DE_FILA);
   if (pendientes.length === 0) return;
 
   // Solo id y tipo: la membresía la valida el server contra la plantación real de
@@ -132,22 +139,50 @@ export async function pushBorrados(plantacionId: string): Promise<void> {
   const { data, error } = await supabase.rpc('sincronizar_borrados', {
     p_borrados: pendientes.map((b) => ({ id: b.id, tipo: b.tipo })),
   });
-
   if (error || data?.success !== true) {
     syncLog.error('Push borrados falló:', JSON.stringify(error ?? data));
     return;
   }
 
-  // Los rechazados son de una plantación finalizada (#469): quedan pendientes por
-  // si se reabre. El resto se limpia aunque no se haya borrado nada — un id que ya
-  // no está en el server no vuelve nunca.
-  const rechazados = new Set<string>(Array.isArray(data.rechazados) ? data.rechazados : []);
-  await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)));
-
+  const rechazados = await limpiarConfirmados(pendientes, data.rechazados, ENTIDADES_DE_FILA);
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
-  if (rechazados.size > 0) {
-    syncLog.info(`Push borrados: ${rechazados.size} pendientes, plantación finalizada`);
+  if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, plantación finalizada`);
+}
+
+/**
+ * `sync_subgroup` no puede quitar una foto: un `foto_url` null no pisa el del
+ * server. Sin esto el pull la restauraba y se volvía a bajar (#498).
+ */
+async function pushFotosQuitadas(plantacionId: string): Promise<void> {
+  const pendientes = await borradosDePlantacion(plantacionId, FOTOS_QUITADAS);
+  if (pendientes.length === 0) return;
+
+  const { data, error } = await supabase.rpc('quitar_fotos_arboles', {
+    p_arboles: pendientes.map((b) => b.id),
+  });
+  if (error || data?.success !== true) {
+    syncLog.error('Push fotos quitadas falló:', JSON.stringify(error ?? data));
+    return;
   }
+
+  const rechazadas = await limpiarConfirmados(pendientes, data.rechazados, FOTOS_QUITADAS);
+  syncLog.info(`Push fotos quitadas: ${data.quitadas}`);
+  if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, plantación finalizada`);
+}
+
+/**
+ * Los rechazados son de una plantación no escribible (#469): quedan pendientes por
+ * si se reabre. El resto se limpia aunque el server no haya tocado nada — un id
+ * que ya no está no vuelve nunca. Devuelve cuántos quedaron.
+ */
+async function limpiarConfirmados(
+  pendientes: BorradoPendiente[],
+  idsRechazados: unknown,
+  tipos: readonly EntidadBorrada[],
+): Promise<number> {
+  const rechazados = new Set<string>(Array.isArray(idsRechazados) ? idsRechazados : []);
+  await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)), tipos);
+  return rechazados.size;
 }
 
 // ─── Upload a single Group ─────────────────────────────────────────────────

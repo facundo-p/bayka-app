@@ -38,11 +38,11 @@ beforeAll(() => {
 
 function buildMockDb(selectResults: any[]) {
   return {
-    // `registrarBorrado` encadena `.onConflictDoNothing()` (#467).
+    // `registrarBorrado` encadena `.onConflictDoUpdate()` (#467).
     insert: jest.fn(() => ({
       values: jest.fn((valores: unknown) => {
         mockInsertValues(valores);
-        return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+        return { onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) };
       }),
     })),
     delete: jest.fn(() => ({ where: mockDeleteWhere })),
@@ -286,30 +286,34 @@ describe('TreeRepository', () => {
   });
 
   describe('updateTreePhoto', () => {
+    // El select del árbol y el de la plantación del grupo leen la misma fila.
+    const arbolExistente = [{ grupoId: 'sg-1', plantacionId: 'plant-1' }];
+
     it('calls db update with provided fotoUrl', async () => {
-      mockDb = buildMockDb([]);
+      mockDb = buildMockDb(arbolExistente);
 
       await updateTreePhoto('tree-1', 'file://document/photos/photo_123.jpg');
 
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+      // El árbol y la marca de pendiente del grupo.
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('sets fotoUrl to empty string when empty string passed', async () => {
-      mockDb = buildMockDb([]);
+      mockDb = buildMockDb(arbolExistente);
 
       await updateTreePhoto('tree-1', '');
 
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+      // El árbol y la marca de pendiente del grupo.
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('resets fotoSynced to false when updating photo', async () => {
-      let capturedSet: any = null;
-      mockUpdateWhere = jest.fn().mockResolvedValue(undefined);
+      const sets: any[] = [];
       mockDb = {
-        ...buildMockDb([]),
+        ...buildMockDb(arbolExistente),
         update: jest.fn(() => ({
           set: jest.fn((values: any) => {
-            capturedSet = values;
+            sets.push(values);
             return { where: mockUpdateWhere };
           }),
         })),
@@ -317,8 +321,57 @@ describe('TreeRepository', () => {
 
       await updateTreePhoto('tree-1', 'file://document/photos/photo_new.jpg');
 
-      expect(capturedSet).not.toBeNull();
-      expect(capturedSet.fotoSynced).toBe(false);
+      expect(sets[0]).toEqual(expect.objectContaining({ fotoSynced: false }));
+    });
+
+    // Sin el registro, el pull restaura la foto del server y se vuelve a bajar (#498).
+    it('quitar la foto la anota para propagarlo al server', async () => {
+      mockDb = buildMockDb(arbolExistente);
+
+      await updateTreePhoto('tree-1', '');
+
+      expect(mockInsertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tree-1', tipo: ENTIDAD_BORRADA.foto, grupoId: 'sg-1', plantacionId: 'plant-1' }),
+      );
+    });
+
+    // Si quedara anotada, el push pondría en null la foto nueva en el server.
+    it('poner otra foto descarta la quitada y no anota nada', async () => {
+      mockDb = buildMockDb(arbolExistente);
+
+      await updateTreePhoto('tree-1', 'file://document/photos/photo_new.jpg');
+
+      expect(mockDeleteWhere).toHaveBeenCalledTimes(1);
+      expect(mockInsertValues).not.toHaveBeenCalled();
+    });
+
+    it('el update y el registro van en la misma transacción', async () => {
+      mockDb = buildMockDb(arbolExistente);
+      let dentro = false;
+      (enTransaccion as jest.Mock).mockImplementationOnce(async (cb: (tx: unknown) => Promise<unknown>) => {
+        dentro = true;
+        try {
+          return await cb(jest.requireMock('../../src/database/client').db);
+        } finally {
+          dentro = false;
+        }
+      });
+      const vistos: boolean[] = [];
+      mockUpdateWhere.mockImplementation(() => { vistos.push(dentro); return Promise.resolve(undefined); });
+      mockInsertValues.mockImplementation(() => { vistos.push(dentro); });
+
+      await updateTreePhoto('tree-1', '');
+
+      expect(vistos.slice(0, 2)).toEqual([true, true]);
+    });
+
+    it('un árbol inexistente no escribe nada', async () => {
+      mockDb = buildMockDb([]);
+
+      await updateTreePhoto('tree-fantasma', '');
+
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockInsertValues).not.toHaveBeenCalled();
     });
   });
 
@@ -353,12 +406,12 @@ describe('TreeRepository', () => {
     beforeEach(() => {
       mockDb = {
         delete: jest.fn(() => ({ where: mockDeleteWhere })),
-        // El registro del borrado encadena `.onConflictDoNothing()`; el mock
+        // El registro del borrado encadena `.onConflictDoUpdate()`; el mock
         // compartido del archivo devuelve una promesa pelada.
         insert: jest.fn(() => ({
           values: jest.fn((valores: unknown) => {
             mockInsertValues(valores);
-            return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+            return { onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) };
           }),
         })),
         update: jest.fn(() => ({ set: jest.fn(() => ({ where: mockUpdateWhere })) })),
