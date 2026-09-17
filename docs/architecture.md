@@ -504,6 +504,10 @@ Postgres: ordena los árboles de la plantación (por `groups.created_at`,
 plantación) y el ID global (secuencial org-wide, desde una semilla que sugiere
 `MAX(global_id) + 1` o la que indique el admin).
 
+Solo lo corre un admin o superadmin activo de la organización de la plantación
+(mig. 042). Una plantación archivada devuelve `PLANTACION_ARCHIVADA`; una
+finalizada sí genera IDs, porque es el momento normal de hacerlo.
+
 Tipos de ID:
 
 ```
