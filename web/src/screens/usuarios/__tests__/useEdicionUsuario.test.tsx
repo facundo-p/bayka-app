@@ -15,6 +15,7 @@ const PERSONA: UsuarioConAsignaciones = {
   rol: 'tecnico',
   email: 'x@bayka.org',
   activo: true,
+  eliminadoEn: null,
   organizacionId: 'org-1',
   organizacionNombre: 'Bayka',
   plantacionesAsignadas: 0,

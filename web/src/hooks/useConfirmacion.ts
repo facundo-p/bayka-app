@@ -11,7 +11,12 @@ export interface OpcionesConfirmacion {
 }
 
 /** Ejecuta la acción confirmada y, si sale bien, `alCompletar`. */
-export function useConfirmacion({ accion, alCompletar, textoExito, onClose }: OpcionesConfirmacion) {
+export function useConfirmacion({
+  accion,
+  alCompletar,
+  textoExito,
+  onClose,
+}: OpcionesConfirmacion) {
   const [error, setError] = useState<string | null>(null);
   const [completada, setCompletada] = useState(false);
   const mutacion = useMutation({
