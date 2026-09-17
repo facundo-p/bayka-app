@@ -12,7 +12,7 @@ import ConfigureSpeciesScreen from '../screens/ConfigureSpeciesScreen';
 import AssignTechniciansScreen from '../screens/AssignTechniciansScreen';
 import { colors } from '../theme';
 import { adminPlantationModalsStyles as styles } from './AdminPlantationModals.styles';
-import type { Plantation } from './PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 
 type Props = {

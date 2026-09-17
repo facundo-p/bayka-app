@@ -14,13 +14,13 @@ import { useAuth } from './useAuth';
 import { usePendingSyncCount } from './usePendingSyncCount';
 import { usePendingSyncMap } from './usePendingSyncMap';
 import type { ExpandedMeta } from './usePlantationAdmin';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
-const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 };
+const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
 export function usePlantacionesScreen() {
   const router = useRouter();

@@ -7,7 +7,7 @@ import { View, Text, Pressable, LayoutAnimation } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { filterCardsStyles as styles } from './FilterCards.styles';
 
-type FilterConfig = {
+export type FilterConfig = {
   key: string;
   label: string;
   count: number;
