@@ -74,6 +74,7 @@ function makePlantation(estado: string, overrides?: Partial<Plantation>): Planta
     estado,
     createdAt: '2026-01-01',
     archivadaEn: null,
+    eliminadaEnServidorEn: null,
     ...overrides,
   };
 }

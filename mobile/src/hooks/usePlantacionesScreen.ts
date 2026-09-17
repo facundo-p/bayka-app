@@ -165,6 +165,8 @@ export function usePlantacionesScreen() {
     resetSync: sync.reset,
     pullSuccess: sync.pullSuccess,
     sinAcceso: sync.sinAcceso,
+    eliminada: sync.eliminada,
+    omitidas: sync.omitidas,
     authExpired: sync.authExpired,
     successCount: sync.successCount,
     failureCount: sync.failureCount,

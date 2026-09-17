@@ -49,8 +49,12 @@ PostgREST wraps every postgres error en un objeto con shape estable
    - Si columnas contienen `nombre` → `DUPLICATE_NAME`.
    - Cualquier otro → `GENERIC_CONFLICT` (fallback explícito).
    - `details` ausente / regex falla → `GENERIC_CONFLICT`.
-3. Sin `code` y mensaje incluye `fetch`/`network` → `NETWORK`.
-4. Otro caso → `UNKNOWN`.
+3. Resto, vía `classifyServerError` (`types.ts`):
+   - Timeout del fetch → `TIMEOUT`.
+   - `42501` (RLS) → `PERMISSION`.
+   - `23503` (FK: la plantación padre no está en el server) → `REFERENCIA_INEXISTENTE`.
+   - Sin `code` y mensaje incluye `fetch`/`network` → `NETWORK`.
+   - Otro caso → `UNKNOWN`, con `code: message` crudo en `detail`.
 
 **NUNCA** usar substring matching sobre `error.message` — el mensaje no es
 estable entre versiones de postgres ni locales.

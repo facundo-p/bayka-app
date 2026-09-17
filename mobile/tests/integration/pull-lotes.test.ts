@@ -52,6 +52,8 @@ jest.mock('../../src/supabase/client', () => {
   return {
     supabase: {
       from: (tabla: string) => ({ select: () => builder(tabla) }),
+      // Server sin `estado_remoto_plantaciones`: el acceso sale de la membresía (#478).
+      rpc: () => Promise.resolve({ data: null, error: { code: 'PGRST202' } }),
       auth: {
         getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-tecnico-1' } } } }),
       },

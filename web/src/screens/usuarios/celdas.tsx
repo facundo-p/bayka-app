@@ -65,14 +65,16 @@ interface CeldaAccionesProps {
   onAccion: (activa: AccionActiva) => void;
 }
 
-/** El menú "⋯" de la fila. */
+/** El menú "⋯" de la fila; sin acciones disponibles no se muestra. */
 export function CeldaAcciones({ usuario, contexto, onAccion }: CeldaAccionesProps) {
+  const items = itemsDeMenu(usuario, contexto.idActual, contexto.superadminsActivos);
+  if (items.length === 0) return null;
   return (
     // La fila abre el panel: el menú frena el click para no hacer las dos cosas.
     <span onClick={(evento) => evento.stopPropagation()}>
       <MenuAccionesUsuario
         nombre={nombreVisible(usuario.nombre, usuario.id)}
-        items={itemsDeMenu(usuario, contexto.idActual, contexto.superadminsActivos)}
+        items={items}
         onAccion={(accion) => onAccion({ usuario, accion })}
       />
     </span>
