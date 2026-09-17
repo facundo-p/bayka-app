@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native';
 import { colors } from '../theme';
+import { esActiva, esFinalizada } from '../constants/estados';
 import { statusChipStyles as styles } from './StatusChip.styles';
 
 interface Props {
@@ -7,13 +8,14 @@ interface Props {
   size?: 'sm' | 'md';
 }
 
-const CHIP_CONFIG: Record<string, { label: string; color: string }> = {
-  activa: { label: 'activa', color: colors.stateActiva },
-  finalizada: { label: 'finalizada', color: colors.stateFinalizada },
-};
+function colorDeEstado(estado: string): string {
+  if (esActiva({ estado })) return colors.stateActiva;
+  if (esFinalizada({ estado })) return colors.stateFinalizada;
+  return colors.textMuted;
+}
 
 export default function StatusChip({ estado, size = 'md' }: Props) {
-  const config = CHIP_CONFIG[estado] ?? { label: estado, color: colors.textMuted };
+  const config = { label: estado, color: colorDeEstado(estado) };
   const sizeStyles = size === 'sm' ? styles.sm : styles.md;
 
   return (
