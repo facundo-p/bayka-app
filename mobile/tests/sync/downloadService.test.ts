@@ -103,11 +103,15 @@ function setupDbInsertSuccess() {
   return { valuesSpy, onConflictSpy };
 }
 
-/** El pull chequea la membresía propia antes de tocar la base (#317). */
+/**
+ * El pull chequea el acceso antes de tocar la base (#317). Estos tests simulan un
+ * server sin `estado_remoto_plantaciones` (#478), así el chequeo cae a la membresía.
+ */
 function setupSesion() {
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({
     data: { session: { user: { id: 'user-1' } } },
   });
+  (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
 }
 
 /**
@@ -293,6 +297,27 @@ describe('downloadPlantation', () => {
 
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ photoCaptureAllTrees: false }));
     expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ photoCaptureAllTrees: false });
+  });
+
+  it('mapea archivada_en del server al campo local archivadaEn (#477)', async () => {
+    const sp = { ...makeServerPlantation('p-archivada'), archivada_en: '2026-09-17T12:00:00+00:00' };
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ archivadaEn: '2026-09-17T12:00:00+00:00' }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ archivadaEn: '2026-09-17T12:00:00+00:00' });
+  });
+
+  // El upsert tiene que escribir el null: si no, desarchivar en la web no llega al device.
+  it('archivadaEn=null explícito cuando el server no trae la columna o no está archivada', async () => {
+    const sp = makeServerPlantation('p-sin-archivar');
+    const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
+
+    await downloadPlantation(sp);
+
+    expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ archivadaEn: null }));
+    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({ archivadaEn: null });
   });
 });
 

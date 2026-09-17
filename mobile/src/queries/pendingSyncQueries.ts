@@ -56,6 +56,23 @@ export function countPendingParcelas(opts: PendingCountQueryOpts) {
   return db.select({ cnt: count() }).from(parcelas).where(and(...conditions));
 }
 
+/**
+ * Todas las fotos locales sin subir de una plantación, estén o no en grupos pendientes:
+ * es lo que se pierde al eliminarla del dispositivo (#478).
+ */
+export function countFotosSinSubirDePlantacion(plantacionId: string) {
+  return db
+    .select({ cnt: count() })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(and(
+      eq(groups.plantacionId, plantacionId),
+      isNotNull(trees.fotoUrl),
+      eq(trees.fotoSynced, false),
+      sqlIsLocalUri(trees.fotoUrl),
+    ));
+}
+
 // Variantes agrupadas por plantación (dot por tarjeta): mismo criterio que los conteos globales, para que sincronizar una plantación apague el global (#71, follow-up).
 
 export function countPendingGroupsByPlantation(userId?: string | null) {

@@ -43,6 +43,9 @@ export default function PlantationDetailScreen() {
     groupEstadoCounts,
     estadoLoaded,
     isFinalizada,
+    isArchivada,
+    isEliminada,
+    plantacionEditable,
     userNames,
     deletingId,
     editingGroup,
@@ -76,7 +79,6 @@ export default function PlantationDetailScreen() {
   if (!parcelaId) return null;
 
   const headerSubtitle = parcela?.nombre || undefined;
-  const canAddGroup = estadoLoaded && !isFinalizada;
 
   function handleGroupPress(subgroup: Group) {
     router.push(`/${routePrefix}/plantation/subgroup/${subgroup.id}?plantacionId=${plantacionId}&parcelaId=${parcelaId}&grupoCodigo=${subgroup.codigo}&grupoNombre=${encodeURIComponent(subgroup.nombre)}` as any);
@@ -123,7 +125,7 @@ export default function PlantationDetailScreen() {
         subtitle={headerSubtitle}
         onBack={goBack}
         rightElement={
-          canAddGroup ? (
+          plantacionEditable ? (
             <HeaderActionButton
               testID="grupos-header-add"
               icon="add"
@@ -136,6 +138,8 @@ export default function PlantationDetailScreen() {
       <PlantationDetailHeader
         estadoLoaded={estadoLoaded}
         isFinalizada={isFinalizada}
+        isArchivada={isArchivada}
+        isEliminada={isEliminada}
         groupFilter={groupFilter}
         groupFilterConfigs={groupFilterConfigs as any}
         onToggleFilter={(key) => setGroupFilter(prev => prev === key ? null : key)}

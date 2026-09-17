@@ -10,8 +10,9 @@ import HeaderActionButton from '../components/HeaderActionButton';
 import TexturedBackground from '../components/TexturedBackground';
 import PlantacionesModals from '../components/PlantacionesModals';
 import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { esEliminadaEnServidor } from '../constants/estados';
 
 export default function PlantacionesScreen() {
   const s = usePlantacionesScreen();
@@ -77,7 +78,7 @@ export default function PlantacionesScreen() {
                   expanded={s.expandedPlantationId === item.id}
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
-                  onParcelaLongPress={plantacionEsEditable(item.estado)
+                  onParcelaLongPress={plantacionEsEditable(item)
                     ? (p) => s.handleParcelaInlineLongPress(item.id, p)
                     : undefined}
                   cardProps={{
@@ -91,6 +92,7 @@ export default function PlantacionesScreen() {
                     hasPendingSync: (s.pendingSyncBoolMap.get(item.id) ?? 0) > 0,
                     nnCount: s.nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
+                    eliminadaEnServidor: esEliminadaEnServidor(item),
                     onPress: () => s.router.push(`/${s.routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
                     // Long-press abre la edición, como en las demás cards (#94).
                     onLongPress: s.isAdmin ? () => s.handleEditPress(item as Plantation) : undefined,

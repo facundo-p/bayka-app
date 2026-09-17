@@ -1,5 +1,5 @@
 import { rutaPlantacion } from '../../lib/rutas';
-import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
+import { ESTADO_PLANTACION, sinArchivadas } from '../../queries/plantationQueries';
 import type { PlantacionConStats } from '../../queries/plantationQueries';
 import type { ResultadoBusqueda } from '../../queries/buscarQueries';
 
@@ -17,8 +17,9 @@ function aResultado(plantacion: PlantacionConStats): ResultadoBusqueda {
 }
 
 /** Sugerencias del estado vacío: la temporada activa (más árboles) primero,
- *  luego las últimas plantaciones por fecha de creación. */
-export function sugerencias(plantaciones: PlantacionConStats[]): ResultadoBusqueda[] {
+ *  luego las últimas plantaciones por fecha de creación. Nunca archivadas. */
+export function sugerencias(todas: PlantacionConStats[]): ResultadoBusqueda[] {
+  const plantaciones = sinArchivadas(todas);
   if (plantaciones.length === 0) return [];
   const activas = plantaciones.filter(
     (plantacion) => plantacion.estado === ESTADO_PLANTACION.activa,

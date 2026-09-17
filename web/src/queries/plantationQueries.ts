@@ -10,7 +10,7 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
-/** Campos opcionales: de las migraciones 023 (GPS), 024 y 035 (foto), que pueden no estar aplicadas. */
+/** Campos opcionales: de las migraciones 023 (GPS), 024, 035 (foto) y 038 (archivada), que pueden no estar aplicadas. */
 type FilaPlantacion = {
   id: string;
   lugar: string;
@@ -24,6 +24,7 @@ type FilaPlantacion = {
   descripcion?: string | null;
   fecha_inicio?: string | null;
   objetivo_arboles?: number | null;
+  archivada_en?: string | null;
 };
 
 export type Plantacion = {
@@ -40,6 +41,8 @@ export type Plantacion = {
   descripcion: string | null;
   fechaInicio: string | null;
   objetivoArboles: number | null;
+  /** Archivada = oculta de los listados y de solo lectura, independiente de `estado` (#477). */
+  archivadaEn: string | null;
 };
 
 export type PlantacionConStats = Plantacion & {
@@ -86,8 +89,18 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
     gpsCaptureRequired: fila.gps_capture_required ?? GPS_CAPTURE_REQUIRED_DEFAULT,
     photoCaptureAllTrees: fila.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
     createdAt: fila.created_at,
+    archivadaEn: fila.archivada_en ?? null,
     ...camposFormulario(fila),
   };
+}
+
+export function esArchivada(plantacion: Pick<Plantacion, 'archivadaEn'>): boolean {
+  return plantacion.archivadaEn !== null;
+}
+
+/** Lo que muestran las vistas globales: sin las archivadas. */
+export function sinArchivadas<T extends Pick<Plantacion, 'archivadaEn'>>(plantaciones: T[]): T[] {
+  return plantaciones.filter((plantacion) => !esArchivada(plantacion));
 }
 
 function conStats(fila: FilaPlantacion, stats: Map<string, FilaStats>): PlantacionConStats {
@@ -95,7 +108,8 @@ function conStats(fila: FilaPlantacion, stats: Map<string, FilaStats>): Plantaci
   return { ...mapearPlantacion(fila), arboles, parcelas, usuarios };
 }
 
-/** Lista plantaciones ordenadas por lugar con sus contadores (2 requests). */
+/** Lista plantaciones ordenadas por lugar con sus contadores (2 requests). Incluye las
+ *  archivadas: el listado las ofrece en su propio filtro; las vistas globales usan `sinArchivadas`. */
 export async function listarPlantaciones(): Promise<PlantacionConStats[]> {
   const [{ data, error }, stats] = await Promise.all([
     supabase.from('plantations').select('*').order('lugar', { ascending: true }),
@@ -112,12 +126,13 @@ export async function obtenerPlantacion(id: string): Promise<Plantacion | null> 
   return data ? mapearPlantacion(data as FilaPlantacion) : null;
 }
 
-/** Plantación 'activa' con el árbol más reciente (última temporada con carga); define la "Temporada activa" del sidebar. */
+/** Plantación 'activa' y no archivada con el árbol más reciente (última temporada con carga); define la "Temporada activa" del sidebar. */
 export async function obtenerTemporadaActivaId(): Promise<string | null> {
   const { data, error } = await supabase
     .from('trees')
-    .select('created_at, groups!inner(plantation_id, plantations!inner(estado))')
+    .select('created_at, groups!inner(plantation_id, plantations!inner(estado, archivada_en))')
     .eq('groups.plantations.estado', ESTADO_PLANTACION.activa)
+    .is('groups.plantations.archivada_en', null)
     .order('created_at', { ascending: false })
     .limit(1);
   if (error) throw new Error(error.message);

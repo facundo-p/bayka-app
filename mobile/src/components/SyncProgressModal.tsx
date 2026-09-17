@@ -3,9 +3,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { SYNC_STATE, SYNC_ERROR, getErrorMessage } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
 import BaseModal from './BaseModal';
 import FailureList from './FailureList';
+import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
@@ -24,6 +25,10 @@ interface Props {
   pullSuccess: boolean | null;
   /** La membresía fue revocada: la copia local queda para consulta (#317). */
   sinAcceso: boolean;
+  /** La plantación fue eliminada en el server (#478). */
+  eliminada: boolean;
+  /** Sync global: plantaciones salteadas por sin acceso o eliminadas (#478). */
+  omitidas: PlantacionesOmitidas;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   /** Fase del pull en curso; sin esto el pull es un spinner mudo (#447). */
@@ -120,6 +125,8 @@ export default function SyncProgressModal({
   plantationFailureCount,
   pullSuccess,
   sinAcceso,
+  eliminada,
+  omitidas,
   authExpired,
   photoProgress,
   phaseProgress,
@@ -139,6 +146,8 @@ export default function SyncProgressModal({
   // Hay errores de cualquier tipo (grupo / parcela / plantación) — única fuente
   // de verdad para icono, color y título del resultado.
   const anyFailure = failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0;
+  // Sin acceso o eliminada: la corrida no sincronizó nada, el resultado es solo ese aviso.
+  const sinDatos = sinAcceso || eliminada;
 
   return (
     <BaseModal
@@ -216,6 +225,20 @@ export default function SyncProgressModal({
         </>
       )}
 
+      {state === SYNC_STATE.done && !cancelado && eliminada && (
+        <>
+          <Ionicons name="trash" size={48} color={colors.stateEliminada} />
+          <Text style={styles.title}>Plantacion eliminada en el servidor</Text>
+          <Text style={styles.progressText}>
+            Un administrador la elimino. Los datos del dispositivo quedan solo para consulta: lo que
+            quedo sin subir ya no se puede sincronizar. Podes eliminarla del dispositivo cuando quieras.
+          </Text>
+          <Pressable style={styles.dismissButton} onPress={onDismiss}>
+            <Text style={styles.dismissText}>Cerrar</Text>
+          </Pressable>
+        </>
+      )}
+
       {state === SYNC_STATE.done && !cancelado && sinAcceso && (
         <>
           <Ionicons name="lock-closed" size={48} color={colors.secondary} />
@@ -230,7 +253,7 @@ export default function SyncProgressModal({
         </>
       )}
 
-      {state === SYNC_STATE.done && !cancelado && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
+      {state === SYNC_STATE.done && !cancelado && !sinDatos && pullSuccess !== null && results.length === 0 && !anyFailure && (
         <>
           <Ionicons
             name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
@@ -250,13 +273,14 @@ export default function SyncProgressModal({
               {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
             </Text>
           )}
+          <PlantacionesOmitidasAviso omitidas={omitidas} />
           <Pressable style={styles.dismissButton} onPress={onDismiss}>
             <Text style={styles.dismissText}>Cerrar</Text>
           </Pressable>
         </>
       )}
 
-      {state === SYNC_STATE.done && !cancelado && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
+      {state === SYNC_STATE.done && !cancelado && !sinDatos && (results.length > 0 || anyFailure || pullSuccess === null) && (
         <>
           <Ionicons
             name={anyFailure ? 'alert-circle' : 'checkmark-circle'}
@@ -298,6 +322,7 @@ export default function SyncProgressModal({
           <FailureList label="plantacion" results={plantationResults} getKey={(r) => r.plantacionId} />
           <FailureList label="parcela" results={parcelaResults} getKey={(r) => r.parcelaId} />
           <FailureList label="grupo" results={results} getKey={(r) => r.groupId} />
+          <PlantacionesOmitidasAviso omitidas={omitidas} />
           <Pressable style={styles.dismissButton} onPress={onDismiss}>
             <Text style={styles.dismissText}>Cerrar</Text>
           </Pressable>

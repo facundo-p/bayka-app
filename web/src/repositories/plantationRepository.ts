@@ -27,6 +27,16 @@ export const MENSAJE_VISIBILIDAD_SIN_MIGRACION =
 export const MENSAJE_FOTO_SIN_MIGRACION =
   'Foto en todos los botones no disponible: falta aplicar la migración 035';
 
+/**
+ * Archivar va por RPC porque la policy UPDATE no deja tocar una archivada (#477);
+ * eliminar, porque no hay policy DELETE y las reglas viven en SQL (#478).
+ */
+const RPC_PLANTACION = {
+  archivar: 'archivar_plantacion',
+  desarchivar: 'desarchivar_plantacion',
+  eliminar: 'eliminar_plantacion',
+} as const;
+
 type Payload = Record<string, string | number | boolean>;
 type ErrorSupabase = { message: string; code?: string } | null;
 type ResultadoSupabase = { data: unknown; error: ErrorSupabase };
@@ -64,10 +74,13 @@ async function ejecutarConReintentoSin024(
   return reintento.data;
 }
 
-/** Best-effort: si el delete también falla queda una plantación huérfana, pero se prioriza el error original. */
+/**
+ * Best-effort: si el borrado también falla queda una plantación huérfana, pero se prioriza el error original.
+ * Va por RPC porque no hay policy DELETE sobre `plantations` (#480); recién creada no tiene datos, así que alcanza con ser admin.
+ */
 async function borrarPlantacionHuerfana(plantationId: string): Promise<void> {
   try {
-    await supabase.from('plantations').delete().eq('id', plantationId);
+    await supabase.rpc(RPC_PLANTACION.eliminar, { p_id: plantationId });
   } catch {
     // Sin red no hay más por hacer; el error original ya se propaga.
   }
@@ -159,4 +172,39 @@ export async function existePlantacion(
   const { count, error } = await consulta;
   if (error) throw new Error(error.message);
   return (count ?? 0) > 0;
+}
+
+/** Errores de negocio que devuelven en `{ success: false, error }`. */
+export const ERRORES_ARCHIVADO = {
+  /** No es admin/superadmin activo de la organización de la plantación. */
+  noAutorizado: 'NOT_AUTHORIZED',
+} as const;
+
+export const MENSAJE_ARCHIVADO_NO_AUTORIZADO =
+  'Tu usuario no tiene permisos para archivar o desarchivar esta plantación.';
+export const MENSAJE_ERROR_ARCHIVADO = 'No se pudo completar la acción. Probá de nuevo.';
+
+const MENSAJES_ERROR_ARCHIVADO: Record<string, string> = {
+  [ERRORES_ARCHIVADO.noAutorizado]: MENSAJE_ARCHIVADO_NO_AUTORIZADO,
+};
+
+type RespuestaArchivado = { success?: boolean; error?: string } | null;
+
+/** Idempotentes: repetir la acción sobre una que ya está en ese estado no falla. */
+async function ejecutarArchivado(rpc: string, id: string): Promise<void> {
+  const { data, error } = await supabase.rpc(rpc, { p_id: id });
+  if (error) throw new Error(MENSAJE_ERROR_ARCHIVADO);
+  const respuesta = data as RespuestaArchivado;
+  if (!respuesta?.success) {
+    throw new Error(MENSAJES_ERROR_ARCHIVADO[respuesta?.error ?? ''] ?? MENSAJE_ERROR_ARCHIVADO);
+  }
+}
+
+export function archivarPlantacion(id: string): Promise<void> {
+  return ejecutarArchivado(RPC_PLANTACION.archivar, id);
+}
+
+/** No cambia `estado`: una finalizada sigue finalizada. */
+export function desarchivarPlantacion(id: string): Promise<void> {
+  return ejecutarArchivado(RPC_PLANTACION.desarchivar, id);
 }

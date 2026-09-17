@@ -26,7 +26,8 @@ import { createPlantationWithDefaultParcela } from '../services/PlantationCreati
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
 import { ESTADO_PLANTACION } from '../constants/estados';
-import type { Plantation } from '../components/PlantationConfigCard';
+import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import type { Plantation } from '../types/plantation';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ export function usePlantationAdmin() {
   async function handleFinalize(plantacionId: string) {
     if (finalizing) return;
     const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
+    if (plantation && !plantacionEsEditable(plantation)) return;
     if (plantation?.pendingSync || plantation?.pendingEdit) {
       showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.info);
       return;

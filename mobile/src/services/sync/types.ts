@@ -13,12 +13,16 @@ export const SYNC_ERROR = {
   DUPLICATE_NAME: 'DUPLICATE_NAME',
   /** 23505 pero details no matchea los constraints esperados. */
   GENERIC_CONFLICT: 'GENERIC_CONFLICT',
+  /** foreign key violation (23503): la fila padre no está en el server (p.ej. la plantación de una parcela). */
+  REFERENCIA_INEXISTENTE: 'REFERENCIA_INEXISTENTE',
   /** Grupo no subido porque su parcela sigue pending_sync (orden FK). */
   PARCELA_PENDING: 'PARCELA_PENDING',
   /** RLS rechazó la operación (42501). */
   PERMISSION: 'PERMISSION',
   /** La plantación está finalizada y es inmutable (#469); distinto de PERMISSION, que es no ser miembro. */
   PLANTACION_FINALIZADA: 'PLANTACION_FINALIZADA',
+  /** La plantación está archivada (#477); tiene prioridad sobre finalizada en el server. */
+  PLANTACION_ARCHIVADA: 'PLANTACION_ARCHIVADA',
   /** Legacy: falla de red sin código de postgres. */
   NETWORK: 'NETWORK',
   /** La request no respondió dentro del timeout (#451). Distinto de NETWORK: hay señal, el que no contesta es el server. */
@@ -88,6 +92,8 @@ export const PULL_ESTADO = {
    * en cada paso y el pull lo lee como "el server está vacío".
    */
   sinAcceso: 'sin-acceso',
+  /** La plantación fue eliminada en el server (#478): la copia local queda solo para consulta. */
+  eliminada: 'eliminada',
 } as const;
 
 export type PullEstado = (typeof PULL_ESTADO)[keyof typeof PULL_ESTADO];
@@ -98,9 +104,48 @@ export type PullResult = { estado: PullEstado };
 export const PULL_OK: PullResult = { estado: PULL_ESTADO.ok };
 export const PULL_SIN_ACCESO: PullResult = { estado: PULL_ESTADO.sinAcceso };
 
+export const PULL_ELIMINADA: PullResult = { estado: PULL_ESTADO.eliminada };
+
 /** La membresía fue revocada: la copia local queda solo para consulta (#317). */
 export const esSinAcceso = (resultado: PullResult): boolean =>
   resultado.estado === PULL_ESTADO.sinAcceso;
+
+/** La plantación ya no existe en el server (#478). */
+export const esEliminada = (resultado: PullResult): boolean =>
+  resultado.estado === PULL_ESTADO.eliminada;
+
+/** No hay nada que bajar ni subir: ni pull de datos, ni push, ni fotos. */
+export const esPullSinDatos = (resultado: PullResult): boolean =>
+  esSinAcceso(resultado) || esEliminada(resultado);
+
+/**
+ * Valores de `estado` del RPC `estado_remoto_plantaciones` (#478). Contrato con el
+ * server: `sin_acceso` va con guion bajo, a diferencia de `PULL_ESTADO.sinAcceso`.
+ */
+export const ESTADO_REMOTO = {
+  ok: 'ok',
+  archivada: 'archivada',
+  eliminada: 'eliminada',
+  sinAcceso: 'sin_acceso',
+} as const;
+
+export type EstadoRemoto = (typeof ESTADO_REMOTO)[keyof typeof ESTADO_REMOTO];
+
+export const RPC_ESTADO_REMOTO_PLANTACIONES = 'estado_remoto_plantaciones';
+
+/** Existe en el server y el usuario es miembro: lo único que desmarca una eliminada. */
+export const existeConAcceso = (estado: string | null | undefined): boolean =>
+  estado === ESTADO_REMOTO.ok || estado === ESTADO_REMOTO.archivada;
+
+/**
+ * Estado remoto → resultado del pull. Un valor desconocido (server más nuevo) o
+ * ausente asume acceso, igual que un error de red: solo se corta ante evidencia.
+ */
+export function pullDesdeEstadoRemoto(estado: string | null | undefined): PullResult {
+  if (estado === ESTADO_REMOTO.eliminada) return PULL_ELIMINADA;
+  if (estado === ESTADO_REMOTO.sinAcceso) return PULL_SIN_ACCESO;
+  return PULL_OK;
+}
 
 export const DOWNLOAD_PHASE = {
   /** Catálogo global; corre una sola vez al arrancar el batch. */
@@ -177,10 +222,12 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   [SYNC_ERROR.DUPLICATE_CODE]: 'El codigo ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
   [SYNC_ERROR.DUPLICATE_NAME]: 'El nombre ya existe en el servidor. Renombra e intenta de nuevo.',
   [SYNC_ERROR.GENERIC_CONFLICT]: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
+  [SYNC_ERROR.REFERENCIA_INEXISTENTE]: 'Falta en el servidor un dato del que depende (por ejemplo, su plantacion o parcela). Sincroniza de nuevo; si persiste, puede que se haya eliminado: contacta a un administrador.',
   [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
   [SYNC_ERROR.PERMISSION]: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
-  // El dato NO se pierde: queda en el device y se sube si la plantación se reabre.
+  // El dato NO se pierde: queda en el device y se sube si la plantación se reabre o desarchiva.
   [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantacion fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
+  [SYNC_ERROR.PLANTACION_ARCHIVADA]: 'La plantacion fue archivada y no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la desarchive para poder subirlo.',
   [SYNC_ERROR.NETWORK]: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
   [SYNC_ERROR.TIMEOUT]: 'El servidor no respondio a tiempo. Puede ser la señal: intenta de nuevo con mejor cobertura.',
   [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intenta de nuevo.',
@@ -197,8 +244,8 @@ export function rawErrorDetail(error: { code?: string; message?: string } | null
 
 /**
  * Clasifica errores de push que NO son conflicto de unicidad (23505); compartido por parcela y
- * plantación: timeout → TIMEOUT; 42501 (RLS) → PERMISSION; fetch/network sin código postgres →
- * NETWORK; resto → UNKNOWN (con code/message crudo en `detail`).
+ * plantación: timeout → TIMEOUT; 42501 (RLS) → PERMISSION; 23503 (FK) → REFERENCIA_INEXISTENTE;
+ * fetch/network sin código postgres → NETWORK; resto → UNKNOWN (con code/message crudo en `detail`).
  */
 export function classifyServerError(error: { code?: string; message?: string }): { error: SyncErrorCode; detail: string } {
   const detail = rawErrorDetail(error);
@@ -206,6 +253,7 @@ export function classifyServerError(error: { code?: string; message?: string }):
   // indistinguible de "no hay señal", que es un problema distinto para el técnico.
   if (esTimeout(error)) return { error: SYNC_ERROR.TIMEOUT, detail };
   if (error?.code === PG_ERROR.INSUFFICIENT_PRIVILEGE) return { error: SYNC_ERROR.PERMISSION, detail };
+  if (error?.code === PG_ERROR.FOREIGN_KEY_VIOLATION) return { error: SYNC_ERROR.REFERENCIA_INEXISTENTE, detail };
   const msg = String(error?.message ?? '').toLowerCase();
   if (!error?.code && (msg.includes('fetch') || msg.includes('network'))) {
     return { error: SYNC_ERROR.NETWORK, detail };

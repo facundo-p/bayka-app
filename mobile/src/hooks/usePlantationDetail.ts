@@ -17,20 +17,23 @@ import {
   getNNCountsPerGroup,
   getTreeCountsPerGroup,
 } from '../queries/plantationDetailQueries';
-import { getPlantationEstado } from '../queries/adminQueries';
+import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
-import { ESTADO_PLANTACION } from '../constants/estados';
-import { getGroupGating, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
-import type { GroupGating } from '../utils/permisosDeEdicion';
+import { ESTADO_PLANTACION, esArchivada, esEliminadaEnServidor } from '../constants/estados';
+import { getGroupGating, plantacionEsEditable, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
+import type { EstadoDeEdicionDePlantacion, GroupGating } from '../utils/permisosDeEdicion';
 import { findById as findParcelaById } from '../repositories/ParcelaRepository';
 import type { Parcela } from '../repositories/ParcelaRepository';
 
 // Re-export types for consumers of this hook (avoids repository imports in screens)
 export type { Group, GroupTipo };
+
+/** Plantación que no está en SQLite: sin estado ni archivado, como antes de #477. */
+const PLANTACION_SIN_DATOS: EstadoDeEdicionDePlantacion = { estado: '', archivadaEn: null, eliminadaEnServidorEn: null };
 
 export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const userId = useCurrentUserId();
@@ -55,12 +58,16 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const parcela: Parcela | null = (parcelaRows?.[0] as Parcela | undefined) ?? null;
 
   const { data: estadoData } = useLiveData(
-    () => getPlantationEstado(pid).then((e) => [{ estado: e ?? '' }]),
+    () => getPlantationEstadoDeEdicion(pid).then((e) => [e ?? PLANTACION_SIN_DATOS]),
     [pid]
   );
-  const plantacionEstado = estadoData?.[0]?.estado ?? '';
+  const estadoDeEdicion = estadoData?.[0] ?? PLANTACION_SIN_DATOS;
   const estadoLoaded = estadoData !== undefined;
-  const isFinalizada = plantacionEstado === ESTADO_PLANTACION.finalizada;
+  const isFinalizada = estadoDeEdicion.estado === ESTADO_PLANTACION.finalizada;
+  const isArchivada = esArchivada(estadoDeEdicion);
+  const isEliminada = esEliminadaEnServidor(estadoDeEdicion);
+  // Finalizada, archivada o eliminada en el server: tampoco se crean, editan ni borran parcelas ni grupos.
+  const plantacionEditable = estadoLoaded && plantacionEsEditable(estadoDeEdicion);
 
   const creatorIds = useMemo(() => {
     const ids = (groupRows ?? []).map((sg: any) => sg.usuarioCreador).filter(Boolean);
@@ -100,11 +107,11 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const permisosDeGrupo = useCallback((subgroup: Group): GroupGating => {
     if (!estadoLoaded) return SIN_PERMISOS_DE_GRUPO;
     return getGroupGating({
-      plantacionEstado,
+      plantacion: estadoDeEdicion,
       subgroupEstado: subgroup.estado,
       isCreator: userId ? subgroup.usuarioCreador === userId : false,
     });
-  }, [estadoLoaded, plantacionEstado, userId]);
+  }, [estadoLoaded, estadoDeEdicion, userId]);
 
   function handleLongPress(subgroup: Group) {
     if (!permisosDeGrupo(subgroup).canEdit) return;
@@ -139,7 +146,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
 
   async function handleEditSubmit(values: { nombre: string; codigo: string; tipo: GroupTipo }) {
     if (!editingGroup) return { success: false as const, error: 'unknown' as const };
-    // El modal pudo quedar abierto mientras un pull finalizaba la plantación.
+    // El modal pudo quedar abierto mientras un pull finalizaba o archivaba la plantación.
     if (!permisosDeGrupo(editingGroup).canEdit) return { success: false as const, error: 'unknown' as const };
     const result = await updateGroup(editingGroup.id, values);
     if (result.success && values.codigo !== editingGroup.codigo) {
@@ -160,9 +167,12 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     treeCountMap,
     totalNN,
     groupEstadoCounts,
-    plantacionEstado,
+    estadoDeEdicion,
     estadoLoaded,
     isFinalizada,
+    isArchivada,
+    isEliminada,
+    plantacionEditable,
     userNames,
     deletingId,
     editingGroup,

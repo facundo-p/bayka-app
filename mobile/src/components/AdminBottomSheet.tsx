@@ -10,9 +10,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
 import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
-import type { Plantation } from './PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { esActiva, esArchivada, esEliminadaEnServidor, esFinalizada } from '../constants/estados';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -170,7 +171,7 @@ export default function AdminBottomSheet({
 
           <View style={styles.actionList}>
             {/* #94: reemplaza a Sincronizar, que ahora vive como botón en la card */}
-            {isAdmin && plantacionEsEditable(plantation.estado) && (
+            {isAdmin && plantacionEsEditable(plantation) && (
               <ActionItem
                 icon="create-outline"
                 label="Editar lugar y periodo"
@@ -179,7 +180,8 @@ export default function AdminBottomSheet({
               />
             )}
 
-            {isAdmin && plantation.estado === 'activa' && (
+            {/* Archivada o eliminada en el servidor (#477, #478): sin especies, técnicos ni finalizar. */}
+            {isAdmin && esActiva(plantation) && !esArchivada(plantation) && !esEliminadaEnServidor(plantation) && (
               <>
                 <View style={styles.divider} />
                 <ActionItem
@@ -205,7 +207,7 @@ export default function AdminBottomSheet({
               </>
             )}
 
-            {isAdmin && plantation.estado === 'finalizada' && (
+            {isAdmin && esFinalizada(plantation) && (
               <>
                 <View style={styles.divider} />
                 {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}

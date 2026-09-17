@@ -4,7 +4,7 @@ import { nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY, familia } from '../../queries/clavesQuery';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { eliminarUsuario, previsualizarEliminacion } from '../../services/adminUsersService';
-import { ConfirmarModal } from './ConfirmarModal';
+import { ConfirmarModal } from '../../components/ConfirmarModal';
 import { AVISO_ELIMINAR, copyEliminar, TEXTO_REVISANDO_DATOS } from './confirmaciones';
 
 function descripcion(nombre: string, preview: UseQueryResult<PreviewEliminacion, Error>): string {
@@ -32,7 +32,7 @@ export function EliminarUsuarioModal({ usuario, onClose }: EliminarUsuarioModalP
   const nombre = nombreVisible(usuario.nombre, usuario.id);
   const eliminar = useEliminar(usuario.id);
   const preview = useQuery({
-    queryKey: CLAVE_QUERY.previewEliminacion(usuario.id),
+    queryKey: CLAVE_QUERY.previewEliminacionUsuario(usuario.id),
     queryFn: () => previsualizarEliminacion(usuario.id),
     // Los conteos cambian con cada sincronización: nunca mostrar uno cacheado.
     gcTime: 0,

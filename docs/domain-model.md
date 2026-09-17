@@ -219,6 +219,7 @@ objetivo_arboles (opcional, meta para dashboard)
 visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
 photo_capture_all_trees (default false: si todos los botones de la botonera piden foto, como N/N; migración 035)
+archivada_en / archivada_por (null si no está archivada; migración 038)
 ```
 
 Los campos opcionales, la visibilidad y la foto en todos los botones se
@@ -230,6 +231,56 @@ gestionan desde la web de gestión (migraciones 024 y 035).
 activa
 finalizada
 ```
+
+### Archivada
+
+Archivar es independiente del estado: una plantación activa o finalizada puede
+estar además archivada, y desarchivarla la devuelve al estado que tenía (#477).
+
+```
+oculta de los listados de la web, la búsqueda global y el catálogo de la app
+solo lectura para todos, superadmin incluido
+archivan y desarchivan admin y superadmin activos de su organización
+```
+
+### Quién puede escribir
+
+El server decide con `plantacion_escribible(id)`, que usan las policies de
+escritura y los RPC de sync:
+
+```
+archivada   → nadie
+finalizada  → solo superadmin
+activa      → los permisos normales de cada tabla
+```
+
+Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
+(archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
+cuando la plantación vuelve a ser escribible.
+
+Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
+responde `42501` sin motivo. La app lo traduce con el estado local de la
+plantación; si está activa, queda como `PERMISSION`.
+
+### Eliminada
+
+El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,
+especies y técnicos asignados, más las fotos de Storage. Solo se hace por el RPC
+`eliminar_plantacion`, vía la edge function `admin-plantaciones`.
+
+"Datos" = al menos un grupo o un árbol. Parcelas, especies y técnicos
+asignados son configuración y no cuentan.
+
+```
+sin datos  → admin o superadmin activo de su organización, confirmación simple
+con datos  → solo superadmin, solo si ya está archivada, escribiendo el nombre
+```
+
+Queda registro en `plantaciones_eliminadas` (quién, cuándo, conteos y si las
+fotos ya se borraron). La app lo consulta con `estado_remoto_plantaciones` para
+distinguir "eliminada" de "sin acceso": la plantación queda en el celular en
+solo lectura, marcada "Eliminada en el servidor", y lo pendiente ya no se puede
+subir; el usuario decide cuándo borrarla del dispositivo.
 
 ### Relaciones
 

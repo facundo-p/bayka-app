@@ -10,6 +10,7 @@ function plantacion(parcial: Partial<PlantacionConStats> & { id: string }): Plan
     gpsCaptureFrequency: 10,
     gpsCaptureRequired: true,
     photoCaptureAllTrees: false,
+    archivadaEn: null,
     createdAt: '2026-01-01T00:00:00Z',
     descripcion: null,
     fechaInicio: null,
@@ -98,4 +99,14 @@ test('mapea al formato de ResultadoBusqueda esperado por la paleta', () => {
     meta: 'Otoño 2026',
     to: '/plantaciones/p1',
   });
+});
+
+test('nunca sugiere una plantación archivada, aunque sea la de más árboles', () => {
+  const archivada = plantacion({
+    id: 'archivada',
+    arboles: 999,
+    archivadaEn: '2026-09-01T00:00:00Z',
+  });
+  const activa = plantacion({ id: 'activa', arboles: 1 });
+  expect(sugerencias([archivada, activa]).map((resultado) => resultado.id)).toEqual(['activa']);
 });

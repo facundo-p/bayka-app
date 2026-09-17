@@ -43,3 +43,10 @@
   justify-content: flex-end;
   gap: var(--space-xl);
 }
+
+/* Texto explicativo de un modal de confirmación. */
+.info {
+  margin: 0;
+  font-size: var(--text-base);
+  color: var(--color-text-secondary);
+}

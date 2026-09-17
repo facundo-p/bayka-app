@@ -1,6 +1,5 @@
 /** Piezas que repiten el panel y los modales de usuarios. */
-import type { ReactNode } from 'react';
-import { Button, Input } from '../../components';
+import { Input } from '../../components';
 import { ADVERTENCIA_SUPERADMIN } from './presentacion';
 import type { CamposUsuario } from './useValoresUsuario';
 import styles from './ModalUsuarios.module.css';
@@ -28,44 +27,11 @@ export function CamposContacto({ campos, emailRequerido = false }: CamposContact
   );
 }
 
-interface ErrorEnvioProps {
-  mensaje: string | null;
-  className?: string;
-}
-
-/** El error del último envío; sin error no ocupa lugar. */
-export function ErrorEnvio({ mensaje, className = styles.errorEnvio }: ErrorEnvioProps) {
-  if (!mensaje) return null;
-  return (
-    <p className={className} role="alert">
-      {mensaje}
-    </p>
-  );
-}
-
 /** Aviso al elegir superadmin, el rol con acceso total. */
 export function AvisoSuperadmin({ className = styles.advertencia }: { className?: string }) {
   return (
     <p className={className} role="status">
       {ADVERTENCIA_SUPERADMIN}
     </p>
-  );
-}
-
-interface AccionesModalProps {
-  onCancelar: () => void;
-  /** La acción principal, a la derecha de Cancelar. */
-  children: ReactNode;
-}
-
-/** Pie de los modales: Cancelar y la acción principal. */
-export function AccionesModal({ onCancelar, children }: AccionesModalProps) {
-  return (
-    <div className={styles.acciones}>
-      <Button type="button" variant="secondary" onClick={onCancelar}>
-        Cancelar
-      </Button>
-      {children}
-    </div>
   );
 }
