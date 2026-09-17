@@ -1,8 +1,9 @@
+import { ConfirmarModal } from '../../components/ConfirmarModal';
+import { useInvalidarUsuarios } from '../../hooks/useInvalidarUsuarios';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import { ACCION_USUARIO, type AccionUsuario } from './acciones';
 import { CambiarPasswordModal } from './CambiarPasswordModal';
-import { ConfirmarModal } from './ConfirmarModal';
 import { CONFIRMACION_POR_ACCION } from './confirmaciones';
 
 interface ModalDeAccionProps {
@@ -13,6 +14,7 @@ interface ModalDeAccionProps {
 
 /** El modal de una acción rápida: el formulario de contraseña o la confirmación. */
 export function ModalDeAccion({ usuario, accion, onClose }: ModalDeAccionProps) {
+  const invalidarUsuarios = useInvalidarUsuarios();
   if (accion === ACCION_USUARIO.cambiarPassword) {
     return <CambiarPasswordModal usuario={usuario} onClose={onClose} />;
   }
@@ -25,6 +27,7 @@ export function ModalDeAccion({ usuario, accion, onClose }: ModalDeAccionProps) 
       confirmarEtiqueta={confirmacion.etiqueta}
       destructiva={confirmacion.destructiva}
       accion={() => confirmacion.servicio(usuario)}
+      alCompletar={invalidarUsuarios}
       textoExito={confirmacion.textoExito}
       onClose={onClose}
     />

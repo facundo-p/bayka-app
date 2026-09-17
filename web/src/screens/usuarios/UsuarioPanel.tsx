@@ -27,7 +27,8 @@ import {
   type ItemMenu,
 } from './acciones';
 import { Avatar } from './celdas';
-import { AvisoSuperadmin, CamposContacto, ErrorEnvio } from './formulario';
+import { ErrorEnvio } from '../../components/FormularioModal';
+import { AvisoSuperadmin, CamposContacto } from './formulario';
 import { OPCIONES_ROL } from './presentacion';
 import { useEdicionUsuario, type EdicionUsuario } from './useEdicionUsuario';
 import { TAMANO_ICONO } from '../../theme/iconos';

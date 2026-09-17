@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Mock } from 'vitest';
+import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import type { UsuarioConAsignaciones } from '../../../queries/usuarioQueries';
 import {
   cambiarPassword,
@@ -155,4 +156,17 @@ test('reenviar invitación nombra el email al que llega el mensaje', () => {
   expect(
     screen.getByText('Le va a llegar un email a x@bayka.org para definir su contraseña.'),
   ).toBeInTheDocument();
+});
+
+test('confirmada: refresca la lista de usuarios y los perfiles', async () => {
+  vi.mocked(desactivarUsuario).mockResolvedValue(undefined);
+  const invalidaciones = espiarInvalidaciones();
+  const usuario = userEvent.setup();
+  const onClose = renderModal('desactivar');
+
+  await usuario.click(screen.getByRole('button', { name: 'Desactivar' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['usuarios'] });
+  expect(invalidaciones).toHaveBeenCalledWith({ queryKey: ['perfiles'] });
 });
