@@ -1,6 +1,7 @@
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
+import { esActiva, esFinalizada } from '../constants/estados';
 import type { ServerPlantation } from '../queries/catalogQueries';
 import { catalogPlantationCardStyles as styles } from './CatalogPlantationCard.styles';
 
@@ -13,9 +14,9 @@ interface Props {
 
 export default function CatalogPlantationCard({ item, isDownloaded, isSelected, onToggle }: Props) {
   const stateColor =
-    item.estado === 'activa'
+    esActiva(item)
       ? colors.stateActiva
-      : item.estado === 'finalizada'
+      : esFinalizada(item)
         ? colors.stateFinalizada
         : colors.stateSincronizada;
 

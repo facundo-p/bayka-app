@@ -11,17 +11,66 @@ export interface RawPhoto {
   height: number;
 }
 
+function carpetaDeFotos(): Directory {
+  return new Directory(Paths.document, 'photos');
+}
+
 // CRITICAL: always copy from the temp picker URI to permanent Paths.document —
 // picker temp URIs may be gone after app restart or OS memory pressure.
 function saveToPhotos(srcUri: string): string {
   const filename = `photo_${Date.now()}.jpg`;
-  const dir = new Directory(Paths.document, 'photos');
+  const dir = carpetaDeFotos();
   if (!dir.exists) {
     dir.create({ intermediates: true });
   }
   const dest = new File(dir, filename);
   new File(srcUri).copy(dest);
   return dest.uri;
+}
+
+/**
+ * La app guarda las fotos sueltas en su carpeta, sin subcarpetas. Chequear solo el
+ * prefijo deja pasar `photos/../otra-cosa` (#527); se decodifica antes porque
+ * `%2e%2e` también sube de carpeta.
+ */
+function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
+  if (!uri.startsWith(carpeta)) return false;
+  let nombre: string;
+  try {
+    nombre = decodeURIComponent(uri.slice(carpeta.length));
+  } catch {
+    return false;
+  }
+  return nombre !== '' && nombre !== '.' && nombre !== '..' && !/[\\/]/.test(nombre);
+}
+
+/**
+ * Borra archivos de fotos del device. Best-effort: un archivo que no se puede borrar
+ * se loguea y no corta el resto.
+ *
+ * Solo toca la carpeta propia de fotos: un path de Storage, una URL o un
+ * `content://` de la galería no son archivos de la app.
+ */
+export function borrarFotosLocales(uris: readonly string[]): void {
+  let carpeta: string;
+  try {
+    // Con barra final: el uri del directorio puede venir con o sin ella.
+    carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
+  } catch (e) {
+    // Corre después del commit: una excepción acá haría fallar una operación de
+    // datos que ya se hizo.
+    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
+    return;
+  }
+  for (const uri of uris) {
+    if (!esArchivoSueltoDe(carpeta, uri)) continue;
+    try {
+      const archivo = new File(uri);
+      if (archivo.exists) archivo.delete();
+    } catch (e) {
+      console.error('[Photo] no se pudo borrar', uri, e);
+    }
+  }
 }
 
 /**
