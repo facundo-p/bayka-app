@@ -27,9 +27,9 @@ jest.mock('../../src/queries/adminQueries', () => ({
 
 const RLS = { code: '42501', message: 'new row violates row-level security policy for table "parcelas"' };
 const DUPLICADO = { code: '23505', details: 'Key (plantation_id, codigo)=(p1, LP1) already exists.', message: 'dup' };
-const ACTIVA = { estado: 'activa', archivadaEn: null };
-const FINALIZADA = { estado: 'finalizada', archivadaEn: null };
-const ARCHIVADA = { estado: 'activa', archivadaEn: '2026-09-17T12:00:00+00:00' };
+const ACTIVA = { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null };
+const FINALIZADA = { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null };
+const ARCHIVADA = { estado: 'activa', archivadaEn: '2026-09-17T12:00:00+00:00', eliminadaEnServidorEn: null };
 
 function servidorResponde(error: unknown) {
   (supabase.from as jest.Mock).mockReturnValue({
@@ -46,7 +46,7 @@ async function subirConPlantacion(plantacion: unknown, error: unknown) {
 
 describe('motivoDeBloqueo', () => {
   test('archivada gana sobre finalizada, como en el server', () => {
-    expect(motivoDeBloqueo({ estado: 'finalizada', archivadaEn: '2026-09-17T12:00:00+00:00' }))
+    expect(motivoDeBloqueo({ ...ARCHIVADA, estado: 'finalizada' }))
       .toBe('PLANTACION_ARCHIVADA');
   });
 

@@ -14,8 +14,13 @@ import {
   SYNC_STATE,
   SyncState,
   esSinAcceso,
+  esEliminada,
+  esPullSinDatos,
   faseDeProgresoGlobal,
+  plantacionesOmitidas,
+  SIN_OMITIDAS,
 } from '../services/SyncService';
+import type { PlantacionesOmitidas } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
 import { cancelarCorrida, esCancelacion, iniciarCorrida, terminarCorrida } from '../services/sync/cancelacion';
 import { esTimeout } from '../supabase/fetchConTimeout';
@@ -31,6 +36,8 @@ export function useSync(plantacionId?: string) {
   const [plantationResults, setPlantationResults] = useState<SyncPlantationResult[]>([]);
   const [pullSuccess, setPullSuccess] = useState<boolean | null>(null);
   const [sinAcceso, setSinAcceso] = useState(false);
+  const [eliminada, setEliminada] = useState(false);
+  const [omitidas, setOmitidas] = useState<PlantacionesOmitidas>(SIN_OMITIDAS);
   const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
   const [phaseProgress, setPhaseProgress] = useState<DownloadPhaseProgress | null>(null);
@@ -56,6 +63,8 @@ export function useSync(plantacionId?: string) {
     setPlantationResults([]);
     setPullSuccess(null);
     setSinAcceso(false);
+    setEliminada(false);
+    setOmitidas(SIN_OMITIDAS);
     setAuthExpired(false);
     setPhotoProgress(null);
     setPhaseProgress(null);
@@ -123,8 +132,9 @@ export function useSync(plantacionId?: string) {
         onParcelaResults: setParcelaResults,
         onPlantationResults: setPlantationResults,
         onPullResult: (pull) => {
-          accesoRevocado = esSinAcceso(pull);
-          setSinAcceso(accesoRevocado);
+          accesoRevocado = esPullSinDatos(pull);
+          setSinAcceso(esSinAcceso(pull));
+          setEliminada(esEliminada(pull));
         },
         onPullError: (e) => {
           falloElPull = true;
@@ -134,7 +144,7 @@ export function useSync(plantacionId?: string) {
       setResults(res);
       setPullSuccess(!accesoRevocado && !falloElPull);
 
-      // Sin acceso no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
+      // Sin acceso o eliminada no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
       if (incluirFotos && !accesoRevocado) {
         // Limpiar entre fases: una fase sin fotos no emite nada (#447), así que sin
         // esto el modal sigue mostrando el contador —y ahora la velocidad— de la
@@ -206,6 +216,7 @@ export function useSync(plantacionId?: string) {
       const flatResults = allResults.flatMap(r => r.results);
       setResults(flatResults);
       setParcelaResults(allResults.flatMap(r => r.parcelas ?? []));
+      setOmitidas(plantacionesOmitidas(allResults));
       // Una corrida donde todas las plantaciones fallaron llegaba acá con listas
       // vacías y se reportaba como exitosa.
       const fallidas = allResults.filter((r) => r.fallo);
@@ -248,6 +259,10 @@ export function useSync(plantacionId?: string) {
     startGlobalSync,
     pullSuccess,
     sinAcceso,
+    /** La plantación sincronizada fue eliminada en el server (#478). */
+    eliminada,
+    /** Sync global: plantaciones salteadas por sin acceso o eliminadas (#478). */
+    omitidas,
     reset,
     hasFailures,
     successCount,

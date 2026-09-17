@@ -5,6 +5,7 @@
 // SYNC_STATE llega undefined al hook.
 jest.mock('../../src/services/SyncService', () => ({
   ...jest.requireActual('../../src/services/sync/types'),
+  ...jest.requireActual('../../src/services/sync/plantacionesOmitidas'),
   syncPlantation: jest.fn(),
   syncAllPlantations: jest.fn(),
   uploadPendingPhotos: jest.fn().mockResolvedValue({ uploaded: 0, failed: 0 }),
@@ -419,6 +420,36 @@ describe('useSync — un pull fallido no se reporta como éxito (#451)', () => {
     await act(async () => { await result.current.startGlobalSync(false); });
 
     expect(result.current.pullSuccess).toBe(false);
+  });
+
+  it('plantación eliminada en el server: lo informa y no toca fotos (#478)', async () => {
+    const { uploadPendingPhotos, downloadPhotosForPlantation } = require('../../src/services/SyncService');
+    (syncPlantation as jest.Mock).mockImplementation(async (_id: string, cb: any) => {
+      cb.onPullResult?.({ estado: 'eliminada' });
+      return [];
+    });
+    const { result } = renderHook(() => useSync('plant-1'));
+
+    await act(async () => { await result.current.startBidirectionalSync(true); });
+
+    expect(result.current.eliminada).toBe(true);
+    expect(result.current.sinAcceso).toBe(false);
+    expect(result.current.pullSuccess).toBe(false);
+    expect(uploadPendingPhotos).not.toHaveBeenCalled();
+    expect(downloadPhotosForPlantation).not.toHaveBeenCalled();
+  });
+
+  it('el sync global expone las plantaciones omitidas por nombre (#478)', async () => {
+    (syncAllPlantations as jest.Mock).mockResolvedValue([
+      { plantationId: 'p1', plantationName: 'Norte', results: [], parcelas: [], pull: { estado: 'eliminada' } },
+      { plantationId: 'p2', plantationName: 'Sur', results: [], parcelas: [], pull: { estado: 'sin-acceso' } },
+      { plantationId: 'p3', plantationName: 'Este', results: [], parcelas: [], pull: { estado: 'ok' } },
+    ]);
+    const { result } = renderHook(() => useSync());
+
+    await act(async () => { await result.current.startGlobalSync(false); });
+
+    expect(result.current.omitidas).toEqual({ sinAcceso: ['Sur'], eliminadas: ['Norte'] });
   });
 
   it('el sync global sin fallas sigue reportando éxito', async () => {
