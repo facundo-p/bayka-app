@@ -1,6 +1,13 @@
 /** Edge function admin-users (operaciones con service_role); autorización y reglas de negocio en nucleo.ts, acá se adapta HTTP e inyectan los clientes reales. */
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { MENSAJES, ROL, manejarAdminUsers, type Deps, type PerfilDb } from './nucleo.ts';
+import {
+  MENSAJES,
+  ROL,
+  manejarAdminUsers,
+  type Deps,
+  type PerfilDb,
+  type RegistrosUsuario,
+} from './nucleo.ts';
 
 const CABECERAS_CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +18,8 @@ const CABECERAS_CORS = {
 /** ban_duration de GoTrue: 'none' quita el ban; una duración enorme lo hace permanente pero reversible. */
 const BAN_PERMANENTE = '87600h'; // ≈ 10 años
 const SIN_BAN = 'none';
+/** Para un eliminado: nadie lo levanta, así que la duración solo tiene que ser inalcanzable. */
+const BAN_PARA_SIEMPRE = '876000h'; // ≈ 100 años
 
 // Fail-fast: sin WEB_URL los links de invitación/recuperación apuntarían al Site URL default (flujo roto en silencio).
 const WEB_URL = Deno.env.get('WEB_URL');
@@ -35,11 +44,30 @@ const admin = createClient(
 async function buscarPerfil(userId: string): Promise<PerfilDb | null> {
   const { data, error } = await admin
     .from('profiles')
-    .select('id, nombre, rol, activo')
+    .select('id, nombre, rol, activo, email, eliminado_en')
     .eq('id', userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data;
+}
+
+/** Service_role no pasa por RLS: cuenta todas las filas, de cualquier plantación. */
+async function contarFilas(tabla: string, columna: string, userId: string): Promise<number> {
+  const { count, error } = await admin
+    .from(tabla)
+    .select('id', { count: 'exact', head: true })
+    .eq(columna, userId);
+  if (error) throw new Error(error.message);
+  return count ?? 0;
+}
+
+async function contarRegistros(userId: string): Promise<RegistrosUsuario> {
+  const [arboles, grupos, plantaciones] = await Promise.all([
+    contarFilas('trees', 'usuario_registro', userId),
+    contarFilas('groups', 'usuario_creador', userId),
+    contarFilas('plantations', 'creado_por', userId),
+  ]);
+  return { arboles, grupos, plantaciones };
 }
 
 const deps: Deps = {
@@ -92,6 +120,28 @@ const deps: Deps = {
   marcarActivo: async (userId, activo) => {
     const { error } = await admin.from('profiles').update({ activo }).eq('id', userId);
     return conLog('marcarActivo', { error: error?.message ?? null });
+  },
+  banearParaSiempre: async (userId) => {
+    const { error } = await admin.auth.admin.updateUserById(userId, {
+      ban_duration: BAN_PARA_SIEMPRE,
+    });
+    return conLog('banearParaSiempre', { error: error?.message ?? null });
+  },
+  marcarEliminado: async (userId) => {
+    const { error } = await admin
+      .from('profiles')
+      .update({ eliminado_en: new Date().toISOString() })
+      .eq('id', userId);
+    return conLog('marcarEliminado', { error: error?.message ?? null });
+  },
+  contarRegistros,
+  borrarMembresias: async (userId) => {
+    const { error } = await admin.from('plantation_users').delete().eq('user_id', userId);
+    return conLog('borrarMembresias', { error: error?.message ?? null });
+  },
+  borrarUsuario: async (userId) => {
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    return conLog('borrarUsuario', { error: error?.message ?? null });
   },
 };
 

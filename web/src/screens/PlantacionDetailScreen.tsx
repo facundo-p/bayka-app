@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Link, Outlet } from 'react-router';
 import { ChevronDown, Download, MoreHorizontal, Pencil, Plus } from 'lucide-react';
 import {
+  Aviso,
+  Badge,
   BotonIcono,
   Button,
   CabeceraSeccion,
@@ -21,14 +23,20 @@ import { useIdPlantacion } from '../hooks/useIdPlantacion';
 import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
 import { RUTA, rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
-import type { Plantacion } from '../queries/plantationQueries';
+import { esArchivada, type Plantacion } from '../queries/plantationQueries';
+import { ArchivadoModal } from './plantaciones/ArchivadoModal';
+import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
-import { useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
+import { MODAL_ADMINISTRACION, useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
 import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './PlantacionDetailScreen.module.css';
 
 /** La planilla se arma con los IDs definitivos: sin generarlos no hay qué exportar. */
 const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar la planilla';
+
+const AVISO_ARCHIVADA =
+  'Plantación archivada: no aparece en los listados ni en la app, y queda en solo lectura. ' +
+  'Los celulares con datos sin subir los van a poder subir cuando se desarchive.';
 
 function tabsDePlantacion(id: string): TabItem[] {
   return [
@@ -98,13 +106,14 @@ function MenuExportar(props: AccionesProps) {
   );
 }
 
-function BotonEditar({ onEditar }: { onEditar: () => void }) {
+function BotonEditar({ onEditar, motivo }: { onEditar: () => void; motivo: string | null }) {
   return (
     <BotonIcono
       variante="contornoTransparente"
       tamano="sm"
       etiqueta="Editar"
-      title="Editar"
+      title={motivo ?? 'Editar'}
+      disabled={Boolean(motivo)}
       onClick={onEditar}
     >
       <Pencil size={TAMANO_ICONO.md} aria-hidden />
@@ -112,30 +121,71 @@ function BotonEditar({ onEditar }: { onEditar: () => void }) {
   );
 }
 
+function itemsAdministracion({ administracion }: AccionesProps): ItemDesplegable[] {
+  return administracion.map(({ onElegir, ...item }) => ({ ...item, onSeleccionar: onElegir }));
+}
+
+interface MenuMasAccionesProps {
+  etiqueta: string;
+  items: ItemDesplegable[];
+  tamano: 'sm' | 'md';
+}
+
+/** El «⋯»: en la barra angosta lleva todas las acciones; en la ancha, las secundarias. */
+function MenuMasAcciones({ etiqueta, items, tamano }: MenuMasAccionesProps) {
+  return (
+    <MenuDesplegable
+      etiqueta={etiqueta}
+      items={items}
+      disparador={({ 'aria-label': nombre, ...propsDisparador }) => (
+        <BotonIcono
+          variante="contornoTransparente"
+          tamano={tamano}
+          etiqueta={nombre}
+          {...propsDisparador}
+        >
+          <MoreHorizontal size={TAMANO_ICONO.lg} aria-hidden />
+        </BotonIcono>
+      )}
+    />
+  );
+}
+
 function AccionesDesplegadas(props: AccionesProps) {
+  const secundarias = itemsAdministracion(props);
   return (
     <>
-      <BotonEditar onEditar={props.onEditar} />
+      <BotonEditar onEditar={props.onEditar} motivo={props.motivoEdicion} />
       <MenuExportar {...props} />
       {props.idsPendientes && (
-        <Button variant="primary" size="sm" onClick={props.onGenerarIds}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={props.onGenerarIds}
+          disabled={Boolean(props.motivoEdicion)}
+          title={props.motivoEdicion ?? undefined}
+        >
           <Plus size={TAMANO_ICONO.md} aria-hidden />
           Generar IDs
         </Button>
+      )}
+      {secundarias.length > 0 && (
+        <MenuMasAcciones etiqueta="Más acciones" items={secundarias} tamano="sm" />
       )}
     </>
   );
 }
 
 function itemsPlegados(props: AccionesProps): ItemDesplegable[] {
+  const { motivoEdicion: motivo, onEditar, onGenerarIds } = props;
   const items: ItemDesplegable[] = [
-    { clave: 'editar', etiqueta: 'Editar plantación', onSeleccionar: props.onEditar },
+    { clave: 'editar', etiqueta: 'Editar plantación', motivo, onSeleccionar: onEditar },
     ...itemsExportar(props),
   ];
   if (props.idsPendientes) {
-    items.push({ clave: 'ids', etiqueta: 'Generar IDs', onSeleccionar: props.onGenerarIds });
+    items.push({ clave: 'ids', etiqueta: 'Generar IDs', motivo, onSeleccionar: onGenerarIds });
   }
-  return items;
+  return [...items, ...itemsAdministracion(props)];
 }
 
 /** Barra angosta: las mismas acciones en un solo «⋯». Desplegadas se comen
@@ -144,21 +194,33 @@ function itemsPlegados(props: AccionesProps): ItemDesplegable[] {
  *  completo. */
 function AccionesPlegadas(props: AccionesProps) {
   return (
-    <MenuDesplegable
+    <MenuMasAcciones
       etiqueta="Acciones de la plantación"
       items={itemsPlegados(props)}
-      disparador={({ 'aria-label': etiqueta, ...propsDisparador }) => (
-        <BotonIcono
-          variante="contornoTransparente"
-          tamano="md"
-          etiqueta={etiqueta}
-          {...propsDisparador}
-        >
-          <MoreHorizontal size={TAMANO_ICONO.lg} aria-hidden />
-        </BotonIcono>
-      )}
+      tamano="md"
     />
   );
+}
+
+interface ModalAdministracionDetalleProps {
+  plantacion: Plantacion;
+  detalle: ReturnType<typeof useAccionesDetalle>;
+}
+
+function ModalAdministracionDetalle({ plantacion, detalle }: ModalAdministracionDetalleProps) {
+  if (detalle.modalAdministracion === MODAL_ADMINISTRACION.archivado) {
+    return <ArchivadoModal plantacion={plantacion} onClose={detalle.cerrarModal} />;
+  }
+  if (detalle.modalAdministracion === MODAL_ADMINISTRACION.eliminacion) {
+    return (
+      <EliminarPlantacionModal
+        plantacion={plantacion}
+        onClose={detalle.cerrarModal}
+        onArchivar={detalle.abrirArchivado}
+      />
+    );
+  }
+  return null;
 }
 
 interface AccionesDetalleProps {
@@ -184,6 +246,7 @@ function AccionesDetalle({ plantacion, onEditar }: AccionesDetalleProps) {
       {detalle.generandoIds && (
         <GenerarIdsModal plantationId={plantacion.id} onClose={detalle.cerrarGenerarIds} />
       )}
+      <ModalAdministracionDetalle plantacion={plantacion} detalle={detalle} />
     </div>
   );
 }
@@ -198,6 +261,7 @@ function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
       meta={lineaMeta(plantacion)}
     >
       <EstadoPlantacionBadge estado={plantacion.estado} />
+      {esArchivada(plantacion) && <Badge variant="aviso">Archivada</Badge>}
     </CabeceraSeccion>
   );
 }
@@ -214,6 +278,11 @@ function DetallePlantacion({ plantacion }: { plantacion: Plantacion }) {
         right={<AccionesDetalle plantacion={plantacion} onEditar={() => setEditando(true)} />}
       />
       <div className={styles.contenido}>
+        {esArchivada(plantacion) && (
+          <div className={styles.avisoArchivada}>
+            <Aviso>{AVISO_ARCHIVADA}</Aviso>
+          </div>
+        )}
         <Outlet />
       </div>
       {editando && (

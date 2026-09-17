@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Ban, Key, Mail } from 'lucide-react';
+import { Ban, Key, Mail, Trash2 } from 'lucide-react';
 import {
   Button,
   PanelBloque,
@@ -18,7 +18,7 @@ import {
   type PlantacionDeUsuario,
   type UsuarioConAsignaciones,
 } from '../../queries/usuarioQueries';
-import { ROL, type Rol } from '../../repositories/profileRepository';
+import { esEliminado, ROL, type Rol } from '../../repositories/profileRepository';
 import {
   ACCION_USUARIO,
   itemsDeMenu,
@@ -27,7 +27,8 @@ import {
   type ItemMenu,
 } from './acciones';
 import { Avatar } from './celdas';
-import { AvisoSuperadmin, CamposContacto, ErrorEnvio } from './formulario';
+import { ErrorEnvio } from '../../components/FormularioModal';
+import { AvisoSuperadmin, CamposContacto } from './formulario';
 import { OPCIONES_ROL } from './presentacion';
 import { useEdicionUsuario, type EdicionUsuario } from './useEdicionUsuario';
 import { TAMANO_ICONO } from '../../theme/iconos';
@@ -37,6 +38,8 @@ const AYUDA_DESACTIVAR =
   'Al desactivar pierde el acceso; sus datos de campo se conservan y se puede reactivar.';
 const SIN_ASIGNACIONES = 'Sin plantaciones asignadas';
 const ACCESO_TOTAL = 'Acceso a todas las plantaciones';
+const AVISO_ELIMINADO =
+  'Usuario eliminado: su nombre queda en el historial y ya no admite cambios.';
 /** El submit vive en el pie, fuera del form: los une el atributo form. */
 const ID_FORM_USUARIO = 'form-usuario';
 
@@ -46,6 +49,7 @@ const ICONO_ACCION: Record<AccionUsuario, typeof Key> = {
   [ACCION_USUARIO.reenviarInvitacion]: Mail,
   [ACCION_USUARIO.desactivar]: Ban,
   [ACCION_USUARIO.reactivar]: Ban,
+  [ACCION_USUARIO.eliminar]: Trash2,
 };
 
 /** Superadmin y admin son miembros automáticos de todas las plantaciones (#67). */
@@ -216,11 +220,22 @@ interface UsuarioPanelProps {
   onCerrar: () => void;
 }
 
-/**
- * Panel lateral de una persona: edita nombre, email y rol (el trigger del
- * server es el guard final del rol) y ofrece las acciones rápidas.
- */
-export function UsuarioPanel(props: UsuarioPanelProps) {
+/** Un eliminado no se edita: solo su identidad y por qué. */
+function PanelEliminado({ usuario, onCerrar }: Pick<UsuarioPanelProps, 'usuario' | 'onCerrar'>) {
+  return (
+    <PanelLateral
+      etiqueta={`Detalle de ${nombreVisible(usuario.nombre, usuario.id)}`}
+      cabecera={<CabeceraUsuario usuario={usuario} />}
+      onCerrar={onCerrar}
+    >
+      <p className={styles.textoBloque}>{AVISO_ELIMINADO}</p>
+    </PanelLateral>
+  );
+}
+
+/** Edita nombre, email y rol (el trigger del server es el guard final del rol) y
+ *  ofrece las acciones rápidas. */
+function PanelEditable(props: UsuarioPanelProps) {
   const { usuario, onCerrar } = props;
   const motivoRol = motivoCambiarRol(usuario, props.idActual, props.superadminsActivos);
   const edicion = useEdicionUsuario(usuario, motivoRol === null, onCerrar);
@@ -236,4 +251,10 @@ export function UsuarioPanel(props: UsuarioPanelProps) {
       <BloqueAcciones {...props} />
     </PanelLateral>
   );
+}
+
+/** Panel lateral de una persona: editable, o de solo lectura si fue eliminada. */
+export function UsuarioPanel(props: UsuarioPanelProps) {
+  if (esEliminado(props.usuario)) return <PanelEliminado {...props} />;
+  return <PanelEditable {...props} />;
 }

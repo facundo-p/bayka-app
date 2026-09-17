@@ -2,14 +2,15 @@
  * Búsqueda global multi-entidad para la paleta de comandos (⌘K): plantaciones/especies/
  * usuarios filtran en cliente (queries cacheables); parcelas/grupos/árboles van server-side
  * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
- * árboles se buscan por `sub_id`, no por ID global.
+ * árboles se buscan por `sub_id`, no por ID global. Sin scope se excluyen las plantaciones
+ * archivadas (#477); con scope se busca dentro de esa plantación aunque esté archivada.
  */
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
 import { PARAM_URL, RUTA, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
 import { supabase } from '../lib/supabase';
 import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
-import { listarPlantaciones } from './plantationQueries';
+import { listarPlantaciones, sinArchivadas } from './plantationQueries';
 import { listarUsuariosConAsignaciones } from './usuarioQueries';
 
 export type TipoResultado = 'plantacion' | 'parcela' | 'grupo' | 'arbol' | 'especie' | 'usuario';
@@ -25,6 +26,9 @@ export type ResultadoBusqueda = {
 
 export type ScopeBusqueda = { plantationId: string };
 
+/** Columna de archivado de la plantación embebida, por ruta de embed. */
+const ARCHIVADA_EN = 'archivada_en';
+
 /** Topes de resultados: por grupo server-side (parcelas/grupos/árboles) y por lista cacheada en cliente. */
 const TOPE_POR_GRUPO = 8;
 const TOPE_LISTA = 6;
@@ -37,7 +41,7 @@ function coincide(texto: string, ...campos: Array<string | null | undefined>): b
 }
 
 async function buscarPlantaciones(texto: string): Promise<ResultadoBusqueda[]> {
-  const plantaciones = await listarPlantaciones();
+  const plantaciones = sinArchivadas(await listarPlantaciones());
   return plantaciones
     .filter((plantacion) => coincide(texto, plantacion.lugar, plantacion.periodo))
     .slice(0, TOPE_LISTA)
@@ -90,11 +94,12 @@ type FilaParcelaBusqueda = {
 async function buscarParcelas(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
     .from('parcelas')
-    .select('id, nombre, codigo, plantation_id, plantations(lugar)')
+    .select(`id, nombre, codigo, plantation_id, plantations!inner(lugar, ${ARCHIVADA_EN})`)
     .is('deleted_at', null)
     .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('plantation_id', scope.plantationId);
+  else consulta = consulta.is(`plantations.${ARCHIVADA_EN}`, null);
   const { data, error } = await consulta;
   if (error) return [];
   return ((data ?? []) as unknown as FilaParcelaBusqueda[]).map((fila) => ({
@@ -117,10 +122,13 @@ type FilaGrupoBusqueda = {
 async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
     .from('groups')
-    .select('id, nombre, codigo, plantation_id, parcelas(codigo)')
+    .select(
+      `id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(${ARCHIVADA_EN})`,
+    )
     .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('plantation_id', scope.plantationId);
+  else consulta = consulta.is(`plantations.${ARCHIVADA_EN}`, null);
   const { data, error } = await consulta;
   if (error) return [];
   return ((data ?? []) as unknown as FilaGrupoBusqueda[]).map((fila) => ({
@@ -147,10 +155,13 @@ function busquedaDeSubId(subId: string): URLSearchParams {
 async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
     .from('trees')
-    .select('id, sub_id, species(nombre), groups!inner(plantation_id, codigo)')
+    .select(
+      `id, sub_id, species(nombre), groups!inner(plantation_id, codigo, plantations!inner(${ARCHIVADA_EN}))`,
+    )
     .ilike('sub_id', patronContiene(texto))
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('groups.plantation_id', scope.plantationId);
+  else consulta = consulta.is(`groups.plantations.${ARCHIVADA_EN}`, null);
   const { data, error } = await consulta;
   if (error) return [];
   return ((data ?? []) as unknown as FilaArbolBusqueda[])

@@ -2,34 +2,26 @@
  * Cliente de la edge function admin-users (requiere service_role: invitación, ban, contraseña,
  * email); los mensajes de error en español vienen del backend, con fallback genérico.
  */
-import { supabase } from '../lib/supabase';
 import type { Rol } from '../repositories/profileRepository';
-import { MENSAJES, type CuerpoAdminUsers } from '../../../supabase/functions/admin-users/nucleo';
+import {
+  MENSAJES,
+  type CuerpoAdminUsers,
+  type PreviewEliminacion,
+  type Respuesta,
+} from '../../../supabase/functions/admin-users/nucleo';
+import { invocarEdgeFunction } from './edgeFunction';
 
 /** Solo para cuando no se pudo leer ningún mensaje del backend (red, respuesta no-JSON). */
 export const MENSAJE_ADMIN_USERS_GENERICO = MENSAJES.errorGenerico;
 
-type RespuestaAdminUsers = { ok: boolean; error?: string };
+type RespuestaAdminUsers = Respuesta['body'];
 
-/** El SDK adjunta la Response del server en error.context: de ahí sale el mensaje cuando el status es de error. */
-async function mensajeDelError(error: unknown): Promise<string | null> {
-  const contexto = (error as { context?: Response } | null)?.context;
-  if (!contexto || typeof contexto.json !== 'function') return null;
-  try {
-    const cuerpo = (await contexto.json()) as RespuestaAdminUsers | null;
-    return cuerpo?.error ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function invocar(cuerpo: CuerpoAdminUsers): Promise<void> {
-  const { data, error } = await supabase.functions.invoke<RespuestaAdminUsers>('admin-users', {
-    body: cuerpo,
-  });
-  if (!error && data?.ok) return;
-  const mensaje = data?.error ?? (await mensajeDelError(error));
-  throw new Error(mensaje ?? MENSAJE_ADMIN_USERS_GENERICO);
+async function invocar(cuerpo: CuerpoAdminUsers): Promise<RespuestaAdminUsers> {
+  return invocarEdgeFunction<RespuestaAdminUsers>(
+    'admin-users',
+    cuerpo,
+    MENSAJE_ADMIN_USERS_GENERICO,
+  );
 }
 
 export async function crearUsuario(datos: {
@@ -58,4 +50,15 @@ export async function cambiarPassword(userId: string, password: string): Promise
 
 export async function cambiarEmail(userId: string, email: string): Promise<void> {
   await invocar({ accion: 'cambiarEmail', userId, email });
+}
+
+/** Cuántos registros tiene a su nombre y, por eso, si se borra por completo o se bloquea. */
+export async function previsualizarEliminacion(userId: string): Promise<PreviewEliminacion> {
+  const { preview } = await invocar({ accion: 'previsualizarEliminacion', userId });
+  if (!preview) throw new Error(MENSAJE_ADMIN_USERS_GENERICO);
+  return preview;
+}
+
+export async function eliminarUsuario(userId: string): Promise<void> {
+  await invocar({ accion: 'eliminar', userId });
 }

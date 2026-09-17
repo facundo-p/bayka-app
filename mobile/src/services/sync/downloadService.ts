@@ -5,7 +5,7 @@ import { relanzarSiEsCancelacion } from './cancelacion';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esSinAcceso } from './types';
+import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esEliminada, esPullSinDatos } from './types';
 import { pullFromServer, webManagedFlags } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './preSteps';
@@ -29,6 +29,7 @@ export type ServerPlantationRow = {
   created_at: string;
   visible_in_app?: boolean | null;
   photo_capture_all_trees?: boolean | null;
+  archivada_en?: string | null;
 };
 
 /** Descarga una plantación: upsertea su fila en SQLite local, luego pullFromServer sincroniza groups/species/users. */
@@ -73,10 +74,12 @@ export async function downloadPlantation(
 
   try {
     const pull = await pullFromServer(serverPlantation.id, onPhase);
-    // Sin acceso no hay datos que bajar: que la descarga se reporte como fallida
+    // Sin acceso o eliminada no hay datos que bajar: que la descarga se reporte como fallida
     // en vez de "listo" con la plantación vacía.
-    if (esSinAcceso(pull)) {
-      throw new Error(`Sin acceso a la plantación ${serverPlantation.id}`);
+    if (esPullSinDatos(pull)) {
+      throw new Error(esEliminada(pull)
+        ? `Plantación ${serverPlantation.id} eliminada en el servidor`
+        : `Sin acceso a la plantación ${serverPlantation.id}`);
     }
   } catch (e) {
     // Primero: cancelar una sync corta todo lo que pase por `fetchAllRows`,

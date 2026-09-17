@@ -1,7 +1,12 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
-import { listarPlantaciones, obtenerTemporadaActivaId } from '../plantationQueries';
+import {
+  esArchivada,
+  listarPlantaciones,
+  obtenerTemporadaActivaId,
+  sinArchivadas,
+} from '../plantationQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -34,6 +39,7 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       gpsCaptureFrequency: 10,
       gpsCaptureRequired: true,
       photoCaptureAllTrees: false,
+      archivadaEn: null,
       createdAt: '2026-06-12T12:00:00Z',
       arboles: 120,
       parcelas: 3,
@@ -131,4 +137,41 @@ test('temporada activa: id de la plantación activa con el árbol más reciente'
 test('temporada activa: null si ninguna activa tiene árboles', async () => {
   estadoMock.resolverConsulta = () => ({ data: [], error: null });
   await expect(obtenerTemporadaActivaId()).resolves.toBeNull();
+});
+
+test('la temporada activa excluye las plantaciones archivadas', async () => {
+  const consultas: ConsultaCapturada[] = [];
+  estadoMock.resolverConsulta = (consulta) => {
+    consultas.push(consulta);
+    return { data: [] };
+  };
+  await obtenerTemporadaActivaId();
+  const trees = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(trees?.filtros).toContainEqual({
+    metodo: 'is',
+    columna: 'groups.plantations.archivada_en',
+    valor: null,
+  });
+});
+
+describe('archivada', () => {
+  test('mapea archivada_en (sin columna, no archivada)', async () => {
+    configurarPlantacionesMock([
+      FILA_MENDOZA,
+      { ...FILA_MENDOZA, id: 'plant-2', archivada_en: '2026-09-01T12:00:00Z' },
+    ]);
+    const [activa, archivada] = await listarPlantaciones();
+    expect(activa.archivadaEn).toBeNull();
+    expect(esArchivada(activa)).toBe(false);
+    expect(archivada.archivadaEn).toBe('2026-09-01T12:00:00Z');
+    expect(esArchivada(archivada)).toBe(true);
+  });
+
+  test('sinArchivadas deja solo las no archivadas', () => {
+    const lista = [
+      { id: 'a', archivadaEn: null },
+      { id: 'b', archivadaEn: '2026-09-01T12:00:00Z' },
+    ];
+    expect(sinArchivadas(lista).map((p) => p.id)).toEqual(['a']);
+  });
 });

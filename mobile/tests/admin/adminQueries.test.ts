@@ -17,7 +17,7 @@ jest.mock('../../src/supabase/client', () => ({
 
 import {
   checkFinalizationGate,
-  getPlantationEstado,
+  getPlantationEstadoDeEdicion,
   getAllTechnicians,
   getPlantationSpeciesConfig,
   getAssignedTechnicians,
@@ -213,6 +213,25 @@ describe('adminQueries', () => {
   });
 
   // ─── hasIdsGenerated ─────────────────────────────────────────────────────
+
+  describe('getPlantationEstadoDeEdicion', () => {
+    const mockRows = (rows: any[]) => {
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue(rows) }),
+      });
+    };
+
+    it('trae estado y archivadaEn: los dos deciden si es editable (#477)', async () => {
+      mockRows([{ estado: 'finalizada', archivadaEn: '2026-09-17T12:00:00+00:00' }]);
+      expect(await getPlantationEstadoDeEdicion('plantation-1'))
+        .toEqual({ estado: 'finalizada', archivadaEn: '2026-09-17T12:00:00+00:00' });
+    });
+
+    it('null si la plantación no está local', async () => {
+      mockRows([]);
+      expect(await getPlantationEstadoDeEdicion('plantation-1')).toBeNull();
+    });
+  });
 
   describe('hasIdsGenerated', () => {
     const mockCounts = (total: number, conId: number) => {

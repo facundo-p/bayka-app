@@ -93,6 +93,8 @@ export const colors = {
   stateActiva: '#99B95B',
   stateFinalizada: '#0A3760',
   stateSincronizada: '#0A3760',
+  stateArchivada: '#475569',
+  stateEliminada: '#DC2626',
   syncPending: '#F97316',
 
   // Semáforo de señal GPS: tokens propios — cambiarlo no debe tocar los chips de estado aunque hoy compartan valores.

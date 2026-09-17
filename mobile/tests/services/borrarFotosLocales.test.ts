@@ -86,6 +86,19 @@ describe('borrarFotosLocales (#484, #527)', () => {
     expect(() => borrarFotosLocales([FOTO_A])).not.toThrow();
   });
 
+  it('si no se puede resolver la carpeta de fotos, no propaga', () => {
+    const Directory = jest.requireMock('expo-file-system').Directory as jest.Mock;
+    Directory.mockImplementationOnce(() => { throw new TypeError("Cannot read properties of undefined (reading 'document')"); });
+    const errorOriginal = console.error;
+    console.error = jest.fn();
+
+    try {
+      expect(() => borrarFotosLocales([FOTO_A])).not.toThrow();
+    } finally {
+      console.error = errorOriginal;
+    }
+  });
+
   // Best-effort: la plantación ya se borró; un archivo trabado no puede romper la operación.
   it('un fallo al borrar no corta el resto ni propaga', () => {
     archivo(FOTO_A, jest.fn(() => { throw new Error('EACCES'); }));

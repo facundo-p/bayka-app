@@ -17,7 +17,5 @@
 }
 
 .info {
-  margin: 0;
-  font-size: var(--text-base);
-  color: var(--color-text-secondary);
+  composes: info from '../../components/Formulario.module.css';
 }

@@ -52,8 +52,16 @@ function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
  * `content://` de la galería no son archivos de la app.
  */
 export function borrarFotosLocales(uris: readonly string[]): void {
-  // Con barra final: el uri del directorio puede venir con o sin ella.
-  const carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
+  let carpeta: string;
+  try {
+    // Con barra final: el uri del directorio puede venir con o sin ella.
+    carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
+  } catch (e) {
+    // Corre después del commit: una excepción acá haría fallar una operación de
+    // datos que ya se hizo.
+    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
+    return;
+  }
   for (const uri of uris) {
     if (!esArchivoSueltoDe(carpeta, uri)) continue;
     try {
