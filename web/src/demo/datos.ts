@@ -114,7 +114,16 @@ const PERFILES: FilaDemo[] = [
     activo: true,
     created_at: '2025-05-06T12:00:00Z',
   },
-].map((perfil) => ({ ...perfil, organizacion_id: ORGANIZACION.id }));
+  {
+    id: 'u7',
+    nombre: 'Julián Paredes',
+    rol: 'tecnico',
+    email: 'eliminado+u7@bayka.invalid',
+    activo: false,
+    eliminado_en: '2025-08-14T12:00:00Z',
+    created_at: '2025-03-19T12:00:00Z',
+  },
+].map((perfil) => ({ eliminado_en: null, ...perfil, organizacion_id: ORGANIZACION.id }));
 
 /** Carga los árboles de las plantaciones sin técnicos asignados. */
 const ADMIN_DEMO = 'u2';

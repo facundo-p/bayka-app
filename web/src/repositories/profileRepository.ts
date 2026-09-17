@@ -10,6 +10,11 @@ export const ROL = {
 
 export type Rol = (typeof ROL)[keyof typeof ROL];
 
+/** Eliminado es irreversible: no admite acciones y los listados lo ocultan por defecto. */
+export function esEliminado(perfil: { eliminadoEn: string | null }): boolean {
+  return perfil.eliminadoEn !== null;
+}
+
 export type Perfil = {
   id: string;
   nombre: string;

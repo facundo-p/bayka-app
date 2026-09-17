@@ -2,6 +2,12 @@
  * Qué dice y qué ejecuta el modal de confirmación de cada acción rápida. Los
  * textos avisan qué se pierde y qué se conserva antes de confirmar.
  */
+import {
+  MODO_ELIMINACION,
+  type PreviewEliminacion,
+} from '../../../../supabase/functions/admin-users/nucleo';
+import { pluralizar } from '../../lib/formato';
+import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
 import {
   desactivarUsuario,
@@ -10,8 +16,42 @@ import {
 } from '../../services/adminUsersService';
 import { ACCION_USUARIO, type AccionUsuario } from './acciones';
 
-/** Cambiar la contraseña no se confirma: tiene su propio formulario. */
-export type AccionConfirmable = Exclude<AccionUsuario, typeof ACCION_USUARIO.cambiarPassword>;
+/** Cambiar la contraseña tiene su propio formulario y eliminar arma el texto con el
+ *  preview del server: ninguna de las dos tiene una confirmación fija. */
+export type AccionConfirmable = Exclude<
+  AccionUsuario,
+  typeof ACCION_USUARIO.cambiarPassword | typeof ACCION_USUARIO.eliminar
+>;
+
+export const TEXTO_REVISANDO_DATOS = 'Revisando qué datos registró…';
+
+export const AVISO_ELIMINAR =
+  'Lo que tenga sin sincronizar en su celular se pierde. Esta acción no se puede deshacer.';
+
+/** "12 árboles, 2 grupos y 1 plantación", omitiendo lo que está en cero. */
+function resumenRegistros({ arboles, grupos, plantaciones }: PreviewEliminacion): string {
+  const partes = [
+    [arboles, SUSTANTIVO.arbol],
+    [grupos, SUSTANTIVO.grupo],
+    [plantaciones, SUSTANTIVO.plantacion],
+  ] as const;
+  const textos = partes
+    .filter(([cantidad]) => cantidad > 0)
+    .map(([cantidad, sustantivo]) => pluralizar(cantidad, sustantivo));
+  if (textos.length < 2) return textos.join('');
+  return `${textos.slice(0, -1).join(', ')} y ${textos[textos.length - 1]}`;
+}
+
+/** Qué pasa al eliminar, según tenga o no datos de campo a su nombre. */
+export function copyEliminar(nombre: string, preview: PreviewEliminacion): string {
+  if (preview.modo === MODO_ELIMINACION.real) {
+    return `${nombre} no registró datos: se borra por completo.`;
+  }
+  return (
+    `${nombre} registró ${resumenRegistros(preview)}: se bloquea para siempre, ` +
+    'su nombre queda en el historial y su email se libera para invitarlo de nuevo.'
+  );
+}
 
 export interface Confirmacion {
   titulo: (nombre: string) => string;
