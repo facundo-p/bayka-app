@@ -25,6 +25,7 @@ const USUARIOS = [
     rol: 'superadmin',
     email: 'sofia@bayka.org',
     activo: true,
+    eliminado_en: null,
     organizacion_id: 'org-1',
     created_at: '2026-01-10T12:00:00Z',
   },
@@ -34,6 +35,7 @@ const USUARIOS = [
     rol: 'admin',
     email: 'ana@bayka.org',
     activo: true,
+    eliminado_en: null,
     organizacion_id: 'org-1',
     created_at: '2026-02-20T12:00:00Z',
   },
@@ -43,8 +45,19 @@ const USUARIOS = [
     rol: 'tecnico',
     email: null,
     activo: false,
+    eliminado_en: null,
     organizacion_id: 'org-1',
     created_at: '2026-03-30T12:00:00Z',
+  },
+  {
+    id: 'user-4',
+    nombre: 'Elsa Eliminada',
+    rol: 'tecnico',
+    email: 'eliminado+user-4@bayka.invalid',
+    activo: false,
+    eliminado_en: '2026-09-01T12:00:00Z',
+    organizacion_id: 'org-1',
+    created_at: '2026-04-30T12:00:00Z',
   },
 ];
 
@@ -301,6 +314,7 @@ test('el único superadmin del sistema no es degradable', async () => {
       rol: 'superadmin',
       email: 'selva@bayka.org',
       activo: true,
+      eliminado_en: null,
       organizacion_id: 'org-1',
       created_at: '2026-01-10T12:00:00Z',
     },
@@ -494,6 +508,66 @@ test('desactivarse a sí mismo está deshabilitado; un inactivo ofrece Reactivar
   expect(estadoMock.invocaciones).toEqual([
     { funcion: 'admin-users', cuerpo: { accion: 'reactivar', userId: 'user-3' } },
   ]);
+});
+
+test('eliminar muestra el preview, avisa lo irreversible y ejecuta', async () => {
+  configurarUsuariosMock();
+  estadoMock.respuestaInvoke = {
+    data: { ok: true, preview: { arboles: 12, grupos: 2, plantaciones: 0, modo: 'logico' } },
+    error: null,
+  };
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menu = await abrirMenu(usuario, 'Ana Admin');
+  await usuario.click(menu.getByRole('menuitem', { name: 'Eliminar' }));
+  const dialogo = screen.getByRole('dialog', { name: 'Eliminar a Ana Admin' });
+  expect(
+    await within(dialogo).findByText(/registró 12 árboles y 2 grupos: se bloquea para siempre/),
+  ).toBeInTheDocument();
+  expect(within(dialogo).getByText(/sin sincronizar en su celular se pierde/)).toBeInTheDocument();
+  expect(within(dialogo).getByText(/no se puede deshacer/)).toBeInTheDocument();
+
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Eliminar' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(estadoMock.invocaciones).toEqual([
+    { funcion: 'admin-users', cuerpo: { accion: 'previsualizarEliminacion', userId: 'user-2' } },
+    { funcion: 'admin-users', cuerpo: { accion: 'eliminar', userId: 'user-2' } },
+  ]);
+});
+
+test('eliminarse a sí mismo está deshabilitado con el motivo visible', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+
+  const menuPropio = await abrirMenu(usuario, 'Sofía Súper');
+  const item = menuPropio.getByRole('menuitem', { name: 'Eliminar' });
+  expect(item).toBeDisabled();
+  expect(item).toHaveAttribute('title', 'Un superadmin no puede eliminarse a sí mismo');
+});
+
+test('los eliminados se ocultan salvo con su filtro, y no ofrecen acciones ni edición', async () => {
+  configurarUsuariosMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/usuarios');
+  await screen.findByText('Ana Admin');
+  expect(tablaUsuarios().queryByText('Elsa Eliminada')).not.toBeInTheDocument();
+
+  await usuario.click(screen.getByRole('radio', { name: 'Eliminados' }));
+  expect(tablaUsuarios().getByText('Elsa Eliminada')).toBeInTheDocument();
+  expect(tablaUsuarios().getByText('Eliminado')).toBeInTheDocument();
+  expect(tablaUsuarios().queryByText('Ana Admin')).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: 'Acciones de Elsa Eliminada' }),
+  ).not.toBeInTheDocument();
+
+  const panel = within(await abrirPanel(usuario, 'Elsa Eliminada'));
+  expect(panel.getByText(/ya no admite cambios/)).toBeInTheDocument();
+  expect(panel.queryByRole('textbox')).not.toBeInTheDocument();
+  expect(panel.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
 });
 
 test('reenviar invitación: el rate limit se muestra con su mensaje, no con el genérico', async () => {

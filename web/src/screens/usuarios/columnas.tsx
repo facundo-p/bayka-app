@@ -2,12 +2,18 @@ import { Badge, type TableColumn } from '../../components';
 import { formatearFechaDia } from '../../lib/fechas';
 import { etiquetaRol } from '../../lib/presentacionUsuario';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
+import { esEliminado } from '../../repositories/profileRepository';
 import type { AccionActiva, ContextoAcciones } from './acciones';
 import { CeldaAcciones, CeldaTexto, CeldaUsuario } from './celdas';
 import { resumenPlantaciones } from './filtros';
 import styles from './Usuarios.module.css';
 
-const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo' } as const;
+const ETIQUETA_ESTADO = { activo: 'Activo', inactivo: 'Inactivo', eliminado: 'Eliminado' } as const;
+
+function etiquetaEstado(usuario: UsuarioConAsignaciones): string {
+  if (esEliminado(usuario)) return ETIQUETA_ESTADO.eliminado;
+  return usuario.activo ? ETIQUETA_ESTADO.activo : ETIQUETA_ESTADO.inactivo;
+}
 
 const COLUMNAS_BASE: Array<TableColumn<UsuarioConAsignaciones>> = [
   { key: 'usuario', header: 'Usuario', render: (usuario) => <CeldaUsuario usuario={usuario} /> },
@@ -21,7 +27,7 @@ const COLUMNAS_BASE: Array<TableColumn<UsuarioConAsignaciones>> = [
     header: 'Estado',
     render: (usuario) => (
       <Badge variant={usuario.activo ? 'activa' : 'neutral'} dot>
-        {usuario.activo ? ETIQUETA_ESTADO.activo : ETIQUETA_ESTADO.inactivo}
+        {etiquetaEstado(usuario)}
       </Badge>
     ),
   },

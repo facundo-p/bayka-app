@@ -10,10 +10,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
 import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
-import type { Plantation } from './PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
-import { ESTADO_PLANTACION, esArchivada, esEliminadaEnServidor } from '../constants/estados';
+import { ayudaFinalizarConPendientes } from '../utils/finalizarPlantacion';
+import { esActiva, esArchivada, esEliminadaEnServidor, esFinalizada } from '../constants/estados';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -116,9 +117,11 @@ export default function AdminBottomSheet({
     ? 'Sincroniza los cambios antes de finalizar'
     : hasUnresolvedNN
       ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNGroups} grupo${meta.unresolvedNNGroups !== 1 ? 's' : ''}`
-      : !meta.canFinalize
-        ? 'Para finalizar, todos los grupos deben estar sincronizados'
-        : undefined;
+      : meta.pendientesSinSubir
+        ? ayudaFinalizarConPendientes(meta.pendientesSinSubir)
+        : !meta.canFinalize
+          ? 'Para finalizar, todos los grupos deben estar sincronizados'
+          : undefined;
 
   return (
     <Modal
@@ -181,7 +184,7 @@ export default function AdminBottomSheet({
             )}
 
             {/* Archivada o eliminada en el servidor (#477, #478): sin especies, técnicos ni finalizar. */}
-            {isAdmin && plantation.estado === ESTADO_PLANTACION.activa && !esArchivada(plantation) && !esEliminadaEnServidor(plantation) && (
+            {isAdmin && esActiva(plantation) && !esArchivada(plantation) && !esEliminadaEnServidor(plantation) && (
               <>
                 <View style={styles.divider} />
                 <ActionItem
@@ -207,7 +210,7 @@ export default function AdminBottomSheet({
               </>
             )}
 
-            {isAdmin && plantation.estado === 'finalizada' && (
+            {isAdmin && esFinalizada(plantation) && (
               <>
                 <View style={styles.divider} />
                 {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}

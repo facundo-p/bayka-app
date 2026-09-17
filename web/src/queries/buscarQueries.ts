@@ -122,7 +122,9 @@ type FilaGrupoBusqueda = {
 async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
     .from('groups')
-    .select(`id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(${ARCHIVADA_EN})`)
+    .select(
+      `id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(${ARCHIVADA_EN})`,
+    )
     .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
   if (scope) consulta = consulta.eq('plantation_id', scope.plantationId);

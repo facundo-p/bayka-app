@@ -30,6 +30,7 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
 import {
   pullSpeciesFromServer,
   uploadOfflinePlantations,
+  uploadPendingEdits,
 } from '../../src/services/SyncService';
 
 import { supabase } from '../../src/supabase/client';
@@ -310,6 +311,42 @@ describe('SyncService — offline functions', () => {
       const fromCalls = (mockSupabase.from as jest.Mock).mock.calls;
       expect(fromCalls.some(([t]) => t === 'plantations')).toBe(false);
       expect(fromCalls.some(([t]) => t === 'plantation_species')).toBe(false);
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── uploadPendingEdits ────────────────────────────────────────────────────
+
+  describe('uploadPendingEdits', () => {
+    const plantacionEditada = { ...fakePendingPlantation, pendingSync: false, pendingEdit: true, lugar: 'Zona Editada' };
+
+    function conEdicionPendiente(filasAfectadas: unknown[]) {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([plantacionEditada]) }),
+      });
+      const select = jest.fn().mockResolvedValue({ data: filasAfectadas, error: null });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        update: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ select }) }),
+      });
+      return select;
+    }
+
+    it('con filas afectadas limpia pendingEdit', async () => {
+      const select = conEdicionPendiente([{ id: plantacionEditada.id }]);
+
+      await uploadPendingEdits();
+
+      expect(select).toHaveBeenCalledWith('id');
+      const set = (mockDb.update as jest.Mock).mock.results[0].value.set;
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ pendingEdit: false }));
+    });
+
+    // Plantación inexistente en el server u oculta por RLS: PostgREST no da error (#482).
+    it('sin filas afectadas NO limpia pendingEdit', async () => {
+      conEdicionPendiente([]);
+
+      await uploadPendingEdits();
+
       expect(mockDb.update).not.toHaveBeenCalled();
     });
   });

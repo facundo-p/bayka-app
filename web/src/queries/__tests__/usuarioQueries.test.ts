@@ -52,6 +52,7 @@ describe('listarUsuariosConAsignaciones', () => {
       rol: 'admin',
       email: 'ana@bayka.org',
       activo: true,
+      eliminado_en: null,
       organizacion_id: 'org-1',
       created_at: '2026-01-10T12:00:00Z',
     },
@@ -61,6 +62,7 @@ describe('listarUsuariosConAsignaciones', () => {
       rol: 'tecnico',
       email: null,
       activo: false,
+      eliminado_en: '2026-09-01T12:00:00Z',
       organizacion_id: 'org-2',
       created_at: '2026-02-20T12:00:00Z',
     },
@@ -70,6 +72,7 @@ describe('listarUsuariosConAsignaciones', () => {
       rol: 'superadmin',
       email: 'cami@bayka.org',
       activo: true,
+      eliminado_en: null,
       organizacion_id: null,
       created_at: '2026-03-30T12:00:00Z',
     },
@@ -119,6 +122,7 @@ describe('listarUsuariosConAsignaciones', () => {
       rol: 'admin',
       email: 'ana@bayka.org',
       activo: true,
+      eliminadoEn: null,
       organizacionId: 'org-1',
       organizacionNombre: 'Bayka',
       plantacionesAsignadas: 2,
@@ -127,6 +131,7 @@ describe('listarUsuariosConAsignaciones', () => {
     // Perfil previo al backfill (email null) y desactivado.
     expect(beto.email).toBeNull();
     expect(beto.activo).toBe(false);
+    expect(beto.eliminadoEn).toBe('2026-09-01T12:00:00Z');
   });
 
   test('consulta profiles ordenado por nombre', async () => {
