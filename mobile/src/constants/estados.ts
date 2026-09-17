@@ -6,12 +6,31 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
+/** `estado` opcional: hay props de listado que no siempre lo traen. */
+type ConEstado = { estado?: string | null };
+
+export function esActiva(plantacion: ConEstado): boolean {
+  return plantacion.estado === ESTADO_PLANTACION.activa;
+}
+
+export function esFinalizada(plantacion: ConEstado): boolean {
+  return plantacion.estado === ESTADO_PLANTACION.finalizada;
+}
+
 /**
  * Archivada (#477): oculta y de solo lectura para todos, superadmin incluido. Es
  * independiente de `estado`: una plantación finalizada también puede estar archivada.
  */
 export function esArchivada(plantacion: { archivadaEn: string | null }): boolean {
   return plantacion.archivadaEn != null;
+}
+
+/**
+ * Eliminada en el servidor (#478): la copia local queda solo para consulta y no se
+ * sincroniza. La marca la pone el pull; no tiene espejo en Supabase.
+ */
+export function esEliminadaEnServidor(plantacion: { eliminadaEnServidorEn: string | null }): boolean {
+  return plantacion.eliminadaEnServidorEn != null;
 }
 
 /** Estados de grupo: superset de ESTADO_PLANTACION + 'sincronizada', flag solo-cliente sin

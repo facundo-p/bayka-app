@@ -11,12 +11,10 @@ import { useNetStatus } from './useNetStatus';
 import { useProfileData } from './useProfileData';
 import { useRoutePrefix } from './useRoutePrefix';
 import { useConfirm } from './useConfirm';
+import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { checkFreshness } from '../queries/freshnessQueries';
 import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
-import { deletePlantationLocally } from '../repositories/PlantationRepository';
-import { getUnsyncedGroupSummary } from '../queries/catalogQueries';
-import { showConfirmDialog, showDoubleConfirmDialog } from '../utils/alertHelpers';
-import { colors } from '../theme';
+import { contarPorEstado } from '../utils/conteoPorEstado';
 import {
   getPlantationsForRole,
   getSyncedTreeCounts,
@@ -95,51 +93,13 @@ export function usePlantaciones() {
   const nnCountMap = new Map<string, number>();
   if (nnCounts) for (const row of nnCounts) nnCountMap.set(row.plantacionId, row.nnCount);
 
-  const estadoCounts = { activa: 0, finalizada: 0 };
-  plantationList?.forEach((p: any) => {
-    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
-      estadoCounts[p.estado as keyof typeof estadoCounts]++;
-    }
-  });
+  const estadoCounts = contarPorEstado(plantationList);
 
   const filteredList = plantationList?.filter(
     (p: any) => !activeFilter || p.estado === activeFilter
   ) ?? [];
 
-  async function handleDeletePlantation(plantationId: string) {
-    const item = plantationList?.find((p: any) => p.id === plantationId);
-    if (!item) return;
-
-    const { activaCount, finalizadaCount } = await getUnsyncedGroupSummary(plantationId);
-    const hasUnsynced = activaCount + finalizadaCount > 0;
-
-    if (hasUnsynced) {
-      const totalUnsynced = activaCount + finalizadaCount;
-      showDoubleConfirmDialog(
-        confirm.show,
-        'Atencion: datos sin sincronizar',
-        `Esta plantacion tiene ${totalUnsynced} grupo${totalUnsynced !== 1 ? 's' : ''} sin subir al servidor (${activaCount} activo${activaCount !== 1 ? 's' : ''}, ${finalizadaCount} finalizado${finalizadaCount !== 1 ? 's' : ''}). Si eliminas ahora, esos datos se perderan permanentemente.`,
-        'Eliminar de todas formas',
-        'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.',
-        async () => {
-          await deletePlantationLocally(plantationId);
-          notifyDataChanged();
-        },
-      );
-    } else {
-      showConfirmDialog(
-        confirm.show,
-        'Eliminar del dispositivo',
-        `La plantacion "${item.lugar}" sera eliminada de tu celular. Podras volver a descargarla desde el catalogo.`,
-        'Eliminar',
-        async () => {
-          await deletePlantationLocally(plantationId);
-          notifyDataChanged();
-        },
-        { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' },
-      );
-    }
-  }
+  const handleDeletePlantation = useEliminarDelDispositivo(confirm.show);
 
   return {
     plantationList,

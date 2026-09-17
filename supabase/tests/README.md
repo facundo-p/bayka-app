@@ -63,11 +63,18 @@ RLS (034, #379), `12` columna `photo_capture_all_trees` con su default (035,
 #439), `13` `sincronizar_borrados` (036, #467), `14` plantación finalizada
 inmutable (037, #469), `15` plantación archivada: matriz de roles de
 `archivar_plantacion`/`desarchivar_plantacion` y solo lectura también para
-superadmin (038, #477), `20` `is_admin()` exige perfil activo: un admin o
-superadmin inactivo no lee por la vía admin (043, #506), `23` perfil inactivo:
-no pasa las policies de admin, `is_superadmin()` ni `is_plantation_member()`,
-incluidos `sync_subgroup` y Storage (045, #508), `24` INSERT/UPDATE/upsert de
-fotos en `tree-photos` exigen plantación escribible (046, #512).
+superadmin (038, #477), `16` eliminar plantación: matriz de rol × con/sin
+datos × archivada, nombre de confirmación, cascade completo, registro en
+`plantaciones_eliminadas` y los cuatro valores de `estado_remoto_plantaciones`
+(039, #478), `18` DELETE de fotos en `tree-photos` exige admin y membresía en
+la plantación del path (041, #481), `19` `profiles.eliminado_en`: solo la
+cambia service_role, un eliminado nunca está activo ni recibe membresías admin
+(040, #479), `20` `is_admin()` exige perfil activo: un admin o superadmin
+inactivo no lee por la vía admin (043, #506), `22` RPC `quitar_fotos_arboles`
+(044, #498), `23` perfil inactivo: no pasa las policies de admin,
+`is_superadmin()` ni `is_plantation_member()`, incluidos `sync_subgroup` y
+Storage (045, #508), `24` INSERT/UPDATE/upsert de fotos en `tree-photos` exigen
+plantación escribible (046, #512).
 
 ## Hallazgo fuera de alcance (no corregido)
 

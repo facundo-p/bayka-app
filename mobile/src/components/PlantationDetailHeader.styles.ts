@@ -30,6 +30,12 @@ export const plantationDetailHeaderStyles = StyleSheet.create({
     backgroundColor: colors.backgroundAlt,
     borderColor: colors.stateArchivada + '66',
   },
+  eliminadaBanner: {
+    ...banner,
+    backgroundColor: colors.dangerBg,
+    borderColor: colors.stateEliminada + '66',
+  },
+  eliminadaBannerTitle: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.stateEliminada },
   archivadaBannerBody: { flex: 1, gap: spacing.xs },
   archivadaBannerTitle: { fontSize: fontSize.base, fontFamily: fonts.semiBold, color: colors.stateArchivada },
   archivadaBannerText: { fontSize: fontSize.sm, fontFamily: fonts.regular, color: colors.textSecondary },
