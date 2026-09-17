@@ -10,6 +10,8 @@ import { usePlantationSpecies } from './usePlantationSpecies';
 import { resolveNNTree, clearTreeConflict } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
+import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
+import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { useProfileData } from './useProfileData';
 import { esRolAdmin } from '../types/domain';
 import { useConfirm } from './useConfirm';
@@ -64,6 +66,14 @@ export function useNNResolution(params: {
 
   const { species, loading: speciesLoading } = usePlantationSpecies(plantacionId ?? '');
 
+  // Resolver escribe árboles: no aplica sobre una plantación finalizada o archivada
+  // (#477). Hasta que carga, no se resuelve.
+  const { data: estadoDeEdicion } = useLiveData(
+    () => getPlantationEstadoDeEdicion(plantacionId ?? ''),
+    [plantacionId]
+  );
+  const plantacionEditable = estadoDeEdicion != null && plantacionEsEditable(estadoDeEdicion);
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
@@ -88,6 +98,7 @@ export function useNNResolution(params: {
   }
 
   async function handleGuardar(onAllResolved: () => void) {
+    if (!canResolve) return;
     const toResolve = unresolvedTrees.filter((t) => selections[t.id]);
     if (toResolve.length === 0) {
       showInfoDialog(confirm.show, 'Seleccionar especie', 'Selecciona una especie para al menos un árbol N/N.', 'leaf-outline', colors.secondary);
@@ -118,7 +129,7 @@ export function useNNResolution(params: {
   // ─── Permission check ─────────────────────────────────────────────────────
   // En modo plantación cualquier usuario puede resolver N/N (incluidos los de
   // otros usuarios). En modo single-group, solo el admin (o el dueño del grupo).
-  const canResolve = isAdmin || !grupoId;
+  const canResolve = plantacionEditable && (isAdmin || !grupoId);
 
   // ─── Conflict helpers ────────────────────────────────────────────────────
   function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {

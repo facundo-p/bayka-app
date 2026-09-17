@@ -20,6 +20,8 @@ export type Plantation = {
   pendingEdit?: boolean;  // true for offline-edited lugar/periodo, not yet uploaded
   gpsCaptureFrequency?: number;
   gpsCaptureRequired?: boolean;
+  /** Null = no archivada (#477). */
+  archivadaEn: string | null;
 };
 
 type Props = {

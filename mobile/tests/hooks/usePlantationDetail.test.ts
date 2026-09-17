@@ -19,7 +19,7 @@ jest.mock('../../src/queries/plantationDetailQueries', () => ({
   getTreeCountsPerGroup: jest.fn(),
 }));
 
-jest.mock('../../src/queries/adminQueries', () => ({ getPlantationEstado: jest.fn() }));
+jest.mock('../../src/queries/adminQueries', () => ({ getPlantationEstadoDeEdicion: jest.fn() }));
 jest.mock('../../src/repositories/ParcelaRepository', () => ({ findById: jest.fn() }));
 jest.mock('../../src/hooks/useCurrentUserId', () => ({ useCurrentUserId: jest.fn() }));
 jest.mock('../../src/hooks/useUserNames', () => ({ useUserNames: jest.fn().mockReturnValue({}) }));
@@ -48,12 +48,17 @@ const GRUPO = {
 } as any;
 
 /** `estadoCargado: false` simula la ventana en la que la query todavía no resolvió. */
-function mockLiveQueries({ grupos = [GRUPO], plantacionEstado = 'activa', estadoCargado = true } = {}) {
+function mockLiveQueries({
+  grupos = [GRUPO],
+  plantacionEstado = 'activa',
+  archivadaEn = null as string | null,
+  estadoCargado = true,
+} = {}) {
   (useLiveData as jest.Mock).mockImplementation((queryFn: () => unknown) => {
     const fuente = String(queryFn);
     if (fuente.includes('getGroupsForPlantation')) return { data: grupos };
-    if (fuente.includes('getPlantationEstado')) {
-      return { data: estadoCargado ? [{ estado: plantacionEstado }] : undefined };
+    if (fuente.includes('getPlantationEstadoDeEdicion')) {
+      return { data: estadoCargado ? [{ estado: plantacionEstado, archivadaEn }] : undefined };
     }
     return { data: [] };
   });
@@ -155,6 +160,24 @@ describe('usePlantationDetail — permisosDeGrupo', () => {
     act(() => result.current.handleLongPress(GRUPO));
 
     expect(result.current.editingGroup).toEqual(GRUPO);
+  });
+
+  it('plantación archivada → ningún permiso, aunque esté activa (#477)', () => {
+    mockLiveQueries({ archivadaEn: '2026-09-17T12:00:00+00:00' });
+    const result = render();
+
+    expect(result.current.permisosDeGrupo(GRUPO)).toEqual({
+      canEdit: false, canDelete: false, canReactivate: false,
+    });
+    expect(result.current.plantacionEditable).toBe(false);
+    expect(result.current.isArchivada).toBe(true);
+  });
+
+  it('plantacionEditable: activa y cargada → true; sin cargar → false', () => {
+    expect(render().current.plantacionEditable).toBe(true);
+
+    mockLiveQueries({ estadoCargado: false });
+    expect(render().current.plantacionEditable).toBe(false);
   });
 
   it('handleLongPress no abre la edición sobre una plantación finalizada', () => {

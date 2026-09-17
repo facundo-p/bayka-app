@@ -196,6 +196,35 @@ describe('catalogQueries', () => {
     });
   });
 
+  describe('getServerCatalog — archivadas (#477)', () => {
+    const archivada = { ...makePlantation('p-archivada'), archivada_en: '2026-09-17T12:00:00+00:00' };
+    const noArchivada = { ...makePlantation('p-activa'), archivada_en: null };
+    const sinColumna = makePlantation('p-sin-columna'); // server sin la migración
+
+    it('admin: no lista las archivadas y tolera servers sin la columna', async () => {
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: [archivada, noArchivada, sinColumna], error: null }))
+        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
+        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+
+      const results = await getServerCatalog(true, 'user-admin', 'org-1');
+
+      expect(results.map((p) => p.id)).toEqual(['p-activa', 'p-sin-columna']);
+    });
+
+    it('técnico: tampoco ve una archivada aunque esté asignado', async () => {
+      const puChain: any = {
+        select: () => puChain,
+        eq: () => Promise.resolve({ data: [{ plantation_id: 'p-archivada' }], error: null }),
+      };
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(puChain)
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: [archivada], error: null }));
+
+      expect(await getServerCatalog(false, 'user-tec', 'org-1')).toEqual([]);
+    });
+  });
+
   describe('getServerCatalog — error handling', () => {
     it('Test 6: throws error when supabase plantations query fails', async () => {
       const errorChain: any = {};

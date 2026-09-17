@@ -7,7 +7,7 @@ import { db } from '../database/client';
 import { plantations, groups } from '../database/schema';
 import { eq, and, count } from 'drizzle-orm';
 import { fetchAllRows } from '../services/sync/paginate';
-import { ESTADO_GRUPO } from '../constants/estados';
+import { ESTADO_GRUPO, esArchivada } from '../constants/estados';
 
 export type ServerPlantation = {
   id: string;
@@ -22,6 +22,14 @@ export type ServerPlantation = {
   group_count: number;
   tree_count: number;
 };
+
+/**
+ * Las archivadas no se ofrecen para descargar (#477). Se filtra acá y no con
+ * `.is('archivada_en', null)`: con `select('*')` un server sin la columna sigue andando.
+ */
+function sinArchivadas(rows: any[]): any[] {
+  return rows.filter((p) => !esArchivada({ archivadaEn: p.archivada_en ?? null }));
+}
 
 /**
  * Fetches plantations from Supabase with role-based filtering.
@@ -47,7 +55,7 @@ export async function getServerCatalog(
     );
 
     if (error) throw error;
-    remotePlantations = data ?? [];
+    remotePlantations = sinArchivadas(data ?? []);
   } else {
     const { data: puData, error: puError } = await fetchAllRows<any>(() =>
       supabase.from('plantation_users').select('plantation_id').eq('user_id', userId)
@@ -67,7 +75,7 @@ export async function getServerCatalog(
     );
 
     if (error) throw error;
-    remotePlantations = data ?? [];
+    remotePlantations = sinArchivadas(data ?? []);
   }
 
   if (remotePlantations.length === 0) return [];

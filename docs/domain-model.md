@@ -111,6 +111,7 @@ password_hash
 nombre
 rol
 activo
+eliminado_en
 fecha_creacion
 ```
 
@@ -122,8 +123,24 @@ defaults seguros (rol `tecnico`, organización Bayka).
 
 `activo` implementa la baja reversible: desactivar un usuario marca
 `activo = false` y lo banea en Auth (vía la edge function `admin-users`), sin
-tocar sus datos de campo (árboles, grupos). No existe el hard-delete de
-usuarios: las FKs de `trees`/`subgroups` lo impiden a propósito.
+tocar sus datos de campo (árboles, grupos).
+
+Eliminar un usuario (solo superadmin, vía `admin-users`) es irreversible y
+depende de sus datos. Las FKs de `trees.usuario_registro`,
+`groups.usuario_creador` y `plantations.creado_por` impiden borrarlo si
+registró algo:
+
+- **Sin datos:** borrado real. Se borran sus membresías y el auth user; el
+  profile cae por cascade.
+- **Con datos:** borrado lógico.
+  - Queda baneado para siempre, con `activo = false` y
+    `profiles.eliminado_en` con la fecha.
+  - Pierde sus membresías.
+  - Su email pasa a `eliminado+<id>@bayka.invalid`, así el original queda libre
+    para invitarlo de nuevo como un usuario nuevo.
+  - Su nombre se conserva para el historial.
+  - `eliminado_en` solo lo cambia service_role (`trg_protect_profile_fields`), y
+    un check garantiza que un eliminado nunca esté activo.
 
 ### Relaciones
 
@@ -202,6 +219,7 @@ objetivo_arboles (opcional, meta para dashboard)
 visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
 photo_capture_all_trees (default false: si todos los botones de la botonera piden foto, como N/N; migración 035)
+archivada_en / archivada_por (null si no está archivada; migración 038)
 ```
 
 Los campos opcionales, la visibilidad y la foto en todos los botones se
@@ -213,6 +231,32 @@ gestionan desde la web de gestión (migraciones 024 y 035).
 activa
 finalizada
 ```
+
+### Archivada
+
+Archivar es independiente del estado: una plantación activa o finalizada puede
+estar además archivada, y desarchivarla la devuelve al estado que tenía (#477).
+
+```
+oculta de los listados de la web, la búsqueda global y el catálogo de la app
+solo lectura para todos, superadmin incluido
+archivan y desarchivan admin y superadmin activos de su organización
+```
+
+### Quién puede escribir
+
+El server decide con `plantacion_escribible(id)`, que usan las policies de
+escritura y los RPC de sync:
+
+```
+archivada   → nadie
+finalizada  → solo superadmin
+activa      → los permisos normales de cada tabla
+```
+
+Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
+(archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
+cuando la plantación vuelve a ser escribible.
 
 ### Relaciones
 

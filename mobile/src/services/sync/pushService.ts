@@ -80,8 +80,7 @@ export function classifyParcelaRpcResult(
     return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
   }
 
-  // No-conflict (42501/network/unknown): detail lleva el código postgres crudo para errores
-  // opacos (p.ej. 23503 FK si la plantación padre aún no está en el server).
+  // Sin conflicto de unicidad: detail lleva el código postgres crudo para diagnosticar.
   const { error: code, detail } = classifyServerError(error);
   return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: code, detail };
 }
@@ -146,7 +145,7 @@ async function pushBorradosDeFilas(plantacionId: string): Promise<void> {
 
   const rechazados = await limpiarConfirmados(pendientes, data.rechazados, ENTIDADES_DE_FILA);
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
-  if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, plantación finalizada`);
+  if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, ${motivosDeRechazo(data.rechazos)}`);
 }
 
 /**
@@ -167,7 +166,7 @@ async function pushFotosQuitadas(plantacionId: string): Promise<void> {
 
   const rechazadas = await limpiarConfirmados(pendientes, data.rechazados, FOTOS_QUITADAS);
   syncLog.info(`Push fotos quitadas: ${data.quitadas}`);
-  if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, plantación finalizada`);
+  if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, ${motivosDeRechazo(data.rechazos)}`);
 }
 
 /**
@@ -185,28 +184,44 @@ async function limpiarConfirmados(
   return rechazados.size;
 }
 
+/**
+ * "PLANTACION_ARCHIVADA ×2, PLANTACION_FINALIZADA ×1". `rechazos` llega desde #477:
+ * un server anterior solo manda `rechazados`, y ahí el motivo era siempre finalizada.
+ */
+export function motivosDeRechazo(rechazos: unknown): string {
+  if (!Array.isArray(rechazos)) return SYNC_ERROR.PLANTACION_FINALIZADA;
+  const porMotivo = new Map<string, number>();
+  for (const { error } of rechazos as { error?: string }[]) {
+    const motivo = error ?? SYNC_ERROR.UNKNOWN;
+    porMotivo.set(motivo, (porMotivo.get(motivo) ?? 0) + 1);
+  }
+  return [...porMotivo].map(([motivo, n]) => `${motivo} ×${n}`).join(', ');
+}
+
 // ─── Upload a single Group ─────────────────────────────────────────────────
 
-/** Sube fotos a Storage antes del RPC para que foto_url siempre lleve el path de Storage (nunca null/file://) en un solo paso atómico. */
-export async function uploadGroup(
+type ArbolDeGrupo = {
+  id: string;
+  groupId: string;
+  especieId: string | null;
+  posicion: number;
+  subId: string;
+  fotoUrl: string | null;
+  fotoSynced: boolean;
+  usuarioRegistro: string;
+  createdAt: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  gpsAccuracy?: number | null;
+  gpsCapturedAt?: string | null;
+};
+
+/** Sube a Storage las fotos locales pendientes y devuelve treeId → path. No las marca: eso espera al RPC. */
+async function subirFotosDelGrupo(
   sg: Group,
-  sgTrees: Array<{
-    id: string;
-    groupId: string;
-    especieId: string | null;
-    posicion: number;
-    subId: string;
-    fotoUrl: string | null;
-    fotoSynced: boolean;
-    usuarioRegistro: string;
-    createdAt: string;
-    latitude?: number | null;
-    longitude?: number | null;
-    gpsAccuracy?: number | null;
-    gpsCapturedAt?: string | null;
-  }>,
+  sgTrees: ArbolDeGrupo[],
   onPhotoProgress?: (progress: PhotoSyncProgress) => void,
-) {
+): Promise<Map<string, string>> {
   // Solo resube fotos con fotoSynced=false; las que ya están en Storage (de otro device) se saltean.
   const photoMap = new Map<string, string>();
   const pendientes = sgTrees.filter((t) => isLocalUri(t.fotoUrl) && !t.fotoSynced);
@@ -225,16 +240,18 @@ export async function uploadGroup(
     if (!error) {
       photoMap.set(t.id, storagePath);
       bytesSubidos += bytes;
-      await markPhotoSynced(t.id);
     } else {
       syncLog.error(`Photo upload failed for tree ${t.id}:`, error.message);
     }
     onPhotoProgress?.({ total: pendientes.length, completed: ++completadas, bytes: bytesSubidos, desde: inicio });
   });
+  return photoMap;
+}
 
-  // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
-  // server-side; los REST calls directos ya usan groups/group_id.
-  const p_subgroup = {
+// COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
+// server-side; los REST calls directos ya usan groups/group_id.
+function payloadDeGrupo(sg: Group) {
+  return {
     id: sg.id,
     plantation_id: sg.plantacionId,
     parcela_id: sg.parcelaId,
@@ -245,10 +262,12 @@ export async function uploadGroup(
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
   };
+}
 
-  // sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
-  // (RPC generate_tree_ids, #232) y llegan por el pull.
-  const p_trees = sgTrees.map((t) => ({
+// sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
+// (RPC generate_tree_ids, #232) y llegan por el pull.
+function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>) {
+  return sgTrees.map((t) => ({
     id: t.id,
     subgroup_id: t.groupId,
     species_id: t.especieId ?? null,
@@ -262,8 +281,29 @@ export async function uploadGroup(
     gps_accuracy: t.gpsAccuracy ?? null,
     gps_captured_at: t.gpsCapturedAt ?? null,
   }));
+}
 
-  return supabase.rpc('sync_subgroup', { p_subgroup, p_trees });
+/**
+ * Sube fotos a Storage antes del RPC para que foto_url lleve el path de Storage (nunca file://).
+ *
+ * `fotoSynced` se marca recién con el RPC confirmado (#489): si se marcara antes y el
+ * RPC fallara, el reintento saltearía la foto y mandaría foto_url null. Resubirla es
+ * seguro porque el path es determinístico y la subida usa upsert.
+ */
+export async function uploadGroup(
+  sg: Group,
+  sgTrees: ArbolDeGrupo[],
+  onPhotoProgress?: (progress: PhotoSyncProgress) => void,
+) {
+  const photoMap = await subirFotosDelGrupo(sg, sgTrees, onPhotoProgress);
+  const respuesta = await supabase.rpc('sync_subgroup', {
+    p_subgroup: payloadDeGrupo(sg),
+    p_trees: payloadDeArboles(sgTrees, photoMap),
+  });
+  if (!respuesta.error && respuesta.data?.success === true) {
+    for (const treeId of photoMap.keys()) await markPhotoSynced(treeId);
+  }
+  return respuesta;
 }
 
 // ─── RPC result classification (groups) ──────────────────────────────────────
@@ -285,11 +325,12 @@ export function classifyRpcResult(
   }
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
   // Los códigos que sync_subgroup devuelve explícitamente: unicidad por parcela,
-  // guard de membresía, y plantación finalizada (#469).
+  // guard de membresía, y plantación finalizada o archivada (#469, #477).
   const RPC_CODES: SyncErrorCode[] = [
     SYNC_ERROR.DUPLICATE_CODE,
     SYNC_ERROR.PERMISSION,
     SYNC_ERROR.PLANTACION_FINALIZADA,
+    SYNC_ERROR.PLANTACION_ARCHIVADA,
   ];
   const errorCode: SyncErrorCode = RPC_CODES.includes(data?.error) ? data.error : SYNC_ERROR.UNKNOWN;
   return { success: false, groupId: sg.id, nombre: sg.nombre, error: errorCode };

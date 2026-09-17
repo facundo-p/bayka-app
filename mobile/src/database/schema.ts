@@ -41,6 +41,8 @@ export const plantations = sqliteTable('plantations', {
   photoCaptureAllTrees: integer('photo_capture_all_trees', { mode: 'boolean' })
     .notNull()
     .default(PHOTO_CAPTURE_ALL_TREES_DEFAULT),
+  // Archivada desde la web (#477): null = no archivada. Ver esArchivada.
+  archivadaEn: text('archivada_en'),
 });
 
 export const parcelas = sqliteTable('parcelas', {

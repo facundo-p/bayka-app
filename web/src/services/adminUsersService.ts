@@ -4,12 +4,17 @@
  */
 import { supabase } from '../lib/supabase';
 import type { Rol } from '../repositories/profileRepository';
-import { MENSAJES, type CuerpoAdminUsers } from '../../../supabase/functions/admin-users/nucleo';
+import {
+  MENSAJES,
+  type CuerpoAdminUsers,
+  type PreviewEliminacion,
+  type Respuesta,
+} from '../../../supabase/functions/admin-users/nucleo';
 
 /** Solo para cuando no se pudo leer ningún mensaje del backend (red, respuesta no-JSON). */
 export const MENSAJE_ADMIN_USERS_GENERICO = MENSAJES.errorGenerico;
 
-type RespuestaAdminUsers = { ok: boolean; error?: string };
+type RespuestaAdminUsers = Respuesta['body'];
 
 /** El SDK adjunta la Response del server en error.context: de ahí sale el mensaje cuando el status es de error. */
 async function mensajeDelError(error: unknown): Promise<string | null> {
@@ -23,11 +28,11 @@ async function mensajeDelError(error: unknown): Promise<string | null> {
   }
 }
 
-async function invocar(cuerpo: CuerpoAdminUsers): Promise<void> {
+async function invocar(cuerpo: CuerpoAdminUsers): Promise<RespuestaAdminUsers> {
   const { data, error } = await supabase.functions.invoke<RespuestaAdminUsers>('admin-users', {
     body: cuerpo,
   });
-  if (!error && data?.ok) return;
+  if (!error && data?.ok) return data;
   const mensaje = data?.error ?? (await mensajeDelError(error));
   throw new Error(mensaje ?? MENSAJE_ADMIN_USERS_GENERICO);
 }
@@ -58,4 +63,15 @@ export async function cambiarPassword(userId: string, password: string): Promise
 
 export async function cambiarEmail(userId: string, email: string): Promise<void> {
   await invocar({ accion: 'cambiarEmail', userId, email });
+}
+
+/** Cuántos registros tiene a su nombre y, por eso, si se borra por completo o se bloquea. */
+export async function previsualizarEliminacion(userId: string): Promise<PreviewEliminacion> {
+  const { preview } = await invocar({ accion: 'previsualizarEliminacion', userId });
+  if (!preview) throw new Error(MENSAJE_ADMIN_USERS_GENERICO);
+  return preview;
+}
+
+export async function eliminarUsuario(userId: string): Promise<void> {
+  await invocar({ accion: 'eliminar', userId });
 }

@@ -7,7 +7,9 @@ import {
   actualizarConfigGps,
   actualizarFotoEnTodos,
   actualizarVisibilidad,
+  archivarPlantacion,
   crearPlantacion,
+  desarchivarPlantacion,
   editarPlantacion,
   existePlantacion,
   MENSAJE_FOTO_SIN_MIGRACION,
@@ -251,5 +253,32 @@ describe('existePlantacion', () => {
     const consultas = capturarConsultas(() => ({ count: 0 }));
     expect(await existePlantacion('Mendoza', '2025-2026')).toBe(false);
     expect(consultas[0].filtros.map((filtro) => filtro.metodo)).toEqual(['ilike', 'ilike']);
+  });
+});
+
+describe('archivar / desarchivar', () => {
+  test.each([
+    ['archivar_plantacion', archivarPlantacion],
+    ['desarchivar_plantacion', desarchivarPlantacion],
+  ])('%s: llama al RPC con el id', async (rpc, accion) => {
+    const consultas = capturarConsultas(() => ({ data: { success: true } }));
+    await accion('plant-1');
+    expect(consultas).toEqual([
+      expect.objectContaining({ tabla: rpc, operacion: 'rpc', payload: { p_id: 'plant-1' } }),
+    ]);
+  });
+
+  test('NOT_AUTHORIZED se traduce a un mensaje de permisos', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'NOT_AUTHORIZED' } }));
+    await expect(archivarPlantacion('plant-1')).rejects.toThrow(/no tiene permisos/);
+  });
+
+  test('un error de red o un código desconocido dan el mensaje genérico', async () => {
+    capturarConsultas(() => ({ error: { message: 'fetch failed' } }));
+    await expect(desarchivarPlantacion('plant-1')).rejects.toThrow(
+      'No se pudo completar la acción',
+    );
+    capturarConsultas(() => ({ data: { success: false, error: 'OTRO' } }));
+    await expect(archivarPlantacion('plant-1')).rejects.toThrow('No se pudo completar la acción');
   });
 });

@@ -136,9 +136,9 @@ export function usePlantacionesScreen() {
   }, [plantacionPendienteNav, router, routePrefix]);
 
   // Editar lugar/período/config escribe en `plantations`: bloqueado si está
-  // finalizada (#469). Cubre las dos entradas: long-press de la card y el gear.
+  // finalizada o archivada (#469, #477). Cubre las dos entradas: long-press de la card y el gear.
   const handleEditPress = useCallback((plantation: Plantation) => {
-    if (!plantacionEsEditable(plantation.estado)) return;
+    if (!plantacionEsEditable(plantation)) return;
     setEditingPlantation(plantation);
   }, []);
 

@@ -41,7 +41,7 @@ type BottomSheetProps = React.ComponentProps<typeof AdminBottomSheet>;
 function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
   return {
     visible: true,
-    plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01' },
+    plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: null },
     meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
     isAdmin: true,
     onDismiss: jest.fn(),
@@ -80,12 +80,41 @@ describe('AdminBottomSheet', () => {
     const { queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
-          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null },
         })}
       />
     );
 
     expect(queryByText('Editar lugar y periodo')).toBeNull();
+  });
+
+  it('no ofrece ninguna acción de edición sobre una plantación archivada (#477)', () => {
+    const { queryByText } = render(
+      <AdminBottomSheet
+        {...makeProps({
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: '2026-09-17T12:00:00+00:00' },
+          meta: { canFinalize: true, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+        })}
+      />
+    );
+
+    expect(queryByText('Editar lugar y periodo')).toBeNull();
+    expect(queryByText('Configurar especies')).toBeNull();
+    expect(queryByText('Asignar tecnicos')).toBeNull();
+    expect(queryByText('Finalizar plantacion')).toBeNull();
+  });
+
+  it('finalizada y archivada sigue exportando: exportar no escribe (#477)', () => {
+    const { getByText } = render(
+      <AdminBottomSheet
+        {...makeProps({
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: '2026-09-17T12:00:00+00:00' },
+          meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
+        })}
+      />
+    );
+
+    expect(getByText('Exportar CSV')).toBeTruthy();
   });
 
   it('calls onEdit when Editar tapped', () => {
@@ -124,7 +153,7 @@ describe('AdminBottomSheet', () => {
     const { getByText } = render(
       <AdminBottomSheet
         {...makeProps({
-          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', pendingSync: true },
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: null, pendingSync: true },
         })}
       />
     );
@@ -137,7 +166,7 @@ describe('AdminBottomSheet', () => {
     const { getByText, queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
-          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null },
           meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
         })}
       />
@@ -152,7 +181,7 @@ describe('AdminBottomSheet', () => {
     const { getByText, queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
-          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null },
           meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
         })}
       />
@@ -167,7 +196,7 @@ describe('AdminBottomSheet', () => {
     const { getByText } = render(
       <AdminBottomSheet
         {...makeProps({
-          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01' },
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null },
           meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
         })}
       />
@@ -180,7 +209,7 @@ describe('AdminBottomSheet', () => {
     const { queryByText } = render(
       <AdminBottomSheet
         {...makeProps({
-          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'sincronizada', createdAt: '2026-01-01' },
+          plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'sincronizada', createdAt: '2026-01-01', archivadaEn: null },
           meta: { canFinalize: false, idsGenerated: true, unresolvedNNCount: 0, unresolvedNNGroups: 0 },
         })}
       />

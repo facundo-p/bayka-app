@@ -137,7 +137,7 @@ El flujo dentro de uploadSubGroup:
 
 1. **Para cada árbol con foto local (`file://`):**
    - Sube la foto a Storage: `uploadPhotoToStorage(fotoUrl, storagePath)`
-   - Si éxito: guarda `storagePath` en un mapa y marca `fotoSynced = true` localmente
+   - Si éxito: guarda `storagePath` en un mapa. `fotoSynced` todavía no se marca (ver paso 4)
    - Si falla: log del error. El árbol irá con `foto_url: null` en el RPC. La foto queda local (`fotoSynced = false`) para retry en la próxima sync.
 
 2. **Construye el payload del RPC:**
@@ -153,7 +153,7 @@ El flujo dentro de uploadSubGroup:
    - INSERT trees con `ON CONFLICT DO UPDATE SET species_id, sub_id, foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url)`
    - El COALESCE garantiza que un re-sync no borra un `foto_url` existente si el nuevo es null. Quitar una foto va por `quitar_fotos_arboles` (paso 1b)
 
-4. **Si éxito:** `markSubGroupSynced(sg.id)` → `pendingSync = false`, `estado = 'sincronizada'`
+4. **Si éxito:** marca `fotoSynced = true` en las fotos del mapa y `markSubGroupSynced(sg.id)` → `pendingSync = false`, `estado = 'sincronizada'`. Si el RPC falla, las fotos quedan con `fotoSynced = false`: el reintento las resube al mismo path (upsert) y las vuelve a mandar en `foto_url` (#489)
 
 ### Paso 3: Retry de fotos pendientes
 
