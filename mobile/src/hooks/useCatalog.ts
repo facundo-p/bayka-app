@@ -1,8 +1,7 @@
 /**
  * useCatalog — all data logic for CatalogScreen.
  *
- * Encapsulates catalog browsing, selection, batch download,
- * and local plantation deletion logic.
+ * Encapsulates catalog browsing, selection and batch download.
  */
 import { useState, useEffect } from 'react';
 import { useLiveData } from '../database/liveQuery';
@@ -10,17 +9,15 @@ import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
 import { useNetStatus } from './useNetStatus';
 import { useRoutePrefix } from './useRoutePrefix';
-import { useConfirm } from './useConfirm';
-import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { getServerCatalog, getLocalPlantationIds, ServerPlantation } from '../queries/catalogQueries';
 import { batchDownload, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState } from '../services/SyncService';
+import { contarPorEstado } from '../utils/conteoPorEstado';
 
 export function useCatalog() {
   const userId = useCurrentUserId();
   const { profile } = useProfileData();
   const { isOnline } = useNetStatus();
   const routePrefix = useRoutePrefix();
-  const confirm = useConfirm();
 
   const isAdmin = routePrefix === '(admin)';
   const organizacionId = profile?.organizacionId ?? '';
@@ -90,19 +87,12 @@ export function useCatalog() {
     }
   }
 
-  const handleDeletePlantation = useEliminarDelDispositivo(confirm.show);
-
   function handleDismiss() {
     setDownloadState(DOWNLOAD_STATE.idle);
     setSelectedIds(new Set());
   }
 
-  const estadoCounts = { activa: 0, finalizada: 0 };
-  catalogItems.forEach((p) => {
-    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
-      estadoCounts[p.estado as keyof typeof estadoCounts]++;
-    }
-  });
+  const estadoCounts = contarPorEstado(catalogItems);
 
   const filteredCatalog = catalogItems.filter(
     (p) => !activeFilter || p.estado === activeFilter
@@ -122,11 +112,9 @@ export function useCatalog() {
     downloadProgress,
     downloadResults,
     includePhotos,
-    confirmProps: confirm.confirmProps,
     loadCatalog,
     toggleSelection,
     handleBatchDownload,
-    handleDeletePlantation,
     handleDismiss,
     setActiveFilter,
     setIncludePhotos,

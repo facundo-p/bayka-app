@@ -58,7 +58,6 @@ jest.mock('../../src/supabase/client', () => {
       // Doble de `sincronizar_borrados`: borra por id, como la función SQL, y
       // rechaza las filas de una plantación finalizada devolviendo sus ids (#469).
       rpc: (nombre: string, args: any) => {
-        if (nombre !== 'sincronizar_borrados') return Promise.resolve({ data: null, error: { message: `rpc ${nombre} no mockeado` } });
         if (mockRpcFalla.activo) return Promise.resolve({ data: null, error: { message: 'Network request failed' } });
 
         // Un id que no existe en el server NO es un rechazo: no hay nada que borrar.
@@ -67,6 +66,21 @@ jest.mock('../../src/supabase/client', () => {
           const plantacion = grupo ? mockServerState.plantations.get(grupo.plantation_id) : undefined;
           return plantacion?.estado !== 'finalizada';
         };
+
+        // Doble de `quitar_fotos_arboles` (#498): pone la foto en null, mismo criterio de rechazo.
+        if (nombre === 'quitar_fotos_arboles') {
+          let quitadas = 0;
+          const rechazados: string[] = [];
+          for (const id of args.p_arboles as string[]) {
+            const arbol = mockServerState.trees.get(id);
+            if (!arbol) continue;
+            if (!escribible(arbol.group_id)) { rechazados.push(id); continue; }
+            if (arbol.foto_url !== null) quitadas++;
+            arbol.foto_url = null;
+          }
+          return Promise.resolve({ data: { success: true, quitadas, rechazados }, error: null });
+        }
+        if (nombre !== 'sincronizar_borrados') return Promise.resolve({ data: null, error: { message: `rpc ${nombre} no mockeado` } });
 
         let arboles = 0;
         let grupos = 0;
@@ -118,7 +132,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { pushBorrados } from '../../src/services/sync/pushService';
-import { deleteLastTree, deleteTreeAndRecalculate } from '../../src/repositories/TreeRepository';
+import { deleteLastTree, deleteTreeAndRecalculate, updateTreePhoto } from '../../src/repositories/TreeRepository';
 import { deleteGroup } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { borradosPendientes } from '../../src/database/schema';
@@ -513,5 +527,112 @@ describe('la plantación se finaliza antes de que el borrado llegue (#469)', () 
     await sincronizar();
 
     expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
+  });
+});
+
+describe('quitar la foto de un árbol sincronizado (#498)', () => {
+  const FOTO_EN_STORAGE = 'plantations/plant-1/parcelas/parc-1/trees/t2.jpg';
+  const FOTO_LOCAL = 'file:///document/photos/photo_t2.jpg';
+
+  /** t2 con su foto subida: el server tiene el path y el device el archivo bajado. */
+  async function arbolConFotoSincronizada() {
+    await grupoSincronizadoDeTres();
+    serverState.trees.get('t2').foto_url = FOTO_EN_STORAGE;
+    await mockTestDb.update(trees).set({ fotoUrl: FOTO_LOCAL, fotoSynced: true }).where(eq(trees.id, 't2'));
+  }
+
+  const pendientes = async () => mockTestDb.select().from(borradosPendientes);
+  const grupoSinPendientes = () => mockTestDb.update(groups).set({ pendingSync: false }).where(eq(groups.id, GRUPO_ID));
+
+  // El bug: el pull corre antes del push y adoptaba el path del server, con lo que
+  // la foto se volvía a descargar. Con el grupo sin pendientes, el guard de
+  // `pendingSync` no la protege.
+  it('el pull no restaura la foto', async () => {
+    await arbolConFotoSincronizada();
+
+    await updateTreePhoto('t2', '');
+    await grupoSinPendientes();
+    await pullFromServer(PLANTACION_ID);
+
+    const arbol = await leerArbol('t2');
+    expect(arbol.fotoUrl).toBeNull();
+    expect(arbol.fotoSynced).toBe(false);
+  });
+
+  it('el push la quita del server y limpia el registro', async () => {
+    await arbolConFotoSincronizada();
+    await updateTreePhoto('t2', '');
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBeNull();
+    expect(await pendientes()).toEqual([]);
+    expect((await leerArbol('t2')).fotoUrl).toBeNull();
+  });
+
+  it('con el push caído queda pendiente y el pull tampoco la restaura', async () => {
+    await arbolConFotoSincronizada();
+    await updateTreePhoto('t2', '');
+    await grupoSinPendientes();
+    rpcFalla.activo = true;
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(FOTO_EN_STORAGE);
+    expect(await pendientes()).toHaveLength(1);
+    expect((await leerArbol('t2')).fotoUrl).toBeNull();
+
+    rpcFalla.activo = false;
+    await sincronizar();
+    expect(serverState.trees.get('t2').foto_url).toBeNull();
+  });
+
+  it('en una plantación finalizada el server la rechaza y queda pendiente', async () => {
+    await arbolConFotoSincronizada();
+    await updateTreePhoto('t2', '');
+    serverState.plantations.get(PLANTACION_ID).estado = 'finalizada';
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(FOTO_EN_STORAGE);
+    expect((await pendientes()).map((b: any) => b.tipo)).toEqual(['foto']);
+  });
+
+  // Si la quitada siguiera anotada, el push dejaría en null la foto nueva.
+  it('poner otra foto antes de sincronizar descarta la quitada', async () => {
+    await arbolConFotoSincronizada();
+    await updateTreePhoto('t2', '');
+
+    await updateTreePhoto('t2', 'file:///document/photos/photo_t2_nueva.jpg');
+
+    expect(await pendientes()).toEqual([]);
+  });
+
+  // Mismo id en el registro: el borrado de la fila tiene que ganar, o el árbol
+  // resucita en el pull.
+  it('borrar el árbol después de quitarle la foto anota el borrado de la fila', async () => {
+    await arbolConFotoSincronizada();
+    await updateTreePhoto('t2', '');
+
+    await deleteTreeAndRecalculate('t2', GRUPO_ID, 'LA');
+    await sincronizar();
+
+    expect(serverState.trees.has('t2')).toBe(false);
+    expect(await leerArbol('t2')).toBeUndefined();
+    expect(await pendientes()).toEqual([]);
+  });
+
+  // `sincronizar_borrados` no conoce el tipo `foto`: si le llegara, el cliente lo
+  // limpiaría como confirmado sin que el server haya quitado nada.
+  it('la foto quitada no viaja en el RPC de borrados de filas', async () => {
+    await arbolConFotoSincronizada();
+    await updateTreePhoto('t2', '');
+    const { supabase } = jest.requireMock('../../src/supabase/client');
+    const rpc = jest.spyOn(supabase, 'rpc');
+
+    await pushBorrados(PLANTACION_ID);
+
+    expect(rpc.mock.calls.map((c: any[]) => c[0])).toEqual(['quitar_fotos_arboles']);
+    rpc.mockRestore();
   });
 });

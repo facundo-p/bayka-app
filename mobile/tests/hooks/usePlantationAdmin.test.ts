@@ -70,7 +70,7 @@ import { useProfileData } from '../../src/hooks/useProfileData';
 import { useLiveData } from '../../src/database/liveQuery';
 import { finalizePlantation, FinalizePlantationLocalSyncError } from '../../src/repositories/PlantationRepository';
 import { showInfoDialog } from '../../src/utils/alertHelpers';
-import type { Plantation } from '../../src/components/PlantationConfigCard';
+import type { Plantation } from '../../src/types/plantation';
 
 const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
 

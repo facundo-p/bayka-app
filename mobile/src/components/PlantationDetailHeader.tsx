@@ -7,17 +7,9 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import FilterCards from './FilterCards';
+import FilterCards, { type FilterConfig } from './FilterCards';
 import { colors, spacing } from '../theme';
 import { plantationDetailHeaderStyles as styles } from './PlantationDetailHeader.styles';
-
-type FilterConfig = {
-  key: string;
-  label: string;
-  count: number;
-  color: string;
-  icon: string;
-};
 
 type Props = {
   estadoLoaded: boolean;

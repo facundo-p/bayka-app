@@ -30,7 +30,7 @@ import { ESTADO_PLANTACION } from '../constants/estados';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { mensajeFinalizarConPendientes, tienePendientes } from '../utils/finalizarPlantacion';
 import { detalleDePendientes } from '../utils/avisoEliminarDelDispositivo';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

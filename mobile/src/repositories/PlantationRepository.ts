@@ -17,6 +17,8 @@ import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION } from '../constants/estados';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
+import { getLocalPhotoUrisForPlantation } from './TreeRepository';
+import { borrarFotosLocales } from '../services/PhotoService';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -478,7 +480,7 @@ export async function createPlantationWithParcelaLocally(
       organizacionId: params.organizacionId,
       lugar: params.lugar,
       periodo: params.periodo,
-      estado: 'activa',
+      estado: ESTADO_PLANTACION.activa,
       creadoPor: params.creadoPor,
       createdAt: now,
       pendingSync: true,
@@ -511,13 +513,14 @@ export async function createPlantationWithParcelaLocally(
   });
 
   notifyDataChanged();
-  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: 'activa' };
+  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: ESTADO_PLANTACION.activa };
 }
 
 // --- deletePlantationLocally ------------------------------------------------
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
+  const fotos = await getLocalPhotoUrisForPlantation(plantacionId);
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
@@ -533,5 +536,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
   });
+  // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).
+  borrarFotosLocales(fotos);
   notifyDataChanged();
 }
