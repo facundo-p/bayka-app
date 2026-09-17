@@ -66,7 +66,8 @@ inmutable (037, #469), `15` plantación archivada: matriz de roles de
 superadmin (038, #477), `20` `is_admin()` exige perfil activo: un admin o
 superadmin inactivo no lee por la vía admin (043, #506), `23` perfil inactivo:
 no pasa las policies de admin, `is_superadmin()` ni `is_plantation_member()`,
-incluidos `sync_subgroup` y Storage (045, #508).
+incluidos `sync_subgroup` y Storage (045, #508), `24` INSERT/UPDATE/upsert de
+fotos en `tree-photos` exigen plantación escribible (046, #512).
 
 ## Hallazgo fuera de alcance (no corregido)
 
