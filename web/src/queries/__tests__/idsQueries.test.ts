@@ -102,6 +102,15 @@ test('generarIds traduce ALREADY_GENERATED (carrera con otra sesión)', async ()
   );
 });
 
+test('generarIds traduce PLANTACION_ARCHIVADA (se archivó con el modal abierto)', async () => {
+  estadoMock.resolverConsulta = () => ({
+    data: { success: false, error: 'PLANTACION_ARCHIVADA' },
+  });
+  await expect(generarIds('p1', 1)).rejects.toThrow(
+    'La plantación está archivada: hay que desarchivarla para generar IDs.',
+  );
+});
+
 test('generarIds con error de transporte lanza el mensaje genérico', async () => {
   estadoMock.resolverConsulta = () => ({ error: { message: 'network down' } });
   await expect(generarIds('p1', 1)).rejects.toThrow(

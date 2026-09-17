@@ -288,7 +288,9 @@ describe('archivar / desarchivar', () => {
 
   test('un error de red o un código desconocido dan el mensaje genérico', async () => {
     capturarConsultas(() => ({ error: { message: 'fetch failed' } }));
-    await expect(desarchivarPlantacion('plant-1')).rejects.toThrow('No se pudo completar la acción');
+    await expect(desarchivarPlantacion('plant-1')).rejects.toThrow(
+      'No se pudo completar la acción',
+    );
     capturarConsultas(() => ({ data: { success: false, error: 'OTRO' } }));
     await expect(archivarPlantacion('plant-1')).rejects.toThrow('No se pudo completar la acción');
   });

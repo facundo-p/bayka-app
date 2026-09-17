@@ -535,7 +535,9 @@ describe('archivado', () => {
     await usuario.click(within(menu).getByRole('menuitem', { name: 'Archivar plantación' }));
     const dialogo = await screen.findByRole('dialog', { name: 'Archivar Mendoza' });
     expect(within(dialogo).getByText(/deja de aparecer en los listados/)).toBeInTheDocument();
-    expect(within(dialogo).getByText(/no los va a poder subir hasta que se desarchive/)).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(/no los va a poder subir hasta que se desarchive/),
+    ).toBeInTheDocument();
 
     await usuario.click(within(dialogo).getByRole('button', { name: 'Archivar' }));
 
@@ -561,7 +563,9 @@ describe('archivado', () => {
     const menu = await abrirMasAcciones(usuario);
     await usuario.click(within(menu).getByRole('menuitem', { name: 'Desarchivar plantación' }));
     const dialogo = await screen.findByRole('dialog', { name: 'Desarchivar Mendoza' });
-    expect(within(dialogo).getByText(/Su estado \(activa o finalizada\) no cambia/)).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(/Su estado \(activa o finalizada\) no cambia/),
+    ).toBeInTheDocument();
     await usuario.click(within(dialogo).getByRole('button', { name: 'Desarchivar' }));
 
     await waitFor(() => expect(screen.queryByText('Archivada')).not.toBeInTheDocument());
@@ -661,12 +665,16 @@ describe('eliminar', () => {
     renderRutasEn('/plantaciones/plant-1');
 
     const dialogo = await abrirEliminar(usuario);
-    expect(await within(dialogo).findByText(/30 árboles \(4 árboles con foto\)/)).toBeInTheDocument();
+    expect(
+      await within(dialogo).findByText(/30 árboles \(4 árboles con foto\)/),
+    ).toBeInTheDocument();
     expect(within(dialogo).getByText(/sin sincronizar, se pierden/)).toBeInTheDocument();
     const eliminar = within(dialogo).getByRole('button', { name: 'Eliminar' });
     expect(eliminar).toBeDisabled();
 
-    const campo = within(dialogo).getByRole('textbox', { name: 'Escribí «Mendoza» para confirmar' });
+    const campo = within(dialogo).getByRole('textbox', {
+      name: 'Escribí «Mendoza» para confirmar',
+    });
     await usuario.type(campo, 'Mendoz');
     expect(eliminar).toBeDisabled();
     await usuario.type(campo, 'a');
@@ -675,7 +683,9 @@ describe('eliminar', () => {
     estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
     await usuario.click(eliminar);
 
-    expect(await within(dialogo).findByText(/algunas fotos no se pudieron borrar/)).toBeInTheDocument();
+    expect(
+      await within(dialogo).findByText(/algunas fotos no se pudieron borrar/),
+    ).toBeInTheDocument();
     expect(estadoMock.invocaciones[0].cuerpo).toEqual({
       accion: 'eliminar',
       plantacionId: 'plant-1',
@@ -686,7 +696,9 @@ describe('eliminar', () => {
   test('un rechazo del server se muestra y no cierra', async () => {
     estadoMock.respuestaInvoke = {
       data: null,
-      error: { context: { json: async () => ({ ok: false, error: 'La plantación tiene datos cargados' }) } },
+      error: {
+        context: { json: async () => ({ ok: false, error: 'La plantación tiene datos cargados' }) },
+      },
     };
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
@@ -694,6 +706,8 @@ describe('eliminar', () => {
     const dialogo = await abrirEliminar(usuario);
     await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
 
-    expect(await within(dialogo).findByRole('alert')).toHaveTextContent('La plantación tiene datos cargados');
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+      'La plantación tiene datos cargados',
+    );
   });
 });

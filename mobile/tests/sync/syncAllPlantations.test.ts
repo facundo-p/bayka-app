@@ -91,7 +91,9 @@ function makeSupabaseChain() {
     insert: jest.fn().mockResolvedValue({ error: null }),
     upsert: jest.fn().mockResolvedValue({ error: null }),
     update: jest.fn().mockReturnValue({
-      eq: jest.fn().mockResolvedValue({ error: null }),
+      eq: jest.fn().mockReturnValue({
+        select: jest.fn().mockResolvedValue({ data: [{ id: 'fila' }], error: null }),
+      }),
     }),
   };
 }
