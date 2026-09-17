@@ -63,7 +63,10 @@ RLS (034, #379), `12` columna `photo_capture_all_trees` con su default (035,
 #439), `13` `sincronizar_borrados` (036, #467), `14` plantación finalizada
 inmutable (037, #469), `15` plantación archivada: matriz de roles de
 `archivar_plantacion`/`desarchivar_plantacion` y solo lectura también para
-superadmin (038, #477).
+superadmin (038, #477), `16` eliminar plantación: matriz de rol × con/sin
+datos × archivada, nombre de confirmación, cascade completo, registro en
+`plantaciones_eliminadas` y los cuatro valores de `estado_remoto_plantaciones`
+(039, #478).
 
 ## Hallazgo fuera de alcance (no corregido)
 
