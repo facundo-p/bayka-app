@@ -16,11 +16,19 @@ jest.mock('../../src/hooks/useCurrentUserId', () => ({
   useCurrentUserId: () => 'user-1',
 }));
 
+const mockUsePlantacionEditable = jest.fn();
+jest.mock('../../src/hooks/usePlantacionEditable', () => ({
+  usePlantacionEditable: (plantacionId: string) => mockUsePlantacionEditable(plantacionId),
+}));
+
+const EDITABLE = { estadoLoaded: true, plantacionEditable: true, isArchivada: false, isFinalizada: false };
+
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useNewGroup } from '../../src/hooks/useNewGroup';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUsePlantacionEditable.mockReturnValue(EDITABLE);
 });
 
 describe('useNewGroup', () => {
@@ -98,6 +106,27 @@ describe('useNewGroup', () => {
         usuarioCreador: 'user-1',
       });
       expect(outcome).toEqual({ success: true, id: 'sg-1' });
+    });
+
+    test.each([
+      ['finalizada', { ...EDITABLE, plantacionEditable: false, isFinalizada: true }],
+      ['archivada', { ...EDITABLE, plantacionEditable: false, isArchivada: true }],
+      ['sin cargar', { ...EDITABLE, estadoLoaded: false, plantacionEditable: false }],
+    ])('plantación %s: no crea el grupo', async (_caso, estado) => {
+      mockUsePlantacionEditable.mockReturnValue(estado);
+      const { result } = renderHook(() => useNewGroup('plant-1', 'parc-1'));
+
+      const outcome = await result.current.handleCreateGroup({ nombre: 'Linea 1', codigo: 'L1', tipo: 'linea' as any });
+
+      expect(outcome).toEqual({ success: false, error: 'unknown' });
+      expect(mockCreateGroup).not.toHaveBeenCalled();
+    });
+
+    test('expone si la plantación es editable y por qué no', () => {
+      mockUsePlantacionEditable.mockReturnValue({ ...EDITABLE, plantacionEditable: false, isArchivada: true });
+      const { result } = renderHook(() => useNewGroup('plant-1', 'parc-1'));
+      expect(result.current).toMatchObject({ estadoLoaded: true, plantacionEditable: false, isArchivada: true });
+      expect(mockUsePlantacionEditable).toHaveBeenCalledWith('plant-1');
     });
   });
 });

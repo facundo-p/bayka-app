@@ -1,11 +1,25 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { View, Text } from 'react-native';
 import EntityFormModal from '../components/EntityFormModal';
 import FormActions from '../components/FormActions';
 import GrupoFields from '../components/GrupoFields';
+import { PlantacionNoEditableBanner } from '../components/PlantationDetailHeader';
 import { useGrupoForm } from '../hooks/useGrupoForm';
 import { useNewGroup } from '../hooks/useNewGroup';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
+import { nuevoGrupoScreenStyles as styles } from './NuevoGrupoScreen.styles';
+
+function PlantacionBloqueada({ isArchivada }: { isArchivada: boolean }) {
+  return (
+    <View style={styles.bloqueo}>
+      <PlantacionNoEditableBanner isArchivada={isArchivada} />
+      <Text style={styles.bloqueoTexto}>
+        {`No se pueden crear grupos en una plantación ${isArchivada ? 'archivada' : 'finalizada'}.`}
+      </Text>
+    </View>
+  );
+}
 
 export default function NuevoGrupoScreen() {
   const { plantacionId, parcelaId } = useLocalSearchParams<{ plantacionId: string; parcelaId?: string }>();
@@ -19,7 +33,11 @@ export default function NuevoGrupoScreen() {
     }
   }, [parcelaId, plantacionId, router, routePrefix]);
 
-  const { lastGroupName, handleCreateGroup } = useNewGroup(plantacionId, parcelaId);
+  const { lastGroupName, handleCreateGroup, estadoLoaded, plantacionEditable, isArchivada } =
+    useNewGroup(plantacionId, parcelaId);
+  // No depende de que el "+" esté oculto: la ruta se puede abrir igual, y un pull
+  // puede finalizar o archivar la plantación con la pantalla abierta.
+  const bloqueada = estadoLoaded && !plantacionEditable;
 
   const form = useGrupoForm({
     mode: 'create',
@@ -45,13 +63,17 @@ export default function NuevoGrupoScreen() {
         <FormActions
           submitLabel="Crear grupo"
           onSubmit={form.handleSubmit}
-          submitDisabled={!form.canSubmit}
+          submitDisabled={!form.canSubmit || !plantacionEditable}
           loading={form.loading}
           onCancel={() => router.back()}
         />
       }
     >
-      <GrupoFields form={form} lastGroupName={lastGroupName} />
+      {bloqueada ? (
+        <PlantacionBloqueada isArchivada={isArchivada} />
+      ) : (
+        <GrupoFields form={form} lastGroupName={lastGroupName} />
+      )}
     </EntityFormModal>
   );
 }

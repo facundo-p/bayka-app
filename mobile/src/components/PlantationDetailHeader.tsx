@@ -51,6 +51,11 @@ function FinalizadaBanner() {
   );
 }
 
+/** Archivada tapa a finalizada: es lo primero que hay que resolver. */
+export function PlantacionNoEditableBanner({ isArchivada }: { isArchivada: boolean }) {
+  return isArchivada ? <ArchivadaBanner /> : <FinalizadaBanner />;
+}
+
 export default function PlantationDetailHeader({
   estadoLoaded,
   isFinalizada,
@@ -61,9 +66,9 @@ export default function PlantationDetailHeader({
 }: Props) {
   return (
     <View style={styles.fixedHeader}>
-      {/* Archivada tapa a finalizada: es lo primero que hay que resolver. */}
-      {estadoLoaded && isArchivada && <ArchivadaBanner />}
-      {estadoLoaded && !isArchivada && isFinalizada && <FinalizadaBanner />}
+      {estadoLoaded && (isArchivada || isFinalizada) && (
+        <PlantacionNoEditableBanner isArchivada={isArchivada} />
+      )}
 
       <Animated.View entering={FadeInDown.delay(100).duration(300)} style={{ paddingTop: spacing.md }}>
         <FilterCards

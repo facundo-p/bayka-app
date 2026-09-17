@@ -17,23 +17,19 @@ import {
   getNNCountsPerGroup,
   getTreeCountsPerGroup,
 } from '../queries/plantationDetailQueries';
-import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
-import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
-import { getGroupGating, plantacionEsEditable, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
-import type { EstadoDeEdicionDePlantacion, GroupGating } from '../utils/permisosDeEdicion';
+import { getGroupGating, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
+import type { GroupGating } from '../utils/permisosDeEdicion';
 import { findById as findParcelaById } from '../repositories/ParcelaRepository';
 import type { Parcela } from '../repositories/ParcelaRepository';
+import { usePlantacionEditable } from './usePlantacionEditable';
 
 // Re-export types for consumers of this hook (avoids repository imports in screens)
 export type { Group, GroupTipo };
-
-/** Plantación que no está en SQLite: sin estado ni archivado, como antes de #477. */
-const PLANTACION_SIN_DATOS: EstadoDeEdicionDePlantacion = { estado: '', archivadaEn: null };
 
 export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const userId = useCurrentUserId();
@@ -57,16 +53,9 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   );
   const parcela: Parcela | null = (parcelaRows?.[0] as Parcela | undefined) ?? null;
 
-  const { data: estadoData } = useLiveData(
-    () => getPlantationEstadoDeEdicion(pid).then((e) => [e ?? PLANTACION_SIN_DATOS]),
-    [pid]
-  );
-  const estadoDeEdicion = estadoData?.[0] ?? PLANTACION_SIN_DATOS;
-  const estadoLoaded = estadoData !== undefined;
-  const isFinalizada = estadoDeEdicion.estado === ESTADO_PLANTACION.finalizada;
-  const isArchivada = esArchivada(estadoDeEdicion);
   // Finalizada o archivada: tampoco se crean, editan ni borran parcelas ni grupos.
-  const plantacionEditable = estadoLoaded && plantacionEsEditable(estadoDeEdicion);
+  const { estadoDeEdicion, estadoLoaded, isFinalizada, isArchivada, plantacionEditable } =
+    usePlantacionEditable(pid);
 
   const creatorIds = useMemo(() => {
     const ids = (groupRows ?? []).map((sg: any) => sg.usuarioCreador).filter(Boolean);
