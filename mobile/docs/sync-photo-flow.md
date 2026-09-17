@@ -154,10 +154,10 @@ Lo que el device cargó antes de enterarse **no se pierde**: queda local, pendie
 |------|------------------------|-----------------|
 | `sync_subgroup` | `{ success: false, error: 'PLANTACION_ARCHIVADA' }` o `'PLANTACION_FINALIZADA'` | `classifyRpcResult` conserva el código y el grupo sigue pendiente. `getErrorMessage` (`services/sync/types.ts`) le dice al usuario que pida desarchivar o reabrir. |
 | `sincronizar_borrados` | `rechazados: uuid[]` y `rechazos: [{ id, error }]` | `pushBorrados` limpia solo lo aceptado; los rechazados siguen anotados. `motivosDeRechazo` loguea los motivos. |
-| Upsert de parcelas | Error de RLS (`42501`) | `classifyParcelaRpcResult` lo clasifica como `PERMISSION`, no como plantación bloqueada. |
+| Upsert de parcelas | Error de RLS (`42501`) | `classifyParcelaRpcResult` lo clasifica como `PERMISSION`, no como plantación bloqueada (#511). |
 | `UPDATE trees SET foto_url` (paso 4) | 0 filas y sin error: la policy UPDATE no deja ver la fila | Se marca `fotoSynced` igual (#482). |
 
-Storage no mira el estado de la plantación: las fotos suben aunque después el RPC rechace el grupo, y `uploadGroup` ya las marcó `fotoSynced = true` (#489).
+Storage no mira el estado de la plantación (#512): las fotos suben aunque después el RPC rechace el grupo, y `uploadGroup` ya las marcó `fotoSynced = true` (#489).
 
 Un server sin la 038 no manda `rechazos`: `motivosDeRechazo` asume finalizada, el único motivo posible antes de #477.
 
