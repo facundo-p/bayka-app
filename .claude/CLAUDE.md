@@ -11,9 +11,8 @@
 - Entornos por branch:
   - `staging` → Supabase **Plantaciones Staging** (`uchejlyyabtrjoxyydmb`, cuenta
     del cliente) + web staging en Cloudflare Pages + APK variante TEST.
-  - `main` → Supabase prod (proyecto pendiente de creación, #245) + web prod +
-    APK de producción. Hasta el cutover (#254), el prod "viejo" es
-    `apktttwrmhamfudjeklu`.
+  - `main` → Supabase prod (`mgtaeogxzuavxrfhrefi`, cuenta del cliente) + web
+    prod + APK de producción.
 - Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
   `main` correspondiente y confirmación dedicada.
 
