@@ -258,6 +258,10 @@ Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
 (archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
 cuando la plantación vuelve a ser escribible.
 
+Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
+responde `42501` sin motivo. La app lo traduce con el estado local de la
+plantación; si está activa, queda como `PERMISSION`.
+
 ### Eliminada
 
 El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,

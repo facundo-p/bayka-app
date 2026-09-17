@@ -56,6 +56,11 @@ PostgREST wraps every postgres error en un objeto con shape estable
    - Sin `code` y mensaje incluye `fetch`/`network` → `NETWORK`.
    - Otro caso → `UNKNOWN`, con `code: message` crudo en `detail`.
 
+`uploadSyncableParcelas` reinterpreta el `PERMISSION` con el estado local de la
+plantación: archivada → `PLANTACION_ARCHIVADA`, finalizada →
+`PLANTACION_FINALIZADA` (#511). RLS no distingue esos casos de la falta de
+membresía.
+
 **NUNCA** usar substring matching sobre `error.message` — el mensaje no es
 estable entre versiones de postgres ni locales.
 

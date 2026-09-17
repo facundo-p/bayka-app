@@ -26,6 +26,9 @@ import { borradosDePlantacion, limpiarBorrados, type BorradoPendiente } from '..
 import { ENTIDADES_DE_FILA, FOTOS_QUITADAS, type EntidadBorrada } from '../../constants/entidadBorrada';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 import { esTimeout } from '../../supabase/fetchConTimeout';
+import { getPlantationEstadoDeEdicion } from '../../queries/adminQueries';
+import { esArchivada } from '../../constants/estados';
+import { plantacionEsEditable, type EstadoDeEdicionDePlantacion } from '../../utils/permisosDeEdicion';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -85,6 +88,27 @@ export function classifyParcelaRpcResult(
   return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: code, detail };
 }
 
+/** Por qué la plantación no admite escrituras, con la misma prioridad que `motivo_no_escribible` del server. */
+export function motivoDeBloqueo(plantacion: EstadoDeEdicionDePlantacion | null): SyncErrorCode | null {
+  if (plantacion == null) return null;
+  if (esArchivada(plantacion)) return SYNC_ERROR.PLANTACION_ARCHIVADA;
+  if (!plantacionEsEditable(plantacion)) return SYNC_ERROR.PLANTACION_FINALIZADA;
+  return null;
+}
+
+/**
+ * El upsert va por PostgREST, no por un RPC: RLS rechaza igual con 42501 a quien no es
+ * miembro y a una plantación finalizada o archivada (#511). El estado local, que el pull
+ * acaba de refrescar, distingue los dos casos.
+ */
+async function desempatarPermiso(result: SyncParcelaResult, plantacionId: string): Promise<SyncParcelaResult> {
+  if (result.success || result.error !== SYNC_ERROR.PERMISSION) return result;
+  const motivo = motivoDeBloqueo(await getPlantationEstadoDeEdicion(plantacionId));
+  if (motivo == null) return result;
+  // Sin `detail`: el 42501 crudo contradice el mensaje, igual que en los grupos rechazados.
+  return { success: false, parcelaId: result.parcelaId, nombre: result.nombre, error: motivo };
+}
+
 /** Sube todas las parcelas syncable de una plantación (activas + tombstoned con pending_sync=true); solo limpia pending_sync en éxito. */
 export async function uploadSyncableParcelas(
   plantacionId: string
@@ -95,7 +119,7 @@ export async function uploadSyncableParcelas(
   for (const parcela of pending) {
     try {
       const { data, error } = await uploadParcela(parcela);
-      const result = classifyParcelaRpcResult(parcela, data, error);
+      const result = await desempatarPermiso(classifyParcelaRpcResult(parcela, data, error), plantacionId);
       if (result.success) await markParcelaSynced(parcela.id);
       // En cualquier error: NO markSynced — pending_sync queda en true.
       results.push(result);
