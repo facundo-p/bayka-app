@@ -10,7 +10,7 @@ import HeaderActionButton from '../components/HeaderActionButton';
 import TexturedBackground from '../components/TexturedBackground';
 import PlantacionesModals from '../components/PlantacionesModals';
 import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { esEliminadaEnServidor } from '../constants/estados';
 
