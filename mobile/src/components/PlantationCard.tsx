@@ -12,6 +12,7 @@ import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
+import { esFinalizada } from '../constants/estados';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 
 type Props = {
@@ -185,7 +186,7 @@ function StatsRow({
         <Ionicons name="cloud-done-outline" size={14} color={colors.statSynced} />
         <Text style={[styles.statValue, { color: colors.statSynced }]}>{syncedCount}</Text>
       </View>
-      {estado !== 'finalizada' && (
+      {!esFinalizada({ estado }) && (
         <View style={styles.statItem}>
           <Ionicons name="today-outline" size={14} color={colors.statToday} />
           <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
@@ -226,7 +227,7 @@ export default function PlantationCard({
   onParcelaLongPress,
 }: Props) {
   const accentColor =
-    estado === 'finalizada' ? colors.stateFinalizada : colors.stateActiva;
+    esFinalizada({ estado }) ? colors.stateFinalizada : colors.stateActiva;
 
   return (
     <Pressable

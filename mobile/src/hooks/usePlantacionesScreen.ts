@@ -14,7 +14,7 @@ import { useAuth } from './useAuth';
 import { usePendingSyncCount } from './usePendingSyncCount';
 import { usePendingSyncMap } from './usePendingSyncMap';
 import type { ExpandedMeta } from './usePlantationAdmin';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { PlantationGpsSettings } from '../repositories/PlantationRepository';

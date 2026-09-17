@@ -27,7 +27,7 @@ import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportServi
 import { colors } from '../theme';
 import { ESTADO_PLANTACION } from '../constants/estados';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
-import type { Plantation } from '../components/PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

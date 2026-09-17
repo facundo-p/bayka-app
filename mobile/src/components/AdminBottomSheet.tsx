@@ -10,10 +10,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, spacing } from '../theme';
 import { adminBottomSheetStyles as styles } from './AdminBottomSheet.styles';
-import type { Plantation } from './PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
-import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
+import { esActiva, esArchivada, esFinalizada } from '../constants/estados';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -181,7 +181,7 @@ export default function AdminBottomSheet({
             )}
 
             {/* Archivada (#477): sin especies, técnicos ni finalizar. */}
-            {isAdmin && plantation.estado === ESTADO_PLANTACION.activa && !esArchivada(plantation) && (
+            {isAdmin && esActiva(plantation) && !esArchivada(plantation) && (
               <>
                 <View style={styles.divider} />
                 <ActionItem
@@ -207,7 +207,7 @@ export default function AdminBottomSheet({
               </>
             )}
 
-            {isAdmin && plantation.estado === 'finalizada' && (
+            {isAdmin && esFinalizada(plantation) && (
               <>
                 <View style={styles.divider} />
                 {/* #232: los IDs finales se generan desde la web; acá solo se informa. */}

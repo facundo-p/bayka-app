@@ -10,7 +10,7 @@ import AdminPlantationModals from './AdminPlantationModals';
 import SyncProgressModal from './SyncProgressModal';
 import SyncConfirmModal from './SyncConfirmModal';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
-import type { Plantation } from './PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';

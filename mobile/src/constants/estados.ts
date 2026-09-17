@@ -6,6 +6,17 @@ export const ESTADO_PLANTACION = {
 
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
+/** `estado` opcional: hay props de listado que no siempre lo traen. */
+type ConEstado = { estado?: string | null };
+
+export function esActiva(plantacion: ConEstado): boolean {
+  return plantacion.estado === ESTADO_PLANTACION.activa;
+}
+
+export function esFinalizada(plantacion: ConEstado): boolean {
+  return plantacion.estado === ESTADO_PLANTACION.finalizada;
+}
+
 /**
  * Archivada (#477): oculta y de solo lectura para todos, superadmin incluido. Es
  * independiente de `estado`: una plantación finalizada también puede estar archivada.
