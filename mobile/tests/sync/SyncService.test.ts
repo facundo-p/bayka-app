@@ -99,6 +99,15 @@ function whereResult(rows: unknown) {
   });
 }
 
+// El update de foto_url pide las filas afectadas (#482).
+function updateQueAfecta(filas: unknown[] = [{ id: 'tree' }]) {
+  return jest.fn().mockReturnValue({
+    eq: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue({ data: filas, error: null }),
+    }),
+  });
+}
+
 const makeSg = (id: string, nombre = 'Línea A') => ({
   id,
   plantacionId: 'plantation-1',
@@ -152,9 +161,7 @@ describe('SyncService', () => {
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockResolvedValue({ data: [], error: null }),
       }),
-      update: jest.fn().mockReturnValue({
-        eq: jest.fn().mockResolvedValue({ error: null }),
-      }),
+      update: updateQueAfecta(),
     });
 
     // Default: db.insert chain for upsert
@@ -407,9 +414,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: null }),
-        }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockResolvedValue({ data: [], error: null }),
         }),
@@ -437,9 +442,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: null }),
-        }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockResolvedValue({ data: [], error: null }),
         }),
@@ -473,7 +476,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       });
 
@@ -499,7 +502,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       });
 
@@ -531,6 +534,22 @@ describe('SyncService', () => {
 
       expect(result).toEqual({ uploaded: 0, failed: 1 });
       expect(progresos[progresos.length - 1].bytes).toBe(0);
+    });
+
+    // PostgREST no da error si el árbol no existe en el server o RLS lo oculta:
+    // marcarla sincronizada perdería la foto en silencio (#482).
+    it('un update de foto_url que no afecta filas cuenta como fallo y no marca la foto', async () => {
+      mockGetTreesWithPendingPhotos.mockResolvedValue([
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ]);
+      const update = updateQueAfecta([]);
+      (mockSupabase.from as jest.Mock).mockReturnValue({ update });
+
+      const result = await uploadPendingPhotos('plantation-1');
+
+      expect(update.mock.results[0].value.eq.mock.results[0].value.select).toHaveBeenCalledWith('id');
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+      expect(result).toEqual({ uploaded: 0, failed: 1 });
     });
 
     it('Test 11: returns { uploaded: 0, failed: 0 } when no pending photos', async () => {
