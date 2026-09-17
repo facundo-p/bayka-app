@@ -5,7 +5,6 @@ import CatalogPlantationCard from '../components/CatalogPlantationCard';
 import FilterCards from '../components/FilterCards';
 import { filtrosDeEstado } from '../components/filtrosDeEstado';
 import DownloadProgressModal from '../components/DownloadProgressModal';
-import ConfirmModal from '../components/ConfirmModal';
 import CustomHeader from '../components/CustomHeader';
 import { colors, spacing } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
@@ -29,7 +28,6 @@ export default function CatalogScreen() {
     downloadProgress,
     downloadResults,
     includePhotos,
-    confirmProps,
     loadCatalog,
     toggleSelection,
     handleBatchDownload,
@@ -140,7 +138,6 @@ export default function CatalogScreen() {
         results={downloadResults}
         onDismiss={handleDismiss}
       />
-      <ConfirmModal {...confirmProps} />
     </ScreenContainer>
   );
 }
