@@ -59,7 +59,7 @@ function FinalizadaBanner() {
 }
 
 /** Un solo banner: eliminada tapa a archivada y archivada a finalizada, de lo más a lo menos definitivo. */
-function BannerDeEstado({ isEliminada, isArchivada, isFinalizada }: { isEliminada: boolean; isArchivada: boolean; isFinalizada: boolean }) {
+export function BannerDeEstado({ isEliminada, isArchivada, isFinalizada }: { isEliminada: boolean; isArchivada: boolean; isFinalizada: boolean }) {
   if (isEliminada) return <EliminadaBanner />;
   if (isArchivada) return <ArchivadaBanner />;
   if (isFinalizada) return <FinalizadaBanner />;
