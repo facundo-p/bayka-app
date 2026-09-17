@@ -15,6 +15,7 @@ import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION } from '../constants/estados';
+import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -345,10 +346,19 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
 // ─── saveSpeciesConfig ────────────────────────────────────────────────────────
 
-/** Reemplaza atómicamente el species config de la plantación en Supabase y sincroniza a SQLite vía pullFromServer. */
+/** Reemplaza el species config en Supabase (no es atómico: borra y después inserta) y sincroniza a SQLite vía pullFromServer. */
 export async function saveSpeciesConfig(
   plantacionId: string,
   items: Array<{ especieId: string; ordenVisual: number }>
+): Promise<void> {
+  await escribirSiEsEscribible(plantacionId, BLOQUEAN_ESPECIES, () => reemplazarEspeciesRemotas(plantacionId, items));
+  await pullFromServer(plantacionId);
+  notifyDataChanged();
+}
+
+async function reemplazarEspeciesRemotas(
+  plantacionId: string,
+  items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
   const { error: deleteError } = await supabase
     .from('plantation_species')
@@ -356,23 +366,19 @@ export async function saveSpeciesConfig(
     .eq('plantation_id', plantacionId);
 
   if (deleteError) throw deleteError;
+  if (items.length === 0) return;
 
-  if (items.length > 0) {
-    const { error: insertError } = await supabase
-      .from('plantation_species')
-      .insert(
-        items.map((item) => ({
-          plantation_id: plantacionId,
-          species_id: item.especieId,
-          orden_visual: item.ordenVisual,
-        }))
-      );
+  const { error: insertError } = await supabase
+    .from('plantation_species')
+    .insert(
+      items.map((item) => ({
+        plantation_id: plantacionId,
+        species_id: item.especieId,
+        orden_visual: item.ordenVisual,
+      }))
+    );
 
-    if (insertError) throw insertError;
-  }
-
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
+  if (insertError) throw insertError;
 }
 
 // ─── saveSpeciesConfigLocally ─────────────────────────────────────────────────
@@ -403,6 +409,12 @@ export async function assignTechnicians(
   plantacionId: string,
   userIds: string[]
 ): Promise<void> {
+  await escribirSiEsEscribible(plantacionId, BLOQUEAN_ASIGNACIONES, () => reemplazarTecnicosRemotos(plantacionId, userIds));
+  await pullFromServer(plantacionId);
+  notifyDataChanged();
+}
+
+async function reemplazarTecnicosRemotos(plantacionId: string, userIds: string[]): Promise<void> {
   const { error: deleteError, count: deleteCount } = await supabase
     .from('plantation_users')
     .delete()
@@ -411,25 +423,21 @@ export async function assignTechnicians(
 
   console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;
+  if (userIds.length === 0) return;
 
-  if (userIds.length > 0) {
-    const now = new Date().toISOString();
-    const { error: insertError } = await supabase
-      .from('plantation_users')
-      .insert(
-        userIds.map((userId) => ({
-          plantation_id: plantacionId,
-          user_id: userId,
-          rol_en_plantacion: ROL.tecnico,
-          assigned_at: now,
-        }))
-      );
+  const now = new Date().toISOString();
+  const { error: insertError } = await supabase
+    .from('plantation_users')
+    .insert(
+      userIds.map((userId) => ({
+        plantation_id: plantacionId,
+        user_id: userId,
+        rol_en_plantacion: ROL.tecnico,
+        assigned_at: now,
+      }))
+    );
 
-    if (insertError) throw insertError;
-  }
-
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
+  if (insertError) throw insertError;
 }
 
 // ─── createPlantationWithParcelaLocally ──────────────────────────────────────

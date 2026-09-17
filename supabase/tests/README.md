@@ -66,7 +66,8 @@ inmutable (037, #469), `15` plantación archivada: matriz de roles de
 superadmin (038, #477), `16` eliminar plantación: matriz de rol × con/sin
 datos × archivada, nombre de confirmación, cascade completo, registro en
 `plantaciones_eliminadas` y los cuatro valores de `estado_remoto_plantaciones`
-(039, #478).
+(039, #478), `25` asignaciones de técnicos: exigen plantación existente y no
+archivada, una finalizada las admite (047, #522).
 
 ## Hallazgo fuera de alcance (no corregido)
 

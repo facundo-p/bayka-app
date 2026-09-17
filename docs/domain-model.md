@@ -241,6 +241,11 @@ Un push rechazado devuelve `PLANTACION_ARCHIVADA` o `PLANTACION_FINALIZADA`
 (archivada gana si aplican las dos). Lo pendiente queda en el celular y se sube
 cuando la plantación vuelve a ser escribible.
 
+Las asignaciones de técnicos (`plantation_users`) usan otro gate,
+`plantacion_admite_asignaciones`: exigen que la plantación exista y no esté
+archivada, pero una finalizada las admite, porque son control de acceso y no
+datos de campo (#522).
+
 ### Eliminada
 
 El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,
