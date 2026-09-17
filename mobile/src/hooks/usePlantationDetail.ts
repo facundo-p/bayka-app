@@ -24,6 +24,7 @@ import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
 import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
+import { contarPorEstado } from '../utils/conteoPorEstado';
 import { getGroupGating, plantacionEsEditable, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion, GroupGating } from '../utils/permisosDeEdicion';
 import { findById as findParcelaById } from '../repositories/ParcelaRepository';
@@ -90,12 +91,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
 
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
 
-  const groupEstadoCounts = { activa: 0, finalizada: 0 };
-  (groupRows ?? []).forEach((sg: any) => {
-    if (groupEstadoCounts[sg.estado as keyof typeof groupEstadoCounts] !== undefined) {
-      groupEstadoCounts[sg.estado as keyof typeof groupEstadoCounts]++;
-    }
-  });
+  const groupEstadoCounts = contarPorEstado(groupRows);
 
   const filteredGroups = ((groupRows ?? []) as Group[]).filter(
     sg => !groupFilter || sg.estado === groupFilter

@@ -16,6 +16,7 @@ import { getServerCatalog, getLocalPlantationIds, getUnsyncedGroupSummary, Serve
 import { deletePlantationLocally } from '../repositories/PlantationRepository';
 import { batchDownload, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState } from '../services/SyncService';
 import { colors } from '../theme';
+import { contarPorEstado } from '../utils/conteoPorEstado';
 
 export function useCatalog() {
   const userId = useCurrentUserId();
@@ -130,12 +131,7 @@ export function useCatalog() {
     setSelectedIds(new Set());
   }
 
-  const estadoCounts = { activa: 0, finalizada: 0 };
-  catalogItems.forEach((p) => {
-    if (estadoCounts[p.estado as keyof typeof estadoCounts] !== undefined) {
-      estadoCounts[p.estado as keyof typeof estadoCounts]++;
-    }
-  });
+  const estadoCounts = contarPorEstado(catalogItems);
 
   const filteredCatalog = catalogItems.filter(
     (p) => !activeFilter || p.estado === activeFilter

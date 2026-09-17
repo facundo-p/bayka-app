@@ -463,7 +463,7 @@ export async function createPlantationWithParcelaLocally(
       organizacionId: params.organizacionId,
       lugar: params.lugar,
       periodo: params.periodo,
-      estado: 'activa',
+      estado: ESTADO_PLANTACION.activa,
       creadoPor: params.creadoPor,
       createdAt: now,
       pendingSync: true,
@@ -496,7 +496,7 @@ export async function createPlantationWithParcelaLocally(
   });
 
   notifyDataChanged();
-  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: 'activa' };
+  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: ESTADO_PLANTACION.activa };
 }
 
 // --- deletePlantationLocally ------------------------------------------------
