@@ -267,6 +267,11 @@ Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
 responde `42501` sin motivo. La app lo traduce con el estado local de la
 plantación; si está activa, queda como `PERMISSION`.
 
+Las asignaciones de técnicos (`plantation_users`) usan otro gate,
+`plantacion_admite_asignaciones`: exigen que la plantación exista y no esté
+archivada, pero una finalizada las admite, porque son control de acceso y no
+datos de campo (#522).
+
 ### Eliminada
 
 El borrado es real (#478): un `DELETE` con cascade a parcelas, grupos, árboles,
