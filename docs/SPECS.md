@@ -642,7 +642,9 @@ Ejemplo:
 
 Secuencial entre todas las plantaciones.
 
-El administrador define un valor inicial (el sistema sugiere uno basado en registros anteriores almacenados en el servidor para la organización).
+El administrador define un valor inicial. El sistema sugiere el mayor ID global
+existente en el servidor + 1 (1 si todavía no hay ninguno). Ese máximo se toma
+sobre todos los árboles del servidor, no solo los de la organización.
 
 Ejemplo:
 
@@ -656,14 +658,31 @@ Los IDs incrementan desde ese valor.
 
 ## Persistencia
 
-"Generar IDs" **requiere conexión**. Los IDs se asignan en local y se **suben al
-servidor en el mismo paso**, mediante un RPC dedicado que actualiza solo
-`plantacion_id`/`global_id` (rápido, sin re-subir grupos ni árboles). No hace falta
-sincronizar aparte para que los IDs lleguen al servidor.
+Los IDs se generan **solo desde la web de gestión**, server-side. La app no los
+genera ni los sube: los recibe con el pull normal de la sincronización.
 
-Si la subida falla, los IDs se **revierten** y hay que volver a tocar "Generar IDs"
-(ese botón es el único que sube los IDs). La **exportación** solo se habilita cuando
-los IDs están confirmados en el servidor.
+"Generar IDs" pide confirmación del ID global inicial y llama al RPC
+`generate_tree_ids`, que:
+
+- Solo acepta admin o superadmin (`NOT_AUTHORIZED`).
+- Numera y guarda `plantacion_id`/`global_id` de todos los árboles de la
+  plantación en **una sola transacción**. Si falla, no queda nada escrito y no
+  hay reversión del lado del cliente.
+- Ordena los árboles por fecha de creación del grupo y posición del árbol.
+- Serializa las generaciones concurrentes, para que dos corridas no repartan el
+  mismo rango de IDs globales.
+- Es idempotente: si todos los árboles ya tienen `global_id`, responde
+  `ALREADY_GENERATED` sin tocar nada. Un set parcial se regenera completo.
+- Rechaza una plantación sin árboles (`NO_TREES`) o un ID inicial menor a 1
+  (`INVALID_SEED`).
+
+Los IDs quedan generados cuando **todos** los árboles de la plantación tienen
+`global_id`. Hasta entonces:
+
+- La web ofrece "Generar IDs" y deshabilita las planillas (CSV/Excel). El KML
+  no depende de los IDs.
+- En una plantación finalizada, la app avisa que los IDs se generan desde la
+  web y no muestra las exportaciones. Aparecen cuando el pull trae los IDs.
 
 ---
 
