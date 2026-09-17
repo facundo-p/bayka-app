@@ -59,9 +59,15 @@ que pesan, **no aplica: nadie borra `groups` ni `trees` en el servidor.**
 - El RPC `sync_subgroup` (`supabase/baseline_schema.sql:258-333`) es
   `INSERT … ON CONFLICT DO UPDATE`. No borra nada.
 - La única forma de que desaparezcan es la cascada al borrar la plantación
-  (`trees_group_id_fkey … ON DELETE CASCADE`, `:672`). Ese caso ya está cubierto
-  fuera de banda: la cascada se lleva también `plantation_users`, así que
-  `tieneAccesoRemoto` devuelve false y el pull corta con `PULL_SIN_ACCESO` (#317).
+  entera, que desde #478 sí ocurre (`eliminar_plantacion`, `trees_group_id_fkey
+  … ON DELETE CASCADE`). Ese caso está cubierto fuera de banda, antes de bajar
+  filas: `tieneAccesoRemoto` consulta `estado_remoto_plantaciones`, que devuelve
+  `eliminada` si el id figura en `plantaciones_eliminadas` de la organización del
+  usuario. El pull corta con `PULL_ESTADO.eliminada` y no toca los datos locales;
+  la plantación queda en solo lectura hasta que el usuario la borre del
+  dispositivo. Contra un server sin ese RPC vuelve al chequeo de membresía y la
+  ve como `PULL_SIN_ACCESO` (#317). Un watermark por `updated_at` no cambia
+  nada de esto: la plantación borrada desaparece entera, no fila por fila.
 - `deleteTreeAndRecalculate` (`mobile/src/repositories/TreeRepository.ts`) sí borra
   árboles, pero **en SQLite local**, y eso nunca se propaga como delete al server.
 
@@ -199,7 +205,7 @@ poblado hace rato.
 El spike cambia el veredicto que el issue anticipaba. El motivo por el que esto
 figuraba como "el trabajo de mayor riesgo de todos" era la propagación de
 borrados, y para las dos tablas que importan **ese riesgo no existe**: nadie las
-borra. Lo que queda es una migración aditiva con trigger y un watermark que sale
+borra de a una (el borrado de una plantación entera se detecta aparte, ver arriba). Lo que queda es una migración aditiva con trigger y un watermark que sale
 del server — trabajo acotado, no un cambio de semántica de la sincronización.
 
 Lo que sí hay que respetar es el orden. Medir primero no es burocracia: si el

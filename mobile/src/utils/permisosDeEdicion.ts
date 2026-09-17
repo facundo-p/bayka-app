@@ -1,18 +1,23 @@
-import { ESTADO_PLANTACION, ESTADO_GRUPO, esArchivada } from '../constants/estados';
+import { ESTADO_PLANTACION, ESTADO_GRUPO, esArchivada, esEliminadaEnServidor } from '../constants/estados';
 
 /** Lo que decide si una plantación admite cambios desde la app. */
 export interface EstadoDeEdicionDePlantacion {
   estado: string;
   archivadaEn: string | null;
+  eliminadaEnServidorEn: string | null;
 }
 
 /**
  * Una plantación finalizada es inmutable desde la app: ni ediciones ni borrados,
  * propios o ajenos (#469). Reabrirla es exclusivo del superadmin, desde la web (#470).
- * Archivada tampoco admite cambios, para ningún rol (#477).
+ * Archivada o eliminada en el servidor tampoco admiten cambios, para ningún rol (#477, #478).
  */
 export function plantacionEsEditable(plantacion: EstadoDeEdicionDePlantacion): boolean {
-  return !esArchivada(plantacion) && plantacion.estado !== ESTADO_PLANTACION.finalizada;
+  return (
+    !esEliminadaEnServidor(plantacion) &&
+    !esArchivada(plantacion) &&
+    plantacion.estado !== ESTADO_PLANTACION.finalizada
+  );
 }
 
 /**

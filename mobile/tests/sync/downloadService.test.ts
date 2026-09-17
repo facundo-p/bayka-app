@@ -103,11 +103,15 @@ function setupDbInsertSuccess() {
   return { valuesSpy, onConflictSpy };
 }
 
-/** El pull chequea la membresía propia antes de tocar la base (#317). */
+/**
+ * El pull chequea el acceso antes de tocar la base (#317). Estos tests simulan un
+ * server sin `estado_remoto_plantaciones` (#478), así el chequeo cae a la membresía.
+ */
 function setupSesion() {
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({
     data: { session: { user: { id: 'user-1' } } },
   });
+  (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
 }
 
 /**

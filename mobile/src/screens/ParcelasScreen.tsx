@@ -24,7 +24,13 @@ import type { Parcela } from '../repositories/ParcelaRepository';
 
 type FormModalState = { mode: 'create'; parcela: null } | { mode: 'edit'; parcela: Parcela } | null;
 
-function EmptyState({ onCreate, isArchivada }: { onCreate: (() => void) | null; isArchivada: boolean }) {
+/** Por qué no se pueden agregar parcelas, de lo más a lo menos definitivo. */
+function motivoDeSoloLectura(isEliminada: boolean, isArchivada: boolean): string {
+  if (isEliminada) return 'eliminada en el servidor';
+  return isArchivada ? 'archivada' : 'finalizada';
+}
+
+function EmptyState({ onCreate, motivo }: { onCreate: (() => void) | null; motivo: string }) {
   return (
     <View style={styles.emptyContainer}>
       <View style={styles.emptyIconWrap}>
@@ -34,7 +40,7 @@ function EmptyState({ onCreate, isArchivada }: { onCreate: (() => void) | null; 
       <Text style={styles.emptySubtitle}>
         {onCreate
           ? 'Creá la primera parcela para empezar a organizar grupos y árboles.'
-          : `La plantación está ${isArchivada ? 'archivada' : 'finalizada'}: no se pueden agregar parcelas.`}
+          : `La plantación está ${motivo}: no se pueden agregar parcelas.`}
       </Text>
       {onCreate && (
         <Pressable
@@ -56,11 +62,11 @@ export default function ParcelasScreen() {
   const routePrefix = useRoutePrefix();
   const pid = plantacionId ?? '';
   const { parcelas } = useParcelas(pid);
-  const { plantationRows, plantacionEditable, isArchivada, totalNN } = usePlantationDetail(pid);
+  const { plantationRows, plantacionEditable, isArchivada, isEliminada, totalNN } = usePlantationDetail(pid);
   const { blockedByNN } = usePendingSyncCount(pid);
   const lugar = plantationRows?.[0]?.lugar ?? '';
-  // Finalizada o archivada: tampoco se editan ni se borran sus parcelas, que el
-  // push sube como tombstone (#469, #477).
+  // Finalizada, archivada o eliminada: tampoco se editan ni se borran sus parcelas,
+  // que el push sube como tombstone (#469, #477, #478).
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
@@ -110,7 +116,7 @@ export default function ParcelasScreen() {
       />
       <NNResolutionBanner totalNN={totalNN} blockedByNN={blockedByNN} onResolve={openNNResolution} />
       {parcelas.length === 0 ? (
-        <EmptyState onCreate={plantacionEditable ? openCreate : null} isArchivada={isArchivada} />
+        <EmptyState onCreate={plantacionEditable ? openCreate : null} motivo={motivoDeSoloLectura(isEliminada, isArchivada)} />
       ) : (
         <FlatList
           data={parcelas}
