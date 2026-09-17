@@ -1,15 +1,20 @@
 import { useLiveData } from '../database/liveQuery';
 import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
-import { ESTADO_PLANTACION, esArchivada } from '../constants/estados';
+import { ESTADO_PLANTACION, esArchivada, esEliminadaEnServidor } from '../constants/estados';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 
-/** Plantación que no está en SQLite: sin estado ni archivado, como antes de #477. */
-const PLANTACION_SIN_DATOS: EstadoDeEdicionDePlantacion = { estado: '', archivadaEn: null };
+/** Plantación que no está en SQLite: sin estado, archivado ni borrado remoto. */
+const PLANTACION_SIN_DATOS: EstadoDeEdicionDePlantacion = {
+  estado: '',
+  archivadaEn: null,
+  eliminadaEnServidorEn: null,
+};
 
 /**
- * Si la plantación admite cambios desde la app. Reactivo: un pull que la finaliza
- * o archiva la bloquea con la pantalla abierta. Mientras no cargó, no es editable.
+ * Si la plantación admite cambios desde la app. Reactivo: un pull que la finaliza,
+ * archiva o la marca eliminada la bloquea con la pantalla abierta. Mientras no
+ * cargó, no es editable.
  */
 export function usePlantacionEditable(plantacionId: string) {
   const { data } = useLiveData(
@@ -23,6 +28,7 @@ export function usePlantacionEditable(plantacionId: string) {
     estadoLoaded,
     isFinalizada: estadoDeEdicion.estado === ESTADO_PLANTACION.finalizada,
     isArchivada: esArchivada(estadoDeEdicion),
+    isEliminada: esEliminadaEnServidor(estadoDeEdicion),
     plantacionEditable: estadoLoaded && plantacionEsEditable(estadoDeEdicion),
   };
 }

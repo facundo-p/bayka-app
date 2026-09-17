@@ -27,6 +27,7 @@ import PlantationDetailHeader from '../components/PlantationDetailHeader';
 import { usePlantationDetail } from '../hooks/usePlantationDetail';
 import OrangeDot from '../components/OrangeDot';
 import { ESTADO_GRUPO } from '../constants/estados';
+import { filtrosDeEstado } from '../components/filtrosDeEstado';
 import { plantationDetailScreenStyles as styles } from './PlantationDetailScreen.styles';
 
 export default function PlantationDetailScreen() {
@@ -44,6 +45,7 @@ export default function PlantationDetailScreen() {
     estadoLoaded,
     isFinalizada,
     isArchivada,
+    isEliminada,
     plantacionEditable,
     userNames,
     deletingId,
@@ -62,10 +64,7 @@ export default function PlantationDetailScreen() {
 
   const goBack = useScreenBack(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}`);
 
-  const groupFilterConfigs = [
-    { key: 'activa', label: 'Activas', count: groupEstadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
-    { key: 'finalizada', label: 'Finalizadas', count: groupEstadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
-  ];
+  const groupFilterConfigs = filtrosDeEstado(groupEstadoCounts);
 
   // Defensive navigation — without parcelaId we cannot scope the screen.
   // Redirect to ParcelasScreen so the user picks one explicitly.
@@ -138,8 +137,9 @@ export default function PlantationDetailScreen() {
         estadoLoaded={estadoLoaded}
         isFinalizada={isFinalizada}
         isArchivada={isArchivada}
+        isEliminada={isEliminada}
         groupFilter={groupFilter}
-        groupFilterConfigs={groupFilterConfigs as any}
+        groupFilterConfigs={groupFilterConfigs}
         onToggleFilter={(key) => setGroupFilter(prev => prev === key ? null : key)}
       />
 

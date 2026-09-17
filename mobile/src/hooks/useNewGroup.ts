@@ -12,7 +12,7 @@ import { usePlantacionEditable } from './usePlantacionEditable';
 export function useNewGroup(plantacionId: string | undefined, parcelaId?: string) {
   const userId = useCurrentUserId();
   const [lastGroupName, setLastGroupName] = useState<string | null>(null);
-  const { estadoLoaded, plantacionEditable, isArchivada, isFinalizada } =
+  const { estadoLoaded, plantacionEditable, isArchivada, isFinalizada, isEliminada } =
     usePlantacionEditable(plantacionId ?? '');
 
   useEffect(() => {
@@ -53,5 +53,6 @@ export function useNewGroup(plantacionId: string | undefined, parcelaId?: string
     plantacionEditable,
     isArchivada,
     isFinalizada,
+    isEliminada,
   };
 }

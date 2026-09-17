@@ -15,13 +15,15 @@ const RPC = {
 
 /** Errores de negocio que devuelve `generate_tree_ids` en el payload `{ success: false, error }`. */
 export const ERRORES_GENERACION_IDS = {
-  /** El usuario no es admin/superadmin. */
+  /** No es admin/superadmin activo de la organización de la plantación. */
   NO_AUTORIZADO: 'NOT_AUTHORIZED',
   /** Todos los árboles ya tienen `global_id` (regenerar requiere intervención manual). */
   YA_GENERADOS: 'ALREADY_GENERATED',
   SIN_ARBOLES: 'NO_TREES',
   /** El seed enviado es menor a 1. */
   SEED_INVALIDO: 'INVALID_SEED',
+  /** Archivada: solo lectura hasta desarchivarla (#495). */
+  PLANTACION_ARCHIVADA: 'PLANTACION_ARCHIVADA',
 } as const;
 
 const MENSAJES_ERROR_GENERACION: Record<string, string> = {
@@ -30,6 +32,8 @@ const MENSAJES_ERROR_GENERACION: Record<string, string> = {
     'Los IDs de esta plantación ya fueron generados (quizás desde otra sesión).',
   [ERRORES_GENERACION_IDS.SIN_ARBOLES]: 'Esta plantación no tiene árboles registrados.',
   [ERRORES_GENERACION_IDS.SEED_INVALIDO]: 'El ID inicial debe ser un número entero mayor a 0.',
+  [ERRORES_GENERACION_IDS.PLANTACION_ARCHIVADA]:
+    'La plantación está archivada: hay que desarchivarla para generar IDs.',
 };
 
 const MENSAJE_ERROR_GENERACION = 'No se pudieron generar los IDs. Probá de nuevo.';

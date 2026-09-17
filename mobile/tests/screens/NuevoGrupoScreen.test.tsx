@@ -41,6 +41,7 @@ const EDITABLE = {
   plantacionEditable: true,
   isArchivada: false,
   isFinalizada: false,
+  isEliminada: false,
 };
 
 function renderCon(estado: Partial<typeof EDITABLE>) {
@@ -67,6 +68,15 @@ describe('NuevoGrupoScreen', () => {
     expect(screen.queryByText('campos del grupo')).toBeNull();
     expect(screen.getByTestId('submit').props.children).toBe('deshabilitado');
     expect(screen.getByText('No se pueden crear grupos en una plantación finalizada.')).toBeTruthy();
+  });
+
+  test('eliminada en el servidor: sin formulario, submit deshabilitado y el motivo a la vista', () => {
+    const screen = renderCon({ plantacionEditable: false, isEliminada: true });
+    expect(screen.queryByText('campos del grupo')).toBeNull();
+    expect(screen.getByTestId('submit').props.children).toBe('deshabilitado');
+    expect(
+      screen.getByText('No se pueden crear grupos en una plantación eliminada en el servidor.'),
+    ).toBeTruthy();
   });
 
   test('sin cargar el estado: no deja crear todavía', () => {

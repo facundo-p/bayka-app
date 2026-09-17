@@ -162,6 +162,13 @@
       "when": 1790035200000,
       "tag": "0022_plantations_archivada_en",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1790121600000,
+      "tag": "0023_plantations_eliminada_en_servidor_en",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
 import { notifyDataChanged } from '../../database/liveQuery';
 import { syncLog } from '../../utils/syncLogger';
-import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, DownloadPhaseProgress, PhotoSyncProgress, PullResult, PHOTO_PHASE, esSinAcceso } from './types';
+import { SyncGroupResult, SyncParcelaResult, SyncPlantationResult, SyncProgress, GlobalSyncProgress, DownloadPhaseProgress, PhotoSyncProgress, PullResult, PHOTO_PHASE, esPullSinDatos } from './types';
 import { ensureServerSession } from './sessionGuard';
 import { runGlobalPreSteps } from './preSteps';
 import { pullFromServer } from './pullService';
@@ -52,9 +52,9 @@ async function correrSyncPlantation(
   try {
     const pull = await pullFromServer(plantacionId, onPhaseProgress);
     onPullResult?.(pull);
-    // Sin membresía el push también lo rechaza RLS: cortar acá evita una lista
-    // de errores de permisos que tapan la causa real.
-    if (esSinAcceso(pull)) return [];
+    // Sin membresía o eliminada el push también lo rechaza el server: cortar acá
+    // evita una lista de errores que tapan la causa real.
+    if (esPullSinDatos(pull)) return [];
   } catch (e) {
     relanzarSiEsCancelacion(e);
     syncLog.error('Pull failed:', e);
@@ -97,11 +97,89 @@ export interface ResultadoDePlantacion {
   results: SyncGroupResult[];
   parcelas: SyncParcelaResult[];
   /**
+   * Resultado del pull, si terminó. Sin acceso o eliminada (#478) la plantación se
+   * saltea entera, y la UI tiene que poder decir cuáles fueron.
+   */
+  pull?: PullResult;
+  /**
    * La excepción que tumbó a esta plantación, si la hubo. Sin esto una corrida en
    * la que TODO falló llega a la UI con listas vacías, indistinguible de una en la
    * que no había nada que sincronizar, y el modal dice "completa" (#451).
    */
   fallo?: unknown;
+}
+
+type PlantacionLocal = { id: string; lugar: string };
+type EmitirProgresoGlobal = (plantationName: string, plantationDone: number, extra?: Partial<GlobalSyncProgress>) => void;
+
+/** Borrados, parcelas y grupos de una plantación, en ese orden (FK). */
+async function pushDePlantacion(
+  plantation: PlantacionLocal,
+  i: number,
+  emitir: EmitirProgresoGlobal,
+): Promise<Pick<ResultadoDePlantacion, 'results' | 'parcelas'>> {
+  try {
+    await pushBorrados(plantation.id);
+  } catch (e) {
+    syncLog.error(`Push borrados failed for "${plantation.lugar}":`, e);
+  }
+  let parcelas: SyncParcelaResult[] = [];
+  try {
+    parcelas = await uploadSyncableParcelas(plantation.id);
+  } catch (e) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
+  }
+  const results = await uploadSyncableGroups(
+    plantation.id,
+    (subProgress) => emitir(plantation.lugar, i, { subgroupProgress: subProgress }),
+    (fotos) => emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
+  );
+  return { results, parcelas };
+}
+
+async function syncDePlantacionEnGlobal(
+  plantation: PlantacionLocal,
+  i: number,
+  emitir: EmitirProgresoGlobal,
+): Promise<ResultadoDePlantacion> {
+  const base = { plantationId: plantation.id, plantationName: plantation.lugar, results: [], parcelas: [] };
+  try {
+    const pull = await pullFromServer(plantation.id, (fase) => emitir(plantation.lugar, i, { phaseProgress: fase }));
+    if (esPullSinDatos(pull)) {
+      syncLog.info(`Sync global: "${plantation.lugar}" ${pull.estado}, se saltea`);
+      return { ...base, pull };
+    }
+    return { ...base, pull, ...(await pushDePlantacion(plantation, i, emitir)) };
+  } catch (e) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
+    return { ...base, fallo: e };
+  }
+}
+
+/** Subida y bajada de fotos al final de la corrida, salteando las que no tienen acceso o se eliminaron. */
+async function syncFotosGlobal(
+  localPlantations: PlantacionLocal[],
+  resultados: ResultadoDePlantacion[],
+  emitir: EmitirProgresoGlobal,
+): Promise<void> {
+  for (let i = 0; i < localPlantations.length; i++) {
+    const plantation = localPlantations[i];
+    const pull = resultados[i]?.pull;
+    if (pull && esPullSinDatos(pull)) continue;
+    try {
+      await uploadPendingPhotos(plantation.id, (fotos) =>
+        emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
+      );
+      await downloadPhotosForPlantation(plantation.id, (fotos) =>
+        emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.downloading }),
+      );
+    } catch (e) {
+      relanzarSiEsCancelacion(e);
+      syncLog.error(`Photo sync failed for "${plantation.lugar}":`, e);
+    }
+  }
 }
 
 /** Sincroniza todas las plantaciones locales secuencialmente (pull+push c/u); pre-steps globales (catálogo, plantaciones offline, ediciones pendientes) + sync de fotos opcional al final. */
@@ -115,74 +193,19 @@ async function correrSyncAllPlantations(
   onPlantationResults?.(plantationResults);
 
   const localPlantations = await db.select({ id: plantations.id, lugar: plantations.lugar }).from(plantations);
-  const allResults: ResultadoDePlantacion[] = [];
-
-  const emitir = (
-    plantationName: string,
-    plantationDone: number,
-    extra: Partial<GlobalSyncProgress> = {},
-  ) => onProgress?.({
+  const emitir: EmitirProgresoGlobal = (plantationName, plantationDone, extra = {}) => onProgress?.({
     plantationName,
     plantationDone,
     plantationTotal: localPlantations.length,
     ...extra,
   });
 
+  const allResults: ResultadoDePlantacion[] = [];
   for (let i = 0; i < localPlantations.length; i++) {
-    const plantation = localPlantations[i];
-    emitir(plantation.lugar, i);
-
-    try {
-      const pull = await pullFromServer(plantation.id, (fase) =>
-        emitir(plantation.lugar, i, { phaseProgress: fase }),
-      );
-      if (esSinAcceso(pull)) {
-        syncLog.info(`Sync global: "${plantation.lugar}" sin acceso, se saltea`);
-        continue;
-      }
-      try {
-        await pushBorrados(plantation.id);
-      } catch (e) {
-        syncLog.error(`Push borrados failed for "${plantation.lugar}":`, e);
-      }
-
-      // Push parcelas antes que groups (FK). Surfaceamos sus fallas.
-      let parcelaResults: SyncParcelaResult[] = [];
-      try {
-        parcelaResults = await uploadSyncableParcelas(plantation.id);
-      } catch (e) {
-        relanzarSiEsCancelacion(e);
-        syncLog.error(`Push parcelas failed for "${plantation.lugar}":`, e);
-      }
-      const results = await uploadSyncableGroups(
-        plantation.id,
-        (subProgress) => emitir(plantation.lugar, i, { subgroupProgress: subProgress }),
-        (fotos) => emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
-      );
-      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results, parcelas: parcelaResults });
-    } catch (e) {
-      relanzarSiEsCancelacion(e);
-      syncLog.error(`Failed for plantation "${plantation.lugar}":`, e);
-      allResults.push({ plantationId: plantation.id, plantationName: plantation.lugar, results: [], parcelas: [], fallo: e });
-    }
+    emitir(localPlantations[i].lugar, i);
+    allResults.push(await syncDePlantacionEnGlobal(localPlantations[i], i, emitir));
   }
-
-  if (incluirFotos) {
-    for (let i = 0; i < localPlantations.length; i++) {
-      const plantation = localPlantations[i];
-      try {
-        await uploadPendingPhotos(plantation.id, (fotos) =>
-          emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.uploading }),
-        );
-        await downloadPhotosForPlantation(plantation.id, (fotos) =>
-          emitir(plantation.lugar, i, { photoProgress: fotos, photoPhase: PHOTO_PHASE.downloading }),
-        );
-      } catch (e) {
-        relanzarSiEsCancelacion(e);
-        syncLog.error(`Photo sync failed for "${plantation.lugar}":`, e);
-      }
-    }
-  }
+  if (incluirFotos) await syncFotosGlobal(localPlantations, allResults, emitir);
 
   notifyDataChanged();
   return allResults;

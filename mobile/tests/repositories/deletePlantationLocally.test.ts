@@ -28,14 +28,28 @@ jest.mock('../../src/services/SyncService', () => ({
   pullFromServer: jest.fn(),
 }));
 
+jest.mock('../../src/repositories/TreeRepository', () => ({
+  getLocalPhotoUrisForPlantation: jest.fn(),
+}));
+
+jest.mock('../../src/services/PhotoService', () => ({
+  borrarFotosLocales: jest.fn(),
+}));
+
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { db } from '../../src/database/client';
 import { enTransaccion } from '../../src/database/transaccion';
 import { notifyDataChanged } from '../../src/database/liveQuery';
+import { getLocalPhotoUrisForPlantation } from '../../src/repositories/TreeRepository';
+import { borrarFotosLocales } from '../../src/services/PhotoService';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const mockEnTransaccion = enTransaccion as jest.Mock;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
+const mockFotosLocales = getLocalPhotoUrisForPlantation as jest.Mock;
+const mockBorrarFotos = borrarFotosLocales as jest.Mock;
+
+const FOTOS = ['file://document/photos/photo_1.jpg', 'file://document/photos/photo_2.jpg'];
 
 describe('deletePlantationLocally', () => {
   let txDeleteCalls: string[];
@@ -53,6 +67,33 @@ describe('deletePlantationLocally', () => {
     });
 
     mockEnTransaccion.mockImplementation((cb: (tx: unknown) => Promise<unknown>) => cb(mockDb));
+    mockFotosLocales.mockResolvedValue(FOTOS);
+  });
+
+  // Sin esto cada plantación eliminada deja sus fotos ocupando espacio para siempre (#484).
+  it('borra los archivos de fotos locales después de la transacción', async () => {
+    const orden: string[] = [];
+    mockFotosLocales.mockImplementation(async () => { orden.push('juntar'); return FOTOS; });
+    mockEnTransaccion.mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => {
+      orden.push('transaccion');
+      return cb(mockDb);
+    });
+    mockBorrarFotos.mockImplementation(() => { orden.push('borrar'); });
+
+    await deletePlantationLocally('plant-1');
+
+    expect(mockFotosLocales).toHaveBeenCalledWith('plant-1');
+    expect(mockBorrarFotos).toHaveBeenCalledWith(FOTOS);
+    expect(orden).toEqual(['juntar', 'transaccion', 'borrar']);
+  });
+
+  // Con rollback las filas siguen apuntando a esos archivos.
+  it('si la transacción falla, no borra ningún archivo', async () => {
+    mockEnTransaccion.mockRejectedValue(new Error('DB crash'));
+
+    await expect(deletePlantationLocally('plant-1')).rejects.toThrow('DB crash');
+
+    expect(mockBorrarFotos).not.toHaveBeenCalled();
   });
 
   it('Test 1: deletes the plantation row itself', async () => {

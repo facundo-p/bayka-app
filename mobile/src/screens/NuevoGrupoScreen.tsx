@@ -4,18 +4,25 @@ import { View, Text } from 'react-native';
 import EntityFormModal from '../components/EntityFormModal';
 import FormActions from '../components/FormActions';
 import GrupoFields from '../components/GrupoFields';
-import { PlantacionNoEditableBanner } from '../components/PlantationDetailHeader';
+import { BannerDeEstado } from '../components/PlantationDetailHeader';
 import { useGrupoForm } from '../hooks/useGrupoForm';
 import { useNewGroup } from '../hooks/useNewGroup';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { nuevoGrupoScreenStyles as styles } from './NuevoGrupoScreen.styles';
 
-function PlantacionBloqueada({ isArchivada }: { isArchivada: boolean }) {
+type EstadoBloqueante = { isEliminada: boolean; isArchivada: boolean; isFinalizada: boolean };
+
+function motivoDelBloqueo({ isEliminada, isArchivada }: EstadoBloqueante): string {
+  if (isEliminada) return 'eliminada en el servidor';
+  return isArchivada ? 'archivada' : 'finalizada';
+}
+
+function PlantacionBloqueada(estado: EstadoBloqueante) {
   return (
     <View style={styles.bloqueo}>
-      <PlantacionNoEditableBanner isArchivada={isArchivada} />
+      <BannerDeEstado {...estado} />
       <Text style={styles.bloqueoTexto}>
-        {`No se pueden crear grupos en una plantación ${isArchivada ? 'archivada' : 'finalizada'}.`}
+        {`No se pueden crear grupos en una plantación ${motivoDelBloqueo(estado)}.`}
       </Text>
     </View>
   );
@@ -33,7 +40,7 @@ export default function NuevoGrupoScreen() {
     }
   }, [parcelaId, plantacionId, router, routePrefix]);
 
-  const { lastGroupName, handleCreateGroup, estadoLoaded, plantacionEditable, isArchivada } =
+  const { lastGroupName, handleCreateGroup, estadoLoaded, plantacionEditable, isArchivada, isFinalizada, isEliminada } =
     useNewGroup(plantacionId, parcelaId);
   // No depende de que el "+" esté oculto: la ruta se puede abrir igual, y un pull
   // puede finalizar o archivar la plantación con la pantalla abierta.
@@ -70,7 +77,7 @@ export default function NuevoGrupoScreen() {
       }
     >
       {bloqueada ? (
-        <PlantacionBloqueada isArchivada={isArchivada} />
+        <PlantacionBloqueada isEliminada={isEliminada} isArchivada={isArchivada} isFinalizada={isFinalizada} />
       ) : (
         <GrupoFields form={form} lastGroupName={lastGroupName} />
       )}

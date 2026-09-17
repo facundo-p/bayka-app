@@ -22,6 +22,7 @@ import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
 import type { Group, GroupTipo } from '../repositories/GroupRepository';
+import { contarPorEstado } from '../utils/conteoPorEstado';
 import { getGroupGating, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
 import type { GroupGating } from '../utils/permisosDeEdicion';
 import { findById as findParcelaById } from '../repositories/ParcelaRepository';
@@ -53,8 +54,9 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   );
   const parcela: Parcela | null = (parcelaRows?.[0] as Parcela | undefined) ?? null;
 
-  // Finalizada o archivada: tampoco se crean, editan ni borran parcelas ni grupos.
-  const { estadoDeEdicion, estadoLoaded, isFinalizada, isArchivada, plantacionEditable } =
+  // Finalizada, archivada o eliminada en el server: tampoco se crean, editan ni
+  // borran parcelas ni grupos.
+  const { estadoDeEdicion, estadoLoaded, isFinalizada, isArchivada, isEliminada, plantacionEditable } =
     usePlantacionEditable(pid);
 
   const creatorIds = useMemo(() => {
@@ -79,12 +81,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
 
   const totalNN = Array.from(nnCountMap.values()).reduce((sum, v) => sum + v, 0);
 
-  const groupEstadoCounts = { activa: 0, finalizada: 0 };
-  (groupRows ?? []).forEach((sg: any) => {
-    if (groupEstadoCounts[sg.estado as keyof typeof groupEstadoCounts] !== undefined) {
-      groupEstadoCounts[sg.estado as keyof typeof groupEstadoCounts]++;
-    }
-  });
+  const groupEstadoCounts = contarPorEstado(groupRows);
 
   const filteredGroups = ((groupRows ?? []) as Group[]).filter(
     sg => !groupFilter || sg.estado === groupFilter
@@ -159,6 +156,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     estadoLoaded,
     isFinalizada,
     isArchivada,
+    isEliminada,
     plantacionEditable,
     userNames,
     deletingId,

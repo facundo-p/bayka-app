@@ -38,7 +38,7 @@ beforeAll(() => {
     insert: jest.fn(() => ({
       values: jest.fn((valores: unknown) => {
         mockInsertValues(valores);
-        return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+        return { onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) };
       }),
     })),
     delete: jest.fn(() => ({ where: mockDeleteWhere })),
@@ -65,7 +65,7 @@ beforeEach(() => {
   mockDb.insert = jest.fn(() => ({
     values: jest.fn((valores: unknown) => {
       mockInsertValues(valores);
-      return { onConflictDoNothing: jest.fn().mockResolvedValue(undefined) };
+      return { onConflictDoUpdate: jest.fn().mockResolvedValue(undefined) };
     }),
   }));
   mockDb.delete = jest.fn(() => ({ where: mockDeleteWhere }));
@@ -269,9 +269,11 @@ describe('TreeRepository', () => {
 
   describe('updateTreePhoto', () => {
     it('updates fotoUrl for the given tree', async () => {
+      mockSelectResults = [{ grupoId: 'sg-1', plantacionId: 'plant-1' }];
       await updateTreePhoto('tree-1', 'file://document/photos/photo_123.jpg');
 
-      expect(mockUpdateWhere).toHaveBeenCalledTimes(1);
+      // El árbol y la marca de pendiente del grupo.
+      expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
   });
 });

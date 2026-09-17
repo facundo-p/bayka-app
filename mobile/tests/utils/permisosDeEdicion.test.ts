@@ -1,11 +1,11 @@
 import { getTreeEditGating, getGroupGating, plantacionEsEditable } from '../../src/utils/permisosDeEdicion';
-import { esArchivada } from '../../src/constants/estados';
+import { esArchivada, esEliminadaEnServidor } from '../../src/constants/estados';
 
-const ACTIVA = { estado: 'activa', archivadaEn: null };
-const FINALIZADA = { estado: 'finalizada', archivadaEn: null };
+const ACTIVA = { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null };
+const FINALIZADA = { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null };
 const ARCHIVADA_EN = '2026-09-17T12:00:00+00:00';
-const ACTIVA_ARCHIVADA = { estado: 'activa', archivadaEn: ARCHIVADA_EN };
-const FINALIZADA_ARCHIVADA = { estado: 'finalizada', archivadaEn: ARCHIVADA_EN };
+const ACTIVA_ARCHIVADA = { estado: 'activa', archivadaEn: ARCHIVADA_EN, eliminadaEnServidorEn: null };
+const FINALIZADA_ARCHIVADA = { estado: 'finalizada', archivadaEn: ARCHIVADA_EN, eliminadaEnServidorEn: null };
 
 const SIN_PERMISOS_DE_GRUPO = { canEdit: false, canDelete: false, canReactivate: false };
 
@@ -110,5 +110,25 @@ describe('esArchivada', () => {
   test('con fecha → archivada, sin importar el estado', () => {
     expect(esArchivada(ACTIVA_ARCHIVADA)).toBe(true);
     expect(esArchivada(FINALIZADA_ARCHIVADA)).toBe(true);
+  });
+});
+
+describe('eliminada en el servidor (#478)', () => {
+  const ACTIVA_ELIMINADA = { ...ACTIVA, eliminadaEnServidorEn: '2026-09-17T12:00:00.000Z' };
+
+  test('activa + eliminada → inmutable', () => {
+    expect(plantacionEsEditable(ACTIVA_ELIMINADA)).toBe(false);
+  });
+
+  test('el creador tampoco edita ni borra árboles ni grupos', () => {
+    expect(getTreeEditGating({ plantacion: ACTIVA_ELIMINADA, subgroupEstado: 'activa', isCreator: true }))
+      .toEqual({ canEdit: false, canDelete: false });
+    expect(getGroupGating({ plantacion: ACTIVA_ELIMINADA, subgroupEstado: 'finalizada', isCreator: true }))
+      .toEqual(SIN_PERMISOS_DE_GRUPO);
+  });
+
+  test('esEliminadaEnServidor mira solo la marca, no el estado', () => {
+    expect(esEliminadaEnServidor(ACTIVA)).toBe(false);
+    expect(esEliminadaEnServidor(ACTIVA_ELIMINADA)).toBe(true);
   });
 });
