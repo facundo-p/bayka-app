@@ -73,7 +73,8 @@ cambia service_role, un eliminado nunca está activo ni recibe membresías admin
 inactivo no lee por la vía admin (043, #506), `22` RPC `quitar_fotos_arboles`
 (044, #498), `23` perfil inactivo: no pasa las policies de admin,
 `is_superadmin()` ni `is_plantation_member()`, incluidos `sync_subgroup` y
-Storage (045, #508).
+Storage (045, #508), `24` INSERT/UPDATE/upsert de fotos en `tree-photos` exigen
+plantación escribible (046, #512).
 
 ## Hallazgo fuera de alcance (no corregido)
 
