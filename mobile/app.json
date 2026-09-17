@@ -3,7 +3,7 @@
     "name": "Bayka App",
     "slug": "bayka",
     "scheme": "bayka",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon-bayka.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.bayka.app",
-      "versionCode": 1,
+      "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-foreground-bayka.png",
         "backgroundColor": "#0A3760"
