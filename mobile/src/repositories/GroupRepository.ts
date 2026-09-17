@@ -14,6 +14,8 @@ import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
 import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
+import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
+import { borrarFotosLocales } from '../services/PhotoService';
 
 export type GroupEstado = EstadoGrupo;
 export type { GroupTipo };
@@ -274,6 +276,13 @@ export async function reactivateGroup(id: string): Promise<void> {
   notifyDataChanged();
 }
 
+async function fotosLocalesDelGrupo(grupoId: string): Promise<string[]> {
+  const rows = await db.select({ fotoUrl: trees.fotoUrl })
+    .from(trees)
+    .where(and(eq(trees.groupId, grupoId), sqlIsLocalUri(trees.fotoUrl)));
+  return rows.map((r) => r.fotoUrl).filter(isLocalUri);
+}
+
 /**
  * Borra el grupo y sus árboles, y anota el borrado para propagarlo (#467). Los
  * árboles no se anotan uno por uno: borrar el grupo en el server se los lleva por
@@ -286,6 +295,7 @@ export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; 
 
   const treeCount = treeResult?.count ?? 0;
   const plantacionId = await plantacionDelGrupo(db, grupoId);
+  const fotos = await fotosLocalesDelGrupo(grupoId);
 
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.groupId, grupoId));
@@ -296,6 +306,8 @@ export async function deleteGroup(grupoId: string): Promise<{ deleted: boolean; 
       });
     }
   });
+  // Recién después del commit: con rollback las filas siguen apuntando a los archivos.
+  borrarFotosLocales(fotos);
 
   notifyDataChanged();
   return { deleted: true, treeCount };

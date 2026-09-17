@@ -59,6 +59,7 @@ Después de crear: `markGroupPendingSync(grupoId)` → `pendingSync = true`.
 - Setea `fotoUrl` y **siempre resetea `fotoSynced = false`** (fuerza re-upload)
 - Llama `markGroupPendingSync(grupoId)`
 - Poner una foto descarta la quitada pendiente del mismo árbol (ver abajo)
+- Cerrada la transacción, borra el archivo local de la foto anterior (best-effort, solo dentro de `photos/`), salvo que el path no haya cambiado. Borrar un árbol o un grupo también borra sus archivos (#490)
 
 ### 2b. Quitar la foto (#498)
 
