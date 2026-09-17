@@ -11,17 +11,50 @@ export interface RawPhoto {
   height: number;
 }
 
+function carpetaDeFotos(): Directory {
+  return new Directory(Paths.document, 'photos');
+}
+
 // CRITICAL: always copy from the temp picker URI to permanent Paths.document —
 // picker temp URIs may be gone after app restart or OS memory pressure.
 function saveToPhotos(srcUri: string): string {
   const filename = `photo_${Date.now()}.jpg`;
-  const dir = new Directory(Paths.document, 'photos');
+  const dir = carpetaDeFotos();
   if (!dir.exists) {
     dir.create({ intermediates: true });
   }
   const dest = new File(dir, filename);
   new File(srcUri).copy(dest);
   return dest.uri;
+}
+
+/**
+ * Borra archivos de fotos del device. Best-effort: un archivo que no se puede borrar
+ * se loguea y no corta el resto.
+ *
+ * Solo toca la carpeta propia de fotos: un path de Storage, una URL o un
+ * `content://` de la galería no son archivos de la app.
+ */
+export function borrarFotosLocales(uris: readonly string[]): void {
+  let carpeta: string;
+  try {
+    // Con barra final: el uri del directorio puede venir con o sin ella.
+    carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
+  } catch (e) {
+    // Corre después del commit: una excepción acá haría fallar una operación de
+    // datos que ya se hizo.
+    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
+    return;
+  }
+  for (const uri of uris) {
+    if (!uri.startsWith(carpeta)) continue;
+    try {
+      const archivo = new File(uri);
+      if (archivo.exists) archivo.delete();
+    } catch (e) {
+      console.error('[Photo] no se pudo borrar', uri, e);
+    }
+  }
 }
 
 /**
