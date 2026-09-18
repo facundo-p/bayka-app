@@ -64,9 +64,12 @@
   gap: var(--space-2xl);
 }
 
+/* `stretch` y no `center`: el botón del recuento entra en dos líneas y con
+   altos libres queda 20px más alto que "Limpiar", que al lado lee como error de
+   estilo. */
 .pieHoja {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--space-lg);
 }
 
