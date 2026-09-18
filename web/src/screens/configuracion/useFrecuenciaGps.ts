@@ -16,7 +16,7 @@ export const PRESETS_FRECUENCIA = [1, 5, 10, 20] as const;
 /** value del segmentado cuando la frecuencia no es un preset (ninguno activo). */
 const SIN_PRESET = -1;
 
-const ERROR_GUARDAR = 'No se pudo guardar la configuración GPS.';
+const ACCION_GUARDAR = 'guardar la configuración GPS';
 
 type ConfigGps = { frecuencia: number; obligatoria: boolean };
 
@@ -41,7 +41,7 @@ function useGuardarConfigGps(plantationId: string) {
   const mensajeError = mensajeErrorConocido(
     mutacion.error,
     MENSAJE_GPS_SIN_MIGRACION,
-    ERROR_GUARDAR,
+    ACCION_GUARDAR,
   );
   return { guardar: mutacion.mutate, guardando: mutacion.isPending, mensajeError };
 }

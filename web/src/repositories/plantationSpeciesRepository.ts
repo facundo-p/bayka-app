@@ -1,3 +1,4 @@
+import { errorDeSupabase } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 
 /** Par especie + orden visual, para los swaps de reordenamiento. */
@@ -14,7 +15,7 @@ export async function agregarEspecie(
     species_id: speciesId,
     orden_visual: ordenVisual,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw errorDeSupabase(error);
 }
 
 /**
@@ -27,7 +28,7 @@ export async function quitarEspecie(plantationId: string, speciesId: string): Pr
     .delete()
     .eq('plantation_id', plantationId)
     .eq('species_id', speciesId);
-  if (error) throw new Error(error.message);
+  if (error) throw errorDeSupabase(error);
 }
 
 /**
@@ -50,7 +51,7 @@ export async function sincronizarEspecies(
       orden_visual: ordenInicial + indice,
     }));
     const { error } = await supabase.from('plantation_species').insert(filas);
-    if (error) throw new Error(error.message);
+    if (error) throw errorDeSupabase(error);
   }
   if (idsQuitar.length > 0) {
     const { error } = await supabase
@@ -58,7 +59,7 @@ export async function sincronizarEspecies(
       .delete()
       .eq('plantation_id', plantationId)
       .in('species_id', idsQuitar);
-    if (error) throw new Error(error.message);
+    if (error) throw errorDeSupabase(error);
   }
 }
 
@@ -72,7 +73,7 @@ async function actualizarOrden(
     .update({ orden_visual: ordenVisual })
     .eq('plantation_id', plantationId)
     .eq('species_id', speciesId);
-  if (error) throw new Error(error.message);
+  if (error) throw errorDeSupabase(error);
 }
 
 /** Sube/baja la especie intercambiando su orden_visual con el de la vecina. */

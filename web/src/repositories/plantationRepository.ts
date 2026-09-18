@@ -1,3 +1,4 @@
+import { errorDeSupabase } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { ESTADO_PLANTACION } from '../queries/plantationQueries';
@@ -68,9 +69,9 @@ async function ejecutarConReintentoSin024(
   const resultado = await operacion({ ...base, ...extras });
   if (!resultado.error) return resultado.data;
   const puedeReintentar = Object.keys(extras).length > 0 && esColumnaInexistente(resultado.error);
-  if (!puedeReintentar) throw new Error(resultado.error.message);
+  if (!puedeReintentar) throw errorDeSupabase(resultado.error);
   const reintento = await operacion(base);
-  if (reintento.error) throw new Error(reintento.error.message);
+  if (reintento.error) throw errorDeSupabase(reintento.error);
   return reintento.data;
 }
 
@@ -92,7 +93,7 @@ async function crearParcelaDefault(plantationId: string): Promise<void> {
     .insert({ plantation_id: plantationId, ...PARCELA_DEFAULT });
   if (!error) return;
   await borrarPlantacionHuerfana(plantationId);
-  throw new Error(error.message);
+  throw errorDeSupabase(error);
 }
 
 /** Crea la plantación (estado 'activa') junto con su parcela default P1. */
@@ -126,7 +127,8 @@ async function actualizarCampos(
 ): Promise<void> {
   const { error } = await supabase.from('plantations').update(payload).eq('id', id);
   if (!error) return;
-  throw new Error(esColumnaInexistente(error) ? mensajeSinMigracion : error.message);
+  if (esColumnaInexistente(error)) throw new Error(mensajeSinMigracion);
+  throw errorDeSupabase(error);
 }
 
 export type ConfigGps = {
@@ -170,7 +172,7 @@ export async function existePlantacion(
     .ilike('periodo', periodo.trim());
   if (excluirId) consulta = consulta.neq('id', excluirId);
   const { count, error } = await consulta;
-  if (error) throw new Error(error.message);
+  if (error) throw errorDeSupabase(error);
   return (count ?? 0) > 0;
 }
 
