@@ -72,6 +72,21 @@
 
 .verResultados {
   flex: 1;
+  height: auto;
+  padding-block: var(--space-md);
+}
+
+/*
+ * Un solo ítem flex: suelto, el `gap` del botón separa cada palabra del
+ * recuento y la frase se parte en pedazos. Y la cifra hereda el color: su azul
+ * de encabezado sobre el primario no se lee.
+ */
+.verRecuento {
+  text-wrap: balance;
+}
+
+.verRecuento .recuentoNumero {
+  color: inherit;
 }
 
 /* Con los filtros en la hoja, lo que queda en la fila es el buscador y un
