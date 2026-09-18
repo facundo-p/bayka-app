@@ -1,0 +1,131 @@
+/* ─── Escritorio: columna de la izquierda (papel cálido, fija) ───────── */
+
+.sidebar {
+  flex-shrink: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4xl);
+  width: var(--sidebar-width);
+  background-color: var(--color-sidebar-bg);
+  border-right: var(--border-thin) solid var(--color-border);
+  padding: var(--space-4xl) var(--space-3xl);
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+/* Logo carpincho azul de marca sobre el sidebar claro. */
+.logo {
+  height: 34px;
+  width: auto;
+  display: block;
+  /* `.brand` es flex column: sin esto el ítem se estira al ancho del contenedor
+     y el PNG (300x89) pierde la proporción. */
+  align-self: flex-start;
+}
+
+.brandOverline {
+  composes: overlineRegular from '../theme/utilidades.module.css';
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.navOverline {
+  composes: overlineRegular from '../theme/utilidades.module.css';
+  padding: 0 var(--space-xl) var(--space-md);
+}
+
+/* Empuja el footer del usuario al fondo del sidebar. */
+.footer {
+  margin-top: auto;
+}
+
+@media (max-height: 760px) {
+  .sidebar {
+    position: sticky;
+    top: var(--alto-banner-entorno);
+    height: calc(100vh - var(--alto-banner-entorno));
+  }
+}
+
+/* ─── Tablet: la columna se acuesta como barra superior ──────────────── */
+
+@media (max-width: 900px) {
+  .sidebar {
+    position: static;
+    height: auto;
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2xl);
+    border-right: none;
+    border-bottom: var(--border-thin) solid var(--color-border);
+    padding: var(--space-2xl) var(--space-3xl);
+  }
+
+  .nav {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .navOverline {
+    display: none;
+  }
+
+  /* En barra horizontal no hay "fondo" que empujar: el footer se va a la
+     derecha de su fila. */
+  .footer {
+    margin-top: 0;
+    margin-left: auto;
+  }
+}
+
+/* ─── Teléfono: un renglón arriba y el menú fijo abajo ───────────────── */
+
+@media (max-width: 600px) {
+  .sidebar {
+    gap: var(--space-lg);
+    padding: var(--space-lg) var(--page-pad-x);
+  }
+
+  .brand {
+    gap: 0;
+  }
+
+  /* Lo primero que sobra cuando la barra tiene que entrar en un renglón: la
+     marca ya la dice el logo. */
+  .brandOverline {
+    display: none;
+  }
+
+  /* El menú se despega de la barra y se fija al pie. Tres ítems miden ~373px
+     contra los 328 de un teléfono de 360: acá abajo entran con su etiqueta, y
+     además quedan donde llega el pulgar. El lugar se lo reserva el shell con
+     `--alto-nav-inferior`. */
+  .nav {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: var(--z-topbar);
+    gap: 0;
+    background-color: var(--color-sidebar-bg);
+    border-top: var(--border-thin) solid var(--color-border);
+    /* Barra de gestos del teléfono. */
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* El que empuja a la derecha ahora es el buscador. */
+  .footer {
+    margin-left: 0;
+  }
+}

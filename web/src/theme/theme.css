@@ -260,6 +260,11 @@
   /* Alto de la franja: 0 en prod. <html data-entorno="pruebas"> lo sube a
      26px y sidebar/Topbar se corren por esta MISMA variable. */
   --alto-banner-entorno: 0px;
+
+  /* Barra de navegación del teléfono: solo existe de 600px para abajo. El shell
+     le reserva el lugar para que la última fila del contenido no quede tapada,
+     que es algo que la auditoría no mide. */
+  --alto-nav-inferior: 0px;
   --color-entorno-pruebas-bg: var(--color-yellow-dark);
   --color-entorno-pruebas-fg: var(--color-text-primary);
 }
@@ -285,6 +290,7 @@
 @media (max-width: 600px) {
   :root {
     --modal-max-width: 100%;
+    --alto-nav-inferior: 62px;
   }
 }
 
