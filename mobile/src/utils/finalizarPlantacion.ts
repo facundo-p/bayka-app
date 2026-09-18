@@ -10,9 +10,9 @@ export function tienePendientes(r: ResumenDePendientes): boolean {
 }
 
 export function mensajeFinalizarConPendientes(r: ResumenDePendientes): string {
-  return `Falta sincronizar: ${detalleDePendientes(r)}. Sincroniza antes de finalizar: una vez finalizada, esos datos ya no se pueden subir.`;
+  return `Falta sincronizar: ${detalleDePendientes(r)}. Sincronizá antes de finalizar: una vez finalizada, esos datos ya no se pueden subir.`;
 }
 
 export function ayudaFinalizarConPendientes(detalle: string): string {
-  return `Sincroniza antes de finalizar: ${detalle}`;
+  return `Sincronizá antes de finalizar: ${detalle}`;
 }

@@ -36,7 +36,7 @@ describe('avisoEliminarDelDispositivo', () => {
       lugar: 'Norte', eliminada: true, resumen: { ...SIN_PENDIENTES, parcelas: 2 },
     });
 
-    expect(aviso.titulo).toBe('Plantacion eliminada en el servidor');
+    expect(aviso.titulo).toBe('Plantación eliminada en el servidor');
     expect(aviso.mensaje).toContain('ya no se pueden subir');
     expect(aviso.mensaje).toContain('2 parcelas pendientes');
     expect(aviso.confirmacionFinal).toContain('no se puede deshacer');
@@ -45,7 +45,7 @@ describe('avisoEliminarDelDispositivo', () => {
   it('eliminada sin pendientes: no promete volver a descargarla y avisa que es irreversible', () => {
     const aviso = avisoEliminarDelDispositivo({ lugar: 'Norte', eliminada: true, resumen: SIN_PENDIENTES });
 
-    expect(aviso.mensaje).not.toContain('Podras volver a descargarla');
+    expect(aviso.mensaje).not.toContain('Podés volver a descargarla');
     expect(aviso.mensaje).toContain('no se puede deshacer');
   });
 });

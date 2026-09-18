@@ -26,7 +26,7 @@ function ArchivadaBanner() {
     <View style={styles.archivadaBanner}>
       <Ionicons name="archive" size={16} color={colors.stateArchivada} />
       <View style={styles.archivadaBannerBody}>
-        <Text style={styles.archivadaBannerTitle}>Plantacion archivada</Text>
+        <Text style={styles.archivadaBannerTitle}>Plantación archivada</Text>
         <Text style={styles.archivadaBannerText}>
           Solo lectura. Lo que quedó sin subir sigue guardado en el dispositivo hasta que un administrador la desarchive.
         </Text>
@@ -53,7 +53,7 @@ function FinalizadaBanner() {
   return (
     <View style={styles.finalizadaBanner}>
       <Ionicons name="lock-closed" size={16} color={colors.stateFinalizada} />
-      <Text style={styles.finalizadaBannerText}>Plantacion finalizada</Text>
+      <Text style={styles.finalizadaBannerText}>Plantación finalizada</Text>
     </View>
   );
 }

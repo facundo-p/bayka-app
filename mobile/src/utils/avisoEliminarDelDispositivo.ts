@@ -12,7 +12,7 @@ export interface AvisoEliminarDelDispositivo {
 }
 
 const CONFIRMACION_FINAL =
-  'Los datos sin sincronizar se perderan para siempre. Esta accion no se puede deshacer.';
+  'Los datos sin sincronizar se perderán para siempre. Esta acción no se puede deshacer.';
 
 function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
   return `${n} ${n === 1 ? singular : pluralForm}`;
@@ -34,14 +34,14 @@ export function detalleDePendientes(r: ResumenDePendientes): string {
 function avisoConPendientes(lugar: string, eliminada: boolean, detalle: string): AvisoEliminarDelDispositivo {
   if (eliminada) {
     return {
-      titulo: 'Plantacion eliminada en el servidor',
-      mensaje: `"${lugar}" fue eliminada en el servidor, asi que estos datos ya no se pueden subir: ${detalle}. Si la eliminas del dispositivo se pierden para siempre.`,
+      titulo: 'Plantación eliminada en el servidor',
+      mensaje: `"${lugar}" fue eliminada en el servidor, así que estos datos ya no se pueden subir: ${detalle}. Si la eliminás del dispositivo se pierden para siempre.`,
       confirmacionFinal: CONFIRMACION_FINAL,
     };
   }
   return {
-    titulo: 'Atencion: datos sin sincronizar',
-    mensaje: `"${lugar}" tiene datos sin subir al servidor: ${detalle}. Si eliminas ahora, esos datos se perderan permanentemente.`,
+    titulo: 'Atención: datos sin sincronizar',
+    mensaje: `"${lugar}" tiene datos sin subir al servidor: ${detalle}. Si eliminás ahora, esos datos se perderán permanentemente.`,
     confirmacionFinal: CONFIRMACION_FINAL,
   };
 }
@@ -57,7 +57,7 @@ export function avisoEliminarDelDispositivo(params: {
   return {
     titulo: 'Eliminar del dispositivo',
     mensaje: eliminada
-      ? `"${lugar}" fue eliminada en el servidor: si la eliminas de tu celular no vas a poder volver a descargarla. Esta accion no se puede deshacer.`
-      : `La plantacion "${lugar}" sera eliminada de tu celular. Podras volver a descargarla desde el catalogo.`,
+      ? `"${lugar}" fue eliminada en el servidor: si la eliminás de tu celular no vas a poder volver a descargarla. Esta acción no se puede deshacer.`
+      : `La plantación "${lugar}" será eliminada de tu celular. Podés volver a descargarla desde el catálogo.`,
   };
 }

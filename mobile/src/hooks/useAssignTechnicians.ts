@@ -94,8 +94,8 @@ export function useAssignTechnicians(plantacionId: string | undefined) {
       if (unsyncedCount > 0) {
         showConfirmDialog(
           confirm.show,
-          'Tecnico con grupos pendientes',
-          `Este tecnico tiene ${unsyncedCount} grupo${unsyncedCount > 1 ? 's' : ''} sin sincronizar. Si lo desasignas, solo el podra sincronizarlos. Continuar?`,
+          'Técnico con grupos pendientes',
+          `Este técnico tiene ${unsyncedCount} grupo${unsyncedCount > 1 ? 's' : ''} sin sincronizar. Si lo desasignás, solo él podrá sincronizarlos. ¿Continuar?`,
           'Desasignar',
           () => {
             setItems((prev) =>

@@ -130,7 +130,7 @@ function ActionStrip({
           onPress={(e) => { e?.stopPropagation?.(); onSync(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Sincronizar plantacion"
+          accessibilityLabel="Sincronizar plantación"
         >
           <Ionicons name="sync-outline" size={18} color={colors.primary} />
         </Pressable>
@@ -142,7 +142,7 @@ function ActionStrip({
           onPress={(e) => { e?.stopPropagation?.(); onGear(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Acciones de plantacion"
+          accessibilityLabel="Acciones de plantación"
         >
           <Ionicons name="settings-outline" size={18} color={colors.primary} />
         </Pressable>
@@ -154,7 +154,7 @@ function ActionStrip({
           onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Eliminar plantacion del dispositivo"
+          accessibilityLabel="Eliminar plantación del dispositivo"
         >
           <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
         </Pressable>

@@ -75,12 +75,12 @@ export function showDoubleConfirmDialog(
           show({
             icon: 'alert-circle-outline' as any,
             iconColor: colors.danger,
-            title: 'Estas seguro?',
+            title: '¿Estás seguro?',
             message: finalMessage,
             buttons: [
               { label: 'No, cancelar', onPress: () => {}, style: 'cancel' },
               {
-                label: 'Si, eliminar',
+                label: 'Sí, eliminar',
                 onPress: () => { onConfirm(); },
                 style: 'danger',
                 icon: 'trash-outline' as any,

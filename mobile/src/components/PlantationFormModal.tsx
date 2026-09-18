@@ -92,7 +92,7 @@ export default function PlantationFormModal({
     } catch (e: any) {
       setError(
         e?.message ??
-          (isEdit ? 'Error al actualizar la plantacion.' : 'Error al crear la plantacion.')
+          (isEdit ? 'Error al actualizar la plantación.' : 'Error al crear la plantación.')
       );
     } finally {
       setLoading(false);
@@ -102,7 +102,7 @@ export default function PlantationFormModal({
   return (
     <EntityFormModal
       visible={visible}
-      title={isEdit ? 'Editar plantacion' : 'Nueva plantacion'}
+      title={isEdit ? 'Editar plantación' : 'Nueva plantación'}
       onClose={handleClose}
       footer={
         <FormActions

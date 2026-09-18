@@ -464,9 +464,9 @@ describe('SyncService', () => {
       expect(msg).toMatch(/ya existe/i);
     });
 
-    it('Test 8: NETWORK returns Spanish message containing "conexion"', () => {
+    it('Test 8: NETWORK returns Spanish message containing "conexión"', () => {
       const msg = getErrorMessage('NETWORK');
-      expect(msg).toMatch(/conexion/i);
+      expect(msg).toMatch(/conexión/i);
     });
   });
 

@@ -207,8 +207,8 @@ describe('usePlantationAdmin.handleFinalize', () => {
 
     expect(showInfoDialog).toHaveBeenCalledWith(
       mockShow,
-      'Plantacion finalizada',
-      expect.stringContaining('proxima sincronizacion'),
+      'Plantación finalizada',
+      expect.stringContaining('próxima sincronización'),
       expect.any(String),
       expect.anything()
     );

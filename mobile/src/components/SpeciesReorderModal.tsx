@@ -22,7 +22,7 @@ export default function SpeciesReorderModal({ visible, items, onReorder, onCance
       <GestureHandlerRootView style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Reordenar botonera</Text>
-          <Text style={styles.hint}>Mantene presionado para arrastrar</Text>
+          <Text style={styles.hint}>Mantené presionado para arrastrar</Text>
         </View>
         <View style={{ flex: 1 }}>
           <SpeciesReorderList items={items} onReorder={onReorder} />

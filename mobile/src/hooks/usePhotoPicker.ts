@@ -27,10 +27,10 @@ export function usePhotoPicker(show: ShowFn) {
       show({
         icon: 'camera-outline' as any,
         title: 'Agregar foto',
-        message: 'Como queres agregar la foto?',
+        message: '¿Cómo querés agregar la foto?',
         buttons: [
-          { label: 'Camara', icon: 'camera-outline' as any, onPress: () => { requestPhoto('camera').then(resolve); }, style: 'primary' },
-          { label: 'Galeria', icon: 'images-outline' as any, onPress: () => { requestPhoto('gallery').then(resolve); }, style: 'primary' },
+          { label: 'Cámara', icon: 'camera-outline' as any, onPress: () => { requestPhoto('camera').then(resolve); }, style: 'primary' },
+          { label: 'Galería', icon: 'images-outline' as any, onPress: () => { requestPhoto('gallery').then(resolve); }, style: 'primary' },
           { label: options?.optional ? 'Sin foto' : 'Cancelar', onPress: () => { resolve(null); }, style: 'cancel' },
         ],
       });

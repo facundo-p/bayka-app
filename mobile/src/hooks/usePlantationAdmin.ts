@@ -106,9 +106,9 @@ export function usePlantationAdmin() {
       if (e instanceof FinalizePlantationPendientesError) {
         avisarNoSePuedeFinalizar(mensajeFinalizarConPendientes(e.pendientes));
       } else if (e instanceof FinalizePlantationLocalSyncError) {
-        showInfoDialog(showConfirm, 'Plantacion finalizada', 'La plantacion se finalizo en el servidor. Este dispositivo se actualizara en la proxima sincronizacion.', 'cloud-done-outline', colors.info);
+        showInfoDialog(showConfirm, 'Plantación finalizada', 'La plantación se finalizó en el servidor. Este dispositivo se actualizará en la próxima sincronización.', 'cloud-done-outline', colors.info);
       } else {
-        showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantacion.', 'alert-circle-outline', colors.danger);
+        showInfoDialog(showConfirm, 'Error', e?.message ?? 'No se pudo finalizar la plantación.', 'alert-circle-outline', colors.danger);
       }
     }
   }
@@ -117,8 +117,8 @@ export function usePlantationAdmin() {
     showConfirm({
       icon: 'warning-outline',
       iconColor: colors.info,
-      title: 'Finalizar plantacion',
-      message: 'Esta acción no se puede deshacer. La plantacion quedara bloqueada y no se podran agregar nuevos grupos.',
+      title: 'Finalizar plantación',
+      message: 'Esta acción no se puede deshacer. La plantación quedará bloqueada y no se podrán agregar nuevos grupos.',
       buttons: [
         { label: 'Cancelar', style: 'cancel', onPress: () => {} },
         { label: 'Finalizar', style: 'danger', icon: 'lock-closed-outline', onPress: () => finalizarConfirmado(plantacionId) },
@@ -130,7 +130,7 @@ export function usePlantationAdmin() {
     if (gate.unresolvedNNCount > 0) {
       const plural = gate.unresolvedNNCount > 1 ? 'es' : '';
       const sgPlural = gate.unresolvedNNGroups > 1 ? 's' : '';
-      avisarNoSePuedeFinalizar(`${gate.unresolvedNNCount} arbol${plural} N/N sin resolver en ${gate.unresolvedNNGroups} grupo${sgPlural}.`);
+      avisarNoSePuedeFinalizar(`${gate.unresolvedNNCount} árbol${plural} N/N sin resolver en ${gate.unresolvedNNGroups} grupo${sgPlural}.`);
     } else if (gate.blocking.length === 0 && tienePendientes(gate.pendientes)) {
       avisarNoSePuedeFinalizar(mensajeFinalizarConPendientes(gate.pendientes));
     } else {
@@ -139,7 +139,7 @@ export function usePlantationAdmin() {
         icon: 'close-circle-outline',
         iconColor: colors.danger,
         title: 'No se puede finalizar',
-        message: `Los siguientes grupos no estan sincronizados:\n\n${blockingNames}`,
+        message: `Los siguientes grupos no están sincronizados:\n\n${blockingNames}`,
         buttons: [{ label: 'Entendido', style: 'primary', onPress: () => {} }],
       });
     }
@@ -150,7 +150,7 @@ export function usePlantationAdmin() {
     const plantation = (plantationList as Plantation[] | null)?.find(p => p.id === plantacionId);
     if (plantation && !plantacionEsEditable(plantation)) return;
     if (plantation?.pendingSync || plantation?.pendingEdit) {
-      showInfoDialog(showConfirm, 'Sincroniza primero', 'Sincroniza la plantacion al servidor antes de finalizarla.', 'cloud-upload-outline', colors.info);
+      showInfoDialog(showConfirm, 'Sincronizá primero', 'Sincronizá la plantación al servidor antes de finalizarla.', 'cloud-upload-outline', colors.info);
       return;
     }
     setFinalizing(true);
@@ -213,7 +213,7 @@ export function usePlantationAdmin() {
     gps?: PlantationGpsSettings
   ): Promise<string> {
     if (!organizacionId || !userId) {
-      throw new Error('No se pudo obtener datos del usuario. Intente de nuevo.');
+      throw new Error('No se pudo obtener datos del usuario. Intentá de nuevo.');
     }
     // El alta es local-first; con red se empuja en el acto y si falla queda pendiente de sync.
     const net = await NetInfo.fetch();
@@ -231,7 +231,7 @@ export function usePlantationAdmin() {
   async function handleAssignTech(plantacionId: string): Promise<boolean> {
     const net = await NetInfo.fetch();
     if (net.isConnected === false) {
-      showInfoDialog(showConfirm, 'Sin conexion', 'La asignacion de tecnicos requiere conexion a internet.', 'wifi-outline', colors.info);
+      showInfoDialog(showConfirm, 'Sin conexión', 'La asignación de técnicos requiere conexión a internet.', 'wifi-outline', colors.info);
       return false;
     }
     return true;

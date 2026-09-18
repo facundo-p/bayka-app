@@ -114,9 +114,9 @@ export default function AdminBottomSheet({
   const finalizeColor =
     meta.canFinalize && !hasPendingIssues && !hasUnresolvedNN ? colors.danger : colors.textMuted;
   const finalizeHelperText = hasPendingIssues
-    ? 'Sincroniza los cambios antes de finalizar'
+    ? 'Sincronizá los cambios antes de finalizar'
     : hasUnresolvedNN
-      ? `${meta.unresolvedNNCount} arbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNGroups} grupo${meta.unresolvedNNGroups !== 1 ? 's' : ''}`
+      ? `${meta.unresolvedNNCount} árbol${meta.unresolvedNNCount !== 1 ? 'es' : ''} N/N sin resolver en ${meta.unresolvedNNGroups} grupo${meta.unresolvedNNGroups !== 1 ? 's' : ''}`
       : meta.pendientesSinSubir
         ? ayudaFinalizarConPendientes(meta.pendientesSinSubir)
         : !meta.canFinalize
@@ -143,7 +143,7 @@ export default function AdminBottomSheet({
             style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
             onPress={onDismiss}
             hitSlop={12}
-            accessibilityLabel="Cerrar menu de acciones"
+            accessibilityLabel="Cerrar menú de acciones"
           >
             <Ionicons name="close-outline" size={22} color={colors.textMuted} />
           </Pressable>
@@ -195,13 +195,13 @@ export default function AdminBottomSheet({
                 />
                 <ActionItem
                   icon="people-outline"
-                  label="Asignar tecnicos"
+                  label="Asignar técnicos"
                   color={colors.primary}
                   onPress={onAssignTech}
                 />
                 <ActionItem
                   icon="lock-closed-outline"
-                  label="Finalizar plantacion"
+                  label="Finalizar plantación"
                   color={finalizeColor}
                   disabled={finalizeDisabled}
                   onPress={onFinalize}
