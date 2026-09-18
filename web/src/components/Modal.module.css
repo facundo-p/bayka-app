@@ -30,3 +30,16 @@
 .title {
   font-size: var(--text-title);
 }
+
+/* Hoja de teléfono: sube desde el borde de abajo, a ancho completo. El pulgar
+   llega al pie del diálogo, que es donde están sus acciones. */
+.overlayHoja {
+  align-items: flex-end;
+  padding: 0;
+}
+
+.dialogHoja {
+  max-width: 100%;
+  max-height: 85vh;
+  border-radius: var(--radius-round) var(--radius-round) 0 0;
+}

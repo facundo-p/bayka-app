@@ -83,6 +83,9 @@ export function UsuariosToolbar({ controles, visibles }: UsuariosToolbarProps) {
           onChange={controles.onBuscar}
         />
       }
+      tituloFiltros="Filtros de usuarios"
+      filtrosActivos={controles.activos}
+      onLimpiar={controles.limpiar}
       recuento={<RecuentoUsuarios visibles={visibles} />}
     >
       <FiltrosUsuarios controles={controles} />

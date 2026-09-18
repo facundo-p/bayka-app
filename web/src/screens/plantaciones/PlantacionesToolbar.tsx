@@ -60,6 +60,9 @@ export function PlantacionesToolbar({ controles, todas, visibles }: Plantaciones
           onChange={onBuscar}
         />
       }
+      tituloFiltros="Filtros de plantaciones"
+      filtrosActivos={controles.activos}
+      onLimpiar={controles.limpiar}
       recuento={
         <>
           <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.plantacion} /> ·{' '}

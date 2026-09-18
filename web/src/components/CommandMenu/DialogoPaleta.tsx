@@ -1,6 +1,6 @@
 import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { TECLA } from '../../lib/teclas';
-import { useFocusTrap } from './useFocusTrap';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import styles from './CommandMenu.module.css';
 
 interface DialogoPaletaProps {
