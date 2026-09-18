@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import type { FiltrosUi } from './filtrosArboles';
-import { conFiltro, filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from './filtrosUrl';
+import { conFiltro, contarFiltros, filtrosAParams, leerFiltrosDeUrl } from './filtrosUrl';
 
 /**
  * Filtros del explorador de datos persistidos en la URL: sobreviven el cambio
@@ -16,5 +16,6 @@ export function useFiltrosDatos() {
     [filtros, setSearchParams],
   );
   const limpiar = useCallback(() => setSearchParams(new URLSearchParams()), [setSearchParams]);
-  return { filtros, setFiltro, limpiar, hayFiltro: hayFiltroActivo(filtros) };
+  const filtrosActivos = contarFiltros(filtros);
+  return { filtros, setFiltro, limpiar, filtrosActivos, hayFiltro: filtrosActivos > 0 };
 }

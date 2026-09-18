@@ -33,3 +33,13 @@
 .campo .input {
   padding-left: var(--space-5xl);
 }
+
+/* En teléfono comparte renglón con un solo vecino, el botón de filtros. La base
+   de 18rem alcanza para mandarlo a un renglón propio —flex reparte líneas por
+   el tamaño base, no por el mínimo—, así que acá crece desde cero. */
+@media (max-width: 600px) {
+  .campo {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
