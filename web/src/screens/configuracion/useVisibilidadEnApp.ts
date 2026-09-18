@@ -11,6 +11,6 @@ export function useVisibilidadEnApp(plantacion: Plantacion) {
     valorInicial: plantacion.visibleInApp,
     guardar: actualizarVisibilidad,
     mensajeSinMigracion: MENSAJE_VISIBILIDAD_SIN_MIGRACION,
-    mensajeError: 'No se pudo actualizar la visibilidad.',
+    accion: 'actualizar la visibilidad',
   });
 }

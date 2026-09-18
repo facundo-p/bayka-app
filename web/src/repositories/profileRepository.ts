@@ -1,3 +1,4 @@
+import { mensajeDeError } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 
 /** Valores de rol global (columna `profiles.rol`). Fuente única de verdad:
@@ -30,12 +31,11 @@ const MENSAJES_TRIGGER_ROL = [
   'Un superadmin no puede degradarse a sí mismo',
 ] as const;
 
-export const MENSAJE_CAMBIO_ROL_GENERICO =
-  'No se pudo cambiar el rol. Revisá tu conexión y probá de nuevo.';
+const ACCION_CAMBIAR_ROL = 'cambiar el rol';
 
-function mensajeDeCambioRol(mensajeDelServer: string): string {
-  const legible = MENSAJES_TRIGGER_ROL.find((mensaje) => mensajeDelServer.includes(mensaje));
-  return legible ?? MENSAJE_CAMBIO_ROL_GENERICO;
+function mensajeDeCambioRol(error: { message: string; code?: string }): string {
+  const legible = MENSAJES_TRIGGER_ROL.find((mensaje) => error.message.includes(mensaje));
+  return legible ?? mensajeDeError(error, ACCION_CAMBIAR_ROL);
 }
 
 /**
@@ -45,16 +45,15 @@ function mensajeDeCambioRol(mensajeDelServer: string): string {
  */
 export async function cambiarRol(userId: string, nuevoRol: Rol): Promise<void> {
   const { error } = await supabase.from('profiles').update({ rol: nuevoRol }).eq('id', userId);
-  if (error) throw new Error(mensajeDeCambioRol(error.message));
+  if (error) throw new Error(mensajeDeCambioRol(error));
 }
 
-const MENSAJE_ACTUALIZAR_NOMBRE =
-  'No se pudo guardar el nombre. Revisá tu conexión y probá de nuevo.';
+const ACCION_GUARDAR_NOMBRE = 'guardar el nombre';
 
 /** Cambia el nombre visible (la policy de superadmin de la 024 lo permite). */
 export async function actualizarNombre(userId: string, nombre: string): Promise<void> {
   const { error } = await supabase.from('profiles').update({ nombre }).eq('id', userId);
-  if (error) throw new Error(MENSAJE_ACTUALIZAR_NOMBRE);
+  if (error) throw new Error(mensajeDeError(error, ACCION_GUARDAR_NOMBRE));
 }
 
 /**

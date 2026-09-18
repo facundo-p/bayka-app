@@ -21,6 +21,7 @@ import { Input } from './Input';
 import { Modal } from './Modal';
 import { Textarea } from './Textarea';
 import styles from './Formulario.module.css';
+import { mensajeDeError } from '../lib/clasificarError';
 
 /** Campos editables de una plantación por el formulario web; los de la migración
  *  024 pueden venir null/ausentes si la migración no está aplicada → inputs
@@ -41,8 +42,7 @@ interface PlantacionFormModalProps {
   onClose: () => void;
 }
 
-const MENSAJE_ERROR_GUARDADO =
-  'No se pudo guardar la plantación. Revisá tu conexión y probá de nuevo.';
+const ACCION_GUARDAR = 'guardar la plantación';
 const MENSAJE_DUPLICADO = 'Ya existe una plantación con ese lugar y período.';
 
 function aTexto(valor: number | string | null | undefined): string {
@@ -155,7 +155,7 @@ export function PlantacionFormModal({ plantacion, onClose }: PlantacionFormModal
       await invalidar();
       onClose();
     },
-    onError: () => setErrorEnvio(MENSAJE_ERROR_GUARDADO),
+    onError: (error) => setErrorEnvio(mensajeDeError(error, ACCION_GUARDAR)),
   });
 
   function cambiarCampo(campo: keyof PlantacionFormValues, valor: string) {

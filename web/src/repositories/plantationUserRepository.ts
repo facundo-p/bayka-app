@@ -1,3 +1,4 @@
+import { errorDeSupabase } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { ROL } from './profileRepository';
@@ -17,7 +18,7 @@ export async function asignarUsuario(plantationId: string, userId: string): Prom
   });
   if (!error) return;
   if (error.code === PG_ERROR.UNIQUE_VIOLATION) throw new Error(MENSAJE_USUARIO_YA_ASIGNADO);
-  throw new Error(error.message);
+  throw errorDeSupabase(error);
 }
 
 /**
@@ -30,5 +31,5 @@ export async function desasignarUsuario(plantationId: string, userId: string): P
     .delete()
     .eq('plantation_id', plantationId)
     .eq('user_id', userId);
-  if (error) throw new Error(error.message);
+  if (error) throw errorDeSupabase(error);
 }

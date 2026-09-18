@@ -73,14 +73,16 @@ test('el toggle "Foto en todos los botones" guarda al cambiar y actualiza el hin
 });
 
 test('si guardar la foto en todos falla, el toggle vuelve atrás y muestra el error', async () => {
-  vi.mocked(actualizarFotoEnTodos).mockRejectedValue(new Error('sin permisos'));
+  vi.mocked(actualizarFotoEnTodos).mockRejectedValue(
+    Object.assign(new Error('sin permisos'), { code: '42501' }),
+  );
   renderSeccion();
   const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
 
   fireEvent.click(toggle);
 
   expect(
-    await screen.findByText('No se pudo actualizar la foto en todos los botones.'),
+    await screen.findByText('No tenés permiso para actualizar la foto en todos los botones.'),
   ).toBeInTheDocument();
   expect(toggle).toHaveAttribute('aria-checked', 'false');
 });

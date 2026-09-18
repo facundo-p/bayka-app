@@ -8,6 +8,8 @@ export const PG_ERROR = {
   UNIQUE_VIOLATION: '23505',
   /** undefined_column — la columna no existe (p.ej. campos de la migración 024 sin aplicar). */
   UNDEFINED_COLUMN: '42703',
+  /** insufficient_privilege — RLS o GRANT rechazan la operación (403 de PostgREST). */
+  INSUFFICIENT_PRIVILEGE: '42501',
 } as const;
 
 export type PgErrorCode = (typeof PG_ERROR)[keyof typeof PG_ERROR];

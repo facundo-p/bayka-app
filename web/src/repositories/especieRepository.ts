@@ -1,3 +1,4 @@
+import { errorDeSupabase } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 
@@ -39,7 +40,7 @@ function aPayload(input: EspecieInput): Payload {
 /** unique_violation sobre `codigo` → CodigoEspecieDuplicadoError; el resto, mensaje crudo. */
 function traducirError(error: NonNullable<ErrorSupabase>): Error {
   if (error.code === PG_ERROR.UNIQUE_VIOLATION) return new CodigoEspecieDuplicadoError();
-  return new Error(error.message);
+  return errorDeSupabase(error);
 }
 
 /** Crea una especie en el catálogo global. Devuelve el id creado. */

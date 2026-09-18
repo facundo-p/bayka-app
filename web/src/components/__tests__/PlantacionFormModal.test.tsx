@@ -144,7 +144,7 @@ test('editar invalida el listado y el detalle de esa plantación', async () => {
 });
 
 test('error de red: muestra mensaje claro, conserva lo tipeado y no cierra', async () => {
-  vi.mocked(crearPlantacion).mockRejectedValue(new Error('network'));
+  vi.mocked(crearPlantacion).mockRejectedValue(new Error('TypeError: Failed to fetch'));
   const usuario = userEvent.setup();
   const { onClose } = renderModal();
 
@@ -156,4 +156,32 @@ test('error de red: muestra mensaje claro, conserva lo tipeado y no cierra', asy
   );
   expect(screen.getByLabelText('Lugar *')).toHaveValue('Mendoza');
   expect(onClose).not.toHaveBeenCalled();
+});
+
+test('rechazo por RLS: dice que falta permiso, no que revise la conexión (#380)', async () => {
+  vi.mocked(crearPlantacion).mockRejectedValue(
+    Object.assign(new Error('new row violates row-level security policy'), { code: '42501' }),
+  );
+  const usuario = userEvent.setup();
+  renderModal();
+
+  await completarObligatorios(usuario);
+  await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'No tenés permiso para guardar la plantación.',
+  );
+});
+
+test('otro error del servidor: muestra el detalle que mandó (#380)', async () => {
+  vi.mocked(crearPlantacion).mockRejectedValue(new Error('periodo inválido'));
+  const usuario = userEvent.setup();
+  renderModal();
+
+  await completarObligatorios(usuario);
+  await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'No se pudo guardar la plantación: el servidor rechazó el cambio (periodo inválido).',
+  );
 });

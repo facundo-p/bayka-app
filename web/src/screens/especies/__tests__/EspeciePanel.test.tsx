@@ -159,7 +159,7 @@ test('editar invalida toda vista que muestra especies', async () => {
 });
 
 test('error de red: muestra mensaje claro y conserva lo tipeado', async () => {
-  vi.mocked(crearEspecie).mockRejectedValue(new Error('network'));
+  vi.mocked(crearEspecie).mockRejectedValue(new Error('TypeError: Failed to fetch'));
   const invalidaciones = espiarInvalidaciones();
   const usuario = userEvent.setup();
   const onCerrar = renderPanel();

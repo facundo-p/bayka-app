@@ -59,7 +59,7 @@ function opcionesDeUsuario(perfiles: PerfilResumen[]): OpcionConDetalle[] {
 
 const TITULO = 'Técnicos asignados';
 const SUBTITULO = 'Quién puede registrar en esta plantación';
-const ERROR_ASIGNAR = 'No se pudo asignar el usuario.';
+const ACCION_ASIGNAR = 'asignar el usuario';
 const ERROR_QUITAR = 'No se pudo quitar el usuario.';
 
 /** El modal cierra recién cuando la card, el listado y Usuarios se invalidaron. */
@@ -154,7 +154,7 @@ function ModalAsignar({ plantationId, disponibles, onCerrar }: ModalAsignarProps
         <SelectTecnico disponibles={disponibles} value={userId} onChange={setUserId} />
       </div>
       <ErrorAccion
-        mensaje={mensajeErrorConocido(mutacion.error, MENSAJE_USUARIO_YA_ASIGNADO, ERROR_ASIGNAR)}
+        mensaje={mensajeErrorConocido(mutacion.error, MENSAJE_USUARIO_YA_ASIGNADO, ACCION_ASIGNAR)}
       />
       <PieModal onCerrar={onCerrar}>
         <Button onClick={() => mutacion.mutate()} disabled={!userId} loading={mutacion.isPending}>

@@ -5,6 +5,7 @@
  * que un `.limit(15000)` igual devuelve sólo 1000 filas. Para datasets grandes
  * (~7600 árboles por plantación) hay que pedir página por página hasta agotar.
  */
+import { errorDeSupabase } from '../lib/clasificarError';
 
 /** Tamaño de página: el `max-rows` por defecto de Supabase/PostgREST. */
 export const TAMANO_PAGINA = 1000;
@@ -24,7 +25,7 @@ export async function leerPaginado<T>(
   for (let pagina = 0; ; pagina++) {
     const desde = pagina * TAMANO_PAGINA;
     const { data, error } = await consultar(desde, desde + TAMANO_PAGINA - 1);
-    if (error) throw Object.assign(new Error(error.message), { code: error.code });
+    if (error) throw errorDeSupabase(error);
     const lote = data ?? [];
     filas.push(...lote);
     if (lote.length < TAMANO_PAGINA) break;
