@@ -36,7 +36,7 @@ export function useCatalog() {
 
   useEffect(() => {
     if (!isOnline) {
-      setCatalogError('No se pudo cargar el catalogo');
+      setCatalogError('No se pudo cargar el catálogo');
       setLoadingCatalog(false);
       return;
     }
@@ -54,7 +54,7 @@ export function useCatalog() {
       const items = await getServerCatalog(isAdmin, userId, organizacionId);
       setCatalogItems(items);
     } catch {
-      setCatalogError('No se pudo cargar el catalogo');
+      setCatalogError('No se pudo cargar el catálogo');
     } finally {
       setLoadingCatalog(false);
     }

@@ -230,17 +230,17 @@ export function useAuth() {
   async function handleOfflineSignIn(email: string, password: string) {
     const expired = await isOfflineLoginExpired();
     if (expired) {
-      return { data: { session: null, user: null }, error: { message: 'Sesion offline expirada. Conectate a internet para iniciar sesion.' } };
+      return { data: { session: null, user: null }, error: { message: 'Sesión offline expirada. Conectate a internet para iniciar sesión.' } };
     }
 
     const cachedRole = await verifyCredential(email, password);
     if (!cachedRole) {
-      return { data: { session: null, user: null }, error: { message: 'Credenciales incorrectas o no guardadas. Inicia sesion online primero.' } };
+      return { data: { session: null, user: null }, error: { message: 'Credenciales incorrectas o no guardadas. Iniciá sesión online primero.' } };
     }
 
     const offlineSession = await readCachedSession();
     if (!offlineSession) {
-      return { data: { session: null, user: null }, error: { message: 'Sin sesion previa. Conectate al menos una vez.' } };
+      return { data: { session: null, user: null }, error: { message: 'Sin sesión previa. Conectate al menos una vez.' } };
     }
 
     await SecureStore.setItemAsync(ROLE_KEY, cachedRole);

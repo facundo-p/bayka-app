@@ -158,7 +158,7 @@ export default function NNResolutionScreen() {
                   <Text style={styles.conflictAcceptText}>Aceptar del servidor</Text>
                 </Pressable>
                 <Pressable onPress={() => keepLocalResolution(currentTree.id)}>
-                  <Text style={styles.conflictKeepText}>Mantener la mia</Text>
+                  <Text style={styles.conflictKeepText}>Mantener la mía</Text>
                 </Pressable>
               </View>
             </View>

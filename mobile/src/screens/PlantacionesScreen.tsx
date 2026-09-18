@@ -44,7 +44,7 @@ export default function PlantacionesScreen() {
               accessibilityLabel="Gestionar plantaciones descargadas"
             />
             {s.isAdmin && (
-              <HeaderActionButton icon="add" onPress={() => s.setShowCreateModal(true)} accessibilityLabel="Nueva plantacion" />
+              <HeaderActionButton icon="add" onPress={() => s.setShowCreateModal(true)} accessibilityLabel="Nueva plantación" />
             )}
           </View>
         }
@@ -112,7 +112,7 @@ export default function PlantacionesScreen() {
         <View style={styles.emptyContainer}>
           <Ionicons name="leaf-outline" size={48} color={colors.textMuted} />
           <Text style={styles.emptyTitle}>No hay plantaciones disponibles</Text>
-          <Text style={styles.emptySubtext}>Las plantaciones asignadas apareceran aqui</Text>
+          <Text style={styles.emptySubtext}>Las plantaciones asignadas van a aparecer acá</Text>
         </View>
       )}
 

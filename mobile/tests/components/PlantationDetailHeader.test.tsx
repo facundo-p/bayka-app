@@ -24,22 +24,22 @@ describe('PlantationDetailHeader — banner de estado', () => {
     const { getByText, queryByText } = renderHeader({ isFinalizada: true, isArchivada: true, isEliminada: true });
 
     expect(getByText('Eliminada en el servidor')).toBeTruthy();
-    expect(queryByText('Plantacion archivada')).toBeNull();
-    expect(queryByText('Plantacion finalizada')).toBeNull();
+    expect(queryByText('Plantación archivada')).toBeNull();
+    expect(queryByText('Plantación finalizada')).toBeNull();
   });
 
   it('archivada gana sobre finalizada', () => {
     const { getByText, queryByText } = renderHeader({ isFinalizada: true, isArchivada: true });
 
-    expect(getByText('Plantacion archivada')).toBeTruthy();
-    expect(queryByText('Plantacion finalizada')).toBeNull();
+    expect(getByText('Plantación archivada')).toBeTruthy();
+    expect(queryByText('Plantación finalizada')).toBeNull();
   });
 
   it('activa sin marcas: sin banner', () => {
     const { queryByText } = renderHeader({});
 
     expect(queryByText('Eliminada en el servidor')).toBeNull();
-    expect(queryByText('Plantacion archivada')).toBeNull();
-    expect(queryByText('Plantacion finalizada')).toBeNull();
+    expect(queryByText('Plantación archivada')).toBeNull();
+    expect(queryByText('Plantación finalizada')).toBeNull();
   });
 });

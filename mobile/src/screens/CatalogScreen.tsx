@@ -51,8 +51,8 @@ export default function CatalogScreen() {
       return (
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No se pudo cargar el catalogo</Text>
-          <Text style={styles.emptySubtext}>Verifica tu conexion y vuelve a intentarlo</Text>
+          <Text style={styles.emptyTitle}>No se pudo cargar el catálogo</Text>
+          <Text style={styles.emptySubtext}>Verificá tu conexión y volvé a intentarlo</Text>
           <Pressable style={styles.retryButton} onPress={loadCatalog}>
             <Text style={styles.retryText}>Reintentar carga</Text>
           </Pressable>
@@ -67,8 +67,8 @@ export default function CatalogScreen() {
           <Text style={styles.emptyTitle}>No hay plantaciones disponibles</Text>
           <Text style={styles.emptySubtext}>
             {isAdmin
-              ? 'Todas las plantaciones del servidor ya estan en tu dispositivo'
-              : 'No tenes plantaciones asignadas en el servidor'}
+              ? 'Todas las plantaciones del servidor ya están en tu dispositivo'
+              : 'No tenés plantaciones asignadas en el servidor'}
           </Text>
         </View>
       );

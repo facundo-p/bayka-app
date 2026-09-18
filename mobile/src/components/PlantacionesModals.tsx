@@ -168,7 +168,7 @@ export default function PlantacionesModals({
 
       <SyncConfirmModal
         visible={syncConfirmVisible}
-        title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantacion'}
+        title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantación'}
         plantacionId={syncConfirmMode === 'plantation' ? syncTargetPlantationId ?? undefined : undefined}
         onConfirm={handleSyncConfirm}
         onClose={closeSyncConfirm}
@@ -204,8 +204,8 @@ export default function PlantacionesModals({
         visible={syncState === 'done' && authExpired}
         icon="lock-closed"
         iconColor={colors.secondary}
-        title="Sesion expirada"
-        message="Tu sesion expiro. Inicia sesion de nuevo para sincronizar."
+        title="Sesión expirada"
+        message="Tu sesión expiró. Iniciá sesión de nuevo para sincronizar."
         buttons={[
           { label: 'Cancelar', style: 'cancel', onPress: resetSync },
           { label: 'Aceptar', style: 'primary', onPress: handleSessionExpiredReauth },

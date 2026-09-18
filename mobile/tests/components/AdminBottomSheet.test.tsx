@@ -67,8 +67,8 @@ describe('AdminBottomSheet', () => {
 
     expect(getByText('Editar lugar y periodo')).toBeTruthy();
     expect(getByText('Configurar especies')).toBeTruthy();
-    expect(getByText('Asignar tecnicos')).toBeTruthy();
-    expect(getByText('Finalizar plantacion')).toBeTruthy();
+    expect(getByText('Asignar técnicos')).toBeTruthy();
+    expect(getByText('Finalizar plantación')).toBeTruthy();
     // #94: el sync por plantación vive en la card, no en el sheet.
     expect(queryByText('Sincronizar')).toBeNull();
   });
@@ -100,8 +100,8 @@ describe('AdminBottomSheet', () => {
 
     expect(queryByText('Editar lugar y periodo')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
-    expect(queryByText('Asignar tecnicos')).toBeNull();
-    expect(queryByText('Finalizar plantacion')).toBeNull();
+    expect(queryByText('Asignar técnicos')).toBeNull();
+    expect(queryByText('Finalizar plantación')).toBeNull();
   });
 
   it('no ofrece ninguna acción de edición sobre una plantación eliminada en el servidor (#478)', () => {
@@ -116,8 +116,8 @@ describe('AdminBottomSheet', () => {
 
     expect(queryByText('Editar lugar y periodo')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
-    expect(queryByText('Asignar tecnicos')).toBeNull();
-    expect(queryByText('Finalizar plantacion')).toBeNull();
+    expect(queryByText('Asignar técnicos')).toBeNull();
+    expect(queryByText('Finalizar plantación')).toBeNull();
   });
 
   it('finalizada y archivada sigue exportando: exportar no escribe (#477)', () => {
@@ -162,7 +162,7 @@ describe('AdminBottomSheet', () => {
       <AdminBottomSheet {...makeProps({ meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '2 fotos sin subir' } })} />
     );
 
-    expect(getByText('Sincroniza antes de finalizar: 2 fotos sin subir')).toBeTruthy();
+    expect(getByText('Sincronizá antes de finalizar: 2 fotos sin subir')).toBeTruthy();
   });
 
   it('shows enabled Finalizar when canFinalize=true', () => {
@@ -182,7 +182,7 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(getByText('Sincroniza los cambios antes de finalizar')).toBeTruthy();
+    expect(getByText('Sincronizá los cambios antes de finalizar')).toBeTruthy();
   });
 
   // #232: la generación de IDs es exclusiva de la web; mobile solo informa.

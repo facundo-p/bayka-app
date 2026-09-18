@@ -219,18 +219,18 @@ export type DownloadResult = {
 const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   // DUPLICATE_CODE/NAME los devuelve el RPC tanto para parcelas como grupos; mensaje neutral para
   // no nombrar la entidad equivocada (unicidad de grupo es por parcela, no por plantación, #65).
-  [SYNC_ERROR.DUPLICATE_CODE]: 'El codigo ya existe en el servidor. Renombra el codigo e intenta de nuevo.',
-  [SYNC_ERROR.DUPLICATE_NAME]: 'El nombre ya existe en el servidor. Renombra e intenta de nuevo.',
-  [SYNC_ERROR.GENERIC_CONFLICT]: 'El servidor rechazo la operacion por un conflicto. Intenta de nuevo o contacta soporte.',
-  [SYNC_ERROR.REFERENCIA_INEXISTENTE]: 'Falta en el servidor un dato del que depende (por ejemplo, su plantacion o parcela). Sincroniza de nuevo; si persiste, puede que se haya eliminado: contacta a un administrador.',
-  [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aun esta pendiente. Resolve el problema de la parcela primero.',
-  [SYNC_ERROR.PERMISSION]: 'El servidor rechazo la operacion por permisos. No estas habilitado para sincronizar esta plantacion; contacta a un administrador.',
+  [SYNC_ERROR.DUPLICATE_CODE]: 'El código ya existe en el servidor. Renombrá el código e intentá de nuevo.',
+  [SYNC_ERROR.DUPLICATE_NAME]: 'El nombre ya existe en el servidor. Renombrá e intentá de nuevo.',
+  [SYNC_ERROR.GENERIC_CONFLICT]: 'El servidor rechazó la operación por un conflicto. Intentá de nuevo o contactá a soporte.',
+  [SYNC_ERROR.REFERENCIA_INEXISTENTE]: 'Falta en el servidor un dato del que depende (por ejemplo, su plantación o parcela). Sincronizá de nuevo; si persiste, puede que se haya eliminado: contactá a un administrador.',
+  [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aún está pendiente. Resolvé el problema de la parcela primero.',
+  [SYNC_ERROR.PERMISSION]: 'El servidor rechazó la operación por permisos. No estás habilitado para sincronizar esta plantación; contactá a un administrador.',
   // El dato NO se pierde: queda en el device y se sube si la plantación se reabre o desarchiva.
-  [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantacion fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
-  [SYNC_ERROR.PLANTACION_ARCHIVADA]: 'La plantacion fue archivada y no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la desarchive para poder subirlo.',
-  [SYNC_ERROR.NETWORK]: 'Error de conexion. Verifica tu internet e intenta de nuevo.',
-  [SYNC_ERROR.TIMEOUT]: 'El servidor no respondio a tiempo. Puede ser la señal: intenta de nuevo con mejor cobertura.',
-  [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intenta de nuevo.',
+  [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantación fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
+  [SYNC_ERROR.PLANTACION_ARCHIVADA]: 'La plantación fue archivada y no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la desarchive para poder subirlo.',
+  [SYNC_ERROR.NETWORK]: 'Error de conexión. Verificá tu internet e intentá de nuevo.',
+  [SYNC_ERROR.TIMEOUT]: 'El servidor no respondió a tiempo. Puede ser la señal: intentá de nuevo con mejor cobertura.',
+  [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intentá de nuevo.',
 };
 
 export function getErrorMessage(code: SyncErrorCode): string {
