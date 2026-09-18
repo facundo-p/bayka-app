@@ -93,6 +93,15 @@ describe('búsqueda', () => {
     expect(ids({ busqueda: '  Salta  ' })).toEqual(['p2']);
   });
 
+  test('ignora tildes en el término y en el lugar (#438)', () => {
+    const conTilde = [plantacion({ id: 'p9', lugar: 'Ñandubaysal Río Seco' })];
+    const buscar = (busqueda: string) =>
+      filtrarPlantaciones(conTilde, { ...SIN_FILTROS, busqueda }).map((p) => p.id);
+    expect(buscar('rio')).toEqual(['p9']);
+    expect(buscar('RÍO')).toEqual(['p9']);
+    expect(buscar('nandubay')).toEqual(['p9']);
+  });
+
   test('sin coincidencias devuelve vacío', () => {
     expect(ids({ busqueda: 'zzz-no-existe' })).toEqual([]);
   });

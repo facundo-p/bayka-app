@@ -5,6 +5,7 @@
  * árboles se buscan por `sub_id`, no por ID global. Sin scope se excluyen las plantaciones
  * archivadas (#477); con scope se busca dentro de esa plantación aunque esté archivada.
  */
+import { coincideBusqueda } from '../lib/normalizarTexto';
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
 import { PARAM_URL, RUTA, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
 import { supabase } from '../lib/supabase';
@@ -36,8 +37,9 @@ const TOPE_LISTA = 6;
 /** Mínimo de caracteres para disparar la búsqueda. */
 const MINIMO_CARACTERES = 1;
 
+/** Las listas cacheadas se filtran en cliente sin distinguir tildes; el server usa `ilike`. */
 function coincide(texto: string, ...campos: Array<string | null | undefined>): boolean {
-  return campos.some((campo) => (campo ?? '').toLowerCase().includes(texto));
+  return coincideBusqueda(campos, texto);
 }
 
 async function buscarPlantaciones(texto: string): Promise<ResultadoBusqueda[]> {

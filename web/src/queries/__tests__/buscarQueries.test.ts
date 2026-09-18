@@ -103,6 +103,20 @@ test('agrega coincidencias de listas cacheadas (plantación, especie, usuario)',
   expect(usuario).toMatchObject({ titulo: 'Ana Admin', meta: 'Administrador', to: '/usuarios' });
 });
 
+test('las listas cacheadas ignoran tildes en el término y en el dato (#438)', async () => {
+  capturarConsultas((consulta) =>
+    consulta.tabla === 'species'
+      ? { data: [{ ...FILA_ESPECIE, id: 'sp-2', codigo: 'TIM', nombre: 'Timbó' }] }
+      : responder(consulta),
+  );
+  const tipos = (resultados: Awaited<ReturnType<typeof buscar>>) =>
+    resultados.map((resultado) => `${resultado.tipo}:${resultado.titulo}`);
+
+  expect(tipos(await buscar('timbo'))).toContain('especie:Timbó');
+  expect(tipos(await buscar('otono'))).toContain('plantacion:La Maluka');
+  expect(tipos(await buscar('Ána'))).toContain('usuario:Ana Admin');
+});
+
 test('encuentra un árbol por sub_id y navega a su contexto de datos', async () => {
   capturarConsultas(responder);
   const resultados = await buscar('PAL23');
