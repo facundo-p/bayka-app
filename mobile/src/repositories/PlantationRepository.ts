@@ -37,9 +37,6 @@ async function upsertLocalAdminMembership(plantacionId: string, userId: string):
     .onConflictDoNothing();
 }
 
-// ─── createPlantation ─────────────────────────────────────────────────────────
-
-/** Crea la plantación en Supabase y upsertea la fila en SQLite local: pullFromServer no trae la fila de plantation en sí (solo groups/species/users). */
 /** Config GPS por plantación que el admin puede definir en el form. */
 export interface PlantationGpsSettings {
   gpsCaptureFrequency: number;
@@ -53,53 +50,6 @@ function gpsToRemoteColumns(gps?: PlantationGpsSettings) {
     gps_capture_frequency: gps.gpsCaptureFrequency,
     gps_capture_required: gps.gpsCaptureRequired,
   };
-}
-
-export async function createPlantation(
-  lugar: string,
-  periodo: string,
-  organizacionId: string,
-  creadoPor: string,
-  gps?: PlantationGpsSettings
-): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
-  const { data, error } = await supabase
-    .from('plantations')
-    .insert({
-      lugar,
-      periodo,
-      organizacion_id: organizacionId,
-      creado_por: creadoPor,
-      estado: ESTADO_PLANTACION.activa,
-      ...gpsToRemoteColumns(gps),
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  await db
-    .insert(plantations)
-    .values({
-      id: data.id,
-      organizacionId: data.organizacion_id,
-      lugar: data.lugar,
-      periodo: data.periodo,
-      estado: data.estado,
-      creadoPor: data.creado_por,
-      createdAt: data.created_at,
-      pendingSync: false,
-      lugarServer: data.lugar,
-      periodoServer: data.periodo,
-      ...(gps ?? {}),
-    })
-    .onConflictDoUpdate({
-      target: plantations.id,
-      set: { estado: sql`excluded.estado` },
-    });
-
-  await upsertLocalAdminMembership(data.id, creadoPor);
-  notifyDataChanged();
-  return data;
 }
 
 // ─── createPlantationLocally ──────────────────────────────────────────────────
