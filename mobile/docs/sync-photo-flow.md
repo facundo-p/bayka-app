@@ -126,12 +126,21 @@ se asume acceso.
 Descarga datos del servidor y hace upsert en local. Para cada árbol (`upsertTreesFromServerTx`):
 
 ```ts
-// Preserva foto local si existe
-fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`
+// La foto local se conserva mientras esté pendiente de subir o el server siga
+// teniendo foto; si ya se subió y el server la quitó, se limpia (#517)
+const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR excluded.foto_synced = 1)`;
+fotoUrl: sql`CASE WHEN ${conservarFotoLocal} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`
 
-// fotoSynced: true si el servidor tiene storage path, sino preserva el valor local
-fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 ELSE ${trees.fotoSynced} END`
+// fotoSynced: true si el servidor tiene storage path; false si se limpió; si no, el valor local
+fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 WHEN ${conservarFotoLocal} THEN ${trees.fotoSynced} ELSE 0 END`
 ```
+
+**Foto quitada desde otro dispositivo (#517):** la fila local tiene `fotoUrl =
+file://…` y `fotoSynced = true`, y el server manda `foto_url = null`. El pull
+limpia la referencia y, cerrados los lotes, borra el archivo
+(`fotosQuitadasEnServer`, calculado sobre la misma lectura de árboles locales del
+chequeo de conflictos, #449). Una foto con `fotoSynced = false` es la copia que
+el server todavía no tiene: no se toca.
 
 Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el push sube después.
 
