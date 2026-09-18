@@ -1,4 +1,5 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   PERFIL_ADMIN,
   PERFIL_TECNICO,
@@ -33,13 +34,43 @@ test('autenticado: la ruta raíz redirige al listado de Plantaciones', async () 
   expect(await screen.findByText('Sin plantaciones')).toBeInTheDocument();
 });
 
-test('autenticado: el footer del sidebar muestra nombre, rol y botón de salir', async () => {
+test('autenticado: el footer del sidebar muestra nombre y rol, y la cuenta es el botón', async () => {
   prepararSesionAdmin();
   renderAt('/plantaciones');
   expect(await screen.findByText('Ana Admin')).toBeInTheDocument();
   // El rol se muestra con su etiqueta en español en el footer del sidebar.
   expect(screen.getByText('Administrador')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument();
+  // Nombre y rol son el nombre accesible del botón que abre la confirmación.
+  expect(screen.getByRole('button', { name: 'Ana Admin Administrador' })).toHaveAttribute(
+    'aria-haspopup',
+    'dialog',
+  );
+});
+
+test('cerrar sesión pregunta antes, y cancelar deja la sesión abierta', async () => {
+  prepararSesionAdmin();
+  renderAt('/plantaciones');
+  const usuario = userEvent.setup();
+
+  await usuario.click(await screen.findByRole('button', { name: 'Ana Admin Administrador' }));
+  const dialogo = screen.getByRole('dialog', { name: '¿Cerrar sesión?' });
+  expect(within(dialogo).getByText('Estás como Ana Admin, Administrador.')).toBeInTheDocument();
+
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Cancelar' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByText('Ana Admin')).toBeInTheDocument();
+});
+
+test('cerrar sesión: al confirmar, termina la sesión y vuelve al login', async () => {
+  prepararSesionAdmin();
+  renderAt('/plantaciones');
+  const usuario = userEvent.setup();
+
+  await usuario.click(await screen.findByRole('button', { name: 'Ana Admin Administrador' }));
+  const dialogo = screen.getByRole('dialog', { name: '¿Cerrar sesión?' });
+  await usuario.click(within(dialogo).getByRole('button', { name: 'Cerrar sesión' }));
+
+  expect(await screen.findByRole('button', { name: 'Ingresar' })).toBeInTheDocument();
 });
 
 test('autenticado sin nombre: el footer muestra el id corto en vez de quedar vacío', async () => {
