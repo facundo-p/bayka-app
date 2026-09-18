@@ -12,6 +12,30 @@
   border-top: var(--border-thin) solid var(--color-border);
 }
 
+/* La cuenta entera es el botón de salida: en teléfono, plegada al avatar, sigue
+   siendo un destino táctil completo. */
+.identidad {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: var(--space-xl);
+  margin: 0 calc(var(--space-sm) * -1);
+  padding: var(--space-sm);
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.identidad:hover {
+  background-color: var(--color-surface-sunken);
+}
+
 .avatar {
   display: flex;
   align-items: center;
@@ -26,7 +50,10 @@
   font-weight: var(--font-weight-medium);
 }
 
+/* En teléfono queda solo el avatar, pero el nombre y el rol siguen siendo el
+   nombre accesible del botón. */
 .datos {
+  composes: soloLectoresEnMovil from '../theme/utilidades.module.css';
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -56,6 +83,11 @@
 
 .novedades:hover {
   color: var(--color-text-secondary);
+}
+
+/* En teléfono el acceso queda como la versión sola. */
+.novedadesTexto {
+  composes: soloLectoresEnMovil from '../theme/utilidades.module.css';
 }
 
 /* Aviso de versión nueva sin ver. */

@@ -43,3 +43,24 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Texto que en teléfono deja de ocupar lugar pero sigue nombrando a su control:
+   se va de la vista, no del árbol de accesibilidad. Con `display: none` el
+   botón o el link que lo contiene se quedaría sin nombre accesible, que es por
+   donde lo encuentran los tests y la auditoría. */
+.soloLectoresEnMovil {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .soloLectoresEnMovil {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+}
