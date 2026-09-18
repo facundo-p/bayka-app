@@ -7,3 +7,18 @@
   gap: var(--space-xl-plus);
   padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
+
+/* En teléfono el alta queda en el "+", que entra en el renglón del título en
+   vez de bajar a uno propio. La etiqueta sigue en el DOM: es el nombre por el
+   que la buscan los tests y la auditoría. */
+.altaEtiqueta {
+  composes: soloLectoresEnMovil from '../theme/utilidades.module.css';
+}
+
+@media (max-width: 600px) {
+  .alta {
+    width: var(--control-height);
+    height: var(--control-height);
+    padding: 0;
+  }
+}
