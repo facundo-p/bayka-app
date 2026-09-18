@@ -62,7 +62,7 @@ export function BarraHerramientas(props: BarraHerramientasProps) {
               </Button>
             )}
             <Button className={styles.verResultados} onClick={() => setHojaAbierta(false)}>
-              {recuento ? <>Ver {recuento}</> : 'Listo'}
+              {recuento ? <span className={styles.verRecuento}>Ver {recuento}</span> : 'Listo'}
             </Button>
           </div>
         </Modal>
