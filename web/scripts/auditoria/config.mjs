@@ -28,6 +28,9 @@ const BORDES = [ESCALA.ancho.tablet, ESCALA.ancho.movil];
 
 export const ANCHOS = Object.freeze([...PANTALLAS, ...BORDES].sort((a, b) => b - a));
 
+/** Para las vistas que solo existen en teléfono, como la hoja de filtros. */
+export const ANCHOS_MOVIL = Object.freeze(ANCHOS.filter((a) => a <= ESCALA.ancho.movil));
+
 export const claveCelda = (pantalla, ancho) => `${pantalla}@${ancho}`;
 
 /** Clase de un CSS Module: Vite la renombra a `_<nombre>_<hash>`. */
@@ -77,6 +80,8 @@ export const TODOS_LOS_DETAILS = Symbol('todos los <details>');
  * subárbol: con un modal abierto, el texto de la página que queda detrás del
  * overlay se pisa con el del diálogo y O daría decenas de solapes que nadie ve.
  * `sinChrome` marca las que no montan el layout, para el piso de VACIA.
+ * `anchos` acota la vista a esos anchos: sin eso, una pantalla que solo existe
+ * en teléfono se pasa diez segundos esperando un botón que a 1920 no está.
  */
 export const VISTAS = Object.freeze([
   { pantalla: 'plantaciones', ruta: RUTA.plantaciones },
@@ -100,6 +105,15 @@ export const VISTAS = Object.freeze([
     ruta: RUTA.usuarios,
     abrir: 'Agregar usuario',
     raiz: SELECTOR_DIALOGO,
+  },
+  // La hoja de filtros: superficie nueva y solo de teléfono, así que ninguna
+  // otra vista la mide.
+  {
+    pantalla: 'modal-filtros',
+    ruta: RUTA.plantaciones,
+    abrir: 'Filtros',
+    raiz: SELECTOR_DIALOGO,
+    anchos: ANCHOS_MOVIL,
   },
 ]);
 
