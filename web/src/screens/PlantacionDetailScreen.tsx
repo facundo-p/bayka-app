@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Outlet } from 'react-router';
+import { Link, Outlet, useLocation } from 'react-router';
 import { ChevronDown, Download, MoreHorizontal, Pencil, Plus } from 'lucide-react';
 import {
   Aviso,
@@ -24,6 +24,7 @@ import { usePlantacion } from '../hooks/usePlantacion';
 import { formatearFechaCorta } from '../lib/fechas';
 import { RUTA, rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
 import { esArchivada, type Plantacion } from '../queries/plantationQueries';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ArchivadoModal } from './plantaciones/ArchivadoModal';
 import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
@@ -37,6 +38,8 @@ const MOTIVO_IDS_PENDIENTES = 'Generá los IDs de la plantación para exportar l
 const AVISO_ARCHIVADA =
   'Plantación archivada: no aparece en los listados ni en la app, y queda en solo lectura. ' +
   'Los celulares con datos sin subir los van a poder subir cuando se desarchive.';
+/** Una tab que rompe al renderizar no se lleva la cabecera ni las otras tabs (#338). */
+const MENSAJE_SECCION_ROTA = 'No se pudo mostrar esta sección.';
 
 function tabsDePlantacion(id: string): TabItem[] {
   return [
@@ -270,6 +273,7 @@ function CabeceraPlantacion({ plantacion }: { plantacion: Plantacion }) {
  *  Outlet y llena el alto restante. */
 function DetallePlantacion({ plantacion }: { plantacion: Plantacion }) {
   const [editando, setEditando] = useState(false);
+  const { pathname } = useLocation();
   return (
     <section>
       <Topbar
@@ -283,7 +287,9 @@ function DetallePlantacion({ plantacion }: { plantacion: Plantacion }) {
             <Aviso>{AVISO_ARCHIVADA}</Aviso>
           </div>
         )}
-        <Outlet />
+        <ErrorBoundary key={pathname} mensaje={MENSAJE_SECCION_ROTA}>
+          <Outlet />
+        </ErrorBoundary>
       </div>
       {editando && (
         <PlantacionFormModal plantacion={plantacion} onClose={() => setEditando(false)} />

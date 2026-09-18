@@ -19,6 +19,10 @@ import { SpeciesDistribution } from './SpeciesDistribution';
 import { ParcelasStrip } from './ParcelasStrip';
 import { useFiltroParcela } from './useFiltroParcela';
 import styles from './DashboardTab.module.css';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
+
+/** Un panel roto no se lleva puesto el resto del dashboard (#338). */
+const MENSAJE_PANEL_ROTO = 'No se pudo mostrar este panel.';
 
 function SinArboles() {
   return (
@@ -49,13 +53,17 @@ interface ColumnaMetricasProps {
 function ColumnaMetricas({ datos, especies, objetivo, filtro }: ColumnaMetricasProps) {
   return (
     <div className={styles.columna}>
-      <ResumenPlantacion datos={datos} objetivo={objetivo} alcance={filtro.alcance} />
-      <SpeciesDistribution
-        especies={especies}
-        total={datos.totalArboles}
-        totalEspecies={datos.especiesUsadas}
-        parcelaFiltro={filtro.parcela?.codigo}
-      />
+      <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
+        <ResumenPlantacion datos={datos} objetivo={objetivo} alcance={filtro.alcance} />
+      </ErrorBoundary>
+      <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
+        <SpeciesDistribution
+          especies={especies}
+          total={datos.totalArboles}
+          totalEspecies={datos.especiesUsadas}
+          parcelaFiltro={filtro.parcela?.codigo}
+        />
+      </ErrorBoundary>
     </div>
   );
 }
@@ -71,16 +79,20 @@ function ColumnaMapa({ puntos, parcelas, especies, filtro }: ColumnaMapaProps) {
   const parcelaId = filtro.parcela?.id ?? null;
   return (
     <div className={styles.columna}>
-      <PlantationMap
-        puntos={filtrarPuntos(puntos, parcelaId)}
-        leyenda={especies}
-        parcelaFiltro={filtro.parcela?.codigo}
-      />
-      <ParcelasStrip
-        parcelas={parcelas}
-        parcelaSeleccionada={parcelaId}
-        onSeleccionar={filtro.alternar}
-      />
+      <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
+        <PlantationMap
+          puntos={filtrarPuntos(puntos, parcelaId)}
+          leyenda={especies}
+          parcelaFiltro={filtro.parcela?.codigo}
+        />
+      </ErrorBoundary>
+      <ErrorBoundary mensaje={MENSAJE_PANEL_ROTO}>
+        <ParcelasStrip
+          parcelas={parcelas}
+          parcelaSeleccionada={parcelaId}
+          onSeleccionar={filtro.alternar}
+        />
+      </ErrorBoundary>
     </div>
   );
 }
