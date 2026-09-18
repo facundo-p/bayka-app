@@ -36,7 +36,6 @@ jest.mock('../../src/queries/catalogQueries', () => ({
 }));
 
 import {
-  createPlantation,
   finalizePlantation,
   FinalizePlantationLocalSyncError,
   FinalizePlantationPendientesError,
@@ -118,47 +117,6 @@ describe('PlantationRepository', () => {
           orderBy: jest.fn().mockResolvedValue([]),
         }),
       }),
-    });
-  });
-
-  // ─── createPlantation ─────────────────────────────────────────────────────
-
-  describe('createPlantation', () => {
-    it('Test 1: calls supabase.from("plantations").insert() and upserts into local SQLite', async () => {
-      await createPlantation('Zona Norte', '2026', 'org-1', 'user-1');
-
-      expect(mockSupabase.from).toHaveBeenCalledWith('plantations');
-
-      const fromResult = (mockSupabase.from as jest.Mock).mock.results[0].value;
-      expect(fromResult.insert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          lugar: 'Zona Norte',
-          periodo: '2026',
-          organizacion_id: 'org-1',
-          creado_por: 'user-1',
-          estado: 'activa',
-        })
-      );
-
-      expect(mockDb.insert).toHaveBeenCalled();
-    });
-
-    it('Test 2: calls notifyDataChanged after local upsert', async () => {
-      await createPlantation('Zona Norte', '2026', 'org-1', 'user-1');
-
-      expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
-    });
-
-    it('Test 2b: registra al creador como miembro admin local (issue #67)', async () => {
-      await createPlantation('Zona Norte', '2026', 'org-1', 'user-1');
-
-      const valuesMock = (mockDb.insert as jest.Mock).mock.results[0].value.values as jest.Mock;
-      const membership = valuesMock.mock.calls.map((c) => c[0]).find((v: any) => v?.rolEnPlantacion);
-      expect(membership).toMatchObject({
-        plantationId: 'plantation-uuid-1',
-        userId: 'user-1',
-        rolEnPlantacion: 'admin',
-      });
     });
   });
 

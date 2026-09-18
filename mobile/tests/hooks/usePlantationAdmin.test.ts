@@ -43,7 +43,6 @@ jest.mock('../../src/repositories/PlantationRepository', () => {
   }
   return {
     FinalizePlantationPendientesError,
-    createPlantation: jest.fn(),
     createPlantationLocally: jest.fn(),
     updatePlantation: jest.fn(),
     finalizePlantation: jest.fn(),
