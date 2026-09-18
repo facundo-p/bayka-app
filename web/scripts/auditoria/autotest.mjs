@@ -158,6 +158,17 @@ const CASOS_AUTOTEST = [
     esperaLimpio: (r) => r.nFueraViewport === 0,
   },
   {
+    nombre: 'X · barra fija al pie dentro de un contenedor que scrollea NO cuenta',
+    ruta: RUTA.plantaciones,
+    ancho: 360,
+    // Es lo que hace la navegación en teléfono: `position: fixed` adentro de un
+    // <aside> con `overflow-y: auto`. El overflow de un ancestro no recorta a un
+    // elemento fijo, y el check los contaba a los tres como inalcanzables.
+    css: `${claseModulo('sidebar')}{overflow-y:auto !important}`,
+    espera: (r) => r.nFueraViewport === 0,
+    esperaLimpio: (r) => r.nFueraViewport === 0,
+  },
+  {
     nombre: 'X · control alcanzable scrolleando NO cuenta',
     ruta: RUTA.usuarios,
     ancho: 1280,

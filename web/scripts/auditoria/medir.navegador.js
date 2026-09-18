@@ -340,18 +340,28 @@ function alcanzableScrolleando(el) {
  */
 function recortadoSinScroll(el) {
   let r = el.getBoundingClientRect();
+  // Un elemento fijo cuelga del viewport: el `overflow` de sus ancestros no lo
+  // recorta. Sin esto, la barra de navegación del teléfono —fija al pie, dentro
+  // de un <aside> que scrollea— se contaba inalcanzable estando a la vista y
+  // siendo clickeable.
+  if (getComputedStyle(el).position === 'fixed') return false;
   for (const anc of ancestros(el.parentElement)) {
     const co = getComputedStyle(anc);
-    if (co.overflowX === 'visible' && co.overflowY === 'visible') continue;
-    const ra = anc.getBoundingClientRect();
-    const eje = ejeAfuera(r, ra);
-    if (eje === AFUERA.no) continue;
-    if (!scrolleaEn(anc, co, eje)) return true;
-    // Scrollear lo TRASLADA a algún lugar de esta caja: los ancestros de más
-    // arriba lo juzgan por ahí. Si no, un control bajo el fold de una card con
-    // scroll propio se declara inalcanzable al llegar a `.shell`, que recorta
-    // sin scrollear, y darle scroll a la card subía el número de defectos.
-    r = ra;
+    if (co.overflowX !== 'visible' || co.overflowY !== 'visible') {
+      const ra = anc.getBoundingClientRect();
+      const eje = ejeAfuera(r, ra);
+      if (eje !== AFUERA.no) {
+        if (!scrolleaEn(anc, co, eje)) return true;
+        // Scrollear lo TRASLADA a algún lugar de esta caja: los ancestros de
+        // más arriba lo juzgan por ahí. Si no, un control bajo el fold de una
+        // card con scroll propio se declara inalcanzable al llegar a `.shell`,
+        // que recorta sin scrollear, y darle scroll a la card subía el número
+        // de defectos.
+        r = ra;
+      }
+    }
+    // De acá para arriba nadie lo recorta: el fijo ya rompió la cadena.
+    if (co.position === 'fixed') return false;
   }
   return false;
 }

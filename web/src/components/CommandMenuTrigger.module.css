@@ -23,6 +23,7 @@
 }
 
 .texto {
+  composes: soloLectoresEnMovil from '../theme/utilidades.module.css';
   flex: 1;
   text-align: left;
 }
@@ -43,5 +44,24 @@
 @media (max-width: 900px) {
   .trigger {
     width: auto;
+  }
+}
+
+/* En teléfono queda la lupa sola: el texto y el atajo se van de la vista pero
+   no del árbol de accesibilidad, porque "Buscar" es el nombre por el que lo
+   encuentran los tests y la auditoría. Y en un teléfono no hay ⌘K que anunciar. */
+@media (max-width: 600px) {
+  .trigger {
+    justify-content: center;
+    width: var(--control-height);
+    height: var(--control-height);
+    margin-left: auto;
+    padding: 0;
+    background-color: transparent;
+    border-color: transparent;
+  }
+
+  .chip {
+    display: none;
   }
 }

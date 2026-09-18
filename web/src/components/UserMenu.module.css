@@ -107,3 +107,13 @@
     border-top: none;
   }
 }
+
+/* En la barra del teléfono la cuenta se pliega al avatar y la versión se le
+   pone al lado, en vez de ocupar un renglón cada una. */
+@media (max-width: 600px) {
+  .footer {
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: var(--space-md);
+  }
+}
