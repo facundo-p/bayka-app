@@ -2,7 +2,8 @@ import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
-import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
+import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
+import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 import { fetchAllRows } from './paginate';
@@ -454,9 +455,32 @@ function filaDeArbol(t: any) {
   };
 }
 
+/** Lo que el pull necesita saber de cada árbol local antes de escribir. */
+export type ArbolLocal = { especieId: string | null; fotoUrl: string | null; fotoSynced: boolean };
+
+/**
+ * Fotos locales ya subidas cuyo árbol el server manda ahora sin foto: la
+ * quitaron desde otro dispositivo (#517). El upsert limpia la referencia; el
+ * archivo se borra después del commit. Una foto pendiente de subir
+ * (`fotoSynced = false`) no cuenta: es la copia que el server todavía no tiene.
+ */
+export function fotosQuitadasEnServer(remotos: any[], locales: Map<string, ArbolLocal>): string[] {
+  const quitadas: string[] = [];
+  for (const remoto of remotos) {
+    if (isRemoteUri(remoto.foto_url)) continue;
+    const local = locales.get(remoto.id);
+    if (local?.fotoSynced && isLocalUri(local.fotoUrl)) quitadas.push(local.fotoUrl);
+  }
+  return quitadas;
+}
+
 /** Upsert de un lote de árboles del server en un solo statement. */
 export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<void> {
   if (remotos.length === 0) return;
+
+  // La foto local se conserva mientras esté pendiente de subir o el server siga
+  // teniendo foto; si ya se subió y el server la quitó, se limpia (#517).
+  const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR excluded.foto_synced = 1)`;
 
   await tx.insert(trees).values(remotos.map(filaDeArbol)).onConflictDoUpdate({
     target: trees.id,
@@ -464,10 +488,10 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
       especieId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.especieId} ELSE excluded.especie_id END`,
       posicion: sql`excluded.posicion`,
       subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
-      fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
+      fotoUrl: sql`CASE WHEN ${conservarFotoLocal} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
       // `excluded.foto_synced` es el "hay foto en el server" de ESA fila: con un
       // insert multi-fila la condición viaja en los valores, no en el `set`.
-      fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 ELSE ${trees.fotoSynced} END`,
+      fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 WHEN ${conservarFotoLocal} THEN ${trees.fotoSynced} ELSE 0 END`,
       // IDs definitivos: conserva el local si ya existe (generado, no pusheado aún); adopta el del server si el local está vacío. Nunca pisa con NULL.
       plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
       globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
@@ -526,17 +550,17 @@ async function marcarConflictosDeEspecie(conflictivos: ConflictoDeEspecie[]): Pr
 }
 
 /**
- * Especie local de cada árbol de esos grupos, en una sola lectura (#449): antes
- * el chequeo de conflicto costaba dos selects por árbol. Alcanza con filtrar por
- * grupo porque un árbol nunca cambia de grupo — ni el alta ni el upsert del pull
- * tocan `group_id` después de crearlo.
+ * Especie y foto local de cada árbol de esos grupos, en una sola lectura (#449):
+ * antes el chequeo de conflicto costaba dos selects por árbol. Alcanza con
+ * filtrar por grupo porque un árbol nunca cambia de grupo — ni el alta ni el
+ * upsert del pull tocan `group_id` después de crearlo.
  */
-async function especiePorArbolLocal(remoteGroupIds: string[]): Promise<Map<string, string | null>> {
+async function arbolesLocalesPorId(remoteGroupIds: string[]): Promise<Map<string, ArbolLocal>> {
   const locales = await db
-    .select({ id: trees.id, especieId: trees.especieId })
+    .select({ id: trees.id, especieId: trees.especieId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
     .from(trees)
     .where(inArray(trees.groupId, remoteGroupIds));
-  return new Map(locales.map((t) => [t.id, t.especieId]));
+  return new Map(locales.map(({ id, ...arbol }) => [id, arbol]));
 }
 
 /**
@@ -593,7 +617,8 @@ async function pullTrees(
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, all.length);
   if (all.length === 0) return;
 
-  const especieLocal = await especiePorArbolLocal(remoteGroupIds);
+  const locales = await arbolesLocalesPorId(remoteGroupIds);
+  const especieLocal = new Map([...locales].map(([id, arbol]) => [id, arbol.especieId]));
 
   const omitir = omitirDelPull(grupos.pendientes, borrados.arboles, especieLocal);
   const aEscribir = all.filter((t: any) => !omitir(t)).map(sinFotoQuitada(borrados.fotos));
@@ -607,11 +632,18 @@ async function pullTrees(
     .filter(esConflictoDeEspecie);
   const enConflicto = await marcarConflictosDeEspecie(conflictivos);
 
+  const escribibles = aEscribir.filter((t: any) => !enConflicto.has(t.id));
+  const archivosQuitados = fotosQuitadasEnServer(escribibles, locales);
   await enTransaccionPorLotes(aEscribir, async (tx, lote) => {
       await upsertTreesFromServerTx(tx, lote.filter((t: any) => !enConflicto.has(t.id)));
     },
     alEscribirLote(onProgress, DOWNLOAD_PHASE.arboles, all.length),
   );
+  // Recién con los lotes commiteados: con rollback la fila seguiría apuntando al archivo.
+  if (archivosQuitados.length > 0) {
+    syncLog.info(`Pull trees: ${archivosQuitados.length} fotos quitadas en el server, se borran del dispositivo`);
+    borrarFotosLocales(archivosQuitados);
+  }
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
 }
 

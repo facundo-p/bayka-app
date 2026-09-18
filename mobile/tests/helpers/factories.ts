@@ -109,6 +109,7 @@ export type NewTree = {
   posicion: number;
   subId: string;
   fotoUrl: string | null;
+  fotoSynced?: boolean;
   plantacionId: number | null;
   globalId: number | null;
   usuarioRegistro: string;
