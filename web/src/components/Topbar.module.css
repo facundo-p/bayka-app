@@ -57,3 +57,13 @@
     top: var(--alto-banner-entorno);
   }
 }
+
+/* Con el alta reducida al "+", lo único que la bajaba de renglón era la base de
+   22rem: para repartir en líneas, flex mira el tamaño base, no el mínimo. Con
+   base 0 el "+" entra en la fila del título y el título se achica hasta su
+   propio mínimo, que ya trunca. */
+@media (max-width: 600px) {
+  .left {
+    flex-basis: 0;
+  }
+}
