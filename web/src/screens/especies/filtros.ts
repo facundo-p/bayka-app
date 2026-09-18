@@ -2,6 +2,7 @@
  * Filtro y orden del catálogo de especies. Puro: se testea sin renderizar.
  */
 import { formatearEntero, pluralizar, type Sustantivo } from '../../lib/formato';
+import { coincideBusqueda } from '../../lib/normalizarTexto';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
 
 const ESPECIE_NATIVA: Sustantivo = { singular: 'especie nativa', plural: 'especies nativas' };
@@ -41,13 +42,9 @@ export function sinUso(especie: EspecieConCatalogoUso): boolean {
   return especie.plantaciones === 0 && especie.arboles === 0;
 }
 
-/** Coincidencia case-insensitive contra nombre, código o nombre científico. */
+/** Coincidencia contra nombre, código o científico, sin distinguir mayúsculas ni tildes. */
 function coincide(especie: EspecieConCatalogoUso, termino: string): boolean {
-  const aguja = termino.trim().toLowerCase();
-  if (!aguja) return true;
-  return [especie.nombre, especie.codigo, especie.nombreCientifico ?? ''].some((campo) =>
-    campo.toLowerCase().includes(aguja),
-  );
+  return coincideBusqueda([especie.nombre, especie.codigo, especie.nombreCientifico], termino);
 }
 
 function pasaUso(especie: EspecieConCatalogoUso, uso: UsoEspecie): boolean {

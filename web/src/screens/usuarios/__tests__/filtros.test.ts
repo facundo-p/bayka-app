@@ -67,6 +67,12 @@ test('la búsqueda matchea nombre y email, sin distinguir mayúsculas', () => {
   expect(ids({ busqueda: '  ' })).toHaveLength(4);
 });
 
+test('la búsqueda ignora tildes en el término y en el nombre (#438)', () => {
+  expect(ids({ busqueda: 'lucia' })).toEqual(['u3']);
+  expect(ids({ busqueda: 'tomas' })).toEqual(['u4']);
+  expect(ids({ busqueda: 'sófia' })).toEqual(['u1']);
+});
+
 test('"Admins" agrupa admin y superadmin; "Técnicos" solo técnicos', () => {
   expect(ids({ rol: FILTRO_ROL.admins })).toEqual(['u1', 'u2']);
   expect(ids({ rol: FILTRO_ROL.tecnicos })).toEqual(['u3', 'u4']);

@@ -2,6 +2,7 @@
  * Filtro del listado de usuarios. Puro: se testea sin renderizar.
  */
 import { pluralizar, type Sustantivo } from '../../lib/formato';
+import { coincideBusqueda } from '../../lib/normalizarTexto';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
@@ -47,13 +48,9 @@ export const FILTROS_INICIALES_USUARIOS: FiltrosBarraUsuarios = {
   estado: FILTRO_ESTADO.todos,
 };
 
-/** Coincidencia case-insensitive contra nombre y email. */
+/** Coincidencia contra nombre y email, sin distinguir mayúsculas ni tildes. */
 function coincide(usuario: UsuarioConAsignaciones, termino: string): boolean {
-  const aguja = termino.trim().toLowerCase();
-  if (!aguja) return true;
-  return [nombreVisible(usuario.nombre, usuario.id), usuario.email ?? ''].some((campo) =>
-    campo.toLowerCase().includes(aguja),
-  );
+  return coincideBusqueda([nombreVisible(usuario.nombre, usuario.id), usuario.email], termino);
 }
 
 /** "Admins" agrupa admin+superadmin: los dos tienen acceso de gestión. */

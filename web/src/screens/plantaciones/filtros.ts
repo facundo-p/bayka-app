@@ -2,6 +2,7 @@
  * Filtro y orden del listado de plantaciones. Puro: se testea sin renderizar.
  */
 import { pluralizar, type Sustantivo } from '../../lib/formato';
+import { coincideBusqueda } from '../../lib/normalizarTexto';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import {
   esArchivada,
@@ -59,13 +60,9 @@ export function temporadasDisponibles(plantaciones: PlantacionConStats[]): strin
   return [...unicas].sort((a, b) => b.localeCompare(a, 'es'));
 }
 
-/** Coincidencia case-insensitive contra lugar y temporada. */
+/** Coincidencia contra lugar y temporada, sin distinguir mayúsculas ni tildes. */
 function coincide(plantacion: PlantacionConStats, termino: string): boolean {
-  const aguja = termino.trim().toLowerCase();
-  if (!aguja) return true;
-  return [plantacion.lugar, plantacion.periodo].some((campo) =>
-    campo.toLowerCase().includes(aguja),
-  );
+  return coincideBusqueda([plantacion.lugar, plantacion.periodo], termino);
 }
 
 function pasaEstado(plantacion: PlantacionConStats, estado: FiltroEstado): boolean {
