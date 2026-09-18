@@ -31,3 +31,26 @@
 .activo:hover {
   background-color: var(--color-surface-tint);
 }
+
+/* En la barra del pie el ítem es una columna y reparte el ancho con sus
+   hermanos. El acento del activo se reorienta: un borde a la izquierda no
+   significa nada cuando los ítems están uno al lado del otro. */
+@media (max-width: 600px) {
+  .item {
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: var(--space-xs);
+    min-height: var(--alto-nav-inferior);
+    padding: var(--space-sm) var(--space-xs);
+    border-left: 0;
+    border-top: var(--border-accent) solid transparent;
+    border-radius: 0;
+    font-size: var(--text-xs);
+    text-align: center;
+  }
+
+  .activo {
+    border-top-color: var(--color-secondary);
+  }
+}
