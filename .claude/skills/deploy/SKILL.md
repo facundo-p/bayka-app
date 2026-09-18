@@ -294,8 +294,12 @@ Facu):
 - [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
 - [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
       distribuirlo a los dispositivos
-- [ ] Si el release incluye migraciones supabase/**: aplicarlas a prod con
-      confirmación dedicada (CLAUDE.md, "Flujo de branches")
+- [ ] Si el release incluye migraciones supabase/**: primero drift check
+      (`npx --yes supabase@latest migration list --db-url "$PROD_DB_URL"` con
+      la URL de `.env.migration`: lo aplicado en prod tiene que ser exactamente
+      lo aplicado en staging antes de este release, sin huecos ni extras);
+      después aplicarlas a prod con confirmación dedicada (CLAUDE.md, "Flujo
+      de branches")
 - [ ] Regla mientras este PR estuvo/esté abierto: NO mergear nada más a staging
 ```
 
