@@ -15,6 +15,12 @@ import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION } from '../constants/estados';
+import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
+import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
+import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
+import { tienePendientes } from '../utils/finalizarPlantacion';
+import { getLocalPhotoUrisForPlantation } from './TreeRepository';
+import { borrarFotosLocales } from '../services/PhotoService';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -31,9 +37,6 @@ async function upsertLocalAdminMembership(plantacionId: string, userId: string):
     .onConflictDoNothing();
 }
 
-// ─── createPlantation ─────────────────────────────────────────────────────────
-
-/** Crea la plantación en Supabase y upsertea la fila en SQLite local: pullFromServer no trae la fila de plantation en sí (solo groups/species/users). */
 /** Config GPS por plantación que el admin puede definir en el form. */
 export interface PlantationGpsSettings {
   gpsCaptureFrequency: number;
@@ -47,53 +50,6 @@ function gpsToRemoteColumns(gps?: PlantationGpsSettings) {
     gps_capture_frequency: gps.gpsCaptureFrequency,
     gps_capture_required: gps.gpsCaptureRequired,
   };
-}
-
-export async function createPlantation(
-  lugar: string,
-  periodo: string,
-  organizacionId: string,
-  creadoPor: string,
-  gps?: PlantationGpsSettings
-): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
-  const { data, error } = await supabase
-    .from('plantations')
-    .insert({
-      lugar,
-      periodo,
-      organizacion_id: organizacionId,
-      creado_por: creadoPor,
-      estado: ESTADO_PLANTACION.activa,
-      ...gpsToRemoteColumns(gps),
-    })
-    .select()
-    .single();
-
-  if (error) throw error;
-
-  await db
-    .insert(plantations)
-    .values({
-      id: data.id,
-      organizacionId: data.organizacion_id,
-      lugar: data.lugar,
-      periodo: data.periodo,
-      estado: data.estado,
-      creadoPor: data.creado_por,
-      createdAt: data.created_at,
-      pendingSync: false,
-      lugarServer: data.lugar,
-      periodoServer: data.periodo,
-      ...(gps ?? {}),
-    })
-    .onConflictDoUpdate({
-      target: plantations.id,
-      set: { estado: sql`excluded.estado` },
-    });
-
-  await upsertLocalAdminMembership(data.id, creadoPor);
-  notifyDataChanged();
-  return data;
 }
 
 // ─── createPlantationLocally ──────────────────────────────────────────────────
@@ -321,8 +277,21 @@ export class FinalizePlantationLocalSyncError extends Error {
   }
 }
 
+/** Finalizar con datos sin subir los deja sin poder subirse nunca (#537). Se chequea acá y no solo en la UI. */
+export class FinalizePlantationPendientesError extends Error {
+  readonly pendientes: ResumenDePendientes;
+  constructor(pendientes: ResumenDePendientes) {
+    super('La plantación tiene datos sin sincronizar');
+    this.name = 'FinalizePlantationPendientesError';
+    this.pendientes = pendientes;
+  }
+}
+
 /** Marca la plantación 'finalizada' en Supabase Y en SQLite local: el update de server propaga a otros devices, el local mantiene la UI reactiva sin esperar el pull. */
 export async function finalizePlantation(plantacionId: string): Promise<void> {
+  const pendientes = await getResumenDePendientes(plantacionId);
+  if (tienePendientes(pendientes)) throw new FinalizePlantationPendientesError(pendientes);
+
   const { error } = await supabase
     .from('plantations')
     .update({ estado: ESTADO_PLANTACION.finalizada })
@@ -345,10 +314,27 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
 // ─── saveSpeciesConfig ────────────────────────────────────────────────────────
 
-/** Reemplaza atómicamente el species config de la plantación en Supabase y sincroniza a SQLite vía pullFromServer. */
+/** Reemplaza el species config en Supabase en una sola transacción y sincroniza a SQLite vía pullFromServer. */
 export async function saveSpeciesConfig(
   plantacionId: string,
   items: Array<{ especieId: string; ordenVisual: number }>
+): Promise<void> {
+  await reemplazarConfiguracion({
+    rpc: RPC_REEMPLAZAR_ESPECIES,
+    args: {
+      p_plantacion: plantacionId,
+      p_especies: items.map((item) => ({ species_id: item.especieId, orden_visual: item.ordenVisual })),
+    },
+    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ESPECIES, () => reemplazarEspeciesSinRpc(plantacionId, items)),
+  });
+  await pullFromServer(plantacionId);
+  notifyDataChanged();
+}
+
+/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
+async function reemplazarEspeciesSinRpc(
+  plantacionId: string,
+  items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
   const { error: deleteError } = await supabase
     .from('plantation_species')
@@ -356,23 +342,19 @@ export async function saveSpeciesConfig(
     .eq('plantation_id', plantacionId);
 
   if (deleteError) throw deleteError;
+  if (items.length === 0) return;
 
-  if (items.length > 0) {
-    const { error: insertError } = await supabase
-      .from('plantation_species')
-      .insert(
-        items.map((item) => ({
-          plantation_id: plantacionId,
-          species_id: item.especieId,
-          orden_visual: item.ordenVisual,
-        }))
-      );
+  const { error: insertError } = await supabase
+    .from('plantation_species')
+    .insert(
+      items.map((item) => ({
+        plantation_id: plantacionId,
+        species_id: item.especieId,
+        orden_visual: item.ordenVisual,
+      }))
+    );
 
-    if (insertError) throw insertError;
-  }
-
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
+  if (insertError) throw insertError;
 }
 
 // ─── saveSpeciesConfigLocally ─────────────────────────────────────────────────
@@ -398,11 +380,22 @@ export async function saveSpeciesConfigLocally(
 
 // ─── assignTechnicians ────────────────────────────────────────────────────────
 
-/** Reemplaza las asignaciones de técnicos (filtra por rol_en_plantacion='tecnico' para no borrar membresías admin, #67) y sincroniza vía pullFromServer. */
+/** Reemplaza las asignaciones de técnicos en una sola transacción, sin tocar las membresías admin (#67), y sincroniza vía pullFromServer. */
 export async function assignTechnicians(
   plantacionId: string,
   userIds: string[]
 ): Promise<void> {
+  await reemplazarConfiguracion({
+    rpc: RPC_REEMPLAZAR_TECNICOS,
+    args: { p_plantacion: plantacionId, p_user_ids: userIds },
+    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ASIGNACIONES, () => reemplazarTecnicosSinRpc(plantacionId, userIds)),
+  });
+  await pullFromServer(plantacionId);
+  notifyDataChanged();
+}
+
+/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
+async function reemplazarTecnicosSinRpc(plantacionId: string, userIds: string[]): Promise<void> {
   const { error: deleteError, count: deleteCount } = await supabase
     .from('plantation_users')
     .delete()
@@ -411,25 +404,21 @@ export async function assignTechnicians(
 
   console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
   if (deleteError) throw deleteError;
+  if (userIds.length === 0) return;
 
-  if (userIds.length > 0) {
-    const now = new Date().toISOString();
-    const { error: insertError } = await supabase
-      .from('plantation_users')
-      .insert(
-        userIds.map((userId) => ({
-          plantation_id: plantacionId,
-          user_id: userId,
-          rol_en_plantacion: ROL.tecnico,
-          assigned_at: now,
-        }))
-      );
+  const now = new Date().toISOString();
+  const { error: insertError } = await supabase
+    .from('plantation_users')
+    .insert(
+      userIds.map((userId) => ({
+        plantation_id: plantacionId,
+        user_id: userId,
+        rol_en_plantacion: ROL.tecnico,
+        assigned_at: now,
+      }))
+    );
 
-    if (insertError) throw insertError;
-  }
-
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
+  if (insertError) throw insertError;
 }
 
 // ─── createPlantationWithParcelaLocally ──────────────────────────────────────
@@ -463,7 +452,7 @@ export async function createPlantationWithParcelaLocally(
       organizacionId: params.organizacionId,
       lugar: params.lugar,
       periodo: params.periodo,
-      estado: 'activa',
+      estado: ESTADO_PLANTACION.activa,
       creadoPor: params.creadoPor,
       createdAt: now,
       pendingSync: true,
@@ -496,13 +485,14 @@ export async function createPlantationWithParcelaLocally(
   });
 
   notifyDataChanged();
-  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: 'activa' };
+  return { id: plantationId, lugar: params.lugar, periodo: params.periodo, estado: ESTADO_PLANTACION.activa };
 }
 
 // --- deletePlantationLocally ------------------------------------------------
 
 /** Borra la plantación y su data relacionada SOLO en SQLite (Supabase no se toca); orden manual porque SQLite no encadena FKs, incluye parcelas para evitar huérfanas (#90). Todo en una transacción. */
 export async function deletePlantationLocally(plantacionId: string): Promise<void> {
+  const fotos = await getLocalPhotoUrisForPlantation(plantacionId);
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(
       sql`${trees.groupId} IN (SELECT id FROM groups WHERE plantacion_id = ${plantacionId})`
@@ -518,5 +508,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
   });
+  // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).
+  borrarFotosLocales(fotos);
   notifyDataChanged();
 }

@@ -2,10 +2,11 @@
  * Filtro del listado de usuarios. Puro: se testea sin renderizar.
  */
 import { pluralizar, type Sustantivo } from '../../lib/formato';
+import { coincideBusqueda } from '../../lib/normalizarTexto';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import type { UsuarioConAsignaciones } from '../../queries/usuarioQueries';
-import { ROL, type Rol } from '../../repositories/profileRepository';
+import { esEliminado, ROL, type Rol } from '../../repositories/profileRepository';
 
 /** Cómo cuenta cada rol la meta de la cabecera. */
 const SUSTANTIVO_ROL = {
@@ -28,6 +29,7 @@ export const FILTRO_ESTADO = {
   todos: 'todos',
   activos: 'activos',
   inactivos: 'inactivos',
+  eliminados: 'eliminados',
 } as const;
 
 export type FiltroEstado = (typeof FILTRO_ESTADO)[keyof typeof FILTRO_ESTADO];
@@ -46,13 +48,9 @@ export const FILTROS_INICIALES_USUARIOS: FiltrosBarraUsuarios = {
   estado: FILTRO_ESTADO.todos,
 };
 
-/** Coincidencia case-insensitive contra nombre y email. */
+/** Coincidencia contra nombre y email, sin distinguir mayúsculas ni tildes. */
 function coincide(usuario: UsuarioConAsignaciones, termino: string): boolean {
-  const aguja = termino.trim().toLowerCase();
-  if (!aguja) return true;
-  return [nombreVisible(usuario.nombre, usuario.id), usuario.email ?? ''].some((campo) =>
-    campo.toLowerCase().includes(aguja),
-  );
+  return coincideBusqueda([nombreVisible(usuario.nombre, usuario.id), usuario.email], termino);
 }
 
 /** "Admins" agrupa admin+superadmin: los dos tienen acceso de gestión. */
@@ -64,7 +62,10 @@ function pasaRol(usuario: UsuarioConAsignaciones, filtro: FiltroRol): boolean {
   return true;
 }
 
+/** Los eliminados solo aparecen con su filtro: el resto de los estados los ocultan. */
 function pasaEstado(usuario: UsuarioConAsignaciones, filtro: FiltroEstado): boolean {
+  if (filtro === FILTRO_ESTADO.eliminados) return esEliminado(usuario);
+  if (esEliminado(usuario)) return false;
   if (filtro === FILTRO_ESTADO.activos) return usuario.activo;
   if (filtro === FILTRO_ESTADO.inactivos) return !usuario.activo;
   return true;
@@ -94,12 +95,13 @@ function contarRol(usuarios: UsuarioConAsignaciones[], rol: Rol): number {
   return usuarios.filter((usuario) => usuario.rol === rol).length;
 }
 
-/** Meta de la cabecera: el total de personas y cuántas hay de cada rol. */
+/** Meta de la cabecera: el total de personas y cuántas hay de cada rol, sin eliminados. */
 export function calcularMeta(usuarios: UsuarioConAsignaciones[]): string {
+  const vigentes = usuarios.filter((usuario) => !esEliminado(usuario));
   const porRol = ROLES_EN_META.map((rol) =>
-    pluralizar(contarRol(usuarios, rol), SUSTANTIVO_ROL[rol]),
+    pluralizar(contarRol(vigentes, rol), SUSTANTIVO_ROL[rol]),
   );
-  return [pluralizar(usuarios.length, SUSTANTIVO.persona), ...porRol].join(' · ');
+  return [pluralizar(vigentes.length, SUSTANTIVO.persona), ...porRol].join(' · ');
 }
 
 export function contarActivas(usuarios: UsuarioConAsignaciones[]): number {

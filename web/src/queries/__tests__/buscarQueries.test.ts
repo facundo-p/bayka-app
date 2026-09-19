@@ -103,6 +103,20 @@ test('agrega coincidencias de listas cacheadas (plantación, especie, usuario)',
   expect(usuario).toMatchObject({ titulo: 'Ana Admin', meta: 'Administrador', to: '/usuarios' });
 });
 
+test('las listas cacheadas ignoran tildes en el término y en el dato (#438)', async () => {
+  capturarConsultas((consulta) =>
+    consulta.tabla === 'species'
+      ? { data: [{ ...FILA_ESPECIE, id: 'sp-2', codigo: 'TIM', nombre: 'Timbó' }] }
+      : responder(consulta),
+  );
+  const tipos = (resultados: Awaited<ReturnType<typeof buscar>>) =>
+    resultados.map((resultado) => `${resultado.tipo}:${resultado.titulo}`);
+
+  expect(tipos(await buscar('timbo'))).toContain('especie:Timbó');
+  expect(tipos(await buscar('otono'))).toContain('plantacion:La Maluka');
+  expect(tipos(await buscar('Ána'))).toContain('usuario:Ana Admin');
+});
+
 test('encuentra un árbol por sub_id y navega a su contexto de datos', async () => {
   capturarConsultas(responder);
   const resultados = await buscar('PAL23');
@@ -192,4 +206,44 @@ test('tolera error de la búsqueda de árbol sin romper el resto', async () => {
   const resultados = await buscar('a');
   expect(resultados.some((resultado) => resultado.tipo === 'arbol')).toBe(false);
   expect(resultados.some((resultado) => resultado.tipo === 'plantacion')).toBe(true);
+});
+
+describe('plantaciones archivadas', () => {
+  const FILA_ARCHIVADA = {
+    ...FILA_PLANTACION,
+    id: 'plant-2',
+    lugar: 'Archivada Alta',
+    archivada_en: '2026-09-01T00:00:00Z',
+  };
+
+  function filtroArchivada(consultas: ConsultaCapturada[], tabla: string, columna: string) {
+    const consulta = consultas.find((candidata) => candidata.tabla === tabla);
+    return consulta?.filtros.find((filtro) => filtro.metodo === 'is' && filtro.columna === columna);
+  }
+
+  test('sin scope no aparecen como resultado de plantación', async () => {
+    capturarConsultas((consulta) =>
+      consulta.tabla === 'plantations'
+        ? { data: [FILA_PLANTACION, FILA_ARCHIVADA] }
+        : responder(consulta),
+    );
+    const resultados = await buscar('a');
+    const ids = resultados.filter((r) => r.tipo === 'plantacion').map((r) => r.id);
+    expect(ids).toEqual(['plant-1']);
+  });
+
+  test('sin scope, parcelas, grupos y árboles filtran por plantación no archivada', async () => {
+    const consultas = capturarConsultas(responder);
+    await buscar('a');
+    expect(filtroArchivada(consultas, 'parcelas', 'plantations.archivada_en')).toBeDefined();
+    expect(filtroArchivada(consultas, 'groups', 'plantations.archivada_en')).toBeDefined();
+    expect(filtroArchivada(consultas, 'trees', 'groups.plantations.archivada_en')).toBeDefined();
+  });
+
+  test('con scope se busca dentro de la plantación aunque esté archivada', async () => {
+    const consultas = capturarConsultas(responder);
+    await buscar('a', { plantationId: 'plant-2' });
+    expect(filtroArchivada(consultas, 'parcelas', 'plantations.archivada_en')).toBeUndefined();
+    expect(filtroArchivada(consultas, 'trees', 'groups.plantations.archivada_en')).toBeUndefined();
+  });
 });

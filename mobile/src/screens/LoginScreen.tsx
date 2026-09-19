@@ -31,7 +31,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password.trim()) {
-      setError('Completar email y contrasena');
+      setError('Completar email y contraseña');
       return;
     }
     setLoading(true);
@@ -86,7 +86,7 @@ export default function LoginScreen() {
         <View style={styles.passwordWrapper}>
           <TextInput
             style={styles.passwordInput}
-            placeholder="Contrasena"
+            placeholder="Contraseña"
             placeholderTextColor={colors.textPlaceholder}
             value={password}
             onChangeText={(text) => { setPassword(text); setError(null); }}
@@ -120,7 +120,7 @@ export default function LoginScreen() {
             testID="login-button"
           >
             <Text style={styles.buttonText}>
-              {loading ? 'Iniciando sesion...' : 'Iniciar sesion'}
+              {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -129,7 +129,7 @@ export default function LoginScreen() {
           <View style={styles.accountsSection}>
             <View style={styles.dividerRow}>
               <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>Acceso rapido</Text>
+              <Text style={styles.dividerText}>Acceso rápido</Text>
               <View style={styles.dividerLine} />
             </View>
             <View style={styles.accountsChips}>

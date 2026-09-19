@@ -8,11 +8,52 @@
   overflow: hidden;
 }
 
+/* Envuelve la zona de scroll para pintar el indicio de desborde encima, sin que
+   scrollee con el contenido ni tape el pie. */
+.marco {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* Único lugar con scroll: la tabla dentro de la card (el thead queda sticky). */
 .tablaScroll {
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+/* Indicio de que hay más columnas hacia un lado: un degradado del color de la
+   card en el borde, por encima del thead sticky (z-index 1). Aparece solo cuando
+   el hook mide desborde, así en escritorio no agrega nada. */
+.marco::before,
+.marco::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: var(--space-6xl);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.marco::before {
+  left: 0;
+  background: linear-gradient(to right, var(--color-surface), transparent);
+}
+
+.marco::after {
+  right: 0;
+  background: linear-gradient(to left, var(--color-surface), transparent);
+}
+
+.masALaIzquierda::before,
+.masALaDerecha::after {
+  opacity: 1;
 }
 
 .pieCard {

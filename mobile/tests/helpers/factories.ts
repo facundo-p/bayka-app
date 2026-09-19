@@ -26,6 +26,7 @@ export type NewPlantation = {
   pendingSync: boolean;
   // Opcional: si no se pasa, aplica el default del schema (visible).
   visibleInApp?: boolean;
+  eliminadaEnServidorEn?: string | null;
 };
 
 export function createTestPlantation(overrides?: Partial<NewPlantation>): NewPlantation {
@@ -108,6 +109,7 @@ export type NewTree = {
   posicion: number;
   subId: string;
   fotoUrl: string | null;
+  fotoSynced?: boolean;
   plantacionId: number | null;
   globalId: number | null;
   usuarioRegistro: string;

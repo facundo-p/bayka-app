@@ -1,6 +1,6 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
-import { cambiarRol, MENSAJE_CAMBIO_ROL_GENERICO } from '../profileRepository';
+import { cambiarRol } from '../profileRepository';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -39,8 +39,17 @@ describe('cambiarRol', () => {
     );
   });
 
-  test('otros errores se traducen al mensaje genérico en español', async () => {
-    capturarConsultas(() => ({ error: { message: 'network timeout' } }));
-    await expect(cambiarRol('user-2', 'admin')).rejects.toThrow(MENSAJE_CAMBIO_ROL_GENERICO);
+  test('la falla de red se traduce a "revisá tu conexión"', async () => {
+    capturarConsultas(() => ({ error: { message: 'TypeError: Failed to fetch' } }));
+    await expect(cambiarRol('user-2', 'admin')).rejects.toThrow(
+      'No se pudo cambiar el rol. Revisá tu conexión y probá de nuevo.',
+    );
+  });
+
+  test('el rechazo de RLS se traduce a falta de permiso (#380)', async () => {
+    capturarConsultas(() => ({ error: { message: 'permission denied', code: '42501' } }));
+    await expect(cambiarRol('user-2', 'admin')).rejects.toThrow(
+      'No tenés permiso para cambiar el rol.',
+    );
   });
 });

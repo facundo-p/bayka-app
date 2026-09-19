@@ -16,6 +16,10 @@ interface DatosToolbarProps {
   recuento?: string;
   /** Filtros propios de la sección, en línea dentro de la toolbar. */
   children?: ReactNode;
+  /** Nombre de la hoja de filtros del teléfono. */
+  tituloFiltros?: string;
+  filtrosActivos?: number;
+  onLimpiar?: () => void;
 }
 
 function SelectorSeccion({ segmento }: { segmento: SegmentoDatos }) {
@@ -38,9 +42,16 @@ function SelectorSeccion({ segmento }: { segmento: SegmentoDatos }) {
  * Toolbar de la tab Datos: selector de sección + filtros + recuento. Árboles no
  * pasa `recuento`: su pie ya dice "Mostrando 1–30 de 30" y tiene la paginación.
  */
-export function DatosToolbar({ segmento, recuento, children }: DatosToolbarProps) {
+export function DatosToolbar(props: DatosToolbarProps) {
+  const { segmento, recuento, children, tituloFiltros = 'Filtros', ...resto } = props;
   return (
-    <BarraHerramientas encabezado={<SelectorSeccion segmento={segmento} />} recuento={recuento}>
+    <BarraHerramientas
+      encabezado={<SelectorSeccion segmento={segmento} />}
+      recuento={recuento}
+      tituloFiltros={tituloFiltros}
+      filtrosActivos={resto.filtrosActivos ?? 0}
+      onLimpiar={resto.onLimpiar}
+    >
       {children}
     </BarraHerramientas>
   );

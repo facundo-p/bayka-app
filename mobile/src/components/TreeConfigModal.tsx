@@ -29,7 +29,7 @@ export default function TreeConfigModal({
               <Ionicons name="swap-vertical-outline" size={22} color={colors.secondary} />
               <View style={styles.optionInfo}>
                 <Text style={styles.optionLabel}>Invertir orden de árboles</Text>
-                <Text style={styles.optionDesc}>Invierte las posiciones y recalcula codigos</Text>
+                <Text style={styles.optionDesc}>Invierte las posiciones y recalcula códigos</Text>
               </View>
             </Pressable>
           )}

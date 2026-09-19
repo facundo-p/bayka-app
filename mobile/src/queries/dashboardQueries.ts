@@ -6,6 +6,7 @@ import { db } from '../database/client';
 import { plantations, plantationUsers, groups, trees } from '../database/schema';
 import { eq, and, count, asc, sql, getTableColumns, isNull } from 'drizzle-orm';
 import { localToday } from '../utils/dateUtils';
+import { noEliminadaEnServidor } from './pendingSyncQueries';
 
 /**
  * Admin ve todas las plantaciones, incluidas las ocultas en la app (la UI las
@@ -63,7 +64,7 @@ export async function getUserTotalTreeCounts(userId: string | null) {
     .groupBy(groups.plantacionId);
 }
 
-/** Returns count of Groups with pendingSync=true per plantation. */
+/** Grupos con pendingSync=true por plantación, sin las eliminadas en el servidor (#518). */
 export async function getPendingSyncCounts() {
   return db
     .select({
@@ -71,7 +72,7 @@ export async function getPendingSyncCounts() {
       pendingCount: count(),
     })
     .from(groups)
-    .where(eq(groups.pendingSync, true))
+    .where(and(eq(groups.pendingSync, true), noEliminadaEnServidor(groups.plantacionId)))
     .groupBy(groups.plantacionId);
 }
 

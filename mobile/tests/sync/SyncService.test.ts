@@ -79,6 +79,7 @@ import { notifyDataChanged } from '../../src/database/liveQuery';
 import { File as ExpoFile } from 'expo-file-system';
 import { FOTOS_EN_PARALELO } from '../../src/services/sync/concurrencia';
 import type { PhotoSyncProgress } from '../../src/services/sync/types';
+import { SyncCanceladoError } from '../../src/services/sync/cancelacion';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
@@ -96,6 +97,15 @@ const mockDownloadFileAsync = ExpoFile.downloadFileAsync as jest.Mock;
 function whereResult(rows: unknown) {
   return Object.assign(Promise.resolve(rows), {
     limit: jest.fn().mockResolvedValue([{ id: 'parcela-1' }]),
+  });
+}
+
+// El update de foto_url pide las filas afectadas (#482).
+function updateQueAfecta(filas: unknown[] = [{ id: 'tree' }]) {
+  return jest.fn().mockReturnValue({
+    eq: jest.fn().mockReturnValue({
+      select: jest.fn().mockResolvedValue({ data: filas, error: null }),
+    }),
   });
 }
 
@@ -152,9 +162,7 @@ describe('SyncService', () => {
       select: jest.fn().mockReturnValue({
         eq: jest.fn().mockResolvedValue({ data: [], error: null }),
       }),
-      update: jest.fn().mockReturnValue({
-        eq: jest.fn().mockResolvedValue({ error: null }),
-      }),
+      update: updateQueAfecta(),
     });
 
     // Default: db.insert chain for upsert
@@ -262,6 +270,75 @@ describe('SyncService', () => {
           },
         ],
       });
+    });
+  });
+
+  // Marcarla antes del RPC hacía que el reintento la salteara y mandara foto_url null (#489).
+  describe('uploadGroup — la foto se marca sincronizada solo tras el RPC exitoso', () => {
+    const sg = { ...makeSg('sg-1'), pendingSync: true };
+    const arbolConFoto = {
+      ...makeTrees('sg-1')[0],
+      fotoUrl: 'file://document/photos/photo_1.jpg',
+      fotoSynced: false,
+    };
+    const pathEnStorage = 'plantations/plantation-1/parcelas/parcela-1/trees/tree-1.jpg';
+
+    beforeEach(() => {
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue({
+        upload: jest.fn().mockResolvedValue({ error: null }),
+      });
+    });
+
+    it('RPC exitoso: marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(mockMarkPhotoSynced).toHaveBeenCalledWith('tree-1');
+    });
+
+    it('RPC con error de red: NO marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Network request failed' } });
+
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+    });
+
+    it('RPC rechazado por el server: NO marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: false, error: 'UNKNOWN' }, error: null });
+
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+    });
+
+    it('RPC que tira excepción: NO marca la foto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockRejectedValue(new Error('timeout'));
+
+      await expect(uploadGroup(sg, [arbolConFoto])).rejects.toThrow('timeout');
+
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+    });
+
+    it('el reintento resube al mismo path con upsert y manda foto_url', async () => {
+      const upload = jest.fn().mockResolvedValue({ error: null });
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue({ upload });
+      (mockSupabase.rpc as jest.Mock)
+        .mockResolvedValueOnce({ data: { success: false, error: 'UNKNOWN' }, error: null })
+        .mockResolvedValueOnce({ data: { success: true }, error: null });
+
+      await uploadGroup(sg, [arbolConFoto]);
+      await uploadGroup(sg, [arbolConFoto]);
+
+      expect(upload).toHaveBeenCalledTimes(2);
+      for (const [path, , opciones] of upload.mock.calls) {
+        expect(path).toBe(pathEnStorage);
+        expect(opciones).toEqual(expect.objectContaining({ upsert: true }));
+      }
+      const payloadReintento = (mockSupabase.rpc as jest.Mock).mock.calls[1][1];
+      expect(payloadReintento.p_trees[0].foto_url).toBe(pathEnStorage);
+      expect(mockMarkPhotoSynced).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -387,9 +464,9 @@ describe('SyncService', () => {
       expect(msg).toMatch(/ya existe/i);
     });
 
-    it('Test 8: NETWORK returns Spanish message containing "conexion"', () => {
+    it('Test 8: NETWORK returns Spanish message containing "conexión"', () => {
       const msg = getErrorMessage('NETWORK');
-      expect(msg).toMatch(/conexion/i);
+      expect(msg).toMatch(/conexión/i);
     });
   });
 
@@ -407,9 +484,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: null }),
-        }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockResolvedValue({ data: [], error: null }),
         }),
@@ -437,9 +512,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockResolvedValue({ error: null }),
-        }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({
           eq: jest.fn().mockResolvedValue({ data: [], error: null }),
         }),
@@ -473,7 +546,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       });
 
@@ -499,7 +572,7 @@ describe('SyncService', () => {
       };
       (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
       (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ error: null }) }),
+        update: updateQueAfecta(),
         select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: [], error: null }) }),
       });
 
@@ -533,6 +606,22 @@ describe('SyncService', () => {
       expect(progresos[progresos.length - 1].bytes).toBe(0);
     });
 
+    // PostgREST no da error si el árbol no existe en el server o RLS lo oculta:
+    // marcarla sincronizada perdería la foto en silencio (#482).
+    it('un update de foto_url que no afecta filas cuenta como fallo y no marca la foto', async () => {
+      mockGetTreesWithPendingPhotos.mockResolvedValue([
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ]);
+      const update = updateQueAfecta([]);
+      (mockSupabase.from as jest.Mock).mockReturnValue({ update });
+
+      const result = await uploadPendingPhotos('plantation-1');
+
+      expect(update.mock.results[0].value.eq.mock.results[0].value.select).toHaveBeenCalledWith('id');
+      expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
+      expect(result).toEqual({ uploaded: 0, failed: 1 });
+    });
+
     it('Test 11: returns { uploaded: 0, failed: 0 } when no pending photos', async () => {
       mockGetTreesWithPendingPhotos.mockResolvedValue([]);
 
@@ -540,6 +629,43 @@ describe('SyncService', () => {
 
       expect(result).toEqual({ uploaded: 0, failed: 0 });
       expect(mockSupabase.storage.from).not.toHaveBeenCalled();
+    });
+
+    // Sin captura por foto, conLimiteDeConcurrencia deja de tomar fotos y propaga (#502).
+    describe('una foto que tira excepción', () => {
+      const pendientes = [
+        { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+        { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
+      ];
+
+      beforeEach(() => {
+        mockGetTreesWithPendingPhotos.mockResolvedValue(pendientes);
+        (mockSupabase.storage.from as jest.Mock).mockReturnValue({ upload: jest.fn().mockResolvedValue({ error: null }) });
+        // El update de foto_url afecta su fila, se lea con o sin `.select('id')`.
+        const afectada = { data: [{ id: 'tree' }], error: null };
+        (mockSupabase.from as jest.Mock).mockReturnValue({
+          update: jest.fn(() => ({
+            eq: jest.fn(() => Object.assign(Promise.resolve(afectada), { select: jest.fn().mockResolvedValue(afectada) })),
+          })),
+        });
+      });
+
+      it('cuenta como fallida y el resto de la tanda sigue', async () => {
+        mockMarkPhotoSynced.mockImplementation(async (id: string) => {
+          if (id === 'tree-1') throw new Error('SQLITE_BUSY');
+        });
+
+        const result = await uploadPendingPhotos('plantation-1');
+
+        expect(result).toEqual({ uploaded: 1, failed: 1 });
+        expect(mockMarkPhotoSynced).toHaveBeenCalledWith('tree-2');
+      });
+
+      it('una cancelación sigue cortando la tanda', async () => {
+        mockMarkPhotoSynced.mockRejectedValue(new SyncCanceladoError());
+
+        await expect(uploadPendingPhotos('plantation-1')).rejects.toThrow(SyncCanceladoError);
+      });
     });
   });
 

@@ -15,9 +15,13 @@ jest.mock('../../src/supabase/client', () => ({
   isSupabaseConfigured: true,
 }));
 
+jest.mock('../../src/queries/catalogQueries', () => ({
+  getResumenDePendientes: jest.fn(),
+}));
+
 import {
   checkFinalizationGate,
-  getPlantationEstado,
+  getPlantationEstadoDeEdicion,
   getAllTechnicians,
   getPlantationSpeciesConfig,
   getAssignedTechnicians,
@@ -27,6 +31,9 @@ import {
 
 import { db } from '../../src/database/client';
 import { supabase } from '../../src/supabase/client';
+import { getResumenDePendientes } from '../../src/queries/catalogQueries';
+
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
 
 const mockDb = db as jest.Mocked<typeof db>;
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
@@ -67,6 +74,26 @@ describe('adminQueries', () => {
   // ─── checkFinalizationGate ────────────────────────────────────────────────
 
   describe('checkFinalizationGate', () => {
+    beforeEach(() => {
+      (getResumenDePendientes as jest.Mock).mockResolvedValue(SIN_PENDIENTES);
+    });
+
+    it.each([
+      ['fotos sin subir', { fotos: 2 }],
+      ['parcelas pendientes', { parcelas: 1 }],
+      ['borrados pendientes', { borrados: 3 }],
+    ])('canFinalize=false con %s aunque los grupos estén listos (#537)', async (_caso, pendiente) => {
+      const pendientes = { ...SIN_PENDIENTES, ...pendiente };
+      (getResumenDePendientes as jest.Mock).mockResolvedValue(pendientes);
+      setupFinalizationMocks([{ nombre: 'Línea A', estado: 'sincronizada', pendingSync: false }], []);
+
+      const result = await checkFinalizationGate('plantation-1');
+
+      expect(getResumenDePendientes).toHaveBeenCalledWith('plantation-1');
+      expect(result.canFinalize).toBe(false);
+      expect(result.blocking).toEqual([]);
+      expect(result.pendientes).toEqual(pendientes);
+    });
     it('canFinalize=true cuando todos los subgrupos están finalizada + pendingSync=false + sin N/N', async () => {
       setupFinalizationMocks(
         [
@@ -213,6 +240,25 @@ describe('adminQueries', () => {
   });
 
   // ─── hasIdsGenerated ─────────────────────────────────────────────────────
+
+  describe('getPlantationEstadoDeEdicion', () => {
+    const mockRows = (rows: any[]) => {
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue(rows) }),
+      });
+    };
+
+    it('trae estado y archivadaEn: los dos deciden si es editable (#477)', async () => {
+      mockRows([{ estado: 'finalizada', archivadaEn: '2026-09-17T12:00:00+00:00' }]);
+      expect(await getPlantationEstadoDeEdicion('plantation-1'))
+        .toEqual({ estado: 'finalizada', archivadaEn: '2026-09-17T12:00:00+00:00' });
+    });
+
+    it('null si la plantación no está local', async () => {
+      mockRows([]);
+      expect(await getPlantationEstadoDeEdicion('plantation-1')).toBeNull();
+    });
+  });
 
   describe('hasIdsGenerated', () => {
     const mockCounts = (total: number, conId: number) => {

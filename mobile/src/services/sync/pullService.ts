@@ -2,16 +2,28 @@ import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
-import { isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
+import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
+import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion';
-import { DOWNLOAD_PHASE, PULL_OK, PULL_SIN_ACCESO } from './types';
+import {
+  DOWNLOAD_PHASE,
+  ESTADO_REMOTO,
+  PULL_OK,
+  PULL_SIN_ACCESO,
+  RPC_ESTADO_REMOTO_PLANTACIONES,
+  esPullSinDatos,
+  existeConAcceso,
+  pullDesdeEstadoRemoto,
+} from './types';
 import type { DownloadPhase, DownloadPhaseProgress, PullResult } from './types';
 import { marcandoActividadDeSync } from './syncActivityStore';
-import { borradosPorTipo } from '../../repositories/BorradosRepository';
+import { borradosPorTipo, type BorradosPorTipo } from '../../repositories/BorradosRepository';
 import { abortarSiCancelado } from './cancelacion';
+import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
+import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -47,26 +59,20 @@ function alBajarPagina(onProgress: OnPhaseProgress | undefined, phase: DownloadP
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
-/**
- * ¿El server todavía reconoce mi membresía? Es el mismo criterio que las
- * policies de SELECT (`is_plantation_member`), incluidos los admins, que reciben
- * su fila por trigger.
- *
- * Solo devuelve false ante evidencia positiva de revocación: si no hay sesión,
- * si la consulta falla (offline) o si la plantación todavía no se pusheó, se
- * asume acceso y el pull sigue su camino de siempre.
- */
-async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
+/** Plantación creada offline que todavía no subió: el server no la conoce aún. */
+async function tienePushPendiente(plantacionId: string): Promise<boolean> {
   const [local] = await db
     .select({ pendingSync: plantations.pendingSync })
     .from(plantations)
     .where(eq(plantations.id, plantacionId));
-  if (local?.pendingSync) return true;
+  return local?.pendingSync ?? false;
+}
 
-  const { data: sesion } = await supabase.auth.getSession();
-  const userId = sesion?.session?.user?.id;
-  if (!userId) return true;
-
+/**
+ * Chequeo de membresía de servers sin `estado_remoto_plantaciones`. Mismo criterio
+ * que las policies de SELECT (`is_plantation_member`); no distingue eliminada.
+ */
+async function membresiaRemota(plantacionId: string, userId: string): Promise<PullResult> {
   const { data, error } = await supabase
     .from('plantation_users')
     .select('user_id')
@@ -75,21 +81,59 @@ async function tieneAccesoRemoto(plantacionId: string): Promise<boolean> {
     .eq('user_id', userId);
   if (error) {
     syncLog.error('Chequeo de membresía falló:', JSON.stringify(error));
-    return true;
+    return PULL_OK;
   }
-  return (data ?? []).length > 0;
+  return (data ?? []).length > 0 ? PULL_OK : PULL_SIN_ACCESO;
+}
+
+/** Deja la marca local alineada con lo que respondió el server. */
+async function registrarEstadoRemoto(plantacionId: string, estado: string | undefined): Promise<void> {
+  if (estado === ESTADO_REMOTO.eliminada) await marcarEliminadaEnServidor(plantacionId);
+  else if (existeConAcceso(estado)) await desmarcarEliminadaEnServidor(plantacionId);
+}
+
+async function consultarEstadoRemoto(plantacionId: string, userId: string): Promise<PullResult> {
+  const { data, error } = await supabase.rpc(RPC_ESTADO_REMOTO_PLANTACIONES, { p_ids: [plantacionId] });
+  if (error) {
+    if (esFuncionInexistente(error)) return membresiaRemota(plantacionId, userId);
+    syncLog.error('Chequeo de estado remoto falló:', JSON.stringify(error));
+    return PULL_OK;
+  }
+  const estado: string | undefined = (data ?? [])[0]?.estado;
+  await registrarEstadoRemoto(plantacionId, estado);
+  return pullDesdeEstadoRemoto(estado);
+}
+
+/**
+ * ¿La plantación sigue existiendo en el server y el usuario es miembro? (#317, #478)
+ *
+ * Solo corta ante evidencia positiva: si no hay sesión, si la consulta falla
+ * (offline) o si la plantación todavía no se pusheó, se asume acceso y el pull
+ * sigue su camino de siempre.
+ */
+async function accesoRemoto(plantacionId: string): Promise<PullResult> {
+  if (await tienePushPendiente(plantacionId)) return PULL_OK;
+  const { data: sesion } = await supabase.auth.getSession();
+  const userId = sesion?.session?.user?.id;
+  if (!userId) return PULL_OK;
+  return consultarEstadoRemoto(plantacionId, userId);
 }
 
 /** Flags de plantación administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
-export function webManagedFlags(remote: { visible_in_app?: boolean | null; photo_capture_all_trees?: boolean | null }) {
+export function webManagedFlags(remote: {
+  visible_in_app?: boolean | null;
+  photo_capture_all_trees?: boolean | null;
+  archivada_en?: string | null;
+}) {
   return {
     visibleInApp: remote.visible_in_app ?? true,
     photoCaptureAllTrees: remote.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
+    archivadaEn: remote.archivada_en ?? null,
   };
 }
 
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
-  // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
+  // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app, archivada_en) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
   const { data: remotePlantation, error } = await supabase
     .from('plantations')
     .select('*')
@@ -411,9 +455,32 @@ function filaDeArbol(t: any) {
   };
 }
 
+/** Lo que el pull necesita saber de cada árbol local antes de escribir. */
+export type ArbolLocal = { especieId: string | null; fotoUrl: string | null; fotoSynced: boolean };
+
+/**
+ * Fotos locales ya subidas cuyo árbol el server manda ahora sin foto: la
+ * quitaron desde otro dispositivo (#517). El upsert limpia la referencia; el
+ * archivo se borra después del commit. Una foto pendiente de subir
+ * (`fotoSynced = false`) no cuenta: es la copia que el server todavía no tiene.
+ */
+export function fotosQuitadasEnServer(remotos: any[], locales: Map<string, ArbolLocal>): string[] {
+  const quitadas: string[] = [];
+  for (const remoto of remotos) {
+    if (isRemoteUri(remoto.foto_url)) continue;
+    const local = locales.get(remoto.id);
+    if (local?.fotoSynced && isLocalUri(local.fotoUrl)) quitadas.push(local.fotoUrl);
+  }
+  return quitadas;
+}
+
 /** Upsert de un lote de árboles del server en un solo statement. */
 export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<void> {
   if (remotos.length === 0) return;
+
+  // La foto local se conserva mientras esté pendiente de subir o el server siga
+  // teniendo foto; si ya se subió y el server la quitó, se limpia (#517).
+  const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR excluded.foto_synced = 1)`;
 
   await tx.insert(trees).values(remotos.map(filaDeArbol)).onConflictDoUpdate({
     target: trees.id,
@@ -421,10 +488,10 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
       especieId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.especieId} ELSE excluded.especie_id END`,
       posicion: sql`excluded.posicion`,
       subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
-      fotoUrl: sql`CASE WHEN ${sqlIsLocalUri(trees.fotoUrl)} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
+      fotoUrl: sql`CASE WHEN ${conservarFotoLocal} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
       // `excluded.foto_synced` es el "hay foto en el server" de ESA fila: con un
       // insert multi-fila la condición viaja en los valores, no en el `set`.
-      fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 ELSE ${trees.fotoSynced} END`,
+      fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 WHEN ${conservarFotoLocal} THEN ${trees.fotoSynced} ELSE 0 END`,
       // IDs definitivos: conserva el local si ya existe (generado, no pusheado aún); adopta el del server si el local está vacío. Nunca pisa con NULL.
       plantacionId: sql`CASE WHEN ${trees.plantacionId} IS NOT NULL THEN ${trees.plantacionId} ELSE excluded.plantacion_id END`,
       globalId: sql`CASE WHEN ${trees.globalId} IS NOT NULL THEN ${trees.globalId} ELSE excluded.global_id END`,
@@ -483,17 +550,17 @@ async function marcarConflictosDeEspecie(conflictivos: ConflictoDeEspecie[]): Pr
 }
 
 /**
- * Especie local de cada árbol de esos grupos, en una sola lectura (#449): antes
- * el chequeo de conflicto costaba dos selects por árbol. Alcanza con filtrar por
- * grupo porque un árbol nunca cambia de grupo — ni el alta ni el upsert del pull
- * tocan `group_id` después de crearlo.
+ * Especie y foto local de cada árbol de esos grupos, en una sola lectura (#449):
+ * antes el chequeo de conflicto costaba dos selects por árbol. Alcanza con
+ * filtrar por grupo porque un árbol nunca cambia de grupo — ni el alta ni el
+ * upsert del pull tocan `group_id` después de crearlo.
  */
-async function especiePorArbolLocal(remoteGroupIds: string[]): Promise<Map<string, string | null>> {
+async function arbolesLocalesPorId(remoteGroupIds: string[]): Promise<Map<string, ArbolLocal>> {
   const locales = await db
-    .select({ id: trees.id, especieId: trees.especieId })
+    .select({ id: trees.id, especieId: trees.especieId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
     .from(trees)
     .where(inArray(trees.groupId, remoteGroupIds));
-  return new Map(locales.map((t) => [t.id, t.especieId]));
+  return new Map(locales.map(({ id, ...arbol }) => [id, arbol]));
 }
 
 /**
@@ -520,9 +587,18 @@ function omitirDelPull(
   };
 }
 
+/**
+ * Una foto quitada localmente sigue en el server hasta que el push la propaga. Se
+ * baja la fila sin foto: con la foto, el pull la restaura y se vuelve a descargar
+ * (#498).
+ */
+function sinFotoQuitada(fotosQuitadas: Set<string>) {
+  return (remoto: any) => (fotosQuitadas.has(remoto.id) ? { ...remoto, foto_url: null } : remoto);
+}
+
 async function pullTrees(
   grupos: GruposDelPull,
-  arbolesBorrados: Set<string>,
+  borrados: BorradosPorTipo,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
   const remoteGroupIds = grupos.ids;
@@ -541,10 +617,11 @@ async function pullTrees(
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, all.length);
   if (all.length === 0) return;
 
-  const especieLocal = await especiePorArbolLocal(remoteGroupIds);
+  const locales = await arbolesLocalesPorId(remoteGroupIds);
+  const especieLocal = new Map([...locales].map(([id, arbol]) => [id, arbol.especieId]));
 
-  const omitir = omitirDelPull(grupos.pendientes, arbolesBorrados, especieLocal);
-  const aEscribir = all.filter((t: any) => !omitir(t));
+  const omitir = omitirDelPull(grupos.pendientes, borrados.arboles, especieLocal);
+  const aEscribir = all.filter((t: any) => !omitir(t)).map(sinFotoQuitada(borrados.fotos));
   const omitidos = all.length - aEscribir.length;
   if (omitidos > 0) syncLog.info(`Pull trees: ${omitidos} omitidos (edición local sin subir o borrado sin propagar)`);
   // Descarga fresh: sin filas locales no hay nada con qué chocar.
@@ -555,11 +632,18 @@ async function pullTrees(
     .filter(esConflictoDeEspecie);
   const enConflicto = await marcarConflictosDeEspecie(conflictivos);
 
+  const escribibles = aEscribir.filter((t: any) => !enConflicto.has(t.id));
+  const archivosQuitados = fotosQuitadasEnServer(escribibles, locales);
   await enTransaccionPorLotes(aEscribir, async (tx, lote) => {
       await upsertTreesFromServerTx(tx, lote.filter((t: any) => !enConflicto.has(t.id)));
     },
     alEscribirLote(onProgress, DOWNLOAD_PHASE.arboles, all.length),
   );
+  // Recién con los lotes commiteados: con rollback la fila seguiría apuntando al archivo.
+  if (archivosQuitados.length > 0) {
+    syncLog.info(`Pull trees: ${archivosQuitados.length} fotos quitadas en el server, se borran del dispositivo`);
+    borrarFotosLocales(archivosQuitados);
+  }
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
 }
 
@@ -582,16 +666,17 @@ async function conDuracion<T>(fase: DownloadPhase, tarea: () => Promise<T>): Pro
 // ─── Pull from server ─────────────────────────────────────────────────────────
 
 /** Descarga plantación/parcelas/groups/usuarios/especies/árboles del server y los upsertea en SQLite; parcelas van antes que groups por FK.
- *  Corta antes de tocar la base si la membresía fue revocada: la copia local se conserva tal cual. */
+ *  Corta antes de tocar la base si la membresía fue revocada o la plantación se eliminó: la copia local se conserva tal cual. */
 async function correrPullFromServer(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<PullResult> {
-  // Cancelado antes de arrancar: ni el chequeo de membresía tiene sentido.
+  // Cancelado antes de arrancar: ni el chequeo de acceso tiene sentido.
   abortarSiCancelado();
-  if (!(await tieneAccesoRemoto(plantacionId))) {
-    syncLog.info('Pull abortado: sin membresía en la plantación', plantacionId);
-    return PULL_SIN_ACCESO;
+  const acceso = await accesoRemoto(plantacionId);
+  if (esPullSinDatos(acceso)) {
+    syncLog.info(`Pull abortado (${acceso.estado}):`, plantacionId);
+    return acceso;
   }
   syncLog.info('Pull starting for plantation:', plantacionId);
   const inicio = Date.now();
@@ -603,7 +688,7 @@ async function correrPullFromServer(
   await conDuracion(DOWNLOAD_PHASE.usuarios, () => pullPlantationUsers(plantacionId, onProgress));
   await conDuracion(DOWNLOAD_PHASE.especiesPlantacion, () => pullPlantationSpecies(plantacionId, onProgress));
   if (grupos.ids.length > 0) {
-    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados.arboles, onProgress));
+    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados, onProgress));
   }
   syncLog.info(`Pull total: ${Date.now() - inicio}ms`);
   return PULL_OK;

@@ -9,6 +9,62 @@ que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
 contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
+## 2026-09-19 · web 1.3.0 · mobile 1.2.0
+
+### Web 1.3.0
+
+#### Agregado
+- Archivar y desarchivar plantaciones: filtro Archivadas, acciones en «⋯ Más acciones» con `ArchivadoModal`, badge y aviso en el detalle, Editar/Generar IDs/Configuración deshabilitados; búsqueda global, sugerencias y Temporada activa excluyen archivadas (#492)
+- Eliminar plantaciones: acción en «⋯ Más acciones», `EliminarPlantacionModal` con cuatro variantes según el preview (sin datos, solo superadmin, archivar primero, confirmar nombre), aviso de fotos pendientes y "Reintentar limpieza de fotos" para superadmin; `services/edgeFunction` compartido con `adminUsersService` (#525, #542)
+- Eliminar usuarios (superadmin): acción en el menú ⋯ y en el panel, `EliminarUsuarioModal` con preview, filtro Eliminados, badge Eliminado y panel de solo lectura para eliminados; `ConfirmarModal` suma `aviso` y `deshabilitada` (#503)
+- `ErrorBoundary` en el `<Outlet />` del layout, en las tabs del detalle de plantación y en cada panel del dashboard, con `ErrorConReintento` como fallback (#562)
+- Rediseño de teléfono (≤600 px): la navegación se fija al pie (`BarraLateral` extraída de `AppLayout`, token `--alto-nav-inferior`), el disparador de ⌘K queda como lupa, el alta de los listados queda en el "+" junto al título, y los filtros de las cuatro barras entran en un `Modal posicion="hoja"` con focus trap, contador de activos, "Ver N …" y "Limpiar" (`contarFiltrosActivos` compartido por `useFiltrosListado` y `filtrosUrl`) (#574, #575, #576, #579)
+
+#### Cambiado
+- La identidad del `UserMenu` es el botón de cerrar sesión y abre `ConfirmarModal` "¿Cerrar sesión?"; se retira el `BotonIcono` de `LogOut`; a ≤600 px nombre, rol y "Novedades ·" se ocultan solo a la vista con `soloLectoresEnMovil` (#572)
+- `ConfirmarModal`, `useConfirmacion`, `ErrorEnvio` y `AccionesModal` pasan de `screens/usuarios` a `components`/`hooks`; componente `Aviso` nuevo (#492)
+- `entradasVisibles` quita los pasos de todos los ítems fuera del entorno de pruebas; `/deploy` conserva los pasos tal cual al convertir la sección pendiente y `NOVEDADES.md` recupera los de 1.2.0 (#581, #583)
+
+#### Corregido
+- Las búsquedas de Plantaciones, Especies, Usuarios y las listas de ⌘K ignoran tildes con `coincideBusqueda` (#560)
+- `clasificarError`/`mensajeDeError` distinguen red, permiso y rechazo del server en los formularios; los repositorios relanzan con `errorDeSupabase` conservando `code` (#561)
+- `CardTabla` pinta un degradado en el borde con contenido fuera de vista (`useIndicioDesborde`) y el subtítulo de `CabeceraConfig` envuelve a ≤600 px en vez de truncarse (#563)
+- `borrarPlantacionHuerfana` borra de verdad vía `eliminar_plantacion`; antes era un no-op sin policy DELETE (#525)
+- Mensaje propio cuando `generate_tree_ids` rechaza una plantación archivada (#507)
+
+### Mobile 1.2.0 (versionCode 3)
+
+#### Agregado
+- Plantación archivada: columna local `archivada_en` (drizzle 0022), `esArchivada`, banner "Plantación archivada", edición bloqueada, catálogo sin archivadas y `SYNC_ERROR.PLANTACION_ARCHIVADA` con mensaje propio (#492)
+- Plantación eliminada en el servidor: `accesoRemoto` consulta `estado_remoto_plantaciones`, `PULL_ESTADO.eliminada`, columna local `eliminada_en_servidor_en` (drizzle 0023), badge y banner, la sync individual y la global informan eliminadas y sin acceso (`PlantacionesOmitidasAviso`); `useEliminarDelDispositivo` cuenta grupos, parcelas, fotos y borrados y funciona fuera del catálogo (#525, #539, #529)
+
+#### Corregido
+- Finalizar plantación exige cero fotos, parcelas y borrados pendientes; el bottom sheet detalla qué falta (#540)
+- Guardar especies y asignar técnicos usan los RPC atómicos de la 049, con fallback al chequeo previo de escribible y mensaje por motivo (eliminada, archivada, finalizada); los técnicos inactivos conservan su asignación (#549, #541)
+- Las fotos de un grupo se marcan sincronizadas recién cuando el servidor confirma el grupo; un update sin filas afectadas cuenta como fallo; una excepción al subir una foto no corta la tanda (#493, #485, #505)
+- Quitar la foto de un árbol sincronizado se propaga al servidor (`quitar_fotos_arboles`) y el pull limpia la foto local cuando otro dispositivo la quitó (#524, #564)
+- Eliminar una plantación del dispositivo, borrar árboles o grupos y reemplazar o quitar una foto borran los archivos locales; `borrarFotosLocales` solo toca archivos sueltos de la carpeta de fotos (#488, #501, #528)
+- Un rechazo al subir una parcela se informa como `PLANTACION_FINALIZADA`/`PLANTACION_ARCHIVADA` según el estado local en vez de `PERMISSION`, y la violación de FK (23503) como `REFERENCIA_INEXISTENTE` con mensaje propio (#530, #487)
+- Nuevo grupo se bloquea con aviso si la plantación está finalizada, archivada o eliminada (`usePlantacionEditable`) (#504)
+- Tildes, ñ y signos de apertura en los textos visibles, y `SyncProgressModal` partido en componentes con plurales correctos (#552, #536)
+
+#### Cambiado
+- Predicados `esActiva`/`esFinalizada` y constantes de estado en filtros, `StatusChip` y repositorio; se eliminan `PlantationConfigCard`, `createPlantation` online y `handleDeletePlantation`, sin usos (#500, #526, #557, #531)
+
+### Otros
+- Migración 038 `plantacion_archivada`: `archivada_en`/`archivada_por`, `motivo_no_escribible()` como fuente única de `plantacion_escribible()`, RPCs `archivar_plantacion`/`desarchivar_plantacion`, `sincronizar_borrados` con `rechazos` (#492)
+- Migración 039 `eliminar_plantacion`: tabla `plantaciones_eliminadas`, RPCs `eliminar_plantacion`, `previsualizar_eliminacion_plantacion` y `estado_remoto_plantaciones`; edge function `admin-plantaciones` (`eliminar` con borrado de fotos en tandas, `limpiarFotos`) (#525, #542)
+- Migración 040 `profiles_eliminado`: `eliminado_en` protegido por `protect_profile_fields`; `admin-users` suma `previsualizarEliminacion` y `eliminar` (real sin datos, lógico con datos) y rechaza acciones sobre eliminados (#503, #514)
+- Migraciones 041 y 046: borrar fotos en Storage exige membresía; subir o reemplazar exige plantación escribible (#486, #538)
+- Migración 042: `generate_tree_ids` exige admin activo de la organización, rechaza archivadas y bloquea la fila con `FOR SHARE` (#507)
+- Migraciones 043 y 045: `is_admin()`, `is_plantation_member()` e `is_superadmin()` exigen perfil activo; las policies de admin pasan a los helpers y `sync_subgroup` rechaza con `PERMISSION` a un miembro inactivo (#509, #533)
+- Migración 044: RPC `quitar_fotos_arboles`, con rechazo si la plantación no es escribible (#524)
+- Migraciones 047 y 048: `plantation_users` exige `plantacion_admite_asignaciones`; las escrituras de admin en `plantations`, `plantation_species`, `plantation_users` y `profiles` exigen la organización del que escribe (#541, #547)
+- Migración 049: RPCs `reemplazar_especies_plantacion` y `reemplazar_tecnicos_plantacion`, borrado e inserción en una transacción (#549)
+- `/novedades` lee la marca solo dentro de la sección pendiente; `/deploy` exige drift check contra prod antes de aplicar migraciones (#553, #554)
+- `npm run lint` de web incluye `prettier --check`; `admin-users` formateado con la misma config; `web/.env.example`, README y `.nvmrc` = 22 (#551, #514, #555)
+- Docs: `SPECS.md` §4.17 con la generación de IDs server-side; README de functions con `WEB_URL` por entorno y checklist de cutover; `visibilidad-plantaciones.md` al RLS vigente; docs de sync con el rechazo por finalizada/archivada; `docs/responsive-web.md` con los patrones de teléfono y la vista `modal-filtros` en la auditoría (#535, #556, #558, #515, #577)
+
 ## 2026-09-16 · web 1.2.0 · mobile 1.1.0
 
 ### Web 1.2.0

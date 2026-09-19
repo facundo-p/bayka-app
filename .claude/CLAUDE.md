@@ -40,7 +40,8 @@
   mantiene el skill `/novedades` —correrlo después de mergear a staging—, que
   concilia los PRs que alteran o quitan cambios anteriores. La web de staging
   las muestra en `/novedades` con pasos de prueba, y `/deploy` las convierte en
-  la entrada de la versión. En main nunca aparecen.
+  la entrada de la versión conservando los pasos, que la web muestra solo en el
+  entorno de pruebas (#580, #582). En main la sección pendiente nunca aparece.
 - **Excepciones de push directo a staging** (solo estas dos, las dos con OK
   previo de Facu): el commit `chore(release): …` que genera `/deploy`
   (mecánico, revisado dentro del diff del PR de release) y el commit

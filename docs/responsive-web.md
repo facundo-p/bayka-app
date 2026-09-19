@@ -5,10 +5,16 @@ tocar layout. Para la app de campo, ver `ui-ux-guidelines.md`.
 
 ## El objetivo, y lo que NO es
 
-**Usable, no rediseñada.** De 360px para arriba: sin scroll horizontal de
-documento, nada solapado, todo control alcanzable. Sigue siendo el layout de
-escritorio, plegado. No hay pantallas mobile propias, ni tablas convertidas en
-listas de cards, ni navegación aparte.
+**Arriba de 600px: usable, no rediseñada.** Sin scroll horizontal de documento,
+nada solapado, todo control alcanzable. Sigue siendo el layout de escritorio,
+plegado.
+
+**A 600px o menos: rediseñada** (#566). Ahí el layout plegado no alcanzaba: el
+chrome se comía 14 filas de interfaz antes del primer dato y el borde de la tabla
+arrancaba a los 595px de una pantalla de 900. La navegación, la cuenta, el alta y
+los filtros tienen forma propia de teléfono. Lo que sigue sin cambiar es el
+contenido: no hay tablas convertidas en listas de cards ni pantallas mobile
+aparte.
 
 La app está optimizada para escritorio y notebook. Arriba de 1400 nada cambió.
 
@@ -19,7 +25,7 @@ La app está optimizada para escritorio y notebook. Arriba de 1400 nada cambió.
 | **1400** | notebook | La barra del detalle deja de entrar en un renglón (1366×768 real) |
 | **1200** | compacta | Grillas de 2 columnas → 1; las toolbars empiezan a envolver |
 | **900** | tablet | El sidebar pasa a barra horizontal; vuelve el scroll de documento |
-| **600** | teléfono | Las tablas sueltan columnas secundarias; los modales van al ancho |
+| **600** | teléfono | Las tablas sueltan columnas secundarias; los modales van al ancho; la navegación se va al pie y los filtros a una hoja |
 | **(max-height: 760)** | ventana baja | Fallback de alto, no de ancho |
 
 No hay escalón en 430 ni en 360: entre 600 y 360 el problema siempre fue el
@@ -66,6 +72,44 @@ Dos trampas que costaron caro:
   divisor quedaba flotando a media altura. Al tocar algo del sidebar, mirarlo
   también a ≤900.
 
+## Teléfono: lo que tiene forma propia
+
+Cuatro patrones, todos en el escalón de 600 que ya existía — no hizo falta
+breakpoint nuevo. El criterio transversal: **menos filas antes del primer dato,
+sin esconder ninguna función**, y 44px de destino táctil.
+
+**La navegación se va al pie.** El mismo `<nav>` del sidebar pasa a
+`position: fixed` abajo (`BarraLateral.module.css`), con los tres ítems en
+columna y el acento del activo en el borde de arriba: a la izquierda no
+significa nada cuando están uno al lado del otro. Arriba queda un renglón con
+marca, versión, buscador y cuenta. Tres ítems miden ~373px contra los 328 de un
+teléfono de 360, así que en la barra superior se partían en dos.
+
+El shell le reserva el lugar con `--alto-nav-inferior` (0 por defecto, 62px a
+≤600) como `padding-bottom`. **Sin eso la última fila del listado queda tapada, y
+eso la auditoría no lo mide**: se verifica a mano, con el documento scrolleado
+hasta el fondo.
+
+**Lo que nombra a un control puede irse de la vista, nunca del DOM.** El texto de
+"Buscar…", la etiqueta del alta, el nombre y el rol de la cuenta: todos se ocultan
+con `soloLectoresEnMovil` (`theme/utilidades.module.css`), que los saca de la
+vista y los deja en el árbol de accesibilidad. Con `display: none` el control se
+queda sin nombre accesible — que es lo que lee el lector de pantalla, y por donde
+lo encuentran los tests y la auditoría.
+
+**Los filtros se guardan en una hoja.** `BarraHerramientas` a ≤600 deja el
+buscador y un botón con el contador de filtros puestos; el resto va a un
+`Modal posicion="hoja"`. Se aplican al toque, sin "Aplicar", y el recuento se muda
+al botón de cierre. Es el único lugar del rediseño donde se decide en JS *qué* se
+renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
+autoriza: el layout sigue yendo en `@media`.
+
+**Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
+dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
+22rem de base y el buscador 18rem, y por más chico que fuera el vecino no entraba.
+Un control que tiene que compartir renglón en teléfono va con `flex-basis: 0` y
+crece, no con una base grande que después se achica.
+
 ## Columnas de tabla en teléfono
 
 A ≤600 las tablas sueltan sus columnas secundarias. La marca vive en la columna
@@ -89,7 +133,8 @@ de acciones.**
    esos casos.
 2. `container-type: inline-size` aplica `contain`, que crea un containing block
    nuevo para descendientes `position: fixed`. Con los menús desplegables, el
-   mensaje de acción y los panes de Leaflet, abre una clase de bug nueva a
+   mensaje de acción, los panes de Leaflet —y ahora la navegación del pie, que
+   cuelga del viewport desde adentro del `<aside>`— abre una clase de bug nueva a
    cambio de nada.
 3. Los casos honestamente card-driven se resuelven mejor con
    `repeat(auto-fit, minmax(…))`.
@@ -150,6 +195,10 @@ solapes que nadie ve.
 mide. `/novedades` se mide plegada y además desplegada (`novedades-pasos`),
 porque los pasos de prueba solo se ven así.
 
+Una vista puede acotarse a ciertos anchos con `anchos` (`config.mjs`): la hoja de
+filtros solo existe a ≤600, y medirla a 1920 sería esperar diez segundos a un
+botón que no está. Esas celdas salen `–` en la matriz.
+
 ### Baseline
 
 Cada corrida se compara contra `web/scripts/auditoria/baseline.json` y sale con
@@ -194,8 +243,9 @@ Para no leer de más en un `·`:
   modales, ni popovers: con uno abierto O da ruido, porque fuera de una `raiz`
   acotada no tiene noción de capa flotante. De los `<details>`, solo los de
   `/novedades` se miden desplegados.
-- **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems en pruebas no hay
-  pasos que desplegar, y la fila mide lo mismo que `novedades`.
+- **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems con pasos, en
+  pruebas o publicados (#580), no hay nada que desplegar y la fila mide lo
+  mismo que `novedades`.
 - **O y R solo ven el primer viewport.** En los anchos chicos, donde el
   documento scrollea, queda afuera la mayor parte del contenido. L mira todo el
   texto.
@@ -205,10 +255,13 @@ Para no leer de más en un `·`:
   se mide, y ahí la barra superior mide más que a 768 porque vuelve la card de
   temporada.
 - **No detecta controles tapados por otra capa.** `elementFromPoint` da falsos
-  positivos con `backdrop-filter` y capas sticky, así que se descartó.
+  positivos con `backdrop-filter` y capas sticky, así que se descartó. Por eso el
+  lugar que el shell le reserva a la navegación del pie se verifica a mano.
 - **T es un guardarraíl, no una métrica de progreso.** Las tablas viven en un
   contenedor con scroll y las celdas envuelven en vez de recortar, así que hoy
   no dispara: está para que eso no se rompa.
 - **Nada que no rompa la geometría.** Una barra superior que se come el 91% del
   alto de la ventana antes de mostrar un dato no solapa, no recorta y se alcanza
-  scrolleando (#366): eso se mira a ojo con `npm run dev:demo`.
+  scrolleando (#366): eso se mira a ojo con `npm run dev:demo`. De ahí salió el
+  rediseño de teléfono, no de una celda en rojo — la matriz estaba limpia antes y
+  después. Las cifras de antes y después se miden a mano en el demo.

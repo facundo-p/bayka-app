@@ -133,7 +133,7 @@ export async function exportToExcel(plantacionId: string, plantationName: string
   const ws = XLSX.utils.json_to_sheet(sheetData);
   ws['!cols'] = excelColumnWidths(sheetData);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Plantacion');
+  XLSX.utils.book_append_sheet(wb, ws, 'Plantación');
 
   // type: 'base64' — Node Buffer no está disponible en React Native.
   const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });

@@ -98,7 +98,12 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
 
 function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
   return (
-    <DatosToolbar segmento={SEGMENTO_DATOS.arboles}>
+    <DatosToolbar
+      segmento={SEGMENTO_DATOS.arboles}
+      tituloFiltros="Filtros de árboles"
+      filtrosActivos={seccion.filtrosActivos}
+      onLimpiar={seccion.limpiar}
+    >
       <ArbolesFiltros
         filtros={seccion.filtros}
         parcelas={seccion.parcelas.data ?? []}

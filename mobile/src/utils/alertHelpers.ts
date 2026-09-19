@@ -1,4 +1,5 @@
 import type { ConfirmModalButton } from '../components/ConfirmModal';
+import { colors } from '../theme';
 
 type ShowFn = (config: {
   icon?: string;
@@ -63,7 +64,7 @@ export function showDoubleConfirmDialog(
 ) {
   show({
     icon: 'warning-outline' as any,
-    iconColor: '#c62828',
+    iconColor: colors.danger,
     title,
     message,
     buttons: [
@@ -73,13 +74,13 @@ export function showDoubleConfirmDialog(
         onPress: () => {
           show({
             icon: 'alert-circle-outline' as any,
-            iconColor: '#c62828',
-            title: 'Estas seguro?',
+            iconColor: colors.danger,
+            title: '¿Estás seguro?',
             message: finalMessage,
             buttons: [
               { label: 'No, cancelar', onPress: () => {}, style: 'cancel' },
               {
-                label: 'Si, eliminar',
+                label: 'Sí, eliminar',
                 onPress: () => { onConfirm(); },
                 style: 'danger',
                 icon: 'trash-outline' as any,

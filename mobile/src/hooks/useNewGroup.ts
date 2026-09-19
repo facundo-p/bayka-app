@@ -7,10 +7,13 @@ import { useState, useEffect } from 'react';
 import { createGroup, getLastGroupName } from '../repositories/GroupRepository';
 import type { GroupTipo } from '../repositories/GroupRepository';
 import { useCurrentUserId } from './useCurrentUserId';
+import { usePlantacionEditable } from './usePlantacionEditable';
 
 export function useNewGroup(plantacionId: string | undefined, parcelaId?: string) {
   const userId = useCurrentUserId();
   const [lastGroupName, setLastGroupName] = useState<string | null>(null);
+  const { estadoLoaded, plantacionEditable, isArchivada, isFinalizada, isEliminada } =
+    usePlantacionEditable(plantacionId ?? '');
 
   useEffect(() => {
     if (!plantacionId) return;
@@ -29,7 +32,8 @@ export function useNewGroup(plantacionId: string | undefined, parcelaId?: string
 
   async function handleCreateGroup(values: { nombre: string; codigo: string; tipo: GroupTipo }) {
     // parcela obligatoria (#90): la pantalla garantiza el param; sin él no se crea.
-    if (!userId || !plantacionId || !parcelaId) {
+    // La pantalla ya bloquea una plantación no editable; esto cubre un submit en vuelo.
+    if (!userId || !plantacionId || !parcelaId || !plantacionEditable) {
       return { success: false as const, error: 'unknown' as const };
     }
     return createGroup({
@@ -45,5 +49,10 @@ export function useNewGroup(plantacionId: string | undefined, parcelaId?: string
   return {
     lastGroupName,
     handleCreateGroup,
+    estadoLoaded,
+    plantacionEditable,
+    isArchivada,
+    isFinalizada,
+    isEliminada,
   };
 }

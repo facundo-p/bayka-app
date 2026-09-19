@@ -10,7 +10,9 @@ disable-model-invocation: true
 Quien prueba staging entra a `/novedades` en la web de pruebas
 (`https://staging.bayka-app.pages.dev/novedades`) y ve qué entró desde el último
 pase a producción, con los pasos para probar cada cosa. Este skill mantiene esa
-sección al día; `/deploy` después la convierte en la entrada de la versión (#375).
+sección al día; `/deploy` después la convierte en la entrada de la versión (#375)
+conservando los pasos (#580, #582): en la web de pruebas cada versión sigue
+mostrando el "Cómo probarlo" de sus ítems; en producción no se ven.
 
 - `/novedades` — después de mergear uno o varios PRs a staging.
 - `/novedades dry-run` — propone sin tocar nada.
@@ -41,8 +43,20 @@ puede estar viejo.
 
 ## 1. Base del rango
 
-Leer la marca de los dos archivos en `origin/staging`
-(`grep -o 'sincronizado-hasta: [0-9a-f]*'`) y decidir:
+Leer la marca de los dos archivos en `origin/staging`, solo dentro de la
+sección pendiente y con el patrón completo (un sha real y el `#PR`), para no
+confundirla con menciones de la marca en la intro o en el contrato:
+
+```bash
+for f in NOVEDADES.md CHANGELOG.md; do
+  git show origin/staging:$f \
+    | awk '/^## (En pruebas|Sin publicar)/{s=1; next} /^## /{s=0} s' \
+    | grep -oE '^<!-- sincronizado-hasta: [0-9a-f]{7,} #[0-9]+ -->'
+done
+```
+
+Sin match en un archivo = ese archivo no tiene sección pendiente. Con la marca
+de cada uno, decidir:
 
 | Situación | Base | Modo |
 |---|---|---|

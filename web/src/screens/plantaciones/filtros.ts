@@ -2,19 +2,27 @@
  * Filtro y orden del listado de plantaciones. Puro: se testea sin renderizar.
  */
 import { pluralizar, type Sustantivo } from '../../lib/formato';
+import { coincideBusqueda } from '../../lib/normalizarTexto';
 import { SUSTANTIVO } from '../../lib/sustantivos';
-import { ESTADO_PLANTACION, type PlantacionConStats } from '../../queries/plantationQueries';
+import {
+  esArchivada,
+  ESTADO_PLANTACION,
+  sinArchivadas,
+  type PlantacionConStats,
+} from '../../queries/plantationQueries';
 
 const ARBOL_REGISTRADO: Sustantivo = {
   singular: 'árbol registrado',
   plural: 'árboles registrados',
 };
 
-/** `todas` es el sentinela del segmentado; el resto son estados de dominio. */
+/** `todas` y `archivadas` son del segmentado; el resto son estados de dominio. Las archivadas
+ *  solo aparecen en su filtro, también fuera de `todas` (#477). */
 export const FILTRO_ESTADO = {
   todas: 'todas',
   activas: ESTADO_PLANTACION.activa,
   finalizadas: ESTADO_PLANTACION.finalizada,
+  archivadas: 'archivadas',
 } as const;
 
 export type FiltroEstado = (typeof FILTRO_ESTADO)[keyof typeof FILTRO_ESTADO];
@@ -52,16 +60,14 @@ export function temporadasDisponibles(plantaciones: PlantacionConStats[]): strin
   return [...unicas].sort((a, b) => b.localeCompare(a, 'es'));
 }
 
-/** Coincidencia case-insensitive contra lugar y temporada. */
+/** Coincidencia contra lugar y temporada, sin distinguir mayúsculas ni tildes. */
 function coincide(plantacion: PlantacionConStats, termino: string): boolean {
-  const aguja = termino.trim().toLowerCase();
-  if (!aguja) return true;
-  return [plantacion.lugar, plantacion.periodo].some((campo) =>
-    campo.toLowerCase().includes(aguja),
-  );
+  return coincideBusqueda([plantacion.lugar, plantacion.periodo], termino);
 }
 
 function pasaEstado(plantacion: PlantacionConStats, estado: FiltroEstado): boolean {
+  if (estado === FILTRO_ESTADO.archivadas) return esArchivada(plantacion);
+  if (esArchivada(plantacion)) return false;
   return estado === FILTRO_ESTADO.todas || plantacion.estado === estado;
 }
 
@@ -103,8 +109,9 @@ export function contarArboles(plantaciones: PlantacionConStats[]): number {
   return plantaciones.reduce((total, plantacion) => total + plantacion.arboles, 0);
 }
 
-/** Meta de la cabecera: tamaño del listado completo, sin filtrar. */
-export function resumenPlantaciones(plantaciones: PlantacionConStats[]): string {
+/** Meta de la cabecera: tamaño del listado completo, sin filtrar ni contar las archivadas. */
+export function resumenPlantaciones(todas: PlantacionConStats[]): string {
+  const plantaciones = sinArchivadas(todas);
   const temporadas = temporadasDisponibles(plantaciones).length;
   return [
     pluralizar(plantaciones.length, SUSTANTIVO.plantacion),

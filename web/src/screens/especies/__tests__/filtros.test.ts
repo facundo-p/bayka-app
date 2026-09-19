@@ -50,6 +50,15 @@ test('la búsqueda matchea nombre, código y científico, sin distinguir mayúsc
   expect(codigos({ busqueda: '   ' })).toHaveLength(4);
 });
 
+test('la búsqueda ignora tildes en el término y en el nombre (#438)', () => {
+  const catalogo = [especie('TIM', 'Timbó', 1, 10), especie('CEI', 'Ceibo', 1, 10)];
+  const buscar = (busqueda: string) =>
+    filtrarEspecies(catalogo, { ...BASE, busqueda }).map((e) => e.codigo);
+  expect(buscar('timbo')).toEqual(['TIM']);
+  expect(buscar('TIMBÓ')).toEqual(['TIM']);
+  expect(buscar('céibo')).toEqual(['CEI']);
+});
+
 test('el filtro de uso parte el catálogo en usadas y sin usar', () => {
   expect(codigos({ uso: USO_ESPECIE.enUso })).toEqual(['ALG', 'LAP']);
   expect(codigos({ uso: USO_ESPECIE.sinUso })).toEqual(['MOL', 'TAL']);

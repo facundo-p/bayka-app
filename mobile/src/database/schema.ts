@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
+import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
@@ -17,7 +18,7 @@ export const plantations = sqliteTable('plantations', {
   organizacionId: text('organizacion_id').notNull(),
   lugar: text('lugar').notNull(),
   periodo: text('periodo').notNull(),
-  estado: text('estado').notNull().default('activa'),
+  estado: text('estado').notNull().default(ESTADO_PLANTACION.activa),
   creadoPor: text('creado_por').notNull(),
   createdAt: text('created_at').notNull(),
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
@@ -41,6 +42,10 @@ export const plantations = sqliteTable('plantations', {
   photoCaptureAllTrees: integer('photo_capture_all_trees', { mode: 'boolean' })
     .notNull()
     .default(PHOTO_CAPTURE_ALL_TREES_DEFAULT),
+  // Archivada desde la web (#477): null = no archivada. Ver esArchivada.
+  archivadaEn: text('archivada_en'),
+  // Solo local (#478): cuándo el server respondió por primera vez que la plantación fue eliminada. Null = existe.
+  eliminadaEnServidorEn: text('eliminada_en_servidor_en'),
 });
 
 export const parcelas = sqliteTable('parcelas', {
@@ -76,7 +81,7 @@ export const groups = sqliteTable('groups', {
   nombre: text('nombre').notNull(),
   codigo: text('codigo').notNull(),
   tipo: text('tipo').notNull().default(GROUP_TIPO_DEFAULT),
-  estado: text('estado').notNull().default('activa'),
+  estado: text('estado').notNull().default(ESTADO_GRUPO.activa),
   usuarioCreador: text('usuario_creador').notNull(),
   createdAt: text('created_at').notNull(),
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),

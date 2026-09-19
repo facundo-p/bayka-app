@@ -473,13 +473,17 @@ describe('sección Visibilidad', () => {
 
   test('si el update falla hace rollback visual del toggle', async () => {
     const usuario = userEvent.setup();
-    errorUpdatePlantations = { message: 'sin permisos' };
+    errorUpdatePlantations = { message: 'TypeError: Failed to fetch' };
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const toggle = await screen.findByRole('switch', { name: 'Visible para técnicos en la app' });
 
     await usuario.click(toggle);
 
-    expect(await screen.findByText('No se pudo actualizar la visibilidad.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'No se pudo actualizar la visibilidad. Revisá tu conexión y probá de nuevo.',
+      ),
+    ).toBeInTheDocument();
     expect(toggle).toHaveAttribute('aria-checked', 'true');
   });
 

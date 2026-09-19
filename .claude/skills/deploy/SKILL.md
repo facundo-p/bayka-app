@@ -68,10 +68,16 @@ Release notes comerciales para usuarios y clientes: solo lo que el usuario nota
 ## Web X.Y.Z · <D de mes de AAAA>
 
 - **<Titular corto.>** <Qué puede hacer o qué mejora ve el usuario.>
+  - <Dónde, en la web o en la app, y qué hacer.>
+  - Esperá ver: <lo que confirma que funciona.>
 ```
 
 - H2 solo con las apps que participan, `·` como separador; mismo sufijo ` (2)`
   si hay dos releases el mismo día.
+- Los sub-bullets son los pasos que nacieron en la sección pendiente (abajo) y
+  sobreviven a la conversión tal cual (#580, #582). La web de pruebas los
+  muestra plegados bajo "Cómo probarlo" en cada versión; producción ve solo
+  titular y detalle.
 - Si nada es visible, un único bullet: `- Mejoras internas y de estabilidad.`
   Tiene que ser un bullet: la pantalla ignora las líneas sueltas y mostraría la
   versión vacía.
@@ -116,7 +122,9 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
 - **Pasos**: sub-bullets indentados 2 espacios. El primero dice dónde probar
   (web de pruebas, o app **Bayka TEST**); el último arranca con "Esperá ver:".
   Wrap a 80 columnas con 4 espacios; una línea de continuación nunca empieza
-  con `- ` (se leería como otro paso).
+  con `- ` (se leería como otro paso). Sobreviven al release y solo se ven en
+  el entorno de pruebas (#580, #582), así que pueden nombrar la web de pruebas
+  y la app Bayka TEST.
 - El título de NOVEDADES empieza con **"En pruebas"**: es contrato con
   `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`. Los `### Web` / `### Mobile`
   sin versión no chocan con `release-tags.yml` (busca `### Web X.Y.Z` exacto)
@@ -135,8 +143,11 @@ pendiente y el próximo `/novedades` arranca de cero desde `origin/main`:
   `### Web` → `### Web X.Y.Z`; `### Mobile` → `### Mobile A.B.C (versionCode M)`.
   Se borran la marca y las apps sin cambios.
 - `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`. Se
-  borran la marca, las trazas `<!-- #N -->` y todos los sub-bullets de pasos. El
-  bullet de "nada visible" pasa al texto publicado: `- Mejoras internas y de estabilidad.`
+  borran la marca y las trazas `<!-- #N -->`. **Los pasos se conservan tal
+  cual** (#580, #582): en la web de pruebas siguen siendo el "Cómo probarlo" de
+  cada versión y en producción no se muestran. No se resumen, no se reescriben
+  ni se les quita la mención al entorno. El bullet de "nada visible" pasa al
+  texto publicado: `- Mejoras internas y de estabilidad.`
 
 ### Verificación
 
@@ -146,13 +157,12 @@ Antes de cada commit que toque estos archivos:
 (cd web && npx vitest run src/lib/__tests__/parsearNovedades.test.ts)
 ```
 
-Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, y la
-sección en pruebas, si está, una sola y arriba de todo. Después de una
-conversión, además, estos dos sin resultados:
+Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, fuera
+de staging ningún ítem con pasos, y la sección en pruebas, si está, una sola y
+arriba de todo. Después de una conversión, además, este sin resultados:
 
 ```bash
 grep -nE 'sincronizado-hasta|<!-- #|^## (Sin publicar|En pruebas)' NOVEDADES.md CHANGELOG.md
-grep -n '^  - ' NOVEDADES.md
 ```
 
 ## 0. Precondiciones — abortar si falla alguna
@@ -294,8 +304,12 @@ Facu):
 - [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
 - [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
       distribuirlo a los dispositivos
-- [ ] Si el release incluye migraciones supabase/**: aplicarlas a prod con
-      confirmación dedicada (CLAUDE.md, "Flujo de branches")
+- [ ] Si el release incluye migraciones supabase/**: primero drift check
+      (`npx --yes supabase@latest migration list --db-url "$PROD_DB_URL"` con
+      la URL de `.env.migration`: lo aplicado en prod tiene que ser exactamente
+      lo aplicado en staging antes de este release, sin huecos ni extras);
+      después aplicarlas a prod con confirmación dedicada (CLAUDE.md, "Flujo
+      de branches")
 - [ ] Regla mientras este PR estuvo/esté abierto: NO mergear nada más a staging
 ```
 

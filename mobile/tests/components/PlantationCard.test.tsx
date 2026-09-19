@@ -31,6 +31,8 @@ jest.mock('../../src/theme', () => ({
     textPrimary: '#1E293B',
     backgroundAlt: '#F5F5F4',
     borderMuted: '#CBD5E1',
+    stateEliminada: '#DC2626',
+    dangerBg: '#FEF2F2',
   },
   spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
@@ -69,10 +71,10 @@ describe('PlantationCard sidebar strip', () => {
     );
 
     // #94: el botón Editar de la card fue reemplazado por Sync.
-    expect(getByLabelText('Sincronizar plantacion')).toBeTruthy();
+    expect(getByLabelText('Sincronizar plantación')).toBeTruthy();
     expect(queryByLabelText('Editar lugar y periodo')).toBeNull();
-    expect(getByLabelText('Acciones de plantacion')).toBeTruthy();
-    expect(getByLabelText('Eliminar plantacion del dispositivo')).toBeTruthy();
+    expect(getByLabelText('Acciones de plantación')).toBeTruthy();
+    expect(getByLabelText('Eliminar plantación del dispositivo')).toBeTruthy();
   });
 
   it('renders empty sync slot when onSync not provided (offline)', () => {
@@ -80,7 +82,7 @@ describe('PlantationCard sidebar strip', () => {
       <PlantationCard {...makeProps({ onSync: undefined })} />
     );
 
-    expect(queryByLabelText('Sincronizar plantacion')).toBeNull();
+    expect(queryByLabelText('Sincronizar plantación')).toBeNull();
   });
 
   it('renders empty gear slot when onGear not provided (tecnico)', () => {
@@ -88,14 +90,14 @@ describe('PlantationCard sidebar strip', () => {
       <PlantationCard {...makeProps({ onGear: undefined })} />
     );
 
-    expect(queryByLabelText('Acciones de plantacion')).toBeNull();
+    expect(queryByLabelText('Acciones de plantación')).toBeNull();
   });
 
   it('calls onSync when sync icon tapped', () => {
     const onSync = jest.fn();
     const { getByLabelText } = render(<PlantationCard {...makeProps({ onSync })} />);
 
-    fireEvent.press(getByLabelText('Sincronizar plantacion'));
+    fireEvent.press(getByLabelText('Sincronizar plantación'));
 
     expect(onSync).toHaveBeenCalledTimes(1);
   });
@@ -119,7 +121,7 @@ describe('PlantationCard sidebar strip', () => {
       <PlantationCard {...makeProps({ isAdmin: true, onGear })} />
     );
 
-    fireEvent.press(getByLabelText('Acciones de plantacion'));
+    fireEvent.press(getByLabelText('Acciones de plantación'));
 
     expect(onGear).toHaveBeenCalledTimes(1);
   });
@@ -128,7 +130,7 @@ describe('PlantationCard sidebar strip', () => {
     const onDelete = jest.fn();
     const { getByLabelText } = render(<PlantationCard {...makeProps({ onDelete })} />);
 
-    fireEvent.press(getByLabelText('Eliminar plantacion del dispositivo'));
+    fireEvent.press(getByLabelText('Eliminar plantación del dispositivo'));
 
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
@@ -138,7 +140,7 @@ describe('PlantationCard sidebar strip', () => {
       <PlantationCard {...makeProps({ onDelete: undefined })} />
     );
 
-    expect(queryByLabelText('Eliminar plantacion del dispositivo')).toBeNull();
+    expect(queryByLabelText('Eliminar plantación del dispositivo')).toBeNull();
   });
 });
 
@@ -162,5 +164,20 @@ describe('PlantationCard badge "Oculta en app"', () => {
       <PlantationCard {...makeProps({ isAdmin: false, visibleInApp: false })} />
     );
     expect(queryByText('Oculta en app')).toBeNull();
+  });
+});
+
+describe('PlantationCard eliminada en el servidor (#478)', () => {
+  it('muestra el badge para cualquier rol y conserva "eliminar del dispositivo"', () => {
+    const { getByText, getByLabelText } = render(
+      <PlantationCard {...makeProps({ isAdmin: false, eliminadaEnServidor: true })} />
+    );
+    expect(getByText('Eliminada en el servidor')).toBeTruthy();
+    expect(getByLabelText('Eliminar plantación del dispositivo')).toBeTruthy();
+  });
+
+  it('sin la marca no hay badge', () => {
+    const { queryByText } = render(<PlantationCard {...makeProps()} />);
+    expect(queryByText('Eliminada en el servidor')).toBeNull();
   });
 });

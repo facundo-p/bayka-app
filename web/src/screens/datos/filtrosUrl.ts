@@ -1,3 +1,4 @@
+import { contarFiltrosActivos } from '../../lib/filtros';
 import { PARAM_URL, type ParamUrl } from '../../lib/rutas';
 import { FILTRO_FOTO, FILTRO_GPS, FILTROS_INICIALES, type FiltrosUi } from './filtrosArboles';
 
@@ -35,8 +36,12 @@ export function leerFiltrosDeUrl(params: URLSearchParams): FiltrosUi {
   return Object.fromEntries(CAMPOS.map((campo) => [campo, leerCampo(params, campo)])) as FiltrosUi;
 }
 
+export function contarFiltros(filtros: FiltrosUi): number {
+  return contarFiltrosActivos(filtros, FILTROS_INICIALES);
+}
+
 export function hayFiltroActivo(filtros: FiltrosUi): boolean {
-  return CAMPOS.some((campo) => filtros[campo] !== FILTROS_INICIALES[campo]);
+  return contarFiltros(filtros) > 0;
 }
 
 /** Cambiar de parcela suelta el grupo: el scope viejo deja de tener sentido. */

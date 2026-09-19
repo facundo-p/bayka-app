@@ -24,13 +24,13 @@ describe('usePhotoPicker', () => {
   it('por default el tercer botón es "Cancelar"', () => {
     const { show, pickPhoto } = renderPicker();
     void pickPhoto();
-    expect(labels(show)).toEqual(['Camara', 'Galeria', 'Cancelar']);
+    expect(labels(show)).toEqual(['Cámara', 'Galería', 'Cancelar']);
   });
 
   it('con optional el tercer botón es "Sin foto" y resuelve null', async () => {
     const { show, pickPhoto } = renderPicker();
     const promesa = pickPhoto({ optional: true });
-    expect(labels(show)).toEqual(['Camara', 'Galeria', 'Sin foto']);
+    expect(labels(show)).toEqual(['Cámara', 'Galería', 'Sin foto']);
     show.mock.calls[0][0].buttons[2].onPress();
     await expect(promesa).resolves.toBeNull();
   });

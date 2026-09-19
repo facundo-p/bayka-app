@@ -3,13 +3,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { SYNC_STATE, SYNC_ERROR, getErrorMessage } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
 import BaseModal from './BaseModal';
 import FailureList from './FailureList';
+import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
 import { formatearVelocidad } from '../utils/velocidadDeTransferencia';
+
+type PhotoResult = { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number };
 
 interface Props {
   state: SyncState;
@@ -24,11 +27,15 @@ interface Props {
   pullSuccess: boolean | null;
   /** La membresía fue revocada: la copia local queda para consulta (#317). */
   sinAcceso: boolean;
+  /** La plantación fue eliminada en el server (#478). */
+  eliminada: boolean;
+  /** Sync global: plantaciones salteadas por sin acceso o eliminadas (#478). */
+  omitidas: PlantacionesOmitidas;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   /** Fase del pull en curso; sin esto el pull es un spinner mudo (#447). */
   phaseProgress: DownloadPhaseProgress | null;
-  photoResult: { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null;
+  photoResult: PhotoResult | null;
   globalProgress?: { plantationName: string; done: number; total: number } | null;
   /** 45s sin ninguna señal de avance: recién ahí se ofrece cancelar (#451). */
   estancado: boolean;
@@ -42,20 +49,24 @@ interface Props {
 
 type GlobalProgress = { plantationName: string; done: number; total: number } | null | undefined;
 
-/**
- * Cuerpo común de las cuatro fases en curso. El spinner dice "sigue vivo" aunque no
- * haya denominador; la barra aparece solo cuando se conoce el total.
- */
-function FaseEnCurso({
-  titulo, detalle, subdetalle, fraccion, color, globalProgress,
-}: {
+type FaseProps = {
   titulo: string;
   detalle: string;
   subdetalle?: string;
   fraccion: number;
   color: string;
   globalProgress: GlobalProgress;
-}) {
+};
+
+type Avance = Pick<Props, 'progress' | 'photoProgress' | 'phaseProgress' | 'globalProgress'>;
+
+const TEXTO_PREPARANDO = 'Preparando...';
+
+/**
+ * Cuerpo común de las cuatro fases en curso. El spinner dice "sigue vivo" aunque no
+ * haya denominador; la barra aparece solo cuando se conoce el total.
+ */
+function FaseEnCurso({ titulo, detalle, subdetalle, fraccion, color, globalProgress }: FaseProps) {
   return (
     <>
       <ActivityIndicator size="large" color={color} />
@@ -72,13 +83,11 @@ function FaseEnCurso({
   );
 }
 
-const TEXTO_PREPARANDO = 'Preparando...';
-
 /** Un timeout no es falta de conexión: hay señal, el que no contesta es el server (#451). */
 function mensajeDeFalla(huboTimeout: boolean): string {
   return huboTimeout
     ? getErrorMessage(SYNC_ERROR.TIMEOUT)
-    : 'No se pudo conectar con el servidor. Verifica tu conexión.';
+    : 'No se pudo conectar con el servidor. Verificá tu conexión.';
 }
 
 /**
@@ -93,6 +102,11 @@ function detalleDeFotos(photoProgress: PhotoSyncProgress | null): string {
   return velocidad ? `${contador} · ${velocidad}` : contador;
 }
 
+function detalleDePull(phaseProgress: DownloadPhaseProgress | null): string {
+  if (!phaseProgress) return 'Descargando novedades del servidor';
+  return [PHASE_LABEL[phaseProgress.phase], contadorDeFase(phaseProgress)].filter(Boolean).join(' · ');
+}
+
 function fraccionDeConteo(hecho: number | undefined, total: number | undefined): number {
   return total && total > 0 ? (hecho ?? 0) / total : 0;
 }
@@ -101,208 +115,226 @@ function fraccionDeConteo(hecho: number | undefined, total: number | undefined):
  * Qué se está fotografiando: la plantación en el sync global, el grupo en el de una
  * sola. Sin esto el contador de fotos se reinicia entre grupos sin explicación.
  */
-function contextoDeFotos(
-  globalProgress: GlobalProgress,
-  progress: SyncProgress | null,
-): string | undefined {
+function contextoDeFotos(globalProgress: GlobalProgress, progress: SyncProgress | null): string | undefined {
   return globalProgress?.plantationName ?? progress?.currentName ?? undefined;
 }
 
-export default function SyncProgressModal({
-  state,
-  progress,
-  results,
-  parcelaResults,
-  plantationResults,
-  successCount,
-  failureCount,
-  parcelaFailureCount,
-  plantationFailureCount,
-  pullSuccess,
-  sinAcceso,
-  authExpired,
-  photoProgress,
-  phaseProgress,
-  photoResult,
-  globalProgress,
-  estancado,
-  cancelado,
-  huboTimeout,
-  onCancelar,
-  onDismiss,
-}: Props) {
+function faseDePull({ phaseProgress, globalProgress }: Avance): FaseProps {
+  return {
+    titulo: 'Actualizando datos...',
+    detalle: detalleDePull(phaseProgress),
+    fraccion: fraccionDeFase(phaseProgress),
+    color: colors.info,
+    globalProgress,
+  };
+}
+
+function faseDePush({ progress, globalProgress }: Avance): FaseProps {
+  return {
+    titulo: 'Subiendo grupos...',
+    detalle: progress ? `${progress.completed} de ${progress.total}` : TEXTO_PREPARANDO,
+    subdetalle: progress?.currentName,
+    fraccion: fraccionDeConteo(progress?.completed, progress?.total),
+    color: colors.primary,
+    globalProgress,
+  };
+}
+
+/** En las fases de fotos el nombre de la plantación ya va como subdetalle. */
+function faseDeFotos(titulo: string, color: string) {
+  return ({ progress, photoProgress, globalProgress }: Avance): FaseProps => ({
+    titulo,
+    detalle: detalleDeFotos(photoProgress),
+    subdetalle: contextoDeFotos(globalProgress, progress),
+    fraccion: fraccionDeConteo(photoProgress?.completed, photoProgress?.total),
+    color,
+    globalProgress: null,
+  });
+}
+
+const FASE_EN_CURSO: Partial<Record<SyncState, (avance: Avance) => FaseProps>> = {
+  [SYNC_STATE.pulling]: faseDePull,
+  [SYNC_STATE.pushing]: faseDePush,
+  [SYNC_STATE.uploadingPhotos]: faseDeFotos('Subiendo fotos...', colors.primary),
+  [SYNC_STATE.downloadingPhotos]: faseDeFotos('Descargando fotos...', colors.info),
+};
+
+function FaseActual(props: Props) {
+  const fase = FASE_EN_CURSO[props.state];
+  return fase ? <FaseEnCurso {...fase(props)} /> : null;
+}
+
+function AvisoEstancado({ onCancelar }: { onCancelar: () => void }) {
+  return (
+    <>
+      <Text style={styles.estancadoText}>Hace un rato que no hay novedades. Puede ser la señal.</Text>
+      <Pressable style={styles.cancelButton} onPress={onCancelar}>
+        <Text style={styles.cancelText}>Cancelar sincronización</Text>
+      </Pressable>
+    </>
+  );
+}
+
+function BotonCerrar({ onDismiss }: { onDismiss: () => void }) {
+  return (
+    <Pressable style={styles.dismissButton} onPress={onDismiss}>
+      <Text style={styles.dismissText}>Cerrar</Text>
+    </Pressable>
+  );
+}
+
+type AvisoFinalProps = {
+  icono: React.ComponentProps<typeof Ionicons>['name'];
+  color: string;
+  titulo: string;
+  texto: string;
+};
+
+/** Resultados que reemplazan al resumen: la corrida no sincronizó nada que contar. */
+function AvisoFinal({ icono, color, titulo, texto, onDismiss }: AvisoFinalProps & { onDismiss: () => void }) {
+  return (
+    <>
+      <Ionicons name={icono} size={48} color={color} />
+      <Text style={styles.title}>{titulo}</Text>
+      <Text style={styles.progressText}>{texto}</Text>
+      <BotonCerrar onDismiss={onDismiss} />
+    </>
+  );
+}
+
+const AVISO_CANCELADA: AvisoFinalProps = {
+  icono: 'stop-circle',
+  color: colors.textSecondary,
+  titulo: 'Sincronización cancelada',
+  texto: 'Lo que alcanzó a sincronizarse quedó guardado. Podés reintentar cuando tengas mejor señal.',
+};
+
+const AVISO_ELIMINADA: AvisoFinalProps = {
+  icono: 'trash',
+  color: colors.stateEliminada,
+  titulo: 'Plantación eliminada en el servidor',
+  texto:
+    'Un administrador la eliminó. Los datos del dispositivo quedan solo para consulta: lo que ' +
+    'quedó sin subir ya no se puede sincronizar. Podés eliminarla del dispositivo cuando quieras.',
+};
+
+const AVISO_SIN_ACCESO: AvisoFinalProps = {
+  icono: 'lock-closed',
+  color: colors.secondary,
+  titulo: 'Sin acceso a la plantación',
+  texto: 'Un administrador te quitó el acceso. Los datos descargados quedan solo para consulta y no se van a sincronizar.',
+};
+
+/** "1 foto subida" / "3 fotos subidas". */
+function cantidad(n: number, singular: string, plural: string): string {
+  return `${n} ${n > 1 ? plural : singular}`;
+}
+
+function Conteo({ n, singular, plural, falla }: { n?: number; singular: string; plural: string; falla?: boolean }) {
+  if (n == null || n <= 0) return null;
+  return <Text style={falla ? styles.failureMessage : styles.successText}>{cantidad(n, singular, plural)}</Text>;
+}
+
+function FotosDescargadas({ photoResult }: { photoResult: PhotoResult | null }) {
+  return (
+    <Conteo
+      n={photoResult?.downloaded}
+      singular="foto descargada correctamente"
+      plural="fotos descargadas correctamente"
+    />
+  );
+}
+
+function IconoDeResultado({ ok }: { ok: boolean }) {
+  return (
+    <Ionicons
+      name={ok ? 'checkmark-circle' : 'alert-circle'}
+      size={48}
+      color={ok ? colors.primary : colors.secondary}
+    />
+  );
+}
+
+/** Única fuente de verdad para ícono, color y título del resumen. */
+function hayFallas(p: Props): boolean {
+  return p.failureCount > 0 || p.parcelaFailureCount > 0 || p.plantationFailureCount > 0;
+}
+
+/** Solo hubo pull: no se subió ni falló nada que listar. */
+function esSoloPull(p: Props): boolean {
+  return p.pullSuccess !== null && p.results.length === 0 && !hayFallas(p);
+}
+
+function ResultadoPull(p: Props) {
+  return (
+    <>
+      <IconoDeResultado ok={!!p.pullSuccess} />
+      <Text style={styles.title}>{p.pullSuccess ? 'Datos actualizados' : 'Error al actualizar'}</Text>
+      <Text style={styles.progressText}>
+        {p.pullSuccess ? 'Se descargaron los últimos datos del servidor.' : mensajeDeFalla(p.huboTimeout)}
+      </Text>
+      <FotosDescargadas photoResult={p.photoResult} />
+      <PlantacionesOmitidasAviso omitidas={p.omitidas} />
+      <BotonCerrar onDismiss={p.onDismiss} />
+    </>
+  );
+}
+
+function ConteosDePush({ successCount, photoResult }: Pick<Props, 'successCount' | 'photoResult'>) {
+  return (
+    <>
+      <Conteo n={successCount} singular="grupo sincronizado" plural="grupos sincronizados" />
+      <Conteo n={photoResult?.uploaded} singular="foto subida correctamente" plural="fotos subidas correctamente" />
+      <Conteo n={photoResult?.uploadFailed} singular="foto no pudo subirse." plural="fotos no pudieron subirse." falla />
+      <Conteo
+        n={photoResult?.downloadFailed}
+        singular="foto no pudo descargarse."
+        plural="fotos no pudieron descargarse."
+        falla
+      />
+      <FotosDescargadas photoResult={photoResult} />
+    </>
+  );
+}
+
+function ResultadoPush(p: Props) {
+  const conFallas = hayFallas(p);
+  return (
+    <>
+      <IconoDeResultado ok={!conFallas} />
+      <Text style={styles.title}>{conFallas ? 'Sincronización parcial' : 'Sincronización completa'}</Text>
+      <ConteosDePush successCount={p.successCount} photoResult={p.photoResult} />
+      {/* Plantación primero: si no se subió, FK-bloquea sus parcelas y grupos (la causa
+          raíz más upstream). Luego parcela (bloquea grupos con PARCELA_PENDING), luego grupos. */}
+      <FailureList label="plantación" plural="plantaciones" results={p.plantationResults} getKey={(r) => r.plantacionId} />
+      <FailureList label="parcela" results={p.parcelaResults} getKey={(r) => r.parcelaId} />
+      <FailureList label="grupo" results={p.results} getKey={(r) => r.groupId} />
+      <PlantacionesOmitidasAviso omitidas={p.omitidas} />
+      <BotonCerrar onDismiss={p.onDismiss} />
+    </>
+  );
+}
+
+/** Cancelada gana sobre todo; eliminada o sin acceso reemplazan al resumen. */
+function Resultado(p: Props) {
+  if (p.cancelado) return <AvisoFinal {...AVISO_CANCELADA} onDismiss={p.onDismiss} />;
+  if (p.eliminada) return <AvisoFinal {...AVISO_ELIMINADA} onDismiss={p.onDismiss} />;
+  if (p.sinAcceso) return <AvisoFinal {...AVISO_SIN_ACCESO} onDismiss={p.onDismiss} />;
+  return esSoloPull(p) ? <ResultadoPull {...p} /> : <ResultadoPush {...p} />;
+}
+
+export default function SyncProgressModal(props: Props) {
+  const { state, authExpired, estancado, onCancelar, onDismiss } = props;
   if (state === SYNC_STATE.idle) return null;
-  // Session expiry is surfaced by a dedicated ConfirmModal (re-login flow),
-  // not here — suppress this modal so the two don't overlap.
+  // La sesión vencida la muestra un ConfirmModal propio (re-login); no superponerlos.
   if (authExpired) return null;
 
-  // Hay errores de cualquier tipo (grupo / parcela / plantación) — única fuente
-  // de verdad para icono, color y título del resultado.
-  const anyFailure = failureCount > 0 || parcelaFailureCount > 0 || plantationFailureCount > 0;
-
+  const terminada = state === SYNC_STATE.done;
   return (
-    <BaseModal
-      visible
-      onRequestClose={state === SYNC_STATE.done ? onDismiss : undefined}
-    >
-      {state === SYNC_STATE.pulling && (
-        <FaseEnCurso
-          titulo="Actualizando datos..."
-          detalle={
-            phaseProgress
-              ? [PHASE_LABEL[phaseProgress.phase], contadorDeFase(phaseProgress)].filter(Boolean).join(' · ')
-              : 'Descargando novedades del servidor'
-          }
-          fraccion={fraccionDeFase(phaseProgress)}
-          color={colors.info}
-          globalProgress={globalProgress}
-        />
-      )}
-
-      {state === SYNC_STATE.pushing && (
-        <FaseEnCurso
-          titulo="Subiendo grupos..."
-          detalle={progress ? `${progress.completed} de ${progress.total}` : TEXTO_PREPARANDO}
-          subdetalle={progress?.currentName}
-          fraccion={fraccionDeConteo(progress?.completed, progress?.total)}
-          color={colors.primary}
-          globalProgress={globalProgress}
-        />
-      )}
-
-      {state === SYNC_STATE.uploadingPhotos && (
-        <FaseEnCurso
-          titulo="Subiendo fotos..."
-          detalle={detalleDeFotos(photoProgress)}
-          subdetalle={contextoDeFotos(globalProgress, progress)}
-          fraccion={fraccionDeConteo(photoProgress?.completed, photoProgress?.total)}
-          color={colors.primary}
-          globalProgress={null}
-        />
-      )}
-
-      {state === SYNC_STATE.downloadingPhotos && (
-        <FaseEnCurso
-          titulo="Descargando fotos..."
-          detalle={detalleDeFotos(photoProgress)}
-          subdetalle={contextoDeFotos(globalProgress, progress)}
-          fraccion={fraccionDeConteo(photoProgress?.completed, photoProgress?.total)}
-          color={colors.info}
-          globalProgress={null}
-        />
-      )}
-
-      {estancado && state !== SYNC_STATE.done && (
-        <>
-          <Text style={styles.estancadoText}>
-            Hace un rato que no hay novedades. Puede ser la señal.
-          </Text>
-          <Pressable style={styles.cancelButton} onPress={onCancelar}>
-            <Text style={styles.cancelText}>Cancelar sincronizacion</Text>
-          </Pressable>
-        </>
-      )}
-
-      {state === SYNC_STATE.done && cancelado && (
-        <>
-          <Ionicons name="stop-circle" size={48} color={colors.textSecondary} />
-          <Text style={styles.title}>Sincronizacion cancelada</Text>
-          <Text style={styles.progressText}>
-            Lo que alcanzó a sincronizarse quedó guardado. Podés reintentar cuando tengas mejor señal.
-          </Text>
-          <Pressable style={styles.dismissButton} onPress={onDismiss}>
-            <Text style={styles.dismissText}>Cerrar</Text>
-          </Pressable>
-        </>
-      )}
-
-      {state === SYNC_STATE.done && !cancelado && sinAcceso && (
-        <>
-          <Ionicons name="lock-closed" size={48} color={colors.secondary} />
-          <Text style={styles.title}>Sin acceso a la plantacion</Text>
-          <Text style={styles.progressText}>
-            Un administrador te quito el acceso. Los datos descargados quedan solo para consulta
-            y no se van a sincronizar.
-          </Text>
-          <Pressable style={styles.dismissButton} onPress={onDismiss}>
-            <Text style={styles.dismissText}>Cerrar</Text>
-          </Pressable>
-        </>
-      )}
-
-      {state === SYNC_STATE.done && !cancelado && !sinAcceso && pullSuccess !== null && results.length === 0 && !anyFailure && (
-        <>
-          <Ionicons
-            name={pullSuccess ? 'checkmark-circle' : 'alert-circle'}
-            size={48}
-            color={pullSuccess ? colors.primary : colors.secondary}
-          />
-          <Text style={styles.title}>
-            {pullSuccess ? 'Datos actualizados' : 'Error al actualizar'}
-          </Text>
-          <Text style={styles.progressText}>
-            {pullSuccess
-              ? 'Se descargaron los ultimos datos del servidor.'
-              : mensajeDeFalla(huboTimeout)}
-          </Text>
-          {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
-            <Text style={styles.successText}>
-              {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
-            </Text>
-          )}
-          <Pressable style={styles.dismissButton} onPress={onDismiss}>
-            <Text style={styles.dismissText}>Cerrar</Text>
-          </Pressable>
-        </>
-      )}
-
-      {state === SYNC_STATE.done && !cancelado && !sinAcceso && (results.length > 0 || anyFailure || pullSuccess === null) && (
-        <>
-          <Ionicons
-            name={anyFailure ? 'alert-circle' : 'checkmark-circle'}
-            size={48}
-            color={anyFailure ? colors.secondary : colors.primary}
-          />
-          <Text style={styles.title}>
-            {anyFailure ? 'Sincronizacion parcial' : 'Sincronizacion completa'}
-          </Text>
-          {successCount > 0 && (
-            <Text style={styles.successText}>
-              {successCount} grupo{successCount > 1 ? 's' : ''} sincronizado
-              {successCount > 1 ? 's' : ''}
-            </Text>
-          )}
-          {photoResult?.uploaded != null && photoResult.uploaded > 0 && (
-            <Text style={styles.successText}>
-              {photoResult.uploaded} foto{photoResult.uploaded > 1 ? 's' : ''} subida{photoResult.uploaded > 1 ? 's' : ''} correctamente
-            </Text>
-          )}
-          {photoResult?.uploadFailed != null && photoResult.uploadFailed > 0 && (
-            <Text style={styles.failureMessage}>
-              {photoResult.uploadFailed} foto{photoResult.uploadFailed > 1 ? 's' : ''} no pudieron subirse.
-            </Text>
-          )}
-          {photoResult?.downloadFailed != null && photoResult.downloadFailed > 0 && (
-            <Text style={styles.failureMessage}>
-              {photoResult.downloadFailed} foto{photoResult.downloadFailed > 1 ? 's' : ''} no pudieron descargarse.
-            </Text>
-          )}
-          {photoResult?.downloaded != null && photoResult.downloaded > 0 && (
-            <Text style={styles.successText}>
-              {photoResult.downloaded} foto{photoResult.downloaded > 1 ? 's' : ''} descargada{photoResult.downloaded > 1 ? 's' : ''} correctamente
-            </Text>
-          )}
-          {/* Plantación primero: si no se subió, FK-bloquea sus parcelas y
-              grupos (la causa raíz más upstream). Luego parcela (bloquea grupos
-              con PARCELA_PENDING), luego grupos. */}
-          <FailureList label="plantacion" results={plantationResults} getKey={(r) => r.plantacionId} />
-          <FailureList label="parcela" results={parcelaResults} getKey={(r) => r.parcelaId} />
-          <FailureList label="grupo" results={results} getKey={(r) => r.groupId} />
-          <Pressable style={styles.dismissButton} onPress={onDismiss}>
-            <Text style={styles.dismissText}>Cerrar</Text>
-          </Pressable>
-        </>
-      )}
+    <BaseModal visible onRequestClose={terminada ? onDismiss : undefined}>
+      <FaseActual {...props} />
+      {estancado && !terminada && <AvisoEstancado onCancelar={onCancelar} />}
+      {terminada && <Resultado {...props} />}
     </BaseModal>
   );
 }

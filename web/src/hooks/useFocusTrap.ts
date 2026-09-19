@@ -1,8 +1,9 @@
 import { useCallback, type RefObject } from 'react';
-import { TECLA } from '../../lib/teclas';
+import { TECLA } from '../lib/teclas';
 
 const SELECTOR_FOCUSABLE =
-  'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+  '[tabindex]:not([tabindex="-1"])';
 
 /** El extremo opuesto si el foco está en un borde; si no, `null` y el Tab sigue su curso. */
 function destinoDelTab(contenedor: HTMLElement, haciaAtras: boolean): HTMLElement | null {

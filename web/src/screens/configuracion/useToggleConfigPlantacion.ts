@@ -10,8 +10,8 @@ interface ToggleConfigPlantacion {
   guardar: (plantacionId: string, valor: boolean) => Promise<void>;
   /** Mensaje que el repositorio lanza cuando falta la migración de la columna. */
   mensajeSinMigracion: string;
-  /** Mensaje para cualquier otro error del update. */
-  mensajeError: string;
+  /** Acción en infinitivo para el mensaje de cualquier otro error: "actualizar la visibilidad". */
+  accion: string;
 }
 
 /** Toggle booleano de la plantación que guarda al cambiar, sin botón aparte: responde al instante y, si el update falla, vuelve al valor anterior. */
@@ -20,7 +20,7 @@ export function useToggleConfigPlantacion({
   valorInicial,
   guardar,
   mensajeSinMigracion,
-  mensajeError,
+  accion,
 }: ToggleConfigPlantacion) {
   const [activo, setActivo] = useState(valorInicial);
   const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacion(plantacionId));
@@ -37,6 +37,6 @@ export function useToggleConfigPlantacion({
     activo,
     cambiar,
     guardando: mutacion.isPending,
-    mensajeError: mensajeErrorConocido(mutacion.error, mensajeSinMigracion, mensajeError),
+    mensajeError: mensajeErrorConocido(mutacion.error, mensajeSinMigracion, accion),
   };
 }

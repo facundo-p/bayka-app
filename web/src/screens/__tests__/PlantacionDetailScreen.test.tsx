@@ -1,6 +1,11 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
+import {
+  estadoMock,
+  PERFIL_SUPERADMIN,
+  prepararSesion,
+  prepararSesionAdmin,
+} from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
@@ -57,6 +62,29 @@ let totalArboles: number;
 let conIdArboles: number;
 /** Filas que devuelve la query de exportación (select con `plantacion_id`). */
 let filasExport: unknown[];
+/** `archivada_en` de la plantación; los RPC de archivado lo cambian como la base. */
+let archivadaEn: string | null;
+/** Respuesta de `previsualizar_eliminacion_plantacion`. */
+let previewEliminacion: Record<string, unknown>;
+
+const PREVIEW_SIN_DATOS = {
+  success: true,
+  parcelas: 1,
+  grupos: 0,
+  arboles: 0,
+  arboles_con_foto: 0,
+  tiene_datos: false,
+  puede: true,
+  motivo: null,
+};
+
+const PREVIEW_CON_DATOS = {
+  ...PREVIEW_SIN_DATOS,
+  grupos: 2,
+  arboles: 30,
+  arboles_con_foto: 4,
+  tiene_datos: true,
+};
 
 type Usuario = ReturnType<typeof userEvent.setup>;
 
@@ -118,9 +146,21 @@ function configurarDetalleMock(): void {
     if (consulta.operacion === 'rpc' && consulta.tabla === 'next_global_id_seed') {
       return { data: 1001 };
     }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'previsualizar_eliminacion_plantacion') {
+      return { data: previewEliminacion };
+    }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'archivar_plantacion') {
+      archivadaEn = '2026-09-17T12:00:00Z';
+      return { data: { success: true } };
+    }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'desarchivar_plantacion') {
+      archivadaEn = null;
+      return { data: { success: true } };
+    }
     if (consulta.tabla === 'plantations') {
       const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
-      return { data: filtroId?.valor === FILA_PLANTACION.id ? FILA_PLANTACION : null };
+      const fila = { ...FILA_PLANTACION, archivada_en: archivadaEn };
+      return { data: filtroId?.valor === FILA_PLANTACION.id ? fila : null };
     }
     if (consulta.tabla === 'profiles') return { data: PERFILES };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
@@ -140,6 +180,8 @@ beforeEach(() => {
   totalArboles = 0;
   conIdArboles = 0;
   filasExport = [];
+  archivadaEn = null;
+  previewEliminacion = PREVIEW_SIN_DATOS;
   configurarDetalleMock();
 });
 
@@ -477,4 +519,263 @@ test('plegado, "Generar IDs" abre el modal de confirmación', async () => {
   expect(await screen.findByRole('dialog', { name: 'Generar IDs' })).toHaveTextContent(
     'Esta acción no se puede deshacer.',
   );
+});
+
+describe('archivado', () => {
+  async function abrirMasAcciones(usuario: Usuario) {
+    await usuario.click(await screen.findByRole('button', { name: 'Más acciones' }));
+    return screen.getByRole('menu', { name: 'Más acciones' });
+  }
+
+  test('archivar avisa qué pasa, llama al RPC y deja la plantación en solo lectura', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const menu = await abrirMasAcciones(usuario);
+    await usuario.click(within(menu).getByRole('menuitem', { name: 'Archivar plantación' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Archivar Mendoza' });
+    expect(within(dialogo).getByText(/deja de aparecer en los listados/)).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(/no los va a poder subir hasta que se desarchive/),
+    ).toBeInTheDocument();
+
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Archivar' }));
+
+    expect(await screen.findByText(/Plantación archivada: no aparece/)).toBeInTheDocument();
+    const rpc = consultas.find((consulta) => consulta.tabla === 'archivar_plantacion');
+    expect(rpc?.payload).toEqual({ p_id: 'plant-1' });
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeDisabled();
+  });
+
+  test('una archivada muestra badge y aviso, deshabilita Editar y ofrece desarchivar', async () => {
+    archivadaEn = '2026-09-01T12:00:00Z';
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    expect(await screen.findByText('Archivada')).toBeInTheDocument();
+    expect(screen.getByText(/Plantación archivada: no aparece/)).toBeInTheDocument();
+    const editar = screen.getByRole('button', { name: 'Editar' });
+    expect(editar).toBeDisabled();
+    expect(editar).toHaveAttribute('title', 'Plantación archivada: desarchivala para editarla');
+    // Exportar sigue disponible.
+    expect(screen.getByRole('button', { name: 'Exportar' })).toBeEnabled();
+
+    const menu = await abrirMasAcciones(usuario);
+    await usuario.click(within(menu).getByRole('menuitem', { name: 'Desarchivar plantación' }));
+    const dialogo = await screen.findByRole('dialog', { name: 'Desarchivar Mendoza' });
+    expect(
+      within(dialogo).getByText(/Su estado \(activa o finalizada\) no cambia/),
+    ).toBeInTheDocument();
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Desarchivar' }));
+
+    await waitFor(() => expect(screen.queryByText('Archivada')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Editar' })).toBeEnabled();
+  });
+
+  test('en una archivada la configuración queda deshabilitada', async () => {
+    archivadaEn = '2026-09-01T12:00:00Z';
+    renderRutasEn('/plantaciones/plant-1/configuracion');
+
+    await screen.findByRole('heading', { name: 'Técnicos asignados' });
+    expect(screen.getByRole('group')).toBeDisabled();
+  });
+
+  test('plegado, archivar va dentro del mismo «⋯» y Editar lleva el motivo', async () => {
+    simularAncho(ANCHO.tablet);
+    archivadaEn = '2026-09-01T12:00:00Z';
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+    await screen.findByRole('heading', { name: 'Mendoza' });
+
+    await usuario.click(screen.getByRole('button', { name: 'Acciones de la plantación' }));
+    const menu = screen.getByRole('menu', { name: 'Acciones de la plantación' });
+    expect(within(menu).getByRole('menuitem', { name: 'Editar plantación' })).toBeDisabled();
+    expect(within(menu).getByRole('menuitem', { name: 'Desarchivar plantación' })).toBeEnabled();
+  });
+});
+
+describe('eliminar', () => {
+  async function abrirEliminar(usuario: Usuario) {
+    await usuario.click(await screen.findByRole('button', { name: 'Más acciones' }));
+    const menu = screen.getByRole('menu', { name: 'Más acciones' });
+    await usuario.click(within(menu).getByRole('menuitem', { name: 'Eliminar plantación' }));
+    return screen.findByRole('dialog', { name: 'Eliminar Mendoza' });
+  }
+
+  test('sin datos: confirmación simple, invoca la función y vuelve al listado', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    expect(await within(dialogo).findByText(/no tiene grupos ni árboles/)).toBeInTheDocument();
+    expect(within(dialogo).queryByRole('textbox')).not.toBeInTheDocument();
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Eliminar' }));
+
+    expect(await within(dialogo).findByText('La plantación se eliminó.')).toBeInTheDocument();
+    expect(estadoMock.invocaciones).toEqual([
+      { funcion: 'admin-plantaciones', cuerpo: { accion: 'eliminar', plantacionId: 'plant-1' } },
+    ]);
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Listo' }));
+    expect(await screen.findByRole('heading', { name: 'Plantaciones' })).toBeInTheDocument();
+  });
+
+  test('cancelar no borra ni sale del detalle', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Cancelar' }));
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mendoza' })).toBeInTheDocument();
+    expect(estadoMock.invocaciones).toEqual([]);
+  });
+
+  test('admin con datos: no hay botón de borrar y ofrece archivar', async () => {
+    previewEliminacion = { ...PREVIEW_CON_DATOS, puede: false, motivo: 'REQUIERE_SUPERADMIN' };
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    expect(await within(dialogo).findByText(/solo un superadmin puede/)).toBeInTheDocument();
+    expect(within(dialogo).queryByRole('button', { name: 'Eliminar' })).not.toBeInTheDocument();
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Archivar' }));
+
+    expect(await screen.findByRole('dialog', { name: 'Archivar Mendoza' })).toBeInTheDocument();
+  });
+
+  test('superadmin con datos sin archivar: archivala primero', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    previewEliminacion = { ...PREVIEW_CON_DATOS, puede: false, motivo: 'REQUIERE_ARCHIVAR' };
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    expect(await within(dialogo).findByText(/primero archivala/)).toBeInTheDocument();
+    expect(within(dialogo).getByRole('button', { name: 'Archivar' })).toBeInTheDocument();
+  });
+
+  test('superadmin con datos archivada: conteos, nombre obligatorio y aviso de fotos pendientes', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    archivadaEn = '2026-09-01T12:00:00Z';
+    previewEliminacion = PREVIEW_CON_DATOS;
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    expect(
+      await within(dialogo).findByText(/30 árboles \(4 árboles con foto\)/),
+    ).toBeInTheDocument();
+    expect(within(dialogo).getByText(/sin sincronizar, se pierden/)).toBeInTheDocument();
+    const eliminar = within(dialogo).getByRole('button', { name: 'Eliminar' });
+    expect(eliminar).toBeDisabled();
+
+    const campo = within(dialogo).getByRole('textbox', {
+      name: 'Escribí «Mendoza» para confirmar',
+    });
+    await usuario.type(campo, 'Mendoz');
+    expect(eliminar).toBeDisabled();
+    await usuario.type(campo, 'a');
+    expect(eliminar).toBeEnabled();
+
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(eliminar);
+
+    expect(
+      await within(dialogo).findByText(/algunas fotos no se pudieron borrar/),
+    ).toBeInTheDocument();
+    expect(estadoMock.invocaciones[0].cuerpo).toEqual({
+      accion: 'eliminar',
+      plantacionId: 'plant-1',
+      nombreConfirmacion: 'Mendoza',
+    });
+  });
+
+  test('superadmin reintenta la limpieza de fotos desde el resultado (#523)', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+    const reintentar = await within(dialogo).findByRole('button', {
+      name: 'Reintentar limpieza de fotos',
+    });
+
+    estadoMock.respuestaInvoke = { data: { ok: true, limpiadas: 1, pendientes: 0 }, error: null };
+    await usuario.click(reintentar);
+
+    expect(
+      await within(dialogo).findByText('No quedan fotos pendientes de borrar.'),
+    ).toBeInTheDocument();
+    expect(estadoMock.invocaciones[1]).toEqual({
+      funcion: 'admin-plantaciones',
+      cuerpo: { accion: 'limpiarFotos', plantacionId: 'plant-1' },
+    });
+    expect(
+      within(dialogo).queryByRole('button', { name: 'Reintentar limpieza de fotos' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('si la limpieza falla, el error se muestra y se puede reintentar', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+    const reintentar = await within(dialogo).findByRole('button', {
+      name: 'Reintentar limpieza de fotos',
+    });
+
+    estadoMock.respuestaInvoke = { data: null, error: { message: 'fetch failed' } };
+    await usuario.click(reintentar);
+
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+      'No se pudo completar la operación',
+    );
+    expect(
+      within(dialogo).getByRole('button', { name: 'Reintentar limpieza de fotos' }),
+    ).toBeEnabled();
+  });
+
+  test('un admin ve el aviso de fotos pendientes pero no puede reintentar', async () => {
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    estadoMock.respuestaInvoke = { data: { ok: true, fotosPendientes: true }, error: null };
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+
+    expect(
+      await within(dialogo).findByText(/algunas fotos no se pudieron borrar/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialogo).queryByRole('button', { name: 'Reintentar limpieza de fotos' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('un rechazo del server se muestra y no cierra', async () => {
+    estadoMock.respuestaInvoke = {
+      data: null,
+      error: {
+        context: { json: async () => ({ ok: false, error: 'La plantación tiene datos cargados' }) },
+      },
+    };
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const dialogo = await abrirEliminar(usuario);
+    await usuario.click(await within(dialogo).findByRole('button', { name: 'Eliminar' }));
+
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
+      'La plantación tiene datos cargados',
+    );
+  });
 });

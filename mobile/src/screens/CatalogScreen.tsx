@@ -3,8 +3,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CatalogPlantationCard from '../components/CatalogPlantationCard';
 import FilterCards from '../components/FilterCards';
+import { filtrosDeEstado } from '../components/filtrosDeEstado';
 import DownloadProgressModal from '../components/DownloadProgressModal';
-import ConfirmModal from '../components/ConfirmModal';
 import CustomHeader from '../components/CustomHeader';
 import { colors, spacing } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
@@ -28,7 +28,6 @@ export default function CatalogScreen() {
     downloadProgress,
     downloadResults,
     includePhotos,
-    confirmProps,
     loadCatalog,
     toggleSelection,
     handleBatchDownload,
@@ -37,10 +36,7 @@ export default function CatalogScreen() {
     setIncludePhotos,
   } = useCatalog();
 
-  const filterConfigs = [
-    { key: 'activa', label: 'Activas', count: estadoCounts.activa, color: colors.stateActiva, icon: 'leaf-outline' },
-    { key: 'finalizada', label: 'Finalizadas', count: estadoCounts.finalizada, color: colors.stateFinalizada, icon: 'lock-closed-outline' },
-  ];
+  const filterConfigs = filtrosDeEstado(estadoCounts);
 
   const renderContent = () => {
     if (loadingCatalog) {
@@ -55,8 +51,8 @@ export default function CatalogScreen() {
       return (
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No se pudo cargar el catalogo</Text>
-          <Text style={styles.emptySubtext}>Verifica tu conexion y vuelve a intentarlo</Text>
+          <Text style={styles.emptyTitle}>No se pudo cargar el catálogo</Text>
+          <Text style={styles.emptySubtext}>Verificá tu conexión y volvé a intentarlo</Text>
           <Pressable style={styles.retryButton} onPress={loadCatalog}>
             <Text style={styles.retryText}>Reintentar carga</Text>
           </Pressable>
@@ -71,8 +67,8 @@ export default function CatalogScreen() {
           <Text style={styles.emptyTitle}>No hay plantaciones disponibles</Text>
           <Text style={styles.emptySubtext}>
             {isAdmin
-              ? 'Todas las plantaciones del servidor ya estan en tu dispositivo'
-              : 'No tenes plantaciones asignadas en el servidor'}
+              ? 'Todas las plantaciones del servidor ya están en tu dispositivo'
+              : 'No tenés plantaciones asignadas en el servidor'}
           </Text>
         </View>
       );
@@ -142,7 +138,6 @@ export default function CatalogScreen() {
         results={downloadResults}
         onDismiss={handleDismiss}
       />
-      <ConfirmModal {...confirmProps} />
     </ScreenContainer>
   );
 }

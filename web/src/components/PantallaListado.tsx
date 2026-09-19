@@ -43,9 +43,9 @@ export function PantallaListado(props: PantallaListadoProps) {
         densidad="compacta"
         left={<CabeceraSeccion raiz={RAIZ_LISTADOS} titulo={titulo} meta={meta} />}
         right={
-          <Button size="sm" onClick={accion.alActivar}>
+          <Button size="sm" className={styles.alta} onClick={accion.alActivar}>
             <Plus size={TAMANO_ICONO.md} aria-hidden />
-            {accion.etiqueta}
+            <span className={styles.altaEtiqueta}>{accion.etiqueta}</span>
           </Button>
         }
       />

@@ -10,10 +10,10 @@ import AdminPlantationModals from './AdminPlantationModals';
 import SyncProgressModal from './SyncProgressModal';
 import SyncConfirmModal from './SyncConfirmModal';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
-import type { Plantation } from './PlantationConfigCard';
+import type { Plantation } from '../types/plantation';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { SyncState } from '../hooks/useSync';
-import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress } from '../services/SyncService';
+import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
 
 type GlobalSyncProgress = { plantationName: string; done: number; total: number } | null;
 
@@ -60,6 +60,8 @@ type Props = {
   plantationFailureCount: number;
   pullSuccess: boolean | null;
   sinAcceso: boolean;
+  eliminada: boolean;
+  omitidas: PlantacionesOmitidas;
   authExpired: boolean;
   photoProgress: PhotoSyncProgress | null;
   phaseProgress: DownloadPhaseProgress | null;
@@ -118,6 +120,8 @@ export default function PlantacionesModals({
   plantationFailureCount,
   pullSuccess,
   sinAcceso,
+  eliminada,
+  omitidas,
   authExpired,
   photoProgress,
   phaseProgress,
@@ -164,7 +168,7 @@ export default function PlantacionesModals({
 
       <SyncConfirmModal
         visible={syncConfirmVisible}
-        title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantacion'}
+        title={syncConfirmMode === 'global' ? 'Sincronizar todo' : 'Sincronizar plantación'}
         plantacionId={syncConfirmMode === 'plantation' ? syncTargetPlantationId ?? undefined : undefined}
         onConfirm={handleSyncConfirm}
         onClose={closeSyncConfirm}
@@ -182,6 +186,8 @@ export default function PlantacionesModals({
         plantationFailureCount={plantationFailureCount}
         pullSuccess={pullSuccess}
         sinAcceso={sinAcceso}
+        eliminada={eliminada}
+        omitidas={omitidas}
         authExpired={authExpired}
         photoProgress={photoProgress}
         phaseProgress={phaseProgress}
@@ -198,8 +204,8 @@ export default function PlantacionesModals({
         visible={syncState === 'done' && authExpired}
         icon="lock-closed"
         iconColor={colors.secondary}
-        title="Sesion expirada"
-        message="Tu sesion expiro. Inicia sesion de nuevo para sincronizar."
+        title="Sesión expirada"
+        message="Tu sesión expiró. Iniciá sesión de nuevo para sincronizar."
         buttons={[
           { label: 'Cancelar', style: 'cancel', onPress: resetSync },
           { label: 'Aceptar', style: 'primary', onPress: handleSessionExpiredReauth },

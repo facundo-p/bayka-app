@@ -1,61 +1,13 @@
 .shell {
   display: flex;
   /* Alto de ventana: el scroll ocurre dentro de las cards, nunca en el
-     documento. El padding deja lugar al banner de entorno (#287; 0 en prod) y
-     entra en el height, que es border-box. */
+     documento. El padding deja lugar al banner de entorno (#287; 0 en prod) y a
+     la barra de navegación del teléfono (0 de 600px para arriba), y entra en el
+     height, que es border-box. */
   height: 100vh;
   overflow: hidden;
   padding-top: var(--alto-banner-entorno);
-}
-
-/* ─── Sidebar (papel cálido, fijo y sticky) ──────────────────────────── */
-
-.sidebar {
-  flex-shrink: 0;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4xl);
-  width: var(--sidebar-width);
-  background-color: var(--color-sidebar-bg);
-  border-right: var(--border-thin) solid var(--color-border);
-  padding: var(--space-4xl) var(--space-3xl);
-}
-
-.brand {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-md);
-}
-
-/* Logo carpincho azul de marca sobre el sidebar claro. */
-.logo {
-  height: 34px;
-  width: auto;
-  display: block;
-  /* `.brand` es flex column: sin esto el ítem se estira al ancho del contenedor
-     y el PNG (300x89) pierde la proporción. */
-  align-self: flex-start;
-}
-
-.brandOverline {
-  composes: overlineRegular from '../theme/utilidades.module.css';
-}
-
-.nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.navOverline {
-  composes: overlineRegular from '../theme/utilidades.module.css';
-  padding: 0 var(--space-xl) var(--space-md);
-}
-
-/* Empuja el footer del usuario al fondo del sidebar. */
-.footer {
-  margin-top: auto;
+  padding-bottom: var(--alto-nav-inferior);
 }
 
 /* ─── Área principal (columna acotada; scrollea por dentro) ──────────── */
@@ -105,65 +57,11 @@
   .shell {
     align-items: flex-start;
   }
-
-  .sidebar {
-    position: sticky;
-    top: var(--alto-banner-entorno);
-    height: calc(100vh - var(--alto-banner-entorno));
-  }
 }
-
-/* ─── Responsive: el sidebar pasa a barra superior horizontal ────────── */
 
 @media (max-width: 900px) {
   .shell {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .sidebar {
-    position: static;
-    height: auto;
-    width: 100%;
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-2xl);
-    border-right: none;
-    border-bottom: var(--border-thin) solid var(--color-border);
-    padding: var(--space-2xl) var(--space-3xl);
-  }
-
-  .nav {
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-xs);
-  }
-
-  .navOverline {
-    display: none;
-  }
-
-  /* En barra horizontal no hay "fondo" que empujar: el footer se va a la
-     derecha de su fila. */
-  .footer {
-    margin-top: 0;
-    margin-left: auto;
-  }
-}
-
-/* Barra de teléfono: los cinco bloques de la barra se apilan y comen 500px de
-   900 —el contenido arrancaba al 91% del alto, sin que nada se solape ni
-   desborde, así que ninguna métrica lo veía—. Se achican las separaciones y la
-   card de temporada se retira (ver SeasonCard.module.css). */
-@media (max-width: 600px) {
-  .sidebar {
-    gap: var(--space-lg);
-    padding: var(--space-lg) var(--page-pad-x);
-  }
-
-  .brand {
-    gap: 0;
   }
 }

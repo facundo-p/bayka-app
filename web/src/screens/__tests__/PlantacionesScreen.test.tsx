@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
+import { ANCHO, simularAncho } from '../../test/simularAncho';
 
 /** Aserciones de contenido de fila acotadas a la tabla: evita chocar con las
  *  <option> del Select de temporada, que repiten esos textos. */
@@ -193,4 +194,28 @@ test('ante un error muestra el mensaje con botón de reintento', async () => {
     'No se pudieron cargar las plantaciones.',
   );
   expect(screen.getByRole('button', { name: 'Reintentar' })).toBeInTheDocument();
+});
+
+test('en teléfono los filtros viven en una hoja y se aplican al toque', async () => {
+  simularAncho(ANCHO.movil);
+  configurarPlantacionesMock(FILAS, STATS);
+  const usuario = userEvent.setup();
+  renderRutasEn('/plantaciones');
+  // En teléfono la columna "Creada" no se muestra: la espera va por el lugar.
+  await screen.findByText('Mendoza');
+
+  // La fila queda en el buscador y el botón: los filtros no están a la vista.
+  expect(enMain().queryByRole('radio', { name: 'Finalizadas' })).not.toBeInTheDocument();
+  await usuario.click(enMain().getByRole('button', { name: 'Filtros' }));
+
+  const hoja = screen.getByRole('dialog', { name: 'Filtros de plantaciones' });
+  await usuario.click(within(hoja).getByRole('radio', { name: 'Finalizadas' }));
+
+  // El listado de atrás ya cambió: no hay borrador ni "Aplicar".
+  expect(enTabla().queryByText('Mendoza')).not.toBeInTheDocument();
+  expect(enTabla().getByText('Salta')).toBeInTheDocument();
+
+  await usuario.click(within(hoja).getByRole('button', { name: /^Ver / }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(enMain().getByRole('button', { name: 'Filtros 1' })).toBeInTheDocument();
 });

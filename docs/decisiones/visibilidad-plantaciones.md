@@ -75,3 +75,31 @@ Convertir `visible_in_app` en frontera de seguridad implicaría, como mínimo:
    `visible_in_app = true`; y `admin`/`superadmin` sin ese filtro.
 3. Coherencia en parcelas/grupos/árboles (no exponer hijos de una plantación oculta).
 4. Verificar que la sincronización mobile del admin siga trayendo las ocultas.
+
+## Actualización (2026-09-18, #382)
+
+La premisa del "hallazgo" quedó vieja: la policy `using (true)` no existe más.
+Desde la migración 033 (#310) la lectura de `plantations`, `parcelas`,
+`groups`, `trees`, `plantation_species` y `plantation_users` está scoped por
+membresía; la 034 (#379) suma a admin y superadmin de la misma organización, y
+la 045 exige que el perfil y la membresía estén activos. Policy vigente:
+
+```sql
+create policy "Members and org admins can read plantations"
+  on plantations for select
+  to authenticated
+  using (is_plantation_member(id) or (is_admin() and organizacion_id = current_organizacion_id()));
+```
+
+Es decir, la "consideración de seguridad mayor" de arriba ya está resuelta: hay
+aislamiento por organización y por asignación en la base.
+
+**La decisión se mantiene.** `visible_in_app` sigue siendo un toggle de UX y
+sigue sin policy propia. Lo que cambia es el argumento: hoy un técnico solo
+puede leer por API las plantaciones a las que está asignado, y si una de ellas
+está oculta la lee igual (su membresía se lo permite; la app se la saca del
+listado). Eso es aceptable porque una plantación oculta a la que fue asignado
+no es un dato ajeno: el ocultamiento descongestiona, no restringe.
+
+Si la decisión cambiara, el paso 1 de la lista anterior ya está hecho; quedan
+los pasos 2 a 4.

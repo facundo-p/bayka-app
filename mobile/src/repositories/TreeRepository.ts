@@ -8,10 +8,11 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
-import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
+import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isLocalUri } from '../utils/photoUri';
+import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { borrarFotosLocales } from '../services/PhotoService';
 
 export interface InsertTreeParams {
   grupoId: string;
@@ -63,7 +64,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
  */
 export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolean }> {
   const [maxResult] = await db
-    .select({ maxPos: max(trees.posicion), id: trees.id })
+    .select({ maxPos: max(trees.posicion), id: trees.id, fotoUrl: trees.fotoUrl })
     .from(trees)
     .where(eq(trees.groupId, grupoId));
 
@@ -80,6 +81,7 @@ export async function deleteLastTree(grupoId: string): Promise<{ deleted: boolea
       id: maxResult.id, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
     });
   });
+  borrarFotoLocal(maxResult.fotoUrl);
 
   await markGroupPendingSync(grupoId);
   notifyDataChanged();
@@ -154,13 +156,42 @@ export async function updateTreeGps(treeId: string, point: TreeGpsPoint): Promis
   notifyDataChanged();
 }
 
-/** Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea fotoSynced=false para forzar re-upload a Storage. */
+/**
+ * Borra el archivo de una foto que ya ninguna fila referencia (#490). Va después
+ * de que la transacción cierre bien: con rollback la fila seguiría apuntándolo.
+ */
+function borrarFotoLocal(fotoUrl: string | null | undefined): void {
+  if (fotoUrl) borrarFotosLocales([fotoUrl]);
+}
+
+/**
+ * Adjunta/reemplaza/borra la foto de un árbol (string vacío = borrar); resetea
+ * fotoSynced=false para forzar re-upload a Storage.
+ *
+ * Quitarla se anota para propagarlo (#498): el push del grupo no puede poner la
+ * foto en null en el server, y el pull la restauraría. Va en la misma transacción
+ * que el update, por lo mismo que los borrados de fila.
+ */
 export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<void> {
-  await db.update(trees)
-    .set({ fotoUrl: fotoUrl || null, fotoSynced: false })
-    .where(eq(trees.id, treeId));
-  const [treeRow] = await db.select({ grupoId: trees.groupId }).from(trees).where(eq(trees.id, treeId));
-  if (treeRow) await markGroupPendingSync(treeRow.grupoId);
+  const nueva = fotoUrl || null;
+  const [treeRow] = await db.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl })
+    .from(trees).where(eq(trees.id, treeId));
+  if (!treeRow) return;
+  const plantacionId = await plantacionDelGrupo(db, treeRow.grupoId);
+
+  await enTransaccion(async (tx) => {
+    await tx.update(trees)
+      .set({ fotoUrl: nueva, fotoSynced: false })
+      .where(eq(trees.id, treeId));
+    if (fotoUrl) {
+      await descartarFotoQuitada(tx, treeId);
+    } else if (plantacionId) {
+      await registrarBorrado(tx, { id: treeId, tipo: ENTIDAD_BORRADA.foto, grupoId: treeRow.grupoId, plantacionId });
+    }
+  });
+  // Mismo path: el archivo "anterior" es el que queda en la fila.
+  if (treeRow.fotoUrl !== nueva) borrarFotoLocal(treeRow.fotoUrl);
+  await markGroupPendingSync(treeRow.grupoId);
   notifyDataChanged();
 }
 
@@ -199,6 +230,16 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
   }>;
 }
 
+/** URIs de fotos guardadas en el device para los árboles de la plantación, sincronizadas o no. */
+export async function getLocalPhotoUrisForPlantation(plantacionId: string): Promise<string[]> {
+  const rows = await db
+    .select({ fotoUrl: trees.fotoUrl })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .where(and(eq(groups.plantacionId, plantacionId), sqlIsLocalUri(trees.fotoUrl)));
+  return rows.map((r) => r.fotoUrl).filter(isLocalUri);
+}
+
 /** Marks a tree's photo as synced (uploaded to Supabase Storage). */
 export async function markPhotoSynced(treeId: string): Promise<void> {
   await db.update(trees)
@@ -233,6 +274,7 @@ export async function deleteTreeAndRecalculate(
     throw new Error(`Grupo ${grupoId} inexistente: no se puede borrar su árbol.`);
   }
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
+  const [arbol] = await db.select({ fotoUrl: trees.fotoUrl }).from(trees).where(eq(trees.id, treeId));
 
   await enTransaccion(async (tx) => {
     await tx.delete(trees).where(eq(trees.id, treeId));
@@ -254,6 +296,7 @@ export async function deleteTreeAndRecalculate(
         .where(eq(trees.id, tree.id));
     }
   });
+  borrarFotoLocal(arbol?.fotoUrl);
 
   await markGroupPendingSync(grupoId);
   notifyDataChanged();

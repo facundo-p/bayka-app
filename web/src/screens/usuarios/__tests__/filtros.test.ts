@@ -17,6 +17,7 @@ function usuario(
   email: string | null,
   activo: boolean,
   plantacionesAsignadas = 0,
+  eliminadoEn: string | null = null,
 ): UsuarioConAsignaciones {
   return {
     id,
@@ -24,6 +25,7 @@ function usuario(
     rol,
     email,
     activo,
+    eliminadoEn,
     organizacionId: 'org-1',
     organizacionNombre: 'Bayka',
     plantacionesAsignadas,
@@ -36,6 +38,15 @@ const EQUIPO = [
   usuario('u2', 'Ana Quiroga', ROL.ADMIN, 'ana.quiroga@bayka.app', true),
   usuario('u3', 'Lucía Ferreyra', ROL.TECNICO, 'lucia@gmail.com', true, 4),
   usuario('u4', 'Tomás Aguirre', ROL.TECNICO, null, false),
+  usuario(
+    'u5',
+    'Elena Borrada',
+    ROL.TECNICO,
+    'eliminado+u5@bayka.invalid',
+    false,
+    0,
+    '2026-09-01T00:00:00Z',
+  ),
 ];
 
 const BASE: FiltrosUsuarios = {
@@ -56,6 +67,12 @@ test('la búsqueda matchea nombre y email, sin distinguir mayúsculas', () => {
   expect(ids({ busqueda: '  ' })).toHaveLength(4);
 });
 
+test('la búsqueda ignora tildes en el término y en el nombre (#438)', () => {
+  expect(ids({ busqueda: 'lucia' })).toEqual(['u3']);
+  expect(ids({ busqueda: 'tomas' })).toEqual(['u4']);
+  expect(ids({ busqueda: 'sófia' })).toEqual(['u1']);
+});
+
 test('"Admins" agrupa admin y superadmin; "Técnicos" solo técnicos', () => {
   expect(ids({ rol: FILTRO_ROL.admins })).toEqual(['u1', 'u2']);
   expect(ids({ rol: FILTRO_ROL.tecnicos })).toEqual(['u3', 'u4']);
@@ -64,6 +81,13 @@ test('"Admins" agrupa admin y superadmin; "Técnicos" solo técnicos', () => {
 test('el filtro de estado parte por activo/inactivo', () => {
   expect(ids({ estado: FILTRO_ESTADO.activos })).toEqual(['u1', 'u2', 'u3']);
   expect(ids({ estado: FILTRO_ESTADO.inactivos })).toEqual(['u4']);
+});
+
+test('los eliminados solo aparecen con su filtro', () => {
+  expect(ids({})).not.toContain('u5');
+  expect(ids({ busqueda: 'elena' })).toEqual([]);
+  expect(ids({ estado: FILTRO_ESTADO.eliminados })).toEqual(['u5']);
+  expect(ids({ estado: FILTRO_ESTADO.eliminados, rol: FILTRO_ROL.admins })).toEqual([]);
 });
 
 test('los tres filtros componen entre sí', () => {
@@ -90,7 +114,7 @@ test.each([
   expect(resumenPlantaciones(usuario('u9', 'Uno', ROL.TECNICO, null, true, asignadas))).toBe(texto);
 });
 
-test('la meta de la cabecera cuenta por rol y pluraliza', () => {
+test('la meta de la cabecera cuenta por rol, pluraliza y no cuenta eliminados', () => {
   expect(calcularMeta(EQUIPO)).toBe('4 personas · 1 superadmin · 1 admin · 2 técnicos');
   expect(calcularMeta([EQUIPO[0]])).toBe('1 persona · 1 superadmin · 0 admins · 0 técnicos');
   expect(contarActivas(EQUIPO)).toBe(3);

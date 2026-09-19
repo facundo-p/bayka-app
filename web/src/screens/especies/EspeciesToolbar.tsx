@@ -49,6 +49,9 @@ export function EspeciesToolbar({ controles, visibles }: EspeciesToolbarProps) {
           onChange={onBuscar}
         />
       }
+      tituloFiltros="Filtros de especies"
+      filtrosActivos={controles.activos}
+      onLimpiar={controles.limpiar}
       recuento={
         <>
           <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.especie} /> ·{' '}

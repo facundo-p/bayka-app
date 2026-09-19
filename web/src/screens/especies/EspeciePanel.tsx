@@ -35,9 +35,9 @@ import {
   type EspecieFormValues,
 } from '../../services/especieValidaciones';
 import styles from './Especies.module.css';
+import { mensajeDeError } from '../../lib/clasificarError';
 
-const MENSAJE_ERROR_GUARDADO =
-  'No se pudo guardar la especie. Revisá tu conexión y probá de nuevo.';
+const ACCION_GUARDAR = 'guardar la especie';
 const NOTA_CODIGO_EDICION =
   'El código es el identificador global de la especie: cambiarlo afecta su etiqueta y color en toda la app.';
 
@@ -125,7 +125,7 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
     },
     onError: (error) => {
       if (error instanceof CodigoEspecieDuplicadoError) setDuplicado(true);
-      else setErrorEnvio(MENSAJE_ERROR_GUARDADO);
+      else setErrorEnvio(mensajeDeError(error, ACCION_GUARDAR));
     },
   });
 

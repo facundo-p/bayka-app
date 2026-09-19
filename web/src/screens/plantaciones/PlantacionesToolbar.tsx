@@ -25,6 +25,7 @@ const OPCIONES_ESTADO: Array<Opcion<FiltroEstado>> = [
   { value: FILTRO_ESTADO.todas, label: 'Todas' },
   { value: FILTRO_ESTADO.activas, label: 'Activas' },
   { value: FILTRO_ESTADO.finalizadas, label: 'Finalizadas' },
+  { value: FILTRO_ESTADO.archivadas, label: 'Archivadas' },
 ];
 
 const OPCIONES_ORDEN: Array<Opcion<OrdenPlantacion>> = [
@@ -59,6 +60,9 @@ export function PlantacionesToolbar({ controles, todas, visibles }: Plantaciones
           onChange={onBuscar}
         />
       }
+      tituloFiltros="Filtros de plantaciones"
+      filtrosActivos={controles.activos}
+      onLimpiar={controles.limpiar}
       recuento={
         <>
           <RecuentoItem cantidad={visibles.length} sustantivo={SUSTANTIVO.plantacion} /> ·{' '}

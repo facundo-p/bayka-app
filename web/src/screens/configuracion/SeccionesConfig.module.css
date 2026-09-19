@@ -56,6 +56,15 @@
   color: var(--color-text-muted);
 }
 
+/* En teléfono el subtítulo es texto explicativo fijo y no entra nunca: cortado
+   no explica nada. Baja a su propio renglón y envuelve en vez de truncarse (#369). */
+@media (max-width: 600px) {
+  .cabecera .subtitulo {
+    flex-basis: 100%;
+    white-space: normal;
+  }
+}
+
 /* ─── Cards que toman el alto del layout y scrollean por dentro ──────── */
 /* El piso es lo que sostiene la lista cuando la card deja de tener un alto que
    repartir: sin él el checklist quedaba en una ventana de 36px. */
@@ -253,13 +262,7 @@
 }
 
 .avisoInfo {
-  margin: 0;
-  padding: var(--space-lg) var(--space-xl);
-  border: var(--border-thin) solid var(--color-warn-border);
-  border-radius: var(--radius-control);
-  background-color: var(--color-warn-bg);
-  font-size: var(--text-md);
-  color: var(--color-warn-fg);
+  composes: aviso from '../../components/Aviso.module.css';
 }
 
 .textoAyuda {

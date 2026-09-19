@@ -12,6 +12,7 @@ import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
+import { esFinalizada } from '../constants/estados';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 
 type Props = {
@@ -36,6 +37,8 @@ type Props = {
   // Visibilidad configurada desde la web; el badge "Oculta en app" solo lo ve
   // el admin (los técnicos directamente no reciben plantaciones ocultas).
   visibleInApp?: boolean;
+  /** Eliminada en el servidor (#478): queda solo para consulta o para eliminar del dispositivo. */
+  eliminadaEnServidor?: boolean;
   // Inline expansion props (all optional; expand row only renders when
   // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
@@ -127,7 +130,7 @@ function ActionStrip({
           onPress={(e) => { e?.stopPropagation?.(); onSync(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Sincronizar plantacion"
+          accessibilityLabel="Sincronizar plantación"
         >
           <Ionicons name="sync-outline" size={18} color={colors.primary} />
         </Pressable>
@@ -139,7 +142,7 @@ function ActionStrip({
           onPress={(e) => { e?.stopPropagation?.(); onGear(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Acciones de plantacion"
+          accessibilityLabel="Acciones de plantación"
         >
           <Ionicons name="settings-outline" size={18} color={colors.primary} />
         </Pressable>
@@ -151,13 +154,22 @@ function ActionStrip({
           onPress={(e) => { e?.stopPropagation?.(); onDelete(); }}
           hitSlop={8}
           style={({ pressed }) => [styles.stripSlot, pressed && { opacity: 0.5 }]}
-          accessibilityLabel="Eliminar plantacion del dispositivo"
+          accessibilityLabel="Eliminar plantación del dispositivo"
         >
           <Ionicons name="trash-outline" size={18} color={colors.textMuted} />
         </Pressable>
       ) : (
         <View style={styles.stripSlot} />
       )}
+    </View>
+  );
+}
+
+function EliminadaBadge() {
+  return (
+    <View style={styles.eliminadaBadge}>
+      <Ionicons name="trash-outline" size={iconSizes.badge} color={colors.stateEliminada} />
+      <Text style={styles.eliminadaBadgeText}>Eliminada en el servidor</Text>
     </View>
   );
 }
@@ -185,7 +197,7 @@ function StatsRow({
         <Ionicons name="cloud-done-outline" size={14} color={colors.statSynced} />
         <Text style={[styles.statValue, { color: colors.statSynced }]}>{syncedCount}</Text>
       </View>
-      {estado !== 'finalizada' && (
+      {!esFinalizada({ estado }) && (
         <View style={styles.statItem}>
           <Ionicons name="today-outline" size={14} color={colors.statToday} />
           <Text style={[styles.statValue, { color: colors.statToday }]}>{todayCount}</Text>
@@ -218,6 +230,7 @@ export default function PlantationCard({
   onSync,
   onGear,
   visibleInApp = true,
+  eliminadaEnServidor = false,
   parcelasCount = 0,
   expanded = false,
   onToggleExpanded,
@@ -226,7 +239,7 @@ export default function PlantationCard({
   onParcelaLongPress,
 }: Props) {
   const accentColor =
-    estado === 'finalizada' ? colors.stateFinalizada : colors.stateActiva;
+    esFinalizada({ estado }) ? colors.stateFinalizada : colors.stateActiva;
 
   return (
     <Pressable
@@ -248,6 +261,8 @@ export default function PlantationCard({
             <Text style={styles.title} numberOfLines={1}>{lugar}</Text>
           </View>
           <Text style={styles.subtitle}>{periodo}</Text>
+
+          {eliminadaEnServidor && <EliminadaBadge />}
 
           {isAdmin && !visibleInApp && (
             <View style={styles.hiddenBadge}>

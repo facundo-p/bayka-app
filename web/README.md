@@ -1,8 +1,9 @@
 # Bayka Gestión (web)
 
 Sitio web de gestión de plantaciones para perfiles **admin** y **superadmin**.
-Convive con la app de campo (`mobile/`) sobre el mismo proyecto Supabase: la web
-crea y configura plantaciones; la app registra árboles en campo.
+Convive con la app de campo (`mobile/`) sobre los mismos proyectos Supabase
+(staging y prod, uno por entorno): la web crea y configura plantaciones; la app
+registra árboles en campo.
 
 Las decisiones de diseño y alcance están en
 [ASUMPCIONES_Y_SUPUESTOS.md](./ASUMPCIONES_Y_SUPUESTOS.md).
@@ -18,13 +19,14 @@ Las decisiones de diseño y alcance están en
 
 ## Requisitos
 
-- **Node 22 LTS** (v25 está roto para builds en este repo).
+- **Node 22 LTS** (v25 está roto para builds en este repo). Fijado en `.nvmrc`;
+  Cloudflare Pages y `web-ci.yml` usan la misma versión.
 
 ## Setup
 
 ```bash
 cd web
-cp .env.example .env   # valores reales: mobile/eas.json (mismo Supabase que mobile)
+cp .env.example .env   # local = staging; valores en Bitwarden o en el perfil staging de mobile/eas.json
 npm install
 npm run dev
 ```

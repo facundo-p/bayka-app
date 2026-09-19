@@ -42,3 +42,63 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-heading);
 }
+
+/* Cuántos filtros están puestos, sobre el botón que abre la hoja. */
+.cuenta {
+  min-width: var(--space-3xl);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-pill);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--space-3xl);
+  text-align: center;
+}
+
+/* Los filtros adentro de la hoja: uno abajo del otro y a ancho completo. */
+.hoja {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2xl);
+}
+
+/* `stretch` y no `center`: el botón del recuento entra en dos líneas y con
+   altos libres queda 20px más alto que "Limpiar", que al lado lee como error de
+   estilo. */
+.pieHoja {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-lg);
+}
+
+.verResultados {
+  flex: 1;
+  height: auto;
+  padding-block: var(--space-md);
+}
+
+/*
+ * Un solo ítem flex: suelto, el `gap` del botón separa cada palabra del
+ * recuento y la frase se parte en pedazos. Y la cifra hereda el color: su azul
+ * de encabezado sobre el primario no se lee.
+ */
+.verRecuento {
+  text-wrap: balance;
+}
+
+.verRecuento .recuentoNumero {
+  color: inherit;
+}
+
+/* Con los filtros en la hoja, lo que queda en la fila es el buscador y un
+   botón: hay lugar de sobra para darles el alto táctil completo. El segmentado
+   entra por su rol —el selector de sección de Datos abre la fila— porque su
+   clase vive en otro módulo. */
+@media (max-width: 600px) {
+  .barra :is(input, select),
+  .barra [role='radio'] {
+    min-height: var(--control-height);
+  }
+}

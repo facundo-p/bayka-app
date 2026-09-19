@@ -30,6 +30,7 @@ const OPCIONES_ESTADO: Array<Opcion<FiltroEstado>> = [
   { value: FILTRO_ESTADO.todos, label: 'Estado: todos' },
   { value: FILTRO_ESTADO.activos, label: 'Activos' },
   { value: FILTRO_ESTADO.inactivos, label: 'Inactivos' },
+  { value: FILTRO_ESTADO.eliminados, label: 'Eliminados' },
 ];
 
 type ControlesUsuarios = ControlesFiltros<FiltrosBarraUsuarios>;
@@ -82,6 +83,9 @@ export function UsuariosToolbar({ controles, visibles }: UsuariosToolbarProps) {
           onChange={controles.onBuscar}
         />
       }
+      tituloFiltros="Filtros de usuarios"
+      filtrosActivos={controles.activos}
+      onLimpiar={controles.limpiar}
       recuento={<RecuentoUsuarios visibles={visibles} />}
     >
       <FiltrosUsuarios controles={controles} />

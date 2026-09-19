@@ -58,13 +58,17 @@ async function main() {
   }
 }
 
+/** Los anchos de una vista: todos, salvo que se acote a los suyos. */
+const anchosDe = (vista) => vista.anchos ?? ANCHOS;
+
 async function medirTodo(navegador) {
   const informe = {};
   for (const vista of VISTAS) {
-    for (const ancho of ANCHOS) {
+    const anchos = anchosDe(vista);
+    for (const ancho of anchos) {
       informe[claveCelda(vista.pantalla, ancho)] = await medirVista(navegador, vista, ancho);
     }
-    marcarColapsadas(informe, vista.pantalla, ANCHOS);
+    marcarColapsadas(informe, vista.pantalla, anchos);
   }
   return informe;
 }
@@ -92,10 +96,10 @@ function imprimirMatriz(informe) {
   imprimirLeyenda();
   const encabezado = ANCHOS.map((a) => String(a).padStart(ANCHO_COLUMNA_CELDA)).join('');
   console.log('pantalla'.padEnd(ANCHO_COLUMNA_PANTALLA) + encabezado);
-  for (const { pantalla } of VISTAS) {
-    const fila = ANCHOS.map((a) => celda(informe[claveCelda(pantalla, a)]));
+  for (const vista of VISTAS) {
+    const fila = ANCHOS.map((a) => celda(informe[claveCelda(vista.pantalla, a)]));
     console.log(
-      pantalla.padEnd(ANCHO_COLUMNA_PANTALLA) +
+      vista.pantalla.padEnd(ANCHO_COLUMNA_PANTALLA) +
         fila.map((c) => c.padStart(ANCHO_COLUMNA_CELDA)).join(''),
     );
   }
@@ -106,11 +110,13 @@ function imprimirLeyenda() {
   for (let i = 0; i < entradas.length; i += METRICAS_POR_RENGLON) {
     console.log(entradas.slice(i, i + METRICAS_POR_RENGLON).join('  '));
   }
+  console.log('–=la vista no se mide a ese ancho');
   console.log('');
 }
 
-/** Celda compacta para la matriz: `·` cuando está limpia. */
+/** Celda compacta para la matriz: `·` limpia, `–` no se mide a ese ancho. */
 function celda(f) {
+  if (!f) return '–';
   if (f.error) return 'ERR';
   const partes = METRICAS.filter((m) => f[m.campo] > 0).map((m) =>
     m.sinValor ? m.letra : `${m.letra}${f[m.campo]}`,

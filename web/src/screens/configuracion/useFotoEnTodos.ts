@@ -11,6 +11,6 @@ export function useFotoEnTodos(plantacion: Plantacion) {
     valorInicial: plantacion.photoCaptureAllTrees,
     guardar: actualizarFotoEnTodos,
     mensajeSinMigracion: MENSAJE_FOTO_SIN_MIGRACION,
-    mensajeError: 'No se pudo actualizar la foto en todos los botones.',
+    accion: 'actualizar la foto en todos los botones',
   });
 }

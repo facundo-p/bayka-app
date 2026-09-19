@@ -37,6 +37,12 @@
   padding: var(--space-3xl) var(--page-pad-x) var(--space-4xl);
 }
 
+/* Arriba del tab, sin estirarse: `.contenido` es columna flex. */
+.avisoArchivada {
+  flex: none;
+  margin-bottom: var(--space-2xl);
+}
+
 /* Apiladas, las tabs no entran en la ventana y `.shell` recorta lo que sobra
    —los pies de las últimas cards quedaban fuera de alcance—. El scroll vive
    acá, no en cada tab, y la barra de arriba queda fija. */
