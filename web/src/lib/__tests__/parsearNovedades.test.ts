@@ -25,6 +25,15 @@ describe('NOVEDADES.md real', () => {
   test('fuera de staging no se ve ninguna entrada en pruebas', () => {
     expect(entradasVisibles(entradas, false).filter(esEntradaEnPruebas)).toEqual([]);
   });
+
+  // La conversión de `/deploy` conserva los pasos y les quita el entorno (#580).
+  test('los pasos de las entradas publicadas no nombran el entorno de pruebas', () => {
+    const pasos = publicadas.flatMap((entrada) =>
+      entrada.items.flatMap((item) => item.pasos ?? []),
+    );
+
+    expect(pasos.filter((paso) => /de pruebas|Bayka TEST/i.test(paso))).toEqual([]);
+  });
 });
 
 describe('parsearNovedades: entradas publicadas', () => {
@@ -147,6 +156,24 @@ describe('parsearNovedades: sección en pruebas (#375)', () => {
     expect(enPruebas.items[0].pasos).toEqual([
       'Entrá a una plantación.',
       'Esperá ver: el detalle a la derecha, sin tapar el listado.',
+    ]);
+  });
+
+  test('una entrada publicada conserva sus pasos igual que la sección en pruebas (#580)', () => {
+    const crudo = [
+      '## Web 1.3.0 · 1 de octubre de 2026',
+      '',
+      '- **Publicado.** Con pasos.',
+      '  - En la web, abrí Plantaciones.',
+      '  - Esperá ver: el listado.',
+    ].join('\n');
+
+    expect(parsearNovedades(crudo)[0].items).toEqual([
+      {
+        titular: 'Publicado.',
+        detalle: 'Con pasos.',
+        pasos: ['En la web, abrí Plantaciones.', 'Esperá ver: el listado.'],
+      },
     ]);
   });
 

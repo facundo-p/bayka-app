@@ -243,8 +243,9 @@ Para no leer de más en un `·`:
   modales, ni popovers: con uno abierto O da ruido, porque fuera de una `raiz`
   acotada no tiene noción de capa flotante. De los `<details>`, solo los de
   `/novedades` se miden desplegados.
-- **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems en pruebas no hay
-  pasos que desplegar, y la fila mide lo mismo que `novedades`.
+- **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems con pasos, en
+  pruebas o publicados (#580), no hay nada que desplegar y la fila mide lo
+  mismo que `novedades`.
 - **O y R solo ven el primer viewport.** En los anchos chicos, donde el
   documento scrollea, queda afuera la mayor parte del contenido. L mira todo el
   texto.

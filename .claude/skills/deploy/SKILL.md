@@ -68,10 +68,15 @@ Release notes comerciales para usuarios y clientes: solo lo que el usuario nota
 ## Web X.Y.Z · <D de mes de AAAA>
 
 - **<Titular corto.>** <Qué puede hacer o qué mejora ve el usuario.>
+  - <Dónde, en la web o en la app, y qué hacer.>
+  - Esperá ver: <lo que confirma que funciona.>
 ```
 
 - H2 solo con las apps que participan, `·` como separador; mismo sufijo ` (2)`
   si hay dos releases el mismo día.
+- Los sub-bullets son los pasos que nacieron en la sección pendiente (abajo) y
+  sobreviven a la conversión (#580); la pantalla los muestra plegados bajo
+  "Cómo probarlo".
 - Si nada es visible, un único bullet: `- Mejoras internas y de estabilidad.`
   Tiene que ser un bullet: la pantalla ignora las líneas sueltas y mostraría la
   versión vacía.
@@ -116,7 +121,9 @@ Entre releases, `/novedades` acumula lo que entró a staging. `NOVEDADES.md`:
 - **Pasos**: sub-bullets indentados 2 espacios. El primero dice dónde probar
   (web de pruebas, o app **Bayka TEST**); el último arranca con "Esperá ver:".
   Wrap a 80 columnas con 4 espacios; una línea de continuación nunca empieza
-  con `- ` (se leería como otro paso).
+  con `- ` (se leería como otro paso). Sobreviven al release (#580): son el
+  "Cómo probarlo" de la entrada publicada, así que se escriben para el usuario,
+  no como checklist interna.
 - El título de NOVEDADES empieza con **"En pruebas"**: es contrato con
   `TITULO_EN_PRUEBAS` de `parsearNovedades.ts`. Los `### Web` / `### Mobile`
   sin versión no chocan con `release-tags.yml` (busca `### Web X.Y.Z` exacto)
@@ -135,8 +142,12 @@ pendiente y el próximo `/novedades` arranca de cero desde `origin/main`:
   `### Web` → `### Web X.Y.Z`; `### Mobile` → `### Mobile A.B.C (versionCode M)`.
   Se borran la marca y las apps sin cambios.
 - `NOVEDADES.md`: `## En pruebas · …` → `## Web X.Y.Z · <D de mes de AAAA>`. Se
-  borran la marca, las trazas `<!-- #N -->` y todos los sub-bullets de pasos. El
-  bullet de "nada visible" pasa al texto publicado: `- Mejoras internas y de estabilidad.`
+  borran la marca y las trazas `<!-- #N -->`. **Los pasos se conservan** (#580):
+  son los que se validaron en staging y siguen siendo el "Cómo probarlo" de
+  cada ítem. Solo se les quita la mención al entorno —`En la web de pruebas, …`
+  → `En la web, …`, `la app Bayka TEST` → `la app`— y las aclaraciones que solo
+  valen en pruebas (topes, datos de muestra). No se resumen ni se reescriben.
+  El bullet de "nada visible" pasa al texto publicado: `- Mejoras internas y de estabilidad.`
 
 ### Verificación
 
@@ -146,13 +157,14 @@ Antes de cada commit que toque estos archivos:
 (cd web && npx vitest run src/lib/__tests__/parsearNovedades.test.ts)
 ```
 
-Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, y la
-sección en pruebas, si está, una sola y arriba de todo. Después de una
-conversión, además, estos dos sin resultados:
+Lee el `NOVEDADES.md` real: toda entrada publicada con al menos un ítem, ningún
+paso publicado que nombre el entorno de pruebas, y la sección en pruebas, si
+está, una sola y arriba de todo. Después de una conversión, además, estos dos
+sin resultados:
 
 ```bash
 grep -nE 'sincronizado-hasta|<!-- #|^## (Sin publicar|En pruebas)' NOVEDADES.md CHANGELOG.md
-grep -n '^  - ' NOVEDADES.md
+grep -niE 'de pruebas|Bayka TEST' NOVEDADES.md
 ```
 
 ## 0. Precondiciones — abortar si falla alguna

@@ -1,10 +1,11 @@
 /**
  * Parser de NOVEDADES.md (el changelog público). Sin dependencias: solo entiende
  * el subconjunto de markdown que ese archivo usa como contrato — `## Título` por
- * versión, bullets `- **Titular.** Detalle` y, en la sección en pruebas (#375),
- * sub-bullets indentados con los pasos para probar cada ítem. Los comentarios
- * `<!-- … -->` de una línea no se muestran; el de `sincronizado-hasta:` es la
- * marca que deja el skill `/novedades`.
+ * versión, bullets `- **Titular.** Detalle` y sub-bullets indentados con los
+ * pasos para probar cada ítem, que nacen en la sección en pruebas (#375) y
+ * sobreviven al release (#580). Los comentarios `<!-- … -->` de una línea no se
+ * muestran; el de `sincronizado-hasta:` es la marca que deja el skill
+ * `/novedades`.
  *
  * Tolerante por diseño: nunca lanza. Una línea rara se ignora y un bold
  * malformado cae entero al detalle; la pantalla de novedades no puede romperse
