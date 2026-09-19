@@ -52,8 +52,8 @@
   color: var(--color-text-heading);
 }
 
-/* Pasos de cada ítem, plegados bajo "Cómo probarlo": nacen en la sección en
-   pruebas y quedan en la entrada publicada (#580). */
+/* Pasos de cada ítem, plegados bajo "Cómo probarlo": quedan en cada versión y
+   solo los ve el entorno de pruebas (#580, #582). */
 .pasos {
   margin-top: var(--space-md);
 }

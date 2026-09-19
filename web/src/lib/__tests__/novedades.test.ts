@@ -6,14 +6,30 @@ const EN_PRUEBAS: EntradaNovedades = {
   items: [],
   sincronizadoHasta: '5930146 #374',
 };
-const PUBLICADA: EntradaNovedades = { titulo: 'Web 1.1.0 · 21 de agosto de 2026', items: [] };
+const PUBLICADA: EntradaNovedades = {
+  titulo: 'Web 1.1.0 · 21 de agosto de 2026',
+  items: [
+    { titular: 'Con pasos.', detalle: 'Publicado.', pasos: ['Abrí la web.', 'Esperá ver: algo.'] },
+    { detalle: 'Sin pasos.' },
+  ],
+};
 
-test('en staging se ven todas las entradas, la sección en pruebas incluida', () => {
+test('en staging se ven todas las entradas con sus pasos, la sección en pruebas incluida', () => {
   expect(entradasVisibles([EN_PRUEBAS, PUBLICADA], true)).toEqual([EN_PRUEBAS, PUBLICADA]);
 });
 
 test('en producción la sección en pruebas no se muestra aunque exista', () => {
-  expect(entradasVisibles([EN_PRUEBAS, PUBLICADA], false)).toEqual([PUBLICADA]);
+  expect(entradasVisibles([EN_PRUEBAS, PUBLICADA], false)).toHaveLength(1);
+});
+
+// Los pasos quedan en el archivo para todas las versiones, pero son para quien prueba staging (#582).
+test('en producción las entradas publicadas se ven sin pasos', () => {
+  const [publicada] = entradasVisibles([EN_PRUEBAS, PUBLICADA], false);
+
+  expect(publicada).toEqual({
+    titulo: PUBLICADA.titulo,
+    items: [{ titular: 'Con pasos.', detalle: 'Publicado.' }, { detalle: 'Sin pasos.' }],
+  });
 });
 
 test('la firma suma la marca de sincronización: cada sync re-enciende el aviso', () => {

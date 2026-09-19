@@ -26,13 +26,12 @@ describe('NOVEDADES.md real', () => {
     expect(entradasVisibles(entradas, false).filter(esEntradaEnPruebas)).toEqual([]);
   });
 
-  // La conversión de `/deploy` conserva los pasos y les quita el entorno (#580).
-  test('los pasos de las entradas publicadas no nombran el entorno de pruebas', () => {
-    const pasos = publicadas.flatMap((entrada) =>
-      entrada.items.flatMap((item) => item.pasos ?? []),
-    );
+  // Los pasos quedan en el archivo para todas las versiones (#580) y solo los ve
+  // quien prueba staging (#582).
+  test('fuera de staging ningún ítem muestra pasos', () => {
+    const items = entradasVisibles(entradas, false).flatMap((entrada) => entrada.items);
 
-    expect(pasos.filter((paso) => /de pruebas|Bayka TEST/i.test(paso))).toEqual([]);
+    expect(items.filter((item) => item.pasos)).toEqual([]);
   });
 });
 

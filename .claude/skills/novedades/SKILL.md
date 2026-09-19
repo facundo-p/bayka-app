@@ -11,8 +11,8 @@ Quien prueba staging entra a `/novedades` en la web de pruebas
 (`https://staging.bayka-app.pages.dev/novedades`) y ve qué entró desde el último
 pase a producción, con los pasos para probar cada cosa. Este skill mantiene esa
 sección al día; `/deploy` después la convierte en la entrada de la versión (#375)
-conservando los pasos (#580): lo que se redacta acá queda publicado como el
-"Cómo probarlo" de cada ítem.
+conservando los pasos (#580, #582): en la web de pruebas cada versión sigue
+mostrando el "Cómo probarlo" de sus ítems; en producción no se ven.
 
 - `/novedades` — después de mergear uno o varios PRs a staging.
 - `/novedades dry-run` — propone sin tocar nada.
