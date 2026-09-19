@@ -25,7 +25,13 @@ vi.mock('../../lib/novedades', () => ({
     },
     {
       titulo: 'Web 1.1.0 · 21 de agosto de 2026',
-      items: [{ titular: 'Contraseña visible.', detalle: 'Ya publicado.' }],
+      items: [
+        {
+          titular: 'Contraseña visible.',
+          detalle: 'Ya publicado.',
+          pasos: ['Abrí el inicio de sesión.', 'Esperá ver: el botón con forma de ojo.'],
+        },
+      ],
     },
   ],
   FIRMA_NOVEDADES: 'v1.1.0 · 5930146 #374',
@@ -70,7 +76,7 @@ test('los pasos de prueba arrancan plegados y se abren con "Cómo probarlo"', as
   renderRutasEn('/novedades');
 
   const main = await esperarMain();
-  const resumen = await main.findByText('Cómo probarlo');
+  const [resumen] = await main.findAllByText('Cómo probarlo');
   const desplegable = resumen.closest('details');
   expect(desplegable).not.toHaveAttribute('open');
 
@@ -78,6 +84,19 @@ test('los pasos de prueba arrancan plegados y se abren con "Cómo probarlo"', as
 
   expect(desplegable).toHaveAttribute('open');
   expect(main.getByText('Entrá a una plantación.')).toBeVisible();
+});
+
+// Los pasos sobreviven al release (#580): la entrada publicada también los muestra.
+test('una entrada publicada también tiene su "Cómo probarlo"', async () => {
+  renderRutasEn('/novedades');
+
+  const main = await esperarMain();
+  const resumenes = await main.findAllByText('Cómo probarlo');
+  expect(resumenes).toHaveLength(2);
+
+  await userEvent.click(resumenes[1]);
+
+  expect(main.getByText('Abrí el inicio de sesión.')).toBeVisible();
 });
 
 test('entrar guarda la firma con la marca de sincronización', async () => {
