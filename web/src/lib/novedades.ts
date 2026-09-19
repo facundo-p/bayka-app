@@ -2,15 +2,22 @@ import novedadesRaw from '../../../NOVEDADES.md?raw';
 import { ES_ENTORNO_DE_PRUEBAS, VERSION_APP } from './entorno';
 import { esEntradaEnPruebas, parsearNovedades, type EntradaNovedades } from './parsearNovedades';
 
+function sinPasos(entrada: EntradaNovedades): EntradaNovedades {
+  return { ...entrada, items: entrada.items.map((item) => ({ ...item, pasos: undefined })) };
+}
+
 /**
- * En producción la sección en pruebas no debería existir (`/deploy` la convierte
- * en la entrada de la versión), pero si se colara no se muestra.
+ * Los pasos de prueba son para quien prueba staging: la web de pruebas los
+ * muestra en cada versión y producción ve solo titular y detalle (#582). La
+ * sección en pruebas tampoco debería existir en producción (`/deploy` la
+ * convierte en la entrada de la versión), pero si se colara no se muestra.
  */
 export function entradasVisibles(
   entradas: EntradaNovedades[],
   esEntornoDePruebas: boolean,
 ): EntradaNovedades[] {
-  return esEntornoDePruebas ? entradas : entradas.filter((entrada) => !esEntradaEnPruebas(entrada));
+  if (esEntornoDePruebas) return entradas;
+  return entradas.filter((entrada) => !esEntradaEnPruebas(entrada)).map(sinPasos);
 }
 
 /**

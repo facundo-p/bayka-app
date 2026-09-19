@@ -86,7 +86,7 @@ test('los pasos de prueba arrancan plegados y se abren con "Cómo probarlo"', as
   expect(main.getByText('Entrá a una plantación.')).toBeVisible();
 });
 
-// Los pasos sobreviven al release (#580): la entrada publicada también los muestra.
+// En el entorno de pruebas la entrada publicada también muestra sus pasos (#580, #582).
 test('una entrada publicada también tiene su "Cómo probarlo"', async () => {
   renderRutasEn('/novedades');
 
