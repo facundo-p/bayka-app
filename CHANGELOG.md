@@ -9,10 +9,9 @@ que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
 contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
-## Sin publicar
-<!-- sincronizado-hasta: eb2e461 #583 -->
+## 2026-09-19 · web 1.3.0 · mobile 1.2.0
 
-### Web
+### Web 1.3.0
 
 #### Agregado
 - Archivar y desarchivar plantaciones: filtro Archivadas, acciones en «⋯ Más acciones» con `ArchivadoModal`, badge y aviso en el detalle, Editar/Generar IDs/Configuración deshabilitados; búsqueda global, sugerencias y Temporada activa excluyen archivadas (#492)
@@ -33,7 +32,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - `borrarPlantacionHuerfana` borra de verdad vía `eliminar_plantacion`; antes era un no-op sin policy DELETE (#525)
 - Mensaje propio cuando `generate_tree_ids` rechaza una plantación archivada (#507)
 
-### Mobile
+### Mobile 1.2.0 (versionCode 3)
 
 #### Agregado
 - Plantación archivada: columna local `archivada_en` (drizzle 0022), `esArchivada`, banner "Plantación archivada", edición bloqueada, catálogo sin archivadas y `SYNC_ERROR.PLANTACION_ARCHIVADA` con mensaje propio (#492)
