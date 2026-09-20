@@ -5,14 +5,14 @@ import type { EspecieCatalogo, EspecieConUso } from '../../../queries/especieQue
 import {
   agregarEspecie,
   quitarEspecie,
-  sincronizarEspecies,
+  reemplazarEspecies,
 } from '../../../repositories/plantationSpeciesRepository';
 import { useSincronizarEspecies, useToggleEspecie } from '../useMutacionesEspecies';
 
 vi.mock('../../../repositories/plantationSpeciesRepository', () => ({
   agregarEspecie: vi.fn(),
   quitarEspecie: vi.fn(),
-  sincronizarEspecies: vi.fn(),
+  reemplazarEspecies: vi.fn(),
 }));
 
 const CATALOGO: EspecieCatalogo[] = [
@@ -84,12 +84,12 @@ test('quitar saca la especie al instante y la devuelve si falla', async () => {
 
 test('el lote masivo se aplica entero y vuelve entero si falla', async () => {
   const lote = diferida();
-  vi.mocked(sincronizarEspecies).mockReturnValue(lote.promesa);
-  const { result, queryClient } = montar(() => useSincronizarEspecies('plant-1', CATALOGO));
-
-  act(() =>
-    result.current.mutate({ idsHabilitar: ['sp-3'], idsQuitar: ['sp-2'], ordenInicial: 2 }),
+  vi.mocked(reemplazarEspecies).mockReturnValue(lote.promesa);
+  const { result, queryClient } = montar(() =>
+    useSincronizarEspecies('plant-1', CATALOGO, HABILITADAS),
   );
+
+  act(() => result.current.mutate({ idsHabilitar: ['sp-3'], idsQuitar: ['sp-2'] }));
   await waitFor(() =>
     expect(queryClient.getQueryData(CLAVE)).toEqual([
       HABILITADAS[0],
@@ -100,4 +100,19 @@ test('el lote masivo se aplica entero y vuelve entero si falla', async () => {
   act(() => lote.rechazar(new Error('sin permisos')));
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(queryClient.getQueryData(CLAVE)).toEqual(HABILITADAS);
+});
+
+test('el lote manda la lista final, no las altas y las bajas por separado', async () => {
+  vi.mocked(reemplazarEspecies).mockResolvedValue(undefined);
+  const { result } = montar(() => useSincronizarEspecies('plant-1', CATALOGO, HABILITADAS));
+
+  act(() => result.current.mutate({ idsHabilitar: ['sp-3'], idsQuitar: ['sp-2'] }));
+  await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+  // Lo que queda más lo que entra, con el orden que ve el usuario: la especie
+  // que se va no viaja, y la nueva toma el lugar que dejó libre.
+  expect(reemplazarEspecies).toHaveBeenCalledWith('plant-1', [
+    { speciesId: 'sp-1', ordenVisual: 0 },
+    { speciesId: 'sp-3', ordenVisual: 1 },
+  ]);
 });

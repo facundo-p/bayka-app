@@ -22,6 +22,9 @@ const CATALOGO = [
   { id: 'sp-1', codigo: 'QB', nombre: 'Quebracho', nombre_cientifico: 'Schinopsis balansae' },
 ];
 
+/** El RPC que reemplaza la lista de especies entera (049, #548). */
+const RPC_REEMPLAZO = 'reemplazar_especies_plantacion';
+
 const PERFILES = [
   { id: 'tec-1', nombre: 'Lucía Ferreyra', rol: 'tecnico', email: 'lucia@bayka.app', activo: true },
   { id: 'tec-2', nombre: 'Pablo Ríos', rol: 'tecnico', email: 'pablo@bayka.app', activo: true },
@@ -67,6 +70,15 @@ function resolverPlantationSpecies(consulta: ConsultaCapturada): RespuestaMock {
   return { data: asignadas.map(filaAsignadaConEmbed) };
 }
 
+/** El RPC del lote masivo: reemplaza la lista entera, como en la base (#548). */
+function resolverReemplazoEspecies(consulta: ConsultaCapturada): RespuestaMock {
+  const { p_especies: especies } = consulta.payload as {
+    p_especies: Array<{ species_id: string; orden_visual: number }>;
+  };
+  asignadas = especies.map(({ species_id, orden_visual }) => ({ species_id, orden_visual }));
+  return { data: { success: true } };
+}
+
 function filaTecnicoAsignado(userId: string) {
   const perfil = PERFILES.find((candidato) => candidato.id === userId);
   return {
@@ -100,6 +112,7 @@ function configurarMock(): void {
     consultas.push(consulta);
     if (consulta.tabla === 'plantations') return resolverPlantations(consulta);
     if (consulta.tabla === 'plantation_species') return resolverPlantationSpecies(consulta);
+    if (consulta.tabla === RPC_REEMPLAZO) return resolverReemplazoEspecies(consulta);
     if (consulta.tabla === 'trees') return resolverTrees(consulta);
     if (consulta.tabla === 'species') return { data: CATALOGO };
     if (consulta.tabla === 'plantation_users') return resolverPlantationUsers(consulta);
@@ -131,6 +144,10 @@ beforeEach(() => {
   consultas = [];
   configurarMock();
 });
+
+function reemplazosDeEspecies(): ConsultaCapturada[] {
+  return consultas.filter((consulta) => consulta.tabla === RPC_REEMPLAZO);
+}
 
 function consultasEspecies(operacion: ConsultaCapturada['operacion']): ConsultaCapturada[] {
   return consultas.filter(
@@ -207,11 +224,16 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
 
     await usuario.click(maestro);
 
-    await waitFor(() => expect(consultasEspecies('insert')).toHaveLength(1));
-    // Batch: un solo insert con la única faltante (sp-3).
-    expect(consultasEspecies('insert')[0].payload).toEqual([
-      { plantation_id: 'plant-1', species_id: 'sp-3', orden_visual: 2 },
-    ]);
+    await waitFor(() => expect(reemplazosDeEspecies()).toHaveLength(1));
+    // Un solo request con la lista final: las dos que ya estaban más sp-3.
+    expect(reemplazosDeEspecies()[0].payload).toEqual({
+      p_plantacion: 'plant-1',
+      p_especies: [
+        { species_id: 'sp-1', orden_visual: 0 },
+        { species_id: 'sp-2', orden_visual: 1 },
+        { species_id: 'sp-3', orden_visual: 2 },
+      ],
+    });
     expect(await screen.findByText(/^3 habilitadas ·/)).toBeInTheDocument();
     await waitFor(() => expect(maestro).toHaveAttribute('aria-checked', 'true'));
   });
@@ -229,10 +251,12 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
 
     await usuario.click(maestro);
 
-    await waitFor(() => expect(consultasEspecies('delete')).toHaveLength(1));
-    // sp-1 tiene árboles → no se borra; batch borra sp-2 y sp-3 con `in`.
-    const filtro = consultasEspecies('delete')[0].filtros.find((f) => f.columna === 'species_id');
-    expect(filtro).toEqual({ metodo: 'in', columna: 'species_id', valor: ['sp-2', 'sp-3'] });
+    await waitFor(() => expect(reemplazosDeEspecies()).toHaveLength(1));
+    // sp-1 tiene árboles → queda; la lista final es solo ella.
+    expect(reemplazosDeEspecies()[0].payload).toEqual({
+      p_plantacion: 'plant-1',
+      p_especies: [{ species_id: 'sp-1', orden_visual: 0 }],
+    });
     expect(
       await screen.findByText(/1 especie quedó habilitada porque tiene árboles/),
     ).toBeInTheDocument();
@@ -254,7 +278,7 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     await usuario.click(maestro);
 
     expect(await screen.findByText(/3 especies quedaron habilitadas/)).toBeInTheDocument();
-    expect(consultasEspecies('delete')).toHaveLength(0);
+    expect(reemplazosDeEspecies()).toHaveLength(0);
   });
 
   test('sin bloqueadas: desmarcar vacía el checklist sin aviso', async () => {
@@ -288,10 +312,16 @@ describe('checkbox maestro (marcar/desmarcar todas)', () => {
     expect(maestro).toHaveAttribute('aria-checked', 'false');
     await usuario.click(maestro);
 
-    await waitFor(() => expect(consultasEspecies('insert')).toHaveLength(1));
-    expect(consultasEspecies('insert')[0].payload).toEqual([
-      { plantation_id: 'plant-1', species_id: 'sp-3', orden_visual: 2 },
-    ]);
+    await waitFor(() => expect(reemplazosDeEspecies()).toHaveLength(1));
+    // Las no visibles no se tocan: viajan en la lista final tal como estaban.
+    expect(reemplazosDeEspecies()[0].payload).toEqual({
+      p_plantacion: 'plant-1',
+      p_especies: [
+        { species_id: 'sp-1', orden_visual: 0 },
+        { species_id: 'sp-2', orden_visual: 1 },
+        { species_id: 'sp-3', orden_visual: 2 },
+      ],
+    });
   });
 });
 
