@@ -99,7 +99,7 @@ export function showOptionsDialog(
   show: ShowFn,
   title: string,
   message: string,
-  options: Array<{ label: string; onPress: () => void; icon?: string }>,
+  options: { label: string; onPress: () => void; icon?: string }[],
 ) {
   show({
     icon: 'options-outline' as any,

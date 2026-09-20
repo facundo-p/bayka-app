@@ -317,7 +317,7 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 /** Reemplaza el species config en Supabase en una sola transacción y sincroniza a SQLite vía pullFromServer. */
 export async function saveSpeciesConfig(
   plantacionId: string,
-  items: Array<{ especieId: string; ordenVisual: number }>
+  items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
   await reemplazarConfiguracion({
     rpc: RPC_REEMPLAZAR_ESPECIES,
@@ -362,7 +362,7 @@ async function reemplazarEspeciesSinRpc(
 /** Reemplaza atómicamente el species config solo en SQLite local (sin Supabase) — para configuración offline. */
 export async function saveSpeciesConfigLocally(
   plantacionId: string,
-  items: Array<{ especieId: string; ordenVisual: number }>
+  items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
   await db.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
   if (items.length > 0) {

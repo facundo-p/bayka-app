@@ -68,7 +68,7 @@ describe('countPendingParcelas', () => {
 });
 
 describe('variantes agrupadas por plantación (dot por tarjeta)', () => {
-  function mockGroupByChain(rows: Array<{ plantacionId: string; cnt: number }>) {
+  function mockGroupByChain(rows: { plantacionId: string; cnt: number }[]) {
     const groupBy = jest.fn().mockResolvedValue(rows);
     const where = jest.fn().mockReturnValue({ groupBy });
     const innerJoin = jest.fn().mockReturnValue({ where });

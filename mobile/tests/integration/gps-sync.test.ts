@@ -20,14 +20,14 @@ const mockServerState: Record<string, Map<string, any>> = {
   plantation_users: new Map(),
   plantation_species: new Map(),
 };
-const mockRpcCalls: Array<{ fn: string; args: any }> = [];
+const mockRpcCalls: { fn: string; args: any }[] = [];
 
 const serverState = mockServerState;
 const rpcCalls = mockRpcCalls;
 
 jest.mock('../../src/supabase/client', () => {
   const makeQueryBuilder = (table: string) => {
-    const filters: Array<{ col: string; op: 'eq' | 'in'; value: any }> = [];
+    const filters: { col: string; op: 'eq' | 'in'; value: any }[] = [];
     const applyFilters = () => {
       const all = Array.from(mockServerState[table]?.values() ?? []);
       return all.filter((row) =>

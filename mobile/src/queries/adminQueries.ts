@@ -83,7 +83,7 @@ export async function getPlantationEstadoDeEdicion(
 /** Returns all technicians in the admin's organization. */
 export async function getAllTechnicians(
   organizacionId: string
-): Promise<Array<{ id: string; nombre: string }>> {
+): Promise<{ id: string; nombre: string }[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('id, nombre')
@@ -93,7 +93,7 @@ export async function getAllTechnicians(
     .eq('activo', true);
 
   if (error) throw error;
-  return (data ?? []) as Array<{ id: string; nombre: string }>;
+  return (data ?? []) as { id: string; nombre: string }[];
 }
 
 /** Técnico de la organización, con su asignación a una plantación. */
@@ -123,7 +123,7 @@ export async function getTechniciansWithAssignment(
 /** Especies configuradas para una plantación, ordenadas por ordenVisual. */
 export async function getPlantationSpeciesConfig(
   plantacionId: string
-): Promise<Array<{ especieId: string; nombre: string; codigo: string; ordenVisual: number }>> {
+): Promise<{ especieId: string; nombre: string; codigo: string; ordenVisual: number }[]> {
   const rows = await db
     .select({
       especieId: plantationSpecies.especieId,
@@ -141,7 +141,7 @@ export async function getPlantationSpeciesConfig(
 /** Técnicos asignados a una plantación; filtra por rol_en_plantacion='tecnico' porque los admins también son miembros y no deben aparecer acá (#67). */
 export async function getAssignedTechnicians(
   plantacionId: string
-): Promise<Array<{ userId: string; rolEnPlantacion: string; assignedAt: string }>> {
+): Promise<{ userId: string; rolEnPlantacion: string; assignedAt: string }[]> {
   return db
     .select({
       userId: plantationUsers.userId,
@@ -192,7 +192,7 @@ export async function hasTreesForSpecies(
 }
 
 /** Returns all species in the local catalog, ordered alphabetically. */
-export async function getAllSpecies(): Promise<Array<{ id: string; nombre: string; codigo: string }>> {
+export async function getAllSpecies(): Promise<{ id: string; nombre: string; codigo: string }[]> {
   return db
     .select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
     .from(species)

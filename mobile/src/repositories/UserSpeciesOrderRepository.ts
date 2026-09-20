@@ -11,7 +11,7 @@ import { notifyDataChanged } from '../database/liveQuery';
 export async function getUserSpeciesOrder(
   userId: string,
   plantacionId: string,
-): Promise<Array<{ especieId: string; ordenVisual: number }>> {
+): Promise<{ especieId: string; ordenVisual: number }[]> {
   return db
     .select({
       especieId: userSpeciesOrder.especieId,
@@ -31,7 +31,7 @@ export async function getUserSpeciesOrder(
 export async function saveUserSpeciesOrder(
   userId: string,
   plantacionId: string,
-  items: Array<{ especieId: string; ordenVisual: number }>,
+  items: { especieId: string; ordenVisual: number }[],
 ): Promise<void> {
   await db
     .delete(userSpeciesOrder)

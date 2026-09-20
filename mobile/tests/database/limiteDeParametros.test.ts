@@ -16,7 +16,7 @@ import { FILAS_POR_TRANSACCION } from '../../src/database/transaccion';
 /** Default de SQLite ≥ 3.32, que es el que bundlea expo-sqlite (3.50). */
 const MAX_PARAMETROS = 32766;
 
-const tablas = Object.entries(schema).filter(([, valor]) => is(valor, Table)) as Array<[string, Table]>;
+const tablas = Object.entries(schema).filter(([, valor]) => is(valor, Table)) as [string, Table][];
 
 describe('FILAS_POR_TRANSACCION vs SQLITE_MAX_VARIABLE_NUMBER', () => {
   it('encuentra las tablas del schema', () => {
