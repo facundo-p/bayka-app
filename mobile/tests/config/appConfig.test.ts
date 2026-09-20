@@ -48,7 +48,6 @@ function cargarAppConfig(entorno: Partial<Record<(typeof CLAVES_DE_ENTORNO)[numb
   }
   jest.resetModules();
   // app.config.js es CJS y lee el env al cargarse: hay que re-requerirlo por variante.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const definirConfig = require('../../app.config.js') as DefinirConfig;
   return definirConfig({ config: CONFIG_BASE });
 }
