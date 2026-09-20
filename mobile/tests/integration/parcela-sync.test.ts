@@ -27,13 +27,13 @@ const mockServerState: Record<string, Map<string, any>> = {
   plantation_users: new Map(),
   plantation_species: new Map(),
 };
-const mockCallOrder: Array<{ table: string; op: string }> = [];
-const mockConflictRules: Array<{
+const mockCallOrder: { table: string; op: string }[] = [];
+const mockConflictRules: {
   table: string;
   matchCols: string[];
   errorCols: string[];
   shape?: 'malformed';
-}> = [];
+}[] = [];
 
 // Reference these from outside (they are stable references — Map / Array).
 const serverState = mockServerState;
@@ -41,7 +41,7 @@ const callOrder = mockCallOrder;
 const conflictRules = mockConflictRules;
 
 jest.mock('../../src/supabase/client', () => {
-  const buildSelect = (table: string, filters: Array<{ col: string; op: 'eq' | 'in'; value: any }>) => {
+  const buildSelect = (table: string, filters: { col: string; op: 'eq' | 'in'; value: any }[]) => {
     const all = Array.from(mockServerState[table]?.values() ?? []);
     return all.filter(row =>
       filters.every(f =>
@@ -71,7 +71,7 @@ jest.mock('../../src/supabase/client', () => {
     return null;
   };
   const makeQueryBuilder = (table: string) => {
-    const filters: Array<{ col: string; op: 'eq' | 'in'; value: any }> = [];
+    const filters: { col: string; op: 'eq' | 'in'; value: any }[] = [];
     const builder: any = {
       select() { return builder; },
       eq(col: string, value: any) { filters.push({ col, op: 'eq', value }); return builder; },

@@ -28,7 +28,7 @@ describe('getSpeciesName', () => {
   });
 });
 
-function makeQueryable(result: Array<{ codigo: string }>) {
+function makeQueryable(result: { codigo: string }[]) {
   const where = jest.fn().mockResolvedValue(result);
   const from = jest.fn().mockReturnValue({ where });
   const select = jest.fn().mockReturnValue({ from });

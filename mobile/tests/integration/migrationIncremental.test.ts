@@ -28,7 +28,7 @@ const DEVICE_FLOOR_WHEN = journal.entries.find((e) => e.idx === DEVICE_FLOOR_IDX
 type MigrationRow = { hash: string; created_at: number };
 
 function columnNames(sqlite: InstanceType<typeof Database>, table: string): string[] {
-  return (sqlite.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>)
+  return (sqlite.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[])
     .map((row) => row.name);
 }
 

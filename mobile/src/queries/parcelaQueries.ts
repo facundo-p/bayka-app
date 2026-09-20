@@ -17,7 +17,7 @@ export type ParcelaWithStats = Parcela & ParcelaStats;
 /** Count groups per parcela for one plantation (excluding tombstoned parcelas). */
 export async function countGroupsByParcela(
   plantacionId: string,
-): Promise<Array<{ parcelaId: string; count: number }>> {
+): Promise<{ parcelaId: string; count: number }[]> {
   const rows = await db.select({ parcelaId: groups.parcelaId, cnt: count() })
     .from(groups)
     .innerJoin(parcelas, eq(groups.parcelaId, parcelas.id))
@@ -29,7 +29,7 @@ export async function countGroupsByParcela(
 /** Count trees per parcela for one plantation (same tombstone exclusion as above). */
 export async function countTreesByParcela(
   plantacionId: string,
-): Promise<Array<{ parcelaId: string; count: number }>> {
+): Promise<{ parcelaId: string; count: number }[]> {
   const rows = await db.select({ parcelaId: groups.parcelaId, cnt: count() })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
@@ -42,7 +42,7 @@ export async function countTreesByParcela(
 /** Count N/N (especieId NULL) trees per parcela for one plantation. */
 export async function countNNByParcela(
   plantacionId: string,
-): Promise<Array<{ parcelaId: string; count: number }>> {
+): Promise<{ parcelaId: string; count: number }[]> {
   const rows = await db.select({ parcelaId: groups.parcelaId, cnt: count() })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))

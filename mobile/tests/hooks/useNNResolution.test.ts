@@ -27,7 +27,7 @@ jest.mock('../../src/queries/plantationDetailQueries', () => ({
   getNNTreesForPlantation: jest.fn(),
 }));
 
-const mockPlantationNNTrees: Array<{
+const mockPlantationNNTrees: {
   id: string;
   posicion: number;
   subId: string;
@@ -37,7 +37,7 @@ const mockPlantationNNTrees: Array<{
   grupoCodigo?: string;
   conflictEspecieId?: string | null;
   conflictEspecieNombre?: string | null;
-}> = [];
+}[] = [];
 
 const mockEstadoDeEdicion: { estado: string; archivadaEn: string | null } = { estado: 'activa', archivadaEn: null };
 

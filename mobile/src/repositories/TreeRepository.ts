@@ -196,13 +196,13 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
 }
 
 /** Árboles con fotos locales sin subir a Storage en toda la plantación (cualquier grupo, sincronizado o no); filtra a file:// (rutas remotas del pull no se re-suben). */
-export async function getTreesWithPendingPhotos(plantacionId: string): Promise<Array<{
+export async function getTreesWithPendingPhotos(plantacionId: string): Promise<{
   id: string;
   fotoUrl: string;
   grupoId: string;
   plantacionId: string;
   parcelaId: string | null;
-}>> {
+}[]> {
   const rows = await db
     .select({
       id: trees.id,
@@ -221,13 +221,13 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
         eq(trees.fotoSynced, false)
       )
     );
-  return rows.filter(r => isLocalUri(r.fotoUrl)) as Array<{
+  return rows.filter(r => isLocalUri(r.fotoUrl)) as {
     id: string;
     fotoUrl: string;
     grupoId: string;
     plantacionId: string;
     parcelaId: string | null;
-  }>;
+  }[];
 }
 
 /** URIs de fotos guardadas en el device para los árboles de la plantación, sincronizadas o no. */

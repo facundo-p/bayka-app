@@ -113,7 +113,7 @@ async function subirFotoSinCortarLaTanda(tree: ArbolConFotoPendiente): Promise<T
 
 async function getRemoteTreesForPlantation(
   plantacionId: string
-): Promise<Array<{ id: string; fotoUrl: string; grupoId: string }>> {
+): Promise<{ id: string; fotoUrl: string; grupoId: string }[]> {
   const allGroups = await db
     .select({ id: groups.id })
     .from(groups)
@@ -127,7 +127,7 @@ async function getRemoteTreesForPlantation(
     .from(trees)
     .where(and(inArray(trees.groupId, sgIds), isNotNull(trees.fotoUrl)));
 
-  return allTrees.filter(t => isRemoteUri(t.fotoUrl)) as Array<{ id: string; fotoUrl: string; grupoId: string }>;
+  return allTrees.filter(t => isRemoteUri(t.fotoUrl)) as { id: string; fotoUrl: string; grupoId: string }[];
 }
 
 async function downloadSinglePhoto(

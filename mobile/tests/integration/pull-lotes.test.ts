@@ -25,7 +25,7 @@ const mockServerState: Record<string, Map<string, any>> = {
 const serverState = mockServerState;
 
 jest.mock('../../src/supabase/client', () => {
-  const filtrar = (tabla: string, filtros: Array<{ col: string; op: string; value: any }>) =>
+  const filtrar = (tabla: string, filtros: { col: string; op: string; value: any }[]) =>
     Array.from(mockServerState[tabla]?.values() ?? []).filter((fila: any) =>
       filtros.every((f) =>
         f.op === 'eq' ? fila[f.col] === f.value : Array.isArray(f.value) && f.value.includes(fila[f.col]),
@@ -33,7 +33,7 @@ jest.mock('../../src/supabase/client', () => {
     );
 
   const builder = (tabla: string) => {
-    const filtros: Array<{ col: string; op: string; value: any }> = [];
+    const filtros: { col: string; op: string; value: any }[] = [];
     const api: any = {
       select() { return api; },
       eq(col: string, value: any) { filtros.push({ col, op: 'eq', value }); return api; },

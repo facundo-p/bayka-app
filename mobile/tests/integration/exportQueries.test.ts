@@ -170,7 +170,7 @@ describe('exportQueries.getExportRows', () => {
     try {
       const columnas = propia.sqlite
         .prepare('PRAGMA table_info(groups)')
-        .all() as Array<{ name: string; notnull: number }>;
+        .all() as { name: string; notnull: number }[];
       expect(columnas.find((c) => c.name === 'parcela_id')?.notnull).toBe(1);
 
       const plantation = createTestPlantation({ lugar: 'Campo Invalido' });
