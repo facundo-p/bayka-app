@@ -414,6 +414,8 @@ describe('GPS — pull de config de plantación (fix del gap de metadata)', () =
     expect(row.periodo).toBe('2027');
     // Snapshot de server: sí se refresca (para que discard pueda revertir).
     expect(row.gpsCaptureFrequencyServer).toBe(3);
+    expect(row.lugarServer).toBe('Campo Server');
+    expect(row.periodoServer).toBe('2026');
   });
 
   test('server sin migración 023 (columnas ausentes) no rompe ni escribe NULL', async () => {

@@ -1,6 +1,6 @@
 // Integration test: pull preserves/adopts plantacion_id & global_id (Issue #55)
-// Runs against real better-sqlite3 + drizzle migrations (the unit pull suites are
-// describe.skip pending v1.1 cleanup, so this exercises the production upsert SQL).
+// Runs against real better-sqlite3 + drizzle migrations, so this exercises the
+// production upsert SQL.
 
 import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
 import {

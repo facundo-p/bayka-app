@@ -355,3 +355,65 @@ describe('plantación eliminada en el servidor (#478)', () => {
     expect(await eliminadaEnServidorEn()).not.toBeNull();
   });
 });
+
+/**
+ * El replace destructivo visto desde el otro lado: acá el usuario de la sesión
+ * conserva su membresía y el que desaparece del server es otro. Es el único
+ * caso de las suites apagadas de `pullFromServer.test.ts` que no estaba
+ * cubierto por ningún test de integración (#333).
+ */
+describe('pullFromServer: replace de membresías', () => {
+  beforeEach(async () => {
+    await mockTestDb.insert(plantationUsers).values({
+      plantationId: PLANTACION_ID,
+      userId: 'user-tecnico-2',
+      rolEnPlantacion: 'tecnico',
+      assignedAt: '2026-01-01T00:00:00',
+    });
+    // La sesión sigue siendo miembro: el pull corre y el server es autoridad.
+    serverState.plantation_users.set('pu-1', {
+      plantation_id: PLANTACION_ID,
+      user_id: 'user-tecnico-1',
+      rol_en_plantacion: 'tecnico',
+      assigned_at: '2026-01-01T00:00:00',
+    });
+  });
+
+  it('borra la membresía local que el server ya no tiene', async () => {
+    expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
+
+    const { membresias } = await filasLocales();
+    expect(membresias.map((fila) => fila.userId)).toEqual(['user-tecnico-1']);
+  });
+
+  it('actualiza el rol de la membresía que sigue', async () => {
+    serverState.plantation_users.set('pu-1', {
+      plantation_id: PLANTACION_ID,
+      user_id: 'user-tecnico-1',
+      rol_en_plantacion: 'admin',
+      assigned_at: '2026-01-01T00:00:00',
+    });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const { membresias } = await filasLocales();
+    expect(membresias).toEqual([
+      expect.objectContaining({ userId: 'user-tecnico-1', rolEnPlantacion: 'admin' }),
+    ]);
+  });
+
+  it('con la plantación pendiente de push no borra nada: el server no es autoridad', async () => {
+    await mockTestDb
+      .update(plantations)
+      .set({ pendingSync: true })
+      .where(eq(plantations.id, PLANTACION_ID));
+
+    await pullFromServer(PLANTACION_ID);
+
+    const { membresias } = await filasLocales();
+    expect(membresias.map((fila) => fila.userId).sort()).toEqual([
+      'user-tecnico-1',
+      'user-tecnico-2',
+    ]);
+  });
+});
