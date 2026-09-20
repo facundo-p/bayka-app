@@ -84,7 +84,9 @@ perfil inactivo: pierde su organización y la edición de su propio nombre, y
 sigue leyendo su propia fila, que es como se entera de la baja (050, #532),
 `29` las dos capas del cambio de rol —la policy sobre un perfil ajeno, el
 trigger sobre el propio— y parcelas sin DELETE físico, con el tombstone
-intacto (051, #314).
+intacto (051, #314), `30` reabrir una finalizada: solo superadmin activo de la
+organización, la archivada se rechaza, los grupos conservan su estado y el
+técnico vuelve a escribir (052, #470).
 
 ## Hallazgo fuera de alcance (no corregido)
 

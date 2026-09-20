@@ -8,6 +8,7 @@ import { listarFilasExportacion } from '../queries/exportacionQueries';
 import { idsGenerados } from '../queries/idsQueries';
 import { listarPuntosGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
+import type { Perfil } from '../repositories/profileRepository';
 import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
@@ -19,6 +20,7 @@ import {
   puedeArchivar,
 } from './plantaciones/archivado';
 import { ETIQUETA_MENU_ELIMINAR } from './plantaciones/eliminacion';
+import { ETIQUETA_MENU_REABRIR, esReabrible, puedeReabrir } from './plantaciones/reapertura';
 
 const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.';
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
@@ -82,6 +84,7 @@ export type AccionMenu = {
 export const MODAL_ADMINISTRACION = {
   archivado: 'archivado',
   eliminacion: 'eliminacion',
+  reapertura: 'reapertura',
 } as const;
 
 export type ModalAdministracion = (typeof MODAL_ADMINISTRACION)[keyof typeof MODAL_ADMINISTRACION];
@@ -103,11 +106,29 @@ function useIdsPendientes(plantationId: string): boolean {
   return generados === false;
 }
 
+/** Solo superadmin, y solo sobre una finalizada que no esté archivada (#470). */
+function accionReapertura(
+  plantacion: Plantacion,
+  perfil: Perfil | null,
+  abrir: (modal: ModalAdministracion) => void,
+): AccionMenu[] {
+  if (!puedeReabrir(perfil) || !esReabrible(plantacion)) return [];
+  return [
+    {
+      clave: MODAL_ADMINISTRACION.reapertura,
+      etiqueta: ETIQUETA_MENU_REABRIR,
+      onElegir: () => abrir(MODAL_ADMINISTRACION.reapertura),
+    },
+  ];
+}
+
 function accionesAdministracion(
   plantacion: Plantacion,
+  perfil: Perfil | null,
   abrir: (modal: ModalAdministracion) => void,
 ): AccionMenu[] {
   return [
+    ...accionReapertura(plantacion, perfil, abrir),
     {
       clave: MODAL_ADMINISTRACION.archivado,
       etiqueta: CONFIRMACION_ARCHIVADO[accionDeArchivado(plantacion)].etiquetaMenu,
@@ -127,7 +148,9 @@ function accionesAdministracion(
 function useAdministracionDetalle(plantacion: Plantacion) {
   const { perfil } = useAuth();
   const [modalAdministracion, setModal] = useState<ModalAdministracion | null>(null);
-  const administracion = puedeArchivar(perfil) ? accionesAdministracion(plantacion, setModal) : [];
+  const administracion = puedeArchivar(perfil)
+    ? accionesAdministracion(plantacion, perfil, setModal)
+    : [];
   const abrirArchivado = () => setModal(MODAL_ADMINISTRACION.archivado);
   const cerrarModal = () => setModal(null);
   return { administracion, modalAdministracion, abrirArchivado, cerrarModal };

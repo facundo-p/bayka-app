@@ -26,6 +26,7 @@ import { RUTA, rutaPlantacion, TAB_DETALLE } from '../lib/rutas';
 import { esArchivada, type Plantacion } from '../queries/plantationQueries';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ArchivadoModal } from './plantaciones/ArchivadoModal';
+import { ReaperturaModal } from './plantaciones/ReaperturaModal';
 import { EliminarPlantacionModal } from './plantaciones/EliminarPlantacionModal';
 import { GenerarIdsModal } from './plantaciones/GenerarIdsModal';
 import { MODAL_ADMINISTRACION, useAccionesDetalle, type AccionesProps } from './useAccionesDetalle';
@@ -211,6 +212,9 @@ interface ModalAdministracionDetalleProps {
 }
 
 function ModalAdministracionDetalle({ plantacion, detalle }: ModalAdministracionDetalleProps) {
+  if (detalle.modalAdministracion === MODAL_ADMINISTRACION.reapertura) {
+    return <ReaperturaModal plantacion={plantacion} onClose={detalle.cerrarModal} />;
+  }
   if (detalle.modalAdministracion === MODAL_ADMINISTRACION.archivado) {
     return <ArchivadoModal plantacion={plantacion} onClose={detalle.cerrarModal} />;
   }

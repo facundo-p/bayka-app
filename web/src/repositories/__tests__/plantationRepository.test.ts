@@ -8,6 +8,7 @@ import {
   actualizarFotoEnTodos,
   actualizarVisibilidad,
   archivarPlantacion,
+  reabrirPlantacion,
   crearPlantacion,
   desarchivarPlantacion,
   editarPlantacion,
@@ -266,6 +267,34 @@ describe('existePlantacion', () => {
     const consultas = capturarConsultas(() => ({ count: 0 }));
     expect(await existePlantacion('Mendoza', '2025-2026')).toBe(false);
     expect(consultas[0].filtros.map((filtro) => filtro.metodo)).toEqual(['ilike', 'ilike']);
+  });
+});
+
+describe('reabrirPlantacion', () => {
+  test('llama al RPC con el id', async () => {
+    const consultas = capturarConsultas(() => ({ data: { success: true } }));
+    await reabrirPlantacion('plant-1');
+    expect(consultas).toEqual([
+      expect.objectContaining({
+        tabla: 'reabrir_plantacion',
+        operacion: 'rpc',
+        payload: { p_id: 'plant-1' },
+      }),
+    ]);
+  });
+
+  test('cada rechazo del RPC dice qué hacer', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'NOT_AUTHORIZED' } }));
+    await expect(reabrirPlantacion('plant-1')).rejects.toThrow(/Solo un superadmin/);
+    capturarConsultas(() => ({ data: { success: false, error: 'PLANTACION_ARCHIVADA' } }));
+    await expect(reabrirPlantacion('plant-1')).rejects.toThrow(/desarchivala/);
+  });
+
+  test('un error de red o un código desconocido dan el mensaje genérico', async () => {
+    capturarConsultas(() => ({ error: { message: 'fetch failed' } }));
+    await expect(reabrirPlantacion('plant-1')).rejects.toThrow('No se pudo reabrir');
+    capturarConsultas(() => ({ data: { success: false, error: 'OTRO' } }));
+    await expect(reabrirPlantacion('plant-1')).rejects.toThrow('No se pudo reabrir');
   });
 });
 
