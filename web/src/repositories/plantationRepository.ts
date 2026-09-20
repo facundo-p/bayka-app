@@ -36,6 +36,7 @@ const RPC_PLANTACION = {
   archivar: 'archivar_plantacion',
   desarchivar: 'desarchivar_plantacion',
   eliminar: 'eliminar_plantacion',
+  reabrir: 'reabrir_plantacion',
 } as const;
 
 type Payload = Record<string, string | number | boolean>;
@@ -199,6 +200,32 @@ async function ejecutarArchivado(rpc: string, id: string): Promise<void> {
   const respuesta = data as RespuestaArchivado;
   if (!respuesta?.success) {
     throw new Error(MENSAJES_ERROR_ARCHIVADO[respuesta?.error ?? ''] ?? MENSAJE_ERROR_ARCHIVADO);
+  }
+}
+
+export const ERRORES_REAPERTURA = {
+  /** No es superadmin activo de la organización de la plantación. */
+  noAutorizado: 'NOT_AUTHORIZED',
+  archivada: 'PLANTACION_ARCHIVADA',
+} as const;
+
+export const MENSAJE_ERROR_REAPERTURA = 'No se pudo reabrir la plantación. Probá de nuevo.';
+
+const MENSAJES_ERROR_REAPERTURA: Record<string, string> = {
+  [ERRORES_REAPERTURA.noAutorizado]: 'Solo un superadmin puede reabrir una plantación.',
+  [ERRORES_REAPERTURA.archivada]: 'La plantación está archivada: desarchivala antes de reabrirla.',
+};
+
+/**
+ * Devuelve una plantación finalizada al estado activo (#470). Idempotente: si
+ * ya estaba activa no falla. Los grupos conservan su estado.
+ */
+export async function reabrirPlantacion(id: string): Promise<void> {
+  const { data, error } = await supabase.rpc(RPC_PLANTACION.reabrir, { p_id: id });
+  if (error) throw new Error(MENSAJE_ERROR_REAPERTURA);
+  const respuesta = data as RespuestaArchivado;
+  if (!respuesta?.success) {
+    throw new Error(MENSAJES_ERROR_REAPERTURA[respuesta?.error ?? ''] ?? MENSAJE_ERROR_REAPERTURA);
   }
 }
 
