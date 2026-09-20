@@ -26,8 +26,21 @@ const RECUENTO_RECORTADO =
 /** Tabla más ancha que su contenedor, que la scrollea: el arreglo que pide T. */
 const TABLA_ANCHA = 'table{min-width:1400px !important}';
 
-/** Pasos de /novedades que no parten: hace de URL larga sin tocar NOVEDADES.md. */
-const PASOS_SIN_PARTIR = `${claseModulo('pasosLista')} li{white-space:nowrap !important}`;
+/** Los pasos de /novedades, donde se inyecta el defecto de los casos L. */
+const SELECTOR_PASOS = `${claseModulo('pasosLista')} li`;
+
+/**
+ * Pasos de /novedades que no parten: hace de URL larga sin tocar NOVEDADES.md.
+ * El cuerpo agrandado deja el caso independiente del largo de los pasos: con el
+ * texto tal cual, un paso corto entra en la caja y el defecto nunca se produce.
+ */
+const PASOS_SIN_PARTIR = `${SELECTOR_PASOS}{white-space:nowrap !important;font-size:32px !important}`;
+
+/** Sin un paso en NOVEDADES.md no hay dónde inyectar: el caso no se ejercita (#573). */
+const REQUIERE_PASOS = {
+  selector: SELECTOR_PASOS,
+  motivo: 'NOVEDADES.md se quedó sin pasos',
+};
 
 const CASOS_AUTOTEST = [
   // La ruta y el ancho importan: hace falta una tabla que REALMENTE desborde su
@@ -231,6 +244,7 @@ const CASOS_AUTOTEST = [
     abrir: TODOS_LOS_DETAILS,
     // El caso de #416: el que scrollea es `.body`, así que ni S ni R lo ven.
     css: PASOS_SIN_PARTIR,
+    requiere: REQUIERE_PASOS,
     espera: (r) => r.nDesbordesLaterales > 0,
   },
   {
@@ -239,6 +253,7 @@ const CASOS_AUTOTEST = [
     ancho: 360,
     // Plegado no se pinta: sin la vista con los <details> abiertos no se mide.
     css: PASOS_SIN_PARTIR,
+    requiere: REQUIERE_PASOS,
     espera: (r) => r.nDesbordesLaterales === 0,
     esperaLimpio: (r) => r.nDesbordesLaterales === 0,
   },
@@ -326,7 +341,11 @@ export async function autotest(navegador) {
 }
 
 async function verificarCaso(navegador, caso) {
-  const [limpio, roto] = await medirConYSinDefecto(navegador, caso);
+  const [limpio, roto, inyectable] = await medirConYSinDefecto(navegador, caso);
+  if (!inyectable) {
+    console.log(`  ${marca(false)} ${caso.nombre} (${caso.requiere.motivo})`);
+    return false;
+  }
   const dispara = caso.espera(roto);
   // Por defecto se exige que el check calle sin el defecto; los casos que
   // verifican "esto NO debe contarse" lo redefinen.
@@ -338,14 +357,28 @@ async function verificarCaso(navegador, caso) {
 
 function medirConYSinDefecto(navegador, caso) {
   return conPagina(navegador, caso, async (pagina) => {
+    const inyectable = await hayDondeInyectar(pagina, caso);
     const limpio = await medirPagina(pagina);
     await pagina.addStyleTag({ content: caso.css });
     await pagina.waitForTimeout(ESPERA_ESTILO_MS);
     const roto = await medirPagina(pagina);
-    if (!caso.clasificar) return [limpio, roto];
+    if (!caso.clasificar) return [limpio, roto, inyectable];
     const rotoClasificado = clasificarSuelta(limpio, roto);
-    return [clasificarSuelta(limpio, limpio), rotoClasificado];
+    return [clasificarSuelta(limpio, limpio), rotoClasificado, inyectable];
   });
+}
+
+/**
+ * Un caso cuyo selector no matchea nada mide una pantalla intacta y reporta
+ * "NO dispara", que se lee como check muerto. Los casos que inyectan sobre
+ * contenido —y no sobre el chrome— declaran qué necesitan encontrar (#573).
+ */
+function hayDondeInyectar(pagina, caso) {
+  if (!caso.requiere) return true;
+  return pagina
+    .locator(caso.requiere.selector)
+    .count()
+    .then((n) => n > 0);
 }
 
 async function cobertura(navegador) {
