@@ -96,6 +96,30 @@ export async function getAllTechnicians(
   return (data ?? []) as Array<{ id: string; nombre: string }>;
 }
 
+/** Técnico de la organización, con su asignación a una plantación. */
+export type TecnicoAsignable = { id: string; nombre: string; assigned: boolean };
+
+/** Los asignados primero: el admin ve de una a quién ya tiene puesto. */
+export function porAsignadoYNombre(a: TecnicoAsignable, b: TecnicoAsignable): number {
+  if (a.assigned !== b.assigned) return a.assigned ? -1 : 1;
+  return a.nombre.localeCompare(b.nombre);
+}
+
+/** Los técnicos de la organización marcados con su asignación a la plantación. */
+export async function getTechniciansWithAssignment(
+  organizacionId: string,
+  plantacionId: string
+): Promise<TecnicoAsignable[]> {
+  const [todos, asignados] = await Promise.all([
+    getAllTechnicians(organizacionId),
+    getAssignedTechnicians(plantacionId),
+  ]);
+  const idsAsignados = new Set(asignados.map((asignado) => asignado.userId));
+  return todos
+    .map((tecnico) => ({ ...tecnico, assigned: idsAsignados.has(tecnico.id) }))
+    .sort(porAsignadoYNombre);
+}
+
 /** Especies configuradas para una plantación, ordenadas por ordenVisual. */
 export async function getPlantationSpeciesConfig(
   plantacionId: string
