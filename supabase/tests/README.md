@@ -79,7 +79,9 @@ plantación existente y no archivada, una finalizada las admite (047, #522),
 `26` escrituras de admin acotadas a la organización: plantaciones, especies y
 asignaciones con dos organizaciones, y perfiles vía superadmin (048, #543), `27`
 reemplazo de especies y técnicos por RPC: gates de rol, organización y estado,
-rechazos sin efectos y membresías admin e inactivas intactas (049, #544).
+rechazos sin efectos y membresías admin e inactivas intactas (049, #544), `28`
+perfil inactivo: pierde su organización y la edición de su propio nombre, y
+sigue leyendo su propia fila, que es como se entera de la baja (050, #532).
 
 ## Hallazgo fuera de alcance (no corregido)
 
