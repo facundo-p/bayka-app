@@ -1,6 +1,11 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
-import { agregarEspecie, moverEspecie, quitarEspecie } from '../plantationSpeciesRepository';
+import {
+  MENSAJE_ERROR_REEMPLAZO,
+  agregarEspecie,
+  quitarEspecie,
+  reemplazarEspecies,
+} from '../plantationSpeciesRepository';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -58,38 +63,48 @@ describe('quitarEspecie', () => {
   });
 });
 
-describe('moverEspecie', () => {
-  test('intercambia los orden_visual de la especie y su vecina (dos updates)', async () => {
-    const consultas = capturarConsultas(() => ({ data: null }));
-    await moverEspecie(
-      'plant-1',
-      { speciesId: 'sp-1', ordenVisual: 2 },
-      { speciesId: 'sp-2', ordenVisual: 3 },
-    );
+describe('reemplazarEspecies', () => {
+  test('manda la lista final entera al RPC, en un solo request', async () => {
+    const consultas = capturarConsultas(() => ({ data: { success: true } }));
+    await reemplazarEspecies('plant-1', [
+      { speciesId: 'sp-1', ordenVisual: 0 },
+      { speciesId: 'sp-2', ordenVisual: 1 },
+    ]);
 
-    expect(consultas).toHaveLength(2);
-    expect(consultas[0].operacion).toBe('update');
-    expect(consultas[0].payload).toEqual({ orden_visual: 3 });
-    expect(consultas[0].filtros).toEqual([
-      { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
-      { metodo: 'eq', columna: 'species_id', valor: 'sp-1' },
-    ]);
-    expect(consultas[1].payload).toEqual({ orden_visual: 2 });
-    expect(consultas[1].filtros).toEqual([
-      { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
-      { metodo: 'eq', columna: 'species_id', valor: 'sp-2' },
-    ]);
+    expect(consultas).toHaveLength(1);
+    expect(consultas[0].operacion).toBe('rpc');
+    expect(consultas[0].tabla).toBe('reemplazar_especies_plantacion');
+    expect(consultas[0].payload).toEqual({
+      p_plantacion: 'plant-1',
+      p_especies: [
+        { species_id: 'sp-1', orden_visual: 0 },
+        { species_id: 'sp-2', orden_visual: 1 },
+      ],
+    });
   });
 
-  test('si falla el primer update no ejecuta el segundo y propaga', async () => {
-    const consultas = capturarConsultas(() => ({ error: { message: 'falló el update' } }));
-    await expect(
-      moverEspecie(
-        'plant-1',
-        { speciesId: 'sp-1', ordenVisual: 0 },
-        { speciesId: 'sp-2', ordenVisual: 1 },
-      ),
-    ).rejects.toThrow('falló el update');
+  test('una lista vacía deja la plantación sin especies, también en un request', async () => {
+    const consultas = capturarConsultas(() => ({ data: { success: true } }));
+    await reemplazarEspecies('plant-1', []);
+
     expect(consultas).toHaveLength(1);
+    expect(consultas[0].payload).toEqual({ p_plantacion: 'plant-1', p_especies: [] });
+  });
+
+  test('traduce el rechazo del RPC', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'PLANTACION_ARCHIVADA' } }));
+    await expect(reemplazarEspecies('plant-1', [])).rejects.toThrow(
+      'La plantación está archivada: no admite cambios.',
+    );
+  });
+
+  test('un rechazo desconocido cae al mensaje genérico', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'LO_QUE_SEA' } }));
+    await expect(reemplazarEspecies('plant-1', [])).rejects.toThrow(MENSAJE_ERROR_REEMPLAZO);
+  });
+
+  test('propaga el error de Supabase', async () => {
+    capturarConsultas(() => ({ error: { message: 'falló la red' } }));
+    await expect(reemplazarEspecies('plant-1', [])).rejects.toThrow('falló la red');
   });
 });

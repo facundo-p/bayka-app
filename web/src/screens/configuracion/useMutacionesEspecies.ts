@@ -4,11 +4,11 @@ import type { EspecieCatalogo, EspecieConUso } from '../../queries/especieQuerie
 import {
   agregarEspecie,
   quitarEspecie,
-  sincronizarEspecies,
+  reemplazarEspecies,
 } from '../../repositories/plantationSpeciesRepository';
 
 export type Toggle = { speciesId: string; habilitar: boolean; orden: number };
-export type Sincronizacion = { idsHabilitar: string[]; idsQuitar: string[]; ordenInicial: number };
+export type Sincronizacion = { idsHabilitar: string[]; idsQuitar: string[] };
 
 /** El checklist refleja el cambio antes de que responda la base; si falla, vuelve atrás. */
 export function useMutacionOptimistaEspecies<V>(
@@ -73,12 +73,25 @@ export function useToggleEspecie(plantationId: string, catalogo: EspecieCatalogo
   );
 }
 
-/** Marcar o desmarcar todas: el lote de altas y bajas en una sola mutación. */
-export function useSincronizarEspecies(plantationId: string, catalogo: EspecieCatalogo[]) {
+/**
+ * Marcar o desmarcar todas: el lote de altas y bajas en una sola mutación, y en
+ * una sola transacción del server. Lo que se manda es la lista final —la misma
+ * que pinta el optimista—, así que ya no hace falta un `ordenInicial`: el orden
+ * sale de esa lista y no puede discrepar del que se ve en pantalla (#548).
+ */
+export function useSincronizarEspecies(
+  plantationId: string,
+  catalogo: EspecieCatalogo[],
+  especies: EspecieConUso[],
+) {
   return useMutacionOptimistaEspecies(
     plantationId,
-    ({ idsHabilitar, idsQuitar, ordenInicial }: Sincronizacion) =>
-      sincronizarEspecies(plantationId, idsHabilitar, idsQuitar, ordenInicial),
+    (lote: Sincronizacion) =>
+      reemplazarEspecies(plantationId, ordenFinal(aplicarSincronizacion(especies, catalogo, lote))),
     (previas, lote) => aplicarSincronizacion(previas, catalogo, lote),
   );
+}
+
+function ordenFinal(especies: EspecieConUso[]) {
+  return especies.map(({ id, ordenVisual }) => ({ speciesId: id, ordenVisual }));
 }

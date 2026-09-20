@@ -1,8 +1,27 @@
 import { errorDeSupabase } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 
-/** Par especie + orden visual, para los swaps de reordenamiento. */
+/** Par especie + orden visual: la unidad de la lista que se manda al server. */
 export type OrdenEspecie = { speciesId: string; ordenVisual: number };
+
+const RPC_REEMPLAZAR_ESPECIES = 'reemplazar_especies_plantacion';
+
+export const ERRORES_REEMPLAZO = {
+  /** No es admin/superadmin activo de la organización de la plantación. */
+  noAutorizado: 'NOT_AUTHORIZED',
+  archivada: 'PLANTACION_ARCHIVADA',
+  finalizada: 'PLANTACION_FINALIZADA',
+} as const;
+
+export const MENSAJE_ERROR_REEMPLAZO = 'No se pudo guardar el cambio de especies.';
+
+const MENSAJES_ERROR_REEMPLAZO: Record<string, string> = {
+  [ERRORES_REEMPLAZO.noAutorizado]: 'Tu usuario no tiene permisos para cambiar las especies.',
+  [ERRORES_REEMPLAZO.archivada]: 'La plantación está archivada: no admite cambios.',
+  [ERRORES_REEMPLAZO.finalizada]: 'La plantación está finalizada: no admite cambios.',
+};
+
+type RespuestaReemplazo = { success?: boolean; error?: string } | null;
 
 /** Habilita la especie en la plantación al final de la lista (orden dado). */
 export async function agregarEspecie(
@@ -32,56 +51,26 @@ export async function quitarEspecie(plantationId: string, speciesId: string): Pr
 }
 
 /**
- * Aplica una acción masiva del checklist en dos batches: inserta las especies
- * a habilitar (orden_visual correlativo desde `ordenInicial`) y borra las que
- * se quitan en un solo delete. La decisión de qué habilitar/quitar (respetando
- * las bloqueadas por árboles) vive en `speciesChecklistSelection`, no acá: este
- * repo solo ejecuta, sin leer estado ni lógica de negocio.
+ * Deja habilitadas exactamente las especies de `especies`, con su orden, en una
+ * sola transacción del server (RPC de 049). Antes eran un insert y un delete
+ * sueltos: si fallaba el segundo, quedaban habilitadas especies que el admin
+ * había quitado (#548). La decisión de qué habilitar o quitar —respetando las
+ * bloqueadas por árboles— vive en `speciesChecklistSelection`, no acá.
  */
-export async function sincronizarEspecies(
+export async function reemplazarEspecies(
   plantationId: string,
-  idsHabilitar: string[],
-  idsQuitar: string[],
-  ordenInicial: number,
+  especies: OrdenEspecie[],
 ): Promise<void> {
-  if (idsHabilitar.length > 0) {
-    const filas = idsHabilitar.map((speciesId, indice) => ({
-      plantation_id: plantationId,
+  const { data, error } = await supabase.rpc(RPC_REEMPLAZAR_ESPECIES, {
+    p_plantacion: plantationId,
+    p_especies: especies.map(({ speciesId, ordenVisual }) => ({
       species_id: speciesId,
-      orden_visual: ordenInicial + indice,
-    }));
-    const { error } = await supabase.from('plantation_species').insert(filas);
-    if (error) throw errorDeSupabase(error);
-  }
-  if (idsQuitar.length > 0) {
-    const { error } = await supabase
-      .from('plantation_species')
-      .delete()
-      .eq('plantation_id', plantationId)
-      .in('species_id', idsQuitar);
-    if (error) throw errorDeSupabase(error);
-  }
-}
-
-async function actualizarOrden(
-  plantationId: string,
-  speciesId: string,
-  ordenVisual: number,
-): Promise<void> {
-  const { error } = await supabase
-    .from('plantation_species')
-    .update({ orden_visual: ordenVisual })
-    .eq('plantation_id', plantationId)
-    .eq('species_id', speciesId);
+      orden_visual: ordenVisual,
+    })),
+  });
   if (error) throw errorDeSupabase(error);
-}
-
-/** Sube/baja la especie intercambiando su orden_visual con el de la vecina. */
-export async function moverEspecie(
-  plantationId: string,
-  especie: OrdenEspecie,
-  vecina: OrdenEspecie,
-): Promise<void> {
-  await actualizarOrden(plantationId, especie.speciesId, vecina.ordenVisual);
-  await actualizarOrden(plantationId, vecina.speciesId, especie.ordenVisual);
+  const respuesta = data as RespuestaReemplazo;
+  if (!respuesta?.success) {
+    throw new Error(MENSAJES_ERROR_REEMPLAZO[respuesta?.error ?? ''] ?? MENSAJE_ERROR_REEMPLAZO);
+  }
 }
