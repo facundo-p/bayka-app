@@ -8,6 +8,36 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > web, y cambiarlo la rompe. Está en `.claude/skills/deploy/SKILL.md`
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
+## En pruebas · próxima versión
+<!-- sincronizado-hasta: 77f9778 #594 -->
+
+- **Reabrí una plantación finalizada.** Si una plantación se finalizó y quedó
+  trabajo sin subir en algún celular, un superadmin puede volver a activarla
+  desde «⋯ Más acciones»: la app acepta registros de nuevo y lo pendiente se
+  puede sincronizar. Los grupos que ya estaban finalizados siguen así. <!-- #594 -->
+  - En la web de pruebas, como superadmin, abrí una plantación finalizada →
+    «⋯ Más acciones» → "Reabrir plantación".
+  - Confirmá y mirá el detalle y el listado.
+  - Esperá ver: la confirmación avisa que los grupos finalizados siguen
+    finalizados; al confirmar la plantación queda activa y Editar y
+    Configuración vuelven a estar disponibles.
+- **La configuración de especies se guarda entera o no se guarda.** Al aplicar
+  varios cambios juntos ya no puede quedar a medias —una especie que quitaste,
+  todavía habilitada— ni guardarse un orden distinto del que muestra la
+  pantalla. <!-- #589 -->
+  - En la web de pruebas, abrí una plantación → Configuración → Especies.
+  - En el mismo lote quitá una especie habilitada, agregá dos del catálogo y
+    aplicá.
+  - Esperá ver: al recargar quedan exactamente las especies que elegiste, en el
+    mismo orden en que las viste en pantalla.
+- **Asignar técnicos sin señal te avisa en vez de quedarse cargando.** En la
+  app, la pantalla de asignar técnicos ya no se queda en "Cargando técnicos…"
+  para siempre cuando no hay conexión. <!-- #593 -->
+  - En la app Bayka TEST, entrá una vez con conexión para que quede guardada tu
+    organización.
+  - Poné el celular en modo avión y abrí una plantación → "Asignar técnicos".
+  - Esperá ver: el aviso de que no hay conexión, en vez del cargando infinito.
+
 ## Web 1.3.0 · Mobile 1.2.0 · 19 de septiembre de 2026
 
 - **Archivá plantaciones sin borrarlas.** Desde «⋯ Más acciones» podés archivar

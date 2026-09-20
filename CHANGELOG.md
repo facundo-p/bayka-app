@@ -9,6 +9,30 @@ que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
 contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
+## Sin publicar
+<!-- sincronizado-hasta: 77f9778 #594 -->
+
+### Web
+
+#### Agregado
+- Reabrir una plantación finalizada: acción "Reabrir plantación" en «⋯ Más acciones» del detalle, módulo puro `reapertura.ts` (`puedeReabrir`/`esReabrible`/`CONFIRMACION_REAPERTURA`) y `ReaperturaModal` sobre `ConfirmarModal`; se ofrece solo a superadmin activo, con la plantación finalizada y sin archivar (#594)
+
+#### Corregido
+- La acción masiva de especies manda la lista final a `reemplazar_especies_plantacion` (DELETE + INSERT en una transacción) en vez de insert y delete sueltos; se va `ordenInicial`, que numeraba las altas distinto del optimista, y `moverEspecie`, sin callers (#589)
+
+### Mobile
+
+#### Corregido
+- `useAssignTechnicians` toma la organización de `useProfileData` (cacheada en SecureStore) en vez de consultar Supabase: sin conexión la pantalla muestra el aviso de red en lugar de quedarse en "Cargando técnicos…"; el cruce catálogo + asignados pasa a `getTechniciansWithAssignment` con el comparador puro `porAsignadoYNombre` (#593)
+
+### Otros
+- Migración 050 `perfil_inactivo_sin_organizacion`: `current_organizacion_id()` devuelve NULL con el perfil inactivo y `Users can update own profile` pasa a `TO authenticated` con `USING`/`WITH CHECK` exigiendo `activo`; `Users can read own profile` se deja intacta a propósito (#587)
+- Migración 051 `gates_con_helpers`: `generate_tree_ids` usa `puede_archivar_plantacion()`, `protect_profile_fields` usa `is_superadmin()` y se elimina la policy `Plantation members can delete parcelas`, sin consumidores (#597)
+- Migración 052 `reabrir_plantacion`: RPC con gate de superadmin activo, validación del estado previo, scope de organización y `FOR UPDATE`; rechaza archivadas con `PLANTACION_ARCHIVADA` (#594)
+- Ensayo de restore de un backup, scripteado y probado: `scripts/restore-backup.sh` y `docs/backup-restore.md` (#596)
+- El caso L de la auditoría responsive avisa cuando no hay pasos donde inyectar (#586)
+- Mantenimiento de tests y lint: se van las suites apagadas del pull y entra la que faltaba, el guard de safe-area nombra quién aplica el inset, el idioma de Jest deja de disparar warnings y `Array<T>` pasa a `T[]` (#592, #590, #600, #602)
+
 ## 2026-09-19 · web 1.3.0 · mobile 1.2.0
 
 ### Web 1.3.0
