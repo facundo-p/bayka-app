@@ -195,7 +195,6 @@ describe('exportQueries.getExportRows', () => {
       if (error === null) {
         // Diagnóstico del flake: ¿qué quedó insertado realmente?
         const filas = propia.sqlite.prepare('SELECT id, parcela_id FROM groups').all();
-        // eslint-disable-next-line no-console
         console.error('DIAG insert-null-resuelto:', JSON.stringify(filas));
       }
       expect(String(error)).toMatch(/NOT NULL/);

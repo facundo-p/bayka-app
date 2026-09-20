@@ -143,7 +143,6 @@ describe('createPlantationWithDefaultParcela — local-first (offline)', () => {
     jest.doMock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
     jest.doMock('../../src/supabase/client', () => ({ supabase: { from: jest.fn() }, isSupabaseConfigured: false }));
     jest.doMock('../../src/services/SyncService', () => ({ pullFromServer: jest.fn() }));
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('../../src/services/PlantationCreationService');
     const r = await mod.createPlantationWithDefaultParcela(baseParams);
     expect(r.id).toBeTruthy();

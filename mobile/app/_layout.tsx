@@ -42,9 +42,7 @@ export default function RootLayout() {
     Poppins_600SemiBold,
     Poppins_700Bold,
     // Linux Biolinum — brand heading font (loaded from local assets)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     LinBiolinum_R: require('../assets/fonts/LinBiolinum_R.otf'),
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     LinBiolinum_RB: require('../assets/fonts/LinBiolinum_RB.otf'),
   });
 

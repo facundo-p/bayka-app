@@ -63,4 +63,15 @@ module.exports = defineConfig([
     files: ["src/**/*.ts", "src/**/*.tsx"],
     rules: { "no-restricted-syntax": ["error", SQLSTATE_LITERAL, ...TRANSACCION_SINCRONA] },
   },
+  {
+    // El idioma de Jest, no un descuido: `jest.mock()` se hoistea por encima de
+    // los imports, así que va escrito arriba de ellos, y los mocks manuales se
+    // cargan con `require()`. Con las dos reglas prendidas, los tests aportaban
+    // 253 de los 352 warnings del repo y tapaban los que sí importan (#599).
+    files: ["tests/**"],
+    rules: {
+      "import/first": "off",
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
 ]);
