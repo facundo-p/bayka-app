@@ -10,7 +10,7 @@ contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
 ## Sin publicar
-<!-- sincronizado-hasta: 77f9778 #594 -->
+<!-- sincronizado-hasta: e209e0a #605 -->
 
 ### Web
 
@@ -29,7 +29,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 - Migración 050 `perfil_inactivo_sin_organizacion`: `current_organizacion_id()` devuelve NULL con el perfil inactivo y `Users can update own profile` pasa a `TO authenticated` con `USING`/`WITH CHECK` exigiendo `activo`; `Users can read own profile` se deja intacta a propósito (#587)
 - Migración 051 `gates_con_helpers`: `generate_tree_ids` usa `puede_archivar_plantacion()`, `protect_profile_fields` usa `is_superadmin()` y se elimina la policy `Plantation members can delete parcelas`, sin consumidores (#597)
 - Migración 052 `reabrir_plantacion`: RPC con gate de superadmin activo, validación del estado previo, scope de organización y `FOR UPDATE`; rechaza archivadas con `PLANTACION_ARCHIVADA` (#594)
-- Ensayo de restore de un backup, scripteado y probado: `scripts/restore-backup.sh` y `docs/backup-restore.md` (#596)
+- Ensayo de restore scripteado y verificado sobre un backup real de producción: `scripts/restore-backup.sh` más `docs/backup-restore.md`, que documenta qué no viaja en el dump —archivos de Storage y `supabase_migrations`— y cómo comparar un dump contra baseline + migraciones sin conectarse a prod (#596, #605)
 - El caso L de la auditoría responsive avisa cuando no hay pasos donde inyectar (#586)
 - Mantenimiento de tests y lint: se van las suites apagadas del pull y entra la que faltaba, el guard de safe-area nombra quién aplica el inset, el idioma de Jest deja de disparar warnings y `Array<T>` pasa a `T[]` (#592, #590, #600, #602)
 

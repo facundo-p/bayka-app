@@ -9,7 +9,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · próxima versión
-<!-- sincronizado-hasta: 77f9778 #594 -->
+<!-- sincronizado-hasta: e209e0a #605 -->
 
 - **Reabrí una plantación finalizada.** Si una plantación se finalizó y quedó
   trabajo sin subir en algún celular, un superadmin puede volver a activarla
