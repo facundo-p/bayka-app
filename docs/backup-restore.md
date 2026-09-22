@@ -17,8 +17,20 @@ a mano con `workflow_dispatch`. Corre `scripts/supabase-backup.sh`, que:
 Los cinco secrets del repo que necesita: `SUPABASE_DB_URL`, `R2_ENDPOINT`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`.
 
-**Solo respalda la base.** Las fotos viven en Supabase Storage y no están en el
-dump. Decidir si se respaldan es parte de #251.
+### Qué entra y qué no
+
+El dump es de la base entera, no solo de `public`: trae `auth` (usuarios e
+identidades, así que un restore no deja a nadie afuera) y las **filas** de
+`storage.objects`. Dos cosas quedan afuera, y las dos importan:
+
+- **Los archivos de Storage.** Viajan las filas que describen cada foto, no los
+  bytes. Restaurar el dump deja 148 registros apuntando a archivos que solo
+  existen en el bucket de Supabase. Respaldarlos es #603.
+- **`supabase_migrations.schema_migrations`**, el registro de qué migraciones se
+  aplicaron. Un proyecto restaurado desde este dump tiene el schema al día pero
+  no lo sabe, y el próximo `db push` intenta reaplicar todo desde cero. Al
+  restaurar sobre un proyecto nuevo hay que repoblar esa tabla a mano con las
+  migraciones que el dump ya trae aplicadas.
 
 ## El ensayo de restore
 
@@ -44,8 +56,8 @@ Dos decisiones del script que conviene conocer:
 
 ### Qué errores son esperables
 
-Un Postgres pelado no tiene las extensiones gestionadas de Supabase. En el
-último ensayo, los únicos tres errores fueron de `supabase_vault`:
+Un Postgres pelado no tiene las extensiones gestionadas de Supabase. Los únicos
+tres errores esperables son de `supabase_vault`:
 
 ```
 extension "supabase_vault" is not available
@@ -53,29 +65,64 @@ extension "supabase_vault" does not exist
 relation "vault.secrets" does not exist
 ```
 
-Eso no afecta al schema del dominio. El criterio es el recuento: si las tablas
-de `public` traen las filas que tenía el origen y están las funciones, policies
-y triggers, el dump sirve.
+Eso no afecta al schema del dominio. Cualquier cuarto error es una señal.
 
-### Referencia de un restore verificado
+### Restore verificado de un backup real de producción
 
-Dump del harness de pgTAP (baseline + migraciones 030–052, sin datos), como
-control del mecanismo:
+`backup-20260922-094203.dump` (632 KB), bajado de R2 y restaurado el
+2026-09-22. Es el ensayo que cierra #251: el backup que el cron dejó en R2, no
+un dump generado a mano para la ocasión.
 
 | | |
 |---|---|
-| Tablas en `public` | 10 |
-| Funciones | 33 |
-| Policies | 27 |
-| Triggers | 3 |
+| `trees` | 7124 |
+| `groups` / `parcelas` / `plantations` | 233 / 17 / 1 |
+| `species` / `plantation_species` | 54 / 44 |
+| `profiles` / `plantation_users` | 2 / 2 |
+| `auth.users` / `auth.identities` | 2 / 2 |
+| `storage.objects` (filas, no archivos) | 148 |
+| Funciones / policies / triggers en `public` | 35 / 26 / 3 |
 | Errores | 3, todos de `supabase_vault` |
 
-Un backup de producción tiene el mismo schema y, además, filas. Si el recuento
-de funciones o policies baja, el dump está incompleto.
+Los 7124 árboles son San Sebastián de la Selva entera, que es el grueso de la
+base. La data está completa.
+
+### Comparar el dump contra el repo
+
+El recuento dice que el restore anduvo; no dice si la base de origen tiene el
+schema que el repo cree. Eso se compara **sobre el dump**, sin abrir una sola
+conexión a producción: se levantan las dos bases y se diffean los nombres y los
+cuerpos.
+
+```sh
+scripts/restore-backup.sh --conservar <archivo.dump>      # deja bayka-restore-<pid>
+DB_TEST_KEEP_RUNNING=1 supabase/tests/run-db-tests.sh     # baseline + migraciones
+
+DEF="select p.proname||'|'||md5(pg_get_functiondef(p.oid)) as d
+     from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+     where n.nspname='public' order by 1"
+docker exec bayka-restore-<pid>            psql -U postgres -d postgres -tAc "$DEF" > /tmp/dump.txt
+docker exec supabase_db_bayka-web-v1-dbtest psql -U postgres -d postgres -tAc "$DEF" > /tmp/repo.txt
+diff /tmp/dump.txt /tmp/repo.txt
+```
+
+Lo mismo para las policies, con `md5(coalesce(qual,'')||'~'||coalesce(with_check,''))`
+sobre `pg_policies`. Un alias (`as d`) en el select evita el `ORDER BY position`
+que se lleva puesto el query y devuelve dos archivos vacíos que diffean igual.
+
+En la corrida del 2026-09-22, contra el repo en `052`: las 26 policies
+idénticas una por una y las 34 funciones del repo con el cuerpo idéntico. La
+única diferencia fue `rls_auto_enable` (35 vs 34), un event trigger que Supabase
+instala solo para activar RLS en cada tabla nueva de `public`: es de la
+plataforma, no sale de ninguna migración y no se versiona.
+
+Por eso el recuento crudo de funciones de un proyecto Supabase da uno más que el
+harness de pgTAP. No es drift.
 
 ## Restore de verdad, sobre un entorno
 
 El ensayo prueba el dump. Poner esa base en un proyecto de Supabase es otra
-cosa y **no** se hace con este script: va contra la URL del proyecto destino,
-con los roles ya existentes, y conviene hacerlo sobre un proyecto vacío o
-pausable antes que sobre uno en uso. Ese paso está abierto en #251.
+cosa: va contra la URL del proyecto destino, con los roles ya existentes, y
+conviene hacerlo sobre un proyecto vacío o pausable antes que sobre uno en uso.
+Además hay que repoblar `supabase_migrations.schema_migrations` y recuperar los
+archivos de Storage, que el dump no trae.
