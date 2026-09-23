@@ -10,8 +10,6 @@ import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail }
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
 
-export { pullSpeciesFromServer };
-
 // ─── Upload offline-created plantations ───────────────────────────────────────
 
 /**
