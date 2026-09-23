@@ -20,6 +20,7 @@ import {
 } from '../../src/database/schema';
 import { eq, count } from 'drizzle-orm';
 import Database from 'better-sqlite3';
+import { plantationSpeciesId } from '../../src/utils/plantationSpeciesId';
 
 let db: IntegrationDb;
 let sqlite: InstanceType<typeof Database>;
@@ -115,7 +116,7 @@ describe('Cascade delete', () => {
 
     // Insert plantation_species
     await db.insert(plantationSpecies).values({
-      id: `ps-${plantation.id}-${sp.id}`,
+      id: plantationSpeciesId(plantation.id, sp.id),
       plantacionId: plantation.id,
       especieId: sp.id,
       ordenVisual: 1,
@@ -154,7 +155,7 @@ describe('Cascade delete', () => {
 
     await db.insert(trees).values(createTestTree({ groupId: sg.id, especieId: sp.id, posicion: 1, subId: 'LAPIN1' }));
     await db.insert(plantationSpecies).values({
-      id: `ps-${plantation.id}-${sp.id}`,
+      id: plantationSpeciesId(plantation.id, sp.id),
       plantacionId: plantation.id,
       especieId: sp.id,
       ordenVisual: 1,
