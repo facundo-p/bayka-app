@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ==============================================================================
 # Supabase PostgreSQL Backup Script
-# Dumps the database, uploads to Cloudflare R2, and retains only the last 10.
+# Dumps the database, uploads to Cloudflare R2, and rotates (daily/weekly/monthly).
 # ==============================================================================
 
 # --- Validate required environment variables ----------------------------------
@@ -45,44 +45,54 @@ aws s3 cp "$BACKUP_PATH" "s3://${R2_BUCKET_NAME}/${R2_KEY}" \
 
 echo "    Upload complete."
 
-# --- Rotate: keep only the last 10 backups ------------------------------------
+# --- Rotate: escalonada (#604) --------------------------------------------------
+# Qué se conserva lo decide scripts/backupRetention.cjs: diarios de la última
+# semana, semanales del último mes, mensuales del último año.
+
+list_backup_keys() {
+  aws s3api list-objects-v2 \
+    --bucket "$R2_BUCKET_NAME" \
+    --prefix "${R2_PREFIX}/" \
+    --query 'Contents[].Key' \
+    --output text \
+    --endpoint-url "$R2_ENDPOINT" | tr '\t' '\n' | grep -v '^None$' || true
+}
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RETENTION="${SCRIPT_DIR}/backupRetention.cjs"
 
 echo "==> Listing existing backups under '${R2_PREFIX}/' ..."
-
-# List all objects under the prefix, sorted by LastModified (oldest first).
-# aws s3api list-objects-v2 returns JSON; we extract keys sorted by date.
-OBJECTS_JSON=$(aws s3api list-objects-v2 \
-  --bucket "$R2_BUCKET_NAME" \
-  --prefix "${R2_PREFIX}/" \
-  --query 'Contents | sort_by(@, &LastModified)' \
-  --output json \
-  --endpoint-url "$R2_ENDPOINT")
-
-# Parse keys into an array (one per line)
-OBJECT_KEYS=()
-while IFS= read -r key; do
-  [[ -n "$key" ]] && OBJECT_KEYS+=("$key")
-done < <(echo "$OBJECTS_JSON" | grep '"Key"' | sed 's/.*"Key": "\(.*\)".*/\1/')
-
-TOTAL=${#OBJECT_KEYS[@]}
-MAX_BACKUPS=10
-DELETED=0
-
+OBJECT_KEYS=$(list_backup_keys)
+TOTAL=$(grep -c . <<< "$OBJECT_KEYS" || true)
 echo "    Total backups in bucket: ${TOTAL}"
 
-if [[ "$TOTAL" -gt "$MAX_BACKUPS" ]]; then
-  EXCESS=$(( TOTAL - MAX_BACKUPS ))
-  echo "==> Rotating — deleting ${EXCESS} oldest backup(s) ..."
-  for (( i=0; i<EXCESS; i++ )); do
-    OLD_KEY="${OBJECT_KEYS[$i]}"
-    echo "    Deleting: ${OLD_KEY}"
-    aws s3 rm "s3://${R2_BUCKET_NAME}/${OLD_KEY}" \
-      --endpoint-url "$R2_ENDPOINT"
-    DELETED=$(( DELETED + 1 ))
-  done
+# Recién subimos uno: un listado vacío es un error, no un bucket vacío. Sin este
+# chequeo la rotación no corre y el workflow queda verde (#603).
+if ! grep -qxF "$R2_KEY" <<< "$OBJECT_KEYS"; then
+  echo "ERROR: el listado no incluye el backup recién subido (${R2_KEY})." >&2
+  exit 1
 fi
 
-REMAINING=$(( TOTAL - DELETED ))
+TO_DELETE=$(node "$RETENTION" <<< "$OBJECT_KEYS")
+DELETED=0
+
+while IFS= read -r old_key; do
+  [[ -z "$old_key" ]] && continue
+  echo "    Deleting: ${old_key}"
+  aws s3 rm "s3://${R2_BUCKET_NAME}/${old_key}" --endpoint-url "$R2_ENDPOINT"
+  DELETED=$(( DELETED + 1 ))
+done <<< "$TO_DELETE"
+
+REMAINING_KEYS=$(list_backup_keys)
+REMAINING=$(grep -c . <<< "$REMAINING_KEYS" || true)
+# Las keys con otro formato no rotan: la cota vale solo para los dumps diarios.
+REMAINING_ROTABLES=$(grep -c 'backup-[0-9]\{8\}-[0-9]\{6\}\.dump$' <<< "$REMAINING_KEYS" || true)
+MAX_BACKUPS=$(node -p "require('${RETENTION}').MAX_VIVOS")
+
+if [[ "$REMAINING" -ne $(( TOTAL - DELETED )) || "$REMAINING_ROTABLES" -gt "$MAX_BACKUPS" ]]; then
+  echo "ERROR: quedaron ${REMAINING} backups; se esperaban $(( TOTAL - DELETED )), como mucho ${MAX_BACKUPS}." >&2
+  exit 1
+fi
 
 # --- Summary ------------------------------------------------------------------
 

@@ -41,7 +41,7 @@ export function sqliteDeIntegracion(sqlite: InstanceType<typeof Database>) {
 }
 
 /** Hijos antes que padres: con las FKs activas, el orden inverso falla. */
-const TABLAS_HIJAS_PRIMERO = [
+export const TABLAS_HIJAS_PRIMERO = [
   schema.trees,
   schema.borradosPendientes,
   schema.groups,

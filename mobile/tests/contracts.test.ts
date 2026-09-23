@@ -7,7 +7,7 @@ import path from 'node:path';
 jest.mock('../src/queries/exportQueries', () => ({
   getExportRows: jest.fn(),
 }));
-jest.mock('../src/services/sync/preSteps', () => ({
+jest.mock('../src/services/sync/catalogoDeEspecies', () => ({
   pullSpeciesFromServer: jest.fn(),
 }));
 jest.mock('expo-file-system', () => ({

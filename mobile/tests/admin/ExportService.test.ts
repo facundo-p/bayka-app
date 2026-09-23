@@ -5,7 +5,7 @@ jest.mock('../../src/queries/exportQueries', () => ({
 }));
 
 // Refresco de especies previo al export: mockeado para no cargar supabase real.
-jest.mock('../../src/services/sync/preSteps', () => ({
+jest.mock('../../src/services/sync/catalogoDeEspecies', () => ({
   pullSpeciesFromServer: jest.fn().mockResolvedValue(undefined),
 }));
 
@@ -40,7 +40,7 @@ jest.mock('xlsx', () => ({
 
 import { exportToCSV, exportToExcel } from '../../src/services/ExportService';
 import { getExportRows } from '../../src/queries/exportQueries';
-import { pullSpeciesFromServer } from '../../src/services/sync/preSteps';
+import { pullSpeciesFromServer } from '../../src/services/sync/catalogoDeEspecies';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 
