@@ -9,7 +9,7 @@
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import {
   plantations,
@@ -131,7 +131,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
@@ -144,10 +143,7 @@ beforeEach(async () => {
   rpc.existe = true;
   rpc.eliminadas.clear();
 
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantationUsers);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 
   // Copia local ya descargada: plantación + parcela + grupo + membresía.
   await mockTestDb

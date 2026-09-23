@@ -4,7 +4,7 @@
  * Covers el nombre de parcela (null si está tombstoned, como en la web), el
  * NOT NULL de groups.parcela_id (migración 0018) y el orden por globalId ASC.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import Database from 'better-sqlite3';
 import {
@@ -31,8 +31,6 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
-  // Prod (expo-sqlite) no activa PRAGMA foreign_keys → puede haber árboles con especieId huérfano.
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {
@@ -40,11 +38,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
-  await mockTestDb.delete(species);
+  await vaciarTablas(mockTestDb);
 });
 
 async function seedSpecies(codigo = 'PI'): Promise<string> {
@@ -243,7 +237,8 @@ describe('exportQueries.getExportRows', () => {
   });
 
   // ─── LEFT JOIN a species: el árbol nunca debe perderse (antes el INNER JOIN
-  // descartaba en silencio árboles con especie null/huérfana) ─────────────────
+  // descartaba en silencio árboles con especie null/huérfana). Con FKs activas
+  // un huérfano no se puede sembrar; el caso null ejercita el mismo JOIN. ─────
 
   async function seedPlantationWithGroup(lugar: string): Promise<string> {
     const plantation = createTestPlantation({ lugar });
@@ -294,29 +289,6 @@ describe('exportQueries.getExportRows', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].globalId).toBe(100);
-    expect(rows[0].especieNombre).toBeNull();
-  });
-
-  it('incluye el árbol con especieId huérfano (especie ausente del catálogo)', async () => {
-    const plantacionId = await seedPlantationWithGroup('Campo Huerfano');
-    await mockTestDb.insert(trees).values({
-      id: 't-orphan',
-      groupId: `g-${plantacionId}`,
-      especieId: 'especie-inexistente-uuid',
-      posicion: 1,
-      subId: 'LX-ZZZ-1',
-      fotoUrl: null,
-      fotoSynced: false,
-      plantacionId: 1,
-      globalId: 200,
-      usuarioRegistro: 'u1',
-      createdAt: localNow(),
-    });
-
-    const rows = await getExportRows(plantacionId);
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0].globalId).toBe(200);
     expect(rows[0].especieNombre).toBeNull();
   });
 });

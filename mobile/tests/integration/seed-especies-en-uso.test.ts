@@ -6,10 +6,10 @@
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestGroup, createTestTree } from '../helpers/factories';
+import { createTestDb, closeTestDb, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
+import { createTestPlantation, createTestParcela, createTestGroup, createTestTree } from '../helpers/factories';
 import {
-  species, trees, groups, plantations, plantationSpecies, userSpeciesOrder,
+  species, trees, groups, parcelas, plantations, plantationSpecies, userSpeciesOrder,
 } from '../../src/database/schema';
 import speciesData from '../../assets/species.json';
 
@@ -25,6 +25,7 @@ jest.mock('../../src/database/client', () => ({
 import { seedSpeciesIfNeeded } from '../../src/database/seeds/seedSpecies';
 
 const PLANTACION_ID = 'plant-1';
+const PARCELA_ID = 'parcela-1';
 const GRUPO_ID = 'g-1';
 
 const especieFueraDelCatalogo = (id: string, codigo: string) => ({
@@ -38,21 +39,15 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
-  // Como en producción: sin FKs el borrado no falla, deja la referencia colgada.
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await mockTestDb.delete(userSpeciesOrder);
-  await mockTestDb.delete(plantationSpecies);
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(plantations);
-  await mockTestDb.delete(species);
+  await vaciarTablas(mockTestDb);
   await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID }));
-  await mockTestDb.insert(groups).values(createTestGroup({ id: GRUPO_ID, plantacionId: PLANTACION_ID }));
+  await mockTestDb.insert(parcelas).values(createTestParcela({ id: PARCELA_ID, plantacionId: PLANTACION_ID }));
+  await mockTestDb.insert(groups).values(createTestGroup({ id: GRUPO_ID, plantacionId: PLANTACION_ID, parcelaId: PARCELA_ID }));
   // Catálogo ya sembrado: el seed entra por la rama de sincronización.
   await seedSpeciesIfNeeded();
 });

@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 
 // ─── Mock Supabase (prefijo mock* por hoisting de jest.mock) ─────────────────
 
@@ -229,9 +229,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  // Prod (expo-sqlite) no activa PRAGMA foreign_keys (#265): el pull escribe
-  // filas cuyo padre puede no estar local todavía.
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {
@@ -239,10 +236,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
   for (const k of Object.keys(serverState)) serverState[k].clear();
   rpcCalls.length = 0;
 });

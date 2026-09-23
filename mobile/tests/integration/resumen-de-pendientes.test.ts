@@ -3,7 +3,7 @@
  * del dispositivo" dice que se pierde: grupos, parcelas, fotos y borrados sin subir.
  */
 import Database from 'better-sqlite3';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, IntegrationDb, vaciarTablas, sembrarEspecieDeTest } from '../helpers/integrationDb';
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree } from '../helpers/factories';
 import { plantations, parcelas, groups, trees, borradosPendientes } from '../../src/database/schema';
 
@@ -27,18 +27,17 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(borradosPendientes);
-  await mockTestDb.delete(plantations);
-  await mockTestDb.insert(plantations).values(createTestPlantation({ id: PID, lugar: 'Norte' }));
+  await vaciarTablas(mockTestDb);
+  await sembrarEspecieDeTest(mockTestDb);
+  await mockTestDb.insert(plantations).values([
+    createTestPlantation({ id: PID, lugar: 'Norte' }),
+    createTestPlantation({ id: OTRA, lugar: 'Sur' }),
+  ]);
 });
 
 describe('getResumenDePendientes', () => {

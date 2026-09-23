@@ -10,7 +10,7 @@
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import { plantations, parcelas, groups, trees, species, borradosPendientes } from '../../src/database/schema';
 
@@ -187,7 +187,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
@@ -195,13 +194,7 @@ afterAll(() => closeTestDb(sqlite));
 beforeEach(async () => {
   for (const tabla of Object.values(serverState)) tabla.clear();
   rpcFalla.activo = false;
-  await mockTestDb.delete(borradosPendientes);
-
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(species);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 
   await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026' }));
   await mockTestDb.insert(species).values([
