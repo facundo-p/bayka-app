@@ -1,0 +1,1223 @@
+<title>Matriz de issues Bayka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@500;700&family=Poppins:wght@300;400;500;600&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+
+    --ground:        #f1f5f9;
+    --surface:       #fcfcfb;
+    --surface-sunk:  #eef3f7;
+    --line:          #d6e0e9;
+    --line-strong:   #b6c6d4;
+
+    --ink:           #0a3760;
+    --ink-body:      #21364a;
+    --ink-soft:      #5a7186;
+    --ink-faint:     #8698a8;
+
+    --s-problema:    #eb6834;
+    --s-funcion:     #2a78d6;
+    --s-infra:       #1baf7a;
+    --critical:      #d03b3b;
+
+    --wash-hacer:    #99b95b1f;
+    --wash-grande:   #0a376010;
+    --chip-on-bg:    #0a3760;
+    --chip-on-ink:   #ffffff;
+    --focus:         #0a3760;
+
+    --shadow-lift:   0 6px 18px -8px #0a376059;
+
+    --f-display: "Comfortaa", "Trebuchet MS", sans-serif;
+    --f-body: "Poppins", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground:        #11171d;
+      --surface:       #1a1a19;
+      --surface-sunk:  #161c22;
+      --line:          #2b3540;
+      --line-strong:   #3e4c5a;
+      --ink:           #dbe8f3;
+      --ink-body:      #c3d2de;
+      --ink-soft:      #8ea3b5;
+      --ink-faint:     #66798a;
+      --s-problema:    #d95926;
+      --s-funcion:     #3987e5;
+      --s-infra:       #199e70;
+      --critical:      #e05c5c;
+      --wash-hacer:    #99b95b1a;
+      --wash-grande:   #dbe8f30a;
+      --chip-on-bg:    #dbe8f3;
+      --chip-on-ink:   #11171d;
+      --focus:         #7fb3dd;
+      --shadow-lift:   0 6px 18px -8px #000000a6;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground:        #11171d;
+    --surface:       #1a1a19;
+    --surface-sunk:  #161c22;
+    --line:          #2b3540;
+    --line-strong:   #3e4c5a;
+    --ink:           #dbe8f3;
+    --ink-body:      #c3d2de;
+    --ink-soft:      #8ea3b5;
+    --ink-faint:     #66798a;
+    --s-problema:    #d95926;
+    --s-funcion:     #3987e5;
+    --s-infra:       #199e70;
+    --critical:      #e05c5c;
+    --wash-hacer:    #99b95b1a;
+    --wash-grande:   #dbe8f30a;
+    --chip-on-bg:    #dbe8f3;
+    --chip-on-ink:   #11171d;
+    --focus:         #7fb3dd;
+    --shadow-lift:   0 6px 18px -8px #000000a6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink-body);
+    font-family: var(--f-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1120px;
+    margin-inline: auto;
+    padding-inline: 20px;
+    padding-block: 28px 56px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ---------- header ---------- */
+
+  .masthead { display: flex; flex-direction: column; gap: 8px; }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: clamp(24px, 4vw, 34px);
+    line-height: 1.1;
+    margin: 0;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+
+  .lede {
+    margin: 0;
+    max-width: 68ch;
+    color: var(--ink-soft);
+    font-weight: 300;
+  }
+
+  .lede b { font-weight: 500; color: var(--ink-body); }
+
+  /* ---------- filtros ---------- */
+
+  .filters {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .filters-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .filters-state {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .facet { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+
+  .facet-name {
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    padding-top: 5px;
+    min-width: 58px;
+  }
+
+  .facet-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+
+  .chip {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 400;
+    color: var(--ink-body);
+    background: var(--surface-sunk);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 3px 10px 3px 9px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+
+  .chip:hover { border-color: var(--line-strong); }
+
+  .chip .count {
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+  }
+
+  .chip[aria-pressed="true"] {
+    background: var(--chip-on-bg);
+    border-color: var(--chip-on-bg);
+    color: var(--chip-on-ink);
+    font-weight: 500;
+  }
+
+  .chip[aria-pressed="true"] .count { color: var(--chip-on-ink); opacity: .7; }
+
+  .link-btn {
+    font: inherit;
+    font-size: 12.5px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--ink-soft);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .link-btn:hover { color: var(--ink); }
+
+  /* ---------- split: gráfico | detalle ---------- */
+
+  .split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+    gap: 16px;
+    align-items: stretch;
+  }
+
+  .board {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 16px 16px 12px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .plot-frame {
+    display: grid;
+    grid-template-columns: 22px 1fr;
+    grid-template-rows: 1fr 22px;
+    gap: 6px;
+  }
+
+  .axis-y {
+    grid-column: 1; grid-row: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .axis-y span {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  .axis-x {
+    grid-column: 2; grid-row: 2;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  .plot {
+    grid-column: 2; grid-row: 1;
+    position: relative;
+    aspect-ratio: 1.3 / 1;
+    max-height: 400px;
+    background:
+      linear-gradient(to right, var(--wash-hacer) 0 50%, transparent 50% 100%) 0 0 / 100% 50% no-repeat,
+      linear-gradient(to right, transparent 0 50%, var(--wash-grande) 50% 100%) 0 0 / 100% 50% no-repeat;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    touch-action: none;
+  }
+
+  .grid-line { position: absolute; background: var(--line); }
+  .grid-line.v { top: 0; bottom: 0; width: 1px; left: 50%; }
+  .grid-line.h { left: 0; right: 0; height: 1px; top: 50%; }
+
+  .quad-label {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    pointer-events: none;
+  }
+
+  .quad-label.tl { top: 7px; left: 9px; }
+  .quad-label.tr { top: 7px; right: 9px; }
+  .quad-label.bl { bottom: 7px; left: 9px; }
+  .quad-label.br { bottom: 7px; right: 9px; }
+
+  .dot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+    border: 1.5px solid transparent;
+    color: #ffffff;
+    cursor: grab;
+    white-space: nowrap;
+    box-shadow: var(--shadow-lift);
+    transition: box-shadow .12s;
+  }
+
+  .dot:active { cursor: grabbing; }
+  .dot.dragging { z-index: 40; box-shadow: 0 10px 24px -8px #0a376080; }
+  .dot:hover, .dot:focus-visible { z-index: 30; }
+
+  .dot:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+  .dot[data-tipo="problema"] { background: var(--s-problema); }
+  .dot[data-tipo="funcion"]  { background: var(--s-funcion); }
+  .dot[data-tipo="infra"]    { background: var(--s-infra); }
+
+  .dot[data-seguridad="1"] {
+    border-color: var(--critical);
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--critical), var(--shadow-lift);
+  }
+
+  .dot[data-bloqueado="1"] {
+    border-style: dashed;
+    border-color: #ffffffb3;
+  }
+
+  /* Marca de quién lo resuelve: sin marca, Claude solo. El anillo chico y el
+     disco grande se separan por tamaño además de por relleno — a 9px el relleno
+     solo no alcanza para distinguirlos. */
+  .dot[data-quien="ok"]::after,
+  .dot[data-quien="facu"]::after {
+    content: "";
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px var(--surface);
+  }
+
+  .dot[data-quien="ok"]::after {
+    top: -6px;
+    right: -6px;
+    width: 9px;
+    height: 9px;
+    border: 2.5px solid var(--ink);
+    background: var(--surface);
+  }
+
+  .dot[data-quien="facu"]::after {
+    top: -7px;
+    right: -7px;
+    width: 12px;
+    height: 12px;
+    background: var(--ink);
+  }
+
+  .dot.is-selected {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+    z-index: 35;
+  }
+
+  /* ---------- referencias ---------- */
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 14px;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+
+  .legend-item { display: inline-flex; align-items: center; gap: 6px; }
+
+  .swatch {
+    width: 10px; height: 10px; border-radius: 3px;
+    display: inline-block; flex: none;
+  }
+
+  .swatch.problema { background: var(--s-problema); }
+  .swatch.funcion  { background: var(--s-funcion); }
+  .swatch.infra    { background: var(--s-infra); }
+  .swatch.seg      { background: transparent; border: 2px solid var(--critical); }
+  .swatch.blq      { background: transparent; border: 1.5px dashed var(--ink-soft); }
+  .swatch.q-ok     { width: 9px; height: 9px; background: var(--surface); border: 2.5px solid var(--ink); border-radius: 50%; }
+  .swatch.q-facu   { width: 12px; height: 12px; background: var(--ink); border-radius: 50%; }
+
+  /* ---------- detalle ---------- */
+
+  .detail {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--line-strong);
+    border-radius: 14px;
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .detail[data-tipo="problema"] { border-top-color: var(--s-problema); }
+  .detail[data-tipo="funcion"]  { border-top-color: var(--s-funcion); }
+  .detail[data-tipo="infra"]    { border-top-color: var(--s-infra); }
+
+  .detail-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .detail-num {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 19px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+  }
+
+  .detail-num:hover { border-bottom-color: var(--ink); }
+
+  .detail-quad {
+    font-size: 10px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: var(--surface-sunk);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 9px;
+    white-space: nowrap;
+  }
+
+  .detail-title {
+    font-family: var(--f-body);
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 1.35;
+    margin: 0;
+    color: var(--ink-body);
+    text-wrap: balance;
+  }
+
+  .stat-row { display: flex; gap: 8px; }
+
+  .stat {
+    flex: 1;
+    background: var(--surface-sunk);
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+  }
+
+  .stat-value {
+    font-family: var(--f-display);
+    font-weight: 700;
+    font-size: 17px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  .detail-why {
+    margin: 0;
+    color: var(--ink-body);
+    font-weight: 400;
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+
+  .quien {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    background: var(--surface-sunk);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--ink-body);
+  }
+
+  .quien-mark {
+    flex: none;
+    width: 9px;
+    height: 9px;
+    margin-top: 4px;
+    border-radius: 50%;
+    border: 2.5px solid var(--ink);
+    background: var(--surface);
+  }
+
+  .quien[data-quien="facu"] .quien-mark {
+    width: 12px;
+    height: 12px;
+    margin-top: 3px;
+    border: none;
+    background: var(--ink);
+  }
+
+  .quien[data-quien="claude"] .quien-mark {
+    border-color: var(--ink-faint);
+    background: transparent;
+    border-style: dashed;
+  }
+
+  .quien[data-quien="claude"] { color: var(--ink-soft); }
+
+  .quien b { font-weight: 500; color: var(--ink); }
+
+  .detail-tags { display: flex; gap: 5px; flex-wrap: wrap; }
+
+  .tag {
+    background: var(--surface-sunk);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 1px 8px;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .detail-foot {
+    margin: auto 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--line);
+    font-size: 11.5px;
+    font-weight: 300;
+    color: var(--ink-faint);
+    line-height: 1.45;
+  }
+
+  .save-state {
+    margin: 4px 0 0;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    min-height: 1.2em;
+  }
+
+  /* ---------- tabla ---------- */
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 6px 4px 4px;
+    overflow-x: auto;
+  }
+
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+
+  caption {
+    text-align: left;
+    padding: 12px 14px 10px;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  th {
+    text-align: left;
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 500;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-body);
+    vertical-align: top;
+  }
+
+  tr:last-child td { border-bottom: none; }
+
+  tbody tr { cursor: pointer; }
+  tbody tr:hover td { background: var(--surface-sunk); }
+  tbody tr.is-selected td { background: var(--surface-sunk); }
+
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .num-right { text-align: right; }
+
+  .row-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    margin-right: 8px;
+    vertical-align: 1px;
+  }
+
+  .row-dot.problema { background: var(--s-problema); }
+  .row-dot.funcion  { background: var(--s-funcion); }
+  .row-dot.infra    { background: var(--s-infra); }
+
+  .t-title { min-width: 260px; font-weight: 400; }
+  .t-tags { color: var(--ink-faint); font-size: 11.5px; }
+
+  .empty-row td { color: var(--ink-faint); font-weight: 300; text-align: center; padding: 26px; }
+
+  footer {
+    font-size: 12px;
+    color: var(--ink-faint);
+    font-weight: 300;
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+
+  footer code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px;
+    background: var(--surface-sunk);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  @media (max-width: 920px) {
+    .split { grid-template-columns: 1fr; }
+    .plot { max-height: none; }
+    .detail-foot { margin-top: 4px; }
+  }
+
+  @media (max-width: 620px) {
+    .plot { aspect-ratio: 1 / 1.05; }
+    .facet-name { min-width: 100%; padding-top: 0; }
+    .quad-label { font-size: 9px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">__EYEBROW__</div>
+    <h1>Matriz de issues Bayka</h1>
+    <p class="lede">
+      Los <b>__N__ issues abiertos</b> ubicados por impacto y por costo de resolverlos.
+      Arriba a la izquierda está lo que más rinde. Pasá el mouse por un punto para leerlo
+      al costado, usá los tags para filtrar, y <b>arrastrá cualquier issue</b> para corregir
+      dónde lo puse — la posición queda guardada.
+    </p>
+  </header>
+
+  <section class="filters" aria-label="Filtros por tag">
+    <div class="filters-head">
+      <span class="filters-state" id="filter-state">Sin filtros — se ven los __N__</span>
+      <button class="link-btn" id="clear-filters" type="button" hidden>Limpiar filtros</button>
+    </div>
+    <div id="facets"></div>
+  </section>
+
+  <div class="split">
+    <section class="board" aria-label="Matriz impacto / costo">
+      <div class="plot-frame">
+        <div class="axis-y"><span>Impacto, urgencia →</span></div>
+        <div class="plot" id="plot">
+          <div class="grid-line v"></div>
+          <div class="grid-line h"></div>
+          <span class="quad-label tl">Hacer ya</span>
+          <span class="quad-label tr">Proyectos grandes</span>
+          <span class="quad-label bl">Relleno</span>
+          <span class="quad-label br">Postergar</span>
+        </div>
+        <div class="axis-x">Costo de implementación →</div>
+      </div>
+
+      <div class="legend">
+        <span class="legend-item"><span class="swatch problema"></span>Bug o seguridad</span>
+        <span class="legend-item"><span class="swatch funcion"></span>Funcionalidad nueva</span>
+        <span class="legend-item"><span class="swatch infra"></span>Infra y deuda técnica</span>
+        <span class="legend-item"><span class="swatch seg"></span>Seguridad</span>
+        <span class="legend-item"><span class="swatch blq"></span>Bloqueado</span>
+        <span class="legend-item"><span class="swatch q-ok"></span>Necesita tu OK</span>
+        <span class="legend-item"><span class="swatch q-facu"></span>Lo hacés vos</span>
+      </div>
+    </section>
+
+    <aside class="detail" id="detail" aria-live="polite" data-tipo="">
+      <div class="detail-head">
+        <a class="detail-num" id="d-num" href="#" target="_blank" rel="noopener"></a>
+        <span class="detail-quad" id="d-quad"></span>
+      </div>
+      <h2 class="detail-title" id="d-title"></h2>
+      <div class="stat-row">
+        <div class="stat"><span class="stat-label">Impacto</span><span class="stat-value" id="d-imp"></span></div>
+        <div class="stat"><span class="stat-label">Costo</span><span class="stat-value" id="d-cost"></span></div>
+        <div class="stat"><span class="stat-label">Saldo</span><span class="stat-value" id="d-saldo"></span></div>
+      </div>
+      <p class="detail-why" id="d-why"></p>
+      <div class="quien" id="d-quien" data-quien="">
+        <span class="quien-mark"></span>
+        <span class="quien-text" id="d-need"></span>
+      </div>
+      <div class="detail-tags" id="d-meta"></div>
+      <p class="detail-foot">
+        Arrastrá el punto para moverlo. Con el foco puesto en uno, las flechas lo mueven;
+        con Shift, de a un punto entero.
+      </p>
+      <p class="save-state" id="save-state">&nbsp;</p>
+    </aside>
+  </div>
+
+  <section class="table-wrap" aria-label="Los issues en tabla">
+    <table>
+      <caption id="table-caption">Ordenados por saldo (impacto menos costo): lo de arriba es lo que más rinde por lo que cuesta.</caption>
+      <thead>
+        <tr>
+          <th scope="col">Issue</th>
+          <th scope="col">Título</th>
+          <th scope="col">Tags</th>
+          <th scope="col" class="num-right">Impacto</th>
+          <th scope="col" class="num-right">Costo</th>
+          <th scope="col" class="num-right">Saldo</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </section>
+
+  <footer>
+    Impacto y costo son una estimación mía sobre lo que dice cada issue, en escala 0–10;
+    moverlos es la forma de discutirla. Los tags son los labels reales de GitHub:
+    <code>gh issue list --label quick-win</code> devuelve lo mismo que el filtro de acá.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var REPO = "__REPO_ISSUES_URL__";
+
+  // Impacto y costo: estimación inicial, editable arrastrando.
+  var ISSUES = __ISSUES_JSON__;
+
+  var FACETS = [
+    { name: "Quién", tags: ["hace-claude", "necesita-ok", "necesita-facu"] },
+    { name: "Tipo", tags: ["bug", "seguridad", "enhancement", "deuda-tecnica", "infra", "epica"] },
+    { name: "Área", tags: ["web", "mobile", "db"] },
+    { name: "Estado", tags: ["esta-release", "proxima-release", "fuera-del-release", "quick-win", "requiere-decision", "bloqueado"] }
+  ];
+
+  var LABELS = {
+    "deuda-tecnica": "deuda técnica",
+    "epica": "épica",
+    "esta-release": "esta release",
+    "proxima-release": "próxima release",
+    "fuera-del-release": "fuera del release",
+    "quick-win": "quick win",
+    "requiere-decision": "requiere decisión",
+    "hace-claude": "lo hace Claude",
+    "necesita-ok": "necesita tu OK",
+    "necesita-facu": "lo hacés vos"
+  };
+
+  function pretty(tag) { return LABELS[tag] || tag; }
+
+  var QUIEN = {
+    claude: { corto: "Lo resuelve Claude entero" },
+    ok:     { corto: "Necesita algo tuyo" },
+    facu:   { corto: "Lo hacés vos" }
+  };
+
+  // Quién lo resuelve sale de los labels: no hay una segunda fuente que se desfase.
+  function quienDe(it) {
+    if (it.tags.indexOf("necesita-facu") !== -1) return "facu";
+    if (it.tags.indexOf("necesita-ok") !== -1) return "ok";
+    return "claude";
+  }
+
+  var byNum = {};
+  ISSUES.forEach(function (it) { byNum[it.n] = it; });
+
+  var active = Object.create(null);   // tag -> true
+  var selected = null;                // número de issue
+  var db = null;
+  var canWrite = true;
+
+  var plot = document.getElementById("plot");
+  var facetsEl = document.getElementById("facets");
+  var tbody = document.getElementById("tbody");
+  var filterState = document.getElementById("filter-state");
+  var clearBtn = document.getElementById("clear-filters");
+  var saveState = document.getElementById("save-state");
+  var detail = document.getElementById("detail");
+  var dNum = document.getElementById("d-num");
+  var dQuad = document.getElementById("d-quad");
+  var dTitle = document.getElementById("d-title");
+  var dImp = document.getElementById("d-imp");
+  var dCost = document.getElementById("d-cost");
+  var dSaldo = document.getElementById("d-saldo");
+  var dWhy = document.getElementById("d-why");
+  var dQuien = document.getElementById("d-quien");
+  var dNeed = document.getElementById("d-need");
+  var dTags = document.getElementById("d-meta");
+
+  /* ---------- filtros ---------- */
+
+  function activeIn(facet) {
+    return facet.tags.filter(function (t) { return active[t]; });
+  }
+
+  function passes(it) {
+    for (var i = 0; i < FACETS.length; i++) {
+      var on = activeIn(FACETS[i]);
+      if (!on.length) continue;
+      var hit = on.some(function (t) { return it.tags.indexOf(t) !== -1; });
+      if (!hit) return false;
+    }
+    return true;
+  }
+
+  function visibleIssues() { return ISSUES.filter(passes); }
+
+  function buildFacets() {
+    FACETS.forEach(function (facet) {
+      var row = document.createElement("div");
+      row.className = "facet";
+
+      var name = document.createElement("div");
+      name.className = "facet-name";
+      name.textContent = facet.name;
+      row.appendChild(name);
+
+      var chips = document.createElement("div");
+      chips.className = "facet-chips";
+
+      facet.tags.forEach(function (tag) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "chip";
+        btn.id = "chip-" + tag;
+        btn.setAttribute("aria-pressed", "false");
+        btn.title = "label de GitHub: " + tag;
+
+        var label = document.createElement("span");
+        label.textContent = pretty(tag);
+        btn.appendChild(label);
+
+        var count = document.createElement("span");
+        count.className = "count";
+        count.textContent = ISSUES.filter(function (it) {
+          return it.tags.indexOf(tag) !== -1;
+        }).length;
+        btn.appendChild(count);
+
+        btn.addEventListener("click", function () {
+          if (active[tag]) delete active[tag]; else active[tag] = true;
+          render();
+        });
+
+        chips.appendChild(btn);
+      });
+
+      row.appendChild(chips);
+      facetsEl.appendChild(row);
+    });
+  }
+
+  /* ---------- puntos ---------- */
+
+  var dots = {};
+
+  function buildDots() {
+    ISSUES.forEach(function (it) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "dot";
+      b.id = "dot-" + it.n;
+      b.textContent = it.n;
+      b.dataset.tipo = it.tipo;
+      b.dataset.n = String(it.n);
+      if (it.tags.indexOf("seguridad") !== -1) b.dataset.seguridad = "1";
+      if (it.tags.indexOf("bloqueado") !== -1) b.dataset.bloqueado = "1";
+      b.dataset.quien = quienDe(it);
+      b.setAttribute("aria-label",
+        "Issue " + it.n + ": " + it.title + ". Impacto " + it.imp + ", costo " + it.cost +
+        ". " + QUIEN[quienDe(it)].corto + ". Flechas para mover.");
+      b.addEventListener("pointerenter", function () { showDetail(it.n); });
+      b.addEventListener("focus", function () { showDetail(it.n); });
+      b.addEventListener("keydown", onDotKey);
+      b.addEventListener("pointerdown", onDotDown);
+      plot.appendChild(b);
+      dots[it.n] = b;
+      place(it);
+    });
+  }
+
+  function place(it) {
+    var b = dots[it.n];
+    b.style.left = (it.cost / 10 * 100) + "%";
+    b.style.top = ((10 - it.imp) / 10 * 100) + "%";
+  }
+
+  function clamp(v) { return Math.min(9.8, Math.max(0.2, v)); }
+  function round1(v) { return Math.round(v * 10) / 10; }
+
+  /* ---------- arrastre ---------- */
+
+  var drag = null;
+
+  function onDotDown(ev) {
+    if (ev.button !== 0 && ev.pointerType === "mouse") return;
+    var n = Number(ev.currentTarget.dataset.n);
+    drag = { n: n, moved: false, startX: ev.clientX, startY: ev.clientY };
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    ev.currentTarget.classList.add("dragging");
+    select(n);
+    ev.preventDefault();
+    window.addEventListener("pointermove", onDotMove);
+    window.addEventListener("pointerup", onDotUp);
+    window.addEventListener("pointercancel", onDotUp);
+  }
+
+  function onDotMove(ev) {
+    if (!drag) return;
+    if (Math.abs(ev.clientX - drag.startX) > 3 || Math.abs(ev.clientY - drag.startY) > 3) {
+      drag.moved = true;
+    }
+    if (!drag.moved) return;
+    var r = plot.getBoundingClientRect();
+    var it = byNum[drag.n];
+    it.cost = clamp(round1((ev.clientX - r.left) / r.width * 10));
+    it.imp = clamp(round1(10 - (ev.clientY - r.top) / r.height * 10));
+    place(it);
+    showDetail(drag.n);
+  }
+
+  function onDotUp() {
+    if (!drag) return;
+    var n = drag.n;
+    var moved = drag.moved;
+    var b = dots[n];
+    if (b) b.classList.remove("dragging");
+    drag = null;
+    window.removeEventListener("pointermove", onDotMove);
+    window.removeEventListener("pointerup", onDotUp);
+    window.removeEventListener("pointercancel", onDotUp);
+    if (moved) { renderTable(); save(n); }
+  }
+
+  function onDotKey(ev) {
+    var step = ev.shiftKey ? 1 : 0.25;
+    var n = Number(ev.currentTarget.dataset.n);
+    var it = byNum[n];
+    var dx = 0, dy = 0;
+    if (ev.key === "ArrowLeft") dx = -step;
+    else if (ev.key === "ArrowRight") dx = step;
+    else if (ev.key === "ArrowUp") dy = step;
+    else if (ev.key === "ArrowDown") dy = -step;
+    else return;
+    ev.preventDefault();
+    it.cost = clamp(round1(it.cost + dx));
+    it.imp = clamp(round1(it.imp + dy));
+    place(it);
+    select(n);
+    renderTable();
+    save(n);
+  }
+
+  /* ---------- selección y detalle ---------- */
+
+  function select(n) {
+    selected = n;
+    Object.keys(dots).forEach(function (k) {
+      dots[k].classList.toggle("is-selected", Number(k) === n);
+    });
+    renderTableSelection();
+    showDetail(n);
+  }
+
+  function cuadrante(it) {
+    if (it.imp >= 5) return it.cost < 5 ? "Hacer ya" : "Proyecto grande";
+    return it.cost < 5 ? "Relleno" : "Postergar";
+  }
+
+  function showDetail(n) {
+    var it = byNum[n];
+    if (!it) return;
+
+    detail.dataset.tipo = it.tipo;
+    dNum.textContent = "#" + it.n;
+    dNum.href = REPO + it.n;
+    dQuad.textContent = cuadrante(it);
+    dTitle.textContent = it.title;
+    dWhy.textContent = it.why;
+
+    var saldo = it.imp - it.cost;
+    dImp.textContent = it.imp.toFixed(1);
+    dCost.textContent = it.cost.toFixed(1);
+    dSaldo.textContent = (saldo > 0 ? "+" : "") + saldo.toFixed(1);
+
+    var quien = quienDe(it);
+    dQuien.dataset.quien = quien;
+    dNeed.textContent = "";
+    if (quien === "claude") {
+      dNeed.textContent = "Lo resuelve Claude entero: código, tests y PR.";
+    } else {
+      var fuerte = document.createElement("b");
+      fuerte.textContent = quien === "facu" ? "Lo hacés vos: " : "Necesita de vos: ";
+      dNeed.appendChild(fuerte);
+      dNeed.appendChild(document.createTextNode(it.need));
+    }
+
+    dTags.textContent = "";
+    it.tags.forEach(function (t) {
+      var span = document.createElement("span");
+      span.className = "tag";
+      span.textContent = pretty(t);
+      dTags.appendChild(span);
+    });
+  }
+
+  /* ---------- tabla ---------- */
+
+  function renderTable() {
+    var rows = visibleIssues().slice().sort(function (a, b) {
+      return (b.imp - b.cost) - (a.imp - a.cost) || b.imp - a.imp;
+    });
+    tbody.textContent = "";
+
+    if (!rows.length) {
+      var tr = document.createElement("tr");
+      tr.className = "empty-row";
+      var td = document.createElement("td");
+      td.colSpan = 6;
+      td.textContent = "Ningún issue tiene todos los tags elegidos. Apagá alguno.";
+      tr.appendChild(td);
+      tbody.appendChild(tr);
+      return;
+    }
+
+    rows.forEach(function (it) {
+      var tr = document.createElement("tr");
+      tr.dataset.n = String(it.n);
+      tr.addEventListener("click", function () { select(it.n); });
+      tr.addEventListener("pointerenter", function () { showDetail(it.n); });
+
+      var tdN = document.createElement("td");
+      tdN.className = "num";
+      var sw = document.createElement("span");
+      sw.className = "row-dot " + it.tipo;
+      tdN.appendChild(sw);
+      var link = document.createElement("a");
+      link.href = REPO + it.n;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "#" + it.n;
+      tdN.appendChild(link);
+      tr.appendChild(tdN);
+
+      var tdT = document.createElement("td");
+      tdT.className = "t-title";
+      tdT.textContent = it.title;
+      tr.appendChild(tdT);
+
+      var tdG = document.createElement("td");
+      tdG.className = "t-tags";
+      tdG.textContent = it.tags.map(pretty).join(" · ");
+      tr.appendChild(tdG);
+
+      var saldo = it.imp - it.cost;
+      [
+        it.imp.toFixed(1),
+        it.cost.toFixed(1),
+        (saldo > 0 ? "+" : "") + saldo.toFixed(1)
+      ].forEach(function (text) {
+        var td = document.createElement("td");
+        td.className = "num num-right";
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+
+      tbody.appendChild(tr);
+    });
+    renderTableSelection();
+  }
+
+  function renderTableSelection() {
+    Array.prototype.forEach.call(tbody.children, function (tr) {
+      tr.classList.toggle("is-selected", Number(tr.dataset.n) === selected);
+    });
+  }
+
+  /* ---------- render ---------- */
+
+  function render() {
+    var vis = visibleIssues();
+    var visSet = Object.create(null);
+    vis.forEach(function (it) { visSet[it.n] = true; });
+
+    ISSUES.forEach(function (it) { dots[it.n].hidden = !visSet[it.n]; });
+
+    var on = Object.keys(active);
+    clearBtn.hidden = on.length === 0;
+    filterState.textContent = on.length === 0
+      ? "Sin filtros — se ven los " + ISSUES.length
+      : "Mostrando " + vis.length + " de " + ISSUES.length + " · " + on.map(pretty).join(", ");
+
+    FACETS.forEach(function (facet) {
+      facet.tags.forEach(function (tag) {
+        document.getElementById("chip-" + tag)
+          .setAttribute("aria-pressed", active[tag] ? "true" : "false");
+      });
+    });
+
+    renderTable();
+  }
+
+  /* ---------- persistencia ---------- */
+
+  var chains = Object.create(null);
+
+  function save(n) {
+    if (!db || !canWrite) return;
+    var it = byNum[n];
+    var body = { impacto: it.imp, costo: it.cost };
+    var prev = chains[n] || Promise.resolve();
+    chains[n] = prev.then(function () {
+      return db.doc("posiciones/i" + n).set(body);
+    }).then(function () {
+      note("Guardado");
+    }).catch(function (e) {
+      if (e && e.code === "invalid_argument") {
+        canWrite = false;
+        note("Podés mover los issues, pero no tenés permiso para guardar los cambios.");
+      } else {
+        note("No se pudo guardar el último cambio.");
+      }
+    });
+  }
+
+  var noteTimer = null;
+  function note(msg) {
+    saveState.textContent = msg;
+    if (noteTimer) clearTimeout(noteTimer);
+    if (msg === "Guardado") {
+      noteTimer = setTimeout(function () { saveState.innerHTML = "&nbsp;"; }, 1800);
+    }
+  }
+
+  function connect() {
+    if (!window.claude || typeof window.claude.use !== "function") return;
+    window.claude.use("db").then(function (store) {
+      if (!store) return;
+      db = store;
+      db.collection("posiciones").onSnapshot(function (snap) {
+        var touched = false;
+        snap.docs.forEach(function (doc) {
+          var it = byNum[Number(doc.id.replace(/^i/, ""))];
+          if (!it) return;
+          var d = doc.data() || {};
+          if (typeof d.impacto !== "number" || typeof d.costo !== "number") return;
+          if (drag && drag.n === it.n) return;
+          if (it.imp !== d.impacto || it.cost !== d.costo) {
+            it.imp = clamp(d.impacto);
+            it.cost = clamp(d.costo);
+            place(it);
+            touched = true;
+          }
+        });
+        if (touched) {
+          renderTable();
+          if (selected) showDetail(selected);
+        }
+      }, function () { /* la página sigue funcionando sin guardar */ });
+    });
+  }
+
+  clearBtn.addEventListener("click", function () {
+    active = Object.create(null);
+    render();
+  });
+
+  buildFacets();
+  buildDots();
+  render();
+  select(ISSUES.slice().sort(function (a, b) {
+    return (b.imp - b.cost) - (a.imp - a.cost);
+  })[0].n);
+  connect();
+})();
+</script>
