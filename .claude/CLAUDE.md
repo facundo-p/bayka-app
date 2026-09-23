@@ -171,6 +171,23 @@ board, tabla de estados y límites conocidos: #269.
 
 ### 7. GitHub Issues
 
+- **Redacción y clasificación (OBLIGATORIO — vigente desde 2026-09-23).** Todo
+  Issue se escribe según `docs/convenciones-issues.md` y se crea con el skill
+  `/issue`, que aplica esas reglas y pone los labels al crearlo:
+  - **El body empieza con el resumen**, una a tres oraciones sin encabezado ni
+    markdown: qué pasa, por qué importa, qué lo hace caro o barato. Todo lo que
+    va antes del primer `##` es el resumen, y de ahí lo lee el dashboard de
+    `/matriz-issues` — es un contrato, no una preferencia de estilo.
+  - **Texto sintético**: el issue entra en una pantalla. Dato concreto antes que
+    generalidad, archivo y línea antes que descripción, cero relleno. Si no
+    entra, es una épica y va con sub-issues.
+  - **Labels al crear**, no después: uno de quién lo resuelve
+    (`hace-claude` / `necesita-ok` / `necesita-facu`), los de tipo y área, y los
+    de estado que apliquen.
+  - Impacto y costo NO van en el body: son relativos al backlog y los mantiene
+    el dashboard.
+  - Los issues anteriores a esta convención migran cuando se los toca por otro
+    motivo. No hay reescritura masiva.
 - Don't assume. Ask questions if needed.
 - When addressing an issue, update it with the plan(s) approved by user.
 - When fishing an Issue, update it with the results and relevant considerations.
