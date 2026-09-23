@@ -95,6 +95,9 @@ invitación no se prueba contra `npm run dev`, se prueba en la web de staging.
 - [ ] Verificar la allowlist con el `curl` de arriba.
 - [ ] Migraciones que las functions requieren aplicadas (ver cada función).
 
+El resto de la config manual del proyecto (registro público cerrado, SMTP,
+proveedores) está en [`docs/supabase-config-manual.md`](../../docs/supabase-config-manual.md).
+
 ### Requisito previo
 
 La migración `026_abm_usuarios.sql` aplicada (columnas `email`/`activo` y
