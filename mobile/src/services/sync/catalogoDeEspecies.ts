@@ -36,6 +36,19 @@ async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Prom
   });
 }
 
+/** Pasa las referencias de una especie a otra que ya existe en `species`. */
+async function reapuntarReferencias(tx: DbExecutor, desde: string, hacia: string): Promise<void> {
+  await tx.update(trees).set({ especieId: hacia }).where(eq(trees.especieId, desde));
+  await tx.update(trees).set({ conflictEspecieId: hacia }).where(eq(trees.conflictEspecieId, desde));
+  await tx.update(plantationSpecies).set({ especieId: hacia }).where(eq(plantationSpecies.especieId, desde));
+  // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
+  // solo orden visual, se borra la referencia vieja.
+  await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, desde));
+}
+
+/** Codigo de la fila duplicada mientras convive con la del server; el id la hace única. */
+const codigoTransitorio = (id: string) => `reconciliando:${id}`;
+
 /**
  * Reconcilia una colisión UNIQUE(codigo): el server trae una especie con `id` distinto al de una fila
  * local que ya usa ese `codigo`. Re-apunta todas las referencias del id local duplicado al id del
@@ -51,15 +64,12 @@ async function reconcileSpeciesCodigoCollision(s: ServerSpecies): Promise<boolea
       .where(and(eq(species.codigo, s.codigo), ne(species.id, s.id)));
     if (!dup) return false;
 
-    await tx.update(trees).set({ especieId: s.id }).where(eq(trees.especieId, dup.id));
-    await tx.update(trees).set({ conflictEspecieId: s.id }).where(eq(trees.conflictEspecieId, dup.id));
-    await tx.update(plantationSpecies).set({ especieId: s.id }).where(eq(plantationSpecies.especieId, dup.id));
-    // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
-    // solo orden visual, se borra la referencia vieja.
-    await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, dup.id));
-
-    await tx.delete(species).where(eq(species.id, dup.id));
+    // Las FKs exigen la especie del server antes de re-apuntarle nada, y UNIQUE(codigo) no deja
+    // insertarla mientras la duplicada conserve el codigo (#617).
+    await tx.update(species).set({ codigo: codigoTransitorio(dup.id) }).where(eq(species.id, dup.id));
     await upsertSpeciesById(tx, [s]);
+    await reapuntarReferencias(tx, dup.id, s.id);
+    await tx.delete(species).where(eq(species.id, dup.id));
     return true;
   });
 }

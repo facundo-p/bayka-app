@@ -72,68 +72,63 @@ beforeEach(async () => {
 });
 
 describe('pullSpeciesFromServer — reconciliación por codigo', () => {
-  // Hasta #617: la reconciliación re-apunta las referencias a la especie del
-  // server antes de insertarla, y con FKs activas falla.
-  describe('con FKs apagadas', () => {
-    beforeAll(() => { sqlite.pragma('foreign_keys = OFF'); });
-    afterAll(() => { sqlite.pragma('foreign_keys = ON'); });
+  it('re-apunta árbol + plantation_species y elimina la especie local duplicada', async () => {
+    const plantation = createTestPlantation();
+    await mockTestDb.insert(plantations).values(plantation);
+    const parcela = createTestParcela({ plantacionId: plantation.id });
+    await mockTestDb.insert(parcelas).values(parcela);
+    const group = createTestGroup({ plantacionId: plantation.id, parcelaId: parcela.id });
+    await mockTestDb.insert(groups).values(group);
 
-    it('re-apunta árbol + plantation_species y elimina la especie local duplicada', async () => {
-      const plantation = createTestPlantation();
-      await mockTestDb.insert(plantations).values(plantation);
-      const parcela = createTestParcela({ plantacionId: plantation.id });
-      await mockTestDb.insert(parcelas).values(parcela);
-      const group = createTestGroup({ plantacionId: plantation.id, parcelaId: parcela.id });
-      await mockTestDb.insert(groups).values(group);
-
-      // Especie local con id sintético y codigo COC.
-      const localId = 'a0000000-0000-0000-0000-000000000012';
-      await mockTestDb.insert(species).values({
-        id: localId, codigo: 'COC', nombre: 'Kokú', nombreCientifico: null, createdAt: localNow(),
-      });
-
-      const serverId = 'b1111111-1111-1111-1111-111111111111';
-      // T1 apunta al id LOCAL (resuelve hoy) → debe re-apuntarse al server.
-      await mockTestDb.insert(trees).values(
-        createTestTree({ id: 't1', groupId: group.id, especieId: localId, subId: 'LACOC1', globalId: 6001 }),
-      );
-      // T2 apunta al id del SERVER (huérfano hoy) → ya resuelve tras reconciliar.
-      await mockTestDb.insert(trees).values(
-        createTestTree({ id: 't2', groupId: group.id, especieId: serverId, subId: 'LACOC2', globalId: 6002 }),
-      );
-      // plantation_species y user_species_order del id local.
-      await mockTestDb.insert(plantationSpecies).values({
-        id: 'ps-1', plantacionId: plantation.id, especieId: localId, ordenVisual: 0,
-      });
-      await mockTestDb.insert(userSpeciesOrder).values({
-        userId: 'u1', plantacionId: plantation.id, especieId: localId, ordenVisual: 3,
-      });
-
-      mockState.species = [
-        { id: serverId, codigo: 'COC', nombre: 'Kokú', nombre_cientifico: null, created_at: localNow() },
-      ];
-
-      await pullSpeciesFromServer();
-
-      // El duplicado local desaparece; sobrevive la fila del server con su codigo.
-      const byCodigo = await mockTestDb.select().from(species).where(eq(species.codigo, 'COC'));
-      expect(byCodigo).toHaveLength(1);
-      expect(byCodigo[0].id).toBe(serverId);
-      const oldRow = await mockTestDb.select().from(species).where(eq(species.id, localId));
-      expect(oldRow).toHaveLength(0);
-
-      // Ambos árboles resuelven al server id (clave del bug de export).
-      const treeRows = await mockTestDb.select().from(trees);
-      expect(treeRows.every((t) => t.especieId === serverId)).toBe(true);
-
-      // plantation_species re-apuntado al server id.
-      const [ps] = await mockTestDb.select().from(plantationSpecies).where(eq(plantationSpecies.id, 'ps-1'));
-      expect(ps.especieId).toBe(serverId);
-
-      // user_species_order del id viejo se borró (orden cosmético).
-      const uso = await mockTestDb.select().from(userSpeciesOrder);
-      expect(uso).toHaveLength(0);
+    // Especie local con id sintético y codigo COC.
+    const localId = 'a0000000-0000-0000-0000-000000000012';
+    await mockTestDb.insert(species).values({
+      id: localId, codigo: 'COC', nombre: 'Kokú', nombreCientifico: null, createdAt: localNow(),
     });
+
+    const serverId = 'b1111111-1111-1111-1111-111111111111';
+    // Un árbol apuntando al id del server no puede existir antes de reconciliar:
+    // las FKs lo rechazan (#617). Los dos apuntan al id local.
+    await mockTestDb.insert(trees).values([
+      createTestTree({ id: 't1', groupId: group.id, especieId: localId, subId: 'LACOC1', globalId: 6001 }),
+      {
+        ...createTestTree({ id: 't2', groupId: group.id, especieId: localId, subId: 'LACOC2', globalId: 6002 }),
+        conflictEspecieId: localId,
+      },
+    ]);
+    // plantation_species y user_species_order del id local.
+    await mockTestDb.insert(plantationSpecies).values({
+      id: 'ps-1', plantacionId: plantation.id, especieId: localId, ordenVisual: 0,
+    });
+    await mockTestDb.insert(userSpeciesOrder).values({
+      userId: 'u1', plantacionId: plantation.id, especieId: localId, ordenVisual: 3,
+    });
+
+    mockState.species = [
+      { id: serverId, codigo: 'COC', nombre: 'Kokú', nombre_cientifico: null, created_at: localNow() },
+    ];
+
+    await pullSpeciesFromServer();
+
+    // El duplicado local desaparece; sobrevive la fila del server con su codigo.
+    const byCodigo = await mockTestDb.select().from(species).where(eq(species.codigo, 'COC'));
+    expect(byCodigo).toHaveLength(1);
+    expect(byCodigo[0].id).toBe(serverId);
+    const oldRow = await mockTestDb.select().from(species).where(eq(species.id, localId));
+    expect(oldRow).toHaveLength(0);
+
+    // Ambos árboles resuelven al server id (clave del bug de export).
+    const treeRows = await mockTestDb.select().from(trees);
+    expect(treeRows.every((t) => t.especieId === serverId)).toBe(true);
+    expect(treeRows.find((t) => t.id === 't2')?.conflictEspecieId).toBe(serverId);
+
+    // plantation_species re-apuntado al server id.
+    const [ps] = await mockTestDb.select().from(plantationSpecies).where(eq(plantationSpecies.id, 'ps-1'));
+    expect(ps.especieId).toBe(serverId);
+
+    // user_species_order del id viejo se borró (orden cosmético).
+    const uso = await mockTestDb.select().from(userSpeciesOrder);
+    expect(uso).toHaveLength(0);
   });
 
   it('inserta una especie nueva con codigo único sin tocar el resto', async () => {
