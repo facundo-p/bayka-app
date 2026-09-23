@@ -24,6 +24,8 @@ const mockServerState: Record<string, Map<string, any>> = {
   species: new Map(),
 };
 const serverState = mockServerState;
+/** Tablas cuya lectura devuelve `{ error }`, como un server que falla a mitad del pull. */
+const mockTablasConError = new Set<string>();
 
 jest.mock('../../src/supabase/client', () => {
   const filtrar = (tabla: string, filtros: { col: string; op: string; value: any }[]) =>
@@ -44,7 +46,10 @@ jest.mock('../../src/supabase/client', () => {
         return Promise.resolve({ data: filas[0] ?? null, error: filas[0] ? null : { code: 'PGRST116' } });
       },
       then(resolver: any) {
-        return Promise.resolve({ data: filtrar(tabla, filtros), error: null }).then(resolver);
+        const respuesta = mockTablasConError.has(tabla)
+          ? { data: null, error: { message: 'falla simulada' } }
+          : { data: filtrar(tabla, filtros), error: null };
+        return Promise.resolve(respuesta).then(resolver);
       },
     };
     return api;
@@ -145,6 +150,7 @@ afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
   for (const tabla of Object.values(serverState)) tabla.clear();
+  mockTablasConError.clear();
 
   await mockTestDb.delete(plantationSpecies);
   await mockTestDb.delete(trees);
@@ -315,6 +321,19 @@ describe('pull — especie ausente del catálogo local', () => {
     expect(await leerArbol('t-huerfano')).toBeUndefined();
     expect((await leerArbol('t-ok')).especieId).toBe(ROBLE);
     expect(await mockTestDb.select().from(plantationSpecies)).toHaveLength(0);
+  });
+
+  it('el server falla al bajar la especie: no escribe hijos colgados y el pull sigue', async () => {
+    serverState.species.set(ALAMO, especieDelServer(ALAMO, 'ALA', 'Álamo'));
+    serverState.trees.set('t1', arbolDelServer('t1', ALAMO));
+    serverState.plantation_species.set('ps-1', { plantation_id: PLANTACION_ID, species_id: ALAMO, orden_visual: 0 });
+    mockTablasConError.add('species');
+
+    await expect(pullFromServer(PLANTACION_ID)).resolves.toEqual({ estado: 'ok' });
+
+    expect(await leerArbol('t1')).toBeUndefined();
+    expect(await mockTestDb.select().from(plantationSpecies)).toHaveLength(0);
+    expect(await especiesLocales()).not.toContain(ALAMO);
   });
 
   it('árbol N/N (sin especie) se escribe igual', async () => {

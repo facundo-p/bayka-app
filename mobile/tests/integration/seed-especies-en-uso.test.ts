@@ -89,6 +89,18 @@ describe('seedSpeciesIfNeeded — especies fuera del catálogo local', () => {
     expect(await existe('sp-server')).toBe(true);
   });
 
+  it('conserva una especie usada solo por conflict_especie_id', async () => {
+    await mockTestDb.insert(species).values(especieFueraDelCatalogo('sp-server', 'SRV'));
+    await mockTestDb.insert(trees).values({
+      ...createTestTree({ id: 't1', groupId: GRUPO_ID, especieId: speciesData[0].id }),
+      conflictEspecieId: 'sp-server',
+    });
+
+    await seedSpeciesIfNeeded();
+
+    expect(await existe('sp-server')).toBe(true);
+  });
+
   it('borra una especie fuera del catálogo que nadie referencia', async () => {
     await mockTestDb.insert(species).values(especieFueraDelCatalogo('sp-vieja', 'OLD'));
 
