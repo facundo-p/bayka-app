@@ -7,6 +7,7 @@ import {
   ConexionSincrona,
   limpiarHuerfanos,
 } from '../../src/database/integridadReferencial';
+import { codigoDeEspecieRecuperada } from '../../src/utils/speciesHelpers';
 
 type Sqlite = InstanceType<typeof Database>;
 
@@ -109,8 +110,8 @@ describe('limpiarHuerfanos', () => {
     expect(r).toEqual({ borradas: {}, especiesRecuperadas: 1 });
     const arbol = sqlite.prepare("SELECT especie_id FROM trees WHERE id = 'p1-t'").get() as { especie_id: string };
     expect(arbol.especie_id).toBe('sp-del-server');
-    const especie = sqlite.prepare("SELECT id FROM species WHERE id = 'sp-del-server'").get();
-    expect(especie).toBeDefined();
+    const especie = sqlite.prepare("SELECT codigo FROM species WHERE id = 'sp-del-server'").get();
+    expect(especie).toEqual({ codigo: 'recuperada:sp-del-server' });
   });
 
   it('una especie usada por varias filas se recrea una sola vez', () => {
@@ -126,5 +127,22 @@ describe('limpiarHuerfanos', () => {
     sembrarPlantacionCompleta(sqlite, 'p1', null);
     expect(limpiarHuerfanos(conexionDe(sqlite))).toEqual({ borradas: {}, especiesRecuperadas: 0 });
     expect(cuenta(sqlite, 'trees')).toBe(1);
+  });
+
+  it('si una violación no se resuelve, corta y deshace todo lo que había limpiado', () => {
+    sembrarPlantacionCompleta(sqlite, 'borrada', null);
+    sqlite.prepare("DELETE FROM plantations WHERE id = 'borrada'").run();
+    // Otra especie ya ocupa el codigo de la recuperada: el INSERT OR IGNORE no la crea nunca.
+    sqlite.prepare(`INSERT INTO species (id, codigo, nombre, created_at) VALUES ('otra', ?, 'X', ?)`)
+      .run(codigoDeEspecieRecuperada('sp-x'), HOY);
+    sembrarPlantacionCompleta(sqlite, 'p1', 'sp-x');
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    expect(() => limpiarHuerfanos(conexionDe(sqlite))).toThrow(/pasadas/);
+    expect(cuenta(sqlite, 'parcelas')).toBe(2);
+    expect(cuenta(sqlite, 'trees')).toBe(2);
+
+    activarIntegridadReferencial(conexionDe(sqlite));
+    expect(sqlite.pragma('foreign_keys', { simple: true })).toBe(0);
   });
 });

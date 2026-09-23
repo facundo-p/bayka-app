@@ -12,6 +12,10 @@ describe('getSpeciesCode', () => {
   test('falls back to ?? when especieId is set but codigo is missing', () => {
     expect(getSpeciesCode({ especieId: 'esp-1', especieCodigo: null })).toBe('??');
   });
+
+  test('una especie recuperada se muestra como ??, no con su codigo provisorio', () => {
+    expect(getSpeciesCode({ especieId: 'esp-1', especieCodigo: 'recuperada:esp-1' })).toBe('??');
+  });
 });
 
 describe('getSpeciesName', () => {
@@ -53,5 +57,10 @@ describe('resolveEspecieCodigo', () => {
     const queryable = makeQueryable([]);
     const result = await resolveEspecieCodigo(queryable as any, 'esp-orphan');
     expect(result).toBe(UNKNOWN_SPECIES_CODE);
+  });
+
+  test('una especie recuperada va al SubID como NN', async () => {
+    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
+    expect(await resolveEspecieCodigo(queryable as any, 'esp-1')).toBe('NN');
   });
 });

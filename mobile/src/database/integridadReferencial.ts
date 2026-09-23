@@ -1,5 +1,6 @@
 import { createTaggedLogger } from '../utils/taggedLogger';
 import { localNow } from '../utils/dateUtils';
+import { codigoDeEspecieRecuperada } from '../utils/speciesHelpers';
 
 const dbLog = createTaggedLogger('DB');
 
@@ -36,8 +37,9 @@ function columnaDeLaFk(conexion: ConexionSincrona, v: Violacion): string {
 
 /**
  * Una especie que falta se recrea con su id en vez de tocar el árbol: null lo volvería N/N y
- * al subir pisaría la especie real del server. El pull del catálogo la completa por id; si
- * queda sin referencias, `seedSpeciesIfNeeded` la borra.
+ * al subir pisaría la especie real del server. Hasta que el pull del catálogo le traiga codigo y
+ * nombre, no se ofrece para elegir y los SubID la escriben NN. Si queda sin referencias,
+ * `seedSpeciesIfNeeded` la borra.
  */
 function recuperarEspecie(conexion: ConexionSincrona, v: Violacion): boolean {
   const columna = columnaDeLaFk(conexion, v);
@@ -49,7 +51,7 @@ function recuperarEspecie(conexion: ConexionSincrona, v: Violacion): boolean {
   const insertada = conexion.getAllSync<{ id: string }>(
     `INSERT OR IGNORE INTO ${TABLA_ESPECIES} (id, codigo, nombre, nombre_cientifico, created_at)
      VALUES (?, ?, ?, NULL, ?) RETURNING id`,
-    [fila.id, fila.id, NOMBRE_ESPECIE_RECUPERADA, localNow()],
+    [fila.id, codigoDeEspecieRecuperada(fila.id), NOMBRE_ESPECIE_RECUPERADA, localNow()],
   );
   return insertada.length > 0;
 }
