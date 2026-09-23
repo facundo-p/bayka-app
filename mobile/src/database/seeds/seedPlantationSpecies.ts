@@ -1,9 +1,13 @@
 import { db } from '../client';
-import { plantationSpecies, species } from '../schema';
+import { plantations, plantationSpecies, species } from '../schema';
 import { eq, count } from 'drizzle-orm';
 import { DEMO_PLANTATION_ID } from './seedPlantation';
 
+/** Especies de la plantación demo. Si no está (el device ya tenía plantaciones reales), nada: serían huérfanas (#616). */
 export async function seedPlantationSpeciesIfNeeded(): Promise<void> {
+  const [demo] = await db.select({ id: plantations.id }).from(plantations).where(eq(plantations.id, DEMO_PLANTATION_ID));
+  if (!demo) return;
+
   const [result] = await db.select({ count: count() })
     .from(plantationSpecies)
     .where(eq(plantationSpecies.plantacionId, DEMO_PLANTATION_ID));
