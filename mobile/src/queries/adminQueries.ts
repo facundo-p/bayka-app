@@ -7,6 +7,7 @@ import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueries';
+import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 
 export type FinalizationGate = {
@@ -191,11 +192,12 @@ export async function hasTreesForSpecies(
   return rows.length > 0;
 }
 
-/** Returns all species in the local catalog, ordered alphabetically. */
+/** Catálogo local por nombre, sin las especies recuperadas. */
 export async function getAllSpecies(): Promise<{ id: string; nombre: string; codigo: string }[]> {
   return db
     .select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
     .from(species)
+    .where(soloEspeciesDelCatalogo())
     .orderBy(asc(species.nombre));
 }
 

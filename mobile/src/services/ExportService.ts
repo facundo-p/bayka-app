@@ -9,14 +9,11 @@ import { getExportRows, getKmlExportRows, type ExportRow } from '../queries/expo
 import { pullSpeciesFromServer } from './sync/catalogoDeEspecies';
 import { syncLog } from '../utils/syncLogger';
 import { buildKml } from './kml/kmlGenerator';
+import { NN_SPECIES_LABEL } from '../utils/speciesHelpers';
 
 // BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y rompe acentos/ñ;
 // el .xlsx no lo necesita (ya embebe la codificación).
 const UTF8_BOM = String.fromCharCode(0xFEFF);
-
-// Especie no resuelta (especieId null o huérfano): se muestra en vez de perder la fila, para que
-// el problema quede visible.
-const ESPECIE_NO_RESUELTA = 'N/N';
 
 /** Refresca el catálogo de especies antes del export; best-effort — si falla, sigue con el catálogo local (el LEFT JOIN evita perder árboles, a lo sumo salen como "N/N"). */
 async function refreshSpeciesCatalogBeforeExport(): Promise<void> {
@@ -58,7 +55,10 @@ function csvField(value: string | number | null | undefined): string {
   return str;
 }
 
-/** Fila CSV en el orden del header (especieNombre null → 'N/N'; parcelaNombre null → celda vacía). */
+/**
+ * Fila CSV en el orden del header. Especie null (sin especie o huérfana) → N/N en vez de perder la
+ * fila, para que el problema quede visible; parcela null → celda vacía.
+ */
 function rowToCSV(r: ExportRow): string {
   return [
     csvField(r.globalId),
@@ -69,7 +69,7 @@ function rowToCSV(r: ExportRow): string {
     csvField(r.grupoNombre),
     csvField(r.subId),
     csvField(r.periodo),
-    csvField(r.especieNombre ?? ESPECIE_NO_RESUELTA),
+    csvField(r.especieNombre ?? NN_SPECIES_LABEL),
   ].join(',');
 }
 
@@ -84,7 +84,7 @@ export function rowToExcel(r: ExportRow) {
     'Grupo': r.grupoNombre,
     'SubID': r.subId,
     'Periodo': r.periodo,
-    'Especie': r.especieNombre ?? ESPECIE_NO_RESUELTA,
+    'Especie': r.especieNombre ?? NN_SPECIES_LABEL,
   };
 }
 

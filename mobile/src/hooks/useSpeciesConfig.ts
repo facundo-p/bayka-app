@@ -7,6 +7,7 @@ import { showInfoDialog } from '../utils/alertHelpers';
 import { getAllSpecies, getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
 import { saveSpeciesConfig, saveSpeciesConfigLocally } from '../repositories/PlantationRepository';
 import { colors } from '../theme';
+import { conservarEspeciesRecuperadas } from '../utils/speciesHelpers';
 
 export type SpeciesItem = {
   especieId: string;
@@ -23,6 +24,7 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
   const [items, setItems] = useState<SpeciesItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [configActual, setConfigActual] = useState<Awaited<ReturnType<typeof getPlantationSpeciesConfig>>>([]);
 
   const loadData = useCallback(async () => {
     if (!plantacionId) return;
@@ -30,6 +32,7 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
     try {
       const allSpecies = await getAllSpecies();
       const currentConfig = await getPlantationSpeciesConfig(plantacionId);
+      setConfigActual(currentConfig);
       const configMap = new Map(currentConfig.map((c) => [c.especieId, c.ordenVisual]));
 
       const treeChecks = await Promise.all(
@@ -93,9 +96,10 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
     if (!plantacionId) return;
     setSaving(true);
     try {
-      const enabledItems = items
-        .filter((i) => i.enabled)
-        .map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual }));
+      const enabledItems = conservarEspeciesRecuperadas(
+        items.filter((i) => i.enabled).map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual })),
+        configActual,
+      );
       if (pendingSync) {
         await saveSpeciesConfigLocally(plantacionId, enabledItems);
       } else {

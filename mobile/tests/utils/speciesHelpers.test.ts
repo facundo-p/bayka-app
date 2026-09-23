@@ -1,4 +1,4 @@
-import { resolveEspecieCodigo, UNKNOWN_SPECIES_CODE, getSpeciesCode, getSpeciesName } from '../../src/utils/speciesHelpers';
+import { conservarEspeciesRecuperadas, resolveEspecieCodigo, UNKNOWN_SPECIES_CODE, getSpeciesCode, getSpeciesName } from '../../src/utils/speciesHelpers';
 
 describe('getSpeciesCode', () => {
   test('returns N/N when especieId is null', () => {
@@ -11,6 +11,10 @@ describe('getSpeciesCode', () => {
 
   test('falls back to ?? when especieId is set but codigo is missing', () => {
     expect(getSpeciesCode({ especieId: 'esp-1', especieCodigo: null })).toBe('??');
+  });
+
+  test('una especie recuperada se muestra como ??, no con su codigo provisorio', () => {
+    expect(getSpeciesCode({ especieId: 'esp-1', especieCodigo: 'recuperada:esp-1' })).toBe('??');
   });
 });
 
@@ -35,23 +39,53 @@ function makeQueryable(result: { codigo: string }[]) {
   return { select, from, where };
 }
 
+const arbol = (especieId: string | null, subId = 'P1L1ANC12') => ({ especieId, subId, posicion: 12 });
+
 describe('resolveEspecieCodigo', () => {
   test('returns UNKNOWN_SPECIES_CODE without querying when especieId is null', async () => {
     const queryable = makeQueryable([]);
-    const result = await resolveEspecieCodigo(queryable as any, null);
+    const result = await resolveEspecieCodigo(queryable as any, arbol(null), 'P1L1');
     expect(result).toBe(UNKNOWN_SPECIES_CODE);
     expect(queryable.select).not.toHaveBeenCalled();
   });
 
   test('returns the species codigo when found', async () => {
     const queryable = makeQueryable([{ codigo: 'ANC' }]);
-    const result = await resolveEspecieCodigo(queryable as any, 'esp-1');
+    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-1'), 'P1L1');
     expect(result).toBe('ANC');
   });
 
   test('returns UNKNOWN_SPECIES_CODE when the species row is missing', async () => {
     const queryable = makeQueryable([]);
-    const result = await resolveEspecieCodigo(queryable as any, 'esp-orphan');
+    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-orphan'), 'P1L1');
     expect(result).toBe(UNKNOWN_SPECIES_CODE);
+  });
+
+  test('una especie recuperada conserva el codigo que ya tenía el SubID', async () => {
+    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
+    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1'), 'P1L1')).toBe('ANC');
+  });
+
+  test('una especie recuperada va como NN si el SubID no calza con el prefijo', async () => {
+    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
+    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), 'P1L1')).toBe('NN');
+  });
+});
+
+describe('conservarEspeciesRecuperadas', () => {
+  test('agrega al final las recuperadas de la plantación que no se eligieron', () => {
+    const actuales = [
+      { especieId: 'kok', codigo: 'recuperada:kok', ordenVisual: 0 },
+      { especieId: 'pin', codigo: 'PIN', ordenVisual: 1 },
+    ];
+    expect(conservarEspeciesRecuperadas([{ especieId: 'euc', ordenVisual: 0 }], actuales)).toEqual([
+      { especieId: 'euc', ordenVisual: 0 },
+      { especieId: 'kok', ordenVisual: 1 },
+    ]);
+  });
+
+  test('sin elegidas, la recuperada queda sola', () => {
+    const actuales = [{ especieId: 'kok', codigo: 'recuperada:kok', ordenVisual: 3 }];
+    expect(conservarEspeciesRecuperadas([], actuales)).toEqual([{ especieId: 'kok', ordenVisual: 0 }]);
   });
 });

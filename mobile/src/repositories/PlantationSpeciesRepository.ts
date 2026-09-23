@@ -1,6 +1,7 @@
 import { db } from '../database/client';
 import { plantationSpecies, species } from '../database/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 
 export interface PlantationSpeciesItem {
   id: string;
@@ -11,6 +12,7 @@ export interface PlantationSpeciesItem {
   nombre: string;
 }
 
+/** Especies para los botones de registro; una recuperada no se ofrece. */
 export async function getSpeciesForPlantation(plantacionId: string): Promise<PlantationSpeciesItem[]> {
   const rows = await db
     .select({
@@ -23,7 +25,7 @@ export async function getSpeciesForPlantation(plantacionId: string): Promise<Pla
     })
     .from(plantationSpecies)
     .innerJoin(species, eq(plantationSpecies.especieId, species.id))
-    .where(eq(plantationSpecies.plantacionId, plantacionId))
+    .where(and(eq(plantationSpecies.plantacionId, plantacionId), soloEspeciesDelCatalogo()))
     .orderBy(species.nombre);
 
   return rows;

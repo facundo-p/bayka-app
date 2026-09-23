@@ -11,7 +11,7 @@ import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
-import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { codigoParaSubId, resolveEspecieCodigo } from '../utils/speciesHelpers';
 import { borrarFotosLocales } from '../services/PhotoService';
 
 export interface InsertTreeParams {
@@ -38,7 +38,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
 
   const nextPosition = (maxResult?.maxPos ?? 0) + 1;
   const parcelaCodigo = await getGroupParcelaCodigo(params.grupoId);
-  const subId = generateSubId(parcelaCodigo, params.grupoCodigo, params.especieCodigo, nextPosition);
+  const subId = generateSubId(parcelaCodigo, params.grupoCodigo, codigoParaSubId(params.especieCodigo), nextPosition);
 
   const id = Crypto.randomUUID();
   await db.insert(trees).values({
@@ -103,7 +103,7 @@ export async function reverseTreeOrder(
   await enTransaccion(async (tx) => {
     for (const { id, newPosicion } of reversed) {
       const tree = allTrees.find((t) => t.id === id)!;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
+      const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${grupoCodigo}`);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
@@ -130,7 +130,7 @@ export async function resolveNNTree(
   if (!sp || !tree) return;
 
   const parcelaCodigo = await getGroupParcelaCodigo(tree.grupoId);
-  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, sp.codigo, tree.posicion);
+  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, codigoParaSubId(sp.codigo), tree.posicion);
 
   await db.update(trees)
     .set({ especieId, subId: newSubId })
@@ -289,7 +289,7 @@ export async function deleteTreeAndRecalculate(
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
+      const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${grupoCodigo}`);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })

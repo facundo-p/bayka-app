@@ -1,8 +1,6 @@
 import 'react-native-url-polyfill/auto'; // must be first import
 
-import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
-import migrations from '../drizzle/migrations';
-import { db } from '../src/database/client';
+import { useBaseLocal } from '../src/hooks/useBaseLocal';
 import { useAuth } from '../src/hooks/useAuth';
 import { esRolAdmin } from '../src/types/domain';
 import { Slot, useRouter, useSegments } from 'expo-router';
@@ -30,7 +28,7 @@ import * as SplashScreen from 'expo-splash-screen';
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { success, error } = useMigrations(db, migrations);
+  const { success, error } = useBaseLocal();
   const { session, role, loading } = useAuth();
   const router = useRouter();
   const segments = useSegments();
