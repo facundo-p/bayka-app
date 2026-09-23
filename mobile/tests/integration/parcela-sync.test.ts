@@ -7,13 +7,12 @@
  * Mock de Supabase: estado in-memory por tabla, con errores del shape real
  * de Postgres (code/details/message).
  */
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
 import {
   plantations,
   parcelas,
   groups,
-  trees,
 } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
 
@@ -217,9 +216,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  // Prod (expo-sqlite) no activa PRAGMA foreign_keys (#265): el pull escribe
-  // filas cuyo padre puede no estar local todavía.
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {
@@ -227,10 +223,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
   resetServer();
 });
 

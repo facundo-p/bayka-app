@@ -4,7 +4,7 @@
  * "listos para sincronizar".
  */
 import Database from 'better-sqlite3';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, IntegrationDb, vaciarTablas, sembrarEspecieDeTest } from '../helpers/integrationDb';
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree } from '../helpers/factories';
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
 import {
@@ -47,16 +47,13 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
+  await sembrarEspecieDeTest(mockTestDb);
   await mockTestDb.insert(plantations).values([
     createTestPlantation({ id: VIGENTE }),
     createTestPlantation({ id: ELIMINADA, eliminadaEnServidorEn: '2026-09-17T12:00:00.000Z' }),

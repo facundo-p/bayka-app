@@ -102,6 +102,9 @@ export function createTestParcela(overrides?: Partial<NewParcela>): NewParcela {
 
 // ---- Tree ----
 
+/** Especie a la que apuntan los árboles de `createTestTree`; con FKs activas tiene que existir (`sembrarEspecieDeTest`). */
+export const TEST_SPECIES_ID = 'species-eucalyptus';
+
 export type NewTree = {
   id: string;
   groupId: string;
@@ -120,7 +123,7 @@ export function createTestTree(overrides?: Partial<NewTree>): NewTree {
   return {
     id: randomId(),
     groupId: 'sg-default',
-    especieId: 'species-eucalyptus',
+    especieId: TEST_SPECIES_ID,
     posicion: 1,
     subId: 'LA-EUC-1',
     fotoUrl: null,

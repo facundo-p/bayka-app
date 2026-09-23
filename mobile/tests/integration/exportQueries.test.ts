@@ -31,8 +31,6 @@ beforeAll(() => {
   const r = createTestDb();
   mockTestDb = r.db;
   sqlite = r.sqlite;
-  // Prod (expo-sqlite) no activa PRAGMA foreign_keys → puede haber árboles con especieId huérfano.
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {
@@ -243,7 +241,8 @@ describe('exportQueries.getExportRows', () => {
   });
 
   // ─── LEFT JOIN a species: el árbol nunca debe perderse (antes el INNER JOIN
-  // descartaba en silencio árboles con especie null/huérfana) ─────────────────
+  // descartaba en silencio árboles con especie null/huérfana). Con FKs activas
+  // un huérfano no se puede sembrar; el caso null ejercita el mismo JOIN. ─────
 
   async function seedPlantationWithGroup(lugar: string): Promise<string> {
     const plantation = createTestPlantation({ lugar });
@@ -294,29 +293,6 @@ describe('exportQueries.getExportRows', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].globalId).toBe(100);
-    expect(rows[0].especieNombre).toBeNull();
-  });
-
-  it('incluye el árbol con especieId huérfano (especie ausente del catálogo)', async () => {
-    const plantacionId = await seedPlantationWithGroup('Campo Huerfano');
-    await mockTestDb.insert(trees).values({
-      id: 't-orphan',
-      groupId: `g-${plantacionId}`,
-      especieId: 'especie-inexistente-uuid',
-      posicion: 1,
-      subId: 'LX-ZZZ-1',
-      fotoUrl: null,
-      fotoSynced: false,
-      plantacionId: 1,
-      globalId: 200,
-      usuarioRegistro: 'u1',
-      createdAt: localNow(),
-    });
-
-    const rows = await getExportRows(plantacionId);
-
-    expect(rows).toHaveLength(1);
-    expect(rows[0].globalId).toBe(200);
     expect(rows[0].especieNombre).toBeNull();
   });
 });
