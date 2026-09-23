@@ -1,4 +1,4 @@
-import { generateSubId } from '../../src/utils/idGenerator';
+import { especieDelSubId, generateSubId } from '../../src/utils/idGenerator';
 
 describe('generateSubId', () => {
   it('generates correct SubID for standard tree', () => {
@@ -19,5 +19,18 @@ describe('generateSubId', () => {
 
   it('includes parcela code as prefix', () => {
     expect(generateSubId('SO', 'G1', 'ANC', 3)).toBe('SOG1ANC3');
+  });
+});
+
+describe('especieDelSubId', () => {
+  it('devuelve el segmento de especie entre el prefijo y la posición', () => {
+    expect(especieDelSubId('LP1L23BANC12', 'LP1L23B', 12)).toBe('ANC');
+    expect(especieDelSubId('MP3L1NN5', 'MP3L1', 5)).toBe('NN');
+  });
+
+  it('devuelve null si el SubID no calza con el prefijo o la posición', () => {
+    expect(especieDelSubId('LP1L23BANC12', 'LP1L9', 12)).toBeNull();
+    expect(especieDelSubId('LP1L23BANC12', 'LP1L23B', 7)).toBeNull();
+    expect(especieDelSubId('LP1L23B12', 'LP1L23B', 12)).toBeNull();
   });
 });

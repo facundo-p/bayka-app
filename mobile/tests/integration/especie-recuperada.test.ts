@@ -46,13 +46,15 @@ const FALTANTE = 'c2222222-2222-2222-2222-222222222222';
 
 let plantacionId: string;
 let grupoId: string;
+let otroGrupoId: string;
 
 /** Árbol y especie de plantación apuntando a una especie que no está, reparados como en el arranque. */
 async function sembrarEspecieFaltante(): Promise<void> {
   sqlite.pragma('foreign_keys = OFF');
-  await mockTestDb.insert(trees).values(
-    createTestTree({ id: 't1', groupId: grupoId, especieId: FALTANTE, posicion: 1, subId: 'X' }),
-  );
+  await mockTestDb.insert(trees).values([
+    createTestTree({ id: 't1', groupId: grupoId, especieId: FALTANTE, posicion: 1, subId: 'P1L1KOK1' }),
+    createTestTree({ id: 't-raro', groupId: otroGrupoId, especieId: FALTANTE, posicion: 1, subId: 'X' }),
+  ]);
   await mockTestDb.insert(plantationSpecies).values({
     id: 'ps-faltante', plantacionId, especieId: FALTANTE, ordenVisual: 1,
   });
@@ -87,7 +89,9 @@ beforeEach(async () => {
   await mockTestDb.insert(parcelas).values(parcela);
   const grupo = createTestGroup({ plantacionId, parcelaId: parcela.id, codigo: 'L1' });
   grupoId = grupo.id;
-  await mockTestDb.insert(groups).values(grupo);
+  const otro = createTestGroup({ plantacionId, parcelaId: parcela.id, codigo: 'L2', nombre: 'Otro' });
+  otroGrupoId = otro.id;
+  await mockTestDb.insert(groups).values([grupo, otro]);
   const euc = createTestSpecies({ codigo: 'EUC' });
   await mockTestDb.insert(species).values(euc);
   await mockTestDb.insert(plantationSpecies).values({ id: 'ps-euc', plantacionId, especieId: euc.id, ordenVisual: 0 });
@@ -96,18 +100,27 @@ beforeEach(async () => {
 });
 
 describe('especie recuperada', () => {
-  it('los SubID la escriben NN al registrar, invertir y renombrar el grupo', async () => {
+  it('registrar sobre ella escribe NN en el SubID', async () => {
     const [recuperada] = await mockTestDb.select().from(species).where(eq(species.id, FALTANTE));
     const { subId } = await insertTree({
       grupoId, grupoCodigo: 'L1', especieId: FALTANTE, especieCodigo: recuperada.codigo, userId: 'u1',
     });
     expect(subId).toBe('P1L1NN2');
+  });
+
+  it('renumerar y renombrar el grupo conservan el codigo que ya tenía el SubID', async () => {
+    await insertTree({ grupoId, grupoCodigo: 'L1', especieId: null, especieCodigo: 'NN', userId: 'u1' });
 
     await reverseTreeOrder(grupoId, 'L1');
-    expect(await subIdDe('t1')).toBe('P1L1NN2');
+    expect(await subIdDe('t1')).toBe('P1L1KOK2');
 
     await updateGroupCode(grupoId, 'L9', 'L1');
-    expect(await subIdDe('t1')).toBe('P1L9NN2');
+    expect(await subIdDe('t1')).toBe('P1L9KOK2');
+  });
+
+  it('si el SubID no deja leer el codigo, recalcularlo escribe NN', async () => {
+    await updateGroupCode(otroGrupoId, 'L3', 'L2');
+    expect(await subIdDe('t-raro')).toBe('P1L3NN1');
   });
 
   it('no se ofrece en los botones de registro ni en el catálogo del admin', async () => {

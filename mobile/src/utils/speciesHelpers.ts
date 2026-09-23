@@ -1,12 +1,16 @@
 import { eq, notLike } from 'drizzle-orm';
 import { species as speciesTable } from '../database/schema';
 import type { db } from '../database/client';
+import { especieDelSubId } from './idGenerator';
 
 /** Placeholder especie codigo embedded in a tree's subId when unresolved (N/N). */
 export const UNKNOWN_SPECIES_CODE = 'NN';
 
-/** Etiqueta de un árbol cuya especie no está en el catálogo local. */
-const ESPECIE_NO_RESUELTA = '??';
+/** Etiqueta de un árbol sin especie (N/N). */
+export const NN_SPECIES_LABEL = 'N/N';
+
+/** Etiqueta de un árbol con especie que no está en el catálogo local, o es una recuperada. */
+const ETIQUETA_ESPECIE_FUERA_DE_CATALOGO = '??';
 
 /**
  * Prefijo del codigo de una especie recreada por `limpiarHuerfanos` hasta que el pull del
@@ -27,6 +31,25 @@ export const soloEspeciesDelCatalogo = () =>
 const codigoDelCatalogo = (codigo: string | null | undefined) =>
   codigo && !esEspecieRecuperada(codigo) ? codigo : null;
 
+type EspecieConfigurada = { especieId: string; ordenVisual: number };
+
+/**
+ * Suma a las especies elegidas las recuperadas que ya tenía la plantación. La configuración no
+ * las muestra y guardar reemplaza la lista entera: sin esto se borrarían del server.
+ */
+export function conservarEspeciesRecuperadas(
+  elegidas: EspecieConfigurada[],
+  actuales: (EspecieConfigurada & { codigo: string })[],
+): EspecieConfigurada[] {
+  const elegidasIds = new Set(elegidas.map((e) => e.especieId));
+  const recuperadas = actuales.filter((e) => esEspecieRecuperada(e.codigo) && !elegidasIds.has(e.especieId));
+  const siguiente = Math.max(-1, ...elegidas.map((e) => e.ordenVisual)) + 1;
+  return [
+    ...elegidas,
+    ...recuperadas.map((e, i) => ({ especieId: e.especieId, ordenVisual: siguiente + i })),
+  ];
+}
+
 /** Codigo que va en un SubID: una especie recuperada sube como NN, igual que una sin resolver. */
 export function codigoParaSubId(codigo: string | null | undefined): string {
   return codigoDelCatalogo(codigo) ?? UNKNOWN_SPECIES_CODE;
@@ -37,8 +60,8 @@ export function getSpeciesCode(tree: {
   especieId?: string | null;
   especieCodigo?: string | null;
 }): string {
-  if (!tree.especieId) return 'N/N';
-  return codigoDelCatalogo(tree.especieCodigo) ?? ESPECIE_NO_RESUELTA;
+  if (!tree.especieId) return NN_SPECIES_LABEL;
+  return codigoDelCatalogo(tree.especieCodigo) ?? ETIQUETA_ESPECIE_FUERA_DE_CATALOGO;
 }
 
 /** Display name for a tree whose especie is not yet resolved. */
@@ -46,20 +69,31 @@ export function getSpeciesName(tree: {
   especieId?: string | null;
   especieNombre?: string | null;
 }): string {
-  if (!tree.especieId) return 'N/N';
-  return tree.especieNombre ?? ESPECIE_NO_RESUELTA;
+  if (!tree.especieId) return NN_SPECIES_LABEL;
+  return tree.especieNombre ?? ETIQUETA_ESPECIE_FUERA_DE_CATALOGO;
 }
 
 type Queryable = typeof db;
 
-/** Codigo de especie para el SubID de un árbol, vía `codigoParaSubId`. Recibe `db`: la transacción es de la conexión, no un handle aparte. */
+/** Lo que hace falta de un árbol para recalcular su SubID. */
+type ArbolConSubId = { especieId: string | null; subId: string; posicion: number };
+
+/**
+ * Codigo de especie para recalcular el SubID de un árbol armado con `prefijoActual` (parcela +
+ * grupo). Con una especie recuperada conserva el del SubID actual: NN pisaría el codigo real que
+ * el árbol ya subió. Recibe `db`: la transacción es de la conexión, no un handle aparte.
+ */
 export async function resolveEspecieCodigo(
   queryable: Queryable,
-  especieId: string | null,
+  arbol: ArbolConSubId,
+  prefijoActual: string,
 ): Promise<string> {
-  if (!especieId) return UNKNOWN_SPECIES_CODE;
+  if (!arbol.especieId) return UNKNOWN_SPECIES_CODE;
   const [sp] = await queryable.select({ codigo: speciesTable.codigo })
     .from(speciesTable)
-    .where(eq(speciesTable.id, especieId));
+    .where(eq(speciesTable.id, arbol.especieId));
+  if (sp && esEspecieRecuperada(sp.codigo)) {
+    return especieDelSubId(arbol.subId, prefijoActual, arbol.posicion) ?? UNKNOWN_SPECIES_CODE;
+  }
   return codigoParaSubId(sp?.codigo);
 }

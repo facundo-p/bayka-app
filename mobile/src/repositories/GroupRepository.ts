@@ -206,7 +206,7 @@ export async function updateGroup(
 async function recalcTreesSubIds(
   tx: typeof db,
   grupoId: string,
-  newCodigo: string,
+  codigos: { anterior: string; nuevo: string },
   parcelaCodigo: string
 ): Promise<void> {
   const allTrees = await tx.select().from(trees)
@@ -214,8 +214,8 @@ async function recalcTreesSubIds(
     .orderBy(asc(trees.posicion));
 
   for (const tree of allTrees) {
-    const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
-    const newSubId = generateSubId(parcelaCodigo, newCodigo.toUpperCase(), especieCodigo, tree.posicion);
+    const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${codigos.anterior}`);
+    const newSubId = generateSubId(parcelaCodigo, codigos.nuevo.toUpperCase(), especieCodigo, tree.posicion);
     await tx.update(trees)
       .set({ subId: newSubId })
       .where(eq(trees.id, tree.id));
@@ -230,7 +230,7 @@ export async function updateGroupCode(
 ): Promise<UpdateGroupResult> {
   const upperCodigo = newCodigo.toUpperCase();
 
-  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId })
+  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId, codigo: groups.codigo })
     .from(groups).where(eq(groups.id, id));
   if (!current) return { success: false, error: 'unknown' };
 
@@ -251,7 +251,7 @@ export async function updateGroupCode(
       await tx.update(groups)
         .set({ codigo: upperCodigo })
         .where(eq(groups.id, id));
-      await recalcTreesSubIds(tx, id, newCodigo, parcelaCodigo);
+      await recalcTreesSubIds(tx, id, { anterior: current.codigo, nuevo: newCodigo }, parcelaCodigo);
     });
     await markGroupPendingSync(id);
     notifyDataChanged();
