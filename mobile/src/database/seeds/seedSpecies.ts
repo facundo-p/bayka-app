@@ -37,6 +37,7 @@ async function borrarObsoletasSinUso(catalogIds: string[]): Promise<void> {
   await db.delete(species).where(and(
     notInArray(species.id, catalogIds),
     notExists(db.select({ id: trees.id }).from(trees).where(eq(trees.especieId, species.id))),
+    notExists(db.select({ id: trees.id }).from(trees).where(eq(trees.conflictEspecieId, species.id))),
     notExists(db.select({ id: plantationSpecies.id }).from(plantationSpecies).where(eq(plantationSpecies.especieId, species.id))),
     notExists(db.select({ id: userSpeciesOrder.especieId }).from(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, species.id))),
   ));

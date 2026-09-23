@@ -4,7 +4,7 @@
  * Covers el nombre de parcela (null si está tombstoned, como en la web), el
  * NOT NULL de groups.parcela_id (migración 0018) y el orden por globalId ASC.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import Database from 'better-sqlite3';
 import {
@@ -38,11 +38,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
-  await mockTestDb.delete(species);
+  await vaciarTablas(mockTestDb);
 });
 
 async function seedSpecies(codigo = 'PI'): Promise<string> {

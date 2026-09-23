@@ -8,7 +8,7 @@ import { syncLog } from '../../utils/syncLogger';
 import { DownloadProgress, DownloadResult, DownloadPhaseProgress, DOWNLOAD_PHASE, esEliminada, esPullSinDatos } from './types';
 import { pullFromServer, webManagedFlags } from './pullService';
 import { downloadPhotosForPlantation } from './photoService';
-import { pullSpeciesFromServer } from './preSteps';
+import { pullSpeciesFromServer } from './catalogoDeEspecies';
 import { marcandoActividadDeSync } from './syncActivityStore';
 
 interface DownloadOptions {
