@@ -21,6 +21,7 @@ import { getResumenDePendientes, type ResumenDePendientes } from '../queries/cat
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
 import { borrarFotosLocales } from '../services/PhotoService';
+import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -368,7 +369,7 @@ export async function saveSpeciesConfigLocally(
   if (items.length > 0) {
     await db.insert(plantationSpecies).values(
       items.map((item) => ({
-        id: `ps-${plantacionId}-${item.especieId}`,
+        id: plantationSpeciesId(plantacionId, item.especieId),
         plantacionId,
         especieId: item.especieId,
         ordenVisual: item.ordenVisual,

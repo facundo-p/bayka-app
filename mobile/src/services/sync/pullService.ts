@@ -25,6 +25,7 @@ import { abortarSiCancelado } from './cancelacion';
 import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 import { asegurarEspecies } from './catalogoDeEspecies';
+import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -431,7 +432,7 @@ async function pullPlantationSpecies(
   const escribibles = await conEspecieLocal(all, DOWNLOAD_PHASE.especiesPlantacion);
   await enTransaccionPorLotes(escribibles, async (tx, lote) => {
       await tx.insert(plantationSpecies).values(lote.map((ps: any) => ({
-        id: `ps-${ps.plantation_id}-${ps.species_id}`,
+        id: plantationSpeciesId(ps.plantation_id, ps.species_id),
         plantacionId: ps.plantation_id,
         especieId: ps.species_id,
         ordenVisual: ps.orden_visual,

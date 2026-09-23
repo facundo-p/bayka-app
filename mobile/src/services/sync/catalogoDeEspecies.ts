@@ -6,6 +6,7 @@ import { syncLog } from '../../utils/syncLogger';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
+import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 
 /** Fila de especie del server, normalizada a los nombres del schema local. */
 type ServerSpecies = { id: string; codigo: string; nombre: string; nombre_cientifico?: string | null; created_at: string };
@@ -37,6 +38,38 @@ async function upsertSpeciesById(exec: DbExecutor, filas: ServerSpecies[]): Prom
 }
 
 /**
+ * El id de plantation_species se deriva de la especie y el pull upsertea por id: re-apuntar sin
+ * reescribirlo deja una fila que el próximo pull duplica. Si la plantación ya tenía `hacia`, la
+ * fila de `desde` sobra.
+ */
+async function reapuntarEspeciesDePlantacion(tx: DbExecutor, desde: string, hacia: string): Promise<void> {
+  const conHacia = tx.select({ id: plantationSpecies.plantacionId }).from(plantationSpecies)
+    .where(eq(plantationSpecies.especieId, hacia));
+  await tx.delete(plantationSpecies)
+    .where(and(eq(plantationSpecies.especieId, desde), inArray(plantationSpecies.plantacionId, conHacia)));
+  const filas = await tx.select({ id: plantationSpecies.id, plantacionId: plantationSpecies.plantacionId })
+    .from(plantationSpecies).where(eq(plantationSpecies.especieId, desde));
+  for (const f of filas) {
+    await tx.update(plantationSpecies)
+      .set({ id: plantationSpeciesId(f.plantacionId, hacia), especieId: hacia })
+      .where(eq(plantationSpecies.id, f.id));
+  }
+}
+
+/** Pasa las referencias de una especie a otra que ya existe en `species`. */
+async function reapuntarReferencias(tx: DbExecutor, desde: string, hacia: string): Promise<void> {
+  await tx.update(trees).set({ especieId: hacia }).where(eq(trees.especieId, desde));
+  await tx.update(trees).set({ conflictEspecieId: hacia }).where(eq(trees.conflictEspecieId, desde));
+  await reapuntarEspeciesDePlantacion(tx, desde, hacia);
+  // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
+  // solo orden visual, se borra la referencia vieja.
+  await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, desde));
+}
+
+/** Codigo de la fila duplicada mientras convive con la del server; el id la hace única. */
+const codigoTransitorio = (id: string) => `reconciliando:${id}`;
+
+/**
  * Reconcilia una colisión UNIQUE(codigo): el server trae una especie con `id` distinto al de una fila
  * local que ya usa ese `codigo`. Re-apunta todas las referencias del id local duplicado al id del
  * server y borra la fila duplicada, en una transacción atómica. El `codigo` se preserva, así que los
@@ -51,15 +84,12 @@ async function reconcileSpeciesCodigoCollision(s: ServerSpecies): Promise<boolea
       .where(and(eq(species.codigo, s.codigo), ne(species.id, s.id)));
     if (!dup) return false;
 
-    await tx.update(trees).set({ especieId: s.id }).where(eq(trees.especieId, dup.id));
-    await tx.update(trees).set({ conflictEspecieId: s.id }).where(eq(trees.conflictEspecieId, dup.id));
-    await tx.update(plantationSpecies).set({ especieId: s.id }).where(eq(plantationSpecies.especieId, dup.id));
-    // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
-    // solo orden visual, se borra la referencia vieja.
-    await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, dup.id));
-
-    await tx.delete(species).where(eq(species.id, dup.id));
+    // Las FKs exigen la especie del server antes de re-apuntarle nada, y UNIQUE(codigo) no deja
+    // insertarla mientras la duplicada conserve el codigo (#617).
+    await tx.update(species).set({ codigo: codigoTransitorio(dup.id) }).where(eq(species.id, dup.id));
     await upsertSpeciesById(tx, [s]);
+    await reapuntarReferencias(tx, dup.id, s.id);
+    await tx.delete(species).where(eq(species.id, dup.id));
     return true;
   });
 }

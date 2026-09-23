@@ -2,6 +2,7 @@ import { db } from '../client';
 import { plantationSpecies, species } from '../schema';
 import { eq, count } from 'drizzle-orm';
 import { DEMO_PLANTATION_ID } from './seedPlantation';
+import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 
 export async function seedPlantationSpeciesIfNeeded(): Promise<void> {
   const [result] = await db.select({ count: count() })
@@ -14,7 +15,7 @@ export async function seedPlantationSpeciesIfNeeded(): Promise<void> {
 
   await db.insert(plantationSpecies).values(
     allSpecies.map((s, i) => ({
-      id: `ps-${DEMO_PLANTATION_ID}-${s.codigo}`,
+      id: plantationSpeciesId(DEMO_PLANTATION_ID, s.id),
       plantacionId: DEMO_PLANTATION_ID,
       especieId: s.id,
       ordenVisual: i,
