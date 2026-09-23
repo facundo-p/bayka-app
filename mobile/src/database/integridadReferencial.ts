@@ -38,7 +38,8 @@ function columnaDeLaFk(conexion: ConexionSincrona, v: Violacion): string {
 /**
  * Una especie que falta se recrea con su id en vez de tocar el árbol: null lo volvería N/N y
  * al subir pisaría la especie real del server. Hasta que el pull del catálogo le traiga codigo y
- * nombre, no se ofrece para elegir y los SubID la escriben NN. Si queda sin referencias,
+ * nombre, no se ofrece para elegir: los SubID nuevos la escriben NN y los recalculados
+ * conservan el código que ya tenían. Si queda sin referencias,
  * `seedSpeciesIfNeeded` la borra.
  */
 function recuperarEspecie(conexion: ConexionSincrona, v: Violacion): boolean {
