@@ -53,7 +53,8 @@ describe('seedSpeciesIfNeeded', () => {
       nombre: s.nombre,
       nombreCientifico: s.nombre_cientifico ?? null,
     }));
-    mockFrom.mockResolvedValue(existingSpecies);
+    // El borrado de obsoletas arma subqueries `select().from().where()`; su resultado no importa acá.
+    mockFrom.mockReturnValue(Object.assign(Promise.resolve(existingSpecies), { where: jest.fn() }));
 
     await seedSpeciesIfNeeded();
 

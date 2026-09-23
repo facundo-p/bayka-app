@@ -24,6 +24,7 @@ import { borradosPorTipo, type BorradosPorTipo } from '../../repositories/Borrad
 import { abortarSiCancelado } from './cancelacion';
 import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
+import { asegurarEspecies } from './catalogoDeEspecies';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -395,6 +396,19 @@ async function pullPlantationUsers(
   emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, all.length, all.length);
 }
 
+/**
+ * Filas del server cuya especie quedó en el catálogo local. Escribir las demás
+ * dejaría la referencia colgada; quedan para la próxima sync (#614). Una fila sin
+ * especie (árbol N/N) pasa siempre.
+ */
+async function conEspecieLocal(filas: any[], tabla: string): Promise<any[]> {
+  const disponibles = await asegurarEspecies(filas.map((f) => f.species_id));
+  const escribibles = filas.filter((f) => !f.species_id || disponibles.has(f.species_id));
+  const omitidas = filas.length - escribibles.length;
+  if (omitidas > 0) syncLog.error(`Pull ${tabla}: ${omitidas} omitidas, su especie no está en el server ni en el catálogo local`);
+  return escribibles;
+}
+
 async function pullPlantationSpecies(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
@@ -414,7 +428,8 @@ async function pullPlantationSpecies(
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
   if (all.length === 0) return;
 
-  await enTransaccionPorLotes(all, async (tx, lote) => {
+  const escribibles = await conEspecieLocal(all, 'plantation_species');
+  await enTransaccionPorLotes(escribibles, async (tx, lote) => {
       await tx.insert(plantationSpecies).values(lote.map((ps: any) => ({
         id: `ps-${ps.plantation_id}-${ps.species_id}`,
         plantacionId: ps.plantation_id,
@@ -621,9 +636,11 @@ async function pullTrees(
   const especieLocal = new Map([...locales].map(([id, arbol]) => [id, arbol.especieId]));
 
   const omitir = omitirDelPull(grupos.pendientes, borrados.arboles, especieLocal);
-  const aEscribir = all.filter((t: any) => !omitir(t)).map(sinFotoQuitada(borrados.fotos));
-  const omitidos = all.length - aEscribir.length;
+  const noOmitidos = all.filter((t: any) => !omitir(t));
+  const omitidos = all.length - noOmitidos.length;
   if (omitidos > 0) syncLog.info(`Pull trees: ${omitidos} omitidos (edición local sin subir o borrado sin propagar)`);
+  // Antes de los conflictos: el nombre de la especie del server sale del catálogo local.
+  const aEscribir = await conEspecieLocal(noOmitidos.map(sinFotoQuitada(borrados.fotos)), 'trees');
   // Descarga fresh: sin filas locales no hay nada con qué chocar.
   if (especieLocal.size === 0) syncLog.info('Pull trees: fresh download — sin árboles locales');
 
