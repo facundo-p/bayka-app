@@ -12,7 +12,14 @@ a mano con `workflow_dispatch`. Corre `scripts/supabase-backup.sh`, que:
 1. `pg_dump --format=custom --no-owner --no-acl` de la base que apunte el secret
    `SUPABASE_DB_URL`;
 2. sube el `.dump` a Cloudflare R2, bajo el prefijo `supabase-backups/`;
-3. rota: deja los 10 más recientes.
+3. rota de forma escalonada (`scripts/backupRetention.cjs`): conserva uno por
+   día de la última semana, uno por semana (el primero, desde el lunes) de las
+   últimas 4 semanas y uno por mes (el primero) de los últimos 12 meses. Son
+   unos 21 dumps vivos, nunca más de 23. La fecha sale del nombre del archivo,
+   no de `LastModified`, que se reescribe al copiar entre buckets;
+4. falla si el listado no incluye el dump recién subido o si después de rotar
+   no quedan los que tenían que quedar: un bucket que no rota no puede quedar
+   en verde.
 
 Los cinco secrets del repo que necesita: `SUPABASE_DB_URL`, `R2_ENDPOINT`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`.
