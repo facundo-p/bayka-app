@@ -1,5 +1,6 @@
 export * from './types';
-export { pullSpeciesFromServer, uploadOfflinePlantations, uploadPendingEdits } from './preSteps';
+export { uploadOfflinePlantations, uploadPendingEdits } from './preSteps';
+export { pullSpeciesFromServer } from './catalogoDeEspecies';
 export { pullFromServer } from './pullService';
 export { uploadGroup, uploadSyncableParcelas, uploadSyncableGroups, classifyParcelaRpcResult, pushBorrados } from './pushService';
 export { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';

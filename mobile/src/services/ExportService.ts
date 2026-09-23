@@ -6,7 +6,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import XLSX from 'xlsx';
 import { getExportRows, getKmlExportRows, type ExportRow } from '../queries/exportQueries';
-import { pullSpeciesFromServer } from './sync/preSteps';
+import { pullSpeciesFromServer } from './sync/catalogoDeEspecies';
 import { syncLog } from '../utils/syncLogger';
 import { buildKml } from './kml/kmlGenerator';
 

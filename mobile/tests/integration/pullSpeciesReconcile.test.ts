@@ -51,7 +51,7 @@ jest.mock('../../src/supabase/client', () => ({
   },
 }));
 
-import { pullSpeciesFromServer } from '../../src/services/sync/preSteps';
+import { pullSpeciesFromServer } from '../../src/services/sync/catalogoDeEspecies';
 
 beforeAll(() => {
   const r = createTestDb();
