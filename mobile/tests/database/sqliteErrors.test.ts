@@ -16,9 +16,15 @@ describe('sqliteErrors', () => {
   });
 
   describe('isNameUniqueConstraintError', () => {
-    it('true only when the UNIQUE index name marker is present', () => {
-      expect(isNameUniqueConstraintError(new Error('UNIQUE constraint failed: groups_parcela_name_unique'))).toBe(true);
-      expect(isNameUniqueConstraintError(new Error('UNIQUE constraint failed: groups_parcela_code_unique'))).toBe(false);
+    // Mensajes reales de SQLite: nombra las columnas del índice, no el índice.
+    it('true only when the violated UNIQUE includes the nombre column', () => {
+      expect(isNameUniqueConstraintError(new Error('UNIQUE constraint failed: groups.parcela_id, groups.nombre'))).toBe(true);
+      expect(isNameUniqueConstraintError(new Error('UNIQUE constraint failed: parcelas.plantacion_id, parcelas.nombre'))).toBe(true);
+      expect(isNameUniqueConstraintError(new Error('UNIQUE constraint failed: parcelas.plantacion_id, parcelas.codigo'))).toBe(false);
+    });
+
+    it('false for a non-UNIQUE error that mentions the column', () => {
+      expect(isNameUniqueConstraintError(new Error('NOT NULL constraint failed: groups.nombre'))).toBe(false);
     });
   });
 });

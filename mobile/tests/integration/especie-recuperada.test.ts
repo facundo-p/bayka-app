@@ -37,7 +37,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { limpiarHuerfanos } from '../../src/database/integridadReferencial';
 import { insertTree, reverseTreeOrder } from '../../src/repositories/TreeRepository';
-import { updateGroupCode } from '../../src/repositories/GroupRepository';
+import { updateGroup } from '../../src/repositories/GroupRepository';
 import { getSpeciesForPlantation } from '../../src/repositories/PlantationSpeciesRepository';
 import { getAllSpecies } from '../../src/queries/adminQueries';
 import { pullSpeciesFromServer } from '../../src/services/sync/catalogoDeEspecies';
@@ -114,12 +114,12 @@ describe('especie recuperada', () => {
     await reverseTreeOrder(grupoId, 'L1');
     expect(await subIdDe('t1')).toBe('P1L1KOK2');
 
-    await updateGroupCode(grupoId, 'L9', 'L1');
+    await updateGroup(grupoId, { nombre: 'Linea A', codigo: 'L9', tipo: 'linea' });
     expect(await subIdDe('t1')).toBe('P1L9KOK2');
   });
 
   it('si el SubID no deja leer el codigo, recalcularlo escribe NN', async () => {
-    await updateGroupCode(otroGrupoId, 'L3', 'L2');
+    await updateGroup(otroGrupoId, { nombre: 'Otro', codigo: 'L3', tipo: 'linea' });
     expect(await subIdDe('t-raro')).toBe('P1L3NN1');
   });
 

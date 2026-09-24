@@ -1,11 +1,10 @@
 /** Admin read queries: gestión de plantación + gate de finalización. Local queries usan Drizzle/SQLite; profile listing usa Supabase (SQLite local no tiene profiles). */
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
-import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
+import { groups, trees, plantationSpecies, species, plantationUsers } from '../database/schema';
 import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
-import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueries';
 import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
@@ -66,20 +65,7 @@ async function getNNSinResolver(plantacionId: string) {
   };
 }
 
-/** Estado, archivado y eliminación en el server: lo que decide los permisos de edición. Null si no está local. */
-export async function getPlantationEstadoDeEdicion(
-  plantacionId: string,
-): Promise<EstadoDeEdicionDePlantacion | null> {
-  const rows = await db
-    .select({
-      estado: plantations.estado,
-      archivadaEn: plantations.archivadaEn,
-      eliminadaEnServidorEn: plantations.eliminadaEnServidorEn,
-    })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-  return rows[0] ?? null;
-}
+export { getPlantationEstadoDeEdicion } from './estadoDeEdicionQueries';
 
 /** Returns all technicians in the admin's organization. */
 export async function getAllTechnicians(

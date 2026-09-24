@@ -1,4 +1,4 @@
-import { conservarEspeciesRecuperadas, resolveEspecieCodigo, UNKNOWN_SPECIES_CODE, getSpeciesCode, getSpeciesName } from '../../src/utils/speciesHelpers';
+import { conservarEspeciesRecuperadas, especieCodigoParaSubId, UNKNOWN_SPECIES_CODE, getSpeciesCode, getSpeciesName } from '../../src/utils/speciesHelpers';
 
 describe('getSpeciesCode', () => {
   test('returns N/N when especieId is null', () => {
@@ -32,43 +32,40 @@ describe('getSpeciesName', () => {
   });
 });
 
-function makeQueryable(result: { codigo: string }[]) {
-  const where = jest.fn().mockResolvedValue(result);
-  const from = jest.fn().mockReturnValue({ where });
-  const select = jest.fn().mockReturnValue({ from });
-  return { select, from, where };
-}
+const arbol = (especieId: string | null, especieCodigo: string | null, subId = 'P1L1ANC12') =>
+  ({ especieId, especieCodigo, subId, posicion: 12 });
 
-const arbol = (especieId: string | null, subId = 'P1L1ANC12') => ({ especieId, subId, posicion: 12 });
-
-describe('resolveEspecieCodigo', () => {
-  test('returns UNKNOWN_SPECIES_CODE without querying when especieId is null', async () => {
-    const queryable = makeQueryable([]);
-    const result = await resolveEspecieCodigo(queryable as any, arbol(null), 'P1L1');
-    expect(result).toBe(UNKNOWN_SPECIES_CODE);
-    expect(queryable.select).not.toHaveBeenCalled();
+describe('especieCodigoParaSubId', () => {
+  test('N/N va como NN', () => {
+    expect(especieCodigoParaSubId(arbol(null, null), ['P1L1'])).toBe(UNKNOWN_SPECIES_CODE);
   });
 
-  test('returns the species codigo when found', async () => {
-    const queryable = makeQueryable([{ codigo: 'ANC' }]);
-    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-1'), 'P1L1');
-    expect(result).toBe('ANC');
+  test('usa el codigo de la especie', () => {
+    expect(especieCodigoParaSubId(arbol('esp-1', 'ANC'), ['P1L1'])).toBe('ANC');
   });
 
-  test('returns UNKNOWN_SPECIES_CODE when the species row is missing', async () => {
-    const queryable = makeQueryable([]);
-    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-orphan'), 'P1L1');
-    expect(result).toBe(UNKNOWN_SPECIES_CODE);
+  test('una especie que no está en la base va como NN', () => {
+    expect(especieCodigoParaSubId(arbol('esp-orphan', null), ['P1L1'])).toBe(UNKNOWN_SPECIES_CODE);
   });
 
-  test('una especie recuperada conserva el codigo que ya tenía el SubID', async () => {
-    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
-    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1'), 'P1L1')).toBe('ANC');
+  test('una especie recuperada conserva el codigo que ya tenía el SubID', () => {
+    expect(especieCodigoParaSubId(arbol('esp-1', 'recuperada:esp-1'), ['P1L1'])).toBe('ANC');
   });
 
-  test('una especie recuperada va como NN si el SubID no calza con el prefijo', async () => {
-    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
-    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), 'P1L1')).toBe('NN');
+  test('una especie recuperada va como NN si el SubID no calza con el prefijo', () => {
+    expect(especieCodigoParaSubId(arbol('esp-1', 'recuperada:esp-1', 'X9ANC12'), ['P1L1'])).toBe('NN');
+  });
+
+  test('con varios prefijos lee el codigo del que calza', () => {
+    expect(especieCodigoParaSubId(arbol('esp-1', 'recuperada:esp-1', 'P9L1ANC12'), ['P1L1', 'P9L1'])).toBe('ANC');
+    expect(especieCodigoParaSubId(arbol('esp-1', 'recuperada:esp-1', 'X9ANC12'), ['P1L1', 'P9L1'])).toBe('NN');
+  });
+
+  // Parcela A → A1 con grupo 1: el prefijo anterior `A1` también calza con `A11KOK2` y leería `1KOK`.
+  test('si un prefijo extiende a otro, gana el más largo', () => {
+    const conPosicion2 = { especieId: 'esp-1', especieCodigo: 'recuperada:esp-1', subId: 'A11KOK2', posicion: 2 };
+    expect(especieCodigoParaSubId(conPosicion2, ['A1', 'A11'])).toBe('KOK');
+    expect(especieCodigoParaSubId({ ...conPosicion2, subId: 'A1KOK2' }, ['A1', 'A11'])).toBe('KOK');
   });
 });
 

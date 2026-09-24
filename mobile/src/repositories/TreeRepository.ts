@@ -1,7 +1,7 @@
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
-import { eq, max, asc, and, isNotNull } from 'drizzle-orm';
+import { eq, max, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -11,7 +11,8 @@ import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
-import { codigoParaSubId, resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { codigoParaSubId, especieCodigoParaSubId } from '../utils/speciesHelpers';
+import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
 
 export interface InsertTreeParams {
@@ -92,18 +93,16 @@ export async function reverseTreeOrder(
   grupoId: string,
   grupoCodigo: string
 ): Promise<void> {
-  const allTrees = await db.select().from(trees)
-    .where(eq(trees.groupId, grupoId));
-
+  const allTrees = await arbolesParaSubId(db, grupoId);
   if (allTrees.length === 0) return;
 
+  const porId = new Map(allTrees.map((t) => [t.id, t]));
   const reversed = computeReversedPositions(allTrees);
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
   await enTransaccion(async (tx) => {
     for (const { id, newPosicion } of reversed) {
-      const tree = allTrees.find((t) => t.id === id)!;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${grupoCodigo}`);
+      const especieCodigo = especieCodigoParaSubId(porId.get(id)!, [`${parcelaCodigo}${grupoCodigo}`]);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
@@ -282,14 +281,12 @@ export async function deleteTreeAndRecalculate(
       id: treeId, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
     });
 
-    const remaining = await tx.select().from(trees)
-      .where(eq(trees.groupId, grupoId))
-      .orderBy(asc(trees.posicion));
+    const remaining = await arbolesParaSubId(tx, grupoId);
 
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${grupoCodigo}`);
+      const especieCodigo = especieCodigoParaSubId(tree, [`${parcelaCodigo}${grupoCodigo}`]);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })
