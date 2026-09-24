@@ -9,7 +9,7 @@
  * Lives under tests/integration/ because it needs the integration jest config to resolve
  * better-sqlite3.
  */
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
 import { plantations, parcelas, plantationUsers } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
@@ -90,10 +90,7 @@ function mockSupabaseForFailedPush(): void {
 }
 
 beforeEach(async () => {
-  await mockTestDb.delete(parcelas);
-  // Antes que plantations: FK plantation_users → plantations sin CASCADE (#67).
-  await mockTestDb.delete(plantationUsers);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
   jest.restoreAllMocks();
   (supabase.from as jest.Mock).mockReset();
 });
@@ -143,7 +140,6 @@ describe('createPlantationWithDefaultParcela — local-first (offline)', () => {
     jest.doMock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
     jest.doMock('../../src/supabase/client', () => ({ supabase: { from: jest.fn() }, isSupabaseConfigured: false }));
     jest.doMock('../../src/services/SyncService', () => ({ pullFromServer: jest.fn() }));
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const mod = require('../../src/services/PlantationCreationService');
     const r = await mod.createPlantationWithDefaultParcela(baseParams);
     expect(r.id).toBeTruthy();

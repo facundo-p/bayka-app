@@ -1,7 +1,7 @@
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
-import { eq, max, asc, and, isNotNull } from 'drizzle-orm';
+import { eq, max, and, isNotNull } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -11,7 +11,8 @@ import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
-import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { codigoParaSubId, especieCodigoParaSubId } from '../utils/speciesHelpers';
+import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
 
 export interface InsertTreeParams {
@@ -38,7 +39,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
 
   const nextPosition = (maxResult?.maxPos ?? 0) + 1;
   const parcelaCodigo = await getGroupParcelaCodigo(params.grupoId);
-  const subId = generateSubId(parcelaCodigo, params.grupoCodigo, params.especieCodigo, nextPosition);
+  const subId = generateSubId(parcelaCodigo, params.grupoCodigo, codigoParaSubId(params.especieCodigo), nextPosition);
 
   const id = Crypto.randomUUID();
   await db.insert(trees).values({
@@ -92,18 +93,16 @@ export async function reverseTreeOrder(
   grupoId: string,
   grupoCodigo: string
 ): Promise<void> {
-  const allTrees = await db.select().from(trees)
-    .where(eq(trees.groupId, grupoId));
-
+  const allTrees = await arbolesParaSubId(db, grupoId);
   if (allTrees.length === 0) return;
 
+  const porId = new Map(allTrees.map((t) => [t.id, t]));
   const reversed = computeReversedPositions(allTrees);
   const parcelaCodigo = await getGroupParcelaCodigo(grupoId);
 
   await enTransaccion(async (tx) => {
     for (const { id, newPosicion } of reversed) {
-      const tree = allTrees.find((t) => t.id === id)!;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
+      const especieCodigo = especieCodigoParaSubId(porId.get(id)!, [`${parcelaCodigo}${grupoCodigo}`]);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
@@ -130,7 +129,7 @@ export async function resolveNNTree(
   if (!sp || !tree) return;
 
   const parcelaCodigo = await getGroupParcelaCodigo(tree.grupoId);
-  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, sp.codigo, tree.posicion);
+  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, codigoParaSubId(sp.codigo), tree.posicion);
 
   await db.update(trees)
     .set({ especieId, subId: newSubId })
@@ -196,13 +195,13 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
 }
 
 /** Árboles con fotos locales sin subir a Storage en toda la plantación (cualquier grupo, sincronizado o no); filtra a file:// (rutas remotas del pull no se re-suben). */
-export async function getTreesWithPendingPhotos(plantacionId: string): Promise<Array<{
+export async function getTreesWithPendingPhotos(plantacionId: string): Promise<{
   id: string;
   fotoUrl: string;
   grupoId: string;
   plantacionId: string;
   parcelaId: string | null;
-}>> {
+}[]> {
   const rows = await db
     .select({
       id: trees.id,
@@ -221,13 +220,13 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<A
         eq(trees.fotoSynced, false)
       )
     );
-  return rows.filter(r => isLocalUri(r.fotoUrl)) as Array<{
+  return rows.filter(r => isLocalUri(r.fotoUrl)) as {
     id: string;
     fotoUrl: string;
     grupoId: string;
     plantacionId: string;
     parcelaId: string | null;
-  }>;
+  }[];
 }
 
 /** URIs de fotos guardadas en el device para los árboles de la plantación, sincronizadas o no. */
@@ -282,14 +281,12 @@ export async function deleteTreeAndRecalculate(
       id: treeId, tipo: ENTIDAD_BORRADA.arbol, grupoId, plantacionId,
     });
 
-    const remaining = await tx.select().from(trees)
-      .where(eq(trees.groupId, grupoId))
-      .orderBy(asc(trees.posicion));
+    const remaining = await arbolesParaSubId(tx, grupoId);
 
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
+      const especieCodigo = especieCodigoParaSubId(tree, [`${parcelaCodigo}${grupoCodigo}`]);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })

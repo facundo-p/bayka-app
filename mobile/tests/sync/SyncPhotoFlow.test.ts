@@ -522,7 +522,7 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [normalTree, nnTree]);
+      await uploadGroup(sg, [normalTree, nnTree], 'P1');
 
       expect(mockSupabase.rpc).toHaveBeenCalledWith('sync_subgroup', {
         p_subgroup: {
@@ -567,7 +567,7 @@ describe.skip('SyncPhotoFlow — bugs corregidos en Fase 14', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [nnTree]);
+      await uploadGroup(sg, [nnTree], 'P1');
 
       const rpcCall = (mockSupabase.rpc as jest.Mock).mock.calls[0];
       const payload = rpcCall[1];

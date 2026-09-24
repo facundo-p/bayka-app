@@ -13,3 +13,13 @@ export function generateSubId(
 ): string {
   return `${parcelaCodigo}${grupoCodigo}${especieCodigo}${posicion}`;
 }
+
+/**
+ * Segmento de especie de un SubID armado con `generateSubId` con ese prefijo (parcela + grupo) y
+ * esa posición; null si el SubID no calza.
+ */
+export function especieDelSubId(subId: string, prefijo: string, posicion: number): string | null {
+  const sufijo = String(posicion);
+  if (!subId.startsWith(prefijo) || !subId.endsWith(sufijo)) return null;
+  return subId.slice(prefijo.length, subId.length - sufijo.length) || null;
+}

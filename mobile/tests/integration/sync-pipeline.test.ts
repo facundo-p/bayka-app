@@ -6,7 +6,7 @@
  * usar la API síncrona de drizzle (o sqlite.transaction) para testear atomicidad.
  */
 
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
@@ -31,11 +31,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear en orden FK: trees -> groups -> plantations -> species
-  await db.delete(trees);
-  await db.delete(groups);
-  await db.delete(plantations);
-  await db.delete(species);
+  await vaciarTablas(db);
 });
 
 describe.skip('Sync pipeline', () => {

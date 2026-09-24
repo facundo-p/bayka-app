@@ -7,7 +7,7 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
 import { groups, parcelas, plantations, trees } from '../../src/database/schema';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 
 let mockTestDb: IntegrationDb;
 let sqlite: InstanceType<typeof Database>;
@@ -68,10 +68,7 @@ afterAll(() => {
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 });
 
 describe('recaptureTreeGps', () => {

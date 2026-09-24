@@ -8,7 +8,7 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 
 // ─── Mock Supabase (prefijo mock* por hoisting de jest.mock) ─────────────────
 
@@ -20,14 +20,14 @@ const mockServerState: Record<string, Map<string, any>> = {
   plantation_users: new Map(),
   plantation_species: new Map(),
 };
-const mockRpcCalls: Array<{ fn: string; args: any }> = [];
+const mockRpcCalls: { fn: string; args: any }[] = [];
 
 const serverState = mockServerState;
 const rpcCalls = mockRpcCalls;
 
 jest.mock('../../src/supabase/client', () => {
   const makeQueryBuilder = (table: string) => {
-    const filters: Array<{ col: string; op: 'eq' | 'in'; value: any }> = [];
+    const filters: { col: string; op: 'eq' | 'in'; value: any }[] = [];
     const applyFilters = () => {
       const all = Array.from(mockServerState[table]?.values() ?? []);
       return all.filter((row) =>
@@ -229,9 +229,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  // Prod (expo-sqlite) no activa PRAGMA foreign_keys (#265): el pull escribe
-  // filas cuyo padre puede no estar local todavía.
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => {
@@ -239,10 +236,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
   for (const k of Object.keys(serverState)) serverState[k].clear();
   rpcCalls.length = 0;
 });
@@ -414,6 +408,8 @@ describe('GPS — pull de config de plantación (fix del gap de metadata)', () =
     expect(row.periodo).toBe('2027');
     // Snapshot de server: sí se refresca (para que discard pueda revertir).
     expect(row.gpsCaptureFrequencyServer).toBe(3);
+    expect(row.lugarServer).toBe('Campo Server');
+    expect(row.periodoServer).toBe('2026');
   });
 
   test('server sin migración 023 (columnas ausentes) no rompe ni escribe NULL', async () => {

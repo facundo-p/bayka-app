@@ -9,7 +9,7 @@
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import {
   plantations,
@@ -37,7 +37,7 @@ const fallas = mockFallas;
 const rpc = mockRpc;
 
 jest.mock('../../src/supabase/client', () => {
-  const filtrar = (tabla: string, filtros: Array<{ col: string; op: string; value: any }>) =>
+  const filtrar = (tabla: string, filtros: { col: string; op: string; value: any }[]) =>
     Array.from(mockServerState[tabla]?.values() ?? []).filter((fila: any) =>
       filtros.every((f) =>
         f.op === 'eq' ? fila[f.col] === f.value : Array.isArray(f.value) && f.value.includes(fila[f.col]),
@@ -45,7 +45,7 @@ jest.mock('../../src/supabase/client', () => {
     );
 
   const builder = (tabla: string) => {
-    const filtros: Array<{ col: string; op: string; value: any }> = [];
+    const filtros: { col: string; op: string; value: any }[] = [];
     const api: any = {
       select() { return api; },
       eq(col: string, value: any) { filtros.push({ col, op: 'eq', value }); return api; },
@@ -131,7 +131,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
@@ -144,10 +143,7 @@ beforeEach(async () => {
   rpc.existe = true;
   rpc.eliminadas.clear();
 
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantationUsers);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 
   // Copia local ya descargada: plantación + parcela + grupo + membresía.
   await mockTestDb
@@ -353,5 +349,67 @@ describe('plantación eliminada en el servidor (#478)', () => {
 
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'sin-acceso' });
     expect(await eliminadaEnServidorEn()).not.toBeNull();
+  });
+});
+
+/**
+ * El replace destructivo visto desde el otro lado: acá el usuario de la sesión
+ * conserva su membresía y el que desaparece del server es otro. Es el único
+ * caso de las suites apagadas de `pullFromServer.test.ts` que no estaba
+ * cubierto por ningún test de integración (#333).
+ */
+describe('pullFromServer: replace de membresías', () => {
+  beforeEach(async () => {
+    await mockTestDb.insert(plantationUsers).values({
+      plantationId: PLANTACION_ID,
+      userId: 'user-tecnico-2',
+      rolEnPlantacion: 'tecnico',
+      assignedAt: '2026-01-01T00:00:00',
+    });
+    // La sesión sigue siendo miembro: el pull corre y el server es autoridad.
+    serverState.plantation_users.set('pu-1', {
+      plantation_id: PLANTACION_ID,
+      user_id: 'user-tecnico-1',
+      rol_en_plantacion: 'tecnico',
+      assigned_at: '2026-01-01T00:00:00',
+    });
+  });
+
+  it('borra la membresía local que el server ya no tiene', async () => {
+    expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
+
+    const { membresias } = await filasLocales();
+    expect(membresias.map((fila) => fila.userId)).toEqual(['user-tecnico-1']);
+  });
+
+  it('actualiza el rol de la membresía que sigue', async () => {
+    serverState.plantation_users.set('pu-1', {
+      plantation_id: PLANTACION_ID,
+      user_id: 'user-tecnico-1',
+      rol_en_plantacion: 'admin',
+      assigned_at: '2026-01-01T00:00:00',
+    });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const { membresias } = await filasLocales();
+    expect(membresias).toEqual([
+      expect.objectContaining({ userId: 'user-tecnico-1', rolEnPlantacion: 'admin' }),
+    ]);
+  });
+
+  it('con la plantación pendiente de push no borra nada: el server no es autoridad', async () => {
+    await mockTestDb
+      .update(plantations)
+      .set({ pendingSync: true })
+      .where(eq(plantations.id, PLANTACION_ID));
+
+    await pullFromServer(PLANTACION_ID);
+
+    const { membresias } = await filasLocales();
+    expect(membresias.map((fila) => fila.userId).sort()).toEqual([
+      'user-tecnico-1',
+      'user-tecnico-2',
+    ]);
   });
 });

@@ -2,15 +2,22 @@
  * ParcelaRepository — CRUD + soft-delete tombstone de parcelas.
  * Valida nombre/codigo únicos por plantación (excluye tombstones) y descripcion ≤10k; bloquea
  * delete si hay grupos hijos. Lecturas filtran deleted_at IS NULL salvo `{ includeDeleted: true }`
- * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side.
+ * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side. Cambiar el
+ * código reescribe el SubID de los árboles de sus grupos (#623).
  */
 import { db } from '../database/client';
+import { enTransaccion } from '../database/transaccion';
 import { parcelas, groups } from '../database/schema';
+import { recalcularSubIdsDeLaParcela } from './subIdsDeArboles';
+import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
+import {
+  ERROR_DE_DUPLICADO, ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion,
+} from '../constants/errorDeEdicion';
 import { eq, and, asc, count, isNull, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
-import { isUniqueConstraintError } from '../database/sqliteErrors';
+import { errorDeDuplicado } from '../database/sqliteErrors';
 
 const MAX_DESCRIPCION_LENGTH = 10000;
 
@@ -26,16 +33,15 @@ export interface Parcela {
   deletedAt: string | null;
 }
 
-type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate';
 type DescripcionError = 'descripcion_too_long';
 
 export type CreateParcelaResult =
   | { success: true; id: string }
-  | { success: false; error: DuplicateError | DescripcionError | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | DescripcionError | 'unknown' };
 
 export type UpdateParcelaResult =
   | { success: true }
-  | { success: false; error: DuplicateError | DescripcionError | 'not_found' | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | DescripcionError | ErrorDeEdicion | 'not_found' | 'unknown' };
 
 export type DeleteParcelaResult =
   | { deleted: true }
@@ -44,7 +50,7 @@ export type DeleteParcelaResult =
 
 export type RestoreParcelaResult =
   | { restored: true }
-  | { restored: false; error: 'not_found' | DuplicateError };
+  | { restored: false; error: 'not_found' | ErrorDeDuplicado };
 
 /** Valida nombre/codigo únicos en la plantación, excluyendo tombstones — un nombre reusado de una parcela tombstoned es válido. */
 async function validateParcelaUniqueness(
@@ -52,7 +58,7 @@ async function validateParcelaUniqueness(
   nombre: string,
   codigo: string,
   excludeId?: string,
-): Promise<DuplicateError | null> {
+): Promise<ErrorDeDuplicado | null> {
   const baseConds = [eq(parcelas.plantacionId, plantacionId), isNull(parcelas.deletedAt)];
   const nombreConds = [...baseConds, eq(parcelas.nombre, nombre)];
   const codigoConds = [...baseConds, eq(parcelas.codigo, codigo)];
@@ -64,9 +70,9 @@ async function validateParcelaUniqueness(
     .where(and(...nombreConds)).limit(1);
   const [existingCodigo] = await db.select({ id: parcelas.id }).from(parcelas)
     .where(and(...codigoConds)).limit(1);
-  if (existingNombre && existingCodigo) return 'both_duplicate';
-  if (existingNombre) return 'nombre_duplicate';
-  if (existingCodigo) return 'codigo_duplicate';
+  if (existingNombre && existingCodigo) return ERROR_DE_DUPLICADO.ambos;
+  if (existingNombre) return ERROR_DE_DUPLICADO.nombre;
+  if (existingCodigo) return ERROR_DE_DUPLICADO.codigo;
   return null;
 }
 
@@ -123,36 +129,48 @@ export async function createParcela(params: {
     });
     notifyDataChanged();
     return { success: true, id };
-  } catch (e: any) {
-    if (isUniqueConstraintError(e)) {
-      return { success: false, error: 'codigo_duplicate' };
-    }
-    return { success: false, error: 'unknown' };
+  } catch (e: unknown) {
+    return { success: false, error: errorDeDuplicado(e) };
   }
 }
 
-export async function updateParcela(
-  id: string,
-  params: { nombre: string; codigo: string; descripcion?: string | null },
-): Promise<UpdateParcelaResult> {
-  const upperCodigo = params.codigo.toUpperCase();
+type CamposDeParcela = { nombre: string; codigo: string; descripcion?: string | null };
+type ErrorDeUpdate = Extract<UpdateParcelaResult, { success: false }>['error'];
+
+export async function updateParcela(id: string, params: CamposDeParcela): Promise<UpdateParcelaResult> {
+  const campos = { ...params, codigo: params.codigo.toUpperCase() };
   const existing = await findById(id);
   if (!existing) return { success: false, error: 'not_found' };
-  const descripcionError = validateDescripcion(params.descripcion);
-  if (descripcionError) return { success: false, error: descripcionError };
-  const dup = await validateParcelaUniqueness(existing.plantacionId, params.nombre, upperCodigo, id);
-  if (dup) return { success: false, error: dup };
-  await db.update(parcelas)
+  const invalido = await validarEdicion(existing, campos);
+  if (invalido) return { success: false, error: invalido };
+  try {
+    await enTransaccion((tx) => escribirParcela(tx, existing, campos));
+  } catch (e: unknown) {
+    return { success: false, error: errorDeDuplicado(e) };
+  }
+  notifyDataChanged();
+  return { success: true };
+}
+
+async function validarEdicion(actual: Parcela, campos: CamposDeParcela): Promise<ErrorDeUpdate | null> {
+  if (!(await plantacionEditablePorId(actual.plantacionId))) return ERROR_DE_EDICION.plantacionNoEditable;
+  return validateDescripcion(campos.descripcion)
+    ?? validateParcelaUniqueness(actual.plantacionId, campos.nombre, campos.codigo, actual.id);
+}
+
+async function escribirParcela(tx: typeof db, actual: Parcela, campos: CamposDeParcela): Promise<void> {
+  await tx.update(parcelas)
     .set({
-      nombre: params.nombre,
-      codigo: upperCodigo,
-      descripcion: params.descripcion ?? null,
+      nombre: campos.nombre,
+      codigo: campos.codigo,
+      descripcion: campos.descripcion ?? null,
       pendingSync: true,
       updatedAt: localNow(),
     })
-    .where(eq(parcelas.id, id));
-  notifyDataChanged();
-  return { success: true };
+    .where(eq(parcelas.id, actual.id));
+  if (campos.codigo !== actual.codigo) {
+    await recalcularSubIdsDeLaParcela(tx, actual.id, { anterior: actual.codigo, nuevo: campos.codigo });
+  }
 }
 
 /** Counts active groups (any) referencing this parcela. */

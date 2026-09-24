@@ -9,6 +9,30 @@ function readSrc(relativePath: string): string {
   return fs.readFileSync(path.resolve(__dirname, '../../src', relativePath), 'utf-8');
 }
 
+/** Lo único que aplica el inset de verdad; el resto lo delega en un hijo. */
+const APLICA_INSET = /useSafeAreaInsets|useInsetSuperior|<SafeAreaView/;
+
+function existeComponente(nombre: string): boolean {
+  return fs.existsSync(path.resolve(__dirname, '../../src/components', `${nombre}.tsx`));
+}
+
+/**
+ * ¿El componente aplica el inset, propio o por alguno que monta? Sigue la
+ * cadena porque casi ninguno lo hace en su propio archivo:
+ * `TreeRegistrationHeader` → `CustomHeader` → `useInsetSuperior`, y
+ * `EntityFormModal` → `ModalHeader` → `useSafeAreaInsets`.
+ */
+function resuelveElInset(rutaRelativa: string, visitados = new Set<string>()): boolean {
+  if (visitados.has(rutaRelativa)) return false;
+  visitados.add(rutaRelativa);
+  const fuente = readSrc(rutaRelativa);
+  if (APLICA_INSET.test(fuente)) return true;
+  const montados = new Set(Array.from(fuente.matchAll(/<([A-Z]\w+)/g), (m) => m[1]));
+  return Array.from(montados).some(
+    (nombre) => existeComponente(nombre) && resuelveElInset(`components/${nombre}.tsx`, visitados),
+  );
+}
+
 // --- Regression: pendingEdit workflow moved from AdminScreen to AdminBottomSheet ---
 describe('AdminBottomSheet — pendingEdit workflow', () => {
   const hook = readSrc('hooks/usePlantationAdmin.ts');
@@ -74,26 +98,42 @@ describe('CatalogScreen — localIds reactivity', () => {
   });
 });
 
-// --- Regression: safe area handled by ScreenContainer/ScreenHeader/CustomHeader wrappers, not per-screen ---
-describe('Safe area on refactored screens', () => {
-  const screens = {
-    TreeRegistrationScreen: readSrc('screens/TreeRegistrationScreen.tsx'),
-    NNResolutionScreen: readSrc('screens/NNResolutionScreen.tsx'),
-    NuevoGrupoScreen: readSrc('screens/NuevoGrupoScreen.tsx'),
-    PlantationDetailScreen: readSrc('screens/PlantationDetailScreen.tsx'),
-  };
+// --- Regression: safe area resuelto de verdad, no por estar envuelto (#336) ---
+/**
+ * Quién aplica el inset superior en cada pantalla. Es una tabla y no una lista
+ * de wrappers aceptados a propósito: el guard viejo daba por buena una pantalla
+ * que contuviera cualquiera de cuatro strings, y `ScreenContainer` —que no
+ * aplica ningún inset— era uno de ellos. Con eso, `SettingsScreen` y
+ * `PerfilScreen` habrían pasado con el bug de #289 adentro.
+ */
+const RESPONSABLE_DEL_INSET = {
+  TreeRegistrationScreen: 'TreeRegistrationHeader',
+  NNResolutionScreen: 'CustomHeader',
+  NuevoGrupoScreen: 'EntityFormModal',
+  PlantationDetailScreen: 'CustomHeader',
+  CatalogScreen: 'CustomHeader',
+  SettingsScreen: 'CustomHeader',
+  PerfilScreen: 'CustomHeader',
+};
 
-  for (const [name, source] of Object.entries(screens)) {
-    it(`${name} uses ScreenContainer or safe area wrapper`, () => {
-      const usesSafeArea =
-        source.includes('ScreenContainer') ||
-        source.includes('useSafeAreaInsets') ||
-        source.includes('SafeAreaView') ||
-        // EntityFormModal también encapsula el safe-area para pantallas de creación (#89)
-        source.includes('EntityFormModal');
-      expect(usesSafeArea).toBe(true);
+describe('Safe area on refactored screens', () => {
+  for (const [pantalla, responsable] of Object.entries(RESPONSABLE_DEL_INSET)) {
+    it(`${pantalla} monta ${responsable}`, () => {
+      expect(readSrc(`screens/${pantalla}.tsx`)).toMatch(new RegExp(`<${responsable}\\b`));
     });
   }
+
+  for (const responsable of new Set(Object.values(RESPONSABLE_DEL_INSET))) {
+    it(`${responsable} aplica el inset superior`, () => {
+      expect(resuelveElInset(`components/${responsable}.tsx`)).toBe(true);
+    });
+  }
+
+  // La red de la red. `ScreenContainer` es un View con flex: 1 y su propio
+  // docstring lo aclara; envolver en él no resuelve nada.
+  it('ScreenContainer por sí solo no cuenta', () => {
+    expect(resuelveElInset('components/ScreenContainer.tsx')).toBe(false);
+  });
 });
 
 // --- Regression 5: NNResolutionScreen selection count ---
@@ -106,19 +146,6 @@ describe('NNResolutionScreen — Guardar selection count', () => {
 
   it('shows selection count in Guardar button', () => {
     expect(screen).toMatch(/Guardar.*selections/s);
-  });
-});
-
-// --- Regression: CatalogScreen safe area via ScreenContainer + ScreenHeader ---
-describe('CatalogScreen — safe area handling', () => {
-  const screen = readSrc('screens/CatalogScreen.tsx');
-
-  it('uses ScreenContainer or SafeAreaView for safe area', () => {
-    const usesSafeArea =
-      screen.includes('ScreenContainer') ||
-      screen.includes('SafeAreaView') ||
-      screen.includes('ScreenHeader');
-    expect(usesSafeArea).toBe(true);
   });
 });
 
@@ -140,18 +167,8 @@ describe('PlantacionesScreen — delete local', () => {
 
 // --- Regression: las tabs Ajustes y Perfil usan el header compartido (#289) ---
 describe('Header unificado en las tabs (guía UX §6.1)', () => {
-  const tabs = {
-    SettingsScreen: readSrc('screens/SettingsScreen.tsx'),
-    PerfilScreen: readSrc('screens/PerfilScreen.tsx'),
-  };
-
-  for (const [nombre, source] of Object.entries(tabs)) {
-    // CustomHeader es el único wrapper de estas dos que aplica insets.top;
-    // ScreenContainer explícitamente no lo hace, así que no alcanza.
-    it(`${nombre} monta CustomHeader`, () => {
-      expect(source).toMatch(/<CustomHeader\b/);
-    });
-  }
+  // Que las dos monten CustomHeader lo cubre RESPONSABLE_DEL_INSET, arriba.
+  const tabs = { SettingsScreen: readSrc('screens/SettingsScreen.tsx') };
 
   it('SettingsScreen no repite el título de la pantalla dentro de la card', () => {
     expect(tabs.SettingsScreen).toMatch(/<CustomHeader title="Ajustes"/);

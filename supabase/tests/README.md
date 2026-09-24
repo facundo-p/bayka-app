@@ -79,7 +79,19 @@ plantación existente y no archivada, una finalizada las admite (047, #522),
 `26` escrituras de admin acotadas a la organización: plantaciones, especies y
 asignaciones con dos organizaciones, y perfiles vía superadmin (048, #543), `27`
 reemplazo de especies y técnicos por RPC: gates de rol, organización y estado,
-rechazos sin efectos y membresías admin e inactivas intactas (049, #544).
+rechazos sin efectos y membresías admin e inactivas intactas (049, #544), `28`
+perfil inactivo: pierde su organización y la edición de su propio nombre, y
+sigue leyendo su propia fila, que es como se entera de la baja (050, #532),
+`29` las dos capas del cambio de rol —la policy sobre un perfil ajeno, el
+trigger sobre el propio— y parcelas sin DELETE físico, con el tombstone
+intacto (051, #314), `30` reabrir una finalizada: solo superadmin activo de la
+organización, la archivada se rechaza, los grupos conservan su estado y el
+técnico vuelve a escribir (052, #470), `31` cambiar el código de una parcela
+reescribe el prefijo del SubID de sus árboles (solo los que calzan con parcela +
+grupo), y en una finalizada el técnico no llega a cambiarlo (053, #623), `32`
+`sync_subgroup` pisa código, nombre y tipo del grupo, rechaza un nombre repetido
+con DUPLICATE_NAME y pasa al código vigente de la
+parcela los SubID armados con el que manda el móvil en `parcela_codigo` (054, #626).
 
 ## Hallazgo fuera de alcance (no corregido)
 

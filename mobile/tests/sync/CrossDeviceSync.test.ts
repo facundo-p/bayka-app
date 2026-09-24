@@ -397,7 +397,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [tree]);
+      await uploadGroup(sg, [tree], 'P1');
 
       // Assert: uploadPhotoToStorage must NOT be called — the photo is already synced.
       const storageFromCalls = (mockSupabase.storage.from as jest.Mock).mock.calls;
@@ -422,7 +422,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [tree]);
+      await uploadGroup(sg, [tree], 'P1');
 
       // Assert: uploadPhotoToStorage IS called
       expect(mockSupabase.storage.from).toHaveBeenCalledWith('tree-photos');
@@ -489,7 +489,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [resolvedTree]);
+      await uploadGroup(sg, [resolvedTree], 'P1');
 
       // Assert: RPC payload has species_id='species-xyz', sub_id regenerated
       const rpcPayload = (mockSupabase.rpc as jest.Mock).mock.calls[0][1];
@@ -514,7 +514,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [downloadedAndResolvedTree]);
+      await uploadGroup(sg, [downloadedAndResolvedTree], 'P1');
 
       // Assert: photo should NOT be re-uploaded because fotoSynced=true
       const storageFromCalls = (mockSupabase.storage.from as jest.Mock).mock.calls;
@@ -598,7 +598,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [tree]);
+      await uploadGroup(sg, [tree], 'P1');
 
       // Assert: photo uploaded to storage
       expect(mockSupabase.storage.from).toHaveBeenCalledWith('tree-photos');
@@ -695,7 +695,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
       // Now upload — should NOT re-upload the photo
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [treeAfterResolve]);
+      await uploadGroup(sg, [treeAfterResolve], 'P1');
 
       // Assert: no photo upload because fotoSynced=true
       expect(mockSupabase.storage.from).not.toHaveBeenCalled();
@@ -718,7 +718,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [tree]);
+      await uploadGroup(sg, [tree], 'P1');
 
       // Assert: foto_url in the payload must be null — the photo is already on the
       // server and file:// must never leak.
@@ -864,7 +864,7 @@ describe.skip('CrossDeviceSync — errores encontrados en Plant 3', () => {
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [resolvedTree]);
+      await uploadGroup(sg, [resolvedTree], 'P1');
 
       // Assert: RPC payload contains the resolved species
       expect(mockSupabase.rpc).toHaveBeenCalledTimes(1);

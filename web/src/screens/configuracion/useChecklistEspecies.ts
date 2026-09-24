@@ -41,14 +41,14 @@ function avisoDelPlan({ bloqueadasMantenidas }: PlanSeleccion): string | null {
 /** El maestro opera sobre las visibles y avisa cuántas bloqueadas quedaron marcadas. */
 function useAccionMasiva(datos: DatosChecklist, contexto: ContextoSeleccion) {
   const [aviso, setAviso] = useState<string | null>(null);
-  const sincronizar = useSincronizarEspecies(datos.plantationId, datos.catalogo);
+  const sincronizar = useSincronizarEspecies(datos.plantationId, datos.catalogo, datos.especies);
   const estado = estadoMaestro(contexto);
   const alternarTodas = () => {
     const plan = planificarAccionMasiva(contexto, accionDesdeEstado(estado));
     setAviso(avisoDelPlan(plan));
     const { idsHabilitar, idsQuitar } = plan;
     if (idsHabilitar.length === 0 && idsQuitar.length === 0) return;
-    sincronizar.mutate({ idsHabilitar, idsQuitar, ordenInicial: datos.especies.length });
+    sincronizar.mutate({ idsHabilitar, idsQuitar });
   };
   const limpiarAviso = () => setAviso(null);
   return { estado, aviso, limpiarAviso, alternarTodas, fallo: sincronizar.isError };

@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '../../src/database/schema';
+import { createTestSpecies, NewSpecies, TEST_SPECIES_ID } from './factories';
 import path from 'path';
 
 export type IntegrationDb = ReturnType<typeof drizzle<typeof schema>>;
@@ -37,6 +38,36 @@ export function sqliteDeIntegracion(sqlite: InstanceType<typeof Database>) {
       }
     },
   };
+}
+
+/** Hijos antes que padres: con las FKs activas, el orden inverso falla. */
+export const TABLAS_HIJAS_PRIMERO = [
+  schema.trees,
+  schema.borradosPendientes,
+  schema.groups,
+  schema.parcelas,
+  schema.plantationSpecies,
+  schema.userSpeciesOrder,
+  schema.plantationUsers,
+  schema.plantations,
+  schema.species,
+] as const;
+
+export async function vaciarTablas(db: IntegrationDb): Promise<void> {
+  for (const tabla of TABLAS_HIJAS_PRIMERO) await db.delete(tabla);
+}
+
+/**
+ * Siembra la especie de `createTestTree`. Opt-in y no en `createTestDb`: hay tests
+ * que cuentan filas de `species`.
+ */
+export async function sembrarEspecieDeTest(
+  db: IntegrationDb,
+  overrides?: Partial<NewSpecies>,
+): Promise<NewSpecies> {
+  const especie = createTestSpecies({ id: TEST_SPECIES_ID, ...overrides });
+  await db.insert(schema.species).values(especie);
+  return especie;
 }
 
 export function closeTestDb(sqlite: InstanceType<typeof Database>): void {

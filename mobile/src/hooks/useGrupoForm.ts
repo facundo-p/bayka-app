@@ -5,6 +5,7 @@ import type {
   UpdateGroupResult,
 } from '../repositories/GroupRepository';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
+import { camposDuplicados, esPlantacionNoEditable, MENSAJE_PLANTACION_NO_EDITABLE } from '../constants/errorDeEdicion';
 
 interface Params {
   mode: 'create' | 'edit';
@@ -14,6 +15,25 @@ interface Params {
     codigo: string;
     tipo: GroupTipo;
   }) => Promise<CreateGroupResult | UpdateGroupResult>;
+}
+
+const MENSAJES_DE_DUPLICADO = {
+  nombre: 'Este nombre ya existe en la parcela',
+  codigo: 'Este código ya existe en la parcela',
+};
+
+/** El formulario no tiene un error general: lo que no es de un campo se muestra bajo el código. */
+function erroresDelFormulario(
+  error: string,
+  mode: Params['mode'],
+): { nombre: string | null; codigo: string | null } {
+  const duplicados = camposDuplicados(error, MENSAJES_DE_DUPLICADO);
+  if (duplicados) return duplicados;
+  if (esPlantacionNoEditable(error)) return { nombre: null, codigo: MENSAJE_PLANTACION_NO_EDITABLE };
+  const generico = mode === 'create'
+    ? 'Error al crear el grupo. Intentá de nuevo.'
+    : 'Error al actualizar. Intentá de nuevo.';
+  return { nombre: null, codigo: generico };
 }
 
 /**
@@ -53,20 +73,9 @@ export function useGrupoForm({ mode, initialValues, onSubmit }: Params) {
         tipo,
       });
       if (!result.success) {
-        if (result.error === 'both_duplicate') {
-          setNombreError('Este nombre ya existe en la parcela');
-          setCodigoError('Este código ya existe en la parcela');
-        } else if (result.error === 'nombre_duplicate') {
-          setNombreError('Este nombre ya existe en la parcela');
-        } else if (result.error === 'codigo_duplicate') {
-          setCodigoError('Este código ya existe en la parcela');
-        } else {
-          setCodigoError(
-            mode === 'create'
-              ? 'Error al crear el grupo. Intentá de nuevo.'
-              : 'Error al actualizar. Intentá de nuevo.',
-          );
-        }
+        const errores = erroresDelFormulario(result.error, mode);
+        setNombreError(errores.nombre);
+        setCodigoError(errores.codigo);
       }
     } finally {
       setLoading(false);

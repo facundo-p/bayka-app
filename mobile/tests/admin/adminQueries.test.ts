@@ -27,6 +27,7 @@ import {
   getAssignedTechnicians,
   hasTreesForSpecies,
   hasIdsGenerated,
+  porAsignadoYNombre,
 } from '../../src/queries/adminQueries';
 
 import { db } from '../../src/database/client';
@@ -322,5 +323,25 @@ describe('adminQueries', () => {
       const result = await hasTreesForSpecies('plantation-1', 'species-1');
       expect(result).toBe(false);
     });
+  });
+});
+
+// `getTechniciansWithAssignment` cruza las dos lecturas que antes hacía el hook
+// a mano: el catálogo de Supabase y la asignación del SQLite local (#546).
+describe('porAsignadoYNombre', () => {
+  it('pone primero a los asignados y ordena el resto por nombre', () => {
+    const tecnicos = [
+      { id: '1', nombre: 'Zoe', assigned: false },
+      { id: '2', nombre: 'Bruno', assigned: true },
+      { id: '3', nombre: 'Ana', assigned: false },
+      { id: '4', nombre: 'Ada', assigned: true },
+    ];
+
+    expect([...tecnicos].sort(porAsignadoYNombre).map((t) => t.nombre)).toEqual([
+      'Ada',
+      'Bruno',
+      'Ana',
+      'Zoe',
+    ]);
   });
 });

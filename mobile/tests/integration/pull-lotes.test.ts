@@ -10,9 +10,9 @@
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
-import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species, plantationSpecies } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
   plantations: new Map(),
@@ -21,11 +21,14 @@ const mockServerState: Record<string, Map<string, any>> = {
   trees: new Map(),
   plantation_users: new Map(),
   plantation_species: new Map(),
+  species: new Map(),
 };
 const serverState = mockServerState;
+/** Tablas cuya lectura devuelve `{ error }`, como un server que falla a mitad del pull. */
+const mockTablasConError = new Set<string>();
 
 jest.mock('../../src/supabase/client', () => {
-  const filtrar = (tabla: string, filtros: Array<{ col: string; op: string; value: any }>) =>
+  const filtrar = (tabla: string, filtros: { col: string; op: string; value: any }[]) =>
     Array.from(mockServerState[tabla]?.values() ?? []).filter((fila: any) =>
       filtros.every((f) =>
         f.op === 'eq' ? fila[f.col] === f.value : Array.isArray(f.value) && f.value.includes(fila[f.col]),
@@ -33,7 +36,7 @@ jest.mock('../../src/supabase/client', () => {
     );
 
   const builder = (tabla: string) => {
-    const filtros: Array<{ col: string; op: string; value: any }> = [];
+    const filtros: { col: string; op: string; value: any }[] = [];
     const api: any = {
       select() { return api; },
       eq(col: string, value: any) { filtros.push({ col, op: 'eq', value }); return api; },
@@ -43,7 +46,10 @@ jest.mock('../../src/supabase/client', () => {
         return Promise.resolve({ data: filas[0] ?? null, error: filas[0] ? null : { code: 'PGRST116' } });
       },
       then(resolver: any) {
-        return Promise.resolve({ data: filtrar(tabla, filtros), error: null }).then(resolver);
+        const respuesta = mockTablasConError.has(tabla)
+          ? { data: null, error: { message: 'falla simulada' } }
+          : { data: filtrar(tabla, filtros), error: null };
+        return Promise.resolve(respuesta).then(resolver);
       },
     };
     return api;
@@ -85,6 +91,11 @@ const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
 const ROBLE = 'sp-roble';
 const PINO = 'sp-pino';
+const ALAMO = 'sp-alamo';
+
+const especieDelServer = (id: string, codigo: string, nombre: string) => ({
+  id, codigo, nombre, nombre_cientifico: null, created_at: '2026-01-01T00:00:00',
+});
 
 /** SQL efectivamente ejecutado, para contar statements. Drizzle cachea el `prepare`, así que se instrumenta la ejecución. */
 function registrarSql(conexion: InstanceType<typeof Database>): string[] {
@@ -132,19 +143,15 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
   for (const tabla of Object.values(serverState)) tabla.clear();
+  mockTablasConError.clear();
 
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(species);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 
   await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026' }));
   await mockTestDb.insert(species).values([
@@ -201,13 +208,28 @@ describe('pull de árboles — conflicto de especie', () => {
     expect(fila.conflictEspecieNombre).toBe('Pino');
   });
 
-  it('especie del server que el catálogo local no tiene: el conflicto igual se marca', async () => {
+  it('especie del server que el catálogo local no tiene: la baja y marca el conflicto con su nombre', async () => {
+    await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
+    serverState.species.set(ALAMO, especieDelServer(ALAMO, 'ALA', 'Álamo'));
+    serverState.trees.set('t1', arbolDelServer('t1', ALAMO));
+
+    await pullFromServer(PLANTACION_ID);
+
+    const fila = await leerArbol('t1');
+    expect(fila.conflictEspecieId).toBe(ALAMO);
+    expect(fila.conflictEspecieNombre).toBe('Álamo');
+  });
+
+  // Aceptar un conflicto hacia una especie inexistente dejaría el árbol colgado.
+  it('especie que ni el server devuelve: no marca un conflicto hacia ella', async () => {
     await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
     serverState.trees.set('t1', arbolDelServer('t1', 'sp-que-no-existe'));
 
     await pullFromServer(PLANTACION_ID);
 
-    expect((await leerArbol('t1')).conflictEspecieNombre).toBe('Desconocida');
+    const fila = await leerArbol('t1');
+    expect(fila.especieId).toBe(ROBLE);
+    expect(fila.conflictEspecieId).toBeNull();
   });
 
   it('misma especie en ambos lados: no hay conflicto', async () => {
@@ -252,6 +274,68 @@ describe('pull de árboles — conflicto de especie', () => {
     const fila = await leerArbol('t1');
     expect(fila.conflictEspecieId).toBeNull();
     expect(fila.conflictEspecieNombre).toBeNull();
+  });
+});
+
+/**
+ * `pullFromServer` también corre suelto (pull-to-refresh), sin bajar antes el
+ * catálogo: una especie nueva en el server puede no estar en el local (#614).
+ */
+describe('pull — especie ausente del catálogo local', () => {
+  const especiesLocales = async () => (await mockTestDb.select({ id: species.id }).from(species)).map((e) => e.id);
+
+  it('baja la especie antes de escribir el árbol que la usa', async () => {
+    serverState.species.set(ALAMO, especieDelServer(ALAMO, 'ALA', 'Álamo'));
+    serverState.trees.set('t1', arbolDelServer('t1', ALAMO));
+
+    await pullFromServer(PLANTACION_ID);
+
+    expect((await leerArbol('t1')).especieId).toBe(ALAMO);
+    expect(await especiesLocales()).toContain(ALAMO);
+  });
+
+  it('baja la especie antes de escribir plantation_species', async () => {
+    serverState.species.set(ALAMO, especieDelServer(ALAMO, 'ALA', 'Álamo'));
+    serverState.plantation_species.set('ps-1', { plantation_id: PLANTACION_ID, species_id: ALAMO, orden_visual: 0 });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const filas = await mockTestDb.select().from(plantationSpecies);
+    expect(filas.map((f) => f.especieId)).toEqual([ALAMO]);
+    expect(await especiesLocales()).toContain(ALAMO);
+  });
+
+  it('especie que el server no devuelve: no escribe hijos colgados y sigue con el resto', async () => {
+    serverState.trees.set('t-huerfano', arbolDelServer('t-huerfano', 'sp-que-no-existe'));
+    serverState.trees.set('t-ok', arbolDelServer('t-ok', ROBLE));
+    serverState.plantation_species.set('ps-1', { plantation_id: PLANTACION_ID, species_id: 'sp-que-no-existe', orden_visual: 0 });
+
+    await expect(pullFromServer(PLANTACION_ID)).resolves.toEqual({ estado: 'ok' });
+
+    expect(await leerArbol('t-huerfano')).toBeUndefined();
+    expect((await leerArbol('t-ok')).especieId).toBe(ROBLE);
+    expect(await mockTestDb.select().from(plantationSpecies)).toHaveLength(0);
+  });
+
+  it('el server falla al bajar la especie: no escribe hijos colgados y el pull sigue', async () => {
+    serverState.species.set(ALAMO, especieDelServer(ALAMO, 'ALA', 'Álamo'));
+    serverState.trees.set('t1', arbolDelServer('t1', ALAMO));
+    serverState.plantation_species.set('ps-1', { plantation_id: PLANTACION_ID, species_id: ALAMO, orden_visual: 0 });
+    mockTablasConError.add('species');
+
+    await expect(pullFromServer(PLANTACION_ID)).resolves.toEqual({ estado: 'ok' });
+
+    expect(await leerArbol('t1')).toBeUndefined();
+    expect(await mockTestDb.select().from(plantationSpecies)).toHaveLength(0);
+    expect(await especiesLocales()).not.toContain(ALAMO);
+  });
+
+  it('árbol N/N (sin especie) se escribe igual', async () => {
+    serverState.trees.set('t-nn', arbolDelServer('t-nn', null));
+
+    await pullFromServer(PLANTACION_ID);
+
+    expect((await leerArbol('t-nn')).especieId).toBeNull();
   });
 });
 

@@ -11,7 +11,7 @@ import { eq } from 'drizzle-orm';
 
 import { GPS_FIX_MAX_AGE_MS } from '../../src/constants/gpsCapture';
 import { groups, parcelas, plantations, trees } from '../../src/database/schema';
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 
 let mockTestDb: IntegrationDb;
 let sqlite: InstanceType<typeof Database>;
@@ -110,10 +110,7 @@ afterAll(() => {
 
 beforeEach(async () => {
   jest.clearAllMocks();
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 });
 
 describe('updateTreeGps', () => {

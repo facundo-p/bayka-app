@@ -6,11 +6,8 @@
  */
 import { useState, useMemo, useCallback } from 'react';
 import { useLiveData } from '../database/liveQuery';
-import {
-  deleteGroup,
-  updateGroup,
-  updateGroupCode,
-} from '../repositories/GroupRepository';
+import { deleteGroup, updateGroup, type Group, type GroupTipo, type UpdateGroupResult } from '../repositories/GroupRepository';
+import { ERROR_DE_EDICION } from '../constants/errorDeEdicion';
 import {
   getPlantationLugar,
   getGroupsForPlantation,
@@ -21,7 +18,6 @@ import { useCurrentUserId } from './useCurrentUserId';
 import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
-import type { Group, GroupTipo } from '../repositories/GroupRepository';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import { getGroupGating, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
 import type { GroupGating } from '../utils/permisosDeEdicion';
@@ -129,17 +125,13 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     );
   }
 
-  async function handleEditSubmit(values: { nombre: string; codigo: string; tipo: GroupTipo }) {
-    if (!editingGroup) return { success: false as const, error: 'unknown' as const };
+  async function handleEditSubmit(values: { nombre: string; codigo: string; tipo: GroupTipo }): Promise<UpdateGroupResult> {
+    if (!editingGroup) return { success: false, error: 'unknown' };
     // El modal pudo quedar abierto mientras un pull finalizaba o archivaba la plantación.
-    if (!permisosDeGrupo(editingGroup).canEdit) return { success: false as const, error: 'unknown' as const };
+    if (!plantacionEditable) return { success: false, error: ERROR_DE_EDICION.plantacionNoEditable };
+    if (!permisosDeGrupo(editingGroup).canEdit) return { success: false, error: 'unknown' };
     const result = await updateGroup(editingGroup.id, values);
-    if (result.success && values.codigo !== editingGroup.codigo) {
-      await updateGroupCode(editingGroup.id, values.codigo, editingGroup.codigo);
-    }
-    if (result.success) {
-      setEditingGroup(null);
-    }
+    if (result.success) setEditingGroup(null);
     return result;
   }
 

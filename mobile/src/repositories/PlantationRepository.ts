@@ -21,6 +21,7 @@ import { getResumenDePendientes, type ResumenDePendientes } from '../queries/cat
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
 import { borrarFotosLocales } from '../services/PhotoService';
+import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -317,7 +318,7 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 /** Reemplaza el species config en Supabase en una sola transacción y sincroniza a SQLite vía pullFromServer. */
 export async function saveSpeciesConfig(
   plantacionId: string,
-  items: Array<{ especieId: string; ordenVisual: number }>
+  items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
   await reemplazarConfiguracion({
     rpc: RPC_REEMPLAZAR_ESPECIES,
@@ -362,13 +363,13 @@ async function reemplazarEspeciesSinRpc(
 /** Reemplaza atómicamente el species config solo en SQLite local (sin Supabase) — para configuración offline. */
 export async function saveSpeciesConfigLocally(
   plantacionId: string,
-  items: Array<{ especieId: string; ordenVisual: number }>
+  items: { especieId: string; ordenVisual: number }[]
 ): Promise<void> {
   await db.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
   if (items.length > 0) {
     await db.insert(plantationSpecies).values(
       items.map((item) => ({
-        id: `ps-${plantacionId}-${item.especieId}`,
+        id: plantationSpeciesId(plantacionId, item.especieId),
         plantacionId,
         especieId: item.especieId,
         ordenVisual: item.ordenVisual,

@@ -1,114 +1,91 @@
 /**
- * useAssignTechnicians — all data logic for AssignTechniciansScreen.
+ * useAssignTechnicians — el estado de AssignTechniciansScreen.
  *
- * Encapsulates technician list loading, assignment toggle, and save logic.
- * Loads all org technicians from Supabase; assigned techs from local SQLite.
+ * Los técnicos de la organización salen de Supabase y la asignación del SQLite
+ * local; las dos lecturas viven en `queries/adminQueries`, no acá.
  */
 import { useState, useEffect, useCallback } from 'react';
 import NetInfo from '@react-native-community/netinfo';
 import { useConfirm } from './useConfirm';
+import { useProfileData } from './useProfileData';
 import { showInfoDialog, showConfirmDialog } from '../utils/alertHelpers';
-import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { getAllTechnicians, getAssignedTechnicians, getTechnicianUnsyncedGroupCount } from '../queries/adminQueries';
+import {
+  getTechnicianUnsyncedGroupCount,
+  getTechniciansWithAssignment,
+  type TecnicoAsignable,
+} from '../queries/adminQueries';
 import { assignTechnicians } from '../repositories/PlantationRepository';
 import { colors } from '../theme';
 
-type TechnicianItem = {
-  id: string;
-  nombre: string;
-  assigned: boolean;
-};
+const ICONO_ERROR = 'alert-circle-outline';
+const ICONO_AVISO = 'warning-outline';
+
+/** Lo que pierde el admin si desasigna a alguien con trabajo sin subir. */
+export function mensajeDeDesasignacion(gruposPendientes: number): string {
+  const plural = gruposPendientes > 1 ? 's' : '';
+  return (
+    `Este técnico tiene ${gruposPendientes} grupo${plural} sin sincronizar. ` +
+    'Si lo desasignás, solo él podrá sincronizarlos. ¿Continuar?'
+  );
+}
 
 export function useAssignTechnicians(plantacionId: string | undefined) {
   const confirm = useConfirm();
+  const { profile } = useProfileData();
+  const organizacionId = profile?.organizacionId ?? null;
 
-  const [items, setItems] = useState<TechnicianItem[]>([]);
+  const [items, setItems] = useState<TecnicoAsignable[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [networkError, setNetworkError] = useState(false);
-  const [organizacionId, setOrganizacionId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-    supabase.auth
-      .getUser()
-      .then(async ({ data }) => {
-        if (!data?.user?.id) return;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('organizacion_id')
-          .eq('id', data.user.id)
-          .single();
-        if (profile?.organizacion_id) {
-          setOrganizacionId(profile.organizacion_id);
-        }
-      })
-      .catch(console.error);
-  }, []);
+  const avisarError = useCallback(
+    (error: any, mensajePorDefecto: string) => {
+      showInfoDialog(
+        confirm.show,
+        'Error',
+        error?.message ?? mensajePorDefecto,
+        ICONO_ERROR,
+        colors.danger,
+      );
+    },
+    [confirm.show],
+  );
 
   const loadData = useCallback(async () => {
     if (!plantacionId || !organizacionId) return;
     setLoading(true);
     setNetworkError(false);
     try {
-      const netState = await NetInfo.fetch();
-      if (!netState.isConnected) {
-        setNetworkError(true);
-        setLoading(false);
-        return;
-      }
-
-      const [allTechs, assigned] = await Promise.all([
-        getAllTechnicians(organizacionId),
-        getAssignedTechnicians(plantacionId),
-      ]);
-
-      const assignedSet = new Set(assigned.map((a) => a.userId));
-      const merged: TechnicianItem[] = allTechs.map((tech) => ({
-        id: tech.id,
-        nombre: tech.nombre,
-        assigned: assignedSet.has(tech.id),
-      }));
-
-      merged.sort((a, b) => {
-        if (a.assigned && !b.assigned) return -1;
-        if (!a.assigned && b.assigned) return 1;
-        return a.nombre.localeCompare(b.nombre);
-      });
-
-      setItems(merged);
+      const { isConnected } = await NetInfo.fetch();
+      if (!isConnected) return setNetworkError(true);
+      setItems(await getTechniciansWithAssignment(organizacionId, plantacionId));
     } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar los técnicos.', 'alert-circle-outline', colors.danger);
+      avisarError(e, 'No se pudieron cargar los técnicos.');
     } finally {
       setLoading(false);
     }
-  }, [plantacionId, organizacionId]);
+  }, [plantacionId, organizacionId, avisarError]);
 
   useEffect(() => {
-    if (organizacionId) loadData();
-  }, [loadData, organizacionId]);
+    loadData();
+  }, [loadData]);
 
+  const marcarAsignado = (id: string, assigned: boolean) =>
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, assigned } : item)));
+
+  /** Desasignar avisa si el técnico tiene grupos que solo él puede subir. */
   async function handleToggle(id: string, newValue: boolean) {
-    if (!newValue && plantacionId) {
-      const unsyncedCount = await getTechnicianUnsyncedGroupCount(plantacionId, id);
-      if (unsyncedCount > 0) {
-        showConfirmDialog(
-          confirm.show,
-          'Técnico con grupos pendientes',
-          `Este técnico tiene ${unsyncedCount} grupo${unsyncedCount > 1 ? 's' : ''} sin sincronizar. Si lo desasignás, solo él podrá sincronizarlos. ¿Continuar?`,
-          'Desasignar',
-          () => {
-            setItems((prev) =>
-              prev.map((item) => (item.id === id ? { ...item, assigned: false } : item))
-            );
-          },
-          { icon: 'warning-outline', iconColor: colors.secondary, style: 'danger' },
-        );
-        return;
-      }
-    }
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, assigned: newValue } : item))
+    if (newValue || !plantacionId) return marcarAsignado(id, newValue);
+    const pendientes = await getTechnicianUnsyncedGroupCount(plantacionId, id);
+    if (pendientes === 0) return marcarAsignado(id, false);
+    showConfirmDialog(
+      confirm.show,
+      'Técnico con grupos pendientes',
+      mensajeDeDesasignacion(pendientes),
+      'Desasignar',
+      () => marcarAsignado(id, false),
+      { icon: ICONO_AVISO, iconColor: colors.secondary, style: 'danger' },
     );
   }
 
@@ -116,25 +93,24 @@ export function useAssignTechnicians(plantacionId: string | undefined) {
     if (!plantacionId) return;
     setSaving(true);
     try {
-      const assignedIds = items.filter((i) => i.assigned).map((i) => i.id);
-      await assignTechnicians(plantacionId, assignedIds);
-      if (onClose) onClose();
-      else if (onBack) onBack();
+      await assignTechnicians(
+        plantacionId,
+        items.filter((item) => item.assigned).map((item) => item.id),
+      );
+      (onClose ?? onBack)?.();
     } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron asignar los técnicos.', 'alert-circle-outline', colors.danger);
+      avisarError(e, 'No se pudieron asignar los técnicos.');
     } finally {
       setSaving(false);
     }
   }
-
-  const assignedCount = items.filter((i) => i.assigned).length;
 
   return {
     items,
     loading,
     saving,
     networkError,
-    assignedCount,
+    assignedCount: items.filter((item) => item.assigned).length,
     confirmProps: confirm.confirmProps,
     loadData,
     handleToggle,

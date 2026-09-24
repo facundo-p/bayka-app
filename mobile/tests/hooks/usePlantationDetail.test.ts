@@ -9,7 +9,6 @@ jest.mock('../../src/database/liveQuery', () => ({
 jest.mock('../../src/repositories/GroupRepository', () => ({
   deleteGroup: jest.fn(),
   updateGroup: jest.fn(),
-  updateGroupCode: jest.fn(),
 }));
 
 jest.mock('../../src/queries/plantationDetailQueries', () => ({
@@ -140,9 +139,27 @@ describe('usePlantationDetail — permisosDeGrupo', () => {
     mockLiveQueries({ plantacionEstado: 'finalizada' });
     rerender(undefined);
 
-    await act(async () => { await result.current.handleEditSubmit({ nombre: 'X', codigo: 'X1', tipo: 'linea' as any }); });
+    let resultado: unknown;
+    await act(async () => {
+      resultado = await result.current.handleEditSubmit({ nombre: 'X', codigo: 'X1', tipo: 'linea' as any });
+    });
 
     expect(updateGroup).not.toHaveBeenCalled();
+    expect(resultado).toEqual({ success: false, error: 'plantacion_no_editable' });
+  });
+
+  it('handleEditSubmit devuelve el error del repo y deja el modal abierto', async () => {
+    (updateGroup as jest.Mock).mockResolvedValue({ success: false, error: 'plantacion_no_editable' });
+    const { result } = renderHook(() => usePlantationDetail('p-1', 'par-1'));
+    act(() => result.current.handleLongPress(GRUPO));
+
+    let resultado: unknown;
+    await act(async () => {
+      resultado = await result.current.handleEditSubmit({ nombre: 'X', codigo: 'X1', tipo: 'linea' as any });
+    });
+
+    expect(resultado).toEqual({ success: false, error: 'plantacion_no_editable' });
+    expect(result.current.editingGroup).toEqual(GRUPO);
   });
 
   it('handleEditSubmit sí escribe con la plantación activa', async () => {

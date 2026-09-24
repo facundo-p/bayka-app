@@ -245,7 +245,9 @@ Para no leer de más en un `·`:
   `/novedades` se miden desplegados.
 - **`novedades-pasos` depende de `NOVEDADES.md`.** Sin ítems con pasos, en
   pruebas o publicados (#580), no hay nada que desplegar y la fila mide lo
-  mismo que `novedades`.
+  mismo que `novedades`. Los casos L del autotest inyectan sobre esos pasos:
+  si no hay ninguno, avisan "NOVEDADES.md se quedó sin pasos" en vez de
+  reportarse como check muerto (#573).
 - **O y R solo ven el primer viewport.** En los anchos chicos, donde el
   documento scrollea, queda afuera la mayor parte del contenido. L mira todo el
   texto.

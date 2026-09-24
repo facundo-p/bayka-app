@@ -1,12 +1,12 @@
 /** Admin read queries: gestión de plantación + gate de finalización. Local queries usan Drizzle/SQLite; profile listing usa Supabase (SQLite local no tiene profiles). */
 import { db } from '../database/client';
 import { supabase } from '../supabase/client';
-import { groups, trees, plantations, plantationSpecies, species, plantationUsers } from '../database/schema';
+import { groups, trees, plantationSpecies, species, plantationUsers } from '../database/schema';
 import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
-import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueries';
+import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 
 export type FinalizationGate = {
@@ -65,25 +65,12 @@ async function getNNSinResolver(plantacionId: string) {
   };
 }
 
-/** Estado, archivado y eliminación en el server: lo que decide los permisos de edición. Null si no está local. */
-export async function getPlantationEstadoDeEdicion(
-  plantacionId: string,
-): Promise<EstadoDeEdicionDePlantacion | null> {
-  const rows = await db
-    .select({
-      estado: plantations.estado,
-      archivadaEn: plantations.archivadaEn,
-      eliminadaEnServidorEn: plantations.eliminadaEnServidorEn,
-    })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-  return rows[0] ?? null;
-}
+export { getPlantationEstadoDeEdicion } from './estadoDeEdicionQueries';
 
 /** Returns all technicians in the admin's organization. */
 export async function getAllTechnicians(
   organizacionId: string
-): Promise<Array<{ id: string; nombre: string }>> {
+): Promise<{ id: string; nombre: string }[]> {
   const { data, error } = await supabase
     .from('profiles')
     .select('id, nombre')
@@ -93,13 +80,37 @@ export async function getAllTechnicians(
     .eq('activo', true);
 
   if (error) throw error;
-  return (data ?? []) as Array<{ id: string; nombre: string }>;
+  return (data ?? []) as { id: string; nombre: string }[];
+}
+
+/** Técnico de la organización, con su asignación a una plantación. */
+export type TecnicoAsignable = { id: string; nombre: string; assigned: boolean };
+
+/** Los asignados primero: el admin ve de una a quién ya tiene puesto. */
+export function porAsignadoYNombre(a: TecnicoAsignable, b: TecnicoAsignable): number {
+  if (a.assigned !== b.assigned) return a.assigned ? -1 : 1;
+  return a.nombre.localeCompare(b.nombre);
+}
+
+/** Los técnicos de la organización marcados con su asignación a la plantación. */
+export async function getTechniciansWithAssignment(
+  organizacionId: string,
+  plantacionId: string
+): Promise<TecnicoAsignable[]> {
+  const [todos, asignados] = await Promise.all([
+    getAllTechnicians(organizacionId),
+    getAssignedTechnicians(plantacionId),
+  ]);
+  const idsAsignados = new Set(asignados.map((asignado) => asignado.userId));
+  return todos
+    .map((tecnico) => ({ ...tecnico, assigned: idsAsignados.has(tecnico.id) }))
+    .sort(porAsignadoYNombre);
 }
 
 /** Especies configuradas para una plantación, ordenadas por ordenVisual. */
 export async function getPlantationSpeciesConfig(
   plantacionId: string
-): Promise<Array<{ especieId: string; nombre: string; codigo: string; ordenVisual: number }>> {
+): Promise<{ especieId: string; nombre: string; codigo: string; ordenVisual: number }[]> {
   const rows = await db
     .select({
       especieId: plantationSpecies.especieId,
@@ -117,7 +128,7 @@ export async function getPlantationSpeciesConfig(
 /** Técnicos asignados a una plantación; filtra por rol_en_plantacion='tecnico' porque los admins también son miembros y no deben aparecer acá (#67). */
 export async function getAssignedTechnicians(
   plantacionId: string
-): Promise<Array<{ userId: string; rolEnPlantacion: string; assignedAt: string }>> {
+): Promise<{ userId: string; rolEnPlantacion: string; assignedAt: string }[]> {
   return db
     .select({
       userId: plantationUsers.userId,
@@ -167,11 +178,12 @@ export async function hasTreesForSpecies(
   return rows.length > 0;
 }
 
-/** Returns all species in the local catalog, ordered alphabetically. */
-export async function getAllSpecies(): Promise<Array<{ id: string; nombre: string; codigo: string }>> {
+/** Catálogo local por nombre, sin las especies recuperadas. */
+export async function getAllSpecies(): Promise<{ id: string; nombre: string; codigo: string }[]> {
   return db
     .select({ id: species.id, nombre: species.nombre, codigo: species.codigo })
     .from(species)
+    .where(soloEspeciesDelCatalogo())
     .orderBy(asc(species.nombre));
 }
 

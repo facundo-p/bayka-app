@@ -9,6 +9,39 @@ que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
 contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
+## 2026-09-24 · web 1.4.0 · mobile 1.3.0
+
+### Web 1.4.0
+
+#### Agregado
+- Reabrir una plantación finalizada: acción "Reabrir plantación" en «⋯ Más acciones» del detalle, módulo puro `reapertura.ts` (`puedeReabrir`/`esReabrible`/`CONFIRMACION_REAPERTURA`) y `ReaperturaModal` sobre `ConfirmarModal`; se ofrece solo a superadmin activo, con la plantación finalizada y sin archivar (#594)
+
+#### Corregido
+- La acción masiva de especies manda la lista final a `reemplazar_especies_plantacion` (DELETE + INSERT en una transacción) en vez de insert y delete sueltos; se va `ordenInicial`, que numeraba las altas distinto del optimista, y `moverEspecie`, sin callers (#589)
+
+### Mobile 1.3.0 (versionCode 4)
+
+#### Cambiado
+- La base local activa `PRAGMA foreign_keys` después de las migraciones (`useBaseLocal`): antes limpia los huérfanos de `foreign_key_check`, recrea como `recuperada:<id>` las especies que faltan y no siembra `plantation_species` de la demo si la demo no está; `reconcileSpeciesCodigoCollision` libera el código, inserta y recién después re-apunta referencias, en una transacción válida con FKs activas (#621, #620)
+
+#### Corregido
+- `useAssignTechnicians` toma la organización de `useProfileData` (cacheada en SecureStore) en vez de consultar Supabase: sin conexión la pantalla muestra el aviso de red en lugar de quedarse en "Cargando técnicos…"; el cruce catálogo + asignados pasa a `getTechniciansWithAssignment` con el comparador puro `porAsignadoYNombre` (#593)
+- `seedSpeciesIfNeeded` ya no borra especies referenciadas por `trees`, `plantation_species` o `user_species_order`, y el pull baja por id las especies faltantes (`asegurarEspecies`) antes de escribir árboles (#618)
+- Cambiar el código de una parcela o de un grupo recalcula los SubID de sus árboles en la misma transacción, y el pull adopta los cambios de otros dispositivos (`planDeRenombres`/`adoptarRenombres`, en dos pasadas contra los índices únicos); `updateGroup` y `updateParcela` rechazan una plantación no editable, y `isNameUniqueConstraintError` detecta por fin el nombre duplicado (#625, #628)
+
+### Otros
+- Migración 050 `perfil_inactivo_sin_organizacion`: `current_organizacion_id()` devuelve NULL con el perfil inactivo y `Users can update own profile` pasa a `TO authenticated` con `USING`/`WITH CHECK` exigiendo `activo`; `Users can read own profile` se deja intacta a propósito (#587)
+- Migración 051 `gates_con_helpers`: `generate_tree_ids` usa `puede_archivar_plantacion()`, `protect_profile_fields` usa `is_superadmin()` y se elimina la policy `Plantation members can delete parcelas`, sin consumidores (#597)
+- Migración 052 `reabrir_plantacion`: RPC con gate de superadmin activo, validación del estado previo, scope de organización y `FOR UPDATE`; rechaza archivadas con `PLANTACION_ARCHIVADA` (#594)
+- Ensayo de restore scripteado y verificado sobre un backup real de producción: `scripts/restore-backup.sh` más `docs/backup-restore.md`, que documenta qué no viaja en el dump —archivos de Storage y `supabase_migrations`— y cómo comparar un dump contra baseline + migraciones sin conectarse a prod (#596, #605)
+- El caso L de la auditoría responsive avisa cuando no hay pasos donde inyectar (#586)
+- Mantenimiento de tests y lint: se van las suites apagadas del pull y entra la que faltaba, el guard de safe-area nombra quién aplica el inset, el idioma de Jest deja de disparar warnings y `Array<T>` pasa a `T[]`; los tests de integración corren con FKs activas y limpian con `vaciarTablas` (#592, #590, #600, #602, #619, #624)
+- Migración 053 `subid_sigue_al_codigo_de_parcela`: trigger que reescribe el prefijo de los `sub_id` al cambiar el código de una parcela (#625)
+- Migración 054 `sync_subgroup_codigo_y_prefijo`: `sync_subgroup` pisa `codigo`, `nombre` y `tipo`, devuelve `DUPLICATE_NAME` y normaliza el prefijo de parcela con el `parcela_codigo` que manda el móvil (#628)
+- Retención escalonada de los backups de la base (7 diarios, 4 semanales, 12 mensuales); el script falla si no rota (#613)
+- Checklist de configuración manual de Supabase por entorno (#611)
+- Skill `/issue`, convención de redacción de Issues y dashboard `/matriz-issues` (#610)
+
 ## 2026-09-19 · web 1.3.0 · mobile 1.2.0
 
 ### Web 1.3.0

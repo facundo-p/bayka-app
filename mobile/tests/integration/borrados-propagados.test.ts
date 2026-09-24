@@ -10,9 +10,9 @@
  */
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
-import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species, borradosPendientes } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
   plantations: new Map(),
@@ -25,7 +25,7 @@ const mockServerState: Record<string, Map<string, any>> = {
 const serverState = mockServerState;
 
 jest.mock('../../src/supabase/client', () => {
-  const filtrar = (tabla: string, filtros: Array<{ col: string; op: string; value: any }>) =>
+  const filtrar = (tabla: string, filtros: { col: string; op: string; value: any }[]) =>
     Array.from(mockServerState[tabla]?.values() ?? []).filter((fila: any) =>
       filtros.every((f) =>
         f.op === 'eq' ? fila[f.col] === f.value : Array.isArray(f.value) && f.value.includes(fila[f.col]),
@@ -33,7 +33,7 @@ jest.mock('../../src/supabase/client', () => {
     );
 
   const builder = (tabla: string) => {
-    const filtros: Array<{ col: string; op: string; value: any }> = [];
+    const filtros: { col: string; op: string; value: any }[] = [];
     const api: any = {
       select() { return api; },
       eq(col: string, value: any) { filtros.push({ col, op: 'eq', value }); return api; },
@@ -85,7 +85,7 @@ jest.mock('../../src/supabase/client', () => {
         let arboles = 0;
         let grupos = 0;
         const rechazados: string[] = [];
-        for (const b of args.p_borrados as Array<{ id: string; tipo: string }>) {
+        for (const b of args.p_borrados as { id: string; tipo: string }[]) {
           if (b.tipo === 'arbol') {
             const arbol = mockServerState.trees.get(b.id);
             if (!arbol) continue;
@@ -135,7 +135,6 @@ import { pushBorrados } from '../../src/services/sync/pushService';
 import { deleteLastTree, deleteTreeAndRecalculate, updateTreePhoto } from '../../src/repositories/TreeRepository';
 import { deleteGroup } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
-import { borradosPendientes } from '../../src/database/schema';
 
 const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
@@ -188,7 +187,6 @@ beforeAll(() => {
   mockTestDb = r.db;
   sqlite = r.sqlite;
   mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
-  sqlite.pragma('foreign_keys = OFF');
 });
 
 afterAll(() => closeTestDb(sqlite));
@@ -196,13 +194,7 @@ afterAll(() => closeTestDb(sqlite));
 beforeEach(async () => {
   for (const tabla of Object.values(serverState)) tabla.clear();
   rpcFalla.activo = false;
-  await mockTestDb.delete(borradosPendientes);
-
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(species);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 
   await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026' }));
   await mockTestDb.insert(species).values([

@@ -1,17 +1,20 @@
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { groups, trees, parcelas } from '../database/schema';
-import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
-import { generateSubId } from '../utils/idGenerator';
-import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
 import { getTreeEditGating } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
+import { errorDeDuplicado } from '../database/sqliteErrors';
+import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
+import {
+  ERROR_DE_DUPLICADO, ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion,
+} from '../constants/errorDeEdicion';
 import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
@@ -60,15 +63,13 @@ export async function getLastGroupName(plantacionId: string): Promise<string | n
   return rows[0]?.nombre ?? null;
 }
 
-type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate';
-
 /** Valida nombre/codigo únicos dentro de la parcela del grupo (#90: parcela obligatoria, sin fallback per-plantación). */
 async function validateGroupUniqueness(
   parcelaId: string,
   nombre: string,
   codigo: string,
   excludeId?: string,
-): Promise<DuplicateError | null> {
+): Promise<ErrorDeDuplicado | null> {
   const scope = [eq(groups.parcelaId, parcelaId)];
   const nombreConds = [...scope, eq(groups.nombre, nombre)];
   const codigoConds = [...scope, eq(groups.codigo, codigo)];
@@ -78,15 +79,15 @@ async function validateGroupUniqueness(
   }
   const [existingNombre] = await db.select({ id: groups.id }).from(groups).where(and(...nombreConds)).limit(1);
   const [existingCodigo] = await db.select({ id: groups.id }).from(groups).where(and(...codigoConds)).limit(1);
-  if (existingNombre && existingCodigo) return 'both_duplicate';
-  if (existingNombre) return 'nombre_duplicate';
-  if (existingCodigo) return 'codigo_duplicate';
+  if (existingNombre && existingCodigo) return ERROR_DE_DUPLICADO.ambos;
+  if (existingNombre) return ERROR_DE_DUPLICADO.nombre;
+  if (existingCodigo) return ERROR_DE_DUPLICADO.codigo;
   return null;
 }
 
 export type CreateGroupResult =
   | { success: true; id: string }
-  | { success: false; error: 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate' | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | 'unknown' };
 
 export async function createGroup(params: {
   plantacionId: string;
@@ -121,11 +122,8 @@ export async function createGroup(params: {
     });
     notifyDataChanged();
     return { success: true, id };
-  } catch (e: any) {
-    if (isUniqueConstraintError(e)) {
-      return { success: false, error: 'codigo_duplicate' };
-    }
-    return { success: false, error: 'unknown' };
+  } catch (e: unknown) {
+    return { success: false, error: errorDeDuplicado(e) };
   }
 }
 
@@ -170,101 +168,49 @@ export function canEdit(
 
 export type UpdateGroupResult =
   | { success: true }
-  | { success: false; error: 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate' | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | ErrorDeEdicion | 'unknown' };
 
-export async function updateGroup(
-  id: string,
-  params: { nombre: string; codigo: string; tipo: GroupTipo }
-): Promise<UpdateGroupResult> {
-  const upperCodigo = params.codigo.toUpperCase();
+type CamposDeGrupo = { nombre: string; codigo: string; tipo: GroupTipo };
+type GrupoActual = { plantacionId: string; parcelaId: string; codigo: string };
 
-  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId })
+/** Si cambia el código, recalcula el SubID de los árboles en la misma transacción. */
+export async function updateGroup(id: string, params: CamposDeGrupo): Promise<UpdateGroupResult> {
+  const campos = { ...params, codigo: params.codigo.toUpperCase() };
+  const [actual] = await db
+    .select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId, codigo: groups.codigo })
     .from(groups).where(eq(groups.id, id));
-  if (!current) return { success: false, error: 'unknown' };
-
-  const duplicateError = await validateGroupUniqueness(
-    current.parcelaId,
-    params.nombre,
-    upperCodigo,
-    id,
-  );
-  if (duplicateError) return { success: false, error: duplicateError };
-
-  await db.update(groups)
-    .set({
-      nombre: params.nombre,
-      codigo: upperCodigo,
-      tipo: params.tipo,
-    })
-    .where(eq(groups.id, id));
-  await markGroupPendingSync(id);
+  if (!actual) return { success: false, error: 'unknown' };
+  const invalido = await validarEdicionDeGrupo(id, actual, campos);
+  if (invalido) return { success: false, error: invalido };
+  try {
+    await enTransaccion((tx) => escribirGrupo(tx, id, actual, campos));
+  } catch (e: unknown) {
+    return { success: false, error: errorDeDuplicado(e) };
+  }
   notifyDataChanged();
   return { success: true };
 }
 
-/** Recalculates all tree subIds for a group inside a tx. */
-async function recalcTreesSubIds(
-  tx: typeof db,
-  grupoId: string,
-  newCodigo: string,
-  parcelaCodigo: string
-): Promise<void> {
-  const allTrees = await tx.select().from(trees)
-    .where(eq(trees.groupId, grupoId))
-    .orderBy(asc(trees.posicion));
-
-  for (const tree of allTrees) {
-    const especieCodigo = await resolveEspecieCodigo(tx, tree.especieId);
-    const newSubId = generateSubId(parcelaCodigo, newCodigo.toUpperCase(), especieCodigo, tree.posicion);
-    await tx.update(trees)
-      .set({ subId: newSubId })
-      .where(eq(trees.id, tree.id));
-  }
+async function validarEdicionDeGrupo(
+  id: string,
+  actual: GrupoActual,
+  campos: CamposDeGrupo,
+): Promise<ErrorDeDuplicado | ErrorDeEdicion | null> {
+  if (!(await plantacionEditablePorId(actual.plantacionId))) return ERROR_DE_EDICION.plantacionNoEditable;
+  return validateGroupUniqueness(actual.parcelaId, campos.nombre, campos.codigo, id);
 }
 
-/** Updates group codigo and recalculates all tree subIds in a transaction. */
-export async function updateGroupCode(
-  id: string,
-  newCodigo: string,
-  _oldCodigo: string
-): Promise<UpdateGroupResult> {
-  const upperCodigo = newCodigo.toUpperCase();
-
-  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId })
-    .from(groups).where(eq(groups.id, id));
-  if (!current) return { success: false, error: 'unknown' };
-
-  // Per-parcela uniqueness; fallback to per-plantacion if legacy row has no parcelaId.
-  const scopeCond = current.parcelaId
-    ? eq(groups.parcelaId, current.parcelaId)
-    : eq(groups.plantacionId, current.plantacionId);
-  const [existingCodigo] = await db.select({ id: groups.id })
-    .from(groups)
-    .where(and(scopeCond, eq(groups.codigo, upperCodigo), sql`${groups.id} != ${id}`))
-    .limit(1);
-  if (existingCodigo) return { success: false, error: 'codigo_duplicate' };
-
+async function escribirGrupo(tx: typeof db, id: string, actual: GrupoActual, campos: CamposDeGrupo): Promise<void> {
+  await tx.update(groups)
+    .set({ nombre: campos.nombre, codigo: campos.codigo, tipo: campos.tipo, pendingSync: true })
+    .where(eq(groups.id, id));
+  if (campos.codigo === actual.codigo) return;
   const parcelaCodigo = await getGroupParcelaCodigo(id);
-
-  try {
-    await enTransaccion(async (tx) => {
-      await tx.update(groups)
-        .set({ codigo: upperCodigo })
-        .where(eq(groups.id, id));
-      await recalcTreesSubIds(tx, id, newCodigo, parcelaCodigo);
-    });
-    await markGroupPendingSync(id);
-    notifyDataChanged();
-    return { success: true };
-  } catch (e: any) {
-    if (isUniqueConstraintError(e)) {
-      if (isNameUniqueConstraintError(e)) {
-        return { success: false, error: 'nombre_duplicate' };
-      }
-      return { success: false, error: 'codigo_duplicate' };
-    }
-    return { success: false, error: 'unknown' };
-  }
+  await recalcularSubIdsDelGrupo(
+    tx, id,
+    { parcelaCodigo, grupoCodigo: actual.codigo },
+    { parcelaCodigo, grupoCodigo: campos.codigo },
+  );
 }
 
 /** Reactivates a finalized group back to 'activa' state. */

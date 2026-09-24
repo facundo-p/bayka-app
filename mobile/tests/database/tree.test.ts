@@ -50,6 +50,9 @@ beforeAll(() => {
         where: jest.fn(() =>
           Promise.resolve(mockSelectResults)
         ),
+        leftJoin: jest.fn(() => ({
+          where: jest.fn(() => ({ orderBy: jest.fn(() => Promise.resolve(mockSelectResults)) })),
+        })),
       })),
     })),
   };
@@ -75,6 +78,9 @@ beforeEach(() => {
   mockDb.select = jest.fn(() => ({
     from: jest.fn(() => ({
       where: jest.fn(() => Promise.resolve(mockSelectResults)),
+      leftJoin: jest.fn(() => ({
+        where: jest.fn(() => ({ orderBy: jest.fn(() => Promise.resolve(mockSelectResults)) })),
+      })),
     })),
   }));
 });

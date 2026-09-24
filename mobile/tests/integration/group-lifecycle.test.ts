@@ -5,7 +5,7 @@
  * Uses real SQLite via better-sqlite3 + drizzle migrations
  */
 
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation, createTestGroup } from '../helpers/factories';
 import {
   plantations,
@@ -28,9 +28,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear data in FK order (groups -> plantations)
-  await db.delete(groups);
-  await db.delete(plantations);
+  await vaciarTablas(db);
 });
 
 describe.skip('Group lifecycle', () => {

@@ -92,11 +92,11 @@ const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
 const mockDownloadFileAsync = ExpoFile.downloadFileAsync as jest.Mock;
 
 // where() resuelve a `rows` al await y además soporta .limit(1): el gate de
-// parcela (#90, isParcelaSyncReady) consulta la parcela del grupo y debe
+// parcela (#90, codigoDeParcelaLista) consulta la parcela del grupo y debe
 // encontrarla lista (pendingSync=false, sin tombstone).
 function whereResult(rows: unknown) {
   return Object.assign(Promise.resolve(rows), {
-    limit: jest.fn().mockResolvedValue([{ id: 'parcela-1' }]),
+    limit: jest.fn().mockResolvedValue([{ codigo: 'P1' }]),
   });
 }
 
@@ -252,6 +252,7 @@ describe('SyncService', () => {
           estado: 'finalizada',
           usuario_creador: 'user-1',
           created_at: '2026-01-01T00:00:00Z',
+          parcela_codigo: 'P1',
         },
         p_trees: [
           {
@@ -292,7 +293,7 @@ describe('SyncService', () => {
     it('RPC exitoso: marca la foto', async () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [arbolConFoto]);
+      await uploadGroup(sg, [arbolConFoto], 'P1');
 
       expect(mockMarkPhotoSynced).toHaveBeenCalledWith('tree-1');
     });
@@ -300,7 +301,7 @@ describe('SyncService', () => {
     it('RPC con error de red: NO marca la foto', async () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Network request failed' } });
 
-      await uploadGroup(sg, [arbolConFoto]);
+      await uploadGroup(sg, [arbolConFoto], 'P1');
 
       expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
     });
@@ -308,7 +309,7 @@ describe('SyncService', () => {
     it('RPC rechazado por el server: NO marca la foto', async () => {
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: false, error: 'UNKNOWN' }, error: null });
 
-      await uploadGroup(sg, [arbolConFoto]);
+      await uploadGroup(sg, [arbolConFoto], 'P1');
 
       expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
     });
@@ -316,7 +317,7 @@ describe('SyncService', () => {
     it('RPC que tira excepción: NO marca la foto', async () => {
       (mockSupabase.rpc as jest.Mock).mockRejectedValue(new Error('timeout'));
 
-      await expect(uploadGroup(sg, [arbolConFoto])).rejects.toThrow('timeout');
+      await expect(uploadGroup(sg, [arbolConFoto], 'P1')).rejects.toThrow('timeout');
 
       expect(mockMarkPhotoSynced).not.toHaveBeenCalled();
     });
@@ -328,8 +329,8 @@ describe('SyncService', () => {
         .mockResolvedValueOnce({ data: { success: false, error: 'UNKNOWN' }, error: null })
         .mockResolvedValueOnce({ data: { success: true }, error: null });
 
-      await uploadGroup(sg, [arbolConFoto]);
-      await uploadGroup(sg, [arbolConFoto]);
+      await uploadGroup(sg, [arbolConFoto], 'P1');
+      await uploadGroup(sg, [arbolConFoto], 'P1');
 
       expect(upload).toHaveBeenCalledTimes(2);
       for (const [path, , opciones] of upload.mock.calls) {

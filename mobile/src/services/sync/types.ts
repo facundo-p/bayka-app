@@ -2,8 +2,8 @@ import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { esTimeout } from '../../supabase/fetchConTimeout';
 
 /**
- * Códigos de error de sync (grupo + parcela). En el push de grupos DUPLICATE_CODE y
- * PERMISSION cruzan el contrato del RPC `sync_subgroup` — llegan en `data.error` (#67),
+ * Códigos de error de sync (grupo + parcela). En el push de grupos DUPLICATE_CODE,
+ * DUPLICATE_NAME y PERMISSION cruzan el contrato del RPC `sync_subgroup` — llegan en `data.error` (#67),
  * no los inventa el cliente; renombrar el valor rompe la clasificación.
  */
 export const SYNC_ERROR = {

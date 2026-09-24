@@ -13,6 +13,7 @@ import { useNewParcela } from '../hooks/useNewParcela';
 import { colors } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
+import { camposDuplicados, esPlantacionNoEditable, MENSAJE_PLANTACION_NO_EDITABLE } from '../constants/errorDeEdicion';
 
 const MAX_DESCRIPCION = 10000;
 const DESCRIPCION_WARN_THRESHOLD = 9000;
@@ -58,22 +59,19 @@ function DescripcionField({
   );
 }
 
-function applyDuplicateError(error: string): ErrorState {
-  if (error === 'both_duplicate') {
-    return {
-      nombre: 'Ya existe una parcela con ese nombre en esta plantación',
-      codigo: 'Ya existe una parcela con ese código en esta plantación',
-      general: null,
-    };
-  }
-  if (error === 'nombre_duplicate') {
-    return { nombre: 'Ya existe una parcela con ese nombre en esta plantación', codigo: null, general: null };
-  }
-  if (error === 'codigo_duplicate') {
-    return { nombre: null, codigo: 'Ya existe una parcela con ese código en esta plantación', general: null };
-  }
+const MENSAJES_DE_DUPLICADO = {
+  nombre: 'Ya existe una parcela con ese nombre en esta plantación',
+  codigo: 'Ya existe una parcela con ese código en esta plantación',
+};
+
+function erroresDelGuardado(error: string): ErrorState {
+  const duplicados = camposDuplicados(error, MENSAJES_DE_DUPLICADO);
+  if (duplicados) return { ...duplicados, general: null };
   if (error === 'descripcion_too_long') {
     return { nombre: null, codigo: null, general: 'La descripción supera el límite de 10.000 caracteres' };
+  }
+  if (esPlantacionNoEditable(error)) {
+    return { nombre: null, codigo: null, general: MENSAJE_PLANTACION_NO_EDITABLE };
   }
   return { nombre: null, codigo: null, general: 'Error al guardar. Intentá de nuevo.' };
 }
@@ -121,7 +119,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
         ? await handleCreateParcela(values)
         : await handleUpdateParcela(parcela!.id, values);
       if (!result.success) {
-        setErrors(applyDuplicateError(result.error));
+        setErrors(erroresDelGuardado(result.error));
         return;
       }
       clearAndClose();

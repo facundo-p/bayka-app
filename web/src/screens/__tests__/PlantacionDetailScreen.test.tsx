@@ -64,6 +64,8 @@ let conIdArboles: number;
 let filasExport: unknown[];
 /** `archivada_en` de la plantación; los RPC de archivado lo cambian como la base. */
 let archivadaEn: string | null;
+/** `estado` de la plantación; `reabrir_plantacion` lo cambia como la base. */
+let estadoPlantacion: string;
 /** Respuesta de `previsualizar_eliminacion_plantacion`. */
 let previewEliminacion: Record<string, unknown>;
 
@@ -157,9 +159,13 @@ function configurarDetalleMock(): void {
       archivadaEn = null;
       return { data: { success: true } };
     }
+    if (consulta.operacion === 'rpc' && consulta.tabla === 'reabrir_plantacion') {
+      estadoPlantacion = 'activa';
+      return { data: { success: true } };
+    }
     if (consulta.tabla === 'plantations') {
       const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
-      const fila = { ...FILA_PLANTACION, archivada_en: archivadaEn };
+      const fila = { ...FILA_PLANTACION, estado: estadoPlantacion, archivada_en: archivadaEn };
       return { data: filtroId?.valor === FILA_PLANTACION.id ? fila : null };
     }
     if (consulta.tabla === 'profiles') return { data: PERFILES };
@@ -181,6 +187,7 @@ beforeEach(() => {
   conIdArboles = 0;
   filasExport = [];
   archivadaEn = null;
+  estadoPlantacion = 'activa';
   previewEliminacion = PREVIEW_SIN_DATOS;
   configurarDetalleMock();
 });
@@ -777,5 +784,56 @@ describe('eliminar', () => {
     expect(await within(dialogo).findByRole('alert')).toHaveTextContent(
       'La plantación tiene datos cargados',
     );
+  });
+});
+
+describe('reapertura de una finalizada (#470)', () => {
+  async function menuMasAcciones(usuario: Usuario) {
+    await usuario.click(await screen.findByRole('button', { name: 'Más acciones' }));
+    return screen.getByRole('menu', { name: 'Más acciones' });
+  }
+
+  test('un superadmin la reabre y la plantación vuelve a estar activa', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    estadoPlantacion = 'finalizada';
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const menu = await menuMasAcciones(usuario);
+    await usuario.click(within(menu).getByRole('menuitem', { name: 'Reabrir plantación' }));
+    const dialogo = await screen.findByRole('dialog', { name: '¿Reabrir Mendoza?' });
+    // Lo que el superadmin necesita saber antes de decidir.
+    expect(within(dialogo).getByText(/la app acepta registros de nuevo/)).toBeInTheDocument();
+    expect(
+      within(dialogo).getByText(/grupos ya finalizados siguen finalizados/),
+    ).toBeInTheDocument();
+
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Reabrir' }));
+
+    await waitFor(() =>
+      expect(consultas.some((consulta) => consulta.tabla === 'reabrir_plantacion')).toBe(true),
+    );
+    expect(estadoPlantacion).toBe('activa');
+  });
+
+  test('un admin no ve la acción, aunque sí ve archivar', async () => {
+    estadoPlantacion = 'finalizada';
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const menu = await menuMasAcciones(usuario);
+    expect(within(menu).queryByRole('menuitem', { name: 'Reabrir plantación' })).toBeNull();
+    expect(within(menu).getByRole('menuitem', { name: 'Archivar plantación' })).toBeInTheDocument();
+  });
+
+  test('sobre una activa no se ofrece', async () => {
+    prepararSesion(PERFIL_SUPERADMIN);
+    configurarDetalleMock();
+    const usuario = userEvent.setup();
+    renderRutasEn('/plantaciones/plant-1');
+
+    const menu = await menuMasAcciones(usuario);
+    expect(within(menu).queryByRole('menuitem', { name: 'Reabrir plantación' })).toBeNull();
   });
 });

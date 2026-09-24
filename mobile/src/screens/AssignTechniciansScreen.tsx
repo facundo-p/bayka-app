@@ -76,7 +76,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <Text style={styles.listHeader}>
-            {assignedCount} tecnico{assignedCount !== 1 ? 's' : ''} asignado{assignedCount !== 1 ? 's' : ''}
+            {assignedCount} técnico{assignedCount !== 1 ? 's' : ''} asignado{assignedCount !== 1 ? 's' : ''}
           </Text>
         }
         ListEmptyComponent={
@@ -96,7 +96,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
               />
               <View style={styles.rowInfo}>
                 <Text style={[styles.rowName, !item.assigned && styles.rowNameMuted]}>{item.nombre}</Text>
-                <Text style={styles.rowRole}>Tecnico</Text>
+                <Text style={styles.rowRole}>Técnico</Text>
               </View>
               {item.assigned && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}
             </View>
