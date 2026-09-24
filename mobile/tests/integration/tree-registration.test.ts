@@ -5,7 +5,7 @@
  */
 
 import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
+import { createTestPlantation, createTestParcela, createTestGroup, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
   parcelas,
