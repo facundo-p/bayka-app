@@ -9,10 +9,9 @@ que extrae de acá las notas de cada GitHub Release: no cambiar su formato. El
 contrato completo (entrada de release, sección pendiente de staging y su
 conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 
-## Sin publicar
-<!-- sincronizado-hasta: 544d8cb #628 -->
+## 2026-09-24 · web 1.4.0 · mobile 1.3.0
 
-### Web
+### Web 1.4.0
 
 #### Agregado
 - Reabrir una plantación finalizada: acción "Reabrir plantación" en «⋯ Más acciones» del detalle, módulo puro `reapertura.ts` (`puedeReabrir`/`esReabrible`/`CONFIRMACION_REAPERTURA`) y `ReaperturaModal` sobre `ConfirmarModal`; se ofrece solo a superadmin activo, con la plantación finalizada y sin archivar (#594)
@@ -20,7 +19,7 @@ conversión) está en `.claude/skills/deploy/SKILL.md` ("Contrato de formato").
 #### Corregido
 - La acción masiva de especies manda la lista final a `reemplazar_especies_plantacion` (DELETE + INSERT en una transacción) en vez de insert y delete sueltos; se va `ordenInicial`, que numeraba las altas distinto del optimista, y `moverEspecie`, sin callers (#589)
 
-### Mobile
+### Mobile 1.3.0 (versionCode 4)
 
 #### Cambiado
 - La base local activa `PRAGMA foreign_keys` después de las migraciones (`useBaseLocal`): antes limpia los huérfanos de `foreign_key_check`, recrea como `recuperada:<id>` las especies que faltan y no siembra `plantation_species` de la demo si la demo no está; `reconcileSpeciesCodigoCollision` libera el código, inserta y recién después re-apunta referencias, en una transacción válida con FKs activas (#621, #620)

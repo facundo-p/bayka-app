@@ -8,13 +8,12 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > web, y cambiarlo la rompe. Está en `.claude/skills/deploy/SKILL.md`
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
-## En pruebas · próxima versión
-<!-- sincronizado-hasta: 544d8cb #628 -->
+## Web 1.4.0 · Mobile 1.3.0 · 24 de septiembre de 2026
 
 - **Reabrí una plantación finalizada.** Si una plantación se finalizó y quedó
   trabajo sin subir en algún celular, un superadmin puede volver a activarla
   desde «⋯ Más acciones»: la app acepta registros de nuevo y lo pendiente se
-  puede sincronizar. Los grupos que ya estaban finalizados siguen así. <!-- #594 -->
+  puede sincronizar. Los grupos que ya estaban finalizados siguen así.
   - En la web de pruebas, como superadmin, abrí una plantación finalizada →
     «⋯ Más acciones» → "Reabrir plantación".
   - Confirmá y mirá el detalle y el listado.
@@ -24,7 +23,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 - **La configuración de especies se guarda entera o no se guarda.** Al aplicar
   varios cambios juntos ya no puede quedar a medias —una especie que quitaste,
   todavía habilitada— ni guardarse un orden distinto del que muestra la
-  pantalla. <!-- #589 -->
+  pantalla.
   - En la web de pruebas, abrí una plantación → Configuración → Especies.
   - En el mismo lote quitá una especie habilitada, agregá dos del catálogo y
     aplicá.
@@ -32,14 +31,14 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     mismo orden en que las viste en pantalla.
 - **Asignar técnicos sin señal te avisa en vez de quedarse cargando.** En la
   app, la pantalla de asignar técnicos ya no se queda en "Cargando técnicos…"
-  para siempre cuando no hay conexión. <!-- #593 -->
+  para siempre cuando no hay conexión.
   - En la app Bayka TEST, entrá una vez con conexión para que quede guardada tu
     organización.
   - Poné el celular en modo avión y abrí una plantación → "Asignar técnicos".
   - Esperá ver: el aviso de que no hay conexión, en vez del cargando infinito.
 - **Las especies nuevas ya no desaparecen del celular.** Una especie agregada
   desde la web sigue en la app aunque la cierres, y sus árboles muestran su
-  código en vez de "??". <!-- #618 -->
+  código en vez de "??".
   - En la app Bayka TEST, con una especie creada en la web de pruebas y
     asignada a una plantación, sincronizá y registrá un árbol con esa especie.
   - Cerrá la app del todo y volvé a abrirla, sin sincronizar.
@@ -47,7 +46,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     especie todavía disponible.
 - **Cambiar el código de una parcela o de un grupo actualiza sus árboles.** El
   SubID de los árboles ya registrados toma el código nuevo, en tu celular, en
-  la web y en los demás celulares al sincronizar. <!-- #625 #628 -->
+  la web y en los demás celulares al sincronizar.
   - En la app Bayka TEST, abrí una plantación con árboles registrados y
     cambiá el código de una parcela (por ejemplo, de P1 a P9) y el de uno de
     sus grupos.
