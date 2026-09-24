@@ -19,9 +19,22 @@ export const ERROR_DE_DUPLICADO = {
 
 export type ErrorDeDuplicado = (typeof ERROR_DE_DUPLICADO)[keyof typeof ERROR_DE_DUPLICADO];
 
-/** Los predicados leen el error como "¿choca el nombre?" / "¿choca el código?": `ambos` cuenta para los dos. */
-export const chocaElNombre = (error: string) =>
+const chocaElNombre = (error: string) =>
   error === ERROR_DE_DUPLICADO.nombre || error === ERROR_DE_DUPLICADO.ambos;
 
-export const chocaElCodigo = (error: string) =>
+const chocaElCodigo = (error: string) =>
   error === ERROR_DE_DUPLICADO.codigo || error === ERROR_DE_DUPLICADO.ambos;
+
+type MensajesPorCampo = { nombre: string | null; codigo: string | null };
+
+/** El mensaje de cada campo que choca (`ambos` marca los dos); null si el error no es de duplicado. */
+export function camposDuplicados(
+  error: string,
+  mensajes: { nombre: string; codigo: string },
+): MensajesPorCampo | null {
+  if (!chocaElNombre(error) && !chocaElCodigo(error)) return null;
+  return {
+    nombre: chocaElNombre(error) ? mensajes.nombre : null,
+    codigo: chocaElCodigo(error) ? mensajes.codigo : null,
+  };
+}

@@ -103,7 +103,7 @@ export async function reverseTreeOrder(
   await enTransaccion(async (tx) => {
     for (const { id, newPosicion } of reversed) {
       const tree = allTrees.find((t) => t.id === id)!;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${grupoCodigo}`);
+      const especieCodigo = await resolveEspecieCodigo(tx, tree, [`${parcelaCodigo}${grupoCodigo}`]);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPosicion);
       await tx.update(trees)
         .set({ posicion: newPosicion, subId: newSubId })
@@ -289,7 +289,7 @@ export async function deleteTreeAndRecalculate(
     for (let i = 0; i < remaining.length; i++) {
       const tree = remaining[i];
       const newPos = i + 1;
-      const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${grupoCodigo}`);
+      const especieCodigo = await resolveEspecieCodigo(tx, tree, [`${parcelaCodigo}${grupoCodigo}`]);
       const newSubId = generateSubId(parcelaCodigo, grupoCodigo, especieCodigo, newPos);
       await tx.update(trees)
         .set({ posicion: newPos, subId: newSubId })

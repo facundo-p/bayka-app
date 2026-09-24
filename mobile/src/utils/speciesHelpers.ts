@@ -86,7 +86,7 @@ type ArbolConSubId = { especieId: string | null; subId: string; posicion: number
 export async function resolveEspecieCodigo(
   queryable: Queryable,
   arbol: ArbolConSubId,
-  prefijos: string | readonly string[],
+  prefijos: readonly string[],
 ): Promise<string> {
   if (!arbol.especieId) return UNKNOWN_SPECIES_CODE;
   const [sp] = await queryable.select({ codigo: speciesTable.codigo })
@@ -96,8 +96,9 @@ export async function resolveEspecieCodigo(
   return codigoParaSubId(sp?.codigo);
 }
 
-function especieRecuperadaDelSubId(arbol: ArbolConSubId, prefijos: string | readonly string[]): string {
-  const candidatos = typeof prefijos === 'string' ? [prefijos] : prefijos;
+/** Del más largo al más corto: si un prefijo extiende a otro, el corto calzaría con un segmento que no es la especie. */
+function especieRecuperadaDelSubId(arbol: ArbolConSubId, prefijos: readonly string[]): string {
+  const candidatos = [...prefijos].sort((a, b) => b.length - a.length);
   for (const prefijo of candidatos) {
     const codigo = especieDelSubId(arbol.subId, prefijo, arbol.posicion);
     if (codigo) return codigo;

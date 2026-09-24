@@ -208,7 +208,6 @@ async function parcelasLocales(plantacionId: string): Promise<Map<string, Parcel
   return new Map(filas.map(({ id, ...local }) => [id, local]));
 }
 
-/** Una parcela con cambios locales sin subir no se pisa: el push que sigue gana. */
 async function escribirLoteDeParcelas(tx: Tx, lote: RemoteParcela[], locales: Map<string, ParcelaLocal>): Promise<void> {
   const aEscribir = lote.filter((remota) => !locales.get(remota.id)?.pendingSync);
   if (aEscribir.length === 0) return;
@@ -783,8 +782,12 @@ async function correrPullFromServer(
   await conDuracion(DOWNLOAD_PHASE.usuarios, () => pullPlantationUsers(plantacionId, onProgress));
   await conDuracion(DOWNLOAD_PHASE.especiesPlantacion, () => pullPlantationSpecies(plantacionId, onProgress));
   if (grupos.ids.length > 0) {
-    await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados, onProgress));
-    await reescribirSubIdsDeParcelasPendientes(divergentes);
+    // Aunque falle a mitad: los lotes ya commiteados trajeron árboles con el prefijo del server.
+    try {
+      await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados, onProgress));
+    } finally {
+      await reescribirSubIdsDeParcelasPendientes(divergentes);
+    }
   }
   syncLog.info(`Pull total: ${Date.now() - inicio}ms`);
   return PULL_OK;

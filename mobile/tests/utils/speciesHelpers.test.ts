@@ -44,37 +44,45 @@ const arbol = (especieId: string | null, subId = 'P1L1ANC12') => ({ especieId, s
 describe('resolveEspecieCodigo', () => {
   test('returns UNKNOWN_SPECIES_CODE without querying when especieId is null', async () => {
     const queryable = makeQueryable([]);
-    const result = await resolveEspecieCodigo(queryable as any, arbol(null), 'P1L1');
+    const result = await resolveEspecieCodigo(queryable as any, arbol(null), ['P1L1']);
     expect(result).toBe(UNKNOWN_SPECIES_CODE);
     expect(queryable.select).not.toHaveBeenCalled();
   });
 
   test('returns the species codigo when found', async () => {
     const queryable = makeQueryable([{ codigo: 'ANC' }]);
-    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-1'), 'P1L1');
+    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-1'), ['P1L1']);
     expect(result).toBe('ANC');
   });
 
   test('returns UNKNOWN_SPECIES_CODE when the species row is missing', async () => {
     const queryable = makeQueryable([]);
-    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-orphan'), 'P1L1');
+    const result = await resolveEspecieCodigo(queryable as any, arbol('esp-orphan'), ['P1L1']);
     expect(result).toBe(UNKNOWN_SPECIES_CODE);
   });
 
   test('una especie recuperada conserva el codigo que ya tenía el SubID', async () => {
     const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
-    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1'), 'P1L1')).toBe('ANC');
+    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1'), ['P1L1'])).toBe('ANC');
   });
 
   test('una especie recuperada va como NN si el SubID no calza con el prefijo', async () => {
     const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
-    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), 'P1L1')).toBe('NN');
+    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), ['P1L1'])).toBe('NN');
   });
 
   test('con varios prefijos lee el codigo del primero que calza', async () => {
     const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
     expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'P9L1ANC12'), ['P1L1', 'P9L1'])).toBe('ANC');
     expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), ['P1L1', 'P9L1'])).toBe('NN');
+  });
+
+  // Parcela A → A1 con grupo 1: el prefijo anterior `A1` también calza con `A11KOK2` y leería `1KOK`.
+  test('si un prefijo extiende a otro, gana el más largo', async () => {
+    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
+    const conPosicion2 = { especieId: 'esp-1', subId: 'A11KOK2', posicion: 2 };
+    expect(await resolveEspecieCodigo(queryable as any, conPosicion2, ['A1', 'A11'])).toBe('KOK');
+    expect(await resolveEspecieCodigo(queryable as any, { ...conPosicion2, subId: 'A1KOK2' }, ['A1', 'A11'])).toBe('KOK');
   });
 });
 

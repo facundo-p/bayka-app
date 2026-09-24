@@ -211,6 +211,50 @@ function insertServerParcela(p: Record<string, any>) {
   serverState.parcelas.set(p.id, { ...p });
 }
 
+/** Parcela local P9 sin subir (el server sigue con P1) y un árbol ajeno `x` que el server tiene con P1. */
+async function sembrarParcelaPendienteConArbolAjeno(): Promise<{ pid: string; parcId: string }> {
+  const pid = await seedLocalPlantation();
+  const now = new Date().toISOString();
+  const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'P9', nombre: 'Norte', pendingSync: true });
+  await mockTestDb.insert(groups).values({
+    id: 'g-1', plantacionId: pid, parcelaId: parcId, nombre: 'Uno', codigo: 'L1',
+    tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync: false,
+  });
+  await mockTestDb.insert(species).values([
+    { id: 'sp-euc', nombre: 'Eucalyptus', codigo: 'EUC', nombreCientifico: null, createdAt: now },
+    { id: 'sp-kok', nombre: 'Recuperada', codigo: 'recuperada:sp-kok', nombreCientifico: null, createdAt: now },
+  ]);
+  // Ya recalculados por updateParcela al cambiar P1 → P9.
+  await mockTestDb.insert(trees).values([
+    { id: 'a1', groupId: 'g-1', especieId: 'sp-euc', posicion: 1, subId: 'P9L1EUC1', usuarioRegistro: 'user-tecnico-1', createdAt: now },
+    { id: 'a2', groupId: 'g-1', especieId: 'sp-kok', posicion: 2, subId: 'P9L1KOK2', usuarioRegistro: 'user-tecnico-1', createdAt: now },
+  ]);
+
+  insertServerParcela({
+    id: parcId, plantation_id: pid, nombre: 'Norte', codigo: 'P1', descripcion: null,
+    created_at: now, updated_at: now, deleted_at: null,
+  });
+  serverState.groups.set('g-1', {
+    id: 'g-1', plantation_id: pid, parcela_id: parcId, nombre: 'Uno', codigo: 'L1',
+    tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now,
+  });
+  const remoto = (id: string, especie: string, posicion: number, subId: string) => ({
+    id, group_id: 'g-1', species_id: especie, posicion, sub_id: subId,
+    foto_url: null, usuario_registro: 'user-tecnico-1', created_at: now,
+  });
+  serverState.trees.set('a1', remoto('a1', 'sp-euc', 1, 'P1L1EUC1'));
+  serverState.trees.set('a2', remoto('a2', 'sp-kok', 2, 'P1L1KOK2'));
+  // Lo registró otro técnico antes de que la parcela subiera con P9.
+  serverState.trees.set('x', remoto('x', 'sp-euc', 3, 'P1L1EUC3'));
+
+  return { pid, parcId };
+}
+
+async function subIdsLocales(): Promise<Record<string, string>> {
+  const filas = await mockTestDb.select({ id: trees.id, subId: trees.subId }).from(trees);
+  return Object.fromEntries(filas.map((t) => [t.id, t.subId]));
+}
+
 // ─── Lifecycle ──────────────────────────────────────────────────────────────
 
 beforeAll(() => {
@@ -547,50 +591,27 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
   });
 
   test('parcela con código cambiado sin subir: los árboles que baja el pull pasan al código local (#623)', async () => {
-    const pid = await seedLocalPlantation();
-    const now = new Date().toISOString();
-    const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'P9', nombre: 'Norte', pendingSync: true });
-    await mockTestDb.insert(groups).values({
-      id: 'g-1', plantacionId: pid, parcelaId: parcId, nombre: 'Uno', codigo: 'L1',
-      tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync: false,
-    });
-    await mockTestDb.insert(species).values([
-      { id: 'sp-euc', nombre: 'Eucalyptus', codigo: 'EUC', nombreCientifico: null, createdAt: now },
-      { id: 'sp-kok', nombre: 'Recuperada', codigo: 'recuperada:sp-kok', nombreCientifico: null, createdAt: now },
-    ]);
-    // Ya recalculados por updateParcela al cambiar P1 → P9.
-    await mockTestDb.insert(trees).values([
-      { id: 'a1', groupId: 'g-1', especieId: 'sp-euc', posicion: 1, subId: 'P9L1EUC1', usuarioRegistro: 'user-tecnico-1', createdAt: now },
-      { id: 'a2', groupId: 'g-1', especieId: 'sp-kok', posicion: 2, subId: 'P9L1KOK2', usuarioRegistro: 'user-tecnico-1', createdAt: now },
-    ]);
-
-    insertServerParcela({
-      id: parcId, plantation_id: pid, nombre: 'Norte', codigo: 'P1', descripcion: null,
-      created_at: now, updated_at: now, deleted_at: null,
-    });
-    serverState.groups.set('g-1', {
-      id: 'g-1', plantation_id: pid, parcela_id: parcId, nombre: 'Uno', codigo: 'L1',
-      tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now,
-    });
-    const remoto = (id: string, especie: string, posicion: number, subId: string) => ({
-      id, group_id: 'g-1', species_id: especie, posicion, sub_id: subId,
-      foto_url: null, usuario_registro: 'user-tecnico-1', created_at: now,
-    });
-    serverState.trees.set('a1', remoto('a1', 'sp-euc', 1, 'P1L1EUC1'));
-    serverState.trees.set('a2', remoto('a2', 'sp-kok', 2, 'P1L1KOK2'));
-    // Lo registró otro técnico antes de que la parcela subiera con P9.
-    serverState.trees.set('x', remoto('x', 'sp-euc', 3, 'P1L1EUC3'));
+    const { pid, parcId } = await sembrarParcelaPendienteConArbolAjeno();
 
     await pullFromServer(pid);
     await pullFromServer(pid);
 
-    const filas = await mockTestDb.select({ id: trees.id, subId: trees.subId }).from(trees);
-    expect(Object.fromEntries(filas.map((t) => [t.id, t.subId])))
-      .toEqual({ a1: 'P9L1EUC1', a2: 'P9L1KOK2', x: 'P9L1EUC3' });
+    expect(await subIdsLocales()).toEqual({ a1: 'P9L1EUC1', a2: 'P9L1KOK2', x: 'P9L1EUC3' });
     const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-1'));
     expect(grupo.pendingSync).toBe(false);
     const [parcela] = await mockTestDb.select().from(parcelas).where(eq(parcelas.id, parcId));
     expect(parcela).toMatchObject({ codigo: 'P9', pendingSync: true });
+  });
+
+  test('si el pull de árboles falla después de escribir, igual los pasa al código local', async () => {
+    const { pid } = await sembrarParcelaPendienteConArbolAjeno();
+    const fallarAlTerminarArboles = (p: { phase: string; phaseDone: number; phaseTotal: number } | null) => {
+      if (p?.phase === 'arboles' && p.phaseTotal > 0 && p.phaseDone === p.phaseTotal) throw new Error('falla simulada');
+    };
+
+    await expect(pullFromServer(pid, fallarAlTerminarArboles)).rejects.toThrow('falla simulada');
+
+    expect((await subIdsLocales()).x).toBe('P9L1EUC3');
   });
 
   test('tombstone push: parcela con deletedAt sube y queda pending_sync=false', async () => {
