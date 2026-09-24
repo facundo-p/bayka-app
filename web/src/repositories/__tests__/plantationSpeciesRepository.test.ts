@@ -61,6 +61,13 @@ describe('quitarEspecie', () => {
     capturarConsultas(() => ({ error: { message: 'falló la red' } }));
     await expect(quitarEspecie('plant-1', 'sp-1')).rejects.toThrow('falló la red');
   });
+
+  test('el guard de especie con árboles del server llega con un mensaje claro (#632)', async () => {
+    capturarConsultas(() => ({ error: { message: 'ESPECIE_CON_ARBOLES', code: '23001' } }));
+    await expect(quitarEspecie('plant-1', 'sp-1')).rejects.toThrow(
+      'La especie ya tiene árboles registrados: no se puede quitar.',
+    );
+  });
 });
 
 describe('reemplazarEspecies', () => {
@@ -95,6 +102,13 @@ describe('reemplazarEspecies', () => {
     capturarConsultas(() => ({ data: { success: false, error: 'PLANTACION_ARCHIVADA' } }));
     await expect(reemplazarEspecies('plant-1', [])).rejects.toThrow(
       'La plantación está archivada: no admite cambios.',
+    );
+  });
+
+  test('traduce el rechazo por especie con árboles (#632)', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'ESPECIE_CON_ARBOLES' } }));
+    await expect(reemplazarEspecies('plant-1', [])).rejects.toThrow(
+      'La especie ya tiene árboles registrados: no se puede quitar.',
     );
   });
 

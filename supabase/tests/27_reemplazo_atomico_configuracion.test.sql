@@ -74,11 +74,12 @@ select is((select string_agg(species_id::text || ':' || orden_visual, ',' order 
   'b2700000-0000-0000-0000-000000000052:0,b2700000-0000-0000-0000-000000000053:1',
   'quedan exactamente las especies nuevas, con su orden');
 
+-- Desde 055 el insert es un upsert: la especie repetida da 21000 en vez de 23505.
 select throws_ok(
   $$ select reemplazar_especies_plantacion('b2700000-0000-0000-0000-0000000000aa',
      '[{"species_id": "b2700000-0000-0000-0000-000000000051"},
        {"species_id": "b2700000-0000-0000-0000-000000000051"}]') $$,
-  '23505', null, 'un error al insertar aborta el reemplazo');
+  '21000', null, 'un error al insertar aborta el reemplazo');
 select is((select count(*)::int from especies_27
   where plantation_id = 'b2700000-0000-0000-0000-0000000000aa'), 2,
   'el borrado de ese reemplazo no quedó aplicado');

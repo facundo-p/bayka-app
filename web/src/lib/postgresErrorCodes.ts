@@ -6,6 +6,8 @@
 export const PG_ERROR = {
   /** unique_violation — choca una UNIQUE/PK (p.ej. asignar dos veces el mismo usuario a una plantación). */
   UNIQUE_VIOLATION: '23505',
+  /** restrict_violation — un guard del server impide borrar (p.ej. especie con árboles, #632). */
+  RESTRICT_VIOLATION: '23001',
   /** undefined_column — la columna no existe (p.ej. campos de la migración 024 sin aplicar). */
   UNDEFINED_COLUMN: '42703',
   /** insufficient_privilege — RLS o GRANT rechazan la operación (403 de PostgREST). */

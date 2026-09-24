@@ -12,7 +12,7 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
-import { plantations, parcelas, groups, trees, species, borradosPendientes } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species, borradosPendientes, plantationSpecies } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
   plantations: new Map(),
@@ -135,6 +135,7 @@ import { pushBorrados } from '../../src/services/sync/pushService';
 import { deleteLastTree, deleteTreeAndRecalculate, updateTreePhoto } from '../../src/repositories/TreeRepository';
 import { deleteGroup } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
+import { plantationSpeciesId } from '../../src/utils/plantationSpeciesId';
 
 const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
@@ -626,5 +627,34 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
 
     expect(rpc.mock.calls.map((c: any[]) => c[0])).toEqual(['quitar_fotos_arboles']);
     rpc.mockRestore();
+  });
+});
+
+describe('especie quitada de la plantación en el server (#632)', () => {
+  const especieLocal = (especieId: string, ordenVisual: number) => ({
+    id: plantationSpeciesId(PLANTACION_ID, especieId), plantacionId: PLANTACION_ID, especieId, ordenVisual,
+  });
+  const especiesLocales = async () =>
+    (await mockTestDb.select().from(plantationSpecies).where(eq(plantationSpecies.plantacionId, PLANTACION_ID)))
+      .map((ps) => ps.especieId).sort();
+
+  beforeEach(async () => {
+    await mockTestDb.insert(plantationSpecies).values([especieLocal(ROBLE, 0), especieLocal(PINO, 1)]);
+  });
+
+  it('el pull la borra del teléfono', async () => {
+    serverState.plantation_species.set(ROBLE, { plantation_id: PLANTACION_ID, species_id: ROBLE, orden_visual: 0 });
+
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await especiesLocales()).toEqual([ROBLE]);
+  });
+
+  it('con la plantación sin subir, el pull no toca las especies locales', async () => {
+    await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
+
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await especiesLocales()).toEqual([PINO, ROBLE].sort());
   });
 });

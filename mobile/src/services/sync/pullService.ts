@@ -1,7 +1,7 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, sql, inArray, notInArray } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
@@ -398,16 +398,24 @@ async function pullGroups(
   return { ids: all.map((sg) => sg.id), pendientes: pendingLocally };
 }
 
+/**
+ * Plantación offline sin pushear aún: el server no tiene sus filas, así que un replace
+ * borraría lo local (la membresía del creador, #67; sus especies, #632). El server
+ * recién es autoridad cuando la plantación existe allá.
+ */
+async function pendienteDePush(plantacionId: string): Promise<boolean> {
+  const [local] = await db
+    .select({ pendingSync: plantations.pendingSync })
+    .from(plantations)
+    .where(eq(plantations.id, plantacionId));
+  return !!local?.pendingSync;
+}
+
 async function pullPlantationUsers(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
-  // Plantación offline sin pushear aún: el server no tiene filas y el replace destructivo borraría la membresía local del creador (#67); recién es autoridad si la plantación ya existe allá.
-  const [localPlant] = await db
-    .select({ pendingSync: plantations.pendingSync })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-  if (localPlant?.pendingSync) {
+  if (await pendienteDePush(plantacionId)) {
     syncLog.info('Pull plantation_users: plantación pendiente de push, se omite el replace');
     emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, 0);
     return;
@@ -471,6 +479,14 @@ async function conEspecieLocal(filas: any[], fase: DownloadPhase): Promise<any[]
   return escribibles;
 }
 
+/** Una especie deshabilitada en el server deja de ofrecerse en el teléfono (#632). */
+async function quitarEspeciesAusentes(plantacionId: string, remotas: string[]): Promise<void> {
+  const dePlantacion = eq(plantationSpecies.plantacionId, plantacionId);
+  await db.delete(plantationSpecies).where(
+    remotas.length > 0 ? and(dePlantacion, notInArray(plantationSpecies.especieId, remotas)) : dePlantacion,
+  );
+}
+
 async function pullPlantationSpecies(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
@@ -488,6 +504,9 @@ async function pullPlantationSpecies(
   const all = remotePs ?? [];
   syncLog.info('Pull plantation_species:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
+  if (await pendienteDePush(plantacionId)) return;
+
+  await quitarEspeciesAusentes(plantacionId, all.map((ps: any) => ps.species_id));
   if (all.length === 0) return;
 
   const escribibles = await conEspecieLocal(all, DOWNLOAD_PHASE.especiesPlantacion);

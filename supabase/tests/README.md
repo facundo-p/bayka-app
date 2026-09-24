@@ -91,7 +91,9 @@ reescribe el prefijo del SubID de sus árboles (solo los que calzan con parcela 
 grupo), y en una finalizada el técnico no llega a cambiarlo (053, #623), `32`
 `sync_subgroup` pisa código, nombre y tipo del grupo, rechaza un nombre repetido
 con DUPLICATE_NAME y pasa al código vigente de la
-parcela los SubID armados con el que manda el móvil en `parcela_codigo` (054, #626).
+parcela los SubID armados con el que manda el móvil en `parcela_codigo` (054, #626), `33`
+una especie con árboles no se quita de su plantación, ni por DELETE ni por
+`reemplazar_especies_plantacion`, y el cascade de borrar la plantación pasa (055, #632).
 
 ## Hallazgo fuera de alcance (no corregido)
 
