@@ -9,7 +9,7 @@
  * Lives under tests/integration/ because it needs the integration jest config to resolve
  * better-sqlite3.
  */
-import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, sqliteDeIntegracion, IntegrationDb } from '../helpers/integrationDb';
 import Database from 'better-sqlite3';
 import { plantations, parcelas, plantationUsers } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
@@ -90,10 +90,7 @@ function mockSupabaseForFailedPush(): void {
 }
 
 beforeEach(async () => {
-  await mockTestDb.delete(parcelas);
-  // Antes que plantations: FK plantation_users → plantations sin CASCADE (#67).
-  await mockTestDb.delete(plantationUsers);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
   jest.restoreAllMocks();
   (supabase.from as jest.Mock).mockReset();
 });

@@ -4,7 +4,7 @@
  * Uses real SQLite via better-sqlite3 + drizzle migrations
  */
 
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
@@ -39,12 +39,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear data in FK order
-  await db.delete(trees);
-  await db.delete(groups);
-  await db.delete(parcelas);
-  await db.delete(plantations);
-  await db.delete(species);
+  await vaciarTablas(db);
 
   const plantation = createTestPlantation();
   plantationId = plantation.id;

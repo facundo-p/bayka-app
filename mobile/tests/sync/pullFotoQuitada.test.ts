@@ -1,6 +1,6 @@
 // Pull con foto quitada desde otro dispositivo (#517): contra better-sqlite3 real,
 // porque lo que se prueba es el CASE del upsert.
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import {
   createTestPlantation,
   createTestGroup,
@@ -31,11 +31,7 @@ beforeAll(() => {
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await db.delete(trees);
-  await db.delete(groups);
-  await db.delete(parcelas);
-  await db.delete(plantations);
-  await db.delete(species);
+  await vaciarTablas(db);
   await db.insert(plantations).values(createTestPlantation({ id: PID }));
   await db.insert(species).values(createTestSpecies({ id: SP, codigo: 'EUC' }));
   await db.insert(parcelas).values(createTestParcela({ id: 'parcela-default', plantacionId: PID }));
