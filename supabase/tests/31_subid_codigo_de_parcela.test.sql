@@ -2,7 +2,7 @@
 -- árboles (053, #623). Se prueba por el camino del móvil: upsert de la parcela
 -- como técnico miembro, bajo RLS.
 begin;
-select plan(6);
+select plan(8);
 
 insert into organizations (id, nombre) values
   ('b3100000-0000-0000-0000-000000000001', 'Org Test 31');
@@ -52,6 +52,12 @@ insert into trees (id, group_id, posicion, sub_id, usuario_registro) values
   ('b3100000-0000-0000-0000-0000000000d4', 'b3100000-0000-0000-0000-0000000000c3', 1, 'Q1L1EUC1',
    'b3100000-0000-0000-0000-0000000000a1'),
   ('b3100000-0000-0000-0000-0000000000d5', 'b3100000-0000-0000-0000-0000000000c4', 1, 'P3L1EUC1',
+   'b3100000-0000-0000-0000-0000000000a1'),
+  -- Empieza con `P1` pero no con `P1L1`: con el filtro corto terminaría en `P90L1…`.
+  ('b3100000-0000-0000-0000-0000000000d6', 'b3100000-0000-0000-0000-0000000000c1', 3, 'P10L1EUC3',
+   'b3100000-0000-0000-0000-0000000000a1'),
+  -- El grupo se renombró a L7 en el móvil, pero el server sigue con L2 (#626).
+  ('b3100000-0000-0000-0000-0000000000d7', 'b3100000-0000-0000-0000-0000000000c2', 2, 'P1L7NN2',
    'b3100000-0000-0000-0000-0000000000a1');
 
 set local role authenticated;
@@ -75,6 +81,10 @@ select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-00000000
   'RARO2', 'un SubID que no empieza con el código viejo queda como estaba');
 select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-0000000000d4'),
   'Q1L1EUC1', 'otra parcela de la plantación no se toca');
+select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-0000000000d6'),
+  'P10L1EUC3', 'un SubID que empieza con el código de parcela pero no con parcela + grupo no se toca');
+select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-0000000000d7'),
+  'P1L7NN2', 'con el código de grupo del server desactualizado, el árbol queda como estaba');
 select is((select codigo from parcelas where id = 'b3100000-0000-0000-0000-0000000000b3'),
   'P3', 'el técnico no cambia el código de una parcela de una plantación finalizada');
 select is((select sub_id from trees where id = 'b3100000-0000-0000-0000-0000000000d5'),

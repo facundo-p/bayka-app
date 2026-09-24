@@ -10,7 +10,9 @@ import { enTransaccion } from '../database/transaccion';
 import { parcelas, groups } from '../database/schema';
 import { recalcularSubIdsDeLaParcela } from './subIdsDeArboles';
 import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
-import { ERROR_DE_EDICION, type ErrorDeEdicion } from '../constants/errorDeEdicion';
+import {
+  ERROR_DE_DUPLICADO, ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion,
+} from '../constants/errorDeEdicion';
 import { eq, and, asc, count, isNull, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
@@ -31,16 +33,15 @@ export interface Parcela {
   deletedAt: string | null;
 }
 
-type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate';
 type DescripcionError = 'descripcion_too_long';
 
 export type CreateParcelaResult =
   | { success: true; id: string }
-  | { success: false; error: DuplicateError | DescripcionError | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | DescripcionError | 'unknown' };
 
 export type UpdateParcelaResult =
   | { success: true }
-  | { success: false; error: DuplicateError | DescripcionError | ErrorDeEdicion | 'not_found' | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | DescripcionError | ErrorDeEdicion | 'not_found' | 'unknown' };
 
 export type DeleteParcelaResult =
   | { deleted: true }
@@ -49,7 +50,7 @@ export type DeleteParcelaResult =
 
 export type RestoreParcelaResult =
   | { restored: true }
-  | { restored: false; error: 'not_found' | DuplicateError };
+  | { restored: false; error: 'not_found' | ErrorDeDuplicado };
 
 /** Valida nombre/codigo únicos en la plantación, excluyendo tombstones — un nombre reusado de una parcela tombstoned es válido. */
 async function validateParcelaUniqueness(
@@ -57,7 +58,7 @@ async function validateParcelaUniqueness(
   nombre: string,
   codigo: string,
   excludeId?: string,
-): Promise<DuplicateError | null> {
+): Promise<ErrorDeDuplicado | null> {
   const baseConds = [eq(parcelas.plantacionId, plantacionId), isNull(parcelas.deletedAt)];
   const nombreConds = [...baseConds, eq(parcelas.nombre, nombre)];
   const codigoConds = [...baseConds, eq(parcelas.codigo, codigo)];
@@ -69,9 +70,9 @@ async function validateParcelaUniqueness(
     .where(and(...nombreConds)).limit(1);
   const [existingCodigo] = await db.select({ id: parcelas.id }).from(parcelas)
     .where(and(...codigoConds)).limit(1);
-  if (existingNombre && existingCodigo) return 'both_duplicate';
-  if (existingNombre) return 'nombre_duplicate';
-  if (existingCodigo) return 'codigo_duplicate';
+  if (existingNombre && existingCodigo) return ERROR_DE_DUPLICADO.ambos;
+  if (existingNombre) return ERROR_DE_DUPLICADO.nombre;
+  if (existingCodigo) return ERROR_DE_DUPLICADO.codigo;
   return null;
 }
 

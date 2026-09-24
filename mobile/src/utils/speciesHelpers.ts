@@ -79,21 +79,28 @@ type Queryable = typeof db;
 type ArbolConSubId = { especieId: string | null; subId: string; posicion: number };
 
 /**
- * Codigo de especie para recalcular el SubID de un árbol armado con `prefijoActual` (parcela +
+ * Codigo de especie para recalcular el SubID de un árbol armado con alguno de `prefijos` (parcela +
  * grupo). Con una especie recuperada conserva el del SubID actual: NN pisaría el codigo real que
  * el árbol ya subió. Recibe `db`: la transacción es de la conexión, no un handle aparte.
  */
 export async function resolveEspecieCodigo(
   queryable: Queryable,
   arbol: ArbolConSubId,
-  prefijoActual: string,
+  prefijos: string | readonly string[],
 ): Promise<string> {
   if (!arbol.especieId) return UNKNOWN_SPECIES_CODE;
   const [sp] = await queryable.select({ codigo: speciesTable.codigo })
     .from(speciesTable)
     .where(eq(speciesTable.id, arbol.especieId));
-  if (sp && esEspecieRecuperada(sp.codigo)) {
-    return especieDelSubId(arbol.subId, prefijoActual, arbol.posicion) ?? UNKNOWN_SPECIES_CODE;
-  }
+  if (sp && esEspecieRecuperada(sp.codigo)) return especieRecuperadaDelSubId(arbol, prefijos);
   return codigoParaSubId(sp?.codigo);
+}
+
+function especieRecuperadaDelSubId(arbol: ArbolConSubId, prefijos: string | readonly string[]): string {
+  const candidatos = typeof prefijos === 'string' ? [prefijos] : prefijos;
+  for (const prefijo of candidatos) {
+    const codigo = especieDelSubId(arbol.subId, prefijo, arbol.posicion);
+    if (codigo) return codigo;
+  }
+  return UNKNOWN_SPECIES_CODE;
 }

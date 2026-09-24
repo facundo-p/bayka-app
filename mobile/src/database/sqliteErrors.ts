@@ -3,6 +3,7 @@
  * Centralizado para que los repositories no comparen `e.message` contra un
  * literal suelto (mismo criterio que PG_ERROR en postgresErrorCodes.ts).
  */
+import { ERROR_DE_DUPLICADO } from '../constants/errorDeEdicion';
 
 /** SQLite raises this substring when an INSERT/UPDATE violates a UNIQUE index or column constraint. */
 const UNIQUE_CONSTRAINT_MESSAGE = 'UNIQUE constraint failed';
@@ -27,7 +28,9 @@ export function isNameUniqueConstraintError(e: unknown): boolean {
 }
 
 /** Un UNIQUE que la validación previa no vio (carrera con otra escritura), en el vocabulario de los repositorios. */
-export function errorDeDuplicado(e: unknown): 'nombre_duplicate' | 'codigo_duplicate' | 'unknown' {
+export function errorDeDuplicado(
+  e: unknown,
+): typeof ERROR_DE_DUPLICADO.nombre | typeof ERROR_DE_DUPLICADO.codigo | 'unknown' {
   if (!isUniqueConstraintError(e)) return 'unknown';
-  return isNameUniqueConstraintError(e) ? 'nombre_duplicate' : 'codigo_duplicate';
+  return isNameUniqueConstraintError(e) ? ERROR_DE_DUPLICADO.nombre : ERROR_DE_DUPLICADO.codigo;
 }

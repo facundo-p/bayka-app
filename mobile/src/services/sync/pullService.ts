@@ -256,11 +256,15 @@ async function recalcularCodigosCambiados(
   }
 }
 
-/** Trae parcelas del server y las upsertea local; si pending_sync=true localmente (cambio o tombstone sin subir), no se sobrescribe — el push subsiguiente gana. */
+/**
+ * Trae parcelas del server y las upsertea local; si pending_sync=true localmente (cambio o tombstone
+ * sin subir), no se sobrescribe — el push subsiguiente gana. Devuelve las pendientes cuyo código
+ * local difiere del remoto: sus árboles bajan con el prefijo del server.
+ */
 async function pullParcelas(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
-): Promise<string[]> {
+): Promise<CodigoDivergente[]> {
   const { data: remoteParcelas, error } = await fetchAllRows<RemoteParcela>(() =>
     supabase.from('parcelas').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.parcelas),
@@ -283,7 +287,31 @@ async function pullParcelas(
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, all.length, all.length);
 
-  return all.map((remoteParcela) => remoteParcela.id);
+  return codigosDivergentes(all, locales);
+}
+
+type CodigoDivergente = { id: string; remoto: string; local: string };
+
+function codigosDivergentes(remotas: RemoteParcela[], locales: Map<string, ParcelaLocal>): CodigoDivergente[] {
+  return remotas.flatMap((remota) => {
+    const local = locales.get(remota.id);
+    if (!local?.pendingSync || local.codigo === remota.codigo) return [];
+    return [{ id: remota.id, remoto: remota.codigo, local: local.codigo }];
+  });
+}
+
+/**
+ * Una parcela con el código cambiado sin subir: los árboles que el pull trajo tienen el prefijo del
+ * server, y el upsert conserva después el SubID local de los que tienen especie. Se pasan al
+ * código local ahora; al subir la parcela, el trigger hace lo mismo en el server. No marca nada.
+ */
+async function reescribirSubIdsDeParcelasPendientes(divergentes: CodigoDivergente[]): Promise<void> {
+  if (divergentes.length === 0) return;
+  await enTransaccion(async (tx) => {
+    for (const { id, remoto, local } of divergentes) {
+      await recalcularSubIdsDeLaParcela(tx, id, { anterior: remoto, nuevo: local });
+    }
+  });
 }
 
 /** Ids remotos de los grupos, y cuáles de ellos tienen cambios locales sin subir. */
@@ -749,13 +777,14 @@ async function correrPullFromServer(
   const inicio = Date.now();
   // La metadata es un solo UPDATE: no hay nada que medir ahí.
   await pullPlantationMetadata(plantacionId);
-  await conDuracion(DOWNLOAD_PHASE.parcelas, () => pullParcelas(plantacionId, onProgress));
+  const divergentes = await conDuracion(DOWNLOAD_PHASE.parcelas, () => pullParcelas(plantacionId, onProgress));
   const borrados = await borradosPorTipo(plantacionId);
   const grupos = await conDuracion(DOWNLOAD_PHASE.groups, () => pullGroups(plantacionId, borrados.grupos, onProgress));
   await conDuracion(DOWNLOAD_PHASE.usuarios, () => pullPlantationUsers(plantacionId, onProgress));
   await conDuracion(DOWNLOAD_PHASE.especiesPlantacion, () => pullPlantationSpecies(plantacionId, onProgress));
   if (grupos.ids.length > 0) {
     await conDuracion(DOWNLOAD_PHASE.arboles, () => pullTrees(grupos, borrados, onProgress));
+    await reescribirSubIdsDeParcelasPendientes(divergentes);
   }
   syncLog.info(`Pull total: ${Date.now() - inicio}ms`);
   return PULL_OK;

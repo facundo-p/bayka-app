@@ -12,8 +12,9 @@ export interface CodigosDelSubId {
 const prefijoDe = (c: CodigosDelSubId) => `${c.parcelaCodigo}${c.grupoCodigo}`;
 
 /**
- * Reescribe el SubID de los árboles del grupo con otros códigos de parcela o grupo. El prefijo
- * anterior hace falta para leer el segmento de una especie recuperada del SubID vigente.
+ * Reescribe el SubID de los árboles del grupo con otros códigos de parcela o grupo. El segmento de
+ * una especie recuperada se lee del SubID vigente, que puede tener todavía el prefijo anterior o
+ * ya el nuevo (un árbol que el pull trajo con el código del server).
  */
 export async function recalcularSubIdsDelGrupo(
   tx: typeof db,
@@ -26,7 +27,7 @@ export async function recalcularSubIdsDelGrupo(
     .orderBy(asc(trees.posicion));
 
   for (const arbol of arboles) {
-    const especieCodigo = await resolveEspecieCodigo(tx, arbol, prefijoDe(anteriores));
+    const especieCodigo = await resolveEspecieCodigo(tx, arbol, [prefijoDe(anteriores), prefijoDe(nuevos)]);
     const subId = generateSubId(nuevos.parcelaCodigo, nuevos.grupoCodigo, especieCodigo, arbol.posicion);
     await tx.update(trees).set({ subId }).where(eq(trees.id, arbol.id));
   }

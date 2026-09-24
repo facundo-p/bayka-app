@@ -13,6 +13,7 @@ import { useNewParcela } from '../hooks/useNewParcela';
 import { colors } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
+import { chocaElCodigo, chocaElNombre, esPlantacionNoEditable, MENSAJE_PLANTACION_NO_EDITABLE } from '../constants/errorDeEdicion';
 
 const MAX_DESCRIPCION = 10000;
 const DESCRIPCION_WARN_THRESHOLD = 9000;
@@ -59,21 +60,18 @@ function DescripcionField({
 }
 
 function applyDuplicateError(error: string): ErrorState {
-  if (error === 'both_duplicate') {
+  if (chocaElNombre(error) || chocaElCodigo(error)) {
     return {
-      nombre: 'Ya existe una parcela con ese nombre en esta plantación',
-      codigo: 'Ya existe una parcela con ese código en esta plantación',
+      nombre: chocaElNombre(error) ? 'Ya existe una parcela con ese nombre en esta plantación' : null,
+      codigo: chocaElCodigo(error) ? 'Ya existe una parcela con ese código en esta plantación' : null,
       general: null,
     };
   }
-  if (error === 'nombre_duplicate') {
-    return { nombre: 'Ya existe una parcela con ese nombre en esta plantación', codigo: null, general: null };
-  }
-  if (error === 'codigo_duplicate') {
-    return { nombre: null, codigo: 'Ya existe una parcela con ese código en esta plantación', general: null };
-  }
   if (error === 'descripcion_too_long') {
     return { nombre: null, codigo: null, general: 'La descripción supera el límite de 10.000 caracteres' };
+  }
+  if (esPlantacionNoEditable(error)) {
+    return { nombre: null, codigo: null, general: MENSAJE_PLANTACION_NO_EDITABLE };
   }
   return { nombre: null, codigo: null, general: 'Error al guardar. Intentá de nuevo.' };
 }

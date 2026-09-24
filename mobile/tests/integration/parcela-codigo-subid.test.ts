@@ -19,7 +19,7 @@ jest.mock('../../src/database/client', () => ({
 jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
 
 import { updateParcela } from '../../src/repositories/ParcelaRepository';
-import { updateGroup, updateGroupCode } from '../../src/repositories/GroupRepository';
+import { updateGroup } from '../../src/repositories/GroupRepository';
 import { errorDeDuplicado } from '../../src/database/sqliteErrors';
 
 let plantacionId: string;
@@ -140,25 +140,26 @@ describe('updateParcela recalcula los SubID', () => {
   });
 });
 
-describe('updateGroupCode', () => {
-  it('después de updateGroup, que ya escribió el código nuevo, conserva la especie recuperada', async () => {
+describe('updateGroup', () => {
+  it('cambiar el código recalcula los SubID en la misma escritura y conserva la especie recuperada', async () => {
     const [uno] = grupoIds;
-    await updateGroup(uno, { nombre: 'Uno', codigo: 'L9', tipo: 'linea' });
 
-    const r = await updateGroupCode(uno, 'L9', 'L1');
+    const r = await updateGroup(uno, { nombre: 'Uno', codigo: 'l9', tipo: 'linea' });
 
     expect(r).toEqual({ success: true });
-    expect(await subIds()).toMatchObject({ a1: 'P1L9EUC1', a2: 'P1L9KOK2', a3: 'P1L9NN3' });
+    expect(await subIds()).toMatchObject({ a1: 'P1L9EUC1', a2: 'P1L9KOK2', a3: 'P1L9NN3', b1: 'P1L2EUC1' });
+    expect(await gruposPendientes()).toEqual([true, false]);
   });
 
   it('con la plantación finalizada no escribe nada', async () => {
     await finalizarPlantacion();
 
-    const r = await updateGroupCode(grupoIds[0], 'L9', 'L1');
+    const r = await updateGroup(grupoIds[0], { nombre: 'Otro', codigo: 'L9', tipo: 'linea' });
 
     expect(r).toEqual({ success: false, error: 'plantacion_no_editable' });
+    const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, grupoIds[0]));
+    expect(grupo).toMatchObject({ nombre: 'Uno', codigo: 'L1', pendingSync: false });
     expect(await subIds()).toEqual(SUBIDS_ORIGINALES);
-    expect(await gruposPendientes()).toEqual([false, false]);
   });
 });
 

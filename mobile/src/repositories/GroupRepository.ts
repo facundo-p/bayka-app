@@ -10,9 +10,11 @@ import { getTreeEditGating } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isUniqueConstraintError, errorDeDuplicado } from '../database/sqliteErrors';
+import { errorDeDuplicado } from '../database/sqliteErrors';
 import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
-import { ERROR_DE_EDICION, type ErrorDeEdicion } from '../constants/errorDeEdicion';
+import {
+  ERROR_DE_DUPLICADO, ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion,
+} from '../constants/errorDeEdicion';
 import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
@@ -61,15 +63,13 @@ export async function getLastGroupName(plantacionId: string): Promise<string | n
   return rows[0]?.nombre ?? null;
 }
 
-type DuplicateError = 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate';
-
 /** Valida nombre/codigo únicos dentro de la parcela del grupo (#90: parcela obligatoria, sin fallback per-plantación). */
 async function validateGroupUniqueness(
   parcelaId: string,
   nombre: string,
   codigo: string,
   excludeId?: string,
-): Promise<DuplicateError | null> {
+): Promise<ErrorDeDuplicado | null> {
   const scope = [eq(groups.parcelaId, parcelaId)];
   const nombreConds = [...scope, eq(groups.nombre, nombre)];
   const codigoConds = [...scope, eq(groups.codigo, codigo)];
@@ -79,15 +79,15 @@ async function validateGroupUniqueness(
   }
   const [existingNombre] = await db.select({ id: groups.id }).from(groups).where(and(...nombreConds)).limit(1);
   const [existingCodigo] = await db.select({ id: groups.id }).from(groups).where(and(...codigoConds)).limit(1);
-  if (existingNombre && existingCodigo) return 'both_duplicate';
-  if (existingNombre) return 'nombre_duplicate';
-  if (existingCodigo) return 'codigo_duplicate';
+  if (existingNombre && existingCodigo) return ERROR_DE_DUPLICADO.ambos;
+  if (existingNombre) return ERROR_DE_DUPLICADO.nombre;
+  if (existingCodigo) return ERROR_DE_DUPLICADO.codigo;
   return null;
 }
 
 export type CreateGroupResult =
   | { success: true; id: string }
-  | { success: false; error: 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate' | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | 'unknown' };
 
 export async function createGroup(params: {
   plantacionId: string;
@@ -122,11 +122,8 @@ export async function createGroup(params: {
     });
     notifyDataChanged();
     return { success: true, id };
-  } catch (e: any) {
-    if (isUniqueConstraintError(e)) {
-      return { success: false, error: 'codigo_duplicate' };
-    }
-    return { success: false, error: 'unknown' };
+  } catch (e: unknown) {
+    return { success: false, error: errorDeDuplicado(e) };
   }
 }
 
@@ -171,60 +168,22 @@ export function canEdit(
 
 export type UpdateGroupResult =
   | { success: true }
-  | { success: false; error: 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate' | ErrorDeEdicion | 'unknown' };
+  | { success: false; error: ErrorDeDuplicado | ErrorDeEdicion | 'unknown' };
 
-export async function updateGroup(
-  id: string,
-  params: { nombre: string; codigo: string; tipo: GroupTipo }
-): Promise<UpdateGroupResult> {
-  const upperCodigo = params.codigo.toUpperCase();
+type CamposDeGrupo = { nombre: string; codigo: string; tipo: GroupTipo };
+type GrupoActual = { plantacionId: string; parcelaId: string; codigo: string };
 
-  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId })
+/** Si cambia el código, recalcula el SubID de los árboles en la misma transacción. */
+export async function updateGroup(id: string, params: CamposDeGrupo): Promise<UpdateGroupResult> {
+  const campos = { ...params, codigo: params.codigo.toUpperCase() };
+  const [actual] = await db
+    .select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId, codigo: groups.codigo })
     .from(groups).where(eq(groups.id, id));
-  if (!current) return { success: false, error: 'unknown' };
-
-  const duplicateError = await validateGroupUniqueness(
-    current.parcelaId,
-    params.nombre,
-    upperCodigo,
-    id,
-  );
-  if (duplicateError) return { success: false, error: duplicateError };
-
-  await db.update(groups)
-    .set({
-      nombre: params.nombre,
-      codigo: upperCodigo,
-      tipo: params.tipo,
-    })
-    .where(eq(groups.id, id));
-  await markGroupPendingSync(id);
-  notifyDataChanged();
-  return { success: true };
-}
-
-/**
- * Cambia el codigo del grupo y recalcula el SubID de sus árboles. `codigoAnterior` lo da quien
- * llama: `updateGroup` ya pudo haber escrito el nuevo, y sin el anterior la especie recuperada
- * no se puede leer del SubID.
- */
-export async function updateGroupCode(
-  id: string,
-  newCodigo: string,
-  codigoAnterior: string,
-): Promise<UpdateGroupResult> {
-  const upperCodigo = newCodigo.toUpperCase();
-  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId })
-    .from(groups).where(eq(groups.id, id));
-  if (!current) return { success: false, error: 'unknown' };
-  if (!(await plantacionEditablePorId(current.plantacionId))) {
-    return { success: false, error: ERROR_DE_EDICION.plantacionNoEditable };
-  }
-  if (await codigoOcupadoEnParcela(current.parcelaId, upperCodigo, id)) {
-    return { success: false, error: 'codigo_duplicate' };
-  }
+  if (!actual) return { success: false, error: 'unknown' };
+  const invalido = await validarEdicionDeGrupo(id, actual, campos);
+  if (invalido) return { success: false, error: invalido };
   try {
-    await escribirCodigoDeGrupo(id, { anterior: codigoAnterior, nuevo: upperCodigo });
+    await enTransaccion((tx) => escribirGrupo(tx, id, actual, campos));
   } catch (e: unknown) {
     return { success: false, error: errorDeDuplicado(e) };
   }
@@ -232,25 +191,26 @@ export async function updateGroupCode(
   return { success: true };
 }
 
-async function codigoOcupadoEnParcela(parcelaId: string, codigo: string, excluirId: string): Promise<boolean> {
-  const [existente] = await db.select({ id: groups.id })
-    .from(groups)
-    .where(and(eq(groups.parcelaId, parcelaId), eq(groups.codigo, codigo), sql`${groups.id} != ${excluirId}`))
-    .limit(1);
-  return existente != null;
+async function validarEdicionDeGrupo(
+  id: string,
+  actual: GrupoActual,
+  campos: CamposDeGrupo,
+): Promise<ErrorDeDuplicado | ErrorDeEdicion | null> {
+  if (!(await plantacionEditablePorId(actual.plantacionId))) return ERROR_DE_EDICION.plantacionNoEditable;
+  return validateGroupUniqueness(actual.parcelaId, campos.nombre, campos.codigo, id);
 }
 
-async function escribirCodigoDeGrupo(id: string, codigos: { anterior: string; nuevo: string }): Promise<void> {
+async function escribirGrupo(tx: typeof db, id: string, actual: GrupoActual, campos: CamposDeGrupo): Promise<void> {
+  await tx.update(groups)
+    .set({ nombre: campos.nombre, codigo: campos.codigo, tipo: campos.tipo, pendingSync: true })
+    .where(eq(groups.id, id));
+  if (campos.codigo === actual.codigo) return;
   const parcelaCodigo = await getGroupParcelaCodigo(id);
-  await enTransaccion(async (tx) => {
-    await tx.update(groups).set({ codigo: codigos.nuevo }).where(eq(groups.id, id));
-    await recalcularSubIdsDelGrupo(
-      tx, id,
-      { parcelaCodigo, grupoCodigo: codigos.anterior },
-      { parcelaCodigo, grupoCodigo: codigos.nuevo },
-    );
-  });
-  await markGroupPendingSync(id);
+  await recalcularSubIdsDelGrupo(
+    tx, id,
+    { parcelaCodigo, grupoCodigo: actual.codigo },
+    { parcelaCodigo, grupoCodigo: campos.codigo },
+  );
 }
 
 /** Reactivates a finalized group back to 'activa' state. */

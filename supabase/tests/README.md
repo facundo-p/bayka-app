@@ -87,8 +87,8 @@ trigger sobre el propio— y parcelas sin DELETE físico, con el tombstone
 intacto (051, #314), `30` reabrir una finalizada: solo superadmin activo de la
 organización, la archivada se rechaza, los grupos conservan su estado y el
 técnico vuelve a escribir (052, #470), `31` cambiar el código de una parcela
-reescribe el prefijo del SubID de sus árboles, y en una finalizada el técnico no
-llega a cambiarlo (053, #623).
+reescribe el prefijo del SubID de sus árboles (solo los que calzan con parcela +
+grupo), y en una finalizada el técnico no llega a cambiarlo (053, #623).
 
 ## Hallazgo fuera de alcance (no corregido)
 

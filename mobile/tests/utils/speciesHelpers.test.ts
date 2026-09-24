@@ -70,6 +70,12 @@ describe('resolveEspecieCodigo', () => {
     const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
     expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), 'P1L1')).toBe('NN');
   });
+
+  test('con varios prefijos lee el codigo del primero que calza', async () => {
+    const queryable = makeQueryable([{ codigo: 'recuperada:esp-1' }]);
+    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'P9L1ANC12'), ['P1L1', 'P9L1'])).toBe('ANC');
+    expect(await resolveEspecieCodigo(queryable as any, arbol('esp-1', 'X9ANC12'), ['P1L1', 'P9L1'])).toBe('NN');
+  });
 });
 
 describe('conservarEspeciesRecuperadas', () => {

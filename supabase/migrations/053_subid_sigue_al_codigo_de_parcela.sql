@@ -17,14 +17,16 @@ CREATE OR REPLACE FUNCTION "public"."reescribir_subid_por_codigo_de_parcela"() R
     SET "search_path" TO 'public'
     AS $$
 BEGIN
-  -- Solo los que empiezan con el código viejo: un SubID que no calza no se
-  -- puede reescribir sin inventar, y queda como estaba.
+  -- Filtra por parcela + grupo: con solo el código de parcela, un `P10L1…`
+  -- desactualizado en una parcela `P1` terminaría en `P90L1…`. Si el código del
+  -- grupo en el server quedó viejo (#626) el árbol no calza y no se toca: dejarlo
+  -- como está es mejor que reescribirlo mal.
   UPDATE trees t
      SET sub_id = NEW.codigo || substr(t.sub_id, length(OLD.codigo) + 1)
     FROM groups g
    WHERE g.id = t.group_id
      AND g.parcela_id = NEW.id
-     AND starts_with(t.sub_id, OLD.codigo);
+     AND starts_with(t.sub_id, OLD.codigo || g.codigo);
   RETURN NULL;
 END;
 $$;
