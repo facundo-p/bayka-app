@@ -2,10 +2,13 @@
  * ParcelaRepository — CRUD + soft-delete tombstone de parcelas.
  * Valida nombre/codigo únicos por plantación (excluye tombstones) y descripcion ≤10k; bloquea
  * delete si hay grupos hijos. Lecturas filtran deleted_at IS NULL salvo `{ includeDeleted: true }`
- * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side.
+ * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side. Cambiar el
+ * código reescribe el SubID de los árboles de sus grupos (#623).
  */
 import { db } from '../database/client';
+import { enTransaccion } from '../database/transaccion';
 import { parcelas, groups } from '../database/schema';
+import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
 import { eq, and, asc, count, isNull, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
@@ -70,6 +73,11 @@ async function validateParcelaUniqueness(
   return null;
 }
 
+/** Un UNIQUE que la validación previa no vio (carrera con otra escritura) es un código duplicado. */
+function errorDeEscritura(e: unknown): 'codigo_duplicate' | 'unknown' {
+  return isUniqueConstraintError(e) ? 'codigo_duplicate' : 'unknown';
+}
+
 /** Returns 'descripcion_too_long' if length > MAX_DESCRIPCION_LENGTH, else null. */
 function validateDescripcion(descripcion?: string | null): DescripcionError | null {
   if (descripcion && descripcion.length > MAX_DESCRIPCION_LENGTH) {
@@ -123,18 +131,14 @@ export async function createParcela(params: {
     });
     notifyDataChanged();
     return { success: true, id };
-  } catch (e: any) {
-    if (isUniqueConstraintError(e)) {
-      return { success: false, error: 'codigo_duplicate' };
-    }
-    return { success: false, error: 'unknown' };
+  } catch (e: unknown) {
+    return { success: false, error: errorDeEscritura(e) };
   }
 }
 
-export async function updateParcela(
-  id: string,
-  params: { nombre: string; codigo: string; descripcion?: string | null },
-): Promise<UpdateParcelaResult> {
+type CamposDeParcela = { nombre: string; codigo: string; descripcion?: string | null };
+
+export async function updateParcela(id: string, params: CamposDeParcela): Promise<UpdateParcelaResult> {
   const upperCodigo = params.codigo.toUpperCase();
   const existing = await findById(id);
   if (!existing) return { success: false, error: 'not_found' };
@@ -142,17 +146,48 @@ export async function updateParcela(
   if (descripcionError) return { success: false, error: descripcionError };
   const dup = await validateParcelaUniqueness(existing.plantacionId, params.nombre, upperCodigo, id);
   if (dup) return { success: false, error: dup };
-  await db.update(parcelas)
+  try {
+    await enTransaccion((tx) => escribirParcela(tx, existing, { ...params, codigo: upperCodigo }));
+  } catch (e: unknown) {
+    return { success: false, error: errorDeEscritura(e) };
+  }
+  notifyDataChanged();
+  return { success: true };
+}
+
+async function escribirParcela(tx: typeof db, actual: Parcela, campos: CamposDeParcela): Promise<void> {
+  await tx.update(parcelas)
     .set({
-      nombre: params.nombre,
-      codigo: upperCodigo,
-      descripcion: params.descripcion ?? null,
+      nombre: campos.nombre,
+      codigo: campos.codigo,
+      descripcion: campos.descripcion ?? null,
       pendingSync: true,
       updatedAt: localNow(),
     })
-    .where(eq(parcelas.id, id));
-  notifyDataChanged();
-  return { success: true };
+    .where(eq(parcelas.id, actual.id));
+  if (campos.codigo !== actual.codigo) {
+    await recalcularSubIdsDeLaParcela(tx, actual.id, actual.codigo, campos.codigo);
+  }
+}
+
+/** El SubID arranca con el código de parcela: cambiarlo reescribe los árboles de todos sus grupos. */
+async function recalcularSubIdsDeLaParcela(
+  tx: typeof db,
+  parcelaId: string,
+  codigoAnterior: string,
+  codigoNuevo: string,
+): Promise<void> {
+  const grupos = await tx.select({ id: groups.id, codigo: groups.codigo })
+    .from(groups).where(eq(groups.parcelaId, parcelaId));
+  for (const { id, codigo } of grupos) {
+    await recalcularSubIdsDelGrupo(
+      tx, id,
+      { parcelaCodigo: codigoAnterior, grupoCodigo: codigo },
+      { parcelaCodigo: codigoNuevo, grupoCodigo: codigo },
+    );
+  }
+  // Los árboles suben con su grupo: marcarlo es lo que lleva los SubID nuevos al server.
+  await tx.update(groups).set({ pendingSync: true }).where(eq(groups.parcelaId, parcelaId));
 }
 
 /** Counts active groups (any) referencing this parcela. */

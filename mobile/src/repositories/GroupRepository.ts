@@ -1,12 +1,11 @@
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { groups, trees, parcelas } from '../database/schema';
-import { eq, and, desc, count, asc, sql } from 'drizzle-orm';
+import { eq, and, desc, count, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
-import { generateSubId } from '../utils/idGenerator';
-import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
 import { getTreeEditGating } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
@@ -202,26 +201,6 @@ export async function updateGroup(
   return { success: true };
 }
 
-/** Recalculates all tree subIds for a group inside a tx. */
-async function recalcTreesSubIds(
-  tx: typeof db,
-  grupoId: string,
-  codigos: { anterior: string; nuevo: string },
-  parcelaCodigo: string
-): Promise<void> {
-  const allTrees = await tx.select().from(trees)
-    .where(eq(trees.groupId, grupoId))
-    .orderBy(asc(trees.posicion));
-
-  for (const tree of allTrees) {
-    const especieCodigo = await resolveEspecieCodigo(tx, tree, `${parcelaCodigo}${codigos.anterior}`);
-    const newSubId = generateSubId(parcelaCodigo, codigos.nuevo.toUpperCase(), especieCodigo, tree.posicion);
-    await tx.update(trees)
-      .set({ subId: newSubId })
-      .where(eq(trees.id, tree.id));
-  }
-}
-
 /** Updates group codigo and recalculates all tree subIds in a transaction. */
 export async function updateGroupCode(
   id: string,
@@ -251,7 +230,11 @@ export async function updateGroupCode(
       await tx.update(groups)
         .set({ codigo: upperCodigo })
         .where(eq(groups.id, id));
-      await recalcTreesSubIds(tx, id, { anterior: current.codigo, nuevo: newCodigo }, parcelaCodigo);
+      await recalcularSubIdsDelGrupo(
+        tx, id,
+        { parcelaCodigo, grupoCodigo: current.codigo },
+        { parcelaCodigo, grupoCodigo: upperCodigo },
+      );
     });
     await markGroupPendingSync(id);
     notifyDataChanged();
