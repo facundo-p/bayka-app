@@ -329,7 +329,8 @@ Muestra resultados separados:
 -- 1. Sin fila en plantation_users para auth.uid()     → PERMISSION
 -- 2. motivo_no_escribible(plantation_id) no null      → PLANTACION_ARCHIVADA | PLANTACION_FINALIZADA
 -- 3. Otro grupo con el mismo código en la parcela     → DUPLICATE_CODE
--- 4. INSERT groups ON CONFLICT (id) DO UPDATE SET estado, codigo, nombre
+--    Otro grupo con el mismo nombre en la parcela     → DUPLICATE_NAME
+-- 4. INSERT groups ON CONFLICT (id) DO UPDATE SET estado, codigo, nombre, tipo
 -- 5. INSERT trees ON CONFLICT (id) DO UPDATE:
 --    species_id, sub_id                                   -- resolución N/N
 --    sub_id que empieza con parcela_codigo + codigo       -- pasa al código vigente de la parcela

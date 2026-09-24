@@ -571,6 +571,9 @@ Especie: ANC
 Árbol número 12
 ```
 
+El SubID sigue a los códigos: cambiar el código de la parcela o del grupo reescribe
+el SubID de sus árboles, en el dispositivo y en el servidor (#623, #626).
+
 ---
 
 # 13. Árboles no identificados (N/N)

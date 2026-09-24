@@ -1,7 +1,8 @@
 -- `sync_subgroup` solo pisaba `estado` de un grupo existente (#626): renombrar un
 -- grupo en el móvil subía los SubID nuevos, pero el grupo seguía con el código
--- viejo en el server. Ahora pisa también `codigo` y `nombre`, como el resto del
--- upsert del grupo.
+-- viejo en el server. Ahora pisa también `codigo`, `nombre` y `tipo`, los tres
+-- campos que el móvil deja editar. El nombre también es único por parcela: un
+-- choque devuelve DUPLICATE_NAME en vez de caer en UNKNOWN.
 --
 -- Además normaliza el prefijo de parcela de los `sub_id` que recibe. El móvil
 -- manda en `parcela_codigo` el código con el que los armó; si difiere del de la
@@ -37,6 +38,15 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'DUPLICATE_CODE');
   END IF;
 
+  IF EXISTS (
+    SELECT 1 FROM groups
+    WHERE parcela_id = (p_subgroup->>'parcela_id')::UUID
+      AND nombre = p_subgroup->>'nombre'
+      AND id <> (p_subgroup->>'id')::UUID
+  ) THEN
+    RETURN jsonb_build_object('success', false, 'error', 'DUPLICATE_NAME');
+  END IF;
+
   INSERT INTO groups (id, plantation_id, parcela_id, nombre, codigo, tipo, estado, usuario_creador, created_at)
   VALUES (
     (p_subgroup->>'id')::UUID,
@@ -54,11 +64,16 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     estado = EXCLUDED.estado,
     codigo = EXCLUDED.codigo,
-    nombre = EXCLUDED.nombre;
+    nombre = EXCLUDED.nombre,
+    tipo = EXCLUDED.tipo;
 
   -- Con parcela + grupo, igual que 053: un `P10L1…` en la parcela `P1` no es suyo.
   v_prefijo_cliente := (p_subgroup->>'parcela_codigo') || (p_subgroup->>'codigo');
-  SELECT codigo INTO v_parcela_codigo FROM parcelas WHERE id = (p_subgroup->>'parcela_id')::UUID;
+  -- FOR SHARE: un cambio de código concurrente espera a este commit. Si no, su
+  -- trigger (053) no ve estos árboles y quedan con el prefijo viejo.
+  SELECT codigo INTO v_parcela_codigo FROM parcelas
+   WHERE id = (p_subgroup->>'parcela_id')::UUID
+     FOR SHARE;
 
   INSERT INTO trees (
     id, group_id, species_id, posicion, sub_id, foto_url,

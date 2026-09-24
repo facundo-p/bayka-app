@@ -274,8 +274,8 @@ async function subirFotosDelGrupo(
 
 // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
 // server-side; los REST calls directos ya usan groups/group_id.
-// `parcela_codigo`: el código con el que se armaron los SubID; el server lo cambia
-// por el vigente si difieren (#626).
+// `parcela_codigo`: el código con el que se armaron los SubID. Si ya no es el de la
+// parcela en el server, el server les cambia el prefijo por el vigente (#626).
 function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
   return {
     id: sg.id,
@@ -352,10 +352,11 @@ export function classifyRpcResult(
     return { success: true, groupId: sg.id, nombre: sg.nombre };
   }
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
-  // Los códigos que sync_subgroup devuelve explícitamente: unicidad por parcela,
+  // Los códigos que sync_subgroup devuelve explícitamente: unicidad de código y nombre por parcela (#626),
   // guard de membresía, y plantación finalizada o archivada (#469, #477).
   const RPC_CODES: SyncErrorCode[] = [
     SYNC_ERROR.DUPLICATE_CODE,
+    SYNC_ERROR.DUPLICATE_NAME,
     SYNC_ERROR.PERMISSION,
     SYNC_ERROR.PLANTACION_FINALIZADA,
     SYNC_ERROR.PLANTACION_ARCHIVADA,

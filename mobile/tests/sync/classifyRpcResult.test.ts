@@ -54,6 +54,11 @@ describe('classifyRpcResult', () => {
   });
 
   // Archivada gana sobre finalizada en el server (#477): el mensaje pide desarchivar.
+  test('RPC rechaza con DUPLICATE_NAME → passthrough (#626)', () => {
+    const result = classifyRpcResult(sg, { success: false, error: 'DUPLICATE_NAME' }, null);
+    expect(result).toMatchObject({ success: false, error: 'DUPLICATE_NAME' });
+  });
+
   test('RPC rechaza con PLANTACION_ARCHIVADA → passthrough', () => {
     const result = classifyRpcResult(sg, { success: false, error: 'PLANTACION_ARCHIVADA' }, null);
     expect(result).toMatchObject({ success: false, error: 'PLANTACION_ARCHIVADA' });

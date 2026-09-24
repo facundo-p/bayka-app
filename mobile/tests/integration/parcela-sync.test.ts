@@ -636,6 +636,37 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     });
   });
 
+  test('pull con códigos rotados no choca con el índice único local (#626)', async () => {
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'P1', nombre: 'Norte', pendingSync: false });
+    const grupo = (id: string, codigo: string, pendingSync: boolean) => ({
+      id, plantacionId: pid, parcelaId: parcId, nombre: codigo, codigo,
+      tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync,
+    });
+    // g3 es un grupo nuevo sin subir que ya usa L7, el código que el server le dio a g4.
+    await mockTestDb.insert(groups).values([
+      grupo('g1', 'L1', false), grupo('g2', 'L2', false), grupo('g3', 'L7', true), grupo('g4', 'L4', false),
+    ]);
+    insertServerParcela({
+      id: parcId, plantation_id: pid, nombre: 'Norte', codigo: 'P1', descripcion: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    });
+    // g2 primero: con el upsert multi-fila tomaba L1 antes de que g1 lo soltara.
+    for (const [id, codigo] of [['g2', 'L1'], ['g1', 'L9'], ['g4', 'L7']]) {
+      serverState.groups.set(id, {
+        id, plantation_id: pid, parcela_id: parcId, nombre: codigo, codigo,
+        tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now,
+      });
+    }
+
+    await pullFromServer(pid);
+
+    const grupos = await mockTestDb.select({ id: groups.id, codigo: groups.codigo }).from(groups);
+    expect(Object.fromEntries(grupos.map((g) => [g.id, g.codigo])))
+      .toEqual({ g1: 'L9', g2: 'L1', g3: 'L7', g4: 'L4' });
+  });
+
   test('parcela con código cambiado sin subir: los árboles que baja el pull pasan al código local (#623)', async () => {
     const { pid, parcId } = await sembrarParcelaPendienteConArbolAjeno();
 
