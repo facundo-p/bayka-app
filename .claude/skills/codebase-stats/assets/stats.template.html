@@ -1,0 +1,755 @@
+<title>Radiografía Bayka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --bg: #f5f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef2f6;
+  --line: #dde4eb;
+  --ink: #0d1b28;
+  --ink-2: #4b5a68;
+  --ink-3: #7a8793;
+  --accent: #0a3760;
+  --accent-soft: #e3edf6;
+  --up: #1d7a4a;
+  --down: #b3361f;
+  --sev-alta: #b3361f;
+  --sev-media: #a86400;
+  --sev-baja: #4b5a68;
+  --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #eda100;
+  --s5: #e87ba4; --s6: #008300; --s7: #4a3aa7; --s8: #e34948;
+  --q1: #1c5cab; --q2: #6da7ec; --q3: #b7d3f6;
+  --grid: #e8edf2;
+  --f-display: "Poppins", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0e141b; --surface: #151d26; --surface-2: #1b2530; --line: #2a3542;
+    --ink: #eef3f8; --ink-2: #b3c0cc; --ink-3: #82909d;
+    --accent: #8fbde8; --accent-soft: #1d2d3d;
+    --up: #5cc68d; --down: #f08a73;
+    --sev-alta: #f08a73; --sev-media: #e7b04f; --sev-baja: #b3c0cc;
+    --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+    --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+    --q1: #86b6ef; --q2: #3987e5; --q3: #1c5cab;
+    --grid: #222d39;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0e141b; --surface: #151d26; --surface-2: #1b2530; --line: #2a3542;
+  --ink: #eef3f8; --ink-2: #b3c0cc; --ink-3: #82909d;
+  --accent: #8fbde8; --accent-soft: #1d2d3d;
+  --up: #5cc68d; --down: #f08a73;
+  --sev-alta: #f08a73; --sev-media: #e7b04f; --sev-baja: #b3c0cc;
+  --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #c98500;
+  --s5: #d55181; --s6: #008300; --s7: #9085e9; --s8: #e66767;
+  --q1: #86b6ef; --q2: #3987e5; --q3: #1c5cab;
+  --grid: #222d39;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.5; padding-inline: 16px; padding-block: 0 48px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: 22px; letter-spacing: -0.01em; }
+h2 { font-size: 17px; }
+h3 { font-size: 13px; color: var(--ink-2); font-weight: 500; font-family: var(--f-body); }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--ink-3); }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 16px 12px; border-bottom: 1px solid var(--line); display: grid; gap: 12px; }
+.top-row { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; justify-content: space-between; }
+.run-meta { color: var(--ink-2); font-size: 13px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); border-radius: 999px; padding: 3px 11px; font: inherit; font-size: 12.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.chip:focus-visible, select:focus-visible, .nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+label.cmp { display: inline-flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--ink-2); }
+select { font: inherit; font-size: 12.5px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; max-width: 100%; }
+.nav { display: flex; gap: 14px; overflow-x: auto; font-size: 12.5px; scrollbar-width: none; }
+.nav a { color: var(--ink-2); text-decoration: none; white-space: nowrap; }
+.nav a:hover { color: var(--accent); }
+
+.notice { background: var(--accent-soft); color: var(--ink); border-radius: 8px; padding: 10px 14px; font-size: 13px; }
+
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 14px 16px; display: grid; gap: 2px; align-content: start; }
+.kpi .label { font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-3); }
+.kpi .value { font-family: var(--f-display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.kpi .hint { font-size: 12px; color: var(--ink-3); }
+.delta { font-size: 12px; font-variant-numeric: tabular-nums; }
+.delta.good { color: var(--up); }
+.delta.bad { color: var(--down); }
+.delta.flat { color: var(--ink-3); }
+
+section { display: grid; gap: 14px; scroll-margin-top: 150px; }
+.section-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; justify-content: space-between; }
+.section-head p { margin: 0; color: var(--ink-3); font-size: 12.5px; max-width: 70ch; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 14px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.panel-head { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg.chart text { fill: var(--ink-3); font-family: var(--f-body); font-size: 11px; }
+svg.chart .axis-line { stroke: var(--line); }
+svg.chart .gridline { stroke: var(--grid); }
+svg.chart .hit { fill: transparent; }
+svg.chart .ring { stroke: var(--surface); stroke-width: 2; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.swatch { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-weight: 500; color: var(--ink-3); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--grid); vertical-align: top; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+td.path { font-family: var(--f-mono); font-size: 12px; word-break: break-all; }
+tr:last-child td { border-bottom: none; }
+.bar-cell { position: relative; min-width: 80px; }
+.bar-cell { padding-bottom: 5px; }
+.bar-cell i { position: absolute; left: 0; bottom: 0; height: 3px; border-radius: 0 2px 2px 0; background: var(--q2); }
+
+.empty { color: var(--ink-3); font-size: 13px; border: 1px dashed var(--line); border-radius: 10px; padding: 18px; }
+.findings { display: grid; gap: 10px; }
+.finding { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; }
+.finding .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; font-size: 12px; color: var(--ink-3); }
+.pill { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; }
+.pill.alta { color: var(--sev-alta); }
+.pill.media { color: var(--sev-media); }
+.pill.baja { color: var(--sev-baja); }
+.finding p { margin: 0; color: var(--ink-2); font-size: 13px; }
+
+#tip { position: fixed; pointer-events: none; z-index: 20; background: var(--ink); color: var(--bg); font-size: 12px; padding: 6px 9px; border-radius: 6px; max-width: 320px; line-height: 1.4; }
+@media (max-width: 520px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .kpi .value { font-size: 20px; }
+  header.top { position: static; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chip, .nav a { transition: background-color .15s, color .15s; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="top-row">
+      <h1>Radiografía de la codebase</h1>
+      <div class="run-meta" id="run-meta"></div>
+    </div>
+    <div class="controls">
+      <div class="chips" id="sector-chips" role="group" aria-label="Filtrar por sector"></div>
+      <label class="cmp" for="compare">Comparar con
+        <select id="compare"></select>
+      </label>
+    </div>
+    <nav class="nav" aria-label="Secciones">
+      <a href="#resumen">Resumen</a><a href="#evolucion">Evolución</a><a href="#composicion">Composición</a>
+      <a href="#tamanos">Tamaños</a><a href="#funciones">Funciones</a><a href="#hotspots">Hotspots</a>
+      <a href="#deuda">Deuda</a><a href="#duplicacion">Duplicación</a><a href="#cobertura">Cobertura</a><a href="#cambios">Cambios</a><a href="#hallazgos">Hallazgos</a>
+    </nav>
+  </header>
+
+  <div id="notices"></div>
+
+  <section id="resumen">
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section id="evolucion">
+    <div class="section-head"><h2>Evolución</h2><p id="evo-note"></p></div>
+    <div class="grid-2" id="evo-charts"></div>
+  </section>
+
+  <section id="composicion">
+    <div class="section-head"><h2>Composición</h2><p>Líneas de código, comentario y blanco. Sin docs ni archivos generados.</p></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-head"><h3 id="comp-title">Por sector</h3></div><div id="comp-chart"></div></div>
+      <div class="panel"><div class="panel-head"><h3>Por lenguaje</h3></div><div class="table-wrap" id="lang-table"></div></div>
+    </div>
+  </section>
+
+  <section id="tamanos">
+    <div class="section-head"><h2>Tamaño de archivos</h2><p>Cantidad de archivos por líneas de código. Los de más de 400 líneas son los primeros candidatos a partir.</p></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-head"><h3>Distribución</h3></div><div id="size-chart"></div></div>
+      <div class="panel"><div class="panel-head"><h3>Más largos</h3></div><div class="table-wrap" id="size-table"></div></div>
+    </div>
+  </section>
+
+  <section id="funciones">
+    <div class="section-head"><h2>Funciones</h2><p>Solo código de producción TS/JS. El límite del repo es 20 líneas por función.</p></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-head"><h3>Distribución por largo</h3></div><div id="fn-chart"></div></div>
+      <div class="panel"><div class="panel-head"><h3>Más largas</h3></div><div class="table-wrap" id="fn-table"></div></div>
+    </div>
+  </section>
+
+  <section id="hotspots">
+    <div class="section-head"><h2>Hotspots</h2><p id="hot-note">Archivos grandes que además cambian seguido: tamaño × commits de los últimos 6 meses.</p></div>
+    <div class="grid-2">
+      <div class="panel"><div class="panel-head"><h3>Tamaño vs. cambios</h3></div><div id="hot-chart"></div></div>
+      <div class="panel"><div class="panel-head"><h3>Ranking</h3></div><div class="table-wrap" id="hot-table"></div></div>
+    </div>
+  </section>
+
+  <section id="deuda">
+    <div class="section-head"><h2>Marcadores de deuda</h2><p>Ocurrencias en el código, separadas entre producción y tests.</p></div>
+    <div class="panel"><div class="table-wrap" id="debt-table"></div></div>
+  </section>
+
+  <section id="duplicacion">
+    <div class="section-head"><h2>Código duplicado</h2><p>Bloques de 60 tokens o más repetidos en código de producción (jscpd). Sin tests ni migraciones.</p></div>
+    <div id="dup-body"></div>
+  </section>
+
+  <section id="cobertura">
+    <div class="section-head"><h2>Cobertura de tests</h2><p>Se mide sobre el working tree, solo cuando se pide al correr el skill.</p></div>
+    <div id="cov-body"></div>
+  </section>
+
+  <section id="cambios">
+    <div class="section-head"><h2>Cambios entre refs</h2><p id="chg-note"></p></div>
+    <div id="chg-body"></div>
+  </section>
+
+  <section id="hallazgos">
+    <div class="section-head"><h2>Hallazgos</h2><p>Lo que vale la pena mirar, con archivo y línea.</p></div>
+    <div class="findings" id="findings"></div>
+  </section>
+</div>
+<div id="tip" hidden></div>
+
+<script>
+const PAYLOAD = /*__PAYLOAD__*/null;
+
+const SECTOR_ORDER = ['mobile', 'web', 'supabase', 'scripts', 'contracts', 'tooling', 'docs', 'root'];
+const KIND = { prod: 'prod', test: 'test', styles: 'styles', generated: 'generated', docs: 'docs' };
+const CODE_KINDS = [KIND.prod, KIND.test, KIND.styles];
+const KIND_LABEL = { prod: 'Producción', styles: 'Estilos', test: 'Tests' };
+const LINE_PARTS = [
+  { key: 'code', label: 'Código', color: 'var(--q1)' },
+  { key: 'comment', label: 'Comentario', color: 'var(--q2)' },
+  { key: 'blank', label: 'Blanco', color: 'var(--q3)' },
+];
+const KIND_PARTS = [
+  { key: KIND.prod, label: KIND_LABEL.prod, color: 'var(--q1)' },
+  { key: KIND.styles, label: KIND_LABEL.styles, color: 'var(--q2)' },
+  { key: KIND.test, label: KIND_LABEL.test, color: 'var(--q3)' },
+];
+const FILE_BUCKETS = ['1-50', '51-100', '101-200', '201-400', '401-800', '>800'];
+const BIG_FILE_BUCKETS = ['401-800', '>800'];
+const FN_BUCKETS = ['1-20', '21-40', '41-80', '>80'];
+const DEBT_LABEL = { any: 'any explícito', eslintDisable: 'eslint-disable', tsIgnore: '@ts-ignore', tsExpectError: '@ts-expect-error', todo: 'TODO / FIXME' };
+const SEVERITY = ['alta', 'media', 'baja'];
+const ALL = 'all';
+const NONE = 'none';
+const BASE = 'base';
+
+const state = { sector: ALL, compare: NONE };
+
+// ---------- utilidades ----------
+const $ = (id) => document.getElementById(id);
+const fmt = new Intl.NumberFormat('es-AR');
+const n = (v) => (v == null ? '—' : fmt.format(Math.round(v)));
+const pct = (v, d = 0) => (v == null || !isFinite(v) ? '—' : `${(v * 100).toFixed(d)}%`);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// El contenido del tooltip es HTML: va escapado dentro del atributo.
+const tip = (html) => `data-tip="${esc(html)}"`;
+const sum = (rows, f) => rows.reduce((a, r) => a + (r[f] ?? 0), 0);
+const sectorColor = (s) => `var(--s${SECTOR_ORDER.indexOf(s) + 1})`;
+const shortDate = (iso) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: '2-digit' });
+const runLabel = (snap) => `${snap.run.ref === 'HEAD' ? '' : snap.run.ref + ' · '}${snap.run.sha.slice(0, 7)} · ${shortDate(snap.run.commitDate)}`;
+
+function inSector(row) {
+  return state.sector === ALL || row.sector === state.sector;
+}
+
+function sectorsOf(snap) {
+  const present = new Set(snap.cube.map((r) => r.sector));
+  return SECTOR_ORDER.filter((s) => present.has(s));
+}
+
+// ---------- métricas derivadas de un snapshot (respetan el filtro de sector) ----------
+function codeRows(snap) {
+  return snap.cube.filter((r) => CODE_KINDS.includes(r.kind) && inSector(r));
+}
+
+function metrics(snap) {
+  if (!snap) return null;
+  const rows = codeRows(snap);
+  const kindCode = (k) => sum(rows.filter((r) => r.kind === k), 'code');
+  const prod = kindCode(KIND.prod) + kindCode(KIND.styles);
+  const lines = sum(rows, 'code') + sum(rows, 'comment');
+  const fnBuckets = snap.functions?.buckets?.filter(inSector);
+  const sizes = snap.fileSizes?.filter(inSector);
+  return {
+    files: sum(rows, 'files'),
+    code: sum(rows, 'code'),
+    commentRatio: lines ? sum(rows, 'comment') / lines : null,
+    testRatio: prod ? kindCode(KIND.test) / prod : null,
+    longFunctions: fnBuckets ? sum(fnBuckets.filter((b) => b.bucket !== FN_BUCKETS[0]), 'count') : null,
+    bigFiles: sizes ? sum(sizes.filter((s) => BIG_FILE_BUCKETS.includes(s.bucket)), 'files') : null,
+    debt: snap.debt ? sum(snap.debt.filter((d) => inSector(d) && d.kind !== KIND.test), 'count') : null,
+    coverage: coverageOf(snap),
+    duplication: duplicationOf(snap, sum(rows.filter((r) => r.kind !== KIND.test), 'code')),
+  };
+}
+
+// Con un sector filtrado, el % es sobre las líneas de código de ese sector.
+function duplicationOf(snap, prodCode) {
+  const dup = snap.duplication;
+  if (!dup) return null;
+  if (state.sector === ALL) return dup.percentage / 100;
+  const row = dup.sectors.find((s) => s.sector === state.sector);
+  return prodCode ? (row?.duplicatedLines ?? 0) / prodCode : null;
+}
+
+function coverageOf(snap) {
+  const rows = snap.coverage?.sectors?.filter(inSector);
+  if (!rows?.length) return null;
+  const total = sum(rows, 'linesTotal');
+  return total ? sum(rows, 'linesCovered') / total : null;
+}
+
+// ---------- comparación ----------
+function history() {
+  return PAYLOAD.history ?? [];
+}
+
+function currentIndex() {
+  return history().findIndex((s) => s.run.generatedAt === PAYLOAD.current.run.generatedAt);
+}
+
+function compareSnapshot() {
+  if (state.compare === BASE) return PAYLOAD.base;
+  if (state.compare === NONE) return null;
+  return history().find((s) => s.run.generatedAt === state.compare) ?? null;
+}
+
+function defaultCompare() {
+  if (PAYLOAD.base) return BASE;
+  const idx = currentIndex();
+  const prev = idx > 0 ? history()[idx - 1] : history().filter((s) => s.run.generatedAt !== PAYLOAD.current.run.generatedAt).at(-1);
+  return prev ? prev.run.generatedAt : NONE;
+}
+
+function buildCompareSelect() {
+  const opts = [`<option value="${NONE}">Nada</option>`];
+  if (PAYLOAD.base) opts.push(`<option value="${BASE}">${esc(runLabel(PAYLOAD.base))} (base)</option>`);
+  for (const s of [...history()].reverse()) {
+    if (s.run.generatedAt === PAYLOAD.current.run.generatedAt) continue;
+    opts.push(`<option value="${esc(s.run.generatedAt)}">${esc(runLabel(s))}${s.run.backfill ? ' (backfill)' : ''}</option>`);
+  }
+  $('compare').innerHTML = opts.join('');
+  $('compare').value = state.compare;
+}
+
+// Para cada métrica, qué dirección es buena: +1 subir es bueno, -1 bajar es bueno, 0 neutro.
+const KPI_DEFS = [
+  { key: 'code', label: 'Líneas de código', good: 0, fmt: n, hint: (m) => `${n(m.files)} archivos` },
+  { key: 'commentRatio', label: 'Comentarios', good: 0, fmt: (v) => pct(v, 1), hint: () => 'sobre código + comentario' },
+  { key: 'testRatio', label: 'Tests / producción', good: 1, fmt: (v) => (v == null ? '—' : v.toFixed(2)), hint: () => 'líneas de test por línea de prod' },
+  { key: 'longFunctions', label: 'Funciones >20 líneas', good: -1, fmt: n, hint: () => 'en código de producción' },
+  { key: 'bigFiles', label: 'Archivos >400 líneas', good: -1, fmt: n, hint: () => 'prod, estilos y tests' },
+  { key: 'debt', label: 'Marcadores de deuda', good: -1, fmt: n, hint: () => 'en producción' },
+  { key: 'coverage', label: 'Cobertura', good: 1, fmt: (v) => pct(v, 1), hint: () => 'líneas cubiertas' },
+  { key: 'duplication', label: 'Duplicación', good: -1, fmt: (v) => pct(v, 1), hint: () => 'líneas en bloques repetidos' },
+];
+
+function deltaHtml(def, now, before) {
+  if (now == null || before == null) return '';
+  const d = now - before;
+  if (Math.abs(d) < 1e-9) return '<span class="delta flat">sin cambios</span>';
+  const cls = def.good === 0 ? 'flat' : Math.sign(d) === def.good ? 'good' : 'bad';
+  const isRatio = ['commentRatio', 'coverage', 'duplication'].includes(def.key);
+  const txt = isRatio ? `${d > 0 ? '+' : ''}${(d * 100).toFixed(1)} pp` : def.key === 'testRatio' ? `${d > 0 ? '+' : ''}${d.toFixed(2)}` : `${d > 0 ? '+' : ''}${n(d)}`;
+  return `<span class="delta ${cls}">${txt}</span>`;
+}
+
+function renderKpis() {
+  const now = metrics(PAYLOAD.current);
+  const before = metrics(compareSnapshot());
+  $('kpis').innerHTML = KPI_DEFS.map((def) => `
+    <div class="kpi">
+      <span class="label">${def.label}</span>
+      <span class="value">${def.fmt(now[def.key])}</span>
+      ${deltaHtml(def, now[def.key], before?.[def.key])}
+      <span class="hint">${def.hint(now)}</span>
+    </div>`).join('');
+}
+
+// ---------- tooltip ----------
+function bindTips(root) {
+  const tip = $('tip');
+  root.querySelectorAll('[data-tip]').forEach((el) => {
+    el.addEventListener('pointermove', (e) => {
+      tip.innerHTML = el.dataset.tip;
+      tip.hidden = false;
+      const x = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 8);
+      tip.style.left = `${Math.max(8, x)}px`;
+      tip.style.top = `${e.clientY + 14}px`;
+    });
+    el.addEventListener('pointerleave', () => { tip.hidden = true; });
+  });
+}
+
+// ---------- gráficos SVG ----------
+function niceMax(v) {
+  if (v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  const m = v / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
+function ticks(max, count = 4) {
+  return Array.from({ length: count + 1 }, (_, i) => (max / count) * i);
+}
+
+function legendHtml(parts) {
+  return `<div class="legend">${parts.map((p) => `<span><i class="swatch" style="background:${p.color}"></i>${esc(p.label)}</span>`).join('')}</div>`;
+}
+
+// Barras horizontales apiladas: una fila por categoría, segmentos por `parts`.
+function stackedBars(rows, parts, opts = {}) {
+  const W = 560, rowH = 26, labelW = opts.labelW ?? 92, padR = 56, top = 4;
+  const H = top + rows.length * rowH + 22;
+  const max = niceMax(Math.max(1, ...rows.map((r) => parts.reduce((a, p) => a + (r[p.key] ?? 0), 0))));
+  const x = (v) => labelW + (v / max) * (W - labelW - padR);
+  let svg = ticks(max).map((t) => `<line class="gridline" x1="${x(t)}" x2="${x(t)}" y1="${top}" y2="${H - 20}"/><text x="${x(t)}" y="${H - 6}" text-anchor="middle">${n(t)}</text>`).join('');
+  rows.forEach((r, i) => {
+    const y = top + i * rowH + 5, h = rowH - 10;
+    let acc = 0;
+    svg += `<text x="${labelW - 8}" y="${y + h / 2 + 4}" text-anchor="end" style="fill:var(--ink-2)">${esc(r.label)}</text>`;
+    const total = parts.reduce((a, p) => a + (r[p.key] ?? 0), 0);
+    parts.forEach((p, j) => {
+      const v = r[p.key] ?? 0;
+      if (!v) return;
+      const x0 = x(acc), x1 = x(acc + v);
+      const isLast = parts.slice(j + 1).every((q) => !(r[q.key] > 0));
+      const w = Math.max(1, x1 - x0 - (isLast ? 0 : 2));
+      svg += `<rect x="${x0}" y="${y}" width="${w}" height="${h}" rx="${isLast ? 3 : 0}" fill="${p.color}" ${tip(`<b>${esc(r.label)}</b><br>${esc(p.label)}: ${n(v)} (${pct(v / total)})`)}/>`;
+      acc += v;
+    });
+    svg += `<text x="${x(acc) + 6}" y="${y + h / 2 + 4}" class="num">${n(total)}</text>`;
+  });
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.aria ?? '')}">${svg}</svg>${legendHtml(parts)}`;
+}
+
+// Columnas apiladas: una columna por bucket, segmentos por `parts`.
+function stackedColumns(cols, parts, opts = {}) {
+  const W = 560, H = 220, padL = 40, padB = 26, top = 16;
+  const totals = cols.map((c) => parts.reduce((a, p) => a + (c[p.key] ?? 0), 0));
+  const max = niceMax(Math.max(1, ...totals));
+  const band = (W - padL) / cols.length, bw = Math.min(56, band * 0.62);
+  const y = (v) => H - padB - (v / max) * (H - padB - top);
+  let svg = ticks(max).map((t) => `<line class="gridline" x1="${padL}" x2="${W}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${n(t)}</text>`).join('');
+  cols.forEach((c, i) => {
+    const cx = padL + band * i + band / 2;
+    let acc = 0;
+    parts.forEach((p, j) => {
+      const v = c[p.key] ?? 0;
+      if (!v) return;
+      const isLast = parts.slice(j + 1).every((q) => !(c[q.key] > 0));
+      const y0 = y(acc), y1 = y(acc + v);
+      const h = Math.max(1, y0 - y1 - (isLast ? 0 : 2));
+      svg += `<rect x="${cx - bw / 2}" y="${y1 + (isLast ? 0 : 2)}" width="${bw}" height="${h}" rx="${isLast ? 3 : 0}" fill="${p.color}" ${tip(`<b>${esc(c.label)} líneas</b><br>${esc(p.label)}: ${n(v)} ${opts.unit ?? 'archivos'}`)}/>`;
+      acc += v;
+    });
+    if (opts.flag?.(c)) svg += `<rect x="${cx - band / 2}" y="${top - 12}" width="${band}" height="${H - padB - top + 12}" fill="var(--down)" opacity=".05"/>`;
+    svg += `<text x="${cx}" y="${y(totals[i]) - 5}" text-anchor="middle" class="num" style="fill:var(--ink-2)">${n(totals[i])}</text>`;
+    svg += `<text x="${cx}" y="${H - 8}" text-anchor="middle">${esc(c.label)}</text>`;
+  });
+  svg += `<line class="axis-line" x1="${padL}" x2="${W}" y1="${H - padB}" y2="${H - padB}"/>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.aria ?? '')}">${svg}</svg>${parts.length > 1 ? legendHtml(parts) : ''}`;
+}
+
+// Líneas en el tiempo. `series`: [{label, color, values: [número|null por punto]}]. Los null cortan la línea.
+function lineChart(points, series, opts = {}) {
+  const W = 520, H = 200, padL = 48, padR = 16, padB = 26, top = 12;
+  const vals = series.flatMap((s) => s.values).filter((v) => v != null);
+  if (!vals.length) return `<div class="empty">Ninguna corrida guardada tiene este dato todavía.</div>`;
+  const max = opts.max ?? niceMax(Math.max(...vals));
+  const xs = (i) => (points.length === 1 ? (padL + W - padR) / 2 : padL + (i / (points.length - 1)) * (W - padL - padR));
+  const y = (v) => H - padB - (v / max) * (H - padB - top);
+  const f = opts.fmt ?? n;
+  let svg = ticks(max).map((t) => `<line class="gridline" x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${f(t)}</text>`).join('');
+  const every = Math.max(1, Math.ceil(points.length / 6));
+  points.forEach((p, i) => {
+    if (i % every === 0 || i === points.length - 1) svg += `<text x="${xs(i)}" y="${H - 8}" text-anchor="middle">${esc(shortDate(p.run.commitDate))}</text>`;
+  });
+  for (const s of series) {
+    let d = '', open = false;
+    s.values.forEach((v, i) => {
+      if (v == null) { open = false; return; }
+      d += `${open ? 'L' : 'M'}${xs(i)},${y(v)}`;
+      open = true;
+    });
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s.values.forEach((v, i) => {
+      if (v == null) return;
+      const last = i === s.values.length - 1;
+      const bf = points[i].run.backfill;
+      svg += `<circle cx="${xs(i)}" cy="${y(v)}" r="${last ? 4.5 : 3.5}" class="ring" fill="${bf ? 'var(--surface)' : s.color}" stroke="${bf ? s.color : 'var(--surface)'}" stroke-width="2"/>`;
+    });
+  }
+  points.forEach((p, i) => {
+    const rows = series.filter((s) => s.values[i] != null).map((s) => `<span style="color:${s.color}">●</span> ${esc(s.label)}: ${f(s.values[i])}`).join('<br>');
+    const w = points.length === 1 ? W - padL - padR : (W - padL - padR) / (points.length - 1);
+    svg += `<rect class="hit" x="${xs(i) - w / 2}" y="${top}" width="${w}" height="${H - padB - top}" ${tip(`<b>${esc(runLabel(p))}</b>${p.run.backfill ? ' · backfill' : ''}<br>${rows || 'sin dato'}`)}/>`;
+  });
+  svg += `<line class="axis-line" x1="${padL}" x2="${W - padR}" y1="${H - padB}" y2="${H - padB}"/>`;
+  const legend = series.length > 1 ? legendHtml(series) : '';
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.aria ?? '')}">${svg}</svg>${legend}`;
+}
+
+function scatter(items, opts = {}) {
+  const W = 520, H = 260, padL = 44, padR = 16, padB = 34, top = 12;
+  if (!items.length) return `<div class="empty">Sin datos de commits para este ref.</div>`;
+  const maxX = niceMax(Math.max(...items.map((i) => i.code)));
+  const maxY = niceMax(Math.max(...items.map((i) => i.commits)));
+  const x = (v) => padL + (v / maxX) * (W - padL - padR);
+  const y = (v) => H - padB - (v / maxY) * (H - padB - top);
+  let svg = ticks(maxY).map((t) => `<line class="gridline" x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}"/><text x="${padL - 6}" y="${y(t) + 4}" text-anchor="end">${n(t)}</text>`).join('');
+  svg += ticks(maxX).map((t) => `<text x="${x(t)}" y="${H - 16}" text-anchor="middle">${n(t)}</text>`).join('');
+  svg += `<text x="${W - padR}" y="${H - 2}" text-anchor="end">líneas de código →</text><text x="${padL}" y="${top - 2}">commits ↑</text>`;
+  for (const i of items) {
+    svg += `<circle cx="${x(i.code)}" cy="${y(i.commits)}" r="5" class="ring" fill="${sectorColor(i.sector)}" ${tip(`<b>${esc(i.path)}</b><br>${n(i.code)} líneas · ${i.commits} commits`)}/>`;
+  }
+  svg += `<line class="axis-line" x1="${padL}" x2="${W - padR}" y1="${H - padB}" y2="${H - padB}"/>`;
+  const sectors = [...new Set(items.map((i) => i.sector))];
+  const legend = legendHtml(SECTOR_ORDER.filter((s) => sectors.includes(s)).map((s) => ({ label: s, color: sectorColor(s) })));
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.aria ?? '')}">${svg}</svg>${legend}`;
+}
+
+// ---------- tablas ----------
+function table(headers, rows) {
+  if (!rows.length) return `<div class="empty">Nada para mostrar con este filtro.</div>`;
+  const th = headers.map((h) => `<th class="${h.r ? 'r' : ''}">${h.label}</th>`).join('');
+  const tr = rows.map((cells) => `<tr>${cells.map((c, i) => `<td class="${headers[i].cls ?? (headers[i].r ? 'r' : '')}">${c}</td>`).join('')}</tr>`).join('');
+  return `<table><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`;
+}
+
+function barCell(v, max) {
+  return `<span class="bar-cell num" style="display:block"><i style="width:${max ? (v / max) * 100 : 0}%"></i><span style="position:relative">${n(v)}</span></span>`;
+}
+
+function pathCell(path, line) {
+  return esc(line ? `${path}:${line}` : path);
+}
+
+// ---------- secciones ----------
+function renderEvolution() {
+  const pts = history();
+  $('evo-note').textContent = pts.length <= 1
+    ? 'El historial arranca con esta corrida. Cada nueva corrida suma un punto; las anteriores no se recalculan.'
+    : `${pts.length} corridas guardadas. Los puntos huecos son backfills calculados desde git. Un dato que no existía en una corrida vieja queda como hueco en la línea.`;
+  const m = pts.map(metrics);
+  const sectors = state.sector === ALL ? SECTOR_ORDER.filter((s) => pts.some((p) => p.cube.some((r) => r.sector === s && CODE_KINDS.includes(r.kind)))) : [state.sector];
+  const codeSeries = sectors.map((s) => ({ label: s, color: sectorColor(s), values: pts.map((p) => sum(p.cube.filter((r) => r.sector === s && CODE_KINDS.includes(r.kind)), 'code')) }));
+  const single = (key, label) => [{ label, color: 'var(--accent)', values: m.map((x) => x[key]) }];
+  const charts = [
+    ['Líneas de código por sector', lineChart(pts, codeSeries, { aria: 'Líneas de código por sector en el tiempo' })],
+    ['Tests / producción', lineChart(pts, single('testRatio', 'Ratio'), { fmt: (v) => v.toFixed(2), aria: 'Ratio de tests en el tiempo' })],
+    ['Funciones >20 líneas', lineChart(pts, single('longFunctions', 'Funciones'), { aria: 'Funciones largas en el tiempo' })],
+    ['Marcadores de deuda en producción', lineChart(pts, single('debt', 'Marcadores'), { aria: 'Deuda en el tiempo' })],
+    ['Archivos >400 líneas', lineChart(pts, single('bigFiles', 'Archivos'), { aria: 'Archivos grandes en el tiempo' })],
+    ['Cobertura de líneas', lineChart(pts, single('coverage', 'Cobertura'), { max: 1, fmt: (v) => pct(v), aria: 'Cobertura en el tiempo' })],
+    ['Duplicación', lineChart(pts, single('duplication', 'Duplicación'), { fmt: (v) => pct(v, 1), aria: 'Duplicación en el tiempo' })],
+    ['Comentarios', lineChart(pts, single('commentRatio', 'Comentarios'), { fmt: (v) => pct(v), aria: 'Proporción de comentarios en el tiempo' })],
+  ];
+  $('evo-charts').innerHTML = charts.map(([t, c]) => `<div class="panel"><div class="panel-head"><h3>${t}</h3></div>${c}</div>`).join('');
+}
+
+function renderComposition() {
+  const snap = PAYLOAD.current;
+  const rows = codeRows(snap);
+  const byGroup = state.sector === ALL ? 'sector' : 'sub';
+  $('comp-title').textContent = state.sector === ALL ? 'Por sector' : `Por carpeta de ${state.sector}`;
+  const groups = Object.entries(Object.groupBy(rows, (r) => r[byGroup]))
+    .map(([label, rs]) => ({ label, code: sum(rs, 'code'), comment: sum(rs, 'comment'), blank: sum(rs, 'blank') }))
+    .sort((a, b) => b.code - a.code);
+  $('comp-chart').innerHTML = stackedBars(groups, LINE_PARTS, { aria: 'Líneas por sector' });
+  const before = compareSnapshot();
+  const beforeLang = before ? Object.groupBy(codeRows(before), (r) => r.lang) : null;
+  const langs = Object.entries(Object.groupBy(rows, (r) => r.lang))
+    .map(([lang, rs]) => ({ lang, files: sum(rs, 'files'), code: sum(rs, 'code'), comment: sum(rs, 'comment'), prev: beforeLang ? sum(beforeLang[lang] ?? [], 'code') : null }))
+    .sort((a, b) => b.code - a.code);
+  const maxCode = Math.max(0, ...langs.map((l) => l.code));
+  const headers = [{ label: 'Lenguaje' }, { label: 'Archivos', r: 1 }, { label: 'Código', r: 1 }, { label: 'Coment.', r: 1 }, { label: '% com.', r: 1 }, ...(before ? [{ label: 'Δ código', r: 1 }] : [])];
+  $('lang-table').innerHTML = table(headers, langs.map((l) => [
+    `<span class="mono">${esc(l.lang)}</span>`, n(l.files), barCell(l.code, maxCode), n(l.comment), pct(l.comment / (l.code + l.comment)),
+    ...(before ? [signed(l.code - l.prev)] : []),
+  ]));
+}
+
+function signed(d) {
+  if (!d) return '<span class="delta flat">0</span>';
+  return `<span class="delta flat">${d > 0 ? '+' : ''}${n(d)}</span>`;
+}
+
+function renderSizes() {
+  const snap = PAYLOAD.current;
+  const sizes = snap.fileSizes.filter(inSector);
+  const cols = FILE_BUCKETS.map((b) => {
+    const col = { label: b };
+    for (const p of KIND_PARTS) col[p.key] = sum(sizes.filter((s) => s.bucket === b && s.kind === p.key), 'files');
+    return col;
+  });
+  $('size-chart').innerHTML = stackedColumns(cols, KIND_PARTS, { flag: (c) => BIG_FILE_BUCKETS.includes(c.label), aria: 'Archivos por tamaño' });
+  const top = snap.largestFiles.filter(inSector).sort((a, b) => b.code - a.code).slice(0, 15);
+  const max = top[0]?.code ?? 0;
+  $('size-table').innerHTML = table([{ label: 'Archivo', cls: 'path' }, { label: 'Tipo' }, { label: 'Líneas', r: 1 }],
+    top.map((f) => [pathCell(f.path), `<span class="muted">${KIND_LABEL[f.kind] ?? f.kind}</span>`, barCell(f.code, max)]));
+}
+
+function renderFunctions() {
+  const snap = PAYLOAD.current;
+  const buckets = snap.functions.buckets.filter(inSector);
+  const cols = FN_BUCKETS.map((b) => ({ label: b, count: sum(buckets.filter((x) => x.bucket === b), 'count') }));
+  $('fn-chart').innerHTML = stackedColumns(cols, [{ key: 'count', label: 'Funciones', color: 'var(--q1)' }], { flag: (c) => c.label !== FN_BUCKETS[0], unit: 'funciones', aria: 'Funciones por largo' });
+  const top = snap.functions.top.filter(inSector).sort((a, b) => b.lines - a.lines).slice(0, 15);
+  const max = top[0]?.lines ?? 0;
+  $('fn-table').innerHTML = table([{ label: 'Función' }, { label: 'Ubicación', cls: 'path' }, { label: 'Líneas', r: 1 }],
+    top.map((f) => [`<span class="mono">${esc(f.name)}</span>`, pathCell(f.path, f.line), barCell(f.lines, max)]));
+}
+
+function renderHotspots() {
+  const hs = (PAYLOAD.current.hotspots ?? []).filter(inSector).sort((a, b) => b.score - a.score);
+  $('hot-chart').innerHTML = scatter(hs.slice(0, 40), { aria: 'Hotspots' });
+  $('hot-table').innerHTML = table([{ label: 'Archivo', cls: 'path' }, { label: 'Líneas', r: 1 }, { label: 'Commits', r: 1 }],
+    hs.slice(0, 15).map((h) => [pathCell(h.path), n(h.code), n(h.commits)]));
+}
+
+function debtBy(snap, marker, kind) {
+  return sum((snap?.debt ?? []).filter((d) => inSector(d) && d.marker === marker && (kind === KIND.test ? d.kind === KIND.test : d.kind !== KIND.test)), 'count');
+}
+
+function renderDebt() {
+  const before = compareSnapshot();
+  const headers = [{ label: 'Marcador' }, { label: 'Producción', r: 1 }, { label: 'Tests', r: 1 }, ...(before ? [{ label: 'Δ prod', r: 1 }] : [])];
+  $('debt-table').innerHTML = table(headers, Object.entries(DEBT_LABEL).map(([k, label]) => {
+    const prod = debtBy(PAYLOAD.current, k, KIND.prod);
+    const d = before ? prod - debtBy(before, k, KIND.prod) : null;
+    const cell = d == null ? [] : [d ? `<span class="delta ${d > 0 ? 'bad' : 'good'}">${d > 0 ? '+' : ''}${d}</span>` : '<span class="delta flat">0</span>'];
+    return [`<span class="mono">${esc(label)}</span>`, n(prod), n(debtBy(PAYLOAD.current, k, KIND.test)), ...cell];
+  }));
+}
+
+function renderCoverage() {
+  const cov = PAYLOAD.current.coverage;
+  if (!cov) {
+    $('cov-body').innerHTML = '<div class="empty">Esta corrida no midió cobertura. Elegila al invocar el skill para sumarla.</div>';
+    return;
+  }
+  const rows = cov.sectors.filter(inSector);
+  const bars = rows.map((r) => ({ label: r.sector, covered: r.linesCovered, uncovered: r.linesTotal - r.linesCovered }));
+  const parts = [{ key: 'covered', label: 'Cubiertas', color: 'var(--q1)' }, { key: 'uncovered', label: 'Sin cubrir', color: 'var(--q3)' }];
+  const untested = (cov.untested ?? []).filter(inSector).slice(0, 15);
+  const sqlNote = cov.sqlTestFiles ? `<p class="muted" style="margin:0;font-size:12.5px">Supabase no tiene cobertura medible; tiene ${n(cov.sqlTestFiles)} archivos de tests pgTAP.</p>` : '';
+  $('cov-body').innerHTML = `<div class="grid-2">
+    <div class="panel"><div class="panel-head"><h3>Líneas cubiertas por sector</h3></div>${stackedBars(bars, parts, { aria: 'Cobertura por sector' })}
+      ${table([{ label: 'Sector' }, { label: 'Líneas', r: 1 }, { label: 'Branches', r: 1 }], rows.map((r) => [esc(r.sector), pct(r.linesCovered / r.linesTotal, 1), pct(r.branchesCovered / r.branchesTotal, 1)]))}${sqlNote}</div>
+    <div class="panel"><div class="panel-head"><h3>Archivos de producción sin tests</h3></div>
+      ${table([{ label: 'Archivo', cls: 'path' }, { label: 'Líneas', r: 1 }], untested.map((u) => [pathCell(u.path), n(u.code)]))}</div>
+  </div>`;
+}
+
+function renderDuplication() {
+  const dup = PAYLOAD.current.duplication;
+  if (!dup) {
+    $('dup-body').innerHTML = '<div class="empty">Esta corrida no buscó duplicación. Elegila al invocar el skill para sumarla.</div>';
+    return;
+  }
+  const top = dup.top.filter((d) => inSector(d)).slice(0, 15);
+  const place = (p) => pathCell(`${p.path}:${p.start}-${p.end}`);
+  $('dup-body').innerHTML = `<div class="panel"><div class="panel-head"><h3>Bloques más largos</h3><span class="muted num">${n(dup.clones)} bloques · ${n(dup.duplicatedLines)} líneas · ${pct(dup.percentage / 100, 1)}</span></div>
+    <div class="table-wrap">${table([{ label: 'Líneas', r: 1 }, { label: 'Aparece en', cls: 'path' }, { label: 'Y en', cls: 'path' }], top.map((d) => [n(d.lines), place(d.a), place(d.b)]))}</div></div>`;
+}
+
+function renderChanges() {
+  const fc = PAYLOAD.fileChanges;
+  if (!fc || !PAYLOAD.base) {
+    $('chg-note').textContent = '';
+    $('chg-body').innerHTML = '<div class="empty">Esta corrida no se comparó contra otro ref. Pasá una base al invocar el skill (un tag, una branch o un commit) para ver qué archivos crecieron y cuáles se achicaron.</div>';
+    return;
+  }
+  $('chg-note').textContent = `${runLabel(PAYLOAD.base)} → ${runLabel(PAYLOAD.current)} · ${fc.added} archivos nuevos, ${fc.removed} eliminados.`;
+  const t = (list) => table([{ label: 'Archivo', cls: 'path' }, { label: 'Antes', r: 1 }, { label: 'Después', r: 1 }, { label: 'Δ', r: 1 }],
+    list.filter(inSector).map((c) => [pathCell(c.path), n(c.before), n(c.after), `<span class="delta flat">${c.diff > 0 ? '+' : ''}${n(c.diff)}</span>`]));
+  $('chg-body').innerHTML = `<div class="grid-2">
+    <div class="panel"><div class="panel-head"><h3>Más crecieron</h3></div><div class="table-wrap">${t(fc.grown)}</div></div>
+    <div class="panel"><div class="panel-head"><h3>Más se achicaron</h3></div><div class="table-wrap">${t(fc.shrunk)}</div></div>
+  </div>`;
+}
+
+function renderFindings() {
+  const list = (PAYLOAD.current.findings ?? []).filter((f) => state.sector === ALL || !f.sector || f.sector === state.sector)
+    .sort((a, b) => SEVERITY.indexOf(a.severity) - SEVERITY.indexOf(b.severity));
+  if (!list.length) {
+    $('findings').innerHTML = '<div class="empty">Sin hallazgos registrados para esta corrida.</div>';
+    return;
+  }
+  $('findings').innerHTML = list.map((f) => `
+    <article class="finding">
+      <div class="meta"><span class="pill ${esc(f.severity)}">${esc(f.severity)}</span><span>${esc(f.area ?? '')}</span>${f.path ? `<span class="mono">${pathCell(f.path, f.line)}</span>` : ''}</div>
+      <h3 style="color:var(--ink);font-size:14px;font-weight:600">${esc(f.title)}</h3>
+      <p>${esc(f.detail ?? '')}</p>
+    </article>`).join('');
+}
+
+// ---------- encabezado y filtros ----------
+function renderHeader() {
+  const r = PAYLOAD.current.run;
+  $('run-meta').innerHTML = `<span class="mono">${esc(r.ref)} · ${esc(r.sha.slice(0, 7))}</span> · commit del ${esc(shortDate(r.commitDate))} · medido ${esc(shortDate(r.generatedAt))}`;
+  const chips = [{ key: ALL, label: 'Todo' }, ...sectorsOf(PAYLOAD.current).map((s) => ({ key: s, label: s }))];
+  $('sector-chips').innerHTML = chips.map((c) => `<button type="button" class="chip" id="chip-${c.key}" data-sector="${c.key}" aria-pressed="${state.sector === c.key}">${c.key === ALL ? '' : `<i class="dot" style="background:${sectorColor(c.key)}"></i>`}${esc(c.label)}</button>`).join('');
+  const notes = [];
+  if (PAYLOAD.demo) notes.push(esc(PAYLOAD.demo));
+  if (r.backfill) notes.push('Esta corrida mide un ref del pasado (backfill), no el estado actual.');
+  $('notices').innerHTML = notes.map((t) => `<div class="notice">${t}</div>`).join('');
+}
+
+function renderAll() {
+  document.querySelectorAll('#sector-chips .chip').forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.sector === state.sector)));
+  renderKpis(); renderEvolution(); renderComposition(); renderSizes(); renderFunctions();
+  renderHotspots(); renderDebt(); renderDuplication(); renderCoverage(); renderChanges(); renderFindings();
+  bindTips(document.querySelector('.wrap'));
+}
+
+function remember() {
+  try { localStorage.setItem('codebase-stats:sector', state.sector); } catch {}
+}
+
+function recall() {
+  try { return localStorage.getItem('codebase-stats:sector'); } catch { return null; }
+}
+
+function start() {
+  const saved = recall();
+  if (saved && sectorsOf(PAYLOAD.current).includes(saved)) state.sector = saved;
+  state.compare = defaultCompare();
+  renderHeader();
+  buildCompareSelect();
+  $('sector-chips').addEventListener('click', (e) => {
+    const btn = e.target.closest('.chip');
+    if (!btn) return;
+    state.sector = btn.dataset.sector;
+    remember();
+    renderAll();
+  });
+  $('compare').addEventListener('change', (e) => { state.compare = e.target.value; renderAll(); });
+  renderAll();
+}
+
+start();
+</script>
