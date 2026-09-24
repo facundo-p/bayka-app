@@ -9,7 +9,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
 ## En pruebas · próxima versión
-<!-- sincronizado-hasta: e209e0a #605 -->
+<!-- sincronizado-hasta: 544d8cb #628 -->
 
 - **Reabrí una plantación finalizada.** Si una plantación se finalizó y quedó
   trabajo sin subir en algún celular, un superadmin puede volver a activarla
@@ -37,6 +37,24 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
     organización.
   - Poné el celular en modo avión y abrí una plantación → "Asignar técnicos".
   - Esperá ver: el aviso de que no hay conexión, en vez del cargando infinito.
+- **Las especies nuevas ya no desaparecen del celular.** Una especie agregada
+  desde la web sigue en la app aunque la cierres, y sus árboles muestran su
+  código en vez de "??". <!-- #618 -->
+  - En la app Bayka TEST, con una especie creada en la web de pruebas y
+    asignada a una plantación, sincronizá y registrá un árbol con esa especie.
+  - Cerrá la app del todo y volvé a abrirla, sin sincronizar.
+  - Esperá ver: el árbol con el código de la especie nueva y el botón de la
+    especie todavía disponible.
+- **Cambiar el código de una parcela o de un grupo actualiza sus árboles.** El
+  SubID de los árboles ya registrados toma el código nuevo, en tu celular, en
+  la web y en los demás celulares al sincronizar. <!-- #625 #628 -->
+  - En la app Bayka TEST, abrí una plantación con árboles registrados y
+    cambiá el código de una parcela (por ejemplo, de P1 a P9) y el de uno de
+    sus grupos.
+  - Sincronizá y abrí esa plantación en la web de pruebas → Datos → un árbol
+    del grupo.
+  - Esperá ver: el SubID empieza con los códigos nuevos, en la app y en la
+    web, y otro celular lo ve igual después de sincronizar.
 
 ## Web 1.3.0 · Mobile 1.2.0 · 19 de septiembre de 2026
 
