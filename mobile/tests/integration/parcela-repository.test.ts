@@ -3,10 +3,10 @@
  * Uses real SQLite via better-sqlite3 + drizzle migrations (incluida 0012).
  * Mocks `../../src/database/client` para que el repo use el mockTestDb.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import Database from 'better-sqlite3';
-import { plantations, parcelas, groups, trees } from '../../src/database/schema';
+import { plantations, parcelas, groups } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
 
 let mockTestDb: IntegrationDb;
@@ -45,11 +45,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Physical delete in FK order to clear tombstones too
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 });
 
 async function seedPlantation(overrides?: Parameters<typeof createTestPlantation>[0]): Promise<string> {

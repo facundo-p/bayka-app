@@ -2,7 +2,7 @@
 // Runs against real better-sqlite3 + drizzle migrations, so this exercises the
 // production upsert SQL.
 
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import {
   createTestPlantation,
   createTestGroup,
@@ -31,11 +31,7 @@ beforeAll(() => {
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await db.delete(trees);
-  await db.delete(groups);
-  await db.delete(parcelas);
-  await db.delete(plantations);
-  await db.delete(species);
+  await vaciarTablas(db);
 
   await db.insert(plantations).values(createTestPlantation({ id: PID }));
   await db.insert(species).values(createTestSpecies({ id: SP, codigo: 'EUC' }));

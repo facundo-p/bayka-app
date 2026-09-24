@@ -4,17 +4,9 @@
  * ocultas (visible_in_app=false). Corre la getPlantationsForRole real.
  */
 
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
-import {
-  plantations,
-  parcelas,
-  groups,
-  trees,
-  species,
-  plantationSpecies,
-  plantationUsers,
-} from '../../src/database/schema';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
+import { createTestPlantation, createTestParcela, createTestGroup } from '../helpers/factories';
+import { plantations, parcelas, groups, plantationUsers } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
 
@@ -49,14 +41,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear data in FK order
-  await db.delete(trees);
-  await db.delete(groups);
-  await db.delete(parcelas);
-  await db.delete(plantationSpecies);
-  await db.delete(plantationUsers);
-  await db.delete(plantations);
-  await db.delete(species);
+  await vaciarTablas(db);
 });
 
 /**

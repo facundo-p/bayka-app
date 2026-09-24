@@ -2,7 +2,7 @@
  * Integration tests: parcelaQueries
  * Real SQLite via better-sqlite3 + drizzle migrations.
  */
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
 import Database from 'better-sqlite3';
 import { plantations, parcelas, groups, trees } from '../../src/database/schema';
@@ -50,10 +50,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  await mockTestDb.delete(trees);
-  await mockTestDb.delete(groups);
-  await mockTestDb.delete(parcelas);
-  await mockTestDb.delete(plantations);
+  await vaciarTablas(mockTestDb);
 });
 
 async function seedPlantation(): Promise<string> {

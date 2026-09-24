@@ -7,7 +7,7 @@
  * Uses sqlite.transaction() for proper atomic cascade delete testing.
  */
 
-import { createTestDb, closeTestDb, IntegrationDb } from '../helpers/integrationDb';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import {
   plantations,
@@ -36,14 +36,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
-  // Clear data in full FK order
-  await db.delete(trees);
-  await db.delete(groups);
-  await db.delete(parcelas);
-  await db.delete(plantationSpecies);
-  await db.delete(plantationUsers);
-  await db.delete(plantations);
-  await db.delete(species);
+  await vaciarTablas(db);
 });
 
 /**
