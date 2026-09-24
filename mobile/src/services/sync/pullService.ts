@@ -26,7 +26,7 @@ import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 import { asegurarEspecies } from './catalogoDeEspecies';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
-import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
+import { recalcularSubIdsDeLaParcela, recalcularSubIdsDelGrupo } from '../../repositories/subIdsDeArboles';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -313,6 +313,74 @@ async function reescribirSubIdsDeParcelasPendientes(divergentes: CodigoDivergent
   });
 }
 
+type GrupoLocal = { pendingSync: boolean; codigo: string };
+
+async function gruposLocales(plantacionId: string): Promise<Map<string, GrupoLocal>> {
+  const filas = await db
+    .select({ id: groups.id, pendingSync: groups.pendingSync, codigo: groups.codigo })
+    .from(groups)
+    .where(eq(groups.plantacionId, plantacionId));
+  return new Map(filas.map(({ id, ...local }) => [id, local]));
+}
+
+/** Local push wins: los grupos con cambios sin subir no se escriben. */
+async function escribirLoteDeGrupos(tx: Tx, lote: any[], locales: Map<string, GrupoLocal>): Promise<void> {
+  const aEscribir = lote.filter((sg: any) => !locales.get(sg.id)?.pendingSync);
+  if (aEscribir.length === 0) return;
+  await upsertGrupos(tx, aEscribir);
+  await recalcularGruposRenombrados(tx, aEscribir, locales);
+}
+
+async function upsertGrupos(tx: Tx, remotos: any[]): Promise<void> {
+  await tx.insert(groups).values(remotos.map((sg: any) => ({
+    id: sg.id,
+    plantacionId: sg.plantation_id,
+    parcelaId: sg.parcela_id,
+    nombre: sg.nombre,
+    codigo: sg.codigo,
+    tipo: sg.tipo,
+    estado: sg.estado,
+    usuarioCreador: sg.usuario_creador,
+    createdAt: sg.created_at,
+    pendingSync: false,
+  }))).onConflictDoUpdate({
+    target: groups.id,
+    set: {
+      parcelaId: sql`excluded.parcela_id`,
+      estado: sql`excluded.estado`,
+      nombre: sql`excluded.nombre`,
+      codigo: sql`excluded.codigo`,
+    },
+  });
+}
+
+/**
+ * Otro dispositivo renombró el grupo (#626): el pull de árboles conserva el SubID local, así que se
+ * reescribe acá. Corre después de pullParcelas, con el código de parcela ya al día. No marca nada.
+ */
+async function recalcularGruposRenombrados(tx: Tx, remotos: any[], locales: Map<string, GrupoLocal>): Promise<void> {
+  const renombrados = remotos.filter((sg: any) => {
+    const anterior = locales.get(sg.id)?.codigo;
+    return anterior != null && anterior !== sg.codigo;
+  });
+  if (renombrados.length === 0) return;
+  const codigosDeParcela = await codigosDeParcelas(tx, renombrados.map((sg: any) => sg.parcela_id));
+  for (const sg of renombrados) {
+    const parcelaCodigo = codigosDeParcela.get(sg.parcela_id);
+    if (parcelaCodigo == null) continue;
+    await recalcularSubIdsDelGrupo(tx, sg.id,
+      { parcelaCodigo, grupoCodigo: locales.get(sg.id)!.codigo },
+      { parcelaCodigo, grupoCodigo: sg.codigo },
+    );
+  }
+}
+
+async function codigosDeParcelas(tx: Tx, ids: string[]): Promise<Map<string, string>> {
+  const filas = await tx.select({ id: parcelas.id, codigo: parcelas.codigo })
+    .from(parcelas).where(inArray(parcelas.id, ids));
+  return new Map(filas.map((f: { id: string; codigo: string }) => [f.id, f.codigo]));
+}
+
 /** Ids remotos de los grupos, y cuáles de ellos tienen cambios locales sin subir. */
 interface GruposDelPull {
   ids: string[];
@@ -343,12 +411,9 @@ async function pullGroups(
   emitProgress(onProgress, DOWNLOAD_PHASE.groups, 0, all.length);
   if (all.length === 0) return { ids: [], pendientes: new Set() };
 
-  // Pre-fetch de ids con cambios pendientes (igual que pullParcelas): el pull no debe pisar un grupo dirty (p.ej. una transición activa→finalizada sin subir).
-  const localRows = await db
-    .select({ id: groups.id, pendingSync: groups.pendingSync })
-    .from(groups)
-    .where(eq(groups.plantacionId, plantacionId));
-  const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
+  // Pre-fetch (igual que pullParcelas): el pull no debe pisar un grupo dirty (p.ej. una transición activa→finalizada sin subir).
+  const locales = await gruposLocales(plantacionId);
+  const pendingLocally = new Set([...locales].filter(([, g]) => g.pendingSync).map(([id]) => id));
 
   // #90: parcela obligatoria; el throw aborta el pull y se reporta en la UI de sync
   // (no se degrada insertando null en silencio). Se valida antes de escribir nada:
@@ -360,30 +425,7 @@ async function pullGroups(
     throw new Error(`Grupo ${sinParcela.id} sin parcela en el server: dato inválido (#90).`);
   }
 
-  await enTransaccionPorLotes(all, async (tx, lote) => {
-      // Local push wins.
-      const aEscribir = lote.filter((sg: any) => !pendingLocally.has(sg.id));
-      if (aEscribir.length === 0) return;
-      await tx.insert(groups).values(aEscribir.map((sg: any) => ({
-        id: sg.id,
-        plantacionId: sg.plantation_id,
-        parcelaId: sg.parcela_id,
-        nombre: sg.nombre,
-        codigo: sg.codigo,
-        tipo: sg.tipo,
-        estado: sg.estado,
-        usuarioCreador: sg.usuario_creador,
-        createdAt: sg.created_at,
-        pendingSync: false,
-      }))).onConflictDoUpdate({
-        target: groups.id,
-        set: {
-          parcelaId: sql`excluded.parcela_id`,
-          estado: sql`excluded.estado`,
-          nombre: sql`excluded.nombre`,
-        },
-      });
-    },
+  await enTransaccionPorLotes(all, (tx, lote) => escribirLoteDeGrupos(tx, lote, locales),
     alEscribirLote(onProgress, DOWNLOAD_PHASE.groups, all.length),
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.groups, all.length, all.length);

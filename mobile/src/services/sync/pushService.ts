@@ -274,7 +274,9 @@ async function subirFotosDelGrupo(
 
 // COMPAT: el RPC sync_subgroup espera claves viejas (subgroup_id) hasta retirar el shim
 // server-side; los REST calls directos ya usan groups/group_id.
-function payloadDeGrupo(sg: Group) {
+// `parcela_codigo`: el código con el que se armaron los SubID; el server lo cambia
+// por el vigente si difieren (#626).
+function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
   return {
     id: sg.id,
     plantation_id: sg.plantacionId,
@@ -285,6 +287,7 @@ function payloadDeGrupo(sg: Group) {
     estado: sg.estado,
     usuario_creador: sg.usuarioCreador,
     created_at: sg.createdAt,
+    parcela_codigo: parcelaCodigo,
   };
 }
 
@@ -317,11 +320,12 @@ function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>
 export async function uploadGroup(
   sg: Group,
   sgTrees: ArbolDeGrupo[],
+  parcelaCodigo: string,
   onPhotoProgress?: (progress: PhotoSyncProgress) => void,
 ) {
   const photoMap = await subirFotosDelGrupo(sg, sgTrees, onPhotoProgress);
   const respuesta = await supabase.rpc('sync_subgroup', {
-    p_subgroup: payloadDeGrupo(sg),
+    p_subgroup: payloadDeGrupo(sg, parcelaCodigo),
     p_trees: payloadDeArboles(sgTrees, photoMap),
   });
   if (!respuesta.error && respuesta.data?.success === true) {
@@ -362,9 +366,12 @@ export function classifyRpcResult(
 
 // ─── Parcela-ready gate for groups ──────────────────────
 
-/** Un grupo solo se sube si su parcela está sync-ready (sin cambios pendientes, no tombstoned); si no, se reporta PARCELA_PENDING (#90). */
-async function isParcelaSyncReady(parcelaId: string): Promise<boolean> {
-  const [row] = await db.select({ id: parcelasTable.id })
+/**
+ * Un grupo solo se sube si su parcela está sync-ready (sin cambios pendientes, no tombstoned); si no,
+ * se reporta PARCELA_PENDING (#90). Devuelve su código, o null si no está lista.
+ */
+async function codigoDeParcelaLista(parcelaId: string): Promise<string | null> {
+  const [row] = await db.select({ codigo: parcelasTable.codigo })
     .from(parcelasTable)
     .where(and(
       eq(parcelasTable.id, parcelaId),
@@ -372,7 +379,7 @@ async function isParcelaSyncReady(parcelaId: string): Promise<boolean> {
       isNull(parcelasTable.deletedAt),
     ))
     .limit(1);
-  return row != null;
+  return row?.codigo ?? null;
 }
 
 // ─── Upload syncable groups ───────────────────────────────────────────────
@@ -390,7 +397,8 @@ export async function uploadSyncableGroups(
     const sg = pending[i];
     onProgress?.({ total: pending.length, completed: i, currentName: sg.nombre });
 
-    if (!(await isParcelaSyncReady(sg.parcelaId))) {
+    const parcelaCodigo = await codigoDeParcelaLista(sg.parcelaId);
+    if (parcelaCodigo == null) {
       syncLog.info(`Skipping group "${sg.nombre}" (${sg.id}) — parcela ${sg.parcelaId} pending`);
       results.push({
         success: false,
@@ -404,7 +412,7 @@ export async function uploadSyncableGroups(
 
     const sgTrees = await db.select().from(trees).where(eq(trees.groupId, sg.id));
     try {
-      const { data, error } = await uploadGroup(sg, sgTrees, onPhotoProgress);
+      const { data, error } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
       if (result.success) await markGroupSynced(sg.id);
       results.push(result);

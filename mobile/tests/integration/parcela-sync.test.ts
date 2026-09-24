@@ -590,6 +590,52 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     expect(parcela).toMatchObject({ codigo: 'P9', pendingSync: false });
   });
 
+  test('pull con otro código de grupo lo adopta y recalcula sus SubID; el pendiente conserva el local (#626)', async () => {
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'P1', nombre: 'Norte', pendingSync: false });
+    const grupo = (id: string, codigo: string, pendingSync: boolean) => ({
+      id, plantacionId: pid, parcelaId: parcId, nombre: codigo, codigo,
+      tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync,
+    });
+    await mockTestDb.insert(groups).values([grupo('g-limpio', 'L1', false), grupo('g-pendiente', 'L2', true)]);
+    await mockTestDb.insert(species).values([
+      { id: 'sp-euc', nombre: 'Eucalyptus', codigo: 'EUC', nombreCientifico: null, createdAt: now },
+    ]);
+    const arbol = (id: string, groupId: string, subId: string) => ({
+      id, groupId, especieId: 'sp-euc', posicion: 1, subId, fotoUrl: null, plantacionId: null, globalId: null,
+      usuarioRegistro: 'user-tecnico-1', createdAt: now,
+    });
+    await mockTestDb.insert(trees).values([arbol('a1', 'g-limpio', 'P1L1EUC1'), arbol('b1', 'g-pendiente', 'P1L2EUC1')]);
+
+    // En el server cambiaron el código de la parcela y el de los dos grupos.
+    insertServerParcela({
+      id: parcId, plantation_id: pid, nombre: 'Norte', codigo: 'P9', descripcion: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    });
+    for (const [id, codigo] of [['g-limpio', 'L7'], ['g-pendiente', 'L8']]) {
+      serverState.groups.set(id, {
+        id, plantation_id: pid, parcela_id: parcId, nombre: `Grupo ${codigo}`, codigo,
+        tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now,
+      });
+    }
+    serverState.trees.set('a1', {
+      id: 'a1', group_id: 'g-limpio', species_id: 'sp-euc', posicion: 1, sub_id: 'P9L7EUC1',
+      foto_url: null, usuario_registro: 'user-tecnico-1', created_at: now,
+    });
+
+    await pullFromServer(pid);
+
+    const filas = await mockTestDb.select({ id: trees.id, subId: trees.subId }).from(trees);
+    expect(Object.fromEntries(filas.map((t) => [t.id, t.subId]))).toEqual({ a1: 'P9L7EUC1', b1: 'P9L2EUC1' });
+    const grupos = await mockTestDb
+      .select({ id: groups.id, codigo: groups.codigo, nombre: groups.nombre, p: groups.pendingSync }).from(groups);
+    expect(Object.fromEntries(grupos.map(({ id, ...g }) => [id, g]))).toEqual({
+      'g-limpio': { codigo: 'L7', nombre: 'Grupo L7', p: false },
+      'g-pendiente': { codigo: 'L2', nombre: 'L2', p: true },
+    });
+  });
+
   test('parcela con código cambiado sin subir: los árboles que baja el pull pasan al código local (#623)', async () => {
     const { pid, parcId } = await sembrarParcelaPendienteConArbolAjeno();
 
