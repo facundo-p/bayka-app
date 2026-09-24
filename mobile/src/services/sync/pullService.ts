@@ -26,6 +26,7 @@ import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 import { asegurarEspecies } from './catalogoDeEspecies';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
+import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
 
@@ -196,6 +197,65 @@ interface RemoteParcela {
   deleted_at: string | null;
 }
 
+type ParcelaLocal = { pendingSync: boolean; codigo: string };
+
+/** Un solo select previo: evita una lectura por parcela dentro del loop. */
+async function parcelasLocales(plantacionId: string): Promise<Map<string, ParcelaLocal>> {
+  const filas = await db
+    .select({ id: parcelas.id, pendingSync: parcelas.pendingSync, codigo: parcelas.codigo })
+    .from(parcelas)
+    .where(eq(parcelas.plantacionId, plantacionId));
+  return new Map(filas.map(({ id, ...local }) => [id, local]));
+}
+
+/** Una parcela con cambios locales sin subir no se pisa: el push que sigue gana. */
+async function escribirLoteDeParcelas(tx: Tx, lote: RemoteParcela[], locales: Map<string, ParcelaLocal>): Promise<void> {
+  const aEscribir = lote.filter((remota) => !locales.get(remota.id)?.pendingSync);
+  if (aEscribir.length === 0) return;
+  await upsertParcelas(tx, aEscribir);
+  await recalcularCodigosCambiados(tx, aEscribir, locales);
+}
+
+async function upsertParcelas(tx: Tx, remotas: RemoteParcela[]): Promise<void> {
+  await tx.insert(parcelas).values(remotas.map((remoteParcela) => ({
+    id: remoteParcela.id,
+    plantacionId: remoteParcela.plantation_id,
+    nombre: remoteParcela.nombre,
+    codigo: remoteParcela.codigo,
+    descripcion: remoteParcela.descripcion ?? null,
+    pendingSync: false,
+    createdAt: remoteParcela.created_at,
+    updatedAt: remoteParcela.updated_at,
+    deletedAt: remoteParcela.deleted_at ?? null,
+  }))).onConflictDoUpdate({
+    target: parcelas.id,
+    set: {
+      nombre: sql`excluded.nombre`,
+      codigo: sql`excluded.codigo`,
+      descripcion: sql`excluded.descripcion`,
+      updatedAt: sql`excluded.updated_at`,
+      deletedAt: sql`excluded.deleted_at`,
+      pendingSync: sql`CASE WHEN ${parcelas.pendingSync} = 1 THEN 1 ELSE 0 END`,
+    },
+  });
+}
+
+/**
+ * Otro dispositivo cambió el código: los SubID locales se reescriben acá, incluidos los de grupos
+ * pendientes, porque el pull de árboles conserva el SubID local. No marca nada para sync.
+ */
+async function recalcularCodigosCambiados(
+  tx: Tx,
+  remotas: RemoteParcela[],
+  locales: Map<string, ParcelaLocal>,
+): Promise<void> {
+  for (const remota of remotas) {
+    const anterior = locales.get(remota.id)?.codigo;
+    if (anterior == null || anterior === remota.codigo) continue;
+    await recalcularSubIdsDeLaParcela(tx, remota.id, { anterior, nuevo: remota.codigo });
+  }
+}
+
 /** Trae parcelas del server y las upsertea local; si pending_sync=true localmente (cambio o tombstone sin subir), no se sobrescribe — el push subsiguiente gana. */
 async function pullParcelas(
   plantacionId: string,
@@ -217,39 +277,8 @@ async function pullParcelas(
   emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, 0, all.length);
   if (all.length === 0) return [];
 
-  // Pre-fetch de ids con cambios pendientes: evita una lectura extra por parcela dentro del loop.
-  const localRows = await db
-    .select({ id: parcelas.id, pendingSync: parcelas.pendingSync })
-    .from(parcelas)
-    .where(eq(parcelas.plantacionId, plantacionId));
-  const pendingLocally = new Set(localRows.filter((r) => r.pendingSync).map((r) => r.id));
-
-  await enTransaccionPorLotes(all, async (tx, lote) => {
-      // Local push wins.
-      const aEscribir = lote.filter((remoteParcela) => !pendingLocally.has(remoteParcela.id));
-      if (aEscribir.length === 0) return;
-      await tx.insert(parcelas).values(aEscribir.map((remoteParcela) => ({
-        id: remoteParcela.id,
-        plantacionId: remoteParcela.plantation_id,
-        nombre: remoteParcela.nombre,
-        codigo: remoteParcela.codigo,
-        descripcion: remoteParcela.descripcion ?? null,
-        pendingSync: false,
-        createdAt: remoteParcela.created_at,
-        updatedAt: remoteParcela.updated_at,
-        deletedAt: remoteParcela.deleted_at ?? null,
-      }))).onConflictDoUpdate({
-        target: parcelas.id,
-        set: {
-          nombre: sql`excluded.nombre`,
-          codigo: sql`excluded.codigo`,
-          descripcion: sql`excluded.descripcion`,
-          updatedAt: sql`excluded.updated_at`,
-          deletedAt: sql`excluded.deleted_at`,
-          pendingSync: sql`CASE WHEN ${parcelas.pendingSync} = 1 THEN 1 ELSE 0 END`,
-        },
-      });
-    },
+  const locales = await parcelasLocales(plantacionId);
+  await enTransaccionPorLotes(all, (tx, lote) => escribirLoteDeParcelas(tx, lote, locales),
     alEscribirLote(onProgress, DOWNLOAD_PHASE.parcelas, all.length),
   );
   emitProgress(onProgress, DOWNLOAD_PHASE.parcelas, all.length, all.length);

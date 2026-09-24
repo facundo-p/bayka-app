@@ -13,6 +13,8 @@ import {
   plantations,
   parcelas,
   groups,
+  trees,
+  species,
 } from '../../src/database/schema';
 import { eq } from 'drizzle-orm';
 
@@ -489,6 +491,59 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     // Clean: toma el estado del server.
     const [clean] = await mockTestDb.select().from(groups).where(eq(groups.id, 'g-clean'));
     expect(clean.estado).toBe('finalizada');
+  });
+
+  test('pull con otro código de parcela recalcula los SubID locales sin marcar nada (#623)', async () => {
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    const parcId = await insertLocalParcela({ plantacionId: pid, codigo: 'P1', nombre: 'Norte', pendingSync: false });
+    const grupo = (id: string, codigo: string, pendingSync: boolean) => ({
+      id, plantacionId: pid, parcelaId: parcId, nombre: codigo, codigo,
+      tipo: 'linea', estado: 'activa', usuarioCreador: 'user-tecnico-1', createdAt: now, pendingSync,
+    });
+    const locales = [grupo('g-limpio', 'L1', false), grupo('g-pendiente', 'L2', true)];
+    await mockTestDb.insert(groups).values(locales);
+    await mockTestDb.insert(species).values([
+      { id: 'sp-euc', nombre: 'Eucalyptus', codigo: 'EUC', nombreCientifico: null, createdAt: now },
+      { id: 'sp-kok', nombre: 'Recuperada', codigo: 'recuperada:sp-kok', nombreCientifico: null, createdAt: now },
+    ]);
+    const arbol = (id: string, groupId: string, especieId: string, posicion: number, subId: string) => ({
+      id, groupId, especieId, posicion, subId, fotoUrl: null, plantacionId: null, globalId: null,
+      usuarioRegistro: 'user-tecnico-1', createdAt: now,
+    });
+    await mockTestDb.insert(trees).values([
+      arbol('a1', 'g-limpio', 'sp-euc', 1, 'P1L1EUC1'),
+      arbol('a2', 'g-limpio', 'sp-kok', 2, 'P1L1KOK2'),
+      arbol('b1', 'g-pendiente', 'sp-euc', 1, 'P1L2EUC1'),
+    ]);
+
+    insertServerParcela({
+      id: parcId, plantation_id: pid, nombre: 'Norte', codigo: 'P9', descripcion: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    });
+    for (const g of locales) {
+      serverState.groups.set(g.id, {
+        id: g.id, plantation_id: pid, parcela_id: parcId, nombre: g.nombre, codigo: g.codigo,
+        tipo: 'linea', estado: 'activa', usuario_creador: 'user-tecnico-1', created_at: now,
+      });
+    }
+    // Lo que deja el trigger del server: los árboles del grupo limpio con el prefijo nuevo.
+    const remoto = (id: string, especie: string, posicion: number, subId: string) => ({
+      id, group_id: 'g-limpio', species_id: especie, posicion, sub_id: subId,
+      foto_url: null, usuario_registro: 'user-tecnico-1', created_at: now,
+    });
+    serverState.trees.set('a1', remoto('a1', 'sp-euc', 1, 'P9L1EUC1'));
+    serverState.trees.set('a2', remoto('a2', 'sp-kok', 2, 'P9L1KOK2'));
+
+    await pullFromServer(pid);
+
+    const filas = await mockTestDb.select({ id: trees.id, subId: trees.subId }).from(trees);
+    expect(Object.fromEntries(filas.map((t) => [t.id, t.subId])))
+      .toEqual({ a1: 'P9L1EUC1', a2: 'P9L1KOK2', b1: 'P9L2EUC1' });
+    const grupos = await mockTestDb.select({ id: groups.id, p: groups.pendingSync }).from(groups);
+    expect(Object.fromEntries(grupos.map((g) => [g.id, g.p]))).toEqual({ 'g-limpio': false, 'g-pendiente': true });
+    const [parcela] = await mockTestDb.select().from(parcelas).where(eq(parcelas.id, parcId));
+    expect(parcela).toMatchObject({ codigo: 'P9', pendingSync: false });
   });
 
   test('tombstone push: parcela con deletedAt sube y queda pending_sync=false', async () => {

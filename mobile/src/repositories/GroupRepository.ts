@@ -10,7 +10,9 @@ import { getTreeEditGating } from '../utils/permisosDeEdicion';
 import type { EstadoDeEdicionDePlantacion } from '../utils/permisosDeEdicion';
 import { plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
-import { isUniqueConstraintError, isNameUniqueConstraintError } from '../database/sqliteErrors';
+import { isUniqueConstraintError, errorDeDuplicado } from '../database/sqliteErrors';
+import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
+import { ERROR_DE_EDICION, type ErrorDeEdicion } from '../constants/errorDeEdicion';
 import type { GroupTipo } from '../constants/groupTipo';
 import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
@@ -169,7 +171,7 @@ export function canEdit(
 
 export type UpdateGroupResult =
   | { success: true }
-  | { success: false; error: 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate' | 'unknown' };
+  | { success: false; error: 'codigo_duplicate' | 'nombre_duplicate' | 'both_duplicate' | ErrorDeEdicion | 'unknown' };
 
 export async function updateGroup(
   id: string,
@@ -201,53 +203,54 @@ export async function updateGroup(
   return { success: true };
 }
 
-/** Updates group codigo and recalculates all tree subIds in a transaction. */
+/**
+ * Cambia el codigo del grupo y recalcula el SubID de sus árboles. `codigoAnterior` lo da quien
+ * llama: `updateGroup` ya pudo haber escrito el nuevo, y sin el anterior la especie recuperada
+ * no se puede leer del SubID.
+ */
 export async function updateGroupCode(
   id: string,
   newCodigo: string,
-  _oldCodigo: string
+  codigoAnterior: string,
 ): Promise<UpdateGroupResult> {
   const upperCodigo = newCodigo.toUpperCase();
-
-  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId, codigo: groups.codigo })
+  const [current] = await db.select({ plantacionId: groups.plantacionId, parcelaId: groups.parcelaId })
     .from(groups).where(eq(groups.id, id));
   if (!current) return { success: false, error: 'unknown' };
-
-  // Per-parcela uniqueness; fallback to per-plantacion if legacy row has no parcelaId.
-  const scopeCond = current.parcelaId
-    ? eq(groups.parcelaId, current.parcelaId)
-    : eq(groups.plantacionId, current.plantacionId);
-  const [existingCodigo] = await db.select({ id: groups.id })
-    .from(groups)
-    .where(and(scopeCond, eq(groups.codigo, upperCodigo), sql`${groups.id} != ${id}`))
-    .limit(1);
-  if (existingCodigo) return { success: false, error: 'codigo_duplicate' };
-
-  const parcelaCodigo = await getGroupParcelaCodigo(id);
-
-  try {
-    await enTransaccion(async (tx) => {
-      await tx.update(groups)
-        .set({ codigo: upperCodigo })
-        .where(eq(groups.id, id));
-      await recalcularSubIdsDelGrupo(
-        tx, id,
-        { parcelaCodigo, grupoCodigo: current.codigo },
-        { parcelaCodigo, grupoCodigo: upperCodigo },
-      );
-    });
-    await markGroupPendingSync(id);
-    notifyDataChanged();
-    return { success: true };
-  } catch (e: any) {
-    if (isUniqueConstraintError(e)) {
-      if (isNameUniqueConstraintError(e)) {
-        return { success: false, error: 'nombre_duplicate' };
-      }
-      return { success: false, error: 'codigo_duplicate' };
-    }
-    return { success: false, error: 'unknown' };
+  if (!(await plantacionEditablePorId(current.plantacionId))) {
+    return { success: false, error: ERROR_DE_EDICION.plantacionNoEditable };
   }
+  if (await codigoOcupadoEnParcela(current.parcelaId, upperCodigo, id)) {
+    return { success: false, error: 'codigo_duplicate' };
+  }
+  try {
+    await escribirCodigoDeGrupo(id, { anterior: codigoAnterior, nuevo: upperCodigo });
+  } catch (e: unknown) {
+    return { success: false, error: errorDeDuplicado(e) };
+  }
+  notifyDataChanged();
+  return { success: true };
+}
+
+async function codigoOcupadoEnParcela(parcelaId: string, codigo: string, excluirId: string): Promise<boolean> {
+  const [existente] = await db.select({ id: groups.id })
+    .from(groups)
+    .where(and(eq(groups.parcelaId, parcelaId), eq(groups.codigo, codigo), sql`${groups.id} != ${excluirId}`))
+    .limit(1);
+  return existente != null;
+}
+
+async function escribirCodigoDeGrupo(id: string, codigos: { anterior: string; nuevo: string }): Promise<void> {
+  const parcelaCodigo = await getGroupParcelaCodigo(id);
+  await enTransaccion(async (tx) => {
+    await tx.update(groups).set({ codigo: codigos.nuevo }).where(eq(groups.id, id));
+    await recalcularSubIdsDelGrupo(
+      tx, id,
+      { parcelaCodigo, grupoCodigo: codigos.anterior },
+      { parcelaCodigo, grupoCodigo: codigos.nuevo },
+    );
+  });
+  await markGroupPendingSync(id);
 }
 
 /** Reactivates a finalized group back to 'activa' state. */
