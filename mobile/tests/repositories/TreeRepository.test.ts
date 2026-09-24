@@ -59,6 +59,9 @@ function buildMockDb(selectResults: any[]) {
         orderBy: jest.fn(() => ({
           where: jest.fn(() => Promise.resolve(selectResults)),
         })),
+        leftJoin: jest.fn(() => ({
+          where: jest.fn(() => ({ orderBy: jest.fn(() => Promise.resolve(selectResults)) })),
+        })),
       })),
     })),
     transaction: jest.fn(async (fn: (tx: any) => Promise<void>) => {
@@ -487,6 +490,9 @@ describe('TreeRepository', () => {
             result.orderBy = jest.fn(() => Promise.resolve(remainingTrees));
             return result;
           }),
+          leftJoin: jest.fn(() => ({
+            where: jest.fn(() => ({ orderBy: jest.fn(() => Promise.resolve(remainingTrees)) })),
+          })),
         })),
       }));
     }

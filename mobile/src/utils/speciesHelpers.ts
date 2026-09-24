@@ -1,6 +1,5 @@
-import { eq, notLike } from 'drizzle-orm';
+import { notLike } from 'drizzle-orm';
 import { species as speciesTable } from '../database/schema';
-import type { db } from '../database/client';
 import { especieDelSubId } from './idGenerator';
 
 /** Placeholder especie codigo embedded in a tree's subId when unresolved (N/N). */
@@ -73,31 +72,29 @@ export function getSpeciesName(tree: {
   return tree.especieNombre ?? ETIQUETA_ESPECIE_FUERA_DE_CATALOGO;
 }
 
-type Queryable = typeof db;
-
-/** Lo que hace falta de un árbol para recalcular su SubID. */
-type ArbolConSubId = { especieId: string | null; subId: string; posicion: number };
+/** Lo que hace falta de un árbol para recalcular su SubID, con el codigo de su especie ya leído. */
+export type ArbolParaSubId = {
+  especieId: string | null;
+  especieCodigo: string | null;
+  subId: string;
+  posicion: number;
+};
 
 /**
  * Codigo de especie para recalcular el SubID de un árbol armado con alguno de `prefijos` (parcela +
  * grupo). Con una especie recuperada conserva el del SubID actual: NN pisaría el codigo real que
- * el árbol ya subió. Recibe `db`: la transacción es de la conexión, no un handle aparte.
+ * el árbol ya subió.
  */
-export async function resolveEspecieCodigo(
-  queryable: Queryable,
-  arbol: ArbolConSubId,
-  prefijos: readonly string[],
-): Promise<string> {
+export function especieCodigoParaSubId(arbol: ArbolParaSubId, prefijos: readonly string[]): string {
   if (!arbol.especieId) return UNKNOWN_SPECIES_CODE;
-  const [sp] = await queryable.select({ codigo: speciesTable.codigo })
-    .from(speciesTable)
-    .where(eq(speciesTable.id, arbol.especieId));
-  if (sp && esEspecieRecuperada(sp.codigo)) return especieRecuperadaDelSubId(arbol, prefijos);
-  return codigoParaSubId(sp?.codigo);
+  if (arbol.especieCodigo && esEspecieRecuperada(arbol.especieCodigo)) {
+    return especieRecuperadaDelSubId(arbol, prefijos);
+  }
+  return codigoParaSubId(arbol.especieCodigo);
 }
 
 /** Del más largo al más corto: si un prefijo extiende a otro, el corto calzaría con un segmento que no es la especie. */
-function especieRecuperadaDelSubId(arbol: ArbolConSubId, prefijos: readonly string[]): string {
+function especieRecuperadaDelSubId(arbol: ArbolParaSubId, prefijos: readonly string[]): string {
   const candidatos = [...prefijos].sort((a, b) => b.length - a.length);
   for (const prefijo of candidatos) {
     const codigo = especieDelSubId(arbol.subId, prefijo, arbol.posicion);

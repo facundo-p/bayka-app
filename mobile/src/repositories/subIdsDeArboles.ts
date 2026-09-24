@@ -1,8 +1,8 @@
 import { db } from '../database/client';
-import { groups, trees } from '../database/schema';
+import { groups, trees, species } from '../database/schema';
 import { eq, asc } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
-import { resolveEspecieCodigo } from '../utils/speciesHelpers';
+import { especieCodigoParaSubId } from '../utils/speciesHelpers';
 
 export interface CodigosDelSubId {
   parcelaCodigo: string;
@@ -10,6 +10,21 @@ export interface CodigosDelSubId {
 }
 
 const prefijoDe = (c: CodigosDelSubId) => `${c.parcelaCodigo}${c.grupoCodigo}`;
+
+/** Árboles del grupo por posición, con el codigo de su especie en la misma consulta. */
+export function arbolesParaSubId(tx: typeof db, grupoId: string) {
+  return tx.select({
+    id: trees.id,
+    especieId: trees.especieId,
+    especieCodigo: species.codigo,
+    subId: trees.subId,
+    posicion: trees.posicion,
+  })
+    .from(trees)
+    .leftJoin(species, eq(species.id, trees.especieId))
+    .where(eq(trees.groupId, grupoId))
+    .orderBy(asc(trees.posicion));
+}
 
 /**
  * Reescribe el SubID de los árboles del grupo con otros códigos de parcela o grupo. El segmento de
@@ -22,14 +37,11 @@ export async function recalcularSubIdsDelGrupo(
   anteriores: CodigosDelSubId,
   nuevos: CodigosDelSubId,
 ): Promise<void> {
-  const arboles = await tx.select().from(trees)
-    .where(eq(trees.groupId, grupoId))
-    .orderBy(asc(trees.posicion));
-
-  for (const arbol of arboles) {
-    const especieCodigo = await resolveEspecieCodigo(tx, arbol, [prefijoDe(anteriores), prefijoDe(nuevos)]);
+  const prefijos = [prefijoDe(anteriores), prefijoDe(nuevos)];
+  for (const arbol of await arbolesParaSubId(tx, grupoId)) {
+    const especieCodigo = especieCodigoParaSubId(arbol, prefijos);
     const subId = generateSubId(nuevos.parcelaCodigo, nuevos.grupoCodigo, especieCodigo, arbol.posicion);
-    await tx.update(trees).set({ subId }).where(eq(trees.id, arbol.id));
+    if (subId !== arbol.subId) await tx.update(trees).set({ subId }).where(eq(trees.id, arbol.id));
   }
 }
 
