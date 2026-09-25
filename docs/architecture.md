@@ -176,6 +176,7 @@ La base local contiene:
 species
 plantations
 plantation_species
+cambios_especies_pendientes
 plantation_users
 parcelas
 groups          (groups.parcela_id → parcelas)
@@ -296,6 +297,18 @@ delete desde el cliente sería un no-op silencioso.
 El registro es explícito —una fila por id— y no una semántica de reemplazo: el
 device puede tener un set parcial y "borrá todo lo que no te mandé" borraría del
 server datos que nunca vio.
+
+**Las especies de una plantación viajan como altas y bajas** (#635). Configurarlas
+aplica el cambio en SQLite y lo anota en `cambios_especies_pendientes` (una fila
+por especie, el último cambio gana), con o sin señal; con señal sube en el momento.
+El sync sube lo pendiente antes del pull por `aplicar_cambios_especies`, que es
+idempotente, y el pull no borra un alta pendiente ni devuelve una baja pendiente.
+Mandar la lista entera pisaría lo que la web cambió en el medio. Una baja de una
+especie con árboles la rechaza el server sola: el teléfono vuelve a habilitarla y
+el resumen del sync avisa. Si igual llegan árboles de una especie quitada,
+`sync_subgroup` la re-habilita. Una plantación creada offline no anota nada: su
+alta sube todas sus especies como altas. El orden de la botonera es alfabético por
+nombre (el orden personal de cada técnico se mantiene).
 
 ---
 

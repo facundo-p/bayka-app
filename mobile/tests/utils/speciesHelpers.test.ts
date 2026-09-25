@@ -1,4 +1,4 @@
-import { conservarEspeciesRecuperadas, especieCodigoParaSubId, UNKNOWN_SPECIES_CODE, getSpeciesCode, getSpeciesName } from '../../src/utils/speciesHelpers';
+import { especieCodigoParaSubId, UNKNOWN_SPECIES_CODE, getSpeciesCode, getSpeciesName } from '../../src/utils/speciesHelpers';
 
 describe('getSpeciesCode', () => {
   test('returns N/N when especieId is null', () => {
@@ -66,23 +66,5 @@ describe('especieCodigoParaSubId', () => {
     const conPosicion2 = { especieId: 'esp-1', especieCodigo: 'recuperada:esp-1', subId: 'A11KOK2', posicion: 2 };
     expect(especieCodigoParaSubId(conPosicion2, ['A1', 'A11'])).toBe('KOK');
     expect(especieCodigoParaSubId({ ...conPosicion2, subId: 'A1KOK2' }, ['A1', 'A11'])).toBe('KOK');
-  });
-});
-
-describe('conservarEspeciesRecuperadas', () => {
-  test('agrega al final las recuperadas de la plantación que no se eligieron', () => {
-    const actuales = [
-      { especieId: 'kok', codigo: 'recuperada:kok', ordenVisual: 0 },
-      { especieId: 'pin', codigo: 'PIN', ordenVisual: 1 },
-    ];
-    expect(conservarEspeciesRecuperadas([{ especieId: 'euc', ordenVisual: 0 }], actuales)).toEqual([
-      { especieId: 'euc', ordenVisual: 0 },
-      { especieId: 'kok', ordenVisual: 1 },
-    ]);
-  });
-
-  test('sin elegidas, la recuperada queda sola', () => {
-    const actuales = [{ especieId: 'kok', codigo: 'recuperada:kok', ordenVisual: 3 }];
-    expect(conservarEspeciesRecuperadas([], actuales)).toEqual([{ especieId: 'kok', ordenVisual: 0 }]);
   });
 });

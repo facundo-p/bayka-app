@@ -33,9 +33,6 @@ export function esMotivoNoEscribible(codigo: string): codigo is MotivoNoEscribib
   return (TODOS_LOS_MOTIVOS as readonly string[]).includes(codigo);
 }
 
-/** Las especies siguen `plantacion_escribible`: bloquean los tres motivos. */
-export const BLOQUEAN_ESPECIES = TODOS_LOS_MOTIVOS;
-
 /** Las asignaciones de técnicos se admiten en una finalizada (migración 047). */
 export const BLOQUEAN_ASIGNACIONES: readonly MotivoNoEscribible[] = [
   MOTIVO_NO_ESCRIBIBLE.inexistente,

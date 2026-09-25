@@ -1,13 +1,12 @@
 /**
- * Reemplazo de especies y técnicos de una plantación en un solo RPC transaccional
- * (#544). Borrar e insertar en dos requests dejaba la plantación vacía si el
- * segundo fallaba.
+ * Reemplazo de técnicos de una plantación en un solo RPC transaccional (#544), y
+ * rechazos de configuración que comparte con las especies (#635). Borrar e insertar
+ * en dos requests dejaba la plantación vacía si el segundo fallaba.
  */
 import { supabase } from '../supabase/client';
 import { esFuncionInexistente } from '../supabase/postgresErrorCodes';
 import { MOTIVO_NO_ESCRIBIBLE, PlantacionNoEscribibleError, type MotivoNoEscribible } from './PlantacionEscribibleService';
 
-export const RPC_REEMPLAZAR_ESPECIES = 'reemplazar_especies_plantacion';
 export const RPC_REEMPLAZAR_TECNICOS = 'reemplazar_tecnicos_plantacion';
 
 /** Rechazos de los RPC que no son un motivo de `motivo_no_escribible`. */
@@ -45,7 +44,7 @@ function esMotivoNoEscribible(codigo: string): codigo is MotivoNoEscribible {
   return Object.values(MOTIVO_NO_ESCRIBIBLE).some((motivo) => motivo === codigo);
 }
 
-function errorDeRechazo(codigo: string): Error {
+export function errorDeRechazo(codigo: string): Error {
   return esMotivoNoEscribible(codigo) ? new PlantacionNoEscribibleError(codigo) : new ReemplazoRechazadoError(codigo);
 }
 

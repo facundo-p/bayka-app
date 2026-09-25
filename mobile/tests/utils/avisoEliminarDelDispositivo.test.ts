@@ -1,11 +1,11 @@
 import { avisoEliminarDelDispositivo, detalleDePendientes } from '../../src/utils/avisoEliminarDelDispositivo';
 
-const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
 
 describe('detalleDePendientes', () => {
   it('lista cada tipo pendiente, no solo los grupos', () => {
-    expect(detalleDePendientes({ activaCount: 1, finalizadaCount: 2, parcelas: 1, fotos: 4, borrados: 2 }))
-      .toBe('3 grupos sin subir (1 activo, 2 finalizados), 1 parcela pendiente, 4 fotos sin subir, 2 borrados pendientes');
+    expect(detalleDePendientes({ activaCount: 1, finalizadaCount: 2, parcelas: 1, fotos: 4, borrados: 2, especies: 3 }))
+      .toBe('3 grupos sin subir (1 activo, 2 finalizados), 1 parcela pendiente, 4 fotos sin subir, 2 borrados pendientes, 3 cambios de especies sin subir');
   });
 
   it('omite lo que está en cero', () => {

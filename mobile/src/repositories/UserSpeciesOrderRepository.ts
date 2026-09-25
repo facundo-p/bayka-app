@@ -1,6 +1,6 @@
 /**
  * Per-user species button order — local only (not synced).
- * Falls back to plantation_species.orden_visual when no custom order exists.
+ * Without a custom order the buttons go alphabetically by name.
  */
 import { db } from '../database/client';
 import { userSpeciesOrder } from '../database/schema';

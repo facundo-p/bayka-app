@@ -7,6 +7,7 @@ import { fetchAllRows } from './paginate';
 import { enTransaccion, FILAS_POR_TRANSACCION } from '../../database/transaccion';
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
+import { reapuntarCambiosDeEspecie } from '../../repositories/CambiosDeEspeciesRepository';
 
 /** Fila de especie del server, normalizada a los nombres del schema local. */
 type ServerSpecies = { id: string; codigo: string; nombre: string; nombre_cientifico?: string | null; created_at: string };
@@ -61,6 +62,7 @@ async function reapuntarReferencias(tx: DbExecutor, desde: string, hacia: string
   await tx.update(trees).set({ especieId: hacia }).where(eq(trees.especieId, desde));
   await tx.update(trees).set({ conflictEspecieId: hacia }).where(eq(trees.conflictEspecieId, desde));
   await reapuntarEspeciesDePlantacion(tx, desde, hacia);
+  await reapuntarCambiosDeEspecie(tx, desde, hacia);
   // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
   // solo orden visual, se borra la referencia vieja.
   await tx.delete(userSpeciesOrder).where(eq(userSpeciesOrder.especieId, desde));

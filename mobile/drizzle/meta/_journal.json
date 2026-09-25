@@ -183,6 +183,13 @@
       "when": 1790294400000,
       "tag": "0025_plantations_edicion_por_campo",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1790380800000,
+      "tag": "0026_cambios_especies_pendientes",
+      "breakpoints": true
     }
   ]
 }

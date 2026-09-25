@@ -5,60 +5,56 @@ import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getAllSpecies, getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
-import { saveSpeciesConfig, saveSpeciesConfigLocally } from '../repositories/PlantationRepository';
+import { guardarEspeciesDePlantacion } from '../services/EspeciesDePlantacionService';
 import { colors } from '../theme';
-import { conservarEspeciesRecuperadas } from '../utils/speciesHelpers';
+import { cambiosDeLaSeleccion, mensajeEspeciesConArboles } from '../utils/cambiosDeEspecies';
 
 export type SpeciesItem = {
   especieId: string;
   nombre: string;
   codigo: string;
-  ordenVisual: number;
   enabled: boolean;
   hasExistingTrees: boolean;
 };
+
+async function cargarItems(plantacionId: string): Promise<SpeciesItem[]> {
+  const [allSpecies, currentConfig] = await Promise.all([getAllSpecies(), getPlantationSpeciesConfig(plantacionId)]);
+  const habilitadas = new Set(currentConfig.map((c) => c.especieId));
+  const treeChecks = await Promise.all(allSpecies.map((sp) => hasTreesForSpecies(plantacionId, sp.id)));
+  return allSpecies
+    .map((sp, i) => ({
+      especieId: sp.id,
+      nombre: sp.nombre,
+      codigo: sp.codigo,
+      enabled: habilitadas.has(sp.id),
+      hasExistingTrees: treeChecks[i],
+    }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+/** Una especie con árboles en el teléfono no se puede quitar. */
+const bloqueada = (item: SpeciesItem) => item.enabled && item.hasExistingTrees;
 
 export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?: boolean) {
   const confirm = useConfirm();
 
   const [items, setItems] = useState<SpeciesItem[]>([]);
+  const [iniciales, setIniciales] = useState<SpeciesItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [configActual, setConfigActual] = useState<Awaited<ReturnType<typeof getPlantationSpeciesConfig>>>([]);
+
+  const mostrarError = (e: any, fallback: string) =>
+    showInfoDialog(confirm.show, 'Error', e?.message ?? fallback, 'alert-circle-outline', colors.danger);
 
   const loadData = useCallback(async () => {
     if (!plantacionId) return;
     setLoading(true);
     try {
-      const allSpecies = await getAllSpecies();
-      const currentConfig = await getPlantationSpeciesConfig(plantacionId);
-      setConfigActual(currentConfig);
-      const configMap = new Map(currentConfig.map((c) => [c.especieId, c.ordenVisual]));
-
-      const treeChecks = await Promise.all(
-        allSpecies.map((sp) => hasTreesForSpecies(plantacionId, sp.id))
-      );
-
-      const merged: SpeciesItem[] = allSpecies.map((sp, i) => ({
-        especieId: sp.id,
-        nombre: sp.nombre,
-        codigo: sp.codigo,
-        ordenVisual: configMap.has(sp.id) ? configMap.get(sp.id)! : 9999,
-        enabled: configMap.has(sp.id),
-        hasExistingTrees: treeChecks[i],
-      }));
-
-      // All species alphabetical by name — enabled/disabled stay in place
-      merged.sort((a, b) => a.nombre.localeCompare(b.nombre));
-
-      let order = 0;
-      const normalized = merged.map((item) =>
-        item.enabled ? { ...item, ordenVisual: order++ } : item
-      );
-
-      setItems(normalized);
+      const cargados = await cargarItems(plantacionId);
+      setItems(cargados);
+      setIniciales(cargados);
     } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron cargar las especies.', 'alert-circle-outline', colors.danger);
+      mostrarError(e, 'No se pudieron cargar las especies.');
     } finally {
       setLoading(false);
     }
@@ -69,41 +65,26 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
   }, [loadData]);
 
   function handleToggle(especieId: string, newValue: boolean) {
-    setItems((prev) => {
-      const updated = prev.map((item) =>
-        item.especieId === especieId ? { ...item, enabled: newValue } : item
-      );
-      // Re-assign ordenVisual for enabled items while keeping alphabetical order
-      let order = 0;
-      return updated.map((item) =>
-        item.enabled ? { ...item, ordenVisual: order++ } : item
-      );
-    });
+    setItems((prev) => prev.map((item) =>
+      item.especieId === especieId && !(bloqueada(item) && !newValue) ? { ...item, enabled: newValue } : item
+    ));
   }
 
   function handleSelectAll() {
     const allEnabled = items.every((i) => i.enabled);
-    if (allEnabled) {
-      // Deselect all — keep alphabetical order
-      setItems((prev) => prev.map((item) => ({ ...item, enabled: false })));
-    } else {
-      // Select all — assign ordenVisual sequentially (already alphabetical)
-      setItems((prev) => prev.map((item, idx) => ({ ...item, enabled: true, ordenVisual: idx })));
-    }
+    setItems((prev) => prev.map((item) => ({ ...item, enabled: !allEnabled || bloqueada(item) })));
   }
 
   async function handleSave(onClose?: () => void, onBack?: () => void) {
     if (!plantacionId) return;
     setSaving(true);
     try {
-      const enabledItems = conservarEspeciesRecuperadas(
-        items.filter((i) => i.enabled).map((i) => ({ especieId: i.especieId, ordenVisual: i.ordenVisual })),
-        configActual,
-      );
-      if (pendingSync) {
-        await saveSpeciesConfigLocally(plantacionId, enabledItems);
-      } else {
-        await saveSpeciesConfig(plantacionId, enabledItems);
+      const conArboles = await guardarEspeciesDePlantacion(plantacionId, cambiosDeLaSeleccion(iniciales, items), !!pendingSync);
+      if (conArboles.length > 0) {
+        // La pantalla queda abierta: muestra la especie habilitada de nuevo.
+        await loadData();
+        showInfoDialog(confirm.show, 'Especies con árboles', mensajeEspeciesConArboles(conArboles), 'leaf-outline', colors.info);
+        return;
       }
       if (onClose) {
         onClose();
@@ -111,7 +92,8 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
         onBack();
       }
     } catch (e: any) {
-      showInfoDialog(confirm.show, 'Error', e?.message ?? 'No se pudieron guardar las especies.', 'alert-circle-outline', colors.danger);
+      await loadData();
+      mostrarError(e, 'No se pudieron guardar las especies.');
     } finally {
       setSaving(false);
     }

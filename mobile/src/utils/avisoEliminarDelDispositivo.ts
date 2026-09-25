@@ -27,6 +27,7 @@ export function detalleDePendientes(r: ResumenDePendientes): string {
     r.parcelas > 0 && `${plural(r.parcelas, 'parcela pendiente', 'parcelas pendientes')}`,
     r.fotos > 0 && `${plural(r.fotos, 'foto')} sin subir`,
     r.borrados > 0 && `${plural(r.borrados, 'borrado pendiente', 'borrados pendientes')}`,
+    r.especies > 0 && `${plural(r.especies, 'cambio de especies', 'cambios de especies')} sin subir`,
   ];
   return partes.filter(Boolean).join(', ');
 }

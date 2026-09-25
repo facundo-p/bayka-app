@@ -329,7 +329,9 @@ los grupos de árboles (ver # 8. Parcela y # 9. Grupo).
 
 Define qué especies aparecen en la botonera de registro.
 
-También define el orden de los botones.
+Los botones se ordenan alfabéticamente por nombre; cada técnico puede tener su
+propio orden. `orden_visual` lo mantiene el servidor con ese mismo criterio,
+para los APKs que todavía ordenan por esa columna (#635).
 
 ### Atributos
 

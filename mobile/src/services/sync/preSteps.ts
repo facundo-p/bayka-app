@@ -22,6 +22,13 @@ import {
   desdeSnapshot,
 } from '../../utils/camposDePlantacion';
 import { mismoLugarYPeriodo } from '../../utils/duplicadoDePlantacion';
+import {
+  aplicarCambiosEnServidor,
+  cambiosRechazados,
+  uploadPendingSpeciesChanges,
+  type RespuestaDeCambios,
+} from './cambiosDeEspecies';
+import { registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
 
 type PlantacionLocal = typeof plantations.$inferSelect;
 
@@ -87,8 +94,33 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
 }
 
 /**
+ * Sus especies van como altas: si un intento anterior ya subió la plantación y la web le
+ * sumó especies, no se pisan. Sin especies la plantación no es usable: un fallo la deja
+ * pendiente para reintentar (#632).
+ */
+async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | null> {
+  const locales = await db
+    .select({ especieId: plantationSpecies.especieId })
+    .from(plantationSpecies)
+    .where(eq(plantationSpecies.plantacionId, plantacionId));
+  if (locales.length === 0) return null;
+  let respuesta: RespuestaDeCambios;
+  try {
+    respuesta = await aplicarCambiosEnServidor(plantacionId, { altas: locales.map((ps) => ps.especieId), bajas: [] });
+  } catch (e: any) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error('Upload plantation_species failed:', plantacionId, e?.message);
+    return classifyServerError(e);
+  }
+  if (!respuesta?.success) return falloDeAltaRechazada(respuesta?.error ?? '');
+  const rechazados = cambiosRechazados(respuesta.rechazadas ?? []);
+  if (rechazados.length > 0) await registrarRespuesta(plantacionId, [], rechazados);
+  return null;
+}
+
+/**
  * Sube plantaciones creadas offline (pendingSync=true): insert idempotente (si ya existe, update)
- * + upsert de plantation_species + pendingSync=false, solo si las dos subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
+ * + altas de sus especies + pendingSync=false, solo si las dos subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
  * parcelas/grupos (FK), así que el error debe llegar al usuario, no tragarse.
  */
 export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
@@ -110,28 +142,10 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         continue;
       }
 
-      const localPs = await db
-        .select()
-        .from(plantationSpecies)
-        .where(eq(plantationSpecies.plantacionId, p.id));
-
-      if (localPs.length > 0) {
-        const { error: psError } = await supabase
-          .from('plantation_species')
-          .upsert(
-            localPs.map((ps) => ({
-              plantation_id: ps.plantacionId,
-              species_id: ps.especieId,
-              orden_visual: ps.ordenVisual,
-            }))
-          );
-        // Sin especies la plantación no es usable: queda pendiente para reintentar (#632).
-        if (psError) {
-          syncLog.error('Upload plantation_species failed:', p.id, psError.message);
-          const { error: code, detail } = classifyServerError(psError);
-          results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });
-          continue;
-        }
+      const falloDeEspecies = await subirEspeciesDeAlta(p.id);
+      if (falloDeEspecies) {
+        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...falloDeEspecies });
+        continue;
       }
 
       await db
@@ -220,5 +234,8 @@ export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   let ediciones: SyncPlantationResult[] = [];
   try { altas = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
   try { ediciones = await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
-  return [...altas, ...ediciones];
+  // Antes del pull: así baja la lista de especies ya con lo de este teléfono.
+  let especies: SyncPlantationResult[] = [];
+  try { especies = await uploadPendingSpeciesChanges(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload species changes failed:', e); }
+  return [...altas, ...ediciones, ...especies];
 }
