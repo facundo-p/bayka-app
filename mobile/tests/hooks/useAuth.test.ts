@@ -451,7 +451,7 @@ describe('useAuth', () => {
   });
 
   describe('criterio de conexión (#652)', () => {
-    const SESION_SDK = { access_token: 't', refresh_token: 'r', user: { id: 'user-1', email: 'a@a.com' } };
+    const SESION_SDK = { access_token: 't', refresh_token: 'r', user: { id: 'user-1', email: 'test@test.com' } };
 
     function perfil(datos: object) {
       (supabase.from as jest.Mock).mockReturnValue({
@@ -719,6 +719,19 @@ describe('useAuth', () => {
         await confirmarConexion();
         expect(supabase.auth.getSession).toHaveBeenCalledTimes(2);
         expect(result.current.role).toBe('admin');
+      });
+
+      it('sin fila en profiles: es una respuesta del servidor, no se re-arma', async () => {
+        const single = jest.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'no rows' } });
+        (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
+        const { result } = await arrancarSinInternetConSesion();
+
+        await confirmarConexion();
+        await confirmarConexion();
+
+        expect(supabase.auth.getSession).toHaveBeenCalledTimes(1);
+        expect(result.current.session).toBe(SESION_SDK);
+        expect(result.current.role).toBe('tecnico');
       });
 
       it('el rol no llega del servidor: no cuenta como revalidada', async () => {
@@ -1015,8 +1028,15 @@ describe('useAuth', () => {
         expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', 'admin', 'user-1');
       });
 
-      it('login online de una cuenta desactivada (handler adentro): avisa y purga una sola vez', async () => {
-        perfil({ rol: 'tecnico', activo: false });
+      it.each([
+        ['como anon, sin fila', { data: null, error: { code: 'PGRST116', message: 'no rows' } }],
+        ['con falla de red', { data: null, error: { message: 'Network request failed' } }],
+      ])('login online de una cuenta desactivada (handler adentro, reconsulta %s): avisa y purga una sola vez', async (_caso, reconsulta) => {
+        // Tras la purga del handler el SDK ya no tiene sesión: otra consulta no ve la fila.
+        const single = jest.fn()
+          .mockResolvedValueOnce({ data: { rol: 'tecnico', activo: false }, error: null })
+          .mockResolvedValue(reconsulta);
+        (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
         const { result } = await montarYEsperarInit();
         (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
           await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
@@ -1091,6 +1111,28 @@ describe('useAuth', () => {
           expect(escribio('user_id', 'user-1')).toBe(false);
           expect(result.current.session).toBe(sesionDeB);
           expect(result.current.role).toBe('tecnico');
+        });
+
+        it('con el login online de otra cuenta en vuelo: no se adopta con su época', async () => {
+          perfil({ rol: 'admin', activo: true });
+          const { result } = await montarYEsperarInit();
+          await loginQueTimeoutea(result);
+          const loginDeB = diferido<object>();
+          (supabase.auth.signInWithPassword as jest.Mock).mockReturnValue(loginDeB.promesa);
+          let pendienteB!: Promise<unknown>;
+          await act(async () => { pendienteB = result.current.signIn(' B@b.com ', 'password'); });
+
+          await llegaElSignedIn();
+
+          expect(escribio('user_id', 'user-1')).toBe(false);
+          expect(result.current.session).toBeNull();
+          const sesionDeB = { access_token: 'tb', refresh_token: 'rb', user: { id: 'user-b', email: 'b@b.com' } };
+          await act(async () => {
+            await ultimoListenerDeAuth()('SIGNED_IN', sesionDeB);
+            loginDeB.resolver({ data: { session: sesionDeB }, error: null });
+            await pendienteB;
+          });
+          expect(result.current.session).toBe(sesionDeB);
         });
       });
     });

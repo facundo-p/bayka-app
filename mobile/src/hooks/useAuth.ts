@@ -10,7 +10,8 @@
  * tokens ajenos (#658), y una cuenta desactivada se purga entera.
  */
 import { useState, useEffect, useRef } from 'react';
-import { isAuthRetryableFetchError } from '@supabase/supabase-js';
+import { isAuthRetryableFetchError, type Session } from '@supabase/supabase-js';
+import { esSinFilas } from '../supabase/postgresErrorCodes';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import {
   persistSession, clearSession, readCachedSession, readCachedUserId, readSesionCacheada, iniciarSesionSoloLocal,
@@ -147,15 +148,19 @@ async function cachearSesionOnline(session: SesionOnline, vigente: () => boolean
   }
 }
 
-/** Rol según Supabase profiles, cacheado si `vigente`; undefined si el servidor no lo dio (error o timeout). Solo se llama online. */
-async function consultarRol(userId: string, vigente: () => boolean): Promise<Exclude<RolObtenido, null> | undefined> {
+/**
+ * Rol según Supabase profiles, cacheado si `vigente`. Null si el servidor respondió sin rol
+ * (sin fila incluido); undefined si no respondió (red o timeout). Solo se llama online.
+ */
+async function consultarRol(userId: string, vigente: () => boolean): Promise<RolObtenido | undefined> {
   try {
-    const { data: profile } = await withTimeout(
+    const { data: profile, error } = await withTimeout(
       supabase.from('profiles').select('rol, activo').eq('id', userId).single(),
       ROLE_FETCH_TIMEOUT,
     );
+    if (error) return esSinFilas(error) ? null : undefined;
     if (profile?.activo === false) return CUENTA_DESACTIVADA;
-    if (!profile?.rol) return undefined;
+    if (!profile?.rol) return null;
     if (vigente()) await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
     return profile.rol as Role;
   } catch {
@@ -163,9 +168,21 @@ async function consultarRol(userId: string, vigente: () => boolean): Promise<Exc
   }
 }
 
-/** Rol del servidor o, si no respondió, el cacheado. */
+async function leerRolCacheado(): Promise<Role | null> {
+  return (await SecureStore.getItemAsync(ROLE_KEY)) as Role | null;
+}
+
+/** Rol del servidor o, si no lo dio, el cacheado. */
 async function fetchAndCacheRole(userId: string, vigente: () => boolean): Promise<RolObtenido> {
-  return (await consultarRol(userId, vigente)) ?? ((await SecureStore.getItemAsync(ROLE_KEY)) as Role | null);
+  return (await consultarRol(userId, vigente)) ?? leerRolCacheado();
+}
+
+/** Null si dejó de estar `vigente`; si la cuenta está desactivada, la purga. */
+async function resolverSesion(sesion: Session, rol: RolObtenido, vigente: () => boolean): Promise<SesionRestaurada | null> {
+  if (!vigente()) return null;
+  if (rol !== CUENTA_DESACTIVADA) return { session: sesion, role: rol };
+  await purgarSesionDesactivada();
+  return { session: null, role: null };
 }
 
 type SesionRestaurada = { session: AuthState['session']; role: Role | null };
@@ -184,12 +201,7 @@ async function restaurarDesdeSdk({ soloDe, vigente }: OpcionesDeRestauracion): P
   await cachearSesionOnline(sdk, vigente);
   const rol = await consultarRol(sdk.user.id, vigente);
   if (rol === undefined) throw new Error('El servidor no devolvió el rol');
-  if (!vigente()) return null;
-  if (rol === CUENTA_DESACTIVADA) {
-    await purgarSesionDesactivada();
-    return { session: null, role: null };
-  }
-  return { session: sdk, role: rol };
+  return resolverSesion(sdk, rol ?? (await leerRolCacheado()), vigente);
 }
 
 /** Restaura sesión desde el cache de SecureStore; CERO llamadas de red. Usado en init offline y como fallback si el init online falla. */
@@ -219,10 +231,31 @@ let epocaRevalidada: number | null = null;
 let redConfirmada = false;
 
 /**
- * Época del último login online que pudo quedar en vuelo. Su SIGNED_IN puede llegar después
- * del timeout; si entretanto hubo logout u otro login, no debe revivir ni pisar nada.
+ * Último login online que pudo quedar en vuelo. Su SIGNED_IN puede llegar después del
+ * timeout; si entretanto hubo logout u otro login, no debe revivir ni pisar nada. `rol` es
+ * lo que respondió el servidor al handler: tras purgar una cuenta desactivada, reconsultarlo
+ * iría como anon y RLS no devolvería la fila.
  */
-let loginOnlineEnVuelo: (() => boolean) | null = null;
+type LoginOnline = { vigente: () => boolean; email: string; rol?: Exclude<RolObtenido, null> };
+let loginOnlineEnVuelo: LoginOnline | null = null;
+
+function mismoEmail(a: string | undefined, b: string | undefined): boolean {
+  return !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/**
+ * SIGNED_IN del SDK: del login en vuelo (lo corre adentro, o tarde tras un timeout) o, sin
+ * login, del SDK solo. Null si hay que ignorarlo.
+ */
+async function alIniciarSesionEnSdk(sesion: Session): Promise<SesionRestaurada | null> {
+  const login = loginOnlineEnVuelo;
+  if (login && !mismoEmail(login.email, sesion.user.email)) return null;
+  const vigente = login?.vigente ?? vigenteDesdeAhora();
+  await cachearSesionOnline(sesion, vigente);
+  const delServidor = await consultarRol(sesion.user.id, vigente);
+  if (login && delServidor) login.rol = delServidor;
+  return resolverSesion(sesion, delServidor ?? (await leerRolCacheado()), vigente);
+}
 
 /** Solo para tests: resetea el estado compartido entre casos. */
 export function __resetEstadoCompartido(): void {
@@ -313,27 +346,11 @@ export function useAuth() {
         if (initializing.current) return;
 
         if (event === 'SIGNED_IN' && supabaseSession) {
-          // Viene del login en vuelo (el SDK lo corre adentro, o tarde tras un timeout) o, sin login, del SDK solo.
-          const vigente = loginOnlineEnVuelo ?? vigenteDesdeAhora();
-          await cachearSesionOnline(supabaseSession, vigente);
-          const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id, vigente);
-          if (!vigente()) return;
-
-          if (fetchedRole === CUENTA_DESACTIVADA) {
-            await purgarSesionDesactivada();
-            if (mounted) {
-              setSession(null);
-              setRole(null);
-              setLoading(false);
-            }
-            return;
-          }
-
-          if (mounted) {
-            setSession(supabaseSession);
-            if (fetchedRole) setRole(fetchedRole);
-            setLoading(false);
-          }
+          const resultado = await alIniciarSesionEnSdk(supabaseSession);
+          if (!resultado || !mounted) return;
+          setSession(resultado.session);
+          if (!resultado.session || resultado.role) setRole(resultado.role);
+          setLoading(false);
         } else if (event === 'SIGNED_OUT') {
           // Sin conexión confirmada es un falso positivo de un refresh de token fallido: ante la duda se conserva la sesión.
           const net = await NetInfo.fetch();
@@ -382,11 +399,12 @@ export function useAuth() {
   }
 
   /** Persiste + cachea sesión tras un signIn online exitoso; retorna false si la cuenta está desactivada (no cachea nada). */
-  async function persistOnlineSession(email: string, password: string, session: any, vigente: () => boolean): Promise<boolean> {
+  async function persistOnlineSession(email: string, password: string, session: any, login: LoginOnline): Promise<boolean> {
+    const { vigente } = login;
     await cachearSesionOnline(session, vigente);
     if (vigente()) await syncAutoRefresh(true);
 
-    const userRole = await fetchAndCacheRole(session.user.id, vigente);
+    const userRole = login.rol ?? (await fetchAndCacheRole(session.user.id, vigente));
     // Antes que `vigente`: el handler SIGNED_IN pudo haber purgado ya esta cuenta.
     if (userRole === CUENTA_DESACTIVADA) return false;
     // Un logout o login posterior ganó: no se cachea nada a nombre de este login.
@@ -427,8 +445,8 @@ export function useAuth() {
   async function signInOnline(email: string, password: string, offlineYaIntentado: boolean) {
     // La época cambia antes de llamar al SDK: su handler SIGNED_IN corre adentro y la usa.
     nuevaEpocaDeSesion();
-    const vigente = vigenteDesdeAhora();
-    loginOnlineEnVuelo = vigente;
+    const login: LoginOnline = { vigente: vigenteDesdeAhora(), email };
+    loginOnlineEnVuelo = login;
     let result;
     try {
       result = await withTimeout(
@@ -439,17 +457,17 @@ export function useAuth() {
       // Red caída o timeout: sigue en vuelo, su SIGNED_IN tardío respeta lo que pase después.
       return handleConnectivityFailure(email, password, offlineYaIntentado);
     }
-    if (loginOnlineEnVuelo === vigente) loginOnlineEnVuelo = null;
-    if (!result.error) return aceptarLoginOnline(email, password, result, vigente);
+    if (loginOnlineEnVuelo === login) loginOnlineEnVuelo = null;
+    if (!result.error) return aceptarLoginOnline(email, password, result, login);
     return rechazoDeLoginOnline(email, password, result.error, offlineYaIntentado);
   }
 
-  async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R, vigente: () => boolean) {
+  async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R, login: LoginOnline) {
     if (!result.data.session) return result;
-    const cuentaActiva = await persistOnlineSession(email, password, result.data.session, vigente);
+    const cuentaActiva = await persistOnlineSession(email, password, result.data.session, login);
     if (cuentaActiva) return result;
     // Si ya no es vigente, la purgó el handler SIGNED_IN.
-    if (vigente()) await purgarSesionDesactivada();
+    if (login.vigente()) await purgarSesionDesactivada();
     return sinSesion(AUTH_MESSAGES.account_disabled);
   }
 
