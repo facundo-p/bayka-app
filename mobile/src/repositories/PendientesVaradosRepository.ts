@@ -58,7 +58,7 @@ type FilaDePlantacion = typeof plantations.$inferSelect;
 /**
  * Grupos y parcelas pendientes, borrados y fotos. Un grupo pendiente se borra aunque ya
  * exista en el server (volvió a pendiente por un cambio): el pull lo trae de vuelta cuando
- * corre, y sin permiso recién al recuperar el acceso. Los grupos sin cambios se quedan. Una
+ * corre (sin membresía, recién al recuperarla). Los grupos sin cambios se quedan. Una
  * parcela pendiente con grupos ya subidos existe en el server (sus grupos no suben antes que
  * ella): deja de estar pendiente y el pull la pisa.
  */

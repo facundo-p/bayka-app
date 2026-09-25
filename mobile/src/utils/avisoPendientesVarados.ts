@@ -71,7 +71,7 @@ function detalleDelAlta(r: ResumenDeDescarte): string | false {
   if (!r.alta) return false;
   return r.altaEnServidor
     ? 'la plantación, que quedó a medio subir (en el servidor está creada, sin sus especies ni lo cargado en este teléfono)'
-    : 'la plantación entera, que nunca llegó al servidor';
+    : 'la plantación entera, que no terminó de subir';
 }
 
 /** "la plantación entera, los cambios en sus datos, 2 grupos sin subir (…)". */
@@ -90,8 +90,8 @@ export interface ConfirmacionDeDescarte {
 
 function queQueda(lugar: string, resumen: ResumenDeDescarte, seVa: boolean, motivo: MotivoVarado | null): string {
   const sinPermiso = motivo === MOTIVO_VARADO.sinPermiso;
-  // Sin permiso no es seguro que la vea en el catálogo.
-  if (seVa && resumen.altaEnServidor && !sinPermiso) {
+  // El catálogo muestra una finalizada; una archivada no (#477), y sin permiso quizá tampoco.
+  if (seVa && resumen.altaEnServidor && motivo === MOTIVO_VARADO.finalizada) {
     return `"${lugar}" se elimina de este dispositivo; podés volver a descargarla desde el catálogo.`;
   }
   if (seVa) return `"${lugar}" se elimina de este dispositivo.`;

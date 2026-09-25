@@ -68,7 +68,7 @@ describe('confirmación de Descartar', () => {
   it('alta: se pierde entera y sale del dispositivo', () => {
     const { mensaje, confirmacionFinal } = confirmacionDeDescarte({ lugar: 'Norte', resumen: { ...VACIO, alta: true }, seVa: true, motivo: 'sin-permiso' });
     expect(mensaje).toBe(
-      'Se pierden para siempre: la plantación entera, que nunca llegó al servidor. "Norte" se elimina de este dispositivo. Esta acción no se puede deshacer.',
+      'Se pierden para siempre: la plantación entera, que no terminó de subir. "Norte" se elimina de este dispositivo. Esta acción no se puede deshacer.',
     );
     // Sale del dispositivo: doble confirmación, como "Eliminar del dispositivo".
     expect(confirmacionFinal).toBe('Los datos sin sincronizar se perderán para siempre. Esta acción no se puede deshacer.');
@@ -81,6 +81,14 @@ describe('confirmación de Descartar', () => {
     expect(mensaje).toBe(
       'Se pierden para siempre: la plantación, que quedó a medio subir (en el servidor está creada, sin sus especies ni lo cargado en este teléfono). "Norte" se elimina de este dispositivo; podés volver a descargarla desde el catálogo. Esta acción no se puede deshacer.',
     );
+  });
+
+  it('alta a medio subir archivada: no promete el catálogo', () => {
+    const { mensaje } = confirmacionDeDescarte({
+      lugar: 'Norte', resumen: { ...VACIO, alta: true, altaEnServidor: true }, seVa: true, motivo: 'archivada',
+    });
+    expect(mensaje).toContain('"Norte" se elimina de este dispositivo. Esta acción');
+    expect(mensaje).not.toContain('catálogo');
   });
 
   it('alta a medio subir sin permiso: no promete el catálogo', () => {
