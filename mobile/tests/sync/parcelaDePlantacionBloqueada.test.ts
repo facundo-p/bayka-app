@@ -3,7 +3,7 @@
  * mismo código que la falta de membresía (#511). El estado local desempata.
  */
 import { supabase } from '../../src/supabase/client';
-import { getSyncableParcelas, markParcelaSynced } from '../../src/repositories/ParcelaRepository';
+import { getSyncableParcelas, markParcelaSynced, puedeEditarParcelas } from '../../src/repositories/ParcelaRepository';
 import { getPlantationEstadoDeEdicion } from '../../src/queries/adminQueries';
 import { uploadSyncableParcelas, motivoDeBloqueo } from '../../src/services/sync/pushService';
 
@@ -20,6 +20,7 @@ jest.mock('../../src/database/liveQuery', () => ({
 jest.mock('../../src/repositories/ParcelaRepository', () => ({
   getSyncableParcelas: jest.fn(),
   markParcelaSynced: jest.fn(),
+  puedeEditarParcelas: jest.fn().mockResolvedValue(true),
 }));
 jest.mock('../../src/queries/adminQueries', () => ({
   getPlantationEstadoDeEdicion: jest.fn(),
@@ -96,5 +97,37 @@ describe('uploadSyncableParcelas — rechazo por RLS', () => {
     const resultado = await subirConPlantacion(ARCHIVADA, null);
     expect(resultado).toMatchObject({ success: true });
     expect(getPlantationEstadoDeEdicion).not.toHaveBeenCalled();
+  });
+});
+
+describe('uploadSyncableParcelas — el técnico solo sube altas (#640)', () => {
+  let upsert: jest.Mock;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getSyncableParcelas as jest.Mock).mockResolvedValue([{ id: 'parcela-1', nombre: 'Lote 1', plantacionId: 'p1' }]);
+    upsert = jest.fn().mockResolvedValue({ data: null, error: null });
+    (supabase.from as jest.Mock).mockReturnValue({ upsert });
+  });
+
+  test('técnico: ON CONFLICT DO NOTHING, nunca intenta el UPDATE', async () => {
+    (puedeEditarParcelas as jest.Mock).mockResolvedValue(false);
+    const [resultado] = await uploadSyncableParcelas('p1');
+    expect(upsert).toHaveBeenCalledWith(expect.anything(), { onConflict: 'id', ignoreDuplicates: true });
+    // Una edición vieja que el server ignoró deja de estar pendiente: el pull trae la del server.
+    expect(resultado).toMatchObject({ success: true });
+    expect(markParcelaSynced).toHaveBeenCalledWith('parcela-1');
+  });
+
+  test('admin: upsert que pisa la fila existente', async () => {
+    (puedeEditarParcelas as jest.Mock).mockResolvedValue(true);
+    await uploadSyncableParcelas('p1');
+    expect(upsert).toHaveBeenCalledWith(expect.anything(), { onConflict: 'id', ignoreDuplicates: false });
+  });
+
+  test('sin parcelas pendientes no consulta el rol', async () => {
+    (getSyncableParcelas as jest.Mock).mockResolvedValue([]);
+    expect(await uploadSyncableParcelas('p1')).toEqual([]);
+    expect(puedeEditarParcelas).not.toHaveBeenCalled();
   });
 });

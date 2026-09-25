@@ -10,6 +10,7 @@ import { useCurrentUserId } from './useCurrentUserId';
 import { useNetStatus } from './useNetStatus';
 import { useProfileData } from './useProfileData';
 import { useRoutePrefix } from './useRoutePrefix';
+import { esRutaAdmin } from '../constants/rutas';
 import { useConfirm } from './useConfirm';
 import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { checkFreshness } from '../queries/freshnessQueries';
@@ -27,7 +28,7 @@ import {
 export function usePlantaciones() {
   const routePrefix = useRoutePrefix();
   const userId = useCurrentUserId();
-  const isAdmin = routePrefix === '(admin)';
+  const isAdmin = esRutaAdmin(routePrefix);
   const { isOnline } = useNetStatus();
   const { profile } = useProfileData();
   const confirm = useConfirm();

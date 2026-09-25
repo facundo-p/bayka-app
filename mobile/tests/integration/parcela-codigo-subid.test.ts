@@ -4,6 +4,7 @@
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
+import { conRolCacheado } from '../helpers/rolCacheado';
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
 import * as idGenerator from '../../src/utils/idGenerator';
@@ -84,6 +85,7 @@ afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
   jest.restoreAllMocks();
+  conRolCacheado('admin');
   await vaciarTablas(mockTestDb);
   await sembrar();
 });

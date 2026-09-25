@@ -12,6 +12,7 @@ import {
 import {
   getSyncableParcelas,
   markParcelaSynced,
+  puedeEditarParcelas,
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
@@ -34,8 +35,17 @@ import { plantacionEsEditable, type EstadoDeEdicionDePlantacion } from '../../ut
 
 // ─── Upload Parcela (antes que groups por FK) ────────────
 
-/** Upsert de parcela (activa o tombstoned): el mismo path sube deletedAt y Supabase aplica el cambio. */
-async function uploadParcela(parcela: Parcela): Promise<{ data: any; error: any }> {
+/**
+ * Upsert de parcela (activa o tombstoned): el mismo path sube deletedAt y Supabase aplica el cambio.
+ * Sin permiso de edición (técnico, #640) solo se suben altas: `ON CONFLICT DO NOTHING` descarta la
+ * edición pendiente de una parcela que ya existe y el pull trae la del server, en vez de quedar
+ * trabada en un 42501 para siempre. También hace idempotente reintentar un alta ya subida.
+ *
+ * `DO NOTHING` no distingue "ignorado" de "aplicado": el upsert responde sin error igual, así que
+ * la fila queda marcada synced y muestra la edición del técnico hasta el pull siguiente, que la
+ * pisa con la del server (aceptado, ver docs/domain-model.md).
+ */
+async function uploadParcela(parcela: Parcela, soloAltas: boolean): Promise<{ data: any; error: any }> {
   return supabase
     .from('parcelas')
     .upsert(
@@ -49,7 +59,7 @@ async function uploadParcela(parcela: Parcela): Promise<{ data: any; error: any 
         created_at: parcela.createdAt,
         updated_at: parcela.updatedAt,
       },
-      { onConflict: 'id' }
+      { onConflict: 'id', ignoreDuplicates: soloAltas }
     );
 }
 
@@ -115,10 +125,12 @@ export async function uploadSyncableParcelas(
 ): Promise<SyncParcelaResult[]> {
   const pending = await getSyncableParcelas(plantacionId);
   const results: SyncParcelaResult[] = [];
+  if (pending.length === 0) return results;
+  const soloAltas = !(await puedeEditarParcelas());
 
   for (const parcela of pending) {
     try {
-      const { data, error } = await uploadParcela(parcela);
+      const { data, error } = await uploadParcela(parcela, soloAltas);
       const result = await desempatarPermiso(classifyParcelaRpcResult(parcela, data, error), plantacionId);
       if (result.success) await markParcelaSynced(parcela.id);
       // En cualquier error: NO markSynced — pending_sync queda en true.

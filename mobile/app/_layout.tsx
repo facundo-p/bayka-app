@@ -3,6 +3,7 @@ import 'react-native-url-polyfill/auto'; // must be first import
 import { useBaseLocal } from '../src/hooks/useBaseLocal';
 import { useAuth } from '../src/hooks/useAuth';
 import { esRolAdmin } from '../src/types/domain';
+import { GRUPO_DE_RUTAS } from '../src/constants/rutas';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { Text, View, Image } from 'react-native';
 import { useEffect } from 'react';
@@ -63,9 +64,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (!success || loading || !fontsLoaded) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
-    const inAdminGroup = segments[0] === '(admin)';
-    const inTecnicoGroup = segments[0] === '(tecnico)';
+    const inAuthGroup = segments[0] === GRUPO_DE_RUTAS.auth;
+    const inAdminGroup = segments[0] === GRUPO_DE_RUTAS.admin;
+    const inTecnicoGroup = segments[0] === GRUPO_DE_RUTAS.tecnico;
 
     if (!session || !role) {
       if (!inAuthGroup) {

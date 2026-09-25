@@ -4,6 +4,7 @@
  * Mocks `../../src/database/client` para que el repo use el mockTestDb.
  */
 import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
+import { conRolCacheado } from '../helpers/rolCacheado';
 import { createTestPlantation } from '../helpers/factories';
 import Database from 'better-sqlite3';
 import { plantations, parcelas, groups } from '../../src/database/schema';
@@ -45,6 +46,7 @@ afterAll(() => {
 });
 
 beforeEach(async () => {
+  conRolCacheado('admin');
   await vaciarTablas(mockTestDb);
 });
 
@@ -225,6 +227,60 @@ describe('ParcelaRepository', () => {
     test('restore sobre id inexistente → not_found', async () => {
       const r = await restoreParcela('does-not-exist');
       expect(r).toEqual({ restored: false, error: 'not_found' });
+    });
+  });
+
+  describe('rol: el técnico crea pero no edita, borra ni restaura (#640)', () => {
+    async function parcelaSincronizada(): Promise<string> {
+      const plantacionId = await seedPlantation();
+      const c = await createParcela({ plantacionId, nombre: 'Lote 1', codigo: 'L1' });
+      if (!c.success) throw new Error('seed failed');
+      await markParcelaSynced(c.id);
+      return c.id;
+    }
+
+    test('técnico crea', async () => {
+      conRolCacheado('tecnico');
+      const plantacionId = await seedPlantation();
+      const r = await createParcela({ plantacionId, nombre: 'Lote T', codigo: 'LT' });
+      expect(r.success).toBe(true);
+    });
+
+    test('técnico no edita: sin_permiso y la fila queda intacta', async () => {
+      const id = await parcelaSincronizada();
+      conRolCacheado('tecnico');
+      const r = await updateParcela(id, { nombre: 'Editada', codigo: 'L1' });
+      expect(r).toEqual({ success: false, error: 'sin_permiso' });
+      const after = await findById(id);
+      expect(after!.nombre).toBe('Lote 1');
+      expect(after!.pendingSync).toBe(false);
+    });
+
+    test('técnico no borra', async () => {
+      const id = await parcelaSincronizada();
+      conRolCacheado('tecnico');
+      expect(await deleteParcela(id)).toEqual({ deleted: false, error: 'sin_permiso' });
+      expect(await findById(id)).not.toBeNull();
+    });
+
+    test('técnico no restaura', async () => {
+      const id = await parcelaSincronizada();
+      await deleteParcela(id);
+      conRolCacheado('tecnico');
+      expect(await restoreParcela(id)).toEqual({ restored: false, error: 'sin_permiso' });
+    });
+
+    test('sin rol cacheado tampoco se edita', async () => {
+      const id = await parcelaSincronizada();
+      conRolCacheado(null);
+      expect(await updateParcela(id, { nombre: 'X', codigo: 'L1' })).toEqual({ success: false, error: 'sin_permiso' });
+    });
+
+    test('superadmin edita y borra', async () => {
+      const id = await parcelaSincronizada();
+      conRolCacheado('superadmin');
+      expect(await updateParcela(id, { nombre: 'Editada', codigo: 'L1' })).toEqual({ success: true });
+      expect(await deleteParcela(id)).toEqual({ deleted: true });
     });
   });
 

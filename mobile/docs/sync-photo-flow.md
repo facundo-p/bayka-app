@@ -149,7 +149,7 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
 **Archivo:** `services/sync/pushService.ts`
 
 - `pushBorrados(plantacionId)` manda los borrados anotados por el RPC `sincronizar_borrados` (#467) y las fotos quitadas por `quitar_fotos_arboles` (#498). Cada RPC recibe solo sus tipos.
-- `uploadSyncableParcelas(plantacionId)` hace upsert de las parcelas con `pendingSync = true`. Un grupo cuya parcela no subió se reporta como `PARCELA_PENDING`.
+- `uploadSyncableParcelas(plantacionId)` hace upsert de las parcelas con `pendingSync = true`. Para un técnico el upsert es `ignoreDuplicates` (solo altas, #640). Un grupo cuya parcela no subió se reporta como `PARCELA_PENDING`.
 
 ### Paso 3: Upload de grupos
 
@@ -347,14 +347,15 @@ El RPC corre como `postgres`, sin RLS: por eso valida membresía y estado de la 
 
 ### Policies relevantes (escrituras directas, fuera del RPC)
 
-Exigen membresía (`is_plantation_member`) y `plantacion_escribible` (037):
+Exigen membresía (`is_plantation_member`) y `plantacion_escribible` (037). El UPDATE
+de parcelas —que incluye el tombstone— además exige `is_admin()` (056, #640):
 
 | Policy | Tabla | Operación |
 |--------|-------|-----------|
 | "Plantation members can insert trees" | trees | INSERT |
 | "Plantation members can update trees" | trees | UPDATE |
 | "Plantation members can insert parcelas" | parcelas | INSERT |
-| "Plantation members can update parcelas" | parcelas | UPDATE |
+| "Admins can update parcelas" | parcelas | UPDATE |
 
 ---
 

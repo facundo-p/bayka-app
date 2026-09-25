@@ -3,7 +3,8 @@
  * Valida nombre/codigo únicos por plantación (excluye tombstones) y descripcion ≤10k; bloquea
  * delete si hay grupos hijos. Lecturas filtran deleted_at IS NULL salvo `{ includeDeleted: true }`
  * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side. Cambiar el
- * código reescribe el SubID de los árboles de sus grupos (#623).
+ * código reescribe el SubID de los árboles de sus grupos (#623). Crear es de cualquier miembro;
+ * editar, borrar y restaurar, solo de admin y superadmin (#640).
  */
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
@@ -18,6 +19,8 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { errorDeDuplicado } from '../database/sqliteErrors';
+import { readCachedRole } from '../supabase/auth';
+import { esRolAdmin } from '../types/domain';
 
 const MAX_DESCRIPCION_LENGTH = 10000;
 
@@ -43,14 +46,21 @@ export type UpdateParcelaResult =
   | { success: true }
   | { success: false; error: ErrorDeDuplicado | DescripcionError | ErrorDeEdicion | 'not_found' | 'unknown' };
 
+type SinPermiso = typeof ERROR_DE_EDICION.sinPermiso;
+
 export type DeleteParcelaResult =
   | { deleted: true }
   | { deleted: false; error: 'has_children'; childCount: number }
-  | { deleted: false; error: 'not_found' };
+  | { deleted: false; error: 'not_found' | SinPermiso };
 
 export type RestoreParcelaResult =
   | { restored: true }
-  | { restored: false; error: 'not_found' | ErrorDeDuplicado };
+  | { restored: false; error: 'not_found' | ErrorDeDuplicado | SinPermiso };
+
+/** Editar y borrar parcelas es de admin y superadmin; la RLS de `parcelas` exige lo mismo. */
+export async function puedeEditarParcelas(): Promise<boolean> {
+  return esRolAdmin(await readCachedRole());
+}
 
 /** Valida nombre/codigo únicos en la plantación, excluyendo tombstones — un nombre reusado de una parcela tombstoned es válido. */
 async function validateParcelaUniqueness(
@@ -138,6 +148,7 @@ type CamposDeParcela = { nombre: string; codigo: string; descripcion?: string | 
 type ErrorDeUpdate = Extract<UpdateParcelaResult, { success: false }>['error'];
 
 export async function updateParcela(id: string, params: CamposDeParcela): Promise<UpdateParcelaResult> {
+  if (!(await puedeEditarParcelas())) return { success: false, error: ERROR_DE_EDICION.sinPermiso };
   const campos = { ...params, codigo: params.codigo.toUpperCase() };
   const existing = await findById(id);
   if (!existing) return { success: false, error: 'not_found' };
@@ -182,6 +193,7 @@ async function countChildGroups(parcelaId: string): Promise<number> {
 
 /** Soft-delete (tombstone) de una parcela; bloqueado si tiene grupos hijos. Idempotente: un segundo delete sobre una parcela ya tombstoned retorna not_found. */
 export async function deleteParcela(id: string): Promise<DeleteParcelaResult> {
+  if (!(await puedeEditarParcelas())) return { deleted: false, error: ERROR_DE_EDICION.sinPermiso };
   const existing = await findById(id);
   if (!existing) return { deleted: false, error: 'not_found' };
   const childCount = await countChildGroups(id);
@@ -198,6 +210,7 @@ export async function deleteParcela(id: string): Promise<DeleteParcelaResult> {
 
 /** Restaura una parcela tombstoned (sync conflict recovery); valida que ninguna parcela activa tenga el mismo nombre/codigo en la plantación (pudo tomar su lugar mientras estaba tombstoned). */
 export async function restoreParcela(id: string): Promise<RestoreParcelaResult> {
+  if (!(await puedeEditarParcelas())) return { restored: false, error: ERROR_DE_EDICION.sinPermiso };
   const existing = await findById(id, { includeDeleted: true });
   if (!existing || existing.deletedAt === null) {
     return { restored: false, error: 'not_found' };

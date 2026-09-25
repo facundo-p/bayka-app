@@ -13,7 +13,9 @@ import { useNewParcela } from '../hooks/useNewParcela';
 import { colors } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
 import type { Parcela } from '../repositories/ParcelaRepository';
-import { camposDuplicados, esPlantacionNoEditable, MENSAJE_PLANTACION_NO_EDITABLE } from '../constants/errorDeEdicion';
+import {
+  camposDuplicados, esPlantacionNoEditable, esSinPermiso, MENSAJE_PARCELA_SIN_PERMISO, MENSAJE_PLANTACION_NO_EDITABLE,
+} from '../constants/errorDeEdicion';
 
 const MAX_DESCRIPCION = 10000;
 const DESCRIPCION_WARN_THRESHOLD = 9000;
@@ -72,6 +74,9 @@ function erroresDelGuardado(error: string): ErrorState {
   }
   if (esPlantacionNoEditable(error)) {
     return { nombre: null, codigo: null, general: MENSAJE_PLANTACION_NO_EDITABLE };
+  }
+  if (esSinPermiso(error)) {
+    return { nombre: null, codigo: null, general: MENSAJE_PARCELA_SIN_PERMISO };
   }
   return { nombre: null, codigo: null, general: 'Error al guardar. Intentá de nuevo.' };
 }
@@ -140,7 +145,8 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
       if (result.error === 'has_children') {
         setHasChildrenError(result.childCount);
       } else {
-        setErrors((e) => ({ ...e, general: 'No se pudo eliminar la parcela.' }));
+        const general = esSinPermiso(result.error) ? MENSAJE_PARCELA_SIN_PERMISO : 'No se pudo eliminar la parcela.';
+        setErrors((e) => ({ ...e, general }));
       }
     } finally {
       setLoading(false);

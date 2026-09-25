@@ -88,12 +88,15 @@ intacto (051, #314), `30` reabrir una finalizada: solo superadmin activo de la
 organización, la archivada se rechaza, los grupos conservan su estado y el
 técnico vuelve a escribir (052, #470), `31` cambiar el código de una parcela
 reescribe el prefijo del SubID de sus árboles (solo los que calzan con parcela +
-grupo), y en una finalizada el técnico no llega a cambiarlo (053, #623), `32`
+grupo), y en una finalizada el admin no llega a cambiarlo (053, #623), `32`
 `sync_subgroup` pisa código, nombre y tipo del grupo, rechaza un nombre repetido
 con DUPLICATE_NAME y pasa al código vigente de la
 parcela los SubID armados con el que manda el móvil en `parcela_codigo` (054, #626), `33`
 una especie con árboles no se quita de su plantación, ni por DELETE ni por
-`reemplazar_especies_plantacion`, y el cascade de borrar la plantación pasa (055, #632).
+`reemplazar_especies_plantacion`, y el cascade de borrar la plantación pasa (055, #632), `34`
+el técnico crea parcelas (INSERT y upsert sin conflicto) pero no las edita ni
+tombstonea; su upsert sobre una existente da 42501 y con `ON CONFLICT DO NOTHING`
+queda sin efecto; admin y superadmin editan (056, #640).
 
 ## Hallazgo fuera de alcance (no corregido)
 

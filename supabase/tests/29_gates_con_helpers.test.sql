@@ -102,6 +102,8 @@ select is(
   'un miembro ya no puede borrar físicamente una parcela'
 );
 
+-- El tombstone es de admin desde 056 (#640).
+select set_config('request.jwt.claim.sub', 'b2900000-0000-0000-0000-0000000000a1', true);
 select lives_ok(
   $$ update parcelas set deleted_at = now()
      where id = 'b2900000-0000-0000-0000-000000000003' $$,

@@ -265,7 +265,13 @@ cuando la plantación vuelve a ser escribible.
 
 Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
 responde `42501` sin motivo. La app lo traduce con el estado local de la
-plantación; si está activa, queda como `PERMISSION`.
+plantación; si está activa, queda como `PERMISSION`. Editar y tombstonear una
+parcela es de admin y superadmin (056, #640): el técnico sube solo altas, con
+`ON CONFLICT DO NOTHING`, y una edición suya que el server ignora se reemplaza
+con la versión del server en el pull siguiente. El rol cacheado que usa el
+cliente para esta decisión se refresca en cada arranque online: un cambio de
+rol tarda hasta ese refresh en aplicarse en el celular, aunque el server ya lo
+exige siempre.
 
 Las asignaciones de técnicos (`plantation_users`) usan otro gate,
 `plantacion_admite_asignaciones`: exigen que la plantación exista y no esté
