@@ -40,6 +40,10 @@ import { plantacionEsEditable, type EstadoDeEdicionDePlantacion } from '../../ut
  * Sin permiso de edición (técnico, #640) solo se suben altas: `ON CONFLICT DO NOTHING` descarta la
  * edición pendiente de una parcela que ya existe y el pull trae la del server, en vez de quedar
  * trabada en un 42501 para siempre. También hace idempotente reintentar un alta ya subida.
+ *
+ * `DO NOTHING` no distingue "ignorado" de "aplicado": el upsert responde sin error igual, así que
+ * la fila queda marcada synced y muestra la edición del técnico hasta el pull siguiente, que la
+ * pisa con la del server (aceptado, ver docs/domain-model.md).
  */
 async function uploadParcela(parcela: Parcela, soloAltas: boolean): Promise<{ data: any; error: any }> {
   return supabase

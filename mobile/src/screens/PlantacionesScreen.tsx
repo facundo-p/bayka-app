@@ -12,7 +12,7 @@ import TexturedBackground from '../components/TexturedBackground';
 import PlantacionesModals from '../components/PlantacionesModals';
 import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../types/plantation';
-import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { plantacionEsEditable, puedeEditarParcelas } from '../utils/permisosDeEdicion';
 import { esEliminadaEnServidor } from '../constants/estados';
 
 export default function PlantacionesScreen() {
@@ -77,7 +77,7 @@ export default function PlantacionesScreen() {
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
                   // Editar y borrar parcelas es de admin (#640).
-                  onParcelaLongPress={s.isAdmin && plantacionEsEditable(item)
+                  onParcelaLongPress={puedeEditarParcelas(s.routePrefix) && plantacionEsEditable(item)
                     ? (p) => s.handleParcelaInlineLongPress(item.id, p)
                     : undefined}
                   cardProps={{

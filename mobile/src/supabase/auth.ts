@@ -1,5 +1,8 @@
 import * as SecureStore from 'expo-secure-store';
 import type { Role } from '../types/domain';
+import { ROL } from '../constants/roles';
+
+const ROLES_VALIDOS: readonly string[] = Object.values(ROL);
 
 // Separate keys to stay under expo-secure-store's 2048-byte limit
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
@@ -32,7 +35,12 @@ export async function readCachedSession(): Promise<{ access_token: string; refre
   return { access_token: accessToken, refresh_token: refreshToken };
 }
 
-/** Rol cacheado al loguear; null sin sesión. Lo usan los repositorios, que no tienen hooks. */
+/**
+ * Rol cacheado al loguear; null sin sesión o si el valor guardado no es un rol
+ * válido (dato corrupto o de una versión previa). Lo usan los repositorios, que
+ * no tienen hooks.
+ */
 export async function readCachedRole(): Promise<Role | null> {
-  return (await SecureStore.getItemAsync(ROLE_KEY)) as Role | null;
+  const rol = await SecureStore.getItemAsync(ROLE_KEY);
+  return rol != null && ROLES_VALIDOS.includes(rol) ? (rol as Role) : null;
 }
