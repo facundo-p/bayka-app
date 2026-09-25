@@ -77,7 +77,7 @@ describe('useSpeciesConfig', () => {
   });
 
   it('una baja que el server mantuvo por árboles avisa y deja la pantalla abierta', async () => {
-    mockGuardar.mockResolvedValue(['Eucalyptus']);
+    mockGuardar.mockResolvedValue([{ especieId: 'euc', nombre: 'Eucalyptus' }]);
     const onClose = jest.fn();
     const { result } = await montar();
     act(() => result.current.handleToggle('euc', false));
@@ -86,7 +86,11 @@ describe('useSpeciesConfig', () => {
     expect(mockShow).toHaveBeenCalledWith(expect.objectContaining({
       message: 'Eucalyptus ya tiene árboles registrados en el servidor, así que sigue habilitada.',
     }));
-    // Recarga desde SQLite, donde la especie volvió a estar habilitada.
+    // Recarga desde SQLite, donde la especie volvió a estar habilitada, y queda con candado
+    // aunque el teléfono no tenga sus árboles.
+    const euc = result.current.items.find((i) => i.especieId === 'euc');
+    expect(euc).toMatchObject({ enabled: true, hasExistingTrees: true });
+    act(() => result.current.handleToggle('euc', false));
     expect(result.current.items.find((i) => i.especieId === 'euc')?.enabled).toBe(true);
   });
 

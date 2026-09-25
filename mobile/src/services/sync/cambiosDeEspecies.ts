@@ -12,7 +12,7 @@ import { RECHAZO_CONFIGURACION } from '../ReemplazoConfiguracionService';
 import {
   comoAltasYBajas,
   getCambiosPendientes,
-  getNombresDeEspecies,
+  getEspeciesPorId,
   getPlantacionesConCambiosDeEspecies,
   registrarRespuesta,
   type CambioPendiente,
@@ -71,7 +71,7 @@ async function subirDeUnaPlantacion(p: { id: string; lugar: string }): Promise<S
       return null;
     }
     if (subida.conArboles.length === 0) return null;
-    return { success: true, plantacionId: p.id, nombre: p.lugar, especiesConArboles: await getNombresDeEspecies(subida.conArboles) };
+    return { success: true, plantacionId: p.id, nombre: p.lugar, especiesConArboles: (await getEspeciesPorId(subida.conArboles)).map((e) => e.nombre) };
   } catch (e: any) {
     relanzarSiEsCancelacion(e);
     syncLog.error('Upload species changes failed:', p.id, e?.message ?? e);

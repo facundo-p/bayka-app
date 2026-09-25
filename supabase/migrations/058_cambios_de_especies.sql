@@ -6,7 +6,8 @@
 --
 -- A. Orden: alfabético por nombre (decisión de Facu). Los clientes nuevos
 --    ordenan al leer; `orden_visual` se sigue llenando para los APKs instalados,
---    que ordenan por esa columna.
+--    que ordenan por esa columna. Colación española explícita, la misma que usan
+--    web y mobile: sin ella "álamo" o una minúscula quedan al final.
 -- B. `aplicar_cambios_especies`: una baja con árboles se rechaza sola y el resto
 --    se aplica.
 -- C. `sync_subgroup` re-habilita la especie de los árboles que suben si alguien
@@ -20,7 +21,7 @@ CREATE OR REPLACE FUNCTION "public"."ordenar_especies_plantacion"("p_plantacion"
     AS $$
   UPDATE plantation_species ps SET orden_visual = o.orden
   FROM (
-    SELECT ps2.species_id, (row_number() OVER (ORDER BY s.nombre, s.id) - 1)::INTEGER AS orden
+    SELECT ps2.species_id, (row_number() OVER (ORDER BY s.nombre COLLATE "es-x-icu", s.id) - 1)::INTEGER AS orden
     FROM plantation_species ps2 JOIN species s ON s.id = ps2.species_id
     WHERE ps2.plantation_id = p_plantacion
   ) o
@@ -189,13 +190,18 @@ BEGIN
     gps_accuracy = COALESCE(EXCLUDED.gps_accuracy, trees.gps_accuracy),
     gps_captured_at = COALESCE(EXCLUDED.gps_captured_at, trees.gps_captured_at);
 
-  -- #635: la especie de un árbol que sube vuelve a estar habilitada.
-  INSERT INTO plantation_species (plantation_id, species_id, orden_visual)
-  SELECT DISTINCT (p_subgroup->>'plantation_id')::UUID, NULLIF(t->>'species_id', '')::UUID, 0
-    FROM jsonb_array_elements(p_trees) AS t
-   WHERE NULLIF(t->>'species_id', '') IS NOT NULL
-  ON CONFLICT (plantation_id, species_id) DO NOTHING;
-  GET DIAGNOSTICS v_rehabilitadas = ROW_COUNT;
+  -- #635: la especie de un árbol que sube vuelve a estar habilitada. El DO UPDATE
+  -- sin cambios lockea la fila: una baja concurrente espera a este commit y su
+  -- trigger (055) ve estos árboles. DO NOTHING no lockea.
+  WITH habilitadas AS (
+    INSERT INTO plantation_species (plantation_id, species_id, orden_visual)
+    SELECT DISTINCT (p_subgroup->>'plantation_id')::UUID, NULLIF(t->>'species_id', '')::UUID, 0
+      FROM jsonb_array_elements(p_trees) AS t
+     WHERE NULLIF(t->>'species_id', '') IS NOT NULL
+    ON CONFLICT (plantation_id, species_id) DO UPDATE SET orden_visual = plantation_species.orden_visual
+    RETURNING (xmax = 0) AS nueva
+  )
+  SELECT count(*) FILTER (WHERE nueva) INTO v_rehabilitadas FROM habilitadas;
   IF v_rehabilitadas > 0 THEN
     PERFORM ordenar_especies_plantacion((p_subgroup->>'plantation_id')::UUID);
   END IF;
