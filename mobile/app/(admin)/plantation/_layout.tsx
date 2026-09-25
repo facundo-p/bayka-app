@@ -12,6 +12,7 @@ export default function PlantationLayout() {
       <Stack.Screen name="nuevo-grupo" options={{ animation: 'none' }} />
       <Stack.Screen name="subgroup" />
       <Stack.Screen name="catalog" />
+      <Stack.Screen name="resolver-cambios" />
     </Stack>
   );
 }

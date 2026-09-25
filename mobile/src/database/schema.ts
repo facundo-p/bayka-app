@@ -5,6 +5,8 @@ import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { VISIBLE_IN_APP_DEFAULT } from '../constants/visibilidad';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
+import type { ConflictoDeCampo } from '../utils/conflictosDeEdicion';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
@@ -58,6 +60,11 @@ export const plantations = sqliteTable('plantations', {
   archivadaEn: text('archivada_en'),
   // Solo local (#478): cuándo el server respondió por primera vez que la plantación fue eliminada. Null = existe.
   eliminadaEnServidorEn: text('eliminada_en_servidor_en'),
+  // Solo local (#634): lo que el server tenía al entrar en edición offline. El pull no la toca.
+  baseDeEdicion: text('base_de_edicion', { mode: 'json' }).$type<Partial<CamposDePlantacion>>(),
+  editadaLocalmenteEn: text('editada_localmente_en'),
+  // Solo local (#634): campos que chocaron con la web, hasta que el usuario elija. Null = ninguno.
+  conflictosDeEdicion: text('conflictos_de_edicion', { mode: 'json' }).$type<ConflictoDeCampo[]>(),
 });
 
 export const parcelas = sqliteTable('parcelas', {

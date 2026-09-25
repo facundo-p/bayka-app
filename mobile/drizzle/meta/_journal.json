@@ -176,6 +176,13 @@
       "when": 1790208000000,
       "tag": "0024_plantations_campos_editables",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1790294400000,
+      "tag": "0025_plantations_edicion_por_campo",
+      "breakpoints": true
     }
   ]
 }

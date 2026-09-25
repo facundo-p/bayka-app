@@ -8,6 +8,7 @@ import BaseModal from './BaseModal';
 import FailureList from './FailureList';
 import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
 import PlantacionesDuplicadasAviso from './PlantacionesDuplicadasAviso';
+import CambiosPorResolverAviso from './CambiosPorResolverAviso';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
@@ -46,6 +47,8 @@ interface Props {
   huboTimeout: boolean;
   onCancelar: () => void;
   onDismiss: () => void;
+  /** Abre "Resolver cambios" de una plantación (#634); sin esto el aviso no ofrece el botón. */
+  onResolverCambios?: (plantacionId: string) => void;
 }
 
 type GlobalProgress = { plantationName: string; done: number; total: number } | null | undefined;
@@ -261,6 +264,14 @@ function hayFallas(p: Props): boolean {
   return p.failureCount > 0 || p.parcelaFailureCount > 0 || p.plantationFailureCount > 0;
 }
 
+/** Cierra el resumen y abre la pantalla donde se elige. */
+function AvisoDeCambiosPorResolver({ plantationResults, onDismiss, onResolverCambios }: Props) {
+  const resolver = onResolverCambios
+    ? (plantacionId: string) => { onDismiss(); onResolverCambios(plantacionId); }
+    : undefined;
+  return <CambiosPorResolverAviso resultados={plantationResults} onResolver={resolver} />;
+}
+
 /** Solo hubo pull: no se subió ni falló nada que listar. */
 function esSoloPull(p: Props): boolean {
   return p.pullSuccess !== null && p.results.length === 0 && !hayFallas(p);
@@ -277,6 +288,7 @@ function ResultadoPull(p: Props) {
       <FotosDescargadas photoResult={p.photoResult} />
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
       <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
+      <AvisoDeCambiosPorResolver {...p} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
   );
@@ -313,6 +325,7 @@ function ResultadoPush(p: Props) {
       <FailureList label="grupo" results={p.results} getKey={(r) => r.groupId} />
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
       <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
+      <AvisoDeCambiosPorResolver {...p} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
   );

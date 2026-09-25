@@ -21,7 +21,7 @@ export interface CamposDePlantacion {
 /** Todo lo que el formulario define además de lugar y periodo. */
 export type AjustesDePlantacion = Omit<CamposDePlantacion, 'lugar' | 'periodo'>;
 
-type CampoDePlantacion = keyof CamposDePlantacion;
+export type CampoDePlantacion = keyof CamposDePlantacion;
 type FilaDePlantacion = typeof plantations.$inferSelect;
 
 const COLUMNA_REMOTA = {
@@ -73,8 +73,8 @@ export function camposDeFila(fila: FilaDePlantacion): CamposDePlantacion {
   return campos as unknown as CamposDePlantacion;
 }
 
-/** Lo que el server tenía al entrar en edición, leído de las columnas *Server. */
-function desdeSnapshot(fila: FilaDePlantacion): Partial<CamposDePlantacion> {
+/** Lo último que se sabe del server, leído de las columnas *Server. */
+export function desdeSnapshot(fila: FilaDePlantacion): Partial<CamposDePlantacion> {
   const campos: Record<string, unknown> = {};
   for (const campo of CAMPOS) campos[campo] = fila[COLUMNA_SNAPSHOT[campo]];
   return campos as Partial<CamposDePlantacion>;
@@ -97,16 +97,86 @@ export function camposCambiados(
 }
 
 /**
+ * Lo que el server tenía cuando se editó (#634). Con edición offline pendiente, la base
+ * guardada al entrar en edición (el pull refresca el snapshot, no la base; una fila editada
+ * antes de 0025 cae al snapshot); si no, el valor vivo, que es el del último pull.
+ */
+export function baseDeLaEdicion(fila: FilaDePlantacion): Partial<CamposDePlantacion> {
+  if (!fila.pendingEdit) return camposDeFila(fila);
+  return fila.baseDeEdicion ?? desdeSnapshot(fila);
+}
+
+/** La base al entrar en edición offline: el snapshot del pull si lo hay, si no el valor vivo. */
+export function baseAntesDeEditar(fila: FilaDePlantacion): Partial<CamposDePlantacion> {
+  return desdeSnapshot({ ...fila, ...snapshotAntesDeEditar(fila) });
+}
+
+/**
  * Lo que hay que subir para que el server refleje la fila con `edicion` aplicada: solo lo
- * que cambió. Con edición offline pendiente la base es el snapshot; si no, el valor vivo.
- * Así una fila que nunca bajó un campo (null en vivo y en snapshot) no borra el del server.
+ * que cambió respecto de la base. Así una fila que nunca bajó un campo (null en vivo y en
+ * la base) no borra el del server.
  */
 export function cambiosParaElServer(
   fila: FilaDePlantacion,
   edicion: Partial<CamposDePlantacion> = {},
 ): Partial<CamposDePlantacion> {
-  const base = fila.pendingEdit ? desdeSnapshot(fila) : camposDeFila(fila);
-  return camposCambiados(base, { ...camposDeFila(fila), ...edicion });
+  return camposCambiados(baseDeLaEdicion(fila), { ...camposDeFila(fila), ...edicion });
+}
+
+/** La base de cada campo de `cambios`. */
+export function baseDe(
+  cambios: Partial<CamposDePlantacion>,
+  base: Partial<CamposDePlantacion>,
+): Partial<CamposDePlantacion> {
+  const deLosCambios: Record<string, unknown> = {};
+  for (const campo of CAMPOS) {
+    if (cambios[campo] !== undefined) deLosCambios[campo] = base[campo];
+  }
+  return deLosCambios as Partial<CamposDePlantacion>;
+}
+
+function sinLosDe(
+  campos: Partial<CamposDePlantacion>,
+  excluir: Partial<CamposDePlantacion>,
+): Partial<CamposDePlantacion> {
+  return Object.fromEntries(
+    Object.entries(campos).filter(([campo]) => excluir[campo as CampoDePlantacion] === undefined),
+  ) as Partial<CamposDePlantacion>;
+}
+
+export type EdicionDelFormulario = {
+  /** Lo que el usuario cambió en el formulario: lo único que se escribe en la fila. */
+  tocados: Partial<CamposDePlantacion>;
+  /** Lo que hay que subir: lo tocado más lo editado offline antes y todavía sin subir. */
+  cambios: Partial<CamposDePlantacion>;
+  /** La base de cada campo de `cambios`. */
+  base: Partial<CamposDePlantacion>;
+  /** La base completa a guardar si la edición queda offline. */
+  baseDeEdicion: Partial<CamposDePlantacion>;
+};
+
+/**
+ * Una edición del formulario sobre la fila (#634). `vistos` son los valores con que se
+ * abrió: solo cuenta lo que el usuario tocó, y su base es lo que vio (si un pull cambió un
+ * campo con el form abierto, no se lo pisa sin avisar). Lo editado offline antes sube con
+ * la base de entonces.
+ */
+export function edicionDelFormulario(
+  fila: FilaDePlantacion,
+  edicion: Partial<CamposDePlantacion>,
+  vistos: Partial<CamposDePlantacion> = camposDeFila(fila),
+): EdicionDelFormulario {
+  const tocados = camposCambiados(vistos, edicion);
+  const pendientes = fila.pendingEdit ? cambiosParaElServer(fila) : {};
+  const baseAnterior = fila.pendingEdit ? baseDeLaEdicion(fila) : baseAntesDeEditar(fila);
+  const baseDeEdicion = { ...baseAnterior, ...baseDe(sinLosDe(tocados, pendientes), vistos) };
+  const cambios = { ...pendientes, ...tocados };
+  return { tocados, cambios, base: baseDe(cambios, baseDeEdicion), baseDeEdicion };
+}
+
+/** El campo local de una columna de Supabase, o undefined si no es editable. */
+export function campoDeColumnaRemota(columna: string): CampoDePlantacion | undefined {
+  return CAMPOS.find((campo) => COLUMNA_REMOTA[campo] === columna);
 }
 
 export function hayCambios(campos: Partial<CamposDePlantacion>): boolean {
@@ -128,6 +198,19 @@ export function remotosNoEditados(
     if (remotos[campo] !== undefined && fila[campo] === fila[COLUMNA_SNAPSHOT[campo]]) noEditados[campo] = remotos[campo];
   }
   return noEditados as Partial<CamposDePlantacion>;
+}
+
+/**
+ * Pull con edición pendiente: los campos no editados toman el valor del server y su base
+ * también (#634); si no, el push los vería distintos de la base y los mandaría.
+ */
+export function rebaseDeEdicionPendiente(
+  fila: FilaDePlantacion,
+  remotos: Partial<CamposDePlantacion>,
+): Partial<CamposDePlantacion> & Pick<Partial<FilaDePlantacion>, 'baseDeEdicion'> {
+  const noEditados = remotosNoEditados(fila, remotos);
+  if (!fila.baseDeEdicion) return noEditados;
+  return { ...noEditados, baseDeEdicion: { ...fila.baseDeEdicion, ...noEditados } };
 }
 
 /** Payload para Supabase: solo los campos presentes. */

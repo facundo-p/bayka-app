@@ -1,3 +1,5 @@
+import type { ConflictoDeCampo } from '../utils/conflictosDeEdicion';
+
 /** Plantación tal como la manejan el listado y las acciones de admin. */
 export type Plantation = {
   id: string;
@@ -19,4 +21,6 @@ export type Plantation = {
   archivadaEn: string | null;
   /** Null = existe en el server (#478). */
   eliminadaEnServidorEn: string | null;
+  /** Campos que chocaron con la web, por resolver (#634). */
+  conflictosDeEdicion?: ConflictoDeCampo[] | null;
 };

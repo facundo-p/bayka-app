@@ -389,36 +389,60 @@ describe('SyncService — offline functions', () => {
   describe('uploadPendingEdits', () => {
     const plantacionEditada = {
       ...fakePendingPlantation, pendingSync: false, pendingEdit: true, lugar: 'Zona Editada', lugarServer: 'Zona Offline',
+      baseDeEdicion: null as Record<string, unknown> | null, conflictosDeEdicion: null,
     };
 
-    function conEdicionPendiente(filasAfectadas: unknown[]) {
+    function conEdicionPendiente(respuesta: unknown, fila: Record<string, unknown> = plantacionEditada) {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
-        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([plantacionEditada]) }),
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([fila]) }),
       });
-      const select = jest.fn().mockResolvedValue({ data: filasAfectadas, error: null });
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        update: jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({ select }) }),
-      });
-      return select;
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: respuesta, error: null });
     }
 
-    it('con filas afectadas limpia pendingEdit', async () => {
-      const select = conEdicionPendiente([{ id: plantacionEditada.id }]);
+    function setLocal() {
+      return (mockDb.update as jest.Mock).mock.results[0]?.value.set;
+    }
 
-      await uploadPendingEdits();
+    it('sube por editar_plantacion solo lo que cambió, con su base, y limpia pendingEdit', async () => {
+      conEdicionPendiente({ success: true });
 
-      expect(select).toHaveBeenCalledWith('id');
-      const set = (mockDb.update as jest.Mock).mock.results[0].value.set;
-      expect(set).toHaveBeenCalledWith(expect.objectContaining({ pendingEdit: false }));
+      const [subida] = await uploadPendingEdits();
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('editar_plantacion', {
+        p_id: plantacionEditada.id, p_cambios: { lugar: 'Zona Editada' }, p_base: { lugar: 'Zona Offline' },
+      });
+      expect(setLocal()).toHaveBeenCalledWith(expect.objectContaining({ pendingEdit: false, baseDeEdicion: null }));
+      expect(subida).toMatchObject({ success: true, cambiosPorResolver: 0 });
     });
 
-    // Plantación inexistente en el server u oculta por RLS: PostgREST no da error (#482).
-    it('sin filas afectadas NO limpia pendingEdit', async () => {
-      conEdicionPendiente([]);
+    it('la base guardada al editar gana sobre el snapshot que refrescó el pull', async () => {
+      conEdicionPendiente({ success: true }, { ...plantacionEditada, lugarServer: 'Cambiada en la web', baseDeEdicion: { lugar: 'Zona Offline' } });
 
       await uploadPendingEdits();
 
+      expect((mockSupabase.rpc as jest.Mock).mock.calls[0][1].p_base).toEqual({ lugar: 'Zona Offline' });
+    });
+
+    it('un rechazo del server NO limpia pendingEdit', async () => {
+      conEdicionPendiente({ success: false, error: 'PLANTACION_FINALIZADA' });
+
+      expect(await uploadPendingEdits()).toEqual([]);
       expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('un conflicto deja el valor de la web y lo guarda para resolver', async () => {
+      conEdicionPendiente({
+        success: false, error: 'CONFLICTO_EDICION', aplicados: [],
+        conflictos: [{ campo: 'lugar', valor_servidor: 'Zona Web', editado_por: 'Ana', editado_en: null }],
+      });
+
+      const [subida] = await uploadPendingEdits();
+
+      expect(subida).toMatchObject({ success: true, cambiosPorResolver: 1 });
+      expect(setLocal()).toHaveBeenCalledWith(expect.objectContaining({
+        lugar: 'Zona Web', lugarServer: 'Zona Web', pendingEdit: false,
+        conflictosDeEdicion: [expect.objectContaining({ campo: 'lugar', mio: 'Zona Editada', web: 'Zona Web', anterior: 'Zona Offline' })],
+      }));
     });
   });
 });

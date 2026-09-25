@@ -39,6 +39,8 @@ type Props = {
   visibleInApp?: boolean;
   /** Eliminada en el servidor (#478): queda solo para consulta o para eliminar del dispositivo. */
   eliminadaEnServidor?: boolean;
+  /** Con cambios que chocaron con la web (#634): la marca abre "Resolver cambios". */
+  onResolverCambios?: () => void;
   // Inline expansion props (all optional; expand row only renders when
   // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
@@ -213,6 +215,21 @@ function StatsRow({
   );
 }
 
+function CambiosPorResolverBadge({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      style={styles.conflictoBadge}
+      onPress={(e) => { e?.stopPropagation?.(); onPress(); }}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel="Resolver cambios"
+    >
+      <Ionicons name="warning-outline" size={iconSizes.badge} color={colors.conflictoText} />
+      <Text style={styles.conflictoBadgeText}>Cambios por resolver</Text>
+    </Pressable>
+  );
+}
+
 export default function PlantationCard({
   lugar,
   periodo,
@@ -231,6 +248,7 @@ export default function PlantationCard({
   onGear,
   visibleInApp = true,
   eliminadaEnServidor = false,
+  onResolverCambios,
   parcelasCount = 0,
   expanded = false,
   onToggleExpanded,
@@ -263,6 +281,8 @@ export default function PlantationCard({
           <Text style={styles.subtitle}>{periodo}</Text>
 
           {eliminadaEnServidor && <EliminadaBadge />}
+
+          {onResolverCambios && <CambiosPorResolverBadge onPress={onResolverCambios} />}
 
           {isAdmin && !visibleInApp && (
             <View style={styles.hiddenBadge}>

@@ -63,8 +63,11 @@ export type SyncParcelaResult =
 
 /** Result of pushing an offline-created plantation row to the server. */
 export type SyncPlantationResult =
-  /** `duplicada`: el server ya tenía otra con el mismo lugar y periodo (#633). */
-  | { success: true; plantacionId: string; nombre: string; duplicada?: boolean }
+  /**
+   * `duplicada`: el server ya tenía otra con el mismo lugar y periodo (#633).
+   * `cambiosPorResolver`: campos de la edición que chocaron con la web (#634).
+   */
+  | { success: true; plantacionId: string; nombre: string; duplicada?: boolean; cambiosPorResolver?: number }
   | { success: false; plantacionId: string; nombre: string; error: SyncErrorCode; detail?: string };
 
 export interface SyncProgress {

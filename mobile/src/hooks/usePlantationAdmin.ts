@@ -24,6 +24,7 @@ import {
   FinalizePlantationPendientesError,
   type AjustesDePlantacion,
 } from '../repositories/PlantationRepository';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
@@ -244,9 +245,10 @@ export function usePlantationAdmin() {
     plantacionId: string,
     lugar: string,
     periodo: string,
-    ajustes?: Partial<AjustesDePlantacion>
-  ) {
-    await updatePlantation(plantacionId, lugar, periodo, ajustes);
+    ajustes?: Partial<AjustesDePlantacion>,
+    vistos?: Partial<CamposDePlantacion>
+  ): Promise<number> {
+    return updatePlantation(plantacionId, lugar, periodo, ajustes, vistos);
   }
 
   function handleDiscardEdit(plantacionId: string) {

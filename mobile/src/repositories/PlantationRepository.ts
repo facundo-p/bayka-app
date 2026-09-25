@@ -17,12 +17,11 @@ import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION, type EstadoPlantacion } from '../constants/estados';
 import {
   escribirSiEsEscribible,
-  motivoNoEscribible,
+  esMotivoNoEscribible,
   PlantacionNoEscribibleError,
   BLOQUEAN_ESPECIES,
   BLOQUEAN_ASIGNACIONES,
 } from '../services/PlantacionEscribibleService';
-import { sinFilasAfectadas } from '../services/sync/filasAfectadas';
 import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
@@ -30,15 +29,23 @@ import { getLocalPhotoUrisForPlantation } from './TreeRepository';
 import { borrarFotosLocales } from '../services/PhotoService';
 import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 import {
-  aColumnasRemotas,
-  aSnapshot,
-  cambiosParaElServer,
-  hayCambios,
+  esRechazada,
+  mensajeDeRechazo,
+  registrarEdicionSubida,
+  subirEdicion,
+} from '../services/sync/edicionDePlantacion';
+import {
+  baseDeLaEdicion,
+  camposDeFila,
+  edicionDelFormulario,
+  type EdicionDelFormulario,
   restaurarDesdeSnapshot,
   snapshotAntesDeEditar,
   type AjustesDePlantacion,
+  type CampoDePlantacion,
   type CamposDePlantacion,
 } from '../utils/camposDePlantacion';
+import { ELECCION, sinElCampo, type ConflictoDeCampo, type Eleccion } from '../utils/conflictosDeEdicion';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -95,89 +102,83 @@ async function filaDePlantacion(plantacionId: string) {
 
 type FilaDePlantacion = Awaited<ReturnType<typeof filaDePlantacion>>;
 
-const EDICION_NO_APLICADA = 'La plantación no se actualizó en el servidor. Los cambios no se guardaron.';
-
-/** 0 filas sin error (RLS o fila inexistente, #482): el motivo si el server lo dice. */
-async function edicionNoAplicada(plantacionId: string): Promise<Error> {
-  const motivo = await motivoNoEscribible(plantacionId);
-  return motivo ? new PlantacionNoEscribibleError(motivo) : new Error(EDICION_NO_APLICADA);
-}
-
-/**
- * Intenta pushear a Supabase solo lo que cambió y, si sale bien, deja los valores y el snapshot
- * *Server de lo subido. Sin cambios no hay UPDATE. Devuelve false ante una falla de red, para que el caller caiga al camino offline; cualquier
- * otro error del server se propaga tal cual.
- */
-async function tryPushPlantationUpdateOnline(
-  row: FilaDePlantacion,
-  campos: Partial<CamposDePlantacion>
-): Promise<boolean> {
-  const cambios = cambiosParaElServer(row, campos);
-  try {
-    if (hayCambios(cambios)) {
-      const { data, error } = await supabase
-        .from('plantations')
-        .update(aColumnasRemotas(cambios))
-        .eq('id', row.id)
-        .select('id');
-      if (error) throw error;
-      if (sinFilasAfectadas(data)) throw await edicionNoAplicada(row.id);
-    }
-
-    await db
-      .update(plantations)
-      .set({ ...campos, ...aSnapshot(cambios), pendingEdit: false })
-      .where(eq(plantations.id, row.id));
-    return true;
-  } catch (e: any) {
-    if (!isNetworkRequestFailed(e)) throw e;
-    return false;
+/** El server rechazó la edición por permisos o datos: no se guarda nada. */
+export class EdicionRechazadaError extends Error {
+  readonly codigo: string;
+  constructor(codigo: string) {
+    super(mensajeDeRechazo(codigo));
+    this.name = 'EdicionRechazadaError';
+    this.codigo = codigo;
   }
 }
 
-/** Guarda la edición con pendingEdit=true; el snapshot se toma solo en la primera, para que descartar vuelva al último valor del server. */
-async function applyOfflineEdit(
-  campos: Partial<CamposDePlantacion>,
-  row: FilaDePlantacion
-): Promise<void> {
+function errorDeRechazo(codigo: string): Error {
+  return esMotivoNoEscribible(codigo) ? new PlantacionNoEscribibleError(codigo) : new EdicionRechazadaError(codigo);
+}
+
+/**
+ * Sube por `editar_plantacion` solo lo que cambió y deja la fila con lo que quedó en el server.
+ * Devuelve cuántos campos chocaron con la web, o null ante una falla de red, para que el caller
+ * caiga al camino offline. Un rechazo lanza el error con el motivo; otro error, tal cual.
+ */
+async function tryPushPlantationUpdateOnline(row: FilaDePlantacion, edicion: EdicionDelFormulario): Promise<number | null> {
+  const { tocados, cambios, base } = edicion;
+  try {
+    const resultado = await subirEdicion(row.id, cambios, base);
+    if (esRechazada(resultado)) throw errorDeRechazo(resultado.rechazo ?? '');
+    return await registrarEdicionSubida(row, { vivos: tocados, cambios, base, resultado });
+  } catch (e: any) {
+    if (!isNetworkRequestFailed(e)) throw e;
+    return null;
+  }
+}
+
+/**
+ * Guarda lo tocado con pendingEdit=true. El snapshot se toma solo en la primera edición,
+ * para que descartar vuelva al valor del server; la base se amplía con lo recién tocado.
+ */
+async function applyOfflineEdit(row: FilaDePlantacion, edicion: EdicionDelFormulario): Promise<void> {
   await db
     .update(plantations)
     .set({
-      ...campos,
+      ...edicion.tocados,
       pendingEdit: true,
+      editadaLocalmenteEn: new Date().toISOString(),
+      baseDeEdicion: edicion.baseDeEdicion,
       ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
     })
     .where(eq(plantations.id, row.id));
 }
 
 /**
- * Actualiza los datos de la plantación: online pushea a Supabase; offline guarda local con
- * pendingEdit=true. Una creada offline (pendingSync) solo se edita local: el alta sube todo.
- * Los ajustes ausentes no se tocan.
+ * Actualiza los datos de la plantación: online sube por `editar_plantacion`; offline guarda
+ * local con pendingEdit=true. Una creada offline (pendingSync) solo se edita local: el alta
+ * sube todo. `vistos` son los valores con que se abrió el formulario: solo se escribe lo que
+ * difiere de ellos. Devuelve cuántos campos chocaron con un cambio de la web (quedan para
+ * "Resolver cambios"); 0 offline.
  */
 export async function updatePlantation(
   plantacionId: string,
   lugar: string,
   periodo: string,
-  ajustes?: Partial<AjustesDePlantacion>
-): Promise<void> {
+  ajustes?: Partial<AjustesDePlantacion>,
+  vistos?: Partial<CamposDePlantacion>
+): Promise<number> {
   const row = await filaDePlantacion(plantacionId);
   const campos: Partial<CamposDePlantacion> = { lugar, periodo, ...(ajustes ?? {}) };
 
   if (row.pendingSync) {
     await db.update(plantations).set(campos).where(eq(plantations.id, plantacionId));
     notifyDataChanged();
-    return;
+    return 0;
   }
 
+  const edicion = edicionDelFormulario(row, campos, vistos);
   const net = await NetInfo.fetch();
-  if (net.isConnected !== false && (await tryPushPlantationUpdateOnline(row, campos))) {
-    notifyDataChanged();
-    return;
-  }
-
-  await applyOfflineEdit(campos, row);
+  const enConflicto = net.isConnected !== false ? await tryPushPlantationUpdateOnline(row, edicion) : null;
+  if (enConflicto === null) await applyOfflineEdit(row, edicion);
   notifyDataChanged();
+  return enConflicto ?? 0;
 }
 
 // ─── discardPlantationEdit ───────────────────────────────────────────────────
@@ -192,9 +193,40 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
 
   await db
     .update(plantations)
-    .set({ ...restaurarDesdeSnapshot(row), pendingEdit: false })
+    .set({ ...restaurarDesdeSnapshot(row), pendingEdit: false, baseDeEdicion: null, editadaLocalmenteEn: null })
     .where(eq(plantations.id, plantacionId));
   notifyDataChanged();
+}
+
+// ─── resolverCambio ───────────────────────────────────────────────────────────
+
+/**
+ * Resuelve un campo que chocó con la web (#634). Con la web, el valor ya está: se descarta el
+ * propio. Con el propio, se re-encola como edición offline con la web como base, y sube en el
+ * próximo sync (si alguien lo volvió a cambiar, vuelve a chocar).
+ */
+export async function resolverCambio(plantacionId: string, campo: CampoDePlantacion, eleccion: Eleccion): Promise<void> {
+  const row = await filaDePlantacion(plantacionId);
+  const conflicto = row.conflictosDeEdicion?.find((c) => c.campo === campo);
+  if (!conflicto) return;
+  const conflictosDeEdicion = sinElCampo(row.conflictosDeEdicion ?? [], campo);
+  const reencolar = eleccion === ELECCION.mio ? edicionReencolada(row, conflicto) : {};
+  await db
+    .update(plantations)
+    .set({ conflictosDeEdicion, ...reencolar })
+    .where(eq(plantations.id, plantacionId));
+  notifyDataChanged();
+}
+
+function edicionReencolada(row: FilaDePlantacion, conflicto: ConflictoDeCampo) {
+  const base = row.pendingEdit ? baseDeLaEdicion(row) : camposDeFila(row);
+  return {
+    [conflicto.campo]: conflicto.mio,
+    pendingEdit: true,
+    editadaLocalmenteEn: conflicto.mioEn,
+    baseDeEdicion: { ...base, [conflicto.campo]: conflicto.web },
+    ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
+  };
 }
 
 // ─── finalizePlantation ───────────────────────────────────────────────────────

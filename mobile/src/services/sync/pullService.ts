@@ -5,7 +5,7 @@ import { eq, and, sql, inArray, notInArray } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
-import { aSnapshot, desdeFilaRemota, remotosNoEditados } from '../../utils/camposDePlantacion';
+import { aSnapshot, desdeFilaRemota, rebaseDeEdicionPendiente } from '../../utils/camposDePlantacion';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion';
 import {
@@ -150,7 +150,7 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
       estado: remotePlantation.estado,
       archivadaEn: remotePlantation.archivada_en ?? null,
       ...aSnapshot(remotos),
-      ...(local?.pendingEdit ? remotosNoEditados(local, remotos) : remotos),
+      ...(local?.pendingEdit ? rebaseDeEdicionPendiente(local, remotos) : remotos),
     })
     .where(eq(plantations.id, plantacionId));
 }
