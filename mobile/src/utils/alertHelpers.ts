@@ -9,13 +9,18 @@ type ShowFn = (config: {
   buttons: ConfirmModalButton[];
 }) => void;
 
-/** Info dialog (single OK button). */
+/**
+ * Info dialog (single OK button). `onDismiss`, si viene, corre recién cuando el usuario
+ * cierra el diálogo ("Entendido", back o toque fuera): encadena un paso siguiente sin
+ * abrirlo en el mismo tick que este diálogo (dos modales nativos a la vez, #656).
+ */
 export function showInfoDialog(
   show: ShowFn,
   title: string,
   message: string,
   icon?: string,
   iconColor?: string,
+  onDismiss?: () => void,
 ) {
   show({
     icon: icon as any,
@@ -23,7 +28,7 @@ export function showInfoDialog(
     title,
     message,
     buttons: [
-      { label: 'Entendido', onPress: () => {}, style: 'primary' },
+      { label: 'Entendido', onPress: () => { onDismiss?.(); }, style: 'primary' },
     ],
   });
 }

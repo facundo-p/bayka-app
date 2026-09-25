@@ -124,11 +124,16 @@ export function usePlantacionesScreen() {
   const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
 
   const handleCreatePlantation = useCallback(async ({ lugar, periodo, ...ajustes }: CamposDePlantacion) => {
-    const id = await adminHook.handleCreateSubmit(lugar, periodo, ajustes);
+    const created = await adminHook.handleCreateSubmit(lugar, periodo, ajustes);
     setShowCreateModal(false);
-    if (!id) return;
-    setConfigSpeciesPlantacionId(id);
-    setPlantacionPendienteNav(id);
+    if (!created?.id) return;
+    const { id, duplicada } = created;
+    // Con duplicado, el modal de especies espera a que se cierre el aviso: dos modales
+    // nativos a la vez harían que el aviso no se vea (#656).
+    adminHook.continuarLuegoDeCrear(duplicada, () => {
+      setConfigSpeciesPlantacionId(id);
+      setPlantacionPendienteNav(id);
+    });
   }, [adminHook]);
 
   const handleCloseConfigSpecies = useCallback(() => {

@@ -14,6 +14,9 @@ build/
 scripts/copy-storage.mjs
 supabase/.temp/
 
+# Historial local de /codebase-stats (snapshots por corrida, no van al repo)
+.codebase-stats/
+
 # Environment variables
 .env
 .env.local
