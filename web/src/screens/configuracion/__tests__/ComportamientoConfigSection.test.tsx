@@ -98,10 +98,11 @@ test('escribir "10" y perder el foco guarda una sola vez con el valor final', as
   fireEvent.blur(input);
 
   await waitFor(() => expect(actualizarConfigGps).toHaveBeenCalledTimes(1));
-  expect(actualizarConfigGps).toHaveBeenCalledWith('plant-1', {
-    frecuencia: 10,
-    obligatoria: true,
-  });
+  expect(actualizarConfigGps).toHaveBeenCalledWith(
+    'plant-1',
+    { frecuencia: 10, obligatoria: true },
+    { frecuencia: 5, obligatoria: true },
+  );
 });
 
 test('Enter confirma igual que el blur, sin duplicar el guardado', async () => {
@@ -112,10 +113,11 @@ test('Enter confirma igual que el blur, sin duplicar el guardado', async () => {
   fireEvent.keyDown(input, { key: 'Enter' });
 
   await waitFor(() => expect(actualizarConfigGps).toHaveBeenCalledTimes(1));
-  expect(actualizarConfigGps).toHaveBeenCalledWith('plant-1', {
-    frecuencia: 7,
-    obligatoria: true,
-  });
+  expect(actualizarConfigGps).toHaveBeenCalledWith(
+    'plant-1',
+    { frecuencia: 7, obligatoria: true },
+    { frecuencia: 5, obligatoria: true },
+  );
 
   fireEvent.blur(input);
   expect(actualizarConfigGps).toHaveBeenCalledTimes(1);

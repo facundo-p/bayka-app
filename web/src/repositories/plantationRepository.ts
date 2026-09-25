@@ -3,6 +3,19 @@ import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { ESTADO_PLANTACION } from '../queries/plantationQueries';
 import type { Perfil } from './profileRepository';
+import {
+  editarCamposDePlantacion,
+  type ConflictoDeEdicionError,
+  type ValoresDePlantacion,
+} from './edicionDePlantacion';
+
+/** Columnas que el repositorio escribe por nombre. */
+export const COLUMNA = {
+  visibleInApp: 'visible_in_app',
+  fotoEnTodos: 'photo_capture_all_trees',
+  gpsFrecuencia: 'gps_capture_frequency',
+  gpsObligatoria: 'gps_capture_required',
+} as const;
 
 /** Los opcionales ausentes no se mandan a la base: la migración 024 puede no estar aplicada. */
 export type PlantacionInput = {
@@ -15,18 +28,6 @@ export type PlantacionInput = {
 
 /** Toda plantación nueva arranca con esta parcela default (paridad con mobile). */
 const PARCELA_DEFAULT = { codigo: 'P1', nombre: 'Parcela 1' } as const;
-
-/** Migración 023 sin aplicar: faltan las columnas de captura GPS. */
-export const MENSAJE_GPS_SIN_MIGRACION =
-  'Configuración GPS no disponible: falta aplicar la migración 023';
-
-/** Migración 024 sin aplicar: falta la columna `visible_in_app`. */
-export const MENSAJE_VISIBILIDAD_SIN_MIGRACION =
-  'Visibilidad no disponible: falta aplicar la migración 024';
-
-/** Migración 035 sin aplicar: falta la columna `photo_capture_all_trees`. */
-export const MENSAJE_FOTO_SIN_MIGRACION =
-  'Foto en todos los botones no disponible: falta aplicar la migración 035';
 
 /**
  * Archivar va por RPC porque la policy UPDATE no deja tocar una archivada (#477);
@@ -113,23 +114,53 @@ export async function crearPlantacion(input: PlantacionInput, perfil: Perfil): P
   return id;
 }
 
-/** Actualiza los campos del formulario; nunca toca `estado` (finalizar es flujo de mobile) ni `organizacion_id`. */
-export async function editarPlantacion(id: string, input: PlantacionInput): Promise<void> {
-  const actualizar = (payload: Payload) =>
-    supabase.from('plantations').update(payload).eq('id', id);
-  await ejecutarConReintentoSin024(actualizar, camposBase(input), campos024(input));
+/** Columnas del formulario; un opcional vacío es null, así borrarlo llega a la base. */
+function columnasDelFormulario(input: PlantacionInput): ValoresDePlantacion {
+  return {
+    lugar: input.lugar,
+    periodo: input.periodo,
+    descripcion: input.descripcion ?? null,
+    fecha_inicio: input.fechaInicio ?? null,
+    objetivo_arboles: input.objetivoArboles ?? null,
+  };
 }
 
-/** Si la columna no existe (migración sin aplicar), lanza `mensajeSinMigracion` en vez del error crudo. */
-async function actualizarCampos(
+/**
+ * Guarda los campos del formulario que cambiaron respecto de `base` (lo que tenía
+ * al abrirse). Nunca toca `estado` ni `organizacion_id`. Si alguien cambió uno de
+ * esos campos mientras tanto, lanza `ConflictoDeEdicionError` y guarda el resto.
+ */
+export async function editarPlantacion(
   id: string,
-  payload: Payload,
-  mensajeSinMigracion: string,
+  input: PlantacionInput,
+  base: PlantacionInput,
 ): Promise<void> {
-  const { error } = await supabase.from('plantations').update(payload).eq('id', id);
-  if (!error) return;
-  if (esColumnaInexistente(error)) throw new Error(mensajeSinMigracion);
-  throw errorDeSupabase(error);
+  await editarCamposDePlantacion(id, columnasDelFormulario(input), columnasDelFormulario(base));
+}
+
+const CAMPO_DE_COLUMNA = {
+  lugar: 'lugar',
+  periodo: 'periodo',
+  descripcion: 'descripcion',
+  fecha_inicio: 'fechaInicio',
+  objetivo_arboles: 'objetivoArboles',
+} as const satisfies Record<string, keyof PlantacionInput>;
+
+function esColumnaDelFormulario(columna: string): columna is keyof typeof CAMPO_DE_COLUMNA {
+  return columna in CAMPO_DE_COLUMNA;
+}
+
+/** Lo que quedó en el server tras un conflicto: el valor de otro donde chocó, lo enviado donde no. */
+export function plantacionTrasConflicto(
+  input: PlantacionInput,
+  conflicto: ConflictoDeEdicionError,
+): PlantacionInput {
+  const resultado: Record<string, unknown> = { ...input };
+  for (const { campo, valorServidor } of conflicto.conflictos) {
+    if (esColumnaDelFormulario(campo))
+      resultado[CAMPO_DE_COLUMNA[campo]] = valorServidor ?? undefined;
+  }
+  return resultado as PlantacionInput;
 }
 
 export type ConfigGps = {
@@ -138,24 +169,33 @@ export type ConfigGps = {
   obligatoria: boolean;
 };
 
+function columnasGps(config: ConfigGps): ValoresDePlantacion {
+  return {
+    [COLUMNA.gpsFrecuencia]: config.frecuencia,
+    [COLUMNA.gpsObligatoria]: config.obligatoria,
+  };
+}
+
 /** Guarda la configuración de captura GPS (afecta solo registros futuros). */
-export async function actualizarConfigGps(id: string, config: ConfigGps): Promise<void> {
-  await actualizarCampos(
-    id,
-    { gps_capture_frequency: config.frecuencia, gps_capture_required: config.obligatoria },
-    MENSAJE_GPS_SIN_MIGRACION,
-  );
+export async function actualizarConfigGps(
+  id: string,
+  config: ConfigGps,
+  base: ConfigGps,
+): Promise<void> {
+  await editarCamposDePlantacion(id, columnasGps(config), columnasGps(base));
+}
+
+/** Un toggle cambia al valor opuesto: la base es `!valor`. */
+function guardarToggle(columna: string) {
+  return (id: string, valor: boolean) =>
+    editarCamposDePlantacion(id, { [columna]: valor }, { [columna]: !valor });
 }
 
 /** Toggle de UX, NO frontera de seguridad: el filtrado es client-side; quien puede leer la plantación la sigue leyendo oculta. */
-export async function actualizarVisibilidad(id: string, visible: boolean): Promise<void> {
-  await actualizarCampos(id, { visible_in_app: visible }, MENSAJE_VISIBILIDAD_SIN_MIGRACION);
-}
+export const actualizarVisibilidad = guardarToggle(COLUMNA.visibleInApp);
 
 /** Con el flag activo, en la app todos los botones de la botonera piden foto, como N/N (#439). Afecta solo registros futuros. */
-export async function actualizarFotoEnTodos(id: string, activo: boolean): Promise<void> {
-  await actualizarCampos(id, { photo_capture_all_trees: activo }, MENSAJE_FOTO_SIN_MIGRACION);
-}
+export const actualizarFotoEnTodos = guardarToggle(COLUMNA.fotoEnTodos);
 
 /**
  * Chequeo soft de duplicado (no hay unique en la base), case-insensitive vía ilike; excluye la propia fila en edición.

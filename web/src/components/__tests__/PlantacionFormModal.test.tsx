@@ -6,9 +6,14 @@ import {
   editarPlantacion,
   existePlantacion,
 } from '../../repositories/plantationRepository';
+import {
+  ConflictoDeEdicionError,
+  MENSAJE_CONFLICTO_EDICION,
+} from '../../repositories/edicionDePlantacion';
 import { PlantacionFormModal, type PlantacionEditable } from '../PlantacionFormModal';
 
-vi.mock('../../repositories/plantationRepository', () => ({
+vi.mock('../../repositories/plantationRepository', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../repositories/plantationRepository')>()),
   crearPlantacion: vi.fn(),
   editarPlantacion: vi.fn(),
   existePlantacion: vi.fn(),
@@ -115,8 +120,33 @@ test('editar: precarga los valores (nulls de la 024 → vacíos) y llama a edita
   expect(vi.mocked(editarPlantacion)).toHaveBeenCalledWith(
     'plant-1',
     expect.objectContaining({ lugar: 'Salta', descripcion: 'Finca sur' }),
+    { lugar: 'Salta', periodo: '2024-2025', descripcion: 'Finca sur' },
   );
   expect(vi.mocked(existePlantacion)).toHaveBeenCalledWith('Salta', '2024-2025', 'plant-1');
+});
+
+test('editar con conflicto: avisa, muestra el valor del server y lo usa como base nueva', async () => {
+  const usuario = userEvent.setup();
+  vi.mocked(editarPlantacion).mockRejectedValueOnce(
+    new ConflictoDeEdicionError([{ campo: 'descripcion', valorServidor: 'Finca norte' }]),
+  );
+  const { onClose } = renderModal(SALTA);
+
+  await usuario.clear(screen.getByLabelText('Descripción'));
+  await usuario.type(screen.getByLabelText('Descripción'), 'Finca oeste');
+  await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+  expect(await screen.findByText(MENSAJE_CONFLICTO_EDICION)).toBeInTheDocument();
+  expect(screen.getByLabelText('Descripción')).toHaveValue('Finca norte');
+  expect(onClose).not.toHaveBeenCalled();
+
+  await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(vi.mocked(editarPlantacion)).toHaveBeenLastCalledWith(
+    'plant-1',
+    expect.objectContaining({ descripcion: 'Finca norte' }),
+    expect.objectContaining({ descripcion: 'Finca norte' }),
+  );
 });
 
 test('crear invalida el listado de plantaciones', async () => {
