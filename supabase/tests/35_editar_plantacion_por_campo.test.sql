@@ -4,7 +4,7 @@
 -- UPDATE directo: `estado` solo pasa de activa a finalizada, y las columnas
 -- sensibles no se tocan.
 begin;
-select plan(31);
+select plan(33);
 
 insert into organizations (id, nombre) values
   ('b3500000-0000-0000-0000-000000000001', 'Org Test 35'),
@@ -70,6 +70,15 @@ select throws_ok(
 select lives_ok(
   $$update plantations set estado = 'finalizada' where id = 'b3500000-0000-0000-0000-000000000005'$$,
   'finalizar (activa → finalizada) sigue siendo un UPDATE');
+
+select lives_ok(
+  $$insert into plantations (id, organizacion_id, lugar, periodo, creado_por, ultima_edicion) values
+    ('b3500000-0000-0000-0000-000000000006', 'b3500000-0000-0000-0000-000000000001', 'Alta 35', '2026',
+     'b3500000-0000-0000-0000-0000000000a2', '{"lugar": {"por": "b3500000-0000-0000-0000-0000000000a1"}}')$$,
+  'un alta con auditoría inventada no falla');
+select is(
+  (select ultima_edicion from plantations where id = 'b3500000-0000-0000-0000-000000000006'),
+  '{}'::jsonb, 'pero arranca con la auditoría vacía');
 
 -- Ana cambia el objetivo desde la web (UPDATE directo, como un APK viejo).
 select lives_ok(

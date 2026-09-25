@@ -495,15 +495,18 @@ describe('edición offline que choca con la web', () => {
     expect(await filaLocal()).toMatchObject({ pendingEdit: false, objetivoArboles: 12500, conflictosDeEdicion: null });
   });
 
-  test('elegir el propio no pisa una edición offline posterior del mismo campo', async () => {
+  test('volver a editar offline un campo en conflicto lo supera y sube con la web como base', async () => {
     await llegarAlConflicto();
     await editarOffline({ objetivoArboles: 16000 });
 
-    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.mio });
-
-    expect(await filaLocal()).toMatchObject({ pendingEdit: true, objetivoArboles: 16000 });
+    expect(await filaLocal()).toMatchObject({ pendingEdit: true, objetivoArboles: 16000, conflictosDeEdicion: null });
+    // Un pull en el medio no mueve la base del campo editado.
+    await pullFromServer(PLANTATION_ID);
     await uploadPendingEdits();
+
     expect(mockEdiciones[1]).toMatchObject({ p_cambios: { objetivo_arboles: 16000 }, p_base: { objetivo_arboles: 12500 } });
+    expect(mockServerState.plantations.get(PLANTATION_ID).objetivo_arboles).toBe(16000);
+    expect((await filaLocal()).conflictosDeEdicion).toBeNull();
   });
 
   test('varias elecciones se aplican juntas y los campos sin elegir siguen pendientes', async () => {

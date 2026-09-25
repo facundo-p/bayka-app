@@ -35,7 +35,6 @@ import {
 import {
   baseDeLaEdicion,
   camposDeFila,
-  desdeSnapshot,
   edicionDelFormulario,
   type EdicionDelFormulario,
   restaurarDesdeSnapshot,
@@ -44,7 +43,7 @@ import {
   type CampoDePlantacion,
   type CamposDePlantacion,
 } from '../utils/camposDePlantacion';
-import { ELECCION, type ConflictoDeCampo, type Eleccion } from '../utils/conflictosDeEdicion';
+import { ELECCION, combinarConflictos, type ConflictoDeCampo, type Eleccion } from '../utils/conflictosDeEdicion';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -144,6 +143,8 @@ async function applyOfflineEdit(row: FilaDePlantacion, edicion: EdicionDelFormul
       pendingEdit: true,
       editadaLocalmenteEn: new Date().toISOString(),
       baseDeEdicion: edicion.baseDeEdicion,
+      // Volver a editar un campo en conflicto lo supera: sube con su propia base.
+      conflictosDeEdicion: combinarConflictos(row.conflictosDeEdicion, edicion.tocados, []),
       ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
     })
     .where(eq(plantations.id, row.id));
@@ -226,20 +227,11 @@ export async function resolverCambios(plantacionId: string, elecciones: Eleccion
 
 function edicionReencolada(row: FilaDePlantacion, propios: ConflictoDeCampo[]) {
   const baseAnterior = row.pendingEdit ? baseDeLaEdicion(row) : camposDeFila(row);
-  const server = desdeSnapshot(row);
-  const valores: Record<string, unknown> = {};
-  const base: Record<string, unknown> = { ...baseAnterior };
-  for (const c of propios) {
-    // Si el campo se volvió a editar offline después del conflicto, gana esa edición.
-    const editadoDespues = row.pendingEdit && row[c.campo] !== server[c.campo];
-    valores[c.campo] = editadoDespues ? row[c.campo] : c.mio;
-    base[c.campo] = c.web;
-  }
   return {
-    ...valores,
+    ...Object.fromEntries(propios.map((c) => [c.campo, c.mio])),
     pendingEdit: true,
     editadaLocalmenteEn: row.editadaLocalmenteEn ?? propios[0].mioEn,
-    baseDeEdicion: base as Partial<CamposDePlantacion>,
+    baseDeEdicion: { ...baseAnterior, ...Object.fromEntries(propios.map((c) => [c.campo, c.web])) },
     ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
   };
 }
