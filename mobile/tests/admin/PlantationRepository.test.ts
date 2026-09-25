@@ -231,6 +231,14 @@ describe('PlantationRepository', () => {
         .rejects.toThrow('Alguna de las especies elegidas ya no existe en el servidor. Los cambios no se guardaron.');
       expect(mockPullFromServer).not.toHaveBeenCalled();
     });
+
+    it('una especie quitada que ya tiene árboles en el server se informa con mensaje claro', async () => {
+      mockRpc(rechazo('ESPECIE_CON_ARBOLES'));
+
+      await expect(saveSpeciesConfig('plantation-1', [{ especieId: 'species-1', ordenVisual: 0 }]))
+        .rejects.toThrow('Alguna de las especies que quitaste ya tiene árboles registrados en el servidor. Los cambios no se guardaron.');
+      expect(mockPullFromServer).not.toHaveBeenCalled();
+    });
   });
 
   describe('assignTechnicians', () => {

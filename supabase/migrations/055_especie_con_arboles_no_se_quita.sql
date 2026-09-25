@@ -83,8 +83,13 @@ BEGIN
     RETURN jsonb_build_object('success', false, 'error', 'ESPECIE_CON_ARBOLES');
   END IF;
 
-  DELETE FROM plantation_species
-  WHERE plantation_id = p_plantacion AND NOT (species_id = ANY (v_ids));
+  -- Un árbol que entra entre el chequeo y el DELETE lo frena el trigger: mismo rechazo.
+  BEGIN
+    DELETE FROM plantation_species
+    WHERE plantation_id = p_plantacion AND NOT (species_id = ANY (v_ids));
+  EXCEPTION WHEN restrict_violation THEN
+    RETURN jsonb_build_object('success', false, 'error', 'ESPECIE_CON_ARBOLES');
+  END;
 
   INSERT INTO plantation_species (plantation_id, species_id, orden_visual)
   SELECT p_plantacion, (e.valor->>'species_id')::UUID, coalesce((e.valor->>'orden_visual')::INTEGER, 0)
