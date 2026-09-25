@@ -26,6 +26,7 @@ import {
 } from '../repositories/PlantationRepository';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
+import { TEXTO_DUPLICADA_EN_SERVIDOR } from '../components/PlantacionesDuplicadasAviso';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
 import { colors } from '../theme';
 import { ESTADO_PLANTACION } from '../constants/estados';
@@ -229,6 +230,11 @@ export function usePlantationAdmin() {
       ajustes,
       mode: net.isConnected === false ? 'offline' : 'online',
     });
+    // El chequeo de duplicado contra el server solo corre en el push del alta online;
+    // la offline lo ve recién en el resumen del próximo sync (#655).
+    if (result.duplicada) {
+      showInfoDialog(showConfirm, 'Mismo lugar y periodo', TEXTO_DUPLICADA_EN_SERVIDOR, 'alert-circle-outline', colors.info);
+    }
     return result.id;
   }
 

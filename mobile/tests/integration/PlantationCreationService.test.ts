@@ -75,12 +75,22 @@ afterAll(() => {
   closeTestDb(sqlite);
 });
 
-/** Arma supabase.from() para que los pasos de push reusados por el modo 'online' (uploadOfflinePlantations + uploadSyncableParcelas) resuelvan en éxito. */
-function mockSupabaseForSuccessfulPush() {
+/**
+ * Arma supabase.from() para que los pasos de push reusados por el modo 'online'
+ * (uploadOfflinePlantations + uploadSyncableParcelas) resuelvan en éxito. `duplicadaCount`
+ * simula cuántas otras plantaciones con el mismo lugar/periodo ve el chequeo de #633/#655
+ * (hayOtraEnServidor, .select().ilike().ilike().neq()); default 0 = sin duplicado.
+ */
+function mockSupabaseForSuccessfulPush(opts?: { duplicadaCount?: number }) {
   const plantationsInsert = jest.fn().mockResolvedValue({ error: null });
   const parcelasUpsert = jest.fn().mockResolvedValue({ data: null, error: null });
+  const duplicadaChain = {
+    ilike: jest.fn().mockReturnThis(),
+    neq: jest.fn().mockResolvedValue({ count: opts?.duplicadaCount ?? 0, error: null }),
+  };
+  const plantationsSelect = jest.fn().mockReturnValue(duplicadaChain);
   (supabase.from as jest.Mock).mockImplementation((table: string) => {
-    if (table === 'plantations') return { insert: plantationsInsert };
+    if (table === 'plantations') return { insert: plantationsInsert, select: plantationsSelect };
     if (table === 'parcelas') return { upsert: parcelasUpsert };
     throw new Error(`unexpected table in test: ${table}`);
   });
@@ -229,5 +239,41 @@ describe('createPlantationWithDefaultParcela — modo online (push inmediato)', 
 
     const [plantationRow] = await mockTestDb.select().from(plantations).where(eq(plantations.id, r.id));
     expect(plantationRow).toMatchObject({ pendingSync: true, motivoVarado: null });
+  });
+});
+
+describe('createPlantationWithDefaultParcela — duplicada en servidor (#655)', () => {
+  const onlineParams = { ...baseParams, mode: 'online' as const };
+
+  test('el server ya tiene otra con mismo lugar y periodo → duplicada:true', async () => {
+    mockSupabaseForSuccessfulPush({ duplicadaCount: 1 });
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    expect(r.duplicada).toBe(true);
+  });
+
+  test('sin coincidencias en el server → duplicada:false', async () => {
+    mockSupabaseForSuccessfulPush({ duplicadaCount: 0 });
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    expect(r.duplicada).toBe(false);
+  });
+
+  test('modo offline: no pushea, no chequea duplicado', async () => {
+    const r = await createPlantationWithDefaultParcela(baseParams);
+
+    expect(r.duplicada).toBeUndefined();
+    expect(supabase.from).not.toHaveBeenCalled();
+  });
+
+  test('push falla (red) → duplicada:false, la plantación queda pendingSync para reintentar', async () => {
+    mockSupabaseForFailedPush();
+    jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    expect(r.duplicada).toBe(false);
   });
 });

@@ -60,6 +60,10 @@ jest.mock('../../src/utils/alertHelpers', () => ({
   showInfoDialog: jest.fn(),
 }));
 
+jest.mock('../../src/services/PlantationCreationService', () => ({
+  createPlantationWithDefaultParcela: jest.fn(),
+}));
+
 import { renderHook, act } from '@testing-library/react-native';
 import { fetchPlantationMeta, usePlantationAdmin } from '../../src/hooks/usePlantationAdmin';
 import { checkFinalizationGate, hasIdsGenerated } from '../../src/queries/adminQueries';
@@ -69,6 +73,9 @@ import { useProfileData } from '../../src/hooks/useProfileData';
 import { useLiveData } from '../../src/database/liveQuery';
 import { finalizePlantation, FinalizePlantationLocalSyncError } from '../../src/repositories/PlantationRepository';
 import { showInfoDialog } from '../../src/utils/alertHelpers';
+import { createPlantationWithDefaultParcela } from '../../src/services/PlantationCreationService';
+import { TEXTO_DUPLICADA_EN_SERVIDOR } from '../../src/components/PlantacionesDuplicadasAviso';
+import { setOnline, setOffline } from '../helpers/networkHelper';
 import type { Plantation } from '../../src/types/plantation';
 
 const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0 };
@@ -288,5 +295,58 @@ describe('usePlantationAdmin.handleFinalize', () => {
       expect.any(String),
       expect.anything()
     );
+  });
+});
+
+describe('usePlantationAdmin.handleCreateSubmit', () => {
+  const mockCreate = createPlantationWithDefaultParcela as jest.Mock;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (useCurrentUserId as jest.Mock).mockReturnValue('test-user-id');
+    (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
+    (useLiveData as jest.Mock).mockReturnValue({ data: null });
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: jest.fn() });
+  });
+
+  it('online y duplicada:true → aviso no bloqueante con el mismo texto del resumen del sync (#655)', async () => {
+    setOnline();
+    mockCreate.mockResolvedValue({ id: 'plantation-1', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa', duplicada: true });
+    const mockShow = jest.fn();
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: mockShow });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    const id = await act(async () => result.current.handleCreateSubmit('Campo Test', '2026-A'));
+
+    expect(id).toBe('plantation-1');
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'online' }));
+    expect(showInfoDialog).toHaveBeenCalledWith(
+      mockShow,
+      'Mismo lugar y periodo',
+      TEXTO_DUPLICADA_EN_SERVIDOR,
+      expect.any(String),
+      expect.anything()
+    );
+  });
+
+  it('online y duplicada:false → no avisa nada', async () => {
+    setOnline();
+    mockCreate.mockResolvedValue({ id: 'plantation-2', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa', duplicada: false });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    await act(async () => { await result.current.handleCreateSubmit('Campo Test', '2026-A'); });
+
+    expect(showInfoDialog).not.toHaveBeenCalled();
+  });
+
+  it('offline: createPlantationWithDefaultParcela no devuelve duplicada → no avisa (el chequeo llega recién con el próximo sync)', async () => {
+    setOffline();
+    mockCreate.mockResolvedValue({ id: 'plantation-3', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa' });
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    await act(async () => { await result.current.handleCreateSubmit('Campo Test', '2026-A'); });
+
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'offline' }));
+    expect(showInfoDialog).not.toHaveBeenCalled();
   });
 });
