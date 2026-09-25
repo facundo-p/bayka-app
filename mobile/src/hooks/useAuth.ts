@@ -6,8 +6,7 @@
  */
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { persistSession, clearSession, readCachedSession, ROLE_KEY, EMAIL_KEY } from '../supabase/auth';
-import { USER_ID_KEY } from './useCurrentUserId';
+import { persistSession, clearSession, readCachedSession, ROLE_KEY, EMAIL_KEY, USER_ID_KEY } from '../supabase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';

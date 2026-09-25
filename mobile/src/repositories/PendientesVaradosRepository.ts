@@ -70,7 +70,7 @@ async function descartarFilasDeCampo(tx: typeof db, plantacionId: string, conser
   await tx.delete(trees).where(inArray(trees.groupId, gruposPendientes(plantacionId)));
   await tx.delete(groups).where(inArray(groups.id, gruposPendientes(plantacionId)));
   await tx.delete(parcelas).where(and(parcelaPendiente(plantacionId), notInArray(parcelas.id, parcelasConGrupos())));
-  await tx.update(parcelas).set({ pendingSync: false }).where(parcelaPendiente(plantacionId));
+  await tx.update(parcelas).set({ pendingSync: false, altaPendienteDe: null }).where(parcelaPendiente(plantacionId));
   await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
 }
 

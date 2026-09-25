@@ -116,6 +116,7 @@ describe('createPlantationWithDefaultParcela — local-first (offline)', () => {
     expect(parcelaRows[0].codigo).toBe('P1');
     expect(parcelaRows[0].descripcion).toBeNull();
     expect(parcelaRows[0].pendingSync).toBe(true);
+    expect(parcelaRows[0].altaPendienteDe).toBe('user-admin-1');
 
     const membresias = await mockTestDb.select().from(plantationUsers).where(eq(plantationUsers.plantationId, r.id));
     expect(membresias).toHaveLength(1);

@@ -384,6 +384,7 @@ export async function createPlantationWithParcelaLocally(
         createdAt: now,
         updatedAt: now,
         deletedAt: null,
+        altaPendienteDe: params.creadoPor,
       });
     }
   });

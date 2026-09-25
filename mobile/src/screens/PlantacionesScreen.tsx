@@ -12,7 +12,7 @@ import TexturedBackground from '../components/TexturedBackground';
 import PlantacionesModals from '../components/PlantacionesModals';
 import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../types/plantation';
-import { plantacionEsEditable, puedeEditarParcelas } from '../utils/permisosDeEdicion';
+import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { esEliminadaEnServidor } from '../constants/estados';
 import { tieneCambiosPorResolver } from '../utils/conflictosDeEdicion';
 import { avisoDeLaTarjeta } from '../utils/avisoPendientesVarados';
@@ -83,10 +83,11 @@ export default function PlantacionesScreen() {
                   expanded={s.expandedPlantationId === item.id}
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
-                  // Editar y borrar parcelas es de admin (#640).
-                  onParcelaLongPress={puedeEditarParcelas(s.routePrefix) && plantacionEsEditable(item)
+                  // Editar y borrar parcelas es de admin, salvo el alta propia sin subir (#640, #654).
+                  onParcelaLongPress={plantacionEsEditable(item)
                     ? (p) => s.handleParcelaInlineLongPress(item.id, p)
                     : undefined}
+                  parcelaEditable={s.puedeEditarParcela}
                   cardProps={{
                     lugar: item.lugar,
                     periodo: item.periodo,

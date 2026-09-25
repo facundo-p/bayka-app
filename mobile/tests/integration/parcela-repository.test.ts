@@ -284,6 +284,85 @@ describe('ParcelaRepository', () => {
     });
   });
 
+  describe('alta propia sin subir: el técnico la edita y la borra (#654)', () => {
+    async function altaDe(userId: string): Promise<{ plantacionId: string; id: string }> {
+      conRolCacheado('tecnico', userId);
+      const plantacionId = await seedPlantation();
+      const c = await createParcela({ plantacionId, nombre: 'Lote 1', codigo: 'L1' });
+      if (!c.success) throw new Error('seed failed');
+      return { plantacionId, id: c.id };
+    }
+
+    test('crear anota quién la creó; el push confirmado la limpia', async () => {
+      const { id } = await altaDe('ana');
+      expect((await findById(id))!.altaPendienteDe).toBe('ana');
+      await markParcelaSynced(id);
+      expect((await findById(id))!.altaPendienteDe).toBeNull();
+    });
+
+    test('técnico edita su alta sin subir y sigue pendiente', async () => {
+      const { id } = await altaDe('ana');
+      expect(await updateParcela(id, { nombre: 'Lote uno', codigo: 'l1b' })).toEqual({ success: true });
+      const after = await findById(id);
+      expect(after).toMatchObject({ nombre: 'Lote uno', codigo: 'L1B', pendingSync: true, altaPendienteDe: 'ana' });
+    });
+
+    test('técnico borra su alta sin subir: se va del dispositivo, sin tombstone', async () => {
+      const { plantacionId, id } = await altaDe('ana');
+      expect(await deleteParcela(id)).toEqual({ deleted: true });
+      expect(await findById(id, { includeDeleted: true })).toBeNull();
+      expect(await getSyncableParcelas(plantacionId)).toEqual([]);
+    });
+
+    test('borrar el alta sin subir libera nombre y código', async () => {
+      const { plantacionId, id } = await altaDe('ana');
+      await deleteParcela(id);
+      expect((await createParcela({ plantacionId, nombre: 'Lote 1', codigo: 'L1' })).success).toBe(true);
+    });
+
+    test('el borrado local también bloquea con grupos hijos', async () => {
+      const { plantacionId, id } = await altaDe('ana');
+      await mockTestDb.insert(groups).values({
+        id: 'g-1', plantacionId, parcelaId: id, nombre: 'Linea A', codigo: 'LA', tipo: 'linea',
+        estado: 'activa', usuarioCreador: 'ana', createdAt: new Date().toISOString(), pendingSync: true,
+      });
+      expect(await deleteParcela(id)).toEqual({ deleted: false, error: 'has_children', childCount: 1 });
+    });
+
+    test('una vez subida, el técnico ya no la edita ni la borra', async () => {
+      const { id } = await altaDe('ana');
+      await markParcelaSynced(id);
+      expect(await updateParcela(id, { nombre: 'X', codigo: 'L1' })).toEqual({ success: false, error: 'sin_permiso' });
+      expect(await deleteParcela(id)).toEqual({ deleted: false, error: 'sin_permiso' });
+    });
+
+    test('otro técnico del mismo dispositivo no la edita ni la borra', async () => {
+      const { id } = await altaDe('ana');
+      conRolCacheado('tecnico', 'beto');
+      expect(await updateParcela(id, { nombre: 'X', codigo: 'L1' })).toEqual({ success: false, error: 'sin_permiso' });
+      expect(await deleteParcela(id)).toEqual({ deleted: false, error: 'sin_permiso' });
+      expect((await findById(id))!.nombre).toBe('Lote 1');
+    });
+
+    test('admin borra un alta ajena sin subir también en local', async () => {
+      const { id } = await altaDe('ana');
+      conRolCacheado('admin', 'admin-1');
+      expect(await deleteParcela(id)).toEqual({ deleted: true });
+      expect(await findById(id, { includeDeleted: true })).toBeNull();
+    });
+
+    test('la plantación finalizada bloquea también el alta propia', async () => {
+      conRolCacheado('tecnico', 'ana');
+      const plantacionId = await seedPlantation({ estado: 'finalizada' });
+      await mockTestDb.insert(parcelas).values({
+        id: 'par-f', plantacionId, nombre: 'F', codigo: 'F', pendingSync: true,
+        createdAt: '2026-01-01', updatedAt: '2026-01-01', altaPendienteDe: 'ana',
+      });
+      expect(await updateParcela('par-f', { nombre: 'G', codigo: 'F' }))
+        .toEqual({ success: false, error: 'plantacion_no_editable' });
+    });
+  });
+
   describe('findByPlantacion / findById', () => {
     test('findByPlantacion orden por createdAt ASC y omite tombstoneadas', async () => {
       const plantacionId = await seedPlantation();

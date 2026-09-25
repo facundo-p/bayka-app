@@ -29,6 +29,7 @@ jest.mock('../../src/supabase/auth', () => ({
   REFRESH_TOKEN_KEY: 'refresh_token',
   ROLE_KEY: 'user_role',
   EMAIL_KEY: 'user_email',
+  USER_ID_KEY: 'user_id',
 }));
 
 jest.mock('../../src/services/OfflineAuthService', () => ({

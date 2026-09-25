@@ -4,7 +4,8 @@
  * delete si hay grupos hijos. Lecturas filtran deleted_at IS NULL salvo `{ includeDeleted: true }`
  * (uso interno de sync); sin columna usuarioCreador, la auditoría es server-side. Cambiar el
  * código reescribe el SubID de los árboles de sus grupos (#623). Crear es de cualquier miembro;
- * editar, borrar y restaurar, solo de admin y superadmin (#640).
+ * editar, borrar y restaurar, solo de admin y superadmin (#640), salvo el alta propia que todavía
+ * no subió, que su creador edita y borra (#654).
  */
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
@@ -19,8 +20,9 @@ import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
 import { errorDeDuplicado } from '../database/sqliteErrors';
-import { readCachedRole } from '../supabase/auth';
+import { readCachedRole, readCachedUserId } from '../supabase/auth';
 import { esRolAdmin } from '../types/domain';
+import { puedeEditarParcela, type EditorDeParcela } from '../utils/permisosDeEdicion';
 
 const MAX_DESCRIPCION_LENGTH = 10000;
 
@@ -34,6 +36,8 @@ export interface Parcela {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  /** Solo local: quién la creó acá mientras su alta no llegó al servidor (#654). */
+  altaPendienteDe: string | null;
 }
 
 type DescripcionError = 'descripcion_too_long';
@@ -57,9 +61,18 @@ export type RestoreParcelaResult =
   | { restored: true }
   | { restored: false; error: 'not_found' | ErrorDeDuplicado | SinPermiso };
 
-/** Editar y borrar parcelas es de admin y superadmin; la RLS de `parcelas` exige lo mismo. */
+/** Editar y borrar parcelas que el servidor ya tiene es de admin y superadmin; la RLS exige lo mismo. */
 export async function puedeEditarParcelas(): Promise<boolean> {
   return esRolAdmin(await readCachedRole());
+}
+
+async function editorActual(): Promise<EditorDeParcela> {
+  return { esAdmin: await puedeEditarParcelas(), userId: await readCachedUserId() };
+}
+
+/** Sin alta pendiente el servidor ya la tiene: borrarla necesita tombstone. */
+function nuncaSubida(parcela: Parcela): boolean {
+  return parcela.altaPendienteDe != null;
 }
 
 /** Valida nombre/codigo únicos en la plantación, excluyendo tombstones — un nombre reusado de una parcela tombstoned es válido. */
@@ -136,6 +149,7 @@ export async function createParcela(params: {
       createdAt: now,
       updatedAt: now,
       deletedAt: null,
+      altaPendienteDe: await readCachedUserId(),
     });
     notifyDataChanged();
     return { success: true, id };
@@ -148,10 +162,10 @@ type CamposDeParcela = { nombre: string; codigo: string; descripcion?: string | 
 type ErrorDeUpdate = Extract<UpdateParcelaResult, { success: false }>['error'];
 
 export async function updateParcela(id: string, params: CamposDeParcela): Promise<UpdateParcelaResult> {
-  if (!(await puedeEditarParcelas())) return { success: false, error: ERROR_DE_EDICION.sinPermiso };
   const campos = { ...params, codigo: params.codigo.toUpperCase() };
   const existing = await findById(id);
   if (!existing) return { success: false, error: 'not_found' };
+  if (!puedeEditarParcela(existing, await editorActual())) return { success: false, error: ERROR_DE_EDICION.sinPermiso };
   const invalido = await validarEdicion(existing, campos);
   if (invalido) return { success: false, error: invalido };
   try {
@@ -191,21 +205,30 @@ async function countChildGroups(parcelaId: string): Promise<number> {
   return row?.cnt ?? 0;
 }
 
-/** Soft-delete (tombstone) de una parcela; bloqueado si tiene grupos hijos. Idempotente: un segundo delete sobre una parcela ya tombstoned retorna not_found. */
+/**
+ * Borra una parcela sin grupos hijos. La que nunca subió se borra del dispositivo; la que el
+ * servidor ya tiene queda como tombstone para que el push propague el borrado. Idempotente:
+ * un segundo delete retorna not_found.
+ */
 export async function deleteParcela(id: string): Promise<DeleteParcelaResult> {
-  if (!(await puedeEditarParcelas())) return { deleted: false, error: ERROR_DE_EDICION.sinPermiso };
   const existing = await findById(id);
   if (!existing) return { deleted: false, error: 'not_found' };
+  if (!puedeEditarParcela(existing, await editorActual())) return { deleted: false, error: ERROR_DE_EDICION.sinPermiso };
   const childCount = await countChildGroups(id);
   if (childCount > 0) {
     return { deleted: false, error: 'has_children', childCount };
   }
+  if (nuncaSubida(existing)) await db.delete(parcelas).where(eq(parcelas.id, id));
+  else await marcarTombstone(id);
+  notifyDataChanged();
+  return { deleted: true };
+}
+
+async function marcarTombstone(id: string): Promise<void> {
   const now = localNow();
   await db.update(parcelas)
     .set({ deletedAt: now, pendingSync: true, updatedAt: now })
     .where(eq(parcelas.id, id));
-  notifyDataChanged();
-  return { deleted: true };
 }
 
 /** Restaura una parcela tombstoned (sync conflict recovery); valida que ninguna parcela activa tenga el mismo nombre/codigo en la plantación (pudo tomar su lugar mientras estaba tombstoned). */
@@ -234,10 +257,10 @@ export async function markParcelaPendingSync(id: string): Promise<void> {
   notifyDataChanged();
 }
 
-/** Limpia pendingSync tras sync exitoso; aplica a parcelas activas y tombstoned (el tombstone persiste local, solo se limpia el flag). */
+/** Limpia pendingSync y el alta pendiente tras el push; aplica a parcelas activas y tombstoned (el tombstone persiste local). */
 export async function markParcelaSynced(id: string): Promise<void> {
   await db.update(parcelas)
-    .set({ pendingSync: false })
+    .set({ pendingSync: false, altaPendienteDe: null })
     .where(eq(parcelas.id, id));
   notifyDataChanged();
 }

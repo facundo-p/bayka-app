@@ -340,7 +340,8 @@ Solo los técnicos asignados verán la plantación en su dashboard.
 
 Los técnicos crean Parcelas para subdividir la plantación, y dentro de cada
 Parcela crean Grupos al comenzar a registrar una línea. Editar y eliminar una
-Parcela es de admin y superadmin (#640).
+Parcela es de admin y superadmin (#640), salvo la que el técnico creó y todavía
+no subió: esa la corrige o la borra él mismo, y borrarla es solo local (#654).
 
 Cada Grupo contiene:
 

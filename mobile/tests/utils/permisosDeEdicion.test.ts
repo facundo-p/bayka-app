@@ -1,6 +1,5 @@
-import { getTreeEditGating, getGroupGating, plantacionEsEditable, puedeEditarParcelas } from '../../src/utils/permisosDeEdicion';
+import { getTreeEditGating, getGroupGating, plantacionEsEditable, puedeEditarParcela } from '../../src/utils/permisosDeEdicion';
 import { esArchivada, esEliminadaEnServidor } from '../../src/constants/estados';
-import { GRUPO_DE_RUTAS } from '../../src/constants/rutas';
 
 const ACTIVA = { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null };
 const FINALIZADA = { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null };
@@ -103,13 +102,33 @@ describe('plantacionEsEditable', () => {
   });
 });
 
-describe('puedeEditarParcelas', () => {
-  test('ruta admin → true', () => {
-    expect(puedeEditarParcelas(GRUPO_DE_RUTAS.admin)).toBe(true);
+describe('puedeEditarParcela (#640, #654)', () => {
+  const SUBIDA = { altaPendienteDe: null };
+  const ALTA_DE_ANA = { altaPendienteDe: 'ana' };
+  const ADMIN = { esAdmin: true, userId: 'admin-1' };
+  const ANA = { esAdmin: false, userId: 'ana' };
+  const BETO = { esAdmin: false, userId: 'beto' };
+
+  test('admin edita cualquiera, subida o no', () => {
+    expect(puedeEditarParcela(SUBIDA, ADMIN)).toBe(true);
+    expect(puedeEditarParcela(ALTA_DE_ANA, ADMIN)).toBe(true);
   });
 
-  test('ruta técnico → false', () => {
-    expect(puedeEditarParcelas(GRUPO_DE_RUTAS.tecnico)).toBe(false);
+  test('técnico edita su alta sin subir', () => {
+    expect(puedeEditarParcela(ALTA_DE_ANA, ANA)).toBe(true);
+  });
+
+  test('técnico no edita una parcela subida', () => {
+    expect(puedeEditarParcela(SUBIDA, ANA)).toBe(false);
+  });
+
+  test('técnico no edita el alta sin subir de otro usuario del dispositivo', () => {
+    expect(puedeEditarParcela(ALTA_DE_ANA, BETO)).toBe(false);
+  });
+
+  test('sin userId no hay alta propia', () => {
+    expect(puedeEditarParcela(ALTA_DE_ANA, { esAdmin: false, userId: null })).toBe(false);
+    expect(puedeEditarParcela(SUBIDA, { esAdmin: false, userId: null })).toBe(false);
   });
 });
 

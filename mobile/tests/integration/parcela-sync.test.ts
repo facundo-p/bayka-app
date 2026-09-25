@@ -157,7 +157,8 @@ import {
   uploadSyncableGroups,
   classifyParcelaRpcResult,
 } from '../../src/services/sync/pushService';
-import { findByPlantacion } from '../../src/repositories/ParcelaRepository';
+import { findByPlantacion, findById, createParcela, updateParcela } from '../../src/repositories/ParcelaRepository';
+import { conRolCacheado } from '../helpers/rolCacheado';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -203,6 +204,7 @@ async function insertLocalParcela(p: Partial<typeof parcelas.$inferInsert> & { p
     createdAt: p.createdAt ?? now,
     updatedAt: p.updatedAt ?? now,
     deletedAt: p.deletedAt ?? null,
+    altaPendienteDe: p.altaPendienteDe ?? null,
   });
   return id;
 }
@@ -759,5 +761,67 @@ describe('Parcela sync — pull + push + tombstone + conflicts', () => {
     const [row] = await mockTestDb.select().from(parcelas).where(eq(parcelas.id, parcId));
     expect(row.deletedAt).toBe(tombTs); // not overwritten
     expect(row.pendingSync).toBe(true); // still pending
+  });
+});
+
+describe('Alta de parcela sin subir (#654)', () => {
+  const TECNICO = 'user-tecnico-1';
+
+  test('el push confirmado la marca como subida', async () => {
+    const pid = await seedLocalPlantation();
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', altaPendienteDe: TECNICO });
+
+    const [resultado] = await uploadSyncableParcelas(pid);
+
+    expect(resultado.success).toBe(true);
+    expect((await findById(id))!.altaPendienteDe).toBeNull();
+  });
+
+  test('un push rechazado la deja como alta sin subir, para que el técnico la corrija', async () => {
+    const pid = await seedLocalPlantation();
+    insertServerParcela({ id: 'srv-existing', plantation_id: pid, codigo: 'LP1', nombre: 'Existente' });
+    conflictRules.push({ table: 'parcelas', matchCols: ['plantation_id', 'codigo'], errorCols: ['plantation_id', 'codigo'] });
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', nombre: 'Mía', altaPendienteDe: TECNICO });
+
+    await uploadSyncableParcelas(pid);
+
+    expect((await findById(id))!.altaPendienteDe).toBe(TECNICO);
+  });
+
+  test('el pull la confirma si el server ya la tiene, sin pisar la edición pendiente', async () => {
+    const pid = await seedLocalPlantation();
+    const now = new Date().toISOString();
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', nombre: 'Editada', altaPendienteDe: TECNICO });
+    insertServerParcela({
+      id, plantation_id: pid, codigo: 'LP1', nombre: 'Original', descripcion: null,
+      created_at: now, updated_at: now, deleted_at: null,
+    });
+
+    await pullFromServer(pid);
+
+    expect(await findById(id)).toMatchObject({ nombre: 'Editada', pendingSync: true, altaPendienteDe: null });
+  });
+
+  test('el pull no toca un alta que el server no tiene', async () => {
+    const pid = await seedLocalPlantation();
+    const id = await insertLocalParcela({ plantacionId: pid, codigo: 'LP1', altaPendienteDe: TECNICO });
+
+    await pullFromServer(pid);
+
+    expect((await findById(id))!.altaPendienteDe).toBe(TECNICO);
+  });
+
+  test('técnico: crea, corrige antes de subir, sube la versión corregida y después ya no edita', async () => {
+    conRolCacheado('tecnico', TECNICO);
+    const pid = await seedLocalPlantation();
+    const creada = await createParcela({ plantacionId: pid, nombre: 'Lote 1', codigo: 'LTE' });
+    if (!creada.success) throw new Error('seed failed');
+
+    expect(await updateParcela(creada.id, { nombre: 'Lote 1', codigo: 'LT1' })).toEqual({ success: true });
+    await uploadSyncableParcelas(pid);
+
+    expect(serverState.parcelas.get(creada.id)).toMatchObject({ codigo: 'LT1' });
+    expect(await updateParcela(creada.id, { nombre: 'Otro', codigo: 'LT1' }))
+      .toEqual({ success: false, error: 'sin_permiso' });
   });
 });

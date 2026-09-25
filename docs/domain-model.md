@@ -278,7 +278,11 @@ responde `42501` sin motivo. La app lo traduce con el estado local de la
 plantación; si está activa, queda como `PERMISSION`. Editar y tombstonear una
 parcela es de admin y superadmin (056, #640): el técnico sube solo altas, con
 `ON CONFLICT DO NOTHING`, y una edición suya que el server ignora se reemplaza
-con la versión del server en el pull siguiente. El rol cacheado que usa el
+con la versión del server en el pull siguiente. Antes de subirla, la parcela que
+creó sí la edita y la borra (#654): la marca local `alta_pendiente_de` guarda
+quién la creó en el dispositivo hasta que el push o el pull confirman que el
+server la tiene; editada sube igual como alta, y borrada se va del dispositivo
+sin tombstone. El rol cacheado que usa el
 cliente para esta decisión se refresca en cada arranque online: un cambio de
 rol tarda hasta ese refresh en aplicarse en el celular, aunque el server ya lo
 exige siempre.

@@ -204,6 +204,13 @@
       "when": 1790553600000,
       "tag": "0028_plantations_motivo_varado",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1790640000000,
+      "tag": "0029_parcelas_alta_pendiente_de",
+      "breakpoints": true
     }
   ]
 }

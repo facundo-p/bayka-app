@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import * as SecureStore from 'expo-secure-store';
-
-export const USER_ID_KEY = 'user_id';
+import { USER_ID_KEY } from '../supabase/auth';
 
 export function useCurrentUserId(): string | null {
   const [userId, setUserId] = useState<string | null>(null);
