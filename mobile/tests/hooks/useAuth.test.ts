@@ -686,6 +686,23 @@ describe('useAuth', () => {
         await confirmarConexion();
 
         expect(result.current.session).toBeNull();
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+      });
+
+      it('si la revalidación falla, queda para la próxima confirmación de red (sin reintento inmediato)', async () => {
+        perfil({ rol: 'admin', activo: true });
+        const { result } = await arrancarSinInternetConSesion();
+        (supabase.auth.getSession as jest.Mock)
+          .mockRejectedValueOnce(new Error('Network request failed'))
+          .mockResolvedValue({ data: { session: SESION_SDK } });
+
+        await confirmarConexion();
+        expect(supabase.auth.getSession).toHaveBeenCalledTimes(1);
+        expect(result.current.role).toBe('tecnico');
+
+        await confirmarConexion();
+        expect(supabase.auth.getSession).toHaveBeenCalledTimes(2);
+        expect(result.current.role).toBe('admin');
       });
 
       it('la sesión de otra cuenta en el SDK no se adopta', async () => {
@@ -894,6 +911,75 @@ describe('useAuth', () => {
 
         expect(supabase.auth.getSession).toHaveBeenCalledTimes(2);
         expect(result.current.role).toBe('admin');
+      });
+    });
+
+    describe('handler SIGNED_IN del SDK', () => {
+      it('signOut mientras el handler espera el rol: no escribe el rol ni revive la sesión', async () => {
+        const rolEnCamino = diferido<{ data: object; error: null }>();
+        (supabase.from as jest.Mock).mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockReturnValue(rolEnCamino.promesa),
+        });
+        const { result } = await montarYEsperarInit();
+
+        let handler!: Promise<void>;
+        await act(async () => {
+          handler = ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+          await new Promise((r) => setTimeout(r, 10));
+        });
+        await act(async () => { await result.current.signOut(); });
+        await act(async () => {
+          rolEnCamino.resolver({ data: { rol: 'admin', activo: true }, error: null });
+          await handler;
+        });
+
+        expect(escribio('user_role', 'admin')).toBe(false);
+        expect(result.current.session).toBeNull();
+      });
+
+      it('signOut durante el handler de un login online: la persistencia posterior no escribe nada', async () => {
+        const rolEnCamino = diferido<{ data: object; error: null }>();
+        const single = jest.fn()
+          .mockReturnValueOnce(rolEnCamino.promesa)
+          .mockResolvedValue({ data: { rol: 'admin', activo: true }, error: null });
+        (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
+        const { result } = await montarYEsperarInit();
+        (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+          const handler = ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+          await new Promise((r) => setTimeout(r, 10));
+          await result.current.signOut();
+          (SecureStore.setItemAsync as jest.Mock).mockClear();
+          rolEnCamino.resolver({ data: { rol: 'admin', activo: true }, error: null });
+          await handler;
+          return { data: { session: SESION_SDK }, error: null };
+        });
+        const { cacheCredential } = require('../../src/services/OfflineAuthService');
+
+        await loguear(result);
+
+        expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+        expect(cacheCredential).not.toHaveBeenCalled();
+        expect(result.current.session).toBeNull();
+      });
+
+      it('login online completo (handler + persistencia): deja sesión y rol', async () => {
+        perfil({ rol: 'admin', activo: true });
+        const { result } = await montarYEsperarInit();
+        (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+          await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+          return { data: { session: SESION_SDK }, error: null };
+        });
+        const { cacheCredential } = require('../../src/services/OfflineAuthService');
+
+        const res = await loguear(result);
+
+        expect(res.error).toBeNull();
+        expect(result.current.session).toBe(SESION_SDK);
+        expect(result.current.role).toBe('admin');
+        expect(escribio('user_role', 'admin')).toBe(true);
+        expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', 'admin', 'user-1');
       });
     });
 

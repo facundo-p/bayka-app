@@ -62,8 +62,6 @@ function nuevaEpocaDeSesion() {
   epocaDeSesion++;
 }
 
-const SIEMPRE = () => true;
-
 function vigenteDesdeAhora(): () => boolean {
   const epoca = epocaDeSesion;
   return () => epoca === epocaDeSesion;
@@ -238,7 +236,7 @@ function alCambiarRed(confirmada: boolean) {
 function dispararRevalidacion() {
   const vigente = revalidacionPendiente;
   revalidacionPendiente = null;
-  if (vigente) revalidarSesion(vigente);
+  if (vigente?.()) revalidarSesion(vigente);
 }
 
 async function revalidarSesion(vigente: () => boolean) {
@@ -247,6 +245,8 @@ async function revalidarSesion(vigente: () => boolean) {
     if (restored?.session && vigente()) authChangeListeners.forEach(fn => fn(restored));
   } catch (e) {
     console.warn('[Auth] revalidación online falló:', e);
+    // Queda para la próxima confirmación de red, no para ya: sin loop contra un servidor caído.
+    if (vigente()) revalidacionPendiente = vigente;
   }
 }
 
@@ -302,10 +302,11 @@ export function useAuth() {
         if (initializing.current) return;
 
         if (event === 'SIGNED_IN' && supabaseSession) {
-          // Sin época: este handler es el que pone en pantalla la sesión del login online, y ese
-          // login cambia la época mientras acá se espera el rol.
-          await cachearSesionOnline(supabaseSession, SIEMPRE);
-          const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id, SIEMPRE);
+          // El SDK espera este handler antes de devolver el login: la época ya es la de ese login.
+          const vigente = vigenteDesdeAhora();
+          await cachearSesionOnline(supabaseSession, vigente);
+          const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id, vigente);
+          if (!vigente()) return;
 
           if (fetchedRole === CUENTA_DESACTIVADA) {
             await purgarSesionDesactivada();
@@ -370,13 +371,13 @@ export function useAuth() {
   }
 
   /** Persiste + cachea sesión tras un signIn online exitoso; retorna false si la cuenta está desactivada (no cachea nada). */
-  async function persistOnlineSession(email: string, password: string, session: any): Promise<boolean> {
-    nuevaEpocaDeSesion();
-    const vigente = vigenteDesdeAhora();
+  async function persistOnlineSession(email: string, password: string, session: any, vigente: () => boolean): Promise<boolean> {
     await cachearSesionOnline(session, vigente);
     await syncAutoRefresh(true);
 
     const userRole = await fetchAndCacheRole(session.user.id, vigente);
+    // Un logout o login posterior ganó: no se cachea ni se purga nada a nombre de este login.
+    if (!vigente()) return true;
     if (userRole === CUENTA_DESACTIVADA) return false;
     await cacheCredential(email, password, userRole ?? ROL.tecnico, session.user.id);
     await saveLastOnlineLogin();
@@ -412,6 +413,9 @@ export function useAuth() {
   }
 
   async function signInOnline(email: string, password: string, offlineYaIntentado: boolean) {
+    // La época cambia antes de llamar al SDK: su handler SIGNED_IN corre adentro y la captura.
+    nuevaEpocaDeSesion();
+    const vigente = vigenteDesdeAhora();
     let result;
     try {
       result = await withTimeout(
@@ -422,13 +426,13 @@ export function useAuth() {
       // Thrown (network failure / timeout) → offline fallback or connectivity.
       return handleConnectivityFailure(email, password, offlineYaIntentado);
     }
-    if (!result.error) return aceptarLoginOnline(email, password, result);
+    if (!result.error) return aceptarLoginOnline(email, password, result, vigente);
     return rechazoDeLoginOnline(email, password, result.error, offlineYaIntentado);
   }
 
-  async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R) {
+  async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R, vigente: () => boolean) {
     if (!result.data.session) return result;
-    const cuentaActiva = await persistOnlineSession(email, password, result.data.session);
+    const cuentaActiva = await persistOnlineSession(email, password, result.data.session, vigente);
     if (cuentaActiva) return result;
     await purgarSesionDesactivada();
     return sinSesion(AUTH_MESSAGES.account_disabled);
