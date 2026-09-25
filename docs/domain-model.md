@@ -227,8 +227,10 @@ photo_capture_all_trees (default false: si todos los botones de la botonera pide
 archivada_en / archivada_por (null si no está archivada; migración 038)
 ```
 
-Los campos opcionales, la visibilidad y la foto en todos los botones se
-gestionan desde la web de gestión (migraciones 024 y 035).
+Descripción, fecha de inicio, objetivo, visibilidad, foto en todos los botones
+y GPS se editan desde la web de gestión y, desde #633, también en el formulario
+de plantación de mobile (admin y superadmin), incluso offline. Superficie y
+ubicación no se editan en ninguna de las dos.
 
 ### Estados posibles
 

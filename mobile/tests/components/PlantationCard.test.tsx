@@ -72,7 +72,7 @@ describe('PlantationCard sidebar strip', () => {
 
     // #94: el botón Editar de la card fue reemplazado por Sync.
     expect(getByLabelText('Sincronizar plantación')).toBeTruthy();
-    expect(queryByLabelText('Editar lugar y periodo')).toBeNull();
+    expect(queryByLabelText('Editar plantación')).toBeNull();
     expect(getByLabelText('Acciones de plantación')).toBeTruthy();
     expect(getByLabelText('Eliminar plantación del dispositivo')).toBeTruthy();
   });

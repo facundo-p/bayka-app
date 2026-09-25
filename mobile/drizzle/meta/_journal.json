@@ -169,6 +169,13 @@
       "when": 1790121600000,
       "tag": "0023_plantations_eliminada_en_servidor_en",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1790208000000,
+      "tag": "0024_plantations_campos_editables",
+      "breakpoints": true
     }
   ]
 }

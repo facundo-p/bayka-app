@@ -9,6 +9,9 @@ import { esTimeout } from '../../supabase/fetchConTimeout';
 import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
+import { hayOtraEnServidor } from './duplicadasEnServidor';
+import { aColumnasRemotas, aSnapshot, camposDeFila } from '../../utils/camposDePlantacion';
+import { mismoLugarYPeriodo } from '../../utils/duplicadoDePlantacion';
 
 // ─── Upload offline-created plantations ───────────────────────────────────────
 
@@ -35,13 +38,10 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         .insert({
           id: p.id,
           organizacion_id: p.organizacionId,
-          lugar: p.lugar,
-          periodo: p.periodo,
           estado: p.estado,
           creado_por: p.creadoPor,
           created_at: p.createdAt,
-          gps_capture_frequency: p.gpsCaptureFrequency,
-          gps_capture_required: p.gpsCaptureRequired,
+          ...aColumnasRemotas(camposDeFila(p)),
         });
 
       // unique_violation = la plantación ya existe en el server → seguimos con species
@@ -81,7 +81,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         .set({ pendingSync: false })
         .where(eq(plantations.id, p.id));
 
-      results.push({ success: true, plantacionId: p.id, nombre: p.lugar });
+      results.push({ success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await hayOtraEnServidor(p) });
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
       syncLog.error('Upload plantation exception:', p.id, e?.message ?? e);
@@ -104,13 +104,8 @@ type PlantacionLocal = typeof plantations.$inferSelect;
 async function pushEdicionPlantacion(p: PlantacionLocal): Promise<boolean> {
   const { data, error } = await supabase
     .from('plantations')
-    .update({
-      lugar: p.lugar,
-      periodo: p.periodo,
-      // Sube el valor GPS local vigente (idempotente si no se editó: espeja al server).
-      gps_capture_frequency: p.gpsCaptureFrequency,
-      gps_capture_required: p.gpsCaptureRequired,
-    })
+    // Sube todos los campos: los no editados espejan al server. El merge por campo es #634.
+    .update(aColumnasRemotas(camposDeFila(p)))
     .eq('id', p.id)
     .select('id');
   if (error) {
@@ -124,31 +119,40 @@ async function pushEdicionPlantacion(p: PlantacionLocal): Promise<boolean> {
   return true;
 }
 
-/** Pushea lugar/periodo/GPS editados offline (pendingEdit=true) a Supabase y limpia pendingEdit + columnas *Server local; fallos se loguean y se saltean. */
-export async function uploadPendingEdits(): Promise<void> {
+/** Solo si la edición cambió lugar o periodo: si no, la duplicada ya existía antes. */
+async function edicionDuplicada(p: PlantacionLocal): Promise<boolean> {
+  const antes = { lugar: p.lugarServer ?? '', periodo: p.periodoServer ?? '' };
+  return !mismoLugarYPeriodo(p, antes) && hayOtraEnServidor(p);
+}
+
+/**
+ * Pushea las ediciones offline (pendingEdit=true), limpia pendingEdit y deja el snapshot
+ * *Server con lo subido. Devuelve las que subieron; las que fallan se loguean y se reintentan
+ * en el próximo sync.
+ */
+export async function uploadPendingEdits(): Promise<SyncPlantationResult[]> {
   const pending = await db
     .select()
     .from(plantations)
     // Eliminada en el server (#478): no hay fila que actualizar, la edición queda local.
     .where(and(eq(plantations.pendingEdit, true), isNull(plantations.eliminadaEnServidorEn)));
 
+  const subidas: SyncPlantationResult[] = [];
   for (const p of pending) {
     try {
       if (!(await pushEdicionPlantacion(p))) continue;
 
       await db
         .update(plantations)
-        .set({
-          pendingEdit: false,
-          lugarServer: p.lugar,
-          periodoServer: p.periodo,
-        })
+        .set({ pendingEdit: false, ...aSnapshot(camposDeFila(p)) })
         .where(eq(plantations.id, p.id));
+      subidas.push({ success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await edicionDuplicada(p) });
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
       syncLog.error('Upload pending edit exception:', p.id, e?.message);
     }
   }
+  return subidas;
 }
 
 // ─── Global pre-steps ────────────────────────────────────────────────────────
@@ -158,8 +162,9 @@ export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   // Los pre-steps corren ANTES del primer evento de progreso: si se cuelgan acá, el
   // watchdog ofrece cancelar y sin estos re-lanzados el botón no haría nada (#451).
   try { await pullSpeciesFromServer(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Pull species failed:', e); }
-  let plantationResults: SyncPlantationResult[] = [];
-  try { plantationResults = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
-  try { await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
-  return plantationResults;
+  let altas: SyncPlantationResult[] = [];
+  let ediciones: SyncPlantationResult[] = [];
+  try { altas = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
+  try { ediciones = await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
+  return [...altas, ...ediciones];
 }

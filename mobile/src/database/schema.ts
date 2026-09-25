@@ -2,6 +2,7 @@ import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-or
 import { sql } from 'drizzle-orm';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
+import { VISIBLE_IN_APP_DEFAULT } from '../constants/visibilidad';
 import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 
@@ -36,12 +37,23 @@ export const plantations = sqliteTable('plantations', {
   // revierta ediciones offline de la config GPS. Null = sin snapshot todavía (migración 0016).
   gpsCaptureFrequencyServer: integer('gps_capture_frequency_server'),
   gpsCaptureRequiredServer: integer('gps_capture_required_server', { mode: 'boolean' }),
-  // Visibilidad administrada desde la web de gestión: técnicos no ven plantaciones ocultas; el sync no se ve afectado.
-  visibleInApp: integer('visible_in_app', { mode: 'boolean' }).notNull().default(true),
-  // Foto en todos los botones de la botonera (#439), administrada desde la web. Default duplicado en 0019 (local) y 035 (Supabase).
+  // Técnicos no ven plantaciones ocultas; el sync no se ve afectado.
+  visibleInApp: integer('visible_in_app', { mode: 'boolean' }).notNull().default(VISIBLE_IN_APP_DEFAULT),
+  // Foto en todos los botones de la botonera (#439). Default duplicado en 0019 (local) y 035 (Supabase).
   photoCaptureAllTrees: integer('photo_capture_all_trees', { mode: 'boolean' })
     .notNull()
     .default(PHOTO_CAPTURE_ALL_TREES_DEFAULT),
+  // Snapshots *Server de foto y visibilidad: editables offline desde #633, como lugar/periodo.
+  photoCaptureAllTreesServer: integer('photo_capture_all_trees_server', { mode: 'boolean' }),
+  visibleInAppServer: integer('visible_in_app_server', { mode: 'boolean' }),
+  descripcion: text('descripcion'),
+  // YYYY-MM-DD, espejo del `date` de Supabase.
+  fechaInicio: text('fecha_inicio'),
+  // Entero >= 1 o null; el CHECK vive en Supabase.
+  objetivoArboles: integer('objetivo_arboles'),
+  descripcionServer: text('descripcion_server'),
+  fechaInicioServer: text('fecha_inicio_server'),
+  objetivoArbolesServer: integer('objetivo_arboles_server'),
   // Archivada desde la web (#477): null = no archivada. Ver esArchivada.
   archivadaEn: text('archivada_en'),
   // Solo local (#478): cuándo el server respondió por primera vez que la plantación fue eliminada. Null = existe.

@@ -123,8 +123,8 @@ describe('config GPS por plantación', () => {
       pendingEdit: false,
       lugarServer: null,
       periodoServer: null,
-      lugarCurrent: 'Viejo',
-      periodoCurrent: '2025',
+      lugar: 'Viejo',
+      periodo: '2025',
     });
     mockNetInfoFetch.mockResolvedValue({ isConnected: false });
 
@@ -144,12 +144,12 @@ describe('config GPS por plantación', () => {
       pendingEdit: false,
       lugarServer: null,
       periodoServer: null,
-      lugarCurrent: 'Viejo',
-      periodoCurrent: '2025',
-      gpsFreqServer: null,
-      gpsReqServer: null,
-      gpsFreqCurrent: 10,
-      gpsReqCurrent: true,
+      lugar: 'Viejo',
+      periodo: '2025',
+      gpsCaptureFrequencyServer: null,
+      gpsCaptureRequiredServer: null,
+      gpsCaptureFrequency: 10,
+      gpsCaptureRequired: true,
     });
     mockNetInfoFetch.mockResolvedValue({ isConnected: false });
 
@@ -168,8 +168,8 @@ describe('config GPS por plantación', () => {
     mockDbChains({
       lugarServer: 'Campo Server',
       periodoServer: '2026',
-      gpsFreqServer: 10,
-      gpsReqServer: true,
+      gpsCaptureFrequencyServer: 10,
+      gpsCaptureRequiredServer: true,
     });
 
     await discardPlantationEdit('plant-1');
@@ -213,12 +213,12 @@ describe('config GPS por plantación', () => {
       pendingEdit: false,
       lugarServer: null,
       periodoServer: null,
-      lugarCurrent: 'Viejo',
-      periodoCurrent: '2025',
-      gpsFreqServer: null,
-      gpsReqServer: null,
-      gpsFreqCurrent: 10,
-      gpsReqCurrent: true,
+      lugar: 'Viejo',
+      periodo: '2025',
+      gpsCaptureFrequencyServer: null,
+      gpsCaptureRequiredServer: null,
+      gpsCaptureFrequency: 10,
+      gpsCaptureRequired: true,
     });
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
     (supabase.from as jest.Mock).mockReturnValue({
@@ -253,5 +253,40 @@ describe('config GPS por plantación', () => {
 
     // No hubo fallback: el único intento de escritura local fue el select previo, no un update.
     expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  // ─── datos de #633 ───────────────────────────────────────────────────────────
+
+  const DATOS = {
+    descripcion: 'Ribera', fechaInicio: '2026-04-15', objetivoArboles: 12000,
+    photoCaptureAllTrees: true, visibleInApp: false,
+  };
+
+  it('updatePlantation online sube descripción, fecha, objetivo, foto y visibilidad y deja el snapshot', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockSupabaseUpdate();
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    await updatePlantation('plant-1', 'Campo', '2026', DATOS);
+
+    expect(supabaseUpdatePayload).toEqual({
+      lugar: 'Campo', periodo: '2026', descripcion: 'Ribera', fecha_inicio: '2026-04-15',
+      objetivo_arboles: 12000, photo_capture_all_trees: true, visible_in_app: false,
+    });
+    expect(updatedSet).toMatchObject({ ...DATOS, objetivoArbolesServer: 12000, visibleInAppServer: false, pendingEdit: false });
+  });
+
+  it('updatePlantation offline (primera edición) snapshotea los datos previos', async () => {
+    mockDbChains({
+      pendingSync: false, pendingEdit: false, lugar: 'Viejo', periodo: '2025',
+      descripcion: null, objetivoArboles: 8000, visibleInApp: true, visibleInAppServer: null,
+    });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: false });
+
+    await updatePlantation('plant-1', 'Campo', '2026', DATOS);
+
+    expect(updatedSet).toMatchObject({
+      ...DATOS, pendingEdit: true, descripcionServer: null, objetivoArbolesServer: 8000, visibleInAppServer: true,
+    });
   });
 });

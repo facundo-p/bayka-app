@@ -180,7 +180,8 @@ describe('SyncService — offline functions', () => {
 
       const happyResults = await uploadOfflinePlantations();
       expect(happyResults).toEqual([
-        { success: true, plantacionId: fakePendingPlantation.id, nombre: fakePendingPlantation.lugar },
+        // El mock no responde el chequeo de duplicado: sin aviso, y la subida no se frena.
+        { success: true, plantacionId: fakePendingPlantation.id, nombre: fakePendingPlantation.lugar, duplicada: false },
       ]);
 
       // Verify plantation was inserted to server

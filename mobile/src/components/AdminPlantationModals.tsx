@@ -13,18 +13,20 @@ import AssignTechniciansScreen from '../screens/AssignTechniciansScreen';
 import { colors } from '../theme';
 import { adminPlantationModalsStyles as styles } from './AdminPlantationModals.styles';
 import type { Plantation } from '../types/plantation';
-import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 
 type Props = {
   // Create modal
   showCreateModal: boolean;
   onCloseCreate: () => void;
-  onCreateSubmit: (lugar: string, periodo: string, gps: PlantationGpsSettings) => Promise<void>;
+  onCreateSubmit: (campos: CamposDePlantacion) => Promise<void>;
+  /** Plantaciones del dispositivo, para el aviso de duplicado. */
+  plantaciones: Plantation[] | null;
 
   // Edit modal
   editingPlantation: Plantation | null;
   onCloseEdit: () => void;
-  onEditSubmit: (lugar: string, periodo: string, gps: PlantationGpsSettings) => Promise<void>;
+  onEditSubmit: (campos: CamposDePlantacion) => Promise<void>;
 
   // Confirm modal
   confirmProps: any;
@@ -46,6 +48,7 @@ export default function AdminPlantationModals({
   showCreateModal,
   onCloseCreate,
   onCreateSubmit,
+  plantaciones,
   editingPlantation,
   onCloseEdit,
   onEditSubmit,
@@ -63,6 +66,7 @@ export default function AdminPlantationModals({
         visible={showCreateModal}
         onClose={onCloseCreate}
         onSubmit={onCreateSubmit}
+        plantaciones={plantaciones}
       />
 
       <PlantationFormModal
@@ -70,6 +74,7 @@ export default function AdminPlantationModals({
         onClose={onCloseEdit}
         onSubmit={onEditSubmit}
         editingPlantation={editingPlantation}
+        plantaciones={plantaciones}
       />
 
       <ConfirmModal {...confirmProps} />

@@ -9,6 +9,7 @@ import AdminBottomSheet from './AdminBottomSheet';
 import AdminPlantationModals from './AdminPlantationModals';
 import SyncProgressModal from './SyncProgressModal';
 import SyncConfirmModal from './SyncConfirmModal';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../types/plantation';
 import type { Parcela } from '../repositories/ParcelaRepository';
@@ -89,7 +90,7 @@ type Props = {
   // Admin create/edit/config-species/assign-tech modals
   showCreateModal: boolean;
   setShowCreateModal: (v: boolean) => void;
-  handleCreatePlantation: (lugar: string, periodo: string, gps: any) => Promise<void>;
+  handleCreatePlantation: (campos: CamposDePlantacion) => Promise<void>;
   editingPlantation: Plantation | null;
   setEditingPlantation: (p: Plantation | null) => void;
   configSpeciesPlantacionId: string | null;
@@ -241,9 +242,10 @@ export default function PlantacionesModals({
           showCreateModal={showCreateModal}
           onCloseCreate={() => setShowCreateModal(false)}
           onCreateSubmit={handleCreatePlantation}
+          plantaciones={adminHook.plantationList}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
-          onEditSubmit={async (lugar, periodo, gps) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, gps); setEditingPlantation(null); } }}
+          onEditSubmit={async ({ lugar, periodo, ...ajustes }) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, ajustes); setEditingPlantation(null); } }}
           confirmProps={adminHook.confirmProps}
           exportingId={adminHook.exportingId}
           configSpeciesPlantacionId={configSpeciesPlantacionId}

@@ -115,10 +115,10 @@ describe('usePlantacionesScreen — creación y navegación (issue #63 + #15)', 
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {
-      await result.current.handleCreatePlantation('Lote Nuevo', '2026-A', {} as any);
+      await result.current.handleCreatePlantation({ lugar: 'Lote Nuevo', periodo: '2026-A', objetivoArboles: 500 } as any);
     });
 
-    expect(mockHandleCreateSubmit).toHaveBeenCalledWith('Lote Nuevo', '2026-A', {});
+    expect(mockHandleCreateSubmit).toHaveBeenCalledWith('Lote Nuevo', '2026-A', { objetivoArboles: 500 });
     expect(result.current.showCreateModal).toBe(false);
     expect(result.current.configSpeciesPlantacionId).toBe('new-plantation-id');
 
@@ -135,7 +135,7 @@ describe('usePlantacionesScreen — creación y navegación (issue #63 + #15)', 
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {
-      await result.current.handleCreatePlantation('Lote', '2026-A', {} as any);
+      await result.current.handleCreatePlantation({ lugar: 'Lote', periodo: '2026-A' } as any);
     });
 
     expect(result.current.configSpeciesPlantacionId).toBeNull();

@@ -54,6 +54,10 @@ export const colors = {
   info: '#2563EB',
   infoBg: '#EFF6FF',
   entornoPruebasBg: yellow.dark,
+  /** Advertencia no bloqueante (p. ej. plantación duplicada). */
+  warningBg: yellow.light,
+  warningBorder: yellow.medium,
+  warningText: '#6B4E00',
 
   textHeading: '#0A3760',
   textPrimary: '#1E293B',

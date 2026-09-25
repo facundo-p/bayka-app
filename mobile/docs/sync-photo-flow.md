@@ -109,6 +109,15 @@ pullFromServer → pushBorrados → uploadSyncableParcelas → uploadSyncableGro
 
 Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPlantation` si quedó marcado "Incluir fotos".
 
+### Paso 0: plantaciones creadas o editadas offline
+
+**Archivo:** `services/sync/preSteps.ts` → `runGlobalPreSteps()`, antes del pull de cualquier plantación.
+
+- `uploadOfflinePlantations` inserta las creadas offline (`pendingSync = true`) con todos sus datos.
+- `uploadPendingEdits` sube las editadas offline (`pendingEdit = true`) con todos los campos del formulario: lugar, periodo, descripción, fecha de inicio, objetivo, GPS, foto en todos los botones y visibilidad. El último que escribe gana; el merge por campo es #634.
+- Los campos y sus columnas viven en `utils/camposDePlantacion.ts`. Cada uno tiene un snapshot `*Server` con el último valor conocido del server: el pull lo refresca siempre, pero solo pisa el valor vivo si no hay edición pendiente. Descartar la edición vuelve al snapshot.
+- Después de subir una alta, o una edición que cambió lugar o periodo, se consulta si el server tiene otra con el mismo lugar y periodo (`ilike`, como la web). Si la hay, el resultado lleva `duplicada: true` y el resumen del sync la lista en "Mismo lugar y periodo". No frena nada.
+
 ### Paso 1: Pull
 
 **Archivo:** `services/sync/pullService.ts` → `pullFromServer(plantacionId)`

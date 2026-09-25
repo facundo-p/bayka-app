@@ -22,6 +22,11 @@ export const formFieldStyles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.surfaceAlt,
   },
+  inputMultiline: {
+    minHeight: 96,
+    fontSize: fontSize.base,
+    textAlignVertical: 'top',
+  },
   inputFocused: {
     borderColor: colors.primary,
   },

@@ -22,7 +22,7 @@ import {
   discardPlantationEdit,
   FinalizePlantationLocalSyncError,
   FinalizePlantationPendientesError,
-  PlantationGpsSettings,
+  type AjustesDePlantacion,
 } from '../repositories/PlantationRepository';
 import { createPlantationWithDefaultParcela } from '../services/PlantationCreationService';
 import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportService';
@@ -213,7 +213,7 @@ export function usePlantationAdmin() {
   async function handleCreateSubmit(
     lugar: string,
     periodo: string,
-    gps?: PlantationGpsSettings
+    ajustes?: Partial<AjustesDePlantacion>
   ): Promise<string> {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intentá de nuevo.');
@@ -225,7 +225,7 @@ export function usePlantationAdmin() {
       periodo,
       organizacionId,
       creadoPor: userId,
-      gps,
+      ajustes,
       mode: net.isConnected === false ? 'offline' : 'online',
     });
     return result.id;
@@ -244,9 +244,9 @@ export function usePlantationAdmin() {
     plantacionId: string,
     lugar: string,
     periodo: string,
-    gps?: PlantationGpsSettings
+    ajustes?: Partial<AjustesDePlantacion>
   ) {
-    await updatePlantation(plantacionId, lugar, periodo, gps);
+    await updatePlantation(plantacionId, lugar, periodo, ajustes);
   }
 
   function handleDiscardEdit(plantacionId: string) {
