@@ -39,6 +39,8 @@ export interface CreatePlantationResult {
   lugar: string;
   periodo: string;
   estado: string;
+  /** El server ya tenía otra con el mismo lugar y periodo (#655). Solo se calcula en modo 'online'. */
+  duplicada?: boolean;
 }
 
 /**
@@ -46,15 +48,20 @@ export interface CreatePlantationResult {
  * sync existentes: uploadOfflinePlantations (idempotente ante 23505 — la plantación ya existe)
  * y uploadSyncableParcelas (solo las parcelas de esta plantación). Nunca throwea: un fallo de
  * red/servidor deja pendingSync=true, y el próximo sync la reintenta.
+ * Devuelve `duplicada` (#655): el aviso de "mismo lugar y periodo" hoy solo se ve en el resumen
+ * del sync de altas offline; el alta online necesita el mismo dato para mostrarlo en el momento.
  */
-async function tryPushNow(plantationId: string): Promise<void> {
+async function tryPushNow(plantationId: string): Promise<{ duplicada: boolean }> {
   try {
     // Sin sesión el insert iría como anon y RLS lo rechazaría como falta de permiso.
     await ensureServerSession();
-    await uploadOfflinePlantations();
+    const resultados = await uploadOfflinePlantations();
     await uploadSyncableParcelas(plantationId);
+    const propia = resultados.find((r) => r.plantacionId === plantationId);
+    return { duplicada: propia?.success === true && propia.duplicada === true };
   } catch (e) {
     syncLog.error(`createPlantationWithDefaultParcela: push inmediato falló para ${plantationId}, queda pendingSync`, e);
+    return { duplicada: false };
   }
 }
 
@@ -72,7 +79,8 @@ export async function createPlantationWithDefaultParcela(
   });
 
   if (params.mode === 'online') {
-    await tryPushNow(plantation.id);
+    const { duplicada } = await tryPushNow(plantation.id);
+    return { ...plantation, duplicada };
   }
 
   return plantation;
