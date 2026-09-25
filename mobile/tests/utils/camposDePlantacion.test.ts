@@ -5,6 +5,7 @@ import {
   camposCambiados,
   desdeFilaRemota,
   hayCambios,
+  remotosNoEditados,
   restaurarDesdeSnapshot,
   snapshotAntesDeEditar,
 } from '../../src/utils/camposDePlantacion';
@@ -83,5 +84,19 @@ describe('qué subir al server', () => {
   it('hayCambios', () => {
     expect(hayCambios({})).toBe(false);
     expect(hayCambios({ descripcion: null })).toBe(true);
+  });
+});
+
+describe('pull con edición pendiente', () => {
+  it('actualiza el valor vivo solo de los campos no editados', () => {
+    const fila: any = {
+      lugar: 'Campo Sur', lugarServer: 'Lote Norte',
+      descripcion: null, descripcionServer: null,
+      objetivoArboles: null, objetivoArbolesServer: 12000,
+      visibleInApp: true, visibleInAppServer: true,
+    };
+    const remotos = { lugar: 'Lote Web', descripcion: 'De la web', objetivoArboles: 15000, visibleInApp: false };
+    // lugar editado y objetivo borrado a propósito: no se tocan.
+    expect(remotosNoEditados(fila, remotos)).toEqual({ descripcion: 'De la web', visibleInApp: false });
   });
 });

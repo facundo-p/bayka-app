@@ -243,7 +243,7 @@ describe('SyncService — offline functions', () => {
       expect(updateResult.set).toHaveBeenCalledWith({ pendingSync: false });
     });
 
-    it('23505 sin fila con ese id (otra restricción única): falla y queda pendiente', async () => {
+    function conAltaYaSubidaQueNoSeActualiza() {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([fakePendingPlantation]) }),
       });
@@ -254,9 +254,25 @@ describe('SyncService — offline functions', () => {
         }),
       });
 
+    }
+
+    it('23505 sin fila con ese id (otra restricción única): falla y queda pendiente', async () => {
+      conAltaYaSubidaQueNoSeActualiza();
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: 'PLANTACION_INEXISTENTE', error: null });
+
       const [resultado] = await uploadOfflinePlantations();
 
-      expect(resultado.success).toBe(false);
+      expect(resultado).toMatchObject({ success: false, error: 'UNKNOWN' });
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('23505 sobre una plantación finalizada: queda pendiente con ese motivo', async () => {
+      conAltaYaSubidaQueNoSeActualiza();
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: 'PLANTACION_FINALIZADA', error: null });
+
+      const [resultado] = await uploadOfflinePlantations();
+
+      expect(resultado).toMatchObject({ success: false, error: 'PLANTACION_FINALIZADA' });
       expect(mockDb.update).not.toHaveBeenCalled();
     });
 
