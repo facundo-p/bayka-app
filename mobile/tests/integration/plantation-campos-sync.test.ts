@@ -99,6 +99,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 }));
 
 import { pullFromServer } from '../../src/services/sync/pullService';
+import { downloadPlantation } from '../../src/services/sync/downloadService';
 import { uploadOfflinePlantations, uploadPendingEdits } from '../../src/services/sync/preSteps';
 import { discardPlantationEdit, updatePlantation } from '../../src/repositories/PlantationRepository';
 import { camposDeFila } from '../../src/utils/camposDePlantacion';
@@ -316,6 +317,32 @@ describe('fila sin los campos nuevos pulleados (previa a 0024)', () => {
     expect(mockUpdates.map((u) => u.payload)).toEqual([{ lugar: 'Campo Sur' }]);
     esperarQueElServerLosConserve();
     expect(await filaLocal()).toMatchObject({ lugar: 'Campo Sur', descripcion: 'Cargada en la web', objetivoArboles: 12000 });
+  });
+
+  test('re-descargarla con una edición pendiente no rompe el pull: el push no borra nada', async () => {
+    await seedLocal({ pendingEdit: true, lugar: 'Campo Sur', lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026' });
+    serverPlantation(PLANTATION_ID, { ...DEL_SERVER, organizacion_id: 'org-1', creado_por: 'user-admin-1', created_at: NOW });
+
+    await downloadPlantation(mockServerState.plantations.get(PLANTATION_ID));
+    await uploadPendingEdits();
+
+    expect(mockUpdates.map((u) => u.payload)).toEqual([{ lugar: 'Campo Sur' }]);
+    esperarQueElServerLosConserve();
+  });
+
+  test('un alta a medio subir no pierde lo editado con el pull, y lo sube después', async () => {
+    await seedLocal({ pendingSync: true, lugar: 'Campo Sur', descripcion: 'Editada offline' });
+    serverPlantation(PLANTATION_ID, { ...DEL_SERVER, descripcion: 'Primer intento' });
+
+    await pullFromServer(PLANTATION_ID);
+
+    expect(await filaLocal()).toMatchObject({
+      lugar: 'Campo Sur', descripcion: 'Editada offline', objetivoArboles: 12000, descripcionServer: 'Primer intento',
+    });
+    await uploadOfflinePlantations();
+    expect(mockServerState.plantations.get(PLANTATION_ID)).toMatchObject({
+      lugar: 'Campo Sur', descripcion: 'Editada offline', objetivo_arboles: 12000,
+    });
   });
 
   test('sin cambios reales no hay UPDATE', async () => {

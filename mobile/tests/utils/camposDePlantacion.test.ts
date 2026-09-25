@@ -6,6 +6,7 @@ import {
   desdeFilaRemota,
   hayCambios,
   remotosNoEditados,
+  tieneCambiosSinSubir,
   restaurarDesdeSnapshot,
   snapshotAntesDeEditar,
 } from '../../src/utils/camposDePlantacion';
@@ -98,5 +99,13 @@ describe('pull con edición pendiente', () => {
     const remotos = { lugar: 'Lote Web', descripcion: 'De la web', objetivoArboles: 15000, visibleInApp: false };
     // lugar editado y objetivo borrado a propósito: no se tocan.
     expect(remotosNoEditados(fila, remotos)).toEqual({ descripcion: 'De la web', visibleInApp: false });
+  });
+});
+
+describe('tieneCambiosSinSubir', () => {
+  it('cuenta la edición pendiente y el alta sin terminar de subir', () => {
+    expect(tieneCambiosSinSubir({ pendingEdit: false, pendingSync: false })).toBe(false);
+    expect(tieneCambiosSinSubir({ pendingEdit: true, pendingSync: false })).toBe(true);
+    expect(tieneCambiosSinSubir({ pendingEdit: false, pendingSync: true })).toBe(true);
   });
 });

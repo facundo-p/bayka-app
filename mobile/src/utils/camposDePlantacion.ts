@@ -113,8 +113,12 @@ export function hayCambios(campos: Partial<CamposDePlantacion>): boolean {
   return Object.keys(campos).length > 0;
 }
 
+export function tieneCambiosSinSubir(fila: Pick<FilaDePlantacion, 'pendingEdit' | 'pendingSync'>): boolean {
+  return fila.pendingEdit || fila.pendingSync;
+}
+
 /**
- * Pull con edición pendiente: de lo que trae el server, los valores vivos a actualizar. Solo
+ * Pull con cambios sin subir: de lo que trae el server, los valores vivos a actualizar. Solo
  * los campos que el usuario no tocó (vivo igual al snapshot anterior, null incluido); si no,
  * el push vería el valor viejo como una edición y lo pisaría en el server. Lo borrado a
  * propósito (snapshot con valor, vivo null) no se toca.

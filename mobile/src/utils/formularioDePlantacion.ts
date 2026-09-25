@@ -114,14 +114,14 @@ export function valoresIniciales(plantacion?: PlantacionEditable | null): Valore
   };
 }
 
-/** Valores ya validados → campos a guardar. Vacío es null: vaciar un campo lo borra. */
+/** Valores ya validados → campos a guardar. Vacío (o solo espacios) es null: vaciar un campo lo borra. */
 export function aCamposDePlantacion(valores: ValoresDelFormulario): CamposDePlantacion {
-  const descripcion = valores.descripcion.trim();
   const objetivo = valores.objetivoArboles.trim();
   return {
     lugar: valores.lugar.trim(),
     periodo: valores.periodo.trim(),
-    descripcion: descripcion === '' ? null : descripcion,
+    // Sin recortar: si no, abrir y guardar reescribe una descripción de la web con espacios.
+    descripcion: valores.descripcion.trim() === '' ? null : valores.descripcion,
     fechaInicio: fechaAIso(valores.fechaInicio),
     objetivoArboles: objetivo === '' ? null : Number(objetivo),
     gpsCaptureFrequency: Number(valores.gpsFrequency.trim()),

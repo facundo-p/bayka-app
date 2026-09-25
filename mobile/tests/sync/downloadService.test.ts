@@ -259,7 +259,7 @@ describe('downloadPlantation', () => {
     expect(conflictArgs.set).toHaveProperty('estado');
   });
 
-  it('mapea visible_in_app del server; en conflicto solo pisa el snapshot (el valor vivo lo pone el pull)', async () => {
+  it('mapea visible_in_app del server; en conflicto no pisa valor vivo ni snapshot (los pone el pull)', async () => {
     const sp = { ...makeServerPlantation('p-oculta'), visible_in_app: false };
     const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
 
@@ -267,8 +267,8 @@ describe('downloadPlantation', () => {
 
     expect(valuesSpy).toHaveBeenCalledWith(expect.objectContaining({ visibleInApp: false, visibleInAppServer: false }));
     const set = onConflictSpy.mock.calls[0][0].set;
-    expect(set).toMatchObject({ visibleInAppServer: false });
     expect(set).not.toHaveProperty('visibleInApp');
+    expect(set).not.toHaveProperty('visibleInAppServer');
   });
 
   it('sin la columna en el server no manda el campo: queda el default del schema', async () => {
@@ -301,10 +301,7 @@ describe('downloadPlantation', () => {
       objetivoArboles: 12000,
       objetivoArbolesServer: 12000,
     }));
-    expect(onConflictSpy.mock.calls[0][0].set).toMatchObject({
-      photoCaptureAllTreesServer: true,
-      descripcionServer: 'Ribera',
-    });
+    expect(onConflictSpy.mock.calls[0][0].set).not.toHaveProperty('descripcionServer');
   });
 
   it('mapea archivada_en del server al campo local archivadaEn (#477)', async () => {

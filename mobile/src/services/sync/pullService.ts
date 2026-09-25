@@ -5,7 +5,7 @@ import { eq, and, sql, inArray, notInArray } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
-import { aSnapshot, desdeFilaRemota, remotosNoEditados } from '../../utils/camposDePlantacion';
+import { aSnapshot, desdeFilaRemota, remotosNoEditados, tieneCambiosSinSubir } from '../../utils/camposDePlantacion';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion';
 import {
@@ -143,14 +143,15 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   const remotos = desdeFilaRemota(remotePlantation);
   const [local] = await db.select().from(plantations).where(eq(plantations.id, plantacionId));
 
-  // El snapshot *Server se refresca siempre; con edición pendiente, solo los valores vivos no editados.
+  // El snapshot *Server se refresca siempre. Con cambios locales sin subir (edición, o un alta
+  // que ya está en el server pero no terminó de subir), solo los valores vivos no editados.
   await db
     .update(plantations)
     .set({
       estado: remotePlantation.estado,
       archivadaEn: remotePlantation.archivada_en ?? null,
       ...aSnapshot(remotos),
-      ...(local?.pendingEdit ? remotosNoEditados(local, remotos) : remotos),
+      ...(local && tieneCambiosSinSubir(local) ? remotosNoEditados(local, remotos) : remotos),
     })
     .where(eq(plantations.id, plantacionId));
 }

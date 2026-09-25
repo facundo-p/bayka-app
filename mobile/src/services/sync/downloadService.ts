@@ -54,7 +54,7 @@ export async function downloadPlantation(
 
   const remotos = desdeFilaRemota(serverPlantation);
   const archivadaEn = serverPlantation.archivada_en ?? null;
-  // Ya local: los valores vivos los pone el pull, que respeta una edición pendiente.
+  // Ya local: valores vivos y snapshot los pone el pull, que respeta una edición pendiente.
   await db
     .insert(plantations)
     .values({
@@ -75,7 +75,6 @@ export async function downloadPlantation(
       set: {
         estado: sql`excluded.estado`,
         pendingSync: false,
-        ...aSnapshot(remotos),
         archivadaEn,
       },
     });
