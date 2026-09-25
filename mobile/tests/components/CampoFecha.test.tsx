@@ -1,7 +1,8 @@
 // Campo de fecha con el calendario nativo de Android (#646).
 
 import React, { useState } from 'react';
-import { render, fireEvent, act } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { render, fireEvent, act, within } from '@testing-library/react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import CampoFecha from '../../src/components/CampoFecha';
 
@@ -37,6 +38,8 @@ describe('CampoFecha', () => {
     expect(getByText('DD/MM/AAAA')).toBeTruthy();
     fireEvent.press(getByTestId('fecha'));
     expect(open).toHaveBeenCalledWith(expect.objectContaining({ mode: 'date' }));
+    const minima: Date = open.mock.calls[0][0].minimumDate;
+    expect([minima.getFullYear(), minima.getMonth(), minima.getDate()]).toEqual([1900, 0, 1]);
     const hoy = new Date();
     expect(open.mock.calls[0][0].value.toDateString()).toBe(hoy.toDateString());
   });
@@ -74,6 +77,14 @@ describe('CampoFecha', () => {
     expect(open).not.toHaveBeenCalled();
     expect(getByText('DD/MM/AAAA')).toBeTruthy();
     expect(queryByLabelText('Borrar fecha')).toBeNull();
+  });
+
+  it('la ✕ es un botón aparte (TalkBack la enfoca) con área tocable de al menos 44', () => {
+    const { getByTestId, getByLabelText } = render(<Controlado inicial="2026-04-15" />);
+    expect(within(getByTestId('fecha')).queryByLabelText('Borrar fecha')).toBeNull();
+    const { width, height } = StyleSheet.flatten(getByLabelText('Borrar fecha').props.style);
+    expect(width).toBeGreaterThanOrEqual(44);
+    expect(height).toBeGreaterThanOrEqual(44);
   });
 
   it('no editable no abre el calendario ni borra', () => {
