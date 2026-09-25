@@ -1,4 +1,9 @@
-import { esAltaPendiente, mensajeTecnicosNoAsignados, tecnicosNoAsignadosDe } from '../../src/utils/tecnicosDePlantacion';
+import {
+  conCambiosDeLaPantalla,
+  esAltaPendiente,
+  mensajeTecnicosNoAsignados,
+  tecnicosNoAsignadosDe,
+} from '../../src/utils/tecnicosDePlantacion';
 import { altasYBajasDeLaSeleccion, sinCambios } from '../../src/utils/altasYBajas';
 
 describe('tecnicosNoAsignadosDe', () => {
@@ -15,7 +20,7 @@ describe('tecnicosNoAsignadosDe', () => {
 describe('mensajeTecnicosNoAsignados', () => {
   it('nombra a los técnicos y dice por qué', () => {
     expect(mensajeTecnicosNoAsignados(['Ana', 'Bruno'])).toBe(
-      'No se pudo asignar a Ana, Bruno. Están dados de baja o ya no pertenecen a la organización, así que se quitaron de la plantación.',
+      'No se pudo asignar a Ana, Bruno. Están dados de baja, ya no son técnicos o no pertenecen a la organización, así que se quitaron de la plantación.',
     );
   });
 });
@@ -42,5 +47,17 @@ describe('altasYBajasDeLaSeleccion', () => {
   it('sinCambios', () => {
     expect(sinCambios({ altas: [], bajas: [] })).toBe(true);
     expect(sinCambios({ altas: ['a'], bajas: [] })).toBe(false);
+  });
+});
+
+describe('conCambiosDeLaPantalla', () => {
+  const t = (id: string, assigned: boolean) => ({ id, assigned, pendiente: false });
+
+  it('la lista nueva con las altas y bajas que el usuario ya hizo', () => {
+    const iniciales = [t('a', true), t('b', false)];
+    const items = [t('a', false), t('b', true)];
+    const nuevos = [t('a', true), t('b', false), t('c', true)];
+
+    expect(conCambiosDeLaPantalla(nuevos, { iniciales, items })).toEqual([t('a', false), t('b', true), t('c', true)]);
   });
 });

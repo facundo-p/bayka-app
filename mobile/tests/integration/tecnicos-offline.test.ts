@@ -25,7 +25,7 @@ const mockServerState: Record<string, Map<string, any>> = {
 const serverState = mockServerState;
 /** Técnicos que el server rechaza: dados de baja. */
 const mockInactivos = new Set<string>();
-const mockRpc = { rechazo: null as string | null, sinRed: false, llamadas: [] as any[] };
+const mockRpc = { rechazo: null as string | null, sinRed: false, colgado: false, llamadas: [] as any[] };
 const mockNet = { conectado: true };
 
 jest.mock('@react-native-community/netinfo', () => ({
@@ -78,6 +78,7 @@ jest.mock('../../src/supabase/client', () => {
         if (nombre !== 'aplicar_cambios_tecnicos') return Promise.resolve({ data: null, error: { code: 'PGRST202' } });
         mockRpc.llamadas.push(args);
         if (mockRpc.sinRed) return Promise.resolve({ data: null, error: { message: 'TypeError: Network request failed' } });
+        if (mockRpc.colgado) return new Promise(() => {});
         return Promise.resolve({ data: aplicarCambios(args), error: null });
       },
       auth: {
@@ -104,7 +105,11 @@ jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn(), warn: jest.fn() },
 }));
 
-import { guardarTecnicosDePlantacion, refrescarTecnicosDeOrganizacion } from '../../src/services/TecnicosDePlantacionService';
+import {
+  ESPERA_DE_SUBIDA_MS,
+  guardarTecnicosDePlantacion,
+  refrescarTecnicosDeOrganizacion,
+} from '../../src/services/TecnicosDePlantacionService';
 import { uploadPendingTechnicianAssignments } from '../../src/services/sync/tecnicosDePlantacion';
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { getResumenDePendientes } from '../../src/queries/catalogQueries';
@@ -134,7 +139,7 @@ const miembro = (userId: string, rol: string) => ({
 beforeEach(async () => {
   for (const tabla of Object.values(serverState)) tabla.clear();
   mockInactivos.clear();
-  Object.assign(mockRpc, { rechazo: null, sinRed: false, llamadas: [] });
+  Object.assign(mockRpc, { rechazo: null, sinRed: false, colgado: false, llamadas: [] });
   mockNet.conectado = true;
   await vaciarTablas(mockTestDb);
 
@@ -176,6 +181,54 @@ describe('caché de técnicos', () => {
       { id: BRUNO, nombre: 'Bruno', assigned: true, pendiente: true },
       { id: CARLA, nombre: 'Carla', assigned: false, pendiente: false },
     ]);
+  });
+});
+
+describe('técnico que salió del caché', () => {
+  async function darDeBaja(id: string) {
+    serverState.profiles.delete(id);
+    await refrescarTecnicosDeOrganizacion();
+  }
+
+  it('su alta pendiente se sigue viendo con el nombre de cuando se asignó, y se puede deshacer', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [CARLA], bajas: [] });
+    mockNet.conectado = true;
+    mockRpc.sinRed = true;
+    await darDeBaja(CARLA);
+
+    expect(await getTechniciansWithAssignment(ORG, PLANTACION_ID)).toContainEqual(
+      { id: CARLA, nombre: 'Carla', assigned: true, pendiente: true },
+    );
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [CARLA] });
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('el aviso del rechazo lo nombra con el nombre guardado', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [CARLA], bajas: [] });
+    mockNet.conectado = true;
+    await darDeBaja(CARLA);
+    mockInactivos.add(CARLA);
+
+    expect(await uploadPendingTechnicianAssignments()).toEqual([
+      { success: true, plantacionId: PLANTACION_ID, nombre: 'Campo', tecnicosNoAsignados: ['Carla'] },
+    ]);
+  });
+});
+
+describe('señal débil', () => {
+  afterEach(() => jest.useRealTimers());
+
+  it('si el server no responde a tiempo, guardar vuelve igual y el alta queda pendiente', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    mockRpc.colgado = true;
+    const guardado = guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+    await jest.advanceTimersByTimeAsync(ESPERA_DE_SUBIDA_MS);
+
+    expect(await guardado).toEqual([]);
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+    expect(await pendientes()).toEqual([BRUNO]);
   });
 });
 

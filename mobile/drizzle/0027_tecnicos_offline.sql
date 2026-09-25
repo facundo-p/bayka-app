@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS `tecnicos_de_organizacion` (
 CREATE TABLE IF NOT EXISTS `altas_de_tecnicos_pendientes` (
 	`plantacion_id` text NOT NULL,
 	`user_id` text NOT NULL,
+	`nombre` text DEFAULT '' NOT NULL,
 	`asignado_en` text NOT NULL
 );--> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS `altas_de_tecnicos_pendientes_pk` ON `altas_de_tecnicos_pendientes` (`plantacion_id`,`user_id`);

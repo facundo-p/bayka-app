@@ -187,6 +187,8 @@ export const tecnicosDeOrganizacion = sqliteTable('tecnicos_de_organizacion', {
 export const altasDeTecnicosPendientes = sqliteTable('altas_de_tecnicos_pendientes', {
   plantacionId: text('plantacion_id').notNull(),
   userId: text('user_id').notNull(),
+  /** El que tenía al asignarlo: si sale del caché (dado de baja), la fila sigue mostrándose. */
+  nombre: text('nombre').notNull().default(''),
   asignadoEn: text('asignado_en').notNull(),
 }, (t) => ({
   pk: uniqueIndex('altas_de_tecnicos_pendientes_pk').on(t.plantacionId, t.userId),

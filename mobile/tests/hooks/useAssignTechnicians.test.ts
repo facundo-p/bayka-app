@@ -52,10 +52,11 @@ const TECNICOS = [
 beforeEach(() => {
   jest.clearAllMocks();
   (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
-  (useNetStatus as jest.Mock).mockReturnValue({ isOnline: true });
+  (useNetStatus as jest.Mock).mockReturnValue({ isOnline: true, conexionConocida: true });
   (getTechniciansWithAssignment as jest.Mock).mockResolvedValue(TECNICOS);
   (getTechnicianUnsyncedGroupCount as jest.Mock).mockResolvedValue(0);
   (guardarTecnicosDePlantacion as jest.Mock).mockResolvedValue([]);
+  (refrescarTecnicosDeOrganizacion as jest.Mock).mockResolvedValue(undefined);
 });
 
 async function montar(plantacionId: string | undefined = 'plant-1') {
@@ -67,13 +68,41 @@ async function montar(plantacionId: string | undefined = 'plant-1') {
 const item = (result: any, id: string) => result.current.items.find((t: any) => t.id === id);
 
 describe('useAssignTechnicians', () => {
-  it('refresca el caché y lee los técnicos de la organización del perfil', async () => {
+  it('pinta del caché y refresca del server en segundo plano', async () => {
     const { result } = await montar();
 
+    await waitFor(() => expect(getTechniciansWithAssignment).toHaveBeenCalledTimes(2));
     expect(refrescarTecnicosDeOrganizacion).toHaveBeenCalled();
     expect(getTechniciansWithAssignment).toHaveBeenCalledWith('org-1', 'plant-1');
     expect(result.current.items).toEqual(TECNICOS);
     expect(result.current.assignedCount).toBe(2);
+  });
+
+  it('no espera el refresco para mostrar la lista', async () => {
+    (refrescarTecnicosDeOrganizacion as jest.Mock).mockReturnValue(new Promise(() => {}));
+    const { result } = await montar();
+
+    expect(result.current.items).toEqual(TECNICOS);
+  });
+
+  it('el refresco no deshace lo que el usuario ya tocó', async () => {
+    let terminarRefresco: () => void = () => {};
+    (refrescarTecnicosDeOrganizacion as jest.Mock).mockReturnValue(new Promise<void>((r) => { terminarRefresco = r; }));
+    const { result } = await montar();
+
+    await act(() => result.current.handleToggle('tec-2', true));
+    await act(async () => terminarRefresco());
+
+    await waitFor(() => expect(getTechniciansWithAssignment).toHaveBeenCalledTimes(2));
+    expect(item(result, 'tec-2').assigned).toBe(true);
+  });
+
+  it('mientras no se conoce la conexión no deshabilita quitar ni avisa sin conexión', async () => {
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false, conexionConocida: false });
+    const { result } = await montar();
+
+    expect(result.current.sinConexion).toBe(false);
+    expect(result.current.puedeQuitar('tec-1')).toBe(true);
   });
 
   it('sin organización en el perfil no consulta nada', async () => {
@@ -85,7 +114,7 @@ describe('useAssignTechnicians', () => {
   });
 
   it('sin conexión carga igual y se puede asignar', async () => {
-    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false });
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false, conexionConocida: true });
     const { result } = await montar();
 
     await act(() => result.current.handleToggle('tec-2', true));
@@ -95,7 +124,7 @@ describe('useAssignTechnicians', () => {
   });
 
   it('sin conexión no se quita a un técnico asignado en el servidor', async () => {
-    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false });
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false, conexionConocida: true });
     const { result } = await montar();
 
     expect(result.current.puedeQuitar('tec-1')).toBe(false);
@@ -106,7 +135,7 @@ describe('useAssignTechnicians', () => {
   });
 
   it('sin conexión sí se deshace un alta que todavía no subió', async () => {
-    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false });
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false, conexionConocida: true });
     const { result } = await montar();
 
     expect(result.current.puedeQuitar('tec-3')).toBe(true);
@@ -166,7 +195,7 @@ describe('useAssignTechnicians', () => {
     await act(() => result.current.handleSave(onClose));
 
     expect(onClose).not.toHaveBeenCalled();
-    expect(getTechniciansWithAssignment).toHaveBeenCalledTimes(2);
+    expect(getTechniciansWithAssignment).toHaveBeenCalledTimes(3);
     expect(showInfoDialog).toHaveBeenCalledWith(
       expect.anything(), 'Técnicos no asignados', expect.stringContaining('Bruno'), expect.anything(), expect.anything(),
     );

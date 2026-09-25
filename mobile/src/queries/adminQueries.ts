@@ -8,7 +8,7 @@ import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueri
 import { porNombre } from '../utils/ordenEspecies';
 import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
-import { getAltasPendientes, getTecnicosDeOrganizacion } from '../repositories/TecnicosDePlantacionRepository';
+import { getAltasPendientesConNombre, getTecnicosDeOrganizacion } from '../repositories/TecnicosDePlantacionRepository';
 
 export type FinalizationGate = {
   canFinalize: boolean;
@@ -77,20 +77,26 @@ export function porAsignadoYNombre(a: TecnicoAsignable, b: TecnicoAsignable): nu
   return a.nombre.localeCompare(b.nombre);
 }
 
-/** Los técnicos de la organización (del caché, #636) marcados con su asignación a la plantación. */
+/**
+ * Los técnicos de la organización (del caché, #636) marcados con su asignación a la
+ * plantación. Un alta pendiente de alguien que salió del caché (dado de baja) se sigue
+ * mostrando, con el nombre que tenía al asignarlo, para poder deshacerla.
+ */
 export async function getTechniciansWithAssignment(
   organizacionId: string,
   plantacionId: string
 ): Promise<TecnicoAsignable[]> {
-  const [todos, asignados, pendientes] = await Promise.all([
+  const [delCache, asignados, pendientes] = await Promise.all([
     getTecnicosDeOrganizacion(organizacionId),
     getAssignedTechnicians(plantacionId),
-    getAltasPendientes(plantacionId),
+    getAltasPendientesConNombre(plantacionId),
   ]);
+  const idsDelCache = new Set(delCache.map((t) => t.id));
+  const todos = [...delCache, ...pendientes.filter((p) => !idsDelCache.has(p.id))];
   const idsAsignados = new Set(asignados.map((asignado) => asignado.userId));
-  const idsPendientes = new Set(pendientes);
+  const idsPendientes = new Set(pendientes.map((p) => p.id));
   return todos
-    .map((tecnico) => ({ ...tecnico, assigned: idsAsignados.has(tecnico.id), pendiente: idsPendientes.has(tecnico.id) }))
+    .map((t) => ({ id: t.id, nombre: t.nombre, assigned: idsAsignados.has(t.id), pendiente: idsPendientes.has(t.id) }))
     .sort(porAsignadoYNombre);
 }
 

@@ -22,6 +22,8 @@ import { useAssignTechnicians } from '../hooks/useAssignTechnicians';
 import { assignTechniciansScreenStyles as styles } from './AssignTechniciansScreen.styles';
 import {
   AYUDA_QUITAR_SIN_CONEXION,
+  ETIQUETA_TECNICO,
+  ICONO_TECNICOS,
   esAltaPendiente,
   SE_ASIGNARA_AL_SINCRONIZAR,
   SIN_TECNICOS,
@@ -79,7 +81,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="people-outline" size={40} color={colors.textMuted} />
+            <Ionicons name={ICONO_TECNICOS} size={40} color={colors.textMuted} />
             <Text style={styles.emptyText}>{SIN_TECNICOS}</Text>
           </View>
         }
@@ -96,7 +98,7 @@ export default function AssignTechniciansScreen({ plantacionIdProp, onClose }: P
               <View style={styles.rowInfo}>
                 <Text style={[styles.rowName, !item.assigned && styles.rowNameMuted]}>{item.nombre}</Text>
                 <Text style={[styles.rowRole, esAltaPendiente(item) && styles.rowPendiente]}>
-                  {esAltaPendiente(item) ? SE_ASIGNARA_AL_SINCRONIZAR : 'Técnico'}
+                  {esAltaPendiente(item) ? SE_ASIGNARA_AL_SINCRONIZAR : ETIQUETA_TECNICO}
                 </Text>
               </View>
               {item.assigned && <Ionicons name="checkmark-circle" size={18} color={colors.primary} />}

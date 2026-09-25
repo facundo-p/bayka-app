@@ -9,8 +9,6 @@ export const RECHAZO_CONFIGURACION = {
   sinPermiso: 'NOT_AUTHORIZED',
   especieInexistente: 'ESPECIE_INEXISTENTE',
   especieConArboles: 'ESPECIE_CON_ARBOLES',
-  usuarioDeOtraOrganizacion: 'USUARIO_DE_OTRA_ORGANIZACION',
-  tecnicoInactivo: 'TECNICO_INACTIVO',
 } as const;
 
 type RechazoConfiguracion = (typeof RECHAZO_CONFIGURACION)[keyof typeof RECHAZO_CONFIGURACION];
@@ -23,9 +21,6 @@ const MENSAJE_POR_RECHAZO: Record<RechazoConfiguracion, string> = {
     `Alguna de las especies elegidas ya no existe en el servidor. ${NO_SE_GUARDARON}`,
   [RECHAZO_CONFIGURACION.especieConArboles]:
     `Alguna de las especies que quitaste ya tiene árboles registrados en el servidor. ${NO_SE_GUARDARON}`,
-  [RECHAZO_CONFIGURACION.usuarioDeOtraOrganizacion]:
-    `Alguno de los técnicos elegidos no pertenece a tu organización. ${NO_SE_GUARDARON}`,
-  [RECHAZO_CONFIGURACION.tecnicoInactivo]: `Alguno de los técnicos elegidos está dado de baja. ${NO_SE_GUARDARON}`,
 };
 
 export class ReemplazoRechazadoError extends Error {

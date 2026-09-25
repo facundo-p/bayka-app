@@ -1,9 +1,9 @@
 /**
  * useAssignTechnicians — el estado de AssignTechniciansScreen.
  *
- * Los técnicos salen del caché del teléfono (#636), refrescado si hay señal, y la
- * asignación del SQLite local. Asignar funciona sin conexión; quitar a alguien que
- * ya está asignado en el servidor, no.
+ * Los técnicos salen del caché del teléfono (#636): la lista se pinta de ahí y se
+ * refresca del server en segundo plano. Asignar funciona sin conexión; quitar a
+ * alguien que ya está asignado en el servidor, no.
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useConfirm } from './useConfirm';
@@ -16,8 +16,13 @@ import {
   type TecnicoAsignable,
 } from '../queries/adminQueries';
 import { guardarTecnicosDePlantacion, refrescarTecnicosDeOrganizacion } from '../services/TecnicosDePlantacionService';
-import { altasYBajasDeLaSeleccion } from '../utils/altasYBajas';
-import { mensajeTecnicosNoAsignados } from '../utils/tecnicosDePlantacion';
+import {
+  ICONO_TECNICOS,
+  TITULO_TECNICOS_NO_ASIGNADOS,
+  cambiosDeLaPantalla,
+  conCambiosDeLaPantalla,
+  mensajeTecnicosNoAsignados,
+} from '../utils/tecnicosDePlantacion';
 import { colors } from '../theme';
 
 const ICONO_ERROR = 'alert-circle-outline';
@@ -32,25 +37,19 @@ export function mensajeDeDesasignacion(gruposPendientes: number): string {
   );
 }
 
-async function cargarTecnicos(organizacionId: string, plantacionId: string): Promise<TecnicoAsignable[]> {
-  await refrescarTecnicosDeOrganizacion();
-  return getTechniciansWithAssignment(organizacionId, plantacionId);
-}
+type Lista = { iniciales: TecnicoAsignable[]; items: TecnicoAsignable[] };
+const LISTA_VACIA: Lista = { iniciales: [], items: [] };
 
 /** Ya asignado en el servidor al abrir la pantalla: quitarlo necesita conexión. */
 const asignadoEnServidor = (t: TecnicoAsignable) => t.assigned && !t.pendiente;
 
-const cambiosDeLaPantalla = (iniciales: TecnicoAsignable[], actuales: TecnicoAsignable[]) =>
-  altasYBajasDeLaSeleccion(iniciales, actuales, (t) => t.id, (t) => t.assigned);
-
 export function useAssignTechnicians(plantacionId: string | undefined) {
   const confirm = useConfirm();
   const { profile } = useProfileData();
-  const { isOnline } = useNetStatus();
+  const { isOnline, conexionConocida } = useNetStatus();
   const organizacionId = profile?.organizacionId ?? null;
 
-  const [items, setItems] = useState<TecnicoAsignable[]>([]);
-  const [iniciales, setIniciales] = useState<TecnicoAsignable[]>([]);
+  const [{ iniciales, items }, setLista] = useState<Lista>(LISTA_VACIA);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -61,28 +60,43 @@ export function useAssignTechnicians(plantacionId: string | undefined) {
     [confirm.show],
   );
 
+  const leer = useCallback(
+    () => getTechniciansWithAssignment(organizacionId ?? '', plantacionId ?? ''),
+    [organizacionId, plantacionId],
+  );
+
   const loadData = useCallback(async () => {
     if (!plantacionId || !organizacionId) return;
     setLoading(true);
     try {
-      const cargados = await cargarTecnicos(organizacionId, plantacionId);
-      setItems(cargados);
-      setIniciales(cargados);
+      const cargados = await leer();
+      setLista({ iniciales: cargados, items: cargados });
     } catch (e: any) {
       avisarError(e, 'No se pudieron cargar los técnicos.');
     } finally {
       setLoading(false);
     }
-  }, [plantacionId, organizacionId, avisarError]);
+  }, [plantacionId, organizacionId, leer, avisarError]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    let montado = true;
+    const refrescar = async () => {
+      await loadData();
+      if (!plantacionId || !organizacionId) return;
+      await refrescarTecnicosDeOrganizacion();
+      const nuevos = await leer();
+      if (montado) setLista((previa) => ({ iniciales: nuevos, items: conCambiosDeLaPantalla(nuevos, previa) }));
+    };
+    refrescar().catch(() => {});
+    return () => { montado = false; };
+  }, [loadData, leer, plantacionId, organizacionId]);
 
-  const puedeQuitar = (id: string) => isOnline || !iniciales.some((t) => t.id === id && asignadoEnServidor(t));
+  // Mientras NetInfo no respondió no se deshabilita nada: el servicio igual chequea al guardar.
+  const puedeQuitar = (id: string) =>
+    isOnline || !conexionConocida || !iniciales.some((t) => t.id === id && asignadoEnServidor(t));
 
   const marcarAsignado = (id: string, assigned: boolean) =>
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, assigned } : item)));
+    setLista((prev) => ({ ...prev, items: prev.items.map((item) => (item.id === id ? { ...item, assigned } : item)) }));
 
   /** Desasignar avisa si el técnico tiene grupos que solo él puede subir. */
   async function handleToggle(id: string, newValue: boolean) {
@@ -102,7 +116,7 @@ export function useAssignTechnicians(plantacionId: string | undefined) {
 
   async function avisarNoAsignados(nombres: string[]) {
     await loadData();
-    showInfoDialog(confirm.show, 'Técnicos no asignados', mensajeTecnicosNoAsignados(nombres), 'people-outline', colors.info);
+    showInfoDialog(confirm.show, TITULO_TECNICOS_NO_ASIGNADOS, mensajeTecnicosNoAsignados(nombres), ICONO_TECNICOS, colors.info);
   }
 
   async function handleSave(onClose?: () => void, onBack?: () => void) {
@@ -125,7 +139,7 @@ export function useAssignTechnicians(plantacionId: string | undefined) {
     items,
     loading,
     saving,
-    sinConexion: !isOnline,
+    sinConexion: conexionConocida && !isOnline,
     assignedCount: items.filter((item) => item.assigned).length,
     confirmProps: confirm.confirmProps,
     puedeQuitar,

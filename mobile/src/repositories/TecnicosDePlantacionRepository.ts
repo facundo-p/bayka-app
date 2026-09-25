@@ -6,23 +6,33 @@
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
 import { altasDeTecnicosPendientes, plantationUsers, plantations, tecnicosDeOrganizacion } from '../database/schema';
-import { and, count, eq, inArray, isNull } from 'drizzle-orm';
+import { and, count, eq, inArray } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { localNow } from '../utils/dateUtils';
+import { TECNICO_SIN_NOMBRE } from '../utils/tecnicosDePlantacion';
+import { plantacionSubida } from './plantacionSubida';
 
 /** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
 type DbExecutor = Pick<typeof db, 'insert' | 'delete' | 'select' | 'update'>;
 
-/** Asigna en el teléfono y lo anota para subir. */
+async function nombresDelCache(exec: DbExecutor, userIds: string[]): Promise<Map<string, string>> {
+  const filas = await exec.select({ id: tecnicosDeOrganizacion.id, nombre: tecnicosDeOrganizacion.nombre })
+    .from(tecnicosDeOrganizacion)
+    .where(inArray(tecnicosDeOrganizacion.id, userIds));
+  return new Map(filas.map((f) => [f.id, f.nombre]));
+}
+
+/** Asigna en el teléfono y lo anota para subir, con el nombre que tiene hoy en el caché. */
 export async function guardarAltasDeTecnicos(plantacionId: string, userIds: string[]): Promise<void> {
   if (userIds.length === 0) return;
   const asignadoEn = localNow();
   await enTransaccion(async (tx) => {
+    const nombres = await nombresDelCache(tx, userIds);
     await tx.insert(plantationUsers)
       .values(userIds.map((userId) => ({ plantationId: plantacionId, userId, rolEnPlantacion: ROL.tecnico, assignedAt: asignadoEn })))
       .onConflictDoNothing();
     await tx.insert(altasDeTecnicosPendientes)
-      .values(userIds.map((userId) => ({ plantacionId, userId, asignadoEn })))
+      .values(userIds.map((userId) => ({ plantacionId, userId, nombre: nombres.get(userId) ?? '', asignadoEn })))
       .onConflictDoNothing();
   });
 }
@@ -47,12 +57,15 @@ export async function quitarTecnicosLocal(plantacionId: string, userIds: string[
   });
 }
 
-export async function getAltasPendientes(plantacionId: string): Promise<string[]> {
-  const filas = await db
-    .select({ userId: altasDeTecnicosPendientes.userId })
+export async function getAltasPendientesConNombre(plantacionId: string): Promise<{ id: string; nombre: string }[]> {
+  return db
+    .select({ id: altasDeTecnicosPendientes.userId, nombre: altasDeTecnicosPendientes.nombre })
     .from(altasDeTecnicosPendientes)
     .where(eq(altasDeTecnicosPendientes.plantacionId, plantacionId));
-  return filas.map((f) => f.userId);
+}
+
+export async function getAltasPendientes(plantacionId: string): Promise<string[]> {
+  return (await getAltasPendientesConNombre(plantacionId)).map((a) => a.id);
 }
 
 /**
@@ -64,8 +77,6 @@ export async function registrarAltasSubidas(plantacionId: string, enviadas: stri
   await quitarTecnicosLocal(plantacionId, rechazadas);
   if (aceptadas.length > 0) await descartarPendientes(db, plantacionId, aceptadas);
 }
-
-const plantacionSubida = and(eq(plantations.pendingSync, false), isNull(plantations.eliminadaEnServidorEn));
 
 /** Plantaciones con altas para subir: ni sin subir (esperan a su alta) ni eliminadas en el server. */
 export async function getPlantacionesConAltasDeTecnicos(): Promise<{ id: string; lugar: string }[]> {
@@ -113,14 +124,15 @@ export async function getTecnicosDeOrganizacion(organizacionId: string): Promise
     .where(eq(tecnicosDeOrganizacion.organizacionId, organizacionId));
 }
 
-/** Un técnico que ya no está en el caché (dado de baja) no tiene nombre para mostrar. */
-export const TECNICO_SIN_NOMBRE = 'Técnico sin nombre';
-
-export async function getNombresDeTecnicos(userIds: string[]): Promise<string[]> {
+/**
+ * Nombres para avisar: del caché o, si ya salió (dado de baja), el que se guardó al
+ * asignarlo. Hay que pedirlos antes de registrar la respuesta, que borra la cola.
+ */
+export async function getNombresDeTecnicos(plantacionId: string, userIds: string[]): Promise<string[]> {
   if (userIds.length === 0) return [];
-  const filas = await db.select({ id: tecnicosDeOrganizacion.id, nombre: tecnicosDeOrganizacion.nombre })
-    .from(tecnicosDeOrganizacion)
-    .where(inArray(tecnicosDeOrganizacion.id, userIds));
-  const porId = new Map(filas.map((f) => [f.id, f.nombre]));
-  return userIds.map((id) => porId.get(id) ?? TECNICO_SIN_NOMBRE).sort((a, b) => a.localeCompare(b));
+  const delCache = await nombresDelCache(db, userIds);
+  const deLaCola = new Map((await getAltasPendientesConNombre(plantacionId)).map((a) => [a.id, a.nombre]));
+  return userIds
+    .map((id) => delCache.get(id) || deLaCola.get(id) || TECNICO_SIN_NOMBRE)
+    .sort((a, b) => a.localeCompare(b));
 }

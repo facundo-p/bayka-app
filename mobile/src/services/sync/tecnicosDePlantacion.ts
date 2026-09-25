@@ -16,10 +16,18 @@ import {
 
 export const RPC_APLICAR_CAMBIOS_TECNICOS = 'aplicar_cambios_tecnicos';
 
-type Rechazado = { user_id: string; error: string };
+/** Por qué `aplicar_cambios_tecnicos` no asigna a un usuario: contrato con 059. */
+export const RECHAZO_DE_TECNICO = {
+  otraOrganizacion: 'USUARIO_DE_OTRA_ORGANIZACION',
+  noEsTecnico: 'NO_ES_TECNICO',
+  inactivo: 'TECNICO_INACTIVO',
+} as const;
+
+type RechazoDeTecnico = (typeof RECHAZO_DE_TECNICO)[keyof typeof RECHAZO_DE_TECNICO];
+type Rechazado = { user_id: string; error: RechazoDeTecnico };
 type RespuestaDeTecnicos = { success: boolean; error?: string; rechazados?: Rechazado[] } | null;
 
-/** La plantación no admitió el cambio (nada se aplicó), o los técnicos que el server no asignó. */
+/** La plantación no admitió el cambio (nada se aplicó), o los nombres de los técnicos que el server no asignó. */
 export type SubidaDeTecnicos = { rechazo: string; enviadas: string[] } | { noAsignados: string[] };
 
 export const esRechazoDePlantacion = (s: SubidaDeTecnicos): s is { rechazo: string; enviadas: string[] } =>
@@ -46,8 +54,9 @@ export async function subirCambiosDeTecnicos(plantacionId: string, bajas: string
   if (enviadas.length === 0 && bajas.length === 0) return null;
   const respuesta = await aplicarCambiosEnServidor(plantacionId, enviadas, bajas);
   if (!respuesta?.success) return { rechazo: respuesta?.error ?? '', enviadas };
-  const noAsignados = (respuesta.rechazados ?? []).map((r) => r.user_id);
-  await registrarAltasSubidas(plantacionId, enviadas, noAsignados);
+  const rechazados = (respuesta.rechazados ?? []).map((r) => r.user_id);
+  const noAsignados = await getNombresDeTecnicos(plantacionId, rechazados);
+  await registrarAltasSubidas(plantacionId, enviadas, rechazados);
   return { noAsignados };
 }
 
@@ -61,7 +70,7 @@ async function subirDeUnaPlantacion(p: { id: string; lugar: string }): Promise<S
       return null;
     }
     if (subida.noAsignados.length === 0) return null;
-    return { success: true, plantacionId: p.id, nombre: p.lugar, tecnicosNoAsignados: await getNombresDeTecnicos(subida.noAsignados) };
+    return { success: true, plantacionId: p.id, nombre: p.lugar, tecnicosNoAsignados: subida.noAsignados };
   } catch (e: any) {
     relanzarSiEsCancelacion(e);
     syncLog.error('Upload technician assignments failed:', p.id, e?.message ?? e);

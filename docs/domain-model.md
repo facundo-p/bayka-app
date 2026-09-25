@@ -384,9 +384,9 @@ mantienen solo los triggers.
 
 Desde la app, asignar funciona sin conexión (#636): el teléfono lo aplica en el
 momento y lo sube en el próximo sync por `aplicar_cambios_tecnicos`, que es aditivo
-(no pisa lo que la web asignó en el medio). Un técnico dado de baja o de otra
-organización se rechaza solo y se quita del teléfono. Quitar sigue requiriendo
-conexión.
+(no pisa lo que la web asignó en el medio). Un técnico dado de baja, un usuario
+que no es técnico o uno de otra organización se rechaza solo y se quita del
+teléfono. Quitar sigue requiriendo conexión.
 
 ---
 
