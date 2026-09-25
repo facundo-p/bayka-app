@@ -13,6 +13,8 @@ import { useRoutePrefix } from './useRoutePrefix';
 import { esRutaAdmin } from '../constants/rutas';
 import { useConfirm } from './useConfirm';
 import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
+import { useDescartarPendientes } from './useDescartarPendientes';
+import { getPendientesVarados, type PendientesVarados } from '../queries/pendientesVaradosQueries';
 import { checkFreshness } from '../queries/freshnessQueries';
 import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
 import { contarPorEstado } from '../utils/conteoPorEstado';
@@ -24,6 +26,8 @@ import {
   getTotalTreeCounts,
   getUnresolvedNNCountsPerPlantation,
 } from '../queries/dashboardQueries';
+
+const SIN_VARADOS = new Map<string, PendientesVarados>();
 
 export function usePlantaciones() {
   const routePrefix = useRoutePrefix();
@@ -47,6 +51,7 @@ export function usePlantaciones() {
   const { data: todayCounts } = useLiveData(() => getTodayTreeCounts(userId), [userId]);
   const { data: totalCounts } = useLiveData(() => getTotalTreeCounts());
   const { data: nnCounts } = useLiveData(() => getUnresolvedNNCountsPerPlantation());
+  const { data: pendientesVarados } = useLiveData(() => getPendientesVarados());
 
   useFocusEffect(
     useCallback(() => {
@@ -101,6 +106,7 @@ export function usePlantaciones() {
   ) ?? [];
 
   const handleDeletePlantation = useEliminarDelDispositivo(confirm.show);
+  const handleDescartarPendientes = useDescartarPendientes(confirm.show);
 
   return {
     plantationList,
@@ -121,6 +127,8 @@ export function usePlantaciones() {
     nnCountMap,
     handleRefresh,
     handleDeletePlantation,
+    pendientesVarados: pendientesVarados ?? SIN_VARADOS,
+    handleDescartarPendientes,
     confirmProps: confirm.confirmProps,
   };
 }

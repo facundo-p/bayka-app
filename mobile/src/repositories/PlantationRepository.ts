@@ -31,7 +31,7 @@ import {
   camposDeFila,
   edicionDelFormulario,
   type EdicionDelFormulario,
-  restaurarDesdeSnapshot,
+  sinEdicionPendiente,
   snapshotAntesDeEditar,
   type AjustesDePlantacion,
   type CampoDePlantacion,
@@ -187,7 +187,7 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
 
   await db
     .update(plantations)
-    .set({ ...restaurarDesdeSnapshot(row), pendingEdit: false, baseDeEdicion: null, editadaLocalmenteEn: null })
+    .set(sinEdicionPendiente(row))
     .where(eq(plantations.id, plantacionId));
   notifyDataChanged();
 }

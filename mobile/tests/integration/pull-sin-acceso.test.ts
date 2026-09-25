@@ -208,6 +208,13 @@ describe('pullFromServer con membresía revocada', () => {
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'sin-acceso' });
   });
 
+  it('lo pendiente queda varado sin permiso (#638)', async () => {
+    await pullFromServer(PLANTACION_ID);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTACION_ID));
+    expect(fila.motivoVarado).toBe('sin-permiso');
+  });
+
   it('no toca la copia local: los datos quedan para consulta', async () => {
     const antes = await filasLocales();
 

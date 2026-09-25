@@ -7,6 +7,7 @@ import { supabase } from '../../supabase/client';
 import { syncLog } from '../../utils/syncLogger';
 import { relanzarSiEsCancelacion } from './cancelacion';
 import type { SyncPlantationResult } from './types';
+import { anotarRechazo } from './pendientesVarados';
 import {
   getAltasPendientes,
   getNombresDeTecnicos,
@@ -67,8 +68,10 @@ async function subirDeUnaPlantacion(p: { id: string; lugar: string }): Promise<S
     // Archivada o sin permiso: queda pendiente, igual que una edición rechazada.
     if (esRechazoDePlantacion(subida)) {
       syncLog.error('Upload technician assignments rejected:', p.id, subida.rechazo);
+      await anotarRechazo(p.id, subida.rechazo);
       return null;
     }
+    // Aceptada no limpia el motivo (sin `anotarSubida`): el server las admite en una finalizada.
     if (subida.noAsignados.length === 0) return null;
     return { success: true, plantacionId: p.id, nombre: p.lugar, tecnicosNoAsignados: subida.noAsignados };
   } catch (e: any) {

@@ -9,6 +9,7 @@ import { relanzarSiEsCancelacion } from './cancelacion';
 import type { SyncPlantationResult } from './types';
 import { CAMBIO_DE_ESPECIE } from '../../constants/cambioDeEspecie';
 import { RECHAZO_CONFIGURACION } from '../ReemplazoConfiguracionService';
+import { anotarRechazo, anotarSubida } from './pendientesVarados';
 import {
   comoAltasYBajas,
   getCambiosPendientes,
@@ -68,8 +69,10 @@ async function subirDeUnaPlantacion(p: { id: string; lugar: string }): Promise<S
     // Finalizada, archivada o sin permiso: queda pendiente, igual que una edición rechazada.
     if (esRechazoDePlantacion(subida)) {
       syncLog.error('Upload species changes rejected:', p.id, subida.rechazo);
+      await anotarRechazo(p.id, subida.rechazo);
       return null;
     }
+    await anotarSubida(p.id);
     if (subida.conArboles.length === 0) return null;
     return { success: true, plantacionId: p.id, nombre: p.lugar, especiesConArboles: (await getEspeciesPorId(subida.conArboles)).map((e) => e.nombre) };
   } catch (e: any) {

@@ -19,6 +19,8 @@ export const SYNC_ERROR = {
   PARCELA_PENDING: 'PARCELA_PENDING',
   /** RLS rechazó la operación (42501). */
   PERMISSION: 'PERMISSION',
+  /** El server no dejó crear una plantación creada offline: el usuario ya no es admin de su organización (#638). */
+  SIN_PERMISO_CREAR: 'SIN_PERMISO_CREAR',
   /** La plantación está finalizada y es inmutable (#469); distinto de PERMISSION, que es no ser miembro. */
   PLANTACION_FINALIZADA: 'PLANTACION_FINALIZADA',
   /** La plantación está archivada (#477); tiene prioridad sobre finalizada en el server. */
@@ -234,6 +236,7 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   [SYNC_ERROR.REFERENCIA_INEXISTENTE]: 'Falta en el servidor un dato del que depende (por ejemplo, su plantación o parcela). Sincronizá de nuevo; si persiste, puede que se haya eliminado: contactá a un administrador.',
   [SYNC_ERROR.PARCELA_PENDING]: 'No se pudo sincronizar el grupo porque su parcela aún está pendiente. Resolvé el problema de la parcela primero.',
   [SYNC_ERROR.PERMISSION]: 'El servidor rechazó la operación por permisos. No estás habilitado para sincronizar esta plantación; contactá a un administrador.',
+  [SYNC_ERROR.SIN_PERMISO_CREAR]: 'Tu usuario ya no tiene permiso para crear esta plantación en el servidor. Sigue guardada en el dispositivo: pedile a un administrador que te devuelva el permiso para subirla, o descartala desde su tarjeta.',
   // El dato NO se pierde: queda en el device y se sube si la plantación se reabre o desarchiva.
   [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantación fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
   [SYNC_ERROR.PLANTACION_ARCHIVADA]: 'La plantación fue archivada y no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la desarchive para poder subirlo.',

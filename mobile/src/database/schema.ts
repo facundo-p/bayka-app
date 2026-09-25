@@ -7,6 +7,7 @@ import { GROUP_TIPO_DEFAULT } from '../constants/groupTipo';
 import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ConflictoDeCampo } from '../utils/conflictosDeEdicion';
+import type { MotivoVarado } from '../constants/motivoVarado';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
@@ -65,6 +66,8 @@ export const plantations = sqliteTable('plantations', {
   editadaLocalmenteEn: text('editada_localmente_en'),
   // Solo local (#634): campos que chocaron con la web, hasta que el usuario elija. Null = ninguno.
   conflictosDeEdicion: text('conflictos_de_edicion', { mode: 'json' }).$type<ConflictoDeCampo[]>(),
+  // Solo local (#638): por qué lo pendiente no puede subir. Null = nada varado.
+  motivoVarado: text('motivo_varado').$type<MotivoVarado>(),
 });
 
 export const parcelas = sqliteTable('parcelas', {

@@ -11,6 +11,7 @@ import { colors, iconSizes } from '../theme';
 import React from 'react';
 import OrangeDot from './OrangeDot';
 import ParcelaRow from './ParcelaRow';
+import PendientesVaradosAviso from './PendientesVaradosAviso';
 import { plantationCardStyles as styles } from './PlantationCard.styles';
 import { esFinalizada } from '../constants/estados';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
@@ -41,6 +42,8 @@ type Props = {
   eliminadaEnServidor?: boolean;
   /** Con cambios que chocaron con la web (#634): la marca abre "Resolver cambios". */
   onResolverCambios?: () => void;
+  /** Cambios que no pueden subir, con el motivo y cómo descartarlos (#638). */
+  pendientesVarados?: React.ComponentProps<typeof PendientesVaradosAviso>;
   // Inline expansion props (all optional; expand row only renders when
   // `onToggleExpanded` is supplied by the parent wrapper).
   parcelasCount?: number;
@@ -249,6 +252,7 @@ export default function PlantationCard({
   visibleInApp = true,
   eliminadaEnServidor = false,
   onResolverCambios,
+  pendientesVarados,
   parcelasCount = 0,
   expanded = false,
   onToggleExpanded,
@@ -284,6 +288,8 @@ export default function PlantationCard({
 
           {onResolverCambios && <CambiosPorResolverBadge onPress={onResolverCambios} />}
 
+          {pendientesVarados && <PendientesVaradosAviso {...pendientesVarados} />}
+
           {isAdmin && !visibleInApp && (
             <View style={styles.hiddenBadge}>
               <Ionicons name="eye-off-outline" size={iconSizes.badge} color={colors.textMuted} />
@@ -299,7 +305,8 @@ export default function PlantationCard({
             estado={estado}
           />
 
-          {pendingSync > 0 && (
+          {/* Varados no están "listos para sincronizar": el aviso de arriba dice por qué. */}
+          {pendingSync > 0 && !pendientesVarados && (
             <View style={styles.pendingSyncRow}>
               <Ionicons name="cloud-upload-outline" size={14} color={colors.info} />
               <Text style={styles.pendingSyncText}>

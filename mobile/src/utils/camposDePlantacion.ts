@@ -272,3 +272,8 @@ export function restaurarDesdeSnapshot(fila: FilaDePlantacion): Partial<CamposDe
   }
   return campos as Partial<CamposDePlantacion>;
 }
+
+/** La fila sin su edición pendiente: vuelve al snapshot del server y deja de estar para subir. */
+export function sinEdicionPendiente(fila: FilaDePlantacion) {
+  return { ...restaurarDesdeSnapshot(fila), pendingEdit: false, baseDeEdicion: null, editadaLocalmenteEn: null };
+}

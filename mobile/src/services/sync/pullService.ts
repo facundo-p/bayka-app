@@ -14,6 +14,7 @@ import {
   PULL_OK,
   PULL_SIN_ACCESO,
   RPC_ESTADO_REMOTO_PLANTACIONES,
+  SYNC_ERROR,
   esPullSinDatos,
   existeConAcceso,
   pullDesdeEstadoRemoto,
@@ -29,6 +30,7 @@ import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 import { comoAltasYBajas, getCambiosPendientes } from '../../repositories/CambiosDeEspeciesRepository';
 import { getAltasPendientes } from '../../repositories/TecnicosDePlantacionRepository';
 import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
+import { anotarPullConAcceso, anotarRechazo, conRegistroDeVarados } from './pendientesVarados';
 import { adoptarRenombres, gruposLocales, planDeRenombres, type GrupoLocal, type RemoteGroup } from './renombresDeGrupos';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
@@ -98,7 +100,12 @@ async function membresiaRemota(plantacionId: string, userId: string): Promise<Pu
 /** Deja la marca local alineada con lo que respondió el server. */
 async function registrarEstadoRemoto(plantacionId: string, estado: string | undefined): Promise<void> {
   if (estado === ESTADO_REMOTO.eliminada) await marcarEliminadaEnServidor(plantacionId);
-  else if (existeConAcceso(estado)) await desmarcarEliminadaEnServidor(plantacionId);
+  // Sin membresía lo pendiente no sube: queda varado sin permiso (#638).
+  else if (estado === ESTADO_REMOTO.sinAcceso) await anotarRechazo(plantacionId, SYNC_ERROR.PERMISSION);
+  else if (existeConAcceso(estado)) {
+    await desmarcarEliminadaEnServidor(plantacionId);
+    await anotarPullConAcceso(plantacionId);
+  }
 }
 
 async function consultarEstadoRemoto(plantacionId: string, userId: string): Promise<PullResult> {
@@ -791,4 +798,8 @@ async function correrPullFromServer(
 
 // El pull-to-refresh de plantaciones lo llama suelto, sin pasar por un orquestador,
 // y escribe la base igual (#446). Anidado dentro de una sync el contador lo absorbe.
-export const pullFromServer = marcandoActividadDeSync(correrPullFromServer);
+// El registro se aplica al final, con el estado de la plantación ya actualizado.
+export const pullFromServer = marcandoActividadDeSync(
+  (plantacionId: string, onProgress?: OnPhaseProgress) =>
+    conRegistroDeVarados(() => correrPullFromServer(plantacionId, onProgress), false),
+);

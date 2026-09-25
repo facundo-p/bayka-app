@@ -41,7 +41,7 @@ jest.mock('../../src/theme', () => ({
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
   fontSize: { xs: 10, sm: 12, base: 15, xl: 16, xxl: 18, title: 20 },
   fonts: { regular: 'System', bold: 'System', semiBold: 'System', medium: 'System', heading: 'System' },
-  iconSizes: { badge: 12 },
+  iconSizes: { badge: 12, stat: 14 },
   chipSizes: { sm: { paddingVertical: 4, paddingHorizontal: 8 } },
 }));
 
@@ -198,5 +198,33 @@ describe('PlantationCard eliminada en el servidor (#478)', () => {
   it('sin cambios por resolver no hay marca', () => {
     const { queryByLabelText } = render(<PlantationCard {...makeProps()} />);
     expect(queryByLabelText('Resolver cambios')).toBeNull();
+  });
+});
+
+describe('PlantationCard con pendientes varados (#638)', () => {
+  const aviso = { titulo: '3 cambios no se pudieron subir', motivo: 'La plantación está finalizada.' };
+
+  it('muestra el aviso con el motivo y "Descartar" no abre la plantación', () => {
+    const onDescartar = jest.fn();
+    const props = makeProps({ pendientesVarados: { ...aviso, onDescartar } });
+    const { getByText, getByLabelText } = render(<PlantationCard {...props} />);
+
+    expect(getByText(aviso.titulo)).toBeTruthy();
+    expect(getByText(aviso.motivo)).toBeTruthy();
+    fireEvent.press(getByLabelText('Descartar cambios sin subir'), { stopPropagation: jest.fn() });
+
+    expect(onDescartar).toHaveBeenCalled();
+    expect(props.onPress).not.toHaveBeenCalled();
+  });
+
+  it('con el aviso, los grupos pendientes no figuran como listos para sincronizar', () => {
+    const { queryByText } = render(<PlantationCard {...makeProps({ pendientesVarados: { ...aviso, onDescartar: jest.fn() } })} />);
+    expect(queryByText(/listos? para sincronizar/)).toBeNull();
+  });
+
+  it('sin varados no hay aviso', () => {
+    const { queryByTestId, getByText } = render(<PlantationCard {...makeProps()} />);
+    expect(queryByTestId('pendientes-varados-aviso')).toBeNull();
+    expect(getByText(/listos para sincronizar/)).toBeTruthy();
   });
 });

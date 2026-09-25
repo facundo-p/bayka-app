@@ -221,6 +221,14 @@ Storage no mira el estado de la plantación (#512): las fotos suben aunque despu
 
 Un server sin la 038 no manda `rechazos`: `motivosDeRechazo` asume finalizada, el único motivo posible antes de #477.
 
+### Pendientes varados (#638)
+
+Lo que no puede subir hasta que algo cambie en el server se avisa en la tarjeta de la plantación: "N cambios no se pudieron subir", el motivo y un botón **Descartar**.
+
+- **Clasificación única**: `motivoVarado(codigo)` (`services/sync/pendientesVarados.ts`) traduce cada rechazo a `finalizada`, `archivada` o `sin-permiso` (`PERMISSION`, `NOT_AUTHORIZED` de los RPC, `SIN_PERMISO_CREAR`); el resto (red, timeout, conflictos) es transitorio y se reintenta. `SIN_PERMISO_CREAR` es el 42501 o `NOT_AUTHORIZED` de un alta offline. `eliminada` sale de `eliminada_en_servidor_en`.
+- **Registro por corrida**: alta, edición, especies, técnicos, pull, parcelas, grupos y borrados anotan sus rechazos y lo aceptado. Al terminar (`conRegistroDeVarados` en los orquestadores), un rechazo permanente guarda el motivo en `plantations.motivo_varado`; sin rechazos, una subida aceptada lo limpia, y un pull con acceso lo alinea al estado que trajo (cerrada → su motivo, abierta → sin motivo). Un técnico aceptado no limpia: el server los asigna también en una finalizada. Un pull suelto solo limpia finalizada o archivada, porque no reintentó lo demás.
+- **Descartar** (`PendientesVaradosRepository.descartarPendientes`): confirma con el detalle por tipo. Un alta que nunca terminó de subir o una eliminada en el servidor se van del dispositivo (`deletePlantationLocally`). Si no, en una transacción: la edición vuelve al snapshot, las colas de especies y técnicos se deshacen, se borran las parcelas y grupos pendientes con sus árboles, los borrados anotados y las fotos sin subir. El próximo pull trae lo del server. Nada se descarta solo: si la plantación se reabre o desarchiva, lo pendiente sube en la próxima sync.
+
 ---
 
 ## Download Flow (Servidor → Dispositivo B)

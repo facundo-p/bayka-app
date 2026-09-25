@@ -28,8 +28,7 @@ import { ENTIDADES_DE_FILA, FOTOS_QUITADAS, type EntidadBorrada } from '../../co
 import { abortarSiCancelado, relanzarSiEsCancelacion } from './cancelacion';
 import { esTimeout } from '../../supabase/fetchConTimeout';
 import { getPlantationEstadoDeEdicion } from '../../queries/adminQueries';
-import { esArchivada } from '../../constants/estados';
-import { plantacionEsEditable, type EstadoDeEdicionDePlantacion } from '../../utils/permisosDeEdicion';
+import { anotarRechazo, anotarSubida, motivoDeBloqueo } from './pendientesVarados';
 
 // Supabase 23505 (unique violation): `details` = 'Key (cols)=(vals) already exists' — classifyParcelaRpcResult parsea details, nunca message (no estable entre locales/versiones de postgres). Fallback: GENERIC_CONFLICT.
 
@@ -98,14 +97,6 @@ export function classifyParcelaRpcResult(
   return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: code, detail };
 }
 
-/** Por qué la plantación no admite escrituras, con la misma prioridad que `motivo_no_escribible` del server. */
-export function motivoDeBloqueo(plantacion: EstadoDeEdicionDePlantacion | null): SyncErrorCode | null {
-  if (plantacion == null) return null;
-  if (esArchivada(plantacion)) return SYNC_ERROR.PLANTACION_ARCHIVADA;
-  if (!plantacionEsEditable(plantacion)) return SYNC_ERROR.PLANTACION_FINALIZADA;
-  return null;
-}
-
 /**
  * El upsert va por PostgREST, no por un RPC: RLS rechaza igual con 42501 a quien no es
  * miembro y a una plantación finalizada o archivada (#511). El estado local, que el pull
@@ -117,6 +108,19 @@ async function desempatarPermiso(result: SyncParcelaResult, plantacionId: string
   if (motivo == null) return result;
   // Sin `detail`: el 42501 crudo contradice el mensaje, igual que en los grupos rechazados.
   return { success: false, parcelaId: result.parcelaId, nombre: result.nombre, error: motivo };
+}
+
+/**
+ * Lo que dice el resultado de la plantación (#638). Un alta con `DO NOTHING` no prueba que
+ * la plantación admita cambios: responde sin error aunque no escriba nada.
+ */
+async function anotarResultado(
+  plantacionId: string,
+  result: SyncParcelaResult | SyncGroupResult,
+  soloAltas = false,
+): Promise<void> {
+  if (!result.success) await anotarRechazo(plantacionId, result.error);
+  else if (!soloAltas) await anotarSubida(plantacionId);
 }
 
 /** Sube todas las parcelas syncable de una plantación (activas + tombstoned con pending_sync=true); solo limpia pending_sync en éxito. */
@@ -134,6 +138,7 @@ export async function uploadSyncableParcelas(
       const result = await desempatarPermiso(classifyParcelaRpcResult(parcela, data, error), plantacionId);
       if (result.success) await markParcelaSynced(parcela.id);
       // En cualquier error: NO markSynced — pending_sync queda en true.
+      await anotarResultado(plantacionId, result, soloAltas);
       results.push(result);
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
@@ -179,6 +184,7 @@ async function pushBorradosDeFilas(plantacionId: string): Promise<void> {
     return;
   }
 
+  await anotarRechazos(plantacionId, data.rechazos);
   const rechazados = await limpiarConfirmados(pendientes, data.rechazados, ENTIDADES_DE_FILA);
   syncLog.info(`Push borrados: ${data.arboles} árboles, ${data.grupos} grupos`);
   if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, ${motivosDeRechazo(data.rechazos)}`);
@@ -200,6 +206,7 @@ async function pushFotosQuitadas(plantacionId: string): Promise<void> {
     return;
   }
 
+  await anotarRechazos(plantacionId, data.rechazos);
   const rechazadas = await limpiarConfirmados(pendientes, data.rechazados, FOTOS_QUITADAS);
   syncLog.info(`Push fotos quitadas: ${data.quitadas}`);
   if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, ${motivosDeRechazo(data.rechazos)}`);
@@ -218,6 +225,12 @@ async function limpiarConfirmados(
   const rechazados = new Set<string>(Array.isArray(idsRechazados) ? idsRechazados : []);
   await limpiarBorrados(pendientes.map((b) => b.id).filter((id) => !rechazados.has(id)), tipos);
   return rechazados.size;
+}
+
+/** Los borrados rechazados quedan varados con el motivo de cada uno. */
+async function anotarRechazos(plantacionId: string, rechazos: unknown): Promise<void> {
+  if (!Array.isArray(rechazos)) return;
+  for (const { error } of rechazos as { error?: string }[]) await anotarRechazo(plantacionId, error);
 }
 
 /**
@@ -428,6 +441,7 @@ export async function uploadSyncableGroups(
       const { data, error } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
       if (result.success) await markGroupSynced(sg.id);
+      await anotarResultado(plantacionId, result);
       results.push(result);
     } catch (e) {
       relanzarSiEsCancelacion(e);

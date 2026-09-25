@@ -18,6 +18,10 @@ jest.mock('../../src/database/client', () => ({
   },
 }));
 
+jest.mock('../../src/repositories/PendientesVaradosRepository', () => ({
+  guardarMotivoVarado: jest.fn(),
+  limpiarMotivoVarado: jest.fn(),
+}));
 jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
@@ -36,6 +40,7 @@ import {
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { PG_ERROR } from '../../src/supabase/postgresErrorCodes';
+import { guardarMotivoVarado, limpiarMotivoVarado } from '../../src/repositories/PendientesVaradosRepository';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -283,6 +288,17 @@ describe('SyncService — offline functions', () => {
 
       expect(resultado).toMatchObject({ success: false, error: 'PLANTACION_FINALIZADA' });
       expect(mockDb.update).not.toHaveBeenCalled();
+      // Varada con ese motivo, para que la tarjeta lo muestre (#638).
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'finalizada');
+    });
+
+    it('23505 sin permiso de admin: SIN_PERMISO_CREAR, varada sin permiso (#638)', async () => {
+      conAltaYaSubidaQueNoSeActualiza('NOT_AUTHORIZED');
+
+      const [resultado] = await uploadOfflinePlantations();
+
+      expect(resultado).toMatchObject({ success: false, error: 'SIN_PERMISO_CREAR' });
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-permiso');
     });
 
     it('Test 6: non-23505 error — species upload is NOT called and pendingSync remains true (plantation skipped)', async () => {
@@ -347,7 +363,9 @@ describe('SyncService — offline functions', () => {
       expect(res).toHaveLength(1);
       expect(res[0].success).toBe(false);
       if (res[0].success) return;
-      expect(res[0].error).toBe('PERMISSION');
+      // 42501 durante el alta: el usuario ya no puede crearla (#638), no un permiso genérico.
+      expect(res[0].error).toBe('SIN_PERMISO_CREAR');
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-permiso');
     });
 
     it('Test 6b: el insert que LANZA (no devuelve {error}) se surfacea como NETWORK', async () => {
@@ -435,6 +453,16 @@ describe('SyncService — offline functions', () => {
 
       expect(await uploadPendingEdits()).toEqual([]);
       expect(mockDb.update).not.toHaveBeenCalled();
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(expect.any(String), 'finalizada');
+    });
+
+    it('un error de red no marca nada: se reintenta (#638)', async () => {
+      conEdicionPendiente(null);
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'TypeError: Network request failed' } });
+
+      expect(await uploadPendingEdits()).toEqual([]);
+      expect(guardarMotivoVarado).not.toHaveBeenCalled();
+      expect(limpiarMotivoVarado).not.toHaveBeenCalled();
     });
 
     it('un conflicto deja el valor de la web y lo guarda para resolver', async () => {
