@@ -25,6 +25,10 @@ jest.mock('../../src/supabase/auth', () => ({
   persistSession: jest.fn().mockResolvedValue(undefined),
   clearSession: jest.fn().mockResolvedValue(undefined),
   readCachedSession: jest.fn().mockResolvedValue(null),
+  readSesionCacheada: jest.fn().mockResolvedValue(null),
+  readCachedUserId: jest.fn().mockResolvedValue('user-1'),
+  iniciarSesionSoloLocal: jest.fn().mockResolvedValue({ soloLocal: true }),
+  SESION_SOLO_LOCAL_KEY: 'sesion_solo_local',
   ACCESS_TOKEN_KEY: 'access_token',
   REFRESH_TOKEN_KEY: 'refresh_token',
   ROLE_KEY: 'user_role',
@@ -46,7 +50,7 @@ jest.mock('../../src/hooks/useCurrentUserId', () => ({
 }));
 
 const { supabase } = require('../../src/supabase/client');
-const { readCachedSession } = require('../../src/supabase/auth');
+const { readCachedSession, readSesionCacheada, readCachedUserId } = require('../../src/supabase/auth');
 const { verifyCredential, isOfflineLoginExpired } = require('../../src/services/OfflineAuthService');
 
 import { renderHook, act } from '@testing-library/react-native';
@@ -67,6 +71,8 @@ describe('useAuth', () => {
     (SecureStore.setItemAsync as jest.Mock).mockResolvedValue(undefined);
     (SecureStore.deleteItemAsync as jest.Mock).mockResolvedValue(undefined);
     (readCachedSession as jest.Mock).mockResolvedValue(null);
+    (readSesionCacheada as jest.Mock).mockResolvedValue(null);
+    (readCachedUserId as jest.Mock).mockResolvedValue('user-1');
     (isOfflineLoginExpired as jest.Mock).mockResolvedValue(false);
 
     // AsyncStorage.getAllKeys must return an array for signOut
@@ -121,7 +127,7 @@ describe('useAuth', () => {
         await result.current.signIn('test@test.com', 'password');
       });
 
-      expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', expect.any(String));
+      expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', expect.any(String), 'user-1');
     });
   });
 
@@ -152,7 +158,7 @@ describe('useAuth', () => {
         data: { session: null },
         error: { message: 'JSON Parse error: Unexpected character e' },
       });
-      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
       (readCachedSession as jest.Mock).mockResolvedValue({
         access_token: 'cached-token',
         refresh_token: 'cached-refresh',
@@ -191,7 +197,7 @@ describe('useAuth', () => {
   describe('signIn offline fallback', () => {
     it('calls verifyCredential when offline (NetInfo reports not connected)', async () => {
       setOffline();
-      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
       (readCachedSession as jest.Mock).mockResolvedValue({
         access_token: 'cached-token',
         refresh_token: 'cached-refresh',
@@ -360,7 +366,7 @@ describe('useAuth', () => {
 
     it('offline NO consulta el estado: restaura la sesión cacheada (contrato intacto)', async () => {
       setOffline();
-      (readCachedSession as jest.Mock).mockResolvedValue({
+      (readSesionCacheada as jest.Mock).mockResolvedValue({
         access_token: 'cached-token',
         refresh_token: 'cached-refresh',
       });
@@ -380,7 +386,7 @@ describe('useAuth', () => {
   describe('cross-instance broadcast', () => {
     it('signIn on one instance updates session/role on another instance', async () => {
       setOffline();
-      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
       (readCachedSession as jest.Mock).mockResolvedValue({
         access_token: 'cached-token',
         refresh_token: 'cached-refresh',
@@ -408,7 +414,7 @@ describe('useAuth', () => {
 
     it('signOut on one instance clears session on another instance', async () => {
       setOffline();
-      (verifyCredential as jest.Mock).mockResolvedValue('tecnico');
+      (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
       (readCachedSession as jest.Mock).mockResolvedValue({
         access_token: 'cached-token',
         refresh_token: 'cached-refresh',

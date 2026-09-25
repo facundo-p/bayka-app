@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe('OfflineAuthService', () => {
   it('caches credential with hash, not plaintext', async () => {
-    await cacheCredential('user@test.com', 'pass123', 'tecnico');
+    await cacheCredential('user@test.com', 'pass123', 'tecnico', 'uid:user@test.com');
 
     const raw = store.get('offline_credentials');
     expect(raw).toBeDefined();
@@ -44,16 +44,35 @@ describe('OfflineAuthService', () => {
     expect(parsed[0].salt).toBeDefined();
     expect(parsed[0].email).toBe('user@test.com');
     expect(parsed[0].role).toBe('tecnico');
+    expect(parsed[0].userId).toBe('uid:user@test.com');
+  });
+
+  it('una credencial anterior a #658 (sin userId) no habilita el login offline', async () => {
+    await cacheCredential('user@test.com', 'pass123', 'tecnico', 'uid:user@test.com');
+    const [entry] = JSON.parse(store.get('offline_credentials')!);
+    delete entry.userId;
+    store.set('offline_credentials', JSON.stringify([entry]));
+
+    expect(await verifyCredential('user@test.com', 'pass123')).toBeNull();
+    expect(await getCachedEmails()).toEqual(['user@test.com']);
+  });
+
+  it('un login online vuelve a habilitar una credencial sin userId', async () => {
+    store.set('offline_credentials', JSON.stringify([{ email: 'user@test.com', hash: 'x', salt: 'y', role: 'tecnico' }]));
+
+    await cacheCredential('user@test.com', 'pass123', 'tecnico', 'uid:user@test.com');
+
+    expect(await verifyCredential('user@test.com', 'pass123')).toEqual({ role: 'tecnico', userId: 'uid:user@test.com' });
   });
 
   it('verifies correct password', async () => {
-    await cacheCredential('user@test.com', 'pass123', 'tecnico');
+    await cacheCredential('user@test.com', 'pass123', 'tecnico', 'uid:user@test.com');
     const role = await verifyCredential('user@test.com', 'pass123');
-    expect(role).toBe('tecnico');
+    expect(role).toEqual({ role: 'tecnico', userId: 'uid:user@test.com' });
   });
 
   it('rejects wrong password', async () => {
-    await cacheCredential('user@test.com', 'pass123', 'tecnico');
+    await cacheCredential('user@test.com', 'pass123', 'tecnico', 'uid:user@test.com');
     const role = await verifyCredential('user@test.com', 'wrongpass');
     expect(role).toBeNull();
   });
@@ -64,8 +83,8 @@ describe('OfflineAuthService', () => {
   });
 
   it('clears only target user, others remain', async () => {
-    await cacheCredential('user1@test.com', 'pass1', 'admin');
-    await cacheCredential('user2@test.com', 'pass2', 'tecnico');
+    await cacheCredential('user1@test.com', 'pass1', 'admin', 'uid:user1@test.com');
+    await cacheCredential('user2@test.com', 'pass2', 'tecnico', 'uid:user2@test.com');
 
     await clearCredential('user1@test.com');
 
@@ -73,12 +92,12 @@ describe('OfflineAuthService', () => {
     expect(role1).toBeNull();
 
     const role2 = await verifyCredential('user2@test.com', 'pass2');
-    expect(role2).toBe('tecnico');
+    expect(role2).toEqual({ role: 'tecnico', userId: 'uid:user2@test.com' });
   });
 
   it('getCachedEmails returns email list', async () => {
-    await cacheCredential('user1@test.com', 'pass1', 'admin');
-    await cacheCredential('user2@test.com', 'pass2', 'tecnico');
+    await cacheCredential('user1@test.com', 'pass1', 'admin', 'uid:user1@test.com');
+    await cacheCredential('user2@test.com', 'pass2', 'tecnico', 'uid:user2@test.com');
 
     const emails = await getCachedEmails();
     expect(emails).toEqual(['user1@test.com', 'user2@test.com']);
@@ -93,8 +112,8 @@ describe('OfflineAuthService', () => {
   });
 
   it('updates existing entry on re-cache', async () => {
-    await cacheCredential('user@test.com', 'pass1', 'tecnico');
-    await cacheCredential('user@test.com', 'pass2', 'admin');
+    await cacheCredential('user@test.com', 'pass1', 'tecnico', 'uid:user@test.com');
+    await cacheCredential('user@test.com', 'pass2', 'admin', 'uid:user@test.com');
 
     const emails = await getCachedEmails();
     expect(emails).toHaveLength(1);
@@ -105,7 +124,7 @@ describe('OfflineAuthService', () => {
     expect(roleOld).toBeNull();
 
     const roleNew = await verifyCredential('user@test.com', 'pass2');
-    expect(roleNew).toBe('admin');
+    expect(roleNew).toEqual({ role: 'admin', userId: 'uid:user@test.com' });
   });
 
   it('getCachedEmails returns empty array when no credentials', async () => {

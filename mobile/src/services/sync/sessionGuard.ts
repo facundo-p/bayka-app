@@ -1,5 +1,6 @@
 import { supabase } from '../../supabase/client';
 import { esTimeout } from '../../supabase/fetchConTimeout';
+import { readCachedUserId } from '../../supabase/auth';
 
 /**
  * Thrown by ensureServerSession when there is no Supabase session capable of
@@ -17,6 +18,13 @@ export class SessionExpiredError extends Error {
 /** Refresh if the access token expires within this window (clock-skew margin). */
 const EXPIRY_MARGIN_MS = 30_000;
 
+type SesionDelSdk = { expires_at?: number; user?: { id?: string } };
+
+/** Una sesión del SDK de otra cuenta que la logueada en la app subiría todo con la identidad ajena (#658). */
+async function esDeOtraCuenta(session: SesionDelSdk): Promise<boolean> {
+  return session.user?.id !== (await readCachedUserId());
+}
+
 /**
  * Ensures the Supabase SDK holds a usable session before a sync push.
  *
@@ -25,14 +33,16 @@ const EXPIRY_MARGIN_MS = 30_000;
  * expired/absent access token never recovers on its own and writes silently go
  * out as `anon`. This guard validates the session and attempts a single refresh;
  * if no usable session results, it throws SessionExpiredError so the caller can
- * surface a clear "re-login" message instead of a permission error.
+ * surface a clear "re-login" message instead of a permission error. A session
+ * that belongs to another account than the app's user also throws.
  */
 export async function ensureServerSession(): Promise<void> {
   const current = await supabase.auth.getSession();
-  const session = current?.data?.session ?? null;
+  const session: SesionDelSdk | null = current?.data?.session ?? null;
 
   if (session) {
-    const expiresAt = (session as { expires_at?: number }).expires_at;
+    if (await esDeOtraCuenta(session)) throw new SessionExpiredError();
+    const expiresAt = session.expires_at;
     // No expiry info → trust it; otherwise refresh only when near/after expiry.
     if (!expiresAt || expiresAt * 1000 > Date.now() + EXPIRY_MARGIN_MS) return;
   }
@@ -42,7 +52,7 @@ export async function ensureServerSession(): Promise<void> {
   // como vencida manda al técnico a re-loguearse sin motivo, y justo cuando está
   // sin señal (#451).
   if (refreshed?.error && esTimeout(refreshed.error)) throw refreshed.error;
-  if (refreshed?.error || !refreshed?.data?.session) {
+  if (refreshed?.error || !refreshed?.data?.session || (await esDeOtraCuenta(refreshed.data.session))) {
     throw new SessionExpiredError();
   }
 }

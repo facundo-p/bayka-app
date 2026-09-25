@@ -130,6 +130,14 @@ Para el uso en campo sin conexión, las credenciales se cachean en SecureStore
 expiración opcional. El login ofrece las cuentas guardadas como chips
 ("Acceso rápido").
 
+Cada credencial offline guarda el userId de su cuenta, y el login offline deja
+cacheados el userId y el rol de quien entra. En un celular compartido, si la
+cuenta que entra offline no es la dueña de los tokens cacheados, esos tokens se
+descartan: trabaja con una sesión solo local y el sync le pide login online
+antes de subir nada, así nunca se sube con la identidad de otro (#658). Las
+credenciales guardadas antes de este cambio no tienen userId y no sirven para
+entrar offline hasta el próximo login online.
+
 ---
 
 # 3. Arquitectura General

@@ -11,6 +11,8 @@ type OfflineCredential = {
   hash: string;
   salt: string;
   role: string;
+  /** Ausente en credenciales anteriores a #658: no sirven para login offline hasta un login online. */
+  userId?: string;
   /** Encrypted by OS Keychain via SecureStore — powers 1-tap quick login */
   password?: string;
 };
@@ -38,10 +40,14 @@ async function hashPassword(password: string, salt: string): Promise<string> {
   );
 }
 
+/** Cuenta que habilita una credencial offline válida. */
+export type CuentaOffline = { role: string; userId: string };
+
 export async function cacheCredential(
   email: string,
   password: string,
   role: string,
+  userId: string,
 ): Promise<void> {
   const saltBytes = Crypto.getRandomBytes(32);
   const salt = bytesToHex(saltBytes);
@@ -49,7 +55,7 @@ export async function cacheCredential(
 
   const all = await getAll();
   const idx = all.findIndex((c) => c.email === email);
-  const entry: OfflineCredential = { email, hash, salt, role, password };
+  const entry: OfflineCredential = { email, hash, salt, role, userId, password };
 
   if (idx >= 0) {
     all[idx] = entry;
@@ -66,13 +72,13 @@ export async function cacheCredential(
 export async function verifyCredential(
   email: string,
   password: string,
-): Promise<string | null> {
+): Promise<CuentaOffline | null> {
   const all = await getAll();
   const entry = all.find((c) => c.email === email);
-  if (!entry) return null;
+  if (!entry?.userId) return null;
 
   const hash = await hashPassword(password, entry.salt);
-  return hash === entry.hash ? entry.role : null;
+  return hash === entry.hash ? { role: entry.role, userId: entry.userId } : null;
 }
 
 export async function clearCredential(email: string): Promise<void> {

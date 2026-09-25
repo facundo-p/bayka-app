@@ -1,91 +1,158 @@
 /**
- * Tests for offline userId resolution: after offline re-login it must match the
- * original login's userId (cached in SecureStore, read back when getSession()
- * returns null) — otherwise Groups filtered by usuarioCreador break.
+ * Celular compartido (#658): el login offline deja cacheados el userId y el rol
+ * de quien entra, y nunca reusa los tokens de otra cuenta. Corre useAuth contra
+ * el auth.ts y el OfflineAuthService reales, con SecureStore en memoria.
  */
 import * as SecureStore from 'expo-secure-store';
-import { cacheCredential, verifyCredential } from '../../src/services/OfflineAuthService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
+import { setOffline, setOnline } from '../helpers/networkHelper';
+
+jest.mock('../../src/supabase/client', () => ({
+  supabase: {
+    auth: {
+      getSession: jest.fn().mockResolvedValue({ data: { session: null } }),
+      signInWithPassword: jest.fn(),
+      onAuthStateChange: jest.fn().mockReturnValue({ data: { subscription: { unsubscribe: jest.fn() } } }),
+      startAutoRefresh: jest.fn().mockResolvedValue(undefined),
+      stopAutoRefresh: jest.fn().mockResolvedValue(undefined),
+    },
+    from: jest.fn(),
+  },
+  isSupabaseConfigured: true,
+}));
+
+const { supabase } = require('../../src/supabase/client');
+import { useAuth } from '../../src/hooks/useAuth';
+import { readSesionCacheada, SESION_SOLO_LOCAL } from '../../src/supabase/auth';
 
 const USER_ID_KEY = 'user_id';
-const ACCESS_TOKEN_KEY = 'supabase_access_token';
-const REFRESH_TOKEN_KEY = 'supabase_refresh_token';
 const ROLE_KEY = 'user_role';
+const ACCESS_TOKEN_KEY = 'supabase_access_token';
+const SDK_KEY = 'sb-proyecto-auth-token';
 
-// In-memory SecureStore simulation
+const A = { email: 'a@bayka.com', password: 'passA', id: 'user-a', rol: 'admin' };
+const B = { email: 'b@bayka.com', password: 'passB', id: 'user-b', rol: 'tecnico' };
+type Cuenta = typeof A;
+
 let store: Map<string, string>;
+let sdkKeys: string[];
 
 beforeEach(() => {
   store = new Map();
+  sdkKeys = [];
   jest.clearAllMocks();
-
-  (SecureStore.getItemAsync as jest.Mock).mockImplementation(
-    async (key: string) => store.get(key) ?? null,
-  );
-  (SecureStore.setItemAsync as jest.Mock).mockImplementation(
-    async (key: string, value: string) => {
-      store.set(key, value);
-    },
-  );
-  (SecureStore.deleteItemAsync as jest.Mock).mockImplementation(
-    async (key: string) => {
-      store.delete(key);
-    },
-  );
+  (SecureStore.getItemAsync as jest.Mock).mockImplementation(async (k: string) => store.get(k) ?? null);
+  (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string, v: string) => { store.set(k, v); });
+  (SecureStore.deleteItemAsync as jest.Mock).mockImplementation(async (k: string) => { store.delete(k); });
+  (AsyncStorage.getAllKeys as jest.Mock).mockImplementation(async () => sdkKeys);
+  (AsyncStorage.multiRemove as jest.Mock).mockImplementation(async (keys: string[]) => {
+    sdkKeys = sdkKeys.filter(k => !keys.includes(k));
+  });
 });
 
-describe('Offline userId persistence', () => {
-  it('userId is cached in SecureStore during online login', async () => {
-    const fakeUserId = 'uuid-user-123';
-    await SecureStore.setItemAsync(USER_ID_KEY, fakeUserId);
+async function loginOnline(cuenta: Cuenta) {
+  setOnline();
+  sdkKeys = [SDK_KEY];
+  (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+    data: { session: { access_token: `token-${cuenta.id}`, refresh_token: `refresh-${cuenta.id}`, user: { id: cuenta.id, email: cuenta.email } } },
+    error: null,
+  });
+  (supabase.from as jest.Mock).mockReturnValue({
+    select: jest.fn().mockReturnThis(),
+    eq: jest.fn().mockReturnThis(),
+    single: jest.fn().mockResolvedValue({ data: { rol: cuenta.rol, activo: true }, error: null }),
+  });
+  const { result } = renderHook(() => useAuth());
+  await act(async () => { await result.current.signIn(cuenta.email, cuenta.password); });
+  await act(async () => { await result.current.signOut(); });
+}
 
-    const cached = await SecureStore.getItemAsync(USER_ID_KEY);
-    expect(cached).toBe(fakeUserId);
+async function loginOffline(cuenta: Cuenta) {
+  setOffline();
+  const { result } = renderHook(() => useAuth());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  let res: any;
+  await act(async () => { res = await result.current.signIn(cuenta.email, cuenta.password); });
+  return { res, result };
+}
+
+describe('login offline en un celular compartido (#658)', () => {
+  it('B offline después de A online deja cacheados el userId y el rol de B', async () => {
+    await loginOnline(B);
+    await loginOnline(A);
+
+    const { res, result } = await loginOffline(B);
+
+    expect(res.error).toBeNull();
+    expect(store.get(USER_ID_KEY)).toBe('user-b');
+    expect(store.get(ROLE_KEY)).toBe('tecnico');
+    expect(result.current.role).toBe('tecnico');
   });
 
-  it('userId survives signOut (not deleted)', async () => {
-    await SecureStore.setItemAsync(USER_ID_KEY, 'uuid-user-123');
-    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, 'fake-access-token');
-    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, 'fake-refresh-token');
-    await SecureStore.setItemAsync(ROLE_KEY, 'admin');
+  it('no reusa los tokens ni la sesión del SDK de A', async () => {
+    await loginOnline(B);
+    await loginOnline(A);
+    sdkKeys = [SDK_KEY];
 
-    // signOut only deletes ROLE_KEY
-    await SecureStore.deleteItemAsync(ROLE_KEY);
+    const { res } = await loginOffline(B);
 
-    const userId = await SecureStore.getItemAsync(USER_ID_KEY);
-    expect(userId).toBe('uuid-user-123');
-
-    const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-    expect(accessToken).toBe('fake-access-token');
+    expect(res.data.session).toBe(SESION_SOLO_LOCAL);
+    expect(store.has(ACCESS_TOKEN_KEY)).toBe(false);
+    expect(sdkKeys).toEqual([]);
   });
 
-  it('userId is available after offline re-login cycle', async () => {
-    const fakeUserId = 'uuid-user-456';
+  it('la sesión solo local sobrevive a reabrir la app', async () => {
+    await loginOnline(B);
+    await loginOnline(A);
+    await loginOffline(B);
 
-    await SecureStore.setItemAsync(USER_ID_KEY, fakeUserId);
-    await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, 'tok-access');
-    await SecureStore.setItemAsync(REFRESH_TOKEN_KEY, 'tok-refresh');
-    await cacheCredential('admin@bayka.com', 'pass123', 'admin');
+    const reabierta = renderHook(() => useAuth()).result;
+    await waitFor(() => expect(reabierta.current.loading).toBe(false));
 
-    await SecureStore.deleteItemAsync(ROLE_KEY);
-
-    const role = await verifyCredential('admin@bayka.com', 'pass123');
-    expect(role).toBe('admin');
-
-    const cachedUserId = await SecureStore.getItemAsync(USER_ID_KEY);
-    expect(cachedUserId).toBe(fakeUserId);
-
-    const accessToken = await SecureStore.getItemAsync(ACCESS_TOKEN_KEY);
-    expect(accessToken).toBe('tok-access');
+    expect(reabierta.current.session).toBe(SESION_SOLO_LOCAL);
+    expect(await readSesionCacheada()).toBe(SESION_SOLO_LOCAL);
   });
 
-  it('different users each have their userId cached (last login wins)', async () => {
-    await SecureStore.setItemAsync(USER_ID_KEY, 'uuid-user-A');
-    await cacheCredential('userA@bayka.com', 'passA', 'tecnico');
+  it('la misma cuenta offline conserva sus tokens', async () => {
+    await loginOnline(A);
 
-    await SecureStore.setItemAsync(USER_ID_KEY, 'uuid-user-B');
-    await cacheCredential('userB@bayka.com', 'passB', 'admin');
+    const { res } = await loginOffline(A);
 
-    const cachedUserId = await SecureStore.getItemAsync(USER_ID_KEY);
-    expect(cachedUserId).toBe('uuid-user-B');
+    expect(res.data.session).toEqual({ access_token: 'token-user-a', refresh_token: 'refresh-user-a' });
+    expect(store.get(USER_ID_KEY)).toBe('user-a');
+  });
+
+  it('un login online de B después reemplaza la sesión solo local', async () => {
+    await loginOnline(B);
+    await loginOnline(A);
+    await loginOffline(B);
+
+    await loginOnline(B);
+
+    expect(store.get(USER_ID_KEY)).toBe('user-b');
+    expect(await readSesionCacheada()).toEqual({ access_token: 'token-user-b', refresh_token: 'refresh-user-b' });
+  });
+
+  it('una credencial sin userId (anterior a #658) exige login online', async () => {
+    await loginOnline(A);
+    const credenciales = JSON.parse(store.get('offline_credentials')!);
+    delete credenciales[0].userId;
+    store.set('offline_credentials', JSON.stringify(credenciales));
+
+    const { res } = await loginOffline(A);
+
+    expect(res.error).not.toBeNull();
+    expect(res.data.session).toBeNull();
+  });
+
+  it('signOut cierra la sesión solo local', async () => {
+    await loginOnline(B);
+    await loginOnline(A);
+    const { result } = await loginOffline(B);
+
+    await act(async () => { await result.current.signOut(); });
+
+    expect(await readSesionCacheada()).toBeNull();
   });
 });
