@@ -34,6 +34,8 @@ export type SubidaDeTecnicos = { rechazo: string } | { noAsignados: string[] };
 
 export const esRechazoDePlantacion = (s: SubidaDeTecnicos): s is { rechazo: string } => 'rechazo' in s;
 
+const SIN_ESPERA = { sinNadieQueAvise: () => false, alResponder: () => {} };
+
 /** Lanza ante un error de red o del server. */
 async function aplicarCambiosEnServidor(plantacionId: string, altas: string[], bajas: string[]): Promise<RespuestaDeTecnicos> {
   const { data, error } = await supabase.rpc(RPC_APLICAR_CAMBIOS_TECNICOS, {
@@ -52,19 +54,21 @@ async function aplicarCambiosEnServidor(plantacionId: string, altas: string[], b
  *
  * `sinNadieQueAvise`: la respuesta llegó cuando ya nadie puede mostrarla (la pantalla
  * se cerró). Entonces solo se confirma lo aceptado; lo rechazado queda pendiente y el
- * próximo sync lo reenvía, lo descarta y lo lista en el resumen.
+ * próximo sync lo reenvía, lo descarta y lo lista en el resumen. `alResponder` avisa
+ * que llegó la respuesta, antes de decidir.
  */
 export async function subirCambiosDeTecnicos(
   plantacionId: string,
   bajas: string[] = [],
-  sinNadieQueAvise: () => boolean = () => false,
+  espera: { sinNadieQueAvise: () => boolean; alResponder: () => void } = SIN_ESPERA,
 ): Promise<SubidaDeTecnicos | null> {
   const enviadas = await getAltasPendientes(plantacionId);
   if (enviadas.length === 0 && bajas.length === 0) return null;
   const respuesta = await aplicarCambiosEnServidor(plantacionId, enviadas, bajas);
+  espera.alResponder();
   if (!respuesta?.success) return { rechazo: respuesta?.error ?? '' };
   const rechazados = (respuesta.rechazados ?? []).map((r) => r.user_id);
-  if (sinNadieQueAvise()) {
+  if (espera.sinNadieQueAvise()) {
     await confirmarAltasAceptadas(plantacionId, enviadas, rechazados);
     return { noAsignados: [] };
   }

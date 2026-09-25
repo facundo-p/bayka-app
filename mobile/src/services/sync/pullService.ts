@@ -395,9 +395,10 @@ async function pullPlantationUsers(
     return;
   }
 
-  // Antes de bajar: un alta que la subida en segundo plano confirme en el medio ya
-  // está en lo que baja; leída después, no estaría en ningún lado y se borraría.
-  const pendientes = new Set(await getAltasPendientes(plantacionId));
+  // Pendientes leídos antes y después de bajar: un alta que la subida en segundo plano
+  // confirma en el medio está en la lectura de antes, y una guardada durante la bajada,
+  // en la de después. Con una sola lectura, alguna se borraría como revocada.
+  const pendientesAntes = await getAltasPendientes(plantacionId);
   const { data: remotePu, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.usuarios),
@@ -412,6 +413,7 @@ async function pullPlantationUsers(
   syncLog.info('Pull plantation_users:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, all.length);
 
+  const pendientes = new Set([...pendientesAntes, ...(await getAltasPendientes(plantacionId))]);
   const revocados = await miembrosRevocados(plantacionId, new Set(all.map((pu: any) => pu.user_id)), pendientes);
 
   // Los miembros de una plantación son pocos: el replace entero entra en una

@@ -18,6 +18,7 @@ import {
 } from '../repositories/TecnicosDePlantacionRepository';
 import { sinCambios, type AltasYBajas } from '../utils/altasYBajas';
 import { AYUDA_QUITAR_SIN_CONEXION, MENSAJE_BAJA_SIN_RESPUESTA } from '../utils/tecnicosDePlantacion';
+import { esperarHasta } from '../utils/esperarHasta';
 
 /**
  * Cuánto espera la pantalla la subida de las altas antes de cerrarse. Con señal débil
@@ -65,14 +66,12 @@ async function resolverSubida(plantacionId: string, subida: SubidaDeTecnicos | n
   return subida.noAsignados;
 }
 
-async function subirAltasSiSePuede(
-  plantacionId: string,
-  deshechas: string[],
-  sinNadieQueAvise: () => boolean,
-): Promise<SubidaDeTecnicos | null> {
+type Espera = { sinNadieQueAvise: () => boolean; alResponder: () => void };
+
+async function subirAltasSiSePuede(plantacionId: string, espera: Espera): Promise<SubidaDeTecnicos | null> {
   if (!(await admiteSubirTecnicos(plantacionId)) || !(await hayConexion())) return null;
   try {
-    return await subirCambiosDeTecnicos(plantacionId, deshechas, sinNadieQueAvise);
+    return await subirCambiosDeTecnicos(plantacionId, [], espera);
   } catch (e: any) {
     syncLog.error('Upload technician assignments failed, queda pendiente:', plantacionId, e?.message ?? e);
     return null;
@@ -80,10 +79,10 @@ async function subirAltasSiSePuede(
 }
 
 /** Las bajas del server van con las altas pendientes en un solo RPC; sin respuesta, lanza. */
-async function subirConBajas(plantacionId: string, bajas: string[], deshechas: string[]): Promise<SubidaDeTecnicos | null> {
+async function subirConBajas(plantacionId: string, bajas: string[]): Promise<SubidaDeTecnicos | null> {
   let subida: SubidaDeTecnicos | null;
   try {
-    subida = await subirCambiosDeTecnicos(plantacionId, [...bajas, ...deshechas]);
+    subida = await subirCambiosDeTecnicos(plantacionId, bajas);
   } catch (e: any) {
     syncLog.error('Upload technician removals failed:', plantacionId, e?.message ?? e);
     throw new BajaSinRespuestaError();
@@ -92,27 +91,26 @@ async function subirConBajas(plantacionId: string, bajas: string[], deshechas: s
   return subida;
 }
 
-/** Lo que responda antes del tope; si no, avisa que venció y devuelve vacío: la subida sigue sola. */
-async function esperarHasta(enCurso: Promise<string[]>, ms: number, alVencer: () => void): Promise<string[]> {
-  let tope: ReturnType<typeof setTimeout> | undefined;
-  const vencido = new Promise<null>((resolve) => { tope = setTimeout(() => resolve(null), ms); });
-  const primero = await Promise.race([enCurso, vencido]).finally(() => clearTimeout(tope));
-  if (primero !== null) return primero;
-  alVencer();
-  enCurso.catch((e) => syncLog.error('Upload technician assignments failed en segundo plano:', e?.message ?? e));
-  return [];
-}
-
 /**
  * Pasado el tope la pantalla ya no puede avisar: una respuesta tardía sigue la política
  * del sync (lo rechazado queda pendiente para que el resumen lo liste) en vez de
  * descartar en silencio.
  */
-function subirEnSegundoPlano(plantacionId: string, altas: string[], deshechas: string[]): Promise<string[]> {
+function subirEnSegundoPlano(plantacionId: string, altas: string[]): Promise<string[]> {
   let vencio = false;
-  const enCurso = subirAltasSiSePuede(plantacionId, deshechas, () => vencio)
-    .then((s) => (vencio ? [] : resolverSubida(plantacionId, s, altas)));
-  return esperarHasta(enCurso, ESPERA_DE_SUBIDA_MS, () => { vencio = true; });
+  let respondio = false;
+  const enCurso = subirAltasSiSePuede(plantacionId, {
+    sinNadieQueAvise: () => vencio,
+    alResponder: () => { respondio = true; },
+  }).then((s) => (vencio ? [] : resolverSubida(plantacionId, s, altas)));
+  enCurso.catch((e) => {
+    if (vencio) syncLog.error('Upload technician assignments failed en segundo plano:', e?.message ?? e);
+  });
+  return esperarHasta(enCurso, ESPERA_DE_SUBIDA_MS, {
+    respondio: () => respondio,
+    alVencer: () => { vencio = true; },
+    siVence: [],
+  });
 }
 
 /**
@@ -124,15 +122,17 @@ export async function guardarTecnicosDePlantacion(plantacionId: string, cambios:
   if (sinCambios(cambios)) return [];
   const pendientes = new Set(await getAltasPendientes(plantacionId));
   const bajasDelServidor = cambios.bajas.filter((id) => !pendientes.has(id));
-  // Un alta pendiente que se deshace va igual como baja cuando hay señal: su subida pudo
-  // llegar al server con la respuesta perdida, y el próximo pull la volvería a traer.
-  const deshechas = cambios.bajas.filter((id) => pendientes.has(id));
   if (bajasDelServidor.length > 0 && !(await hayConexion())) throw new QuitarSinConexionError();
   await guardarAltasDeTecnicos(plantacionId, cambios.altas);
-  await quitarTecnicosLocal(plantacionId, deshechas);
+  // Deshacer un alta pendiente es solo local: una baja al server podría quitar una
+  // asignación que la web hizo al mismo técnico. Si su subida llegó al server con la
+  // respuesta perdida, el próximo pull la vuelve a traer y quitarla requiere conexión.
+  await quitarTecnicosLocal(plantacionId, cambios.bajas.filter((id) => pendientes.has(id)));
   notifyDataChanged();
   if (bajasDelServidor.length > 0) {
-    return resolverSubida(plantacionId, await subirConBajas(plantacionId, bajasDelServidor, deshechas), cambios.altas);
+    return resolverSubida(plantacionId, await subirConBajas(plantacionId, bajasDelServidor), cambios.altas);
   }
-  return subirEnSegundoPlano(plantacionId, cambios.altas, deshechas);
+  // Solo se deshicieron altas pendientes: no hay nada nuevo que subir, lo demás va con el sync.
+  if (cambios.altas.length === 0) return [];
+  return subirEnSegundoPlano(plantacionId, cambios.altas);
 }
