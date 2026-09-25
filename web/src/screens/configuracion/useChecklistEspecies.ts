@@ -41,7 +41,7 @@ function avisoDelPlan({ bloqueadasMantenidas }: PlanSeleccion): string | null {
 /** El maestro opera sobre las visibles y avisa cuántas bloqueadas quedaron marcadas. */
 function useAccionMasiva(datos: DatosChecklist, contexto: ContextoSeleccion) {
   const [aviso, setAviso] = useState<string | null>(null);
-  const sincronizar = useSincronizarEspecies(datos.plantationId, datos.catalogo, datos.especies);
+  const sincronizar = useSincronizarEspecies(datos.plantationId, datos.catalogo);
   const estado = estadoMaestro(contexto);
   const alternarTodas = () => {
     const plan = planificarAccionMasiva(contexto, accionDesdeEstado(estado));
@@ -51,7 +51,7 @@ function useAccionMasiva(datos: DatosChecklist, contexto: ContextoSeleccion) {
     sincronizar.mutate({ idsHabilitar, idsQuitar });
   };
   const limpiarAviso = () => setAviso(null);
-  return { estado, aviso, limpiarAviso, alternarTodas, fallo: sincronizar.isError };
+  return { estado, aviso, limpiarAviso, alternarTodas, fallo: sincronizar.error };
 }
 
 /** Estado del checklist de especies de una plantación: búsqueda, maestro y guardado. */
@@ -62,8 +62,10 @@ export function useChecklistEspecies(datos: DatosChecklist) {
   const toggle = useToggleEspecie(datos.plantationId, datos.catalogo);
   const alternar = (speciesId: string, habilitar: boolean) => {
     limpiarAviso();
-    toggle.mutate({ speciesId, habilitar, orden: datos.especies.length });
+    toggle.mutate({ speciesId, habilitar });
   };
-  const mensajeError = toggle.isError || fallo ? MENSAJE_ERROR_GUARDAR : null;
+  // El motivo del server (p. ej. la especie ya tiene árboles) dice más que un error genérico.
+  const error = toggle.error ?? fallo;
+  const mensajeError = error ? error.message || MENSAJE_ERROR_GUARDAR : null;
   return { ...masiva, busqueda, setBusqueda, contexto, alternar, mensajeError };
 }

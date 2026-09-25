@@ -1,13 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { porNombre } from '../../lib/ordenEspecies';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { EspecieCatalogo, EspecieConUso } from '../../queries/especieQueries';
-import {
-  agregarEspecie,
-  quitarEspecie,
-  reemplazarEspecies,
-} from '../../repositories/plantationSpeciesRepository';
+import { aplicarCambiosEspecies } from '../../repositories/plantationSpeciesRepository';
 
-export type Toggle = { speciesId: string; habilitar: boolean; orden: number };
+export type Toggle = { speciesId: string; habilitar: boolean };
 export type Sincronizacion = { idsHabilitar: string[]; idsQuitar: string[] };
 
 /** El checklist refleja el cambio antes de que responda la base; si falla, vuelve atrás. */
@@ -32,66 +29,59 @@ export function useMutacionOptimistaEspecies<V>(
   });
 }
 
-/** El orden_visual es el de alta: la especie nueva va al final. */
-function comoHabilitada(especie: EspecieCatalogo, ordenVisual: number): EspecieConUso {
-  return { ...especie, ordenVisual, tieneArboles: false };
-}
-
-export function aplicarToggle(
-  previas: EspecieConUso[],
-  catalogo: EspecieCatalogo[],
-  { speciesId, habilitar }: Pick<Toggle, 'speciesId' | 'habilitar'>,
-): EspecieConUso[] {
-  if (!habilitar) return previas.filter((especie) => especie.id !== speciesId);
-  const base = catalogo.find((especie) => especie.id === speciesId);
-  return base ? [...previas, comoHabilitada(base, previas.length)] : previas;
+function comoHabilitada(especie: EspecieCatalogo): EspecieConUso {
+  return { ...especie, tieneArboles: false };
 }
 
 export function aplicarSincronizacion(
   previas: EspecieConUso[],
   catalogo: EspecieCatalogo[],
-  { idsHabilitar, idsQuitar }: Pick<Sincronizacion, 'idsHabilitar' | 'idsQuitar'>,
+  { idsHabilitar, idsQuitar }: Sincronizacion,
 ): EspecieConUso[] {
   const quitar = new Set(idsQuitar);
+  const yaEstan = new Set(previas.map((especie) => especie.id));
   const conservadas = previas.filter((especie) => !quitar.has(especie.id));
-  const altas = idsHabilitar
-    .map((speciesId) => catalogo.find((especie) => especie.id === speciesId))
-    .filter((especie): especie is EspecieCatalogo => Boolean(especie))
-    .map((especie, indice) => comoHabilitada(especie, conservadas.length + indice));
-  return [...conservadas, ...altas];
+  const altas = catalogo
+    .filter((especie) => idsHabilitar.includes(especie.id) && !yaEstan.has(especie.id))
+    .map(comoHabilitada);
+  return porNombre([...conservadas, ...altas]);
 }
 
-/** `orden` lo pone quien llama: la cantidad habilitada, para ir al final. */
+function comoSincronizacion({ speciesId, habilitar }: Toggle): Sincronizacion {
+  return habilitar
+    ? { idsHabilitar: [speciesId], idsQuitar: [] }
+    : { idsHabilitar: [], idsQuitar: [speciesId] };
+}
+
+export function aplicarToggle(
+  previas: EspecieConUso[],
+  catalogo: EspecieCatalogo[],
+  toggle: Toggle,
+): EspecieConUso[] {
+  return aplicarSincronizacion(previas, catalogo, comoSincronizacion(toggle));
+}
+
+function guardar(plantationId: string, { idsHabilitar, idsQuitar }: Sincronizacion) {
+  return aplicarCambiosEspecies(plantationId, { altas: idsHabilitar, bajas: idsQuitar });
+}
+
 export function useToggleEspecie(plantationId: string, catalogo: EspecieCatalogo[]) {
   return useMutacionOptimistaEspecies(
     plantationId,
-    ({ speciesId, habilitar, orden }: Toggle) =>
-      habilitar
-        ? agregarEspecie(plantationId, speciesId, orden)
-        : quitarEspecie(plantationId, speciesId),
+    (toggle: Toggle) => guardar(plantationId, comoSincronizacion(toggle)),
     (previas, toggle) => aplicarToggle(previas, catalogo, toggle),
   );
 }
 
 /**
- * Marcar o desmarcar todas: el lote de altas y bajas en una sola mutación, y en
- * una sola transacción del server. Lo que se manda es la lista final —la misma
- * que pinta el optimista—, así que ya no hace falta un `ordenInicial`: el orden
- * sale de esa lista y no puede discrepar del que se ve en pantalla (#548).
+ * Marcar o desmarcar todas: el lote de altas y bajas en una sola mutación y una sola
+ * transacción del server (#548). Solo viajan los cambios, no la lista final: una lista
+ * pisaría lo que un teléfono cambió en otras especies (#635).
  */
-export function useSincronizarEspecies(
-  plantationId: string,
-  catalogo: EspecieCatalogo[],
-  especies: EspecieConUso[],
-) {
+export function useSincronizarEspecies(plantationId: string, catalogo: EspecieCatalogo[]) {
   return useMutacionOptimistaEspecies(
     plantationId,
-    (lote: Sincronizacion) =>
-      reemplazarEspecies(plantationId, ordenFinal(aplicarSincronizacion(especies, catalogo, lote))),
+    (lote: Sincronizacion) => guardar(plantationId, lote),
     (previas, lote) => aplicarSincronizacion(previas, catalogo, lote),
   );
-}
-
-function ordenFinal(especies: EspecieConUso[]) {
-  return especies.map(({ id, ordenVisual }) => ({ speciesId: id, ordenVisual }));
 }
