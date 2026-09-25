@@ -40,7 +40,7 @@ describe('ParcelasScreen — gating por estado finalizada', () => {
   });
 
   it('editar exige plantación editable y ruta de admin; crear, solo plantación editable', () => {
-    expect(screen).toMatch(/const puedeEditar = plantacionEditable && esRutaAdmin\(routePrefix\);/);
+    expect(screen).toMatch(/const puedeEditar = plantacionEditable && puedeEditarParcelas\(routePrefix\);/);
     expect(screen).toMatch(/function openCreate[\s\S]{0,80}if \(!plantacionEditable\) return;/);
   });
 });
@@ -51,6 +51,6 @@ describe('PlantacionesScreen — parcela inline del card expandido', () => {
   // Segunda entrada a la misma edición: desde el listado de plantaciones, sin
   // pasar por la pantalla de parcelas.
   it('no entrega onParcelaLongPress sobre una plantación finalizada ni a un técnico', () => {
-    expect(screen).toMatch(/onParcelaLongPress=\{s\.isAdmin && plantacionEsEditable\(item\)/);
+    expect(screen).toMatch(/onParcelaLongPress=\{puedeEditarParcelas\(s\.routePrefix\) && plantacionEsEditable\(item\)/);
   });
 });

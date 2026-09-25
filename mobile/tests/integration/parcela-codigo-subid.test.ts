@@ -84,8 +84,8 @@ beforeAll(() => {
 afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  conRolCacheado('admin');
   jest.restoreAllMocks();
+  conRolCacheado('admin');
   await vaciarTablas(mockTestDb);
   await sembrar();
 });

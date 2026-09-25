@@ -17,7 +17,7 @@ import { usePlantationDetail } from '../hooks/usePlantationDetail';
 import { usePendingSyncCount } from '../hooks/usePendingSyncCount';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
-import { esRutaAdmin } from '../constants/rutas';
+import { puedeEditarParcelas } from '../utils/permisosDeEdicion';
 import { colors, iconSizes } from '../theme';
 import { parcelasScreenStyles as styles } from './ParcelasScreen.styles';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
@@ -70,7 +70,7 @@ export default function ParcelasScreen() {
   // que el push sube como tombstone (#469, #477, #478).
   const goBack = useScreenBack(`/${routePrefix}/plantaciones`);
   // El técnico crea parcelas pero no las edita ni las borra: eso es de admin.
-  const puedeEditar = plantacionEditable && esRutaAdmin(routePrefix);
+  const puedeEditar = plantacionEditable && puedeEditarParcelas(routePrefix);
   const [formModalState, setFormModalState] = useState<FormModalState>(null);
 
   function openCreate() {

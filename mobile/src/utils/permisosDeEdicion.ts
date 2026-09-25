@@ -1,10 +1,20 @@
 import { ESTADO_PLANTACION, ESTADO_GRUPO, esArchivada, esEliminadaEnServidor } from '../constants/estados';
+import { esRutaAdmin } from '../constants/rutas';
 
 /** Lo que decide si una plantación admite cambios desde la app. */
 export interface EstadoDeEdicionDePlantacion {
   estado: string;
   archivadaEn: string | null;
   eliminadaEnServidorEn: string | null;
+}
+
+/**
+ * Editar y borrar parcelas es de admin y superadmin (#640): único predicado de UI
+ * para esa regla, que usan ParcelasScreen y PlantacionesScreen. `ParcelaRepository.
+ * puedeEditarParcelas` aplica la misma regla contra el rol cacheado, no la ruta.
+ */
+export function puedeEditarParcelas(routePrefix: string): boolean {
+  return esRutaAdmin(routePrefix);
 }
 
 /**

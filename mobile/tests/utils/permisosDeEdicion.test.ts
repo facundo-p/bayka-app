@@ -1,5 +1,6 @@
-import { getTreeEditGating, getGroupGating, plantacionEsEditable } from '../../src/utils/permisosDeEdicion';
+import { getTreeEditGating, getGroupGating, plantacionEsEditable, puedeEditarParcelas } from '../../src/utils/permisosDeEdicion';
 import { esArchivada, esEliminadaEnServidor } from '../../src/constants/estados';
+import { GRUPO_DE_RUTAS } from '../../src/constants/rutas';
 
 const ACTIVA = { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null };
 const FINALIZADA = { estado: 'finalizada', archivadaEn: null, eliminadaEnServidorEn: null };
@@ -99,6 +100,16 @@ describe('plantacionEsEditable', () => {
 
   test('finalizada + archivada → inmutable', () => {
     expect(plantacionEsEditable(FINALIZADA_ARCHIVADA)).toBe(false);
+  });
+});
+
+describe('puedeEditarParcelas', () => {
+  test('ruta admin → true', () => {
+    expect(puedeEditarParcelas(GRUPO_DE_RUTAS.admin)).toBe(true);
+  });
+
+  test('ruta técnico → false', () => {
+    expect(puedeEditarParcelas(GRUPO_DE_RUTAS.tecnico)).toBe(false);
   });
 });
 
