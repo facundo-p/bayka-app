@@ -261,6 +261,13 @@ describe('downloadPlantation', () => {
     expect(conflictArgs.set).toHaveProperty('estado');
   });
 
+  it('propaga el error si el upsert local falla', async () => {
+    const sp = makeServerPlantation('p-3');
+    setupDbInsertFailure();
+
+    await expect(downloadPlantation(sp)).rejects.toThrow('DB write error');
+  });
+
   it('mapea visible_in_app del server; en conflicto no pisa valor vivo ni snapshot (los pone el pull)', async () => {
     const sp = { ...makeServerPlantation('p-oculta'), visible_in_app: false };
     const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();

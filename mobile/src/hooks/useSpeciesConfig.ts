@@ -44,8 +44,11 @@ export function useSpeciesConfig(plantacionId: string | undefined) {
   const [saving, setSaving] = useState(false);
   const conArbolesEnServer = useRef(new Set<string>());
 
-  const mostrarError = (e: any, fallback: string) =>
-    showInfoDialog(confirm.show, 'Error', e?.message ?? fallback, 'alert-circle-outline', colors.danger);
+  const mostrarError = useCallback(
+    (e: any, fallback: string) =>
+      showInfoDialog(confirm.show, 'Error', e?.message ?? fallback, 'alert-circle-outline', colors.danger),
+    [confirm.show]
+  );
 
   const loadData = useCallback(async () => {
     if (!plantacionId) return;
@@ -59,7 +62,7 @@ export function useSpeciesConfig(plantacionId: string | undefined) {
     } finally {
       setLoading(false);
     }
-  }, [plantacionId]);
+  }, [plantacionId, mostrarError]);
 
   useEffect(() => {
     loadData();

@@ -67,15 +67,12 @@ import {
   uploadPendingPhotos,
   downloadPhotosForPlantation,
   getErrorMessage,
-  SyncGroupResult,
-  SyncProgress,
 } from '../../src/services/SyncService';
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { markGroupSynced, getSyncableGroups } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
-import { notifyDataChanged } from '../../src/database/liveQuery';
 import { File as ExpoFile } from 'expo-file-system';
 import { FOTOS_EN_PARALELO } from '../../src/services/sync/concurrencia';
 import type { PhotoSyncProgress } from '../../src/services/sync/types';
@@ -84,7 +81,6 @@ import { SyncCanceladoError } from '../../src/services/sync/cancelacion';
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockGetFinalizadaSubGroups = getSyncableGroups as jest.Mock;
 const mockMarkGroupSynced = markGroupSynced as jest.Mock;
-const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockGetTreesWithPendingPhotos = getTreesWithPendingPhotos as jest.Mock;
 const mockMarkPhotoSynced = markPhotoSynced as jest.Mock;
@@ -225,7 +221,6 @@ describe('SyncService', () => {
 
   describe('uploadGroup — RPC payload (SYNC-04)', () => {
     it('Test 2: calls supabase.rpc with correct p_subgroup and p_trees payload', async () => {
-      const sg = makeSg('sg-1');
       const sgTrees = makeTrees('sg-1');
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });

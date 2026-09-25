@@ -2,7 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 
 jest.mock('expo-secure-store');
 
-const { readCachedSession, clearSession } = require('../../src/supabase/auth');
+const { readCachedSession } = require('../../src/supabase/auth');
 
 describe('readCachedSession', () => {
   beforeEach(() => jest.clearAllMocks());

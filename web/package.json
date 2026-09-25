@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
-    "lint": "eslint . && prettier --check src && cd .. && eslint -c web/eslint.config.js \"scripts/**/*.{cjs,mjs}\" \"scripts/**/*.test.ts\"",
+    "lint": "eslint . --max-warnings 0 && prettier --check src && cd .. && eslint -c web/eslint.config.js --max-warnings 0 \"scripts/**/*.{cjs,mjs}\" \"scripts/**/*.test.ts\"",
     "format": "prettier --write src",
     "test": "vitest run",
     "test:watch": "vitest",
