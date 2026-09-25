@@ -8,7 +8,7 @@ import { renderHook } from '@testing-library/react-native';
 import type { ConfirmModalButton } from '../../src/components/ConfirmModal';
 import { usePhotoPicker } from '../../src/hooks/usePhotoPicker';
 
-type ShowConfig = { buttons: ConfirmModalButton[] };
+type ShowConfig = { buttons: ConfirmModalButton[]; onDismiss?: () => void };
 
 function renderPicker() {
   const show = jest.fn<void, [ShowConfig]>();
@@ -32,6 +32,13 @@ describe('usePhotoPicker', () => {
     const promesa = pickPhoto({ optional: true });
     expect(labels(show)).toEqual(['Cámara', 'Galería', 'Sin foto']);
     show.mock.calls[0][0].buttons[2].onPress();
+    await expect(promesa).resolves.toBeNull();
+  });
+
+  it('cerrar por back/backdrop resuelve null en vez de dejar la Promise colgada (#659)', async () => {
+    const { show, pickPhoto } = renderPicker();
+    const promesa = pickPhoto();
+    show.mock.calls[0][0].onDismiss?.();
     await expect(promesa).resolves.toBeNull();
   });
 });

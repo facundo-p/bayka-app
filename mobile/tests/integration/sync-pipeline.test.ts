@@ -1,149 +1,309 @@
-// TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
 /**
- * Integration tests: Sync pipeline.
- * Insert atómico de subgroup+trees, detección de duplicados, estado sincronizada.
- * Nota: las transacciones de drizzle-orm/better-sqlite3 son solo síncronas —
- * usar la API síncrona de drizzle (o sqlite.transaction) para testear atomicidad.
+ * Push de grupos (`uploadSyncableGroups`) contra SQLite real: qué lee de la base,
+ * qué manda al RPC `sync_subgroup`, qué fotos sube y qué marca al volver. Cierra
+ * con el ciclo de dos dispositivos: bajar un árbol N/N, resolverlo, volver a hacer
+ * pull y subirlo.
+ *
+ * Supabase: tablas in-memory para el pull; el RPC y Storage registran las llamadas.
  */
-
-import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
-import {
-  plantations,
-  groups,
-  trees,
-  species,
-} from '../../src/database/schema';
-import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
+import { eq } from 'drizzle-orm';
+import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
+import { createTestParcela, createTestPlantation } from '../helpers/factories';
+import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
 
-let db: IntegrationDb;
+const mockServerState: Record<string, Map<string, any>> = {
+  plantations: new Map(),
+  parcelas: new Map(),
+  groups: new Map(),
+  trees: new Map(),
+  plantation_users: new Map(),
+  plantation_species: new Map(),
+  species: new Map(),
+};
+const serverState = mockServerState;
+const mockRpcCalls: { fn: string; args: any }[] = [];
+const mockSubidas: string[] = [];
+const mockRespuesta = { syncSubgroup: { data: { success: true } as any, error: null as any } };
+
+jest.mock('../../src/supabase/client', () => {
+  const builder = (tabla: string) => {
+    const filtros: { col: string; op: string; value: any }[] = [];
+    const filtrar = () =>
+      Array.from(mockServerState[tabla]?.values() ?? []).filter((fila: any) =>
+        filtros.every((f) =>
+          f.op === 'eq' ? fila[f.col] === f.value : Array.isArray(f.value) && f.value.includes(fila[f.col]),
+        ),
+      );
+    const api: any = {
+      select() { return api; },
+      eq(col: string, value: any) { filtros.push({ col, op: 'eq', value }); return api; },
+      in(col: string, value: any[]) { filtros.push({ col, op: 'in', value }); return api; },
+      single() {
+        const filas = filtrar();
+        return Promise.resolve({ data: filas[0] ?? null, error: filas[0] ? null : { code: 'PGRST116' } });
+      },
+      then(resolver: any) {
+        return Promise.resolve({ data: filtrar(), error: null }).then(resolver);
+      },
+    };
+    return api;
+  };
+
+  return {
+    supabase: {
+      from: (tabla: string) => ({ select: () => builder(tabla) }),
+      rpc(fn: string, args: any) {
+        mockRpcCalls.push({ fn, args });
+        if (fn === 'sync_subgroup') return Promise.resolve(mockRespuesta.syncSubgroup);
+        // Server sin `estado_remoto_plantaciones`: el acceso sale de la membresía (#478).
+        return Promise.resolve({ data: null, error: { code: 'PGRST202' } });
+      },
+      storage: {
+        from: () => ({
+          upload(path: string) {
+            mockSubidas.push(path);
+            return Promise.resolve({ error: null });
+          },
+        }),
+      },
+      auth: {
+        getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-tecnico-1' } } } }),
+        getUser: () => Promise.resolve({ data: { user: { id: 'user-tecnico-1' } } }),
+      },
+    },
+  };
+});
+
+jest.mock('expo-file-system', () => ({
+  File: jest.fn().mockImplementation(() => ({
+    arrayBuffer: () => Promise.resolve(new ArrayBuffer(8)),
+  })),
+}));
+
+let mockTestDb: IntegrationDb;
+let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
 let sqlite: InstanceType<typeof Database>;
 
-beforeAll(() => {
-  const result = createTestDb();
-  db = result.db;
-  sqlite = result.sqlite;
+jest.mock('../../src/database/client', () => ({
+  get db() {
+    return mockTestDb;
+  },
+  get sqlite() {
+    return mockSqliteDeIntegracion;
+  },
+}));
+
+jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
+jest.mock('../../src/utils/syncLogger', () => ({
+  syncLog: { info: jest.fn(), error: jest.fn(), warn: jest.fn() },
+}));
+
+import { uploadSyncableGroups } from '../../src/services/sync/pushService';
+import { pullFromServer } from '../../src/services/sync/pullService';
+import { resolveNNTree, getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
+
+const PLANTACION_ID = 'plant-1';
+const PARCELA_ID = 'parc-1';
+const GRUPO_ID = 'g-1';
+const ROBLE = 'sp-roble';
+const FOTO_LOCAL = 'file:///data/photos/t-1.jpg';
+const pathEnStorage = (treeId: string) => `plantations/${PLANTACION_ID}/parcelas/${PARCELA_ID}/trees/${treeId}.jpg`;
+
+const grupoLocal = (overrides: Partial<typeof groups.$inferInsert> = {}) => ({
+  id: GRUPO_ID, plantacionId: PLANTACION_ID, parcelaId: PARCELA_ID, nombre: 'Linea A', codigo: 'LA',
+  tipo: 'linea', estado: 'finalizada', usuarioCreador: 'user-tecnico-1', createdAt: '2026-01-01T00:00:00',
+  pendingSync: true, ...overrides,
 });
 
-afterAll(() => {
-  closeTestDb(sqlite);
+const arbolLocal = (id: string, overrides: Partial<typeof trees.$inferInsert> = {}) => ({
+  id, groupId: GRUPO_ID, especieId: ROBLE, posicion: 1, subId: `P1LAROB1-${id}`, fotoUrl: null,
+  fotoSynced: false, usuarioRegistro: 'user-tecnico-1', createdAt: '2026-01-01T00:00:00', ...overrides,
 });
+
+const llamadasSyncSubgroup = () => mockRpcCalls.filter((c) => c.fn === 'sync_subgroup');
+const arbolesDelPayload = () => llamadasSyncSubgroup().at(-1)!.args.p_trees as any[];
+const leerGrupo = async () => (await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID)))[0];
+const leerArbol = async (id: string) => (await mockTestDb.select().from(trees).where(eq(trees.id, id)))[0];
+
+beforeAll(() => {
+  const r = createTestDb();
+  mockTestDb = r.db;
+  sqlite = r.sqlite;
+  mockSqliteDeIntegracion = sqliteDeIntegracion(sqlite);
+});
+
+afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await vaciarTablas(db);
+  for (const tabla of Object.values(serverState)) tabla.clear();
+  mockRpcCalls.length = 0;
+  mockSubidas.length = 0;
+  mockRespuesta.syncSubgroup = { data: { success: true }, error: null };
+
+  await vaciarTablas(mockTestDb);
+  await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID }));
+  await mockTestDb.insert(species).values({
+    id: ROBLE, codigo: 'ROB', nombre: 'Roble', nombreCientifico: null, createdAt: '2026-01-01T00:00:00',
+  });
+  // Parcela ya subida: si no, el grupo se reporta PARCELA_PENDING y no se sube.
+  await mockTestDb.insert(parcelas).values(createTestParcela({ id: PARCELA_ID, plantacionId: PLANTACION_ID }));
 });
 
-describe.skip('Sync pipeline', () => {
-  test('inserts subgroup + 5 trees sequentially, all rows present after commit', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
-    const sp = createTestSpecies({ codigo: 'EUC' });
-    await db.insert(species).values(sp);
+describe('push de grupos — lo que lee de la base y manda al RPC', () => {
+  it('sube el grupo pendiente con sus árboles y lo deja al día sin tocar su estado', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal());
+    await mockTestDb.insert(trees).values([
+      arbolLocal('t-1'),
+      arbolLocal('t-nn', { especieId: null, posicion: 2, subId: 'P1LANN2' }),
+    ]);
 
-    const sg = createTestGroup({ plantacionId: plantation.id, estado: 'finalizada' });
-    await db.insert(groups).values(sg);
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
 
-    for (let i = 1; i <= 5; i++) {
-      const tree = createTestTree({        groupId: sg.id,
-        especieId: sp.id,
-        posicion: i,
-        subId: `${sg.codigo}EUC${i}`,
-      });
-      await db.insert(trees).values(tree);
-    }
+    expect(resultado).toMatchObject({ success: true, groupId: GRUPO_ID });
+    const payload = arbolesDelPayload();
+    expect(payload.map((t) => t.id).sort()).toEqual(['t-1', 't-nn']);
+    // N/N viaja como null explícito, no undefined: el server lo espera así.
+    const nn = payload.find((t) => t.id === 't-nn');
+    expect(nn).toHaveProperty('species_id', null);
+    expect(nn.sub_id).toBe('P1LANN2');
 
-    const sgRows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(sgRows).toHaveLength(1);
-
-    const treeRows = await db.select().from(trees).where(eq(trees.groupId, sg.id));
-    expect(treeRows).toHaveLength(5);
+    const grupo = await leerGrupo();
+    expect(grupo.pendingSync).toBe(false);
+    expect(grupo.estado).toBe('finalizada');
+    expect(await mockTestDb.select().from(trees).where(eq(trees.groupId, GRUPO_ID))).toHaveLength(2);
   });
 
-  test('duplicate tree PK fails and data rollback verified (atomicity via sqlite.transaction)', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+  it('sube también el grupo que creó otro usuario', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal({ usuarioCreador: 'otro-tecnico', estado: 'activa' }));
 
-    const sg = createTestGroup({ plantacionId: plantation.id });
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
 
-    let threw = false;
-    const insertWithDuplicate = sqlite.transaction(() => {
-      // raw sqlite prepare/run para testear atomicidad directamente
-      const insertSg = sqlite.prepare(
-        'INSERT INTO groups (id, plantacion_id, nombre, codigo, tipo, estado, usuario_creador, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-      );
-      insertSg.run(sg.id, sg.plantacionId, sg.nombre, sg.codigo, sg.tipo, sg.estado, sg.usuarioCreador, sg.createdAt);
+    expect(resultado.success).toBe(true);
+    expect(llamadasSyncSubgroup()[0].args.p_subgroup).toMatchObject({ usuario_creador: 'otro-tecnico', estado: 'activa' });
+  });
 
-      const insertTree = sqlite.prepare(
-        'INSERT INTO trees (id, group_id, especie_id, posicion, sub_id, foto_url, plantacion_id, global_id, usuario_registro, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-      );
-      const now = new Date().toISOString();
-      insertTree.run('tree-1', sg.id, null, 1, 'LA-NN-1', null, null, null, 'user1', now);
-      insertTree.run('tree-1', sg.id, null, 2, 'LA-NN-2', null, null, null, 'user1', now); // duplicate id → PK error
+  it('un grupo sin cambios pendientes no se sube', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal({ pendingSync: false }));
+
+    expect(await uploadSyncableGroups(PLANTACION_ID)).toEqual([]);
+    expect(llamadasSyncSubgroup()).toHaveLength(0);
+  });
+
+  it('RPC rechazado: el grupo y la foto quedan pendientes para el reintento', async () => {
+    mockRespuesta.syncSubgroup = { data: { success: false, error: 'DUPLICATE_CODE' }, error: null };
+    await mockTestDb.insert(groups).values(grupoLocal());
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { fotoUrl: FOTO_LOCAL }));
+
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(resultado).toMatchObject({ success: false, error: 'DUPLICATE_CODE' });
+    expect((await leerGrupo()).pendingSync).toBe(true);
+    expect((await leerArbol('t-1')).fotoSynced).toBe(false);
+  });
+});
+
+describe('push de grupos — fotos', () => {
+  it('una foto pendiente se sube a Storage, viaja con su path y queda marcada', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal());
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { fotoUrl: FOTO_LOCAL }));
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(mockSubidas).toEqual([pathEnStorage('t-1')]);
+    expect(arbolesDelPayload()[0].foto_url).toBe(pathEnStorage('t-1'));
+    const arbol = await leerArbol('t-1');
+    expect(arbol.fotoSynced).toBe(true);
+    expect(arbol.fotoUrl).toBe(FOTO_LOCAL);
+  });
+
+  // Foto bajada de otro dispositivo, o ya subida en un push anterior: el server ya la tiene.
+  it('una foto ya subida no se resube y el file:// local no llega al server', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal());
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { fotoUrl: FOTO_LOCAL, fotoSynced: true }));
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(mockSubidas).toEqual([]);
+    expect(arbolesDelPayload()[0].foto_url).toBeNull();
+  });
+
+  it('un path de Storage todavía sin bajar viaja tal cual', async () => {
+    await mockTestDb.insert(groups).values(grupoLocal());
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { fotoUrl: pathEnStorage('t-1'), fotoSynced: true }));
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(mockSubidas).toEqual([]);
+    expect(arbolesDelPayload()[0].foto_url).toBe(pathEnStorage('t-1'));
+  });
+});
+
+describe('fotos pendientes que sube el paso de fotos sueltas', () => {
+  it('solo las locales sin subir, de cualquier grupo de la plantación, esté o no pendiente', async () => {
+    await mockTestDb.insert(groups).values([
+      grupoLocal({ pendingSync: true }),
+      grupoLocal({ id: 'g-al-dia', nombre: 'Linea B', codigo: 'LB', pendingSync: false }),
+    ]);
+    await mockTestDb.insert(trees).values([
+      arbolLocal('t-pendiente', { fotoUrl: FOTO_LOCAL }),
+      arbolLocal('t-de-grupo-al-dia', { groupId: 'g-al-dia', fotoUrl: 'file:///data/photos/b.jpg' }),
+      arbolLocal('t-ya-subida', { fotoUrl: 'file:///data/photos/c.jpg', fotoSynced: true }),
+      arbolLocal('t-remota', { fotoUrl: pathEnStorage('t-remota') }),
+      arbolLocal('t-sin-foto'),
+    ]);
+
+    const ids = (await getTreesWithPendingPhotos(PLANTACION_ID)).map((t) => t.id).sort();
+
+    expect(ids).toEqual(['t-de-grupo-al-dia', 't-pendiente']);
+  });
+});
+
+describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () => {
+  beforeEach(() => {
+    serverState.plantations.set(PLANTACION_ID, {
+      id: PLANTACION_ID, lugar: 'Campo Norte', periodo: '2026-otono', estado: 'activa',
+      creado_por: 'user-admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
     });
-
-    try {
-      insertWithDuplicate();
-    } catch (e) {
-      threw = true;
-    }
-
-    expect(threw).toBe(true);
-
-    const sgRows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(sgRows).toHaveLength(0);
-
-    const treeRows = await db.select().from(trees).where(eq(trees.groupId, sg.id));
-    expect(treeRows).toHaveLength(0);
+    serverState.plantation_users.set('pu-1', {
+      plantation_id: PLANTACION_ID, user_id: 'user-tecnico-1', rol_en_plantacion: 'tecnico', assigned_at: '2026-01-01T00:00:00',
+    });
+    serverState.parcelas.set(PARCELA_ID, {
+      id: PARCELA_ID, plantation_id: PLANTACION_ID, nombre: 'Parcela 1', codigo: 'P1', descripcion: null,
+      created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00', deleted_at: null,
+    });
+    serverState.groups.set(GRUPO_ID, {
+      id: GRUPO_ID, plantation_id: PLANTACION_ID, parcela_id: PARCELA_ID, nombre: 'Linea A', codigo: 'LA',
+      tipo: 'linea', estado: 'finalizada', usuario_creador: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
+    });
+    serverState.trees.set('t-nn', {
+      id: 't-nn', group_id: GRUPO_ID, species_id: null, posicion: 1, sub_id: 'P1LANN1',
+      foto_url: pathEnStorage('t-nn'), usuario_registro: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
+    });
   });
 
-  test('duplicate subgroup codigo in same plantation is detected (UNIQUE constraint)', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+  it('la especie resuelta sobrevive al pull y sube sin reenviar la foto', async () => {
+    await pullFromServer(PLANTACION_ID);
+    const bajado = await leerArbol('t-nn');
+    expect(bajado.especieId).toBeNull();
+    expect(bajado.fotoSynced).toBe(true);
+    // Lo que deja la descarga de fotos: copia local de una foto que ya está en Storage.
+    await mockTestDb.update(trees).set({ fotoUrl: 'file:///data/photos/t-nn.jpg' }).where(eq(trees.id, 't-nn'));
 
-    const sg1 = createTestGroup({ plantacionId: plantation.id, codigo: 'L01', nombre: 'Linea 01' });
-    await db.insert(groups).values(sg1);
+    await resolveNNTree('t-nn', ROBLE, 'LA');
+    await pullFromServer(PLANTACION_ID);
 
-    const sg2 = createTestGroup({ plantacionId: plantation.id, codigo: 'L01', nombre: 'Linea 01 Dup' });
+    const resuelto = await leerArbol('t-nn');
+    expect(resuelto.especieId).toBe(ROBLE);
+    expect(resuelto.subId).not.toBe('P1LANN1');
+    expect((await leerGrupo()).pendingSync).toBe(true);
 
-    let threw = false;
-    try {
-      await db.insert(groups).values(sg2);
-    } catch (e: any) {
-      threw = true;
-      expect(e.message).toMatch(/UNIQUE constraint failed/);
-    }
-    expect(threw).toBe(true);
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
 
-    const rows = await db.select().from(groups).where(eq(groups.plantacionId, plantation.id));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].id).toBe(sg1.id);
-  });
-
-  test('after sync marks subgroup as sincronizada, trees remain queryable', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
-    const sp = createTestSpecies({ codigo: 'PIN' });
-    await db.insert(species).values(sp);
-
-    const sg = createTestGroup({ plantacionId: plantation.id, estado: 'finalizada' });
-    await db.insert(groups).values(sg);
-
-    for (let i = 1; i <= 3; i++) {
-      const tree = createTestTree({        groupId: sg.id,
-        especieId: sp.id,
-        posicion: i,
-        subId: `${sg.codigo}PIN${i}`,
-      });
-      await db.insert(trees).values(tree);
-    }
-
-    await db.update(groups).set({ estado: 'sincronizada' }).where(eq(groups.id, sg.id));
-
-    const sgRows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(sgRows[0].estado).toBe('sincronizada');
-
-    const treeRows = await db.select().from(trees).where(eq(trees.groupId, sg.id));
-    expect(treeRows).toHaveLength(3);
+    expect(resultado.success).toBe(true);
+    const [arbol] = arbolesDelPayload();
+    expect(arbol).toMatchObject({ species_id: ROBLE, sub_id: resuelto.subId, foto_url: null });
+    expect(mockSubidas).toEqual([]);
+    expect((await leerGrupo()).pendingSync).toBe(false);
   });
 });

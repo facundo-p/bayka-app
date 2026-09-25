@@ -1,124 +1,179 @@
-// TODO(v1.1 cleanup): re-enable these suites after fixing mock expectations.
 /**
- * Integration tests: Group lifecycle
- * Tests: activa -> finalizada -> sincronizada state machine
- * Uses real SQLite via better-sqlite3 + drizzle migrations
+ * Ciclo de vida de un grupo en `GroupRepository`, contra SQLite real: alta,
+ * unicidad por parcela (#90), finalizar/reactivar, y lo que el sync lee y marca.
  */
-
-import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
-import { createTestPlantation, createTestGroup } from '../helpers/factories';
-import {
-  plantations,
-  groups,
-} from '../../src/database/schema';
-import { eq } from 'drizzle-orm';
 import Database from 'better-sqlite3';
+import { eq } from 'drizzle-orm';
+import { createTestDb, closeTestDb, vaciarTablas, IntegrationDb } from '../helpers/integrationDb';
+import { createTestGroup, createTestParcela, createTestPlantation } from '../helpers/factories';
+import { groups, parcelas, plantations } from '../../src/database/schema';
 
-let db: IntegrationDb;
+let mockTestDb: IntegrationDb;
 let sqlite: InstanceType<typeof Database>;
 
+jest.mock('../../src/database/client', () => ({
+  get db() {
+    return mockTestDb;
+  },
+}));
+
+jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
+
+import {
+  createGroup,
+  finalizeGroup,
+  reactivateGroup,
+  markGroupSynced,
+  getSyncableGroups,
+} from '../../src/repositories/GroupRepository';
+
+const PLANTACION_ID = 'plant-1';
+const PARCELA_ID = 'parc-1';
+
 beforeAll(() => {
-  const result = createTestDb();
-  db = result.db;
-  sqlite = result.sqlite;
+  const r = createTestDb();
+  mockTestDb = r.db;
+  sqlite = r.sqlite;
 });
 
-afterAll(() => {
-  closeTestDb(sqlite);
-});
+afterAll(() => closeTestDb(sqlite));
 
 beforeEach(async () => {
-  await vaciarTablas(db);
+  await vaciarTablas(mockTestDb);
+  await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID }));
+  await mockTestDb.insert(parcelas).values(createTestParcela({ id: PARCELA_ID, plantacionId: PLANTACION_ID }));
 });
 
-describe.skip('Group lifecycle', () => {
-  test('creates subgroup with estado=activa and persists in DB', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+const leerGrupo = async (id: string) => (await mockTestDb.select().from(groups).where(eq(groups.id, id)))[0];
 
-    const sg = createTestGroup({ plantacionId: plantation.id, estado: 'activa' });
-    await db.insert(groups).values(sg);
-
-    const rows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].estado).toBe('activa');
-    expect(rows[0].plantacionId).toBe(plantation.id);
+const altaDeGrupo = (overrides: Partial<Parameters<typeof createGroup>[0]> = {}) =>
+  createGroup({
+    plantacionId: PLANTACION_ID,
+    parcelaId: PARCELA_ID,
+    nombre: 'Linea A',
+    codigo: 'la',
+    tipo: 'linea',
+    usuarioCreador: 'user-tecnico-1',
+    ...overrides,
   });
 
-  test('updates subgroup estado from activa to finalizada', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+async function grupoCreado(overrides: Partial<Parameters<typeof createGroup>[0]> = {}): Promise<string> {
+  const res = await altaDeGrupo(overrides);
+  if (!res.success) throw new Error(`alta de grupo rechazada: ${res.error}`);
+  return res.id;
+}
 
-    const sg = createTestGroup({ plantacionId: plantation.id, estado: 'activa' });
-    await db.insert(groups).values(sg);
+describe('createGroup', () => {
+  test('nace activa, pendiente de subir y con el código en mayúsculas', async () => {
+    const fila = await leerGrupo(await grupoCreado());
 
-    await db.update(groups).set({ estado: 'finalizada' }).where(eq(groups.id, sg.id));
-
-    const rows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(rows[0].estado).toBe('finalizada');
+    expect(fila.estado).toBe('activa');
+    expect(fila.pendingSync).toBe(true);
+    expect(fila.codigo).toBe('LA');
+    expect(fila.parcelaId).toBe(PARCELA_ID);
   });
 
-  test('updates subgroup estado from finalizada to sincronizada', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+  test('código repetido en la misma parcela: lo rechaza sin escribir', async () => {
+    await grupoCreado();
 
-    const sg = createTestGroup({ plantacionId: plantation.id, estado: 'finalizada' });
-    await db.insert(groups).values(sg);
+    const res = await altaDeGrupo({ nombre: 'Linea B', codigo: 'LA' });
 
-    await db.update(groups).set({ estado: 'sincronizada' }).where(eq(groups.id, sg.id));
-
-    const rows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(rows[0].estado).toBe('sincronizada');
+    expect(res).toEqual({ success: false, error: 'codigo_duplicate' });
+    expect(await mockTestDb.select().from(groups)).toHaveLength(1);
   });
 
-  test('enforces unique (plantacionId, codigo) constraint — same plantation', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+  test('nombre repetido en la misma parcela: lo rechaza', async () => {
+    await grupoCreado();
 
-    const sg1 = createTestGroup({ plantacionId: plantation.id, codigo: 'LA', nombre: 'Linea A' });
-    await db.insert(groups).values(sg1);
-
-    const sg2 = createTestGroup({ plantacionId: plantation.id, codigo: 'LA', nombre: 'Linea B' });
-
-    let threw = false;
-    try {
-      await db.insert(groups).values(sg2);
-    } catch (e: any) {
-      threw = true;
-      expect(e.message).toMatch(/UNIQUE constraint failed/);
-    }
-    expect(threw).toBe(true);
-
-    // Only sg1 exists
-    const rows = await db.select().from(groups).where(eq(groups.plantacionId, plantation.id));
-    expect(rows).toHaveLength(1);
-    expect(rows[0].id).toBe(sg1.id);
+    expect(await altaDeGrupo({ codigo: 'LB' })).toEqual({ success: false, error: 'nombre_duplicate' });
   });
 
-  test('allows same codigo in different plantations', async () => {
-    const p1 = createTestPlantation({ lugar: 'Campo Norte' });
-    const p2 = createTestPlantation({ lugar: 'Campo Sur' });
-    await db.insert(plantations).values(p1);
-    await db.insert(plantations).values(p2);
+  test('nombre y código repetidos: informa los dos', async () => {
+    await grupoCreado();
 
-    const sg1 = createTestGroup({ plantacionId: p1.id, codigo: 'LA', nombre: 'Linea A P1' });
-    const sg2 = createTestGroup({ plantacionId: p2.id, codigo: 'LA', nombre: 'Linea A P2' });
-
-    await expect(db.insert(groups).values(sg1)).resolves.toBeDefined();
-    await expect(db.insert(groups).values(sg2)).resolves.toBeDefined();
-
-    const rows = await db.select().from(groups);
-    expect(rows).toHaveLength(2);
+    expect(await altaDeGrupo()).toEqual({ success: false, error: 'both_duplicate' });
   });
 
-  test('subgroup FK references correct plantation', async () => {
-    const plantation = createTestPlantation();
-    await db.insert(plantations).values(plantation);
+  test('el mismo código en otra parcela de la plantación está permitido', async () => {
+    await mockTestDb.insert(parcelas).values(
+      createTestParcela({ id: 'parc-2', plantacionId: PLANTACION_ID, nombre: 'Parcela 2', codigo: 'P2' }),
+    );
+    await grupoCreado();
 
-    const sg = createTestGroup({ plantacionId: plantation.id });
-    await db.insert(groups).values(sg);
+    const res = await altaDeGrupo({ parcelaId: 'parc-2' });
 
-    const rows = await db.select().from(groups).where(eq(groups.id, sg.id));
-    expect(rows[0].plantacionId).toBe(plantation.id);
+    expect(res.success).toBe(true);
+    expect(await mockTestDb.select().from(groups)).toHaveLength(2);
+  });
+});
+
+describe('finalizar y reactivar', () => {
+  test('finalizeGroup la pasa a finalizada y la deja pendiente de subir', async () => {
+    const id = await grupoCreado();
+    await markGroupSynced(id);
+
+    await finalizeGroup(id);
+
+    const fila = await leerGrupo(id);
+    expect(fila.estado).toBe('finalizada');
+    expect(fila.pendingSync).toBe(true);
+  });
+
+  test('reactivateGroup la vuelve a activa y la deja pendiente de subir', async () => {
+    const id = await grupoCreado();
+    await finalizeGroup(id);
+    await markGroupSynced(id);
+
+    await reactivateGroup(id);
+
+    const fila = await leerGrupo(id);
+    expect(fila.estado).toBe('activa');
+    expect(fila.pendingSync).toBe(true);
+  });
+});
+
+describe('markGroupSynced', () => {
+  // Forzar 'sincronizada' hacía que un grupo activa dejara de bloquear la finalización (#60).
+  test.each(['activa', 'finalizada'])('baja pendingSync y conserva el estado %s', async (estado) => {
+    const id = await grupoCreado();
+    if (estado === 'finalizada') await finalizeGroup(id);
+
+    await markGroupSynced(id);
+
+    const fila = await leerGrupo(id);
+    expect(fila.pendingSync).toBe(false);
+    expect(fila.estado).toBe(estado);
+  });
+});
+
+describe('getSyncableGroups', () => {
+  const grupoLocal = (id: string, codigo: string, extra: Partial<typeof groups.$inferInsert>) => ({
+    ...createTestGroup({ id, plantacionId: PLANTACION_ID, parcelaId: PARCELA_ID, nombre: `G ${codigo}`, codigo }),
+    ...extra,
+  });
+
+  test('devuelve todo grupo pendiente de la plantación, sin filtrar por estado ni por creador', async () => {
+    await mockTestDb.insert(groups).values([
+      grupoLocal('g-activa', 'GA', { estado: 'activa', pendingSync: true }),
+      grupoLocal('g-finalizada', 'GF', { estado: 'finalizada', pendingSync: true }),
+      grupoLocal('g-sincronizada', 'GS', { estado: 'sincronizada', pendingSync: true }),
+      grupoLocal('g-ajeno', 'GJ', { usuarioCreador: 'otro-tecnico', pendingSync: true }),
+      grupoLocal('g-al-dia', 'GD', { estado: 'finalizada', pendingSync: false }),
+    ]);
+
+    const ids = (await getSyncableGroups(PLANTACION_ID, 'user-tecnico-1')).map((g) => g.id).sort();
+
+    expect(ids).toEqual(['g-activa', 'g-ajeno', 'g-finalizada', 'g-sincronizada']);
+  });
+
+  test('no mezcla grupos de otra plantación', async () => {
+    await mockTestDb.insert(plantations).values(createTestPlantation({ id: 'plant-2' }));
+    await mockTestDb.insert(parcelas).values(createTestParcela({ id: 'parc-otra', plantacionId: 'plant-2' }));
+    await mockTestDb.insert(groups).values({
+      ...createTestGroup({ id: 'g-otra', plantacionId: 'plant-2', parcelaId: 'parc-otra' }),
+      pendingSync: true,
+    });
+
+    expect(await getSyncableGroups(PLANTACION_ID)).toEqual([]);
   });
 });

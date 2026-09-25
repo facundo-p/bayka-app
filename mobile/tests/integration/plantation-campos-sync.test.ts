@@ -399,6 +399,25 @@ describe('fila sin los campos nuevos pulleados (previa a 0024)', () => {
   });
 });
 
+// ─── Re-descarga con alta pendiente (#647) ─────────────────────────────────
+
+describe('re-descargar una plantación con alta pendiente', () => {
+  test('downloadPlantation conserva pendingSync y uploadOfflinePlantations la sigue subiendo', async () => {
+    await seedLocal({ pendingSync: true, descripcion: 'Editada offline', objetivoArboles: 15000 });
+    serverPlantation(PLANTATION_ID, { organizacion_id: 'org-1', creado_por: 'user-admin-1', created_at: NOW });
+
+    await downloadPlantation(mockServerState.plantations.get(PLANTATION_ID));
+
+    expect(await filaLocal()).toMatchObject({ pendingSync: true, descripcion: 'Editada offline', objetivoArboles: 15000 });
+
+    const [resultado] = await uploadOfflinePlantations();
+
+    expect(resultado).toMatchObject({ success: true });
+    expect(mockServerState.plantations.get(PLANTATION_ID)).toMatchObject({ descripcion: 'Editada offline', objetivo_arboles: 15000 });
+    expect((await filaLocal()).pendingSync).toBe(false);
+  });
+});
+
 // ─── Descartar ──────────────────────────────────────────────────────────────
 
 describe('descartar una edición offline', () => {
