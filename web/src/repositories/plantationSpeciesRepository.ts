@@ -1,4 +1,5 @@
 import { errorDeSupabase } from '../lib/clasificarError';
+import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
 
 /** Par especie + orden visual: la unidad de la lista que se manda al server. */
@@ -11,14 +12,18 @@ export const ERRORES_REEMPLAZO = {
   noAutorizado: 'NOT_AUTHORIZED',
   archivada: 'PLANTACION_ARCHIVADA',
   finalizada: 'PLANTACION_FINALIZADA',
+  especieConArboles: 'ESPECIE_CON_ARBOLES',
 } as const;
 
 export const MENSAJE_ERROR_REEMPLAZO = 'No se pudo guardar el cambio de especies.';
+
+const MENSAJE_ESPECIE_CON_ARBOLES = 'La especie ya tiene árboles registrados: no se puede quitar.';
 
 const MENSAJES_ERROR_REEMPLAZO: Record<string, string> = {
   [ERRORES_REEMPLAZO.noAutorizado]: 'Tu usuario no tiene permisos para cambiar las especies.',
   [ERRORES_REEMPLAZO.archivada]: 'La plantación está archivada: no admite cambios.',
   [ERRORES_REEMPLAZO.finalizada]: 'La plantación está finalizada: no admite cambios.',
+  [ERRORES_REEMPLAZO.especieConArboles]: MENSAJE_ESPECIE_CON_ARBOLES,
 };
 
 type RespuestaReemplazo = { success?: boolean; error?: string } | null;
@@ -39,7 +44,7 @@ export async function agregarEspecie(
 
 /**
  * Deshabilita la especie en la plantación. La pantalla bloquea esta acción
- * si la especie tiene árboles registrados (paridad con mobile).
+ * si la especie tiene árboles registrados, y el server también (055).
  */
 export async function quitarEspecie(plantationId: string, speciesId: string): Promise<void> {
   const { error } = await supabase
@@ -47,6 +52,8 @@ export async function quitarEspecie(plantationId: string, speciesId: string): Pr
     .delete()
     .eq('plantation_id', plantationId)
     .eq('species_id', speciesId);
+  // Los árboles pudieron llegar después de que la pantalla cargó (#632).
+  if (error?.code === PG_ERROR.RESTRICT_VIOLATION) throw new Error(MENSAJE_ESPECIE_CON_ARBOLES);
   if (error) throw errorDeSupabase(error);
 }
 

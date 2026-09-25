@@ -114,6 +114,10 @@ function setupSupabaseDefaults() {
       where: jest.fn().mockResolvedValue(undefined),
     }),
   });
+
+  (mockDb.delete as jest.Mock).mockReturnValue({
+    where: jest.fn().mockResolvedValue(undefined),
+  });
 }
 
 const TWO_PLANTATIONS = [{ id: 'p-1', lugar: 'Zona A' }, { id: 'p-2', lugar: 'Zona B' }];

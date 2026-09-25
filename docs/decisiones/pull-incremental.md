@@ -133,7 +133,7 @@ sigue full y no hay nada que arreglar.
 | `groups` | **incremental** | Segunda en peso, mismo cambio |
 | `parcelas` | full | Pocas filas; su `updated_at` es del reloj del device |
 | `plantation_users` | full — **no se puede** | El replace destructivo detecta revocados por diferencia de conjuntos (`pullService.ts:293-320`): necesita la lista completa |
-| `plantation_species` | full — **no se puede** | Cero columnas de tiempo, y `saveSpeciesConfig` es delete-all + re-insert |
+| `plantation_species` | full — **no se puede** | Cero columnas de tiempo, y el pull quita las especies ausentes por diferencia de conjuntos (#632): necesita la lista completa |
 | `species` | full | Catálogo global chico |
 
 Las dos que no se pueden son justamente las chicas. No se pierde nada.

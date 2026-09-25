@@ -1,7 +1,7 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
-import { eq, and, sql, inArray } from 'drizzle-orm';
+import { eq, and, sql, inArray, notInArray } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
@@ -63,7 +63,10 @@ function alBajarPagina(onProgress: OnPhaseProgress | undefined, phase: DownloadP
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
-/** Plantación creada offline que todavía no subió: el server no la conoce aún. */
+/**
+ * Plantación creada offline que todavía no subió: el server no la conoce aún, así que
+ * un replace borraría lo local (la membresía del creador, #67; sus especies, #632).
+ */
 async function tienePushPendiente(plantacionId: string): Promise<boolean> {
   const [local] = await db
     .select({ pendingSync: plantations.pendingSync })
@@ -402,12 +405,7 @@ async function pullPlantationUsers(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
-  // Plantación offline sin pushear aún: el server no tiene filas y el replace destructivo borraría la membresía local del creador (#67); recién es autoridad si la plantación ya existe allá.
-  const [localPlant] = await db
-    .select({ pendingSync: plantations.pendingSync })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-  if (localPlant?.pendingSync) {
+  if (await tienePushPendiente(plantacionId)) {
     syncLog.info('Pull plantation_users: plantación pendiente de push, se omite el replace');
     emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, 0);
     return;
@@ -471,10 +469,23 @@ async function conEspecieLocal(filas: any[], fase: DownloadPhase): Promise<any[]
   return escribibles;
 }
 
+/** Una especie deshabilitada en el server deja de ofrecerse en el teléfono (#632). */
+async function quitarEspeciesAusentes(plantacionId: string, remotas: string[]): Promise<void> {
+  const dePlantacion = eq(plantationSpecies.plantacionId, plantacionId);
+  await db.delete(plantationSpecies).where(
+    remotas.length > 0 ? and(dePlantacion, notInArray(plantationSpecies.especieId, remotas)) : dePlantacion,
+  );
+}
+
 async function pullPlantationSpecies(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
+  if (await tienePushPendiente(plantacionId)) {
+    syncLog.info('Pull plantation_species: plantación pendiente de push, se omite el replace');
+    emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, 0);
+    return;
+  }
   const { data: remotePs, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_species').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.especiesPlantacion),
@@ -488,6 +499,9 @@ async function pullPlantationSpecies(
   const all = remotePs ?? [];
   syncLog.info('Pull plantation_species:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
+
+  // Fuera de la transacción del upsert: si se corta en el medio, el próximo pull lo completa.
+  await quitarEspeciesAusentes(plantacionId, all.map((ps: any) => ps.species_id));
   if (all.length === 0) return;
 
   const escribibles = await conEspecieLocal(all, DOWNLOAD_PHASE.especiesPlantacion);

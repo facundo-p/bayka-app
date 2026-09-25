@@ -274,6 +274,34 @@ describe('SyncService — offline functions', () => {
       expect(failResults[0].detail).toContain(PG_ERROR.UNDEFINED_TABLE);
     });
 
+    it('si falla el upsert de especies, la plantación queda pendiente y el fallo se surfacea (#632)', async () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([fakePendingPlantation]),
+        }),
+      });
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue(fakePlantationSpecies),
+        }),
+      });
+      (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
+        if (table === 'plantations') return { insert: jest.fn().mockResolvedValue({ error: null }) };
+        if (table === 'plantation_species') {
+          return { upsert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.INSUFFICIENT_PRIVILEGE, message: 'rls' } }) };
+        }
+        return { select: jest.fn().mockResolvedValue({ data: [], error: null }) };
+      });
+
+      const res = await uploadOfflinePlantations();
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+      expect(res).toHaveLength(1);
+      expect(res[0].success).toBe(false);
+      if (res[0].success) return;
+      expect(res[0].error).toBe('PERMISSION');
+    });
+
     it('Test 6b: el insert que LANZA (no devuelve {error}) se surfacea como NETWORK', async () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
