@@ -21,7 +21,7 @@ import TreeConfigModal from '../components/TreeConfigModal';
 import ReadOnlyTreeView from '../components/ReadOnlyTreeView';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors } from '../theme';
 import { GROUP_TIPO_LABELS, type GroupTipo } from '../constants/groupTipo';
 import { styles } from './TreeRegistrationScreen.styles';
 import ScreenContainer from '../components/ScreenContainer';

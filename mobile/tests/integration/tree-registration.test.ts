@@ -26,7 +26,6 @@ let subgroupCodigo: string;
 let species1Id: string;
 let species1Codigo: string;
 let species2Id: string;
-let species2Codigo: string;
 
 beforeAll(() => {
   const result = createTestDb();
@@ -55,7 +54,6 @@ beforeEach(async () => {
 
   const sp2 = createTestSpecies({ codigo: 'PIN', nombre: 'Pinus' });
   species2Id = sp2.id;
-  species2Codigo = sp2.codigo;
   await db.insert(species).values(sp2);
 
   const sg = createTestGroup({ plantacionId: plantationId, codigo: 'L01', nombre: 'Linea 01' });
@@ -202,6 +200,7 @@ describe('Tree registration', () => {
       .select({ cnt: count() })
       .from(trees)
       .where(eq(trees.groupId, groupId));
+    expect(nnCount.cnt).toBe(1);
     // Los N/N deben poder encontrarse vía isNull
     const nnRows = await db
       .select({ id: trees.id })

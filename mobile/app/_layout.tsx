@@ -81,7 +81,7 @@ export default function RootLayout() {
         router.replace('/(tecnico)/plantaciones');
       }
     }
-  }, [success, loading, session, role, segments, fontsLoaded]);
+  }, [success, loading, session, role, segments, fontsLoaded, router]);
 
   // Error de migración: sin recuperación posible.
   if (error) {

@@ -7,11 +7,7 @@ jest.mock('drizzle-orm/expo-sqlite', () => ({
 
 // Chain mock helpers — created fresh per test via factory
 let mockInsertValues: jest.Mock;
-let mockUpdateSet: jest.Mock;
 let mockUpdateWhere: jest.Mock;
-let mockSelectFrom: jest.Mock;
-let mockSelectWhere: jest.Mock;
-let mockSelectOrderBy: jest.Mock;
 let mockSelectLimit: jest.Mock;
 
 jest.mock('../../src/database/client', () => ({

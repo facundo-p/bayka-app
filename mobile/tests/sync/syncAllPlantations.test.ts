@@ -162,6 +162,7 @@ describe('syncAllPlantations', () => {
     expect(result[0].results).toEqual([]);
     expect(result[1].plantationId).toBe('p-2');
     expect(result[1].plantationName).toBe('Zona B');
+    expect(mockNotifyDataChanged).toHaveBeenCalled();
   });
 
   it('progress callback receives correct plantation name and index', async () => {

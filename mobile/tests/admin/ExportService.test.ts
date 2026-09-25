@@ -42,7 +42,7 @@ import { exportToCSV, exportToExcel } from '../../src/services/ExportService';
 import { getExportRows } from '../../src/queries/exportQueries';
 import { pullSpeciesFromServer } from '../../src/services/sync/catalogoDeEspecies';
 import * as Sharing from 'expo-sharing';
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 
 const mockGetExportRows = getExportRows as jest.Mock;
 const mockShareAsync = Sharing.shareAsync as jest.Mock;
