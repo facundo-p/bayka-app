@@ -56,8 +56,9 @@ El tecnico realiza el trabajo de registro en terreno:
 | **Parcelas** | Nivel intermedio dentro de una plantacion | nombre, codigo (unico por plantacion) |
 | **Grupos** | Lineas o agrupaciones de arboles dentro de una parcela | nombre, codigo (unico por parcela), tipo (linea/parcela), estado (activa/finalizada/sincronizada) |
 | **Arboles** | Registro individual de arbol | especieId, posicion, subId, fotoUrl, globalId, usuarioRegistro |
-| **EspeciesPlantacion** | Especies habilitadas por plantacion | plantacionId, especieId, ordenVisual |
-| **OrdenEspeciesUsuario** | Preferencia de orden de especies por usuario | userId, plantacionId, especieId, ordenVisual |
+| **EspeciesPlantacion** | Especies habilitadas por plantacion; la botonera las ordena por nombre | plantacionId, especieId |
+| **OrdenEspeciesUsuario** | Orden personal de la botonera de cada usuario (sin el, por nombre) | userId, plantacionId, especieId, ordenVisual |
+| **CambiosEspeciesPendientes** | Altas y bajas de especies sin subir (solo local) | plantacionId, especieId, tipo (alta/baja) |
 | **UsuariosPlantacion** | Asignacion de tecnicos | plantationId, userId, rolEnPlantacion |
 
 ### Jerarquia de datos

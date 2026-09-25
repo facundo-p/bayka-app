@@ -2,7 +2,7 @@
 -- rechaza sola, orden alfabético, gates de 049; sync_subgroup re-habilita la
 -- especie de los árboles que suben (058, #635).
 begin;
-select plan(16);
+select plan(17);
 
 insert into organizations (id, nombre) values
   ('b3600000-0000-0000-0000-000000000001', 'Org Test 36'),
@@ -166,6 +166,25 @@ select is((select ids from ids_36),
   array['b3600000-0000-0000-0000-0000000000e1', 'b3600000-0000-0000-0000-0000000000e3',
         'b3600000-0000-0000-0000-0000000000e2', 'b3600000-0000-0000-0000-0000000000e4']::uuid[],
   'la especie vuelve a estar habilitada, en su lugar alfabético');
+
+-- ── Colación ─────────────────────────────────────────────────────────────────
+
+reset role;
+insert into species (id, codigo, nombre) values
+  ('b3600000-0000-0000-0000-0000000000e5', 'T36V', 'Álamo blanco 36'),
+  ('b3600000-0000-0000-0000-0000000000e6', 'T36U', 'aromo 36'),
+  ('b3600000-0000-0000-0000-0000000000e7', 'T36T', 'Zarzamora 36');
+insert into plantation_species (plantation_id, species_id, orden_visual) values
+  ('b3600000-0000-0000-0000-000000000003', 'b3600000-0000-0000-0000-0000000000e7', 0),
+  ('b3600000-0000-0000-0000-000000000003', 'b3600000-0000-0000-0000-0000000000e6', 1),
+  ('b3600000-0000-0000-0000-000000000003', 'b3600000-0000-0000-0000-0000000000e5', 2);
+select ordenar_especies_plantacion('b3600000-0000-0000-0000-000000000003');
+select is(
+  (select array_agg(species_id order by orden_visual) from plantation_species
+    where plantation_id = 'b3600000-0000-0000-0000-000000000003'),
+  array['b3600000-0000-0000-0000-0000000000e5', 'b3600000-0000-0000-0000-0000000000e6',
+        'b3600000-0000-0000-0000-0000000000e7']::uuid[],
+  'acentos y minúsculas en su lugar: Álamo, aromo, Zarzamora');
 
 select * from finish();
 rollback;

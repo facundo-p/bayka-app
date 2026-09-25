@@ -6,6 +6,7 @@ import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueries';
+import { porNombre } from '../utils/ordenEspecies';
 import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 
@@ -121,7 +122,7 @@ export async function getPlantationSpeciesConfig(
     .innerJoin(species, eq(plantationSpecies.especieId, species.id))
     .where(eq(plantationSpecies.plantacionId, plantacionId));
 
-  return rows.sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return porNombre(rows);
 }
 
 /** Técnicos asignados a una plantación; filtra por rol_en_plantacion='tecnico' porque los admins también son miembros y no deben aparecer acá (#67). */

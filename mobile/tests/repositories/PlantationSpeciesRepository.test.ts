@@ -8,11 +8,11 @@ jest.mock('../../src/database/client', () => {
   };
 });
 
-let mockOrderBy: jest.Mock;
+let mockWhere: jest.Mock;
 let mockDb: any;
 
 beforeAll(() => {
-  mockOrderBy = jest.fn().mockResolvedValue([]);
+  mockWhere = jest.fn().mockResolvedValue([]);
   mockDb = buildMockDb([]);
 });
 
@@ -21,9 +21,7 @@ function buildMockDb(selectResults: any[]) {
     select: jest.fn(() => ({
       from: jest.fn(() => ({
         innerJoin: jest.fn(() => ({
-          where: jest.fn(() => ({
-            orderBy: mockOrderBy,
-          })),
+          where: mockWhere,
         })),
       })),
     })),
@@ -32,7 +30,7 @@ function buildMockDb(selectResults: any[]) {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockOrderBy = jest.fn().mockResolvedValue([]);
+  mockWhere = jest.fn().mockResolvedValue([]);
   mockDb = buildMockDb([]);
 });
 
@@ -40,6 +38,15 @@ import { getSpeciesForPlantation } from '../../src/repositories/PlantationSpecie
 
 describe('PlantationSpeciesRepository', () => {
   describe('getSpeciesForPlantation', () => {
+    it('ordena por nombre sin distinguir acentos ni mayúsculas (#635)', async () => {
+      const fila = (nombre: string) => ({ id: nombre, plantacionId: 'p', especieId: nombre, ordenVisual: 0, codigo: 'X', nombre });
+      mockWhere.mockResolvedValue([fila('Zarzamora'), fila('aromo'), fila('Álamo'), fila('Espinillo')]);
+
+      const result = await getSpeciesForPlantation('p');
+
+      expect(result.map((r) => r.nombre)).toEqual(['Álamo', 'aromo', 'Espinillo', 'Zarzamora']);
+    });
+
     it('returns species list joined with species table for given plantation', async () => {
       const expectedRows = [
         {
@@ -59,7 +66,7 @@ describe('PlantationSpeciesRepository', () => {
           nombre: 'Eucalyptus',
         },
       ];
-      mockOrderBy.mockResolvedValue(expectedRows);
+      mockWhere.mockResolvedValue(expectedRows);
 
       const result = await getSpeciesForPlantation('plant-1');
 
@@ -68,7 +75,7 @@ describe('PlantationSpeciesRepository', () => {
     });
 
     it('returns empty array when plantation has no species', async () => {
-      mockOrderBy.mockResolvedValue([]);
+      mockWhere.mockResolvedValue([]);
 
       const result = await getSpeciesForPlantation('plant-no-species');
 
@@ -76,9 +83,9 @@ describe('PlantationSpeciesRepository', () => {
     });
 
     it('calls innerJoin with species table (verifies join is used)', async () => {
-      mockOrderBy.mockResolvedValue([]);
+      mockWhere.mockResolvedValue([]);
       const mockInnerJoin = jest.fn(() => ({
-        where: jest.fn(() => ({ orderBy: mockOrderBy })),
+        where: mockWhere,
       }));
       mockDb.select = jest.fn(() => ({
         from: jest.fn(() => ({ innerJoin: mockInnerJoin })),
@@ -98,7 +105,7 @@ describe('PlantationSpeciesRepository', () => {
         codigo: 'ANC',
         nombre: 'Anchico',
       };
-      mockOrderBy.mockResolvedValue([row]);
+      mockWhere.mockResolvedValue([row]);
 
       const result = await getSpeciesForPlantation('plant-1');
 

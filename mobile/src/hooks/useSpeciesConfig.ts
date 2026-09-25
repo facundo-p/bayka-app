@@ -1,13 +1,14 @@
 /**
  * useSpeciesConfig — all data logic for ConfigureSpeciesScreen.
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useConfirm } from './useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getAllSpecies, getPlantationSpeciesConfig, hasTreesForSpecies } from '../queries/adminQueries';
 import { guardarEspeciesDePlantacion } from '../services/EspeciesDePlantacionService';
 import { colors } from '../theme';
 import { cambiosDeLaSeleccion, mensajeEspeciesConArboles } from '../utils/cambiosDeEspecies';
+import { porNombre } from '../utils/ordenEspecies';
 
 export type SpeciesItem = {
   especieId: string;
@@ -17,19 +18,18 @@ export type SpeciesItem = {
   hasExistingTrees: boolean;
 };
 
-async function cargarItems(plantacionId: string): Promise<SpeciesItem[]> {
+/** `conArbolesEnServer`: bajas que el server rechazó por árboles que el teléfono no tiene. */
+async function cargarItems(plantacionId: string, conArbolesEnServer: ReadonlySet<string>): Promise<SpeciesItem[]> {
   const [allSpecies, currentConfig] = await Promise.all([getAllSpecies(), getPlantationSpeciesConfig(plantacionId)]);
   const habilitadas = new Set(currentConfig.map((c) => c.especieId));
   const treeChecks = await Promise.all(allSpecies.map((sp) => hasTreesForSpecies(plantacionId, sp.id)));
-  return allSpecies
-    .map((sp, i) => ({
-      especieId: sp.id,
-      nombre: sp.nombre,
-      codigo: sp.codigo,
-      enabled: habilitadas.has(sp.id),
-      hasExistingTrees: treeChecks[i],
-    }))
-    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  return porNombre(allSpecies.map((sp, i) => ({
+    especieId: sp.id,
+    nombre: sp.nombre,
+    codigo: sp.codigo,
+    enabled: habilitadas.has(sp.id),
+    hasExistingTrees: treeChecks[i] || conArbolesEnServer.has(sp.id),
+  })));
 }
 
 /** Una especie con árboles en el teléfono no se puede quitar. */
@@ -42,6 +42,7 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
   const [iniciales, setIniciales] = useState<SpeciesItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const conArbolesEnServer = useRef(new Set<string>());
 
   const mostrarError = (e: any, fallback: string) =>
     showInfoDialog(confirm.show, 'Error', e?.message ?? fallback, 'alert-circle-outline', colors.danger);
@@ -50,7 +51,7 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
     if (!plantacionId) return;
     setLoading(true);
     try {
-      const cargados = await cargarItems(plantacionId);
+      const cargados = await cargarItems(plantacionId, conArbolesEnServer.current);
       setItems(cargados);
       setIniciales(cargados);
     } catch (e: any) {
@@ -81,9 +82,11 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
     try {
       const conArboles = await guardarEspeciesDePlantacion(plantacionId, cambiosDeLaSeleccion(iniciales, items), !!pendingSync);
       if (conArboles.length > 0) {
-        // La pantalla queda abierta: muestra la especie habilitada de nuevo.
+        // La pantalla queda abierta: muestra la especie habilitada de nuevo, con candado.
+        conArboles.forEach((e) => conArbolesEnServer.current.add(e.especieId));
         await loadData();
-        showInfoDialog(confirm.show, 'Especies con árboles', mensajeEspeciesConArboles(conArboles), 'leaf-outline', colors.info);
+        const nombres = conArboles.map((e) => e.nombre);
+        showInfoDialog(confirm.show, 'Especies con árboles', mensajeEspeciesConArboles(nombres), 'leaf-outline', colors.info);
         return;
       }
       if (onClose) {

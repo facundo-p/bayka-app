@@ -306,8 +306,8 @@ idempotente, y el pull no borra un alta pendiente ni devuelve una baja pendiente
 Mandar la lista entera pisaría lo que la web cambió en el medio. Una baja de una
 especie con árboles la rechaza el server sola: el teléfono vuelve a habilitarla y
 el resumen del sync avisa. Si igual llegan árboles de una especie quitada,
-`sync_subgroup` la re-habilita. Una plantación creada offline no anota nada: su
-alta sube todas sus especies como altas. El orden de la botonera es alfabético por
+`sync_subgroup` la re-habilita. Una plantación creada offline anota solo las
+bajas: su alta sube todas sus especies como altas, junto con esas bajas. El orden de la botonera es alfabético por
 nombre (el orden personal de cada técnico se mantiene).
 
 ---

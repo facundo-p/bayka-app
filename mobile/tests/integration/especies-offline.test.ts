@@ -71,7 +71,13 @@ jest.mock('../../src/supabase/client', () => {
 
   return {
     supabase: {
-      from: (tabla: string) => ({ select: () => builder(tabla) }),
+      from: (tabla: string) => ({
+        select: () => builder(tabla),
+        insert: (fila: any) => {
+          mockServerState[tabla]?.set(fila.id, fila);
+          return Promise.resolve({ error: null });
+        },
+      }),
       rpc: (nombre: string, args: any) => {
         if (nombre !== 'aplicar_cambios_especies') return Promise.resolve({ data: null, error: { code: 'PGRST202' } });
         mockRpc.llamadas.push(args);
@@ -100,6 +106,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { guardarEspeciesDePlantacion } from '../../src/services/EspeciesDePlantacionService';
 import { uploadPendingSpeciesChanges } from '../../src/services/sync/cambiosDeEspecies';
+import { uploadOfflinePlantations } from '../../src/services/sync/preSteps';
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { getResumenDePendientes } from '../../src/queries/catalogQueries';
 
@@ -175,7 +182,7 @@ describe('guardar especies', () => {
     mockConArboles.add(PINO);
     const conArboles = await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [PINO] }, false);
 
-    expect(conArboles).toEqual([PINO]);
+    expect(conArboles).toEqual([{ especieId: PINO, nombre: PINO }]);
     expect(await localesHabilitadas()).toEqual([ALAMO, PINO, ROBLE].sort());
     expect(delServer()).toEqual([ALAMO, PINO, ROBLE].sort());
     expect(await pendientes()).toEqual([]);
@@ -190,6 +197,31 @@ describe('guardar especies', () => {
     expect(await pendientes()).toEqual([]);
   });
 
+  it('un rechazo de la plantación deshace solo este guardado: lo pendiente de antes sigue', async () => {
+    mockNet.conectado = false;
+    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [], bajas: [PINO] }, false);
+    // La web finalizó la plantación mientras tanto.
+    mockNet.conectado = true;
+    mockRpc.rechazo = 'PLANTACION_FINALIZADA';
+
+    await expect(guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [] }, false)).rejects.toThrow();
+
+    expect(await localesHabilitadas()).toEqual([ROBLE]);
+    expect(await pendientes()).toEqual([`baja:${PINO}`]);
+  });
+
+  it('deshacer un guardado que pisó un pendiente contrario lo restaura', async () => {
+    mockNet.conectado = false;
+    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [], bajas: [PINO] }, false);
+    mockNet.conectado = true;
+    mockRpc.rechazo = 'PLANTACION_FINALIZADA';
+
+    await expect(guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [PINO], bajas: [] }, false)).rejects.toThrow();
+
+    expect(await localesHabilitadas()).toEqual([ROBLE]);
+    expect(await pendientes()).toEqual([`baja:${PINO}`]);
+  });
+
   it('online pero sin respuesta: queda pendiente, sin error', async () => {
     mockRpc.sinRed = true;
     await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [] }, false);
@@ -198,13 +230,26 @@ describe('guardar especies', () => {
     expect(await pendientes()).toEqual([`alta:${ALAMO}`]);
   });
 
-  it('una plantación sin subir no anota pendientes: su alta sube todas las especies', async () => {
+  it('una plantación sin subir anota solo las bajas: su alta sube todas las especies', async () => {
     await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
-    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [] }, true);
+    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [PINO] }, true);
 
-    expect(await localesHabilitadas()).toEqual([ALAMO, PINO, ROBLE].sort());
-    expect(await pendientes()).toEqual([]);
+    expect(await localesHabilitadas()).toEqual([ALAMO, ROBLE].sort());
+    expect(await pendientes()).toEqual([`baja:${PINO}`]);
     expect(mockRpc.llamadas).toHaveLength(0);
+  });
+
+  it('una baja de una plantación sin subir viaja con su alta: si un intento anterior ya subió la especie, se quita', async () => {
+    // Un intento anterior subió la plantación con roble y pino, y se perdió la respuesta.
+    await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
+    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [], bajas: [PINO] }, true);
+
+    const [resultado] = await uploadOfflinePlantations();
+
+    expect(resultado.success).toBe(true);
+    expect(mockRpc.llamadas).toEqual([{ p_plantacion: PLANTACION_ID, p_altas: [ROBLE], p_bajas: [PINO] }]);
+    expect(delServer()).toEqual([ROBLE]);
+    expect(await pendientes()).toEqual([]);
   });
 
   it('el último cambio sobre una especie gana', async () => {

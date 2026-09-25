@@ -526,6 +526,7 @@ export const RPC: Record<string, unknown> = {
   // Sin estado: el modal cierra bien, pero la demo no persiste el cambio.
   archivar_plantacion: { success: true },
   desarchivar_plantacion: { success: true },
+  aplicar_cambios_especies: { success: true, rechazadas: [] },
   // Siempre la variante más completa del modal (con datos, escribir el nombre).
   previsualizar_eliminacion_plantacion: {
     success: true,

@@ -9,11 +9,13 @@ import { syncLog } from '../utils/syncLogger';
 import { errorDeRechazo } from './ReemplazoConfiguracionService';
 import { esRechazoDePlantacion, subirCambiosDeEspecies, type SubidaDeEspecies } from './sync/cambiosDeEspecies';
 import {
-  getNombresDeEspecies,
+  deshacerGuardado,
+  getCambiosPendientes,
+  getEspeciesPorId,
   guardarCambiosDeEspecies,
-  registrarRespuesta,
   sinCambios,
   type CambiosDeEspecies,
+  type EspecieConNombre,
 } from '../repositories/CambiosDeEspeciesRepository';
 
 async function subirSiHayConexion(plantacionId: string): Promise<SubidaDeEspecies | null> {
@@ -28,26 +30,27 @@ async function subirSiHayConexion(plantacionId: string): Promise<SubidaDeEspecie
 }
 
 /**
- * Devuelve los nombres de las especies que se quisieron quitar y el server mantuvo
- * porque ya tienen árboles: quedan habilitadas de nuevo. Si la plantación no admite
- * el cambio, lo deshace y lanza el motivo.
+ * Devuelve las especies que se quisieron quitar y el server mantuvo porque ya tienen
+ * árboles: quedan habilitadas de nuevo. Si la plantación no admite el cambio, deshace
+ * este guardado (lo pendiente de antes sigue pendiente) y lanza el motivo.
  */
 export async function guardarEspeciesDePlantacion(
   plantacionId: string,
   cambios: CambiosDeEspecies,
   pendingSync: boolean,
-): Promise<string[]> {
+): Promise<EspecieConNombre[]> {
   if (sinCambios(cambios)) return [];
-  await guardarCambiosDeEspecies(plantacionId, cambios, !pendingSync);
+  const previos = await getCambiosPendientes(plantacionId);
+  await guardarCambiosDeEspecies(plantacionId, cambios, pendingSync);
   notifyDataChanged();
   if (pendingSync) return [];
   const subida = await subirSiHayConexion(plantacionId);
   if (!subida) return [];
   if (esRechazoDePlantacion(subida)) {
-    await registrarRespuesta(plantacionId, subida.enviados, subida.enviados);
+    await deshacerGuardado(plantacionId, cambios, previos);
     notifyDataChanged();
     throw errorDeRechazo(subida.rechazo);
   }
   if (subida.conArboles.length > 0) notifyDataChanged();
-  return getNombresDeEspecies(subida.conArboles);
+  return getEspeciesPorId(subida.conArboles);
 }

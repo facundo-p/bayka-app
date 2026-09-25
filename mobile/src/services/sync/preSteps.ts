@@ -28,7 +28,8 @@ import {
   uploadPendingSpeciesChanges,
   type RespuestaDeCambios,
 } from './cambiosDeEspecies';
-import { registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
+import { getCambiosPendientes, registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
+import { CAMBIO_DE_ESPECIE } from '../../constants/cambioDeEspecie';
 
 type PlantacionLocal = typeof plantations.$inferSelect;
 
@@ -95,26 +96,29 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
 
 /**
  * Sus especies van como altas: si un intento anterior ya subió la plantación y la web le
- * sumó especies, no se pisan. Sin especies la plantación no es usable: un fallo la deja
- * pendiente para reintentar (#632).
+ * sumó especies, no se pisan. Las bajas anotadas desde ese intento van como bajas. Sin
+ * especies la plantación no es usable: un fallo la deja pendiente para reintentar (#632).
  */
 async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | null> {
   const locales = await db
     .select({ especieId: plantationSpecies.especieId })
     .from(plantationSpecies)
     .where(eq(plantationSpecies.plantacionId, plantacionId));
-  if (locales.length === 0) return null;
+  const bajas = (await getCambiosPendientes(plantacionId)).filter((c) => c.tipo === CAMBIO_DE_ESPECIE.baja);
+  if (locales.length === 0 && bajas.length === 0) return null;
   let respuesta: RespuestaDeCambios;
   try {
-    respuesta = await aplicarCambiosEnServidor(plantacionId, { altas: locales.map((ps) => ps.especieId), bajas: [] });
+    respuesta = await aplicarCambiosEnServidor(plantacionId, {
+      altas: locales.map((ps) => ps.especieId),
+      bajas: bajas.map((c) => c.especieId),
+    });
   } catch (e: any) {
     relanzarSiEsCancelacion(e);
     syncLog.error('Upload plantation_species failed:', plantacionId, e?.message);
     return classifyServerError(e);
   }
   if (!respuesta?.success) return falloDeAltaRechazada(respuesta?.error ?? '');
-  const rechazados = cambiosRechazados(respuesta.rechazadas ?? []);
-  if (rechazados.length > 0) await registrarRespuesta(plantacionId, [], rechazados);
+  await registrarRespuesta(plantacionId, bajas, cambiosRechazados(respuesta.rechazadas ?? []));
   return null;
 }
 

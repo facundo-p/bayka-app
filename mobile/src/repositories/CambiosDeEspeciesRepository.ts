@@ -10,6 +10,7 @@ import { and, count, eq, inArray, isNull } from 'drizzle-orm';
 import { CAMBIO_DE_ESPECIE, type CambioDeEspecie } from '../constants/cambioDeEspecie';
 import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 import { localNow } from '../utils/dateUtils';
+import { porNombre } from '../utils/ordenEspecies';
 
 /** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
 type DbExecutor = Pick<typeof db, 'insert' | 'delete' | 'select' | 'update'>;
@@ -47,18 +48,50 @@ async function anotar(exec: DbExecutor, plantacionId: string, especieIds: string
     });
 }
 
-/** Aplica en SQLite y lo anota para subir. Una plantación sin subir no anota: su alta sube todas sus especies. */
+async function olvidar(exec: DbExecutor, plantacionId: string, especieIds: string[]): Promise<void> {
+  if (especieIds.length === 0) return;
+  await exec.delete(cambiosEspeciesPendientes).where(and(
+    eq(cambiosEspeciesPendientes.plantacionId, plantacionId),
+    inArray(cambiosEspeciesPendientes.especieId, especieIds),
+  ));
+}
+
+/**
+ * Aplica en SQLite y lo anota para subir. Una plantación sin subir (pendingSync) anota
+ * solo las bajas: su alta sube todas sus especies como altas, pero si un intento
+ * anterior ya las subió, una baja posterior se perdería.
+ */
 export async function guardarCambiosDeEspecies(
   plantacionId: string,
   { altas, bajas }: CambiosDeEspecies,
-  anotarParaSubir: boolean,
+  pendingSync: boolean,
 ): Promise<void> {
   await enTransaccion(async (tx) => {
     await habilitarLocal(tx, plantacionId, altas);
     await deshabilitarLocal(tx, plantacionId, bajas);
-    if (!anotarParaSubir) return;
-    await anotar(tx, plantacionId, altas, CAMBIO_DE_ESPECIE.alta);
+    if (pendingSync) await olvidar(tx, plantacionId, altas);
+    else await anotar(tx, plantacionId, altas, CAMBIO_DE_ESPECIE.alta);
     await anotar(tx, plantacionId, bajas, CAMBIO_DE_ESPECIE.baja);
+  });
+}
+
+/**
+ * Deshace un guardado que el server no admitió: SQLite y el registro vuelven a como
+ * estaban antes de él. Lo pendiente de antes sigue pendiente.
+ */
+export async function deshacerGuardado(
+  plantacionId: string,
+  { altas, bajas }: CambiosDeEspecies,
+  previos: CambioPendiente[],
+): Promise<void> {
+  const tocadas = [...altas, ...bajas];
+  const aRestaurar = comoAltasYBajas(previos.filter((p) => tocadas.includes(p.especieId)));
+  await enTransaccion(async (tx) => {
+    await deshabilitarLocal(tx, plantacionId, altas);
+    await habilitarLocal(tx, plantacionId, bajas);
+    await olvidar(tx, plantacionId, tocadas);
+    await anotar(tx, plantacionId, aRestaurar.altas, CAMBIO_DE_ESPECIE.alta);
+    await anotar(tx, plantacionId, aRestaurar.bajas, CAMBIO_DE_ESPECIE.baja);
   });
 }
 
@@ -134,9 +167,11 @@ export async function reapuntarCambiosDeEspecie(exec: DbExecutor, desde: string,
     .where(eq(cambiosEspeciesPendientes.especieId, desde));
 }
 
-export async function getNombresDeEspecies(especieIds: string[]): Promise<string[]> {
+export type EspecieConNombre = { especieId: string; nombre: string };
+
+export async function getEspeciesPorId(especieIds: string[]): Promise<EspecieConNombre[]> {
   if (especieIds.length === 0) return [];
-  const filas = await db.select({ nombre: species.nombre }).from(species)
-    .where(inArray(species.id, especieIds)).orderBy(species.nombre);
-  return filas.map((f) => f.nombre);
+  const filas = await db.select({ especieId: species.id, nombre: species.nombre }).from(species)
+    .where(inArray(species.id, especieIds));
+  return porNombre(filas);
 }
