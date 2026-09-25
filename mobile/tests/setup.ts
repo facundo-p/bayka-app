@@ -29,6 +29,11 @@ jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn().mockReturnValue(jest.fn()),
 }));
 
+// Módulo nativo: cada test toma el onChange de la llamada a open y simula la elección.
+jest.mock('@react-native-community/datetimepicker', () => ({
+  DateTimePickerAndroid: { open: jest.fn(), dismiss: jest.fn() },
+}));
+
 jest.mock('expo-crypto', () => ({
   randomUUID: jest.fn(() => 'test-uuid-' + Math.random().toString(36).substring(2, 10)),
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },

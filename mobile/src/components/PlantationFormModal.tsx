@@ -6,7 +6,6 @@ import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { buscarDuplicada } from '../utils/duplicadoDePlantacion';
 import {
   aCamposDePlantacion,
-  formatearFechaTipeada,
   validarFormulario,
   valoresIniciales,
   type PlantacionEditable,
@@ -14,6 +13,7 @@ import {
 } from '../utils/formularioDePlantacion';
 import type { Plantation } from '../types/plantation';
 import FormField from './FormField';
+import CampoFecha from './CampoFecha';
 import SwitchRow from './SwitchRow';
 import EntityFormModal from './EntityFormModal';
 import FormActions from './FormActions';
@@ -50,12 +50,12 @@ function DatosDeLaPlantacion({ valores, set, editable, duplicada, editando }: Se
       {duplicada ? <AvisoPlantacionDuplicada lugar={duplicada.lugar} periodo={duplicada.periodo} editando={editando} /> : null}
       <View style={styles.fila}>
         <View style={styles.columna}>
-          <FormField
+          <CampoFecha
+            testID="fecha-inicio"
             label="Fecha de inicio (opcional)"
             value={valores.fechaInicio}
-            onChangeText={(texto) => set('fechaInicio')(formatearFechaTipeada(texto))}
+            onChange={set('fechaInicio')}
             placeholder="DD/MM/AAAA"
-            keyboardType="numeric"
             editable={editable}
           />
         </View>
