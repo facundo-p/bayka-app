@@ -25,6 +25,8 @@ import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 import {
   aColumnasRemotas,
   aSnapshot,
+  cambiosParaElServer,
+  hayCambios,
   restaurarDesdeSnapshot,
   snapshotAntesDeEditar,
   type AjustesDePlantacion,
@@ -87,25 +89,28 @@ async function filaDePlantacion(plantacionId: string) {
 type FilaDePlantacion = Awaited<ReturnType<typeof filaDePlantacion>>;
 
 /**
- * Intenta pushear la edición a Supabase y, si sale bien, deja los valores y su snapshot *Server.
- * Devuelve false ante una falla de red, para que el caller caiga al camino offline; cualquier
+ * Intenta pushear a Supabase solo lo que cambió y, si sale bien, deja los valores y el snapshot
+ * *Server de lo subido. Sin cambios no hay UPDATE. Devuelve false ante una falla de red, para que el caller caiga al camino offline; cualquier
  * otro error del server se propaga tal cual.
  */
 async function tryPushPlantationUpdateOnline(
-  plantacionId: string,
+  row: FilaDePlantacion,
   campos: Partial<CamposDePlantacion>
 ): Promise<boolean> {
+  const cambios = cambiosParaElServer(row, campos);
   try {
-    const { error } = await supabase
-      .from('plantations')
-      .update(aColumnasRemotas(campos))
-      .eq('id', plantacionId);
-    if (error) throw error;
+    if (hayCambios(cambios)) {
+      const { error } = await supabase
+        .from('plantations')
+        .update(aColumnasRemotas(cambios))
+        .eq('id', row.id);
+      if (error) throw error;
+    }
 
     await db
       .update(plantations)
-      .set({ ...campos, ...aSnapshot(campos), pendingEdit: false })
-      .where(eq(plantations.id, plantacionId));
+      .set({ ...campos, ...aSnapshot(cambios), pendingEdit: false })
+      .where(eq(plantations.id, row.id));
     return true;
   } catch (e: any) {
     if (!isNetworkRequestFailed(e)) throw e;
@@ -149,7 +154,7 @@ export async function updatePlantation(
   }
 
   const net = await NetInfo.fetch();
-  if (net.isConnected !== false && (await tryPushPlantationUpdateOnline(plantacionId, campos))) {
+  if (net.isConnected !== false && (await tryPushPlantationUpdateOnline(row, campos))) {
     notifyDataChanged();
     return;
   }

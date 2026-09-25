@@ -11,7 +11,7 @@ export const avisoPlantacionDuplicadaStyles = StyleSheet.create({
     paddingVertical: spacing.md,
     marginTop: -spacing.xl,
     marginBottom: spacing.xxxl,
-    gap: 2,
+    gap: spacing.xxs,
   },
   titulo: {
     fontSize: fontSize.md,

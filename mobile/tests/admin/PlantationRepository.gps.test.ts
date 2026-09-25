@@ -47,7 +47,14 @@ let insertedValues: any;
 let updatedSet: any;
 let supabaseUpdatePayload: any;
 
-function mockDbChains(row: any) {
+/** Fila completa como la devuelve drizzle: la edición online compara contra ella. */
+const FILA_LOCAL = {
+  lugar: 'Viejo', periodo: '2025', descripcion: null, fechaInicio: null, objetivoArboles: null,
+  gpsCaptureFrequency: 10, gpsCaptureRequired: true, photoCaptureAllTrees: false, visibleInApp: true,
+};
+
+function mockDbChains(parcial: any) {
+  const row = parcial && { ...FILA_LOCAL, ...parcial };
   insertedValues = undefined;
   updatedSet = undefined;
   (mockDb.insert as jest.Mock).mockReturnValue({

@@ -1,7 +1,10 @@
 import {
   aColumnasRemotas,
   aSnapshot,
+  cambiosParaElServer,
+  camposCambiados,
   desdeFilaRemota,
+  hayCambios,
   restaurarDesdeSnapshot,
   snapshotAntesDeEditar,
 } from '../../src/utils/camposDePlantacion';
@@ -42,5 +45,43 @@ describe('campos de plantación', () => {
     const restaurados = restaurarDesdeSnapshot(fila);
     expect(restaurados).toMatchObject({ lugar: 'L', descripcion: null, objetivoArboles: 12000, photoCaptureAllTrees: false });
     expect(restaurados).not.toHaveProperty('visibleInApp');
+  });
+});
+
+describe('qué subir al server', () => {
+  const FILA: any = {
+    lugar: 'Lote Norte', periodo: 'Otoño 2026', descripcion: null, fechaInicio: null, objetivoArboles: null,
+    gpsCaptureFrequency: 10, gpsCaptureRequired: true, photoCaptureAllTrees: false, visibleInApp: true,
+    pendingEdit: false,
+  };
+
+  it('camposCambiados deja solo lo distinto e ignora lo ausente', () => {
+    expect(camposCambiados({ lugar: 'A', descripcion: null }, { lugar: 'B', descripcion: null })).toEqual({ lugar: 'B' });
+    expect(camposCambiados({ descripcion: null }, { descripcion: 'Nueva' })).toEqual({ descripcion: 'Nueva' });
+    expect(camposCambiados({ descripcion: 'Vieja' }, { descripcion: null })).toEqual({ descripcion: null });
+  });
+
+  it('camposCambiados no manda un obligatorio que la base no conoce', () => {
+    expect(camposCambiados({ visibleInApp: null } as any, { visibleInApp: false })).toEqual({});
+  });
+
+  it('online compara contra el valor vivo: los null nunca pulleados no se mandan', () => {
+    const cambios = cambiosParaElServer(FILA, { lugar: 'Campo Sur', descripcion: null, objetivoArboles: null });
+    expect(cambios).toEqual({ lugar: 'Campo Sur' });
+  });
+
+  it('con edición pendiente compara contra el snapshot, e incluye lo editado antes', () => {
+    const fila = {
+      ...FILA, pendingEdit: true, lugar: 'Campo Sur', lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026',
+      descripcion: 'Mía', descripcionServer: null, objetivoArbolesServer: null,
+      visibleInAppServer: true, photoCaptureAllTreesServer: null,
+    };
+    expect(cambiosParaElServer(fila, { objetivoArboles: 500 }))
+      .toEqual({ lugar: 'Campo Sur', descripcion: 'Mía', objetivoArboles: 500 });
+  });
+
+  it('hayCambios', () => {
+    expect(hayCambios({})).toBe(false);
+    expect(hayCambios({ descripcion: null })).toBe(true);
   });
 });

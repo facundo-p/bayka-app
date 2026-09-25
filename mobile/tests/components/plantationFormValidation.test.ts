@@ -41,6 +41,13 @@ describe('fecha de inicio', () => {
     expect(fechaAIso('15/4/2026')).toBeNull();
   });
 
+  it('rechaza años anteriores a 1900 (Date.UTC los corre y Postgres no acepta el año 0)', () => {
+    expect(fechaAIso('01/01/0000')).toBeNull();
+    expect(fechaAIso('15/04/0026')).toBeNull();
+    expect(fechaAIso('31/12/1899')).toBeNull();
+    expect(fechaAIso('01/01/1900')).toBe('1900-01-01');
+  });
+
   it('muestra la fecha de la base en DD/MM/AAAA', () => {
     expect(isoAFecha('2026-04-15')).toBe('15/04/2026');
     expect(isoAFecha(null)).toBe('');
@@ -55,13 +62,14 @@ describe('validarFormulario', () => {
   });
 
   it('pide lugar y periodo de al menos 2 caracteres', () => {
-    expect(validarFormulario({ ...validos, lugar: ' L ' })).not.toBeNull();
+    expect(validarFormulario({ ...validos, lugar: ' L ' })).toBe('Lugar debe tener al menos 2 caracteres.');
     expect(validarFormulario({ ...validos, periodo: '' })).not.toBeNull();
   });
 
-  it('el objetivo, si está, es un entero ≥ 1 (CHECK de Supabase)', () => {
+  it('el objetivo, si está, es un entero entre 1 (CHECK de Supabase) y el máximo', () => {
     expect(validarFormulario({ ...validos, objetivoArboles: '12000' })).toBeNull();
-    for (const invalido of ['0', '-5', '2.5', 'mil']) {
+    expect(validarFormulario({ ...validos, objetivoArboles: '10000000' })).toBeNull();
+    for (const invalido of ['0', '-5', '2.5', 'mil', '10000001', '2147483648']) {
       expect(validarFormulario({ ...validos, objetivoArboles: invalido })).not.toBeNull();
     }
   });

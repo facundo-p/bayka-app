@@ -10,15 +10,46 @@ import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail }
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
 import { hayOtraEnServidor } from './duplicadasEnServidor';
-import { aColumnasRemotas, aSnapshot, camposDeFila } from '../../utils/camposDePlantacion';
+import {
+  aColumnasRemotas,
+  aSnapshot,
+  camposDeFila,
+  cambiosParaElServer,
+  hayCambios,
+  type CamposDePlantacion,
+} from '../../utils/camposDePlantacion';
 import { mismoLugarYPeriodo } from '../../utils/duplicadoDePlantacion';
+
+type PlantacionLocal = typeof plantations.$inferSelect;
 
 // ─── Upload offline-created plantations ───────────────────────────────────────
 
+type ErrorDelServer = { code?: string; message?: string };
+
 /**
- * Sube plantaciones creadas offline (pendingSync=true): insert idempotente (23505 = ya existe en
- * server, continúa) + upsert de plantation_species + pendingSync=false, solo si las dos
- * subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
+ * Inserta la plantación. Si ya existe (un intento anterior la insertó y fallaron las especies),
+ * la actualiza con los campos actuales para no perder lo editado en el medio.
+ */
+async function subirFilaDeAlta(p: PlantacionLocal): Promise<ErrorDelServer | null> {
+  const campos = aColumnasRemotas(camposDeFila(p));
+  const { error } = await supabase.from('plantations').insert({
+    id: p.id,
+    organizacion_id: p.organizacionId,
+    estado: p.estado,
+    creado_por: p.creadoPor,
+    created_at: p.createdAt,
+    ...campos,
+  });
+  if (error?.code !== PG_ERROR.UNIQUE_VIOLATION) return error;
+
+  const { data, error: updateError } = await supabase.from('plantations').update(campos).eq('id', p.id).select('id');
+  if (updateError) return updateError;
+  return sinFilasAfectadas(data) ? { message: DETALLE_SIN_FILAS_AFECTADAS } : null;
+}
+
+/**
+ * Sube plantaciones creadas offline (pendingSync=true): insert idempotente (si ya existe, update)
+ * + upsert de plantation_species + pendingSync=false, solo si las dos subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
  * parcelas/grupos (FK), así que el error debe llegar al usuario, no tragarse.
  */
 export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
@@ -33,19 +64,9 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
     // Errores que LANZAN (no solo `{ error }`) también deben surfacearse, no tragarse dejando
     // results vacío en runGlobalPreSteps.
     try {
-      const { error: plantError } = await supabase
-        .from('plantations')
-        .insert({
-          id: p.id,
-          organizacion_id: p.organizacionId,
-          estado: p.estado,
-          creado_por: p.creadoPor,
-          created_at: p.createdAt,
-          ...aColumnasRemotas(camposDeFila(p)),
-        });
+      const plantError = await subirFilaDeAlta(p);
 
-      // unique_violation = la plantación ya existe en el server → seguimos con species
-      if (plantError && plantError.code !== PG_ERROR.UNIQUE_VIOLATION) {
+      if (plantError) {
         syncLog.error('Upload plantation failed:', p.id, plantError.message);
         const { error: code, detail } = classifyServerError(plantError);
         results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });
@@ -98,14 +119,15 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
 // ─── Upload pending plantation edits ─────────────────────────────────────────
 
-type PlantacionLocal = typeof plantations.$inferSelect;
-
-/** `true` solo si el server confirmó el cambio en la fila de la plantación. */
-async function pushEdicionPlantacion(p: PlantacionLocal): Promise<boolean> {
+/**
+ * `true` si el server confirmó el cambio en la fila de la plantación, o si no había nada que
+ * subir. Sube solo lo que difiere del snapshot, para no pisar lo que la fila nunca bajó.
+ */
+async function pushEdicionPlantacion(p: PlantacionLocal, cambios: Partial<CamposDePlantacion>): Promise<boolean> {
+  if (!hayCambios(cambios)) return true;
   const { data, error } = await supabase
     .from('plantations')
-    // Sube todos los campos: los no editados espejan al server. El merge por campo es #634.
-    .update(aColumnasRemotas(camposDeFila(p)))
+    .update(aColumnasRemotas(cambios))
     .eq('id', p.id)
     .select('id');
   if (error) {
@@ -140,11 +162,12 @@ export async function uploadPendingEdits(): Promise<SyncPlantationResult[]> {
   const subidas: SyncPlantationResult[] = [];
   for (const p of pending) {
     try {
-      if (!(await pushEdicionPlantacion(p))) continue;
+      const cambios = cambiosParaElServer(p);
+      if (!(await pushEdicionPlantacion(p, cambios))) continue;
 
       await db
         .update(plantations)
-        .set({ pendingEdit: false, ...aSnapshot(camposDeFila(p)) })
+        .set({ pendingEdit: false, ...aSnapshot(cambios) })
         .where(eq(plantations.id, p.id));
       subidas.push({ success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await edicionDuplicada(p) });
     } catch (e: any) {

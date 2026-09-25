@@ -9,10 +9,14 @@ type Props = {
   onValueChange: (value: boolean) => void;
   disabled?: boolean;
   testID?: string;
+  /** Color del riel encendido. */
+  activeColor?: string;
 };
 
 /** Interruptor con título y ayuda, para las opciones de un formulario. */
-export default function SwitchRow({ label, helperText, value, onValueChange, disabled, testID }: Props) {
+export default function SwitchRow({
+  label, helperText, value, onValueChange, disabled, testID, activeColor = colors.secondary,
+}: Props) {
   return (
     <View style={styles.row}>
       <View style={styles.labels}>
@@ -24,7 +28,7 @@ export default function SwitchRow({ label, helperText, value, onValueChange, dis
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ false: colors.border, true: colors.secondary }}
+        trackColor={{ false: colors.border, true: activeColor }}
         accessibilityLabel={label}
       />
     </View>

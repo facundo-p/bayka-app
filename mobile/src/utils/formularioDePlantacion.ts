@@ -28,6 +28,8 @@ export type PlantacionEditable = Partial<CamposDePlantacion> & Pick<CamposDePlan
 // ─── Fecha: DD/MM/AAAA en pantalla, YYYY-MM-DD en la base ────────────────────
 
 const LARGO_FECHA = 8;
+/** Date.UTC lleva los años 0–99 a 1900+ y Postgres rechaza el año 0. */
+const ANIO_MINIMO = 1900;
 
 /** Deja solo dígitos y pone las barras mientras se tipea: el teclado numérico no las tiene. */
 export function formatearFechaTipeada(texto: string): string {
@@ -41,6 +43,7 @@ export function fechaAIso(texto: string): string | null {
   const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(texto.trim());
   if (!match) return null;
   const [, dia, mes, anio] = match;
+  if (Number(anio) < ANIO_MINIMO) return null;
   const fecha = new Date(Date.UTC(Number(anio), Number(mes) - 1, Number(dia)));
   const esReal = fecha.getUTCDate() === Number(dia) && fecha.getUTCMonth() === Number(mes) - 1;
   return esReal ? `${anio}-${mes}-${dia}` : null;
@@ -54,9 +57,17 @@ export function isoAFecha(iso: string | null | undefined): string {
 
 // ─── Validación ──────────────────────────────────────────────────────────────
 
-function esEnteroPositivo(texto: string): boolean {
+/** Muy por encima de cualquier plantación real y lejos del tope de integer de Postgres (2147483647). */
+export const OBJETIVO_MAXIMO = 10_000_000;
+
+/** Sin toLocaleString: el Intl de Hermes no es confiable en todos los builds. */
+function conPuntosDeMiles(valor: number): string {
+  return String(valor).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function esEnteroPositivo(texto: string, maximo = Number.MAX_SAFE_INTEGER): boolean {
   const valor = Number(texto.trim());
-  return texto.trim() !== '' && Number.isInteger(valor) && valor >= 1;
+  return texto.trim() !== '' && Number.isInteger(valor) && valor >= 1 && valor <= maximo;
 }
 
 /** Frecuencia de captura GPS: entero ≥ 1. */
@@ -64,10 +75,12 @@ export function validateGpsFrequency(raw: string): string | null {
   return esEnteroPositivo(raw) ? null : 'La frecuencia debe ser un número entero mayor o igual a 1.';
 }
 
-/** Opcional; si está, entero ≥ 1 (CHECK de Supabase). */
+/** Opcional; si está, entero entre 1 (CHECK de Supabase) y OBJETIVO_MAXIMO. */
 export function validarObjetivo(raw: string): string | null {
   if (raw.trim() === '') return null;
-  return esEnteroPositivo(raw) ? null : 'El objetivo debe ser un número entero de al menos 1 árbol.';
+  return esEnteroPositivo(raw, OBJETIVO_MAXIMO)
+    ? null
+    : `El objetivo debe ser un número entero entre 1 y ${conPuntosDeMiles(OBJETIVO_MAXIMO)} árboles.`;
 }
 
 /** Opcional; si está, una fecha real. */
@@ -78,8 +91,8 @@ export function validarFechaInicio(raw: string): string | null {
 
 /** Primer error del formulario, o null. */
 export function validarFormulario(valores: ValoresDelFormulario): string | null {
-  if (valores.lugar.trim().length < LARGO_MINIMO) return 'Lugar debe tener al menos 2 caracteres.';
-  if (valores.periodo.trim().length < LARGO_MINIMO) return 'Periodo debe tener al menos 2 caracteres.';
+  if (valores.lugar.trim().length < LARGO_MINIMO) return `Lugar debe tener al menos ${LARGO_MINIMO} caracteres.`;
+  if (valores.periodo.trim().length < LARGO_MINIMO) return `Periodo debe tener al menos ${LARGO_MINIMO} caracteres.`;
   return validarFechaInicio(valores.fechaInicio)
     ?? validarObjetivo(valores.objetivoArboles)
     ?? validateGpsFrequency(valores.gpsFrequency);
