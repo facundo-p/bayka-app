@@ -1245,8 +1245,9 @@ describe('useAuth', () => {
               lockDelSdk = new Promise((r) => { liberar = r; });
               try {
                 const sesion = [SESION_SDK, SESION_B].find((x) => x.access_token === t.access_token)!;
-                storageSdk.set(CLAVE_SDK, JSON.stringify(sesion));
+                // auth-js valida el token (_getUser) antes de guardarlo (_saveSession).
                 if (duranteSetSession) await duranteSetSession();
+                storageSdk.set(CLAVE_SDK, JSON.stringify(sesion));
                 await correrListenersDeAuth('SIGNED_IN', sesion);
                 return { data: { session: sesion }, error: null };
               } finally {
