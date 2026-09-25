@@ -98,11 +98,13 @@ export function camposCambiados(
 
 /**
  * Lo que el server tenía cuando se editó (#634). Con edición offline pendiente, la base
- * guardada al entrar en edición (el pull refresca el snapshot, no la base; una fila editada
- * antes de 0025 cae al snapshot); si no, el valor vivo, que es el del último pull.
+ * guardada al entrar en edición (el pull refresca el snapshot, no la base); si no, el valor
+ * vivo, que es el del último pull.
  */
 export function baseDeLaEdicion(fila: FilaDePlantacion): Partial<CamposDePlantacion> {
   if (!fila.pendingEdit) return camposDeFila(fila);
+  // Edición pendiente de antes de 0025, sin base guardada: cae al snapshot, que el pull ya
+  // pudo refrescar, así que un cambio de la web en ese campo se pisa sin conflicto.
   return fila.baseDeEdicion ?? desdeSnapshot(fila);
 }
 

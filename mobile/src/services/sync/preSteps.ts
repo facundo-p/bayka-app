@@ -45,12 +45,12 @@ function falloDeAltaRechazada(rechazo: string): FalloDeAlta {
  * ese intento, con lo que recibió el server (el snapshot) como base; lo que la web cambió en
  * el medio queda como conflicto a resolver (#634).
  */
-async function actualizarAltaExistente(p: PlantacionLocal): Promise<FalloDeAlta | null> {
+async function actualizarAltaExistente(p: PlantacionLocal): Promise<ResultadoDeAlta> {
   const { cambios, base } = edicionDeAltaExistente(p);
   const resultado = await subirEdicion(p.id, cambios, base);
-  if (esRechazada(resultado)) return falloDeAltaRechazada(resultado.rechazo ?? '');
-  await registrarEdicionSubida(p, { vivos: {}, cambios, base, resultado });
-  return null;
+  if (esRechazada(resultado)) return { fallo: falloDeAltaRechazada(resultado.rechazo ?? ''), cambiosPorResolver: 0 };
+  const cambiosPorResolver = await registrarEdicionSubida(p, { vivos: {}, cambios, base, resultado });
+  return { fallo: null, cambiosPorResolver };
 }
 
 /**
@@ -66,8 +66,11 @@ function edicionDeAltaExistente(p: PlantacionLocal) {
   return { cambios, base: baseDe(cambios, subido) };
 }
 
+/** `fallo` null = subió; `cambiosPorResolver`: campos que chocaron con la web al reintentar. */
+type ResultadoDeAlta = { fallo: FalloDeAlta | null; cambiosPorResolver: number };
+
 /** Inserta la plantación y deja lo subido como snapshot: es la base de un reintento. */
-async function subirFilaDeAlta(p: PlantacionLocal): Promise<FalloDeAlta | null> {
+async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
   const campos = camposDeFila(p);
   const { error } = await supabase.from('plantations').insert({
     id: p.id,
@@ -78,9 +81,9 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<FalloDeAlta | null> 
     ...aColumnasRemotas(campos),
   });
   if (error?.code === PG_ERROR.UNIQUE_VIOLATION) return actualizarAltaExistente(p);
-  if (error) return classifyServerError(error);
+  if (error) return { fallo: classifyServerError(error), cambiosPorResolver: 0 };
   await db.update(plantations).set(aSnapshot(campos)).where(eq(plantations.id, p.id));
-  return null;
+  return { fallo: null, cambiosPorResolver: 0 };
 }
 
 /**
@@ -100,7 +103,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
     // Errores que LANZAN (no solo `{ error }`) también deben surfacearse, no tragarse dejando
     // results vacío en runGlobalPreSteps.
     try {
-      const fallo = await subirFilaDeAlta(p);
+      const { fallo, cambiosPorResolver } = await subirFilaDeAlta(p);
       if (fallo) {
         syncLog.error('Upload plantation failed:', p.id, fallo.error, fallo.detail ?? '');
         results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...fallo });
@@ -136,7 +139,9 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         .set({ pendingSync: false })
         .where(eq(plantations.id, p.id));
 
-      results.push({ success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await hayOtraEnServidor(p) });
+      results.push({
+        success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await hayOtraEnServidor(p), cambiosPorResolver,
+      });
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
       syncLog.error('Upload plantation exception:', p.id, e?.message ?? e);

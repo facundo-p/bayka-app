@@ -12,6 +12,7 @@
 
 CREATE OR REPLACE FUNCTION "public"."campos_editables_de_plantacion"() RETURNS "text"[]
     LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT ARRAY[
     'lugar', 'periodo', 'descripcion', 'fecha_inicio', 'objetivo_arboles',
@@ -19,7 +20,11 @@ CREATE OR REPLACE FUNCTION "public"."campos_editables_de_plantacion"() RETURNS "
   ];
 $$;
 
+-- Helpers internos (este y los de validación): solo los usan el trigger y la RPC, que son
+-- SECURITY DEFINER.
 ALTER FUNCTION "public"."campos_editables_de_plantacion"() OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."campos_editables_de_plantacion"() FROM PUBLIC, "anon", "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."campos_editables_de_plantacion"() TO "service_role";
 
 -- ── B. Quién y cuándo cambió cada campo ──────────────────────────────────────
 
@@ -29,8 +34,9 @@ ALTER FUNCTION "public"."campos_editables_de_plantacion"() OWNER TO "postgres";
 ALTER TABLE "public"."plantations"
   ADD COLUMN IF NOT EXISTS "ultima_edicion" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL;
 
+-- SECURITY DEFINER para llamar al helper interno también en un UPDATE directo.
 CREATE OR REPLACE FUNCTION "public"."registrar_edicion_de_plantacion"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
+    LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 DECLARE
@@ -98,6 +104,7 @@ CREATE TRIGGER "trg_proteger_estado_de_plantacion"
 
 CREATE OR REPLACE FUNCTION "public"."entero_positivo"("p_valor" "jsonb") RETURNS boolean
     LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO 'public'
     AS $$
   SELECT jsonb_typeof(p_valor) = 'number'
     AND (p_valor #>> '{}')::numeric >= 1
@@ -108,6 +115,7 @@ $$;
 -- YYYY-MM-DD y una fecha real (el 2026-02-30 no pasa).
 CREATE OR REPLACE FUNCTION "public"."fecha_iso"("p_valor" "jsonb") RETURNS boolean
     LANGUAGE "plpgsql" IMMUTABLE
+    SET "search_path" TO 'public'
     AS $$
 BEGIN
   IF jsonb_typeof(p_valor) <> 'string' OR (p_valor #>> '{}') !~ '^\d{4}-\d{2}-\d{2}$' THEN
@@ -162,6 +170,12 @@ $$;
 ALTER FUNCTION "public"."campo_invalido_de_plantacion"("jsonb", "jsonb") OWNER TO "postgres";
 ALTER FUNCTION "public"."entero_positivo"("jsonb") OWNER TO "postgres";
 ALTER FUNCTION "public"."fecha_iso"("jsonb") OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."campo_invalido_de_plantacion"("jsonb", "jsonb") FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "public"."entero_positivo"("jsonb") FROM PUBLIC, "anon", "authenticated";
+REVOKE ALL ON FUNCTION "public"."fecha_iso"("jsonb") FROM PUBLIC, "anon", "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."campo_invalido_de_plantacion"("jsonb", "jsonb") TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."entero_positivo"("jsonb") TO "service_role";
+GRANT EXECUTE ON FUNCTION "public"."fecha_iso"("jsonb") TO "service_role";
 
 -- ── E. editar_plantacion ─────────────────────────────────────────────────────
 

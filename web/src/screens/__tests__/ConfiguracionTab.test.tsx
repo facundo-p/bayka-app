@@ -482,15 +482,15 @@ describe('sección Foto en todos los botones', () => {
     await waitFor(() => expect(toggle).toHaveAttribute('aria-checked', 'true'));
   });
 
-  test('si otro lo cambió mientras tanto, avisa y el toggle toma el valor del server', async () => {
+  test('una plantación archivada en el server vuelve el toggle atrás con el motivo', async () => {
     const usuario = userEvent.setup();
-    respuestaEdicion = conflictoEn('photo_capture_all_trees', false);
+    respuestaEdicion = { data: { success: false, error: 'PLANTACION_ARCHIVADA' } };
     renderRutasEn('/plantaciones/plant-1/configuracion');
     const toggle = await screen.findByRole('switch', { name: 'Foto en todos los botones' });
 
     await usuario.click(toggle);
 
-    expect(await screen.findByText(MENSAJE_CONFLICTO_EDICION)).toBeInTheDocument();
+    expect(await screen.findByText(/desarchivala/)).toBeInTheDocument();
     expect(toggle).toHaveAttribute('aria-checked', 'false');
   });
 });

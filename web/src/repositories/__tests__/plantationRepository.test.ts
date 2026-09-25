@@ -16,7 +16,11 @@ import {
   plantacionTrasConflicto,
   type PlantacionInput,
 } from '../plantationRepository';
-import { ConflictoDeEdicionError, MENSAJE_CONFLICTO_EDICION } from '../edicionDePlantacion';
+import {
+  ConflictoDeEdicionError,
+  MENSAJE_CONFLICTO_EDICION,
+  MENSAJE_CONFLICTO_EDICION_PARCIAL,
+} from '../edicionDePlantacion';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -201,6 +205,24 @@ describe('editarPlantacion', () => {
     await promesa.catch((error: ConflictoDeEdicionError) => {
       expect(error.conflictos).toEqual([{ campo: 'objetivo_arboles', valorServidor: 650 }]);
     });
+  });
+
+  test('si además se guardó otro campo, el aviso lo dice', async () => {
+    capturarConsultas(() => ({
+      data: {
+        success: false,
+        error: 'CONFLICTO_EDICION',
+        aplicados: ['lugar'],
+        conflictos: [{ campo: 'objetivo_arboles', valor_servidor: 650 }],
+      },
+    }));
+    await expect(
+      editarPlantacion(
+        'plant-1',
+        { ...INPUT_COMPLETO, lugar: 'Otro', objetivoArboles: 700 },
+        INPUT_COMPLETO,
+      ),
+    ).rejects.toThrow(MENSAJE_CONFLICTO_EDICION_PARCIAL);
   });
 
   test.each([

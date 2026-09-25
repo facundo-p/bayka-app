@@ -95,11 +95,6 @@ export function combinarConflictos(
   return todos.length > 0 ? todos : null;
 }
 
-export function sinElCampo(conflictos: ConflictoDeCampo[], campo: CampoDePlantacion): ConflictoDeCampo[] | null {
-  const restantes = conflictos.filter((c) => c.campo !== campo);
-  return restantes.length > 0 ? restantes : null;
-}
-
 export function tieneCambiosPorResolver(p: { conflictosDeEdicion?: ConflictoDeCampo[] | null }): boolean {
   return (p.conflictosDeEdicion?.length ?? 0) > 0;
 }

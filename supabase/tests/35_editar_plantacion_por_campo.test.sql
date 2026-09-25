@@ -4,7 +4,7 @@
 -- UPDATE directo: `estado` solo pasa de activa a finalizada, y las columnas
 -- sensibles no se tocan.
 begin;
-select plan(30);
+select plan(31);
 
 insert into organizations (id, nombre) values
   ('b3500000-0000-0000-0000-000000000001', 'Org Test 35'),
@@ -81,6 +81,10 @@ select is(
 select is(
   (select ultima_edicion ? 'lugar' from plantacion_35), false,
   'y solo el campo que cambió');
+
+select throws_ok(
+  $$select campo_invalido_de_plantacion('{}', '{}')$$,
+  '42501', null, 'los helpers de validación no se exponen a authenticated');
 
 -- ── editar_plantacion ────────────────────────────────────────────────────────
 

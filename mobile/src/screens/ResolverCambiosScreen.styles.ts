@@ -9,6 +9,7 @@ export const resolverCambiosScreenStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.textSecondary,
   },
+  error: { fontSize: fontSize.md, fontFamily: fonts.medium, color: colors.danger },
   pie: {
     flexDirection: 'row',
     gap: spacing.xl,

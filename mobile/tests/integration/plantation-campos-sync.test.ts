@@ -121,7 +121,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { downloadPlantation } from '../../src/services/sync/downloadService';
 import { uploadOfflinePlantations, uploadPendingEdits } from '../../src/services/sync/preSteps';
-import { discardPlantationEdit, resolverCambio, updatePlantation } from '../../src/repositories/PlantationRepository';
+import { discardPlantationEdit, resolverCambios, updatePlantation } from '../../src/repositories/PlantationRepository';
 import { camposDeFila } from '../../src/utils/camposDePlantacion';
 import { ELECCION } from '../../src/utils/conflictosDeEdicion';
 
@@ -272,8 +272,9 @@ describe('push de altas y ediciones', () => {
     serverPlantation(PLANTATION_ID, { descripcion: 'Cambiada en la web' });
     await seedLocal({ pendingSync: true, descripcion: 'Editada después' });
 
-    await uploadOfflinePlantations();
+    const [resultado] = await uploadOfflinePlantations();
 
+    expect(resultado).toMatchObject({ success: true, cambiosPorResolver: 1 });
     expect(mockServerState.plantations.get(PLANTATION_ID).descripcion).toBe('Cambiada en la web');
     expect(await filaLocal()).toMatchObject({
       pendingSync: false, descripcion: 'Cambiada en la web',
@@ -473,7 +474,7 @@ describe('edición offline que choca con la web', () => {
   test('elegir el propio lo re-encola con la web como base y sube en el próximo sync', async () => {
     await llegarAlConflicto();
 
-    await resolverCambio(PLANTATION_ID, 'objetivoArboles', ELECCION.mio);
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.mio });
     expect(await filaLocal()).toMatchObject({ pendingEdit: true, objetivoArboles: 15000, conflictosDeEdicion: null });
 
     const [resultado] = await uploadPendingEdits();
@@ -487,11 +488,39 @@ describe('edición offline que choca con la web', () => {
   test('elegir el de la web descarta el propio sin subir nada', async () => {
     await llegarAlConflicto();
 
-    await resolverCambio(PLANTATION_ID, 'objetivoArboles', ELECCION.web);
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.web });
     await uploadPendingEdits();
 
     expect(mockEdiciones).toHaveLength(1);
     expect(await filaLocal()).toMatchObject({ pendingEdit: false, objetivoArboles: 12500, conflictosDeEdicion: null });
+  });
+
+  test('elegir el propio no pisa una edición offline posterior del mismo campo', async () => {
+    await llegarAlConflicto();
+    await editarOffline({ objetivoArboles: 16000 });
+
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.mio });
+
+    expect(await filaLocal()).toMatchObject({ pendingEdit: true, objetivoArboles: 16000 });
+    await uploadPendingEdits();
+    expect(mockEdiciones[1]).toMatchObject({ p_cambios: { objetivo_arboles: 16000 }, p_base: { objetivo_arboles: 12500 } });
+  });
+
+  test('varias elecciones se aplican juntas y los campos sin elegir siguen pendientes', async () => {
+    await seedLocal({ objetivoArboles: 12000 });
+    serverPlantation(PLANTATION_ID, { objetivo_arboles: 12000 });
+    await editarOffline({ objetivoArboles: 15000, descripcion: 'Mía', visibleInApp: false });
+    Object.assign(mockServerState.plantations.get(PLANTATION_ID), {
+      objetivo_arboles: 12500, descripcion: 'Web', visible_in_app: true,
+    });
+    // visible_in_app no cambió en la web: sube. Chocan objetivo y descripción.
+    await uploadPendingEdits();
+
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.mio, descripcion: ELECCION.web });
+
+    expect(await filaLocal()).toMatchObject({
+      objetivoArboles: 15000, descripcion: 'Web', pendingEdit: true, conflictosDeEdicion: null,
+    });
   });
 
   test('cambios en campos distintos no chocan', async () => {

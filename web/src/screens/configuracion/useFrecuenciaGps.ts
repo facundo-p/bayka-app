@@ -35,14 +35,10 @@ function configInicial(plantacion: Plantacion): ConfigGps {
 
 type Guardado = { config: ConfigGps; base: ConfigGps };
 
-/** Lo que quedó en el server tras un conflicto: el valor de otro donde chocó, el propio donde no. */
+/** Tras un conflicto queda la frecuencia del server; la obligatoriedad, booleana, no puede chocar. */
 function configTrasConflicto(error: unknown, config: ConfigGps): ConfigGps {
   const frecuencia = valorDelServidor(error, COLUMNA.gpsFrecuencia);
-  const obligatoria = valorDelServidor(error, COLUMNA.gpsObligatoria);
-  return {
-    frecuencia: typeof frecuencia === 'number' ? frecuencia : config.frecuencia,
-    obligatoria: typeof obligatoria === 'boolean' ? obligatoria : config.obligatoria,
-  };
+  return { ...config, frecuencia: typeof frecuencia === 'number' ? frecuencia : config.frecuencia };
 }
 
 function useGuardarConfigGps(plantationId: string, alChocar: (config: ConfigGps) => void) {

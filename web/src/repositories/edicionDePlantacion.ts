@@ -21,8 +21,13 @@ export const ERROR_EDICION = {
 } as const;
 
 export const MENSAJE_CONFLICTO_EDICION =
-  'Alguien cambió estos datos desde otro lado mientras editabas. Guardamos lo demás y ' +
-  'cargamos lo que hay ahora: revisalo y volvé a guardar si hace falta.';
+  'Alguien cambió estos datos desde otro lado mientras editabas. Cargamos lo que hay ' +
+  'ahora: revisalo y volvé a guardar si hace falta.';
+
+/** Con conflictos en algunos campos y el resto guardado. */
+export const MENSAJE_CONFLICTO_EDICION_PARCIAL =
+  'Alguien cambió algunos de estos datos desde otro lado mientras editabas. Guardamos lo ' +
+  'demás y cargamos lo que hay ahora: revisalo y volvé a guardar si hace falta.';
 
 const MENSAJE_RECHAZO: Record<string, string> = {
   [ERROR_EDICION.noAutorizado]: 'Tu usuario no tiene permisos para editar esta plantación.',
@@ -48,11 +53,11 @@ export class ErrorDeEdicion extends Error {
   }
 }
 
-/** Los campos de `conflictos` no se guardaron; el resto sí. */
+/** Los campos de `conflictos` no se guardaron; el resto sí (`guardoOtros`: hubo resto). */
 export class ConflictoDeEdicionError extends ErrorDeEdicion {
   readonly conflictos: ConflictoDeCampo[];
-  constructor(conflictos: ConflictoDeCampo[]) {
-    super(MENSAJE_CONFLICTO_EDICION);
+  constructor(conflictos: ConflictoDeCampo[], guardoOtros = false) {
+    super(guardoOtros ? MENSAJE_CONFLICTO_EDICION_PARCIAL : MENSAJE_CONFLICTO_EDICION);
     this.name = 'ConflictoDeEdicionError';
     this.conflictos = conflictos;
   }
@@ -62,6 +67,7 @@ type ConflictoRemoto = { campo: string; valor_servidor: unknown };
 type RespuestaEdicion = {
   success?: boolean;
   error?: string;
+  aplicados?: string[];
   conflictos?: ConflictoRemoto[];
 } | null;
 
@@ -91,7 +97,7 @@ function errorDeRespuesta(respuesta: RespuestaEdicion): ErrorDeEdicion {
       campo: conflicto.campo,
       valorServidor: conflicto.valor_servidor,
     }));
-    return new ConflictoDeEdicionError(conflictos);
+    return new ConflictoDeEdicionError(conflictos, (respuesta.aplicados ?? []).length > 0);
   }
   return new ErrorDeEdicion(MENSAJE_RECHAZO[respuesta?.error ?? ''] ?? MENSAJE_RECHAZO_GENERICO);
 }

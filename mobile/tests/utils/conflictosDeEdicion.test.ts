@@ -3,7 +3,6 @@ import {
   cambiosPorResolverDe,
   combinarConflictos,
   conflictosDesdeRemotos,
-  sinElCampo,
   tieneCambiosPorResolver,
   valoresDeLaWeb,
   type ConflictoDeCampo,
@@ -37,7 +36,6 @@ describe('conflictos de edición', () => {
     expect(combinarConflictos([OBJETIVO, descripcion], { objetivoArboles: 15000 }, [])).toEqual([descripcion]);
     expect(combinarConflictos([OBJETIVO], { objetivoArboles: 15000 }, [])).toBeNull();
     expect(combinarConflictos(null, {}, [OBJETIVO])).toEqual([OBJETIVO]);
-    expect(sinElCampo([OBJETIVO], 'objetivoArboles')).toBeNull();
   });
 
   it('marca y resumen del sync', () => {

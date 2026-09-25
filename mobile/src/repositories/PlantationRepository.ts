@@ -37,6 +37,7 @@ import {
 import {
   baseDeLaEdicion,
   camposDeFila,
+  desdeSnapshot,
   edicionDelFormulario,
   type EdicionDelFormulario,
   restaurarDesdeSnapshot,
@@ -45,7 +46,7 @@ import {
   type CampoDePlantacion,
   type CamposDePlantacion,
 } from '../utils/camposDePlantacion';
-import { ELECCION, sinElCampo, type ConflictoDeCampo, type Eleccion } from '../utils/conflictosDeEdicion';
+import { ELECCION, type ConflictoDeCampo, type Eleccion } from '../utils/conflictosDeEdicion';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -198,33 +199,49 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
   notifyDataChanged();
 }
 
-// ─── resolverCambio ───────────────────────────────────────────────────────────
+// ─── resolverCambios ──────────────────────────────────────────────────────────
+
+export type Elecciones = Partial<Record<CampoDePlantacion, Eleccion>>;
 
 /**
- * Resuelve un campo que chocó con la web (#634). Con la web, el valor ya está: se descarta el
- * propio. Con el propio, se re-encola como edición offline con la web como base, y sube en el
- * próximo sync (si alguien lo volvió a cambiar, vuelve a chocar).
+ * Resuelve los campos que chocaron con la web (#634), todos en un solo UPDATE. Con la web, el
+ * valor ya está: se descarta el propio. Con el propio, se re-encola como edición offline con
+ * la web como base y sube en el próximo sync (si alguien lo volvió a cambiar, vuelve a chocar).
+ * Los campos sin elección siguen pendientes.
  */
-export async function resolverCambio(plantacionId: string, campo: CampoDePlantacion, eleccion: Eleccion): Promise<void> {
+export async function resolverCambios(plantacionId: string, elecciones: Elecciones): Promise<void> {
   const row = await filaDePlantacion(plantacionId);
-  const conflicto = row.conflictosDeEdicion?.find((c) => c.campo === campo);
-  if (!conflicto) return;
-  const conflictosDeEdicion = sinElCampo(row.conflictosDeEdicion ?? [], campo);
-  const reencolar = eleccion === ELECCION.mio ? edicionReencolada(row, conflicto) : {};
+  const conflictos = row.conflictosDeEdicion ?? [];
+  const resueltos = conflictos.filter((c) => elecciones[c.campo] !== undefined);
+  if (resueltos.length === 0) return;
+  const pendientes = conflictos.filter((c) => elecciones[c.campo] === undefined);
+  const propios = resueltos.filter((c) => elecciones[c.campo] === ELECCION.mio);
   await db
     .update(plantations)
-    .set({ conflictosDeEdicion, ...reencolar })
+    .set({
+      conflictosDeEdicion: pendientes.length > 0 ? pendientes : null,
+      ...(propios.length > 0 ? edicionReencolada(row, propios) : {}),
+    })
     .where(eq(plantations.id, plantacionId));
   notifyDataChanged();
 }
 
-function edicionReencolada(row: FilaDePlantacion, conflicto: ConflictoDeCampo) {
-  const base = row.pendingEdit ? baseDeLaEdicion(row) : camposDeFila(row);
+function edicionReencolada(row: FilaDePlantacion, propios: ConflictoDeCampo[]) {
+  const baseAnterior = row.pendingEdit ? baseDeLaEdicion(row) : camposDeFila(row);
+  const server = desdeSnapshot(row);
+  const valores: Record<string, unknown> = {};
+  const base: Record<string, unknown> = { ...baseAnterior };
+  for (const c of propios) {
+    // Si el campo se volvió a editar offline después del conflicto, gana esa edición.
+    const editadoDespues = row.pendingEdit && row[c.campo] !== server[c.campo];
+    valores[c.campo] = editadoDespues ? row[c.campo] : c.mio;
+    base[c.campo] = c.web;
+  }
   return {
-    [conflicto.campo]: conflicto.mio,
+    ...valores,
     pendingEdit: true,
-    editadaLocalmenteEn: conflicto.mioEn,
-    baseDeEdicion: { ...base, [conflicto.campo]: conflicto.web },
+    editadaLocalmenteEn: row.editadaLocalmenteEn ?? propios[0].mioEn,
+    baseDeEdicion: base as Partial<CamposDePlantacion>,
     ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
   };
 }

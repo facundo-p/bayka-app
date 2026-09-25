@@ -47,6 +47,7 @@ export default function ResolverCambiosScreen() {
                 onElegir={(eleccion) => r.elegir(conflicto.campo, eleccion)}
               />
             ))}
+            {r.error ? <Text style={styles.error}>{r.error}</Text> : null}
           </ScrollView>
           <View style={styles.pie}>
             <FormActions
