@@ -96,7 +96,7 @@ import { enTransaccion } from '../../src/database/transaccion';
 
 describe('TreeRepository', () => {
   describe('insertTree', () => {
-    it('first tree in subgroup gets posicion=1 (TREE-03)', async () => {
+    it('first tree in subgroup gets posicion=1', async () => {
       // MAX(posicion) returns null when no trees exist. La fila también sirve para
       // el lookup de parcela (getGroupParcelaCodigo): parcelaId + codigo 'PC'.
       mockSelectResults = [{ maxPos: null, parcelaId: 'p1', codigo: 'PC' }];
@@ -119,7 +119,7 @@ describe('TreeRepository', () => {
       expect(row.groupId).toBe('sg-1');
     });
 
-    it('inserts tree with auto-incremented position (TREE-02, TREE-03)', async () => {
+    it('inserts tree with auto-incremented position', async () => {
       mockSelectResults = [{ maxPos: 3, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -134,7 +134,7 @@ describe('TreeRepository', () => {
       expect(result.subId).toBe('PCL1ANC4');
     });
 
-    it('generates correct subId (TREE-04)', async () => {
+    it('generates correct subId', async () => {
       mockSelectResults = [{ maxPos: 12, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -149,7 +149,7 @@ describe('TreeRepository', () => {
       expect(result.subId).toBe('PCL23BANC13');
     });
 
-    it('stores null especieId for N/N trees (NN-01)', async () => {
+    it('stores null especieId for N/N trees', async () => {
       mockSelectResults = [{ maxPos: 0, parcelaId: 'p1', codigo: 'PC' }];
 
       const result = await insertTree({
@@ -167,7 +167,7 @@ describe('TreeRepository', () => {
   });
 
   describe('deleteLastTree', () => {
-    it('deletes only the last tree by posicion (TREE-07)', async () => {
+    it('deletes only the last tree by posicion', async () => {
       mockSelectResults = [{ maxPos: 5, id: 'tree-5', plantacionId: 'plant-1' }];
 
       const result = await deleteLastTree('sg-1');
@@ -199,7 +199,7 @@ describe('TreeRepository', () => {
       expect(enTransaccion).toHaveBeenCalledTimes(1);
     });
 
-    it('updates all posicion values using formula total-N+1 (REVR-01, REVR-02)', async () => {
+    it('updates all posicion values using formula total-N+1', async () => {
       mockSelectResults = [
         { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
         { id: 'tree-2', grupoId: 'sg-1', posicion: 2, especieId: null, subId: 'L1NN2', fotoUrl: null, usuarioRegistro: 'u', createdAt: '' },
@@ -213,7 +213,7 @@ describe('TreeRepository', () => {
       expect(mockUpdateWhere).toHaveBeenCalledTimes(4);
     });
 
-    it('recalculates subId for each tree after reversal (REVR-02)', async () => {
+    it('recalculates subId for each tree after reversal', async () => {
       // 2 N/N trees — species code stays 'NN'
       mockSelectResults = [
         { id: 'tree-1', grupoId: 'sg-1', posicion: 1, especieId: null, subId: 'L1NN1', fotoUrl: null, usuarioRegistro: 'u', createdAt: '', parcelaId: 'p1', codigo: 'PC' },
@@ -239,7 +239,7 @@ describe('TreeRepository', () => {
   });
 
   describe('resolveNNTree', () => {
-    it('sets especieId and recalculates subId (NN-04)', async () => {
+    it('sets especieId and recalculates subId', async () => {
       // First call returns species row, second returns tree row with posicion + grupoId
       let callCount = 0;
       mockDb.select = jest.fn(() => ({

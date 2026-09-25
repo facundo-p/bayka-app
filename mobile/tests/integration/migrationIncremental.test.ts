@@ -52,7 +52,7 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
   const sqlite = new Database(':memory:');
   const db = drizzle(sqlite);
 
-  // Fase 1: fresh install que llega hasta 0015 (piso asumido de todo device operativo).
+  // Instalación limpia que llega hasta 0015 (piso asumido de todo device operativo).
   const partialDir = buildTruncatedMigrationsFolder(DEVICE_FLOOR_IDX);
   try {
     migrate(db, { migrationsFolder: partialDir });
@@ -64,7 +64,7 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
   expect(afterPhase1).toHaveLength(DEVICE_FLOOR_IDX + 1);
   expect(Math.max(...afterPhase1.map((r) => Number(r.created_at)))).toBe(DEVICE_FLOOR_WHEN);
 
-  // Fase 2: la app se actualiza y trae el journal completo (hasta 0019).
+  // La app se actualiza y trae el journal completo (hasta 0019).
   expect(() => migrate(db, { migrationsFolder: DRIZZLE_DIR })).not.toThrow();
 
   const afterPhase2 = appliedMigrations(sqlite);

@@ -74,7 +74,7 @@ describe('PlantationRepository — offline functions', () => {
   // ─── createPlantationLocally ──────────────────────────────────────────────
 
   describe('createPlantationLocally', () => {
-    it('Test 1: calls db.insert with pendingSync=true and no Supabase call', async () => {
+    it('calls db.insert with pendingSync=true and no Supabase call', async () => {
       const result = await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
       expect(result).toEqual(
@@ -95,13 +95,13 @@ describe('PlantationRepository — offline functions', () => {
       );
     });
 
-    it('Test 2: calls notifyDataChanged after inserting', async () => {
+    it('calls notifyDataChanged after inserting', async () => {
       await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
 
-    it('Test 2b: registra al creador como miembro admin local (issue #67)', async () => {
+    it('registra al creador como miembro admin local (issue #67)', async () => {
       await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
       const valuesMock = (mockDb.insert as jest.Mock).mock.results[0].value.values as jest.Mock;
@@ -113,7 +113,7 @@ describe('PlantationRepository — offline functions', () => {
       });
     });
 
-    it('Test 3: returns { id, lugar, periodo, estado: activa }', async () => {
+    it('returns { id, lugar, periodo, estado: activa }', async () => {
       const result = await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
       expect(result).toEqual({

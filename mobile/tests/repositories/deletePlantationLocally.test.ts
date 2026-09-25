@@ -96,25 +96,25 @@ describe('deletePlantationLocally', () => {
     expect(mockBorrarFotos).not.toHaveBeenCalled();
   });
 
-  it('Test 1: deletes the plantation row itself', async () => {
+  it('deletes the plantation row itself', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('plantations');
   });
 
-  it('Test 2: deletes all groups with plantacionId = id', async () => {
+  it('deletes all groups with plantacionId = id', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('groups');
   });
 
-  it('Test 3: deletes all trees belonging to those groups', async () => {
+  it('deletes all trees belonging to those groups', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('trees');
   });
 
-  it('Test 4: deletes plantationSpecies, plantationUsers, userSpeciesOrder rows', async () => {
+  it('deletes plantationSpecies, plantationUsers, userSpeciesOrder rows', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toContain('plantation_species');
@@ -124,7 +124,7 @@ describe('deletePlantationLocally', () => {
 
   // El rollback en sí lo prueba tests/database/transaccion.test.ts: acá el callback
   // ni corre, solo se verifica que un fallo no dispare el refresco de la UI.
-  it('Test 5: si la transacción falla, no se notifica el cambio de datos', async () => {
+  it('si la transacción falla, no se notifica el cambio de datos', async () => {
     mockEnTransaccion.mockRejectedValue(new Error('DB crash'));
 
     await expect(deletePlantationLocally('plant-1')).rejects.toThrow('DB crash');

@@ -96,7 +96,7 @@ describe('ExportService', () => {
   // ─── exportToCSV ──────────────────────────────────────────────────────────
 
   describe('exportToCSV', () => {
-    it('Test 1: builds CSV with exact 9-column header in canonical order', async () => {
+    it('builds CSV with exact 9-column header in canonical order', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       expect(mockWrite).toHaveBeenCalledTimes(1);
@@ -107,7 +107,7 @@ describe('ExportService', () => {
       expect(decodeWritten(written).startsWith(EXPECTED_HEADER)).toBe(true);
     });
 
-    it('Test 2: calls Sharing.shareAsync with mimeType "text/csv"', async () => {
+    it('calls Sharing.shareAsync with mimeType "text/csv"', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       expect(mockShareAsync).toHaveBeenCalledTimes(1);
@@ -117,7 +117,7 @@ describe('ExportService', () => {
       );
     });
 
-    it('Test 3: body has parcelaNombre at position 5 (0-indexed 4) for rows with parcela', async () => {
+    it('body has parcelaNombre at position 5 (0-indexed 4) for rows with parcela', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
@@ -128,7 +128,7 @@ describe('ExportService', () => {
       expect(firstRowCols[3]).toBe('Zona Norte'); // Plantación
     });
 
-    it('Test 4: parcelaNombre viaja tal cual (#90: parcela obligatoria, sin normalización null)', async () => {
+    it('parcelaNombre viaja tal cual (#90: parcela obligatoria, sin normalización null)', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
@@ -140,7 +140,7 @@ describe('ExportService', () => {
       expect(row11).toContain('"Zona, Sur","Zona, Sur",Sur 2,Línea B');
     });
 
-    it('Test 5: quotes fields that contain commas', async () => {
+    it('quotes fields that contain commas', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
@@ -152,7 +152,7 @@ describe('ExportService', () => {
   // ─── exportToExcel ────────────────────────────────────────────────────────
 
   describe('exportToExcel', () => {
-    it('Test 6: calls XLSX.utils.json_to_sheet with 9-column rows in canonical order', async () => {
+    it('calls XLSX.utils.json_to_sheet with 9-column rows in canonical order', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       expect(XLSX.utils.json_to_sheet).toHaveBeenCalledTimes(1);
@@ -177,14 +177,14 @@ describe('ExportService', () => {
       expect(sheetArg[0]['Grupo']).toBe('Línea A');
     });
 
-    it('Test 7: parcelaNombre viaja tal cual en Excel (#90)', async () => {
+    it('parcelaNombre viaja tal cual en Excel (#90)', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       const sheetArg = (XLSX.utils.json_to_sheet as jest.Mock).mock.calls[0][0];
       expect(sheetArg[1]['Parcela']).toBe('Sur 2');
     });
 
-    it('Test 8: XLSX.write called with type "base64"', async () => {
+    it('XLSX.write called with type "base64"', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       expect(XLSX.write).toHaveBeenCalledWith(
@@ -193,7 +193,7 @@ describe('ExportService', () => {
       );
     });
 
-    it('Test 9: calls Sharing.shareAsync with xlsx mimeType', async () => {
+    it('calls Sharing.shareAsync with xlsx mimeType', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       expect(mockShareAsync).toHaveBeenCalledTimes(1);

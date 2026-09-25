@@ -222,7 +222,7 @@ describe('downloadPlantation', () => {
     setupTransaccionPassthrough();
   });
 
-  it('Test 1: upserts plantation row into local SQLite then calls pullFromServer', async () => {
+  it('upserts plantation row into local SQLite then calls pullFromServer', async () => {
     const sp = makeServerPlantation('p-1');
     const { valuesSpy, onConflictSpy } = setupDbInsertSuccess();
 
@@ -243,7 +243,7 @@ describe('downloadPlantation', () => {
     expect(supabase.from).toHaveBeenCalled();
   });
 
-  it('Test 2: uses onConflictDoUpdate with target plantations.id and set estado', async () => {
+  it('uses onConflictDoUpdate with target plantations.id and set estado', async () => {
     const sp = makeServerPlantation('p-2');
     const onConflictSpy = jest.fn().mockResolvedValue(undefined);
     const valuesSpy = jest.fn().mockReturnValue({ onConflictDoUpdate: onConflictSpy });
@@ -419,7 +419,7 @@ describe('batchDownload', () => {
     setupTransaccionPassthrough();
   });
 
-  it('Test 3: calls downloadPlantation (db.insert) for each selected plantation in order', async () => {
+  it('calls downloadPlantation (db.insert) for each selected plantation in order', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -434,7 +434,7 @@ describe('batchDownload', () => {
     expect(db.insert).toHaveBeenCalledTimes(3);
   });
 
-  it('Test 4: emits onProgress with plantation index and name as the batch advances', async () => {
+  it('emits onProgress with plantation index and name as the batch advances', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -464,7 +464,7 @@ describe('batchDownload', () => {
     });
   });
 
-  it('Test 5: continues on per-plantation error and includes failure in results', async () => {
+  it('continues on per-plantation error and includes failure in results', async () => {
     // p-1 succeeds, p-2 fails (db error), p-3 succeeds
     const onConflictResolve = jest.fn().mockResolvedValue(undefined);
     const onConflictReject = jest.fn().mockRejectedValue(new Error('Network timeout'));
@@ -488,7 +488,7 @@ describe('batchDownload', () => {
     expect(results[2]).toEqual({ success: true, id: 'p-3', nombre: 'Parcela Este' });
   });
 
-  it('Test 6: calls notifyDataChanged exactly once after the loop (not per iteration)', async () => {
+  it('calls notifyDataChanged exactly once after the loop (not per iteration)', async () => {
     setupDbInsertSuccess();
 
     const plantations = [
@@ -502,7 +502,7 @@ describe('batchDownload', () => {
     expect(notifyDataChanged).toHaveBeenCalledTimes(1);
   });
 
-  it('Test 7: returns DownloadResult[] with success/failure per plantation', async () => {
+  it('returns DownloadResult[] with success/failure per plantation', async () => {
     const onConflictResolve = jest.fn().mockResolvedValue(undefined);
     const onConflictReject = jest.fn().mockRejectedValue(new Error('Error'));
 
