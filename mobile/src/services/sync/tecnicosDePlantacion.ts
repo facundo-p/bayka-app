@@ -12,6 +12,7 @@ import {
   getAltasPendientes,
   getNombresDeTecnicos,
   getPlantacionesConAltasDeTecnicos,
+  confirmarAltasAceptadas,
   registrarAltasSubidas,
 } from '../../repositories/TecnicosDePlantacionRepository';
 
@@ -29,10 +30,9 @@ type Rechazado = { user_id: string; error: RechazoDeTecnico };
 type RespuestaDeTecnicos = { success: boolean; error?: string; rechazados?: Rechazado[] } | null;
 
 /** La plantación no admitió el cambio (nada se aplicó), o los nombres de los técnicos que el server no asignó. */
-export type SubidaDeTecnicos = { rechazo: string; enviadas: string[] } | { noAsignados: string[] };
+export type SubidaDeTecnicos = { rechazo: string } | { noAsignados: string[] };
 
-export const esRechazoDePlantacion = (s: SubidaDeTecnicos): s is { rechazo: string; enviadas: string[] } =>
-  'rechazo' in s;
+export const esRechazoDePlantacion = (s: SubidaDeTecnicos): s is { rechazo: string } => 'rechazo' in s;
 
 /** Lanza ante un error de red o del server. */
 async function aplicarCambiosEnServidor(plantacionId: string, altas: string[], bajas: string[]): Promise<RespuestaDeTecnicos> {
@@ -49,13 +49,25 @@ async function aplicarCambiosEnServidor(plantacionId: string, altas: string[], b
  * Sube las altas pendientes de la plantación junto con `bajas` (solo online). Lo
  * aceptado deja de estar pendiente; lo rechazado se quita del teléfono. Null si no
  * había nada que mandar.
+ *
+ * `sinNadieQueAvise`: la respuesta llegó cuando ya nadie puede mostrarla (la pantalla
+ * se cerró). Entonces solo se confirma lo aceptado; lo rechazado queda pendiente y el
+ * próximo sync lo reenvía, lo descarta y lo lista en el resumen.
  */
-export async function subirCambiosDeTecnicos(plantacionId: string, bajas: string[] = []): Promise<SubidaDeTecnicos | null> {
+export async function subirCambiosDeTecnicos(
+  plantacionId: string,
+  bajas: string[] = [],
+  sinNadieQueAvise: () => boolean = () => false,
+): Promise<SubidaDeTecnicos | null> {
   const enviadas = await getAltasPendientes(plantacionId);
   if (enviadas.length === 0 && bajas.length === 0) return null;
   const respuesta = await aplicarCambiosEnServidor(plantacionId, enviadas, bajas);
-  if (!respuesta?.success) return { rechazo: respuesta?.error ?? '', enviadas };
+  if (!respuesta?.success) return { rechazo: respuesta?.error ?? '' };
   const rechazados = (respuesta.rechazados ?? []).map((r) => r.user_id);
+  if (sinNadieQueAvise()) {
+    await confirmarAltasAceptadas(plantacionId, enviadas, rechazados);
+    return { noAsignados: [] };
+  }
   const noAsignados = await getNombresDeTecnicos(plantacionId, rechazados);
   await registrarAltasSubidas(plantacionId, enviadas, rechazados);
   return { noAsignados };

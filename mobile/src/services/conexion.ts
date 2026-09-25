@@ -1,6 +1,7 @@
 /**
- * Un único criterio de "hay conexión" para la UI y los servicios: conectado y sin
- * evidencia de que internet no responda (`isInternetReachable` null cuenta como sí).
+ * Criterio de "hay conexión" de `useNetStatus` y de los técnicos (#636; el resto de la
+ * app, #652): conectado y sin evidencia de que internet no responda
+ * (`isInternetReachable` null cuenta como sí).
  */
 import NetInfo, { type NetInfoState } from '@react-native-community/netinfo';
 

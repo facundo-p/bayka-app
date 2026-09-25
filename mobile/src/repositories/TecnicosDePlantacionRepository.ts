@@ -73,8 +73,13 @@ export async function getAltasPendientes(plantacionId: string): Promise<string[]
  * rechazado se quita del teléfono.
  */
 export async function registrarAltasSubidas(plantacionId: string, enviadas: string[], rechazadas: string[]): Promise<void> {
-  const aceptadas = enviadas.filter((id) => !rechazadas.includes(id));
   await quitarTecnicosLocal(plantacionId, rechazadas);
+  await confirmarAltasAceptadas(plantacionId, enviadas, rechazadas);
+}
+
+/** Solo lo aceptado deja de estar pendiente; lo rechazado queda como estaba. */
+export async function confirmarAltasAceptadas(plantacionId: string, enviadas: string[], rechazadas: string[]): Promise<void> {
+  const aceptadas = enviadas.filter((id) => !rechazadas.includes(id));
   if (aceptadas.length > 0) await descartarPendientes(db, plantacionId, aceptadas);
 }
 

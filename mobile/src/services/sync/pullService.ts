@@ -379,10 +379,9 @@ async function pullGroups(
 }
 
 /** Miembros locales que el server ya no tiene. Un alta pendiente de subir todavía no llegó: no cuenta (#636). */
-async function miembrosRevocados(plantacionId: string, remotos: Set<string>): Promise<string[]> {
+async function miembrosRevocados(plantacionId: string, remotos: Set<string>, pendientes: Set<string>): Promise<string[]> {
   const locales = await db.select({ userId: plantationUsers.userId }).from(plantationUsers)
     .where(eq(plantationUsers.plantationId, plantacionId));
-  const pendientes = new Set(await getAltasPendientes(plantacionId));
   return locales.map((l) => l.userId).filter((id) => !remotos.has(id) && !pendientes.has(id));
 }
 
@@ -396,6 +395,9 @@ async function pullPlantationUsers(
     return;
   }
 
+  // Antes de bajar: un alta que la subida en segundo plano confirme en el medio ya
+  // está en lo que baja; leída después, no estaría en ningún lado y se borraría.
+  const pendientes = new Set(await getAltasPendientes(plantacionId));
   const { data: remotePu, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.usuarios),
@@ -410,7 +412,7 @@ async function pullPlantationUsers(
   syncLog.info('Pull plantation_users:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, all.length);
 
-  const revocados = await miembrosRevocados(plantacionId, new Set(all.map((pu: any) => pu.user_id)));
+  const revocados = await miembrosRevocados(plantacionId, new Set(all.map((pu: any) => pu.user_id)), pendientes);
 
   // Los miembros de una plantación son pocos: el replace entero entra en una
   // transacción, con un statement por lado.
