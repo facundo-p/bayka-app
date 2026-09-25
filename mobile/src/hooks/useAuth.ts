@@ -248,32 +248,139 @@ let revalidacionPendiente: (() => boolean) | null = null;
 let epocaRevalidada: number | null = null;
 let redConfirmada = false;
 
+// ─── Logins online en vuelo ─────────────────────────────────────────────────
+
 /**
- * Último login online que pudo quedar en vuelo. Su SIGNED_IN puede llegar después del
+ * Login online cuyo pedido al SDK no terminó. Su SIGNED_IN puede llegar después del
  * timeout; si entretanto hubo logout u otro login, no debe revivir ni pisar nada. `rol` es
  * lo que respondió el servidor al handler, incluida la falta de perfil (null): tras purgar una
  * cuenta desactivada, reconsultarlo iría como anon y RLS no devolvería la fila.
  */
 type LoginOnline = { vigente: () => boolean; email: string; rol?: RolObtenido };
-let loginOnlineEnVuelo: LoginOnline | null = null;
+
+/** Todos los pedidos sin terminar, no solo el último: uno que timeouteó puede responder tarde. */
+const loginsOnlineEnVuelo = new Set<LoginOnline>();
+
+/** Cuenta con sesión abierta en la época actual; cualquier cambio de época la invalida. */
+let cuentaConSesion: { userId: string; epoca: number } | null = null;
+
+function registrarCuentaConSesion(userId: string) {
+  cuentaConSesion = { userId, epoca: epocaDeSesion };
+}
+
+function esLaCuentaConSesion(userId: string): boolean {
+  return cuentaConSesion?.userId === userId && cuentaConSesion.epoca === epocaDeSesion;
+}
 
 function mismoEmail(a: string | undefined, b: string | undefined): boolean {
   return !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 }
 
+function loginVigenteDe(email: string | undefined): LoginOnline | undefined {
+  return [...loginsOnlineEnVuelo].find(l => l.vigente() && mismoEmail(l.email, email));
+}
+
+function hayLoginVigenteEnVuelo(): boolean {
+  return [...loginsOnlineEnVuelo].some(l => l.vigente());
+}
+
+/** user.id de la sesión guardada por el SDK, leída cruda: getSession puede refrescar por red. */
+async function cuentaEnStorageDelSdk(): Promise<string | null> {
+  try {
+    const clave = (await AsyncStorage.getAllKeys()).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    const guardada = clave ? await AsyncStorage.getItem(clave) : null;
+    return guardada ? (JSON.parse(guardada)?.user?.id ?? null) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * SIGNED_IN del SDK: del login en vuelo (lo corre adentro, o tarde tras un timeout) o, sin
- * login, del SDK solo. Null si hay que ignorarlo.
+ * Access token que se está devolviendo al SDK. Su SIGNED_IN se ignora: setSession avisa con el
+ * lock del SDK tomado, así que consultar el rol ahí se trabaría, y la época tomada en ese
+ * momento revertiría un logout o login ocurrido durante la restauración.
+ */
+let accessTokenEnRestauracion: string | null = null;
+
+/** Vuelve a poner en el SDK la sesión de la cuenta con sesión, con sus tokens cacheados. */
+async function restaurarCuentaEnSdk(): Promise<boolean> {
+  const cuenta = cuentaConSesion;
+  if (!cuenta || !esLaCuentaConSesion(cuenta.userId) || (await readCachedUserId()) !== cuenta.userId) return false;
+  const tokens = await readCachedSession();
+  if (!tokens) return false;
+  accessTokenEnRestauracion = tokens.access_token;
+  try {
+    const { error } = await supabase.auth.setSession(tokens);
+    return !error;
+  } catch {
+    return false;
+  } finally {
+    accessTokenEnRestauracion = null;
+  }
+}
+
+/**
+ * El SDK guarda cada sesión antes de avisar su SIGNED_IN, así que una respuesta descartada
+ * puede haber pisado el storage de la cuenta con sesión. Con ningún login vigente en vuelo
+ * (si hay uno, concilia él al terminar), si el storage es de otra cuenta se restaura la que
+ * tiene la sesión o, si no se puede (sin sesión, sin tokens o sin red), se borra: si no, las
+ * requests saldrían con esa cuenta y el próximo arranque la adoptaría.
+ */
+async function conciliarUnaVez() {
+  if (hayLoginVigenteEnVuelo()) return;
+  const vigente = vigenteDesdeAhora();
+  const enSdk = await cuentaEnStorageDelSdk();
+  if (!enSdk || esLaCuentaConSesion(enSdk) || !vigente()) return;
+  const restaurada = await restaurarCuentaEnSdk();
+  // Un logout o login offline en el medio: lo restaurado tampoco es de nadie.
+  if ((restaurada && vigente()) || hayLoginVigenteEnVuelo()) return;
+  const ahora = await cuentaEnStorageDelSdk();
+  if (ahora && !esLaCuentaConSesion(ahora)) await borrarEstadoDelSdk();
+}
+
+/** Una sola conciliación a la vez entre instancias; un pedido durante la actual la repite al terminar. */
+let conciliacionEnCurso: Promise<void> | null = null;
+let conciliarOtraVez = false;
+
+function conciliarSdk(): Promise<void> {
+  if (conciliacionEnCurso) {
+    conciliarOtraVez = true;
+    return conciliacionEnCurso;
+  }
+  conciliacionEnCurso = (async () => {
+    do {
+      conciliarOtraVez = false;
+      await conciliarUnaVez();
+    } while (conciliarOtraVez);
+  })().finally(() => { conciliacionEnCurso = null; });
+  return conciliacionEnCurso;
+}
+
+async function alTerminarPedidoDeLogin(login: LoginOnline) {
+  loginsOnlineEnVuelo.delete(login);
+  await conciliarSdk();
+}
+
+/**
+ * SIGNED_IN del SDK: de un login en vuelo (lo corre adentro, o tarde tras un timeout) o, sin
+ * logins en vuelo, del SDK solo. Uno que no es de un login vigente de ese email se descarta.
+ * Null si hay que ignorarlo.
  */
 async function alIniciarSesionEnSdk(sesion: Session): Promise<SesionRestaurada | null> {
-  const login = loginOnlineEnVuelo;
-  if (login && !mismoEmail(login.email, sesion.user.email)) return null;
+  if (sesion.access_token === accessTokenEnRestauracion) return null;
+  const login = loginVigenteDe(sesion.user.email);
+  if (!login && loginsOnlineEnVuelo.size > 0) {
+    await conciliarSdk();
+    return null;
+  }
   const vigente = login?.vigente ?? vigenteDesdeAhora();
   await cachearSesionOnline(sesion, vigente);
   const delServidor = await consultarRol(sesion.user.id, vigente);
   // Una desactivación no se rebaja: tras purgarla, otra consulta va como anon y no ve la fila.
   if (login && delServidor !== undefined && login.rol !== CUENTA_DESACTIVADA) login.rol = delServidor;
-  return resolverSesion(sesion, delServidor ?? (await leerRolCacheado()), vigente);
+  const resultado = await resolverSesion(sesion, delServidor ?? (await leerRolCacheado()), vigente);
+  if (resultado?.session && vigente()) registrarCuentaConSesion(sesion.user.id);
+  return resultado;
 }
 
 /** Solo para tests: resetea el estado compartido entre casos. */
@@ -281,7 +388,11 @@ export function __resetEstadoCompartido(): void {
   revalidacionPendiente = null;
   epocaRevalidada = null;
   redConfirmada = false;
-  loginOnlineEnVuelo = null;
+  loginsOnlineEnVuelo.clear();
+  accessTokenEnRestauracion = null;
+  conciliacionEnCurso = null;
+  conciliarOtraVez = false;
+  cuentaConSesion = null;
 }
 
 function armarRevalidacion(vigente: () => boolean) {
@@ -409,6 +520,7 @@ export function useAuth() {
     if (esCredencialSinUsuario(cuenta)) return sinSesion(MENSAJE_OFFLINE_SIN_HABILITAR);
 
     nuevaEpocaDeSesion();
+    registrarCuentaConSesion(cuenta.userId);
     const offlineSession = await sesionOfflinePara(cuenta.userId);
     await SecureStore.setItemAsync(USER_ID_KEY, cuenta.userId);
     await SecureStore.setItemAsync(ROLE_KEY, cuenta.role);
@@ -444,6 +556,7 @@ export function useAuth() {
     // El rol pudo salir del cache y no del servidor: se publica igual, o el login queda sin rol.
     await SecureStore.setItemAsync(ROLE_KEY, rol);
     if (!vigente()) return rol;
+    registrarCuentaConSesion(session.user.id);
     authChangeListeners.forEach(fn => fn({ session, role: rol }));
     await cacheCredential(email, password, rol, session.user.id);
     await saveLastOnlineLogin();
@@ -482,20 +595,43 @@ export function useAuth() {
     // La época cambia antes de llamar al SDK: su handler SIGNED_IN corre adentro y la usa.
     nuevaEpocaDeSesion();
     const login: LoginOnline = { vigente: vigenteDesdeAhora(), email };
-    loginOnlineEnVuelo = login;
+    loginsOnlineEnVuelo.add(login);
+    const pedido = supabase.auth.signInWithPassword({ email, password });
     let result;
     try {
-      result = await withTimeout(
-        supabase.auth.signInWithPassword({ email, password }),
-        LOGIN_TIMEOUT,
-      );
+      result = await withTimeout(pedido, LOGIN_TIMEOUT);
     } catch {
       // Red caída o timeout: sigue en vuelo, su SIGNED_IN tardío respeta lo que pase después.
+      completarLoginTardio(pedido, email, password, login);
       return handleConnectivityFailure(email, password, offlineYaIntentado);
     }
-    if (loginOnlineEnVuelo === login) loginOnlineEnVuelo = null;
+    await alTerminarPedidoDeLogin(login);
     if (!result.error) return aceptarLoginOnline(email, password, result, login);
     return rechazoDeLoginOnline(email, password, result.error, offlineYaIntentado);
+  }
+
+  /**
+   * Un login que timeouteó puede entrar después: si nada lo reemplazó, se completa como uno a
+   * tiempo (credencial offline, lastOnlineLogin, auto-refresh), o se descarta si no puede entrar.
+   * Si lo reemplazó un reintento de la misma cuenta aún en vuelo, el handler ya lo adoptó con la
+   * época del reintento: se completa con ese login.
+   */
+  async function completarLoginTardio(pedido: ReturnType<typeof supabase.auth.signInWithPassword>, email: string, password: string, login: LoginOnline) {
+    let result: Awaited<typeof pedido> | null = null;
+    try {
+      result = await pedido;
+    } catch (e) {
+      console.warn('[Auth] login online tardío falló:', e);
+    }
+    await alTerminarPedidoDeLogin(login);
+    if (!result || result.error) return;
+    const heredero = login.vigente() ? login : loginVigenteDe(email);
+    if (!heredero) return;
+    try {
+      await aceptarLoginOnline(email, password, result, heredero);
+    } catch (e) {
+      console.warn('[Auth] no se pudo completar el login online tardío:', e);
+    }
   }
 
   async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R, login: LoginOnline) {
