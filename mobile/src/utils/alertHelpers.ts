@@ -11,8 +11,8 @@ type ShowFn = (config: {
 
 /**
  * Info dialog (single OK button). `onDismiss`, si viene, corre recién cuando el usuario
- * cierra el diálogo (tap en "Entendido") — para encadenar un paso siguiente sin abrirlo
- * en el mismo tick que este diálogo (dos modales nativos a la vez, #656).
+ * cierra el diálogo ("Entendido", back o toque fuera): encadena un paso siguiente sin
+ * abrirlo en el mismo tick que este diálogo (dos modales nativos a la vez, #656).
  */
 export function showInfoDialog(
   show: ShowFn,
