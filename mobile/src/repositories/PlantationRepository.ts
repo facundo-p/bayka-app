@@ -14,7 +14,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
-import { ESTADO_PLANTACION } from '../constants/estados';
+import { ESTADO_PLANTACION, type EstadoPlantacion } from '../constants/estados';
 import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
 import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
@@ -300,17 +300,62 @@ export async function finalizePlantation(plantacionId: string): Promise<void> {
 
   if (error) throw error;
 
-  try {
-    await db
-      .update(plantations)
-      .set({ estado: ESTADO_PLANTACION.finalizada })
-      .where(eq(plantations.id, plantacionId));
-  } catch (e) {
-    syncLog.error(`finalizePlantation: update local falló tras éxito en server para ${plantacionId}`, e);
-    throw new FinalizePlantationLocalSyncError(e);
-  }
+  await reflejarEstadoLocal(plantacionId, ESTADO_PLANTACION.finalizada, (e) => new FinalizePlantationLocalSyncError(e));
+}
 
+/** Refleja en SQLite un cambio de estado que el server ya confirmó, sin esperar el pull. */
+async function reflejarEstadoLocal(
+  plantacionId: string,
+  estado: EstadoPlantacion,
+  errorDeDesfase: (causa: unknown) => Error,
+): Promise<void> {
+  try {
+    await db.update(plantations).set({ estado }).where(eq(plantations.id, plantacionId));
+  } catch (e) {
+    syncLog.error(`Estado local '${estado}' falló tras éxito en server para ${plantacionId}`, e);
+    throw errorDeDesfase(e);
+  }
   notifyDataChanged();
+}
+
+// ─── reabrirPlantacion ────────────────────────────────────────────────────────
+
+const RPC_REABRIR_PLANTACION = 'reabrir_plantacion';
+
+const ERRORES_REAPERTURA = {
+  /** No es superadmin activo de la organización de la plantación. */
+  noAutorizado: 'NOT_AUTHORIZED',
+  archivada: 'PLANTACION_ARCHIVADA',
+} as const;
+
+const MENSAJE_ERROR_REAPERTURA = 'No se pudo reabrir la plantación. Probá de nuevo.';
+
+const MENSAJES_ERROR_REAPERTURA: Record<string, string> = {
+  [ERRORES_REAPERTURA.noAutorizado]: 'Solo un superadmin puede reabrir una plantación.',
+  [ERRORES_REAPERTURA.archivada]: 'La plantación está archivada: desarchivala antes de reabrirla.',
+};
+
+/** El server reabrió pero SQLite no se enteró: el próximo pull lo reconcilia. */
+export class ReabrirPlantacionLocalSyncError extends Error {
+  constructor(cause: unknown) {
+    super('La plantación se reabrió en el servidor, pero no se pudo reflejar localmente');
+    this.name = 'ReabrirPlantacionLocalSyncError';
+    this.cause = cause;
+  }
+}
+
+/**
+ * Devuelve una finalizada al estado activo (#470, #637). Solo online y solo
+ * superadmin: lo valida el RPC. Los grupos conservan su estado.
+ */
+export async function reabrirPlantacion(plantacionId: string): Promise<void> {
+  const { data, error } = await supabase.rpc(RPC_REABRIR_PLANTACION, { p_id: plantacionId });
+  if (error) throw new Error(MENSAJE_ERROR_REAPERTURA);
+  const respuesta = data as { success?: boolean; error?: string } | null;
+  if (!respuesta?.success) {
+    throw new Error(MENSAJES_ERROR_REAPERTURA[respuesta?.error ?? ''] ?? MENSAJE_ERROR_REAPERTURA);
+  }
+  await reflejarEstadoLocal(plantacionId, ESTADO_PLANTACION.activa, (e) => new ReabrirPlantacionLocalSyncError(e));
 }
 
 // ─── saveSpeciesConfig ────────────────────────────────────────────────────────

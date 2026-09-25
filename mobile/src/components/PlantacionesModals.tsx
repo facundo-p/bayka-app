@@ -22,6 +22,8 @@ type AdminHook = {
   confirmProps: any;
   exportingId: string | null;
   handleFinalize: (id: string) => void | Promise<void>;
+  canReopen: boolean;
+  handleReopen: (plantation: Plantation) => void | Promise<void>;
   handleExportCsv: (id: string) => void | Promise<void>;
   handleExportExcel: (id: string) => void | Promise<void>;
   handleExportKml: (id: string) => void | Promise<void>;
@@ -31,6 +33,7 @@ type AdminHook = {
 
 type Props = {
   isAdmin: boolean;
+  isOnline: boolean;
   adminHook: AdminHook;
 
   // Delete confirm (usePlantaciones)
@@ -99,6 +102,7 @@ type Props = {
 
 export default function PlantacionesModals({
   isAdmin,
+  isOnline,
   adminHook,
   confirmProps,
   editingParcela,
@@ -218,11 +222,14 @@ export default function PlantacionesModals({
         plantation={bottomSheetPlantation}
         meta={bottomSheetMeta}
         isAdmin={isAdmin}
+        canReopen={adminHook.canReopen}
+        isOnline={isOnline}
         onDismiss={closeBottomSheet}
         onEdit={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) handleEditPress(bottomSheetPlantation); })}
         onConfigSpecies={() => handleBottomSheetAction(() => setConfigSpeciesPlantacionId(bottomSheetPlantation?.id ?? null))}
         onAssignTech={() => { if (bottomSheetPlantation) onAssignTechFromSheet(bottomSheetPlantation.id); }}
         onFinalize={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleFinalize(bottomSheetPlantation.id); })}
+        onReopen={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleReopen(bottomSheetPlantation); })}
         onExportCsv={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportCsv(bottomSheetPlantation.id); })}
         onExportExcel={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportExcel(bottomSheetPlantation.id); })}
         onExportKml={() => handleBottomSheetAction(() => { if (bottomSheetPlantation) adminHook.handleExportKml(bottomSheetPlantation.id); })}

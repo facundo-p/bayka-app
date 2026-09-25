@@ -12,6 +12,7 @@ import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
 import { useConfirm } from './useConfirm';
+import { useReaperturaPlantacion } from './useReaperturaPlantacion';
 import { showInfoDialog } from '../utils/alertHelpers';
 import { getPlantationsForRole } from '../queries/dashboardQueries';
 import { checkFinalizationGate, hasIdsGenerated, type FinalizationGate } from '../queries/adminQueries';
@@ -28,6 +29,7 @@ import { exportToCSV, exportToExcel, exportToKML } from '../services/ExportServi
 import { colors } from '../theme';
 import { ESTADO_PLANTACION } from '../constants/estados';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { puedeReabrir } from '../utils/reaperturaPlantacion';
 import { mensajeFinalizarConPendientes, tienePendientes } from '../utils/finalizarPlantacion';
 import { detalleDePendientes } from '../utils/avisoEliminarDelDispositivo';
 import type { Plantation } from '../types/plantation';
@@ -84,6 +86,7 @@ export function usePlantationAdmin() {
   const { profile } = useProfileData();
   const organizacionId = profile?.organizacionId ?? null;
   const { confirmProps, show: showConfirm } = useConfirm();
+  const { handleReopen } = useReaperturaPlantacion(showConfirm);
 
   const [finalizing, setFinalizing] = useState(false);
   const [exportingId, setExportingId] = useState<string | null>(null);
@@ -269,6 +272,8 @@ export function usePlantationAdmin() {
     exportingId,
     confirmProps,
     handleFinalize,
+    canReopen: puedeReabrir(profile?.rol),
+    handleReopen,
     handleExportCsv,
     handleExportExcel,
     handleExportKml,

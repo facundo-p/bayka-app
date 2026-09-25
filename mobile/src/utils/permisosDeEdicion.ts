@@ -9,7 +9,7 @@ export interface EstadoDeEdicionDePlantacion {
 
 /**
  * Una plantación finalizada es inmutable desde la app: ni ediciones ni borrados,
- * propios o ajenos (#469). Reabrirla es exclusivo del superadmin, desde la web (#470).
+ * propios o ajenos (#469). Reabrirla es exclusivo del superadmin y requiere conexión (#470, #637).
  * Archivada o eliminada en el servidor tampoco admiten cambios, para ningún rol (#477, #478).
  */
 export function plantacionEsEditable(plantacion: EstadoDeEdicionDePlantacion): boolean {
