@@ -159,6 +159,8 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
     .set({
       estado: remotePlantation.estado,
       archivadaEn: remotePlantation.archivada_en ?? null,
+      // Un alta sin terminar que el server ya tiene: descartarla no la borra de allá (#638).
+      ...(local?.pendingSync ? { altaEnServidor: true } : {}),
       ...aSnapshot(remotos),
       ...(local && tieneCambiosSinSubir(local) ? rebaseDeEdicionPendiente(local, remotos) : remotos),
     })

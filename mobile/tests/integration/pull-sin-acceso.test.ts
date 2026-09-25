@@ -260,6 +260,19 @@ describe('pullFromServer: cuándo NO hay que gritar "sin acceso"', () => {
 
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
   });
+
+  it('un alta sin terminar que el server ya tiene queda marcada como en el servidor (#638)', async () => {
+    await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
+    serverState.plantations.set(PLANTACION_ID, {
+      id: PLANTACION_ID, lugar: 'Campo Test', periodo: '2026', estado: 'activa',
+      creado_por: 'admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
+    });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTACION_ID));
+    expect(fila).toMatchObject({ pendingSync: true, altaEnServidor: true });
+  });
 });
 
 describe('server sin estado_remoto_plantaciones: cae al chequeo de membresía', () => {

@@ -95,10 +95,9 @@ function queQueda(lugar: string, resumen: ResumenDeDescarte, seVa: boolean, moti
     return `"${lugar}" se elimina de este dispositivo; podés volver a descargarla desde el catálogo.`;
   }
   if (seVa) return `"${lugar}" se elimina de este dispositivo.`;
-  // Sin permiso el pull no corre: lo que se quita del teléfono no vuelve hasta recuperar el acceso.
-  if (sinPermiso) {
-    return 'Lo que ya estaba en el servidor sigue ahí; los grupos y parcelas con cambios sin subir se quitan de este dispositivo y vuelven cuando recuperes el acceso.';
-  }
+  // Sin permiso no se promete cuándo vuelve lo del servidor: sin membresía el pull no corre y
+  // sin rol sí. Tampoco se distingue localmente un grupo ya subido de uno nuevo.
+  if (sinPermiso) return 'Lo que ya estaba en el servidor sigue ahí.';
   return `"${lugar}" vuelve a quedar como está en el servidor en la próxima sincronización.`;
 }
 

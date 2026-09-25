@@ -61,7 +61,7 @@ describe('confirmación de Descartar', () => {
   it('sin permiso el pull no corre: no promete volver al estado del servidor', () => {
     const { mensaje } = confirmacionDeDescarte({ lugar: 'Norte', resumen: { ...VACIO, parcelas: 1 }, seVa: false, motivo: 'sin-permiso' });
     expect(mensaje).toBe(
-      'Se pierden para siempre: 1 parcela pendiente. Lo que ya estaba en el servidor sigue ahí; los grupos y parcelas con cambios sin subir se quitan de este dispositivo y vuelven cuando recuperes el acceso. Esta acción no se puede deshacer.',
+      'Se pierden para siempre: 1 parcela pendiente. Lo que ya estaba en el servidor sigue ahí. Esta acción no se puede deshacer.',
     );
   });
 

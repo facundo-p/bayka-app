@@ -81,7 +81,8 @@ function masPrioritario(a: MotivoVarado | undefined, b: MotivoVarado): MotivoVar
   return PRIORIDAD_DE_MOTIVOS.indexOf(a) <= PRIORIDAD_DE_MOTIVOS.indexOf(b) ? a : b;
 }
 
-const estaVacio = (r: Registro) => r.motivos.size + r.subidas.size + r.conAcceso.size === 0 && !r.todas;
+const estaVacio = (r: Registro) =>
+  r.motivos.size + r.subidas.size + r.conAcceso.size + r.reintentadas.size === 0 && !r.todas;
 
 /** Después de la corrida, que ya notificó: sin esto la tarjeta no se entera del motivo. */
 async function aplicar(r: Registro): Promise<void> {
@@ -98,8 +99,9 @@ async function escribir(r: Registro): Promise<void> {
     await alinearConElEstado(id, seReintentoEntera(r, id));
   }
   // Un motivo sin nada pendiente (se subió o se borró por otra vía) no debe reaparecer con el próximo cambio.
-  if (r.todas && !r.cortado) {
-    for (const id of await getMotivosSinPendientes()) await limpiarMotivoVarado(id);
+  if (r.cortado || (!r.todas && r.reintentadas.size === 0)) return;
+  for (const id of await getMotivosSinPendientes()) {
+    if (seReintentoEntera(r, id)) await limpiarMotivoVarado(id);
   }
 }
 

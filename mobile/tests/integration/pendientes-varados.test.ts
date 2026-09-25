@@ -210,9 +210,9 @@ describe('Descartar una plantación que existe en el server', () => {
     await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, 'g-subido'));
     const descarte = await getDescarteDePlantacion(P);
 
-    expect(confirmacionDeDescarte(descarte!).mensaje).toContain(
-      'los grupos y parcelas con cambios sin subir se quitan de este dispositivo y vuelven cuando recuperes el acceso',
-    );
+    // No promete que vuelva: localmente no se distingue un grupo ya subido de uno nuevo.
+    expect(confirmacionDeDescarte(descarte!).mensaje).toContain('Lo que ya estaba en el servidor sigue ahí.');
+    expect(confirmacionDeDescarte(descarte!).mensaje).not.toContain('vuelve');
     await descartarPendientes(P);
     expect(await ids(groups)).toEqual(['g-de-editada']);
   });
@@ -250,11 +250,12 @@ describe('Descartar lo que no existe en el server', () => {
 });
 
 describe('motivo guardado por el sync', () => {
-  // La sync de P: la global además limpia motivos sin pendientes, y estas no tienen.
   const SYNC_DE_P = { ids: [P] };
+  const sinPendientes = () => mockTestDb.update(plantations).set({ pendingEdit: false }).where(eq(plantations.id, P));
 
+  // Con una edición pendiente: al cerrar, un motivo sin nada pendiente se limpia solo.
   beforeEach(async () => {
-    await mockTestDb.insert(plantations).values(createTestPlantation({ id: P }));
+    await mockTestDb.insert(plantations).values({ ...createTestPlantation({ id: P }), pendingEdit: true });
   });
 
   it('un rechazo y una subida en la misma corrida: gana el rechazo', async () => {
@@ -334,11 +335,41 @@ describe('motivo guardado por el sync', () => {
   });
 
   it('la sync global limpia un motivo que ya no tiene nada pendiente', async () => {
+    await sinPendientes();
     await guardarMotivoVarado(P, 'archivada');
 
     await conRegistroDeVarados(async () => {}, REINTENTA_TODAS);
 
     expect((await plantacion()).motivoVarado).toBeNull();
+  });
+
+  it('la sync de una plantación limpia su motivo sin pendientes, no el de otras', async () => {
+    await sinPendientes();
+    await mockTestDb.insert(plantations).values({ ...createTestPlantation({ id: 'otra' }), motivoVarado: 'archivada' });
+    await guardarMotivoVarado(P, 'archivada');
+
+    await conRegistroDeVarados(async () => {}, { ids: [P] });
+
+    expect((await plantacion()).motivoVarado).toBeNull();
+    const [otra] = await mockTestDb.select().from(plantations).where(eq(plantations.id, 'otra'));
+    expect(otra.motivoVarado).toBe('archivada');
+  });
+
+  it('una sync global cortada no limpia motivos: lo pendiente no se reintentó', async () => {
+    await sinPendientes();
+    await guardarMotivoVarado(P, 'archivada');
+
+    await expect(conRegistroDeVarados(async () => { throw new Error('cancelada'); }, REINTENTA_TODAS)).rejects.toThrow();
+
+    expect((await plantacion()).motivoVarado).toBe('archivada');
+  });
+
+  it('la sync global conserva el motivo de una plantación con pendientes', async () => {
+    await mockTestDb.update(plantations).set({ motivoVarado: 'sin-permiso', pendingEdit: true }).where(eq(plantations.id, P));
+
+    await conRegistroDeVarados(async () => {}, REINTENTA_TODAS);
+
+    expect((await plantacion()).motivoVarado).toBe('sin-permiso');
   });
 
   it('limpiar solo ciertos motivos no toca los demás', async () => {
