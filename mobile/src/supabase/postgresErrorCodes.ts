@@ -33,7 +33,14 @@ export type PgErrorCode = (typeof PG_ERROR)[keyof typeof PG_ERROR];
 export const POSTGREST_ERROR = {
   /** PostgREST no encuentra la función en su schema cache (RPC inexistente o firma distinta). */
   FUNCTION_NOT_FOUND: 'PGRST202',
+  /** `.single()` sin filas: el servidor respondió que no hay fila (o RLS no deja verla). */
+  SIN_FILAS: 'PGRST116',
 } as const;
+
+/** `.single()` no encontró fila: es una respuesta del servidor, no un fallo de red. */
+export function esSinFilas(error: { code?: string } | null | undefined): boolean {
+  return error?.code === POSTGREST_ERROR.SIN_FILAS;
+}
 
 /** El RPC no existe en el server: hay que caer al camino anterior. */
 export function esFuncionInexistente(error: { code?: string; message?: string } | null | undefined): boolean {

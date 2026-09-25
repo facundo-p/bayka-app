@@ -41,6 +41,7 @@ import {
 import { db } from '../../src/database/client';
 import { supabase } from '../../src/supabase/client';
 import { conSesionDelServidor } from '../helpers/rolCacheado';
+import { SIN_INTERNET, RED_DESCONOCIDA } from '../helpers/networkHelper';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const GPS = { gpsCaptureFrequency: 5, gpsCaptureRequired: false };
@@ -148,6 +149,19 @@ describe('config GPS por plantación', () => {
       pendingEdit: true,
       baseDeEdicion: expect.objectContaining({ lugar: 'Viejo', gpsCaptureFrequency: 10 }),
     });
+  });
+
+  it.each([
+    ['conectado sin internet', SIN_INTERNET],
+    ['red desconocida', RED_DESCONOCIDA],
+  ])('updatePlantation %s va al camino offline sin intentar subir (#652)', async (_caso, estado) => {
+    mockDbChains({ pendingSync: false, pendingEdit: false, lugarServer: null, periodoServer: null, lugar: 'Viejo', periodo: '2025' });
+    mockNetInfoFetch.mockResolvedValue(estado);
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(updatedSet).toMatchObject({ pendingEdit: true });
   });
 
   it('updatePlantation offline (primera edición) snapshotea la config GPS de server', async () => {

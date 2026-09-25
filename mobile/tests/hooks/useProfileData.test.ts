@@ -2,6 +2,7 @@
 // Validates profile fetch from Supabase, SecureStore cache, and offline fallback
 
 import * as SecureStore from 'expo-secure-store';
+import { setOnline, setSinInternet, setRedDesconocida } from '../helpers/networkHelper';
 
 jest.mock('expo-secure-store');
 jest.mock('../../src/supabase/client', () => ({
@@ -52,6 +53,21 @@ describe('useProfileData', () => {
     store = new Map([[USER_ID_KEY, 'user-1']]);
     (SecureStore.getItemAsync as jest.Mock).mockImplementation(async (k: string) => store.get(k) ?? null);
     (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string, v: string) => { store.set(k, v); });
+    setOnline();
+  });
+
+  it.each([
+    ['conectado sin internet', setSinInternet],
+    ['red desconocida', setRedDesconocida],
+  ])('%s: muestra el perfil cacheado sin consultar el server (#652)', async (_caso, setRed) => {
+    setRed();
+    cachear({ ...mockProfile, userId: 'user-1' });
+
+    const { result } = renderHook(() => useProfileData());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(supabase.auth.getUser).not.toHaveBeenCalled();
+    expect(result.current.profile).toEqual(mockProfile);
   });
 
   it('returns loading=true initially, then loading=false after resolving', async () => {
