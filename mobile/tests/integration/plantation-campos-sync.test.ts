@@ -306,6 +306,18 @@ describe('fila sin los campos nuevos pulleados (previa a 0024)', () => {
     expect(await filaLocal()).toMatchObject({ pendingEdit: false, lugarServer: 'Campo Sur', descripcionServer: null });
   });
 
+  test('un pull con edición pendiente trae los campos no editados y el push no los borra', async () => {
+    await seedLocal({ pendingEdit: true, lugar: 'Campo Sur', lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026' });
+    serverPlantation(PLANTATION_ID, DEL_SERVER);
+
+    await pullFromServer(PLANTATION_ID);
+    await uploadPendingEdits();
+
+    expect(mockUpdates.map((u) => u.payload)).toEqual([{ lugar: 'Campo Sur' }]);
+    esperarQueElServerLosConserve();
+    expect(await filaLocal()).toMatchObject({ lugar: 'Campo Sur', descripcion: 'Cargada en la web', objetivoArboles: 12000 });
+  });
+
   test('sin cambios reales no hay UPDATE', async () => {
     await seedLocal();
     serverPlantation(PLANTATION_ID, DEL_SERVER);

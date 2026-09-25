@@ -6,7 +6,8 @@ import { syncLog } from '../../utils/syncLogger';
 import { relanzarSiEsCancelacion } from './cancelacion';
 import { pullSpeciesFromServer } from './catalogoDeEspecies';
 import { esTimeout } from '../../supabase/fetchConTimeout';
-import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail } from './types';
+import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail, type SyncErrorCode } from './types';
+import { MOTIVO_NO_ESCRIBIBLE, motivoNoEscribible } from '../PlantacionEscribibleService';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas';
 import { hayOtraEnServidor } from './duplicadasEnServidor';
@@ -24,13 +25,26 @@ type PlantacionLocal = typeof plantations.$inferSelect;
 
 // ─── Upload offline-created plantations ───────────────────────────────────────
 
-type ErrorDelServer = { code?: string; message?: string };
+type FalloDeAlta = { error: SyncErrorCode; detail?: string };
+
+/**
+ * Ya existe pero el update no afectó filas. Finalizada o archivada: queda pendiente con ese
+ * motivo, que le dice al usuario qué pedir. Al reabrirla sube lo editado y sus especies; sus
+ * parcelas y grupos no podrían escribirse igual mientras siga cerrada, así que marcarla
+ * subida no destrabaría nada y perdería la edición en silencio. Si no, es otra restricción
+ * única o RLS: error crudo.
+ */
+async function altaNoActualizable(plantacionId: string): Promise<FalloDeAlta> {
+  const motivo = await motivoNoEscribible(plantacionId);
+  if (motivo === MOTIVO_NO_ESCRIBIBLE.finalizada || motivo === MOTIVO_NO_ESCRIBIBLE.archivada) return { error: motivo };
+  return { error: SYNC_ERROR.UNKNOWN, detail: DETALLE_SIN_FILAS_AFECTADAS };
+}
 
 /**
  * Inserta la plantación. Si ya existe (un intento anterior la insertó y fallaron las especies),
  * la actualiza con los campos actuales para no perder lo editado en el medio.
  */
-async function subirFilaDeAlta(p: PlantacionLocal): Promise<ErrorDelServer | null> {
+async function subirFilaDeAlta(p: PlantacionLocal): Promise<FalloDeAlta | null> {
   const campos = aColumnasRemotas(camposDeFila(p));
   const { error } = await supabase.from('plantations').insert({
     id: p.id,
@@ -40,11 +54,11 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ErrorDelServer | nul
     created_at: p.createdAt,
     ...campos,
   });
-  if (error?.code !== PG_ERROR.UNIQUE_VIOLATION) return error;
+  if (error?.code !== PG_ERROR.UNIQUE_VIOLATION) return error ? classifyServerError(error) : null;
 
   const { data, error: updateError } = await supabase.from('plantations').update(campos).eq('id', p.id).select('id');
-  if (updateError) return updateError;
-  return sinFilasAfectadas(data) ? { message: DETALLE_SIN_FILAS_AFECTADAS } : null;
+  if (updateError) return classifyServerError(updateError);
+  return sinFilasAfectadas(data) ? altaNoActualizable(p.id) : null;
 }
 
 /**
@@ -64,12 +78,10 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
     // Errores que LANZAN (no solo `{ error }`) también deben surfacearse, no tragarse dejando
     // results vacío en runGlobalPreSteps.
     try {
-      const plantError = await subirFilaDeAlta(p);
-
-      if (plantError) {
-        syncLog.error('Upload plantation failed:', p.id, plantError.message);
-        const { error: code, detail } = classifyServerError(plantError);
-        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });
+      const fallo = await subirFilaDeAlta(p);
+      if (fallo) {
+        syncLog.error('Upload plantation failed:', p.id, fallo.error, fallo.detail ?? '');
+        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...fallo });
         continue;
       }
 

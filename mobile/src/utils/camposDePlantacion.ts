@@ -113,6 +113,23 @@ export function hayCambios(campos: Partial<CamposDePlantacion>): boolean {
   return Object.keys(campos).length > 0;
 }
 
+/**
+ * Pull con edición pendiente: de lo que trae el server, los valores vivos a actualizar. Solo
+ * los campos que el usuario no tocó (vivo igual al snapshot anterior, null incluido); si no,
+ * el push vería el valor viejo como una edición y lo pisaría en el server. Lo borrado a
+ * propósito (snapshot con valor, vivo null) no se toca.
+ */
+export function remotosNoEditados(
+  fila: FilaDePlantacion,
+  remotos: Partial<CamposDePlantacion>,
+): Partial<CamposDePlantacion> {
+  const noEditados: Record<string, unknown> = {};
+  for (const campo of CAMPOS) {
+    if (remotos[campo] !== undefined && fila[campo] === fila[COLUMNA_SNAPSHOT[campo]]) noEditados[campo] = remotos[campo];
+  }
+  return noEditados as Partial<CamposDePlantacion>;
+}
+
 /** Payload para Supabase: solo los campos presentes. */
 export function aColumnasRemotas(campos: Partial<CamposDePlantacion>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};

@@ -113,9 +113,9 @@ Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPla
 
 **Archivo:** `services/sync/preSteps.ts` → `runGlobalPreSteps()`, antes del pull de cualquier plantación.
 
-- `uploadOfflinePlantations` inserta las creadas offline (`pendingSync = true`) con todos sus datos.
-- `uploadPendingEdits` sube las editadas offline (`pendingEdit = true`) con todos los campos del formulario: lugar, periodo, descripción, fecha de inicio, objetivo, GPS, foto en todos los botones y visibilidad. El último que escribe gana; el merge por campo es #634.
-- Los campos y sus columnas viven en `utils/camposDePlantacion.ts`. Cada uno tiene un snapshot `*Server` con el último valor conocido del server: el pull lo refresca siempre, pero solo pisa el valor vivo si no hay edición pendiente. Descartar la edición vuelve al snapshot.
+- `uploadOfflinePlantations` inserta las creadas offline (`pendingSync = true`) con todos sus datos. Si ya existe (un intento anterior insertó y fallaron las especies), la actualiza con los datos actuales; si ese update no afecta filas porque la plantación está finalizada o archivada, queda pendiente con ese motivo.
+- `uploadPendingEdits` sube las editadas offline (`pendingEdit = true`), pero solo los campos que difieren de su snapshot `*Server` (lugar, periodo, descripción, fecha de inicio, objetivo, GPS, foto en todos los botones y visibilidad). Sin diferencias no hay UPDATE. En un campo editado de los dos lados gana el último que escribe; el merge por campo es #634. La edición online (`updatePlantation`) sigue la misma regla comparando contra la fila local.
+- Los campos y sus columnas viven en `utils/camposDePlantacion.ts`. Cada uno tiene un snapshot `*Server` con el último valor conocido del server: el pull lo refresca siempre. El valor vivo lo pisa sin edición pendiente; con edición pendiente, solo en los campos que el usuario no tocó (vivo igual al snapshot anterior). Descartar la edición vuelve al snapshot.
 - Después de subir una alta, o una edición que cambió lugar o periodo, se consulta si el server tiene otra con el mismo lugar y periodo (`ilike`, como la web). Si la hay, el resultado lleva `duplicada: true` y el resumen del sync la lista en "Mismo lugar y periodo". No frena nada.
 
 ### Paso 1: Pull

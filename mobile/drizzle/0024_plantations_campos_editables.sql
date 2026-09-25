@@ -8,4 +8,6 @@ ALTER TABLE `plantations` ADD `descripcion_server` text;--> statement-breakpoint
 ALTER TABLE `plantations` ADD `fecha_inicio_server` text;--> statement-breakpoint
 ALTER TABLE `plantations` ADD `objetivo_arboles_server` integer;--> statement-breakpoint
 ALTER TABLE `plantations` ADD `photo_capture_all_trees_server` integer;--> statement-breakpoint
-ALTER TABLE `plantations` ADD `visible_in_app_server` integer;
+ALTER TABLE `plantations` ADD `visible_in_app_server` integer;--> statement-breakpoint
+-- Hasta acá foto y visibilidad solo se editaban online: el valor local es el del server.
+UPDATE `plantations` SET `photo_capture_all_trees_server` = `photo_capture_all_trees`, `visible_in_app_server` = `visible_in_app`;

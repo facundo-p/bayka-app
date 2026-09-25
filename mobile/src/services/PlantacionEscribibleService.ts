@@ -27,8 +27,10 @@ const MENSAJE_POR_MOTIVO: Record<MotivoNoEscribible, string> = {
     `La plantación está finalizada: solo un superadmin puede cambiar su configuración. ${NO_SE_GUARDARON}`,
 };
 
+const TODOS_LOS_MOTIVOS: readonly MotivoNoEscribible[] = Object.values(MOTIVO_NO_ESCRIBIBLE);
+
 /** Las especies siguen `plantacion_escribible`: bloquean los tres motivos. */
-export const BLOQUEAN_ESPECIES: readonly MotivoNoEscribible[] = Object.values(MOTIVO_NO_ESCRIBIBLE);
+export const BLOQUEAN_ESPECIES = TODOS_LOS_MOTIVOS;
 
 /** Las asignaciones de técnicos se admiten en una finalizada (migración 047). */
 export const BLOQUEAN_ASIGNACIONES: readonly MotivoNoEscribible[] = [
@@ -54,6 +56,11 @@ async function consultarMotivo(plantacionId: string): Promise<string | null> {
 
 function motivoBloqueante(motivo: string | null, bloquean: readonly MotivoNoEscribible[]): MotivoNoEscribible | null {
   return bloquean.find((m) => m === motivo) ?? null;
+}
+
+/** Para explicar una escritura que el server no aplicó (0 filas): cualquier motivo vale. */
+export async function motivoNoEscribible(plantacionId: string): Promise<MotivoNoEscribible | null> {
+  return motivoBloqueante(await consultarMotivo(plantacionId), TODOS_LOS_MOTIVOS);
 }
 
 async function errorSiNoEscribible(

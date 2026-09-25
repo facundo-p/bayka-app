@@ -15,7 +15,14 @@ import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION, type EstadoPlantacion } from '../constants/estados';
-import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
+import {
+  escribirSiEsEscribible,
+  motivoNoEscribible,
+  PlantacionNoEscribibleError,
+  BLOQUEAN_ESPECIES,
+  BLOQUEAN_ASIGNACIONES,
+} from '../services/PlantacionEscribibleService';
+import { sinFilasAfectadas } from '../services/sync/filasAfectadas';
 import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
@@ -88,6 +95,14 @@ async function filaDePlantacion(plantacionId: string) {
 
 type FilaDePlantacion = Awaited<ReturnType<typeof filaDePlantacion>>;
 
+const EDICION_NO_APLICADA = 'La plantación no se actualizó en el servidor. Los cambios no se guardaron.';
+
+/** 0 filas sin error (RLS o fila inexistente, #482): el motivo si el server lo dice. */
+async function edicionNoAplicada(plantacionId: string): Promise<Error> {
+  const motivo = await motivoNoEscribible(plantacionId);
+  return motivo ? new PlantacionNoEscribibleError(motivo) : new Error(EDICION_NO_APLICADA);
+}
+
 /**
  * Intenta pushear a Supabase solo lo que cambió y, si sale bien, deja los valores y el snapshot
  * *Server de lo subido. Sin cambios no hay UPDATE. Devuelve false ante una falla de red, para que el caller caiga al camino offline; cualquier
@@ -100,11 +115,13 @@ async function tryPushPlantationUpdateOnline(
   const cambios = cambiosParaElServer(row, campos);
   try {
     if (hayCambios(cambios)) {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('plantations')
         .update(aColumnasRemotas(cambios))
-        .eq('id', row.id);
+        .eq('id', row.id)
+        .select('id');
       if (error) throw error;
+      if (sinFilasAfectadas(data)) throw await edicionNoAplicada(row.id);
     }
 
     await db
@@ -427,7 +444,7 @@ export async function createPlantationWithParcelaLocally(
       .values({
         plantationId,
         userId: params.creadoPor,
-        rolEnPlantacion: 'admin',
+        rolEnPlantacion: ROL.admin,
         assignedAt: now,
       })
       .onConflictDoNothing();

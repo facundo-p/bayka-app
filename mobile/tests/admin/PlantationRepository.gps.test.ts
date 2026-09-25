@@ -11,6 +11,7 @@ jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
     auth: { getSession: jest.fn() },
+    rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
 }));
@@ -80,12 +81,12 @@ function mockDbChains(parcial: any) {
   });
 }
 
-function mockSupabaseUpdate(error: any = null) {
+function mockSupabaseUpdate(error: any = null, filas: unknown[] = [{ id: 'plant-1' }]) {
   supabaseUpdatePayload = undefined;
   (supabase.from as jest.Mock).mockReturnValue({
     update: jest.fn().mockImplementation((payload: any) => {
       supabaseUpdatePayload = payload;
-      return { eq: jest.fn().mockResolvedValue({ error }) };
+      return { eq: jest.fn().mockReturnValue({ select: jest.fn().mockResolvedValue({ data: error ? null : filas, error }) }) };
     }),
   });
 }
@@ -230,7 +231,7 @@ describe('config GPS por plantación', () => {
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
     (supabase.from as jest.Mock).mockReturnValue({
       update: jest.fn().mockReturnValue({
-        eq: jest.fn().mockRejectedValue(new Error('Network request failed')),
+        eq: jest.fn().mockReturnValue({ select: jest.fn().mockRejectedValue(new Error('Network request failed')) }),
       }),
     });
 
@@ -252,13 +253,35 @@ describe('config GPS por plantación', () => {
     mockNetInfoFetch.mockResolvedValue({ isConnected: true });
     (supabase.from as jest.Mock).mockReturnValue({
       update: jest.fn().mockReturnValue({
-        eq: jest.fn().mockRejectedValue(new Error('permission denied for table plantations')),
+        eq: jest.fn().mockReturnValue({
+          select: jest.fn().mockRejectedValue(new Error('permission denied for table plantations')),
+        }),
       }),
     });
 
     await expect(updatePlantation('plant-1', 'Campo', '2026', GPS)).rejects.toThrow('permission denied');
 
     // No hubo fallback: el único intento de escritura local fue el select previo, no un update.
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('updatePlantation online sin filas afectadas (#482) falla con el motivo y no escribe local', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockSupabaseUpdate(null, []);
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: 'PLANTACION_ARCHIVADA', error: null });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    await expect(updatePlantation('plant-1', 'Campo', '2026')).rejects.toThrow('archivada');
+    expect(mockDb.update).not.toHaveBeenCalled();
+  });
+
+  it('updatePlantation online sin filas afectadas y sin motivo del server también falla', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockSupabaseUpdate(null, []);
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+
+    await expect(updatePlantation('plant-1', 'Campo', '2026')).rejects.toThrow('no se actualizó');
     expect(mockDb.update).not.toHaveBeenCalled();
   });
 
