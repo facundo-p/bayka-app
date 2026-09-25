@@ -62,7 +62,7 @@ describe('PlantationFormModal', () => {
     fireEvent.changeText(getByPlaceholderText('Otoño 2026'), '2026');
     fireEvent.changeText(getByPlaceholderText('Opcional'), '0');
     fireEvent.press(getByText('Crear'));
-    expect(getByText('El objetivo debe ser un número entero de al menos 1 árbol.')).toBeTruthy();
+    expect(getByText('El objetivo debe ser un número entero entre 1 y 10.000.000 árboles.')).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
 
     fireEvent.changeText(getByPlaceholderText('Opcional'), '500');

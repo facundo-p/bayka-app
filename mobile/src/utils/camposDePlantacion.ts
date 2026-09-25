@@ -73,6 +73,46 @@ export function camposDeFila(fila: FilaDePlantacion): CamposDePlantacion {
   return campos as unknown as CamposDePlantacion;
 }
 
+/** Lo que el server tenía al entrar en edición, leído de las columnas *Server. */
+function desdeSnapshot(fila: FilaDePlantacion): Partial<CamposDePlantacion> {
+  const campos: Record<string, unknown> = {};
+  for (const campo of CAMPOS) campos[campo] = fila[COLUMNA_SNAPSHOT[campo]];
+  return campos as Partial<CamposDePlantacion>;
+}
+
+/**
+ * Los campos de `nuevos` que difieren de `base`. No cuenta lo ausente en `nuevos` ni lo que
+ * `base` no conoce (ausente, o null en un obligatorio: un snapshot anterior a ese campo).
+ */
+export function camposCambiados(
+  base: Partial<CamposDePlantacion>,
+  nuevos: Partial<CamposDePlantacion>,
+): Partial<CamposDePlantacion> {
+  const cambiados: Record<string, unknown> = {};
+  for (const campo of CAMPOS) {
+    const valor = nuevos[campo];
+    if (valor !== undefined && esValorDe(campo, base[campo]) && valor !== base[campo]) cambiados[campo] = valor;
+  }
+  return cambiados as Partial<CamposDePlantacion>;
+}
+
+/**
+ * Lo que hay que subir para que el server refleje la fila con `edicion` aplicada: solo lo
+ * que cambió. Con edición offline pendiente la base es el snapshot; si no, el valor vivo.
+ * Así una fila que nunca bajó un campo (null en vivo y en snapshot) no borra el del server.
+ */
+export function cambiosParaElServer(
+  fila: FilaDePlantacion,
+  edicion: Partial<CamposDePlantacion> = {},
+): Partial<CamposDePlantacion> {
+  const base = fila.pendingEdit ? desdeSnapshot(fila) : camposDeFila(fila);
+  return camposCambiados(base, { ...camposDeFila(fila), ...edicion });
+}
+
+export function hayCambios(campos: Partial<CamposDePlantacion>): boolean {
+  return Object.keys(campos).length > 0;
+}
+
 /** Payload para Supabase: solo los campos presentes. */
 export function aColumnasRemotas(campos: Partial<CamposDePlantacion>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};

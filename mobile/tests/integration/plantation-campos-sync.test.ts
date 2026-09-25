@@ -53,6 +53,9 @@ jest.mock('../../src/supabase/client', () => {
           eq(col: string, value: any) { return makeQueryBuilder(table).eq(col, value); },
           insert(row: any) {
             mockInserts.push({ table, row });
+            if (mockServerState[table].has(row.id)) {
+              return Promise.resolve({ data: null, error: { code: '23505', message: 'duplicate key' } });
+            }
             mockServerState[table].set(row.id, { ...row });
             return Promise.resolve({ data: null, error: null });
           },
@@ -60,13 +63,12 @@ jest.mock('../../src/supabase/client', () => {
           update(payload: any) {
             mockUpdates.push({ table, payload });
             return {
-              eq: (_col: string, id: string) => ({
-                select: () => {
-                  const actual = mockServerState[table].get(id);
-                  if (actual) mockServerState[table].set(id, { ...actual, ...payload });
-                  return Promise.resolve({ data: actual ? [{ id }] : [], error: null });
-                },
-              }),
+              eq: (_col: string, id: string) => {
+                const actual = mockServerState[table].get(id);
+                if (actual) mockServerState[table].set(id, { ...actual, ...payload });
+                const respuesta = Promise.resolve({ data: actual ? [{ id }] : [], error: null });
+                return { select: () => respuesta, then: (resolve: any) => respuesta.then(resolve) };
+              },
             };
           },
         };
@@ -98,7 +100,8 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { uploadOfflinePlantations, uploadPendingEdits } from '../../src/services/sync/preSteps';
-import { discardPlantationEdit } from '../../src/repositories/PlantationRepository';
+import { discardPlantationEdit, updatePlantation } from '../../src/repositories/PlantationRepository';
+import { camposDeFila } from '../../src/utils/camposDePlantacion';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -224,6 +227,17 @@ describe('push de altas y ediciones', () => {
     });
   });
 
+  test('si un intento anterior ya insertó el alta, la actualiza con lo editado en el medio', async () => {
+    serverPlantation(PLANTATION_ID, { descripcion: 'Primer intento' });
+    await seedLocal({ pendingSync: true, descripcion: 'Editada después' });
+
+    const [resultado] = await uploadOfflinePlantations();
+
+    expect(resultado).toMatchObject({ success: true });
+    expect(mockServerState.plantations.get(PLANTATION_ID).descripcion).toBe('Editada después');
+    expect((await filaLocal()).pendingSync).toBe(false);
+  });
+
   test('el alta avisa si el server ya tiene otra con el mismo lugar y periodo', async () => {
     await seedLocal({ pendingSync: true, lugar: ' lote norte ', periodo: 'OTOÑO 2026' });
     serverPlantation(OTRA_ID);
@@ -233,7 +247,7 @@ describe('push de altas y ediciones', () => {
     expect(resultado).toMatchObject({ success: true, duplicada: true });
   });
 
-  test('la edición sube todos los campos, limpia pendingEdit y deja el snapshot con lo subido', async () => {
+  test('la edición sube solo lo que cambió, limpia pendingEdit y deja el snapshot con lo subido', async () => {
     await seedLocal({
       pendingEdit: true, lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026',
       objetivoArboles: 15000, objetivoArbolesServer: 12000, visibleInApp: false, visibleInAppServer: true,
@@ -242,7 +256,7 @@ describe('push de altas y ediciones', () => {
 
     const [resultado] = await uploadPendingEdits();
 
-    expect(mockUpdates[0].payload).toMatchObject({ objetivo_arboles: 15000, visible_in_app: false, descripcion: null });
+    expect(mockUpdates[0].payload).toEqual({ objetivo_arboles: 15000, visible_in_app: false });
     expect(await filaLocal()).toMatchObject({
       pendingEdit: false, objetivoArbolesServer: 15000, visibleInAppServer: false,
     });
@@ -258,6 +272,48 @@ describe('push de altas y ediciones', () => {
     const [resultado] = await uploadPendingEdits();
 
     expect(resultado).toMatchObject({ success: true, duplicada: true });
+  });
+});
+
+// ─── Filas previas a 0024 ───────────────────────────────────────────────────
+
+describe('fila sin los campos nuevos pulleados (previa a 0024)', () => {
+  const DEL_SERVER = { descripcion: 'Cargada en la web', fecha_inicio: '2026-04-15', objetivo_arboles: 12000 };
+
+  function esperarQueElServerLosConserve() {
+    expect(mockServerState.plantations.get(PLANTATION_ID)).toMatchObject({ lugar: 'Campo Sur', ...DEL_SERVER });
+  }
+
+  test('editar online solo el lugar no borra descripción, fecha ni objetivo', async () => {
+    await seedLocal();
+    serverPlantation(PLANTATION_ID, DEL_SERVER);
+    const { lugar: _lugar, periodo, ...ajustes } = camposDeFila(await filaLocal());
+
+    await updatePlantation(PLANTATION_ID, 'Campo Sur', periodo, ajustes);
+
+    expect(mockUpdates.map((u) => u.payload)).toEqual([{ lugar: 'Campo Sur' }]);
+    esperarQueElServerLosConserve();
+  });
+
+  test('una edición offline solo del lugar no borra descripción, fecha ni objetivo', async () => {
+    await seedLocal({ pendingEdit: true, lugar: 'Campo Sur', lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026' });
+    serverPlantation(PLANTATION_ID, DEL_SERVER);
+
+    const [resultado] = await uploadPendingEdits();
+
+    expect(resultado).toMatchObject({ success: true });
+    esperarQueElServerLosConserve();
+    expect(await filaLocal()).toMatchObject({ pendingEdit: false, lugarServer: 'Campo Sur', descripcionServer: null });
+  });
+
+  test('sin cambios reales no hay UPDATE', async () => {
+    await seedLocal();
+    serverPlantation(PLANTATION_ID, DEL_SERVER);
+    const { lugar, periodo, ...ajustes } = camposDeFila(await filaLocal());
+
+    await updatePlantation(PLANTATION_ID, lugar, periodo, ajustes);
+
+    expect(mockUpdates).toHaveLength(0);
   });
 });
 

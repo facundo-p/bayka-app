@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Text, View } from 'react-native';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
+import { colors } from '../theme';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { buscarDuplicada } from '../utils/duplicadoDePlantacion';
 import {
@@ -92,6 +93,7 @@ function ComportamientoEnCampo({ valores, set, editable }: SeccionProps) {
         value={valores.gpsRequired}
         onValueChange={set('gpsRequired')}
         disabled={!editable}
+        activeColor={colors.gpsGood}
       />
       <FormField
         label="Capturar GPS cada N árboles"

@@ -12,7 +12,7 @@ export const plantationFormModalStyles = StyleSheet.create({
   grupoTitulo: {
     fontSize: fontSize.sm,
     fontFamily: fonts.semiBold,
-    color: colors.plantationHeaderBg,
+    color: colors.textSectionTitle,
     textTransform: 'uppercase',
     letterSpacing: letterSpacing.wide,
     marginBottom: spacing.md,

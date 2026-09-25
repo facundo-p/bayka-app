@@ -27,6 +27,6 @@ export const switchRowStyles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontFamily: fonts.regular,
     color: colors.textSecondary,
-    marginTop: 2,
+    marginTop: spacing.xxs,
   },
 });
