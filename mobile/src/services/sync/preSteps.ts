@@ -8,6 +8,8 @@ import { pullSpeciesFromServer } from './catalogoDeEspecies';
 import { esTimeout } from '../../supabase/fetchConTimeout';
 import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail, type SyncErrorCode } from './types';
 import { MOTIVO_NO_ESCRIBIBLE } from '../PlantacionEscribibleService';
+import { RECHAZO_CONFIGURACION } from '../ReemplazoConfiguracionService';
+import { anotarRechazo, anotarSubida } from './pendientesVarados';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { hayOtraEnServidor } from './duplicadasEnServidor';
 import { esRechazada, registrarEdicionSubida, subirEdicion } from './edicionDePlantacion';
@@ -43,11 +45,20 @@ type FalloDeAlta = { error: SyncErrorCode; detail?: string };
  * Rechazo al actualizar un alta que ya existía. Finalizada o archivada: queda pendiente con
  * ese motivo, que le dice al usuario qué pedir. Al reabrirla sube lo editado y sus especies;
  * sus parcelas y grupos no podrían escribirse igual mientras siga cerrada, así que marcarla
- * subida no destrabaría nada y perdería la edición en silencio. Si no, error crudo.
+ * subida no destrabaría nada y perdería la edición en silencio. Sin permiso, el del alta
+ * (#638). Si no, error crudo.
  */
 function falloDeAltaRechazada(rechazo: string): FalloDeAlta {
   if (rechazo === MOTIVO_NO_ESCRIBIBLE.finalizada || rechazo === MOTIVO_NO_ESCRIBIBLE.archivada) return { error: rechazo };
+  if (rechazo === RECHAZO_CONFIGURACION.sinPermiso) return { error: SYNC_ERROR.SIN_PERMISO_CREAR };
   return { error: SYNC_ERROR.UNKNOWN, detail: rechazo };
+}
+
+/** RLS (42501) sobre un alta: el usuario ya no puede crear plantaciones en su organización. */
+function falloDeAlta(error: { code?: string; message?: string }): FalloDeAlta {
+  const fallo = classifyServerError(error);
+  if (fallo.error !== SYNC_ERROR.PERMISSION) return fallo;
+  return { error: SYNC_ERROR.SIN_PERMISO_CREAR, detail: fallo.detail };
 }
 
 /**
@@ -56,6 +67,7 @@ function falloDeAltaRechazada(rechazo: string): FalloDeAlta {
  * el medio queda como conflicto a resolver (#634).
  */
 async function actualizarAltaExistente(p: PlantacionLocal): Promise<ResultadoDeAlta> {
+  await marcarAltaEnServidor(p.id);
   const { cambios, base } = edicionDeAltaExistente(p);
   const resultado = await subirEdicion(p.id, cambios, base);
   if (esRechazada(resultado)) return { fallo: falloDeAltaRechazada(resultado.rechazo ?? ''), cambiosPorResolver: 0 };
@@ -91,9 +103,14 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
     ...aColumnasRemotas(campos),
   });
   if (error?.code === PG_ERROR.UNIQUE_VIOLATION) return actualizarAltaExistente(p);
-  if (error) return { fallo: classifyServerError(error), cambiosPorResolver: 0 };
-  await db.update(plantations).set(aSnapshot(campos)).where(eq(plantations.id, p.id));
+  if (error) return { fallo: falloDeAlta(error), cambiosPorResolver: 0 };
+  await db.update(plantations).set({ ...aSnapshot(campos), altaEnServidor: true }).where(eq(plantations.id, p.id));
   return { fallo: null, cambiosPorResolver: 0 };
+}
+
+/** El insert ya llegó al server: descartarla no la borra de allá (#638). */
+async function marcarAltaEnServidor(plantacionId: string): Promise<void> {
+  await db.update(plantations).set({ altaEnServidor: true }).where(eq(plantations.id, plantacionId));
 }
 
 /**
@@ -122,7 +139,7 @@ async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | 
   } catch (e: any) {
     relanzarSiEsCancelacion(e);
     syncLog.error('Upload plantation_species failed:', plantacionId, e?.message);
-    return classifyServerError(e);
+    return falloDeAlta(e);
   }
   if (!respuesta?.success) return falloDeAltaRechazada(respuesta?.error ?? '');
   const rechazados = cambiosRechazados(respuesta.rechazadas ?? []);
@@ -151,12 +168,14 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
       const { fallo, cambiosPorResolver } = await subirFilaDeAlta(p);
       if (fallo) {
         syncLog.error('Upload plantation failed:', p.id, fallo.error, fallo.detail ?? '');
+        await anotarRechazo(p.id, fallo.error);
         results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...fallo });
         continue;
       }
 
       const especies = await subirEspeciesDeAlta(p.id);
       if (esFalloDeAlta(especies)) {
+        await anotarRechazo(p.id, especies.error);
         results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...especies });
         continue;
       }
@@ -165,6 +184,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         .update(plantations)
         .set({ pendingSync: false })
         .where(eq(plantations.id, p.id));
+      await anotarSubida(p.id);
 
       results.push({
         success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await hayOtraEnServidor(p), cambiosPorResolver,
@@ -198,8 +218,10 @@ async function pushEdicionPlantacion(p: PlantacionLocal): Promise<number | null>
     const resultado = await subirEdicion(p.id, cambios, base);
     if (esRechazada(resultado)) {
       syncLog.error('Upload pending edit rejected:', p.id, resultado.rechazo);
+      await anotarRechazo(p.id, resultado.rechazo);
       return null;
     }
+    await anotarSubida(p.id);
     return await registrarEdicionSubida(p, { vivos: camposDeFila(p), cambios, base, resultado });
   } catch (e: any) {
     relanzarSiEsCancelacion(e);

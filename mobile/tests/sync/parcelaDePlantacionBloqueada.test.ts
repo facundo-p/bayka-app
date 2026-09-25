@@ -5,7 +5,8 @@
 import { supabase } from '../../src/supabase/client';
 import { getSyncableParcelas, markParcelaSynced, puedeEditarParcelas } from '../../src/repositories/ParcelaRepository';
 import { getPlantationEstadoDeEdicion } from '../../src/queries/adminQueries';
-import { uploadSyncableParcelas, motivoDeBloqueo } from '../../src/services/sync/pushService';
+import { uploadSyncableParcelas } from '../../src/services/sync/pushService';
+import { motivoDeBloqueo } from '../../src/services/sync/pendientesVarados';
 
 jest.mock('../../src/supabase/client', () => ({
   supabase: { from: jest.fn(), rpc: jest.fn(), auth: { getUser: jest.fn() }, storage: { from: jest.fn() } },
@@ -13,6 +14,10 @@ jest.mock('../../src/supabase/client', () => ({
 }));
 jest.mock('../../src/database/client', () => ({
   db: { select: jest.fn(), update: jest.fn() },
+}));
+jest.mock('../../src/repositories/PendientesVaradosRepository', () => ({
+  guardarMotivoVarado: jest.fn(),
+  limpiarMotivoVarado: jest.fn(),
 }));
 jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),

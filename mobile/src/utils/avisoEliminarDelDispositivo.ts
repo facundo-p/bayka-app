@@ -11,7 +11,7 @@ export interface AvisoEliminarDelDispositivo {
   confirmacionFinal?: string;
 }
 
-const CONFIRMACION_FINAL =
+export const CONFIRMACION_FINAL =
   'Los datos sin sincronizar se perderán para siempre. Esta acción no se puede deshacer.';
 
 function plural(n: number, singular: string, pluralForm = `${singular}s`): string {

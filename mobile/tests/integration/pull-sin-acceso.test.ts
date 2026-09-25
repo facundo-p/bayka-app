@@ -208,6 +208,13 @@ describe('pullFromServer con membresía revocada', () => {
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'sin-acceso' });
   });
 
+  it('lo pendiente queda varado sin permiso (#638)', async () => {
+    await pullFromServer(PLANTACION_ID);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTACION_ID));
+    expect(fila.motivoVarado).toBe('sin-permiso');
+  });
+
   it('no toca la copia local: los datos quedan para consulta', async () => {
     const antes = await filasLocales();
 
@@ -252,6 +259,19 @@ describe('pullFromServer: cuándo NO hay que gritar "sin acceso"', () => {
       .where(eq(plantations.id, PLANTACION_ID));
 
     expect(await pullFromServer(PLANTACION_ID)).toEqual({ estado: 'ok' });
+  });
+
+  it('un alta sin terminar que el server ya tiene queda marcada como en el servidor (#638)', async () => {
+    await mockTestDb.update(plantations).set({ pendingSync: true }).where(eq(plantations.id, PLANTACION_ID));
+    serverState.plantations.set(PLANTACION_ID, {
+      id: PLANTACION_ID, lugar: 'Campo Test', periodo: '2026', estado: 'activa',
+      creado_por: 'admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
+    });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, PLANTACION_ID));
+    expect(fila).toMatchObject({ pendingSync: true, altaEnServidor: true });
   });
 });
 

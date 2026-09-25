@@ -38,6 +38,11 @@ jest.mock('../../src/supabase/client', () => ({
   isSupabaseConfigured: false,
 }));
 
+const mockSesion = { vencida: false };
+jest.mock('../../src/services/sync/sessionGuard', () => ({
+  ensureServerSession: () => (mockSesion.vencida ? Promise.reject(new Error('SESSION_EXPIRED')) : Promise.resolve()),
+}));
+
 jest.mock('../../src/services/SyncService', () => ({
   pullFromServer: jest.fn(),
 }));
@@ -93,6 +98,7 @@ beforeEach(async () => {
   await vaciarTablas(mockTestDb);
   jest.restoreAllMocks();
   (supabase.from as jest.Mock).mockReset();
+  mockSesion.vencida = false;
 });
 
 describe('createPlantationWithDefaultParcela — local-first (offline)', () => {
@@ -198,5 +204,30 @@ describe('createPlantationWithDefaultParcela — modo online (push inmediato)', 
     expect(parcelaRow.pendingSync).toBe(true);
     // El fallo se loguea (en uploadOfflinePlantations, reusado tal cual), nunca se propaga al caller.
     expect(errorSpy).toHaveBeenCalled();
+  });
+
+  test('sin sesión válida no intenta subir: iría como anon y RLS lo leería como falta de permiso (#638)', async () => {
+    const { plantationsInsert } = mockSupabaseForSuccessfulPush();
+    mockSesion.vencida = true;
+    jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    expect(plantationsInsert).not.toHaveBeenCalled();
+    const [plantationRow] = await mockTestDb.select().from(plantations).where(eq(plantations.id, r.id));
+    expect(plantationRow).toMatchObject({ pendingSync: true, motivoVarado: null });
+  });
+
+  test('un 42501 fuera de una sync no deja la plantación varada: la próxima sync lo reintenta (#638)', async () => {
+    (supabase.from as jest.Mock).mockImplementation(() => ({
+      insert: jest.fn().mockResolvedValue({ error: { code: '42501', message: 'rls' } }),
+      upsert: jest.fn().mockResolvedValue({ data: null, error: null }),
+    }));
+    jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    const [plantationRow] = await mockTestDb.select().from(plantations).where(eq(plantations.id, r.id));
+    expect(plantationRow).toMatchObject({ pendingSync: true, motivoVarado: null });
   });
 });

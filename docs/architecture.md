@@ -284,7 +284,9 @@ Grupo marcado como sincronizado localmente (pendingSync = false)
 **Plantación finalizada o archivada** (#469, #477): el server rechaza el push con
 `PLANTACION_FINALIZADA` o `PLANTACION_ARCHIVADA`. Lo pendiente no se pierde:
 queda en el celular y se sube cuando la plantación vuelve a ser escribible.
-Detalle por paso en `mobile/docs/sync-photo-flow.md`.
+Detalle por paso en `mobile/docs/sync-photo-flow.md`. Si nada lo destraba (finalizada,
+archivada, eliminada o sin permiso), la tarjeta de la plantación avisa cuántos cambios
+no pudieron subir y por qué, y ofrece descartarlos (#638).
 
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
