@@ -106,6 +106,11 @@ describe('aCamposDePlantacion', () => {
     });
   });
 
+  it('no recorta la descripción: abrir y guardar no la reescribe', () => {
+    const campos = aCamposDePlantacion({ ...valoresIniciales(), lugar: 'Lote', periodo: '2026', descripcion: 'Ribera ' });
+    expect(campos.descripcion).toBe('Ribera ');
+  });
+
   it('en edición arranca con los valores de la plantación', () => {
     const valores = valoresIniciales({
       lugar: 'Lote', periodo: '2026', descripcion: 'Ribera', fechaInicio: '2026-04-15',
