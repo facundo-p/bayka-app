@@ -65,7 +65,7 @@ describe('GroupRepository', () => {
   });
 
   describe('createGroup', () => {
-    it('inserts subgroup with correct fields (SUBG-01)', async () => {
+    it('inserts subgroup with correct fields', async () => {
       mockInsertValues.mockResolvedValue(undefined);
 
       const result = await createGroup({
@@ -91,7 +91,7 @@ describe('GroupRepository', () => {
       expect(insertedRow.usuarioCreador).toBe('user-1');
     });
 
-    it('rejects duplicate codigo within same plantation (SUBG-02)', async () => {
+    it('rejects duplicate codigo within same plantation', async () => {
       mockInsertValues.mockRejectedValue(
         new Error('UNIQUE constraint failed: groups.plantacion_id, groups.codigo')
       );
@@ -156,7 +156,7 @@ describe('GroupRepository', () => {
   });
 
   describe('getLastGroupName', () => {
-    it('returns nombre of most recently created subgroup (SUBG-03)', async () => {
+    it('returns nombre of most recently created subgroup', async () => {
       mockSelectLimit.mockResolvedValue([{ nombre: 'Línea 5' }]);
 
       const result = await getLastGroupName('plantation-1');
@@ -174,7 +174,7 @@ describe('GroupRepository', () => {
   });
 
   describe('finalizeGroup', () => {
-    it('sets estado to finalizada and marks pendingSync (SUBG-05)', async () => {
+    it('sets estado to finalizada and marks pendingSync', async () => {
       mockUpdateWhere.mockResolvedValue(undefined);
 
       const result = await finalizeGroup('subgroup-1');
@@ -184,7 +184,7 @@ describe('GroupRepository', () => {
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
-    it('allows finalization even with unresolved N/N trees (SUBG-05)', async () => {
+    it('allows finalization even with unresolved N/N trees', async () => {
       // N/N sin resolver bloquea el sync, no la finalización.
       const result = await finalizeGroup('subgroup-1');
 
@@ -194,7 +194,7 @@ describe('GroupRepository', () => {
   });
 
   describe('ownership', () => {
-    it('returns true when creator matches and plantation is activa (SUBG-07)', () => {
+    it('returns true when creator matches and plantation is activa', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-1',
@@ -230,7 +230,7 @@ describe('GroupRepository', () => {
       expect(result).toBe(false);
     });
 
-    it('returns false when finalizada plantation and different user (SUBG-07)', () => {
+    it('returns false when finalizada plantation and different user', () => {
       const result = canEdit(
         { usuarioCreador: 'user-1' },
         'user-2',

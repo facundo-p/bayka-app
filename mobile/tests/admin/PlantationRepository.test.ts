@@ -127,7 +127,7 @@ describe('PlantationRepository', () => {
       expect(mockSupabase.from).not.toHaveBeenCalled();
       expect(mockDb.update).not.toHaveBeenCalled();
     });
-    it('Test 3: updates estado to "finalizada" on BOTH supabase and local SQLite', async () => {
+    it('updates estado to "finalizada" on BOTH supabase and local SQLite', async () => {
       await finalizePlantation('plantation-1');
 
       expect(mockSupabase.from).toHaveBeenCalledWith('plantations');
@@ -139,13 +139,13 @@ describe('PlantationRepository', () => {
       expect(updateResult.set).toHaveBeenCalledWith({ estado: 'finalizada' });
     });
 
-    it('Test 4: calls notifyDataChanged after updates', async () => {
+    it('calls notifyDataChanged after updates', async () => {
       await finalizePlantation('plantation-1');
 
       expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
 
-    it('Test 5: server ok + local fails — throws FinalizePlantationLocalSyncError, logs, does NOT notify', async () => {
+    it('server ok + local fails — throws FinalizePlantationLocalSyncError, logs, does NOT notify', async () => {
       (mockDb.update as jest.Mock).mockReturnValue({
         set: jest.fn().mockReturnValue({
           where: jest.fn().mockRejectedValue(new Error('SQLITE_BUSY')),
@@ -171,7 +171,7 @@ describe('PlantationRepository', () => {
       expect(mockDb.update).not.toHaveBeenCalled();
     });
 
-    it('Test 6: server fails — local SQLite untouched, error del server se propaga', async () => {
+    it('server fails — local SQLite untouched, error del server se propaga', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         update: jest.fn().mockReturnValue({
           eq: jest.fn().mockResolvedValue({ error: new Error('permission denied') }),

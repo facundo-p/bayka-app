@@ -103,8 +103,8 @@ describe('SyncService — offline functions', () => {
 
   // ─── pullSpeciesFromServer ─────────────────────────────────────────────────
 
-  describe('pullSpeciesFromServer (OFPL-04)', () => {
-    it('Test 1: calls supabase.from("species").select("*") and upserts the catalog in one batched insert', async () => {
+  describe('pullSpeciesFromServer', () => {
+    it('calls supabase.from("species").select("*") and upserts the catalog in one batched insert', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue({ data: fakeSpecies, error: null }),
       });
@@ -127,7 +127,7 @@ describe('SyncService — offline functions', () => {
       expect(valores.onConflictDoUpdate).toHaveBeenCalled();
     });
 
-    it('Test 2: does NOT call db.insert if supabase returns an error', async () => {
+    it('does NOT call db.insert if supabase returns an error', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue({ data: null, error: { message: 'Network error' } }),
       });
@@ -138,7 +138,7 @@ describe('SyncService — offline functions', () => {
       expect(mockDb.insert).not.toHaveBeenCalled();
     });
 
-    it('Test 3: does NOT call db.delete — only upserts (preserves existing species)', async () => {
+    it('does NOT call db.delete — only upserts (preserves existing species)', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue({ data: fakeSpecies, error: null }),
       });
@@ -151,8 +151,8 @@ describe('SyncService — offline functions', () => {
 
   // ─── uploadOfflinePlantations ──────────────────────────────────────────────
 
-  describe('uploadOfflinePlantations (OFPL-05, OFPL-06)', () => {
-    it('Test 4: happy path — queries pending plantations, inserts to server, sube las especies como altas, marks pendingSync=false', async () => {
+  describe('uploadOfflinePlantations', () => {
+    it('happy path — queries pending plantations, inserts to server, sube las especies como altas, marks pendingSync=false', async () => {
       // Return pending plantation from local db
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
@@ -202,7 +202,7 @@ describe('SyncService — offline functions', () => {
       expect(updateResult.set).toHaveBeenCalledWith({ pendingSync: false });
     });
 
-    it('Test 5: 23505 (duplicate key) — actualiza la fila, sube species y marca pendingSync=false', async () => {
+    it('23505 (duplicate key) — actualiza la fila, sube species y marca pendingSync=false', async () => {
       // Return pending plantation
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
@@ -306,7 +306,7 @@ describe('SyncService — offline functions', () => {
       expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-permiso');
     });
 
-    it('Test 6: non-23505 error — species upload is NOT called and pendingSync remains true (plantation skipped)', async () => {
+    it('non-23505 error — species upload is NOT called and pendingSync remains true (plantation skipped)', async () => {
       // Return pending plantation
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
@@ -373,7 +373,7 @@ describe('SyncService — offline functions', () => {
       expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-permiso');
     });
 
-    it('Test 6b: el insert que LANZA (no devuelve {error}) se surfacea como NETWORK', async () => {
+    it('el insert que LANZA (no devuelve {error}) se surfacea como NETWORK', async () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockResolvedValue([fakePendingPlantation]),
@@ -396,7 +396,7 @@ describe('SyncService — offline functions', () => {
       expect(mockDb.update).not.toHaveBeenCalled();
     });
 
-    it('Test 7: no pending plantations — no server calls made', async () => {
+    it('no pending plantations — no server calls made', async () => {
       // Return empty list — no pending plantations
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({

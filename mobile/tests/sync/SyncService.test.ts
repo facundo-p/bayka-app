@@ -182,8 +182,8 @@ describe('SyncService', () => {
     });
   });
 
-  describe('syncPlantation — pull-then-push order (SYNC-01)', () => {
-    it('Test 1: calls pullFromServer (supabase.from) BEFORE uploading any Groups', async () => {
+  describe('syncPlantation — pull-then-push order', () => {
+    it('calls pullFromServer (supabase.from) BEFORE uploading any Groups', async () => {
       const callOrder: string[] = [];
 
       (mockSupabase.from as jest.Mock).mockImplementation(() => {
@@ -219,8 +219,8 @@ describe('SyncService', () => {
     });
   });
 
-  describe('uploadGroup — RPC payload (SYNC-04)', () => {
-    it('Test 2: calls supabase.rpc with correct p_subgroup and p_trees payload', async () => {
+  describe('uploadGroup — RPC payload', () => {
+    it('calls supabase.rpc with correct p_subgroup and p_trees payload', async () => {
       const sgTrees = makeTrees('sg-1');
 
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
@@ -363,8 +363,8 @@ describe('SyncService', () => {
     });
   });
 
-  describe('markGroupSynced state transitions (SYNC-05)', () => {
-    it('Test 3: calls markGroupSynced when RPC returns success: true', async () => {
+  describe('markGroupSynced state transitions', () => {
+    it('calls markGroupSynced when RPC returns success: true', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -381,7 +381,7 @@ describe('SyncService', () => {
       expect(mockMarkGroupSynced).toHaveBeenCalledWith('sg-1');
     });
 
-    it('Test 4: does NOT call markGroupSynced on DUPLICATE_CODE error', async () => {
+    it('does NOT call markGroupSynced on DUPLICATE_CODE error', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -405,7 +405,7 @@ describe('SyncService', () => {
       }
     });
 
-    it('Test 5: does NOT call markGroupSynced on network error', async () => {
+    it('does NOT call markGroupSynced on network error', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
 
@@ -427,8 +427,8 @@ describe('SyncService', () => {
     });
   });
 
-  describe('error accumulation — continue-on-failure (SYNC-06)', () => {
-    it('Test 6: all 3 Groups attempted even when 2nd fails', async () => {
+  describe('error accumulation — continue-on-failure', () => {
+    it('all 3 Groups attempted even when 2nd fails', async () => {
       const sg1 = makeSg('sg-1', 'Línea A');
       const sg2 = makeSg('sg-2', 'Línea B');
       const sg3 = makeSg('sg-3', 'Línea C');
@@ -455,19 +455,19 @@ describe('SyncService', () => {
   });
 
   describe('getErrorMessage — Spanish error messages', () => {
-    it('Test 7: DUPLICATE_CODE returns Spanish message containing "ya existe"', () => {
+    it('DUPLICATE_CODE returns Spanish message containing "ya existe"', () => {
       const msg = getErrorMessage('DUPLICATE_CODE');
       expect(msg).toMatch(/ya existe/i);
     });
 
-    it('Test 8: NETWORK returns Spanish message containing "conexión"', () => {
+    it('NETWORK returns Spanish message containing "conexión"', () => {
       const msg = getErrorMessage('NETWORK');
       expect(msg).toMatch(/conexión/i);
     });
   });
 
-  describe('uploadPendingPhotos — photo upload (IMG-03)', () => {
-    it('Test 9: uploads each pending photo and marks synced', async () => {
+  describe('uploadPendingPhotos — photo upload', () => {
+    it('uploads each pending photo and marks synced', async () => {
       const pending = [
         { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
         { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
@@ -493,7 +493,7 @@ describe('SyncService', () => {
       expect(result).toEqual({ uploaded: 2, failed: 0 });
     });
 
-    it('Test 10: continues on single upload failure — returns { uploaded: 1, failed: 1 }', async () => {
+    it('continues on single upload failure — returns { uploaded: 1, failed: 1 }', async () => {
       const pending = [
         { id: 'tree-1', fotoUrl: 'file://document/photos/photo_1.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
         { id: 'tree-2', fotoUrl: 'file://document/photos/photo_2.jpg', grupoId: 'sg-1', plantacionId: 'plantation-1' },
@@ -618,7 +618,7 @@ describe('SyncService', () => {
       expect(result).toEqual({ uploaded: 0, failed: 1 });
     });
 
-    it('Test 11: returns { uploaded: 0, failed: 0 } when no pending photos', async () => {
+    it('returns { uploaded: 0, failed: 0 } when no pending photos', async () => {
       mockGetTreesWithPendingPhotos.mockResolvedValue([]);
 
       const result = await uploadPendingPhotos('plantation-1');
@@ -665,7 +665,7 @@ describe('SyncService', () => {
     });
   });
 
-  describe('downloadPhotosForPlantation — photo download (IMG-04)', () => {
+  describe('downloadPhotosForPlantation — photo download', () => {
     /** Setup común de los tests que llegan a bajar una foto remota. */
     const mockearUnaFotoRemota = () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
@@ -690,7 +690,7 @@ describe('SyncService', () => {
       return storageChain;
     };
 
-    it('Test 12: downloads remote photos using signed URLs', async () => {
+    it('downloads remote photos using signed URLs', async () => {
       const storageChain = mockearUnaFotoRemota();
 
       const result = await downloadPhotosForPlantation('plantation-1');
@@ -720,7 +720,7 @@ describe('SyncService', () => {
       expect(progresos[progresos.length - 1].bytes).toBe(0);
     });
 
-    it('Test 13: skips trees with local file:// fotoUrl', async () => {
+    it('skips trees with local file:// fotoUrl', async () => {
       // Mock db.select for groups then trees
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
@@ -773,7 +773,7 @@ describe('SyncService', () => {
       expect(result).toEqual({ downloaded: 1, failed: 0 });
     });
 
-    it('Test 14: returns { downloaded: 0, failed: 0 } when plantation has no groups', async () => {
+    it('returns { downloaded: 0, failed: 0 } when plantation has no groups', async () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockReturnValue(whereResult([])),

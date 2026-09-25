@@ -83,7 +83,7 @@ describe('dashboardQueries', () => {
     mockDb.select.mockReturnValue(c);
   });
 
-  describe('DASH-01: getPlantationsForRole — tecnico sees only assigned plantations', () => {
+  describe('getPlantationsForRole — tecnico sees only assigned plantations', () => {
     it('uses innerJoin with plantationUsers when isAdmin=false', async () => {
       await getPlantationsForRole(false, 'user-123');
 
@@ -102,7 +102,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('DASH-02: getPlantationsForRole — admin sees all plantations', () => {
+  describe('getPlantationsForRole — admin sees all plantations', () => {
     it('does NOT call innerJoin when isAdmin=true', async () => {
       await getPlantationsForRole(true, 'admin-user');
 
@@ -115,7 +115,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('DASH-03: getTotalTreeCounts — total trees per plantation', () => {
+  describe('getTotalTreeCounts — total trees per plantation', () => {
     it('selects tree count grouped by plantacionId', async () => {
       await getTotalTreeCounts();
 
@@ -125,7 +125,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('DASH-04: getUnsyncedTreeCounts — unsynced trees per plantation', () => {
+  describe('getUnsyncedTreeCounts — unsynced trees per plantation', () => {
     it('filters by pendingSync=true AND usuarioRegistro = userId', async () => {
       await getUnsyncedTreeCounts('user-123');
 
@@ -143,7 +143,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('DASH-05: getUserTotalTreeCounts — user total trees per plantation', () => {
+  describe('getUserTotalTreeCounts — user total trees per plantation', () => {
     it('filters only by usuarioRegistro = userId (no estado filter)', async () => {
       await getUserTotalTreeCounts('user-123');
 
@@ -159,7 +159,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('DASH-06: getTodayTreeCounts — trees registered today', () => {
+  describe('getTodayTreeCounts — trees registered today', () => {
     it('filters by usuarioRegistro = userId and uses where clause for date', async () => {
       await getTodayTreeCounts('user-123');
 
@@ -177,7 +177,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('getPendingSyncCounts — pending sync per plantation (SYNC-07)', () => {
+  describe('getPendingSyncCounts — pending sync per plantation', () => {
     it('filters groups where pendingSync=true and groups by plantation', async () => {
       await getPendingSyncCounts();
 

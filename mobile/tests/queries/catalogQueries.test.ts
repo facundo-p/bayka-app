@@ -58,7 +58,7 @@ describe('catalogQueries', () => {
   // ─── getServerCatalog ─────────────────────────────────────────────────────────
 
   describe('getServerCatalog — admin path', () => {
-    it('Test 1: admin path queries plantations filtered by organizacion_id', async () => {
+    it('admin path queries plantations filtered by organizacion_id', async () => {
       const remotePlantations = [makePlantation('p-1'), makePlantation('p-2')];
 
       const eqCalls: any[] = [];
@@ -83,7 +83,7 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — tecnico path', () => {
-    it('Test 2: tecnico path queries plantation_users first, then fetches assigned plantations', async () => {
+    it('tecnico path queries plantation_users first, then fetches assigned plantations', async () => {
       const assignedPu = [{ plantation_id: 'p-1' }];
       const remotePlantations = [makePlantation('p-1')];
 
@@ -108,7 +108,7 @@ describe('catalogQueries', () => {
       expect(results).toHaveLength(1);
     });
 
-    it('Test 3: tecnico with no assignments returns empty array without querying plantations', async () => {
+    it('tecnico with no assignments returns empty array without querying plantations', async () => {
       const puChain: any = {
         select: () => puChain,
         eq: () => Promise.resolve({ data: [], error: null }),
@@ -125,7 +125,7 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — counts', () => {
-    it('Test 5: merges subgroup and tree counts into results', async () => {
+    it('merges subgroup and tree counts into results', async () => {
       const remotePlantations = [makePlantation('p-1')];
 
       const subgroupsData = [
@@ -151,7 +151,7 @@ describe('catalogQueries', () => {
       expect(results[0].tree_count).toBe(3);
     });
 
-    it('Test 5b: defaults to 0 counts when no groups or trees for plantation', async () => {
+    it('defaults to 0 counts when no groups or trees for plantation', async () => {
       const remotePlantations = [makePlantation('p-empty')];
 
       (supabase.from as jest.Mock)
@@ -215,7 +215,7 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — error handling', () => {
-    it('Test 6: throws error when supabase plantations query fails', async () => {
+    it('throws error when supabase plantations query fails', async () => {
       const errorChain: any = {};
       errorChain.select = () => errorChain;
       errorChain.eq = () => errorChain;
@@ -231,7 +231,7 @@ describe('catalogQueries', () => {
   // ─── getLocalPlantationIds ────────────────────────────────────────────────────
 
   describe('getLocalPlantationIds', () => {
-    it('Test 4: returns Set of local plantation IDs from SQLite', async () => {
+    it('returns Set of local plantation IDs from SQLite', async () => {
       const mockRows = [{ id: 'p-1' }, { id: 'p-2' }, { id: 'p-3' }];
 
       (db.select as jest.Mock).mockReturnValue({
