@@ -30,6 +30,8 @@ const mockRpc = {
   soltar: [] as (() => void)[], llamadas: [] as any[],
 };
 const mockNet = { conectado: true };
+/** Lo que pasa en el teléfono mientras el pull baja `plantation_users`: antes o después de armar la respuesta. */
+let mockAlBajarMiembros: { antes?: () => Promise<void>; durante?: () => Promise<void> } = {};
 
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -54,7 +56,15 @@ jest.mock('../../src/supabase/client', () => {
         return Promise.resolve({ data: filas[0] ?? null, error: filas[0] ? null : { code: 'PGRST116' } });
       },
       then(resolver: any) {
-        return Promise.resolve({ data: filtrar(tabla, filtros), error: null }).then(resolver);
+        // Solo la bajada de miembros de la plantación (no el chequeo de membresía por usuario).
+        const hooks = tabla === 'plantation_users' && filtros.length === 1 ? mockAlBajarMiembros : {};
+        const bajar = async () => {
+          await hooks.antes?.();
+          const data = filtrar(tabla, filtros);
+          await hooks.durante?.();
+          return { data, error: null };
+        };
+        return bajar().then(resolver);
       },
     };
     return api;
@@ -148,6 +158,7 @@ beforeEach(async () => {
   mockInactivos.clear();
   Object.assign(mockRpc, { rechazo: null, sinRed: false, colgado: false, demorado: false, soltar: [], llamadas: [] });
   mockNet.conectado = true;
+  mockAlBajarMiembros = {};
   await vaciarTablas(mockTestDb);
 
   await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026' }));
@@ -352,26 +363,47 @@ describe('guardar técnicos', () => {
     expect(await pendientes()).toEqual([]);
   });
 
-  it('con señal, deshacer un alta pendiente la manda también como baja', async () => {
+  it('deshacer un alta pendiente con señal no manda baja: el server conserva lo que asignó la web', async () => {
     mockNet.conectado = false;
     await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
     mockNet.conectado = true;
-    // Su subida llegó al server, pero la respuesta se perdió.
     serverState.plantation_users.set(BRUNO, miembro(BRUNO, 'tecnico'));
     await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [BRUNO] });
 
-    expect(mockRpc.llamadas).toEqual([{ p_plantacion: PLANTACION_ID, p_altas: [], p_bajas: [BRUNO] }]);
-    expect(delServer()).toEqual([ANA]);
+    expect(mockRpc.llamadas).toEqual([]);
+    expect(delServer()).toEqual([ANA, BRUNO].sort());
     expect(await pendientes()).toEqual([]);
   });
 
-  it('una baja del server sin respuesta avisa que no se aplicó y las altas quedan para el sync', async () => {
+  it('deshacer sin altas nuevas no sube lo pendiente: un rechazo de la plantación no lo frena', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO, CARLA], bajas: [] });
+    mockNet.conectado = true;
+    mockRpc.rechazo = 'PLANTACION_ARCHIVADA';
+
+    await expect(guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [CARLA] })).resolves.toEqual([]);
+    expect(await pendientes()).toEqual([BRUNO]);
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+  });
+
+  it('quitar del server junto con deshacer un alta pendiente manda solo la baja del server', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+    mockNet.conectado = true;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [BRUNO, ANA] });
+
+    expect(mockRpc.llamadas).toEqual([{ p_plantacion: PLANTACION_ID, p_altas: [], p_bajas: [ANA] }]);
+    expect(await tecnicosLocales()).toEqual([]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('una baja del server sin respuesta avisa que no se pudo confirmar y las altas quedan para el sync', async () => {
     mockNet.conectado = false;
     await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
     mockNet.conectado = true;
     mockRpc.sinRed = true;
     await expect(guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [ANA] })).rejects.toThrow(
-      'El servidor no respondió: no se quitó a ningún técnico. Las asignaciones quedan guardadas y se suben en el próximo sync.',
+      'No se pudo confirmar la baja en el servidor. Se verá al sincronizar; las asignaciones nuevas quedan guardadas.',
     );
 
     expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
@@ -413,6 +445,28 @@ describe('sync', () => {
     await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: ids, bajas: [] });
     mockNet.conectado = true;
   }
+
+  it('el pull no borra un alta que la subida confirma entre la lectura de pendientes y la bajada', async () => {
+    await asignarOffline(BRUNO);
+    mockAlBajarMiembros.antes = async () => {
+      serverState.plantation_users.set(BRUNO, miembro(BRUNO, 'tecnico'));
+      await mockTestDb.delete(altasDeTecnicosPendientes);
+    };
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+  });
+
+  it('el pull no borra un alta guardada mientras baja los miembros', async () => {
+    mockAlBajarMiembros.durante = async () => {
+      mockNet.conectado = false;
+      await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [CARLA], bajas: [] });
+    };
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await tecnicosLocales()).toEqual([ANA, CARLA].sort());
+    expect(await pendientes()).toEqual([CARLA]);
+  });
 
   it('el pull no borra un alta pendiente', async () => {
     await asignarOffline(BRUNO);

@@ -5,7 +5,7 @@ export const ICONO_TECNICOS = 'people-outline';
 export const SE_ASIGNARA_AL_SINCRONIZAR = 'Se asignará al sincronizar';
 export const AYUDA_QUITAR_SIN_CONEXION = 'Quitar técnicos requiere conexión a internet';
 export const MENSAJE_BAJA_SIN_RESPUESTA =
-  'El servidor no respondió: no se quitó a ningún técnico. Las asignaciones quedan guardadas y se suben en el próximo sync.';
+  'No se pudo confirmar la baja en el servidor. Se verá al sincronizar; las asignaciones nuevas quedan guardadas.';
 export const SIN_TECNICOS =
   'No hay técnicos para asignar. Si la organización tiene técnicos, sincronizá con conexión para traerlos.';
 /** Un técnico sin nombre ni en el caché ni en la cola. */
