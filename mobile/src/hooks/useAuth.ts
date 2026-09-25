@@ -295,17 +295,27 @@ async function cuentaEnStorageDelSdk(): Promise<string | null> {
   }
 }
 
+/**
+ * Access token que se está devolviendo al SDK. Su SIGNED_IN se ignora: setSession avisa con el
+ * lock del SDK tomado, así que consultar el rol ahí se trabaría, y la época tomada en ese
+ * momento revertiría un logout o login ocurrido durante la restauración.
+ */
+let accessTokenEnRestauracion: string | null = null;
+
 /** Vuelve a poner en el SDK la sesión de la cuenta con sesión, con sus tokens cacheados. */
 async function restaurarCuentaEnSdk(): Promise<boolean> {
   const cuenta = cuentaConSesion;
   if (!cuenta || !esLaCuentaConSesion(cuenta.userId) || (await readCachedUserId()) !== cuenta.userId) return false;
   const tokens = await readCachedSession();
   if (!tokens) return false;
+  accessTokenEnRestauracion = tokens.access_token;
   try {
     const { error } = await supabase.auth.setSession(tokens);
     return !error;
   } catch {
     return false;
+  } finally {
+    accessTokenEnRestauracion = null;
   }
 }
 
@@ -316,14 +326,34 @@ async function restaurarCuentaEnSdk(): Promise<boolean> {
  * tiene la sesión o, si no se puede (sin sesión, sin tokens o sin red), se borra: si no, las
  * requests saldrían con esa cuenta y el próximo arranque la adoptaría.
  */
-async function conciliarSdk() {
+async function conciliarUnaVez() {
   if (hayLoginVigenteEnVuelo()) return;
   const vigente = vigenteDesdeAhora();
   const enSdk = await cuentaEnStorageDelSdk();
   if (!enSdk || esLaCuentaConSesion(enSdk) || !vigente()) return;
   const restaurada = await restaurarCuentaEnSdk();
-  // Un logout en el medio: lo restaurado tampoco es de nadie.
-  if ((!restaurada || !vigente()) && !hayLoginVigenteEnVuelo()) await borrarEstadoDelSdk();
+  // Un logout o login offline en el medio: lo restaurado tampoco es de nadie.
+  if ((restaurada && vigente()) || hayLoginVigenteEnVuelo()) return;
+  const ahora = await cuentaEnStorageDelSdk();
+  if (ahora && !esLaCuentaConSesion(ahora)) await borrarEstadoDelSdk();
+}
+
+/** Una sola conciliación a la vez entre instancias; un pedido durante la actual la repite al terminar. */
+let conciliacionEnCurso: Promise<void> | null = null;
+let conciliarOtraVez = false;
+
+function conciliarSdk(): Promise<void> {
+  if (conciliacionEnCurso) {
+    conciliarOtraVez = true;
+    return conciliacionEnCurso;
+  }
+  conciliacionEnCurso = (async () => {
+    do {
+      conciliarOtraVez = false;
+      await conciliarUnaVez();
+    } while (conciliarOtraVez);
+  })().finally(() => { conciliacionEnCurso = null; });
+  return conciliacionEnCurso;
 }
 
 async function alTerminarPedidoDeLogin(login: LoginOnline) {
@@ -337,6 +367,7 @@ async function alTerminarPedidoDeLogin(login: LoginOnline) {
  * Null si hay que ignorarlo.
  */
 async function alIniciarSesionEnSdk(sesion: Session): Promise<SesionRestaurada | null> {
+  if (sesion.access_token === accessTokenEnRestauracion) return null;
   const login = loginVigenteDe(sesion.user.email);
   if (!login && loginsOnlineEnVuelo.size > 0) {
     await conciliarSdk();
@@ -358,6 +389,9 @@ export function __resetEstadoCompartido(): void {
   epocaRevalidada = null;
   redConfirmada = false;
   loginsOnlineEnVuelo.clear();
+  accessTokenEnRestauracion = null;
+  conciliacionEnCurso = null;
+  conciliarOtraVez = false;
   cuentaConSesion = null;
 }
 

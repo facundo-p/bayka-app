@@ -1209,6 +1209,9 @@ describe('useAuth', () => {
           const CLAVE_SDK = 'sb-proyecto-auth-token';
           const SESION_B = { access_token: 'tb', refresh_token: 'rb', user: { id: 'user-b', email: 'b@b.com' } };
           let storageSdk: Map<string, string>;
+          /** Lock del SDK: setSession lo retiene mientras avisa, y las queries lo esperan (como auth-js). */
+          let lockDelSdk: Promise<void>;
+          let duranteSetSession: (() => Promise<void>) | null;
           type Instancia = { current: ReturnType<typeof useAuth> };
 
           const cuentaEnSdk = () => {
@@ -1235,11 +1238,20 @@ describe('useAuth', () => {
               const guardada = storageSdk.get(CLAVE_SDK);
               return { data: { session: guardada ? JSON.parse(guardada) : null }, error: null };
             });
+            lockDelSdk = Promise.resolve();
+            duranteSetSession = null;
             (supabase.auth.setSession as jest.Mock).mockImplementation(async (t: { access_token: string }) => {
-              const sesion = [SESION_SDK, SESION_B].find((x) => x.access_token === t.access_token)!;
-              storageSdk.set(CLAVE_SDK, JSON.stringify(sesion));
-              await correrListenersDeAuth('SIGNED_IN', sesion);
-              return { data: { session: sesion }, error: null };
+              let liberar!: () => void;
+              lockDelSdk = new Promise((r) => { liberar = r; });
+              try {
+                const sesion = [SESION_SDK, SESION_B].find((x) => x.access_token === t.access_token)!;
+                storageSdk.set(CLAVE_SDK, JSON.stringify(sesion));
+                if (duranteSetSession) await duranteSetSession();
+                await correrListenersDeAuth('SIGNED_IN', sesion);
+                return { data: { session: sesion }, error: null };
+              } finally {
+                liberar();
+              }
             });
             (SecureStore.getItemAsync as jest.Mock).mockImplementation(async (k: string) => secureStore.get(k) ?? null);
             (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string, v: string) => { secureStore.set(k, v); });
@@ -1395,6 +1407,101 @@ describe('useAuth', () => {
 
             expect(result.current.session).toEqual(SESION_B);
             expect(storageSdk.has(CLAVE_SDK)).toBe(false);
+          });
+
+          describe('restauración de B en el SDK (setSession con el lock tomado)', () => {
+            /**
+             * La respuesta de A llega mientras el handler de B espera el rol, así que la conciliación
+             * corre cuando termina B, sin pedidos en vuelo, y restaura B con setSession.
+             */
+            async function bEntraYLlegaLaRespuestaDeA(durante: (instancias: readonly [Instancia, Instancia]) => Promise<void> = async () => {}) {
+              let rolRetenido: Promise<unknown> | null = null;
+              const single = jest.fn(async () => {
+                if (rolRetenido) await rolRetenido;
+                await lockDelSdk;
+                return { data: { rol: 'admin', activo: true }, error: null };
+              });
+              (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
+              const instancias = await montar();
+              const pedidoDeA = await loginQueTimeoutea(instancias[0]);
+              const rolDeB = diferido<void>();
+              rolRetenido = rolDeB.promesa;
+              const pedidoDeB = pedidoDeLogin(SESION_B);
+              let pendienteB!: Promise<any>;
+              await act(async () => {
+                pendienteB = instancias[0].current.signIn('b@b.com', 'password');
+                pedidoDeB.responder();
+                await new Promise((r) => setTimeout(r, 10));
+              });
+              await responder(pedidoDeA);
+              expect(cuentaEnSdk()).toBe('user-1');
+              rolRetenido = null;
+              duranteSetSession = () => durante(instancias);
+              // Con timers falsos se deja vencer cualquier consulta trabada detrás del lock.
+              jest.useFakeTimers();
+              try {
+                await act(async () => {
+                  rolDeB.resolver();
+                  await jest.advanceTimersByTimeAsync(6000);
+                  await pendienteB;
+                });
+              } finally {
+                jest.useRealTimers();
+              }
+              return instancias;
+            }
+
+            it('sin nada en el medio: restaura B una sola vez, sin consultar detrás del lock', async () => {
+              const instancias = await bEntraYLlegaLaRespuestaDeA(async () => {
+                (supabase.from as jest.Mock).mockClear();
+              });
+
+              expect(supabase.auth.setSession).toHaveBeenCalledTimes(1);
+              expect(supabase.from).not.toHaveBeenCalled();
+              expect(cuentaEnSdk()).toBe('user-b');
+              for (const instancia of instancias) expect(instancia.current.session).toEqual(SESION_B);
+            });
+
+            it('signOut durante la restauración: no se revierte el logout ni queda B en el SDK', async () => {
+              const instancias = await bEntraYLlegaLaRespuestaDeA(async ([result]) => {
+                await result.current.signOut();
+              });
+
+              for (const instancia of instancias) expect(instancia.current.session).toBeNull();
+              expect(storageSdk.has(CLAVE_SDK)).toBe(false);
+            });
+
+            it('login offline de otra cuenta durante la restauración: no se cruza con B', async () => {
+              const { iniciarSesionSoloLocal } = require('../../src/supabase/auth');
+              const instancias = await bEntraYLlegaLaRespuestaDeA(async ([result]) => {
+                setOffline();
+                (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-c' });
+                expect((await result.current.signIn('c@c.com', 'password')).error).toBeNull();
+              });
+
+              for (const instancia of instancias) {
+                expect(instancia.current.session).toEqual({ soloLocal: true });
+                expect(instancia.current.role).toBe('tecnico');
+              }
+              expect(iniciarSesionSoloLocal).toHaveBeenCalledWith('user-c');
+              expect(await SecureStore.getItemAsync('user_id')).toBe('user-c');
+              expect(storageSdk.has(CLAVE_SDK)).toBe(false);
+            });
+
+            it('si la restauración falla por red: la conciliación es una sola y no deja a A', async () => {
+              perfil({ rol: 'admin', activo: true });
+              const [result, otra] = await montar();
+              const pedidoDeA = await loginQueTimeoutea(result);
+              await loguearComo(result, 'b@b.com', SESION_B);
+              (supabase.auth.setSession as jest.Mock).mockClear();
+              (supabase.auth.setSession as jest.Mock).mockResolvedValueOnce({ data: { session: null }, error: { message: 'Network request failed' } });
+
+              await responder(pedidoDeA);
+
+              expect(supabase.auth.setSession).toHaveBeenCalledTimes(1);
+              expect(storageSdk.has(CLAVE_SDK)).toBe(false);
+              for (const instancia of [result, otra]) expect(instancia.current.session).toEqual(SESION_B);
+            });
           });
 
           it('la respuesta de A llega mientras el handler de B espera el rol: el SDK termina con B y un arranque nuevo no toma A', async () => {
