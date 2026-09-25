@@ -44,6 +44,11 @@ DECLARE
   v_nuevo JSONB := to_jsonb(NEW);
   v_campo TEXT;
 BEGIN
+  -- En un alta arranca vacía: nadie la escribe desde el cliente.
+  IF TG_OP = 'INSERT' THEN
+    NEW.ultima_edicion := '{}';
+    RETURN NEW;
+  END IF;
   FOREACH v_campo IN ARRAY campos_editables_de_plantacion() LOOP
     IF v_viejo -> v_campo IS DISTINCT FROM v_nuevo -> v_campo THEN
       NEW.ultima_edicion := NEW.ultima_edicion
@@ -58,7 +63,7 @@ ALTER FUNCTION "public"."registrar_edicion_de_plantacion"() OWNER TO "postgres";
 
 DROP TRIGGER IF EXISTS "trg_registrar_edicion_de_plantacion" ON "public"."plantations";
 CREATE TRIGGER "trg_registrar_edicion_de_plantacion"
-  BEFORE UPDATE ON "public"."plantations"
+  BEFORE INSERT OR UPDATE ON "public"."plantations"
   FOR EACH ROW EXECUTE FUNCTION "public"."registrar_edicion_de_plantacion"();
 
 -- ── C. El UPDATE directo solo toca los campos editables ──────────────────────
