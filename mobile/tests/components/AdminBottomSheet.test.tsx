@@ -44,11 +44,14 @@ function makeProps(overrides?: Partial<BottomSheetProps>): BottomSheetProps {
     plantation: { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'activa', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null },
     meta: { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' },
     isAdmin: true,
+    canReopen: false,
+    isOnline: true,
     onDismiss: jest.fn(),
     onEdit: jest.fn(),
     onConfigSpecies: jest.fn(),
     onAssignTech: jest.fn(),
     onFinalize: jest.fn(),
+    onReopen: jest.fn(),
     onExportCsv: jest.fn(),
     onExportExcel: jest.fn(),
     onExportKml: jest.fn(),
@@ -262,5 +265,51 @@ describe('AdminBottomSheet', () => {
     );
 
     expect(queryByText('Finca Norte')).toBeNull();
+  });
+
+  describe('Reabrir (#637)', () => {
+    const FINALIZADA = { id: 'p1', lugar: 'Finca Norte', periodo: '2026-A', estado: 'finalizada', createdAt: '2026-01-01', archivadaEn: null, eliminadaEnServidorEn: null };
+
+    it('superadmin online: ofrece Reabrir sobre una finalizada y lo dispara', () => {
+      const onReopen = jest.fn();
+      const { getByText } = render(
+        <AdminBottomSheet {...makeProps({ plantation: FINALIZADA, canReopen: true, onReopen })} />
+      );
+
+      fireEvent.press(getByText('Reabrir plantación'));
+
+      expect(onReopen).toHaveBeenCalledTimes(1);
+    });
+
+    it('admin sin rol superadmin: no ve Reabrir', () => {
+      const { queryByText } = render(
+        <AdminBottomSheet {...makeProps({ plantation: FINALIZADA, canReopen: false })} />
+      );
+
+      expect(queryByText('Reabrir plantación')).toBeNull();
+    });
+
+    it('sin conexión: Reabrir se ve deshabilitado y explica por qué', () => {
+      const onReopen = jest.fn();
+      const { getByText } = render(
+        <AdminBottomSheet {...makeProps({ plantation: FINALIZADA, canReopen: true, isOnline: false, onReopen })} />
+      );
+
+      fireEvent.press(getByText('Reabrir plantación'));
+
+      expect(onReopen).not.toHaveBeenCalled();
+      expect(getByText('Reabrir requiere conexión a internet')).toBeTruthy();
+    });
+
+    it('no se ofrece sobre una activa ni sobre una finalizada archivada', () => {
+      const activa = render(<AdminBottomSheet {...makeProps({ canReopen: true })} />);
+      expect(activa.queryByText('Reabrir plantación')).toBeNull();
+      activa.unmount();
+
+      const archivada = render(
+        <AdminBottomSheet {...makeProps({ plantation: { ...FINALIZADA, archivadaEn: '2026-05-01' }, canReopen: true })} />
+      );
+      expect(archivada.queryByText('Reabrir plantación')).toBeNull();
+    });
   });
 });

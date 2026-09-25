@@ -15,6 +15,7 @@ import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { ayudaFinalizarConPendientes } from '../utils/finalizarPlantacion';
 import { esActiva, esArchivada, esEliminadaEnServidor, esFinalizada } from '../constants/estados';
+import { AYUDA_REABRIR_SIN_CONEXION, ETIQUETA_REABRIR, esReabrible } from '../utils/reaperturaPlantacion';
 
 /** Aviso no accionable: la generación de IDs es exclusiva de la web (#232). */
 export const AVISO_IDS_DESDE_WEB = 'Los IDs se generan desde la web de gestión.';
@@ -26,11 +27,15 @@ type AdminBottomSheetProps = {
   plantation: Plantation | null;
   meta: ExpandedMeta;
   isAdmin: boolean;
+  /** Superadmin: puede reabrir una finalizada (#637). */
+  canReopen: boolean;
+  isOnline: boolean;
   onDismiss: () => void;
   onEdit: () => void;
   onConfigSpecies: () => void;
   onAssignTech: () => void;
   onFinalize: () => void;
+  onReopen: () => void;
   onExportCsv: () => void;
   onExportExcel: () => void;
   onExportKml: () => void;
@@ -93,11 +98,14 @@ export default function AdminBottomSheet({
   plantation,
   meta,
   isAdmin,
+  canReopen,
+  isOnline,
   onDismiss,
   onEdit,
   onConfigSpecies,
   onAssignTech,
   onFinalize,
+  onReopen,
   onExportCsv,
   onExportExcel,
   onExportKml,
@@ -241,6 +249,16 @@ export default function AdminBottomSheet({
                       onPress={onExportKml}
                     />
                   </>
+                )}
+                {canReopen && esReabrible(plantation) && (
+                  <ActionItem
+                    icon="lock-open-outline"
+                    label={ETIQUETA_REABRIR}
+                    color={colors.primary}
+                    disabled={!isOnline}
+                    onPress={onReopen}
+                    helperText={AYUDA_REABRIR_SIN_CONEXION}
+                  />
                 )}
                 <View style={styles.lockedBadge}>
                   <Ionicons name="lock-closed" size={12} color={colors.stateFinalizada} />

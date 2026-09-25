@@ -39,6 +39,8 @@ import {
   finalizePlantation,
   FinalizePlantationLocalSyncError,
   FinalizePlantationPendientesError,
+  reabrirPlantacion,
+  ReabrirPlantacionLocalSyncError,
   saveSpeciesConfig,
   assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
@@ -183,6 +185,54 @@ describe('PlantationRepository', () => {
       await expect(finalizePlantation('plantation-1')).rejects.toThrow('permission denied');
 
       expect(mockDb.update).not.toHaveBeenCalled();
+      expect(mockNotifyDataChanged).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── reabrirPlantacion (#637) ─────────────────────────────────────────────
+
+  describe('reabrirPlantacion', () => {
+    it('llama al RPC y deja la plantación activa en SQLite', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+
+      await reabrirPlantacion('plantation-1');
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('reabrir_plantacion', { p_id: 'plantation-1' });
+      const updateResult = (mockDb.update as jest.Mock).mock.results[0].value;
+      expect(updateResult.set).toHaveBeenCalledWith({ estado: 'activa' });
+      expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['NOT_AUTHORIZED', 'Solo un superadmin puede reabrir una plantación.'],
+      ['PLANTACION_ARCHIVADA', 'La plantación está archivada: desarchivala antes de reabrirla.'],
+      ['OTRO', 'No se pudo reabrir la plantación. Probá de nuevo.'],
+    ])('rechazo %s del server: no toca SQLite y avisa con el mensaje de la web', async (codigo, mensaje) => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: false, error: codigo }, error: null });
+
+      await expect(reabrirPlantacion('plantation-1')).rejects.toThrow(mensaje);
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('error de red: mensaje genérico, SQLite intacto', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { message: 'Network request failed' } });
+
+      await expect(reabrirPlantacion('plantation-1')).rejects.toThrow('No se pudo reabrir la plantación. Probá de nuevo.');
+
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('server ok + local falla: ReabrirPlantacionLocalSyncError, sin notificar', async () => {
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+      (mockDb.update as jest.Mock).mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockRejectedValue(new Error('SQLITE_BUSY')),
+        }),
+      });
+
+      await expect(reabrirPlantacion('plantation-1')).rejects.toThrow(ReabrirPlantacionLocalSyncError);
+
       expect(mockNotifyDataChanged).not.toHaveBeenCalled();
     });
   });
