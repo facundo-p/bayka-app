@@ -1053,6 +1053,117 @@ describe('useAuth', () => {
         expect(cacheCredential).not.toHaveBeenCalled();
       });
 
+      describe('login online sin rol (#673)', () => {
+        const SIN_FILA = { data: null, error: { code: 'PGRST116', message: 'no rows' } };
+        const SIN_RESPUESTA = { data: null, error: { message: 'Network request failed' } };
+
+        async function loguearConHandler(respuestaDelPerfil: object) {
+          (supabase.from as jest.Mock).mockReturnValue({
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue(respuestaDelPerfil),
+          });
+          const hook = await montarYEsperarInit();
+          (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            return { data: { session: SESION_SDK }, error: null };
+          });
+          const res = await loguear(hook.result);
+          return { res, result: hook.result };
+        }
+
+        function expectSinSesionNiCredencial(result: { current: ReturnType<typeof useAuth> }, res: any) {
+          const { cacheCredential, saveLastOnlineLogin, clearAllCredentials } = require('../../src/services/OfflineAuthService');
+          const { clearSession } = require('../../src/supabase/auth');
+          expect(res.data.session).toBeNull();
+          expect(result.current.session).toBeNull();
+          expect(result.current.role).toBeNull();
+          expect(cacheCredential).not.toHaveBeenCalled();
+          expect(saveLastOnlineLogin).not.toHaveBeenCalled();
+          expect(clearSession).toHaveBeenCalled();
+          expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user_id');
+          // Las credenciales de otras cuentas quedan: no es una cuenta desactivada.
+          expect(clearAllCredentials).not.toHaveBeenCalled();
+        }
+
+        it('sin fila en profiles: avisa que no tiene perfil y no deja sesión ni credencial, aunque haya un rol cacheado', async () => {
+          (SecureStore.getItemAsync as jest.Mock).mockImplementation(async (k: string) => (k === 'user_role' ? 'admin' : null));
+          (verifyCredential as jest.Mock).mockResolvedValue({ role: 'admin', userId: 'user-1' });
+
+          const { res, result } = await loguearConHandler(SIN_FILA);
+
+          expect(res.error.message).toBe('Tu cuenta no tiene un perfil asignado. Contactá a un administrador.');
+          expectSinSesionNiCredencial(result, res);
+        });
+
+        it('el perfil no responde y hay credencial de esta cuenta: entra con ese rol', async () => {
+          (verifyCredential as jest.Mock).mockResolvedValue({ role: 'admin', userId: 'user-1' });
+          const { cacheCredential } = require('../../src/services/OfflineAuthService');
+
+          const { res, result } = await loguearConHandler(SIN_RESPUESTA);
+
+          expect(res.error).toBeNull();
+          expect(result.current.session).toBe(SESION_SDK);
+          expect(result.current.role).toBe('admin');
+          expect(escribio('user_role', 'admin')).toBe(true);
+          expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', 'admin', 'user-1');
+        });
+
+        it('un SIGNED_IN posterior que ya no ve la fila no rebaja la desactivación a "sin perfil"', async () => {
+          const single = jest.fn()
+            .mockResolvedValueOnce({ data: { rol: 'tecnico', activo: false }, error: null })
+            .mockResolvedValue(SIN_FILA);
+          (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
+          const { result } = await montarYEsperarInit();
+          (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            return { data: { session: SESION_SDK }, error: null };
+          });
+
+          const res = await loguear(result);
+
+          expect(res.error.message).toContain('desactivada');
+          expect(result.current.session).toBeNull();
+        });
+
+        it('signOut mientras se escribe el rol del cache: no revive la sesión ni cachea la credencial', async () => {
+          (verifyCredential as jest.Mock).mockResolvedValue({ role: 'admin', userId: 'user-1' });
+          (supabase.from as jest.Mock).mockReturnValue({
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue(SIN_RESPUESTA),
+          });
+          const { result } = await montarYEsperarInit();
+          (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            return { data: { session: SESION_SDK }, error: null };
+          });
+          (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string) => {
+            if (k === 'user_role') await result.current.signOut();
+          });
+          const { cacheCredential } = require('../../src/services/OfflineAuthService');
+
+          await loguear(result);
+
+          expect(result.current.session).toBeNull();
+          expect(result.current.role).toBeNull();
+          expect(cacheCredential).not.toHaveBeenCalled();
+        });
+
+        it.each([
+          ['sin credencial cacheada', null],
+          ['con la credencial de otra cuenta', { role: 'admin', userId: 'otro' }],
+        ])('el perfil no responde, %s: avisa de conectividad y no deja sesión ni credencial', async (_caso, credencial) => {
+          (verifyCredential as jest.Mock).mockResolvedValue(credencial);
+
+          const { res, result } = await loguearConHandler(SIN_RESPUESTA);
+
+          expect(res.error.message).toContain('No se pudo conectar');
+          expectSinSesionNiCredencial(result, res);
+        });
+      });
+
       describe('SIGNED_IN tardío de un login que timeouteó', () => {
         async function loginQueTimeoutea(result: { current: ReturnType<typeof useAuth> }) {
           (verifyCredential as jest.Mock).mockResolvedValue(null);
