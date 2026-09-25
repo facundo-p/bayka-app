@@ -1185,6 +1185,84 @@ describe('useAuth', () => {
           await act(async () => { await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK); });
         }
 
+        describe('el pedido de login responde después del timeout (#672)', () => {
+          async function loginQueEntraTarde(antesDeResponder: (result: { current: ReturnType<typeof useAuth> }) => Promise<void> = async () => {}) {
+            setSinInternet();
+            (verifyCredential as jest.Mock).mockResolvedValue(null);
+            const { result } = await montarYEsperarInit();
+            const pedido = diferido<object>();
+            (supabase.auth.signInWithPassword as jest.Mock).mockReturnValue(pedido.promesa);
+            jest.useFakeTimers();
+            let res: any;
+            try {
+              await act(async () => {
+                const pendiente = result.current.signIn('test@test.com', 'password');
+                await jest.advanceTimersByTimeAsync(8000);
+                res = await pendiente;
+              });
+            } finally {
+              jest.useRealTimers();
+            }
+            expect(res.error.message).toContain('No se pudo conectar');
+            await antesDeResponder(result);
+            setOnline();
+            (supabase.auth.startAutoRefresh as jest.Mock).mockClear();
+            await act(async () => {
+              await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+              pedido.resolver({ data: { session: SESION_SDK }, error: null });
+              await new Promise((r) => setTimeout(r, 20));
+            });
+            return result;
+          }
+
+          it('completa el login: credencial offline, lastOnlineLogin, auto-refresh, sesión y rol', async () => {
+            perfil({ rol: 'admin', activo: true });
+            const { cacheCredential, saveLastOnlineLogin } = require('../../src/services/OfflineAuthService');
+
+            const result = await loginQueEntraTarde();
+
+            expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', 'admin', 'user-1');
+            expect(saveLastOnlineLogin).toHaveBeenCalled();
+            expect(supabase.auth.startAutoRefresh).toHaveBeenCalled();
+            expect(result.current.session).toBe(SESION_SDK);
+            expect(result.current.role).toBe('admin');
+          });
+
+          it('después de un signOut: no persiste nada ni revive la sesión', async () => {
+            perfil({ rol: 'admin', activo: true });
+            const { cacheCredential, saveLastOnlineLogin } = require('../../src/services/OfflineAuthService');
+
+            const result = await loginQueEntraTarde(async (r) => {
+              await act(async () => { await r.current.signOut(); });
+            });
+
+            expect(cacheCredential).not.toHaveBeenCalled();
+            expect(saveLastOnlineLogin).not.toHaveBeenCalled();
+            expect(supabase.auth.startAutoRefresh).not.toHaveBeenCalled();
+            expect(result.current.session).toBeNull();
+          });
+
+          it.each([
+            ['sin perfil', { data: null, error: { code: 'PGRST116', message: 'no rows' } }],
+            ['desactivada', { data: { rol: 'tecnico', activo: false }, error: null }],
+          ])('cuenta %s: no deja sesión ni credencial', async (_caso, respuesta) => {
+            (supabase.from as jest.Mock).mockReturnValue({
+              select: jest.fn().mockReturnThis(),
+              eq: jest.fn().mockReturnThis(),
+              single: jest.fn().mockResolvedValue(respuesta),
+            });
+            const { cacheCredential, saveLastOnlineLogin } = require('../../src/services/OfflineAuthService');
+            const { clearSession } = require('../../src/supabase/auth');
+
+            const result = await loginQueEntraTarde();
+
+            expect(cacheCredential).not.toHaveBeenCalled();
+            expect(saveLastOnlineLogin).not.toHaveBeenCalled();
+            expect(clearSession).toHaveBeenCalled();
+            expect(result.current.session).toBeNull();
+          });
+        });
+
         it('sin nada en el medio, entra (misma cuenta, tokens reales)', async () => {
           perfil({ rol: 'admin', activo: true });
           const { result } = await montarYEsperarInit();

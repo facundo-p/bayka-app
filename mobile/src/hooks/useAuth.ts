@@ -483,19 +483,32 @@ export function useAuth() {
     nuevaEpocaDeSesion();
     const login: LoginOnline = { vigente: vigenteDesdeAhora(), email };
     loginOnlineEnVuelo = login;
+    const pedido = supabase.auth.signInWithPassword({ email, password });
     let result;
     try {
-      result = await withTimeout(
-        supabase.auth.signInWithPassword({ email, password }),
-        LOGIN_TIMEOUT,
-      );
+      result = await withTimeout(pedido, LOGIN_TIMEOUT);
     } catch {
       // Red caída o timeout: sigue en vuelo, su SIGNED_IN tardío respeta lo que pase después.
+      completarLoginTardio(pedido, email, password, login);
       return handleConnectivityFailure(email, password, offlineYaIntentado);
     }
     if (loginOnlineEnVuelo === login) loginOnlineEnVuelo = null;
     if (!result.error) return aceptarLoginOnline(email, password, result, login);
     return rechazoDeLoginOnline(email, password, result.error, offlineYaIntentado);
+  }
+
+  /**
+   * Un login que timeouteó puede entrar después: si nada lo reemplazó, se completa como uno
+   * a tiempo (credencial offline, lastOnlineLogin, auto-refresh), o se descarta si no puede entrar.
+   */
+  async function completarLoginTardio(pedido: ReturnType<typeof supabase.auth.signInWithPassword>, email: string, password: string, login: LoginOnline) {
+    try {
+      const result = await pedido;
+      if (loginOnlineEnVuelo === login) loginOnlineEnVuelo = null;
+      if (!result.error && login.vigente()) await aceptarLoginOnline(email, password, result, login);
+    } catch (e) {
+      console.warn('[Auth] login online tardío falló:', e);
+    }
   }
 
   async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R, login: LoginOnline) {
