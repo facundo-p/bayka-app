@@ -232,15 +232,6 @@ export function usePlantationAdmin() {
     return result.id;
   }
 
-  async function handleAssignTech(plantacionId: string): Promise<boolean> {
-    const net = await NetInfo.fetch();
-    if (net.isConnected === false) {
-      showInfoDialog(showConfirm, 'Sin conexión', 'La asignación de técnicos requiere conexión a internet.', 'wifi-outline', colors.info);
-      return false;
-    }
-    return true;
-  }
-
   async function handleEditSubmit(
     plantacionId: string,
     lugar: string,
@@ -280,7 +271,6 @@ export function usePlantationAdmin() {
     handleExportExcel,
     handleExportKml,
     handleCreateSubmit,
-    handleAssignTech,
     handleEditSubmit,
     handleDiscardEdit,
   };

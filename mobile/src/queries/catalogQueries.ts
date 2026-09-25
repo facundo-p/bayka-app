@@ -6,6 +6,7 @@ import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { plantations, groups, borradosPendientes } from '../database/schema';
 import { countCambiosDeEspecies } from '../repositories/CambiosDeEspeciesRepository';
+import { countAltasDeTecnicos } from '../repositories/TecnicosDePlantacionRepository';
 import { eq, and, count } from 'drizzle-orm';
 import { fetchAllRows } from '../services/sync/paginate';
 import { ESTADO_GRUPO, esArchivada } from '../constants/estados';
@@ -183,6 +184,8 @@ export type ResumenDePendientes = UnsyncedSummary & {
   borrados: number;
   /** Altas y bajas de especies sin subir (#635). */
   especies: number;
+  /** Técnicos asignados en el teléfono sin subir (#636). */
+  tecnicos: number;
 };
 
 async function countBorradosPendientes(plantacionId: string): Promise<number> {
@@ -194,14 +197,15 @@ async function countBorradosPendientes(plantacionId: string): Promise<number> {
 }
 
 export async function getResumenDePendientes(plantacionId: string): Promise<ResumenDePendientes> {
-  const [grupos, parcelas, fotos, borrados, especies] = await Promise.all([
+  const [grupos, parcelas, fotos, borrados, especies, tecnicos] = await Promise.all([
     getUnsyncedGroupSummary(plantacionId),
     countPendingParcelas({ plantacionId }),
     countFotosSinSubirDePlantacion(plantacionId),
     countBorradosPendientes(plantacionId),
     countCambiosDeEspecies(plantacionId),
+    countAltasDeTecnicos(plantacionId),
   ]);
-  return { ...grupos, parcelas: parcelas[0]?.cnt ?? 0, fotos: fotos[0]?.cnt ?? 0, borrados, especies };
+  return { ...grupos, parcelas: parcelas[0]?.cnt ?? 0, fotos: fotos[0]?.cnt ?? 0, borrados, especies, tecnicos };
 }
 
 /** Lo que el aviso de "eliminar del dispositivo" necesita de la plantación local. Null si no está. */

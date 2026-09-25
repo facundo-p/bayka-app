@@ -43,7 +43,7 @@ beforeEach(async () => {
 describe('getResumenDePendientes', () => {
   it('sin nada pendiente, todo en cero', async () => {
     expect(await getResumenDePendientes(PID)).toEqual({
-      activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0,
+      activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0,
     });
   });
 
@@ -71,7 +71,7 @@ describe('getResumenDePendientes', () => {
     ]);
 
     expect(await getResumenDePendientes(PID)).toEqual({
-      activaCount: 1, finalizadaCount: 1, parcelas: 2, fotos: 2, borrados: 1, especies: 0,
+      activaCount: 1, finalizadaCount: 1, parcelas: 2, fotos: 2, borrados: 1, especies: 0, tecnicos: 0,
     });
   });
 });

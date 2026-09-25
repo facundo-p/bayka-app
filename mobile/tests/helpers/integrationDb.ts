@@ -45,6 +45,8 @@ export const TABLAS_HIJAS_PRIMERO = [
   schema.trees,
   schema.borradosPendientes,
   schema.cambiosEspeciesPendientes,
+  schema.altasDeTecnicosPendientes,
+  schema.tecnicosDeOrganizacion,
   schema.groups,
   schema.parcelas,
   schema.plantationSpecies,

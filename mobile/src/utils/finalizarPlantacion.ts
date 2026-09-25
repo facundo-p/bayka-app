@@ -6,7 +6,7 @@ import type { ResumenDePendientes } from '../queries/catalogQueries';
 import { detalleDePendientes } from './avisoEliminarDelDispositivo';
 
 export function tienePendientes(r: ResumenDePendientes): boolean {
-  return r.activaCount + r.finalizadaCount + r.parcelas + r.fotos + r.borrados + r.especies > 0;
+  return r.activaCount + r.finalizadaCount + r.parcelas + r.fotos + r.borrados + r.especies + r.tecnicos > 0;
 }
 
 export function mensajeFinalizarConPendientes(r: ResumenDePendientes): string {

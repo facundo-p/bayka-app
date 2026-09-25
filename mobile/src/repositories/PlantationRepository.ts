@@ -8,20 +8,14 @@ import { enTransaccion } from '../database/transaccion';
 import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes, cambiosEspeciesPendientes } from '../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
-import { pullFromServer } from '../services/SyncService';
 import * as Crypto from 'expo-crypto';
 import NetInfo from '@react-native-community/netinfo';
 import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION, type EstadoPlantacion } from '../constants/estados';
-import {
-  escribirSiEsEscribible,
-  esMotivoNoEscribible,
-  PlantacionNoEscribibleError,
-  BLOQUEAN_ASIGNACIONES,
-} from '../services/PlantacionEscribibleService';
-import { reemplazarConfiguracion, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
+import { esMotivoNoEscribible, PlantacionNoEscribibleError } from '../services/PlantacionEscribibleService';
+import { borrarAltasDeTecnicosDePlantacion } from './TecnicosDePlantacionRepository';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
@@ -331,49 +325,6 @@ export async function reabrirPlantacion(plantacionId: string): Promise<void> {
   await reflejarEstadoLocal(plantacionId, ESTADO_PLANTACION.activa, (e) => new ReabrirPlantacionLocalSyncError(e));
 }
 
-// ─── assignTechnicians ────────────────────────────────────────────────────────
-
-/** Reemplaza las asignaciones de técnicos en una sola transacción, sin tocar las membresías admin (#67), y sincroniza vía pullFromServer. */
-export async function assignTechnicians(
-  plantacionId: string,
-  userIds: string[]
-): Promise<void> {
-  await reemplazarConfiguracion({
-    rpc: RPC_REEMPLAZAR_TECNICOS,
-    args: { p_plantacion: plantacionId, p_user_ids: userIds },
-    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ASIGNACIONES, () => reemplazarTecnicosSinRpc(plantacionId, userIds)),
-  });
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
-}
-
-/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
-async function reemplazarTecnicosSinRpc(plantacionId: string, userIds: string[]): Promise<void> {
-  const { error: deleteError, count: deleteCount } = await supabase
-    .from('plantation_users')
-    .delete()
-    .eq('plantation_id', plantacionId)
-    .eq('rol_en_plantacion', ROL.tecnico);
-
-  console.log(`[Admin] Deleted ${deleteCount ?? '?'} plantation_users for ${plantacionId}`, deleteError ? `ERROR: ${deleteError.message}` : 'OK');
-  if (deleteError) throw deleteError;
-  if (userIds.length === 0) return;
-
-  const now = new Date().toISOString();
-  const { error: insertError } = await supabase
-    .from('plantation_users')
-    .insert(
-      userIds.map((userId) => ({
-        plantation_id: plantacionId,
-        user_id: userId,
-        rol_en_plantacion: ROL.tecnico,
-        assigned_at: now,
-      }))
-    );
-
-  if (insertError) throw insertError;
-}
-
 // ─── createPlantationWithParcelaLocally ──────────────────────────────────────
 
 export interface CreatePlantationWithParcelaParams {
@@ -460,6 +411,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     // descargarla el pull escondería esos árboles para siempre (#467).
     await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
     await tx.delete(cambiosEspeciesPendientes).where(eq(cambiosEspeciesPendientes.plantacionId, plantacionId));
+    await borrarAltasDeTecnicosDePlantacion(tx, plantacionId);
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
   });
   // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).

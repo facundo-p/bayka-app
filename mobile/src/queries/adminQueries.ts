@@ -1,6 +1,5 @@
-/** Admin read queries: gestión de plantación + gate de finalización. Local queries usan Drizzle/SQLite; profile listing usa Supabase (SQLite local no tiene profiles). */
+/** Admin read queries: gestión de plantación + gate de finalización, todas sobre SQLite. */
 import { db } from '../database/client';
-import { supabase } from '../supabase/client';
 import { groups, trees, plantationSpecies, species, plantationUsers } from '../database/schema';
 import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
@@ -9,6 +8,7 @@ import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueri
 import { porNombre } from '../utils/ordenEspecies';
 import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
+import { getAltasPendientesConNombre, getTecnicosDeOrganizacion } from '../repositories/TecnicosDePlantacionRepository';
 
 export type FinalizationGate = {
   canFinalize: boolean;
@@ -68,24 +68,8 @@ async function getNNSinResolver(plantacionId: string) {
 
 export { getPlantationEstadoDeEdicion } from './estadoDeEdicionQueries';
 
-/** Returns all technicians in the admin's organization. */
-export async function getAllTechnicians(
-  organizacionId: string
-): Promise<{ id: string; nombre: string }[]> {
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, nombre')
-    .eq('organizacion_id', organizacionId)
-    .eq('rol', ROL.tecnico)
-    // No se ofrece asignar técnicos dados de baja (no pueden loguearse).
-    .eq('activo', true);
-
-  if (error) throw error;
-  return (data ?? []) as { id: string; nombre: string }[];
-}
-
-/** Técnico de la organización, con su asignación a una plantación. */
-export type TecnicoAsignable = { id: string; nombre: string; assigned: boolean };
+/** Técnico de la organización, con su asignación a una plantación. `pendiente`: asignado acá, sin subir (#636). */
+export type TecnicoAsignable = { id: string; nombre: string; assigned: boolean; pendiente: boolean };
 
 /** Los asignados primero: el admin ve de una a quién ya tiene puesto. */
 export function porAsignadoYNombre(a: TecnicoAsignable, b: TecnicoAsignable): number {
@@ -93,18 +77,26 @@ export function porAsignadoYNombre(a: TecnicoAsignable, b: TecnicoAsignable): nu
   return a.nombre.localeCompare(b.nombre);
 }
 
-/** Los técnicos de la organización marcados con su asignación a la plantación. */
+/**
+ * Los técnicos de la organización (del caché, #636) marcados con su asignación a la
+ * plantación. Un alta pendiente de alguien que salió del caché (dado de baja) se sigue
+ * mostrando, con el nombre que tenía al asignarlo, para poder deshacerla.
+ */
 export async function getTechniciansWithAssignment(
   organizacionId: string,
   plantacionId: string
 ): Promise<TecnicoAsignable[]> {
-  const [todos, asignados] = await Promise.all([
-    getAllTechnicians(organizacionId),
+  const [delCache, asignados, pendientes] = await Promise.all([
+    getTecnicosDeOrganizacion(organizacionId),
     getAssignedTechnicians(plantacionId),
+    getAltasPendientesConNombre(plantacionId),
   ]);
+  const idsDelCache = new Set(delCache.map((t) => t.id));
+  const todos = [...delCache, ...pendientes.filter((p) => !idsDelCache.has(p.id))];
   const idsAsignados = new Set(asignados.map((asignado) => asignado.userId));
+  const idsPendientes = new Set(pendientes.map((p) => p.id));
   return todos
-    .map((tecnico) => ({ ...tecnico, assigned: idsAsignados.has(tecnico.id) }))
+    .map((t) => ({ id: t.id, nombre: t.nombre, assigned: idsAsignados.has(t.id), pendiente: idsPendientes.has(t.id) }))
     .sort(porAsignadoYNombre);
 }
 

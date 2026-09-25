@@ -27,6 +27,7 @@ import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../r
 import { asegurarEspecies } from './catalogoDeEspecies';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 import { comoAltasYBajas, getCambiosPendientes } from '../../repositories/CambiosDeEspeciesRepository';
+import { getAltasPendientes } from '../../repositories/TecnicosDePlantacionRepository';
 import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
 import { adoptarRenombres, gruposLocales, planDeRenombres, type GrupoLocal, type RemoteGroup } from './renombresDeGrupos';
 
@@ -370,6 +371,13 @@ async function pullGroups(
   return { ids: all.map((sg) => sg.id), pendientes: pendingLocally };
 }
 
+/** Miembros locales que el server ya no tiene. Un alta pendiente de subir todavía no llegó: no cuenta (#636). */
+async function miembrosRevocados(plantacionId: string, remotos: Set<string>, pendientes: Set<string>): Promise<string[]> {
+  const locales = await db.select({ userId: plantationUsers.userId }).from(plantationUsers)
+    .where(eq(plantationUsers.plantationId, plantacionId));
+  return locales.map((l) => l.userId).filter((id) => !remotos.has(id) && !pendientes.has(id));
+}
+
 async function pullPlantationUsers(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
@@ -380,6 +388,10 @@ async function pullPlantationUsers(
     return;
   }
 
+  // Pendientes leídos antes y después de bajar: un alta que la subida en segundo plano
+  // confirma en el medio está en la lectura de antes, y una guardada durante la bajada,
+  // en la de después. Con una sola lectura, alguna se borraría como revocada.
+  const pendientesAntes = await getAltasPendientes(plantacionId);
   const { data: remotePu, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_users').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.usuarios),
@@ -394,11 +406,8 @@ async function pullPlantationUsers(
   syncLog.info('Pull plantation_users:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, all.length);
 
-  const remoteUserIds = new Set(all.map((pu: any) => pu.user_id));
-  const localPu = await db.select().from(plantationUsers)
-    .where(eq(plantationUsers.plantationId, plantacionId));
-
-  const revocados = localPu.filter((local) => !remoteUserIds.has(local.userId)).map((local) => local.userId);
+  const pendientes = new Set([...pendientesAntes, ...(await getAltasPendientes(plantacionId))]);
+  const revocados = await miembrosRevocados(plantacionId, new Set(all.map((pu: any) => pu.user_id)), pendientes);
 
   // Los miembros de una plantación son pocos: el replace entero entra en una
   // transacción, con un statement por lado.

@@ -23,10 +23,6 @@ jest.mock('../../src/database/liveQuery', () => ({
   notifyDataChanged: jest.fn(),
 }));
 
-jest.mock('../../src/services/SyncService', () => ({
-  pullFromServer: jest.fn(),
-}));
-
 jest.mock('../../src/utils/syncLogger', () => ({
   syncLog: { info: jest.fn(), error: jest.fn() },
 }));
@@ -41,20 +37,17 @@ import {
   FinalizePlantationPendientesError,
   reabrirPlantacion,
   ReabrirPlantacionLocalSyncError,
-  assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
 
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
-import { pullFromServer } from '../../src/services/SyncService';
 import { syncLog } from '../../src/utils/syncLogger';
 import { getResumenDePendientes } from '../../src/queries/catalogQueries';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
 const mockNotifyDataChanged = notifyDataChanged as jest.Mock;
-const mockPullFromServer = pullFromServer as jest.Mock;
 const mockSyncLog = syncLog as jest.Mocked<typeof syncLog>;
 
 const fakePlantation = {
@@ -71,7 +64,6 @@ describe('PlantationRepository', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    mockPullFromServer.mockResolvedValue(undefined);
     (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
     (mockSupabase.from as jest.Mock).mockReturnValue({
@@ -82,14 +74,6 @@ describe('PlantationRepository', () => {
       }),
       update: jest.fn().mockReturnValue({
         eq: jest.fn().mockResolvedValue({ error: null }),
-      }),
-      delete: jest.fn().mockReturnValue({
-        // assignTechnicians encadena .eq(plantation_id).eq(rol_en_plantacion)
-        eq: jest.fn().mockReturnValue(
-          Object.assign(Promise.resolve({ error: null }), {
-            eq: jest.fn().mockResolvedValue({ error: null }),
-          })
-        ),
       }),
     });
 
@@ -124,7 +108,7 @@ describe('PlantationRepository', () => {
   // ─── finalizePlantation ───────────────────────────────────────────────────
 
   describe('finalizePlantation', () => {
-    const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
+    const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0 };
 
     beforeEach(() => {
       (getResumenDePendientes as jest.Mock).mockResolvedValue(SIN_PENDIENTES);
@@ -233,125 +217,6 @@ describe('PlantationRepository', () => {
       await expect(reabrirPlantacion('plantation-1')).rejects.toThrow(ReabrirPlantacionLocalSyncError);
 
       expect(mockNotifyDataChanged).not.toHaveBeenCalled();
-    });
-  });
-
-  // ─── Reemplazo por RPC transaccional (#544) ───────────────────────────────
-
-  const RPC_NO_ENCONTRADO = { code: 'PGRST202', message: 'Could not find the function' };
-
-  /** Respuesta de los RPC de reemplazo y, en el camino sin RPC, de `motivo_no_escribible`. */
-  function mockRpc(reemplazo: { data?: unknown; error?: unknown }, motivos: (string | null)[] = []) {
-    const pendientes = [...motivos];
-    (mockSupabase.rpc as jest.Mock).mockImplementation((nombre: string) => {
-      if (nombre === 'motivo_no_escribible') return Promise.resolve({ data: pendientes.shift() ?? null, error: null });
-      return Promise.resolve({ data: reemplazo.data ?? null, error: reemplazo.error ?? null });
-    });
-  }
-
-  const OK = { data: { success: true } };
-  const rechazo = (error: string) => ({ data: { success: false, error } });
-
-  describe('assignTechnicians', () => {
-    it('reemplaza los técnicos con un solo RPC y sincroniza', async () => {
-      mockRpc(OK);
-
-      await assignTechnicians('plantation-1', ['user-1', 'user-2']);
-
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('reemplazar_tecnicos_plantacion', {
-        p_plantacion: 'plantation-1',
-        p_user_ids: ['user-1', 'user-2'],
-      });
-      expect(mockSupabase.from).not.toHaveBeenCalled();
-      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-      expect(mockNotifyDataChanged).toHaveBeenCalled();
-    });
-
-    it('un usuario de otra organización → mensaje claro', async () => {
-      mockRpc(rechazo('USUARIO_DE_OTRA_ORGANIZACION'));
-
-      await expect(assignTechnicians('plantation-1', ['user-1']))
-        .rejects.toThrow('Alguno de los técnicos elegidos no pertenece a tu organización. Los cambios no se guardaron.');
-    });
-  });
-
-  describe('rechazos y errores del RPC', () => {
-    it.each([
-      ['PLANTACION_INEXISTENTE', 'La plantación ya no existe en el servidor. Los cambios no se guardaron.'],
-      ['PLANTACION_ARCHIVADA', 'La plantación está archivada y no acepta cambios. Los cambios no se guardaron.'],
-      ['PLANTACION_FINALIZADA', 'La plantación está finalizada: solo un superadmin puede cambiar su configuración. Los cambios no se guardaron.'],
-      ['NOT_AUTHORIZED', 'No tenés permiso para cambiar esta plantación. Los cambios no se guardaron.'],
-      ['OTRO_CODIGO', 'El servidor rechazó el cambio. Los cambios no se guardaron.'],
-    ])('%s → mensaje claro, sin escritura directa ni pull', async (codigo, mensaje) => {
-      mockRpc(rechazo(codigo));
-
-      await expect(assignTechnicians('plantation-1', [])).rejects.toThrow(mensaje);
-      expect(mockSupabase.from).not.toHaveBeenCalled();
-      expect(mockPullFromServer).not.toHaveBeenCalled();
-    });
-
-    it('un error de red se propaga tal cual y no cae al camino sin RPC', async () => {
-      const error = { code: '', message: 'TypeError: Network request failed' };
-      mockRpc({ error });
-
-      await expect(assignTechnicians('plantation-1', ['user-1'])).rejects.toBe(error);
-      expect(mockSupabase.from).not.toHaveBeenCalled();
-      expect(mockPullFromServer).not.toHaveBeenCalled();
-    });
-  });
-
-  // ─── Server sin el RPC: camino anterior con chequeo previo (#522) ─────────
-
-  describe('server sin el RPC de reemplazo', () => {
-    function mockUsersInsert(error: { code: string; message: string } | null) {
-      const eqRol = jest.fn().mockResolvedValue({ error: null, count: 0 });
-      const eqPlantation = jest.fn().mockReturnValue({ eq: eqRol });
-      const insertMock = jest.fn().mockResolvedValue({ error });
-      (mockSupabase.from as jest.Mock).mockReturnValue({
-        delete: jest.fn().mockReturnValue({ eq: eqPlantation }),
-        insert: insertMock,
-      });
-      return { insertMock, eqPlantation, eqRol };
-    }
-
-    it('assignTechnicians: borra solo filas tecnico e inserta las nuevas', async () => {
-      mockRpc({ error: RPC_NO_ENCONTRADO });
-      const { insertMock, eqPlantation, eqRol } = mockUsersInsert(null);
-
-      await assignTechnicians('plantation-1', ['user-1', 'user-2']);
-
-      expect(eqPlantation).toHaveBeenCalledWith('plantation_id', 'plantation-1');
-      expect(eqRol).toHaveBeenCalledWith('rol_en_plantacion', 'tecnico');
-      const insertedRows = insertMock.mock.calls[0][0];
-      expect(insertedRows).toHaveLength(2);
-      expect(insertedRows.every((r: any) => r.rol_en_plantacion === 'tecnico')).toBe(true);
-      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-    });
-
-    it('assignTechnicians: una finalizada admite asignaciones', async () => {
-      mockRpc({ error: RPC_NO_ENCONTRADO }, ['PLANTACION_FINALIZADA']);
-      mockUsersInsert(null);
-
-      await assignTechnicians('plantation-1', ['user-1']);
-
-      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-    });
-
-    it('assignTechnicians: eliminada entre el chequeo y la escritura → traduce el FK a mensaje claro', async () => {
-      mockRpc({ error: RPC_NO_ENCONTRADO }, [null, 'PLANTACION_INEXISTENTE']);
-      mockUsersInsert({ code: '23503', message: 'insert or update violates foreign key constraint' });
-
-      await expect(assignTechnicians('plantation-1', ['user-1']))
-        .rejects.toThrow('La plantación ya no existe en el servidor. Los cambios no se guardaron.');
-      expect(mockPullFromServer).not.toHaveBeenCalled();
-    });
-
-    it('un error que no es de la plantación se propaga tal cual', async () => {
-      mockRpc({ error: RPC_NO_ENCONTRADO }, [null, null]);
-      const error = { code: '08006', message: 'connection failure' };
-      mockUsersInsert(error);
-
-      await expect(assignTechnicians('plantation-1', ['user-1'])).rejects.toBe(error);
     });
   });
 });

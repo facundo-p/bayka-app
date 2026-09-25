@@ -382,6 +382,12 @@ Por PostgREST, un admin solo asigna o quita filas `tecnico`, en plantaciones de 
 organización y con usuarios de su organización (#543). Las filas `admin` las
 mantienen solo los triggers.
 
+Desde la app, asignar funciona sin conexión (#636): el teléfono lo aplica en el
+momento y lo sube en el próximo sync por `aplicar_cambios_tecnicos`, que es aditivo
+(no pisa lo que la web asignó en el medio). Un técnico dado de baja, un usuario
+que no es técnico o uno de otra organización se rechaza solo y se quita del
+teléfono. Quitar sigue requiriendo conexión.
+
 ---
 
 # 8. Parcela

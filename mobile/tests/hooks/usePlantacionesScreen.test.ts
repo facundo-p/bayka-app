@@ -37,7 +37,6 @@ jest.mock('../../src/hooks/usePlantaciones', () => ({
 }));
 
 const mockHandleCreateSubmit = jest.fn();
-const mockHandleAssignTech = jest.fn();
 const mockFetchPlantationMeta = jest.fn();
 jest.mock('../../src/hooks/usePlantationAdmin', () => ({
   usePlantationAdmin: () => ({
@@ -49,7 +48,6 @@ jest.mock('../../src/hooks/usePlantationAdmin', () => ({
     handleExportExcel: jest.fn(),
     handleExportKml: jest.fn(),
     handleCreateSubmit: mockHandleCreateSubmit,
-    handleAssignTech: mockHandleAssignTech,
     handleEditSubmit: jest.fn(),
     handleDiscardEdit: jest.fn(),
   }),
@@ -193,8 +191,7 @@ describe('usePlantacionesScreen — expansión de card y bottom sheet', () => {
     expect(result.current.bottomSheetMeta.canFinalize).toBe(true);
   });
 
-  it('onAssignTechFromSheet cierra el sheet y, si hay conexión, abre el modal de asignación', async () => {
-    mockHandleAssignTech.mockResolvedValue(true);
+  it('onAssignTechFromSheet cierra el sheet y abre el modal de asignación, también sin conexión (#636)', async () => {
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {

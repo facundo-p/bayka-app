@@ -30,6 +30,8 @@ import {
 } from './cambiosDeEspecies';
 import { getCambiosPendientes, getEspeciesPorId, registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
 import { CAMBIO_DE_ESPECIE } from '../../constants/cambioDeEspecie';
+import { uploadPendingTechnicianAssignments } from './tecnicosDePlantacion';
+import { pullTecnicosDeOrganizacion } from './catalogoDeTecnicos';
 
 type PlantacionLocal = typeof plantations.$inferSelect;
 
@@ -246,8 +248,12 @@ export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   let ediciones: SyncPlantationResult[] = [];
   try { altas = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
   try { ediciones = await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
-  // Antes del pull: así baja la lista de especies ya con lo de este teléfono.
+  // Antes del pull: así bajan especies y técnicos ya con lo de este teléfono.
   let especies: SyncPlantationResult[] = [];
   try { especies = await uploadPendingSpeciesChanges(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload species changes failed:', e); }
-  return [...altas, ...ediciones, ...especies];
+  let tecnicos: SyncPlantationResult[] = [];
+  try { tecnicos = await uploadPendingTechnicianAssignments(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload technician assignments failed:', e); }
+  // Después de subir: el aviso de un rechazado todavía encuentra su nombre en el caché.
+  try { await pullTecnicosDeOrganizacion(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Pull technicians failed:', e); }
+  return [...altas, ...ediciones, ...especies, ...tecnicos];
 }

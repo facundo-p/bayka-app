@@ -13,10 +13,10 @@ import {
   getCambiosPendientes,
   getEspeciesPorId,
   guardarCambiosDeEspecies,
-  sinCambios,
   type CambiosDeEspecies,
   type EspecieConNombre,
 } from '../repositories/CambiosDeEspeciesRepository';
+import { sinCambios } from '../utils/altasYBajas';
 
 async function subirSiHayConexion(plantacionId: string): Promise<SubidaDeEspecies | null> {
   const net = await NetInfo.fetch();
