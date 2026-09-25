@@ -70,11 +70,6 @@ async function editorActual(): Promise<EditorDeParcela> {
   return { esAdmin: await puedeEditarParcelas(), userId: await readCachedUserId() };
 }
 
-/** Sin alta pendiente el servidor ya la tiene: borrarla necesita tombstone. */
-function nuncaSubida(parcela: Parcela): boolean {
-  return parcela.altaPendienteDe != null;
-}
-
 /** Valida nombre/codigo únicos en la plantación, excluyendo tombstones — un nombre reusado de una parcela tombstoned es válido. */
 async function validateParcelaUniqueness(
   plantacionId: string,
@@ -206,20 +201,23 @@ async function countChildGroups(parcelaId: string): Promise<number> {
 }
 
 /**
- * Borra una parcela sin grupos hijos. La que nunca subió se borra del dispositivo; la que el
- * servidor ya tiene queda como tombstone para que el push propague el borrado. Idempotente:
- * un segundo delete retorna not_found.
+ * Borra una parcela sin grupos hijos. Admin deja un tombstone que el push propaga, aunque la
+ * parcela no haya subido: cubre un alta que llegó sin confirmarse. El técnico solo borra su
+ * alta sin subir, que el server no tiene, así que la borra del dispositivo; si igual había
+ * llegado, el pull la trae de vuelta.
+ * Idempotente: un segundo delete retorna not_found.
  */
 export async function deleteParcela(id: string): Promise<DeleteParcelaResult> {
   const existing = await findById(id);
   if (!existing) return { deleted: false, error: 'not_found' };
-  if (!puedeEditarParcela(existing, await editorActual())) return { deleted: false, error: ERROR_DE_EDICION.sinPermiso };
+  const editor = await editorActual();
+  if (!puedeEditarParcela(existing, editor)) return { deleted: false, error: ERROR_DE_EDICION.sinPermiso };
   const childCount = await countChildGroups(id);
   if (childCount > 0) {
     return { deleted: false, error: 'has_children', childCount };
   }
-  if (nuncaSubida(existing)) await db.delete(parcelas).where(eq(parcelas.id, id));
-  else await marcarTombstone(id);
+  if (editor.esAdmin) await marcarTombstone(id);
+  else await db.delete(parcelas).where(eq(parcelas.id, id));
   notifyDataChanged();
   return { deleted: true };
 }

@@ -40,12 +40,10 @@ import { anotarRechazo, anotarSubida, motivoDeBloqueo } from './pendientesVarado
  * edición pendiente de una parcela que ya existe y el pull trae la del server, en vez de quedar
  * trabada en un 42501 para siempre. También hace idempotente reintentar un alta ya subida.
  *
- * `DO NOTHING` no distingue "ignorado" de "aplicado": el upsert responde sin error igual, así que
- * la fila queda marcada synced y muestra la edición del técnico hasta el pull siguiente, que la
- * pisa con la del server (aceptado, ver docs/domain-model.md).
+ * Con `DO NOTHING` se pide la representación: sin filas, el server ya la tenía y la ignoró.
  */
 async function uploadParcela(parcela: Parcela, soloAltas: boolean): Promise<{ data: any; error: any }> {
-  return supabase
+  const upsert = supabase
     .from('parcelas')
     .upsert(
       {
@@ -60,6 +58,18 @@ async function uploadParcela(parcela: Parcela, soloAltas: boolean): Promise<{ da
       },
       { onConflict: 'id', ignoreDuplicates: soloAltas }
     );
+  return soloAltas ? upsert.select('id') : upsert;
+}
+
+/**
+ * Una edición que el server ignoró no puede quedar pendiente: `DO NOTHING` nunca la aplica y el
+ * pull saltea lo pendiente, así que quedaría trabada para siempre. Se marca subida, se loguea y
+ * el pull siguiente trae la versión del server. Con #654 solo pasa con ediciones de antes de
+ * #640 o si el push anterior llegó sin confirmarse.
+ */
+function anotarSiFueIgnorada(parcela: Parcela, data: unknown): void {
+  if (!Array.isArray(data) || data.length > 0) return;
+  syncLog.info(`Parcela "${parcela.nombre}" (${parcela.id}) ya estaba en el server: se descarta la edición local`);
 }
 
 /** Clasifica el resultado de un upsert de parcela en un SyncParcelaResult. */
@@ -136,6 +146,7 @@ export async function uploadSyncableParcelas(
     try {
       const { data, error } = await uploadParcela(parcela, soloAltas);
       const result = await desempatarPermiso(classifyParcelaRpcResult(parcela, data, error), plantacionId);
+      if (result.success && soloAltas) anotarSiFueIgnorada(parcela, data);
       if (result.success) await markParcelaSynced(parcela.id);
       // En cualquier error: NO markSynced — pending_sync queda en true.
       await anotarResultado(plantacionId, result, soloAltas);

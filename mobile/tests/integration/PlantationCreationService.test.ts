@@ -78,7 +78,10 @@ afterAll(() => {
 /** Arma supabase.from() para que los pasos de push reusados por el modo 'online' (uploadOfflinePlantations + uploadSyncableParcelas) resuelvan en éxito. */
 function mockSupabaseForSuccessfulPush() {
   const plantationsInsert = jest.fn().mockResolvedValue({ error: null });
-  const parcelasUpsert = jest.fn().mockResolvedValue({ data: null, error: null });
+  // Sin rol cacheado el push sube solo altas y pide la representación con `.select`.
+  const parcelasUpsert = jest.fn(() => Object.assign(Promise.resolve({ data: null, error: null }), {
+    select: jest.fn().mockResolvedValue({ data: [{ id: 'parcela' }], error: null }),
+  }));
   (supabase.from as jest.Mock).mockImplementation((table: string) => {
     if (table === 'plantations') return { insert: plantationsInsert };
     if (table === 'parcelas') return { upsert: parcelasUpsert };

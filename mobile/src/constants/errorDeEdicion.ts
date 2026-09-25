@@ -13,7 +13,7 @@ export const esSinPermiso = (error: string) => error === ERROR_DE_EDICION.sinPer
 /** Un pull pudo finalizar o archivar la plantación con el formulario abierto. */
 export const MENSAJE_PLANTACION_NO_EDITABLE = 'La plantación ya no admite cambios.';
 
-export const MENSAJE_PARCELA_SIN_PERMISO = 'Solo un administrador puede editar o eliminar parcelas.';
+export const MENSAJE_PARCELA_SIN_PERMISO = 'Solo un administrador puede editar o eliminar una parcela que ya se sincronizó.';
 
 /** Nombre o código ya usados por otra parcela o grupo del mismo ámbito. */
 export const ERROR_DE_DUPLICADO = {

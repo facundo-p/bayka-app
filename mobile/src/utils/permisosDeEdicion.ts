@@ -13,6 +13,11 @@ export interface EditorDeParcela {
   userId: string | null;
 }
 
+/** El servidor todavía no la tiene: no hay copia de la que recuperarla. */
+export function nuncaSubida(parcela: { altaPendienteDe: string | null }): boolean {
+  return parcela.altaPendienteDe != null;
+}
+
 /** La parcela la creó `userId` en este dispositivo y su alta todavía no llegó al servidor. */
 export function esAltaPropiaSinSubir(parcela: { altaPendienteDe: string | null }, userId: string | null): boolean {
   return userId != null && parcela.altaPendienteDe === userId;

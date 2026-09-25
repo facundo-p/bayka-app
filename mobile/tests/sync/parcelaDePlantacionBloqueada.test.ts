@@ -111,7 +111,10 @@ describe('uploadSyncableParcelas — el técnico solo sube altas (#640)', () => 
   beforeEach(() => {
     jest.clearAllMocks();
     (getSyncableParcelas as jest.Mock).mockResolvedValue([{ id: 'parcela-1', nombre: 'Lote 1', plantacionId: 'p1' }]);
-    upsert = jest.fn().mockResolvedValue({ data: null, error: null });
+    // Con DO NOTHING el push pide la representación; [] = el server ya la tenía.
+    upsert = jest.fn(() => Object.assign(Promise.resolve({ data: null, error: null }), {
+      select: jest.fn().mockResolvedValue({ data: [], error: null }),
+    }));
     (supabase.from as jest.Mock).mockReturnValue({ upsert });
   });
 

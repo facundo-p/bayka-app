@@ -344,11 +344,13 @@ describe('ParcelaRepository', () => {
       expect((await findById(id))!.nombre).toBe('Lote 1');
     });
 
-    test('admin borra un alta ajena sin subir también en local', async () => {
+    test('admin borra un alta sin subir con tombstone, por si el server ya la tenía', async () => {
       const { id } = await altaDe('ana');
       conRolCacheado('admin', 'admin-1');
       expect(await deleteParcela(id)).toEqual({ deleted: true });
-      expect(await findById(id, { includeDeleted: true })).toBeNull();
+      const tombstone = await findById(id, { includeDeleted: true });
+      expect(tombstone).toMatchObject({ pendingSync: true });
+      expect(tombstone!.deletedAt).not.toBeNull();
     });
 
     test('la plantación finalizada bloquea también el alta propia', async () => {
