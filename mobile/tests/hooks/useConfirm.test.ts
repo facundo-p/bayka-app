@@ -102,6 +102,34 @@ describe('useConfirm', () => {
     expect(result.current.confirmProps.visible).toBe(false);
   });
 
+  it('diálogo de 2+ botones con onDismiss: tocar un botón no dispara también onDismiss', () => {
+    const onConfirm = jest.fn();
+    const onDismiss = jest.fn();
+    const { result } = renderHook(() => useConfirm());
+
+    act(() => {
+      result.current.show({
+        title: 'Confirmar',
+        message: 'Mensaje',
+        buttons: [
+          { label: 'Cancelar', onPress: jest.fn(), style: 'cancel' },
+          { label: 'Confirmar', onPress: onConfirm, style: 'primary' },
+        ],
+        onDismiss,
+      });
+    });
+
+    act(() => {
+      result.current.confirmProps.buttons[1].onPress();
+    });
+    act(() => {
+      result.current.dismiss();
+    });
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
   it('un nuevo show() reemplaza la acción de cierre del diálogo anterior', () => {
     const primeraAccion = jest.fn();
     const segundaAccion = jest.fn();
