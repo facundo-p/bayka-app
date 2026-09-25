@@ -11,11 +11,15 @@ export type AuthErrorKind =
   | 'account_disabled'
   | 'unknown';
 
-export const AUTH_MESSAGES: Record<AuthErrorKind, string> = {
+/** Login aceptado por Supabase pero sin fila en `profiles`: nadie le asignó un rol. */
+type AuthRejectionKind = 'no_profile';
+
+export const AUTH_MESSAGES: Record<AuthErrorKind | AuthRejectionKind, string> = {
   invalid_credentials: 'Email o contraseña incorrectos.',
   connectivity: 'No se pudo conectar con el servidor. Verificá tu conexión o intentá más tarde.',
   account_disabled: 'Tu cuenta fue desactivada. Contactá a un administrador.',
   unknown: 'No se pudo iniciar sesión. Intentá nuevamente.',
+  no_profile: 'Tu cuenta no tiene un perfil asignado. Contactá a un administrador.',
 };
 
 type AnyAuthError =

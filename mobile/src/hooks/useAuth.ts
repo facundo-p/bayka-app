@@ -26,7 +26,6 @@ import {
 } from '../services/OfflineAuthService';
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
-import { ROL } from '../constants/roles';
 import { conReloj } from '../utils/conReloj';
 
 const ROLE_FETCH_TIMEOUT = 5000;
@@ -81,18 +80,26 @@ async function syncAutoRefresh(online: boolean) {
   }
 }
 
-/** Purga TODO el estado de sesión (tokens, credenciales offline, rol, email, SDK) al confirmar online que la cuenta fue desactivada — a diferencia de signOut(), que preserva las credenciales offline por contrato. */
-async function purgarSesionDesactivada() {
+/**
+ * Descarta la sesión de una cuenta que no puede entrar: tokens, rol, email, userId y SDK.
+ * A diferencia de signOut(), no deja nada para volver a entrar offline con ella.
+ */
+async function descartarSesion() {
   nuevaEpocaDeSesion();
   authChangeListeners.forEach(fn => fn({ session: null, role: null }));
   await supabase.auth.stopAutoRefresh();
   autoRefreshActive = false;
   try { await clearSession(); } catch {}
-  try { await clearAllCredentials(); } catch {}
   try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
   try { await SecureStore.deleteItemAsync(EMAIL_KEY); } catch {}
   try { await SecureStore.deleteItemAsync(USER_ID_KEY); } catch {}
   await borrarEstadoDelSdk();
+}
+
+/** Cuenta desactivada confirmada online: descarta la sesión y además todas las credenciales offline. */
+async function purgarSesionDesactivada() {
+  await descartarSesion();
+  try { await clearAllCredentials(); } catch {}
 }
 
 /** Borra la sesión que el SDK de Supabase guarda en AsyncStorage; sin red. */
@@ -127,6 +134,12 @@ async function sesionOfflinePara(userId: string): Promise<SesionCacheada> {
 /** Respuesta ONLINE explícita de cuenta desactivada (baja reversible desde la web); distinto de un fallo de red, que cae al rol cacheado. */
 export const CUENTA_DESACTIVADA = 'cuenta-desactivada' as const;
 type RolObtenido = Role | typeof CUENTA_DESACTIVADA | null;
+
+/** Mensaje de un login online que el servidor aceptó pero no puede entrar. */
+function mensajeDeLoginSinRol(rol: typeof CUENTA_DESACTIVADA | null | undefined): string {
+  if (rol === CUENTA_DESACTIVADA) return AUTH_MESSAGES.account_disabled;
+  return rol === null ? AUTH_MESSAGES.no_profile : AUTH_MESSAGES.connectivity;
+}
 
 type SesionOnline = { access_token: string; refresh_token: string; user: { id: string; email?: string } };
 
@@ -172,9 +185,11 @@ async function leerRolCacheado(): Promise<Role | null> {
   return (await SecureStore.getItemAsync(ROLE_KEY)) as Role | null;
 }
 
-/** Rol del servidor o, si no lo dio, el cacheado. */
-async function fetchAndCacheRole(userId: string, vigente: () => boolean): Promise<RolObtenido> {
-  return (await consultarRol(userId, vigente)) ?? leerRolCacheado();
+/** Rol de la credencial offline de esta misma cuenta, si la contraseña coincide. */
+async function rolCacheadoDeLaCuenta(email: string, password: string, userId: string): Promise<Role | undefined> {
+  const cuenta = await verifyCredential(email, password);
+  if (!cuenta || esCredencialSinUsuario(cuenta) || cuenta.userId !== userId) return undefined;
+  return cuenta.role as Role;
 }
 
 /** Null si dejó de estar `vigente`; si la cuenta está desactivada, la purga. */
@@ -233,10 +248,10 @@ let redConfirmada = false;
 /**
  * Último login online que pudo quedar en vuelo. Su SIGNED_IN puede llegar después del
  * timeout; si entretanto hubo logout u otro login, no debe revivir ni pisar nada. `rol` es
- * lo que respondió el servidor al handler: tras purgar una cuenta desactivada, reconsultarlo
- * iría como anon y RLS no devolvería la fila.
+ * lo que respondió el servidor al handler, incluida la falta de perfil (null): tras purgar una
+ * cuenta desactivada, reconsultarlo iría como anon y RLS no devolvería la fila.
  */
-type LoginOnline = { vigente: () => boolean; email: string; rol?: Exclude<RolObtenido, null> };
+type LoginOnline = { vigente: () => boolean; email: string; rol?: RolObtenido };
 let loginOnlineEnVuelo: LoginOnline | null = null;
 
 function mismoEmail(a: string | undefined, b: string | undefined): boolean {
@@ -253,7 +268,7 @@ async function alIniciarSesionEnSdk(sesion: Session): Promise<SesionRestaurada |
   const vigente = login?.vigente ?? vigenteDesdeAhora();
   await cachearSesionOnline(sesion, vigente);
   const delServidor = await consultarRol(sesion.user.id, vigente);
-  if (login && delServidor) login.rol = delServidor;
+  if (login && delServidor !== undefined) login.rol = delServidor;
   return resolverSesion(sesion, delServidor ?? (await leerRolCacheado()), vigente);
 }
 
@@ -398,20 +413,36 @@ export function useAuth() {
     return { data: { session: offlineSession, user: null }, error: null };
   }
 
-  /** Persiste + cachea sesión tras un signIn online exitoso; retorna false si la cuenta está desactivada (no cachea nada). */
-  async function persistOnlineSession(email: string, password: string, session: any, login: LoginOnline): Promise<boolean> {
+  /**
+   * Rol con el que entra un login online: el del servidor (o el que le dio al handler
+   * SIGNED_IN) o, si no respondió, el cacheado de esta misma cuenta. Null si el servidor
+   * respondió sin perfil; undefined si no respondió y no hay rol cacheado.
+   */
+  async function rolDelLoginOnline(email: string, password: string, userId: string, login: LoginOnline): Promise<RolObtenido | undefined> {
+    const delServidor = login.rol !== undefined ? login.rol : await consultarRol(userId, login.vigente);
+    if (delServidor !== undefined) return delServidor;
+    return rolCacheadoDeLaCuenta(email, password, userId);
+  }
+
+  /**
+   * Persiste + cachea sesión tras un signIn online exitoso y devuelve el rol obtenido. La
+   * credencial offline se cachea solo con un rol real: nunca uno supuesto, ni de una cuenta
+   * desactivada.
+   */
+  async function persistOnlineSession(email: string, password: string, session: SesionOnline, login: LoginOnline): Promise<RolObtenido | undefined> {
     const { vigente } = login;
     await cachearSesionOnline(session, vigente);
     if (vigente()) await syncAutoRefresh(true);
 
-    const userRole = login.rol ?? (await fetchAndCacheRole(session.user.id, vigente));
-    // Antes que `vigente`: el handler SIGNED_IN pudo haber purgado ya esta cuenta.
-    if (userRole === CUENTA_DESACTIVADA) return false;
-    // Un logout o login posterior ganó: no se cachea nada a nombre de este login.
-    if (!vigente()) return true;
-    await cacheCredential(email, password, userRole ?? ROL.tecnico, session.user.id);
+    const rol = await rolDelLoginOnline(email, password, session.user.id, login);
+    // Sin rol real, o un logout o login posterior ganó: no se cachea nada a nombre de este login.
+    if (!rol || rol === CUENTA_DESACTIVADA || !vigente()) return rol;
+    // El rol pudo salir del cache y no del servidor: se publica igual, o el login queda sin rol.
+    await SecureStore.setItemAsync(ROLE_KEY, rol);
+    authChangeListeners.forEach(fn => fn({ session, role: rol }));
+    await cacheCredential(email, password, rol, session.user.id);
     await saveLastOnlineLogin();
-    return true;
+    return rol;
   }
 
   /** Backend inalcanzable con red disponible (caído/pausado, 5xx, no-JSON, timeout): intenta login offline con credenciales cacheadas; si no hay, muestra el mensaje de conectividad (no el "credenciales no guardadas" offline, que confundiría). */
@@ -464,11 +495,12 @@ export function useAuth() {
 
   async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R, login: LoginOnline) {
     if (!result.data.session) return result;
-    const cuentaActiva = await persistOnlineSession(email, password, result.data.session, login);
-    if (cuentaActiva) return result;
-    // Si ya no es vigente, la purgó el handler SIGNED_IN.
-    if (login.vigente()) await purgarSesionDesactivada();
-    return sinSesion(AUTH_MESSAGES.account_disabled);
+    const rol = await persistOnlineSession(email, password, result.data.session, login);
+    if (rol && rol !== CUENTA_DESACTIVADA) return result;
+    const desactivada = rol === CUENTA_DESACTIVADA;
+    // Si ya no es vigente, lo resolvió otro: el handler SIGNED_IN, un logout u otro login.
+    if (login.vigente()) await (desactivada ? purgarSesionDesactivada() : descartarSesion());
+    return sinSesion(mensajeDeLoginSinRol(rol));
   }
 
   async function rechazoDeLoginOnline(email: string, password: string, error: Parameters<typeof classifyAuthError>[0], offlineYaIntentado: boolean) {

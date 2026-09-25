@@ -52,7 +52,7 @@ beforeEach(() => {
   });
 });
 
-/** Un rol que no llega (timeout o error) cae al rol cacheado. */
+/** Un rol que no llega (timeout o error) cae al rol cacheado de esa cuenta. */
 const ROL_SIN_RESPUESTA = () => Promise.reject(new Error('timeout'));
 
 async function loginOnline(cuenta: Cuenta, perfil = () => Promise.resolve({ data: { rol: cuenta.rol, activo: true }, error: null })) {
@@ -178,11 +178,21 @@ describe('login offline en un celular compartido (#658)', () => {
 
 /** El email cacheado identifica la cuenta de los tokens: no puede quedar el de la anterior (#668). */
 describe('email de la cuenta online', () => {
-  it('se cachea aunque el rol no llegue', async () => {
+  it('se cachea aunque el rol no llegue, si B ya tenía rol cacheado', async () => {
+    await loginOnline(B);
     await loginOnline(A);
     await loginOnline(B, ROL_SIN_RESPUESTA);
 
     expect(store.get(EMAIL_KEY)).toBe(B.email);
     expect(store.get(USER_ID_KEY)).toBe(B.id);
+  });
+
+  it('sin rol de B el login se descarta y no queda la cuenta de A', async () => {
+    await loginOnline(A);
+    await loginOnline(B, ROL_SIN_RESPUESTA);
+
+    expect(store.has(EMAIL_KEY)).toBe(false);
+    expect(store.has(USER_ID_KEY)).toBe(false);
+    expect(store.has(ACCESS_TOKEN_KEY)).toBe(false);
   });
 });
