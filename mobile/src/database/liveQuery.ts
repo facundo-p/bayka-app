@@ -27,8 +27,12 @@ export function useLiveData<T>(
 ): { data: T | undefined; refresh: () => void } {
   const [data, setData] = useState<T | undefined>(undefined);
 
+  // Contrato: el caller declara en `deps` cuándo debe recrearse `fetcher`, no
+  // este hook — agregar `fetcher` acá lo recrearía en cada render de la
+  // mayoría de los callers, que no lo memoizan (#598).
   const refresh = useCallback(() => {
     fetcher().then(setData).catch(console.error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
   useEffect(() => {

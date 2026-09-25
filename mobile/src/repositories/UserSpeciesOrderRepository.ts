@@ -4,7 +4,7 @@
  */
 import { db } from '../database/client';
 import { userSpeciesOrder } from '../database/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 
 /** Get user's custom species order for a plantation. Returns empty array if none set. */

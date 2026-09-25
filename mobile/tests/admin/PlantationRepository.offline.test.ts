@@ -77,6 +77,9 @@ describe('PlantationRepository — offline functions', () => {
     it('Test 1: calls db.insert with pendingSync=true and no Supabase call', async () => {
       const result = await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'mock-uuid-123', lugar: 'Zona Norte', periodo: '2026', estado: 'activa' })
+      );
       expect(mockDb.insert).toHaveBeenCalled();
       const insertResult = (mockDb.insert as jest.Mock).mock.results[0].value;
       expect(insertResult.values).toHaveBeenCalledWith(

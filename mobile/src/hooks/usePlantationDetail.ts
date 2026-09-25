@@ -155,7 +155,6 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     editingGroup,
     groupFilter,
     confirmProps: confirm.confirmProps,
-    confirmShow: confirm.show,
     userId,
     setGroupFilter,
     setEditingGroup,

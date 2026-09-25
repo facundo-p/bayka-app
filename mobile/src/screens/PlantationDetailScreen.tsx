@@ -52,7 +52,6 @@ export default function PlantationDetailScreen() {
     editingGroup,
     groupFilter,
     confirmProps,
-    confirmShow,
     userId,
     setGroupFilter,
     setEditingGroup,

@@ -142,24 +142,6 @@ const GRUPO_ID = 'g-1';
 const ROBLE = 'sp-roble';
 const PINO = 'sp-pino';
 
-/** SQL efectivamente ejecutado, para contar statements. Drizzle cachea el `prepare`, así que se instrumenta la ejecución. */
-function registrarSql(conexion: InstanceType<typeof Database>): string[] {
-  const ejecutadas: string[] = [];
-  const prepareOriginal = conexion.prepare.bind(conexion);
-  (conexion as any).prepare = (sentencia: string) => {
-    const stmt: any = prepareOriginal(sentencia);
-    for (const metodo of ['all', 'get', 'run'] as const) {
-      const original = stmt[metodo].bind(stmt);
-      stmt[metodo] = (...args: any[]) => {
-        ejecutadas.push(sentencia);
-        return original(...args);
-      };
-    }
-    return stmt;
-  };
-  return ejecutadas;
-}
-
 const arbolDelServer = (id: string, speciesId: string | null) => ({
   id,
   group_id: GRUPO_ID,

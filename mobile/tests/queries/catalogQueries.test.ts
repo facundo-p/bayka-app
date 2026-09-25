@@ -19,7 +19,6 @@ const { db } = require('../../src/database/client');
 import {
   getServerCatalog,
   getLocalPlantationIds,
-  ServerPlantation,
 } from '../../src/queries/catalogQueries';
 
 const makePlantation = (id: string): any => ({
@@ -39,16 +38,6 @@ function makeOrderTerminalChain(resolvedValue: any) {
   chain.eq = () => chain;
   chain.in = () => chain;
   chain.order = () => Promise.resolve(resolvedValue);
-  return chain;
-}
-
-// Tecnico plantation_users chain, terminal at eq() (select().eq())
-function makeEqTerminalChain(resolvedValue: any) {
-  const eqSpy = jest.fn().mockResolvedValue(resolvedValue);
-  const chain: any = {
-    select: () => chain,
-    eq: eqSpy,
-  };
   return chain;
 }
 
