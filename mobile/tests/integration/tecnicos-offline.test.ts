@@ -30,8 +30,8 @@ const mockRpc = {
   soltar: [] as (() => void)[], llamadas: [] as any[],
 };
 const mockNet = { conectado: true };
-/** Lo que pasa en el teléfono mientras el pull baja `plantation_users`: antes o después de armar la respuesta. */
-let mockAlBajarMiembros: { antes?: () => Promise<void>; durante?: () => Promise<void> } = {};
+/** Lo que pasa en el teléfono mientras el pull baja `plantation_users`, con la respuesta ya armada. */
+let mockAlBajarMiembros: { durante?: () => Promise<void> } = {};
 
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -59,7 +59,6 @@ jest.mock('../../src/supabase/client', () => {
         // Solo la bajada de miembros de la plantación (no el chequeo de membresía por usuario).
         const hooks = tabla === 'plantation_users' && filtros.length === 1 ? mockAlBajarMiembros : {};
         const bajar = async () => {
-          await hooks.antes?.();
           const data = filtrar(tabla, filtros);
           await hooks.durante?.();
           return { data, error: null };
@@ -403,7 +402,7 @@ describe('guardar técnicos', () => {
     mockNet.conectado = true;
     mockRpc.sinRed = true;
     await expect(guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [ANA] })).rejects.toThrow(
-      'No se pudo confirmar la baja en el servidor. Se verá al sincronizar; las asignaciones nuevas quedan guardadas.',
+      'No se pudo confirmar la baja en el servidor. Se verá al sincronizar.',
     );
 
     expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
@@ -448,7 +447,8 @@ describe('sync', () => {
 
   it('el pull no borra un alta que la subida confirma entre la lectura de pendientes y la bajada', async () => {
     await asignarOffline(BRUNO);
-    mockAlBajarMiembros.antes = async () => {
+    // La respuesta ya se armó sin BRUNO; la subida lo confirma mientras viaja.
+    mockAlBajarMiembros.durante = async () => {
       serverState.plantation_users.set(BRUNO, miembro(BRUNO, 'tecnico'));
       await mockTestDb.delete(altasDeTecnicosPendientes);
     };

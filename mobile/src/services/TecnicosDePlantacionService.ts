@@ -103,7 +103,9 @@ function subirEnSegundoPlano(plantacionId: string, altas: string[]): Promise<str
     sinNadieQueAvise: () => vencio,
     alResponder: () => { respondio = true; },
   }).then((s) => (vencio ? [] : resolverSubida(plantacionId, s, altas)));
-  enCurso.catch((e) => syncLog.error('Upload technician assignments failed en segundo plano:', e?.message ?? e));
+  enCurso.catch((e) => {
+    if (vencio) syncLog.error('Upload technician assignments failed en segundo plano:', e?.message ?? e);
+  });
   return esperarHasta(enCurso, ESPERA_DE_SUBIDA_MS, {
     respondio: () => respondio,
     alVencer: () => { vencio = true; },
