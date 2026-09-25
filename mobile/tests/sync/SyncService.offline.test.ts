@@ -103,7 +103,7 @@ describe('SyncService — offline functions', () => {
 
   // ─── pullSpeciesFromServer ─────────────────────────────────────────────────
 
-  describe('pullSpeciesFromServer (OFPL-04)', () => {
+  describe('pullSpeciesFromServer', () => {
     it('Test 1: calls supabase.from("species").select("*") and upserts the catalog in one batched insert', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         select: jest.fn().mockResolvedValue({ data: fakeSpecies, error: null }),
@@ -151,7 +151,7 @@ describe('SyncService — offline functions', () => {
 
   // ─── uploadOfflinePlantations ──────────────────────────────────────────────
 
-  describe('uploadOfflinePlantations (OFPL-05, OFPL-06)', () => {
+  describe('uploadOfflinePlantations', () => {
     it('Test 4: happy path — queries pending plantations, inserts to server, sube las especies como altas, marks pendingSync=false', async () => {
       // Return pending plantation from local db
       (mockDb.select as jest.Mock).mockReturnValueOnce({

@@ -73,7 +73,7 @@ describe('PlantationRepository — offline functions', () => {
 
   // ─── createPlantationLocally ──────────────────────────────────────────────
 
-  describe('createPlantationLocally (OFPL-01)', () => {
+  describe('createPlantationLocally', () => {
     it('Test 1: calls db.insert with pendingSync=true and no Supabase call', async () => {
       const result = await createPlantationLocally('Zona Norte', '2026', 'org-1', 'user-1');
 
@@ -124,7 +124,7 @@ describe('PlantationRepository — offline functions', () => {
       });
     });
 
-    it('Test 4 (OFPL-03): local FK constraint satisfied — subgroup can reference offline plantation', async () => {
+    it('local FK constraint satisfied — subgroup can reference offline plantation', async () => {
       // La plantación queda insertada localmente con pendingSync=true, así que un
       // subgroup insert que la referencie no viola el FK constraint de SQLite.
 

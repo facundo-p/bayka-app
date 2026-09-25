@@ -22,7 +22,7 @@ function celdas(filaExport: FilaExportacion) {
 }
 
 describe('COLUMNAS_XLSX', () => {
-  test('encabezados en el orden canónico (9 columnas, D-18-08)', () => {
+  test('encabezados en el orden canónico (9 columnas)', () => {
     expect(COLUMNAS_XLSX.map((columna) => columna.header)).toEqual([
       'ID Global',
       'ID Parcial',

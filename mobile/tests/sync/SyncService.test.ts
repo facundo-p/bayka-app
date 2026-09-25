@@ -182,7 +182,7 @@ describe('SyncService', () => {
     });
   });
 
-  describe('syncPlantation — pull-then-push order (SYNC-01)', () => {
+  describe('syncPlantation — pull-then-push order', () => {
     it('Test 1: calls pullFromServer (supabase.from) BEFORE uploading any Groups', async () => {
       const callOrder: string[] = [];
 
@@ -219,7 +219,7 @@ describe('SyncService', () => {
     });
   });
 
-  describe('uploadGroup — RPC payload (SYNC-04)', () => {
+  describe('uploadGroup — RPC payload', () => {
     it('Test 2: calls supabase.rpc with correct p_subgroup and p_trees payload', async () => {
       const sgTrees = makeTrees('sg-1');
 
@@ -363,7 +363,7 @@ describe('SyncService', () => {
     });
   });
 
-  describe('markGroupSynced state transitions (SYNC-05)', () => {
+  describe('markGroupSynced state transitions', () => {
     it('Test 3: calls markGroupSynced when RPC returns success: true', async () => {
       const sg = makeSg('sg-1');
       mockGetFinalizadaSubGroups.mockResolvedValue([sg]);
@@ -427,7 +427,7 @@ describe('SyncService', () => {
     });
   });
 
-  describe('error accumulation — continue-on-failure (SYNC-06)', () => {
+  describe('error accumulation — continue-on-failure', () => {
     it('Test 6: all 3 Groups attempted even when 2nd fails', async () => {
       const sg1 = makeSg('sg-1', 'Línea A');
       const sg2 = makeSg('sg-2', 'Línea B');

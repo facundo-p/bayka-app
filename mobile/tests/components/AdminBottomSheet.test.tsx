@@ -232,7 +232,7 @@ describe('AdminBottomSheet', () => {
     expect(getByText('Bloqueada')).toBeTruthy();
   });
 
-  it('renders no actions for sincronizada (estado removed per D-07)', () => {
+  it('renders no actions for sincronizada (estado removed)', () => {
     const { queryByText } = render(
       <AdminBottomSheet
         {...makeProps({

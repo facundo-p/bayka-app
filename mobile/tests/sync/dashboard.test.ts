@@ -177,7 +177,7 @@ describe('dashboardQueries', () => {
     });
   });
 
-  describe('getPendingSyncCounts — pending sync per plantation (SYNC-07)', () => {
+  describe('getPendingSyncCounts — pending sync per plantation', () => {
     it('filters groups where pendingSync=true and groups by plantation', async () => {
       await getPendingSyncCounts();
 

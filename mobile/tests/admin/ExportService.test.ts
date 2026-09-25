@@ -96,7 +96,7 @@ describe('ExportService', () => {
   // ─── exportToCSV ──────────────────────────────────────────────────────────
 
   describe('exportToCSV', () => {
-    it('Test 1: builds CSV with exact 9-column header in ROADMAP order (D-18-08)', async () => {
+    it('Test 1: builds CSV with exact 9-column header in canonical order', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       expect(mockWrite).toHaveBeenCalledTimes(1);
@@ -152,7 +152,7 @@ describe('ExportService', () => {
   // ─── exportToExcel ────────────────────────────────────────────────────────
 
   describe('exportToExcel', () => {
-    it('Test 6: calls XLSX.utils.json_to_sheet with 9-column rows in D-18-08 order', async () => {
+    it('Test 6: calls XLSX.utils.json_to_sheet with 9-column rows in canonical order', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       expect(XLSX.utils.json_to_sheet).toHaveBeenCalledTimes(1);
