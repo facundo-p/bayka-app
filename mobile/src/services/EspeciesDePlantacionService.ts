@@ -37,11 +37,10 @@ async function subirSiHayConexion(plantacionId: string): Promise<SubidaDeEspecie
 export async function guardarEspeciesDePlantacion(
   plantacionId: string,
   cambios: CambiosDeEspecies,
-  pendingSync: boolean,
 ): Promise<EspecieConNombre[]> {
   if (sinCambios(cambios)) return [];
   const previos = await getCambiosPendientes(plantacionId);
-  await guardarCambiosDeEspecies(plantacionId, cambios, pendingSync);
+  const pendingSync = await guardarCambiosDeEspecies(plantacionId, cambios);
   notifyDataChanged();
   if (pendingSync) return [];
   const subida = await subirSiHayConexion(plantacionId);

@@ -157,8 +157,8 @@ export const userSpeciesOrder = sqliteTable('user_species_order', {
 
 /**
  * Altas y bajas de especies de una plantación que todavía no llegaron al server (#635).
- * Una fila por par: el último cambio gana. Una plantación sin subir (pendingSync) no
- * anota nada acá: su alta sube todas sus especies.
+ * Una fila por par: el último cambio gana. Una plantación sin subir (pendingSync) anota
+ * solo las bajas: su alta sube todas sus especies como altas, junto con esas bajas.
  */
 export const cambiosEspeciesPendientes = sqliteTable('cambios_especies_pendientes', {
   plantacionId: text('plantacion_id').notNull(),

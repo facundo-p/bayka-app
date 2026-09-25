@@ -101,7 +101,6 @@ type Props = {
   configSpeciesPlantacionId: string | null;
   setConfigSpeciesPlantacionId: (id: string | null) => void;
   handleCloseConfigSpecies: () => void;
-  pendingSyncForSpecies?: boolean;
   assignTechPlantacionId: string | null;
   setAssignTechPlantacionId: (id: string | null) => void;
 };
@@ -159,7 +158,6 @@ export default function PlantacionesModals({
   configSpeciesPlantacionId,
   setConfigSpeciesPlantacionId,
   handleCloseConfigSpecies,
-  pendingSyncForSpecies,
   assignTechPlantacionId,
   setAssignTechPlantacionId,
 }: Props) {
@@ -263,7 +261,6 @@ export default function PlantacionesModals({
           exportingId={adminHook.exportingId}
           configSpeciesPlantacionId={configSpeciesPlantacionId}
           onCloseConfigSpecies={handleCloseConfigSpecies}
-          pendingSyncForSpecies={(adminHook.plantationList as Plantation[] | null)?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync}
           assignTechPlantacionId={assignTechPlantacionId}
           onCloseAssignTech={() => setAssignTechPlantacionId(null)}
         />

@@ -1,6 +1,6 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
-import { MENSAJE_ERROR_REEMPLAZO, aplicarCambiosEspecies } from '../plantationSpeciesRepository';
+import { MENSAJE_ERROR_ESPECIES, aplicarCambiosEspecies } from '../plantationSpeciesRepository';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -53,7 +53,7 @@ describe('aplicarCambiosEspecies', () => {
   test('un rechazo desconocido cae al mensaje genérico', async () => {
     capturarConsultas(() => ({ data: { success: false, error: 'LO_QUE_SEA' } }));
     await expect(aplicarCambiosEspecies('plant-1', { altas: [], bajas: [] })).rejects.toThrow(
-      MENSAJE_ERROR_REEMPLAZO,
+      MENSAJE_ERROR_ESPECIES,
     );
   });
 
