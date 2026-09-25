@@ -10,6 +10,7 @@ import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
 import PlantacionesDuplicadasAviso from './PlantacionesDuplicadasAviso';
 import CambiosPorResolverAviso from './CambiosPorResolverAviso';
 import EspeciesConArbolesAviso from './EspeciesConArbolesAviso';
+import TecnicosNoAsignadosAviso from './TecnicosNoAsignadosAviso';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
@@ -290,6 +291,7 @@ function ResultadoPull(p: Props) {
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
       <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
       <EspeciesConArbolesAviso resultados={p.plantationResults} />
+      <TecnicosNoAsignadosAviso resultados={p.plantationResults} />
       <AvisoDeCambiosPorResolver {...p} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
@@ -328,6 +330,7 @@ function ResultadoPush(p: Props) {
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
       <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
       <EspeciesConArbolesAviso resultados={p.plantationResults} />
+      <TecnicosNoAsignadosAviso resultados={p.plantationResults} />
       <AvisoDeCambiosPorResolver {...p} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>

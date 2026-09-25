@@ -12,9 +12,9 @@ import {
   getNombresDeEspecies,
   guardarCambiosDeEspecies,
   registrarRespuesta,
-  sinCambios,
   type CambiosDeEspecies,
 } from '../repositories/CambiosDeEspeciesRepository';
+import { sinCambios } from '../utils/altasYBajas';
 
 async function subirSiHayConexion(plantacionId: string): Promise<SubidaDeEspecies | null> {
   const net = await NetInfo.fetch();

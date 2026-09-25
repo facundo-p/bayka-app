@@ -178,6 +178,8 @@ plantations
 plantation_species
 cambios_especies_pendientes
 plantation_users
+altas_de_tecnicos_pendientes
+tecnicos_de_organizacion   (caché para asignar sin conexión)
 parcelas
 groups          (groups.parcela_id → parcelas)
 trees
@@ -309,6 +311,17 @@ el resumen del sync avisa. Si igual llegan árboles de una especie quitada,
 `sync_subgroup` la re-habilita. Una plantación creada offline no anota nada: su
 alta sube todas sus especies como altas. El orden de la botonera es alfabético por
 nombre (el orden personal de cada técnico se mantiene).
+
+**Asignar técnicos también viaja como altas** (#636). La pantalla lee los técnicos
+activos de la organización de `tecnicos_de_organizacion`, un caché que refresca el
+sync de un admin (y la pantalla, si hay señal). Asignar aplica la fila en
+`plantation_users` y la anota en `altas_de_tecnicos_pendientes`; con señal sube en el
+momento. El sync sube lo pendiente después de las especies y antes del pull, por
+`aplicar_cambios_tecnicos` (idempotente); una plantación creada offline espera a su
+alta. Un técnico dado de baja o de otra organización lo rechaza el server solo: se
+quita del teléfono y el resumen del sync avisa. El pull de `plantation_users` no
+borra un alta pendiente. Quitar a un técnico ya asignado en el server requiere
+conexión, y va con las altas pendientes en el mismo RPC.
 
 ---
 

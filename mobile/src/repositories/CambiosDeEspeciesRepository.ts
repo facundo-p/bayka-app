@@ -10,14 +10,13 @@ import { and, count, eq, inArray, isNull } from 'drizzle-orm';
 import { CAMBIO_DE_ESPECIE, type CambioDeEspecie } from '../constants/cambioDeEspecie';
 import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 import { localNow } from '../utils/dateUtils';
+import type { AltasYBajas } from '../utils/altasYBajas';
 
 /** Ejecutor drizzle: el cliente `db` o una transacción `tx`. */
 type DbExecutor = Pick<typeof db, 'insert' | 'delete' | 'select' | 'update'>;
 
-export type CambiosDeEspecies = { altas: string[]; bajas: string[] };
+export type CambiosDeEspecies = AltasYBajas;
 export type CambioPendiente = { especieId: string; tipo: CambioDeEspecie };
-
-export const sinCambios = ({ altas, bajas }: CambiosDeEspecies) => altas.length === 0 && bajas.length === 0;
 
 async function habilitarLocal(exec: DbExecutor, plantacionId: string, especieIds: string[]): Promise<void> {
   if (especieIds.length === 0) return;

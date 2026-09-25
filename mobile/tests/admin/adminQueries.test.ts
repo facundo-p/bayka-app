@@ -7,14 +7,6 @@ jest.mock('../../src/database/client', () => ({
   },
 }));
 
-jest.mock('../../src/supabase/client', () => ({
-  supabase: {
-    from: jest.fn(),
-    auth: { getSession: jest.fn() },
-  },
-  isSupabaseConfigured: true,
-}));
-
 jest.mock('../../src/queries/catalogQueries', () => ({
   getResumenDePendientes: jest.fn(),
 }));
@@ -22,22 +14,17 @@ jest.mock('../../src/queries/catalogQueries', () => ({
 import {
   checkFinalizationGate,
   getPlantationEstadoDeEdicion,
-  getAllTechnicians,
-  getPlantationSpeciesConfig,
-  getAssignedTechnicians,
   hasTreesForSpecies,
   hasIdsGenerated,
   porAsignadoYNombre,
 } from '../../src/queries/adminQueries';
 
 import { db } from '../../src/database/client';
-import { supabase } from '../../src/supabase/client';
 import { getResumenDePendientes } from '../../src/queries/catalogQueries';
 
-const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0 };
 
 const mockDb = db as jest.Mocked<typeof db>;
-const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 
 /**
  * Helper: sets up mockDb.select to return different results on sequential calls.
@@ -84,6 +71,7 @@ describe('adminQueries', () => {
       ['parcelas pendientes', { parcelas: 1 }],
       ['borrados pendientes', { borrados: 3 }],
       ['cambios de especies sin subir', { especies: 2 }],
+      ['técnicos asignados sin subir', { tecnicos: 1 }],
     ])('canFinalize=false con %s aunque los grupos estén listos (#537)', async (_caso, pendiente) => {
       const pendientes = { ...SIN_PENDIENTES, ...pendiente };
       (getResumenDePendientes as jest.Mock).mockResolvedValue(pendientes);
@@ -327,15 +315,13 @@ describe('adminQueries', () => {
   });
 });
 
-// `getTechniciansWithAssignment` cruza las dos lecturas que antes hacía el hook
-// a mano: el catálogo de Supabase y la asignación del SQLite local (#546).
 describe('porAsignadoYNombre', () => {
   it('pone primero a los asignados y ordena el resto por nombre', () => {
     const tecnicos = [
-      { id: '1', nombre: 'Zoe', assigned: false },
-      { id: '2', nombre: 'Bruno', assigned: true },
-      { id: '3', nombre: 'Ana', assigned: false },
-      { id: '4', nombre: 'Ada', assigned: true },
+      { id: '1', nombre: 'Zoe', assigned: false, pendiente: false },
+      { id: '2', nombre: 'Bruno', assigned: true, pendiente: false },
+      { id: '3', nombre: 'Ana', assigned: false, pendiente: false },
+      { id: '4', nombre: 'Ada', assigned: true, pendiente: false },
     ];
 
     expect([...tecnicos].sort(porAsignadoYNombre).map((t) => t.nombre)).toEqual([

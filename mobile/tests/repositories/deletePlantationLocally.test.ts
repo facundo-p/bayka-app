@@ -140,14 +140,14 @@ describe('deletePlantationLocally', () => {
 
   // El conteo exacto es a propósito: una tabla nueva que se olvide de limpiar acá
   // deja filas huérfanas de una plantación que ya no existe.
-  it('deletes all 9 tables inside the transaction (incluye parcelas #90, borrados #467 y cambios de especies #635)', async () => {
+  it('deletes all 10 tables inside the transaction (incluye parcelas #90, borrados #467, especies #635 y técnicos #636)', async () => {
     await deletePlantationLocally('plant-1');
 
     expect(txDeleteCalls).toEqual(expect.arrayContaining([
       'trees', 'groups', 'parcelas', 'plantation_species',
-      'plantation_users', 'user_species_order', 'borrados_pendientes', 'cambios_especies_pendientes', 'plantations',
+      'plantation_users', 'user_species_order', 'borrados_pendientes', 'cambios_especies_pendientes', 'altas_de_tecnicos_pendientes', 'plantations',
     ]));
-    expect(txDeleteCalls).toHaveLength(9);
+    expect(txDeleteCalls).toHaveLength(10);
     expect(mockEnTransaccion).toHaveBeenCalledTimes(1);
   });
 

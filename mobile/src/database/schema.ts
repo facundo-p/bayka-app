@@ -171,6 +171,28 @@ export const cambiosEspeciesPendientes = sqliteTable('cambios_especies_pendiente
 }));
 
 /**
+ * Técnicos activos de la organización, para asignarlos sin conexión (#636). Lo
+ * refresca el sync de un admin; se reemplaza entero.
+ */
+export const tecnicosDeOrganizacion = sqliteTable('tecnicos_de_organizacion', {
+  id: text('id').primaryKey(),
+  organizacionId: text('organizacion_id').notNull(),
+  nombre: text('nombre').notNull(),
+});
+
+/**
+ * Asignaciones de técnicos hechas en el teléfono que todavía no llegaron al server
+ * (#636). Ya están aplicadas en `plantation_users`; quitar es solo online.
+ */
+export const altasDeTecnicosPendientes = sqliteTable('altas_de_tecnicos_pendientes', {
+  plantacionId: text('plantacion_id').notNull(),
+  userId: text('user_id').notNull(),
+  asignadoEn: text('asignado_en').notNull(),
+}, (t) => ({
+  pk: uniqueIndex('altas_de_tecnicos_pendientes_pk').on(t.plantacionId, t.userId),
+}));
+
+/**
  * Borrados hechos localmente que todavía no llegaron al server (#467). El pull los
  * excluye y el push los propaga; al confirmar el server, la fila se va de acá.
  *

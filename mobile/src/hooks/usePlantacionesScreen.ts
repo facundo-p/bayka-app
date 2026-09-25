@@ -85,11 +85,10 @@ export function usePlantacionesScreen() {
     action();
   }, []);
 
-  const onAssignTechFromSheet = useCallback(async (plantacionId: string) => {
+  const onAssignTechFromSheet = useCallback((plantacionId: string) => {
     setBottomSheetVisible(false);
-    const ok = await adminHook.handleAssignTech(plantacionId);
-    if (ok) setAssignTechPlantacionId(plantacionId);
-  }, [adminHook]);
+    setAssignTechPlantacionId(plantacionId);
+  }, []);
 
   const [expandedPlantationId, setExpandedPlantationId] = useState<string | null>(null);
   const [editingParcela, setEditingParcela] = useState<Parcela | null>(null);

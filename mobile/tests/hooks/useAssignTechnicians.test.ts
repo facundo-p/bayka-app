@@ -1,5 +1,6 @@
-// El hook de AssignTechniciansScreen: de dónde saca la organización, qué pasa
-// sin conexión, y el aviso al desasignar a alguien con grupos sin subir (#546).
+// El hook de AssignTechniciansScreen: de dónde saca la organización, que funciona
+// sin conexión salvo para quitar (#636), y el aviso al desasignar a alguien con
+// grupos sin subir (#546).
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 
 jest.mock('../../src/queries/adminQueries', () => ({
@@ -7,12 +8,17 @@ jest.mock('../../src/queries/adminQueries', () => ({
   getTechnicianUnsyncedGroupCount: jest.fn(),
 }));
 
-jest.mock('../../src/repositories/PlantationRepository', () => ({
-  assignTechnicians: jest.fn(),
+jest.mock('../../src/services/TecnicosDePlantacionService', () => ({
+  guardarTecnicosDePlantacion: jest.fn(),
+  refrescarTecnicosDeOrganizacion: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useProfileData', () => ({
   useProfileData: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useNetStatus', () => ({
+  useNetStatus: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/useConfirm', () => ({
@@ -24,29 +30,32 @@ jest.mock('../../src/utils/alertHelpers', () => ({
   showConfirmDialog: jest.fn(),
 }));
 
-jest.mock('@react-native-community/netinfo', () => ({ fetch: jest.fn() }));
-
-import NetInfo from '@react-native-community/netinfo';
 import {
   getTechniciansWithAssignment,
   getTechnicianUnsyncedGroupCount,
 } from '../../src/queries/adminQueries';
-import { assignTechnicians } from '../../src/repositories/PlantationRepository';
+import {
+  guardarTecnicosDePlantacion,
+  refrescarTecnicosDeOrganizacion,
+} from '../../src/services/TecnicosDePlantacionService';
 import { useProfileData } from '../../src/hooks/useProfileData';
-import { showConfirmDialog } from '../../src/utils/alertHelpers';
+import { useNetStatus } from '../../src/hooks/useNetStatus';
+import { showConfirmDialog, showInfoDialog } from '../../src/utils/alertHelpers';
 import { useAssignTechnicians, mensajeDeDesasignacion } from '../../src/hooks/useAssignTechnicians';
 
 const TECNICOS = [
-  { id: 'tec-1', nombre: 'Ana', assigned: true },
-  { id: 'tec-2', nombre: 'Bruno', assigned: false },
+  { id: 'tec-1', nombre: 'Ana', assigned: true, pendiente: false },
+  { id: 'tec-3', nombre: 'Carla', assigned: true, pendiente: true },
+  { id: 'tec-2', nombre: 'Bruno', assigned: false, pendiente: false },
 ];
 
 beforeEach(() => {
   jest.clearAllMocks();
   (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
-  (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: true });
+  (useNetStatus as jest.Mock).mockReturnValue({ isOnline: true });
   (getTechniciansWithAssignment as jest.Mock).mockResolvedValue(TECNICOS);
   (getTechnicianUnsyncedGroupCount as jest.Mock).mockResolvedValue(0);
+  (guardarTecnicosDePlantacion as jest.Mock).mockResolvedValue([]);
 });
 
 async function montar(plantacionId: string | undefined = 'plant-1') {
@@ -55,13 +64,16 @@ async function montar(plantacionId: string | undefined = 'plant-1') {
   return vista;
 }
 
+const item = (result: any, id: string) => result.current.items.find((t: any) => t.id === id);
+
 describe('useAssignTechnicians', () => {
-  it('toma la organización del perfil, sin consultar Supabase por su cuenta', async () => {
+  it('refresca el caché y lee los técnicos de la organización del perfil', async () => {
     const { result } = await montar();
 
+    expect(refrescarTecnicosDeOrganizacion).toHaveBeenCalled();
     expect(getTechniciansWithAssignment).toHaveBeenCalledWith('org-1', 'plant-1');
     expect(result.current.items).toEqual(TECNICOS);
-    expect(result.current.assignedCount).toBe(1);
+    expect(result.current.assignedCount).toBe(2);
   });
 
   it('sin organización en el perfil no consulta nada', async () => {
@@ -72,31 +84,44 @@ describe('useAssignTechnicians', () => {
     await waitFor(() => expect(getTechniciansWithAssignment).not.toHaveBeenCalled());
   });
 
-  it('sin conexión avisa y no deja la pantalla cargando para siempre', async () => {
-    (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: false });
-
-    const { result } = await montar();
-
-    expect(result.current.networkError).toBe(true);
-    expect(getTechniciansWithAssignment).not.toHaveBeenCalled();
-  });
-
-  it('asignar no pregunta nada', async () => {
+  it('sin conexión carga igual y se puede asignar', async () => {
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false });
     const { result } = await montar();
 
     await act(() => result.current.handleToggle('tec-2', true));
 
-    expect(showConfirmDialog).not.toHaveBeenCalled();
-    expect(result.current.items[1].assigned).toBe(true);
+    expect(result.current.sinConexion).toBe(true);
+    expect(item(result, 'tec-2').assigned).toBe(true);
   });
 
-  it('desasignar sin grupos pendientes tampoco pregunta', async () => {
+  it('sin conexión no se quita a un técnico asignado en el servidor', async () => {
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false });
+    const { result } = await montar();
+
+    expect(result.current.puedeQuitar('tec-1')).toBe(false);
+    await act(() => result.current.handleToggle('tec-1', false));
+
+    expect(item(result, 'tec-1').assigned).toBe(true);
+    expect(getTechnicianUnsyncedGroupCount).not.toHaveBeenCalled();
+  });
+
+  it('sin conexión sí se deshace un alta que todavía no subió', async () => {
+    (useNetStatus as jest.Mock).mockReturnValue({ isOnline: false });
+    const { result } = await montar();
+
+    expect(result.current.puedeQuitar('tec-3')).toBe(true);
+    await act(() => result.current.handleToggle('tec-3', false));
+
+    expect(item(result, 'tec-3').assigned).toBe(false);
+  });
+
+  it('desasignar sin grupos pendientes no pregunta', async () => {
     const { result } = await montar();
 
     await act(() => result.current.handleToggle('tec-1', false));
 
     expect(showConfirmDialog).not.toHaveBeenCalled();
-    expect(result.current.items[0].assigned).toBe(false);
+    expect(item(result, 'tec-1').assigned).toBe(false);
   });
 
   it('desasignar con grupos pendientes pide confirmación y recién ahí desmarca', async () => {
@@ -113,20 +138,50 @@ describe('useAssignTechnicians', () => {
       expect.any(Function),
       expect.objectContaining({ style: 'danger' }),
     );
-    expect(result.current.items[0].assigned).toBe(true);
+    expect(item(result, 'tec-1').assigned).toBe(true);
 
     const confirmar = (showConfirmDialog as jest.Mock).mock.calls[0][4];
     act(() => confirmar());
-    expect(result.current.items[0].assigned).toBe(false);
+    expect(item(result, 'tec-1').assigned).toBe(false);
   });
 
-  it('guarda solo los ids marcados', async () => {
+  it('guarda solo lo que cambió, como altas y bajas, y cierra', async () => {
+    const onClose = jest.fn();
     const { result } = await montar();
 
     await act(() => result.current.handleToggle('tec-2', true));
-    await act(() => result.current.handleSave());
+    await act(() => result.current.handleToggle('tec-1', false));
+    await act(() => result.current.handleSave(onClose));
 
-    expect(assignTechnicians).toHaveBeenCalledWith('plant-1', ['tec-1', 'tec-2']);
+    expect(guardarTecnicosDePlantacion).toHaveBeenCalledWith('plant-1', { altas: ['tec-2'], bajas: ['tec-1'] });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('técnicos que el servidor no asignó: recarga, avisa y no cierra', async () => {
+    (guardarTecnicosDePlantacion as jest.Mock).mockResolvedValue(['Bruno']);
+    const onClose = jest.fn();
+    const { result } = await montar();
+
+    await act(() => result.current.handleToggle('tec-2', true));
+    await act(() => result.current.handleSave(onClose));
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(getTechniciansWithAssignment).toHaveBeenCalledTimes(2);
+    expect(showInfoDialog).toHaveBeenCalledWith(
+      expect.anything(), 'Técnicos no asignados', expect.stringContaining('Bruno'), expect.anything(), expect.anything(),
+    );
+  });
+
+  it('un error al guardar recarga y lo muestra', async () => {
+    (guardarTecnicosDePlantacion as jest.Mock).mockRejectedValue(new Error('La plantación está archivada.'));
+    const { result } = await montar();
+
+    await act(() => result.current.handleToggle('tec-2', true));
+    await act(() => result.current.handleSave(jest.fn()));
+
+    expect(showInfoDialog).toHaveBeenCalledWith(
+      expect.anything(), 'Error', 'La plantación está archivada.', expect.anything(), expect.anything(),
+    );
   });
 });
 

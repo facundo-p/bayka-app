@@ -109,7 +109,7 @@ pullFromServer → pushBorrados → uploadSyncableParcelas → uploadSyncableGro
 
 Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPlantation` si quedó marcado "Incluir fotos".
 
-### Paso 0: plantaciones creadas o editadas offline, y sus especies
+### Paso 0: plantaciones creadas o editadas offline, sus especies y técnicos
 
 **Archivo:** `services/sync/preSteps.ts` → `runGlobalPreSteps()`, antes del pull de cualquier plantación.
 
@@ -119,6 +119,7 @@ Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPla
 - Los campos y sus columnas viven en `utils/camposDePlantacion.ts`. Cada uno tiene un snapshot `*Server` con el último valor conocido del server: el pull lo refresca siempre. El valor vivo lo pisa sin cambios pendientes; con cambios pendientes, solo en los campos que el usuario no tocó (vivo igual al snapshot anterior), y a esos también les mueve la base. Descartar la edición vuelve al snapshot.
 - Las especies de la alta suben como altas por `aplicar_cambios_especies` (#635): si un intento anterior ya la subió y la web le sumó especies, no se pisan.
 - `uploadPendingSpeciesChanges` (`services/sync/cambiosDeEspecies.ts`) sube las altas y bajas de especies anotadas en `cambios_especies_pendientes` de las plantaciones ya subidas, por `aplicar_cambios_especies`. Lo aceptado deja de estar pendiente; una baja rechazada por árboles re-habilita la especie en SQLite y el resumen la lista en "Especies que no se quitaron". Si la plantación no admite el cambio (finalizada, archivada, sin permiso), queda pendiente. Guardar la configuración online sube en el momento por la misma función (`EspeciesDePlantacionService`). El pull de `plantation_species` no borra un alta pendiente ni devuelve una baja pendiente.
+- `uploadPendingTechnicianAssignments` (`services/sync/tecnicosDePlantacion.ts`) sube, después de las especies, los técnicos asignados en el teléfono (`altas_de_tecnicos_pendientes`) de las plantaciones ya subidas, por `aplicar_cambios_tecnicos` (#636). Lo aceptado deja de estar pendiente; un técnico dado de baja o de otra organización se quita de `plantation_users` y el resumen lo lista en "Técnicos que no se asignaron". Si la plantación no admite el cambio (archivada, sin permiso), queda pendiente. Después se refresca el caché `tecnicos_de_organizacion` (`catalogoDeTecnicos.ts`, solo admin). Guardar con señal sube en el momento (`TecnicosDePlantacionService`). El pull de `plantation_users` no borra un alta pendiente.
 - Después de subir una alta, o una edición que cambió lugar o periodo, se consulta si el server tiene otra con el mismo lugar y periodo (`ilike`, como la web). Si la hay, el resultado lleva `duplicada: true` y el resumen del sync la lista en "Mismo lugar y periodo". No frena nada.
 
 ### Paso 1: Pull
