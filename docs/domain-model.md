@@ -265,7 +265,10 @@ cuando la plantación vuelve a ser escribible.
 
 Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
 responde `42501` sin motivo. La app lo traduce con el estado local de la
-plantación; si está activa, queda como `PERMISSION`.
+plantación; si está activa, queda como `PERMISSION`. Editar y tombstonear una
+parcela es de admin y superadmin (056, #640): el técnico sube solo altas, con
+`ON CONFLICT DO NOTHING`, y una edición suya que el server ignora se reemplaza
+con la versión del server en el pull siguiente.
 
 Las asignaciones de técnicos (`plantation_users`) usan otro gate,
 `plantacion_admite_asignaciones`: exigen que la plantación exista y no esté

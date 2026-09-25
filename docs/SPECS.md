@@ -339,7 +339,8 @@ Solo los técnicos asignados verán la plantación en su dashboard.
 # 4.6 Gestión de Parcelas y Grupos
 
 Los técnicos crean Parcelas para subdividir la plantación, y dentro de cada
-Parcela crean Grupos al comenzar a registrar una línea.
+Parcela crean Grupos al comenzar a registrar una línea. Editar y eliminar una
+Parcela es de admin y superadmin (#640).
 
 Cada Grupo contiene:
 

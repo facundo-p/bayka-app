@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import type { Role } from '../types/domain';
 
 // Separate keys to stay under expo-secure-store's 2048-byte limit
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
@@ -29,4 +30,9 @@ export async function readCachedSession(): Promise<{ access_token: string; refre
   const refreshToken = await SecureStore.getItemAsync(REFRESH_TOKEN_KEY);
   if (!accessToken || !refreshToken) return null;
   return { access_token: accessToken, refresh_token: refreshToken };
+}
+
+/** Rol cacheado al loguear; null sin sesión. Lo usan los repositorios, que no tienen hooks. */
+export async function readCachedRole(): Promise<Role | null> {
+  return (await SecureStore.getItemAsync(ROLE_KEY)) as Role | null;
 }

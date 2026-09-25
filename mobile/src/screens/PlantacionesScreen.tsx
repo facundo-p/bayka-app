@@ -76,7 +76,8 @@ export default function PlantacionesScreen() {
                   expanded={s.expandedPlantationId === item.id}
                   onToggleExpanded={() => s.handleToggleExpand(item.id)}
                   onParcelaPress={(parcelaId) => s.handleParcelaInlinePress(item.id, parcelaId)}
-                  onParcelaLongPress={plantacionEsEditable(item)
+                  // Editar y borrar parcelas es de admin (#640).
+                  onParcelaLongPress={s.isAdmin && plantacionEsEditable(item)
                     ? (p) => s.handleParcelaInlineLongPress(item.id, p)
                     : undefined}
                   cardProps={{

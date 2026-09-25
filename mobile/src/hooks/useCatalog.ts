@@ -9,6 +9,7 @@ import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
 import { useNetStatus } from './useNetStatus';
 import { useRoutePrefix } from './useRoutePrefix';
+import { esRutaAdmin } from '../constants/rutas';
 import { getServerCatalog, getLocalPlantationIds, ServerPlantation } from '../queries/catalogQueries';
 import { batchDownload, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState } from '../services/SyncService';
 import { contarPorEstado } from '../utils/conteoPorEstado';
@@ -19,7 +20,7 @@ export function useCatalog() {
   const { isOnline } = useNetStatus();
   const routePrefix = useRoutePrefix();
 
-  const isAdmin = routePrefix === '(admin)';
+  const isAdmin = esRutaAdmin(routePrefix);
   const organizacionId = profile?.organizacionId ?? '';
 
   const [catalogItems, setCatalogItems] = useState<ServerPlantation[]>([]);
