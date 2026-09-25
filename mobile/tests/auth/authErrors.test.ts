@@ -2,7 +2,9 @@
 // A field-facing app must never surface raw SDK strings like
 // "JSON Parse error: Unexpected character e".
 
-import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../../src/supabase/authErrors';
+import {
+  classifyAuthError, authErrorMessage, esErrorDeConectividad, esErrorDeCuentaDesactivada, AUTH_MESSAGES,
+} from '../../src/supabase/authErrors';
 
 describe('classifyAuthError', () => {
   describe('account_disabled (baja reversible desde la web)', () => {
@@ -90,5 +92,27 @@ describe('authErrorMessage', () => {
 
   it('returns the unknown message as a safe default', () => {
     expect(authErrorMessage({ message: 'mystery' })).toBe(AUTH_MESSAGES.unknown);
+  });
+});
+
+describe('predicados de tipo de error', () => {
+  it.each([
+    [{ status: 503, message: 'Service Unavailable' }, true],
+    [{ message: 'Network request failed' }, true],
+    [{ status: 400, code: 'invalid_credentials', message: 'Invalid login credentials' }, false],
+    [{ code: 'user_banned' }, false],
+    [null, false],
+  ])('esErrorDeConectividad(%j) → %s', (error, esperado) => {
+    expect(esErrorDeConectividad(error)).toBe(esperado);
+  });
+
+  it.each([
+    [{ status: 400, code: 'user_banned', message: 'User is banned' }, true],
+    [{ message: 'User is banned' }, true],
+    [{ status: 503 }, false],
+    [{ code: 'invalid_credentials' }, false],
+    [undefined, false],
+  ])('esErrorDeCuentaDesactivada(%j) → %s', (error, esperado) => {
+    expect(esErrorDeCuentaDesactivada(error)).toBe(esperado);
   });
 });

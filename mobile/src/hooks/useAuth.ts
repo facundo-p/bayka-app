@@ -24,7 +24,10 @@ import * as SecureStore from 'expo-secure-store';
 import {
   cacheCredential, verifyCredential, esCredencialSinUsuario, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials,
 } from '../services/OfflineAuthService';
-import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
+import {
+  authErrorMessage, esErrorDeConectividad, esErrorDeCuentaDesactivada,
+  AUTH_ERROR, AUTH_MESSAGES, AUTH_REJECTION, type AnyAuthError,
+} from '../supabase/authErrors';
 import type { Role } from '../types/domain';
 import { conReloj } from '../utils/conReloj';
 
@@ -137,8 +140,8 @@ type RolObtenido = Role | typeof CUENTA_DESACTIVADA | null;
 
 /** Mensaje de un login online que el servidor aceptó pero no puede entrar. */
 function mensajeDeLoginSinRol(rol: typeof CUENTA_DESACTIVADA | null | undefined): string {
-  if (rol === CUENTA_DESACTIVADA) return AUTH_MESSAGES.account_disabled;
-  return rol === null ? AUTH_MESSAGES.no_profile : AUTH_MESSAGES.connectivity;
+  if (rol === CUENTA_DESACTIVADA) return AUTH_MESSAGES[AUTH_ERROR.cuentaDesactivada];
+  return AUTH_MESSAGES[rol === null ? AUTH_REJECTION.sinPerfil : AUTH_ERROR.conectividad];
 }
 
 type SesionOnline = { access_token: string; refresh_token: string; user: { id: string; email?: string } };
@@ -569,7 +572,7 @@ export function useAuth() {
       const offline = await handleOfflineSignIn(email, password);
       if (!offline.error) return offline;
     }
-    return sinSesion(AUTH_MESSAGES.connectivity);
+    return sinSesion(AUTH_MESSAGES[AUTH_ERROR.conectividad]);
   }
 
   /**
@@ -644,13 +647,12 @@ export function useAuth() {
     return sinSesion(mensajeDeLoginSinRol(rol));
   }
 
-  async function rechazoDeLoginOnline(email: string, password: string, error: Parameters<typeof classifyAuthError>[0], offlineYaIntentado: boolean) {
+  async function rechazoDeLoginOnline(email: string, password: string, error: AnyAuthError, offlineYaIntentado: boolean) {
     // Un backend caído/pausado devuelve acá un parse error no-JSON — es conectividad, no credenciales malas.
-    const tipo = classifyAuthError(error);
-    if (tipo === 'connectivity') return handleConnectivityFailure(email, password, offlineYaIntentado);
-    if (tipo === 'account_disabled') {
+    if (esErrorDeConectividad(error)) return handleConnectivityFailure(email, password, offlineYaIntentado);
+    if (esErrorDeCuentaDesactivada(error)) {
       await purgarSesionDesactivada();
-      return sinSesion(AUTH_MESSAGES.account_disabled);
+      return sinSesion(authErrorMessage(error));
     }
     // Real credential / unknown error → friendly message, never the raw SDK one.
     return sinSesion(authErrorMessage(error));
