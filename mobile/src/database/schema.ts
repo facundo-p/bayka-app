@@ -68,6 +68,8 @@ export const plantations = sqliteTable('plantations', {
   conflictosDeEdicion: text('conflictos_de_edicion', { mode: 'json' }).$type<ConflictoDeCampo[]>(),
   // Solo local (#638): por qué lo pendiente no puede subir. Null = nada varado.
   motivoVarado: text('motivo_varado').$type<MotivoVarado>(),
+  // Solo local (#638): el insert de un alta ya llegó al server aunque falte terminarla (sus especies).
+  altaEnServidor: integer('alta_en_servidor', { mode: 'boolean' }).notNull().default(false),
 });
 
 export const parcelas = sqliteTable('parcelas', {

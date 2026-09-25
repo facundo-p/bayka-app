@@ -67,6 +67,7 @@ function falloDeAlta(error: { code?: string; message?: string }): FalloDeAlta {
  * el medio queda como conflicto a resolver (#634).
  */
 async function actualizarAltaExistente(p: PlantacionLocal): Promise<ResultadoDeAlta> {
+  await marcarAltaEnServidor(p.id);
   const { cambios, base } = edicionDeAltaExistente(p);
   const resultado = await subirEdicion(p.id, cambios, base);
   if (esRechazada(resultado)) return { fallo: falloDeAltaRechazada(resultado.rechazo ?? ''), cambiosPorResolver: 0 };
@@ -103,8 +104,13 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
   });
   if (error?.code === PG_ERROR.UNIQUE_VIOLATION) return actualizarAltaExistente(p);
   if (error) return { fallo: falloDeAlta(error), cambiosPorResolver: 0 };
-  await db.update(plantations).set(aSnapshot(campos)).where(eq(plantations.id, p.id));
+  await db.update(plantations).set({ ...aSnapshot(campos), altaEnServidor: true }).where(eq(plantations.id, p.id));
   return { fallo: null, cambiosPorResolver: 0 };
+}
+
+/** El insert ya llegó al server: descartarla no la borra de allá (#638). */
+async function marcarAltaEnServidor(plantacionId: string): Promise<void> {
+  await db.update(plantations).set({ altaEnServidor: true }).where(eq(plantations.id, plantacionId));
 }
 
 /**

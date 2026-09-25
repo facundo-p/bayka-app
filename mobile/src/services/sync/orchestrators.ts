@@ -10,7 +10,7 @@ import { pushBorrados, uploadSyncableGroups, uploadSyncableParcelas } from './pu
 import { uploadPendingPhotos, downloadPhotosForPlantation } from './photoService';
 import { marcandoActividadDeSync } from './syncActivityStore';
 import { relanzarSiEsCancelacion } from './cancelacion';
-import { conRegistroDeVarados } from './pendientesVarados';
+import { REINTENTA_TODAS, conRegistroDeVarados } from './pendientesVarados';
 
 /**
  * Callbacks de una corrida de plantación. Objeto y no parámetros posicionales: ya son
@@ -217,9 +217,9 @@ async function correrSyncAllPlantations(
 // Lo que no pudo subir se registra al terminar la corrida (#638).
 export const syncPlantation = marcandoActividadDeSync(
   (plantacionId: string, callbacks?: SyncPlantationCallbacks) =>
-    conRegistroDeVarados(() => correrSyncPlantation(plantacionId, callbacks)),
+    conRegistroDeVarados(() => correrSyncPlantation(plantacionId, callbacks), { ids: [plantacionId] }),
 );
 export const syncAllPlantations = marcandoActividadDeSync(
   (onProgress?: (info: GlobalSyncProgress) => void, incluirFotos?: boolean, onPlantationResults?: (plantations: SyncPlantationResult[]) => void) =>
-    conRegistroDeVarados(() => correrSyncAllPlantations(onProgress, incluirFotos, onPlantationResults)),
+    conRegistroDeVarados(() => correrSyncAllPlantations(onProgress, incluirFotos, onPlantationResults), REINTENTA_TODAS),
 );

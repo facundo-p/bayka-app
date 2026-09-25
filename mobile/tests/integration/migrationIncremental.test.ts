@@ -79,6 +79,7 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
       'archivada_en',
       'eliminada_en_servidor_en',
       'motivo_varado',
+      'alta_en_servidor',
     ]),
   );
 

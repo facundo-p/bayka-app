@@ -12,6 +12,7 @@ import { SYNC_ERROR, type SyncErrorCode } from './types';
 import { esArchivada } from '../../constants/estados';
 import { plantacionEsEditable, type EstadoDeEdicionDePlantacion } from '../../utils/permisosDeEdicion';
 import { getPlantationEstadoDeEdicion } from '../../queries/estadoDeEdicionQueries';
+import { getMotivosSinPendientes } from '../../queries/pendientesVaradosQueries';
 import { RECHAZO_CONFIGURACION } from '../ReemplazoConfiguracionService';
 import { guardarMotivoVarado, limpiarMotivoVarado } from '../../repositories/PendientesVaradosRepository';
 import { syncLog } from '../../utils/syncLogger';
@@ -47,8 +48,10 @@ type Registro = {
   motivos: Map<string, MotivoVarado>;
   subidas: Set<string>;
   conAcceso: Set<string>;
-  /** Participó una corrida del sync, que reintenta todo; un pull suelto (pull-to-refresh) no. */
-  completo: boolean;
+  /** Participó la sync global, que reintenta lo pendiente de todas las plantaciones. */
+  todas: boolean;
+  /** Plantaciones que alguna tarea reintentó enteras (la sync de una); un pull suelto no reintenta ninguna. */
+  reintentadas: Set<string>;
   /** Alguna tarea se cortó: lo que faltaba no se reintentó. */
   cortado: boolean;
   /** Tareas corriendo con este registro: se aplica cuando termina la última. */
@@ -56,7 +59,19 @@ type Registro = {
 };
 
 const nuevoRegistro = (): Registro =>
-  ({ motivos: new Map(), subidas: new Set(), conAcceso: new Set(), completo: false, cortado: false, participantes: 0 });
+  ({
+    motivos: new Map(), subidas: new Set(), conAcceso: new Set(),
+    todas: false, reintentadas: new Set(), cortado: false, participantes: 0,
+  });
+
+/** Qué plantaciones reintenta enteras una tarea: todas (sync global), algunas (sync de una) o ninguna (pull suelto). */
+export type Reintentadas = { todas: true } | { ids: readonly string[] };
+export const REINTENTA_TODAS: Reintentadas = { todas: true };
+export const NO_REINTENTA: Reintentadas = { ids: [] };
+
+/** Solo con todo lo pendiente de la plantación reintentado vale limpiar un motivo que no depende del estado. */
+const seReintentoEntera = (r: Registro, plantacionId: string) =>
+  !r.cortado && (r.todas || r.reintentadas.has(plantacionId));
 
 /** Compartido entre tareas solapadas (un pull-to-refresh durante una sync). */
 let enCurso: Registro | null = null;
@@ -66,7 +81,7 @@ function masPrioritario(a: MotivoVarado | undefined, b: MotivoVarado): MotivoVar
   return PRIORIDAD_DE_MOTIVOS.indexOf(a) <= PRIORIDAD_DE_MOTIVOS.indexOf(b) ? a : b;
 }
 
-const estaVacio = (r: Registro) => r.motivos.size + r.subidas.size + r.conAcceso.size === 0;
+const estaVacio = (r: Registro) => r.motivos.size + r.subidas.size + r.conAcceso.size === 0 && !r.todas;
 
 /** Después de la corrida, que ya notificó: sin esto la tarjeta no se entera del motivo. */
 async function aplicar(r: Registro): Promise<void> {
@@ -76,12 +91,15 @@ async function aplicar(r: Registro): Promise<void> {
 }
 
 async function escribir(r: Registro): Promise<void> {
-  const completo = r.completo && !r.cortado;
   for (const [id, motivo] of r.motivos) await guardarMotivoVarado(id, motivo);
   for (const id of r.subidas) if (!r.motivos.has(id)) await limpiarMotivoVarado(id);
   for (const id of r.conAcceso) {
     if (r.motivos.has(id) || r.subidas.has(id)) continue;
-    await alinearConElEstado(id, completo);
+    await alinearConElEstado(id, seReintentoEntera(r, id));
+  }
+  // Un motivo sin nada pendiente (se subió o se borró por otra vía) no debe reaparecer con el próximo cambio.
+  if (r.todas && !r.cortado) {
+    for (const id of await getMotivosSinPendientes()) await limpiarMotivoVarado(id);
   }
 }
 
@@ -90,10 +108,10 @@ async function escribir(r: Registro): Promise<void> {
  * (aunque ningún paso lo haya intentado, como una foto); abierta, el motivo ya no vale.
  * Suelto no se reintentó lo demás: solo se limpia lo que depende del estado.
  */
-async function alinearConElEstado(plantacionId: string, completo: boolean): Promise<void> {
+async function alinearConElEstado(plantacionId: string, reintentada: boolean): Promise<void> {
   const delEstado = motivoVarado(motivoDeBloqueo(await getPlantationEstadoDeEdicion(plantacionId)));
   if (delEstado) await guardarMotivoVarado(plantacionId, delEstado);
-  else await limpiarMotivoVarado(plantacionId, completo ? undefined : MOTIVOS_DEL_ESTADO);
+  else await limpiarMotivoVarado(plantacionId, reintentada ? undefined : MOTIVOS_DEL_ESTADO);
 }
 
 /**
@@ -127,13 +145,13 @@ export async function anotarPullConAcceso(plantacionId: string): Promise<void> {
 
 /**
  * Corre `tarea` con un registro que se aplica cuando terminan todas las tareas que lo
- * comparten. `completo`: la tarea reintenta todo lo pendiente (la corrida del sync); un
- * pull suelto no.
+ * comparten. `reintenta`: de qué plantaciones la tarea reintenta todo lo pendiente.
  */
-export async function conRegistroDeVarados<T>(tarea: () => Promise<T>, completo = true): Promise<T> {
+export async function conRegistroDeVarados<T>(tarea: () => Promise<T>, reintenta: Reintentadas): Promise<T> {
   const registro = enCurso ?? (enCurso = nuevoRegistro());
   registro.participantes++;
-  if (completo) registro.completo = true;
+  if ('todas' in reintenta) registro.todas = true;
+  else reintenta.ids.forEach((id) => registro.reintentadas.add(id));
   try {
     return await tarea();
   } catch (e) {

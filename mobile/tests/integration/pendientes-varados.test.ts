@@ -37,7 +37,10 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { descartarPendientes, guardarMotivoVarado, limpiarMotivoVarado } from '../../src/repositories/PendientesVaradosRepository';
 import { getPendientesVarados, getDescarteDePlantacion } from '../../src/queries/pendientesVaradosQueries';
-import { anotarPullConAcceso, anotarRechazo, anotarSubida, conRegistroDeVarados } from '../../src/services/sync/pendientesVarados';
+import {
+  NO_REINTENTA, REINTENTA_TODAS, anotarPullConAcceso, anotarRechazo, anotarSubida, conRegistroDeVarados,
+} from '../../src/services/sync/pendientesVarados';
+import { confirmacionDeDescarte } from '../../src/utils/avisoPendientesVarados';
 import { borrarFotosLocales } from '../../src/services/PhotoService';
 
 const P = 'plant-finalizada';
@@ -130,11 +133,11 @@ describe('lo que lee la tarjeta', () => {
     expect((await getPendientesVarados()).get(P)?.resumen).toMatchObject({ tecnicos: 0, fotos: 0 });
   });
 
-  it('con motivo pero sin nada pendiente: no avisa y limpia el motivo', async () => {
+  it('con motivo pero sin nada pendiente: no avisa (la query no escribe)', async () => {
     await mockTestDb.insert(plantations).values({ ...createTestPlantation({ id: P }), motivoVarado: 'archivada' });
 
     expect((await getPendientesVarados()).has(P)).toBe(false);
-    expect((await plantacion()).motivoVarado).toBeNull();
+    expect((await plantacion()).motivoVarado).toBe('archivada');
   });
 
   it('eliminada en el servidor: avisa aunque el sync no haya guardado motivo', async () => {
@@ -146,7 +149,7 @@ describe('lo que lee la tarjeta', () => {
 
   it('un alta cuyo insert subió: la confirmación sabe que existe en el server', async () => {
     await mockTestDb.insert(plantations).values({
-      ...createTestPlantation({ id: P, pendingSync: true }), lugarServer: 'Campo', motivoVarado: 'finalizada',
+      ...createTestPlantation({ id: P, pendingSync: true }), altaEnServidor: true, motivoVarado: 'finalizada',
     });
 
     expect((await getDescarteDePlantacion(P))?.resumen).toMatchObject({ alta: true, altaEnServidor: true });
@@ -202,6 +205,18 @@ describe('Descartar una plantación que existe en el server', () => {
     expect((borrarFotosLocales as jest.Mock).mock.calls[0][0].sort()).toEqual(['file://pendiente.jpg', 'file://sin-subir.jpg']);
   });
 
+  it('sin permiso: un grupo ya subido que volvió a pendiente se quita, y la confirmación lo dice', async () => {
+    await sembrarConPendientes();
+    await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, 'g-subido'));
+    const descarte = await getDescarteDePlantacion(P);
+
+    expect(confirmacionDeDescarte(descarte!).mensaje).toContain(
+      'los grupos y parcelas con cambios sin subir se quitan de este dispositivo y vuelven cuando recuperes el acceso',
+    );
+    await descartarPendientes(P);
+    expect(await ids(groups)).toEqual(['g-de-editada']);
+  });
+
   it('en una finalizada conserva los técnicos y las fotos sin subir: el server los acepta', async () => {
     await sembrarConPendientes('finalizada');
     await descartarPendientes(P);
@@ -235,6 +250,9 @@ describe('Descartar lo que no existe en el server', () => {
 });
 
 describe('motivo guardado por el sync', () => {
+  // La sync de P: la global además limpia motivos sin pendientes, y estas no tienen.
+  const SYNC_DE_P = { ids: [P] };
+
   beforeEach(async () => {
     await mockTestDb.insert(plantations).values(createTestPlantation({ id: P }));
   });
@@ -243,7 +261,7 @@ describe('motivo guardado por el sync', () => {
     await conRegistroDeVarados(async () => {
       await anotarSubida(P);
       await anotarRechazo(P, 'NOT_AUTHORIZED');
-    });
+    }, SYNC_DE_P);
 
     expect((await plantacion()).motivoVarado).toBe('sin-permiso');
   });
@@ -251,7 +269,7 @@ describe('motivo guardado por el sync', () => {
   it('un error transitorio no toca el motivo', async () => {
     await guardarMotivoVarado(P, 'finalizada');
 
-    await conRegistroDeVarados(() => anotarRechazo(P, 'NETWORK'));
+    await conRegistroDeVarados(() => anotarRechazo(P, 'NETWORK'), SYNC_DE_P);
 
     expect((await plantacion()).motivoVarado).toBe('finalizada');
   });
@@ -259,7 +277,7 @@ describe('motivo guardado por el sync', () => {
   it('una subida aceptada sin rechazos lo limpia', async () => {
     await guardarMotivoVarado(P, 'finalizada');
 
-    await conRegistroDeVarados(() => anotarSubida(P));
+    await conRegistroDeVarados(() => anotarSubida(P), SYNC_DE_P);
 
     expect((await plantacion()).motivoVarado).toBeNull();
   });
@@ -267,7 +285,7 @@ describe('motivo guardado por el sync', () => {
   it('con acceso, una plantación cerrada queda varada por su estado aunque nada lo haya rechazado', async () => {
     await mockTestDb.update(plantations).set({ archivadaEn: '2026-09-20' }).where(eq(plantations.id, P));
 
-    await conRegistroDeVarados(() => anotarPullConAcceso(P));
+    await conRegistroDeVarados(() => anotarPullConAcceso(P), SYNC_DE_P);
 
     expect((await plantacion()).motivoVarado).toBe('archivada');
   });
@@ -275,18 +293,18 @@ describe('motivo guardado por el sync', () => {
   it('con acceso y reabierta, la corrida limpia cualquier motivo', async () => {
     await guardarMotivoVarado(P, 'sin-permiso');
 
-    await conRegistroDeVarados(() => anotarPullConAcceso(P));
+    await conRegistroDeVarados(() => anotarPullConAcceso(P), SYNC_DE_P);
 
     expect((await plantacion()).motivoVarado).toBeNull();
   });
 
   it('un pull suelto solo limpia lo que depende del estado: no reintentó lo demás', async () => {
     await guardarMotivoVarado(P, 'sin-permiso');
-    await conRegistroDeVarados(() => anotarPullConAcceso(P), false);
+    await conRegistroDeVarados(() => anotarPullConAcceso(P), NO_REINTENTA);
     expect((await plantacion()).motivoVarado).toBe('sin-permiso');
 
     await guardarMotivoVarado(P, 'finalizada');
-    await conRegistroDeVarados(() => anotarPullConAcceso(P), false);
+    await conRegistroDeVarados(() => anotarPullConAcceso(P), NO_REINTENTA);
     expect((await plantacion()).motivoVarado).toBeNull();
   });
 
@@ -298,13 +316,29 @@ describe('motivo guardado por el sync', () => {
 
   it('solapadas, se aplica una sola vez al terminar la última', async () => {
     let terminarPull!: () => void;
-    const pull = conRegistroDeVarados(() => new Promise<void>((r) => { terminarPull = r; }), false);
-    await conRegistroDeVarados(() => anotarRechazo(P, 'PLANTACION_ARCHIVADA'));
+    const pull = conRegistroDeVarados(() => new Promise<void>((r) => { terminarPull = r; }), NO_REINTENTA);
+    await conRegistroDeVarados(() => anotarRechazo(P, 'PLANTACION_ARCHIVADA'), SYNC_DE_P);
     expect((await plantacion()).motivoVarado).toBeNull();
 
     terminarPull();
     await pull;
     expect((await plantacion()).motivoVarado).toBe('archivada');
+  });
+
+  it('la sync de una plantación no limpia el sin permiso de otra que solo se pulleó', async () => {
+    await guardarMotivoVarado(P, 'sin-permiso');
+
+    await conRegistroDeVarados(() => anotarPullConAcceso(P), { ids: ['otra'] });
+
+    expect((await plantacion()).motivoVarado).toBe('sin-permiso');
+  });
+
+  it('la sync global limpia un motivo que ya no tiene nada pendiente', async () => {
+    await guardarMotivoVarado(P, 'archivada');
+
+    await conRegistroDeVarados(async () => {}, REINTENTA_TODAS);
+
+    expect((await plantacion()).motivoVarado).toBeNull();
   });
 
   it('limpiar solo ciertos motivos no toca los demás', async () => {

@@ -5,7 +5,6 @@ import { eq, isNotNull, or } from 'drizzle-orm';
 import type { MotivoVarado } from '../constants/motivoVarado';
 import { getResumenDePendientes } from './catalogQueries';
 import { countPendingTreePhotos } from './pendingSyncQueries';
-import { limpiarMotivoVarado } from '../repositories/PendientesVaradosRepository';
 import {
   descartarLaSaca,
   motivoDeVarado,
@@ -23,7 +22,7 @@ const columnasDeVarado = {
   eliminadaEnServidorEn: plantations.eliminadaEnServidorEn,
   pendingEdit: plantations.pendingEdit,
   pendingSync: plantations.pendingSync,
-  lugarServer: plantations.lugarServer,
+  altaEnServidor: plantations.altaEnServidor,
 };
 
 type FilaDeVarado = Pick<typeof plantations.$inferSelect, keyof typeof columnasDeVarado>;
@@ -36,16 +35,12 @@ async function resumenDeDescarte(fila: FilaDeVarado): Promise<ResumenDeDescarte>
     fotos: fotos?.cnt ?? 0,
     edicion: fila.pendingEdit,
     alta: fila.pendingSync,
-    // `subirFilaDeAlta` deja el snapshot recién cuando el insert subió.
-    altaEnServidor: fila.pendingSync && fila.lugarServer != null,
+    altaEnServidor: fila.pendingSync && fila.altaEnServidor,
   };
   return descartarLaSaca(fila) ? completo : varadosDelResumen(completo, fila.motivoVarado);
 }
 
-/**
- * Por plantación, las que tienen un motivo y algo que no pudo subir. Un motivo sin nada
- * pendiente (se subió o se borró por otra vía) se limpia: no debe reaparecer con el próximo cambio.
- */
+/** Por plantación, las que tienen un motivo y algo que no pudo subir. */
 export async function getPendientesVarados(): Promise<Map<string, PendientesVarados>> {
   const filas = await db.select(columnasDeVarado).from(plantations)
     .where(or(isNotNull(plantations.motivoVarado), isNotNull(plantations.eliminadaEnServidorEn)));
@@ -54,9 +49,18 @@ export async function getPendientesVarados(): Promise<Map<string, PendientesVara
     const motivo = motivoDeVarado(fila);
     const resumen = await resumenDeDescarte(fila);
     if (motivo && totalDeCambios(resumen) > 0) varados.set(fila.id, { motivo, resumen });
-    else if (fila.motivoVarado) await limpiarMotivoVarado(fila.id);
   }
   return varados;
+}
+
+/** Plantaciones con motivo guardado y nada pendiente: el motivo quedó viejo. */
+export async function getMotivosSinPendientes(): Promise<string[]> {
+  const filas = await db.select(columnasDeVarado).from(plantations).where(isNotNull(plantations.motivoVarado));
+  const viejos: string[] = [];
+  for (const fila of filas) {
+    if (totalDeCambios(await resumenDeDescarte(fila)) === 0) viejos.push(fila.id);
+  }
+  return viejos;
 }
 
 export type DescarteDePlantacion = { lugar: string; resumen: ResumenDeDescarte; seVa: boolean; motivo: MotivoVarado | null };

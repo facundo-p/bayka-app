@@ -89,10 +89,16 @@ export interface ConfirmacionDeDescarte {
 }
 
 function queQueda(lugar: string, resumen: ResumenDeDescarte, seVa: boolean, motivo: MotivoVarado | null): string {
-  if (seVa && resumen.altaEnServidor) return `"${lugar}" se elimina de este dispositivo; podés volver a descargarla desde el catálogo.`;
+  const sinPermiso = motivo === MOTIVO_VARADO.sinPermiso;
+  // Sin permiso no es seguro que la vea en el catálogo.
+  if (seVa && resumen.altaEnServidor && !sinPermiso) {
+    return `"${lugar}" se elimina de este dispositivo; podés volver a descargarla desde el catálogo.`;
+  }
   if (seVa) return `"${lugar}" se elimina de este dispositivo.`;
-  // Sin permiso el pull no corre: no hay "estado del servidor" que vuelva.
-  if (motivo === MOTIVO_VARADO.sinPermiso) return `Lo que ya estaba subido de "${lugar}" queda en este dispositivo.`;
+  // Sin permiso el pull no corre: lo que se quita del teléfono no vuelve hasta recuperar el acceso.
+  if (sinPermiso) {
+    return 'Lo que ya estaba en el servidor sigue ahí; los grupos y parcelas con cambios sin subir se quitan de este dispositivo y vuelven cuando recuperes el acceso.';
+  }
   return `"${lugar}" vuelve a quedar como está en el servidor en la próxima sincronización.`;
 }
 

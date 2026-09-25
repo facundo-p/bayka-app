@@ -30,7 +30,7 @@ import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 import { comoAltasYBajas, getCambiosPendientes } from '../../repositories/CambiosDeEspeciesRepository';
 import { getAltasPendientes } from '../../repositories/TecnicosDePlantacionRepository';
 import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
-import { anotarPullConAcceso, anotarRechazo, conRegistroDeVarados } from './pendientesVarados';
+import { NO_REINTENTA, anotarPullConAcceso, anotarRechazo, conRegistroDeVarados } from './pendientesVarados';
 import { adoptarRenombres, gruposLocales, planDeRenombres, type GrupoLocal, type RemoteGroup } from './renombresDeGrupos';
 
 export type OnPhaseProgress = (p: DownloadPhaseProgress) => void;
@@ -805,5 +805,5 @@ async function correrPullFromServer(
 // El registro se aplica al final, con el estado de la plantación ya actualizado.
 export const pullFromServer = marcandoActividadDeSync(
   (plantacionId: string, onProgress?: OnPhaseProgress) =>
-    conRegistroDeVarados(() => correrPullFromServer(plantacionId, onProgress), false),
+    conRegistroDeVarados(() => correrPullFromServer(plantacionId, onProgress), NO_REINTENTA),
 );

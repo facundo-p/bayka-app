@@ -61,7 +61,7 @@ describe('confirmación de Descartar', () => {
   it('sin permiso el pull no corre: no promete volver al estado del servidor', () => {
     const { mensaje } = confirmacionDeDescarte({ lugar: 'Norte', resumen: { ...VACIO, parcelas: 1 }, seVa: false, motivo: 'sin-permiso' });
     expect(mensaje).toBe(
-      'Se pierden para siempre: 1 parcela pendiente. Lo que ya estaba subido de "Norte" queda en este dispositivo. Esta acción no se puede deshacer.',
+      'Se pierden para siempre: 1 parcela pendiente. Lo que ya estaba en el servidor sigue ahí; los grupos y parcelas con cambios sin subir se quitan de este dispositivo y vuelven cuando recuperes el acceso. Esta acción no se puede deshacer.',
     );
   });
 
@@ -81,6 +81,14 @@ describe('confirmación de Descartar', () => {
     expect(mensaje).toBe(
       'Se pierden para siempre: la plantación, que quedó a medio subir (en el servidor está creada, sin sus especies ni lo cargado en este teléfono). "Norte" se elimina de este dispositivo; podés volver a descargarla desde el catálogo. Esta acción no se puede deshacer.',
     );
+  });
+
+  it('alta a medio subir sin permiso: no promete el catálogo', () => {
+    const { mensaje } = confirmacionDeDescarte({
+      lugar: 'Norte', resumen: { ...VACIO, alta: true, altaEnServidor: true }, seVa: true, motivo: 'sin-permiso',
+    });
+    expect(mensaje).toContain('"Norte" se elimina de este dispositivo. Esta acción');
+    expect(mensaje).not.toContain('catálogo');
   });
 
   it('en una finalizada no cuenta técnicos ni fotos: suben igual', () => {
