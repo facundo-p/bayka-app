@@ -25,7 +25,10 @@ const mockServerState: Record<string, Map<string, any>> = {
 const serverState = mockServerState;
 /** Técnicos que el server rechaza: dados de baja. */
 const mockInactivos = new Set<string>();
-const mockRpc = { rechazo: null as string | null, sinRed: false, colgado: false, llamadas: [] as any[] };
+const mockRpc = {
+  rechazo: null as string | null, sinRed: false, colgado: false, demorado: false,
+  soltar: [] as (() => void)[], llamadas: [] as any[],
+};
 const mockNet = { conectado: true };
 
 jest.mock('@react-native-community/netinfo', () => ({
@@ -79,6 +82,10 @@ jest.mock('../../src/supabase/client', () => {
         mockRpc.llamadas.push(args);
         if (mockRpc.sinRed) return Promise.resolve({ data: null, error: { message: 'TypeError: Network request failed' } });
         if (mockRpc.colgado) return new Promise(() => {});
+        // Responde recién cuando el test lo suelta, con el estado del server de ese momento.
+        if (mockRpc.demorado) {
+          return new Promise((resolve) => mockRpc.soltar.push(() => resolve({ data: aplicarCambios(args), error: null })));
+        }
         return Promise.resolve({ data: aplicarCambios(args), error: null });
       },
       auth: {
@@ -139,7 +146,7 @@ const miembro = (userId: string, rol: string) => ({
 beforeEach(async () => {
   for (const tabla of Object.values(serverState)) tabla.clear();
   mockInactivos.clear();
-  Object.assign(mockRpc, { rechazo: null, sinRed: false, colgado: false, llamadas: [] });
+  Object.assign(mockRpc, { rechazo: null, sinRed: false, colgado: false, demorado: false, soltar: [], llamadas: [] });
   mockNet.conectado = true;
   await vaciarTablas(mockTestDb);
 
@@ -230,6 +237,43 @@ describe('señal débil', () => {
     expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
     expect(await pendientes()).toEqual([BRUNO]);
   });
+
+  it('una respuesta tardía con un rechazado lo deja pendiente, y el sync lo descarta y lo avisa', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    mockRpc.demorado = true;
+    mockInactivos.add(CARLA);
+    const guardado = guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO, CARLA], bajas: [] });
+    await jest.advanceTimersByTimeAsync(ESPERA_DE_SUBIDA_MS);
+    expect(await guardado).toEqual([]);
+
+    mockRpc.soltar.forEach((soltar) => soltar());
+    await jest.advanceTimersByTimeAsync(0);
+    expect(await pendientes()).toEqual([CARLA]);
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO, CARLA].sort());
+
+    jest.useRealTimers();
+    mockRpc.demorado = false;
+    expect(await uploadPendingTechnicianAssignments()).toEqual([
+      { success: true, plantacionId: PLANTACION_ID, nombre: 'Campo', tecnicosNoAsignados: ['Carla'] },
+    ]);
+    expect(await pendientes()).toEqual([]);
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+  });
+
+  it('un rechazo tardío de la plantación no deshace nada: queda pendiente', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    mockRpc.demorado = true;
+    const guardado = guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+    await jest.advanceTimersByTimeAsync(ESPERA_DE_SUBIDA_MS);
+    await guardado;
+
+    mockRpc.rechazo = 'PLANTACION_ARCHIVADA';
+    mockRpc.soltar.forEach((soltar) => soltar());
+    await jest.advanceTimersByTimeAsync(0);
+
+    expect(await pendientes()).toEqual([BRUNO]);
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+  });
 });
 
 describe('guardar técnicos', () => {
@@ -306,6 +350,32 @@ describe('guardar técnicos', () => {
 
     expect(await tecnicosLocales()).toEqual([ANA]);
     expect(await pendientes()).toEqual([]);
+  });
+
+  it('con señal, deshacer un alta pendiente la manda también como baja', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+    mockNet.conectado = true;
+    // Su subida llegó al server, pero la respuesta se perdió.
+    serverState.plantation_users.set(BRUNO, miembro(BRUNO, 'tecnico'));
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [BRUNO] });
+
+    expect(mockRpc.llamadas).toEqual([{ p_plantacion: PLANTACION_ID, p_altas: [], p_bajas: [BRUNO] }]);
+    expect(delServer()).toEqual([ANA]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('una baja del server sin respuesta avisa que no se aplicó y las altas quedan para el sync', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+    mockNet.conectado = true;
+    mockRpc.sinRed = true;
+    await expect(guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [], bajas: [ANA] })).rejects.toThrow(
+      'El servidor no respondió: no se quitó a ningún técnico. Las asignaciones quedan guardadas y se suben en el próximo sync.',
+    );
+
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+    expect(await pendientes()).toEqual([BRUNO]);
   });
 
   it('quitar un alta que no subió solo la descarta, también sin conexión', async () => {
