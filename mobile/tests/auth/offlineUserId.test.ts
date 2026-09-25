@@ -142,8 +142,23 @@ describe('login offline en un celular compartido (#658)', () => {
 
     const { res } = await loginOffline(A);
 
-    expect(res.error).not.toBeNull();
+    expect(res.error.message).toBe('Iniciá sesión con conexión una vez para habilitar el acceso sin conexión.');
     expect(res.data.session).toBeNull();
+  });
+
+  it('con una credencial sin userId y contraseña incorrecta, sigue el mensaje de credenciales', async () => {
+    await loginOnline(A);
+    const credenciales = JSON.parse(store.get('offline_credentials')!);
+    delete credenciales[0].userId;
+    store.set('offline_credentials', JSON.stringify(credenciales));
+
+    setOffline();
+    const { result } = renderHook(() => useAuth());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    let res: any;
+    await act(async () => { res = await result.current.signIn(A.email, 'mala'); });
+
+    expect(res.error.message).toBe('Credenciales incorrectas o no guardadas. Iniciá sesión online primero.');
   });
 
   it('signOut cierra la sesión solo local', async () => {

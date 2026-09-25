@@ -53,7 +53,8 @@ describe('OfflineAuthService', () => {
     delete entry.userId;
     store.set('offline_credentials', JSON.stringify([entry]));
 
-    expect(await verifyCredential('user@test.com', 'pass123')).toBeNull();
+    expect(await verifyCredential('user@test.com', 'pass123')).toBe('credencial-sin-usuario');
+    expect(await verifyCredential('user@test.com', 'mala')).toBeNull();
     expect(await getCachedEmails()).toEqual(['user@test.com']);
   });
 

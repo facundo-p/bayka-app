@@ -50,6 +50,7 @@ import { db } from '../../src/database/client';
 import { getSyncableGroups, markGroupSynced } from '../../src/repositories/GroupRepository';
 import { getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
 import { notifyDataChanged } from '../../src/database/liveQuery';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -99,7 +100,8 @@ function makeSupabaseChain() {
 }
 
 function setupSupabaseDefaults() {
-  (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: {} }, error: null });
+  (mockSupabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-1' } } }, error: null });
+  conUsuarioCacheado('user-1');
 
   (mockSupabase.from as jest.Mock).mockImplementation(() => makeSupabaseChain());
 

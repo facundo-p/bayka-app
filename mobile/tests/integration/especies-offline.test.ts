@@ -7,6 +7,7 @@
  * Mock de Supabase: estado in-memory, con un doble de `aplicar_cambios_especies`.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -327,3 +328,6 @@ describe('sync', () => {
     expect(await localesHabilitadas()).toEqual([ALAMO, ROBLE].sort());
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-admin-1'));

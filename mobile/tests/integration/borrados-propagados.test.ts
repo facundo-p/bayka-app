@@ -9,6 +9,7 @@
  * para poder seguir el borrado de punta a punta.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -658,3 +659,6 @@ describe('especie quitada de la plantación en el server (#632)', () => {
     expect(await especiesLocales()).toEqual([PINO, ROBLE].sort());
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

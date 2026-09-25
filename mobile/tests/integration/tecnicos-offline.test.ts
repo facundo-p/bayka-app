@@ -38,7 +38,10 @@ jest.mock('@react-native-community/netinfo', () => ({
   default: { fetch: () => Promise.resolve({ isConnected: mockNet.conectado }) },
 }));
 
-jest.mock('../../src/supabase/auth', () => ({ readCachedRole: () => Promise.resolve('admin') }));
+jest.mock('../../src/supabase/auth', () => ({
+  readCachedRole: () => Promise.resolve('admin'),
+  readCachedUserId: () => Promise.resolve('user-admin-1'),
+}));
 
 jest.mock('../../src/supabase/client', () => {
   const filtrar = (tabla: string, filtros: { col: string; value: any }[]) =>

@@ -39,6 +39,7 @@ jest.mock('../../src/supabase/auth', () => ({
 jest.mock('../../src/services/OfflineAuthService', () => ({
   cacheCredential: jest.fn().mockResolvedValue(undefined),
   verifyCredential: jest.fn(),
+  esCredencialSinUsuario: jest.requireActual('../../src/services/OfflineAuthService').esCredencialSinUsuario,
   saveLastOnlineLogin: jest.fn().mockResolvedValue(undefined),
   isOfflineLoginExpired: jest.fn().mockResolvedValue(false),
   clearCredential: jest.fn().mockResolvedValue(undefined),

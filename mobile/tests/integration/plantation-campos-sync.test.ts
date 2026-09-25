@@ -4,6 +4,7 @@
  * con los campos nuevos, descartar, y el aviso de duplicado post-sync.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 
 import { plantations } from '../../src/database/schema';
@@ -592,3 +593,6 @@ describe('formulario abierto mientras un pull trae cambios', () => {
     });
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-admin-1'));

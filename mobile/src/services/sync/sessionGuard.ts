@@ -15,6 +15,10 @@ export class SessionExpiredError extends Error {
   }
 }
 
+export function esSesionExpirada(err: unknown): boolean {
+  return (err as { name?: string } | null)?.name === 'SessionExpiredError';
+}
+
 /** Refresh if the access token expires within this window (clock-skew margin). */
 const EXPIRY_MARGIN_MS = 30_000;
 

@@ -43,6 +43,15 @@ async function hashPassword(password: string, salt: string): Promise<string> {
 /** Cuenta que habilita una credencial offline válida. */
 export type CuentaOffline = { role: string; userId: string };
 
+/** Contraseña correcta, pero la credencial es anterior a #658 y no sabe de qué cuenta es. */
+export const CREDENCIAL_SIN_USUARIO = 'credencial-sin-usuario' as const;
+
+export type VerificacionOffline = CuentaOffline | typeof CREDENCIAL_SIN_USUARIO | null;
+
+export function esCredencialSinUsuario(v: VerificacionOffline): v is typeof CREDENCIAL_SIN_USUARIO {
+  return v === CREDENCIAL_SIN_USUARIO;
+}
+
 export async function cacheCredential(
   email: string,
   password: string,
@@ -72,13 +81,14 @@ export async function cacheCredential(
 export async function verifyCredential(
   email: string,
   password: string,
-): Promise<CuentaOffline | null> {
+): Promise<VerificacionOffline> {
   const all = await getAll();
   const entry = all.find((c) => c.email === email);
-  if (!entry?.userId) return null;
+  if (!entry) return null;
 
   const hash = await hashPassword(password, entry.salt);
-  return hash === entry.hash ? { role: entry.role, userId: entry.userId } : null;
+  if (hash !== entry.hash) return null;
+  return entry.userId ? { role: entry.role, userId: entry.userId } : CREDENCIAL_SIN_USUARIO;
 }
 
 export async function clearCredential(email: string): Promise<void> {

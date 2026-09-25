@@ -1,9 +1,10 @@
 /**
  * useAuth — hook central de auth: sesión, rol, signIn, signOut.
- * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; las claves de SecureStore
- * (tokens/userId/role) nunca se borran salvo signOut() explícito o el login offline de otra
- * cuenta, que descarta los tokens ajenos (#658); SIGNED_OUT se ignora offline;
- * auto-refresh se para offline y arranca online.
+ * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; SIGNED_OUT se ignora
+ * offline; auto-refresh se para offline y arranca online.
+ * SecureStore: signOut() borra solo el rol y la sesión solo local; los tokens y el userId quedan
+ * para que la misma cuenta vuelva a entrar offline. El login offline de otra cuenta descarta los
+ * tokens ajenos (#658), y una cuenta desactivada se purga entera.
  */
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
@@ -14,7 +15,9 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials } from '../services/OfflineAuthService';
+import {
+  cacheCredential, verifyCredential, esCredencialSinUsuario, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials,
+} from '../services/OfflineAuthService';
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
 import { ROL } from '../constants/roles';
@@ -22,6 +25,10 @@ import { conReloj } from '../utils/conReloj';
 
 const ROLE_FETCH_TIMEOUT = 5000;
 const LOGIN_TIMEOUT = 8000;
+
+const MENSAJE_OFFLINE_EXPIRADO = 'Sesión offline expirada. Conectate a internet para iniciar sesión.';
+const MENSAJE_OFFLINE_SIN_CREDENCIAL = 'Credenciales incorrectas o no guardadas. Iniciá sesión online primero.';
+const MENSAJE_OFFLINE_SIN_HABILITAR = 'Iniciá sesión con conexión una vez para habilitar el acceso sin conexión.';
 
 /** Race a promise against a timeout. Rejects with 'timeout' on expiry. */
 function withTimeout<T>(promiseOrThenable: PromiseLike<T>, ms: number): Promise<T> {
@@ -254,14 +261,11 @@ export function useAuth() {
   // ─── Sign In ────────────────────────────────────────────────────────────
 
   async function handleOfflineSignIn(email: string, password: string) {
-    if (await isOfflineLoginExpired()) {
-      return sinSesion('Sesión offline expirada. Conectate a internet para iniciar sesión.');
-    }
+    if (await isOfflineLoginExpired()) return sinSesion(MENSAJE_OFFLINE_EXPIRADO);
 
     const cuenta = await verifyCredential(email, password);
-    if (!cuenta) {
-      return sinSesion('Credenciales incorrectas o no guardadas. Iniciá sesión online primero.');
-    }
+    if (!cuenta) return sinSesion(MENSAJE_OFFLINE_SIN_CREDENCIAL);
+    if (esCredencialSinUsuario(cuenta)) return sinSesion(MENSAJE_OFFLINE_SIN_HABILITAR);
 
     const offlineSession = await sesionOfflinePara(cuenta.userId);
     await SecureStore.setItemAsync(USER_ID_KEY, cuenta.userId);

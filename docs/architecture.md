@@ -138,6 +138,13 @@ antes de subir nada, así nunca se sube con la identidad de otro (#658). Las
 credenciales guardadas antes de este cambio no tienen userId y no sirven para
 entrar offline hasta el próximo login online.
 
+Toda operación contra el servidor (sync, pull-to-refresh, descarga de
+plantaciones, catálogo, técnicos) pasa antes por `ensureServerSession`: sin una
+sesión del SDK de la cuenta cacheada corta con `SessionExpiredError` antes de
+leer, porque una lectura anónima vuelve vacía por RLS y el pull borraría datos
+locales. El perfil cacheado (`PerfilCacheadoService`) guarda el userId de su
+dueño y se descarta si no coincide con la cuenta activa.
+
 ---
 
 # 3. Arquitectura General

@@ -54,6 +54,7 @@ import {
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { cancelarCorrida, iniciarCorrida, SyncCanceladoError, terminarCorrida } from '../../src/services/sync/cancelacion';
 import { enTransaccion, enTransaccionPorLotes } from '../../src/database/transaccion';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 
 /**
  * `jest.resetAllMocks()` borra la implementación de los mocks de módulo, así que el
@@ -111,6 +112,7 @@ function setupSesion() {
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({
     data: { session: { user: { id: 'user-1' } } },
   });
+  conUsuarioCacheado('user-1');
   (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
 }
 

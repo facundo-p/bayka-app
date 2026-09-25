@@ -16,7 +16,7 @@ import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { useDescartarPendientes } from './useDescartarPendientes';
 import { getPendientesVarados, type PendientesVarados } from '../queries/pendientesVaradosQueries';
 import { checkFreshness } from '../queries/freshnessQueries';
-import { pullFromServer, uploadPendingEdits } from '../services/SyncService';
+import { ensureServerSession, pullFromServer, uploadPendingEdits } from '../services/SyncService';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import {
   getPlantationsForRole,
@@ -66,6 +66,8 @@ export function usePlantaciones() {
     if (!plantationList) return;
     setRefreshing(true);
     try {
+      // Sin sesión las ediciones saldrían como anon y el pull leería vacío (#658).
+      await ensureServerSession();
       await uploadPendingEdits();
       for (const p of plantationList) {
         await pullFromServer(p.id);

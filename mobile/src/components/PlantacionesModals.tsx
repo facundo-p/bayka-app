@@ -214,8 +214,8 @@ export default function PlantacionesModals({
         visible={syncState === 'done' && authExpired}
         icon="lock-closed"
         iconColor={colors.secondary}
-        title="Sesión expirada"
-        message="Tu sesión expiró. Iniciá sesión de nuevo para sincronizar."
+        title="Iniciá sesión"
+        message="Para sincronizar tenés que iniciar sesión con conexión."
         buttons={[
           { label: 'Cancelar', style: 'cancel', onPress: resetSync },
           { label: 'Aceptar', style: 'primary', onPress: handleSessionExpiredReauth },
