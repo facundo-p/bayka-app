@@ -106,7 +106,11 @@ el UPDATE directo ya no cambia `estado` salvo `activa → finalizada`, ni
 idempotentes, una baja con árboles rechazada sola, alta de especie inexistente,
 cambios de web y teléfono en especies distintas que conviven, `orden_visual`
 alfabético, y `sync_subgroup` re-habilitando la especie de un árbol que sube
-(058, #635).
+(058, #635). `37` `aplicar_cambios_tecnicos`: gates de rol, organización y
+estado (una finalizada admite, una archivada no), altas y bajas idempotentes,
+un alta concurrente que no pisa las demás, técnico inactivo o de otra
+organización rechazado solo con su motivo, la baja no toca la membresía admin
+(059, #636).
 
 ## Hallazgo fuera de alcance (no corregido)
 
