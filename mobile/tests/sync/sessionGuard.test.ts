@@ -16,7 +16,8 @@ jest.mock('../../src/supabase/auth', () => ({ readCachedUserId: jest.fn() }));
 
 const { supabase } = require('../../src/supabase/client');
 const { readCachedUserId } = require('../../src/supabase/auth');
-import { ensureServerSession, SessionExpiredError } from '../../src/services/sync/sessionGuard';
+import { AuthApiError, AuthRetryableFetchError } from '@supabase/supabase-js';
+import { ensureServerSession, exigirSesionDelServidor, SessionExpiredError } from '../../src/services/sync/sessionGuard';
 import { esTimeout, MARCA_DE_TIMEOUT } from '../../src/supabase/fetchConTimeout';
 
 const getSession = supabase.auth.getSession as jest.Mock;
@@ -123,5 +124,38 @@ describe('ensureServerSession — timeout vs sesión vencida', () => {
     refreshSession.mockResolvedValue({ error: { message: 'Invalid Refresh Token' }, data: { session: null } });
 
     await expect(ensureServerSession()).rejects.toBeInstanceOf(SessionExpiredError);
+  });
+});
+
+/** Una falla de red en el refresh no es una sesión vencida: no se pide re-login (#668). */
+describe('ensureServerSession — falla de red en el refresh', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    getSession.mockResolvedValue({ data: { session: { expires_at: PAST, user: USUARIO } } });
+  });
+
+  it('un AuthRetryableFetchError se relanza tal cual, sin SessionExpiredError', async () => {
+    const red = new AuthRetryableFetchError('Network request failed', 0);
+    refreshSession.mockResolvedValue({ error: red, data: { session: null } });
+
+    const fallo = await ensureServerSession().catch((e) => e);
+
+    expect(fallo).toBe(red);
+    expect(fallo).not.toBeInstanceOf(SessionExpiredError);
+  });
+
+  it('exigirSesionDelServidor no lo convierte en "Iniciá sesión…"', async () => {
+    refreshSession.mockResolvedValue({ error: new AuthRetryableFetchError('Network request failed', 0), data: { session: null } });
+
+    const fallo = await exigirSesionDelServidor('finalizar la plantación').catch((e) => e);
+
+    expect(fallo.message).toBe('Network request failed');
+  });
+
+  it('un rechazo del server (AuthApiError) sigue siendo sesión vencida', async () => {
+    refreshSession.mockResolvedValue({ error: new AuthApiError('Invalid Refresh Token', 400, 'refresh_token_not_found'), data: { session: null } });
+
+    await expect(exigirSesionDelServidor('finalizar la plantación'))
+      .rejects.toThrow('Iniciá sesión con conexión para finalizar la plantación.');
   });
 });

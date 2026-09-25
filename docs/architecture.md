@@ -144,11 +144,13 @@ sesión del SDK de la cuenta cacheada corta con `SessionExpiredError` antes de
 leer, porque una lectura anónima vuelve vacía por RLS y el pull borraría datos
 locales. Las escrituras que el usuario dispara fuera del sync también pasan por
 el guard: editar la plantación, guardar especies y asignar técnicos quedan
-pendientes para el sync, y finalizar, reabrir y quitar técnicos piden iniciar
-sesión con conexión. El perfil cacheado (`PerfilCacheadoService`) guarda el
+pendientes para el sync; finalizar, reabrir, quitar técnicos y el
+pull-to-refresh piden iniciar sesión con conexión. Un timeout o una falla de
+red al refrescar la sesión no cuentan como sesión vencida: se reportan como
+problema de conexión. El perfil cacheado (`PerfilCacheadoService`) guarda el
 userId de su dueño y se descarta si no coincide con la cuenta activa. Un perfil
 anterior a #658, sin dueño, se adopta solo si hay tokens cacheados y su email es
-el del último login online.
+el del último login online, que se cachea con los tokens sin depender del rol.
 
 ---
 

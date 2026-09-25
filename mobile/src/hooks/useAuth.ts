@@ -105,8 +105,23 @@ async function sesionOfflinePara(userId: string): Promise<SesionCacheada> {
 export const CUENTA_DESACTIVADA = 'cuenta-desactivada' as const;
 type RolObtenido = Role | typeof CUENTA_DESACTIVADA | null;
 
+type SesionOnline = { access_token: string; refresh_token: string; user: { id: string; email?: string } };
+
+/**
+ * Cachea la cuenta de una sesión online: tokens, userId y email. El email va sin
+ * esperar al rol: si esa consulta falla quedaría el de la cuenta anterior, y el
+ * perfil legado de esa cuenta se adoptaría con el userId de esta (#668).
+ */
+async function cachearSesionOnline(session: SesionOnline): Promise<void> {
+  await persistSession(session);
+  await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
+  const { email } = session.user;
+  if (email) await SecureStore.setItemAsync(EMAIL_KEY, email);
+  else await SecureStore.deleteItemAsync(EMAIL_KEY);
+}
+
 /** Trae el rol de Supabase profiles y lo cachea; si falla/timeoutea, cae al rol cacheado. Solo se llama online. */
-async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObtenido> {
+async function fetchAndCacheRole(userId: string): Promise<RolObtenido> {
   try {
     const { data: profile } = await withTimeout(
       supabase.from('profiles').select('rol, activo').eq('id', userId).single(),
@@ -117,7 +132,6 @@ async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObt
     }
     if (profile?.rol) {
       await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
-      if (email) await SecureStore.setItemAsync(EMAIL_KEY, email);
       return profile.rol as Role;
     }
   } catch {
@@ -174,9 +188,8 @@ export function useAuth() {
           try {
             const { data: { session: supabaseSession } } = await supabase.auth.getSession();
             if (supabaseSession) {
-              await persistSession(supabaseSession);
-              await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
-              const cachedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
+              await cachearSesionOnline(supabaseSession);
+              const cachedRole = await fetchAndCacheRole(supabaseSession.user.id);
               if (cachedRole === CUENTA_DESACTIVADA) {
                 await purgarSesionDesactivada();
                 restored = { session: null, role: null };
@@ -212,9 +225,8 @@ export function useAuth() {
         if (initializing.current) return;
 
         if (event === 'SIGNED_IN' && supabaseSession) {
-          await persistSession(supabaseSession);
-          await SecureStore.setItemAsync(USER_ID_KEY, supabaseSession.user.id);
-          const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id, supabaseSession.user.email ?? '');
+          await cachearSesionOnline(supabaseSession);
+          const fetchedRole = await fetchAndCacheRole(supabaseSession.user.id);
 
           if (fetchedRole === CUENTA_DESACTIVADA) {
             await purgarSesionDesactivada();
@@ -277,11 +289,10 @@ export function useAuth() {
 
   /** Persiste + cachea sesión tras un signIn online exitoso; retorna false si la cuenta está desactivada (no cachea nada). */
   async function persistOnlineSession(email: string, password: string, session: any): Promise<boolean> {
-    await persistSession(session);
-    await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
+    await cachearSesionOnline(session);
     await syncAutoRefresh(true);
 
-    const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '');
+    const userRole = await fetchAndCacheRole(session.user.id);
     if (userRole === CUENTA_DESACTIVADA) return false;
     await cacheCredential(email, password, userRole ?? ROL.tecnico, session.user.id);
     await saveLastOnlineLogin();

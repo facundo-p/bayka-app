@@ -30,6 +30,7 @@ const USER_ID_KEY = 'user_id';
 const ROLE_KEY = 'user_role';
 const ACCESS_TOKEN_KEY = 'supabase_access_token';
 const SDK_KEY = 'sb-proyecto-auth-token';
+const EMAIL_KEY = 'last_email';
 
 const A = { email: 'a@bayka.com', password: 'passA', id: 'user-a', rol: 'admin' };
 const B = { email: 'b@bayka.com', password: 'passB', id: 'user-b', rol: 'tecnico' };
@@ -51,7 +52,10 @@ beforeEach(() => {
   });
 });
 
-async function loginOnline(cuenta: Cuenta) {
+/** Un rol que no llega (timeout o error) cae al rol cacheado. */
+const ROL_SIN_RESPUESTA = () => Promise.reject(new Error('timeout'));
+
+async function loginOnline(cuenta: Cuenta, perfil = () => Promise.resolve({ data: { rol: cuenta.rol, activo: true }, error: null })) {
   setOnline();
   sdkKeys = [SDK_KEY];
   (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
@@ -61,7 +65,7 @@ async function loginOnline(cuenta: Cuenta) {
   (supabase.from as jest.Mock).mockReturnValue({
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
-    single: jest.fn().mockResolvedValue({ data: { rol: cuenta.rol, activo: true }, error: null }),
+    single: jest.fn().mockImplementation(perfil),
   });
   const { result } = renderHook(() => useAuth());
   await act(async () => { await result.current.signIn(cuenta.email, cuenta.password); });
@@ -169,5 +173,16 @@ describe('login offline en un celular compartido (#658)', () => {
     await act(async () => { await result.current.signOut(); });
 
     expect(await readSesionCacheada()).toBeNull();
+  });
+});
+
+/** El email cacheado identifica la cuenta de los tokens: no puede quedar el de la anterior (#668). */
+describe('email de la cuenta online', () => {
+  it('se cachea aunque el rol no llegue', async () => {
+    await loginOnline(A);
+    await loginOnline(B, ROL_SIN_RESPUESTA);
+
+    expect(store.get(EMAIL_KEY)).toBe(B.email);
+    expect(store.get(USER_ID_KEY)).toBe(B.id);
   });
 });
