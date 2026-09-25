@@ -82,6 +82,8 @@ export const parcelas = sqliteTable('parcelas', {
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull(),
   deletedAt: text('deleted_at'),
+  // Solo local (#654): userId de quien la creó acá, mientras el servidor no la tiene.
+  altaPendienteDe: text('alta_pendiente_de'),
 }, (t) => ({
   // PARTIAL unique indexes: tombstones (deleted_at NOT NULL) quedan excluidos del
   // uniqueness check, para poder reusar nombre/codigo de parcelas borradas.

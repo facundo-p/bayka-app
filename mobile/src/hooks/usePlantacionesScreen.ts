@@ -20,6 +20,7 @@ import type { Parcela } from '../repositories/ParcelaRepository';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { useIrAResolverCambios } from './useIrAResolverCambios';
+import { usePuedeEditarParcela } from './usePuedeEditarParcela';
 
 const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
@@ -27,6 +28,7 @@ export function usePlantacionesScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
   const irAResolverCambios = useIrAResolverCambios();
+  const puedeEditarParcela = usePuedeEditarParcela(routePrefix);
 
   const plantaciones = usePlantaciones();
   // Always call the hook (React rules of hooks), even for técnico role.
@@ -104,9 +106,10 @@ export function usePlantacionesScreen() {
   }, [router, routePrefix]);
 
   const handleParcelaInlineLongPress = useCallback((plantacionId: string, parcela: ParcelaWithStats) => {
+    if (!puedeEditarParcela(parcela)) return;
     setEditingParcelaPlantacionId(plantacionId);
     setEditingParcela(parcela);
-  }, []);
+  }, [puedeEditarParcela]);
 
   const closeEditParcela = useCallback(() => {
     setEditingParcela(null);
@@ -205,6 +208,7 @@ export function usePlantacionesScreen() {
     handleToggleExpand,
     handleParcelaInlinePress,
     handleParcelaInlineLongPress,
+    puedeEditarParcela,
     editingParcela,
     editingParcelaPlantacionId,
     closeEditParcela,

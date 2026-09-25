@@ -83,7 +83,10 @@ afterAll(() => {
  */
 function mockSupabaseForSuccessfulPush(opts?: { duplicadaCount?: number }) {
   const plantationsInsert = jest.fn().mockResolvedValue({ error: null });
-  const parcelasUpsert = jest.fn().mockResolvedValue({ data: null, error: null });
+  // Sin rol cacheado el push sube solo altas y pide la representación con `.select`.
+  const parcelasUpsert = jest.fn(() => Object.assign(Promise.resolve({ data: null, error: null }), {
+    select: jest.fn().mockResolvedValue({ data: [{ id: 'parcela' }], error: null }),
+  }));
   const duplicadaChain = {
     ilike: jest.fn().mockReturnThis(),
     neq: jest.fn().mockResolvedValue({ count: opts?.duplicadaCount ?? 0, error: null }),
@@ -126,6 +129,7 @@ describe('createPlantationWithDefaultParcela — local-first (offline)', () => {
     expect(parcelaRows[0].codigo).toBe('P1');
     expect(parcelaRows[0].descripcion).toBeNull();
     expect(parcelaRows[0].pendingSync).toBe(true);
+    expect(parcelaRows[0].altaPendienteDe).toBe('user-admin-1');
 
     const membresias = await mockTestDb.select().from(plantationUsers).where(eq(plantationUsers.plantationId, r.id));
     expect(membresias).toHaveLength(1);

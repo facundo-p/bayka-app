@@ -277,8 +277,16 @@ Las parcelas son la excepción: suben por upsert de PostgREST, no por RPC, y RLS
 responde `42501` sin motivo. La app lo traduce con el estado local de la
 plantación; si está activa, queda como `PERMISSION`. Editar y tombstonear una
 parcela es de admin y superadmin (056, #640): el técnico sube solo altas, con
-`ON CONFLICT DO NOTHING`, y una edición suya que el server ignora se reemplaza
-con la versión del server en el pull siguiente. El rol cacheado que usa el
+`ON CONFLICT DO NOTHING`. El push pide la representación: si vuelve vacía, el
+server ya tenía la parcela e ignoró la edición; se loguea, se marca subida y el
+pull siguiente trae la versión del server. Dejarla pendiente la trabaría para
+siempre, porque DO NOTHING nunca la aplica y el pull saltea lo pendiente. Antes
+de subirla, la parcela que creó sí la edita y la borra (#654): la marca local
+`alta_pendiente_de` guarda quién la creó en el dispositivo hasta que el push o
+el pull confirman que el server la tiene; editada sube igual como alta, y
+borrada por el técnico se va del dispositivo sin tombstone (previa
+confirmación). El admin la borra siempre con tombstone, por si el alta ya había
+llegado sin confirmarse. El rol cacheado que usa el
 cliente para esta decisión se refresca en cada arranque online: un cambio de
 rol tarda hasta ese refresh en aplicarse en el celular, aunque el server ya lo
 exige siempre.

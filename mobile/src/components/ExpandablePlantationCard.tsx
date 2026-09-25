@@ -18,10 +18,11 @@ type Props = {
   onToggleExpanded: () => void;
   onParcelaPress: (parcelaId: string) => void;
   onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
+  parcelaEditable?: (parcela: ParcelaWithStats) => boolean;
   // Pass-through to PlantationCard
   cardProps: Omit<
     React.ComponentProps<typeof PlantationCard>,
-    'parcelasCount' | 'parcelas' | 'expanded' | 'onToggleExpanded' | 'onParcelaPress' | 'onParcelaLongPress'
+    'parcelasCount' | 'parcelas' | 'expanded' | 'onToggleExpanded' | 'onParcelaPress' | 'onParcelaLongPress' | 'parcelaEditable'
   >;
 };
 
@@ -31,6 +32,7 @@ export default function ExpandablePlantationCard({
   onToggleExpanded,
   onParcelaPress,
   onParcelaLongPress,
+  parcelaEditable,
   cardProps,
 }: Props) {
   const { parcelas } = useParcelas(plantacionId);
@@ -43,6 +45,7 @@ export default function ExpandablePlantationCard({
       onToggleExpanded={onToggleExpanded}
       onParcelaPress={onParcelaPress}
       onParcelaLongPress={onParcelaLongPress}
+      parcelaEditable={parcelaEditable}
     />
   );
 }

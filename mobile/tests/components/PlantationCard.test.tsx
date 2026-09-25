@@ -229,3 +229,30 @@ describe('PlantationCard con pendientes varados (#638)', () => {
     expect(getByText(/listos para sincronizar/)).toBeTruthy();
   });
 });
+
+describe('PlantationCard parcelas inline: long-press por parcela (#654)', () => {
+  const parcela = (id: string, nombre: string) => ({
+    id, plantacionId: 'p-1', nombre, codigo: id.toUpperCase(), descripcion: null, deletedAt: null,
+    altaPendienteDe: null, createdAt: '2026-01-01', updatedAt: '2026-01-01', pendingSync: false,
+    pendingSyncBelow: false, gruposCount: 0, treesCount: 0, nnCount: 0,
+  });
+  const PROPIA = parcela('pa', 'Propia');
+  const AJENA = parcela('pb', 'Ajena');
+
+  it('solo entrega el long-press a las parcelas editables', () => {
+    const onParcelaLongPress = jest.fn();
+    const { getByText } = render(
+      <PlantationCard
+        {...makeProps({
+          expanded: true, onToggleExpanded: jest.fn(), parcelas: [PROPIA, AJENA], parcelasCount: 2,
+          onParcelaLongPress, parcelaEditable: (p) => p.id === PROPIA.id,
+        })}
+      />
+    );
+
+    fireEvent(getByText('Ajena'), 'longPress');
+    expect(onParcelaLongPress).not.toHaveBeenCalled();
+    fireEvent(getByText('Propia'), 'longPress');
+    expect(onParcelaLongPress).toHaveBeenCalledWith(PROPIA);
+  });
+});

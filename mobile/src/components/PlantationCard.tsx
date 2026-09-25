@@ -52,6 +52,8 @@ type Props = {
   parcelas?: ParcelaWithStats[];
   onParcelaPress?: (parcelaId: string) => void;
   onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
+  /** Qué parcelas admiten el long-press; sin él, todas. */
+  parcelaEditable?: (parcela: ParcelaWithStats) => boolean;
 };
 
 function ExpandRow({
@@ -86,10 +88,12 @@ function ExpandedSection({
   parcelas,
   onParcelaPress,
   onParcelaLongPress,
+  parcelaEditable = () => true,
 }: {
   parcelas: ParcelaWithStats[];
   onParcelaPress?: (parcelaId: string) => void;
   onParcelaLongPress?: (parcela: ParcelaWithStats) => void;
+  parcelaEditable?: (parcela: ParcelaWithStats) => boolean;
 }) {
   if (parcelas.length === 0) {
     return (
@@ -108,7 +112,7 @@ function ExpandedSection({
             parcela={p}
             variant="inline"
             onPress={() => onParcelaPress?.(p.id)}
-            onLongPress={onParcelaLongPress ? () => onParcelaLongPress(p) : undefined}
+            onLongPress={onParcelaLongPress && parcelaEditable(p) ? () => onParcelaLongPress(p) : undefined}
           />
           {idx < parcelas.length - 1 && <View style={styles.expandedDivider} />}
         </View>
@@ -259,6 +263,7 @@ export default function PlantationCard({
   parcelas,
   onParcelaPress,
   onParcelaLongPress,
+  parcelaEditable,
 }: Props) {
   const accentColor =
     esFinalizada({ estado }) ? colors.stateFinalizada : colors.stateActiva;
@@ -336,6 +341,7 @@ export default function PlantationCard({
                 parcelas={parcelas}
                 onParcelaPress={onParcelaPress}
                 onParcelaLongPress={onParcelaLongPress}
+                parcelaEditable={parcelaEditable}
               />
             </Animated.View>
           )}

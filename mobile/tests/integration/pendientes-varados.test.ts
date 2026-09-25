@@ -90,7 +90,8 @@ async function sembrarConPendientes(motivo: 'sin-permiso' | 'finalizada' = 'sin-
   await mockTestDb.insert(altasDeTecnicosPendientes).values({ plantacionId: P, userId: TECNICO, nombre: 'Ana', asignadoEn: '2026-09-20' });
   await mockTestDb.insert(parcelas).values([
     createTestParcela({ id: 'parc-subida', plantacionId: P, codigo: 'P1', nombre: 'Uno', pendingSync: false }),
-    createTestParcela({ id: 'parc-editada', plantacionId: P, codigo: 'P3', nombre: 'Tres', pendingSync: true }),
+    // Marcada como alta sin subir aunque su grupo ya subió: el push llegó sin confirmarse (#654).
+    { ...createTestParcela({ id: 'parc-editada', plantacionId: P, codigo: 'P3', nombre: 'Tres', pendingSync: true }), altaPendienteDe: TECNICO },
     createTestParcela({ id: 'parc-nueva', plantacionId: P, codigo: 'P2', nombre: 'Dos', pendingSync: true }),
   ]);
   await mockTestDb.insert(groups).values([
@@ -191,6 +192,7 @@ describe('Descartar una plantación que existe en el server', () => {
     expect(await ids(trees)).toEqual(['t-de-editada', 't-foto-sin-subir', 't-foto-subida']);
     const [editada] = await mockTestDb.select().from(parcelas).where(eq(parcelas.id, 'parc-editada'));
     expect(editada.pendingSync).toBe(false);
+    expect(editada.altaPendienteDe).toBeNull();
     expect(await mockTestDb.select().from(borradosPendientes)).toEqual([]);
   });
 

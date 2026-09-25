@@ -162,7 +162,7 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
 **Archivo:** `services/sync/pushService.ts`
 
 - `pushBorrados(plantacionId)` manda los borrados anotados por el RPC `sincronizar_borrados` (#467) y las fotos quitadas por `quitar_fotos_arboles` (#498). Cada RPC recibe solo sus tipos.
-- `uploadSyncableParcelas(plantacionId)` hace upsert de las parcelas con `pendingSync = true`. Para un técnico el upsert es `ignoreDuplicates` (solo altas, #640). Un grupo cuya parcela no subió se reporta como `PARCELA_PENDING`.
+- `uploadSyncableParcelas(plantacionId)` hace upsert de las parcelas con `pendingSync = true`. Para un técnico el upsert es `ignoreDuplicates` (solo altas, #640). El push confirmado y el pull de una parcela que el server ya tiene limpian `alta_pendiente_de`, la marca local con la que el técnico edita y borra su alta sin subir (#654). Un grupo cuya parcela no subió se reporta como `PARCELA_PENDING`.
 
 ### Paso 3: Upload de grupos
 

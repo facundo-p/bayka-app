@@ -1,6 +1,6 @@
 // Alta, edición y borrado de parcela quedan deshabilitados con la plantación
 // finalizada o archivada (#469, #477), mismo criterio que Grupos. Editar y
-// borrar además son de admin: el técnico solo crea (#640).
+// borrar además son de admin (#640), salvo el alta propia sin subir (#654).
 //
 // Son aserciones sobre el fuente, no sobre el render: la pantalla arrastra router,
 // modales y varias queries. El comportamiento del guard está en
@@ -31,16 +31,17 @@ describe('ParcelasScreen — gating por estado finalizada', () => {
   });
 
   it('las guardas están en los handlers, no solo en el render', () => {
-    expect(screen).toMatch(/function openEdit[\s\S]{0,80}if \(!puedeEditar\) return;/);
+    expect(screen).toMatch(/function openEdit[\s\S]{0,80}if \(!puedeEditar\(p\)\) return;/);
     expect(screen).toMatch(/function openCreate[\s\S]{0,80}if \(!plantacionEditable\) return;/);
   });
 
   it('no entrega onLongPress —la puerta a editar y eliminar— si no es editable', () => {
-    expect(screen).toMatch(/onLongPress=\{puedeEditar\s*\?\s*\(\)\s*=>\s*openEdit\(item\)\s*:\s*undefined\}/);
+    expect(screen).toMatch(/onLongPress=\{puedeEditar\(item\)\s*\?\s*\(\)\s*=>\s*openEdit\(item\)\s*:\s*undefined\}/);
   });
 
-  it('editar exige plantación editable y ruta de admin; crear, solo plantación editable', () => {
-    expect(screen).toMatch(/const puedeEditar = plantacionEditable && puedeEditarParcelas\(routePrefix\);/);
+  it('editar exige plantación editable y el predicado por parcela; crear, solo plantación editable', () => {
+    expect(screen).toMatch(/const puedeEditarParcela = usePuedeEditarParcela\(routePrefix\);/);
+    expect(screen).toMatch(/const puedeEditar = \(p: Parcela\) => plantacionEditable && puedeEditarParcela\(p\);/);
     expect(screen).toMatch(/function openCreate[\s\S]{0,80}if \(!plantacionEditable\) return;/);
   });
 });
@@ -50,7 +51,14 @@ describe('PlantacionesScreen — parcela inline del card expandido', () => {
 
   // Segunda entrada a la misma edición: desde el listado de plantaciones, sin
   // pasar por la pantalla de parcelas.
-  it('no entrega onParcelaLongPress sobre una plantación finalizada ni a un técnico', () => {
-    expect(screen).toMatch(/onParcelaLongPress=\{puedeEditarParcelas\(s\.routePrefix\) && plantacionEsEditable\(item\)/);
+  it('no entrega onParcelaLongPress sobre una plantación finalizada', () => {
+    expect(screen).toMatch(/onParcelaLongPress=\{plantacionEsEditable\(item\)/);
+  });
+
+  it('filtra el long-press por parcela con el mismo predicado que ParcelasScreen', () => {
+    expect(screen).toMatch(/parcelaEditable=\{s\.puedeEditarParcela\}/);
+    const hook = readSrc('hooks/usePlantacionesScreen.ts');
+    expect(hook).toMatch(/const puedeEditarParcela = usePuedeEditarParcela\(routePrefix\);/);
+    expect(hook).toMatch(/handleParcelaInlineLongPress[\s\S]{0,120}if \(!puedeEditarParcela\(parcela\)\) return;/);
   });
 });

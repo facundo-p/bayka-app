@@ -1,7 +1,7 @@
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
-import { eq, and, sql, inArray, notInArray } from 'drizzle-orm';
+import { eq, and, sql, inArray, notInArray, isNotNull } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
@@ -192,10 +192,21 @@ async function parcelasLocales(plantacionId: string): Promise<Map<string, Parcel
 }
 
 async function escribirLoteDeParcelas(tx: Tx, lote: RemoteParcela[], locales: Map<string, ParcelaLocal>): Promise<void> {
+  await confirmarAltas(tx, lote);
   const aEscribir = lote.filter((remota) => !locales.get(remota.id)?.pendingSync);
   if (aEscribir.length === 0) return;
   await upsertParcelas(tx, aEscribir);
   await recalcularCodigosCambiados(tx, aEscribir, locales);
+}
+
+/**
+ * Lo que el servidor ya tiene deja de ser un alta sin subir, aunque siga pendiente: cubre un push
+ * que llegó pero no alcanzó a marcarse (#654). Sin esto el técnico seguiría editándola.
+ */
+async function confirmarAltas(tx: Tx, lote: RemoteParcela[]): Promise<void> {
+  await tx.update(parcelas)
+    .set({ altaPendienteDe: null })
+    .where(and(inArray(parcelas.id, lote.map((remota) => remota.id)), isNotNull(parcelas.altaPendienteDe)));
 }
 
 async function upsertParcelas(tx: Tx, remotas: RemoteParcela[]): Promise<void> {

@@ -1,5 +1,4 @@
 import { ESTADO_PLANTACION, ESTADO_GRUPO, esArchivada, esEliminadaEnServidor } from '../constants/estados';
-import { esRutaAdmin } from '../constants/rutas';
 
 /** Lo que decide si una plantación admite cambios desde la app. */
 export interface EstadoDeEdicionDePlantacion {
@@ -8,13 +7,29 @@ export interface EstadoDeEdicionDePlantacion {
   eliminadaEnServidorEn: string | null;
 }
 
+/** Quién intenta editar: rol de admin o superadmin, y userId de la sesión. */
+export interface EditorDeParcela {
+  esAdmin: boolean;
+  userId: string | null;
+}
+
+/** El servidor todavía no la tiene: no hay copia de la que recuperarla. */
+export function nuncaSubida(parcela: { altaPendienteDe: string | null }): boolean {
+  return parcela.altaPendienteDe != null;
+}
+
+/** La parcela la creó `userId` en este dispositivo y su alta todavía no llegó al servidor. */
+export function esAltaPropiaSinSubir(parcela: { altaPendienteDe: string | null }, userId: string | null): boolean {
+  return userId != null && parcela.altaPendienteDe === userId;
+}
+
 /**
- * Editar y borrar parcelas es de admin y superadmin (#640): único predicado de UI
- * para esa regla, que usan ParcelasScreen y PlantacionesScreen. `ParcelaRepository.
- * puedeEditarParcelas` aplica la misma regla contra el rol cacheado, no la ruta.
+ * Editar y borrar una parcela es de admin y superadmin (#640), salvo la que el técnico
+ * creó y todavía no subió: el servidor nunca la vio y el push la sube como alta (#654).
+ * Único predicado para esa regla: lo usan `ParcelaRepository` y las pantallas.
  */
-export function puedeEditarParcelas(routePrefix: string): boolean {
-  return esRutaAdmin(routePrefix);
+export function puedeEditarParcela(parcela: { altaPendienteDe: string | null }, editor: EditorDeParcela): boolean {
+  return editor.esAdmin || esAltaPropiaSinSubir(parcela, editor.userId);
 }
 
 /**

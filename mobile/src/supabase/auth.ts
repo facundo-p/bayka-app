@@ -9,8 +9,9 @@ const ACCESS_TOKEN_KEY = 'supabase_access_token';
 const REFRESH_TOKEN_KEY = 'supabase_refresh_token';
 const ROLE_KEY = 'user_role';
 const EMAIL_KEY = 'last_email';
+const USER_ID_KEY = 'user_id';
 
-export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY };
+export { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, ROLE_KEY, EMAIL_KEY, USER_ID_KEY };
 
 export async function persistSession(session: {
   access_token: string;
@@ -43,4 +44,9 @@ export async function readCachedSession(): Promise<{ access_token: string; refre
 export async function readCachedRole(): Promise<Role | null> {
   const rol = await SecureStore.getItemAsync(ROLE_KEY);
   return rol != null && ROLES_VALIDOS.includes(rol) ? (rol as Role) : null;
+}
+
+/** userId cacheado al loguear; null sin sesión. Lo usan los repositorios, que no tienen hooks. */
+export async function readCachedUserId(): Promise<string | null> {
+  return SecureStore.getItemAsync(USER_ID_KEY);
 }
