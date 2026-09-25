@@ -32,7 +32,6 @@ jest.mock('expo-crypto', () => ({
 
 import {
   createPlantationLocally,
-  saveSpeciesConfigLocally,
 } from '../../src/repositories/PlantationRepository';
 
 import { db } from '../../src/database/client';
@@ -149,53 +148,6 @@ describe('PlantationRepository — offline functions', () => {
       await expect(
         Promise.resolve(mockDb.insert(null as any).values(subgroupInsertValues))
       ).resolves.not.toThrow();
-    });
-  });
-
-  // ─── saveSpeciesConfigLocally ─────────────────────────────────────────────
-
-  describe('saveSpeciesConfigLocally (OFPL-02)', () => {
-    it('Test 5: deletes existing species and inserts new items', async () => {
-      const items = [
-        { especieId: 'sp-1', ordenVisual: 0 },
-        { especieId: 'sp-2', ordenVisual: 1 },
-      ];
-
-      await saveSpeciesConfigLocally('plantation-1', items);
-
-      expect(mockDb.delete).toHaveBeenCalled();
-      expect(mockDb.insert).toHaveBeenCalled();
-      const insertResult = (mockDb.insert as jest.Mock).mock.results[0].value;
-      expect(insertResult.values).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({ plantacionId: 'plantation-1', especieId: 'sp-1', ordenVisual: 0 }),
-          expect.objectContaining({ plantacionId: 'plantation-1', especieId: 'sp-2', ordenVisual: 1 }),
-        ])
-      );
-    });
-
-    it('Test 6: with empty items — calls delete but NOT insert, still calls notifyDataChanged', async () => {
-      await saveSpeciesConfigLocally('plantation-1', []);
-
-      expect(mockDb.delete).toHaveBeenCalled();
-      expect(mockDb.insert).not.toHaveBeenCalled();
-      expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
-    });
-
-    it('Test 7: does NOT call supabase (pure local write)', async () => {
-      const supabase = require('../../src/supabase/client').supabase;
-      const items = [{ especieId: 'sp-1', ordenVisual: 0 }];
-
-      await saveSpeciesConfigLocally('plantation-1', items);
-
-      expect(supabase.from).not.toHaveBeenCalled();
-    });
-
-    it('Test 8: calls notifyDataChanged after writes', async () => {
-      const items = [{ especieId: 'sp-1', ordenVisual: 0 }];
-      await saveSpeciesConfigLocally('plantation-1', items);
-
-      expect(mockNotifyDataChanged).toHaveBeenCalledTimes(1);
     });
   });
 });

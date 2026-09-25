@@ -22,6 +22,14 @@ import {
   desdeSnapshot,
 } from '../../utils/camposDePlantacion';
 import { mismoLugarYPeriodo } from '../../utils/duplicadoDePlantacion';
+import {
+  aplicarCambiosEnServidor,
+  cambiosRechazados,
+  uploadPendingSpeciesChanges,
+  type RespuestaDeCambios,
+} from './cambiosDeEspecies';
+import { getCambiosPendientes, getEspeciesPorId, registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
+import { CAMBIO_DE_ESPECIE } from '../../constants/cambioDeEspecie';
 
 type PlantacionLocal = typeof plantations.$inferSelect;
 
@@ -87,8 +95,43 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
 }
 
 /**
+ * Sus especies van como altas: si un intento anterior ya subió la plantación y la web le
+ * sumó especies, no se pisan. Las bajas anotadas desde ese intento van como bajas. Sin
+ * especies la plantación no es usable: un fallo la deja pendiente para reintentar (#632).
+ */
+/** Especies de la alta subidas: con las bajas que el server rechazó por árboles, ya re-habilitadas. */
+type EspeciesDeAlta = { especiesConArboles: string[] };
+
+const esFalloDeAlta = (r: FalloDeAlta | EspeciesDeAlta): r is FalloDeAlta => 'error' in r;
+
+async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | EspeciesDeAlta> {
+  const locales = await db
+    .select({ especieId: plantationSpecies.especieId })
+    .from(plantationSpecies)
+    .where(eq(plantationSpecies.plantacionId, plantacionId));
+  const bajas = (await getCambiosPendientes(plantacionId)).filter((c) => c.tipo === CAMBIO_DE_ESPECIE.baja);
+  if (locales.length === 0 && bajas.length === 0) return { especiesConArboles: [] };
+  let respuesta: RespuestaDeCambios;
+  try {
+    respuesta = await aplicarCambiosEnServidor(plantacionId, {
+      altas: locales.map((ps) => ps.especieId),
+      bajas: bajas.map((c) => c.especieId),
+    });
+  } catch (e: any) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error('Upload plantation_species failed:', plantacionId, e?.message);
+    return classifyServerError(e);
+  }
+  if (!respuesta?.success) return falloDeAltaRechazada(respuesta?.error ?? '');
+  const rechazados = cambiosRechazados(respuesta.rechazadas ?? []);
+  await registrarRespuesta(plantacionId, bajas, rechazados);
+  const conArboles = rechazados.filter((c) => c.tipo === CAMBIO_DE_ESPECIE.baja).map((c) => c.especieId);
+  return { especiesConArboles: (await getEspeciesPorId(conArboles)).map((e) => e.nombre) };
+}
+
+/**
  * Sube plantaciones creadas offline (pendingSync=true): insert idempotente (si ya existe, update)
- * + upsert de plantation_species + pendingSync=false, solo si las dos subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
+ * + altas de sus especies + pendingSync=false, solo si las dos subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
  * parcelas/grupos (FK), así que el error debe llegar al usuario, no tragarse.
  */
 export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
@@ -110,28 +153,10 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         continue;
       }
 
-      const localPs = await db
-        .select()
-        .from(plantationSpecies)
-        .where(eq(plantationSpecies.plantacionId, p.id));
-
-      if (localPs.length > 0) {
-        const { error: psError } = await supabase
-          .from('plantation_species')
-          .upsert(
-            localPs.map((ps) => ({
-              plantation_id: ps.plantacionId,
-              species_id: ps.especieId,
-              orden_visual: ps.ordenVisual,
-            }))
-          );
-        // Sin especies la plantación no es usable: queda pendiente para reintentar (#632).
-        if (psError) {
-          syncLog.error('Upload plantation_species failed:', p.id, psError.message);
-          const { error: code, detail } = classifyServerError(psError);
-          results.push({ success: false, plantacionId: p.id, nombre: p.lugar, error: code, detail });
-          continue;
-        }
+      const especies = await subirEspeciesDeAlta(p.id);
+      if (esFalloDeAlta(especies)) {
+        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...especies });
+        continue;
       }
 
       await db
@@ -141,6 +166,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
       results.push({
         success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await hayOtraEnServidor(p), cambiosPorResolver,
+        ...(especies.especiesConArboles.length > 0 ? { especiesConArboles: especies.especiesConArboles } : {}),
       });
     } catch (e: any) {
       relanzarSiEsCancelacion(e);
@@ -220,5 +246,8 @@ export async function runGlobalPreSteps(): Promise<SyncPlantationResult[]> {
   let ediciones: SyncPlantationResult[] = [];
   try { altas = await uploadOfflinePlantations(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload offline plantations failed:', e); }
   try { ediciones = await uploadPendingEdits(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload pending edits failed:', e); }
-  return [...altas, ...ediciones];
+  // Antes del pull: así baja la lista de especies ya con lo de este teléfono.
+  let especies: SyncPlantationResult[] = [];
+  try { especies = await uploadPendingSpeciesChanges(); } catch (e) { relanzarSiEsCancelacion(e); syncLog.error('Upload species changes failed:', e); }
+  return [...altas, ...ediciones, ...especies];
 }

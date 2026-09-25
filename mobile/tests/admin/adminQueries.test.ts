@@ -34,7 +34,7 @@ import { db } from '../../src/database/client';
 import { supabase } from '../../src/supabase/client';
 import { getResumenDePendientes } from '../../src/queries/catalogQueries';
 
-const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
 
 const mockDb = db as jest.Mocked<typeof db>;
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
@@ -83,6 +83,7 @@ describe('adminQueries', () => {
       ['fotos sin subir', { fotos: 2 }],
       ['parcelas pendientes', { parcelas: 1 }],
       ['borrados pendientes', { borrados: 3 }],
+      ['cambios de especies sin subir', { especies: 2 }],
     ])('canFinalize=false con %s aunque los grupos estén listos (#537)', async (_caso, pendiente) => {
       const pendientes = { ...SIN_PENDIENTES, ...pendiente };
       (getResumenDePendientes as jest.Mock).mockResolvedValue(pendientes);

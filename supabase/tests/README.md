@@ -101,7 +101,12 @@ queda sin efecto; admin y superadmin editan (056, #640). `35`
 (sin conflicto, mismo campo, campos distintos, mismo valor en los dos lados),
 valida como la web y rechaza finalizada, archivada, inexistente y sin permiso;
 el UPDATE directo ya no cambia `estado` salvo `activa → finalizada`, ni
-`organizacion_id`, `creado_por` o la auditoría `ultima_edicion` (057, #634).
+`organizacion_id`, `creado_por` o la auditoría `ultima_edicion` (057, #634). `36`
+`aplicar_cambios_especies`: gates de rol, organización y estado; altas y bajas
+idempotentes, una baja con árboles rechazada sola, alta de especie inexistente,
+cambios de web y teléfono en especies distintas que conviven, `orden_visual`
+alfabético, y `sync_subgroup` re-habilitando la especie de un árbol que sube
+(058, #635).
 
 ## Hallazgo fuera de alcance (no corregido)
 

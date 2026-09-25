@@ -144,7 +144,6 @@ export function usePlantacionesScreen() {
     setEditingPlantation(plantation);
   }, []);
 
-  const pendingSyncForSpecies = adminHook.plantationList?.find(p => p.id === configSpeciesPlantacionId)?.pendingSync;
 
   return {
     router,
@@ -215,7 +214,6 @@ export function usePlantacionesScreen() {
     configSpeciesPlantacionId,
     setConfigSpeciesPlantacionId,
     handleCloseConfigSpecies,
-    pendingSyncForSpecies,
     assignTechPlantacionId,
     setAssignTechPlantacionId,
   };

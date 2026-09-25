@@ -26,6 +26,7 @@ import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 import { asegurarEspecies } from './catalogoDeEspecies';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
+import { comoAltasYBajas, getCambiosPendientes } from '../../repositories/CambiosDeEspeciesRepository';
 import { recalcularSubIdsDeLaParcela } from '../../repositories/subIdsDeArboles';
 import { adoptarRenombres, gruposLocales, planDeRenombres, type GrupoLocal, type RemoteGroup } from './renombresDeGrupos';
 
@@ -468,11 +469,14 @@ async function pullPlantationSpecies(
   syncLog.info('Pull plantation_species:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
 
+  // Lo pendiente de subir manda sobre el server: un alta no se borra, una baja no vuelve (#635).
+  const { altas, bajas } = comoAltasYBajas(await getCambiosPendientes(plantacionId));
+  const sinBajas = all.filter((ps: any) => !bajas.includes(ps.species_id));
   // Fuera de la transacción del upsert: si se corta en el medio, el próximo pull lo completa.
-  await quitarEspeciesAusentes(plantacionId, all.map((ps: any) => ps.species_id));
-  if (all.length === 0) return;
+  await quitarEspeciesAusentes(plantacionId, [...sinBajas.map((ps: any) => ps.species_id), ...altas]);
+  if (sinBajas.length === 0) return;
 
-  const escribibles = await conEspecieLocal(all, DOWNLOAD_PHASE.especiesPlantacion);
+  const escribibles = await conEspecieLocal(sinBajas, DOWNLOAD_PHASE.especiesPlantacion);
   await enTransaccionPorLotes(escribibles, async (tx, lote) => {
       await tx.insert(plantationSpecies).values(lote.map((ps: any) => ({
         id: plantationSpeciesId(ps.plantation_id, ps.species_id),

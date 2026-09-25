@@ -30,25 +30,6 @@ export const soloEspeciesDelCatalogo = () =>
 const codigoDelCatalogo = (codigo: string | null | undefined) =>
   codigo && !esEspecieRecuperada(codigo) ? codigo : null;
 
-type EspecieConfigurada = { especieId: string; ordenVisual: number };
-
-/**
- * Suma a las especies elegidas las recuperadas que ya tenía la plantación. La configuración no
- * las muestra y guardar reemplaza la lista entera: sin esto se borrarían del server.
- */
-export function conservarEspeciesRecuperadas(
-  elegidas: EspecieConfigurada[],
-  actuales: (EspecieConfigurada & { codigo: string })[],
-): EspecieConfigurada[] {
-  const elegidasIds = new Set(elegidas.map((e) => e.especieId));
-  const recuperadas = actuales.filter((e) => esEspecieRecuperada(e.codigo) && !elegidasIds.has(e.especieId));
-  const siguiente = Math.max(-1, ...elegidas.map((e) => e.ordenVisual)) + 1;
-  return [
-    ...elegidas,
-    ...recuperadas.map((e, i) => ({ especieId: e.especieId, ordenVisual: siguiente + i })),
-  ];
-}
-
 /** Codigo que va en un SubID: una especie recuperada sube como NN, igual que una sin resolver. */
 export function codigoParaSubId(codigo: string | null | undefined): string {
   return codigoDelCatalogo(codigo) ?? UNKNOWN_SPECIES_CODE;

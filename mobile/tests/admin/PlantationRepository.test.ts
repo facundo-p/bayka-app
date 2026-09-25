@@ -41,7 +41,6 @@ import {
   FinalizePlantationPendientesError,
   reabrirPlantacion,
   ReabrirPlantacionLocalSyncError,
-  saveSpeciesConfig,
   assignTechnicians,
 } from '../../src/repositories/PlantationRepository';
 
@@ -125,7 +124,7 @@ describe('PlantationRepository', () => {
   // ─── finalizePlantation ───────────────────────────────────────────────────
 
   describe('finalizePlantation', () => {
-    const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+    const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
 
     beforeEach(() => {
       (getResumenDePendientes as jest.Mock).mockResolvedValue(SIN_PENDIENTES);
@@ -253,44 +252,6 @@ describe('PlantationRepository', () => {
   const OK = { data: { success: true } };
   const rechazo = (error: string) => ({ data: { success: false, error } });
 
-  describe('saveSpeciesConfig', () => {
-    it('reemplaza las especies con un solo RPC y sincroniza', async () => {
-      mockRpc(OK);
-
-      await saveSpeciesConfig('plantation-1', [
-        { especieId: 'species-1', ordenVisual: 0 },
-        { especieId: 'species-2', ordenVisual: 1 },
-      ]);
-
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('reemplazar_especies_plantacion', {
-        p_plantacion: 'plantation-1',
-        p_especies: [
-          { species_id: 'species-1', orden_visual: 0 },
-          { species_id: 'species-2', orden_visual: 1 },
-        ],
-      });
-      expect(mockSupabase.from).not.toHaveBeenCalled();
-      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-      expect(mockNotifyDataChanged).toHaveBeenCalled();
-    });
-
-    it('una especie que ya no existe → mensaje claro y no sincroniza', async () => {
-      mockRpc(rechazo('ESPECIE_INEXISTENTE'));
-
-      await expect(saveSpeciesConfig('plantation-1', [{ especieId: 'species-1', ordenVisual: 0 }]))
-        .rejects.toThrow('Alguna de las especies elegidas ya no existe en el servidor. Los cambios no se guardaron.');
-      expect(mockPullFromServer).not.toHaveBeenCalled();
-    });
-
-    it('una especie quitada que ya tiene árboles en el server se informa con mensaje claro', async () => {
-      mockRpc(rechazo('ESPECIE_CON_ARBOLES'));
-
-      await expect(saveSpeciesConfig('plantation-1', [{ especieId: 'species-1', ordenVisual: 0 }]))
-        .rejects.toThrow('Alguna de las especies que quitaste ya tiene árboles registrados en el servidor. Los cambios no se guardaron.');
-      expect(mockPullFromServer).not.toHaveBeenCalled();
-    });
-  });
-
   describe('assignTechnicians', () => {
     it('reemplaza los técnicos con un solo RPC y sincroniza', async () => {
       mockRpc(OK);
@@ -324,7 +285,7 @@ describe('PlantationRepository', () => {
     ])('%s → mensaje claro, sin escritura directa ni pull', async (codigo, mensaje) => {
       mockRpc(rechazo(codigo));
 
-      await expect(saveSpeciesConfig('plantation-1', [])).rejects.toThrow(mensaje);
+      await expect(assignTechnicians('plantation-1', [])).rejects.toThrow(mensaje);
       expect(mockSupabase.from).not.toHaveBeenCalled();
       expect(mockPullFromServer).not.toHaveBeenCalled();
     });
@@ -353,15 +314,6 @@ describe('PlantationRepository', () => {
       return { insertMock, eqPlantation, eqRol };
     }
 
-    it('saveSpeciesConfig: borra e inserta en plantation_species', async () => {
-      mockRpc({ error: RPC_NO_ENCONTRADO });
-
-      await saveSpeciesConfig('plantation-1', [{ especieId: 'species-1', ordenVisual: 0 }]);
-
-      expect(mockSupabase.from).toHaveBeenCalledWith('plantation_species');
-      expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-    });
-
     it('assignTechnicians: borra solo filas tecnico e inserta las nuevas', async () => {
       mockRpc({ error: RPC_NO_ENCONTRADO });
       const { insertMock, eqPlantation, eqRol } = mockUsersInsert(null);
@@ -374,17 +326,6 @@ describe('PlantationRepository', () => {
       expect(insertedRows).toHaveLength(2);
       expect(insertedRows.every((r: any) => r.rol_en_plantacion === 'tecnico')).toBe(true);
       expect(mockPullFromServer).toHaveBeenCalledWith('plantation-1');
-    });
-
-    it('saveSpeciesConfig: eliminada antes de guardar → mensaje claro y no escribe', async () => {
-      mockRpc({ error: RPC_NO_ENCONTRADO }, ['PLANTACION_INEXISTENTE']);
-
-      await expect(saveSpeciesConfig('plantation-1', [{ especieId: 'species-1', ordenVisual: 0 }]))
-        .rejects.toThrow('La plantación ya no existe en el servidor. Los cambios no se guardaron.');
-
-      expect(mockSupabase.rpc).toHaveBeenCalledWith('motivo_no_escribible', { p_plantation_id: 'plantation-1' });
-      expect(mockSupabase.from).not.toHaveBeenCalled();
-      expect(mockPullFromServer).not.toHaveBeenCalled();
     });
 
     it('assignTechnicians: una finalizada admite asignaciones', async () => {

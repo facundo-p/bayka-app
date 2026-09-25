@@ -146,7 +146,7 @@ describe('SyncService — offline functions', () => {
   // ─── uploadOfflinePlantations ──────────────────────────────────────────────
 
   describe('uploadOfflinePlantations (OFPL-05, OFPL-06)', () => {
-    it('Test 4: happy path — queries pending plantations, inserts to server, upserts species, marks pendingSync=false', async () => {
+    it('Test 4: happy path — queries pending plantations, inserts to server, sube las especies como altas, marks pendingSync=false', async () => {
       // Return pending plantation from local db
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
@@ -168,15 +168,11 @@ describe('SyncService — offline functions', () => {
             insert: jest.fn().mockResolvedValue({ error: null }),
           };
         }
-        if (table === 'plantation_species') {
-          return {
-            upsert: jest.fn().mockResolvedValue({ error: null }),
-          };
-        }
         return {
           select: jest.fn().mockResolvedValue({ data: [], error: null }),
         };
       });
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true, rechazadas: [] }, error: null });
 
       const happyResults = await uploadOfflinePlantations();
       expect(happyResults).toEqual([
@@ -187,7 +183,12 @@ describe('SyncService — offline functions', () => {
       // Verify plantation was inserted to server
       const plantationFromCalls = (mockSupabase.from as jest.Mock).mock.calls;
       expect(plantationFromCalls.some(([t]) => t === 'plantations')).toBe(true);
-      expect(plantationFromCalls.some(([t]) => t === 'plantation_species')).toBe(true);
+      // Altas y no upsert de la lista: no pisa lo que la web sumó si un intento anterior ya la subió (#635).
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('aplicar_cambios_especies', {
+        p_plantacion: fakePendingPlantation.id,
+        p_altas: fakePlantationSpecies.map((ps) => ps.especieId),
+        p_bajas: [],
+      });
 
       // Verify pendingSync=false was set
       expect(mockDb.update).toHaveBeenCalled();
@@ -210,18 +211,14 @@ describe('SyncService — offline functions', () => {
         }),
       });
 
-      const speciesUpsertMock = jest.fn().mockResolvedValue({ error: null });
       (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
-      // supabase.from returns 23505 error for plantation insert, but upsert for species
+      // supabase.from returns 23505 error for plantation insert
       (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
         if (table === 'plantations') {
           return {
             insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNIQUE_VIOLATION, message: 'duplicate key' } }),
           };
-        }
-        if (table === 'plantation_species') {
-          return { upsert: speciesUpsertMock };
         }
         return { select: jest.fn().mockResolvedValue({ data: [], error: null }) };
       });
@@ -233,7 +230,7 @@ describe('SyncService — offline functions', () => {
         p_cambios: expect.objectContaining({ lugar: fakePendingPlantation.lugar }),
         p_base: expect.objectContaining({ lugar: fakePendingPlantation.lugar }),
       }));
-      expect(speciesUpsertMock).toHaveBeenCalled();
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('aplicar_cambios_especies', expect.anything());
 
       // pendingSync MUST be set to false
       const sets = (mockDb.update as jest.Mock).mock.results.map((r) => r.value.set.mock.calls).flat();
@@ -296,8 +293,6 @@ describe('SyncService — offline functions', () => {
         }),
       });
 
-      const speciesUpsertMock = jest.fn();
-
       // supabase.from returns a non-23505 error for plantation insert
       (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
         if (table === 'plantations') {
@@ -305,16 +300,13 @@ describe('SyncService — offline functions', () => {
             insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNDEFINED_TABLE, message: 'table not found' } }),
           };
         }
-        if (table === 'plantation_species') {
-          return { upsert: speciesUpsertMock };
-        }
         return { select: jest.fn().mockResolvedValue({ data: [], error: null }) };
       });
 
       const failResults = await uploadOfflinePlantations();
 
-      // Species upsert must NOT be called (plantation upload failed with non-idempotent error)
-      expect(speciesUpsertMock).not.toHaveBeenCalled();
+      // Las especies no suben: la plantación falló con un error no idempotente.
+      expect(mockSupabase.rpc).not.toHaveBeenCalledWith('aplicar_cambios_especies', expect.anything());
 
       // pendingSync must NOT be updated to false (plantation was skipped)
       expect(mockDb.update).not.toHaveBeenCalled();
@@ -327,7 +319,7 @@ describe('SyncService — offline functions', () => {
       expect(failResults[0].detail).toContain(PG_ERROR.UNDEFINED_TABLE);
     });
 
-    it('si falla el upsert de especies, la plantación queda pendiente y el fallo se surfacea (#632)', async () => {
+    it('si fallan las especies, la plantación queda pendiente y el fallo se surfacea (#632)', async () => {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({
           where: jest.fn().mockResolvedValue([fakePendingPlantation]),
@@ -340,10 +332,10 @@ describe('SyncService — offline functions', () => {
       });
       (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
         if (table === 'plantations') return { insert: jest.fn().mockResolvedValue({ error: null }) };
-        if (table === 'plantation_species') {
-          return { upsert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.INSUFFICIENT_PRIVILEGE, message: 'rls' } }) };
-        }
         return { select: jest.fn().mockResolvedValue({ data: [], error: null }) };
+      });
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({
+        data: null, error: { code: PG_ERROR.INSUFFICIENT_PRIVILEGE, message: 'rls' },
       });
 
       const res = await uploadOfflinePlantations();
@@ -394,7 +386,7 @@ describe('SyncService — offline functions', () => {
       // No supabase calls for plantations or species
       const fromCalls = (mockSupabase.from as jest.Mock).mock.calls;
       expect(fromCalls.some(([t]) => t === 'plantations')).toBe(false);
-      expect(fromCalls.some(([t]) => t === 'plantation_species')).toBe(false);
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
       expect(mockDb.update).not.toHaveBeenCalled();
     });
   });

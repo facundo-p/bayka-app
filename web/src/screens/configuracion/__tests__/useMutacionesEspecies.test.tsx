@@ -2,17 +2,11 @@ import type { ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { EspecieCatalogo, EspecieConUso } from '../../../queries/especieQueries';
-import {
-  agregarEspecie,
-  quitarEspecie,
-  reemplazarEspecies,
-} from '../../../repositories/plantationSpeciesRepository';
+import { aplicarCambiosEspecies } from '../../../repositories/plantationSpeciesRepository';
 import { useSincronizarEspecies, useToggleEspecie } from '../useMutacionesEspecies';
 
 vi.mock('../../../repositories/plantationSpeciesRepository', () => ({
-  agregarEspecie: vi.fn(),
-  quitarEspecie: vi.fn(),
-  reemplazarEspecies: vi.fn(),
+  aplicarCambiosEspecies: vi.fn(),
 }));
 
 const CATALOGO: EspecieCatalogo[] = [
@@ -22,8 +16,8 @@ const CATALOGO: EspecieCatalogo[] = [
 ];
 
 const HABILITADAS: EspecieConUso[] = [
-  { ...CATALOGO[0], ordenVisual: 0, tieneArboles: true },
-  { ...CATALOGO[1], ordenVisual: 1, tieneArboles: false },
+  { ...CATALOGO[1], tieneArboles: false },
+  { ...CATALOGO[0], tieneArboles: true },
 ];
 
 /** Contrato de la clave: la misma que lee el checklist. */
@@ -51,31 +45,34 @@ function montar<T>(hook: () => T) {
 
 beforeEach(() => vi.clearAllMocks());
 
-test('habilitar agrega la especie al final antes de responder y la saca si falla', async () => {
+test('habilitar agrega la especie en su lugar alfabético antes de responder y la saca si falla', async () => {
   const alta = diferida();
-  vi.mocked(agregarEspecie).mockReturnValue(alta.promesa);
+  vi.mocked(aplicarCambiosEspecies).mockReturnValue(alta.promesa);
   const { result, queryClient } = montar(() => useToggleEspecie('plant-1', CATALOGO));
 
-  act(() => result.current.mutate({ speciesId: 'sp-3', habilitar: true, orden: 2 }));
+  act(() => result.current.mutate({ speciesId: 'sp-3', habilitar: true }));
   await waitFor(() =>
     expect(queryClient.getQueryData(CLAVE)).toEqual([
-      ...HABILITADAS,
-      { ...CATALOGO[2], ordenVisual: 2, tieneArboles: false },
+      HABILITADAS[0],
+      { ...CATALOGO[2], tieneArboles: false },
+      HABILITADAS[1],
     ]),
   );
+  expect(aplicarCambiosEspecies).toHaveBeenCalledWith('plant-1', { altas: ['sp-3'], bajas: [] });
 
   act(() => alta.rechazar(new Error('sin permisos')));
   await waitFor(() => expect(result.current.isError).toBe(true));
   expect(queryClient.getQueryData(CLAVE)).toEqual(HABILITADAS);
 });
 
-test('quitar saca la especie al instante y la devuelve si falla', async () => {
+test('quitar saca la especie al instante, manda solo la baja y la devuelve si falla', async () => {
   const baja = diferida();
-  vi.mocked(quitarEspecie).mockReturnValue(baja.promesa);
+  vi.mocked(aplicarCambiosEspecies).mockReturnValue(baja.promesa);
   const { result, queryClient } = montar(() => useToggleEspecie('plant-1', CATALOGO));
 
-  act(() => result.current.mutate({ speciesId: 'sp-2', habilitar: false, orden: 2 }));
-  await waitFor(() => expect(queryClient.getQueryData(CLAVE)).toEqual([HABILITADAS[0]]));
+  act(() => result.current.mutate({ speciesId: 'sp-2', habilitar: false }));
+  await waitFor(() => expect(queryClient.getQueryData(CLAVE)).toEqual([HABILITADAS[1]]));
+  expect(aplicarCambiosEspecies).toHaveBeenCalledWith('plant-1', { altas: [], bajas: ['sp-2'] });
 
   act(() => baja.rechazar(new Error('sin red')));
   await waitFor(() => expect(result.current.isError).toBe(true));
@@ -84,16 +81,14 @@ test('quitar saca la especie al instante y la devuelve si falla', async () => {
 
 test('el lote masivo se aplica entero y vuelve entero si falla', async () => {
   const lote = diferida();
-  vi.mocked(reemplazarEspecies).mockReturnValue(lote.promesa);
-  const { result, queryClient } = montar(() =>
-    useSincronizarEspecies('plant-1', CATALOGO, HABILITADAS),
-  );
+  vi.mocked(aplicarCambiosEspecies).mockReturnValue(lote.promesa);
+  const { result, queryClient } = montar(() => useSincronizarEspecies('plant-1', CATALOGO));
 
   act(() => result.current.mutate({ idsHabilitar: ['sp-3'], idsQuitar: ['sp-2'] }));
   await waitFor(() =>
     expect(queryClient.getQueryData(CLAVE)).toEqual([
-      HABILITADAS[0],
-      { ...CATALOGO[2], ordenVisual: 1, tieneArboles: false },
+      { ...CATALOGO[2], tieneArboles: false },
+      HABILITADAS[1],
     ]),
   );
 
@@ -102,17 +97,16 @@ test('el lote masivo se aplica entero y vuelve entero si falla', async () => {
   expect(queryClient.getQueryData(CLAVE)).toEqual(HABILITADAS);
 });
 
-test('el lote manda la lista final, no las altas y las bajas por separado', async () => {
-  vi.mocked(reemplazarEspecies).mockResolvedValue(undefined);
-  const { result } = montar(() => useSincronizarEspecies('plant-1', CATALOGO, HABILITADAS));
+test('el lote manda las altas y las bajas, no la lista final (#635)', async () => {
+  vi.mocked(aplicarCambiosEspecies).mockResolvedValue(undefined);
+  const { result } = montar(() => useSincronizarEspecies('plant-1', CATALOGO));
 
   act(() => result.current.mutate({ idsHabilitar: ['sp-3'], idsQuitar: ['sp-2'] }));
   await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-  // Lo que queda más lo que entra, con el orden que ve el usuario: la especie
-  // que se va no viaja, y la nueva toma el lugar que dejó libre.
-  expect(reemplazarEspecies).toHaveBeenCalledWith('plant-1', [
-    { speciesId: 'sp-1', ordenVisual: 0 },
-    { speciesId: 'sp-3', ordenVisual: 1 },
-  ]);
+  // Una lista pisaría lo que un teléfono cambió en otras especies.
+  expect(aplicarCambiosEspecies).toHaveBeenCalledWith('plant-1', {
+    altas: ['sp-3'],
+    bajas: ['sp-2'],
+  });
 });

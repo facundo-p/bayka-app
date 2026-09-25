@@ -2,6 +2,7 @@ import { db } from '../database/client';
 import { plantationSpecies, species } from '../database/schema';
 import { and, eq } from 'drizzle-orm';
 import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
+import { porNombre } from '../utils/ordenEspecies';
 
 export interface PlantationSpeciesItem {
   id: string;
@@ -25,8 +26,8 @@ export async function getSpeciesForPlantation(plantacionId: string): Promise<Pla
     })
     .from(plantationSpecies)
     .innerJoin(species, eq(plantationSpecies.especieId, species.id))
-    .where(and(eq(plantationSpecies.plantacionId, plantacionId), soloEspeciesDelCatalogo()))
-    .orderBy(species.nombre);
+    .where(and(eq(plantationSpecies.plantacionId, plantacionId), soloEspeciesDelCatalogo()));
 
-  return rows;
+  // En JS y no en SQL: la colación de SQLite no ordena acentos ni minúsculas como el server (#635).
+  return porNombre(rows);
 }

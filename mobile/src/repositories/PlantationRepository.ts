@@ -5,7 +5,7 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { enTransaccion } from '../database/transaccion';
-import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes } from '../database/schema';
+import { plantations, parcelas, trees, groups, plantationSpecies, plantationUsers, userSpeciesOrder, borradosPendientes, cambiosEspeciesPendientes } from '../database/schema';
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import { pullFromServer } from '../services/SyncService';
@@ -19,15 +19,13 @@ import {
   escribirSiEsEscribible,
   esMotivoNoEscribible,
   PlantacionNoEscribibleError,
-  BLOQUEAN_ESPECIES,
   BLOQUEAN_ASIGNACIONES,
 } from '../services/PlantacionEscribibleService';
-import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
+import { reemplazarConfiguracion, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
 import { borrarFotosLocales } from '../services/PhotoService';
-import { plantationSpeciesId } from '../utils/plantationSpeciesId';
 import {
   esRechazada,
   mensajeDeRechazo,
@@ -333,72 +331,6 @@ export async function reabrirPlantacion(plantacionId: string): Promise<void> {
   await reflejarEstadoLocal(plantacionId, ESTADO_PLANTACION.activa, (e) => new ReabrirPlantacionLocalSyncError(e));
 }
 
-// ─── saveSpeciesConfig ────────────────────────────────────────────────────────
-
-/** Reemplaza el species config en Supabase en una sola transacción y sincroniza a SQLite vía pullFromServer. */
-export async function saveSpeciesConfig(
-  plantacionId: string,
-  items: { especieId: string; ordenVisual: number }[]
-): Promise<void> {
-  await reemplazarConfiguracion({
-    rpc: RPC_REEMPLAZAR_ESPECIES,
-    args: {
-      p_plantacion: plantacionId,
-      p_especies: items.map((item) => ({ species_id: item.especieId, orden_visual: item.ordenVisual })),
-    },
-    sinRpc: () => escribirSiEsEscribible(plantacionId, BLOQUEAN_ESPECIES, () => reemplazarEspeciesSinRpc(plantacionId, items)),
-  });
-  await pullFromServer(plantacionId);
-  notifyDataChanged();
-}
-
-/** Server sin la migración del RPC: borra y después inserta, no es atómico. */
-async function reemplazarEspeciesSinRpc(
-  plantacionId: string,
-  items: { especieId: string; ordenVisual: number }[]
-): Promise<void> {
-  const { error: deleteError } = await supabase
-    .from('plantation_species')
-    .delete()
-    .eq('plantation_id', plantacionId);
-
-  if (deleteError) throw deleteError;
-  if (items.length === 0) return;
-
-  const { error: insertError } = await supabase
-    .from('plantation_species')
-    .insert(
-      items.map((item) => ({
-        plantation_id: plantacionId,
-        species_id: item.especieId,
-        orden_visual: item.ordenVisual,
-      }))
-    );
-
-  if (insertError) throw insertError;
-}
-
-// ─── saveSpeciesConfigLocally ─────────────────────────────────────────────────
-
-/** Reemplaza atómicamente el species config solo en SQLite local (sin Supabase) — para configuración offline. */
-export async function saveSpeciesConfigLocally(
-  plantacionId: string,
-  items: { especieId: string; ordenVisual: number }[]
-): Promise<void> {
-  await db.delete(plantationSpecies).where(eq(plantationSpecies.plantacionId, plantacionId));
-  if (items.length > 0) {
-    await db.insert(plantationSpecies).values(
-      items.map((item) => ({
-        id: plantationSpeciesId(plantacionId, item.especieId),
-        plantacionId,
-        especieId: item.especieId,
-        ordenVisual: item.ordenVisual,
-      }))
-    );
-  }
-  notifyDataChanged();
-}
-
 // ─── assignTechnicians ────────────────────────────────────────────────────────
 
 /** Reemplaza las asignaciones de técnicos en una sola transacción, sin tocar las membresías admin (#67), y sincroniza vía pullFromServer. */
@@ -527,6 +459,7 @@ export async function deletePlantationLocally(plantacionId: string): Promise<voi
     // toca Supabase, así que no hay nada que propagar. Y si quedaran, al volver a
     // descargarla el pull escondería esos árboles para siempre (#467).
     await tx.delete(borradosPendientes).where(eq(borradosPendientes.plantacionId, plantacionId));
+    await tx.delete(cambiosEspeciesPendientes).where(eq(cambiosEspeciesPendientes.plantacionId, plantacionId));
     await tx.delete(plantations).where(eq(plantations.id, plantacionId));
   });
   // Recién después del commit: con rollback las filas siguen apuntando a los archivos (#484).

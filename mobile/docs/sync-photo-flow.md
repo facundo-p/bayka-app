@@ -109,7 +109,7 @@ pullFromServer → pushBorrados → uploadSyncableParcelas → uploadSyncableGro
 
 Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPlantation` si quedó marcado "Incluir fotos".
 
-### Paso 0: plantaciones creadas o editadas offline
+### Paso 0: plantaciones creadas o editadas offline, y sus especies
 
 **Archivo:** `services/sync/preSteps.ts` → `runGlobalPreSteps()`, antes del pull de cualquier plantación.
 
@@ -117,6 +117,8 @@ Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPla
 - `uploadPendingEdits` sube las editadas offline (`pendingEdit = true`) por la RPC `editar_plantacion` (#634): solo los campos que difieren de la base (lugar, periodo, descripción, fecha de inicio, objetivo, GPS, foto en todos los botones y visibilidad), cada uno con su base. Sin diferencias no hay llamada. La edición online (`updatePlantation`) usa la misma RPC con lo que el usuario tocó en el formulario y, como base, los valores con que se abrió.
 - La base (`baseDeEdicion`, solo local) es lo que el server tenía al entrar en edición offline. El server aplica un campo si todavía tiene ese valor; si no, lo devuelve como conflicto con su valor, quién y cuándo (columna `plantations.ultima_edicion`). El conflicto queda en `conflictosDeEdicion`: el campo muestra el valor de la web, el resto sube igual, el resumen del sync avisa con "Resolver", la tarjeta muestra "Cambios por resolver" y la pantalla `ResolverCambiosScreen` deja elegir por campo. Elegir el propio lo re-encola como edición offline con la web como base; elegir el de la web lo descarta.
 - Los campos y sus columnas viven en `utils/camposDePlantacion.ts`. Cada uno tiene un snapshot `*Server` con el último valor conocido del server: el pull lo refresca siempre. El valor vivo lo pisa sin cambios pendientes; con cambios pendientes, solo en los campos que el usuario no tocó (vivo igual al snapshot anterior), y a esos también les mueve la base. Descartar la edición vuelve al snapshot.
+- Las especies de la alta suben como altas por `aplicar_cambios_especies` (#635): si un intento anterior ya la subió y la web le sumó especies, no se pisan. Las bajas hechas mientras la plantación estaba sin subir se anotan y viajan en la misma llamada: si ese intento anterior ya había subido la especie, se quita.
+- `uploadPendingSpeciesChanges` (`services/sync/cambiosDeEspecies.ts`) sube las altas y bajas de especies anotadas en `cambios_especies_pendientes` de las plantaciones ya subidas, por `aplicar_cambios_especies`. Lo aceptado deja de estar pendiente; una baja rechazada por árboles re-habilita la especie en SQLite y el resumen la lista en "Especies que no se quitaron". Si la plantación no admite el cambio (finalizada, archivada, sin permiso), queda pendiente. Guardar la configuración online sube en el momento por la misma función (`EspeciesDePlantacionService`); si ahí la plantación no lo admite, se deshace solo ese guardado y lo pendiente de antes sigue pendiente. El pull de `plantation_species` no borra un alta pendiente ni devuelve una baja pendiente.
 - Después de subir una alta, o una edición que cambió lugar o periodo, se consulta si el server tiene otra con el mismo lugar y periodo (`ilike`, como la web). Si la hay, el resultado lleva `duplicada: true` y el resumen del sync la lista en "Mismo lugar y periodo". No frena nada.
 
 ### Paso 1: Pull

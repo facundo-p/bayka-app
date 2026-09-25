@@ -1,83 +1,58 @@
 import { errorDeSupabase } from '../lib/clasificarError';
-import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
 
-/** Par especie + orden visual: la unidad de la lista que se manda al server. */
-export type OrdenEspecie = { speciesId: string; ordenVisual: number };
+/** Especies a habilitar y a quitar: cada lado toca solo lo suyo (#635). */
+export type CambiosEspecies = { altas: string[]; bajas: string[] };
 
-const RPC_REEMPLAZAR_ESPECIES = 'reemplazar_especies_plantacion';
+const RPC_APLICAR_CAMBIOS_ESPECIES = 'aplicar_cambios_especies';
 
-export const ERRORES_REEMPLAZO = {
+export const ERRORES_ESPECIES = {
   /** No es admin/superadmin activo de la organización de la plantación. */
   noAutorizado: 'NOT_AUTHORIZED',
   archivada: 'PLANTACION_ARCHIVADA',
   finalizada: 'PLANTACION_FINALIZADA',
   especieConArboles: 'ESPECIE_CON_ARBOLES',
+  especieInexistente: 'ESPECIE_INEXISTENTE',
 } as const;
 
-export const MENSAJE_ERROR_REEMPLAZO = 'No se pudo guardar el cambio de especies.';
+export const MENSAJE_ERROR_ESPECIES = 'No se pudo guardar el cambio de especies.';
 
 const MENSAJE_ESPECIE_CON_ARBOLES = 'La especie ya tiene árboles registrados: no se puede quitar.';
 
-const MENSAJES_ERROR_REEMPLAZO: Record<string, string> = {
-  [ERRORES_REEMPLAZO.noAutorizado]: 'Tu usuario no tiene permisos para cambiar las especies.',
-  [ERRORES_REEMPLAZO.archivada]: 'La plantación está archivada: no admite cambios.',
-  [ERRORES_REEMPLAZO.finalizada]: 'La plantación está finalizada: no admite cambios.',
-  [ERRORES_REEMPLAZO.especieConArboles]: MENSAJE_ESPECIE_CON_ARBOLES,
+const MENSAJES_ERROR_ESPECIES: Record<string, string> = {
+  [ERRORES_ESPECIES.noAutorizado]: 'Tu usuario no tiene permisos para cambiar las especies.',
+  [ERRORES_ESPECIES.archivada]: 'La plantación está archivada: no admite cambios.',
+  [ERRORES_ESPECIES.finalizada]: 'La plantación está finalizada: no admite cambios.',
+  [ERRORES_ESPECIES.especieConArboles]: MENSAJE_ESPECIE_CON_ARBOLES,
+  [ERRORES_ESPECIES.especieInexistente]: 'La especie ya no existe en el catálogo.',
 };
 
-type RespuestaReemplazo = { success?: boolean; error?: string } | null;
+type Rechazada = { species_id: string; error: string };
+type RespuestaCambios = { success?: boolean; error?: string; rechazadas?: Rechazada[] } | null;
 
-/** Habilita la especie en la plantación al final de la lista (orden dado). */
-export async function agregarEspecie(
-  plantationId: string,
-  speciesId: string,
-  ordenVisual: number,
-): Promise<void> {
-  const { error } = await supabase.from('plantation_species').insert({
-    plantation_id: plantationId,
-    species_id: speciesId,
-    orden_visual: ordenVisual,
-  });
-  if (error) throw errorDeSupabase(error);
+function mensajeDe(codigo: string | undefined): string {
+  return MENSAJES_ERROR_ESPECIES[codigo ?? ''] ?? MENSAJE_ERROR_ESPECIES;
 }
 
 /**
- * Deshabilita la especie en la plantación. La pantalla bloquea esta acción
- * si la especie tiene árboles registrados, y el server también (055).
+ * Habilita y quita especies en una transacción del server. Por cambio y no por lista:
+ * así no pisa lo que un teléfono cambió en otras especies (#635). Una baja con árboles
+ * se rechaza sola y el resto se aplica; se informa igual, porque la pantalla la mostró
+ * quitada. Qué habilitar o quitar —respetando las bloqueadas— lo decide
+ * `speciesChecklistSelection`.
  */
-export async function quitarEspecie(plantationId: string, speciesId: string): Promise<void> {
-  const { error } = await supabase
-    .from('plantation_species')
-    .delete()
-    .eq('plantation_id', plantationId)
-    .eq('species_id', speciesId);
-  // Los árboles pudieron llegar después de que la pantalla cargó (#632).
-  if (error?.code === PG_ERROR.RESTRICT_VIOLATION) throw new Error(MENSAJE_ESPECIE_CON_ARBOLES);
-  if (error) throw errorDeSupabase(error);
-}
-
-/**
- * Deja habilitadas exactamente las especies de `especies`, con su orden, en una
- * sola transacción del server (RPC de 049). Antes eran un insert y un delete
- * sueltos: si fallaba el segundo, quedaban habilitadas especies que el admin
- * había quitado (#548). La decisión de qué habilitar o quitar —respetando las
- * bloqueadas por árboles— vive en `speciesChecklistSelection`, no acá.
- */
-export async function reemplazarEspecies(
+export async function aplicarCambiosEspecies(
   plantationId: string,
-  especies: OrdenEspecie[],
+  { altas, bajas }: CambiosEspecies,
 ): Promise<void> {
-  const { data, error } = await supabase.rpc(RPC_REEMPLAZAR_ESPECIES, {
+  const { data, error } = await supabase.rpc(RPC_APLICAR_CAMBIOS_ESPECIES, {
     p_plantacion: plantationId,
-    p_especies: especies.map(({ speciesId, ordenVisual }) => ({
-      species_id: speciesId,
-      orden_visual: ordenVisual,
-    })),
+    p_altas: altas,
+    p_bajas: bajas,
   });
   if (error) throw errorDeSupabase(error);
-  const respuesta = data as RespuestaReemplazo;
-  if (!respuesta?.success) {
-    throw new Error(MENSAJES_ERROR_REEMPLAZO[respuesta?.error ?? ''] ?? MENSAJE_ERROR_REEMPLAZO);
-  }
+  const respuesta = data as RespuestaCambios;
+  if (!respuesta?.success) throw new Error(mensajeDe(respuesta?.error));
+  const [rechazada] = respuesta.rechazadas ?? [];
+  if (rechazada) throw new Error(mensajeDe(rechazada.error));
 }

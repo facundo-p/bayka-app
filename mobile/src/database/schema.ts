@@ -156,6 +156,21 @@ export const userSpeciesOrder = sqliteTable('user_species_order', {
 }));
 
 /**
+ * Altas y bajas de especies de una plantación que todavía no llegaron al server (#635).
+ * Una fila por par: el último cambio gana. Una plantación sin subir (pendingSync) anota
+ * solo las bajas: su alta sube todas sus especies como altas, junto con esas bajas.
+ */
+export const cambiosEspeciesPendientes = sqliteTable('cambios_especies_pendientes', {
+  plantacionId: text('plantacion_id').notNull(),
+  especieId: text('especie_id').notNull(),
+  /** `CAMBIO_DE_ESPECIE`. */
+  tipo: text('tipo').notNull(),
+  cambiadoEn: text('cambiado_en').notNull(),
+}, (t) => ({
+  pk: uniqueIndex('cambios_especies_pendientes_pk').on(t.plantacionId, t.especieId),
+}));
+
+/**
  * Borrados hechos localmente que todavía no llegaron al server (#467). El pull los
  * excluye y el push los propaga; al confirmar el server, la fila se va de acá.
  *

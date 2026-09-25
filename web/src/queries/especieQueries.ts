@@ -1,3 +1,4 @@
+import { porNombre } from '../lib/ordenEspecies';
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 import { leerPaginado } from './leerPaginado';
@@ -18,8 +19,8 @@ export type EspecieConCatalogoUso = EspecieCatalogo & {
 /** Campos editables de una especie (los que expone el formulario de alta/edición). */
 export type EspecieEditable = EspecieCatalogo;
 
-/** Especie habilitada en una plantación, con su orden de aparición en la app. */
-export type EspecieDePlantacion = EspecieCatalogo & { ordenVisual: number };
+/** Especie habilitada en una plantación. La app las ordena por nombre (#635). */
+export type EspecieDePlantacion = EspecieCatalogo;
 
 /** Especie habilitada + si tiene árboles registrados (bloquea quitarla). */
 export type EspecieConUso = EspecieDePlantacion & { tieneArboles: boolean };
@@ -34,7 +35,6 @@ type FilaEspecie = {
 /** Fila del join plantation_species → species (embed de PostgREST). */
 type FilaAsignada = {
   species_id: string;
-  orden_visual: number;
   species: FilaEspecie | null;
 };
 
@@ -62,22 +62,20 @@ function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {
     codigo: fila.species?.codigo ?? '',
     nombre: fila.species?.nombre ?? '',
     nombreCientifico: fila.species?.nombre_cientifico ?? null,
-    ordenVisual: fila.orden_visual,
   };
 }
 
-/** Especies habilitadas de la plantación, por orden visual. */
+/** Especies habilitadas de la plantación, por nombre: el orden de la botonera en la app (#635). */
 export async function listarEspeciesDePlantacion(
   plantationId: string,
 ): Promise<EspecieDePlantacion[]> {
   const { data, error } = await supabase
     .from('plantation_species')
-    .select('species_id, orden_visual, species(id, codigo, nombre, nombre_cientifico)')
-    .eq('plantation_id', plantationId)
-    .order('orden_visual', { ascending: true });
+    .select('species_id, species(id, codigo, nombre, nombre_cientifico)')
+    .eq('plantation_id', plantationId);
   if (error) throw new Error(error.message);
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
-  return ((data ?? []) as unknown as FilaAsignada[]).map(mapearAsignada);
+  return porNombre(((data ?? []) as unknown as FilaAsignada[]).map(mapearAsignada));
 }
 
 /** Paridad con `hasTreesForSpecies` de mobile: count head trees → groups. */

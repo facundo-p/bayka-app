@@ -6,6 +6,7 @@ import { eq, and, isNull, sql, count, asc } from 'drizzle-orm';
 import { ROL } from '../constants/roles';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { getResumenDePendientes, type ResumenDePendientes } from './catalogQueries';
+import { porNombre } from '../utils/ordenEspecies';
 import { soloEspeciesDelCatalogo } from '../utils/speciesHelpers';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 
@@ -107,22 +108,21 @@ export async function getTechniciansWithAssignment(
     .sort(porAsignadoYNombre);
 }
 
-/** Especies configuradas para una plantación, ordenadas por ordenVisual. */
+/** Especies configuradas para una plantación, por nombre (#635). */
 export async function getPlantationSpeciesConfig(
   plantacionId: string
-): Promise<{ especieId: string; nombre: string; codigo: string; ordenVisual: number }[]> {
+): Promise<{ especieId: string; nombre: string; codigo: string }[]> {
   const rows = await db
     .select({
       especieId: plantationSpecies.especieId,
       nombre: species.nombre,
       codigo: species.codigo,
-      ordenVisual: plantationSpecies.ordenVisual,
     })
     .from(plantationSpecies)
     .innerJoin(species, eq(plantationSpecies.especieId, species.id))
     .where(eq(plantationSpecies.plantacionId, plantacionId));
 
-  return rows.sort((a, b) => a.ordenVisual - b.ordenVisual);
+  return porNombre(rows);
 }
 
 /** Técnicos asignados a una plantación; filtra por rol_en_plantacion='tecnico' porque los admins también son miembros y no deben aparecer acá (#67). */

@@ -14,7 +14,7 @@ import { useEliminarDelDispositivo } from '../../src/hooks/useEliminarDelDisposi
 import { getPlantacionParaEliminarDelDispositivo, getResumenDePendientes } from '../../src/queries/catalogQueries';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 
-const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
 
 function confirmarTodo(show: jest.Mock) {
   // Aprieta el último botón de cada diálogo, incluida la segunda confirmación.

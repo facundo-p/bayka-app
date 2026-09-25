@@ -71,7 +71,7 @@ import { finalizePlantation, FinalizePlantationLocalSyncError } from '../../src/
 import { showInfoDialog } from '../../src/utils/alertHelpers';
 import type { Plantation } from '../../src/types/plantation';
 
-const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0 };
+const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0 };
 
 const mockCheckGate =checkFinalizationGate as jest.MockedFunction<typeof checkFinalizationGate>;
 const mockHasIds = hasIdsGenerated as jest.MockedFunction<typeof hasIdsGenerated>;

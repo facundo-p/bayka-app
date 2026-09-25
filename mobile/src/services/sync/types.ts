@@ -66,8 +66,12 @@ export type SyncPlantationResult =
   /**
    * `duplicada`: el server ya tenía otra con el mismo lugar y periodo (#633).
    * `cambiosPorResolver`: campos de la edición que chocaron con la web (#634).
+   * `especiesConArboles`: especies que se quitaron acá y el server re-habilitó porque ya tienen árboles (#635).
    */
-  | { success: true; plantacionId: string; nombre: string; duplicada?: boolean; cambiosPorResolver?: number }
+  | {
+      success: true; plantacionId: string; nombre: string;
+      duplicada?: boolean; cambiosPorResolver?: number; especiesConArboles?: string[];
+    }
   | { success: false; plantacionId: string; nombre: string; error: SyncErrorCode; detail?: string };
 
 export interface SyncProgress {

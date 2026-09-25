@@ -5,6 +5,7 @@
 import { supabase } from '../supabase/client';
 import { db } from '../database/client';
 import { plantations, groups, borradosPendientes } from '../database/schema';
+import { countCambiosDeEspecies } from '../repositories/CambiosDeEspeciesRepository';
 import { eq, and, count } from 'drizzle-orm';
 import { fetchAllRows } from '../services/sync/paginate';
 import { ESTADO_GRUPO, esArchivada } from '../constants/estados';
@@ -180,6 +181,8 @@ export type ResumenDePendientes = UnsyncedSummary & {
   fotos: number;
   /** Borrados de grupos y árboles sin propagar al server. */
   borrados: number;
+  /** Altas y bajas de especies sin subir (#635). */
+  especies: number;
 };
 
 async function countBorradosPendientes(plantacionId: string): Promise<number> {
@@ -191,13 +194,14 @@ async function countBorradosPendientes(plantacionId: string): Promise<number> {
 }
 
 export async function getResumenDePendientes(plantacionId: string): Promise<ResumenDePendientes> {
-  const [grupos, parcelas, fotos, borrados] = await Promise.all([
+  const [grupos, parcelas, fotos, borrados, especies] = await Promise.all([
     getUnsyncedGroupSummary(plantacionId),
     countPendingParcelas({ plantacionId }),
     countFotosSinSubirDePlantacion(plantacionId),
     countBorradosPendientes(plantacionId),
+    countCambiosDeEspecies(plantacionId),
   ]);
-  return { ...grupos, parcelas: parcelas[0]?.cnt ?? 0, fotos: fotos[0]?.cnt ?? 0, borrados };
+  return { ...grupos, parcelas: parcelas[0]?.cnt ?? 0, fotos: fotos[0]?.cnt ?? 0, borrados, especies };
 }
 
 /** Lo que el aviso de "eliminar del dispositivo" necesita de la plantación local. Null si no está. */

@@ -44,6 +44,7 @@ export function sqliteDeIntegracion(sqlite: InstanceType<typeof Database>) {
 export const TABLAS_HIJAS_PRIMERO = [
   schema.trees,
   schema.borradosPendientes,
+  schema.cambiosEspeciesPendientes,
   schema.groups,
   schema.parcelas,
   schema.plantationSpecies,
