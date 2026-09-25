@@ -54,12 +54,18 @@ export const colors = {
   info: '#2563EB',
   infoBg: '#EFF6FF',
   entornoPruebasBg: yellow.dark,
+  /** Advertencia no bloqueante (p. ej. plantación duplicada). */
+  warningBg: yellow.light,
+  warningBorder: yellow.medium,
+  warningText: '#6B4E00',
 
   textHeading: '#0A3760',
   textPrimary: '#1E293B',
   textSecondary: '#475569',
   textMuted: '#94A3B8',
   textDisabled: '#CBD5E1',
+  /** Título de un grupo de campos dentro de un formulario. */
+  textSectionTitle: '#6B8F3C',
 
   // Aliases legacy — migrar a textPrimary/Secondary/Muted/Disabled.
   text: '#1E293B',
@@ -119,6 +125,7 @@ export const colors = {
 } as const;
 
 export const spacing = {
+  xxs: 2,
   xs: 4,
   sm: 6,
   md: 8,
@@ -208,6 +215,11 @@ export const iconSizes = {
   checkbox: 20,
   badge: 12,
   header: 24,
+} as const;
+
+// ─── Input size tokens ───────────────────────────────────────────────────────
+export const inputSizes = {
+  multilineMinHeight: 96,
 } as const;
 
 // ─── Chip size presets ───────────────────────────────────────────────────────

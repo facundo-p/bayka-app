@@ -124,6 +124,26 @@ describe('SyncProgressModal', () => {
       expect(getByText('Sur')).toBeTruthy();
     });
 
+    it('avisa las plantaciones subidas que chocan con otra del server por lugar y periodo', () => {
+      const { getByText, queryByText } = renderModal({
+        plantationResults: [
+          { success: true, plantacionId: 'p1', nombre: 'Lote Norte', duplicada: true },
+          { success: true, plantacionId: 'p2', nombre: 'Campo Sur', duplicada: false },
+        ],
+      });
+      expect(getByText('Datos actualizados')).toBeTruthy();
+      expect(getByText('Mismo lugar y periodo')).toBeTruthy();
+      expect(getByText('Lote Norte')).toBeTruthy();
+      expect(queryByText('Campo Sur')).toBeNull();
+    });
+
+    it('sin duplicadas no muestra el aviso', () => {
+      const { queryByText } = renderModal({
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte' }],
+      });
+      expect(queryByText('Mismo lugar y periodo')).toBeNull();
+    });
+
     it('pull fallido sin timeout pide verificar la conexión', () => {
       const { getByText } = renderModal({ pullSuccess: false });
       expect(getByText('Error al actualizar')).toBeTruthy();

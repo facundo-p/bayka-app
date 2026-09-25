@@ -68,7 +68,7 @@ describe('AdminBottomSheet', () => {
   it('renders activa actions', () => {
     const { getByText, queryByText } = render(<AdminBottomSheet {...makeProps()} />);
 
-    expect(getByText('Editar lugar y periodo')).toBeTruthy();
+    expect(getByText('Editar plantación')).toBeTruthy();
     expect(getByText('Configurar especies')).toBeTruthy();
     expect(getByText('Asignar técnicos')).toBeTruthy();
     expect(getByText('Finalizar plantación')).toBeTruthy();
@@ -88,7 +88,7 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(queryByText('Editar lugar y periodo')).toBeNull();
+    expect(queryByText('Editar plantación')).toBeNull();
   });
 
   it('no ofrece ninguna acción de edición sobre una plantación archivada (#477)', () => {
@@ -101,7 +101,7 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(queryByText('Editar lugar y periodo')).toBeNull();
+    expect(queryByText('Editar plantación')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
     expect(queryByText('Asignar técnicos')).toBeNull();
     expect(queryByText('Finalizar plantación')).toBeNull();
@@ -117,7 +117,7 @@ describe('AdminBottomSheet', () => {
       />
     );
 
-    expect(queryByText('Editar lugar y periodo')).toBeNull();
+    expect(queryByText('Editar plantación')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
     expect(queryByText('Asignar técnicos')).toBeNull();
     expect(queryByText('Finalizar plantación')).toBeNull();
@@ -140,7 +140,7 @@ describe('AdminBottomSheet', () => {
     const onEdit = jest.fn();
     const { getByText } = render(<AdminBottomSheet {...makeProps({ onEdit })} />);
 
-    fireEvent.press(getByText('Editar lugar y periodo'));
+    fireEvent.press(getByText('Editar plantación'));
 
     expect(onEdit).toHaveBeenCalledTimes(1);
   });
@@ -148,7 +148,7 @@ describe('AdminBottomSheet', () => {
   it('renders no actions for non-admin', () => {
     const { queryByText } = render(<AdminBottomSheet {...makeProps({ isAdmin: false })} />);
 
-    expect(queryByText('Editar lugar y periodo')).toBeNull();
+    expect(queryByText('Editar plantación')).toBeNull();
     expect(queryByText('Configurar especies')).toBeNull();
   });
 

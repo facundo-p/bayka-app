@@ -14,6 +14,8 @@ interface Props {
   editable?: boolean;
   helperText?: string | null;
   keyboardType?: 'default' | 'numeric';
+  multiline?: boolean;
+  testID?: string;
 }
 
 export default function FormField({
@@ -27,13 +29,21 @@ export default function FormField({
   editable,
   helperText,
   keyboardType,
+  multiline,
+  testID,
 }: Props) {
   const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={[styles.input, focused && styles.inputFocused, error ? styles.inputError : null]}
+        testID={testID}
+        style={[
+          styles.input,
+          multiline && styles.inputMultiline,
+          focused && styles.inputFocused,
+          error ? styles.inputError : null,
+        ]}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -42,6 +52,7 @@ export default function FormField({
         autoCorrect={autoCorrect}
         editable={editable}
         keyboardType={keyboardType}
+        multiline={multiline}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
       />

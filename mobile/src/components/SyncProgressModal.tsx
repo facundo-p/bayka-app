@@ -7,6 +7,7 @@ import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationRe
 import BaseModal from './BaseModal';
 import FailureList from './FailureList';
 import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
+import PlantacionesDuplicadasAviso from './PlantacionesDuplicadasAviso';
 import ProgressBar from './ProgressBar';
 import { PHASE_LABEL, contadorDeFase, fraccionDeFase } from './syncPhaseLabels';
 import { syncProgressModalStyles as styles } from './SyncProgressModal.styles';
@@ -275,6 +276,7 @@ function ResultadoPull(p: Props) {
       </Text>
       <FotosDescargadas photoResult={p.photoResult} />
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
+      <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
   );
@@ -310,6 +312,7 @@ function ResultadoPush(p: Props) {
       <FailureList label="parcela" results={p.parcelaResults} getKey={(r) => r.parcelaId} />
       <FailureList label="grupo" results={p.results} getKey={(r) => r.groupId} />
       <PlantacionesOmitidasAviso omitidas={p.omitidas} />
+      <PlantacionesDuplicadasAviso resultados={p.plantationResults} />
       <BotonCerrar onDismiss={p.onDismiss} />
     </>
   );

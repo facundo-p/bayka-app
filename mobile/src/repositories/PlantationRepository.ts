@@ -15,13 +15,30 @@ import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
 import { ESTADO_PLANTACION, type EstadoPlantacion } from '../constants/estados';
-import { escribirSiEsEscribible, BLOQUEAN_ESPECIES, BLOQUEAN_ASIGNACIONES } from '../services/PlantacionEscribibleService';
+import {
+  escribirSiEsEscribible,
+  motivoNoEscribible,
+  PlantacionNoEscribibleError,
+  BLOQUEAN_ESPECIES,
+  BLOQUEAN_ASIGNACIONES,
+} from '../services/PlantacionEscribibleService';
+import { sinFilasAfectadas } from '../services/sync/filasAfectadas';
 import { reemplazarConfiguracion, RPC_REEMPLAZAR_ESPECIES, RPC_REEMPLAZAR_TECNICOS } from '../services/ReemplazoConfiguracionService';
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
 import { borrarFotosLocales } from '../services/PhotoService';
 import { plantationSpeciesId } from '../utils/plantationSpeciesId';
+import {
+  aColumnasRemotas,
+  aSnapshot,
+  cambiosParaElServer,
+  hayCambios,
+  restaurarDesdeSnapshot,
+  snapshotAntesDeEditar,
+  type AjustesDePlantacion,
+  type CamposDePlantacion,
+} from '../utils/camposDePlantacion';
 
 // ─── Membresía local del creador ─────────────────────────────────────────────
 
@@ -38,20 +55,7 @@ async function upsertLocalAdminMembership(plantacionId: string, userId: string):
     .onConflictDoNothing();
 }
 
-/** Config GPS por plantación que el admin puede definir en el form. */
-export interface PlantationGpsSettings {
-  gpsCaptureFrequency: number;
-  gpsCaptureRequired: boolean;
-}
-
-/** Mapea la config GPS a las columnas del server; vacío si no se pasó. */
-function gpsToRemoteColumns(gps?: PlantationGpsSettings) {
-  if (!gps) return {};
-  return {
-    gps_capture_frequency: gps.gpsCaptureFrequency,
-    gps_capture_required: gps.gpsCaptureRequired,
-  };
-}
+export type { AjustesDePlantacion } from '../utils/camposDePlantacion';
 
 // ─── createPlantationLocally ──────────────────────────────────────────────────
 
@@ -61,7 +65,7 @@ export async function createPlantationLocally(
   periodo: string,
   organizacionId: string,
   creadoPor: string,
-  gps?: PlantationGpsSettings
+  ajustes?: Partial<AjustesDePlantacion>
 ): Promise<{ id: string; lugar: string; periodo: string; estado: string }> {
   const id = Crypto.randomUUID();
   const now = new Date().toISOString();
@@ -74,7 +78,7 @@ export async function createPlantationLocally(
     creadoPor,
     createdAt: now,
     pendingSync: true,
-    ...(gps ?? {}),
+    ...(ajustes ?? {}),
   });
   await upsertLocalAdminMembership(id, creadoPor);
   notifyDataChanged();
@@ -83,81 +87,47 @@ export async function createPlantationLocally(
 
 // ─── updatePlantation ─────────────────────────────────────────────────────────
 
-/** Lee el estado actual de la plantación necesario para decidir cómo aplicar la edición. */
-async function resolveCurrentPlantationRow(plantacionId: string) {
-  const [row] = await db
-    .select({
-      pendingSync: plantations.pendingSync,
-      pendingEdit: plantations.pendingEdit,
-      lugarServer: plantations.lugarServer,
-      periodoServer: plantations.periodoServer,
-      lugarCurrent: plantations.lugar,
-      periodoCurrent: plantations.periodo,
-      gpsFreqServer: plantations.gpsCaptureFrequencyServer,
-      gpsReqServer: plantations.gpsCaptureRequiredServer,
-      gpsFreqCurrent: plantations.gpsCaptureFrequency,
-      gpsReqCurrent: plantations.gpsCaptureRequired,
-    })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-
+async function filaDePlantacion(plantacionId: string) {
+  const [row] = await db.select().from(plantations).where(eq(plantations.id, plantacionId));
   if (!row) throw new Error('Plantación no encontrada');
   return row;
 }
 
-/** Fila mínima necesaria para decidir el camino online/offline y armar el snapshot de server. */
-type CurrentPlantationRow = Awaited<ReturnType<typeof resolveCurrentPlantationRow>>;
+type FilaDePlantacion = Awaited<ReturnType<typeof filaDePlantacion>>;
 
-/** Snapshot de las columnas *Server tras un push exitoso (solo si se editó la config GPS). */
-function buildGpsServerSnapshot(gps?: PlantationGpsSettings) {
-  return gps
-    ? {
-        gpsCaptureFrequencyServer: gps.gpsCaptureFrequency,
-        gpsCaptureRequiredServer: gps.gpsCaptureRequired,
-      }
-    : {};
-}
+const EDICION_NO_APLICADA = 'La plantación no se actualizó en el servidor. Los cambios no se guardaron.';
 
-/** Sincroniza el mirror local tras un push exitoso: valores actuales + snapshot *Server + limpia pendingEdit. */
-async function updateLocalMirrorAfterPush(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps: PlantationGpsSettings | undefined
-): Promise<void> {
-  await db
-    .update(plantations)
-    .set({
-      lugar,
-      periodo,
-      lugarServer: lugar,
-      periodoServer: periodo,
-      pendingEdit: false,
-      ...(gps ?? {}),
-      ...buildGpsServerSnapshot(gps),
-    })
-    .where(eq(plantations.id, plantacionId));
+/** 0 filas sin error (RLS o fila inexistente, #482): el motivo si el server lo dice. */
+async function edicionNoAplicada(plantacionId: string): Promise<Error> {
+  const motivo = await motivoNoEscribible(plantacionId);
+  return motivo ? new PlantacionNoEscribibleError(motivo) : new Error(EDICION_NO_APLICADA);
 }
 
 /**
- * Intenta pushear la edición a Supabase y, si sale bien, sincroniza las columnas *Server local.
- * Devuelve false (sin tocar nada más) ante una falla de red, para que el caller caiga al camino
- * offline; cualquier otro error del server se propaga tal cual.
+ * Intenta pushear a Supabase solo lo que cambió y, si sale bien, deja los valores y el snapshot
+ * *Server de lo subido. Sin cambios no hay UPDATE. Devuelve false ante una falla de red, para que el caller caiga al camino offline; cualquier
+ * otro error del server se propaga tal cual.
  */
 async function tryPushPlantationUpdateOnline(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps: PlantationGpsSettings | undefined
+  row: FilaDePlantacion,
+  campos: Partial<CamposDePlantacion>
 ): Promise<boolean> {
+  const cambios = cambiosParaElServer(row, campos);
   try {
-    const { error } = await supabase
-      .from('plantations')
-      .update({ lugar, periodo, ...gpsToRemoteColumns(gps) })
-      .eq('id', plantacionId);
-    if (error) throw error;
+    if (hayCambios(cambios)) {
+      const { data, error } = await supabase
+        .from('plantations')
+        .update(aColumnasRemotas(cambios))
+        .eq('id', row.id)
+        .select('id');
+      if (error) throw error;
+      if (sinFilasAfectadas(data)) throw await edicionNoAplicada(row.id);
+    }
 
-    await updateLocalMirrorAfterPush(plantacionId, lugar, periodo, gps);
+    await db
+      .update(plantations)
+      .set({ ...campos, ...aSnapshot(cambios), pendingEdit: false })
+      .where(eq(plantations.id, row.id));
     return true;
   } catch (e: any) {
     if (!isNetworkRequestFailed(e)) throw e;
@@ -165,85 +135,56 @@ async function tryPushPlantationUpdateOnline(
   }
 }
 
-/** Snapshot de server SOLO en la primera edición offline, para que discardPlantationEdit revierta al último valor confirmado. */
-function buildOfflineEditSnapshot(row: CurrentPlantationRow) {
-  if (row.pendingEdit) return {};
-  return {
-    lugarServer: row.lugarServer ?? row.lugarCurrent,
-    periodoServer: row.periodoServer ?? row.periodoCurrent,
-    gpsCaptureFrequencyServer: row.gpsFreqServer ?? row.gpsFreqCurrent,
-    gpsCaptureRequiredServer: row.gpsReqServer ?? row.gpsReqCurrent,
-  };
-}
-
-/** Guarda la edición local con pendingEdit=true (sin red disponible, o tras una falla de red del push). */
+/** Guarda la edición con pendingEdit=true; el snapshot se toma solo en la primera, para que descartar vuelva al último valor del server. */
 async function applyOfflineEdit(
-  plantacionId: string,
-  lugar: string,
-  periodo: string,
-  gps: PlantationGpsSettings | undefined,
-  row: CurrentPlantationRow
+  campos: Partial<CamposDePlantacion>,
+  row: FilaDePlantacion
 ): Promise<void> {
   await db
     .update(plantations)
     .set({
-      lugar,
-      periodo,
-      ...(gps ?? {}),
+      ...campos,
       pendingEdit: true,
-      ...buildOfflineEditSnapshot(row),
+      ...(row.pendingEdit ? {} : snapshotAntesDeEditar(row)),
     })
-    .where(eq(plantations.id, plantacionId));
+    .where(eq(plantations.id, row.id));
 }
 
 /**
- * Actualiza lugar/periodo/GPS: online pushea a Supabase y sincroniza las columnas *Server; offline
- * guarda local con pendingEdit=true, snapshoteando el valor original SOLO la primera vez (para que
- * discardPlantationEdit revierta al último server). No aplica a plantaciones creadas offline.
+ * Actualiza los datos de la plantación: online pushea a Supabase; offline guarda local con
+ * pendingEdit=true. Una creada offline (pendingSync) solo se edita local: el alta sube todo.
+ * Los ajustes ausentes no se tocan.
  */
 export async function updatePlantation(
   plantacionId: string,
   lugar: string,
   periodo: string,
-  gps?: PlantationGpsSettings
+  ajustes?: Partial<AjustesDePlantacion>
 ): Promise<void> {
-  const row = await resolveCurrentPlantationRow(plantacionId);
+  const row = await filaDePlantacion(plantacionId);
+  const campos: Partial<CamposDePlantacion> = { lugar, periodo, ...(ajustes ?? {}) };
 
   if (row.pendingSync) {
-    await db
-      .update(plantations)
-      .set({ lugar, periodo, ...(gps ?? {}) })
-      .where(eq(plantations.id, plantacionId));
+    await db.update(plantations).set(campos).where(eq(plantations.id, plantacionId));
     notifyDataChanged();
     return;
   }
 
   const net = await NetInfo.fetch();
-  if (net.isConnected !== false) {
-    const pushed = await tryPushPlantationUpdateOnline(plantacionId, lugar, periodo, gps);
-    if (pushed) {
-      notifyDataChanged();
-      return;
-    }
+  if (net.isConnected !== false && (await tryPushPlantationUpdateOnline(row, campos))) {
+    notifyDataChanged();
+    return;
   }
 
-  await applyOfflineEdit(plantacionId, lugar, periodo, gps, row);
+  await applyOfflineEdit(campos, row);
   notifyDataChanged();
 }
 
 // ─── discardPlantationEdit ───────────────────────────────────────────────────
 
-/** Revierte una edición offline pendiente: restaura lugar/periodo/GPS desde las columnas *Server y limpia pendingEdit. Funciona sin red. */
+/** Revierte una edición offline pendiente a los snapshots *Server y limpia pendingEdit. Funciona sin red. */
 export async function discardPlantationEdit(plantacionId: string): Promise<void> {
-  const [row] = await db
-    .select({
-      lugarServer: plantations.lugarServer,
-      periodoServer: plantations.periodoServer,
-      gpsFreqServer: plantations.gpsCaptureFrequencyServer,
-      gpsReqServer: plantations.gpsCaptureRequiredServer,
-    })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
+  const [row] = await db.select().from(plantations).where(eq(plantations.id, plantacionId));
 
   if (!row || !row.lugarServer || !row.periodoServer) {
     throw new Error('No hay datos del servidor para restaurar');
@@ -251,14 +192,7 @@ export async function discardPlantationEdit(plantacionId: string): Promise<void>
 
   await db
     .update(plantations)
-    .set({
-      lugar: row.lugarServer,
-      periodo: row.periodoServer,
-      pendingEdit: false,
-      // Solo revertir GPS si hay snapshot: plantaciones editadas antes de esas columnas no lo tienen.
-      ...(row.gpsFreqServer !== null ? { gpsCaptureFrequency: row.gpsFreqServer } : {}),
-      ...(row.gpsReqServer !== null ? { gpsCaptureRequired: row.gpsReqServer } : {}),
-    })
+    .set({ ...restaurarDesdeSnapshot(row), pendingEdit: false })
     .where(eq(plantations.id, plantacionId));
   notifyDataChanged();
 }
@@ -474,7 +408,7 @@ export interface CreatePlantationWithParcelaParams {
   periodo: string;
   organizacionId: string;
   creadoPor: string;
-  gps?: PlantationGpsSettings;
+  ajustes?: Partial<AjustesDePlantacion>;
   /** Parcela default a crear junto con la plantación; omitir/null = solo plantación (AUTO_PARCELA_DEFAULT off). */
   parcela?: { nombre: string; codigo: string } | null;
 }
@@ -502,7 +436,7 @@ export async function createPlantationWithParcelaLocally(
       creadoPor: params.creadoPor,
       createdAt: now,
       pendingSync: true,
-      ...(params.gps ?? {}),
+      ...(params.ajustes ?? {}),
     });
 
     await tx
@@ -510,7 +444,7 @@ export async function createPlantationWithParcelaLocally(
       .values({
         plantationId,
         userId: params.creadoPor,
-        rolEnPlantacion: 'admin',
+        rolEnPlantacion: ROL.admin,
         assignedAt: now,
       })
       .onConflictDoNothing();

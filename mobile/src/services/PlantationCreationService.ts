@@ -13,7 +13,7 @@
  */
 import {
   createPlantationWithParcelaLocally,
-  PlantationGpsSettings,
+  type AjustesDePlantacion,
 } from '../repositories/PlantationRepository';
 import { uploadOfflinePlantations } from './sync/preSteps';
 import { uploadSyncableParcelas } from './sync/pushService';
@@ -29,8 +29,8 @@ export interface CreatePlantationParams {
   creadoPor: string;
   /** 'online': caller ya chequeó NetInfo y pide un push inmediato tras el alta local. */
   mode: CreatePlantationMode;
-  /** Config GPS elegida por el admin en el form (defaults del schema si falta). */
-  gps?: PlantationGpsSettings;
+  /** Lo que el admin eligió en el form además de lugar y periodo (defaults del schema si falta). */
+  ajustes?: Partial<AjustesDePlantacion>;
 }
 
 export interface CreatePlantationResult {
@@ -64,7 +64,7 @@ export async function createPlantationWithDefaultParcela(
     periodo: params.periodo,
     organizacionId: params.organizacionId,
     creadoPor: params.creadoPor,
-    gps: params.gps,
+    ajustes: params.ajustes,
     parcela: AUTO_PARCELA_DEFAULT ? { nombre: 'Parcela 1', codigo: 'P1' } : null,
   });
 

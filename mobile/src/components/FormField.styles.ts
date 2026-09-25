@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts, inputSizes } from '../theme';
 
 export const formFieldStyles = StyleSheet.create({
   field: {
@@ -21,6 +21,11 @@ export const formFieldStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.text,
     backgroundColor: colors.surfaceAlt,
+  },
+  inputMultiline: {
+    minHeight: inputSizes.multilineMinHeight,
+    fontSize: fontSize.base,
+    textAlignVertical: 'top',
   },
   inputFocused: {
     borderColor: colors.primary,

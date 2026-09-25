@@ -5,7 +5,7 @@ import { eq, and, sql, inArray, notInArray } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
 import { syncLog } from '../../utils/syncLogger';
-import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../../constants/photoCapture';
+import { aSnapshot, desdeFilaRemota, remotosNoEditados, tieneCambiosSinSubir } from '../../utils/camposDePlantacion';
 import { fetchAllRows } from './paginate';
 import { enTransaccion, enTransaccionPorLotes } from '../../database/transaccion';
 import {
@@ -126,21 +126,8 @@ async function accesoRemoto(plantacionId: string): Promise<PullResult> {
   return consultarEstadoRemoto(plantacionId, userId);
 }
 
-/** Flags de plantación administrados desde la web (server gana); ausentes en la respuesta (server sin la columna) → default. */
-export function webManagedFlags(remote: {
-  visible_in_app?: boolean | null;
-  photo_capture_all_trees?: boolean | null;
-  archivada_en?: string | null;
-}) {
-  return {
-    visibleInApp: remote.visible_in_app ?? true,
-    photoCaptureAllTrees: remote.photo_capture_all_trees ?? PHOTO_CAPTURE_ALL_TREES_DEFAULT,
-    archivadaEn: remote.archivada_en ?? null,
-  };
-}
-
 async function pullPlantationMetadata(plantacionId: string): Promise<void> {
-  // select('*') en vez de columnas explícitas: tolera servers sin las columnas nuevas (GPS, visible_in_app, archivada_en) — pedirlas por nombre rompería el pull entero. Los guards != null hacen el resto.
+  // select('*') tolera servers sin alguna columna nueva: desdeFilaRemota omite lo ausente.
   const { data: remotePlantation, error } = await supabase
     .from('plantations')
     .select('*')
@@ -153,39 +140,20 @@ async function pullPlantationMetadata(plantacionId: string): Promise<void> {
   }
   if (!remotePlantation) return;
 
-  const serverUpdate: Record<string, any> = {
-    lugarServer: remotePlantation.lugar,
-    periodoServer: remotePlantation.periodo,
-    estado: remotePlantation.estado,
-  };
+  const remotos = desdeFilaRemota(remotePlantation);
+  const [local] = await db.select().from(plantations).where(eq(plantations.id, plantacionId));
 
-  // El snapshot *Server de GPS se refresca siempre; las columnas vivas solo si no hay edición local pendiente. Guard contra servers sin esas columnas.
-  if (remotePlantation.gps_capture_frequency != null) {
-    serverUpdate.gpsCaptureFrequencyServer = remotePlantation.gps_capture_frequency;
-  }
-  if (remotePlantation.gps_capture_required != null) {
-    serverUpdate.gpsCaptureRequiredServer = remotePlantation.gps_capture_required;
-  }
-
-  Object.assign(serverUpdate, webManagedFlags(remotePlantation));
-
-  const [local] = await db
-    .select({ pendingEdit: plantations.pendingEdit })
-    .from(plantations)
+  // El snapshot *Server se refresca siempre. Con cambios locales sin subir (edición, o un alta
+  // que ya está en el server pero no terminó de subir), solo los valores vivos no editados.
+  await db
+    .update(plantations)
+    .set({
+      estado: remotePlantation.estado,
+      archivadaEn: remotePlantation.archivada_en ?? null,
+      ...aSnapshot(remotos),
+      ...(local && tieneCambiosSinSubir(local) ? remotosNoEditados(local, remotos) : remotos),
+    })
     .where(eq(plantations.id, plantacionId));
-
-  if (!local?.pendingEdit) {
-    serverUpdate.lugar = remotePlantation.lugar;
-    serverUpdate.periodo = remotePlantation.periodo;
-    if (remotePlantation.gps_capture_frequency != null) {
-      serverUpdate.gpsCaptureFrequency = remotePlantation.gps_capture_frequency;
-    }
-    if (remotePlantation.gps_capture_required != null) {
-      serverUpdate.gpsCaptureRequired = remotePlantation.gps_capture_required;
-    }
-  }
-
-  await db.update(plantations).set(serverUpdate).where(eq(plantations.id, plantacionId));
 }
 
 // ─── Pull parcelas (BEFORE groups — FK ordering) ────────────────────

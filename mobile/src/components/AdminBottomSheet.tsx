@@ -185,7 +185,7 @@ export default function AdminBottomSheet({
             {isAdmin && plantacionEsEditable(plantation) && (
               <ActionItem
                 icon="create-outline"
-                label="Editar lugar y periodo"
+                label="Editar plantación"
                 color={colors.primary}
                 onPress={onEdit}
               />

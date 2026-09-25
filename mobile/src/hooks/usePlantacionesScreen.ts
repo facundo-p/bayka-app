@@ -17,7 +17,7 @@ import type { ExpandedMeta } from './usePlantationAdmin';
 import type { Plantation } from '../types/plantation';
 import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
-import type { PlantationGpsSettings } from '../repositories/PlantationRepository';
+import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 
 const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
@@ -119,8 +119,8 @@ export function usePlantacionesScreen() {
   // Al crear una plantación encadenamos selección de especies (tarea atómica del alta) y navegamos al detalle al cerrar, para crear subgrupos (#63, #15).
   const [plantacionPendienteNav, setPlantacionPendienteNav] = useState<string | null>(null);
 
-  const handleCreatePlantation = useCallback(async (lugar: string, periodo: string, gps: PlantationGpsSettings) => {
-    const id = await adminHook.handleCreateSubmit(lugar, periodo, gps);
+  const handleCreatePlantation = useCallback(async ({ lugar, periodo, ...ajustes }: CamposDePlantacion) => {
+    const id = await adminHook.handleCreateSubmit(lugar, periodo, ajustes);
     setShowCreateModal(false);
     if (!id) return;
     setConfigSpeciesPlantacionId(id);
