@@ -16,6 +16,7 @@ jest.mock('../../src/supabase/client', () => ({
       }),
       startAutoRefresh: jest.fn().mockResolvedValue(undefined),
       stopAutoRefresh: jest.fn().mockResolvedValue(undefined),
+      setSession: jest.fn(),
     },
     from: jest.fn(),
   },
@@ -1210,11 +1211,23 @@ describe('useAuth', () => {
           let storageSdk: Map<string, string>;
           type Instancia = { current: ReturnType<typeof useAuth> };
 
-          /** Storage del SDK en memoria: getSession lee de ahí, como auth-js. */
+          const cuentaEnSdk = () => {
+            const guardada = storageSdk.get(CLAVE_SDK);
+            return guardada ? JSON.parse(guardada).user.id : null;
+          };
+
+          /**
+           * Storage del SDK y SecureStore en memoria. Como auth-js: getSession lee del storage y
+           * setSession lo escribe y avisa SIGNED_IN a todas las instancias.
+           */
           function simularStorageDelSdk() {
             storageSdk = new Map();
+            const secureStore = new Map<string, string>();
+            let tokens: { access_token: string; refresh_token: string } | null = null;
             const AsyncStorage = require('@react-native-async-storage/async-storage');
+            const { persistSession } = require('../../src/supabase/auth');
             (AsyncStorage.getAllKeys as jest.Mock).mockImplementation(async () => [...storageSdk.keys()]);
+            (AsyncStorage.getItem as jest.Mock).mockImplementation(async (k: string) => storageSdk.get(k) ?? null);
             (AsyncStorage.multiRemove as jest.Mock).mockImplementation(async (keys: string[]) => {
               keys.forEach((k) => storageSdk.delete(k));
             });
@@ -1222,6 +1235,20 @@ describe('useAuth', () => {
               const guardada = storageSdk.get(CLAVE_SDK);
               return { data: { session: guardada ? JSON.parse(guardada) : null }, error: null };
             });
+            (supabase.auth.setSession as jest.Mock).mockImplementation(async (t: { access_token: string }) => {
+              const sesion = [SESION_SDK, SESION_B].find((x) => x.access_token === t.access_token)!;
+              storageSdk.set(CLAVE_SDK, JSON.stringify(sesion));
+              await correrListenersDeAuth('SIGNED_IN', sesion);
+              return { data: { session: sesion }, error: null };
+            });
+            (SecureStore.getItemAsync as jest.Mock).mockImplementation(async (k: string) => secureStore.get(k) ?? null);
+            (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string, v: string) => { secureStore.set(k, v); });
+            (SecureStore.deleteItemAsync as jest.Mock).mockImplementation(async (k: string) => { secureStore.delete(k); });
+            (readCachedUserId as jest.Mock).mockImplementation(async () => secureStore.get('user_id') ?? null);
+            (persistSession as jest.Mock).mockImplementation(async (s: { access_token: string; refresh_token: string }) => {
+              tokens = { access_token: s.access_token, refresh_token: s.refresh_token };
+            });
+            (readCachedSession as jest.Mock).mockImplementation(async () => tokens);
           }
 
           /** Pedido de signInWithPassword: al responder guarda la sesión, corre los listeners y recién ahí resuelve. */
@@ -1354,7 +1381,83 @@ describe('useAuth', () => {
             expect(escribio('user_id', 'user-1')).toBe(false);
             expect(escribio('user_email', 'test@test.com')).toBe(false);
             for (const instancia of [result, otra]) expect(instancia.current.session).toEqual(SESION_B);
+            expect(cuentaEnSdk()).toBe('user-b');
+          });
+
+          it('después del login online de otra cuenta, si no se puede restaurar (sin red): el SDK queda vacío, nunca con A', async () => {
+            perfil({ rol: 'admin', activo: true });
+            const [result] = await montar();
+            const pedidoDeA = await loginQueTimeoutea(result);
+            await loguearComo(result, 'b@b.com', SESION_B);
+            (supabase.auth.setSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: { message: 'Network request failed' } });
+
+            await responder(pedidoDeA);
+
+            expect(result.current.session).toEqual(SESION_B);
             expect(storageSdk.has(CLAVE_SDK)).toBe(false);
+          });
+
+          it('la respuesta de A llega mientras el handler de B espera el rol: el SDK termina con B y un arranque nuevo no toma A', async () => {
+            const rolDeB = diferido<object>();
+            const single = jest.fn()
+              .mockResolvedValueOnce({ data: { rol: 'admin', activo: true }, error: null })
+              .mockReturnValueOnce(rolDeB.promesa)
+              .mockReturnValueOnce(rolDeB.promesa)
+              .mockResolvedValue({ data: { rol: 'tecnico', activo: true }, error: null });
+            (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
+            const [result, otra] = await montar();
+            single.mockClear();
+            const pedidoDeA = await loginQueTimeoutea(result);
+            const pedidoDeB = pedidoDeLogin(SESION_B);
+            let pendienteB!: Promise<any>;
+            await act(async () => {
+              pendienteB = result.current.signIn('b@b.com', 'password');
+              pedidoDeB.responder();
+              await new Promise((r) => setTimeout(r, 10));
+            });
+
+            await responder(pedidoDeA);
+            expect(cuentaEnSdk()).toBe('user-1');
+            await act(async () => {
+              rolDeB.resolver({ data: { rol: 'tecnico', activo: true }, error: null });
+              await pendienteB;
+              await new Promise((r) => setTimeout(r, 20));
+            });
+
+            expect(cuentaEnSdk()).toBe('user-b');
+            for (const instancia of [result, otra]) expect(instancia.current.session).toEqual(SESION_B);
+            const arranque = renderHook(() => useAuth());
+            await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+            expect(arranque.result.current.session).toEqual(SESION_B);
+          });
+
+          it('B descartó la respuesta de A, timeouteó y entró offline: su respuesta tardía no borra sus tokens del SDK', async () => {
+            perfil({ rol: 'admin', activo: true });
+            const [result] = await montar();
+            await loguearComo(result, 'b@b.com', SESION_B);
+            await act(async () => { await result.current.signOut(); });
+            const pedidoDeA = await loginQueTimeoutea(result);
+            (verifyCredential as jest.Mock).mockResolvedValue({ role: 'admin', userId: 'user-b' });
+            const pedidoDeB = pedidoDeLogin(SESION_B);
+            jest.useFakeTimers();
+            try {
+              await act(async () => {
+                const pendiente = result.current.signIn('b@b.com', 'password');
+                await jest.advanceTimersByTimeAsync(1000);
+                pedidoDeA.responder();
+                await pedidoDeA.promesa;
+                expect(cuentaEnSdk()).toBe('user-1');
+                await jest.advanceTimersByTimeAsync(7000);
+                expect((await pendiente).error).toBeNull();
+              });
+            } finally {
+              jest.useRealTimers();
+            }
+            expect(result.current.session).toEqual({ access_token: 'tb', refresh_token: 'rb' });
+
+            await responder(pedidoDeB);
+
+            expect(cuentaEnSdk()).toBe('user-b');
           });
 
           it('con el login de otra cuenta en vuelo que después falla: la sesión ajena no queda en el SDK', async () => {

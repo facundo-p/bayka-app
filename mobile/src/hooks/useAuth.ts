@@ -111,10 +111,6 @@ async function borrarEstadoDelSdk() {
   } catch {}
 }
 
-function guardoSesion(result: { data: { session: unknown }; error: unknown }): boolean {
-  return !result.error && !!result.data.session;
-}
-
 function sinSesion(message: string) {
   return { data: { session: null, user: null }, error: { message } };
 }
@@ -265,9 +261,6 @@ type LoginOnline = { vigente: () => boolean; email: string; rol?: RolObtenido };
 /** Todos los pedidos sin terminar, no solo el último: uno que timeouteó puede responder tarde. */
 const loginsOnlineEnVuelo = new Set<LoginOnline>();
 
-/** Un SIGNED_IN descartado dejó su sesión en el SDK mientras un login vigente podía pisarla. */
-let sdkConSesionDescartada = false;
-
 /** Cuenta con sesión abierta en la época actual; cualquier cambio de época la invalida. */
 let cuentaConSesion: { userId: string; epoca: number } | null = null;
 
@@ -291,30 +284,51 @@ function hayLoginVigenteEnVuelo(): boolean {
   return [...loginsOnlineEnVuelo].some(l => l.vigente());
 }
 
-/**
- * El SDK guarda la sesión antes de avisar el SIGNED_IN: si se descarta, se borra de su storage
- * o el próximo arranque la adoptaría. Se deja si es de la cuenta que ya tiene la sesión (sus
- * tokens valen) o si un login vigente en vuelo la va a pisar; si ese login falla, la borra él.
- */
-async function descartarSesionDelSdk(userId: string) {
-  if (esLaCuentaConSesion(userId)) return;
-  if (hayLoginVigenteEnVuelo()) {
-    sdkConSesionDescartada = true;
-    return;
+/** user.id de la sesión guardada por el SDK, leída cruda: getSession puede refrescar por red. */
+async function cuentaEnStorageDelSdk(): Promise<string | null> {
+  try {
+    const clave = (await AsyncStorage.getAllKeys()).find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+    const guardada = clave ? await AsyncStorage.getItem(clave) : null;
+    return guardada ? (JSON.parse(guardada)?.user?.id ?? null) : null;
+  } catch {
+    return null;
   }
-  sdkConSesionDescartada = false;
-  await borrarEstadoDelSdk();
 }
 
-/** Cierra el pedido de un login; `guardoSesion` si el SDK guardó la sesión que devolvió. */
-async function alTerminarPedidoDeLogin(login: LoginOnline, guardoSesion: boolean) {
-  loginsOnlineEnVuelo.delete(login);
-  if (guardoSesion && login.vigente()) {
-    sdkConSesionDescartada = false;
-  } else if (sdkConSesionDescartada && !hayLoginVigenteEnVuelo()) {
-    sdkConSesionDescartada = false;
-    await borrarEstadoDelSdk();
+/** Vuelve a poner en el SDK la sesión de la cuenta con sesión, con sus tokens cacheados. */
+async function restaurarCuentaEnSdk(): Promise<boolean> {
+  const cuenta = cuentaConSesion;
+  if (!cuenta || !esLaCuentaConSesion(cuenta.userId) || (await readCachedUserId()) !== cuenta.userId) return false;
+  const tokens = await readCachedSession();
+  if (!tokens) return false;
+  try {
+    const { error } = await supabase.auth.setSession(tokens);
+    return !error;
+  } catch {
+    return false;
   }
+}
+
+/**
+ * El SDK guarda cada sesión antes de avisar su SIGNED_IN, así que una respuesta descartada
+ * puede haber pisado el storage de la cuenta con sesión. Con ningún login vigente en vuelo
+ * (si hay uno, concilia él al terminar), si el storage es de otra cuenta se restaura la que
+ * tiene la sesión o, si no se puede (sin sesión, sin tokens o sin red), se borra: si no, las
+ * requests saldrían con esa cuenta y el próximo arranque la adoptaría.
+ */
+async function conciliarSdk() {
+  if (hayLoginVigenteEnVuelo()) return;
+  const vigente = vigenteDesdeAhora();
+  const enSdk = await cuentaEnStorageDelSdk();
+  if (!enSdk || esLaCuentaConSesion(enSdk) || !vigente()) return;
+  const restaurada = await restaurarCuentaEnSdk();
+  // Un logout en el medio: lo restaurado tampoco es de nadie.
+  if ((!restaurada || !vigente()) && !hayLoginVigenteEnVuelo()) await borrarEstadoDelSdk();
+}
+
+async function alTerminarPedidoDeLogin(login: LoginOnline) {
+  loginsOnlineEnVuelo.delete(login);
+  await conciliarSdk();
 }
 
 /**
@@ -325,7 +339,7 @@ async function alTerminarPedidoDeLogin(login: LoginOnline, guardoSesion: boolean
 async function alIniciarSesionEnSdk(sesion: Session): Promise<SesionRestaurada | null> {
   const login = loginVigenteDe(sesion.user.email);
   if (!login && loginsOnlineEnVuelo.size > 0) {
-    await descartarSesionDelSdk(sesion.user.id);
+    await conciliarSdk();
     return null;
   }
   const vigente = login?.vigente ?? vigenteDesdeAhora();
@@ -344,7 +358,6 @@ export function __resetEstadoCompartido(): void {
   epocaRevalidada = null;
   redConfirmada = false;
   loginsOnlineEnVuelo.clear();
-  sdkConSesionDescartada = false;
   cuentaConSesion = null;
 }
 
@@ -558,7 +571,7 @@ export function useAuth() {
       completarLoginTardio(pedido, email, password, login);
       return handleConnectivityFailure(email, password, offlineYaIntentado);
     }
-    await alTerminarPedidoDeLogin(login, guardoSesion(result));
+    await alTerminarPedidoDeLogin(login);
     if (!result.error) return aceptarLoginOnline(email, password, result, login);
     return rechazoDeLoginOnline(email, password, result.error, offlineYaIntentado);
   }
@@ -576,7 +589,7 @@ export function useAuth() {
     } catch (e) {
       console.warn('[Auth] login online tardío falló:', e);
     }
-    await alTerminarPedidoDeLogin(login, !!result && guardoSesion(result));
+    await alTerminarPedidoDeLogin(login);
     if (!result || result.error) return;
     const heredero = login.vigente() ? login : loginVigenteDe(email);
     if (!heredero) return;
