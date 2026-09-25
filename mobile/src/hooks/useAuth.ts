@@ -185,7 +185,10 @@ async function leerRolCacheado(): Promise<Role | null> {
   return (await SecureStore.getItemAsync(ROLE_KEY)) as Role | null;
 }
 
-/** Rol de la credencial offline de esta misma cuenta, si la contraseña coincide. */
+/**
+ * Rol de la credencial offline de esta misma cuenta, si la contraseña coincide. Una credencial
+ * sin userId (anterior a #658) no prueba de qué cuenta es: no sirve de respaldo.
+ */
 async function rolCacheadoDeLaCuenta(email: string, password: string, userId: string): Promise<Role | undefined> {
   const cuenta = await verifyCredential(email, password);
   if (!cuenta || esCredencialSinUsuario(cuenta) || cuenta.userId !== userId) return undefined;
@@ -268,7 +271,8 @@ async function alIniciarSesionEnSdk(sesion: Session): Promise<SesionRestaurada |
   const vigente = login?.vigente ?? vigenteDesdeAhora();
   await cachearSesionOnline(sesion, vigente);
   const delServidor = await consultarRol(sesion.user.id, vigente);
-  if (login && delServidor !== undefined) login.rol = delServidor;
+  // Una desactivación no se rebaja: tras purgarla, otra consulta va como anon y no ve la fila.
+  if (login && delServidor !== undefined && login.rol !== CUENTA_DESACTIVADA) login.rol = delServidor;
   return resolverSesion(sesion, delServidor ?? (await leerRolCacheado()), vigente);
 }
 
@@ -439,6 +443,7 @@ export function useAuth() {
     if (!rol || rol === CUENTA_DESACTIVADA || !vigente()) return rol;
     // El rol pudo salir del cache y no del servidor: se publica igual, o el login queda sin rol.
     await SecureStore.setItemAsync(ROLE_KEY, rol);
+    if (!vigente()) return rol;
     authChangeListeners.forEach(fn => fn({ session, role: rol }));
     await cacheCredential(email, password, rol, session.user.id);
     await saveLastOnlineLogin();

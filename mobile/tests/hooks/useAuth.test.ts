@@ -1109,6 +1109,48 @@ describe('useAuth', () => {
           expect(cacheCredential).toHaveBeenCalledWith('test@test.com', 'password', 'admin', 'user-1');
         });
 
+        it('un SIGNED_IN posterior que ya no ve la fila no rebaja la desactivación a "sin perfil"', async () => {
+          const single = jest.fn()
+            .mockResolvedValueOnce({ data: { rol: 'tecnico', activo: false }, error: null })
+            .mockResolvedValue(SIN_FILA);
+          (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnThis(), eq: jest.fn().mockReturnThis(), single });
+          const { result } = await montarYEsperarInit();
+          (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            return { data: { session: SESION_SDK }, error: null };
+          });
+
+          const res = await loguear(result);
+
+          expect(res.error.message).toContain('desactivada');
+          expect(result.current.session).toBeNull();
+        });
+
+        it('signOut mientras se escribe el rol del cache: no revive la sesión ni cachea la credencial', async () => {
+          (verifyCredential as jest.Mock).mockResolvedValue({ role: 'admin', userId: 'user-1' });
+          (supabase.from as jest.Mock).mockReturnValue({
+            select: jest.fn().mockReturnThis(),
+            eq: jest.fn().mockReturnThis(),
+            single: jest.fn().mockResolvedValue(SIN_RESPUESTA),
+          });
+          const { result } = await montarYEsperarInit();
+          (supabase.auth.signInWithPassword as jest.Mock).mockImplementation(async () => {
+            await ultimoListenerDeAuth()('SIGNED_IN', SESION_SDK);
+            return { data: { session: SESION_SDK }, error: null };
+          });
+          (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string) => {
+            if (k === 'user_role') await result.current.signOut();
+          });
+          const { cacheCredential } = require('../../src/services/OfflineAuthService');
+
+          await loguear(result);
+
+          expect(result.current.session).toBeNull();
+          expect(result.current.role).toBeNull();
+          expect(cacheCredential).not.toHaveBeenCalled();
+        });
+
         it.each([
           ['sin credencial cacheada', null],
           ['con la credencial de otra cuenta', { role: 'admin', userId: 'otro' }],
