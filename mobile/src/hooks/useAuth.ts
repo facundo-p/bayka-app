@@ -1,7 +1,8 @@
 /**
  * useAuth — hook central de auth: sesión, rol, signIn, signOut.
  * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; SIGNED_OUT se ignora
- * offline; auto-refresh se para offline y arranca online.
+ * offline; auto-refresh se para offline y arranca online. "Sin red" es `constaSinConexion`:
+ * con estado de red desconocido se intenta online (ver services/conexion.ts).
  * SecureStore: signOut() borra solo el rol y la sesión solo local; los tokens y el userId quedan
  * para que la misma cuenta vuelva a entrar offline. El login offline de otra cuenta descarta los
  * tokens ajenos (#658), y una cuenta desactivada se purga entera.
@@ -14,6 +15,7 @@ import {
 } from '../supabase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+import { constaSinConexion, estaConectado } from '../services/conexion';
 import * as SecureStore from 'expo-secure-store';
 import {
   cacheCredential, verifyCredential, esCredencialSinUsuario, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials,
@@ -48,12 +50,12 @@ const authChangeListeners = new Set<(state: AuthState) => void>();
 let autoRefreshActive = false;
 
 /** Start auto-refresh if online; stop if offline. Idempotent. */
-async function syncAutoRefresh(isConnected: boolean | null) {
+async function syncAutoRefresh(online: boolean) {
   if (!isSupabaseConfigured) return;
-  if (isConnected !== false && !autoRefreshActive) {
+  if (online && !autoRefreshActive) {
     await supabase.auth.startAutoRefresh();
     autoRefreshActive = true;
-  } else if (isConnected === false && autoRefreshActive) {
+  } else if (!online && autoRefreshActive) {
     await supabase.auth.stopAutoRefresh();
     autoRefreshActive = false;
   }
@@ -177,7 +179,7 @@ export function useAuth() {
     (async () => {
       try {
         const net = await NetInfo.fetch();
-        const isOnline = net.isConnected !== false;
+        const isOnline = !constaSinConexion(net);
 
         await syncAutoRefresh(isOnline);
 
@@ -244,9 +246,9 @@ export function useAuth() {
             setLoading(false);
           }
         } else if (event === 'SIGNED_OUT') {
-          // SIGNED_OUT se ignora offline: es un falso positivo de un refresh de token fallido.
+          // Sin conexión confirmada es un falso positivo de un refresh de token fallido: ante la duda se conserva la sesión.
           const net = await NetInfo.fetch();
-          if (net.isConnected === false) {
+          if (!estaConectado(net)) {
             console.warn('[Auth] Ignoring SIGNED_OUT while offline — session preserved');
             return;
           }
@@ -260,7 +262,7 @@ export function useAuth() {
     );
 
     const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
-      syncAutoRefresh(state.isConnected);
+      syncAutoRefresh(!constaSinConexion(state));
     });
 
     return () => {
@@ -307,9 +309,9 @@ export function useAuth() {
   }
 
   async function signIn(email: string, password: string) {
-    // Fast path: definitely offline → instant offline login (ZERO supabase calls)
+    // Sin red segura → login offline al instante, CERO llamadas a supabase. Con estado desconocido se intenta online y el timeout cae al offline.
     const net = await NetInfo.fetch();
-    if (net.isConnected === false) {
+    if (constaSinConexion(net)) {
       return handleOfflineSignIn(email, password);
     }
 

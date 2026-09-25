@@ -2,8 +2,8 @@
  * Reabrir una plantación finalizada desde el bottom sheet (#637): solo online,
  * con la misma confirmación que la web.
  */
-import NetInfo from '@react-native-community/netinfo';
 import { showInfoDialog } from '../utils/alertHelpers';
+import { hayConexion } from '../services/conexion';
 import { reabrirPlantacion, ReabrirPlantacionLocalSyncError } from '../repositories/PlantationRepository';
 import {
   AYUDA_REABRIR_SIN_CONEXION,
@@ -32,8 +32,7 @@ export function useReaperturaPlantacion(showConfirm: ShowConfirm) {
 
   async function handleReopen(plantation: Plantation) {
     if (!esReabrible(plantation)) return;
-    const net = await NetInfo.fetch();
-    if (net.isConnected === false) {
+    if (!(await hayConexion())) {
       showInfoDialog(showConfirm, 'Sin conexión', `${AYUDA_REABRIR_SIN_CONEXION}.`, 'wifi-outline', colors.info);
       return;
     }

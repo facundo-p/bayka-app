@@ -9,7 +9,7 @@ import { plantations, parcelas, trees, groups, plantationSpecies, plantationUser
 import { eq, sql } from 'drizzle-orm';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
-import NetInfo from '@react-native-community/netinfo';
+import { hayConexion } from '../services/conexion';
 import { isNetworkRequestFailed } from '../utils/networkErrors';
 import { syncLog } from '../utils/syncLogger';
 import { ROL } from '../constants/roles';
@@ -180,8 +180,7 @@ export async function updatePlantation(
   }
 
   const edicion = edicionDelFormulario(row, campos, vistos);
-  const net = await NetInfo.fetch();
-  const enConflicto = net.isConnected !== false ? await tryPushPlantationUpdateOnline(row, edicion) : null;
+  const enConflicto = (await hayConexion()) ? await tryPushPlantationUpdateOnline(row, edicion) : null;
   if (enConflicto === null) await applyOfflineEdit(row, edicion);
   notifyDataChanged();
   return enConflicto ?? 0;

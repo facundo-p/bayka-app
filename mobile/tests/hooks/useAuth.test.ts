@@ -1,7 +1,8 @@
 // Tests for useAuth hook
 
 import * as SecureStore from 'expo-secure-store';
-import { setOffline, setOnline } from '../helpers/networkHelper';
+import NetInfo from '@react-native-community/netinfo';
+import { setOffline, setOnline, setSinInternet, setRedDesconocida, SIN_INTERNET } from '../helpers/networkHelper';
 
 jest.mock('expo-secure-store');
 
@@ -444,6 +445,114 @@ describe('useAuth', () => {
 
       expect(instance2.current.session).toBeNull();
       expect(instance2.current.role).toBeNull();
+    });
+  });
+
+  describe('criterio de conexión (#652)', () => {
+    async function montarYEsperarInit() {
+      const hook = renderHook(() => useAuth());
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 20));
+      });
+      return hook;
+    }
+
+    function mockLoginOnlineOk() {
+      const mockSession = { access_token: 't', refresh_token: 'r', user: { id: 'user-1', email: 'test@test.com' } };
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({ data: { session: mockSession }, error: null });
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: { rol: 'tecnico', activo: true }, error: null }),
+      });
+    }
+
+    function ultimoListenerDeRed(): (estado: object) => Promise<void> {
+      const calls = (NetInfo.addEventListener as jest.Mock).mock.calls;
+      return calls[calls.length - 1][0];
+    }
+
+    function ultimoListenerDeAuth(): (event: string, session: unknown) => Promise<void> {
+      const calls = (supabase.auth.onAuthStateChange as jest.Mock).mock.calls;
+      return calls[calls.length - 1][0];
+    }
+
+    it('conectado sin internet: el login va directo al camino offline', async () => {
+      setSinInternet();
+      (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
+      const { result } = await montarYEsperarInit();
+
+      let res: any;
+      await act(async () => { res = await result.current.signIn('test@test.com', 'password'); });
+
+      expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
+      expect(verifyCredential).toHaveBeenCalledWith('test@test.com', 'password');
+      expect(res.error).toBeNull();
+    });
+
+    it('red desconocida: el login intenta online (no bloquea a quien tiene red)', async () => {
+      setRedDesconocida();
+      mockLoginOnlineOk();
+      const { result } = await montarYEsperarInit();
+
+      let res: any;
+      await act(async () => { res = await result.current.signIn('test@test.com', 'password'); });
+
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalled();
+      expect(res.error).toBeNull();
+    });
+
+    it('conectado sin internet: el init no toca supabase y restaura del cache', async () => {
+      setSinInternet();
+      await montarYEsperarInit();
+
+      expect(supabase.auth.getSession).not.toHaveBeenCalled();
+      expect(supabase.auth.startAutoRefresh).not.toHaveBeenCalled();
+      expect(readSesionCacheada).toHaveBeenCalled();
+    });
+
+    it('red desconocida: el init intenta online', async () => {
+      setRedDesconocida();
+      await montarYEsperarInit();
+
+      expect(supabase.auth.getSession).toHaveBeenCalled();
+    });
+
+    it('internet deja de responder: se para el auto-refresh', async () => {
+      await montarYEsperarInit();
+      const alCambiarRed = ultimoListenerDeRed();
+      await act(async () => { await alCambiarRed({ isConnected: true, isInternetReachable: true }); });
+      (supabase.auth.stopAutoRefresh as jest.Mock).mockClear();
+
+      await act(async () => { await alCambiarRed(SIN_INTERNET); });
+
+      expect(supabase.auth.stopAutoRefresh).toHaveBeenCalled();
+    });
+
+    it.each([
+      ['conectado sin internet', setSinInternet],
+      ['red desconocida', setRedDesconocida],
+    ])('%s: un SIGNED_OUT del SDK no cierra la sesión', async (_caso, setRed) => {
+      (readSesionCacheada as jest.Mock).mockResolvedValue({ access_token: 'cached', refresh_token: 'cached-r' });
+      setOffline();
+      const { result } = await montarYEsperarInit();
+      expect(result.current.session).not.toBeNull();
+
+      setRed();
+      await act(async () => { await ultimoListenerDeAuth()('SIGNED_OUT', null); });
+
+      expect(result.current.session).not.toBeNull();
+    });
+
+    it('con conexión confirmada, un SIGNED_OUT del SDK sí cierra la sesión', async () => {
+      (readSesionCacheada as jest.Mock).mockResolvedValue({ access_token: 'cached', refresh_token: 'cached-r' });
+      setOffline();
+      const { result } = await montarYEsperarInit();
+
+      setOnline();
+      await act(async () => { await ultimoListenerDeAuth()('SIGNED_OUT', null); });
+
+      expect(result.current.session).toBeNull();
     });
   });
 });

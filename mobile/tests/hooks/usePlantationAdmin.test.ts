@@ -75,7 +75,7 @@ import { finalizePlantation, FinalizePlantationLocalSyncError } from '../../src/
 import { showInfoDialog } from '../../src/utils/alertHelpers';
 import { createPlantationWithDefaultParcela } from '../../src/services/PlantationCreationService';
 import { TEXTO_DUPLICADA_EN_SERVIDOR } from '../../src/components/PlantacionesDuplicadasAviso';
-import { setOnline, setOffline } from '../helpers/networkHelper';
+import { setOnline, setOffline, setSinInternet, setRedDesconocida } from '../helpers/networkHelper';
 import type { Plantation } from '../../src/types/plantation';
 
 const SIN_PENDIENTES = { activaCount: 0, finalizadaCount: 0, parcelas: 0, fotos: 0, borrados: 0, especies: 0, tecnicos: 0 };
@@ -341,6 +341,31 @@ describe('usePlantationAdmin.handleCreateSubmit', () => {
 
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'offline' }));
     expect(created).toEqual({ id: 'plantation-3', duplicada: undefined });
+  });
+});
+
+describe('usePlantationAdmin.handleCreateSubmit sin conexión confirmada (#652)', () => {
+  const mockCreate = createPlantationWithDefaultParcela as jest.Mock;
+
+  beforeEach(() => {
+    jest.resetAllMocks();
+    (useCurrentUserId as jest.Mock).mockReturnValue('test-user-id');
+    (useProfileData as jest.Mock).mockReturnValue({ profile: { organizacionId: 'org-1' } });
+    (useLiveData as jest.Mock).mockReturnValue({ data: null });
+    (useConfirm as jest.Mock).mockReturnValue({ confirmProps: {}, show: jest.fn() });
+    mockCreate.mockResolvedValue({ id: 'plantation-4', lugar: 'Campo Test', periodo: '2026-A', estado: 'activa' });
+  });
+
+  it.each([
+    ['conectado sin internet', setSinInternet],
+    ['red desconocida', setRedDesconocida],
+  ])('%s: crea en modo offline', async (_caso, setRed) => {
+    setRed();
+
+    const { result } = renderHook(() => usePlantationAdmin());
+    await act(async () => result.current.handleCreateSubmit('Campo Test', '2026-A'));
+
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ mode: 'offline' }));
   });
 });
 

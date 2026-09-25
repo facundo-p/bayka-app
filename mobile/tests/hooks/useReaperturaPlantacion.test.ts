@@ -62,6 +62,19 @@ describe('useReaperturaPlantacion (#637)', () => {
     expect(showInfoDialog).toHaveBeenCalledWith(show, 'Sin conexión', expect.any(String), 'wifi-outline', expect.any(String));
   });
 
+  it.each([
+    ['conectado sin internet', { isConnected: true, isInternetReachable: false }],
+    ['red desconocida', { isConnected: null, isInternetReachable: null }],
+  ])('%s: avisa que no hay conexión (#652)', async (_caso, estado) => {
+    (NetInfo.fetch as jest.Mock).mockResolvedValue(estado);
+    const { show, handleReopen } = montar();
+
+    await handleReopen(FINALIZADA);
+
+    expect(show).not.toHaveBeenCalled();
+    expect(showInfoDialog).toHaveBeenCalledWith(show, 'Sin conexión', expect.any(String), 'wifi-outline', expect.any(String));
+  });
+
   it('no hace nada sobre una plantación que no es reabrible', async () => {
     const { show, handleReopen } = montar();
 

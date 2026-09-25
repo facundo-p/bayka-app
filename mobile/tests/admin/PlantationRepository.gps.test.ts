@@ -150,6 +150,19 @@ describe('config GPS por plantación', () => {
     });
   });
 
+  it.each([
+    ['conectado sin internet', { isConnected: true, isInternetReachable: false }],
+    ['red desconocida', { isConnected: null, isInternetReachable: null }],
+  ])('updatePlantation %s va al camino offline sin intentar subir (#652)', async (_caso, estado) => {
+    mockDbChains({ pendingSync: false, pendingEdit: false, lugarServer: null, periodoServer: null, lugar: 'Viejo', periodo: '2025' });
+    mockNetInfoFetch.mockResolvedValue(estado);
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(updatedSet).toMatchObject({ pendingEdit: true });
+  });
+
   it('updatePlantation offline (primera edición) snapshotea la config GPS de server', async () => {
     mockDbChains({
       pendingSync: false,

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
-import NetInfo from '@react-native-community/netinfo';
 import { readCachedUserId } from '../supabase/auth';
+import { hayConexion } from '../services/conexion';
 import { leerPerfilCacheado, guardarPerfilCacheado, type CachedProfile } from '../services/PerfilCacheadoService';
 
 export type { CachedProfile };
@@ -21,8 +21,7 @@ export function useProfileData() {
       } catch {}
 
       // Step 2: Only fetch from Supabase if online
-      const net = await NetInfo.fetch();
-      if (net.isConnected === false) {
+      if (!(await hayConexion())) {
         if (mounted) setLoading(false);
         return;
       }

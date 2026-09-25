@@ -7,7 +7,7 @@
  * Screens import this hook and pass callbacks to components.
  */
 import { useState } from 'react';
-import NetInfo from '@react-native-community/netinfo';
+import { hayConexion } from '../services/conexion';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
@@ -221,14 +221,14 @@ export function usePlantationAdmin() {
       throw new Error('No se pudo obtener datos del usuario. Intentá de nuevo.');
     }
     // El alta es local-first; con red se empuja en el acto y si falla queda pendiente de sync.
-    const net = await NetInfo.fetch();
+    const conectado = await hayConexion();
     const result = await createPlantationWithDefaultParcela({
       lugar,
       periodo,
       organizacionId,
       creadoPor: userId,
       ajustes,
-      mode: net.isConnected === false ? 'offline' : 'online',
+      mode: conectado ? 'online' : 'offline',
     });
     return { id: result.id, duplicada: result.duplicada };
   }

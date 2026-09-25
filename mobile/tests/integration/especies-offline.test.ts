@@ -27,13 +27,14 @@ const serverState = mockServerState;
 /** Especies con árboles en el server: su baja se rechaza. */
 const mockConArboles = new Set<string>();
 const mockRpc = { rechazo: null as string | null, sinRed: false, llamadas: [] as any[] };
-const mockNet = { conectado: true };
+/** `estado` pisa a `conectado` para probar estados intermedios de NetInfo (#652). */
+const mockNet = { conectado: true, estado: null as object | null };
 /** Sin sesión del SDK el guard lanza antes de tocar el server (#658). */
 const mockSesion = { activa: true };
 
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
-  default: { fetch: () => Promise.resolve({ isConnected: mockNet.conectado }) },
+  default: { fetch: () => Promise.resolve(mockNet.estado ?? { isConnected: mockNet.conectado }) },
 }));
 
 jest.mock('../../src/supabase/client', () => {
@@ -137,6 +138,7 @@ beforeEach(async () => {
   mockConArboles.clear();
   Object.assign(mockRpc, { rechazo: null, sinRed: false, llamadas: [] });
   mockNet.conectado = true;
+  mockNet.estado = null;
   mockSesion.activa = true;
   await vaciarTablas(mockTestDb);
 
@@ -174,6 +176,17 @@ describe('guardar especies', () => {
     expect(await pendientes()).toEqual([`alta:${ALAMO}`, `baja:${PINO}`].sort());
     expect(mockRpc.llamadas).toHaveLength(0);
     expect((await getResumenDePendientes(PLANTACION_ID)).especies).toBe(2);
+  });
+
+  it.each([
+    ['conectado sin internet', { isConnected: true, isInternetReachable: false }],
+    ['red desconocida', { isConnected: null, isInternetReachable: null }],
+  ])('%s: no intenta subir y queda pendiente (#652)', async (_caso, estado) => {
+    mockNet.estado = estado;
+    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [PINO] });
+
+    expect(mockRpc.llamadas).toHaveLength(0);
+    expect(await pendientes()).toEqual([`alta:${ALAMO}`, `baja:${PINO}`].sort());
   });
 
   it('online: sube en el momento con altas y bajas, y no queda nada pendiente', async () => {
