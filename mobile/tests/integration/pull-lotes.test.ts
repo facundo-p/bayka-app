@@ -3,9 +3,6 @@
  * contra SQLite real: el upsert multi-fila, el chequeo de conflicto de especie
  * resuelto con una sola lectura, y el guard de parcela obligatoria de los grupos.
  *
- * La suite que cubría el conflicto (`CrossDeviceSync`) está `describe.skip`
- * (#333), así que sin esto el camino quedaba sin red.
- *
  * Mock de Supabase: estado in-memory por tabla.
  */
 import Database from 'better-sqlite3';
@@ -388,6 +385,20 @@ describe('pull de árboles — reglas de merge en un lote mixto', () => {
     expect((await leerArbol('t-nuevo')).fotoUrl).toBe('plantations/p/t-nuevo.jpg');
     expect((await leerArbol('t-nuevo')).fotoSynced).toBe(true);
     expect((await leerArbol('t-local')).fotoUrl).toBe('file:///data/foto-local.jpg');
+  });
+
+  // Un APK viejo llegó a subir la ruta local del teléfono: acá no apunta a nada.
+  it('una foto_url file:// que llega del server no se adopta como foto', async () => {
+    serverState.trees.set('t-nuevo', { ...arbolDelServer('t-nuevo', ROBLE), foto_url: 'file:///data/otro-telefono/t.jpg' });
+    serverState.trees.set('t-sin-foto', { ...arbolDelServer('t-sin-foto', ROBLE), foto_url: null });
+
+    await pullFromServer(PLANTACION_ID);
+
+    for (const id of ['t-nuevo', 't-sin-foto']) {
+      const fila = await leerArbol(id);
+      expect(fila.fotoUrl).toBeNull();
+      expect(fila.fotoSynced).toBe(false);
+    }
   });
 
   it('cada árbol conserva o adopta su propio punto GPS', async () => {

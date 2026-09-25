@@ -703,6 +703,9 @@ describe('SyncService', () => {
       expect(storageChain.createSignedUrl).toHaveBeenCalledTimes(1);
       expect(result.downloaded).toBe(1);
       expect(result.failed).toBe(0);
+      // La copia local queda como foto ya subida: el push no la vuelve a mandar.
+      const set = (mockDb.update as jest.Mock).mock.results[0].value.set as jest.Mock;
+      expect(set).toHaveBeenCalledWith({ fotoUrl: expect.stringMatching(/^file:\/\//), fotoSynced: true });
     });
 
     // Los bytes son para la velocidad, no para decidir si la foto llegó: un driver
