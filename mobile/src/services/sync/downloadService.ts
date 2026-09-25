@@ -72,9 +72,12 @@ export async function downloadPlantation(
     })
     .onConflictDoUpdate({
       target: plantations.id,
+      // pendingSync NO va acá: una re-descarga de una ya local no puede pisar
+      // un alta pendiente de subir (#647). El resto de lo pendiente (pendingEdit,
+      // snapshots *Server, conflictosDeEdicion, motivoVarado, altaEnServidor)
+      // tampoco está en este set, así que ya queda a salvo.
       set: {
         estado: sql`excluded.estado`,
-        pendingSync: false,
         archivadaEn,
       },
     });
