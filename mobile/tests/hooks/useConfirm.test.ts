@@ -1,7 +1,8 @@
 /**
  * useConfirm — un diálogo de un solo botón (informativo) cerrado por back/backdrop debe
  * disparar el mismo onPress que tocar ese botón, para no perder un paso encadenado a él
- * (#656). Con 2+ botones, cerrar por fuera es cancelar: no dispara ninguno.
+ * (#656). Con 2+ botones, cerrar por fuera no dispara ningún botón; si el caller pasó
+ * `onDismiss`, se dispara eso (#659, para no dejar colgada una Promise en espera).
  */
 import { renderHook, act } from '@testing-library/react-native';
 import { useConfirm } from '../../src/hooks/useConfirm';
@@ -70,6 +71,34 @@ describe('useConfirm', () => {
     });
 
     expect(onPress).toHaveBeenCalledTimes(1);
+    expect(result.current.confirmProps.visible).toBe(false);
+  });
+
+  it('diálogo de 2+ botones con onDismiss: dismiss() lo dispara y no dispara los botones', () => {
+    const onConfirm = jest.fn();
+    const onCancel = jest.fn();
+    const onDismiss = jest.fn();
+    const { result } = renderHook(() => useConfirm());
+
+    act(() => {
+      result.current.show({
+        title: 'Confirmar',
+        message: 'Mensaje',
+        buttons: [
+          { label: 'Cancelar', onPress: onCancel, style: 'cancel' },
+          { label: 'Confirmar', onPress: onConfirm, style: 'primary' },
+        ],
+        onDismiss,
+      });
+    });
+
+    act(() => {
+      result.current.dismiss();
+    });
+
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
     expect(result.current.confirmProps.visible).toBe(false);
   });
 

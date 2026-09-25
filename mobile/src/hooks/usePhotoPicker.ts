@@ -9,6 +9,7 @@ type ShowFn = (config: {
   title: string;
   message: string;
   buttons: ConfirmModalButton[];
+  onDismiss?: () => void;
 }) => void;
 
 /**
@@ -33,6 +34,7 @@ export function usePhotoPicker(show: ShowFn) {
           { label: 'Galería', icon: 'images-outline' as any, onPress: () => { requestPhoto('gallery').then(resolve); }, style: 'primary' },
           { label: options?.optional ? 'Sin foto' : 'Cancelar', onPress: () => { resolve(null); }, style: 'cancel' },
         ],
+        onDismiss: () => { resolve(null); },
       });
     });
   }, [show, requestPhoto]);
