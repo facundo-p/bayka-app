@@ -59,19 +59,23 @@ async function olvidar(exec: DbExecutor, plantacionId: string, especieIds: strin
 /**
  * Aplica en SQLite y lo anota para subir. Una plantación sin subir (pendingSync) anota
  * solo las bajas: su alta sube todas sus especies como altas, pero si un intento
- * anterior ya las subió, una baja posterior se perdería.
+ * anterior ya las subió, una baja posterior se perdería. Devuelve si estaba sin subir:
+ * se lee acá y no de la pantalla, que pudo abrirse antes de que un sync la subiera.
  */
 export async function guardarCambiosDeEspecies(
   plantacionId: string,
   { altas, bajas }: CambiosDeEspecies,
-  pendingSync: boolean,
-): Promise<void> {
-  await enTransaccion(async (tx) => {
+): Promise<boolean> {
+  return enTransaccion(async (tx) => {
+    const [fila] = await tx.select({ pendingSync: plantations.pendingSync }).from(plantations)
+      .where(eq(plantations.id, plantacionId));
+    const pendingSync = fila?.pendingSync ?? false;
     await habilitarLocal(tx, plantacionId, altas);
     await deshabilitarLocal(tx, plantacionId, bajas);
     if (pendingSync) await olvidar(tx, plantacionId, altas);
     else await anotar(tx, plantacionId, altas, CAMBIO_DE_ESPECIE.alta);
     await anotar(tx, plantacionId, bajas, CAMBIO_DE_ESPECIE.baja);
+    return pendingSync;
   });
 }
 

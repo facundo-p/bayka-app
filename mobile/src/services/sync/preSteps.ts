@@ -28,7 +28,7 @@ import {
   uploadPendingSpeciesChanges,
   type RespuestaDeCambios,
 } from './cambiosDeEspecies';
-import { getCambiosPendientes, registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
+import { getCambiosPendientes, getEspeciesPorId, registrarRespuesta } from '../../repositories/CambiosDeEspeciesRepository';
 import { CAMBIO_DE_ESPECIE } from '../../constants/cambioDeEspecie';
 
 type PlantacionLocal = typeof plantations.$inferSelect;
@@ -99,13 +99,18 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
  * sumó especies, no se pisan. Las bajas anotadas desde ese intento van como bajas. Sin
  * especies la plantación no es usable: un fallo la deja pendiente para reintentar (#632).
  */
-async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | null> {
+/** Especies de la alta subidas: con las bajas que el server rechazó por árboles, ya re-habilitadas. */
+type EspeciesDeAlta = { especiesConArboles: string[] };
+
+const esFalloDeAlta = (r: FalloDeAlta | EspeciesDeAlta): r is FalloDeAlta => 'error' in r;
+
+async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | EspeciesDeAlta> {
   const locales = await db
     .select({ especieId: plantationSpecies.especieId })
     .from(plantationSpecies)
     .where(eq(plantationSpecies.plantacionId, plantacionId));
   const bajas = (await getCambiosPendientes(plantacionId)).filter((c) => c.tipo === CAMBIO_DE_ESPECIE.baja);
-  if (locales.length === 0 && bajas.length === 0) return null;
+  if (locales.length === 0 && bajas.length === 0) return { especiesConArboles: [] };
   let respuesta: RespuestaDeCambios;
   try {
     respuesta = await aplicarCambiosEnServidor(plantacionId, {
@@ -118,8 +123,10 @@ async function subirEspeciesDeAlta(plantacionId: string): Promise<FalloDeAlta | 
     return classifyServerError(e);
   }
   if (!respuesta?.success) return falloDeAltaRechazada(respuesta?.error ?? '');
-  await registrarRespuesta(plantacionId, bajas, cambiosRechazados(respuesta.rechazadas ?? []));
-  return null;
+  const rechazados = cambiosRechazados(respuesta.rechazadas ?? []);
+  await registrarRespuesta(plantacionId, bajas, rechazados);
+  const conArboles = rechazados.filter((c) => c.tipo === CAMBIO_DE_ESPECIE.baja).map((c) => c.especieId);
+  return { especiesConArboles: (await getEspeciesPorId(conArboles)).map((e) => e.nombre) };
 }
 
 /**
@@ -146,9 +153,9 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
         continue;
       }
 
-      const falloDeEspecies = await subirEspeciesDeAlta(p.id);
-      if (falloDeEspecies) {
-        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...falloDeEspecies });
+      const especies = await subirEspeciesDeAlta(p.id);
+      if (esFalloDeAlta(especies)) {
+        results.push({ success: false, plantacionId: p.id, nombre: p.lugar, ...especies });
         continue;
       }
 
@@ -159,6 +166,7 @@ export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]
 
       results.push({
         success: true, plantacionId: p.id, nombre: p.lugar, duplicada: await hayOtraEnServidor(p), cambiosPorResolver,
+        ...(especies.especiesConArboles.length > 0 ? { especiesConArboles: especies.especiesConArboles } : {}),
       });
     } catch (e: any) {
       relanzarSiEsCancelacion(e);

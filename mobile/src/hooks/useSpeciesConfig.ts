@@ -35,7 +35,7 @@ async function cargarItems(plantacionId: string, conArbolesEnServer: ReadonlySet
 /** Una especie con árboles en el teléfono no se puede quitar. */
 const bloqueada = (item: SpeciesItem) => item.enabled && item.hasExistingTrees;
 
-export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?: boolean) {
+export function useSpeciesConfig(plantacionId: string | undefined) {
   const confirm = useConfirm();
 
   const [items, setItems] = useState<SpeciesItem[]>([]);
@@ -80,7 +80,7 @@ export function useSpeciesConfig(plantacionId: string | undefined, pendingSync?:
     if (!plantacionId) return;
     setSaving(true);
     try {
-      const conArboles = await guardarEspeciesDePlantacion(plantacionId, cambiosDeLaSeleccion(iniciales, items), !!pendingSync);
+      const conArboles = await guardarEspeciesDePlantacion(plantacionId, cambiosDeLaSeleccion(iniciales, items));
       if (conArboles.length > 0) {
         // La pantalla queda abierta: muestra la especie habilitada de nuevo, con candado.
         conArboles.forEach((e) => conArbolesEnServer.current.add(e.especieId));

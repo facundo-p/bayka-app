@@ -6,7 +6,7 @@ export type CambiosEspecies = { altas: string[]; bajas: string[] };
 
 const RPC_APLICAR_CAMBIOS_ESPECIES = 'aplicar_cambios_especies';
 
-export const ERRORES_REEMPLAZO = {
+export const ERRORES_ESPECIES = {
   /** No es admin/superadmin activo de la organización de la plantación. */
   noAutorizado: 'NOT_AUTHORIZED',
   archivada: 'PLANTACION_ARCHIVADA',
@@ -15,23 +15,23 @@ export const ERRORES_REEMPLAZO = {
   especieInexistente: 'ESPECIE_INEXISTENTE',
 } as const;
 
-export const MENSAJE_ERROR_REEMPLAZO = 'No se pudo guardar el cambio de especies.';
+export const MENSAJE_ERROR_ESPECIES = 'No se pudo guardar el cambio de especies.';
 
 const MENSAJE_ESPECIE_CON_ARBOLES = 'La especie ya tiene árboles registrados: no se puede quitar.';
 
-const MENSAJES_ERROR_REEMPLAZO: Record<string, string> = {
-  [ERRORES_REEMPLAZO.noAutorizado]: 'Tu usuario no tiene permisos para cambiar las especies.',
-  [ERRORES_REEMPLAZO.archivada]: 'La plantación está archivada: no admite cambios.',
-  [ERRORES_REEMPLAZO.finalizada]: 'La plantación está finalizada: no admite cambios.',
-  [ERRORES_REEMPLAZO.especieConArboles]: MENSAJE_ESPECIE_CON_ARBOLES,
-  [ERRORES_REEMPLAZO.especieInexistente]: 'La especie ya no existe en el catálogo.',
+const MENSAJES_ERROR_ESPECIES: Record<string, string> = {
+  [ERRORES_ESPECIES.noAutorizado]: 'Tu usuario no tiene permisos para cambiar las especies.',
+  [ERRORES_ESPECIES.archivada]: 'La plantación está archivada: no admite cambios.',
+  [ERRORES_ESPECIES.finalizada]: 'La plantación está finalizada: no admite cambios.',
+  [ERRORES_ESPECIES.especieConArboles]: MENSAJE_ESPECIE_CON_ARBOLES,
+  [ERRORES_ESPECIES.especieInexistente]: 'La especie ya no existe en el catálogo.',
 };
 
 type Rechazada = { species_id: string; error: string };
 type RespuestaCambios = { success?: boolean; error?: string; rechazadas?: Rechazada[] } | null;
 
 function mensajeDe(codigo: string | undefined): string {
-  return MENSAJES_ERROR_REEMPLAZO[codigo ?? ''] ?? MENSAJE_ERROR_REEMPLAZO;
+  return MENSAJES_ERROR_ESPECIES[codigo ?? ''] ?? MENSAJE_ERROR_ESPECIES;
 }
 
 /**

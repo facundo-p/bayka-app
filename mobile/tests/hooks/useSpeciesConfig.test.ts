@@ -29,8 +29,8 @@ jest.mock('../../src/hooks/useConfirm', () => ({
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 import { useSpeciesConfig } from '../../src/hooks/useSpeciesConfig';
 
-async function montar(pendingSync = false) {
-  const hook = renderHook(() => useSpeciesConfig('p1', pendingSync));
+async function montar() {
+  const hook = renderHook(() => useSpeciesConfig('p1'));
   await waitFor(() => expect(hook.result.current.loading).toBe(false));
   return hook;
 }
@@ -49,15 +49,15 @@ describe('useSpeciesConfig', () => {
   it('guardar sin tocar nada no manda cambios', async () => {
     const { result } = await montar();
     await act(() => result.current.handleSave());
-    expect(mockGuardar).toHaveBeenCalledWith('p1', { altas: [], bajas: [] }, false);
+    expect(mockGuardar).toHaveBeenCalledWith('p1', { altas: [], bajas: [] });
   });
 
-  it('manda altas y bajas, con pendingSync', async () => {
-    const { result } = await montar(true);
+  it('manda altas y bajas', async () => {
+    const { result } = await montar();
     act(() => result.current.handleToggle('ace', true));
     act(() => result.current.handleToggle('euc', false));
     await act(() => result.current.handleSave());
-    expect(mockGuardar).toHaveBeenCalledWith('p1', { altas: ['ace'], bajas: ['euc'] }, true);
+    expect(mockGuardar).toHaveBeenCalledWith('p1', { altas: ['ace'], bajas: ['euc'] });
   });
 
   it('una especie con árboles en el teléfono no se destilda, ni con "deseleccionar todas"', async () => {

@@ -37,7 +37,6 @@ type Props = {
   // Configure species modal
   configSpeciesPlantacionId: string | null;
   onCloseConfigSpecies: () => void;
-  pendingSyncForSpecies?: boolean;
 
   // Assign technicians modal
   assignTechPlantacionId: string | null;
@@ -56,7 +55,6 @@ export default function AdminPlantationModals({
   exportingId,
   configSpeciesPlantacionId,
   onCloseConfigSpecies,
-  pendingSyncForSpecies,
   assignTechPlantacionId,
   onCloseAssignTech,
 }: Props) {
@@ -99,7 +97,6 @@ export default function AdminPlantationModals({
             <ConfigureSpeciesScreen
               plantacionIdProp={configSpeciesPlantacionId}
               onClose={onCloseConfigSpecies}
-              pendingSync={pendingSyncForSpecies}
             />
           )}
         </AdminModalWrapper>
