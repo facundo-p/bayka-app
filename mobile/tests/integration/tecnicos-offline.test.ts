@@ -223,6 +223,17 @@ describe('guardar técnicos', () => {
     expect(await pendientes()).toEqual([]);
   });
 
+  it('el rechazo con señal deshace solo este guardado: lo pendiente de antes sigue pendiente', async () => {
+    mockNet.conectado = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+    mockNet.conectado = true;
+    mockRpc.rechazo = 'PLANTACION_ARCHIVADA';
+    await expect(guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [CARLA], bajas: [] })).rejects.toThrow();
+
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+    expect(await pendientes()).toEqual([BRUNO]);
+  });
+
   it('quitar a un técnico del server sube la baja con las altas pendientes', async () => {
     mockNet.conectado = false;
     await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });

@@ -39,11 +39,14 @@ export async function refrescarTecnicosDeOrganizacion(): Promise<void> {
   }
 }
 
-/** El rechazo de la plantación deshace en el teléfono las altas que no subieron y lanza el motivo. */
-async function resolverSubida(plantacionId: string, subida: SubidaDeTecnicos | null): Promise<string[]> {
+/**
+ * El rechazo de la plantación deshace en el teléfono las altas de este guardado y lanza
+ * el motivo; las que ya estaban pendientes siguen pendientes, como en el sync.
+ */
+async function resolverSubida(plantacionId: string, subida: SubidaDeTecnicos | null, altas: string[]): Promise<string[]> {
   if (!subida) return [];
   if (esRechazoDePlantacion(subida)) {
-    await quitarTecnicosLocal(plantacionId, subida.enviadas);
+    await quitarTecnicosLocal(plantacionId, altas);
     notifyDataChanged();
     throw errorDeRechazo(subida.rechazo);
   }
@@ -71,7 +74,7 @@ async function subirConBajas(plantacionId: string, bajas: string[]): Promise<Sub
 /**
  * Devuelve los nombres de los técnicos que el server no asignó (dados de baja o de otra
  * organización): ya se quitaron del teléfono. Si la plantación no admite el cambio, lo
- * deshace y lanza el motivo.
+ * deshace este guardado y lanza el motivo.
  */
 export async function guardarTecnicosDePlantacion(plantacionId: string, cambios: AltasYBajas): Promise<string[]> {
   if (sinCambios(cambios)) return [];
@@ -84,5 +87,5 @@ export async function guardarTecnicosDePlantacion(plantacionId: string, cambios:
   const subida = bajasDelServidor.length > 0
     ? await subirConBajas(plantacionId, bajasDelServidor)
     : await subirAltasSiSePuede(plantacionId);
-  return resolverSubida(plantacionId, subida);
+  return resolverSubida(plantacionId, subida, cambios.altas);
 }
