@@ -14,9 +14,9 @@ import { DETALLE_SIN_FILAS_AFECTADAS, sinFilasAfectadas } from './filasAfectadas
 
 /**
  * Sube plantaciones creadas offline (pendingSync=true): insert idempotente (23505 = ya existe en
- * server, continúa) + upsert de plantation_species + pendingSync=false, solo si las dos subieron. Devuelve un resultado por
- * plantación: un fallo bloquea silenciosamente sus parcelas/grupos (FK), así que el error debe
- * llegar al usuario, no tragarse.
+ * server, continúa) + upsert de plantation_species + pendingSync=false, solo si las dos
+ * subieron. Devuelve un resultado por plantación: un fallo bloquea silenciosamente sus
+ * parcelas/grupos (FK), así que el error debe llegar al usuario, no tragarse.
  */
 export async function uploadOfflinePlantations(): Promise<SyncPlantationResult[]> {
   const pending = await db

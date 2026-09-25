@@ -63,7 +63,10 @@ function alBajarPagina(onProgress: OnPhaseProgress | undefined, phase: DownloadP
 
 // ─── Pull helpers ────────────────────────────────────────────────────────────
 
-/** Plantación creada offline que todavía no subió: el server no la conoce aún. */
+/**
+ * Plantación creada offline que todavía no subió: el server no la conoce aún, así que
+ * un replace borraría lo local (la membresía del creador, #67; sus especies, #632).
+ */
 async function tienePushPendiente(plantacionId: string): Promise<boolean> {
   const [local] = await db
     .select({ pendingSync: plantations.pendingSync })
@@ -398,24 +401,11 @@ async function pullGroups(
   return { ids: all.map((sg) => sg.id), pendientes: pendingLocally };
 }
 
-/**
- * Plantación offline sin pushear aún: el server no tiene sus filas, así que un replace
- * borraría lo local (la membresía del creador, #67; sus especies, #632). El server
- * recién es autoridad cuando la plantación existe allá.
- */
-async function pendienteDePush(plantacionId: string): Promise<boolean> {
-  const [local] = await db
-    .select({ pendingSync: plantations.pendingSync })
-    .from(plantations)
-    .where(eq(plantations.id, plantacionId));
-  return !!local?.pendingSync;
-}
-
 async function pullPlantationUsers(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
-  if (await pendienteDePush(plantacionId)) {
+  if (await tienePushPendiente(plantacionId)) {
     syncLog.info('Pull plantation_users: plantación pendiente de push, se omite el replace');
     emitProgress(onProgress, DOWNLOAD_PHASE.usuarios, 0, 0);
     return;
@@ -491,6 +481,11 @@ async function pullPlantationSpecies(
   plantacionId: string,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
+  if (await tienePushPendiente(plantacionId)) {
+    syncLog.info('Pull plantation_species: plantación pendiente de push, se omite el replace');
+    emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, 0);
+    return;
+  }
   const { data: remotePs, error } = await fetchAllRows<any>(() =>
     supabase.from('plantation_species').select('*').eq('plantation_id', plantacionId),
     alBajarPagina(onProgress, DOWNLOAD_PHASE.especiesPlantacion),
@@ -504,7 +499,6 @@ async function pullPlantationSpecies(
   const all = remotePs ?? [];
   syncLog.info('Pull plantation_species:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
-  if (await pendienteDePush(plantacionId)) return;
 
   await quitarEspeciesAusentes(plantacionId, all.map((ps: any) => ps.species_id));
   if (all.length === 0) return;
