@@ -8,15 +8,35 @@ import { readCachedUserId } from '../../supabase/auth';
  * without a valid bearer token the REST requests run as the `anon` role and RLS
  * rejects them with a misleading "permission" error (postgres 42501).
  */
+const NOMBRE_SESION_EXPIRADA = 'SessionExpiredError';
+
 export class SessionExpiredError extends Error {
   constructor() {
     super('SESSION_EXPIRED');
-    this.name = 'SessionExpiredError';
+    this.name = NOMBRE_SESION_EXPIRADA;
   }
 }
 
+/** Por nombre y no por instanceof: los tests mockean el módulo y la clase deja de ser la misma. */
 export function esSesionExpirada(err: unknown): boolean {
-  return (err as { name?: string } | null)?.name === 'SessionExpiredError';
+  return (err as { name?: string } | null)?.name === NOMBRE_SESION_EXPIRADA;
+}
+
+/** Una acción que el usuario dispara a mano y solo puede hacerse contra el servidor, sin sesión (#658). */
+export class SinSesionDelServidorError extends Error {
+  constructor(accion: string) {
+    super(`Iniciá sesión con conexión para ${accion}.`);
+    this.name = 'SinSesionDelServidorError';
+  }
+}
+
+/** ensureServerSession para acciones del usuario: sin sesión lanza el motivo listo para mostrar. */
+export async function exigirSesionDelServidor(accion: string): Promise<void> {
+  try {
+    await ensureServerSession();
+  } catch (e) {
+    throw esSesionExpirada(e) ? new SinSesionDelServidorError(accion) : e;
+  }
 }
 
 /** Refresh if the access token expires within this window (clock-skew margin). */

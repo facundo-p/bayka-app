@@ -10,7 +10,7 @@ jest.mock('@react-native-community/netinfo', () => ({
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
-    auth: { getSession: jest.fn() },
+    auth: { getSession: jest.fn(), refreshSession: jest.fn() },
     rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
@@ -40,6 +40,7 @@ import {
 } from '../../src/repositories/PlantationRepository';
 import { db } from '../../src/database/client';
 import { supabase } from '../../src/supabase/client';
+import { conSesionDelServidor } from '../helpers/rolCacheado';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const GPS = { gpsCaptureFrequency: 5, gpsCaptureRequired: false };
@@ -93,6 +94,7 @@ function mockRpcEdicion(data: unknown = { success: true }) {
 describe('config GPS por plantación', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    conSesionDelServidor(supabase.auth, 'user-1');
   });
 
   it('createPlantationLocally persiste la config GPS elegida', async () => {
@@ -244,6 +246,17 @@ describe('config GPS por plantación', () => {
       gpsCaptureRequiredServer: true,
       pendingEdit: true,
     });
+  });
+
+  it('updatePlantation online sin sesión del servidor no sube nada y queda pendiente (#658)', async () => {
+    mockDbChains({ pendingSync: false, pendingEdit: false });
+    mockNetInfoFetch.mockResolvedValue({ isConnected: true });
+    conSesionDelServidor(supabase.auth, null);
+
+    await updatePlantation('plant-1', 'Campo', '2026', GPS);
+
+    expect(supabase.rpc).not.toHaveBeenCalled();
+    expect(updatedSet).toMatchObject({ lugar: 'Campo', lugarServer: 'Viejo', pendingEdit: true });
   });
 
   it('updatePlantation online con error NO relacionado a red se propaga (no cae al camino offline)', async () => {

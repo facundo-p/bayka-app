@@ -21,3 +21,16 @@ export function conUsuarioCacheado(userId: string | (() => string | null)): void
     return previa ? previa(key) : null;
   });
 }
+
+type AuthMockeado = { getSession: unknown; refreshSession?: unknown };
+
+/**
+ * Sesión del SDK de `userId` con ese mismo userId cacheado, que el guard acepta.
+ * Con null no hay sesión y el refresh falla: el guard lanza SessionExpiredError.
+ */
+export function conSesionDelServidor(auth: AuthMockeado, userId: string | null): void {
+  const session = userId ? { user: { id: userId } } : null;
+  (auth.getSession as jest.Mock).mockResolvedValue({ data: { session }, error: null });
+  (auth.refreshSession as jest.Mock).mockResolvedValue({ data: { session: null }, error: { message: 'no session' } });
+  conUsuarioCacheado(userId ?? 'otro-usuario');
+}

@@ -155,14 +155,42 @@ describe('useProfileData', () => {
     expect(result.current.profile).toBeNull();
   });
 
-  it('descarta un perfil cacheado sin dueño (anterior a #658)', async () => {
-    cachear(mockProfile);
-    (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null } });
+  describe('perfil sin dueño, anterior a #658', () => {
+    const conTokensDe = (email: string) => {
+      store.set('supabase_access_token', 'at');
+      store.set('supabase_refresh_token', 'rt');
+      store.set('last_email', email);
+    };
 
-    const { result } = renderHook(() => useProfileData());
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    async function perfilLeido() {
+      (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: null } });
+      const { result } = renderHook(() => useProfileData());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      return result.current.profile;
+    }
 
-    expect(result.current.profile).toBeNull();
+    it('con los tokens de la misma cuenta se usa y se reescribe con su userId', async () => {
+      cachear(mockProfile);
+      conTokensDe(mockProfile.email);
+
+      expect(await perfilLeido()).toEqual(mockProfile);
+      expect(JSON.parse(store.get(PROFILE_CACHE_KEY)!)).toEqual({ ...mockProfile, userId: 'user-1' });
+    });
+
+    it('en una sesión solo local (sin tokens) se descarta', async () => {
+      cachear(mockProfile);
+      store.set('last_email', mockProfile.email);
+
+      expect(await perfilLeido()).toBeNull();
+    });
+
+    it('con tokens de otro email se descarta', async () => {
+      cachear(mockProfile);
+      conTokensDe('otra@example.com');
+
+      expect(await perfilLeido()).toBeNull();
+      expect(JSON.parse(store.get(PROFILE_CACHE_KEY)!)).not.toHaveProperty('userId');
+    });
   });
 
   it('no cachea el perfil de una sesión del SDK de otra cuenta', async () => {

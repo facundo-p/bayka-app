@@ -5,7 +5,7 @@ jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
     rpc: jest.fn(),
-    auth: { getSession: jest.fn() },
+    auth: { getSession: jest.fn(), refreshSession: jest.fn() },
   },
   isSupabaseConfigured: true,
 }));
@@ -44,6 +44,7 @@ import { db } from '../../src/database/client';
 import { notifyDataChanged } from '../../src/database/liveQuery';
 import { syncLog } from '../../src/utils/syncLogger';
 import { getResumenDePendientes } from '../../src/queries/catalogQueries';
+import { conSesionDelServidor } from '../helpers/rolCacheado';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -63,6 +64,7 @@ const fakePlantation = {
 describe('PlantationRepository', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    conSesionDelServidor(mockSupabase.auth, 'user-1');
 
     (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: null });
 
@@ -158,6 +160,17 @@ describe('PlantationRepository', () => {
       expect(mockSyncLog.error).toHaveBeenCalledWith(expect.stringContaining('plantation-1'), expect.any(Error));
     });
 
+    it('sin sesión del servidor: no escribe nada y pide iniciar sesión con conexión (#658)', async () => {
+      conSesionDelServidor(mockSupabase.auth, null);
+
+      await expect(finalizePlantation('plantation-1')).rejects.toThrow(
+        'Iniciá sesión con conexión para finalizar la plantación.',
+      );
+
+      expect(mockSupabase.from).not.toHaveBeenCalled();
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
     it('Test 6: server fails — local SQLite untouched, error del server se propaga', async () => {
       (mockSupabase.from as jest.Mock).mockReturnValue({
         update: jest.fn().mockReturnValue({
@@ -195,6 +208,17 @@ describe('PlantationRepository', () => {
 
       await expect(reabrirPlantacion('plantation-1')).rejects.toThrow(mensaje);
 
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('sin sesión del servidor: no llama al RPC y pide iniciar sesión con conexión (#658)', async () => {
+      conSesionDelServidor(mockSupabase.auth, null);
+
+      await expect(reabrirPlantacion('plantation-1')).rejects.toThrow(
+        'Iniciá sesión con conexión para reabrir la plantación.',
+      );
+
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
       expect(mockDb.update).not.toHaveBeenCalled();
     });
 
