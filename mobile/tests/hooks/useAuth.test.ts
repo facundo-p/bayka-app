@@ -477,17 +477,94 @@ describe('useAuth', () => {
       return calls[calls.length - 1][0];
     }
 
-    it('conectado sin internet: el login va directo al camino offline', async () => {
-      setSinInternet();
-      (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
+    async function loguear(result: { current: ReturnType<typeof useAuth> }, password = 'password') {
+      let res: any;
+      await act(async () => { res = await result.current.signIn('test@test.com', password); });
+      return res;
+    }
+
+    describe('conectado sin internet confirmado (Android validando la red o con señal débil)', () => {
+      it('con credencial válida entra offline al instante, sin tocar el servidor', async () => {
+        setSinInternet();
+        (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-1' });
+        const { result } = await montarYEsperarInit();
+
+        const res = await loguear(result);
+
+        expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
+        expect(res.error).toBeNull();
+      });
+
+      it('sin credencial cacheada intenta online y entra', async () => {
+        setSinInternet();
+        (verifyCredential as jest.Mock).mockResolvedValue(null);
+        mockLoginOnlineOk();
+        const { result } = await montarYEsperarInit();
+
+        const res = await loguear(result);
+
+        expect(supabase.auth.signInWithPassword).toHaveBeenCalled();
+        expect(res.error).toBeNull();
+        expect(res.data.session).toBeTruthy();
+      });
+
+      it('sin credencial cacheada y el servidor no responde: al timeout avisa de conectividad', async () => {
+        setSinInternet();
+        (verifyCredential as jest.Mock).mockResolvedValue(null);
+        (supabase.auth.signInWithPassword as jest.Mock).mockReturnValue(new Promise(() => {}));
+        const { result } = await montarYEsperarInit();
+
+        jest.useFakeTimers();
+        try {
+          let res: any;
+          await act(async () => {
+            const pendiente = result.current.signIn('test@test.com', 'password');
+            await jest.advanceTimersByTimeAsync(8000);
+            res = await pendiente;
+          });
+          expect(res.error.message).toBe('No se pudo conectar con el servidor. Verificá tu conexión o intentá más tarde.');
+        } finally {
+          jest.useRealTimers();
+        }
+      });
+
+      it('con el login offline vencido intenta online', async () => {
+        setSinInternet();
+        (isOfflineLoginExpired as jest.Mock).mockResolvedValue(true);
+        mockLoginOnlineOk();
+        const { result } = await montarYEsperarInit();
+
+        const res = await loguear(result);
+
+        expect(supabase.auth.signInWithPassword).toHaveBeenCalled();
+        expect(res.error).toBeNull();
+      });
+
+      it('contraseña que no coincide con la cacheada: decide el servidor, con su mensaje', async () => {
+        setSinInternet();
+        (verifyCredential as jest.Mock).mockResolvedValue(null);
+        (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+          data: { session: null },
+          error: { status: 400, code: 'invalid_credentials', message: 'Invalid login credentials' },
+        });
+        const { result } = await montarYEsperarInit();
+
+        const res = await loguear(result, 'otra');
+
+        expect(supabase.auth.signInWithPassword).toHaveBeenCalled();
+        expect(res.error.message).toBe('Email o contraseña incorrectos.');
+      });
+    });
+
+    it('sin red: login offline sin intentar el servidor aunque no haya credencial', async () => {
+      setOffline();
+      (verifyCredential as jest.Mock).mockResolvedValue(null);
       const { result } = await montarYEsperarInit();
 
-      let res: any;
-      await act(async () => { res = await result.current.signIn('test@test.com', 'password'); });
+      const res = await loguear(result);
 
       expect(supabase.auth.signInWithPassword).not.toHaveBeenCalled();
-      expect(verifyCredential).toHaveBeenCalledWith('test@test.com', 'password');
-      expect(res.error).toBeNull();
+      expect(res.error).not.toBeNull();
     });
 
     it('red desconocida: el login intenta online (no bloquea a quien tiene red)', async () => {
@@ -527,6 +604,87 @@ describe('useAuth', () => {
       await act(async () => { await alCambiarRed(SIN_INTERNET); });
 
       expect(supabase.auth.stopAutoRefresh).toHaveBeenCalled();
+    });
+
+    describe('arranque sin conexión confirmada', () => {
+      const SESION_SDK = { access_token: 't', refresh_token: 'r', user: { id: 'user-1', email: 'a@a.com' } };
+
+      function perfil(datos: object) {
+        (supabase.from as jest.Mock).mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockResolvedValue({ data: datos, error: null }),
+        });
+      }
+
+      async function arrancarSinInternetConSesion() {
+        setSinInternet();
+        (readSesionCacheada as jest.Mock).mockResolvedValue({ access_token: 'cached', refresh_token: 'cached-r' });
+        (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('tecnico');
+        (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: SESION_SDK } });
+        const hook = await montarYEsperarInit();
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        return hook;
+      }
+
+      async function confirmarConexion() {
+        await act(async () => {
+          await ultimoListenerDeRed()({ isConnected: true, isInternetReachable: true });
+          await new Promise((r) => setTimeout(r, 20));
+        });
+      }
+
+      it('al confirmarse la conexión revalida una sola vez y refresca el rol', async () => {
+        perfil({ rol: 'admin', activo: true });
+        const { result } = await arrancarSinInternetConSesion();
+
+        await confirmarConexion();
+        await confirmarConexion();
+
+        expect(supabase.auth.getSession).toHaveBeenCalledTimes(1);
+        expect(result.current.role).toBe('admin');
+        expect(result.current.session).toBe(SESION_SDK);
+      });
+
+      it('si la cuenta fue desactivada, la purga', async () => {
+        perfil({ rol: 'tecnico', activo: false });
+        const { result } = await arrancarSinInternetConSesion();
+
+        await confirmarConexion();
+
+        expect(result.current.session).toBeNull();
+        const { clearAllCredentials } = require('../../src/services/OfflineAuthService');
+        expect(clearAllCredentials).toHaveBeenCalled();
+      });
+
+      it('no revalida con una red que sigue sin internet confirmado', async () => {
+        await arrancarSinInternetConSesion();
+
+        await act(async () => { await ultimoListenerDeRed()(SIN_INTERNET); });
+
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+      });
+
+      it('no revive una sesión que se cerró antes de confirmarse la conexión', async () => {
+        perfil({ rol: 'tecnico', activo: true });
+        const { result } = await arrancarSinInternetConSesion();
+        await act(async () => { await result.current.signOut(); });
+
+        await confirmarConexion();
+
+        expect(result.current.session).toBeNull();
+      });
+
+      it('la sesión de otra cuenta en el SDK no se adopta', async () => {
+        perfil({ rol: 'admin', activo: true });
+        (readCachedUserId as jest.Mock).mockResolvedValue('otra-cuenta');
+        const { result } = await arrancarSinInternetConSesion();
+
+        await confirmarConexion();
+
+        expect(result.current.role).toBe('tecnico');
+        expect(supabase.from).not.toHaveBeenCalled();
+      });
     });
 
     it.each([

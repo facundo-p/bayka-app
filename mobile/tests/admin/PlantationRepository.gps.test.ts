@@ -41,6 +41,7 @@ import {
 import { db } from '../../src/database/client';
 import { supabase } from '../../src/supabase/client';
 import { conSesionDelServidor } from '../helpers/rolCacheado';
+import { SIN_INTERNET, RED_DESCONOCIDA } from '../helpers/networkHelper';
 
 const mockDb = db as jest.Mocked<typeof db>;
 const GPS = { gpsCaptureFrequency: 5, gpsCaptureRequired: false };
@@ -151,8 +152,8 @@ describe('config GPS por plantación', () => {
   });
 
   it.each([
-    ['conectado sin internet', { isConnected: true, isInternetReachable: false }],
-    ['red desconocida', { isConnected: null, isInternetReachable: null }],
+    ['conectado sin internet', SIN_INTERNET],
+    ['red desconocida', RED_DESCONOCIDA],
   ])('updatePlantation %s va al camino offline sin intentar subir (#652)', async (_caso, estado) => {
     mockDbChains({ pendingSync: false, pendingEdit: false, lugarServer: null, periodoServer: null, lugar: 'Viejo', periodo: '2025' });
     mockNetInfoFetch.mockResolvedValue(estado);

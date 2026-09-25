@@ -1,7 +1,7 @@
 jest.mock('@react-native-community/netinfo', () => ({ __esModule: true, default: { fetch: jest.fn() } }));
 
 import NetInfo from '@react-native-community/netinfo';
-import { constaSinConexion, estaConectado, hayConexion } from '../../src/services/conexion';
+import { constaSinConexion, estaConectado, hayConexion, sinRed } from '../../src/services/conexion';
 
 describe('estaConectado', () => {
   it.each([
@@ -24,6 +24,16 @@ describe('constaSinConexion', () => {
     [{ isConnected: false, isInternetReachable: null }, true],
   ])('%o → %s', (estado, esperado) => {
     expect(constaSinConexion(estado as any)).toBe(esperado);
+  });
+});
+
+describe('sinRed', () => {
+  it.each([
+    [{ isConnected: false, isInternetReachable: null }, true],
+    [{ isConnected: true, isInternetReachable: false }, false],
+    [{ isConnected: null, isInternetReachable: null }, false],
+  ])('%o → %s', (estado, esperado) => {
+    expect(sinRed(estado as any)).toBe(esperado);
   });
 });
 

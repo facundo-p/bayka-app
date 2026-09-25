@@ -12,6 +12,7 @@ import { renderHook } from '@testing-library/react-native';
 import { useReaperturaPlantacion } from '../../src/hooks/useReaperturaPlantacion';
 import { reabrirPlantacion, ReabrirPlantacionLocalSyncError } from '../../src/repositories/PlantationRepository';
 import { showInfoDialog } from '../../src/utils/alertHelpers';
+import { SIN_INTERNET, RED_DESCONOCIDA } from '../helpers/networkHelper';
 import type { Plantation } from '../../src/types/plantation';
 
 const FINALIZADA: Plantation = {
@@ -63,8 +64,8 @@ describe('useReaperturaPlantacion (#637)', () => {
   });
 
   it.each([
-    ['conectado sin internet', { isConnected: true, isInternetReachable: false }],
-    ['red desconocida', { isConnected: null, isInternetReachable: null }],
+    ['conectado sin internet', SIN_INTERNET],
+    ['red desconocida', RED_DESCONOCIDA],
   ])('%s: avisa que no hay conexión (#652)', async (_caso, estado) => {
     (NetInfo.fetch as jest.Mock).mockResolvedValue(estado);
     const { show, handleReopen } = montar();

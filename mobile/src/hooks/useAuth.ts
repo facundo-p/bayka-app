@@ -1,8 +1,10 @@
 /**
  * useAuth — hook central de auth: sesión, rol, signIn, signOut.
  * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; SIGNED_OUT se ignora
- * offline; auto-refresh se para offline y arranca online. "Sin red" es `constaSinConexion`:
- * con estado de red desconocido se intenta online (ver services/conexion.ts).
+ * offline; auto-refresh se para offline y arranca online. Criterio de red en services/conexion.ts:
+ * sin red no se intenta el servidor; con red pero internet sin confirmar el login offline va
+ * primero y, si no alcanza, se intenta online; un arranque offline revalida contra el servidor
+ * cuando la conexión se confirma.
  * SecureStore: signOut() borra solo el rol y la sesión solo local; los tokens y el userId quedan
  * para que la misma cuenta vuelva a entrar offline. El login offline de otra cuenta descarta los
  * tokens ajenos (#658), y una cuenta desactivada se purga entera.
@@ -15,7 +17,7 @@ import {
 } from '../supabase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
-import { constaSinConexion, estaConectado } from '../services/conexion';
+import { constaSinConexion, estaConectado, sinRed } from '../services/conexion';
 import * as SecureStore from 'expo-secure-store';
 import {
   cacheCredential, verifyCredential, esCredencialSinUsuario, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials,
@@ -143,11 +145,38 @@ async function fetchAndCacheRole(userId: string): Promise<RolObtenido> {
   return cached as Role | null;
 }
 
+type SesionRestaurada = { session: AuthState['session']; role: Role | null };
+
+/**
+ * Restaura la sesión del SDK: cachea tokens, refresca el rol y purga una cuenta desactivada.
+ * Null si el SDK no tiene sesión, o si es de otra cuenta que `soloDe`.
+ */
+async function restaurarDesdeSdk(soloDe?: string | null): Promise<SesionRestaurada | null> {
+  const { data: { session: sdk } } = await supabase.auth.getSession();
+  if (!sdk || (soloDe !== undefined && sdk.user.id !== soloDe)) return null;
+  await cachearSesionOnline(sdk);
+  const rol = await fetchAndCacheRole(sdk.user.id);
+  if (rol === CUENTA_DESACTIVADA) {
+    await purgarSesionDesactivada();
+    return { session: null, role: null };
+  }
+  return { session: sdk, role: rol };
+}
+
 /** Restaura sesión desde el cache de SecureStore; CERO llamadas de red. Usado en init offline y como fallback si el init online falla. */
-async function restoreFromCache(): Promise<{ session: AuthState['session']; role: Role | null }> {
+async function restoreFromCache(): Promise<SesionRestaurada> {
   const session = await readSesionCacheada();
   const role = await SecureStore.getItemAsync(ROLE_KEY) as Role | null;
   return { session, role };
+}
+
+/** Init online: sesión del SDK o, si no hay o falla la red, la del cache. */
+async function restaurarOnline(): Promise<SesionRestaurada> {
+  try {
+    return (await restaurarDesdeSdk()) ?? (await restoreFromCache());
+  } catch {
+    return restoreFromCache();
+  }
 }
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
@@ -157,6 +186,8 @@ export function useAuth() {
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
   const initializing = useRef(true);
+  const sessionRef = useRef<AuthState['session']>(null);
+  sessionRef.current = session;
 
   useEffect(() => {
     const listener = (state: AuthState) => {
@@ -176,40 +207,17 @@ export function useAuth() {
       return;
     }
 
+    // Un arranque sin conexión confirmada se revalida contra el servidor una sola vez, al confirmarse.
+    let revalidarAlConectar = false;
+
     (async () => {
       try {
         const net = await NetInfo.fetch();
         const isOnline = !constaSinConexion(net);
-
+        revalidarAlConectar = !isOnline;
         await syncAutoRefresh(isOnline);
 
-        let restored: { session: AuthState['session']; role: Role | null };
-
-        if (isOnline) {
-          // Online: try Supabase SDK first, fall back to cache
-          try {
-            const { data: { session: supabaseSession } } = await supabase.auth.getSession();
-            if (supabaseSession) {
-              await cachearSesionOnline(supabaseSession);
-              const cachedRole = await fetchAndCacheRole(supabaseSession.user.id);
-              if (cachedRole === CUENTA_DESACTIVADA) {
-                await purgarSesionDesactivada();
-                restored = { session: null, role: null };
-              } else {
-                restored = { session: supabaseSession, role: cachedRole };
-              }
-            } else {
-              restored = await restoreFromCache();
-            }
-          } catch {
-            // Online init failed (e.g. network blip) — fall back to cache
-            restored = await restoreFromCache();
-          }
-        } else {
-          // Offline: ZERO network calls — read everything from SecureStore
-          restored = await restoreFromCache();
-        }
-
+        const restored = isOnline ? await restaurarOnline() : await restoreFromCache();
         if (mounted && restored.session) {
           setSession(restored.session);
           if (restored.role) setRole(restored.role);
@@ -221,6 +229,18 @@ export function useAuth() {
         if (mounted) setLoading(false);
       }
     })();
+
+    async function revalidar() {
+      try {
+        const restored = await restaurarDesdeSdk(await readCachedUserId());
+        if (mounted && restored?.session && sessionRef.current) {
+          setSession(restored.session);
+          if (restored.role) setRole(restored.role);
+        }
+      } catch (e) {
+        console.warn('[Auth] revalidación online falló:', e);
+      }
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, supabaseSession) => {
@@ -249,7 +269,7 @@ export function useAuth() {
           // Sin conexión confirmada es un falso positivo de un refresh de token fallido: ante la duda se conserva la sesión.
           const net = await NetInfo.fetch();
           if (!estaConectado(net)) {
-            console.warn('[Auth] Ignoring SIGNED_OUT while offline — session preserved');
+            console.warn('[Auth] SIGNED_OUT ignorado sin conexión confirmada: se conserva la sesión');
             return;
           }
           if (mounted) {
@@ -263,6 +283,10 @@ export function useAuth() {
 
     const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
       syncAutoRefresh(!constaSinConexion(state));
+      if (revalidarAlConectar && estaConectado(state)) {
+        revalidarAlConectar = false;
+        revalidar();
+      }
     });
 
     return () => {
@@ -308,13 +332,23 @@ export function useAuth() {
     return sinSesion(AUTH_MESSAGES.connectivity);
   }
 
+  /**
+   * Sin red: solo offline. Con red pero internet sin confirmar: offline primero y, ante
+   * cualquier fallo, online. Se reintenta también con contraseña incorrecta: la credencial
+   * local puede estar vieja (contraseña cambiada en la web), el servidor es quien decide, y
+   * tratar igual "no cacheada" y "no coincide" no delata qué cuentas guarda el teléfono.
+   */
   async function signIn(email: string, password: string) {
-    // Sin red segura → login offline al instante, CERO llamadas a supabase. Con estado desconocido se intenta online y el timeout cae al offline.
     const net = await NetInfo.fetch();
+    if (sinRed(net)) return handleOfflineSignIn(email, password);
     if (constaSinConexion(net)) {
-      return handleOfflineSignIn(email, password);
+      const offline = await handleOfflineSignIn(email, password);
+      if (!offline.error) return offline;
     }
+    return signInOnline(email, password);
+  }
 
+  async function signInOnline(email: string, password: string) {
     let result;
     try {
       result = await withTimeout(
@@ -325,29 +359,28 @@ export function useAuth() {
       // Thrown (network failure / timeout) → offline fallback or connectivity.
       return handleConnectivityFailure(email, password);
     }
+    if (!result.error) return aceptarLoginOnline(email, password, result);
+    return rechazoDeLoginOnline(email, password, result.error);
+  }
 
-    if (!result.error) {
-      if (result.data.session) {
-        const cuentaActiva = await persistOnlineSession(email, password, result.data.session);
-        if (!cuentaActiva) {
-          await purgarSesionDesactivada();
-          return sinSesion(AUTH_MESSAGES.account_disabled);
-        }
-      }
-      return result;
-    }
+  async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R) {
+    if (!result.data.session) return result;
+    const cuentaActiva = await persistOnlineSession(email, password, result.data.session);
+    if (cuentaActiva) return result;
+    await purgarSesionDesactivada();
+    return sinSesion(AUTH_MESSAGES.account_disabled);
+  }
 
-    // Error sin throw: un backend caído/pausado devuelve acá un parse error no-JSON — es conectividad, no credenciales malas.
-    if (classifyAuthError(result.error) === 'connectivity') {
-      return handleConnectivityFailure(email, password);
-    }
-    // Cuenta desactivada: mismo purge que en purgarSesionDesactivada().
-    if (classifyAuthError(result.error) === 'account_disabled') {
+  async function rechazoDeLoginOnline(email: string, password: string, error: Parameters<typeof classifyAuthError>[0]) {
+    // Un backend caído/pausado devuelve acá un parse error no-JSON — es conectividad, no credenciales malas.
+    const tipo = classifyAuthError(error);
+    if (tipo === 'connectivity') return handleConnectivityFailure(email, password);
+    if (tipo === 'account_disabled') {
       await purgarSesionDesactivada();
       return sinSesion(AUTH_MESSAGES.account_disabled);
     }
     // Real credential / unknown error → friendly message, never the raw SDK one.
-    return sinSesion(authErrorMessage(result.error));
+    return sinSesion(authErrorMessage(error));
   }
 
   // ─── Sign Out ───────────────────────────────────────────────────────────
