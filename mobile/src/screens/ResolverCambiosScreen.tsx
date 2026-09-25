@@ -37,7 +37,7 @@ export default function ResolverCambiosScreen() {
         <>
           <ScrollView style={styles.lista} contentContainerStyle={styles.listaContenido}>
             <Text style={styles.nota}>
-              Esto cambió también en la web. Lo demás ya se subió. Elegí qué valor queda.
+              Esto cambió también en la web. Lo demás ya se subió. Elegí qué valor queda: el otro se descarta.
             </Text>
             {r.conflictos.map((conflicto) => (
               <TarjetaDeConflicto

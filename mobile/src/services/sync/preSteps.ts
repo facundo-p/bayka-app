@@ -46,12 +46,24 @@ function falloDeAltaRechazada(rechazo: string): FalloDeAlta {
  * el medio queda como conflicto a resolver (#634).
  */
 async function actualizarAltaExistente(p: PlantacionLocal): Promise<FalloDeAlta | null> {
-  const cambios = camposCambiados(desdeSnapshot(p), camposDeFila(p));
-  const base = baseDe(cambios, desdeSnapshot(p));
+  const { cambios, base } = edicionDeAltaExistente(p);
   const resultado = await subirEdicion(p.id, cambios, base);
   if (esRechazada(resultado)) return falloDeAltaRechazada(resultado.rechazo ?? '');
   await registrarEdicionSubida(p, { vivos: {}, cambios, base, resultado });
   return null;
+}
+
+/**
+ * Un alta de una versión que no guardaba el snapshot (sin lugar, que es obligatorio) no sabe
+ * qué recibió el server: manda todo con su propio valor como base, así lo que difiera queda
+ * como conflicto para que el usuario elija, en vez de pisarlo.
+ */
+function edicionDeAltaExistente(p: PlantacionLocal) {
+  const actuales = camposDeFila(p);
+  if (p.lugarServer == null) return { cambios: actuales, base: actuales };
+  const subido = desdeSnapshot(p);
+  const cambios = camposCambiados(subido, actuales);
+  return { cambios, base: baseDe(cambios, subido) };
 }
 
 /** Inserta la plantación y deja lo subido como snapshot: es la base de un reintento. */

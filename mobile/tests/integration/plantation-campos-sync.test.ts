@@ -125,7 +125,6 @@ import { discardPlantationEdit, resolverCambio, updatePlantation } from '../../s
 import { camposDeFila } from '../../src/utils/camposDePlantacion';
 import { ELECCION } from '../../src/utils/conflictosDeEdicion';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const NetInfo = require('@react-native-community/netinfo');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -255,13 +254,31 @@ describe('push de altas y ediciones', () => {
 
   test('si un intento anterior ya insertó el alta, la actualiza con lo editado en el medio', async () => {
     serverPlantation(PLANTATION_ID, { descripcion: 'Primer intento' });
-    await seedLocal({ pendingSync: true, descripcion: 'Editada después' });
+    // El primer intento dejó lo subido como snapshot.
+    await seedLocal({
+      pendingSync: true, descripcion: 'Editada después',
+      lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026', descripcionServer: 'Primer intento',
+    });
 
     const [resultado] = await uploadOfflinePlantations();
 
     expect(resultado).toMatchObject({ success: true });
+    expect(mockEdiciones[0]).toMatchObject({ p_cambios: { descripcion: 'Editada después' }, p_base: { descripcion: 'Primer intento' } });
     expect(mockServerState.plantations.get(PLANTATION_ID).descripcion).toBe('Editada después');
     expect((await filaLocal()).pendingSync).toBe(false);
+  });
+
+  test('un alta sin snapshot (versión anterior) no pisa lo distinto del server: queda para resolver', async () => {
+    serverPlantation(PLANTATION_ID, { descripcion: 'Cambiada en la web' });
+    await seedLocal({ pendingSync: true, descripcion: 'Editada después' });
+
+    await uploadOfflinePlantations();
+
+    expect(mockServerState.plantations.get(PLANTATION_ID).descripcion).toBe('Cambiada en la web');
+    expect(await filaLocal()).toMatchObject({
+      pendingSync: false, descripcion: 'Cambiada en la web',
+      conflictosDeEdicion: [expect.objectContaining({ campo: 'descripcion', mio: 'Editada después' })],
+    });
   });
 
   test('el alta avisa si el server ya tiene otra con el mismo lugar y periodo', async () => {
@@ -488,5 +505,39 @@ describe('edición offline que choca con la web', () => {
     expect(resultado).toMatchObject({ cambiosPorResolver: 0 });
     expect(mockEdiciones[0].p_cambios).toEqual({ descripcion: 'Mía' });
     expect(mockServerState.plantations.get(PLANTATION_ID)).toMatchObject({ objetivo_arboles: 12500, descripcion: 'Mía' });
+  });
+});
+
+describe('formulario abierto mientras un pull trae cambios', () => {
+  async function abrirFormYPullear() {
+    await seedLocal({ descripcion: 'X' });
+    serverPlantation(PLANTATION_ID, { descripcion: 'X' });
+    const vistos = camposDeFila(await filaLocal());
+    mockServerState.plantations.get(PLANTATION_ID).descripcion = 'Y';
+    await pullFromServer(PLANTATION_ID);
+    return vistos;
+  }
+
+  test('guardar sin tocar ese campo no lo pisa', async () => {
+    const vistos = await abrirFormYPullear();
+    const { lugar: _lugar, periodo, ...ajustes } = vistos;
+
+    await updatePlantation(PLANTATION_ID, 'Campo Sur', periodo, ajustes, vistos);
+
+    expect(mockEdiciones[0].p_cambios).toEqual({ lugar: 'Campo Sur' });
+    expect(await filaLocal()).toMatchObject({ lugar: 'Campo Sur', descripcion: 'Y' });
+  });
+
+  test('si lo tocó, sube con lo que vio como base y choca con el cambio de la web', async () => {
+    const vistos = await abrirFormYPullear();
+    const { lugar, periodo, ...ajustes } = vistos;
+
+    const enConflicto = await updatePlantation(PLANTATION_ID, lugar, periodo, { ...ajustes, descripcion: 'Z' }, vistos);
+
+    expect(enConflicto).toBe(1);
+    expect(mockEdiciones[0]).toMatchObject({ p_cambios: { descripcion: 'Z' }, p_base: { descripcion: 'X' } });
+    expect(await filaLocal()).toMatchObject({
+      descripcion: 'Y', conflictosDeEdicion: [expect.objectContaining({ mio: 'Z', web: 'Y', anterior: 'X' })],
+    });
   });
 });

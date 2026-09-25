@@ -211,18 +211,13 @@ describe('SyncService — offline functions', () => {
       });
 
       const speciesUpsertMock = jest.fn().mockResolvedValue({ error: null });
-      const plantationUpdateMock = jest.fn().mockReturnValue({
-        eq: jest.fn().mockReturnValue({
-          select: jest.fn().mockResolvedValue({ data: [{ id: fakePendingPlantation.id }], error: null }),
-        }),
-      });
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
 
       // supabase.from returns 23505 error for plantation insert, but upsert for species
       (mockSupabase.from as jest.Mock).mockImplementation((table: string) => {
         if (table === 'plantations') {
           return {
             insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNIQUE_VIOLATION, message: 'duplicate key' } }),
-            update: plantationUpdateMock,
           };
         }
         if (table === 'plantation_species') {
@@ -233,32 +228,50 @@ describe('SyncService — offline functions', () => {
 
       await uploadOfflinePlantations();
 
-      // Ya existía: se actualiza con los campos actuales y se siguen subiendo las species.
-      expect(plantationUpdateMock).toHaveBeenCalledWith(expect.objectContaining({ lugar: fakePendingPlantation.lugar }));
+      // Ya existía y sin snapshot (alta de una versión anterior): manda todo por la RPC, con su propio valor como base.
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('editar_plantacion', expect.objectContaining({
+        p_cambios: expect.objectContaining({ lugar: fakePendingPlantation.lugar }),
+        p_base: expect.objectContaining({ lugar: fakePendingPlantation.lugar }),
+      }));
       expect(speciesUpsertMock).toHaveBeenCalled();
 
       // pendingSync MUST be set to false
-      expect(mockDb.update).toHaveBeenCalled();
-      const updateResult = (mockDb.update as jest.Mock).mock.results[0].value;
-      expect(updateResult.set).toHaveBeenCalledWith({ pendingSync: false });
+      const sets = (mockDb.update as jest.Mock).mock.results.map((r) => r.value.set.mock.calls).flat();
+      expect(sets).toContainEqual([{ pendingSync: false }]);
     });
 
-    function conAltaYaSubidaQueNoSeActualiza() {
+    it('23505 con snapshot: sube solo lo editado desde el intento anterior, con lo subido como base', async () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{
+            ...fakePendingPlantation, lugar: 'Zona Editada', lugarServer: 'Zona Offline', periodoServer: '2026',
+          }]),
+        }),
+      });
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNIQUE_VIOLATION, message: 'duplicate key' } }),
+      });
+
+      await uploadOfflinePlantations();
+
+      expect(mockSupabase.rpc).toHaveBeenCalledWith('editar_plantacion', {
+        p_id: fakePendingPlantation.id, p_cambios: { lugar: 'Zona Editada' }, p_base: { lugar: 'Zona Offline' },
+      });
+    });
+
+    function conAltaYaSubidaQueNoSeActualiza(rechazo: string) {
       (mockDb.select as jest.Mock).mockReturnValueOnce({
         from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([fakePendingPlantation]) }),
       });
       (mockSupabase.from as jest.Mock).mockReturnValue({
         insert: jest.fn().mockResolvedValue({ error: { code: PG_ERROR.UNIQUE_VIOLATION, message: 'duplicate key' } }),
-        update: jest.fn().mockReturnValue({
-          eq: jest.fn().mockReturnValue({ select: jest.fn().mockResolvedValue({ data: [], error: null }) }),
-        }),
       });
-
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: false, error: rechazo }, error: null });
     }
 
     it('23505 sin fila con ese id (otra restricción única): falla y queda pendiente', async () => {
-      conAltaYaSubidaQueNoSeActualiza();
-      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: 'PLANTACION_INEXISTENTE', error: null });
+      conAltaYaSubidaQueNoSeActualiza('PLANTACION_INEXISTENTE');
 
       const [resultado] = await uploadOfflinePlantations();
 
@@ -267,8 +280,7 @@ describe('SyncService — offline functions', () => {
     });
 
     it('23505 sobre una plantación finalizada: queda pendiente con ese motivo', async () => {
-      conAltaYaSubidaQueNoSeActualiza();
-      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: 'PLANTACION_FINALIZADA', error: null });
+      conAltaYaSubidaQueNoSeActualiza('PLANTACION_FINALIZADA');
 
       const [resultado] = await uploadOfflinePlantations();
 
@@ -336,7 +348,10 @@ describe('SyncService — offline functions', () => {
 
       const res = await uploadOfflinePlantations();
 
-      expect(mockDb.update).not.toHaveBeenCalled();
+      // Solo se guarda lo subido como snapshot (base del reintento): pendingSync sigue en true.
+      const sets = (mockDb.update as jest.Mock).mock.results.map((r) => r.value.set.mock.calls).flat();
+      expect(sets).not.toContainEqual([{ pendingSync: false }]);
+      expect(sets[0][0]).toMatchObject({ lugarServer: fakePendingPlantation.lugar });
       expect(res).toHaveLength(1);
       expect(res[0].success).toBe(false);
       if (res[0].success) return;

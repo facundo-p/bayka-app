@@ -1,4 +1,7 @@
 import {
+  baseDeLaEdicion,
+  edicionDelFormulario,
+  rebaseDeEdicionPendiente,
   aColumnasRemotas,
   aSnapshot,
   cambiosParaElServer,
@@ -107,5 +110,44 @@ describe('tieneCambiosSinSubir', () => {
     expect(tieneCambiosSinSubir({ pendingEdit: false, pendingSync: false })).toBe(false);
     expect(tieneCambiosSinSubir({ pendingEdit: true, pendingSync: false })).toBe(true);
     expect(tieneCambiosSinSubir({ pendingEdit: false, pendingSync: true })).toBe(true);
+  });
+
+  describe('base de la edición (#634)', () => {
+    const FILA_BASE: any = {
+      lugar: 'Lote Norte', periodo: '2026', descripcion: null, fechaInicio: null, objetivoArboles: 12000,
+      gpsCaptureFrequency: 10, gpsCaptureRequired: true, photoCaptureAllTrees: false, visibleInApp: true,
+      lugarServer: 'Lote Norte', periodoServer: '2026', descripcionServer: null, fechaInicioServer: null,
+      objetivoArbolesServer: 12000, gpsCaptureFrequencyServer: 10, gpsCaptureRequiredServer: true,
+      photoCaptureAllTreesServer: false, visibleInAppServer: true, pendingEdit: false, baseDeEdicion: null,
+    };
+
+    it('con edición pendiente, la base guardada gana sobre el snapshot', () => {
+      const fila = { ...FILA_BASE, pendingEdit: true, objetivoArbolesServer: 12500, baseDeEdicion: { objetivoArboles: 12000 } };
+      expect(baseDeLaEdicion(fila)).toEqual({ objetivoArboles: 12000 });
+      expect(baseDeLaEdicion({ ...fila, baseDeEdicion: null }).objetivoArboles).toBe(12500);
+    });
+
+    it('del formulario sube solo lo tocado, con lo que vio como base', () => {
+      const vistos = { ...FILA_BASE, descripcion: 'Vista' };
+      const fila = { ...FILA_BASE, descripcion: 'Del pull' };
+      const edicion = edicionDelFormulario(fila, { ...vistos, objetivoArboles: 15000 }, vistos);
+      expect(edicion.tocados).toEqual({ objetivoArboles: 15000 });
+      expect(edicion.cambios).toEqual({ objetivoArboles: 15000 });
+      expect(edicion.base).toEqual({ objetivoArboles: 12000 });
+    });
+
+    it('con edición offline pendiente suma lo editado antes, con la base de entonces', () => {
+      const fila = { ...FILA_BASE, pendingEdit: true, descripcion: 'Offline', baseDeEdicion: { ...FILA_BASE, descripcion: null } };
+      const edicion = edicionDelFormulario(fila, { lugar: 'Nuevo' }, fila);
+      expect(edicion.cambios).toEqual({ descripcion: 'Offline', lugar: 'Nuevo' });
+      expect(edicion.base).toEqual({ descripcion: null, lugar: 'Lote Norte' });
+    });
+
+    it('el pull con edición pendiente mueve también la base de lo no editado', () => {
+      const fila = { ...FILA_BASE, pendingEdit: true, descripcion: 'Offline', baseDeEdicion: { lugar: 'Lote Norte', descripcion: null } };
+      expect(rebaseDeEdicionPendiente(fila, { lugar: 'Lote Sur', descripcion: 'Web' })).toEqual({
+        lugar: 'Lote Sur', baseDeEdicion: { lugar: 'Lote Sur', descripcion: null },
+      });
+    });
   });
 });

@@ -33,6 +33,9 @@ jest.mock('../../src/theme', () => ({
     borderMuted: '#CBD5E1',
     stateEliminada: '#DC2626',
     dangerBg: '#FEF2F2',
+    conflictoBg: '#FEF2F2',
+    conflictoBorder: '#F2A7A7',
+    conflictoText: '#991B1B',
   },
   spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
@@ -179,5 +182,21 @@ describe('PlantationCard eliminada en el servidor (#478)', () => {
   it('sin la marca no hay badge', () => {
     const { queryByText } = render(<PlantationCard {...makeProps()} />);
     expect(queryByText('Eliminada en el servidor')).toBeNull();
+  });
+
+  it('con cambios por resolver muestra la marca y tocarla abre la pantalla, sin abrir la plantación', () => {
+    const onResolverCambios = jest.fn();
+    const props = makeProps({ onResolverCambios });
+    const { getByLabelText } = render(<PlantationCard {...props} />);
+
+    fireEvent.press(getByLabelText('Resolver cambios'), { stopPropagation: jest.fn() });
+
+    expect(onResolverCambios).toHaveBeenCalled();
+    expect(props.onPress).not.toHaveBeenCalled();
+  });
+
+  it('sin cambios por resolver no hay marca', () => {
+    const { queryByLabelText } = render(<PlantationCard {...makeProps()} />);
+    expect(queryByLabelText('Resolver cambios')).toBeNull();
   });
 });
