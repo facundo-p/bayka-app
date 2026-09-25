@@ -137,6 +137,30 @@ describe('SyncProgressModal', () => {
       expect(queryByText('Campo Sur')).toBeNull();
     });
 
+    it('avisa los cambios que chocaron con la web y "Resolver" cierra el resumen y abre la pantalla', () => {
+      const onDismiss = jest.fn();
+      const onResolverCambios = jest.fn();
+      const { getByText } = renderModal({
+        onDismiss,
+        onResolverCambios,
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 1 }],
+      });
+      expect(getByText('Un dato cambió también en la web. Elegí cuál queda.')).toBeTruthy();
+
+      fireEvent.press(getByText('Resolver'));
+
+      expect(onDismiss).toHaveBeenCalled();
+      expect(onResolverCambios).toHaveBeenCalledWith('p1');
+    });
+
+    it('sin quien abra la pantalla, el aviso no ofrece "Resolver"', () => {
+      const { getByText, queryByText } = renderModal({
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 2 }],
+      });
+      expect(getByText('2 datos cambiaron también en la web. Elegí cuáles quedan.')).toBeTruthy();
+      expect(queryByText('Resolver')).toBeNull();
+    });
+
     it('sin duplicadas no muestra el aviso', () => {
       const { queryByText } = renderModal({
         plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte' }],

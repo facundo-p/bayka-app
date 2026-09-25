@@ -29,7 +29,10 @@ type AdminHook = {
   handleExportExcel: (id: string) => void | Promise<void>;
   handleExportKml: (id: string) => void | Promise<void>;
   handleDiscardEdit: (id: string) => void | Promise<void>;
-  handleEditSubmit: (id: string, lugar: string, periodo: string, gps: any) => Promise<void>;
+  /** Devuelve cuántos campos chocaron con la web (#634). */
+  handleEditSubmit: (
+    id: string, lugar: string, periodo: string, ajustes: any, vistos?: Partial<CamposDePlantacion>
+  ) => Promise<number>;
 };
 
 type Props = {
@@ -77,6 +80,8 @@ type Props = {
   cancelarSync: () => void;
   resetSync: () => void;
   handleSessionExpiredReauth: () => void;
+  /** Abre "Resolver cambios" de una plantación (#634). */
+  irAResolverCambios: (plantacionId: string) => void;
 
   // Admin bottom sheet
   bottomSheetVisible: boolean;
@@ -138,6 +143,7 @@ export default function PlantacionesModals({
   cancelarSync,
   resetSync,
   handleSessionExpiredReauth,
+  irAResolverCambios,
   bottomSheetVisible,
   bottomSheetPlantation,
   bottomSheetMeta,
@@ -203,6 +209,7 @@ export default function PlantacionesModals({
         huboTimeout={huboTimeout}
         onCancelar={cancelarSync}
         onDismiss={resetSync}
+        onResolverCambios={isAdmin ? irAResolverCambios : undefined}
       />
 
       <ConfirmModal
@@ -245,7 +252,13 @@ export default function PlantacionesModals({
           plantaciones={adminHook.plantationList}
           editingPlantation={editingPlantation}
           onCloseEdit={() => setEditingPlantation(null)}
-          onEditSubmit={async ({ lugar, periodo, ...ajustes }) => { if (editingPlantation) { await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, ajustes); setEditingPlantation(null); } }}
+          onEditSubmit={async ({ lugar, periodo, ...ajustes }) => {
+            if (!editingPlantation) return;
+            // Los valores con que se abrió el form: solo se guarda lo que el usuario tocó.
+            const enConflicto = await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, ajustes, editingPlantation);
+            setEditingPlantation(null);
+            if (enConflicto > 0) irAResolverCambios(editingPlantation.id);
+          }}
           confirmProps={adminHook.confirmProps}
           exportingId={adminHook.exportingId}
           configSpeciesPlantacionId={configSpeciesPlantacionId}

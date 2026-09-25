@@ -26,6 +26,7 @@ import m0021 from './0021_borrados_pendientes.sql';
 import m0022 from './0022_plantations_archivada_en.sql';
 import m0023 from './0023_plantations_eliminada_en_servidor_en.sql';
 import m0024 from './0024_plantations_campos_editables.sql';
+import m0025 from './0025_plantations_edicion_por_campo.sql';
 
   export default {
     journal,
@@ -54,6 +55,7 @@ m0020,
 m0021,
 m0022,
 m0023,
-m0024
+m0024,
+m0025
     }
   }

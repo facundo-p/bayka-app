@@ -1,14 +1,15 @@
 import { useState, type ChangeEvent, type KeyboardEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useInvalidarConListado } from '../../hooks/useInvalidarConListado';
-import { mensajeErrorConocido } from '../../lib/mensajeErrorConocido';
 import { TECLA } from '../../lib/teclas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { Plantacion } from '../../queries/plantationQueries';
 import {
-  actualizarConfigGps,
-  MENSAJE_GPS_SIN_MIGRACION,
-} from '../../repositories/plantationRepository';
+  ConflictoDeEdicionError,
+  mensajeDeErrorDeEdicion,
+  valorDelServidor,
+} from '../../repositories/edicionDePlantacion';
+import { actualizarConfigGps, COLUMNA } from '../../repositories/plantationRepository';
 
 /** Presets de frecuencia (cada cuántos árboles se toma un punto GPS). */
 export const PRESETS_FRECUENCIA = [1, 5, 10, 20] as const;
@@ -32,17 +33,26 @@ function configInicial(plantacion: Plantacion): ConfigGps {
   return { frecuencia: plantacion.gpsCaptureFrequency, obligatoria: plantacion.gpsCaptureRequired };
 }
 
-function useGuardarConfigGps(plantationId: string) {
+type Guardado = { config: ConfigGps; base: ConfigGps };
+
+/** Tras un conflicto queda la frecuencia del server; la obligatoriedad, booleana, no puede chocar. */
+function configTrasConflicto(error: unknown, config: ConfigGps): ConfigGps {
+  const frecuencia = valorDelServidor(error, COLUMNA.gpsFrecuencia);
+  return { ...config, frecuencia: typeof frecuencia === 'number' ? frecuencia : config.frecuencia };
+}
+
+function useGuardarConfigGps(plantationId: string, alChocar: (config: ConfigGps) => void) {
   const invalidar = useInvalidarConListado(CLAVE_QUERY.plantacion(plantationId));
   const mutacion = useMutation({
-    mutationFn: (config: ConfigGps) => actualizarConfigGps(plantationId, config),
+    mutationFn: ({ config, base }: Guardado) => actualizarConfigGps(plantationId, config, base),
     onSuccess: invalidar,
+    onError: (error, { config }) => {
+      if (!(error instanceof ConflictoDeEdicionError)) return;
+      alChocar(configTrasConflicto(error, config));
+      void invalidar();
+    },
   });
-  const mensajeError = mensajeErrorConocido(
-    mutacion.error,
-    MENSAJE_GPS_SIN_MIGRACION,
-    ACCION_GUARDAR,
-  );
+  const mensajeError = mensajeDeErrorDeEdicion(mutacion.error, ACCION_GUARDAR);
   return { guardar: mutacion.mutate, guardando: mutacion.isPending, mensajeError };
 }
 
@@ -71,11 +81,11 @@ export function useCampoExacto(frecuencia: number, aplicar: (valor: number) => v
 /** Obligatoriedad y frecuencia comparten payload: cada cambio guarda las dos. */
 export function useFrecuenciaGps(plantacion: Plantacion) {
   const [config, setConfig] = useState(() => configInicial(plantacion));
-  const { guardar, ...guardado } = useGuardarConfigGps(plantacion.id);
+  const { guardar, ...guardado } = useGuardarConfigGps(plantacion.id, setConfig);
   const aplicar = (cambios: Partial<ConfigGps>) => {
     const proxima = { ...config, ...cambios };
     setConfig(proxima);
-    guardar(proxima);
+    guardar({ config: proxima, base: config });
   };
   const presetActivo = presetDe(config.frecuencia);
   return {

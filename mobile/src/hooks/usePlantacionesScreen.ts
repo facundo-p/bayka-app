@@ -19,12 +19,14 @@ import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { useIrAResolverCambios } from './useIrAResolverCambios';
 
 const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
 
 export function usePlantacionesScreen() {
   const router = useRouter();
   const routePrefix = useRoutePrefix();
+  const irAResolverCambios = useIrAResolverCambios();
 
   const plantaciones = usePlantaciones();
   // Always call the hook (React rules of hooks), even for técnico role.
@@ -176,6 +178,7 @@ export function usePlantacionesScreen() {
     phaseProgress: sync.phaseProgress,
     photoResult: sync.photoResult,
     handleSessionExpiredReauth,
+    irAResolverCambios,
     hasAnyPending,
     isSyncing,
     pendingSyncBoolMap,

@@ -225,12 +225,20 @@ visible_in_app (default true: si los técnicos la ven en la Bayka App)
 gps_capture_frequency / gps_capture_required (configuración GPS, migración 023)
 photo_capture_all_trees (default false: si todos los botones de la botonera piden foto, como N/N; migración 035)
 archivada_en / archivada_por (null si no está archivada; migración 038)
+ultima_edicion (quién y cuándo cambió cada campo editable; migración 057)
 ```
 
 Descripción, fecha de inicio, objetivo, visibilidad, foto en todos los botones
 y GPS se editan desde la web de gestión y, desde #633, también en el formulario
 de plantación de mobile (admin y superadmin), incluso offline. Superficie y
 ubicación no se editan en ninguna de las dos.
+
+Desde #634 las dos editan por la RPC `editar_plantacion`, campo por campo: cada
+cambio lleva el valor que el usuario vio, y si alguien cambió ese campo desde
+otro lado mientras tanto no se aplica y vuelve como conflicto. La web avisa y
+recarga; mobile deja el valor de la web y ofrece elegir en "Resolver cambios".
+El UPDATE directo solo toca los campos editables, y `estado` solo pasa de
+`activa` a `finalizada` (finalizar); reabrir, archivar y eliminar van por sus RPC.
 
 ### Estados posibles
 

@@ -29,6 +29,10 @@ const MENSAJE_POR_MOTIVO: Record<MotivoNoEscribible, string> = {
 
 const TODOS_LOS_MOTIVOS: readonly MotivoNoEscribible[] = Object.values(MOTIVO_NO_ESCRIBIBLE);
 
+export function esMotivoNoEscribible(codigo: string): codigo is MotivoNoEscribible {
+  return (TODOS_LOS_MOTIVOS as readonly string[]).includes(codigo);
+}
+
 /** Las especies siguen `plantacion_escribible`: bloquean los tres motivos. */
 export const BLOQUEAN_ESPECIES = TODOS_LOS_MOTIVOS;
 

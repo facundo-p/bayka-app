@@ -61,7 +61,7 @@ export function isoAFecha(iso: string | null | undefined): string {
 export const OBJETIVO_MAXIMO = 10_000_000;
 
 /** Sin toLocaleString: el Intl de Hermes no es confiable en todos los builds. */
-function conPuntosDeMiles(valor: number): string {
+export function conPuntosDeMiles(valor: number): string {
   return String(valor).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 

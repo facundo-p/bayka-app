@@ -96,7 +96,12 @@ una especie con árboles no se quita de su plantación, ni por DELETE ni por
 `reemplazar_especies_plantacion`, y el cascade de borrar la plantación pasa (055, #632), `34`
 el técnico crea parcelas (INSERT y upsert sin conflicto) pero no las edita ni
 tombstonea; su upsert sobre una existente da 42501 y con `ON CONFLICT DO NOTHING`
-queda sin efecto; admin y superadmin editan (056, #640).
+queda sin efecto; admin y superadmin editan (056, #640). `35`
+`editar_plantacion` aplica cada campo solo si el server conserva la base
+(sin conflicto, mismo campo, campos distintos, mismo valor en los dos lados),
+valida como la web y rechaza finalizada, archivada, inexistente y sin permiso;
+el UPDATE directo ya no cambia `estado` salvo `activa → finalizada`, ni
+`organizacion_id`, `creado_por` o la auditoría `ultima_edicion` (057, #634).
 
 ## Hallazgo fuera de alcance (no corregido)
 

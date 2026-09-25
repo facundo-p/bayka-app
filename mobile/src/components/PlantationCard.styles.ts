@@ -80,6 +80,25 @@ export const plantationCardStyles = StyleSheet.create({
     color: colors.textMuted,
   },
 
+  // Chip "Cambios por resolver" (#634), solo admin: abre la pantalla donde se elige.
+  conflictoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    backgroundColor: colors.conflictoBg,
+    borderWidth: 1,
+    borderColor: colors.conflictoBorder,
+    borderRadius: borderRadius.full,
+    ...chipSizes.sm,
+    marginBottom: spacing.lg,
+  },
+  conflictoBadgeText: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.semiBold,
+    color: colors.conflictoText,
+  },
+
   // Chip "Eliminada en el servidor" (#478), para todos los roles.
   eliminadaBadge: {
     flexDirection: 'row',

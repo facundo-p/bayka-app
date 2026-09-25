@@ -20,6 +20,8 @@ const mockServerState: Record<string, Map<string, any>> = {
   plantation_species: new Map(),
 };
 const mockUpdates: { table: string; payload: any }[] = [];
+/** Argumentos de cada llamada a `editar_plantacion` (#634). */
+const mockEdiciones: { p_id: string; p_cambios: any; p_base: any }[] = [];
 const mockInserts: { table: string; row: any }[] = [];
 
 jest.mock('../../src/supabase/client', () => {
@@ -77,7 +79,25 @@ jest.mock('../../src/supabase/client', () => {
         getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-admin-1' } } } }),
         getUser: () => Promise.resolve({ data: { user: { id: 'user-admin-1' } } }),
       },
-      rpc: () => Promise.resolve({ data: { success: true }, error: null }),
+      // `editar_plantacion` como el server: aplica lo que conserva la base, devuelve el resto.
+      rpc(nombre: string, args: any) {
+        if (nombre !== 'editar_plantacion') return Promise.resolve({ data: { success: true }, error: null });
+        mockEdiciones.push(args);
+        const actual = mockServerState.plantations.get(args.p_id);
+        if (!actual) return Promise.resolve({ data: { success: false, error: 'PLANTACION_INEXISTENTE' }, error: null });
+        const aplicar: Record<string, unknown> = {};
+        const conflictos: any[] = [];
+        for (const [campo, valor] of Object.entries(args.p_cambios)) {
+          if (actual[campo] === args.p_base[campo] || actual[campo] === valor) aplicar[campo] = valor;
+          else conflictos.push({ campo, valor_servidor: actual[campo], editado_por: 'Ana', editado_en: '2026-09-24T13:12:00Z' });
+        }
+        if (Object.keys(aplicar).length > 0) mockUpdates.push({ table: 'plantations', payload: aplicar });
+        mockServerState.plantations.set(args.p_id, { ...actual, ...aplicar });
+        const data = conflictos.length > 0
+          ? { success: false, error: 'CONFLICTO_EDICION', aplicados: Object.keys(aplicar), conflictos }
+          : { success: true };
+        return Promise.resolve({ data, error: null });
+      },
       storage: { from: () => ({ upload: () => Promise.resolve({ error: null }) }) },
     },
   };
@@ -101,8 +121,11 @@ jest.mock('../../src/utils/syncLogger', () => ({
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { downloadPlantation } from '../../src/services/sync/downloadService';
 import { uploadOfflinePlantations, uploadPendingEdits } from '../../src/services/sync/preSteps';
-import { discardPlantationEdit, updatePlantation } from '../../src/repositories/PlantationRepository';
+import { discardPlantationEdit, resolverCambios, updatePlantation } from '../../src/repositories/PlantationRepository';
 import { camposDeFila } from '../../src/utils/camposDePlantacion';
+import { ELECCION } from '../../src/utils/conflictosDeEdicion';
+
+const NetInfo = require('@react-native-community/netinfo');
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -164,6 +187,7 @@ beforeEach(async () => {
   for (const k of Object.keys(mockServerState)) mockServerState[k].clear();
   mockUpdates.length = 0;
   mockInserts.length = 0;
+  mockEdiciones.length = 0;
 });
 
 // ─── Pull ───────────────────────────────────────────────────────────────────
@@ -230,13 +254,32 @@ describe('push de altas y ediciones', () => {
 
   test('si un intento anterior ya insertó el alta, la actualiza con lo editado en el medio', async () => {
     serverPlantation(PLANTATION_ID, { descripcion: 'Primer intento' });
-    await seedLocal({ pendingSync: true, descripcion: 'Editada después' });
+    // El primer intento dejó lo subido como snapshot.
+    await seedLocal({
+      pendingSync: true, descripcion: 'Editada después',
+      lugarServer: 'Lote Norte', periodoServer: 'Otoño 2026', descripcionServer: 'Primer intento',
+    });
 
     const [resultado] = await uploadOfflinePlantations();
 
     expect(resultado).toMatchObject({ success: true });
+    expect(mockEdiciones[0]).toMatchObject({ p_cambios: { descripcion: 'Editada después' }, p_base: { descripcion: 'Primer intento' } });
     expect(mockServerState.plantations.get(PLANTATION_ID).descripcion).toBe('Editada después');
     expect((await filaLocal()).pendingSync).toBe(false);
+  });
+
+  test('un alta sin snapshot (versión anterior) no pisa lo distinto del server: queda para resolver', async () => {
+    serverPlantation(PLANTATION_ID, { descripcion: 'Cambiada en la web' });
+    await seedLocal({ pendingSync: true, descripcion: 'Editada después' });
+
+    const [resultado] = await uploadOfflinePlantations();
+
+    expect(resultado).toMatchObject({ success: true, cambiosPorResolver: 1 });
+    expect(mockServerState.plantations.get(PLANTATION_ID).descripcion).toBe('Cambiada en la web');
+    expect(await filaLocal()).toMatchObject({
+      pendingSync: false, descripcion: 'Cambiada en la web',
+      conflictosDeEdicion: [expect.objectContaining({ campo: 'descripcion', mio: 'Editada después' })],
+    });
   });
 
   test('el alta avisa si el server ya tiene otra con el mismo lugar y periodo', async () => {
@@ -383,5 +426,150 @@ describe('descartar una edición offline', () => {
     await discardPlantationEdit(PLANTATION_ID);
 
     expect((await filaLocal()).visibleInApp).toBe(false);
+  });
+});
+
+// ─── Conflicto con la web (#634) ────────────────────────────────────────────
+
+describe('edición offline que choca con la web', () => {
+  const DATOS = { lugar: 'Lote Norte', periodo: 'Otoño 2026' };
+
+  async function editarOffline(ajustes: Record<string, unknown>) {
+    NetInfo.fetch.mockResolvedValueOnce({ isConnected: false });
+    await updatePlantation(PLANTATION_ID, DATOS.lugar, DATOS.periodo, ajustes);
+  }
+
+  /** Sin señal: objetivo 12.000 → 15.000 y descripción. En la web, objetivo → 12.500. */
+  async function llegarAlConflicto() {
+    await seedLocal({ objetivoArboles: 12000 });
+    serverPlantation(PLANTATION_ID, { objetivo_arboles: 12000 });
+    await editarOffline({ objetivoArboles: 15000, descripcion: 'Mía' });
+    mockServerState.plantations.get(PLANTATION_ID).objetivo_arboles = 12500;
+    await pullFromServer(PLANTATION_ID);
+    return (await uploadPendingEdits())[0];
+  }
+
+  test('sube con la base de cuando editó aunque el pull haya refrescado el snapshot', async () => {
+    await llegarAlConflicto();
+
+    expect(mockEdiciones[0]).toMatchObject({
+      p_cambios: { objetivo_arboles: 15000, descripcion: 'Mía' },
+      p_base: { objetivo_arboles: 12000, descripcion: null },
+    });
+  });
+
+  test('queda el valor de la web y el conflicto; lo demás sube', async () => {
+    const resultado = await llegarAlConflicto();
+
+    expect(resultado).toMatchObject({ success: true, cambiosPorResolver: 1 });
+    expect(mockServerState.plantations.get(PLANTATION_ID)).toMatchObject({ objetivo_arboles: 12500, descripcion: 'Mía' });
+    expect(await filaLocal()).toMatchObject({
+      pendingEdit: false, objetivoArboles: 12500, descripcion: 'Mía', baseDeEdicion: null,
+      conflictosDeEdicion: [expect.objectContaining({
+        campo: 'objetivoArboles', mio: 15000, web: 12500, anterior: 12000, editadoPor: 'Ana',
+      })],
+    });
+  });
+
+  test('elegir el propio lo re-encola con la web como base y sube en el próximo sync', async () => {
+    await llegarAlConflicto();
+
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.mio });
+    expect(await filaLocal()).toMatchObject({ pendingEdit: true, objetivoArboles: 15000, conflictosDeEdicion: null });
+
+    const [resultado] = await uploadPendingEdits();
+
+    expect(mockEdiciones[1]).toMatchObject({ p_cambios: { objetivo_arboles: 15000 }, p_base: { objetivo_arboles: 12500 } });
+    expect(resultado).toMatchObject({ cambiosPorResolver: 0 });
+    expect(mockServerState.plantations.get(PLANTATION_ID).objetivo_arboles).toBe(15000);
+    expect(await filaLocal()).toMatchObject({ pendingEdit: false, objetivoArboles: 15000 });
+  });
+
+  test('elegir el de la web descarta el propio sin subir nada', async () => {
+    await llegarAlConflicto();
+
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.web });
+    await uploadPendingEdits();
+
+    expect(mockEdiciones).toHaveLength(1);
+    expect(await filaLocal()).toMatchObject({ pendingEdit: false, objetivoArboles: 12500, conflictosDeEdicion: null });
+  });
+
+  test('volver a editar offline un campo en conflicto lo supera y sube con la web como base', async () => {
+    await llegarAlConflicto();
+    await editarOffline({ objetivoArboles: 16000 });
+
+    expect(await filaLocal()).toMatchObject({ pendingEdit: true, objetivoArboles: 16000, conflictosDeEdicion: null });
+    // Un pull en el medio no mueve la base del campo editado.
+    await pullFromServer(PLANTATION_ID);
+    await uploadPendingEdits();
+
+    expect(mockEdiciones[1]).toMatchObject({ p_cambios: { objetivo_arboles: 16000 }, p_base: { objetivo_arboles: 12500 } });
+    expect(mockServerState.plantations.get(PLANTATION_ID).objetivo_arboles).toBe(16000);
+    expect((await filaLocal()).conflictosDeEdicion).toBeNull();
+  });
+
+  test('varias elecciones se aplican juntas y los campos sin elegir siguen pendientes', async () => {
+    await seedLocal({ objetivoArboles: 12000 });
+    serverPlantation(PLANTATION_ID, { objetivo_arboles: 12000 });
+    await editarOffline({ objetivoArboles: 15000, descripcion: 'Mía', visibleInApp: false });
+    Object.assign(mockServerState.plantations.get(PLANTATION_ID), {
+      objetivo_arboles: 12500, descripcion: 'Web', visible_in_app: true,
+    });
+    // visible_in_app no cambió en la web: sube. Chocan objetivo y descripción.
+    await uploadPendingEdits();
+
+    await resolverCambios(PLANTATION_ID, { objetivoArboles: ELECCION.mio, descripcion: ELECCION.web });
+
+    expect(await filaLocal()).toMatchObject({
+      objetivoArboles: 15000, descripcion: 'Web', pendingEdit: true, conflictosDeEdicion: null,
+    });
+  });
+
+  test('cambios en campos distintos no chocan', async () => {
+    await seedLocal({ objetivoArboles: 12000 });
+    serverPlantation(PLANTATION_ID, { objetivo_arboles: 12000 });
+    await editarOffline({ objetivoArboles: 12000, descripcion: 'Mía' });
+    mockServerState.plantations.get(PLANTATION_ID).objetivo_arboles = 12500;
+
+    const [resultado] = await uploadPendingEdits();
+
+    expect(resultado).toMatchObject({ cambiosPorResolver: 0 });
+    expect(mockEdiciones[0].p_cambios).toEqual({ descripcion: 'Mía' });
+    expect(mockServerState.plantations.get(PLANTATION_ID)).toMatchObject({ objetivo_arboles: 12500, descripcion: 'Mía' });
+  });
+});
+
+describe('formulario abierto mientras un pull trae cambios', () => {
+  async function abrirFormYPullear() {
+    await seedLocal({ descripcion: 'X' });
+    serverPlantation(PLANTATION_ID, { descripcion: 'X' });
+    const vistos = camposDeFila(await filaLocal());
+    mockServerState.plantations.get(PLANTATION_ID).descripcion = 'Y';
+    await pullFromServer(PLANTATION_ID);
+    return vistos;
+  }
+
+  test('guardar sin tocar ese campo no lo pisa', async () => {
+    const vistos = await abrirFormYPullear();
+    const { lugar: _lugar, periodo, ...ajustes } = vistos;
+
+    await updatePlantation(PLANTATION_ID, 'Campo Sur', periodo, ajustes, vistos);
+
+    expect(mockEdiciones[0].p_cambios).toEqual({ lugar: 'Campo Sur' });
+    expect(await filaLocal()).toMatchObject({ lugar: 'Campo Sur', descripcion: 'Y' });
+  });
+
+  test('si lo tocó, sube con lo que vio como base y choca con el cambio de la web', async () => {
+    const vistos = await abrirFormYPullear();
+    const { lugar, periodo, ...ajustes } = vistos;
+
+    const enConflicto = await updatePlantation(PLANTATION_ID, lugar, periodo, { ...ajustes, descripcion: 'Z' }, vistos);
+
+    expect(enConflicto).toBe(1);
+    expect(mockEdiciones[0]).toMatchObject({ p_cambios: { descripcion: 'Z' }, p_base: { descripcion: 'X' } });
+    expect(await filaLocal()).toMatchObject({
+      descripcion: 'Y', conflictosDeEdicion: [expect.objectContaining({ mio: 'Z', web: 'Y', anterior: 'X' })],
+    });
   });
 });

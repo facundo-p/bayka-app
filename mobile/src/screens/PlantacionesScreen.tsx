@@ -14,6 +14,7 @@ import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../types/plantation';
 import { plantacionEsEditable, puedeEditarParcelas } from '../utils/permisosDeEdicion';
 import { esEliminadaEnServidor } from '../constants/estados';
+import { tieneCambiosPorResolver } from '../utils/conflictosDeEdicion';
 
 export default function PlantacionesScreen() {
   const s = usePlantacionesScreen();
@@ -92,6 +93,9 @@ export default function PlantacionesScreen() {
                     nnCount: s.nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
                     eliminadaEnServidor: esEliminadaEnServidor(item),
+                    onResolverCambios: s.isAdmin && tieneCambiosPorResolver(item)
+                      ? () => s.irAResolverCambios(item.id)
+                      : undefined,
                     onPress: () => s.router.push(`/${s.routePrefix}/plantation/parcelas?plantacionId=${item.id}` as any),
                     // Long-press abre la edición, como en las demás cards (#94).
                     onLongPress: s.isAdmin ? () => s.handleEditPress(item as Plantation) : undefined,

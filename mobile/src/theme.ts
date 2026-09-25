@@ -58,6 +58,10 @@ export const colors = {
   warningBg: yellow.light,
   warningBorder: yellow.medium,
   warningText: '#6B4E00',
+  /** Cambio que chocó con la web y espera que el usuario elija (#634). */
+  conflictoBg: '#FEF2F2',
+  conflictoBorder: '#F2A7A7',
+  conflictoText: '#991B1B',
 
   textHeading: '#0A3760',
   textPrimary: '#1E293B',
