@@ -1,3 +1,4 @@
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { supabase } from '../../supabase/client';
 import { esTimeout } from '../../supabase/fetchConTimeout';
 import { readCachedUserId } from '../../supabase/auth';
@@ -22,12 +23,18 @@ export function esSesionExpirada(err: unknown): boolean {
   return (err as { name?: string } | null)?.name === NOMBRE_SESION_EXPIRADA;
 }
 
+const NOMBRE_SIN_SESION_DEL_SERVIDOR = 'SinSesionDelServidorError';
+
 /** Una acción que el usuario dispara a mano y solo puede hacerse contra el servidor, sin sesión (#658). */
 export class SinSesionDelServidorError extends Error {
   constructor(accion: string) {
     super(`Iniciá sesión con conexión para ${accion}.`);
-    this.name = 'SinSesionDelServidorError';
+    this.name = NOMBRE_SIN_SESION_DEL_SERVIDOR;
   }
+}
+
+export function esSinSesionDelServidor(err: unknown): err is SinSesionDelServidorError {
+  return (err as { name?: string } | null)?.name === NOMBRE_SIN_SESION_DEL_SERVIDOR;
 }
 
 /** ensureServerSession para acciones del usuario: sin sesión lanza el motivo listo para mostrar. */
@@ -47,6 +54,10 @@ type SesionDelSdk = { expires_at?: number; user?: { id?: string } };
 /** Una sesión del SDK de otra cuenta que la logueada en la app subiría todo con la identidad ajena (#658). */
 async function esDeOtraCuenta(session: SesionDelSdk): Promise<boolean> {
   return session.user?.id !== (await readCachedUserId());
+}
+
+function esFallaDeRed(error: unknown): boolean {
+  return esTimeout(error) || isAuthRetryableFetchError(error);
 }
 
 /**
@@ -72,10 +83,10 @@ export async function ensureServerSession(): Promise<void> {
   }
 
   const refreshed = await supabase.auth.refreshSession();
-  // Un timeout no dice NADA sobre la sesión: la request nunca llegó. Reportarlo
-  // como vencida manda al técnico a re-loguearse sin motivo, y justo cuando está
-  // sin señal (#451).
-  if (refreshed?.error && esTimeout(refreshed.error)) throw refreshed.error;
+  // Un timeout o una falla de red no dicen NADA sobre la sesión: la request nunca
+  // llegó. Reportarla como vencida manda al técnico a re-loguearse sin motivo, y
+  // justo cuando está sin señal (#451, #668).
+  if (refreshed?.error && esFallaDeRed(refreshed.error)) throw refreshed.error;
   if (refreshed?.error || !refreshed?.data?.session || (await esDeOtraCuenta(refreshed.data.session))) {
     throw new SessionExpiredError();
   }

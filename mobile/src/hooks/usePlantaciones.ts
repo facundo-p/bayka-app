@@ -16,7 +16,9 @@ import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { useDescartarPendientes } from './useDescartarPendientes';
 import { getPendientesVarados, type PendientesVarados } from '../queries/pendientesVaradosQueries';
 import { checkFreshness } from '../queries/freshnessQueries';
-import { ensureServerSession, pullFromServer, uploadPendingEdits } from '../services/SyncService';
+import { esSinSesionDelServidor, exigirSesionDelServidor, pullFromServer, uploadPendingEdits } from '../services/SyncService';
+import { showInfoDialog } from '../utils/alertHelpers';
+import { colors } from '../theme';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import {
   getPlantationsForRole,
@@ -62,12 +64,16 @@ export function usePlantaciones() {
     }, [isOnline, plantationList])
   );
 
+  function avisarSinSesion(mensaje: string) {
+    showInfoDialog(confirm.show, 'Iniciá sesión', mensaje, 'lock-closed', colors.secondary);
+  }
+
   const handleRefresh = async () => {
     if (!plantationList) return;
     setRefreshing(true);
     try {
       // Sin sesión las ediciones saldrían como anon y el pull leería vacío (#658).
-      await ensureServerSession();
+      await exigirSesionDelServidor('actualizar las plantaciones');
       await uploadPendingEdits();
       for (const p of plantationList) {
         await pullFromServer(p.id);
@@ -75,7 +81,8 @@ export function usePlantaciones() {
       notifyDataChanged();
       setShowFreshnessBanner(false);
     } catch (e) {
-      console.error('[Freshness] pull failed:', e);
+      if (esSinSesionDelServidor(e)) avisarSinSesion(e.message);
+      else console.error('[Freshness] pull failed:', e);
     } finally {
       setRefreshing(false);
     }
