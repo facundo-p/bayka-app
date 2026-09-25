@@ -1,7 +1,7 @@
 -- aplicar_cambios_tecnicos: altas y bajas idempotentes, gates de 049, un técnico
--- inactivo o de otra organización se rechaza solo (059, #636).
+-- inactivo, de otra organización o que no es técnico se rechaza solo (059, #636).
 begin;
-select plan(17);
+select plan(18);
 
 insert into organizations (id, nombre) values
   ('b3700000-0000-0000-0000-000000000001', 'Org Test 37'),
@@ -112,6 +112,13 @@ select is(
 select is((select ids from tecnicos_37),
   array['b3700000-0000-0000-0000-0000000000a2', 'b3700000-0000-0000-0000-0000000000a3']::uuid[],
   'y no se asigna');
+
+-- a1 es admin: miembro por trigger, pero no se lo asigna como técnico.
+select is(
+  (select aplicar_cambios_tecnicos('b3700000-0000-0000-0000-000000000003',
+    array['b3700000-0000-0000-0000-0000000000a1']::uuid[], '{}')),
+  '{"success": true, "rechazados": [{"user_id": "b3700000-0000-0000-0000-0000000000a1", "error": "NO_ES_TECNICO"}]}'::jsonb,
+  'un usuario que no es técnico se rechaza con su motivo');
 
 select is(
   (select aplicar_cambios_tecnicos('b3700000-0000-0000-0000-000000000002',

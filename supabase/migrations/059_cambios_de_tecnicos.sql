@@ -6,9 +6,9 @@
 --
 -- Mismos gates que 049: admin activo, plantación de su organización y que admita
 -- asignaciones (también una finalizada). Un rechazo de la plantación vuelve como
--- `{success: false, error}` y no aplica nada. Un técnico de otra organización o
--- dado de baja se rechaza solo, en `rechazados`, y el resto se aplica: la cola del
--- teléfono lo descarta y avisa.
+-- `{success: false, error}` y no aplica nada. Un usuario de otra organización, que
+-- no es técnico o dado de baja se rechaza solo, en `rechazados`, y el resto se
+-- aplica: la cola del teléfono lo descarta y avisa.
 --
 -- Solo toca filas `tecnico`: las `admin` son de los triggers. Un usuario en las
 -- dos listas cuenta como alta.
@@ -36,6 +36,7 @@ BEGIN
     FROM (
       SELECT DISTINCT a.id,
              CASE WHEN NOT perfil_de_mi_organizacion(a.id) THEN 'USUARIO_DE_OTRA_ORGANIZACION'
+                  WHEN pr.rol <> 'tecnico' THEN 'NO_ES_TECNICO'
                   WHEN NOT pr.activo THEN 'TECNICO_INACTIVO' END AS error
         FROM unnest(v_altas) AS a(id)
         LEFT JOIN profiles pr ON pr.id = a.id
@@ -46,7 +47,7 @@ BEGIN
   SELECT DISTINCT p_plantacion, a.id, 'tecnico'
     FROM unnest(v_altas) AS a(id)
     JOIN profiles pr ON pr.id = a.id
-   WHERE pr.activo AND perfil_de_mi_organizacion(a.id)
+   WHERE pr.activo AND pr.rol = 'tecnico' AND perfil_de_mi_organizacion(a.id)
   ON CONFLICT (plantation_id, user_id) DO NOTHING;
 
   DELETE FROM plantation_users
