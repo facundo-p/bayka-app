@@ -5,13 +5,16 @@
 import { MOTIVO_VARADO, type MotivoVarado } from '../constants/motivoVarado';
 import { esEliminadaEnServidor } from '../constants/estados';
 import type { ResumenDePendientes } from '../queries/catalogQueries';
-import { detalleDePendientes } from './avisoEliminarDelDispositivo';
+import { CONFIRMACION_FINAL, detalleDePendientes } from './avisoEliminarDelDispositivo';
 
+/** `fotos`: solo las de grupos ya subidos; las de un grupo pendiente van con él. */
 export type ResumenDeDescarte = ResumenDePendientes & {
   /** Edición de los datos de la plantación sin subir. */
   edicion: boolean;
-  /** Creada en el teléfono y nunca terminó de subir: se pierde entera. */
+  /** Creada en el teléfono y nunca terminó de subir. */
   alta: boolean;
+  /** El alta llegó a insertarse y falló después (sus especies): en el server existe. */
+  altaEnServidor: boolean;
 };
 
 type FilaVarada = { motivoVarado: MotivoVarado | null; eliminadaEnServidorEn: string | null };
@@ -24,6 +27,19 @@ export function motivoDeVarado(fila: FilaVarada): MotivoVarado | null {
 /** Descartar la saca del dispositivo: un alta que nunca terminó de subir o una eliminada en el servidor. */
 export function descartarLaSaca(fila: { pendingSync: boolean; eliminadaEnServidorEn: string | null }): boolean {
   return fila.pendingSync || esEliminadaEnServidor(fila);
+}
+
+/**
+ * En una finalizada el server sí acepta técnicos y fotos de grupos ya subidos: suben en la
+ * próxima sync, así que ni se cuentan como varados ni se descartan.
+ */
+export function conservaLoQueSube(motivo: MotivoVarado | null): boolean {
+  return motivo === MOTIVO_VARADO.finalizada;
+}
+
+/** Lo que de verdad no puede subir, con ese motivo. */
+export function varadosDelResumen(r: ResumenDeDescarte, motivo: MotivoVarado | null): ResumenDeDescarte {
+  return conservaLoQueSube(motivo) ? { ...r, tecnicos: 0, fotos: 0 } : r;
 }
 
 export function totalDeCambios(r: ResumenDeDescarte): number {
@@ -51,13 +67,16 @@ export function avisoDeLaTarjeta(varados: { motivo: MotivoVarado; resumen: Resum
   return { titulo: tituloDelAviso(totalDeCambios(varados.resumen)), motivo: textoDelMotivo(varados.motivo) };
 }
 
+function detalleDelAlta(r: ResumenDeDescarte): string | false {
+  if (!r.alta) return false;
+  return r.altaEnServidor
+    ? 'la plantación, que quedó a medio subir (en el servidor está creada, sin sus especies ni lo cargado en este teléfono)'
+    : 'la plantación entera, que nunca llegó al servidor';
+}
+
 /** "la plantación entera, los cambios en sus datos, 2 grupos sin subir (…)". */
 export function detalleDeDescarte(r: ResumenDeDescarte): string {
-  const partes = [
-    r.alta && 'la plantación entera, que nunca llegó al servidor',
-    r.edicion && 'los cambios en los datos de la plantación',
-    detalleDePendientes(r),
-  ];
+  const partes = [detalleDelAlta(r), r.edicion && 'los cambios en los datos de la plantación', detalleDePendientes(r)];
   return partes.filter(Boolean).join(', ');
 }
 
@@ -65,17 +84,27 @@ export interface ConfirmacionDeDescarte {
   titulo: string;
   mensaje: string;
   boton: string;
+  /** Presente cuando la plantación sale del dispositivo: pide una segunda confirmación, como "Eliminar del dispositivo". */
+  confirmacionFinal?: string;
+}
+
+function queQueda(lugar: string, resumen: ResumenDeDescarte, seVa: boolean, motivo: MotivoVarado | null): string {
+  if (seVa && resumen.altaEnServidor) return `"${lugar}" se elimina de este dispositivo; podés volver a descargarla desde el catálogo.`;
+  if (seVa) return `"${lugar}" se elimina de este dispositivo.`;
+  // Sin permiso el pull no corre: no hay "estado del servidor" que vuelva.
+  if (motivo === MOTIVO_VARADO.sinPermiso) return `Lo que ya estaba subido de "${lugar}" queda en este dispositivo.`;
+  return `"${lugar}" vuelve a quedar como está en el servidor en la próxima sincronización.`;
 }
 
 /** Con `seVa` (ver `descartarLaSaca`), la plantación sale del dispositivo. */
-export function confirmacionDeDescarte(params: { lugar: string; resumen: ResumenDeDescarte; seVa: boolean }): ConfirmacionDeDescarte {
-  const { lugar, resumen, seVa } = params;
-  const despues = seVa
-    ? `"${lugar}" se elimina de este dispositivo.`
-    : `"${lugar}" vuelve a quedar como está en el servidor en la próxima sincronización.`;
+export function confirmacionDeDescarte(params: {
+  lugar: string; resumen: ResumenDeDescarte; seVa: boolean; motivo: MotivoVarado | null;
+}): ConfirmacionDeDescarte {
+  const { lugar, resumen, seVa, motivo } = params;
   return {
     titulo: 'Descartar cambios sin subir',
-    mensaje: `Se pierden para siempre: ${detalleDeDescarte(resumen)}. ${despues} Esta acción no se puede deshacer.`,
+    mensaje: `Se pierden para siempre: ${detalleDeDescarte(resumen)}. ${queQueda(lugar, resumen, seVa, motivo)} Esta acción no se puede deshacer.`,
     boton: 'Descartar',
+    ...(seVa ? { confirmacionFinal: CONFIRMACION_FINAL } : {}),
   };
 }

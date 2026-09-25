@@ -37,11 +37,12 @@ jest.mock('../../src/theme', () => ({
     conflictoBorder: '#F2A7A7',
     conflictoText: '#991B1B',
   },
-  spacing: { xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
+  spacing: { xxs: 2, xs: 4, sm: 6, md: 8, lg: 10, xl: 12, xxl: 16, '4xl': 24, '5xl': 32 },
   borderRadius: { md: 8, lg: 12, xl: 16, full: 9999 },
   fontSize: { xs: 10, sm: 12, base: 15, xl: 16, xxl: 18, title: 20 },
   fonts: { regular: 'System', bold: 'System', semiBold: 'System', medium: 'System', heading: 'System' },
   iconSizes: { badge: 12, stat: 14 },
+  hitSlops: { chip: 12 },
   chipSizes: { sm: { paddingVertical: 4, paddingHorizontal: 8 } },
 }));
 

@@ -41,6 +41,7 @@ import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { PG_ERROR } from '../../src/supabase/postgresErrorCodes';
 import { guardarMotivoVarado, limpiarMotivoVarado } from '../../src/repositories/PendientesVaradosRepository';
+import { conRegistroDeVarados } from '../../src/services/sync/pendientesVarados';
 
 const mockSupabase = supabase as jest.Mocked<typeof supabase>;
 const mockDb = db as jest.Mocked<typeof db>;
@@ -284,7 +285,8 @@ describe('SyncService — offline functions', () => {
     it('23505 sobre una plantación finalizada: queda pendiente con ese motivo', async () => {
       conAltaYaSubidaQueNoSeActualiza('PLANTACION_FINALIZADA');
 
-      const [resultado] = await uploadOfflinePlantations();
+      // Dentro de una corrida: fuera de ella no se guarda el motivo.
+      const [resultado] = await conRegistroDeVarados(() => uploadOfflinePlantations());
 
       expect(resultado).toMatchObject({ success: false, error: 'PLANTACION_FINALIZADA' });
       expect(mockDb.update).not.toHaveBeenCalled();
@@ -295,7 +297,7 @@ describe('SyncService — offline functions', () => {
     it('23505 sin permiso de admin: SIN_PERMISO_CREAR, varada sin permiso (#638)', async () => {
       conAltaYaSubidaQueNoSeActualiza('NOT_AUTHORIZED');
 
-      const [resultado] = await uploadOfflinePlantations();
+      const [resultado] = await conRegistroDeVarados(() => uploadOfflinePlantations());
 
       expect(resultado).toMatchObject({ success: false, error: 'SIN_PERMISO_CREAR' });
       expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-permiso');
@@ -354,7 +356,7 @@ describe('SyncService — offline functions', () => {
         data: null, error: { code: PG_ERROR.INSUFFICIENT_PRIVILEGE, message: 'rls' },
       });
 
-      const res = await uploadOfflinePlantations();
+      const res = await conRegistroDeVarados(() => uploadOfflinePlantations());
 
       // Solo se guarda lo subido como snapshot (base del reintento): pendingSync sigue en true.
       const sets = (mockDb.update as jest.Mock).mock.results.map((r) => r.value.set.mock.calls).flat();
@@ -451,7 +453,7 @@ describe('SyncService — offline functions', () => {
     it('un rechazo del server NO limpia pendingEdit', async () => {
       conEdicionPendiente({ success: false, error: 'PLANTACION_FINALIZADA' });
 
-      expect(await uploadPendingEdits()).toEqual([]);
+      expect(await conRegistroDeVarados(() => uploadPendingEdits())).toEqual([]);
       expect(mockDb.update).not.toHaveBeenCalled();
       expect(guardarMotivoVarado).toHaveBeenCalledWith(expect.any(String), 'finalizada');
     });

@@ -47,13 +47,18 @@ type Registro = {
   motivos: Map<string, MotivoVarado>;
   subidas: Set<string>;
   conAcceso: Set<string>;
-  /** Una corrida del sync reintenta todo; un paso suelto (pull-to-refresh) no. */
+  /** Participó una corrida del sync, que reintenta todo; un pull suelto (pull-to-refresh) no. */
   completo: boolean;
+  /** Alguna tarea se cortó: lo que faltaba no se reintentó. */
+  cortado: boolean;
+  /** Tareas corriendo con este registro: se aplica cuando termina la última. */
+  participantes: number;
 };
 
-const nuevoRegistro = (completo: boolean): Registro =>
-  ({ motivos: new Map(), subidas: new Set(), conAcceso: new Set(), completo });
+const nuevoRegistro = (): Registro =>
+  ({ motivos: new Map(), subidas: new Set(), conAcceso: new Set(), completo: false, cortado: false, participantes: 0 });
 
+/** Compartido entre tareas solapadas (un pull-to-refresh durante una sync). */
 let enCurso: Registro | null = null;
 
 function masPrioritario(a: MotivoVarado | undefined, b: MotivoVarado): MotivoVarado {
@@ -71,11 +76,12 @@ async function aplicar(r: Registro): Promise<void> {
 }
 
 async function escribir(r: Registro): Promise<void> {
+  const completo = r.completo && !r.cortado;
   for (const [id, motivo] of r.motivos) await guardarMotivoVarado(id, motivo);
   for (const id of r.subidas) if (!r.motivos.has(id)) await limpiarMotivoVarado(id);
   for (const id of r.conAcceso) {
     if (r.motivos.has(id) || r.subidas.has(id)) continue;
-    await alinearConElEstado(id, r.completo);
+    await alinearConElEstado(id, completo);
   }
 }
 
@@ -90,21 +96,20 @@ async function alinearConElEstado(plantacionId: string, completo: boolean): Prom
   else await limpiarMotivoVarado(plantacionId, completo ? undefined : MOTIVOS_DEL_ESTADO);
 }
 
-async function anotar(fn: (r: Registro) => void): Promise<void> {
-  if (enCurso) {
-    fn(enCurso);
-    return;
-  }
-  const suelto = nuevoRegistro(false);
-  fn(suelto);
-  await aplicar(suelto);
+/**
+ * Fuera de un registro no se anota nada: un push suelto (el alta inmediata) no sabe si la
+ * sesión era válida, y un 42501 de una sesión anónima no es "sin permiso". La próxima
+ * sync lo reintenta y lo registra.
+ */
+function anotar(fn: (r: Registro) => void): void {
+  if (enCurso) fn(enCurso);
 }
 
 /** Un rechazo del server a lo que subía la plantación. Uno transitorio no anota nada. */
 export async function anotarRechazo(plantacionId: string, codigo: string | null | undefined): Promise<void> {
   const motivo = motivoVarado(codigo);
   if (!motivo) return;
-  await anotar((r) => r.motivos.set(plantacionId, masPrioritario(r.motivos.get(plantacionId), motivo)));
+  anotar((r) => r.motivos.set(plantacionId, masPrioritario(r.motivos.get(plantacionId), motivo)));
 }
 
 /**
@@ -112,35 +117,37 @@ export async function anotarRechazo(plantacionId: string, codigo: string | null 
  * tiene permiso. Los técnicos no cuentan: se asignan también en una finalizada.
  */
 export async function anotarSubida(plantacionId: string): Promise<void> {
-  await anotar((r) => r.subidas.add(plantacionId));
+  anotar((r) => r.subidas.add(plantacionId));
 }
 
 /** El server confirmó que existe y el usuario tiene acceso: al final manda el estado que trajo el pull. */
 export async function anotarPullConAcceso(plantacionId: string): Promise<void> {
-  await anotar((r) => r.conAcceso.add(plantacionId));
+  anotar((r) => r.conAcceso.add(plantacionId));
 }
 
 /**
- * Corre `tarea` con un registro que se aplica al final. `completo`: la tarea reintenta todo
- * lo pendiente (la corrida del sync); un pull suelto no. Anidada, se suma a la que está en curso.
+ * Corre `tarea` con un registro que se aplica cuando terminan todas las tareas que lo
+ * comparten. `completo`: la tarea reintenta todo lo pendiente (la corrida del sync); un
+ * pull suelto no.
  */
 export async function conRegistroDeVarados<T>(tarea: () => Promise<T>, completo = true): Promise<T> {
-  if (enCurso) return tarea();
-  const registro = nuevoRegistro(completo);
-  enCurso = registro;
+  const registro = enCurso ?? (enCurso = nuevoRegistro());
+  registro.participantes++;
+  if (completo) registro.completo = true;
   try {
     return await tarea();
   } catch (e) {
-    // Cortada: lo que faltaba no se reintentó.
-    registro.completo = false;
+    registro.cortado = true;
     throw e;
   } finally {
-    enCurso = null;
-    // Lo anotado es cierto aunque la corrida se haya cortado: se aplica igual.
-    try {
-      await aplicar(registro);
-    } catch (e) {
-      syncLog.error('No se pudo guardar el motivo de pendientes varados:', e);
+    if (--registro.participantes === 0) {
+      enCurso = null;
+      // Lo anotado es cierto aunque la corrida se haya cortado: se aplica igual.
+      try {
+        await aplicar(registro);
+      } catch (e) {
+        syncLog.error('No se pudo guardar el motivo de pendientes varados:', e);
+      }
     }
   }
 }

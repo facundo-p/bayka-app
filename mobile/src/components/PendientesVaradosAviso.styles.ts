@@ -18,7 +18,7 @@ export const pendientesVaradosAvisoStyles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   icono: {
-    marginTop: 2,
+    marginTop: spacing.xxs,
   },
   textos: {
     flex: 1,

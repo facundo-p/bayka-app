@@ -221,6 +221,12 @@ export const iconSizes = {
   header: 24,
 } as const;
 
+// ─── Hit slop tokens ─────────────────────────────────────────────────────────
+// Área extra de toque para botones chicos dentro de una card (chip ~24px + 2*12 ≥ 44).
+export const hitSlops = {
+  chip: 12,
+} as const;
+
 // ─── Input size tokens ───────────────────────────────────────────────────────
 export const inputSizes = {
   multilineMinHeight: 96,

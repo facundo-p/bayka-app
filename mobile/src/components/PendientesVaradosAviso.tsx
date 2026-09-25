@@ -3,7 +3,7 @@
  */
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, iconSizes } from '../theme';
+import { colors, hitSlops, iconSizes } from '../theme';
 import { pendientesVaradosAvisoStyles as styles } from './PendientesVaradosAviso.styles';
 
 type Props = {
@@ -21,7 +21,7 @@ export default function PendientesVaradosAviso({ titulo, motivo, onDescartar }: 
         <Text style={styles.motivo}>{motivo}</Text>
         <Pressable
           onPress={(e) => { e?.stopPropagation?.(); onDescartar(); }}
-          hitSlop={12}
+          hitSlop={hitSlops.chip}
           style={({ pressed }) => [styles.descartar, pressed && styles.descartarPresionado]}
           accessibilityRole="button"
           accessibilityLabel="Descartar cambios sin subir"

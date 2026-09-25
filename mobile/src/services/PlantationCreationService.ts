@@ -17,6 +17,7 @@ import {
 } from '../repositories/PlantationRepository';
 import { uploadOfflinePlantations } from './sync/preSteps';
 import { uploadSyncableParcelas } from './sync/pushService';
+import { ensureServerSession } from './sync/sessionGuard';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
 import { syncLog } from '../utils/syncLogger';
 
@@ -48,6 +49,8 @@ export interface CreatePlantationResult {
  */
 async function tryPushNow(plantationId: string): Promise<void> {
   try {
+    // Sin sesión el insert iría como anon y RLS lo rechazaría como falta de permiso.
+    await ensureServerSession();
     await uploadOfflinePlantations();
     await uploadSyncableParcelas(plantationId);
   } catch (e) {
