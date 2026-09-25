@@ -19,6 +19,7 @@ import {
   faseDeProgresoGlobal,
   plantacionesOmitidas,
   SIN_OMITIDAS,
+  esSesionExpirada,
 } from '../services/SyncService';
 import type { PlantacionesOmitidas } from '../services/SyncService';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -87,7 +88,7 @@ export function useSync(plantacionId?: string) {
     console.error('[Sync] falló:', err);
     setPullSuccess(false);
     if (esTimeout(err)) setHuboTimeout(true);
-    if ((err as { name?: string })?.name === 'SessionExpiredError') setAuthExpired(true);
+    if (esSesionExpirada(err)) setAuthExpired(true);
   }, []);
 
   // Shared by startBidirectionalSync (uses the hook's own plantacionId) and

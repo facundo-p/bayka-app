@@ -7,6 +7,7 @@
  * Mock de Supabase: estado in-memory, con un doble de `aplicar_cambios_especies`.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -27,6 +28,8 @@ const serverState = mockServerState;
 const mockConArboles = new Set<string>();
 const mockRpc = { rechazo: null as string | null, sinRed: false, llamadas: [] as any[] };
 const mockNet = { conectado: true };
+/** Sin sesión del SDK el guard lanza antes de tocar el server (#658). */
+const mockSesion = { activa: true };
 
 jest.mock('@react-native-community/netinfo', () => ({
   __esModule: true,
@@ -85,7 +88,10 @@ jest.mock('../../src/supabase/client', () => {
         return Promise.resolve({ data: aplicarCambios(args), error: null });
       },
       auth: {
-        getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-admin-1' } } } }),
+        getSession: () => Promise.resolve({
+          data: { session: mockSesion.activa ? { user: { id: 'user-admin-1' } } : null },
+        }),
+        refreshSession: () => Promise.resolve({ data: { session: null }, error: { message: 'sin sesión' } }),
       },
     },
   };
@@ -131,6 +137,7 @@ beforeEach(async () => {
   mockConArboles.clear();
   Object.assign(mockRpc, { rechazo: null, sinRed: false, llamadas: [] });
   mockNet.conectado = true;
+  mockSesion.activa = true;
   await vaciarTablas(mockTestDb);
 
   await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026' }));
@@ -220,6 +227,15 @@ describe('guardar especies', () => {
 
     expect(await localesHabilitadas()).toEqual([ROBLE]);
     expect(await pendientes()).toEqual([`baja:${PINO}`]);
+  });
+
+  it('sin sesión del servidor no sube nada: queda pendiente, sin error (#658)', async () => {
+    mockSesion.activa = false;
+    await guardarEspeciesDePlantacion(PLANTACION_ID, { altas: [ALAMO], bajas: [] });
+
+    expect(mockRpc.llamadas).toHaveLength(0);
+    expect(await localesHabilitadas()).toEqual([ALAMO, PINO, ROBLE].sort());
+    expect(await pendientes()).toEqual([`alta:${ALAMO}`]);
   });
 
   it('online pero sin respuesta: queda pendiente, sin error', async () => {
@@ -327,3 +343,6 @@ describe('sync', () => {
     expect(await localesHabilitadas()).toEqual([ALAMO, ROBLE].sort());
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-admin-1'));

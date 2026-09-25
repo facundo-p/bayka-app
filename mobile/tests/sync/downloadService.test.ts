@@ -16,7 +16,7 @@ jest.mock('../../src/database/liveQuery', () => ({
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
-    auth: { getSession: jest.fn(), getUser: jest.fn() },
+    auth: { getSession: jest.fn(), getUser: jest.fn(), refreshSession: jest.fn() },
     rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
@@ -54,6 +54,7 @@ import {
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { cancelarCorrida, iniciarCorrida, SyncCanceladoError, terminarCorrida } from '../../src/services/sync/cancelacion';
 import { enTransaccion, enTransaccionPorLotes } from '../../src/database/transaccion';
+import { conSesionDelServidor, conUsuarioCacheado } from '../helpers/rolCacheado';
 
 /**
  * `jest.resetAllMocks()` borra la implementación de los mocks de módulo, así que el
@@ -111,6 +112,7 @@ function setupSesion() {
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({
     data: { session: { user: { id: 'user-1' } } },
   });
+  conUsuarioCacheado('user-1');
   (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: { code: 'PGRST202', message: 'not found' } });
 }
 
@@ -417,6 +419,18 @@ describe('batchDownload', () => {
     setupSupabaseFromEmpty();
     setupDbSelectEmpty();
     setupTransaccionPassthrough();
+  });
+
+  it('sin sesión del servidor lanza SessionExpiredError sin leer ni escribir nada (#658)', async () => {
+    setupDbInsertSuccess();
+    conSesionDelServidor(supabase.auth, null);
+
+    await expect(batchDownload([makeServerPlantation('p-1', 'Bosque Norte')]))
+      .rejects.toMatchObject({ name: 'SessionExpiredError' });
+
+    expect(supabase.from).not.toHaveBeenCalled();
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(notifyDataChanged).not.toHaveBeenCalled();
   });
 
   it('Test 3: calls downloadPlantation (db.insert) for each selected plantation in order', async () => {

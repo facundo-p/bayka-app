@@ -6,6 +6,7 @@
  * Mock de Supabase: estado in-memory por tabla.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
@@ -478,3 +479,6 @@ describe('pull de árboles — costo en statements (#449)', () => {
     expect(inserts).toHaveLength(1);
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

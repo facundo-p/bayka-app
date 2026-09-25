@@ -161,7 +161,7 @@ import {
   classifyParcelaRpcResult,
 } from '../../src/services/sync/pushService';
 import { findByPlantacion, findById, createParcela, updateParcela } from '../../src/repositories/ParcelaRepository';
-import { conRolCacheado } from '../helpers/rolCacheado';
+import { conRolCacheado, conUsuarioCacheado } from '../helpers/rolCacheado';
 import { syncLog } from '../../src/utils/syncLogger';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -859,3 +859,6 @@ describe('Alta de parcela sin subir (#654)', () => {
     expect(syncLog.info).not.toHaveBeenCalledWith(expect.stringContaining('se descarta la edición local'));
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

@@ -1,17 +1,10 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabase/client';
-import * as SecureStore from 'expo-secure-store';
 import NetInfo from '@react-native-community/netinfo';
+import { readCachedUserId } from '../supabase/auth';
+import { leerPerfilCacheado, guardarPerfilCacheado, type CachedProfile } from '../services/PerfilCacheadoService';
 
-export type CachedProfile = {
-  nombre: string;
-  email: string;
-  rol: string;
-  organizacionId: string;
-  organizacionNombre: string;
-};
-
-const PROFILE_CACHE_KEY = 'user_profile_cache';
+export type { CachedProfile };
 
 export function useProfileData() {
   const [profile, setProfile] = useState<CachedProfile | null>(null);
@@ -23,10 +16,8 @@ export function useProfileData() {
     (async () => {
       // Step 1: Load cache immediately — always works
       try {
-        const cached = await SecureStore.getItemAsync(PROFILE_CACHE_KEY);
-        if (cached && mounted) {
-          setProfile(JSON.parse(cached));
-        }
+        const cached = await leerPerfilCacheado();
+        if (cached && mounted) setProfile(cached);
       } catch {}
 
       // Step 2: Only fetch from Supabase if online
@@ -38,7 +29,8 @@ export function useProfileData() {
 
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user || !mounted) { setLoading(false); return; }
+        // Una sesión del SDK de otra cuenta no pisa el perfil de quien está logueado (#658).
+        if (!user || !mounted || user.id !== (await readCachedUserId())) { setLoading(false); return; }
 
         const { data: profileData } = await supabase
           .from('profiles')
@@ -60,7 +52,7 @@ export function useProfileData() {
         };
 
         if (mounted) setProfile(fresh);
-        await SecureStore.setItemAsync(PROFILE_CACHE_KEY, JSON.stringify(fresh));
+        await guardarPerfilCacheado(user.id, fresh);
       } catch {
         // Offline or error — cached data (if any) already set
       }

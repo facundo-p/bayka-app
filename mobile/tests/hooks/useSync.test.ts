@@ -6,6 +6,7 @@
 jest.mock('../../src/services/SyncService', () => ({
   ...jest.requireActual('../../src/services/sync/types'),
   ...jest.requireActual('../../src/services/sync/plantacionesOmitidas'),
+  esSesionExpirada: jest.requireActual('../../src/services/sync/sessionGuard').esSesionExpirada,
   syncPlantation: jest.fn(),
   syncAllPlantations: jest.fn(),
   uploadPendingPhotos: jest.fn().mockResolvedValue({ uploaded: 0, failed: 0 }),

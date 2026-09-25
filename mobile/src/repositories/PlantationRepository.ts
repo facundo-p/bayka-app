@@ -19,6 +19,7 @@ import { borrarAltasDeTecnicosDePlantacion } from './TecnicosDePlantacionReposit
 import { getResumenDePendientes, type ResumenDePendientes } from '../queries/catalogQueries';
 import { tienePendientes } from '../utils/finalizarPlantacion';
 import { getLocalPhotoUrisForPlantation } from './TreeRepository';
+import { ensureServerSession, exigirSesionDelServidor } from '../services/sync/sessionGuard';
 import { borrarFotosLocales } from '../services/PhotoService';
 import {
   esRechazada,
@@ -108,6 +109,16 @@ function errorDeRechazo(codigo: string): Error {
   return esMotivoNoEscribible(codigo) ? new PlantacionNoEscribibleError(codigo) : new EdicionRechazadaError(codigo);
 }
 
+/** Sin una sesión del servidor confirmada no sale nada: la edición queda pendiente para el sync (#658). */
+async function haySesionParaSubir(): Promise<boolean> {
+  try {
+    await ensureServerSession();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Sube por `editar_plantacion` solo lo que cambió y deja la fila con lo que quedó en el server.
  * Devuelve cuántos campos chocaron con la web, o null ante una falla de red, para que el caller
@@ -115,6 +126,7 @@ function errorDeRechazo(codigo: string): Error {
  */
 async function tryPushPlantationUpdateOnline(row: FilaDePlantacion, edicion: EdicionDelFormulario): Promise<number | null> {
   const { tocados, cambios, base } = edicion;
+  if (!(await haySesionParaSubir())) return null;
   try {
     const resultado = await subirEdicion(row.id, cambios, base);
     if (esRechazada(resultado)) throw errorDeRechazo(resultado.rechazo ?? '');
@@ -259,6 +271,7 @@ export class FinalizePlantationPendientesError extends Error {
 export async function finalizePlantation(plantacionId: string): Promise<void> {
   const pendientes = await getResumenDePendientes(plantacionId);
   if (tienePendientes(pendientes)) throw new FinalizePlantationPendientesError(pendientes);
+  await exigirSesionDelServidor('finalizar la plantación');
 
   const { error } = await supabase
     .from('plantations')
@@ -316,6 +329,7 @@ export class ReabrirPlantacionLocalSyncError extends Error {
  * superadmin: lo valida el RPC. Los grupos conservan su estado.
  */
 export async function reabrirPlantacion(plantacionId: string): Promise<void> {
+  await exigirSesionDelServidor('reabrir la plantación');
   const { data, error } = await supabase.rpc(RPC_REABRIR_PLANTACION, { p_id: plantacionId });
   if (error) throw new Error(MENSAJE_ERROR_REAPERTURA);
   const respuesta = data as { success?: boolean; error?: string } | null;

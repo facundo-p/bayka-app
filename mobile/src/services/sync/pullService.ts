@@ -1,4 +1,5 @@
 import { supabase } from '../../supabase/client';
+import { ensureServerSession, SessionExpiredError } from './sessionGuard';
 import { db } from '../../database/client';
 import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
 import { eq, and, sql, inArray, notInArray, isNotNull } from 'drizzle-orm';
@@ -123,15 +124,17 @@ async function consultarEstadoRemoto(plantacionId: string, userId: string): Prom
 /**
  * ¿La plantación sigue existiendo en el server y el usuario es miembro? (#317, #478)
  *
- * Solo corta ante evidencia positiva: si no hay sesión, si la consulta falla
- * (offline) o si la plantación todavía no se pusheó, se asume acceso y el pull
- * sigue su camino de siempre.
+ * Sin sesión lanza SessionExpiredError: las lecturas saldrían como anon, la RLS
+ * las devuelve vacías y el pull borraría miembros y especies (#658). Con sesión
+ * solo corta ante evidencia positiva: si la consulta falla o la plantación
+ * todavía no se pusheó, se asume acceso.
  */
 async function accesoRemoto(plantacionId: string): Promise<PullResult> {
-  if (await tienePushPendiente(plantacionId)) return PULL_OK;
+  await ensureServerSession();
   const { data: sesion } = await supabase.auth.getSession();
   const userId = sesion?.session?.user?.id;
-  if (!userId) return PULL_OK;
+  if (!userId) throw new SessionExpiredError();
+  if (await tienePushPendiente(plantacionId)) return PULL_OK;
   return consultarEstadoRemoto(plantacionId, userId);
 }
 

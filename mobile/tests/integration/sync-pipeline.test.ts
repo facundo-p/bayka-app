@@ -7,6 +7,7 @@
  * Supabase: tablas in-memory para el pull; el RPC y Storage registran las llamadas.
  */
 import Database from 'better-sqlite3';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestParcela, createTestPlantation } from '../helpers/factories';
@@ -307,3 +308,6 @@ describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () 
     expect((await leerGrupo()).pendingSync).toBe(false);
   });
 });
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-tecnico-1'));

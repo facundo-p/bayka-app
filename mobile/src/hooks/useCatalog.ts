@@ -11,8 +11,13 @@ import { useNetStatus } from './useNetStatus';
 import { useRoutePrefix } from './useRoutePrefix';
 import { esRutaAdmin } from '../constants/rutas';
 import { getServerCatalog, getLocalPlantationIds, ServerPlantation } from '../queries/catalogQueries';
-import { batchDownload, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState } from '../services/SyncService';
+import {
+  batchDownload, ensureServerSession, esSesionExpirada, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState,
+} from '../services/SyncService';
 import { contarPorEstado } from '../utils/conteoPorEstado';
+
+const CATALOGO_NO_DISPONIBLE = 'No se pudo cargar el catálogo';
+const CATALOGO_SIN_SESION = 'Iniciá sesión con conexión para ver el catálogo.';
 
 export function useCatalog() {
   const userId = useCurrentUserId();
@@ -37,7 +42,7 @@ export function useCatalog() {
 
   useEffect(() => {
     if (!isOnline) {
-      setCatalogError('No se pudo cargar el catálogo');
+      setCatalogError(CATALOGO_NO_DISPONIBLE);
       setLoadingCatalog(false);
       return;
     }
@@ -52,10 +57,12 @@ export function useCatalog() {
     setLoadingCatalog(true);
     setCatalogError(null);
     try {
+      // Sin sesión (login offline de otra cuenta, #658) la consulta sale como anon y vuelve vacía.
+      await ensureServerSession();
       const items = await getServerCatalog(isAdmin, userId, organizacionId);
       setCatalogItems(items);
-    } catch {
-      setCatalogError('No se pudo cargar el catálogo');
+    } catch (e) {
+      setCatalogError(esSesionExpirada(e) ? CATALOGO_SIN_SESION : CATALOGO_NO_DISPONIBLE);
     } finally {
       setLoadingCatalog(false);
     }
