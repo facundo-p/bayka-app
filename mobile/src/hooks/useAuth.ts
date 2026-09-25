@@ -1,10 +1,10 @@
 /**
  * useAuth — hook central de auth: sesión, rol, signIn, signOut.
- * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; SIGNED_OUT se ignora
- * offline; auto-refresh se para offline y arranca online. Criterio de red en services/conexion.ts:
- * sin red no se intenta el servidor; con red pero internet sin confirmar el login offline va
- * primero y, si no alcanza, se intenta online; un arranque offline revalida contra el servidor
- * cuando la conexión se confirma.
+ * Criterio de red en services/conexion.ts. Sin red (`sinRed`): CERO llamadas a supabase.*.
+ * Sin conexión confirmada (`constaSinConexion`): el arranque restaura del cache sin red y
+ * revalida contra el servidor cuando la conexión se confirma; el auto-refresh se para; el login
+ * offline va primero y, si no alcanza, se intenta online. SIGNED_OUT del SDK solo cierra la
+ * sesión con conexión confirmada.
  * SecureStore: signOut() borra solo el rol y la sesión solo local; los tokens y el userId quedan
  * para que la misma cuenta vuelva a entrar offline. El login offline de otra cuenta descarta los
  * tokens ajenos (#658), y una cuenta desactivada se purga entera.
@@ -51,6 +51,23 @@ const authChangeListeners = new Set<(state: AuthState) => void>();
 
 let autoRefreshActive = false;
 
+/**
+ * Cambia con cada login, logout o purga. Un trabajo en segundo plano (la revalidación del
+ * arranque) la captura al empezar y no escribe nada si cambió: no revive una sesión cerrada
+ * ni pisa la cuenta que entró mientras tanto.
+ */
+let epocaDeSesion = 0;
+const SIEMPRE_VIGENTE = () => true;
+
+function nuevaEpocaDeSesion() {
+  epocaDeSesion++;
+}
+
+function vigenteDesdeAhora(): () => boolean {
+  const epoca = epocaDeSesion;
+  return () => epoca === epocaDeSesion;
+}
+
 /** Start auto-refresh if online; stop if offline. Idempotent. */
 async function syncAutoRefresh(online: boolean) {
   if (!isSupabaseConfigured) return;
@@ -65,6 +82,7 @@ async function syncAutoRefresh(online: boolean) {
 
 /** Purga TODO el estado de sesión (tokens, credenciales offline, rol, email, SDK) al confirmar online que la cuenta fue desactivada — a diferencia de signOut(), que preserva las credenciales offline por contrato. */
 async function purgarSesionDesactivada() {
+  nuevaEpocaDeSesion();
   authChangeListeners.forEach(fn => fn({ session: null, role: null }));
   await supabase.auth.stopAutoRefresh();
   autoRefreshActive = false;
@@ -116,16 +134,21 @@ type SesionOnline = { access_token: string; refresh_token: string; user: { id: s
  * esperar al rol: si esa consulta falla quedaría el de la cuenta anterior, y el
  * perfil legado de esa cuenta se adoptaría con el userId de esta (#668).
  */
-async function cachearSesionOnline(session: SesionOnline): Promise<void> {
-  await persistSession(session);
-  await SecureStore.setItemAsync(USER_ID_KEY, session.user.id);
+async function cachearSesionOnline(session: SesionOnline, vigente = SIEMPRE_VIGENTE): Promise<void> {
   const { email } = session.user;
-  if (email) await SecureStore.setItemAsync(EMAIL_KEY, email);
-  else await SecureStore.deleteItemAsync(EMAIL_KEY);
+  const escrituras = [
+    () => persistSession(session),
+    () => SecureStore.setItemAsync(USER_ID_KEY, session.user.id),
+    () => (email ? SecureStore.setItemAsync(EMAIL_KEY, email) : SecureStore.deleteItemAsync(EMAIL_KEY)),
+  ];
+  for (const escribir of escrituras) {
+    if (!vigente()) return;
+    await escribir();
+  }
 }
 
-/** Trae el rol de Supabase profiles y lo cachea; si falla/timeoutea, cae al rol cacheado. Solo se llama online. */
-async function fetchAndCacheRole(userId: string): Promise<RolObtenido> {
+/** Trae el rol de Supabase profiles y lo cachea si `vigente`; si falla/timeoutea, cae al rol cacheado. Solo se llama online. */
+async function fetchAndCacheRole(userId: string, vigente = SIEMPRE_VIGENTE): Promise<RolObtenido> {
   try {
     const { data: profile } = await withTimeout(
       supabase.from('profiles').select('rol, activo').eq('id', userId).single(),
@@ -135,7 +158,7 @@ async function fetchAndCacheRole(userId: string): Promise<RolObtenido> {
       return CUENTA_DESACTIVADA;
     }
     if (profile?.rol) {
-      await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
+      if (vigente()) await SecureStore.setItemAsync(ROLE_KEY, profile.rol);
       return profile.rol as Role;
     }
   } catch {
@@ -147,15 +170,18 @@ async function fetchAndCacheRole(userId: string): Promise<RolObtenido> {
 
 type SesionRestaurada = { session: AuthState['session']; role: Role | null };
 
+type OpcionesDeRestauracion = { soloDe?: string | null; vigente?: () => boolean };
+
 /**
  * Restaura la sesión del SDK: cachea tokens, refresca el rol y purga una cuenta desactivada.
- * Null si el SDK no tiene sesión, o si es de otra cuenta que `soloDe`.
+ * Null si el SDK no tiene sesión, si es de otra cuenta que `soloDe`, o si deja de estar `vigente`.
  */
-async function restaurarDesdeSdk(soloDe?: string | null): Promise<SesionRestaurada | null> {
+async function restaurarDesdeSdk({ soloDe, vigente = SIEMPRE_VIGENTE }: OpcionesDeRestauracion = {}): Promise<SesionRestaurada | null> {
   const { data: { session: sdk } } = await supabase.auth.getSession();
   if (!sdk || (soloDe !== undefined && sdk.user.id !== soloDe)) return null;
-  await cachearSesionOnline(sdk);
-  const rol = await fetchAndCacheRole(sdk.user.id);
+  await cachearSesionOnline(sdk, vigente);
+  const rol = await fetchAndCacheRole(sdk.user.id, vigente);
+  if (!vigente()) return null;
   if (rol === CUENTA_DESACTIVADA) {
     await purgarSesionDesactivada();
     return { session: null, role: null };
@@ -186,8 +212,6 @@ export function useAuth() {
   const [role, setRole] = useState<Role | null>(null);
   const [loading, setLoading] = useState(true);
   const initializing = useRef(true);
-  const sessionRef = useRef<AuthState['session']>(null);
-  sessionRef.current = session;
 
   useEffect(() => {
     const listener = (state: AuthState) => {
@@ -207,20 +231,21 @@ export function useAuth() {
       return;
     }
 
-    // Un arranque sin conexión confirmada se revalida contra el servidor una sola vez, al confirmarse.
-    let revalidarAlConectar = false;
+    // Un arranque sin conexión confirmada con sesión se revalida contra el servidor una sola
+    // vez, al confirmarse. Se arma al terminar el init; si el listener ya había confirmado, en el acto.
+    let ultimoEstadoConfirmado = false;
 
     (async () => {
       try {
         const net = await NetInfo.fetch();
         const isOnline = !constaSinConexion(net);
-        revalidarAlConectar = !isOnline;
         await syncAutoRefresh(isOnline);
 
         const restored = isOnline ? await restaurarOnline() : await restoreFromCache();
         if (mounted && restored.session) {
           setSession(restored.session);
           if (restored.role) setRole(restored.role);
+          if (!isOnline) armarRevalidacion(vigenteDesdeAhora());
         }
       } catch (e) {
         console.error('[Auth] init failed:', e);
@@ -230,10 +255,23 @@ export function useAuth() {
       }
     })();
 
-    async function revalidar() {
+    let revalidar: (() => Promise<void>) | null = null;
+
+    function armarRevalidacion(vigente: () => boolean) {
+      revalidar = () => revalidarSesion(vigente);
+      if (ultimoEstadoConfirmado) dispararRevalidacion();
+    }
+
+    function dispararRevalidacion() {
+      const pendiente = revalidar;
+      revalidar = null;
+      pendiente?.();
+    }
+
+    async function revalidarSesion(vigente: () => boolean) {
       try {
-        const restored = await restaurarDesdeSdk(await readCachedUserId());
-        if (mounted && restored?.session && sessionRef.current) {
+        const restored = await restaurarDesdeSdk({ soloDe: await readCachedUserId(), vigente });
+        if (mounted && restored?.session && vigente()) {
           setSession(restored.session);
           if (restored.role) setRole(restored.role);
         }
@@ -283,10 +321,8 @@ export function useAuth() {
 
     const unsubscribeNetInfo = NetInfo.addEventListener((state: NetInfoState) => {
       syncAutoRefresh(!constaSinConexion(state));
-      if (revalidarAlConectar && estaConectado(state)) {
-        revalidarAlConectar = false;
-        revalidar();
-      }
+      ultimoEstadoConfirmado = estaConectado(state);
+      if (ultimoEstadoConfirmado) dispararRevalidacion();
     });
 
     return () => {
@@ -305,6 +341,7 @@ export function useAuth() {
     if (!cuenta) return sinSesion(MENSAJE_OFFLINE_SIN_CREDENCIAL);
     if (esCredencialSinUsuario(cuenta)) return sinSesion(MENSAJE_OFFLINE_SIN_HABILITAR);
 
+    nuevaEpocaDeSesion();
     const offlineSession = await sesionOfflinePara(cuenta.userId);
     await SecureStore.setItemAsync(USER_ID_KEY, cuenta.userId);
     await SecureStore.setItemAsync(ROLE_KEY, cuenta.role);
@@ -315,6 +352,7 @@ export function useAuth() {
 
   /** Persiste + cachea sesión tras un signIn online exitoso; retorna false si la cuenta está desactivada (no cachea nada). */
   async function persistOnlineSession(email: string, password: string, session: any): Promise<boolean> {
+    nuevaEpocaDeSesion();
     await cachearSesionOnline(session);
     await syncAutoRefresh(true);
 
@@ -326,9 +364,11 @@ export function useAuth() {
   }
 
   /** Backend inalcanzable con red disponible (caído/pausado, 5xx, no-JSON, timeout): intenta login offline con credenciales cacheadas; si no hay, muestra el mensaje de conectividad (no el "credenciales no guardadas" offline, que confundiría). */
-  async function handleConnectivityFailure(email: string, password: string) {
-    const offline = await handleOfflineSignIn(email, password);
-    if (!offline.error) return offline;
+  async function handleConnectivityFailure(email: string, password: string, offlineYaIntentado: boolean) {
+    if (!offlineYaIntentado) {
+      const offline = await handleOfflineSignIn(email, password);
+      if (!offline.error) return offline;
+    }
     return sinSesion(AUTH_MESSAGES.connectivity);
   }
 
@@ -337,18 +377,21 @@ export function useAuth() {
    * cualquier fallo, online. Se reintenta también con contraseña incorrecta: la credencial
    * local puede estar vieja (contraseña cambiada en la web), el servidor es quien decide, y
    * tratar igual "no cacheada" y "no coincide" no delata qué cuentas guarda el teléfono.
+   * Si internet sí andaba, ese login offline no renueva lastOnlineLogin, credencial ni rol, ni
+   * detecta una cuenta desactivada: eso lo cubre ensureServerSession al sincronizar.
    */
   async function signIn(email: string, password: string) {
     const net = await NetInfo.fetch();
     if (sinRed(net)) return handleOfflineSignIn(email, password);
-    if (constaSinConexion(net)) {
+    const offlinePrimero = constaSinConexion(net);
+    if (offlinePrimero) {
       const offline = await handleOfflineSignIn(email, password);
       if (!offline.error) return offline;
     }
-    return signInOnline(email, password);
+    return signInOnline(email, password, offlinePrimero);
   }
 
-  async function signInOnline(email: string, password: string) {
+  async function signInOnline(email: string, password: string, offlineYaIntentado: boolean) {
     let result;
     try {
       result = await withTimeout(
@@ -357,10 +400,10 @@ export function useAuth() {
       );
     } catch {
       // Thrown (network failure / timeout) → offline fallback or connectivity.
-      return handleConnectivityFailure(email, password);
+      return handleConnectivityFailure(email, password, offlineYaIntentado);
     }
     if (!result.error) return aceptarLoginOnline(email, password, result);
-    return rechazoDeLoginOnline(email, password, result.error);
+    return rechazoDeLoginOnline(email, password, result.error, offlineYaIntentado);
   }
 
   async function aceptarLoginOnline<R extends { data: { session: SesionOnline | null } }>(email: string, password: string, result: R) {
@@ -371,10 +414,10 @@ export function useAuth() {
     return sinSesion(AUTH_MESSAGES.account_disabled);
   }
 
-  async function rechazoDeLoginOnline(email: string, password: string, error: Parameters<typeof classifyAuthError>[0]) {
+  async function rechazoDeLoginOnline(email: string, password: string, error: Parameters<typeof classifyAuthError>[0], offlineYaIntentado: boolean) {
     // Un backend caído/pausado devuelve acá un parse error no-JSON — es conectividad, no credenciales malas.
     const tipo = classifyAuthError(error);
-    if (tipo === 'connectivity') return handleConnectivityFailure(email, password);
+    if (tipo === 'connectivity') return handleConnectivityFailure(email, password, offlineYaIntentado);
     if (tipo === 'account_disabled') {
       await purgarSesionDesactivada();
       return sinSesion(AUTH_MESSAGES.account_disabled);
@@ -386,6 +429,7 @@ export function useAuth() {
   // ─── Sign Out ───────────────────────────────────────────────────────────
 
   async function signOut() {
+    nuevaEpocaDeSesion();
     authChangeListeners.forEach(fn => fn({ session: null, role: null }));
 
     await supabase.auth.stopAutoRefresh();

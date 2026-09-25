@@ -523,6 +523,7 @@ describe('useAuth', () => {
             res = await pendiente;
           });
           expect(res.error.message).toBe('No se pudo conectar con el servidor. Verificá tu conexión o intentá más tarde.');
+          expect(verifyCredential).toHaveBeenCalledTimes(1);
         } finally {
           jest.useRealTimers();
         }
@@ -684,6 +685,78 @@ describe('useAuth', () => {
 
         expect(result.current.role).toBe('tecnico');
         expect(supabase.from).not.toHaveBeenCalled();
+      });
+
+      function diferido<T>() {
+        let resolver!: (v: T) => void;
+        const promesa = new Promise<T>((r) => { resolver = r; });
+        return { promesa, resolver };
+      }
+
+      const escribio = (clave: string, valor: string) =>
+        (SecureStore.setItemAsync as jest.Mock).mock.calls.some(([k, v]) => k === clave && v === valor);
+
+      it('signOut con el rol en camino: no reescribe el rol ni revive la sesión', async () => {
+        const rolEnCamino = diferido<{ data: object; error: null }>();
+        (supabase.from as jest.Mock).mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          eq: jest.fn().mockReturnThis(),
+          single: jest.fn().mockReturnValue(rolEnCamino.promesa),
+        });
+        const { result } = await arrancarSinInternetConSesion();
+        await confirmarConexion();
+        expect(supabase.from).toHaveBeenCalled();
+
+        await act(async () => { await result.current.signOut(); });
+        await act(async () => {
+          rolEnCamino.resolver({ data: { rol: 'admin', activo: true }, error: null });
+          await new Promise((r) => setTimeout(r, 20));
+        });
+
+        expect(escribio('user_role', 'admin')).toBe(false);
+        expect(result.current.session).toBeNull();
+      });
+
+      it('signOut y login offline de otra cuenta en la ventana: no pisa la cuenta nueva', async () => {
+        const sdkEnCamino = diferido<{ data: { session: typeof SESION_SDK } }>();
+        perfil({ rol: 'admin', activo: true });
+        const { result } = await arrancarSinInternetConSesion();
+        (supabase.auth.getSession as jest.Mock).mockReturnValue(sdkEnCamino.promesa);
+        await confirmarConexion();
+
+        await act(async () => { await result.current.signOut(); });
+        (verifyCredential as jest.Mock).mockResolvedValue({ role: 'tecnico', userId: 'user-2' });
+        setOffline();
+        await loguear(result);
+        (SecureStore.setItemAsync as jest.Mock).mockClear();
+        await act(async () => {
+          sdkEnCamino.resolver({ data: { session: SESION_SDK } });
+          await new Promise((r) => setTimeout(r, 20));
+        });
+
+        expect(SecureStore.setItemAsync).not.toHaveBeenCalled();
+        expect(result.current.session).not.toBe(SESION_SDK);
+        expect(result.current.role).toBe('tecnico');
+      });
+
+      it('si el listener confirma antes de que termine el init, revalida al terminar', async () => {
+        const redEnCamino = diferido<object>();
+        (NetInfo.fetch as jest.Mock).mockReturnValue(redEnCamino.promesa);
+        (readSesionCacheada as jest.Mock).mockResolvedValue({ access_token: 'cached', refresh_token: 'cached-r' });
+        (SecureStore.getItemAsync as jest.Mock).mockResolvedValue('tecnico');
+        (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: SESION_SDK } });
+        perfil({ rol: 'admin', activo: true });
+        const { result } = renderHook(() => useAuth());
+
+        await act(async () => { await ultimoListenerDeRed()({ isConnected: true, isInternetReachable: true }); });
+        expect(supabase.auth.getSession).not.toHaveBeenCalled();
+        await act(async () => {
+          redEnCamino.resolver(SIN_INTERNET);
+          await new Promise((r) => setTimeout(r, 30));
+        });
+
+        expect(supabase.auth.getSession).toHaveBeenCalledTimes(1);
+        expect(result.current.role).toBe('admin');
       });
     });
 
