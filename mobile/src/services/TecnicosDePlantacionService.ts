@@ -1,8 +1,8 @@
 /**
  * Guardar los técnicos de una plantación (#636). Asignar se aplica en el teléfono
- * siempre y con conexión sube en el momento; sin red, o si el server no responde,
- * queda pendiente para el próximo sync. Quitar a alguien que ya está en el server
- * requiere conexión; quitar un alta que todavía no subió solo la descarta.
+ * siempre y con conexión sube en el momento; sin red, sin sesión del servidor o si
+ * el server no responde, queda pendiente para el próximo sync. Quitar a alguien que
+ * ya está en el server requiere conexión y sesión; quitar un alta que todavía no subió solo la descarta.
  */
 import { notifyDataChanged } from '../database/liveQuery';
 import { syncLog } from '../utils/syncLogger';
@@ -10,6 +10,7 @@ import { errorDeRechazo } from './ReemplazoConfiguracionService';
 import { hayConexion } from './conexion';
 import { esRechazoDePlantacion, subirCambiosDeTecnicos, type SubidaDeTecnicos } from './sync/tecnicosDePlantacion';
 import { pullTecnicosDeOrganizacion } from './sync/catalogoDeTecnicos';
+import { ensureServerSession, exigirSesionDelServidor } from './sync/sessionGuard';
 import {
   admiteSubirTecnicos,
   getAltasPendientes,
@@ -71,6 +72,7 @@ type Espera = { sinNadieQueAvise: () => boolean; alResponder: () => void };
 async function subirAltasSiSePuede(plantacionId: string, espera: Espera): Promise<SubidaDeTecnicos | null> {
   if (!(await admiteSubirTecnicos(plantacionId)) || !(await hayConexion())) return null;
   try {
+    await ensureServerSession();
     return await subirCambiosDeTecnicos(plantacionId, [], espera);
   } catch (e: any) {
     syncLog.error('Upload technician assignments failed, queda pendiente:', plantacionId, e?.message ?? e);
@@ -122,7 +124,10 @@ export async function guardarTecnicosDePlantacion(plantacionId: string, cambios:
   if (sinCambios(cambios)) return [];
   const pendientes = new Set(await getAltasPendientes(plantacionId));
   const bajasDelServidor = cambios.bajas.filter((id) => !pendientes.has(id));
-  if (bajasDelServidor.length > 0 && !(await hayConexion())) throw new QuitarSinConexionError();
+  if (bajasDelServidor.length > 0) {
+    if (!(await hayConexion())) throw new QuitarSinConexionError();
+    await exigirSesionDelServidor('quitar técnicos');
+  }
   await guardarAltasDeTecnicos(plantacionId, cambios.altas);
   // Deshacer un alta pendiente es solo local: una baja al server podría quitar una
   // asignación que la web hizo al mismo técnico. Si su subida llegó al server con la

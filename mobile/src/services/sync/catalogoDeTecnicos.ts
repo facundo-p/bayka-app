@@ -8,10 +8,13 @@ import { readCachedRole } from '../../supabase/auth';
 import { esRolAdmin } from '../../types/domain';
 import { ROL } from '../../constants/roles';
 import { reemplazarTecnicosDeOrganizacion } from '../../repositories/TecnicosDePlantacionRepository';
+import { ensureServerSession } from './sessionGuard';
 
-/** Lanza ante un error de red o del server: el caché anterior queda como estaba. */
+/** Lanza ante un error de red o del server, o sin sesión: el caché anterior queda como estaba. */
 export async function pullTecnicosDeOrganizacion(): Promise<void> {
   if (!esRolAdmin(await readCachedRole())) return;
+  // Como anon la RLS devuelve cero técnicos y el reemplazo vaciaría el caché (#658).
+  await ensureServerSession();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, nombre, organizacion_id')

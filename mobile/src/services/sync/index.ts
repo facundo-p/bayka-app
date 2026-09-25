@@ -8,7 +8,7 @@ export { syncPlantation, syncAllPlantations } from './orchestrators';
 export type { ResultadoDePlantacion } from './orchestrators';
 export { plantacionesOmitidas, hayOmitidas, SIN_OMITIDAS } from './plantacionesOmitidas';
 export type { PlantacionesOmitidas } from './plantacionesOmitidas';
-export { ensureServerSession, SessionExpiredError } from './sessionGuard';
+export { ensureServerSession, SessionExpiredError, esSesionExpirada } from './sessionGuard';
 export { downloadPlantation, batchDownload } from './downloadService';
 export { hayActividadDeSync, subscribeActividadDeSync, marcandoActividadDeSync, __resetActividadDeSync } from './syncActivityStore';
 export { faseDeProgresoGlobal } from './faseDeProgreso';

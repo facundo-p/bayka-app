@@ -30,6 +30,8 @@ const mockRpc = {
   soltar: [] as (() => void)[], llamadas: [] as any[],
 };
 const mockNet = { conectado: true };
+/** Sin sesión del SDK el guard lanza antes de tocar el server (#658). */
+const mockSesion = { activa: true };
 /** Lo que pasa en el teléfono mientras el pull baja `plantation_users`, con la respuesta ya armada. */
 let mockAlBajarMiembros: { durante?: () => Promise<void> } = {};
 
@@ -38,7 +40,10 @@ jest.mock('@react-native-community/netinfo', () => ({
   default: { fetch: () => Promise.resolve({ isConnected: mockNet.conectado }) },
 }));
 
-jest.mock('../../src/supabase/auth', () => ({ readCachedRole: () => Promise.resolve('admin') }));
+jest.mock('../../src/supabase/auth', () => ({
+  readCachedRole: () => Promise.resolve('admin'),
+  readCachedUserId: () => Promise.resolve('user-admin-1'),
+}));
 
 jest.mock('../../src/supabase/client', () => {
   const filtrar = (tabla: string, filtros: { col: string; value: any }[]) =>
@@ -98,7 +103,10 @@ jest.mock('../../src/supabase/client', () => {
         return Promise.resolve({ data: aplicarCambios(args), error: null });
       },
       auth: {
-        getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-admin-1' } } } }),
+        getSession: () => Promise.resolve({
+          data: { session: mockSesion.activa ? { user: { id: 'user-admin-1' } } : null },
+        }),
+        refreshSession: () => Promise.resolve({ data: { session: null }, error: { message: 'sin sesión' } }),
       },
     },
   };
@@ -157,6 +165,7 @@ beforeEach(async () => {
   mockInactivos.clear();
   Object.assign(mockRpc, { rechazo: null, sinRed: false, colgado: false, demorado: false, soltar: [], llamadas: [] });
   mockNet.conectado = true;
+  mockSesion.activa = true;
   mockAlBajarMiembros = {};
   await vaciarTablas(mockTestDb);
 
@@ -185,6 +194,15 @@ const delServer = () => Array.from(serverState.plantation_users.values())
 
 describe('caché de técnicos', () => {
   it('el refresco guarda los técnicos activos de la organización', async () => {
+    const cache = await mockTestDb.select().from(tecnicosDeOrganizacion);
+    expect(cache.map((t) => t.nombre).sort()).toEqual(['Ana', 'Bruno', 'Carla']);
+  });
+
+  it('sin sesión del servidor el refresco no lee nada y deja el caché intacto (#658)', async () => {
+    serverState.profiles.clear();
+    mockSesion.activa = false;
+    await refrescarTecnicosDeOrganizacion();
+
     const cache = await mockTestDb.select().from(tecnicosDeOrganizacion);
     expect(cache.map((t) => t.nombre).sort()).toEqual(['Ana', 'Bruno', 'Carla']);
   });
@@ -350,6 +368,25 @@ describe('guardar técnicos', () => {
     expect(mockRpc.llamadas).toEqual([{ p_plantacion: PLANTACION_ID, p_altas: [BRUNO], p_bajas: [ANA] }]);
     expect(delServer()).toEqual([BRUNO]);
     expect(await tecnicosLocales()).toEqual([BRUNO]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('sin sesión del servidor el alta no sube: queda pendiente para el sync (#658)', async () => {
+    mockSesion.activa = false;
+    await guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [] });
+
+    expect(mockRpc.llamadas).toHaveLength(0);
+    expect(await tecnicosLocales()).toEqual([ANA, BRUNO].sort());
+    expect(await pendientes()).toEqual([BRUNO]);
+  });
+
+  it('quitar a un técnico del server sin sesión no toca nada y pide iniciar sesión (#658)', async () => {
+    mockSesion.activa = false;
+    await expect(guardarTecnicosDePlantacion(PLANTACION_ID, { altas: [BRUNO], bajas: [ANA] }))
+      .rejects.toThrow('Iniciá sesión con conexión para quitar técnicos.');
+
+    expect(mockRpc.llamadas).toHaveLength(0);
+    expect(await tecnicosLocales()).toEqual([ANA]);
     expect(await pendientes()).toEqual([]);
   });
 

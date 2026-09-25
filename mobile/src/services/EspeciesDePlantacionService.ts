@@ -1,13 +1,14 @@
 /**
  * Guardar las especies de una plantación (#635): se aplica en el teléfono siempre,
- * y con conexión sube en el momento. Sin red, o si el server no responde, queda
- * pendiente para el próximo sync.
+ * y con conexión sube en el momento. Sin red, sin sesión del servidor o si el server
+ * no responde, queda pendiente para el próximo sync.
  */
 import NetInfo from '@react-native-community/netinfo';
 import { notifyDataChanged } from '../database/liveQuery';
 import { syncLog } from '../utils/syncLogger';
 import { errorDeRechazo } from './ReemplazoConfiguracionService';
 import { esRechazoDePlantacion, subirCambiosDeEspecies, type SubidaDeEspecies } from './sync/cambiosDeEspecies';
+import { ensureServerSession } from './sync/sessionGuard';
 import {
   deshacerGuardado,
   getCambiosPendientes,
@@ -22,6 +23,7 @@ async function subirSiHayConexion(plantacionId: string): Promise<SubidaDeEspecie
   const net = await NetInfo.fetch();
   if (net.isConnected === false) return null;
   try {
+    await ensureServerSession();
     return await subirCambiosDeEspecies(plantacionId);
   } catch (e: any) {
     syncLog.error('Upload species changes failed, queda pendiente:', plantacionId, e?.message ?? e);

@@ -130,6 +130,26 @@ Para el uso en campo sin conexión, las credenciales se cachean en SecureStore
 expiración opcional. El login ofrece las cuentas guardadas como chips
 ("Acceso rápido").
 
+Cada credencial offline guarda el userId de su cuenta, y el login offline deja
+cacheados el userId y el rol de quien entra. En un celular compartido, si la
+cuenta que entra offline no es la dueña de los tokens cacheados, esos tokens se
+descartan: trabaja con una sesión solo local y el sync le pide login online
+antes de subir nada, así nunca se sube con la identidad de otro (#658). Las
+credenciales guardadas antes de este cambio no tienen userId y no sirven para
+entrar offline hasta el próximo login online.
+
+Toda operación contra el servidor (sync, pull-to-refresh, descarga de
+plantaciones, catálogo, técnicos) pasa antes por `ensureServerSession`: sin una
+sesión del SDK de la cuenta cacheada corta con `SessionExpiredError` antes de
+leer, porque una lectura anónima vuelve vacía por RLS y el pull borraría datos
+locales. Las escrituras que el usuario dispara fuera del sync también pasan por
+el guard: editar la plantación, guardar especies y asignar técnicos quedan
+pendientes para el sync, y finalizar, reabrir y quitar técnicos piden iniciar
+sesión con conexión. El perfil cacheado (`PerfilCacheadoService`) guarda el
+userId de su dueño y se descarta si no coincide con la cuenta activa. Un perfil
+anterior a #658, sin dueño, se adopta solo si hay tokens cacheados y su email es
+el del último login online.
+
 ---
 
 # 3. Arquitectura General

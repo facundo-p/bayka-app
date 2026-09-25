@@ -1,16 +1,23 @@
 /**
  * useAuth — hook central de auth: sesión, rol, signIn, signOut.
- * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; las claves de SecureStore
- * (tokens/userId/role) nunca se borran salvo signOut() explícito; SIGNED_OUT se ignora offline;
- * auto-refresh se para offline y arranca online.
+ * Contrato offline (inviolable): sin red, CERO llamadas a supabase.*; SIGNED_OUT se ignora
+ * offline; auto-refresh se para offline y arranca online.
+ * SecureStore: signOut() borra solo el rol y la sesión solo local; los tokens y el userId quedan
+ * para que la misma cuenta vuelva a entrar offline. El login offline de otra cuenta descarta los
+ * tokens ajenos (#658), y una cuenta desactivada se purga entera.
  */
 import { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
-import { persistSession, clearSession, readCachedSession, ROLE_KEY, EMAIL_KEY, USER_ID_KEY } from '../supabase/auth';
+import {
+  persistSession, clearSession, readCachedSession, readCachedUserId, readSesionCacheada, iniciarSesionSoloLocal,
+  ROLE_KEY, EMAIL_KEY, USER_ID_KEY, SESION_SOLO_LOCAL_KEY, type SesionCacheada,
+} from '../supabase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { cacheCredential, verifyCredential, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials } from '../services/OfflineAuthService';
+import {
+  cacheCredential, verifyCredential, esCredencialSinUsuario, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials,
+} from '../services/OfflineAuthService';
 import { classifyAuthError, authErrorMessage, AUTH_MESSAGES } from '../supabase/authErrors';
 import type { Role } from '../types/domain';
 import { ROL } from '../constants/roles';
@@ -18,6 +25,10 @@ import { conReloj } from '../utils/conReloj';
 
 const ROLE_FETCH_TIMEOUT = 5000;
 const LOGIN_TIMEOUT = 8000;
+
+const MENSAJE_OFFLINE_EXPIRADO = 'Sesión offline expirada. Conectate a internet para iniciar sesión.';
+const MENSAJE_OFFLINE_SIN_CREDENCIAL = 'Credenciales incorrectas o no guardadas. Iniciá sesión online primero.';
+const MENSAJE_OFFLINE_SIN_HABILITAR = 'Iniciá sesión con conexión una vez para habilitar el acceso sin conexión.';
 
 /** Race a promise against a timeout. Rejects with 'timeout' on expiry. */
 function withTimeout<T>(promiseOrThenable: PromiseLike<T>, ms: number): Promise<T> {
@@ -27,7 +38,7 @@ function withTimeout<T>(promiseOrThenable: PromiseLike<T>, ms: number): Promise<
 // ─── Module-level state (shared across all useAuth instances) ───────────────
 
 type AuthState = {
-  session: { access_token: string; refresh_token: string } | null;
+  session: SesionCacheada | null;
   role: Role | null;
 };
 
@@ -58,11 +69,34 @@ async function purgarSesionDesactivada() {
   try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
   try { await SecureStore.deleteItemAsync(EMAIL_KEY); } catch {}
   try { await SecureStore.deleteItemAsync(USER_ID_KEY); } catch {}
+  await borrarEstadoDelSdk();
+}
+
+/** Borra la sesión que el SDK de Supabase guarda en AsyncStorage; sin red. */
+async function borrarEstadoDelSdk() {
   try {
     const keys = await AsyncStorage.getAllKeys();
     const sbKeys = keys.filter(k => k.startsWith('sb-'));
     if (sbKeys.length > 0) await AsyncStorage.multiRemove(sbKeys);
   } catch {}
+}
+
+function sinSesion(message: string) {
+  return { data: { session: null, user: null }, error: { message } };
+}
+
+/**
+ * Sesión para un login offline de `userId`: reusa los tokens cacheados solo si
+ * son suyos. Si son de otra cuenta, abre una sesión solo local sin rastro de la
+ * anterior, así nada se sube con la identidad de otro (#658).
+ */
+async function sesionOfflinePara(userId: string): Promise<SesionCacheada> {
+  if (userId === (await readCachedUserId())) {
+    const tokens = await readCachedSession();
+    if (tokens) return tokens;
+  }
+  await borrarEstadoDelSdk();
+  return iniciarSesionSoloLocal(userId);
 }
 
 // ─── Helpers (no network when offline) ──────────────────────────────────────
@@ -95,7 +129,7 @@ async function fetchAndCacheRole(userId: string, email?: string): Promise<RolObt
 
 /** Restaura sesión desde el cache de SecureStore; CERO llamadas de red. Usado en init offline y como fallback si el init online falla. */
 async function restoreFromCache(): Promise<{ session: AuthState['session']; role: Role | null }> {
-  const session = await readCachedSession();
+  const session = await readSesionCacheada();
   const role = await SecureStore.getItemAsync(ROLE_KEY) as Role | null;
   return { session, role };
 }
@@ -227,23 +261,16 @@ export function useAuth() {
   // ─── Sign In ────────────────────────────────────────────────────────────
 
   async function handleOfflineSignIn(email: string, password: string) {
-    const expired = await isOfflineLoginExpired();
-    if (expired) {
-      return { data: { session: null, user: null }, error: { message: 'Sesión offline expirada. Conectate a internet para iniciar sesión.' } };
-    }
+    if (await isOfflineLoginExpired()) return sinSesion(MENSAJE_OFFLINE_EXPIRADO);
 
-    const cachedRole = await verifyCredential(email, password);
-    if (!cachedRole) {
-      return { data: { session: null, user: null }, error: { message: 'Credenciales incorrectas o no guardadas. Iniciá sesión online primero.' } };
-    }
+    const cuenta = await verifyCredential(email, password);
+    if (!cuenta) return sinSesion(MENSAJE_OFFLINE_SIN_CREDENCIAL);
+    if (esCredencialSinUsuario(cuenta)) return sinSesion(MENSAJE_OFFLINE_SIN_HABILITAR);
 
-    const offlineSession = await readCachedSession();
-    if (!offlineSession) {
-      return { data: { session: null, user: null }, error: { message: 'Sin sesión previa. Conectate al menos una vez.' } };
-    }
-
-    await SecureStore.setItemAsync(ROLE_KEY, cachedRole);
-    authChangeListeners.forEach(fn => fn({ session: offlineSession, role: cachedRole as Role }));
+    const offlineSession = await sesionOfflinePara(cuenta.userId);
+    await SecureStore.setItemAsync(USER_ID_KEY, cuenta.userId);
+    await SecureStore.setItemAsync(ROLE_KEY, cuenta.role);
+    authChangeListeners.forEach(fn => fn({ session: offlineSession, role: cuenta.role as Role }));
 
     return { data: { session: offlineSession, user: null }, error: null };
   }
@@ -256,7 +283,7 @@ export function useAuth() {
 
     const userRole = await fetchAndCacheRole(session.user.id, session.user.email ?? '');
     if (userRole === CUENTA_DESACTIVADA) return false;
-    await cacheCredential(email, password, userRole ?? ROL.tecnico);
+    await cacheCredential(email, password, userRole ?? ROL.tecnico, session.user.id);
     await saveLastOnlineLogin();
     return true;
   }
@@ -265,7 +292,7 @@ export function useAuth() {
   async function handleConnectivityFailure(email: string, password: string) {
     const offline = await handleOfflineSignIn(email, password);
     if (!offline.error) return offline;
-    return { data: { session: null, user: null }, error: { message: AUTH_MESSAGES.connectivity } };
+    return sinSesion(AUTH_MESSAGES.connectivity);
   }
 
   async function signIn(email: string, password: string) {
@@ -291,10 +318,7 @@ export function useAuth() {
         const cuentaActiva = await persistOnlineSession(email, password, result.data.session);
         if (!cuentaActiva) {
           await purgarSesionDesactivada();
-          return {
-            data: { session: null, user: null },
-            error: { message: AUTH_MESSAGES.account_disabled },
-          };
+          return sinSesion(AUTH_MESSAGES.account_disabled);
         }
       }
       return result;
@@ -307,10 +331,10 @@ export function useAuth() {
     // Cuenta desactivada: mismo purge que en purgarSesionDesactivada().
     if (classifyAuthError(result.error) === 'account_disabled') {
       await purgarSesionDesactivada();
-      return { data: { session: null, user: null }, error: { message: AUTH_MESSAGES.account_disabled } };
+      return sinSesion(AUTH_MESSAGES.account_disabled);
     }
     // Real credential / unknown error → friendly message, never the raw SDK one.
-    return { data: { session: null, user: null }, error: { message: authErrorMessage(result.error) } };
+    return sinSesion(authErrorMessage(result.error));
   }
 
   // ─── Sign Out ───────────────────────────────────────────────────────────
@@ -322,13 +346,8 @@ export function useAuth() {
     autoRefreshActive = false;
 
     try { await SecureStore.deleteItemAsync(ROLE_KEY); } catch {}
-
-    // Clear Supabase SDK state from AsyncStorage — no network calls
-    try {
-      const keys = await AsyncStorage.getAllKeys();
-      const sbKeys = keys.filter(k => k.startsWith('sb-'));
-      if (sbKeys.length > 0) await AsyncStorage.multiRemove(sbKeys);
-    } catch {}
+    try { await SecureStore.deleteItemAsync(SESION_SOLO_LOCAL_KEY); } catch {}
+    await borrarEstadoDelSdk();
   }
 
   return { session, role, loading, signIn, signOut };

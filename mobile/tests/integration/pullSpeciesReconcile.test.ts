@@ -61,8 +61,9 @@ jest.mock('../../src/supabase/client', () => {
   return {
     supabase: {
       from: (tabla: string) => builder(tabla),
-      // Sin sesión el pull no consulta el acceso remoto.
-      auth: { getSession: () => Promise.resolve({ data: { session: null } }) },
+      auth: { getSession: () => Promise.resolve({ data: { session: { user: { id: 'user-1' } } } }) },
+      rpc: (_fn: string, args: { p_ids: string[] }) =>
+        Promise.resolve({ data: args.p_ids.map((id) => ({ id, estado: 'ok' })), error: null }),
     },
   };
 });
@@ -74,6 +75,10 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { pullSpeciesFromServer } from '../../src/services/sync/catalogoDeEspecies';
 import { pullFromServer } from '../../src/services/sync/pullService';
+import { conUsuarioCacheado } from '../helpers/rolCacheado';
+
+// El guard de sesión exige que el usuario cacheado sea el de la sesión (#658).
+beforeEach(() => conUsuarioCacheado('user-1'));
 
 const LOCAL_ID = 'a0000000-0000-0000-0000-000000000012';
 const SERVER_ID = 'b1111111-1111-1111-1111-111111111111';

@@ -87,7 +87,7 @@ Reglas de unicidad:
 ### 2. Sistema de Autenticacion
 
 - **Login online:** Supabase SDK con email/password
-- **Login offline:** Verificacion de hash SHA256 contra credenciales cacheadas
+- **Login offline:** Verificacion de hash SHA256 contra credenciales cacheadas; con otra cuenta que la de los tokens cacheados abre una sesion solo local que exige login online para sincronizar
 - **Expiracion configurable:** TTL para sesiones offline
 - **Persistencia de sesion:** Se restaura desde cache al iniciar la app
 - **Network-aware:** Solo refresca tokens cuando hay conexion

@@ -11,6 +11,7 @@ import { aSnapshot, desdeFilaRemota } from '../../utils/camposDePlantacion';
 import { downloadPhotosForPlantation } from './photoService';
 import { pullSpeciesFromServer } from './catalogoDeEspecies';
 import { marcandoActividadDeSync } from './syncActivityStore';
+import { ensureServerSession } from './sessionGuard';
 
 interface DownloadOptions {
   /** If true, download photos after data sync. Default false (data-only is fast). */
@@ -134,6 +135,8 @@ async function correrBatchDownload(
   options: { includePhotos?: boolean } = {},
 ): Promise<DownloadResult[]> {
   const { includePhotos = false } = options;
+  // Antes de escribir nada: sin sesión cada plantación quedaría a medio bajar (#658).
+  await ensureServerSession();
   const results: DownloadResult[] = [];
 
   const emitProgress = (
