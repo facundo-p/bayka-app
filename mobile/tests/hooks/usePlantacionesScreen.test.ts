@@ -38,6 +38,12 @@ jest.mock('../../src/hooks/usePlantaciones', () => ({
 
 const mockHandleCreateSubmit = jest.fn();
 const mockFetchPlantationMeta = jest.fn();
+// Réplica mínima del comportamiento real de usePlantationAdmin.continuarLuegoDeCrear:
+// sin duplicada corre directo; con duplicada, el test decide cuándo invocar el callback
+// capturado (simula al usuario cerrando el aviso), nunca antes (#656).
+const mockContinuarLuegoDeCrear = jest.fn((duplicada: boolean | undefined, siguientePaso: () => void) => {
+  if (!duplicada) siguientePaso();
+});
 jest.mock('../../src/hooks/usePlantationAdmin', () => ({
   usePlantationAdmin: () => ({
     plantationList: [{ id: 'p1', lugar: 'Lote 1', pendingSync: false }],
@@ -48,6 +54,7 @@ jest.mock('../../src/hooks/usePlantationAdmin', () => ({
     handleExportExcel: jest.fn(),
     handleExportKml: jest.fn(),
     handleCreateSubmit: mockHandleCreateSubmit,
+    continuarLuegoDeCrear: mockContinuarLuegoDeCrear,
     handleEditSubmit: jest.fn(),
     handleDiscardEdit: jest.fn(),
   }),
@@ -108,8 +115,8 @@ describe('usePlantacionesScreen — computed flags', () => {
 });
 
 describe('usePlantacionesScreen — creación y navegación (issue #63 + #15)', () => {
-  it('crea la plantación, abre config de especies y navega al detalle al cerrarla', async () => {
-    mockHandleCreateSubmit.mockResolvedValue('new-plantation-id');
+  it('sin duplicada: crea la plantación, abre config de especies directo y navega al detalle al cerrarla', async () => {
+    mockHandleCreateSubmit.mockResolvedValue({ id: 'new-plantation-id', duplicada: false });
     const { result } = renderHook(() => usePlantacionesScreen());
 
     await act(async () => {
@@ -126,6 +133,27 @@ describe('usePlantacionesScreen — creación y navegación (issue #63 + #15)', 
 
     expect(result.current.configSpeciesPlantacionId).toBeNull();
     expect(mockPush).toHaveBeenCalledWith('/(admin)/plantation/new-plantation-id');
+  });
+
+  it('con duplicada: no abre config de especies hasta que se cierra el aviso (#656)', async () => {
+    mockHandleCreateSubmit.mockResolvedValue({ id: 'dup-plantation-id', duplicada: true });
+    const { result } = renderHook(() => usePlantacionesScreen());
+
+    await act(async () => {
+      await result.current.handleCreatePlantation({ lugar: 'Lote Dup', periodo: '2026-A' } as any);
+    });
+
+    // continuarLuegoDeCrear ya corrió con duplicada:true, pero el mock no invoca el callback
+    // solo: el aviso "cierra" el modal de creación pero el de especies queda sin abrir todavía.
+    expect(mockContinuarLuegoDeCrear).toHaveBeenCalledWith(true, expect.any(Function));
+    expect(result.current.showCreateModal).toBe(false);
+    expect(result.current.configSpeciesPlantacionId).toBeNull();
+
+    // Recién al "cerrar el aviso" (invocar el callback capturado) se abre config de especies.
+    const siguientePaso = mockContinuarLuegoDeCrear.mock.calls[0][1];
+    act(() => { siguientePaso(); });
+
+    expect(result.current.configSpeciesPlantacionId).toBe('dup-plantation-id');
   });
 
   it('no navega si handleCreateSubmit no devuelve id', async () => {

@@ -216,7 +216,7 @@ export function usePlantationAdmin() {
     lugar: string,
     periodo: string,
     ajustes?: Partial<AjustesDePlantacion>
-  ): Promise<string> {
+  ): Promise<{ id: string; duplicada?: boolean }> {
     if (!organizacionId || !userId) {
       throw new Error('No se pudo obtener datos del usuario. Intentá de nuevo.');
     }
@@ -230,12 +230,20 @@ export function usePlantationAdmin() {
       ajustes,
       mode: net.isConnected === false ? 'offline' : 'online',
     });
-    // El chequeo de duplicado contra el server solo corre en el push del alta online;
-    // la offline lo ve recién en el resumen del próximo sync (#655).
-    if (result.duplicada) {
-      showInfoDialog(showConfirm, 'Mismo lugar y periodo', TEXTO_DUPLICADA_EN_SERVIDOR, 'alert-circle-outline', colors.info);
+    return { id: result.id, duplicada: result.duplicada };
+  }
+
+  /**
+   * Encadena el siguiente paso del alta (abrir config de especies) después del aviso de
+   * duplicado (#655/#656): si no hay duplicado corre directo. Si lo hay, recién al cerrar
+   * el aviso — así nunca hay dos modales nativos abiertos a la vez.
+   */
+  function continuarLuegoDeCrear(duplicada: boolean | undefined, siguientePaso: () => void) {
+    if (!duplicada) {
+      siguientePaso();
+      return;
     }
-    return result.id;
+    showInfoDialog(showConfirm, 'Mismo lugar y periodo', TEXTO_DUPLICADA_EN_SERVIDOR, 'alert-circle-outline', colors.info, siguientePaso);
   }
 
   async function handleEditSubmit(
@@ -277,6 +285,7 @@ export function usePlantationAdmin() {
     handleExportExcel,
     handleExportKml,
     handleCreateSubmit,
+    continuarLuegoDeCrear,
     handleEditSubmit,
     handleDiscardEdit,
   };
