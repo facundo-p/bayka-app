@@ -2,13 +2,8 @@
 
 import { dateAIso, isoADate, isoAFecha, recortarIso } from '../../src/utils/fechaDeCalendario';
 
-const TZ_ORIGINAL = process.env.TZ;
-
 describe('en Argentina (UTC-3), donde toISOString corre el día', () => {
-  beforeAll(() => { process.env.TZ = 'America/Argentina/Buenos_Aires'; });
-  afterAll(() => { process.env.TZ = TZ_ORIGINAL; });
-
-  it('la zona de prueba está activa', () => {
+  it('la zona de prueba está activa (jest.config.js)', () => {
     expect(new Date(2026, 2, 15).getTimezoneOffset()).toBe(180);
   });
 
