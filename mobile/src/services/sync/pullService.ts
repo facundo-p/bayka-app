@@ -500,6 +500,7 @@ async function pullPlantationSpecies(
   syncLog.info('Pull plantation_species:', all.length, 'rows');
   emitProgress(onProgress, DOWNLOAD_PHASE.especiesPlantacion, 0, all.length);
 
+  // Fuera de la transacción del upsert: si se corta en el medio, el próximo pull lo completa.
   await quitarEspeciesAusentes(plantacionId, all.map((ps: any) => ps.species_id));
   if (all.length === 0) return;
 
