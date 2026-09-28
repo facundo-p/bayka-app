@@ -1,7 +1,8 @@
 // Formulario de plantación (#633): todos los campos juntos y aviso de duplicado que no frena.
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import PlantationFormModal from '../../src/components/PlantationFormModal';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -13,6 +14,11 @@ const EXISTENTE = {
   id: 'p-1', lugar: 'Lote Norte', periodo: 'Otoño 2026', estado: 'activa', createdAt: '2026-01-01',
   archivadaEn: null, eliminadaEnServidorEn: null,
 };
+
+function elegirEnCalendario(fecha: Date) {
+  const { onChange } = (DateTimePickerAndroid.open as jest.Mock).mock.calls.at(-1)[0];
+  act(() => onChange({ type: 'set', nativeEvent: { timestamp: fecha.getTime() } }, fecha));
+}
 
 function renderForm(props: Partial<React.ComponentProps<typeof PlantationFormModal>> = {}) {
   const onSubmit = jest.fn().mockResolvedValue(undefined);
@@ -48,12 +54,27 @@ describe('PlantationFormModal', () => {
   });
 
   it('en edición no se avisa a sí misma y precarga los datos', () => {
-    const { queryByText, getByDisplayValue } = renderForm({
+    const { queryByText, getByDisplayValue, getByText } = renderForm({
       editingPlantation: { ...EXISTENTE, objetivoArboles: 12000, fechaInicio: '2026-04-15' },
     });
     expect(queryByText(/Ya tenés una/)).toBeNull();
     expect(getByDisplayValue('12000')).toBeTruthy();
-    expect(getByDisplayValue('15/04/2026')).toBeTruthy();
+    expect(getByText('15/04/2026')).toBeTruthy();
+  });
+
+  it('en edición cambia la fecha con el calendario', async () => {
+    const { getByTestId, getByText, onSubmit } = renderForm({ editingPlantation: { ...EXISTENTE, fechaInicio: '2026-04-15' } });
+    fireEvent.press(getByTestId('fecha-inicio'));
+    elegirEnCalendario(new Date(2026, 4, 1, 21, 0));
+    fireEvent.press(getByText('Guardar'));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ fechaInicio: '2026-05-01' })));
+  });
+
+  it('en edición la ✕ borra la fecha', async () => {
+    const { getByLabelText, getByText, onSubmit } = renderForm({ editingPlantation: { ...EXISTENTE, fechaInicio: '2026-04-15' } });
+    fireEvent.press(getByLabelText('Borrar fecha'));
+    fireEvent.press(getByText('Guardar'));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ fechaInicio: null })));
   });
 
   it('manda los campos nuevos y bloquea un objetivo inválido', async () => {
@@ -66,7 +87,8 @@ describe('PlantationFormModal', () => {
     expect(onSubmit).not.toHaveBeenCalled();
 
     fireEvent.changeText(getByPlaceholderText('Opcional'), '500');
-    fireEvent.changeText(getByPlaceholderText('DD/MM/AAAA'), '15042026');
+    fireEvent.press(getByTestId('fecha-inicio'));
+    elegirEnCalendario(new Date(2026, 3, 15));
     fireEvent(getByTestId('foto-en-todos-switch'), 'valueChange', true);
     fireEvent(getByTestId('visible-tecnicos-switch'), 'valueChange', false);
     fireEvent.press(getByText('Crear'));

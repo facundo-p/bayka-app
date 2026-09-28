@@ -1,3 +1,7 @@
+// Zona de los usuarios, igual en CI (UTC) que en local: con UTC no se ve el corrimiento de
+// día de toISOString. Se fija antes de que arranquen los workers, que heredan el env.
+process.env.TZ = 'America/Argentina/Buenos_Aires';
+
 module.exports = {
   preset: 'jest-expo',
   setupFiles: ['./tests/jestSetup.js'],

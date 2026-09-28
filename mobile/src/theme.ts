@@ -227,6 +227,12 @@ export const hitSlops = {
   chip: 12,
 } as const;
 
+// ─── Touch target ────────────────────────────────────────────────────────────
+// Área mínima tocable de la guía de UX.
+export const touchTarget = {
+  min: 44,
+} as const;
+
 // ─── Input size tokens ───────────────────────────────────────────────────────
 export const inputSizes = {
   multilineMinHeight: 96,

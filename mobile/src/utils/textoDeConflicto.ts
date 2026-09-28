@@ -1,7 +1,8 @@
 /** Textos de la pantalla "Resolver cambios" (#634): etiquetas, valores y quién/cuándo. */
 import type { CampoDePlantacion } from './camposDePlantacion';
 import type { ConflictoDeCampo, ValorDeCampo } from './conflictosDeEdicion';
-import { conPuntosDeMiles, isoAFecha } from './formularioDePlantacion';
+import { isoAFecha } from './fechaDeCalendario';
+import { conPuntosDeMiles } from './formularioDePlantacion';
 
 export const ETIQUETA_DE_CAMPO: Record<CampoDePlantacion, string> = {
   lugar: 'Lugar',

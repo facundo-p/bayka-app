@@ -2,9 +2,6 @@
 
 import {
   aCamposDePlantacion,
-  fechaAIso,
-  formatearFechaTipeada,
-  isoAFecha,
   validarFormulario,
   validateGpsFrequency,
   valoresIniciales,
@@ -21,36 +18,6 @@ describe('validateGpsFrequency', () => {
     for (const invalid of ['0', '-3', '2.5', '', '  ', 'abc', '10a']) {
       expect(validateGpsFrequency(invalid)).not.toBeNull();
     }
-  });
-});
-
-describe('fecha de inicio', () => {
-  it('pone las barras mientras se tipea y descarta lo que no es dígito', () => {
-    expect(formatearFechaTipeada('1')).toBe('1');
-    expect(formatearFechaTipeada('150')).toBe('15/0');
-    expect(formatearFechaTipeada('15042026')).toBe('15/04/2026');
-    expect(formatearFechaTipeada('15/04/20269')).toBe('15/04/2026');
-    expect(formatearFechaTipeada('15-04')).toBe('15/04');
-  });
-
-  it('convierte a YYYY-MM-DD solo fechas reales', () => {
-    expect(fechaAIso('15/04/2026')).toBe('2026-04-15');
-    expect(fechaAIso('29/02/2024')).toBe('2024-02-29');
-    expect(fechaAIso('29/02/2026')).toBeNull();
-    expect(fechaAIso('31/04/2026')).toBeNull();
-    expect(fechaAIso('15/4/2026')).toBeNull();
-  });
-
-  it('rechaza años anteriores a 1900 (Date.UTC los corre y Postgres no acepta el año 0)', () => {
-    expect(fechaAIso('01/01/0000')).toBeNull();
-    expect(fechaAIso('15/04/0026')).toBeNull();
-    expect(fechaAIso('31/12/1899')).toBeNull();
-    expect(fechaAIso('01/01/1900')).toBe('1900-01-01');
-  });
-
-  it('muestra la fecha de la base en DD/MM/AAAA', () => {
-    expect(isoAFecha('2026-04-15')).toBe('15/04/2026');
-    expect(isoAFecha(null)).toBe('');
   });
 });
 
@@ -73,11 +40,6 @@ describe('validarFormulario', () => {
       expect(validarFormulario({ ...validos, objetivoArboles: invalido })).not.toBeNull();
     }
   });
-
-  it('la fecha, si está, tiene que ser real', () => {
-    expect(validarFormulario({ ...validos, fechaInicio: '31/02/2026' })).not.toBeNull();
-    expect(validarFormulario({ ...validos, fechaInicio: '15/04' })).not.toBeNull();
-  });
 });
 
 describe('aCamposDePlantacion', () => {
@@ -87,7 +49,7 @@ describe('aCamposDePlantacion', () => {
       lugar: ' Lote Norte ',
       periodo: 'Otoño 2026',
       descripcion: '   ',
-      fechaInicio: '15/04/2026',
+      fechaInicio: '2026-04-15',
       objetivoArboles: ' 12000 ',
       gpsFrequency: '5',
       fotoEnTodos: true,
@@ -111,13 +73,18 @@ describe('aCamposDePlantacion', () => {
     expect(campos.descripcion).toBe('Ribera ');
   });
 
+  it('sin fecha guarda null: la ✕ la borra', () => {
+    const campos = aCamposDePlantacion({ ...valoresIniciales(), lugar: 'Lote', periodo: '2026', fechaInicio: '' });
+    expect(campos.fechaInicio).toBeNull();
+  });
+
   it('en edición arranca con los valores de la plantación', () => {
     const valores = valoresIniciales({
       lugar: 'Lote', periodo: '2026', descripcion: 'Ribera', fechaInicio: '2026-04-15',
       objetivoArboles: 300, photoCaptureAllTrees: true, visibleInApp: false,
     });
     expect(valores).toMatchObject({
-      descripcion: 'Ribera', fechaInicio: '15/04/2026', objetivoArboles: '300',
+      descripcion: 'Ribera', fechaInicio: '2026-04-15', objetivoArboles: '300',
       fotoEnTodos: true, visibleParaTecnicos: false,
     });
   });
