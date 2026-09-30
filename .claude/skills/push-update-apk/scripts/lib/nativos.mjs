@@ -53,6 +53,25 @@ export function cambiosDePlugins(base, actual) {
   };
 }
 
+/**
+ * Paquetes cuya versión instalada no es la del lockfile (o que no están instalados).
+ * `esNativo` mira node_modules: con una instalación vieja puede equivocarse.
+ * Los que no figuran en el lockfile quedan afuera: no hay contra qué comparar.
+ *
+ * @param {string[]} nombres
+ * @param {(nombre: string) => string | undefined} versionDelLock
+ * @param {(nombre: string) => string | null} versionInstalada
+ */
+export function instalacionesDesactualizadas(nombres, versionDelLock, versionInstalada) {
+  return nombres
+    .map((nombre) => ({
+      nombre,
+      esperada: versionDelLock(nombre),
+      instalada: versionInstalada(nombre),
+    }))
+    .filter((p) => p.esperada !== undefined && p.esperada !== p.instalada);
+}
+
 /** Marcas de un paquete con código o config nativa que autolinking/prebuild levantan. */
 export const MARCAS_NATIVAS = Object.freeze([
   'android',

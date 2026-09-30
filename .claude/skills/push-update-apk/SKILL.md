@@ -43,8 +43,13 @@ y el diff da vacío).
 ```bash
 cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1
 git fetch origin --tags -q
+(cd mobile && npm install)   # el script clasifica nativo/JS mirando mobile/node_modules
 node .claude/skills/push-update-apk/scripts/nativos-vs-base.mjs <test|production>
 ```
+
+Si `mobile/node_modules` no coincide con `mobile/package-lock.json`, el script lo avisa
+arriba de todo (`AVISO: … correr npm install`): con una instalación vieja la
+clasificación nativo/JS de esos paquetes no es confiable. Correr `npm install` y repetir.
 
 Base que toma el script, por canal:
 
@@ -58,9 +63,14 @@ Base que toma el script, por canal:
 Lista las dependencias **nativas** de `mobile/package.json` agregadas, quitadas o con otra
 versión (nativa = el paquete trae `android/`, `expo-module.config.json`,
 `react-native.config.js` o `app.plugin.js`; las JS puras no aparecen), los config plugins
-de `app.json` agregados o quitados, y el diff de `package.json`/`app.json`/`app.config.js`
-contra la base. Sale con 1 si encontró algo nativo. Tests del script:
-`node --test .claude/skills/push-update-apk/scripts/nativos.test.mjs`.
+**efectivos** agregados o quitados, y el diff de contenido de `app.json` y `app.config.js`
+contra la base. Los plugins efectivos salen de evaluar `app.config.js` de cada lado con
+la variante del canal (`APP_VARIANT=test` para `test`), así que cuentan los que suma
+`app.config.js` (p. ej. `expo-font`) y los condicionales a la variante, no solo los de
+`app.json`. La base se evalúa en un `git worktree` temporal con `node_modules` y los
+`.env` linkeados del checkout; para `test` hace falta `mobile/.env.staging`. Sale con 1
+si encontró algo nativo y con 2 si no pudo evaluar la config. Tests del script:
+`node --test .claude/skills/push-update-apk/scripts/*.test.mjs`.
 
 Lo que tiene que detectar, con el caso real de #677 (OTA a `test` contra `mobile-v1.3.0`):
 
@@ -71,8 +81,8 @@ Dependencias nativas distintas al APK:
 
 Ese JS carga un módulo nativo que el APK 1.3.0 no tiene y la app crashea al abrir.
 
-Si sale con 1, o el diff de `app.json`/`app.config.js` toca `plugins`, `android`, `updates`
-o `runtimeVersion`: **no publicar el OTA**. Mostrarle la lista al usuario y proponer un
+Si sale con 1 o 2, o el diff de `app.json`/`app.config.js` toca `plugins` (p. ej. solo
+sus opciones), `android`, `updates` o `runtimeVersion`: **no publicar el OTA**. Mostrarle la lista al usuario y proponer un
 APK nuevo (`build-apk-local`). Seguir solo si lo confirma explícitamente.
 
 ### 3. Ask for update channel
