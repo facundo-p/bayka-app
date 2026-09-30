@@ -1,0 +1,49 @@
+name: Limpiar fotos quitadas
+
+# Borra de Storage los archivos de fotos quitadas a árboles (#516). La lista la
+# arma la DB (`fotos_quitadas`); la edge function `admin-plantaciones` los borra
+# con service_role. Cada corrida procesa hasta 1000; el resto queda para la
+# siguiente.
+
+on:
+  schedule:
+    # Todos los días a las 07:00 UTC (04:00 AR), con nadie sincronizando.
+    - cron: "0 7 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  limpiar:
+    name: Limpiar ${{ matrix.env_name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - env_name: staging
+            url: https://uchejlyyabtrjoxyydmb.supabase.co
+            key_secret: SUPABASE_SERVICE_ROLE_KEY_STAGING
+          - env_name: prod
+            url: https://mgtaeogxzuavxrfhrefi.supabase.co
+            key_secret: SUPABASE_SERVICE_ROLE_KEY_PROD
+
+    steps:
+      - name: Invocar limpiarFotosQuitadas (${{ matrix.env_name }})
+        env:
+          SERVICE_ROLE_KEY: ${{ secrets[matrix.key_secret] }}
+        run: |
+          if [ -z "$SERVICE_ROLE_KEY" ]; then
+            echo "::warning::Falta el secret ${{ matrix.key_secret }}; no se limpia ${{ matrix.env_name }}."
+            exit 0
+          fi
+          # Sin -f para mostrar el cuerpo del error; el status decide el resultado.
+          status=$(curl -s -o respuesta.json -w '%{http_code}' -X POST \
+            "${{ matrix.url }}/functions/v1/admin-plantaciones" \
+            -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+            -H "apikey: $SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"accion":"limpiarFotosQuitadas"}')
+          cat respuesta.json; echo
+          [ "$status" = "200" ] || { echo "::error::HTTP $status"; exit 1; }
+          if [ "$(jq -r '.pendientes' respuesta.json)" != "0" ]; then
+            echo "::warning::Quedaron fotos sin borrar; se reintentan en la próxima corrida."
+          fi
