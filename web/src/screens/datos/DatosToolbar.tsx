@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useLocation } from 'react-router';
 import { BarraHerramientas, SegmentedControl, type Opcion } from '../../components';
 import { SEGMENTO_DATOS, type SegmentoDatos } from '../../lib/rutas';
+import { filtrosAlCambiarDeSeccion } from './filtrosUrl';
 import { useIrASeccion } from './useIrASeccion';
 
 const OPCIONES: ReadonlyArray<Opcion<SegmentoDatos>> = [
@@ -25,8 +26,8 @@ interface DatosToolbarProps {
 function SelectorSeccion({ segmento }: { segmento: SegmentoDatos }) {
   const irA = useIrASeccion();
   const location = useLocation();
-  // Los filtros viajan en el querystring: sobreviven al cambio de sección.
-  const cambiar = (proximo: SegmentoDatos) => irA(proximo, new URLSearchParams(location.search));
+  const cambiar = (proximo: SegmentoDatos) =>
+    irA(proximo, filtrosAlCambiarDeSeccion(location.search));
   return (
     <SegmentedControl
       options={OPCIONES}

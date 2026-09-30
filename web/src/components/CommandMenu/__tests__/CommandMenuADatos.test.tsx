@@ -46,6 +46,10 @@ const FILA_GRUPO = {
   parcelas: { codigo: 'P1' },
 };
 
+/** Una fila más por sección: la búsqueda que trae el resultado la tiene que dejar afuera. */
+const OTRA_PARCELA = { ...FILA_PARCELA, id: 'parc-2', nombre: 'Sur', codigo: 'P2' };
+const OTRO_GRUPO = { ...FILA_GRUPO, id: 'gr-2', nombre: 'Línea 2', codigo: 'L2' };
+
 const FILA_ARBOL = {
   id: 'tree-1',
   sub_id: 'PAL23ANC12',
@@ -84,9 +88,9 @@ function responder(consulta: ConsultaCapturada): RespuestaMock {
     case 'plantations':
       return resolverPlantations(consulta);
     case 'parcelas':
-      return { data: [FILA_PARCELA] };
+      return { data: [FILA_PARCELA, OTRA_PARCELA] };
     case 'groups':
-      return consulta.opciones?.head ? { count: 1 } : { data: [FILA_GRUPO] };
+      return consulta.opciones?.head ? { count: 2 } : { data: [FILA_GRUPO, OTRO_GRUPO] };
     case 'trees':
       return resolverTrees(consulta);
     default:
@@ -115,15 +119,41 @@ async function esperarFila(celda: string) {
   return screen.findByRole('cell', { name: celda }, { timeout: ESPERA_RUTA_MS });
 }
 
-test.each([
-  { tipo: 'parcela', texto: 'Norte', resultado: /P1 · Norte/, seccion: 'Parcelas', celda: 'Norte' },
-  { tipo: 'grupo', texto: 'Línea', resultado: /L1 · Línea 1/, seccion: 'Grupos', celda: 'Línea 1' },
-])('un resultado de $tipo abre la sección $seccion de Datos', async (caso) => {
-  await elegirResultado(caso.texto, caso.resultado);
+const CASOS_CODIGO = [
+  {
+    tipo: 'parcela',
+    texto: 'Norte',
+    resultado: /P1 · Norte/,
+    seccion: 'Parcelas',
+    celda: 'Norte',
+    codigo: 'P1',
+    otra: 'Sur',
+  },
+  {
+    tipo: 'grupo',
+    texto: 'Línea',
+    resultado: /L1 · Línea 1/,
+    seccion: 'Grupos',
+    celda: 'Línea 1',
+    codigo: 'L1',
+    otra: 'Línea 2',
+  },
+];
 
-  expect(await esperarFila(caso.celda)).toBeInTheDocument();
-  expect(screen.getByRole('radio', { name: caso.seccion })).toHaveAttribute('aria-checked', 'true');
-});
+test.each(CASOS_CODIGO)(
+  'un resultado de $tipo abre $seccion con su código en el buscador',
+  async (caso) => {
+    await elegirResultado(caso.texto, caso.resultado);
+
+    expect(await esperarFila(caso.celda)).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: caso.seccion })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByLabelText('Buscar por código o nombre')).toHaveValue(caso.codigo);
+    expect(screen.queryByRole('cell', { name: caso.otra })).not.toBeInTheDocument();
+  },
+);
 
 test('un resultado de árbol abre Árboles con su SubID en el buscador', async () => {
   await elegirResultado('PAL23', /PAL23ANC12/);
