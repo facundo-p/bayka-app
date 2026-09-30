@@ -25,9 +25,8 @@ update profiles set rol = 'admin', activo = false,
 update profiles set rol = 'superadmin', organizacion_id = 'd0000000-0000-0000-0000-000000000001'
   where id = 'd0000000-0000-0000-0000-0000000000a5';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('d0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001',
-   'Lugar Test 04', '2026', 'd0000000-0000-0000-0000-0000000000a1', 'T1');
+select tests.crear_plantacion('d0000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-0000000000a1', 'Lugar Test 04');
 -- trg_add_admin_memberships ya sumó al admin como miembro.
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
@@ -46,13 +45,12 @@ insert into trees (id, group_id, posicion, sub_id, usuario_registro) values
    'd0000000-0000-0000-0000-0000000000a1');
 
 -- P10: finalizada. P20: archivada. P30: finalizada y archivada. Un árbol cada una.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en, codigo) values
-  ('d0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000001',
-   'Finalizada 04', '2026', 'd0000000-0000-0000-0000-0000000000a1', 'finalizada', null, 'T2'),
-  ('d0000000-0000-0000-0000-000000000020', 'd0000000-0000-0000-0000-000000000001',
-   'Archivada 04', '2026', 'd0000000-0000-0000-0000-0000000000a1', 'activa', now(), 'T3'),
-  ('d0000000-0000-0000-0000-000000000030', 'd0000000-0000-0000-0000-000000000001',
-   'Finalizada archivada 04', '2026', 'd0000000-0000-0000-0000-0000000000a1', 'finalizada', now(), 'T4');
+select tests.crear_plantacion('d0000000-0000-0000-0000-000000000010', 'd0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-0000000000a1', 'Finalizada 04', p_estado => 'finalizada');
+select tests.crear_plantacion('d0000000-0000-0000-0000-000000000020', 'd0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-0000000000a1', 'Archivada 04', p_archivada_en => now());
+select tests.crear_plantacion('d0000000-0000-0000-0000-000000000030', 'd0000000-0000-0000-0000-000000000001',
+  'd0000000-0000-0000-0000-0000000000a1', 'Finalizada archivada 04', p_estado => 'finalizada', p_archivada_en => now());
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('d0000000-0000-0000-0000-000000000011', 'd0000000-0000-0000-0000-000000000010', 'P04f', 'P04f'),

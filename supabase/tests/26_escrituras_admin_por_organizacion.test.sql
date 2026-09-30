@@ -24,11 +24,10 @@ update profiles set rol = 'admin'
 update profiles set rol = 'superadmin' where id = 'b2600000-0000-0000-0000-0000000000a2';
 
 -- Los triggers suman a los admin de cada organización a su plantación.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('b2600000-0000-0000-0000-0000000000aa', 'b2600000-0000-0000-0000-00000000000a',
-   'Plantación A 26', '2026', 'b2600000-0000-0000-0000-0000000000a1', 'T1'),
-  ('b2600000-0000-0000-0000-0000000000bb', 'b2600000-0000-0000-0000-00000000000b',
-   'Plantación B 26', '2026', 'b2600000-0000-0000-0000-0000000000b1', 'T2');
+select tests.crear_plantacion('b2600000-0000-0000-0000-0000000000aa', 'b2600000-0000-0000-0000-00000000000a',
+  'b2600000-0000-0000-0000-0000000000a1', 'Plantación A 26');
+select tests.crear_plantacion('b2600000-0000-0000-0000-0000000000bb', 'b2600000-0000-0000-0000-00000000000b',
+  'b2600000-0000-0000-0000-0000000000b1', 'Plantación B 26');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2600000-0000-0000-0000-0000000000aa', 'b2600000-0000-0000-0000-0000000000a3', 'tecnico'),

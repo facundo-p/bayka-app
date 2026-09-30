@@ -23,11 +23,10 @@ update profiles set rol = 'superadmin', activo = false,
   where id = 'a1000000-0000-0000-0000-0000000000a4';
 
 -- Una finalizada y una activa, para fijar que lo de abajo no rompe el caso normal.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
-  ('a1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001',
-   'Finalizada 14', '2026', 'a1000000-0000-0000-0000-0000000000a2', 'finalizada', 'T1'),
-  ('a1000000-0000-0000-0000-000000000012', 'a1000000-0000-0000-0000-000000000001',
-   'Activa 14', '2026', 'a1000000-0000-0000-0000-0000000000a2', 'activa', 'T2');
+select tests.crear_plantacion('a1000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-0000000000a2', 'Finalizada 14', p_estado => 'finalizada');
+select tests.crear_plantacion('a1000000-0000-0000-0000-000000000012', 'a1000000-0000-0000-0000-000000000001',
+  'a1000000-0000-0000-0000-0000000000a2', 'Activa 14');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('a1000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000002', 'P14', 'P14'),

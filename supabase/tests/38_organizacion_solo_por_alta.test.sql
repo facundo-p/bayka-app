@@ -12,9 +12,8 @@ insert into auth.users (id, email) values
 update profiles set organizacion_id = '00000000-0000-0000-0000-000000000001'
   where id = '38000000-0000-0000-0000-0000000000a1';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('38000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
-   'Plantación Test 38', '2026', '38000000-0000-0000-0000-0000000000a1', 'T38');
+select tests.crear_plantacion('38000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
+  '38000000-0000-0000-0000-0000000000a1', 'Plantación Test 38');
 
 -- Como un signUp: la metadata la controla el cliente.
 insert into auth.users (id, email, raw_user_meta_data) values

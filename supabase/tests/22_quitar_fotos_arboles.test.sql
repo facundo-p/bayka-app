@@ -10,11 +10,10 @@ insert into auth.users (id, email) values
   ('b2200000-0000-0000-0000-0000000000a1', 'miembro-22@test.local'),
   ('b2200000-0000-0000-0000-0000000000a2', 'outsider-22@test.local');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
-  ('b2200000-0000-0000-0000-000000000002', 'b2200000-0000-0000-0000-000000000001',
-   'Activa 22', '2026', 'b2200000-0000-0000-0000-0000000000a1', 'activa', 'T1'),
-  ('b2200000-0000-0000-0000-000000000012', 'b2200000-0000-0000-0000-000000000001',
-   'Finalizada 22', '2026', 'b2200000-0000-0000-0000-0000000000a1', 'finalizada', 'T2');
+select tests.crear_plantacion('b2200000-0000-0000-0000-000000000002', 'b2200000-0000-0000-0000-000000000001',
+  'b2200000-0000-0000-0000-0000000000a1', 'Activa 22');
+select tests.crear_plantacion('b2200000-0000-0000-0000-000000000012', 'b2200000-0000-0000-0000-000000000001',
+  'b2200000-0000-0000-0000-0000000000a1', 'Finalizada 22', p_estado => 'finalizada');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b2200000-0000-0000-0000-000000000003', 'b2200000-0000-0000-0000-000000000002', 'P22', 'P22'),

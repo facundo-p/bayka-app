@@ -16,13 +16,12 @@ update profiles set rol = 'admin', organizacion_id = 'b4000000-0000-0000-0000-00
 update profiles set rol = 'admin', organizacion_id = 'b4000000-0000-0000-0000-000000000009'
   where id = 'b4000000-0000-0000-0000-0000000000a9';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
-  ('b4000000-0000-0000-0000-000000000010', 'b4000000-0000-0000-0000-000000000001',
-   'Activa 40', '2026', 'b4000000-0000-0000-0000-0000000000a1', 'activa', 'AC40'),
-  ('b4000000-0000-0000-0000-000000000011', 'b4000000-0000-0000-0000-000000000001',
-   'Finalizada 40', '2026', 'b4000000-0000-0000-0000-0000000000a1', 'finalizada', 'FI40'),
-  ('b4000000-0000-0000-0000-000000000012', 'b4000000-0000-0000-0000-000000000001',
-   'Archivada 40', '2026', 'b4000000-0000-0000-0000-0000000000a1', 'activa', 'AR40');
+select tests.crear_plantacion('b4000000-0000-0000-0000-000000000010', 'b4000000-0000-0000-0000-000000000001',
+  'b4000000-0000-0000-0000-0000000000a1', 'Activa 40', p_codigo => 'AC40');
+select tests.crear_plantacion('b4000000-0000-0000-0000-000000000011', 'b4000000-0000-0000-0000-000000000001',
+  'b4000000-0000-0000-0000-0000000000a1', 'Finalizada 40', p_estado => 'finalizada', p_codigo => 'FI40');
+select tests.crear_plantacion('b4000000-0000-0000-0000-000000000012', 'b4000000-0000-0000-0000-000000000001',
+  'b4000000-0000-0000-0000-0000000000a1', 'Archivada 40', p_codigo => 'AR40');
 
 update plantations set archivada_en = now() where id = 'b4000000-0000-0000-0000-000000000012';
 
@@ -66,9 +65,8 @@ select lives_ok(
      'b4000000-0000-0000-0000-0000000000a9', 'AC40')$$,
   'en otra organización el mismo código se permite');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('b4000000-0000-0000-0000-000000000013', 'b4000000-0000-0000-0000-000000000001',
-   'A borrar 40', '2026', 'b4000000-0000-0000-0000-0000000000a1', 'BO40');
+select tests.crear_plantacion('b4000000-0000-0000-0000-000000000013', 'b4000000-0000-0000-0000-000000000001',
+  'b4000000-0000-0000-0000-0000000000a1', 'A borrar 40', p_codigo => 'BO40');
 delete from plantations where id = 'b4000000-0000-0000-0000-000000000013';
 select lives_ok(
   $$insert into plantations (organizacion_id, lugar, periodo, creado_por, codigo) values

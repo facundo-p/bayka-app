@@ -21,6 +21,12 @@ trap 'stack_cleanup "$TMP_ROOT" "$STOP_ON_EXIT"' EXIT
 echo "==> Armando proyecto temporal en $TMP_ROOT"
 make_tmp_project "$SUPABASE_DIR" "$TMP_ROOT" "$PROJECT_ID" "553"
 
+# Auxiliares de test como última migración: fuera de supabase/migrations/ para
+# que no lleguen a staging/prod, y fuera de los *.test.sql porque cada test hace
+# rollback de lo que define.
+cp "$SUPABASE_DIR/tests/test-helpers.sql" \
+  "$TMP_ROOT/supabase/migrations/99999999999999_test_helpers.sql"
+
 # ── Reuso detectado: si queda un contenedor de una corrida anterior con
 #    DB_TEST_KEEP_RUNNING=1, su volumen ya tiene la baseline+migraciones de
 #    ESA corrida aplicadas — `db start` no las vuelve a aplicar sobre un

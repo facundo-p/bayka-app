@@ -24,9 +24,8 @@ update profiles set rol = 'superadmin'
   where id in ('b2300000-0000-0000-0000-0000000000a3', 'b2300000-0000-0000-0000-0000000000a4');
 
 -- Activos al crear la plantación: el trigger les da membresía a todos los admin.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('b2300000-0000-0000-0000-000000000010', 'b2300000-0000-0000-0000-000000000001',
-   'Plantación 23', '2026', 'b2300000-0000-0000-0000-0000000000a1', 'T1');
+select tests.crear_plantacion('b2300000-0000-0000-0000-000000000010', 'b2300000-0000-0000-0000-000000000001',
+  'b2300000-0000-0000-0000-0000000000a1', 'Plantación 23');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b2300000-0000-0000-0000-000000000011', 'b2300000-0000-0000-0000-000000000010', 'P23', 'P23');

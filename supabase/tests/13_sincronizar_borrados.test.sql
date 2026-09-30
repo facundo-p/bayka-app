@@ -12,9 +12,8 @@ insert into auth.users (id, email) values
   ('f0000000-0000-0000-0000-0000000000a1', 'miembro-13@test.local'),
   ('f0000000-0000-0000-0000-0000000000a2', 'outsider-13@test.local');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('f0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001',
-   'Lugar Test 13', '2026', 'f0000000-0000-0000-0000-0000000000a1', 'T1');
+select tests.crear_plantacion('f0000000-0000-0000-0000-000000000002', 'f0000000-0000-0000-0000-000000000001',
+  'f0000000-0000-0000-0000-0000000000a1', 'Lugar Test 13');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('f0000000-0000-0000-0000-000000000003', 'f0000000-0000-0000-0000-000000000002',

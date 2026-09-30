@@ -28,13 +28,12 @@ update profiles set rol = 'superadmin', organizacion_id = 'b1500000-0000-0000-00
 
 -- P1: activa, para la matriz de roles. P2: finalizada y archivada. P3: activa y
 -- archivada, con datos, para las escrituras.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en, codigo) values
-  ('b1500000-0000-0000-0000-000000000010', 'b1500000-0000-0000-0000-000000000001',
-   'Matriz 15', '2026', 'b1500000-0000-0000-0000-0000000000a2', 'activa', null, 'T1'),
-  ('b1500000-0000-0000-0000-000000000020', 'b1500000-0000-0000-0000-000000000001',
-   'Finalizada 15', '2026', 'b1500000-0000-0000-0000-0000000000a2', 'finalizada', now(), 'T2'),
-  ('b1500000-0000-0000-0000-000000000030', 'b1500000-0000-0000-0000-000000000001',
-   'Archivada 15', '2026', 'b1500000-0000-0000-0000-0000000000a2', 'activa', now(), 'T3');
+select tests.crear_plantacion('b1500000-0000-0000-0000-000000000010', 'b1500000-0000-0000-0000-000000000001',
+  'b1500000-0000-0000-0000-0000000000a2', 'Matriz 15');
+select tests.crear_plantacion('b1500000-0000-0000-0000-000000000020', 'b1500000-0000-0000-0000-000000000001',
+  'b1500000-0000-0000-0000-0000000000a2', 'Finalizada 15', p_estado => 'finalizada', p_archivada_en => now());
+select tests.crear_plantacion('b1500000-0000-0000-0000-000000000030', 'b1500000-0000-0000-0000-000000000001',
+  'b1500000-0000-0000-0000-0000000000a2', 'Archivada 15', p_archivada_en => now());
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b1500000-0000-0000-0000-000000000021', 'b1500000-0000-0000-0000-000000000020', 'P15f', 'P15f'),
