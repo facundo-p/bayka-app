@@ -91,23 +91,30 @@ Use AskUserQuestion:
 
 ### 5. Push the update
 
-Antes, confirmar que el fingerprint del working tree es el del APK de los devices (con
-`APP_VARIANT=test` exportado para el canal `test`; el APK es `build-output-test.apk` o
-`build-output.apk` según el canal):
+Antes, confirmar que el fingerprint del working tree es el del APK de los devices. El
+script resuelve el fingerprint con la variante del canal (`APP_VARIANT=test` para `test`,
+sin variante para `production`, aunque la shell tenga otra exportada) y lo compara con
+el de `mobile/build-output-test.apk` o `mobile/build-output.apk` según el canal:
+
+```bash
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1
+.claude/skills/push-update-apk/scripts/fingerprint-vs-apk.sh <test|production>
+```
+
+Si sale con 1, el OTA no le va a llegar a ese APK: parar y avisar (hace falta APK nuevo,
+o se está publicando con la variante equivocada). Con 2 no pudo comparar (p. ej. no hay
+APK local de ese canal). `npx expo-updates runtimeversion:resolve --platform android
+--debug` lista las fuentes del hash (`fingerprintSources`); correrlo también en el commit
+del APK y comparar muestra qué cambió.
+
+Publicar con la misma variante, según el canal:
 
 ```bash
 cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile
-npx expo-updates runtimeversion:resolve --platform android 2>/dev/null | tail -1 | jq -r .runtimeVersion
-unzip -p build-output-test.apk assets/fingerprint; echo
-```
-
-Si difieren, el OTA no le va a llegar a ese APK: parar y avisar (hace falta APK nuevo, o
-se está publicando con la variante equivocada). `runtimeversion:resolve --debug` lista
-las fuentes del hash (`fingerprintSources`); correrlo también en el commit del APK y
-comparar muestra qué cambió.
-
-```bash
-npx eas-cli update --channel <channel> --message "<message>" --non-interactive 2>&1
+# canal test
+APP_VARIANT=test npx eas-cli update --channel test --message "<message>" --non-interactive 2>&1
+# canal production (preview: igual, con --channel preview)
+env -u APP_VARIANT npx eas-cli update --channel production --message "<message>" --non-interactive 2>&1
 ```
 
 ### 6. Show result
