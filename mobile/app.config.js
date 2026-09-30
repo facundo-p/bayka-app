@@ -1,12 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 const { commitDelBuild } = require('../scripts/commitDelBuild.cjs');
+const { VARIANTE, CANAL_OTA } = require('../scripts/variantesMobile.cjs');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
-
-// Valores de APP_VARIANT y de extra.appVariant: contrato con APP_VARIANT_TEST
-// (src/config/entorno.ts), eas.json y scripts/build-apk.sh.
-const VARIANTE = Object.freeze({ test: 'test', prod: 'prod' });
 
 // Variante TEST (#253): APP_VARIANT=test → app "Bayka TEST" con applicationId
 // propio (convive con la de producción en el mismo device) apuntando a
@@ -17,13 +14,11 @@ const VARIANTE = Object.freeze({ test: 'test', prod: 'prod' });
 // scripts/build-apk.sh test (ver skill build-apk-local).
 const IS_TEST = process.env.APP_VARIANT === VARIANTE.test;
 
-// Canal de EAS Update por variante (#384). Contrato con los channel de eas.json.
-// Un build sin canal grabado no recibe ningún OTA: EAS Update empareja por canal
-// + runtime version + plataforma. En los builds de EAS el canal lo graba el
+// Canal de EAS Update por variante (#384). Un build sin canal grabado no recibe
+// ningún OTA: EAS Update empareja por canal + runtime version + plataforma. En los builds de EAS el canal lo graba el
 // profile (que además tiene `preview`, sin variante local equivalente); en los
 // locales nadie lo grababa, y este header es el único que lo pone en el
 // AndroidManifest, vía prebuild.
-const CANAL_OTA = Object.freeze({ test: 'test', prod: 'production' });
 const ES_BUILD_DE_EAS = process.env.EAS_BUILD === 'true';
 const RUTA_ENV_STAGING = path.resolve(__dirname, '.env.staging');
 
