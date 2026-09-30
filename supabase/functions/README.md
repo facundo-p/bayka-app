@@ -82,16 +82,27 @@ curl -s -o /dev/null -D - "https://<ref>.supabase.co/auth/v1/verify?token=x&type
 - `Location` es el Site URL sin path: la URL está rechazada, falta en la
   allowlist.
 
-`http://localhost:5173/**` no está en la allowlist de staging: el flujo de
-invitación no se prueba contra `npm run dev`, se prueba en la web de staging.
+Estado esperado (verificado así el 2026-09-29):
+
+| `redirect_to` | staging | prod |
+|---|---|---|
+| `https://staging.bayka-app.pages.dev/…` | permitida | rechazada |
+| `https://bayka-app.pages.dev/…` | rechazada | permitida |
+| `http://localhost:5173/…` | permitida (dev local contra staging) | rechazada |
+| previews `https://<branch>.bayka-app.pages.dev/…` | rechazada | rechazada |
+| cualquier otra | rechazada | rechazada |
+
+Las rechazadas caen al Site URL, que en cada proyecto es la web de su
+entorno. Los previews de Cloudflare no están allowlisteados: un link de
+invitación pedido desde un preview cae a la web de staging.
 
 ### Checklist por entorno (cutover o proyecto nuevo)
 
 - [ ] `supabase secrets set WEB_URL=<url de la web de ese entorno>`
 - [ ] `supabase functions deploy admin-users` y `admin-plantaciones`
 - [ ] URL Configuration: Site URL = la web del entorno; Redirect URLs con
-      `<web>/**` (y `https://*.bayka-app.pages.dev/**` solo en staging, para
-      los previews de PR). La URL de prod no va en la allowlist de staging.
+      `<web>/**` (y `http://localhost:5173/**` solo en staging). La URL de
+      prod no va en la allowlist de staging.
 - [ ] Verificar la allowlist con el `curl` de arriba.
 - [ ] Migraciones que las functions requieren aplicadas (ver cada función).
 
