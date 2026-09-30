@@ -114,7 +114,10 @@ no toca la membresía admin (059, #636). `38` un INSERT en `auth.users` deja
 el profile `tecnico` y sin organización aunque la metadata pida otra cosa, y
 así no lee perfiles, organizaciones ni plantaciones; rol y organización en un
 mismo UPDATE (como `admin-users`) suman al admin a las plantaciones de su
-organización (060, #607). `40`
+organización (060, #607). `39` `fotos_quitadas`: `quitar_fotos_arboles`
+registra el path quitado (también de una URL completa), sin grants para
+`authenticated`, y la limpieza con service_role no devuelve un path que un árbol
+volvió a usar ni un objeto reescrito después de quitarlo (061, #516). `40`
 código de plantación: formato (A-Z, 0-9 y guion suelto, hasta 8), obligatorio,
 único por organización, libre tras eliminar, solo cambia con la plantación
 activa y no archivada —para todos los roles— y el backfill (códigos manuales,

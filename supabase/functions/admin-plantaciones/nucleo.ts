@@ -3,6 +3,8 @@
 export const ACCION = {
   eliminar: 'eliminar',
   limpiarFotos: 'limpiarFotos',
+  /** Borra los archivos de fotos quitadas a árboles (#516); la dispara un cron con la service role key. */
+  limpiarFotosQuitadas: 'limpiarFotosQuitadas',
 } as const;
 
 /** Códigos de `eliminar_plantacion` en `{ success: false, error }`. */
@@ -18,6 +20,25 @@ const ROL_SUPERADMIN = 'superadmin';
 /** `remove` de Storage acepta muchas rutas, pero en tandas chicas un fallo afecta a pocas. */
 export const TAMANO_TANDA_FOTOS = 100;
 
+/** Tope por corrida de `limpiarFotosQuitadas`; lo que sobra queda para la siguiente. */
+export const LIMITE_FOTOS_QUITADAS = 1000;
+
+/**
+ * Compara un token contra un secreto en tiempo que depende solo del largo del secreto,
+ * para no filtrar por timing cuántos bytes coinciden. Sin secreto configurado no acepta nada.
+ */
+export function secretosIguales(recibido: string, esperado: string): boolean {
+  if (!esperado) return false;
+  const codificador = new TextEncoder();
+  const bytesRecibidos = codificador.encode(recibido);
+  const bytesEsperados = codificador.encode(esperado);
+  let diferencia = bytesRecibidos.length ^ bytesEsperados.length;
+  for (let i = 0; i < bytesEsperados.length; i++) {
+    diferencia |= (bytesRecibidos[i] ?? 0) ^ bytesEsperados[i];
+  }
+  return diferencia === 0;
+}
+
 /** Las fotos viven en `plantations/{id}/parcelas/{parcela}/trees/{arbol}.jpg`. */
 export function prefijoFotos(plantacionId: string): string {
   return `plantations/${plantacionId}`;
@@ -30,6 +51,7 @@ export const MENSAJES = {
   requiereArchivar: 'La plantación tiene datos cargados: archivala antes de eliminarla.',
   nombreNoCoincide: 'El nombre escrito no coincide con el de la plantación.',
   soloSuperadmin: 'Necesitás permisos de superadmin para limpiar fotos.',
+  soloServiceRole: 'Acción reservada al proceso de limpieza.',
   solicitudInvalida: 'Solicitud inválida',
   errorGenerico: 'No se pudo completar la operación. Probá de nuevo.',
 } as const;
@@ -54,6 +76,8 @@ export type ResultadoEliminacion = {
 
 export type EntradaStorage = { nombre: string; esCarpeta: boolean };
 
+export type FotoQuitada = { id: number; ruta: string };
+
 export type Deps = {
   perfilDelToken: (jwt: string) => Promise<PerfilDb | null>;
   /** RPC `eliminar_plantacion` con el JWT del caller: la autorización vive en SQL. Lanza ante error de transporte. */
@@ -68,11 +92,17 @@ export type Deps = {
   marcarFotosLimpias: (plantacionId: string) => Promise<void>;
   /** Ids de `plantaciones_eliminadas` de la organización con `fotos_limpias = false`. */
   fotosPendientes: (organizacionId: string, plantacionId?: string) => Promise<string[]>;
+  /** true si el token es la service role key del proyecto. */
+  esServiceRole: (jwt: string) => boolean;
+  /** RPC `fotos_quitadas_por_limpiar`: ya excluye los paths que un árbol volvió a usar. */
+  fotosQuitadasPorLimpiar: (limite: number) => Promise<FotoQuitada[]>;
+  marcarFotosQuitadasBorradas: (ids: number[]) => Promise<void>;
 };
 
 export type CuerpoAdminPlantaciones =
   | { accion: typeof ACCION.eliminar; plantacionId: string; nombreConfirmacion?: string }
-  | { accion: typeof ACCION.limpiarFotos; plantacionId?: string };
+  | { accion: typeof ACCION.limpiarFotos; plantacionId?: string }
+  | { accion: typeof ACCION.limpiarFotosQuitadas };
 
 export type CuerpoRespuesta = {
   ok: boolean;
@@ -148,6 +178,24 @@ async function limpiarFotos(jwt: string, plantacionId: string | undefined, deps:
   return { status: 200, body: { ok: true, limpiadas, pendientes: ids.length - limpiadas } };
 }
 
+/** Una tanda fallida no corta las demás: sus filas quedan pendientes para la próxima corrida. */
+async function limpiarFotosQuitadas(jwt: string, deps: Deps): Promise<Respuesta> {
+  if (!deps.esServiceRole(jwt)) return fallo(403, MENSAJES.soloServiceRole);
+  const fotos = await deps.fotosQuitadasPorLimpiar(LIMITE_FOTOS_QUITADAS);
+  let limpiadas = 0;
+  for (let desde = 0; desde < fotos.length; desde += TAMANO_TANDA_FOTOS) {
+    const tanda = fotos.slice(desde, desde + TAMANO_TANDA_FOTOS);
+    try {
+      await deps.borrarArchivos(tanda.map((foto) => foto.ruta));
+      await deps.marcarFotosQuitadasBorradas(tanda.map((foto) => foto.id));
+      limpiadas += tanda.length;
+    } catch {
+      // Queda pendiente; la corrida siguiente la reintenta.
+    }
+  }
+  return { status: 200, body: { ok: true, limpiadas, pendientes: fotos.length - limpiadas } };
+}
+
 function nombreDe(cuerpo: { nombreConfirmacion?: unknown }): string | null {
   return typeof cuerpo.nombreConfirmacion === 'string' ? cuerpo.nombreConfirmacion : null;
 }
@@ -165,6 +213,7 @@ export async function manejarAdminPlantaciones(
   if (pedido.accion === ACCION.eliminar && idValido(pedido.plantacionId)) {
     return eliminar(jwt, pedido.plantacionId, nombreDe(pedido), deps);
   }
+  if (pedido.accion === ACCION.limpiarFotosQuitadas) return limpiarFotosQuitadas(jwt, deps);
   const idOpcionalValido = pedido.plantacionId === undefined || idValido(pedido.plantacionId);
   if (pedido.accion === ACCION.limpiarFotos && idOpcionalValido) {
     return limpiarFotos(jwt, pedido.plantacionId, deps);
