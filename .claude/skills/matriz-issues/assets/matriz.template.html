@@ -1151,10 +1151,13 @@
     });
   }
 
+  // Posición del punto en porcentaje del plot; la usan los puntos y las líneas de relación.
+  function coords(it) { return { x: it.cost * 10, y: (10 - it.imp) * 10 }; }
+
   function place(it) {
-    var b = dots[it.n];
-    b.style.left = (it.cost / 10 * 100) + "%";
-    b.style.top = ((10 - it.imp) / 10 * 100) + "%";
+    var b = dots[it.n], c = coords(it);
+    b.style.left = c.x + "%";
+    b.style.top = c.y + "%";
   }
 
   function clamp(v) { return Math.min(9.8, Math.max(0.2, v)); }
@@ -1277,12 +1280,10 @@
   var dRel = document.getElementById("d-rel");
   var SVGNS = "http://www.w3.org/2000/svg";
 
-  function pos(n) { var it = byNum[n]; return { x: it.cost * 10, y: (10 - it.imp) * 10 }; }
-
   function linea(de, a, clase, flecha) {
     if (!byNum[de] || !byNum[a]) return;
     if (dots[de].hidden || dots[a].hidden) return;
-    var p = pos(de), q = pos(a);
+    var p = coords(byNum[de]), q = coords(byNum[a]);
     // Recorta la línea para que no entre en la etiqueta del punto.
     var dx = q.x - p.x, dy = q.y - p.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
     var cut = Math.min(4, len / 3);
@@ -1440,7 +1441,8 @@
     izq.appendChild(document.createTextNode(" · impacto " + fmt(it.imp).replace(".", ",")));
     top.appendChild(izq);
     if (it.rel.bloquea.length) {
-      top.appendChild(el("span", "d-unblock", "Destraba " + (it.rel.bloquea.length + 1) + " issues"));
+      var cant = it.rel.bloquea.length;
+      top.appendChild(el("span", "d-unblock", "Destraba " + cant + (cant === 1 ? " issue" : " issues")));
     }
     return top;
   }
@@ -1645,6 +1647,7 @@
     });
     document.getElementById("table-caption").textContent =
       "Ordenados por " + ORDEN_NOMBRE[orden.k] + (orden.dir === "asc" ? ", ascendente" : ", descendente") +
+      (orden.k === "saldo" ? " (impacto menos costo: lo de arriba es lo que más rinde por lo que cuesta)" : "") +
       ". Tocá el título de una columna para ordenar; otra vez, para invertir.";
   }
 
