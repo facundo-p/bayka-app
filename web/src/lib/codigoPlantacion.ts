@@ -30,7 +30,9 @@ export function errorCodigoPlantacion(codigo: string): string | undefined {
   if (!PATRON_CODIGO.test(codigo)) return MENSAJE_CODIGO_PLANTACION.formato;
 }
 
-/** ID del árbol en toda la organización: `<SubID>-<código de plantación>`. */
-export function idDeArbol(subId: string, codigoPlantacion: string): string {
-  return `${subId}${CODIGO_PLANTACION.separadorIdArbol}${codigoPlantacion}`;
+/** ID del árbol en toda la organización: `<SubID>-<código de plantación>`; sin código, el SubID solo. */
+export function idDeArbol(subId: string, codigoPlantacion: string | null | undefined): string {
+  return codigoPlantacion
+    ? `${subId}${CODIGO_PLANTACION.separadorIdArbol}${codigoPlantacion}`
+    : subId;
 }

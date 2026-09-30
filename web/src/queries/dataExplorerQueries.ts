@@ -283,7 +283,7 @@ function mapearArbol(fila: FilaArbol): ArbolDetalle {
   return {
     id: fila.id,
     subId: fila.sub_id,
-    idArbol: idDeArbol(fila.sub_id, fila.groups?.plantations?.codigo ?? ''),
+    idArbol: idDeArbol(fila.sub_id, fila.groups?.plantations?.codigo),
     posicion: fila.posicion,
     especieCodigo: fila.species?.codigo ?? null,
     especieNombre: fila.species?.nombre ?? null,

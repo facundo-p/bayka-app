@@ -95,7 +95,7 @@ const COLUMNAS_IDENTIDAD_ARBOL: Array<TableColumn<ArbolDetalle>> = [
   {
     key: 'idArbol',
     header: 'ID Árbol',
-    render: (arbol) => <span className={styles.subId}>{arbol.idArbol}</span>,
+    render: (arbol) => <span className={styles.idArbol}>{arbol.idArbol}</span>,
   },
   { key: 'especie', header: 'Especie', render: (arbol) => <CeldaEspecie arbol={arbol} /> },
 ];

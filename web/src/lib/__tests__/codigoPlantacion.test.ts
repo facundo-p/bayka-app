@@ -30,4 +30,8 @@ describe('idDeArbol', () => {
   it('es el SubID, un guion y el código de la plantación', () => {
     expect(idDeArbol('LP1L23BANC12', 'SS26-1')).toBe('LP1L23BANC12-SS26-1');
   });
+
+  it.each([null, undefined, ''])('sin código de plantación (%p) es solo el SubID', (codigo) => {
+    expect(idDeArbol('LP1L23BANC12', codigo)).toBe('LP1L23BANC12');
+  });
 });
