@@ -33,20 +33,47 @@ npx eas-cli whoami 2>&1
 
 If not logged in, tell the user to run: `! npx eas-cli login`
 
-### 2. Check for native changes
+### 2. Check for native changes (contra el APK del canal, #678)
+
+Este chequeo depende del canal (paso 3): si todavía no se sabe, preguntarlo acá. Se
+compara el working tree contra el código **del APK que tienen instalado los devices de
+ese canal**, no contra el último commit que tocó `package.json` (ese ya incluye el cambio
+y el diff da vacío).
 
 ```bash
-cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1/mobile
-git diff --name-only HEAD $(git log --oneline -1 --format=%H -- eas.json app.json app.config.js package.json 2>/dev/null || echo HEAD~1) -- app.json app.config.js package.json eas.json 2>/dev/null
+cd /Users/facu/Desarrollos/Trabajos/BaykaApp/bayka-web-v1
+git fetch origin --tags -q
+node .claude/skills/push-update-apk/scripts/nativos-vs-base.mjs <test|production>
 ```
 
-If `package.json` changed (new native dependencies), warn:
-```
-New native dependencies detected. If you added a native module,
-you need the build-apk-local skill first. OTA updates only cover JS/TS/asset changes.
+Base que toma el script, por canal:
 
-Continue anyway?
+- **`production`**: el último tag `mobile-v*` alcanzable desde `origin/main`; el APK de
+  prod se compila de ese release.
+- **`test`**: el commit del último APK TEST compilado en esta máquina, que lee de
+  `extra.commit` dentro de `mobile/build-output-test.apk` (sin el `-dirty`). Sin ese
+  archivo cae al mismo tag que prod. Si los devices tienen otro APK TEST, pasarlo con
+  `--base <commit>`.
+
+Lista las dependencias **nativas** de `mobile/package.json` agregadas, quitadas o con otra
+versión (nativa = el paquete trae `android/`, `expo-module.config.json`,
+`react-native.config.js` o `app.plugin.js`; las JS puras no aparecen), los config plugins
+de `app.json` agregados o quitados, y el diff de `package.json`/`app.json`/`app.config.js`
+contra la base. Sale con 1 si encontró algo nativo. Tests del script:
+`node --test .claude/skills/push-update-apk/scripts/nativos.test.mjs`.
+
+Lo que tiene que detectar, con el caso real de #677 (OTA a `test` contra `mobile-v1.3.0`):
+
 ```
+Dependencias nativas distintas al APK:
+  agregado @react-native-community/datetimepicker 8.4.4
+```
+
+Ese JS carga un módulo nativo que el APK 1.3.0 no tiene y la app crashea al abrir.
+
+Si sale con 1, o el diff de `app.json`/`app.config.js` toca `plugins`, `android`, `updates`
+o `runtimeVersion`: **no publicar el OTA**. Mostrarle la lista al usuario y proponer un
+APK nuevo (`build-apk-local`). Seguir solo si lo confirma explícitamente.
 
 ### 3. Ask for update channel
 
