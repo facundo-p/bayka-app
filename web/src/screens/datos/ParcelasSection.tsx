@@ -23,14 +23,14 @@ const TEXTOS: TextosSeccion = {
 /** Parcelas solo se filtra por la búsqueda: el scope de parcela que viaja en la URL no aplica. */
 function useParcelasSection() {
   const irA = useIrASeccion();
-  const { filtros, buscar, filtrosSeccion } = useBusquedaDatos();
+  const { filtros, buscar, filtrosBusqueda } = useBusquedaDatos();
   const parcelas = useParcelasDatos(useIdPlantacion());
   return {
     parcelas,
     busqueda: filtros.busqueda,
     buscar,
     visibles: filtrarPorCodigoNombre(parcelas.data, filtros.busqueda),
-    filtros: filtrosSeccion,
+    filtros: filtrosBusqueda,
     verGrupos: (parcela: ParcelaConStats) =>
       irA(SEGMENTO_DATOS.grupos, filtrosAParams({ parcelaId: parcela.id })),
   };

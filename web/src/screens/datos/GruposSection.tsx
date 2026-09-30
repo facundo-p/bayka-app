@@ -25,7 +25,8 @@ const TEXTOS: TextosSeccion = {
 function useGruposSection() {
   const id = useIdPlantacion();
   const irA = useIrASeccion();
-  const { filtros, setFiltro, buscar, filtrosSeccion } = useBusquedaDatos();
+  const { filtros, setFiltro, buscar, filtrosBusqueda, filtrosActivos, limpiar } =
+    useBusquedaDatos();
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
   const verArboles = (grupo: GrupoConDetalle) =>
@@ -41,7 +42,8 @@ function useGruposSection() {
     verArboles,
     elegirParcela: (valor: string) => setFiltro('parcelaId', valor),
     buscar,
-    filtrosSeccion,
+    filtrosToolbar: { activos: filtrosActivos, onLimpiar: limpiar },
+    filtrosVacio: filtrosBusqueda,
   };
 }
 
@@ -56,7 +58,8 @@ export function GruposSection() {
       textos={TEXTOS}
       columnas={COLUMNAS_GRUPOS}
       onRowClick={seccion.verArboles}
-      filtros={seccion.filtrosSeccion}
+      filtros={seccion.filtrosToolbar}
+      filtrosVacio={seccion.filtrosVacio}
     >
       <BuscadorCodigoNombre value={seccion.filtros.busqueda} onChange={seccion.buscar} />
       <SelectParcela

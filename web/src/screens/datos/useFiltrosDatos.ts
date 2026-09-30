@@ -21,16 +21,16 @@ export function useFiltrosDatos() {
 }
 
 /**
- * Búsqueda por código o nombre de Parcelas y Grupos. Limpiar solo vacía la
- * búsqueda: la parcela en scope se conserva.
+ * Filtros de la URL más la búsqueda por código o nombre de Parcelas y Grupos.
+ * `filtrosBusqueda` cuenta y limpia solo la búsqueda: la parcela en scope se conserva.
  */
 export function useBusquedaDatos() {
-  const { filtros, setFiltro } = useFiltrosDatos();
-  const buscar = (texto: string) => setFiltro('busqueda', texto);
+  const filtrosDatos = useFiltrosDatos();
+  const buscar = (texto: string) => filtrosDatos.setFiltro('busqueda', texto);
+  const { filtros } = filtrosDatos;
   return {
-    filtros,
-    setFiltro,
+    ...filtrosDatos,
     buscar,
-    filtrosSeccion: { activos: filtros.busqueda ? 1 : 0, onLimpiar: () => buscar('') },
+    filtrosBusqueda: { activos: filtros.busqueda ? 1 : 0, onLimpiar: () => buscar('') },
   };
 }
