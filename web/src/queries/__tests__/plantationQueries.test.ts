@@ -1,11 +1,13 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
+import { filaPlantacion } from '../../test/fabricas';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
 import {
   esArchivada,
   listarPlantaciones,
   obtenerTemporadaActivaId,
   sinArchivadas,
+  type FilaPlantacion,
 } from '../plantationQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -15,14 +17,15 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-const FILA_MENDOZA = {
+const FILA_MENDOZA = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
+  codigo: 'MD26',
   estado: 'activa',
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: false,
-};
+});
 
 test('mapea la fila a camelCase y agrega los counts', async () => {
   configurarPlantacionesMock([FILA_MENDOZA], {
@@ -34,6 +37,7 @@ test('mapea la fila a camelCase y agrega los counts', async () => {
       id: 'plant-1',
       lugar: 'Mendoza',
       periodo: '2025-2026',
+      codigo: 'MD26',
       estado: 'activa',
       visibleInApp: false,
       gpsCaptureFrequency: 10,
@@ -82,7 +86,7 @@ test('mapea photo_capture_all_trees cuando la 035 está aplicada (sin columna as
 });
 
 test('sin visible_in_app (migración 024 no aplicada) asume visible', async () => {
-  const filaSinColumna: Record<string, unknown> = { ...FILA_MENDOZA };
+  const filaSinColumna: FilaPlantacion = { ...FILA_MENDOZA };
   delete filaSinColumna.visible_in_app;
   configurarPlantacionesMock([filaSinColumna]);
   const [plantacion] = await listarPlantaciones();

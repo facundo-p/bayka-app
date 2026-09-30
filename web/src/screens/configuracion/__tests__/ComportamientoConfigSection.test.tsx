@@ -6,7 +6,8 @@ import {
   actualizarConfigGps,
   actualizarFotoEnTodos,
 } from '../../../repositories/plantationRepository';
-import { obtenerPlantacion, type Plantacion } from '../../../queries/plantationQueries';
+import { obtenerPlantacion } from '../../../queries/plantationQueries';
+import { plantacion } from '../../../test/fabricas';
 
 vi.mock('../../../repositories/plantationRepository', async () => {
   const real = await vi.importActual<typeof import('../../../repositories/plantationRepository')>(
@@ -21,22 +22,12 @@ vi.mock('../../../queries/plantationQueries', async () => {
   return { ...real, obtenerPlantacion: vi.fn() };
 });
 
-const PLANTACION: Plantacion = {
+const PLANTACION = plantacion({
   id: 'plant-1',
-  lugar: 'Sitio',
-  periodo: '2025-2026',
-  codigo: 'SI26',
-  estado: 'activa',
-  visibleInApp: true,
   gpsCaptureFrequency: 5,
   gpsCaptureRequired: true,
   photoCaptureAllTrees: false,
-  archivadaEn: null,
-  createdAt: '2026-01-01T00:00:00Z',
-  descripcion: null,
-  fechaInicio: null,
-  objetivoArboles: null,
-};
+});
 
 function renderSeccion() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

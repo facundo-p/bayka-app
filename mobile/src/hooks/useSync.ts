@@ -29,6 +29,8 @@ import { useWatchdogDeSync } from './useWatchdogDeSync';
 
 export type { SyncState };
 
+type PhotoResult = { uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number };
+
 export function useSync(plantacionId?: string) {
   const [state, setState] = useState<SyncState>(SYNC_STATE.idle);
   const [progress, setProgress] = useState<SyncProgress | null>(null);
@@ -42,7 +44,7 @@ export function useSync(plantacionId?: string) {
   const [authExpired, setAuthExpired] = useState(false);
   const [photoProgress, setPhotoProgress] = useState<PhotoSyncProgress | null>(null);
   const [phaseProgress, setPhaseProgress] = useState<DownloadPhaseProgress | null>(null);
-  const [photoResult, setPhotoResult] = useState<{ uploaded?: number; uploadFailed?: number; downloaded?: number; downloadFailed?: number } | null>(null);
+  const [photoResult, setPhotoResult] = useState<PhotoResult | null>(null);
   const [globalProgress, setGlobalProgress] = useState<{ plantationName: string; done: number; total: number } | null>(null);
   const [cancelado, setCancelado] = useState(false);
   const [huboTimeout, setHuboTimeout] = useState(false);
@@ -91,10 +93,34 @@ export function useSync(plantacionId?: string) {
     if (esSesionExpirada(err)) setAuthExpired(true);
   }, []);
 
+  /**
+   * Subida siempre: una foto sacada acá que no llega al server existe solo en este
+   * celular. La bajada depende de la preferencia (#565).
+   *
+   * Limpiar el progreso entre fases: una fase sin fotos no emite nada (#447), y sin
+   * esto el modal seguiría mostrando el contador y la velocidad de la anterior (#450).
+   */
+  const sincronizarFotos = useCallback(async (targetPlantacionId: string, descargarFotos: boolean): Promise<PhotoResult> => {
+    const avisarFotos = (fotos: PhotoSyncProgress) => {
+      marcarAvance();
+      setPhotoProgress(fotos);
+    };
+    setState(SYNC_STATE.uploadingPhotos);
+    setPhotoProgress(null);
+    const subida = await uploadPendingPhotos(targetPlantacionId, avisarFotos);
+    const resultado: PhotoResult = { uploaded: subida.uploaded, uploadFailed: subida.failed };
+    if (!descargarFotos) return resultado;
+
+    setState(SYNC_STATE.downloadingPhotos);
+    setPhotoProgress(null);
+    const bajada = await downloadPhotosForPlantation(targetPlantacionId, avisarFotos);
+    return { ...resultado, downloaded: bajada.downloaded, downloadFailed: bajada.failed };
+  }, [marcarAvance]);
+
   // Shared by startBidirectionalSync (uses the hook's own plantacionId) and
   // startPlantationSync (explicit target) — both ran the identical pull+push
   // sequence for a single plantation, differing only in where the id came from.
-  const runPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean) => {
+  const runPlantationSync = useCallback(async (targetPlantacionId: string, descargarFotos: boolean) => {
     setState(SYNC_STATE.pulling);
     resetSyncState();
     iniciarCorrida();
@@ -146,28 +172,7 @@ export function useSync(plantacionId?: string) {
       setPullSuccess(!accesoRevocado && !falloElPull);
 
       // Sin acceso o eliminada no hay nada que subir ni bajar: las fotos viven en el mismo bucket.
-      if (incluirFotos && !accesoRevocado) {
-        // Limpiar entre fases: una fase sin fotos no emite nada (#447), así que sin
-        // esto el modal sigue mostrando el contador —y ahora la velocidad— de la
-        // fase anterior, que con el tiempo corriendo se lee como si algo estuviera
-        // avanzando a paso de hormiga (#450).
-        setState(SYNC_STATE.uploadingPhotos);
-        const avisarFotos = (fotos: PhotoSyncProgress) => {
-          marcarAvance();
-          setPhotoProgress(fotos);
-        };
-        setPhotoProgress(null);
-        const uploadRes = await uploadPendingPhotos(targetPlantacionId, avisarFotos);
-        setState(SYNC_STATE.downloadingPhotos);
-        setPhotoProgress(null);
-        const downloadRes = await downloadPhotosForPlantation(targetPlantacionId, avisarFotos);
-        setPhotoResult({
-          uploaded: uploadRes.uploaded,
-          uploadFailed: uploadRes.failed,
-          downloaded: downloadRes.downloaded,
-          downloadFailed: downloadRes.failed,
-        });
-      }
+      if (!accesoRevocado) setPhotoResult(await sincronizarFotos(targetPlantacionId, descargarFotos));
     } catch (err) {
       clasificarFalla(err);
     } finally {
@@ -175,21 +180,21 @@ export function useSync(plantacionId?: string) {
       setState(SYNC_STATE.done);
       notifyDataChanged();
     }
-  }, [resetSyncState, marcarAvance, clasificarFalla]);
+  }, [resetSyncState, marcarAvance, clasificarFalla, sincronizarFotos]);
 
-  const startBidirectionalSync = useCallback(async (incluirFotos: boolean = true) => {
+  const startBidirectionalSync = useCallback(async (descargarFotos: boolean = true) => {
     if (!plantacionId) {
       console.warn('[Sync] startBidirectionalSync called without plantacionId');
       return;
     }
-    await runPlantationSync(plantacionId, incluirFotos);
+    await runPlantationSync(plantacionId, descargarFotos);
   }, [plantacionId, runPlantationSync]);
 
-  const startPlantationSync = useCallback(async (targetPlantacionId: string, incluirFotos: boolean = true) => {
-    await runPlantationSync(targetPlantacionId, incluirFotos);
+  const startPlantationSync = useCallback(async (targetPlantacionId: string, descargarFotos: boolean = true) => {
+    await runPlantationSync(targetPlantacionId, descargarFotos);
   }, [runPlantationSync]);
 
-  const startGlobalSync = useCallback(async (incluirFotos: boolean = true) => {
+  const startGlobalSync = useCallback(async (descargarFotos: boolean = true) => {
     setState(SYNC_STATE.pulling);
     resetSyncState();
     iniciarCorrida();
@@ -210,7 +215,7 @@ export function useSync(plantacionId?: string) {
           if (fase.subgroupProgress) setProgress(fase.subgroupProgress);
           if (fase.phaseProgress !== undefined) setPhaseProgress(fase.phaseProgress);
         },
-        incluirFotos,
+        descargarFotos,
         setPlantationResults
       );
 

@@ -60,12 +60,12 @@ export function usePlantacionesScreen() {
 
   const closeSyncConfirm = useCallback(() => setSyncConfirmVisible(false), []);
 
-  const handleSyncConfirm = useCallback((incluirFotos: boolean) => {
+  const handleSyncConfirm = useCallback((descargarFotos: boolean) => {
     setSyncConfirmVisible(false);
     if (syncConfirmMode === 'global') {
-      sync.startGlobalSync(incluirFotos);
+      sync.startGlobalSync(descargarFotos);
     } else if (syncTargetPlantationId) {
-      sync.startPlantationSync(syncTargetPlantationId, incluirFotos);
+      sync.startPlantationSync(syncTargetPlantationId, descargarFotos);
     }
   }, [sync, syncConfirmMode, syncTargetPlantationId]);
 

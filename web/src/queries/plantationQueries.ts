@@ -11,7 +11,7 @@ export const ESTADO_PLANTACION = {
 export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PLANTACION];
 
 /** Campos opcionales: de las migraciones 023 (GPS), 024, 035 (foto) y 038 (archivada), que pueden no estar aplicadas. */
-type FilaPlantacion = {
+export type FilaPlantacion = {
   id: string;
   lugar: string;
   periodo: string;

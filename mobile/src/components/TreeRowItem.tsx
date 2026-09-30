@@ -2,6 +2,7 @@ import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
+import { isRemoteUri } from '../utils/photoUri';
 import { treeRowItemStyles as styles } from './TreeRowItem.styles';
 
 export interface TreeItemData {
@@ -48,7 +49,9 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
         {item.fotoUrl
           ? <Pressable onPress={() => onViewPhoto(item.id, item.fotoUrl!)} hitSlop={8} style={styles.btn}>
               <View>
-                <Ionicons name="image" size={18} color={colors.plantation} />
+                {isRemoteUri(item.fotoUrl)
+                  ? <Ionicons testID="foto-sin-descargar" name="cloud-outline" size={18} color={colors.plantation} accessibilityLabel="Foto sin descargar" />
+                  : <Ionicons name="image" size={18} color={colors.plantation} />}
                 {item.fotoUrl && !item.fotoSynced && (
                   <View style={styles.syncDot} />
                 )}

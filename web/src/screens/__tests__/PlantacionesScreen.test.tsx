@@ -4,6 +4,7 @@ import { estadoMock, prepararSesionAdmin } from '../../test/supabaseMock';
 import { configurarPlantacionesMock } from '../../test/plantacionesMock';
 import { enMain, renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
+import { filaPlantacion } from '../../test/fabricas';
 
 /** Aserciones de contenido de fila acotadas a la tabla: evita chocar con las
  *  <option> del Select de temporada, que repiten esos textos. */
@@ -24,22 +25,22 @@ vi.mock('../../lib/supabase', async () => {
 beforeEach(prepararSesionAdmin);
 
 const FILAS = [
-  {
+  filaPlantacion({
     id: 'plant-1',
     lugar: 'Mendoza',
     periodo: '2025-2026',
     estado: 'activa',
     created_at: '2026-06-12T12:00:00Z',
     visible_in_app: true,
-  },
-  {
+  }),
+  filaPlantacion({
     id: 'plant-2',
     lugar: 'Salta',
     periodo: '2024-2025',
     estado: 'finalizada',
     created_at: '2025-01-15T12:00:00Z',
     visible_in_app: false,
-  },
+  }),
 ];
 
 const STATS = {

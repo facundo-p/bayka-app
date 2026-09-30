@@ -8,8 +8,9 @@ Baseline + migraciones archivadas vs. pendientes: ver `docs/db-baseline.md`
 `run-db-tests.sh` arma, en `supabase/.tmp-dbtest/` (gitignored, recreado en
 cada corrida), un proyecto temporal: baseline (copiada como
 `00000000_baseline.sql`, ordena primero sin importar el prefijo real) + todo
-`supabase/migrations/*.sql`. Sin filtros ni renombrados: la baseline ya sale
-curada de `regenerate-baseline.sh`.
+`supabase/migrations/*.sql` + `test-helpers.sql` como última migración
+(`99999999999999_test_helpers.sql`). Sin filtros ni renombrados: la baseline ya
+sale curada de `regenerate-baseline.sh`.
 
 ## Cómo correr
 
@@ -50,6 +51,23 @@ funciones sí están en el dump, viven en `public`).
 de la transacción de la que hace rollback:
 `set local role authenticated; select set_config('request.jwt.claim.sub',
 '<uuid>', true);` — `reset role;` vuelve a superusuario entre fixtures.
+
+## Auxiliares de test
+
+`test-helpers.sql` define funciones en el schema `tests`, solo en el proyecto
+temporal: no está en `supabase/migrations/`, así que nunca llega a staging ni a
+prod. No se pueden definir dentro de un `*.test.sql`, porque cada archivo hace
+rollback de lo suyo.
+
+`tests.crear_plantacion(p_id, p_organizacion_id, p_creado_por, p_lugar,
+p_periodo, p_estado, p_codigo, p_archivada_en, p_objetivo_arboles)` inserta una
+plantación con valores por defecto válidos y devuelve el id: `periodo` `2026`,
+`estado` `activa` y `codigo` con los últimos 8 caracteres hex del id. El test
+pasa por nombre solo lo que le importa (`p_estado => 'finalizada'`). Corre con los
+privilegios de quien llama, como el INSERT directo. Una columna obligatoria
+nueva en `plantations` se resuelve ahí, no en cada test (#711). Quedan a mano
+los INSERT que son el objeto del test: los de `lives_ok`/`throws_ok` y el
+backfill de `40`, que necesita filas sin `codigo`.
 
 ## Tests
 

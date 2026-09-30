@@ -12,6 +12,7 @@ import {
   MENSAJE_CONFLICTO_EDICION,
 } from '../../repositories/edicionDePlantacion';
 import { PlantacionFormModal, type PlantacionEditable } from '../PlantacionFormModal';
+import { plantacion } from '../../test/fabricas';
 
 vi.mock('../../repositories/plantationRepository', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../repositories/plantationRepository')>()),
@@ -34,17 +35,14 @@ beforeEach(() => {
   vi.mocked(existePlantacion).mockResolvedValue(false);
 });
 
-const SALTA: PlantacionEditable = {
+const SALTA = plantacion({
   id: 'plant-1',
   lugar: 'Salta',
   periodo: '2024-2025',
   codigo: 'SA24',
   estado: 'activa',
-  archivadaEn: null,
   descripcion: 'Finca sur',
-  fechaInicio: null,
-  objetivoArboles: null,
-};
+});
 
 function renderModal(plantacion: PlantacionEditable | null = null) {
   const onClose = vi.fn();

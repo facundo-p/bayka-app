@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ArbolDetalle } from '../../../queries/dataExplorerQueries';
 import { ArbolDetallePanel } from '../ArbolDetallePanel';
+import { arbolDetalle } from '../../../test/fabricas';
 
 // Leaflet usa APIs de layout que jsdom no implementa.
 vi.mock('../../../components/mapa/MapaPuntos', () => ({
@@ -17,8 +18,7 @@ vi.mock('../../../services/fotoService', async () => {
 });
 
 function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
-  return {
-    id: 'tree-1',
+  return arbolDetalle({
     subId: 'A-001',
     idArbol: 'A-001-SS26',
     especieCodigo: 'QB',
@@ -34,7 +34,7 @@ function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
     createdAt: '2026-02-10T12:00:00Z',
     usuarioRegistro: 'user-1',
     ...sobreescritura,
-  };
+  });
 }
 
 /** Un árbol registrado sin GPS: los tres campos vienen ausentes, no en null. */

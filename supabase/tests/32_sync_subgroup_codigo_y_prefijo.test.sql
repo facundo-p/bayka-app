@@ -14,9 +14,8 @@ insert into auth.users (id, email) values
 update profiles set organizacion_id = 'b3200000-0000-0000-0000-000000000001'
   where id = 'b3200000-0000-0000-0000-0000000000a1';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
-  ('b3200000-0000-0000-0000-000000000002', 'b3200000-0000-0000-0000-000000000001',
-   'Activa 32', '2026', 'b3200000-0000-0000-0000-0000000000a1', 'activa', 'T1');
+select tests.crear_plantacion('b3200000-0000-0000-0000-000000000002', 'b3200000-0000-0000-0000-000000000001',
+  'b3200000-0000-0000-0000-0000000000a1', 'Activa 32');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b3200000-0000-0000-0000-000000000002', 'b3200000-0000-0000-0000-0000000000a1', 'tecnico');

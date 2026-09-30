@@ -66,6 +66,7 @@ import {
   uploadGroup,
   uploadPendingPhotos,
   downloadPhotosForPlantation,
+  descargarFotoRemota,
   getErrorMessage,
 } from '../../src/services/SyncService';
 
@@ -783,6 +784,40 @@ describe('SyncService', () => {
       const result = await downloadPhotosForPlantation('plantation-1');
 
       expect(result).toEqual({ downloaded: 0, failed: 0 });
+    });
+  });
+
+  describe('descargarFotoRemota — una sola foto (#53)', () => {
+    const conUrlFirmada = (resultado: object) => {
+      const storageChain = { upload: jest.fn(), createSignedUrl: jest.fn().mockResolvedValue(resultado) };
+      (mockSupabase.storage.from as jest.Mock).mockReturnValue(storageChain);
+      return storageChain;
+    };
+
+    it('la baja con URL firmada y la deja local como ya subida', async () => {
+      const storageChain = conUrlFirmada({ data: { signedUrl: 'https://example.com/photo.jpg' }, error: null });
+
+      const uri = await descargarFotoRemota('tree-1', 'plantations/p-1/trees/tree-1.jpg');
+
+      expect(storageChain.createSignedUrl).toHaveBeenCalledWith('plantations/p-1/trees/tree-1.jpg', 3600);
+      expect(uri).toMatch(/^file:\/\//);
+      const set = (mockDb.update as jest.Mock).mock.results[0].value.set as jest.Mock;
+      expect(set).toHaveBeenCalledWith({ fotoUrl: uri, fotoSynced: true });
+    });
+
+    it('sin URL firmada devuelve null y no toca la fila', async () => {
+      conUrlFirmada({ data: null, error: { message: 'Object not found' } });
+
+      expect(await descargarFotoRemota('tree-1', 'plantations/p-1/trees/tree-1.jpg')).toBeNull();
+      expect(mockDb.update).not.toHaveBeenCalled();
+    });
+
+    it('si la bajada tira, devuelve null en vez de propagar', async () => {
+      conUrlFirmada({ data: { signedUrl: 'https://example.com/photo.jpg' }, error: null });
+      mockDownloadFileAsync.mockRejectedValueOnce(new Error('Network request failed'));
+
+      expect(await descargarFotoRemota('tree-1', 'plantations/p-1/trees/tree-1.jpg')).toBeNull();
+      expect(mockDb.update).not.toHaveBeenCalled();
     });
   });
 });

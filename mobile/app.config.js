@@ -62,8 +62,11 @@ module.exports = ({ config }) => ({
     ...(config.plugins || []),
     'expo-font',
   ],
+  // Un OTA solo llega a APKs con el mismo nativo (#678): con `appVersion`, JS que usa un
+  // módulo nativo nuevo le llegaba a un APK sin él y la app crasheaba al abrir. Qué entra
+  // en el hash: fingerprint.config.js.
   runtimeVersion: {
-    policy: 'appVersion',
+    policy: 'fingerprint',
   },
   updates: {
     url: `https://u.expo.dev/${process.env.EAS_PROJECT_ID || ''}`,

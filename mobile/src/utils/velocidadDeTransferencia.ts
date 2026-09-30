@@ -8,8 +8,7 @@
  * alcanza para distinguir "lento" de "trabado", que es el objetivo.
  */
 
-const KB = 1024;
-const MB = 1024 * KB;
+import { KB, MB } from './pesoDeArchivos';
 
 /** Debajo de esto el número redondeado sería 0 KB/s, que parece "no avanza". */
 const MINIMO_LEGIBLE = KB;

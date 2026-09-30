@@ -4,6 +4,7 @@ import {
   verifyCredential,
   clearCredential,
   getCachedEmails,
+  userIdDeCredencial,
 } from '../../src/services/OfflineAuthService';
 
 // In-memory SecureStore simulation
@@ -131,5 +132,29 @@ describe('OfflineAuthService', () => {
   it('getCachedEmails returns empty array when no credentials', async () => {
     const emails = await getCachedEmails();
     expect(emails).toEqual([]);
+  });
+});
+
+describe('userIdDeCredencial', () => {
+  it('devuelve el userId de la credencial del email', async () => {
+    await cacheCredential('a@test.com', 'passA', 'admin', 'user-a');
+    await cacheCredential('b@test.com', 'passB', 'tecnico', 'user-b');
+
+    expect(await userIdDeCredencial('b@test.com')).toBe('user-b');
+  });
+
+  it('una credencial anterior a #658 (sin userId) devuelve null', async () => {
+    await cacheCredential('a@test.com', 'passA', 'admin', 'user-a');
+    const [entry] = JSON.parse(store.get('offline_credentials')!);
+    delete entry.userId;
+    store.set('offline_credentials', JSON.stringify([entry]));
+
+    expect(await userIdDeCredencial('a@test.com')).toBeNull();
+  });
+
+  it('un email sin credencial devuelve null', async () => {
+    await cacheCredential('a@test.com', 'passA', 'admin', 'user-a');
+
+    expect(await userIdDeCredencial('otro@test.com')).toBeNull();
   });
 });

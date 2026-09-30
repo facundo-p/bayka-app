@@ -2,6 +2,7 @@ import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { buscar } from '../buscarQueries';
+import { filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -10,13 +11,13 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
-};
+});
 
 const FILA_ESPECIE = {
   id: 'sp-1',

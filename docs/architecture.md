@@ -147,10 +147,13 @@ el guard: editar la plantación, guardar especies y asignar técnicos quedan
 pendientes para el sync; finalizar, reabrir, quitar técnicos y el
 pull-to-refresh piden iniciar sesión con conexión. Un timeout o una falla de
 red al refrescar la sesión no cuentan como sesión vencida: se reportan como
-problema de conexión. El perfil cacheado (`PerfilCacheadoService`) guarda el
-userId de su dueño y se descarta si no coincide con la cuenta activa. Un perfil
-anterior a #658, sin dueño, se adopta solo si hay tokens cacheados y su email es
-el del último login online, que se cachea con los tokens sin depender del rol.
+problema de conexión. El perfil cacheado (`PerfilCacheadoService`) se guarda
+por cuenta en `user_profile_cache.<userId>` y solo se lee el de la cuenta
+activa: el login online de otra cuenta no lo pisa (#667). La ranura única
+anterior (`user_profile_cache`) se migra al leer o escribir a la clave de su
+dueño y se borra; si no trae userId (anterior a #658), su dueño es la cuenta de
+los tokens cacheados cuando el email coincide con el del último login online.
+Al desactivar una cuenta se borra su perfil cacheado.
 
 ---
 

@@ -23,7 +23,9 @@ import { constaSinConexion, estaConectado, sinRed } from '../services/conexion';
 import * as SecureStore from 'expo-secure-store';
 import {
   cacheCredential, verifyCredential, esCredencialSinUsuario, saveLastOnlineLogin, isOfflineLoginExpired, clearAllCredentials,
+  userIdDeCredencial,
 } from '../services/OfflineAuthService';
+import { borrarPerfilCacheado } from '../services/PerfilCacheadoService';
 import {
   authErrorMessage, esErrorDeConectividad, esErrorDeCuentaDesactivada,
   AUTH_ERROR, AUTH_MESSAGES, AUTH_REJECTION, type AnyAuthError,
@@ -99,9 +101,10 @@ async function descartarSesion() {
   await borrarEstadoDelSdk();
 }
 
-/** Cuenta desactivada confirmada online: descarta la sesión y además todas las credenciales offline. */
-async function purgarSesionDesactivada() {
+/** Cuenta desactivada confirmada online: descarta la sesión, su perfil cacheado y todas las credenciales offline. */
+async function purgarSesionDesactivada(userId: string | null) {
   await descartarSesion();
+  if (userId) try { await borrarPerfilCacheado(userId); } catch {}
   try { await clearAllCredentials(); } catch {}
 }
 
@@ -202,7 +205,7 @@ async function rolCacheadoDeLaCuenta(email: string, password: string, userId: st
 async function resolverSesion(sesion: Session, rol: RolObtenido, vigente: () => boolean): Promise<SesionRestaurada | null> {
   if (!vigente()) return null;
   if (rol !== CUENTA_DESACTIVADA) return { session: sesion, role: rol };
-  await purgarSesionDesactivada();
+  await purgarSesionDesactivada(sesion.user.id);
   return { session: null, role: null };
 }
 
@@ -643,7 +646,7 @@ export function useAuth() {
     if (rol && rol !== CUENTA_DESACTIVADA) return result;
     const desactivada = rol === CUENTA_DESACTIVADA;
     // Si ya no es vigente, lo resolvió otro: el handler SIGNED_IN, un logout u otro login.
-    if (login.vigente()) await (desactivada ? purgarSesionDesactivada() : descartarSesion());
+    if (login.vigente()) await (desactivada ? purgarSesionDesactivada(result.data.session.user.id) : descartarSesion());
     return sinSesion(mensajeDeLoginSinRol(rol));
   }
 
@@ -651,7 +654,7 @@ export function useAuth() {
     // Un backend caído/pausado devuelve acá un parse error no-JSON — es conectividad, no credenciales malas.
     if (esErrorDeConectividad(error)) return handleConnectivityFailure(email, password, offlineYaIntentado);
     if (esErrorDeCuentaDesactivada(error)) {
-      await purgarSesionDesactivada();
+      await purgarSesionDesactivada(await userIdDeCredencial(email));
       return sinSesion(authErrorMessage(error));
     }
     // Real credential / unknown error → friendly message, never the raw SDK one.

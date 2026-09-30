@@ -26,9 +26,8 @@ update profiles set rol = 'admin', organizacion_id = '11000000-0000-0000-0000-00
   where id = '11000000-0000-0000-0000-0000000000a4';
 
 -- Plantación preexistente de org1 sin membresía del técnico.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
-  ('11000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
-   'Existente org1', '2026', '11000000-0000-0000-0000-0000000000a1', 'T1');
+select tests.crear_plantacion('11000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
+  '11000000-0000-0000-0000-0000000000a1', 'Existente org1');
 
 set local role authenticated;
 

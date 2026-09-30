@@ -50,3 +50,24 @@ describe('TreeRowItem — pin GPS', () => {
     getByTestId('gps-pin');
   });
 });
+
+describe('TreeRowItem — foto sin descargar (#53)', () => {
+  it('foto que está solo en la nube muestra la nube, no la miniatura', () => {
+    const { getByTestId, getByLabelText } = render(
+      <TreeRowItem
+        item={item({ fotoUrl: 'org/plantacion/tree-1.jpg', fotoSynced: true })}
+        isReadOnly={false}
+        onViewPhoto={noop}
+      />,
+    );
+    getByTestId('foto-sin-descargar');
+    getByLabelText('Foto sin descargar');
+  });
+
+  it('foto local no muestra la nube', () => {
+    const { queryByTestId } = render(
+      <TreeRowItem item={item({ fotoUrl: 'file://foto.jpg' })} isReadOnly={false} onViewPhoto={noop} />,
+    );
+    expect(queryByTestId('foto-sin-descargar')).toBeNull();
+  });
+});

@@ -18,9 +18,8 @@ insert into species (id, codigo, nombre) values
   ('b3300000-0000-0000-0000-0000000000e2', 'T33B', 'Sin árboles 33'),
   ('b3300000-0000-0000-0000-0000000000e3', 'T33C', 'Otra sin árboles 33');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
-  ('b3300000-0000-0000-0000-000000000002', 'b3300000-0000-0000-0000-000000000001',
-   'Activa 33', '2026', 'b3300000-0000-0000-0000-0000000000a1', 'activa', 'T1');
+select tests.crear_plantacion('b3300000-0000-0000-0000-000000000002', 'b3300000-0000-0000-0000-000000000001',
+  'b3300000-0000-0000-0000-0000000000a1', 'Activa 33');
 
 insert into plantation_species (plantation_id, species_id, orden_visual) values
   ('b3300000-0000-0000-0000-000000000002', 'b3300000-0000-0000-0000-0000000000e1', 0),

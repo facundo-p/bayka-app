@@ -8,6 +8,7 @@ import {
   listarGrupos,
   listarParcelasConStats,
 } from '../dataExplorerQueries';
+import { filaArbol, filaGrupo, filaParcela } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -16,27 +17,18 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-const FILA_PARCELA = {
+const FILA_PARCELA = filaParcela({
   id: 'parc-1',
   nombre: 'Norte',
   codigo: 'P1',
   descripcion: 'Lindante al arroyo',
   created_at: '2026-06-01T12:00:00Z',
-};
+});
 
-const FILA_GRUPO = {
-  id: 'gr-1',
-  nombre: 'Línea 1',
-  codigo: 'L1',
-  tipo: 'linea',
-  estado: 'activa',
-  parcela_id: 'parc-1',
-  created_at: '2026-06-02T12:00:00Z',
-  parcelas: { codigo: 'P1' },
-};
+const FILA_GRUPO = filaGrupo({ id: 'gr-1', parcelas: { codigo: 'P1' } });
 
 /** Fila de trees con embeds y columnas GPS de la migración 023. */
-const FILA_ARBOL = {
+const FILA_ARBOL = filaArbol({
   id: 'tree-1',
   sub_id: 'A-001',
   posicion: 3,
@@ -53,10 +45,9 @@ const FILA_ARBOL = {
   groups: {
     codigo: 'L1',
     parcela_id: 'parc-1',
-    plantation_id: 'plant-1',
     plantations: { codigo: 'SS26' },
   },
-};
+});
 
 describe('listarParcelasConStats', () => {
   function responder(consulta: ConsultaCapturada): RespuestaMock {

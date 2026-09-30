@@ -20,13 +20,12 @@ update profiles set rol = 'superadmin', organizacion_id = 'b2500000-0000-0000-00
   where id = 'b2500000-0000-0000-0000-0000000000a3';
 
 -- 10: activa. 20: finalizada. 30: archivada. Los triggers suman a admin y superadmin.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en, codigo) values
-  ('b2500000-0000-0000-0000-000000000010', 'b2500000-0000-0000-0000-000000000001',
-   'Activa 25', '2026', 'b2500000-0000-0000-0000-0000000000a2', 'activa', null, 'T1'),
-  ('b2500000-0000-0000-0000-000000000020', 'b2500000-0000-0000-0000-000000000001',
-   'Finalizada 25', '2026', 'b2500000-0000-0000-0000-0000000000a2', 'finalizada', null, 'T2'),
-  ('b2500000-0000-0000-0000-000000000030', 'b2500000-0000-0000-0000-000000000001',
-   'Archivada 25', '2026', 'b2500000-0000-0000-0000-0000000000a2', 'activa', now(), 'T3');
+select tests.crear_plantacion('b2500000-0000-0000-0000-000000000010', 'b2500000-0000-0000-0000-000000000001',
+  'b2500000-0000-0000-0000-0000000000a2', 'Activa 25');
+select tests.crear_plantacion('b2500000-0000-0000-0000-000000000020', 'b2500000-0000-0000-0000-000000000001',
+  'b2500000-0000-0000-0000-0000000000a2', 'Finalizada 25', p_estado => 'finalizada');
+select tests.crear_plantacion('b2500000-0000-0000-0000-000000000030', 'b2500000-0000-0000-0000-000000000001',
+  'b2500000-0000-0000-0000-0000000000a2', 'Archivada 25', p_archivada_en => now());
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2500000-0000-0000-0000-000000000010', 'b2500000-0000-0000-0000-0000000000a1', 'tecnico'),
