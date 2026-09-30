@@ -9,9 +9,9 @@ insert into organizations (id, nombre) values
 insert into auth.users (id, email) values
   ('b3900000-0000-0000-0000-0000000000a1', 'miembro-39@test.local');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
   ('b3900000-0000-0000-0000-000000000002', 'b3900000-0000-0000-0000-000000000001',
-   'Activa 39', '2026', 'b3900000-0000-0000-0000-0000000000a1', 'activa');
+   'Activa 39', '2026', 'b3900000-0000-0000-0000-0000000000a1', 'activa', 'T39');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b3900000-0000-0000-0000-000000000003', 'b3900000-0000-0000-0000-000000000002', 'P39', 'P39');

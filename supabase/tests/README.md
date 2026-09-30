@@ -117,7 +117,15 @@ mismo UPDATE (como `admin-users`) suman al admin a las plantaciones de su
 organización (060, #607). `39` `fotos_quitadas`: `quitar_fotos_arboles`
 registra el path quitado (también de una URL completa), sin grants para
 `authenticated`, y la limpieza con service_role no devuelve un path que un árbol
-volvió a usar ni un objeto reescrito después de quitarlo (061, #516).
+volvió a usar ni un objeto reescrito después de quitarlo (061, #516). `40`
+código de plantación: formato (A-Z, 0-9 y guion suelto, hasta 8), obligatorio,
+único por organización, libre tras eliminar, solo cambia con la plantación
+activa y no archivada —para todos los roles— y el backfill (códigos manuales,
+`P<n>` para el resto, falla ante ambigüedad o una de San Sebastián que no calza)
+(062, #559). `41` `editar_plantacion` con `codigo`: lo aplica y audita, rechaza
+uno repetido con CODIGO_DUPLICADO sin aplicar nada, valida formato, detecta
+conflictos y no lo cambia en una finalizada aunque el superadmin edite lo demás
+(062, #559).
 
 ## Hallazgo fuera de alcance (no corregido)
 

@@ -26,13 +26,13 @@ update profiles set rol = 'admin', organizacion_id = 'b3700000-0000-0000-0000-00
   where id = 'b3700000-0000-0000-0000-0000000000a6';
 
 -- 02: activa. 03: finalizada. 04: archivada. El trigger suma al admin como miembro.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en, codigo) values
   ('b3700000-0000-0000-0000-000000000002', 'b3700000-0000-0000-0000-000000000001',
-   'Activa 37', '2026', 'b3700000-0000-0000-0000-0000000000a1', 'activa', null),
+   'Activa 37', '2026', 'b3700000-0000-0000-0000-0000000000a1', 'activa', null, 'T1'),
   ('b3700000-0000-0000-0000-000000000003', 'b3700000-0000-0000-0000-000000000001',
-   'Finalizada 37', '2026', 'b3700000-0000-0000-0000-0000000000a1', 'finalizada', null),
+   'Finalizada 37', '2026', 'b3700000-0000-0000-0000-0000000000a1', 'finalizada', null, 'T2'),
   ('b3700000-0000-0000-0000-000000000004', 'b3700000-0000-0000-0000-000000000001',
-   'Archivada 37', '2026', 'b3700000-0000-0000-0000-0000000000a1', 'activa', now());
+   'Archivada 37', '2026', 'b3700000-0000-0000-0000-0000000000a1', 'activa', now(), 'T3');
 
 -- Inactivo después de crear las plantaciones: no importa para el trigger de admins.
 update profiles set activo = false where id = 'b3700000-0000-0000-0000-0000000000a4';

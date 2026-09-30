@@ -25,11 +25,11 @@ update profiles set rol = 'admin' where id in (
   '18000000-0000-0000-0000-0000000000a3');
 
 -- Las altas disparan trg_add_admin_memberships: A1 y A3 quedan miembros de P1, A2 de P2.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('18000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
-   'P1 org1', '2026', '18000000-0000-0000-0000-0000000000a1'),
+   'P1 org1', '2026', '18000000-0000-0000-0000-0000000000a1', 'T1'),
   ('18000000-0000-0000-0000-000000000020', '18000000-0000-0000-0000-000000000001',
-   'P2 org2', '2026', '18000000-0000-0000-0000-0000000000a2');
+   'P2 org2', '2026', '18000000-0000-0000-0000-0000000000a2', 'T2');
 
 -- A3: admin de la misma organización pero sin membresía en P1.
 delete from plantation_users

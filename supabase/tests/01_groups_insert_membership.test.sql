@@ -11,9 +11,9 @@ insert into auth.users (id, email) values
   ('a0000000-0000-0000-0000-0000000000a2', 'outsider-01@test.local');
 -- trg_handle_new_user ya creó los profiles (rol tecnico por defecto).
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('a0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001',
-   'Lugar Test 01', '2026', 'a0000000-0000-0000-0000-0000000000a1');
+   'Lugar Test 01', '2026', 'a0000000-0000-0000-0000-0000000000a1', 'T1');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('a0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000002',

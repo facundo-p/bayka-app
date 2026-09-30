@@ -26,14 +26,14 @@ update profiles set organizacion_id = '10000000-0000-0000-0000-000000000001'
   where id = '10000000-0000-0000-0000-0000000000b4';
 update profiles set rol = 'admin' where id = '10000000-0000-0000-0000-0000000000b3';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('10000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
-   'P1 org1', '2026', '10000000-0000-0000-0000-0000000000b3');
+   'P1 org1', '2026', '10000000-0000-0000-0000-0000000000b3', 'T1');
 -- trg_add_admin_memberships (033): A1 es admin de org1 = org de P1 -> se suma solo.
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('10000000-0000-0000-0000-000000000020', '10000000-0000-0000-0000-000000000001',
-   'P2 org2', '2026', '10000000-0000-0000-0000-0000000000b4');
+   'P2 org2', '2026', '10000000-0000-0000-0000-0000000000b4', 'T2');
 -- A1 es de org1 != org de P2: NO se suma a P2.
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values

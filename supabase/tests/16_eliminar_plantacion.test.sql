@@ -29,19 +29,19 @@ update profiles set rol = 'superadmin', organizacion_id = 'b1600000-0000-0000-00
 -- P10 y P11: sin datos. P20: con datos, sin archivar. P30: con datos y
 -- archivada (la que borra el superadmin). P40: archivada sin datos. P60: sin
 -- membresía del técnico. P90: de la otra organización, ya eliminada.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, archivada_en) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, archivada_en, codigo) values
   ('b1600000-0000-0000-0000-000000000010', 'b1600000-0000-0000-0000-000000000001',
-   'Sin datos 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null),
+   'Sin datos 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null, 'T1'),
   ('b1600000-0000-0000-0000-000000000011', 'b1600000-0000-0000-0000-000000000001',
-   'Sin datos bis 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null),
+   'Sin datos bis 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null, 'T2'),
   ('b1600000-0000-0000-0000-000000000020', 'b1600000-0000-0000-0000-000000000001',
-   'Con datos 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null),
+   'Con datos 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null, 'T3'),
   ('b1600000-0000-0000-0000-000000000030', 'b1600000-0000-0000-0000-000000000001',
-   'Archivada 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', now()),
+   'Archivada 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', now(), 'T4'),
   ('b1600000-0000-0000-0000-000000000040', 'b1600000-0000-0000-0000-000000000001',
-   'Archivada vacía 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', now()),
+   'Archivada vacía 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', now(), 'T5'),
   ('b1600000-0000-0000-0000-000000000060', 'b1600000-0000-0000-0000-000000000001',
-   'Ajena 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null);
+   'Ajena 16', '2026', 'b1600000-0000-0000-0000-0000000000a2', null, 'T6');
 
 insert into plantaciones_eliminadas (id, organizacion_id, nombre) values
   ('b1600000-0000-0000-0000-000000000090', 'b1600000-0000-0000-0000-000000000009', 'Eliminada otra org 16');

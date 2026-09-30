@@ -10,9 +10,9 @@ insert into auth.users (id, email) values
   ('c0000000-0000-0000-0000-0000000000a1', 'miembro-03@test.local'),
   ('c0000000-0000-0000-0000-0000000000a2', 'outsider-03@test.local');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('c0000000-0000-0000-0000-000000000002', 'c0000000-0000-0000-0000-000000000001',
-   'Lugar Test 03', '2026', 'c0000000-0000-0000-0000-0000000000a1');
+   'Lugar Test 03', '2026', 'c0000000-0000-0000-0000-0000000000a1', 'T1');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('c0000000-0000-0000-0000-000000000003', 'c0000000-0000-0000-0000-000000000002',
