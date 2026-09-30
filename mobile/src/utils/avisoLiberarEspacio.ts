@@ -7,11 +7,13 @@ import { formatearPeso } from './pesoDeArchivos';
 
 const fotos = (n: number) => plural(n, 'foto');
 
-/** "3 fotos sin subir se conservan." Vacío si no hay. */
-export function textoSinSubir(sinSubir: number): string {
-  if (sinSubir === 0) return '';
-  return sinSubir === 1 ? '1 foto sin subir se conserva.' : `${sinSubir} fotos sin subir se conservan.`;
+/** "3 fotos {cuales} se conservan." Vacío si no hay. */
+function fotosQueSeConservan(n: number, cuales: string): string {
+  if (n === 0) return '';
+  return n === 1 ? `1 foto ${cuales} se conserva.` : `${n} fotos ${cuales} se conservan.`;
 }
+
+export const textoSinSubir = (sinSubir: number) => fotosQueSeConservan(sinSubir, 'sin subir');
 
 /** Rótulo del botón de Ajustes: "Liberar espacio · 212 fotos, 74 MB". */
 export function rotuloLiberarEspacio(n: number, bytes: number): string {
@@ -24,12 +26,7 @@ function textoProximaSync(descargarFotos: boolean): string {
     : 'Quedan en la nube y podés descargarlas de a una desde cada árbol.';
 }
 
-function textoSinConfirmar(sinConfirmar: number): string {
-  if (sinConfirmar === 0) return '';
-  return sinConfirmar === 1
-    ? '1 foto que la nube no confirmó se conserva.'
-    : `${sinConfirmar} fotos que la nube no confirmó se conservan.`;
-}
+const textoSinConfirmar = (sinConfirmar: number) => fotosQueSeConservan(sinConfirmar, 'que la nube no confirmó');
 
 export function mensajeConfirmarLiberar(params: {
   fotos: number;

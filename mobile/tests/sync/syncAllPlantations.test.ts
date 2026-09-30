@@ -236,7 +236,7 @@ describe('syncAllPlantations', () => {
     expect(result[0].results[0].success).toBe(true);
   });
 
-  it('runs photo sync when incluirFotos is true', async () => {
+  it('con la descarga de fotos de otros celulares prendida, sube las pendientes', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
 
     await syncAllPlantations(undefined, true);
