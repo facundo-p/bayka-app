@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
+  LIMITE_FOTOS_QUITADAS,
   MENSAJES,
   TAMANO_TANDA_FOTOS,
   manejarAdminPlantaciones,
@@ -16,6 +17,7 @@ const SUPERADMIN: PerfilDb = { id: 's1', rol: 'superadmin', activo: true, organi
 const ADMIN: PerfilDb = { id: 'a1', rol: 'admin', activo: true, organizacionId: ORG };
 
 const RESUMEN = { grupos: 1, arboles: 2 };
+const SERVICE_KEY = 'service-role-key';
 
 /** Árbol de carpetas de Storage: ruta → entradas directas. */
 function storage(arbol: Record<string, EntradaStorage[]>) {
@@ -39,6 +41,12 @@ function crearDeps(caller: PerfilDb | null = SUPERADMIN): Deps {
     borrarArchivos: vi.fn(async () => undefined),
     marcarFotosLimpias: vi.fn(async () => undefined),
     fotosPendientes: vi.fn(async () => [ID]),
+    esServiceRole: vi.fn((jwt: string) => jwt === SERVICE_KEY),
+    fotosQuitadasPorLimpiar: vi.fn(async () => [
+      { id: 1, ruta: 'plantations/p/parcelas/q/trees/t1.jpg' },
+      { id: 2, ruta: 'plantations/p/parcelas/q/trees/t2.jpg' },
+    ]),
+    marcarFotosQuitadasBorradas: vi.fn(async () => undefined),
   };
 }
 
@@ -180,5 +188,57 @@ describe('limpiarFotos', () => {
     const deps = crearDeps();
     await manejarAdminPlantaciones('jwt', { accion: 'limpiarFotos' }, deps);
     expect(deps.eliminarPlantacion).not.toHaveBeenCalled();
+  });
+});
+
+describe('limpiarFotosQuitadas', () => {
+  const PEDIDO = { accion: 'limpiarFotosQuitadas' } as const;
+
+  test('con un JWT de usuario (aunque sea superadmin) → 403 y no toca Storage', async () => {
+    const deps = crearDeps();
+    const respuesta = await manejarAdminPlantaciones('jwt', PEDIDO, deps);
+    expect(respuesta).toEqual({ status: 403, body: { ok: false, error: MENSAJES.soloServiceRole } });
+    expect(deps.fotosQuitadasPorLimpiar).not.toHaveBeenCalled();
+    expect(deps.borrarArchivos).not.toHaveBeenCalled();
+  });
+
+  test('borra solo los paths registrados y los marca', async () => {
+    const deps = crearDeps();
+    const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
+    expect(respuesta).toEqual({ status: 200, body: { ok: true, limpiadas: 2, pendientes: 0 } });
+    expect(deps.fotosQuitadasPorLimpiar).toHaveBeenCalledWith(LIMITE_FOTOS_QUITADAS);
+    expect(deps.borrarArchivos).toHaveBeenCalledWith([
+      'plantations/p/parcelas/q/trees/t1.jpg',
+      'plantations/p/parcelas/q/trees/t2.jpg',
+    ]);
+    expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledWith([1, 2]);
+    expect(deps.listarCarpeta).not.toHaveBeenCalled();
+  });
+
+  test('sin pendientes no llama a Storage', async () => {
+    const deps = crearDeps();
+    deps.fotosQuitadasPorLimpiar = vi.fn(async () => []);
+    const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
+    expect(respuesta.body).toEqual({ ok: true, limpiadas: 0, pendientes: 0 });
+    expect(deps.borrarArchivos).not.toHaveBeenCalled();
+  });
+
+  test('una tanda que falla en Storage no se marca y no corta las demás', async () => {
+    const deps = crearDeps();
+    const cantidad = TAMANO_TANDA_FOTOS + 3;
+    deps.fotosQuitadasPorLimpiar = vi.fn(async () =>
+      Array.from({ length: cantidad }, (_, i) => ({ id: i, ruta: `r${i}.jpg` })),
+    );
+    deps.borrarArchivos = vi.fn(async (rutas: string[]) => {
+      if (rutas.length === TAMANO_TANDA_FOTOS) throw new Error('storage caído');
+    });
+    const respuesta = await manejarAdminPlantaciones(SERVICE_KEY, PEDIDO, deps);
+    expect(respuesta.body).toEqual({ ok: true, limpiadas: 3, pendientes: TAMANO_TANDA_FOTOS });
+    expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledTimes(1);
+    expect(deps.marcarFotosQuitadasBorradas).toHaveBeenCalledWith([
+      TAMANO_TANDA_FOTOS,
+      TAMANO_TANDA_FOTOS + 1,
+      TAMANO_TANDA_FOTOS + 2,
+    ]);
   });
 });

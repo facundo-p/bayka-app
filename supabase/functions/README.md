@@ -118,6 +118,7 @@ fotos de Storage; el borrado de los datos se autoriza en SQL.
 |--------|---------|--------|
 | `eliminar` | `{accion, plantacionId, nombreConfirmacion?}` | RPC `eliminar_plantacion` **con el JWT del caller**; si sale bien, borra con service_role todo `tree-photos/plantations/{id}/` (listado recursivo, tandas de 100) y marca `plantaciones_eliminadas.fotos_limpias = true`. Responde `{ok, resumen, fotosPendientes}` |
 | `limpiarFotos` | `{accion, plantacionId?}` | Solo superadmin activo. Reintenta el borrado de fotos de las eliminadas de su organización con `fotos_limpias = false`. Responde `{ok, limpiadas, pendientes}` |
+| `limpiarFotosQuitadas` | `{accion}` | Solo con la service role key como Bearer (#516). Borra los archivos que `fotos_quitadas_por_limpiar` devuelve (fotos quitadas con `quitar_fotos_arboles` que ningún árbol volvió a usar), hasta 1000 por corrida en tandas de 100, y los marca con `marcar_fotos_quitadas_borradas`. Responde `{ok, limpiadas, pendientes}` |
 
 - **Autorización de `eliminar`:** la decide el RPC (admin sin datos; con datos,
   superadmin, archivada y con el nombre). Sus códigos se traducen a mensajes
@@ -140,4 +141,12 @@ supabase functions deploy admin-plantaciones
 ```
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta
-la plataforma. Requiere la migración `039_eliminar_plantacion.sql` aplicada.
+la plataforma. Requiere la migración `039_eliminar_plantacion.sql` aplicada, y
+`061_fotos_quitadas.sql` para `limpiarFotosQuitadas`.
+
+`limpiarFotosQuitadas` la dispara todos los días
+`.github/workflows/supabase-limpiar-fotos.yml`, con los secrets
+`SUPABASE_SERVICE_ROLE_KEY_STAGING` y `SUPABASE_SERVICE_ROLE_KEY_PROD`. Tienen
+que ser la key `service_role` (JWT legacy) del proyecto: la función la compara
+con la `SUPABASE_SERVICE_ROLE_KEY` que inyecta la plataforma. Sin el secret, el
+job avisa y no hace nada.
