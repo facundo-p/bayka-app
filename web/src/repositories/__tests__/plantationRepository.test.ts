@@ -17,6 +17,7 @@ import {
   type PlantacionInput,
 } from '../plantationRepository';
 import {
+  CodigoPlantacionDuplicadoError,
   ConflictoDeEdicionError,
   MENSAJE_CONFLICTO_EDICION,
   MENSAJE_CONFLICTO_EDICION_PARCIAL,
@@ -38,12 +39,13 @@ const PERFIL: Perfil = {
 const INPUT_COMPLETO: PlantacionInput = {
   lugar: 'Mendoza',
   periodo: '2025-2026',
+  codigo: 'MD26',
   descripcion: 'Finca norte',
   fechaInicio: '2026-07-01',
   objetivoArboles: 500,
 };
 
-const INPUT_BASE: PlantacionInput = { lugar: 'Mendoza', periodo: '2025-2026' };
+const INPUT_BASE: PlantacionInput = { lugar: 'Mendoza', periodo: '2025-2026', codigo: 'MD26' };
 
 const ERROR_COLUMNA = {
   message: 'column "objetivo_arboles" does not exist',
@@ -70,6 +72,7 @@ describe('crearPlantacion', () => {
     expect(plantacion.payload).toEqual({
       lugar: 'Mendoza',
       periodo: '2025-2026',
+      codigo: 'MD26',
       estado: 'activa',
       organizacion_id: 'org-1',
       creado_por: 'user-1',
@@ -90,6 +93,7 @@ describe('crearPlantacion', () => {
     await crearPlantacion(INPUT_BASE, PERFIL);
 
     expect(Object.keys(consultas[0].payload as object).sort()).toEqual([
+      'codigo',
       'creado_por',
       'estado',
       'lugar',
@@ -138,6 +142,18 @@ describe('crearPlantacion', () => {
     });
 
     await expect(crearPlantacion(INPUT_BASE, PERFIL)).rejects.toThrow('falló la parcela');
+  });
+
+  test('un código repetido en la organización lanza CodigoPlantacionDuplicadoError sin crear la parcela', async () => {
+    const consultas = capturarConsultas(() => ({
+      error: { message: 'duplicate key value', code: '23505' },
+    }));
+
+    const promesa = crearPlantacion(INPUT_BASE, PERFIL);
+
+    await expect(promesa).rejects.toBeInstanceOf(CodigoPlantacionDuplicadoError);
+    await expect(promesa).rejects.toThrow('Ya existe otra plantación con ese código.');
+    expect(consultas).toHaveLength(1);
   });
 
   test('otros errores del insert no se reintentan y se propagan', async () => {
@@ -230,6 +246,7 @@ describe('editarPlantacion', () => {
     ['PLANTACION_FINALIZADA', /finalizada/],
     ['PLANTACION_ARCHIVADA', /desarchivala/],
     ['PLANTACION_INEXISTENTE', /ya no existe/],
+    ['CODIGO_DUPLICADO', /Ya existe otra plantación con ese código/],
     ['OTRO', /No se pudo guardar/],
   ])('el rechazo %s dice qué pasó', async (codigo, mensaje) => {
     capturarConsultas(() => ({ data: { success: false, error: codigo } }));
@@ -243,6 +260,23 @@ describe('editarPlantacion', () => {
     await expect(
       editarPlantacion('plant-1', { ...INPUT_COMPLETO, lugar: 'Otro' }, INPUT_COMPLETO),
     ).rejects.toThrow('sin permisos');
+  });
+
+  test('cambiar el código lo manda con su base', async () => {
+    const consultas = capturarConsultas(() => EDICION_OK);
+    await editarPlantacion('plant-1', { ...INPUT_BASE, codigo: 'MD26-B' }, INPUT_BASE);
+
+    expect(consultas[0].payload).toMatchObject({
+      p_cambios: { codigo: 'MD26-B' },
+      p_base: { codigo: 'MD26' },
+    });
+  });
+
+  test('CODIGO_DUPLICADO lanza CodigoPlantacionDuplicadoError', async () => {
+    capturarConsultas(() => ({ data: { success: false, error: 'CODIGO_DUPLICADO' } }));
+    await expect(
+      editarPlantacion('plant-1', { ...INPUT_BASE, codigo: 'OTRA' }, INPUT_BASE),
+    ).rejects.toBeInstanceOf(CodigoPlantacionDuplicadoError);
   });
 });
 

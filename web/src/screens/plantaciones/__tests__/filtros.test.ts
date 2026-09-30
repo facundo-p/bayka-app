@@ -17,6 +17,7 @@ function plantacion(over: Partial<PlantacionConStats>): PlantacionConStats {
     id: 'id',
     lugar: 'Mendoza',
     periodo: '2025-2026',
+    codigo: 'P1',
     estado: 'activa',
     visibleInApp: true,
     gpsCaptureFrequency: 0,

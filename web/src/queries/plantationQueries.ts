@@ -15,6 +15,7 @@ type FilaPlantacion = {
   id: string;
   lugar: string;
   periodo: string;
+  codigo: string;
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app?: boolean | null;
@@ -31,6 +32,8 @@ export type Plantacion = {
   id: string;
   lugar: string;
   periodo: string;
+  /** Único por organización; va en el ID de cada árbol (#559). */
+  codigo: string;
   estado: EstadoPlantacion;
   visibleInApp: boolean;
   gpsCaptureFrequency: number;
@@ -83,6 +86,7 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
     id: fila.id,
     lugar: fila.lugar,
     periodo: fila.periodo,
+    codigo: fila.codigo,
     estado: fila.estado,
     visibleInApp: fila.visible_in_app ?? true,
     gpsCaptureFrequency: fila.gps_capture_frequency ?? GPS_CAPTURE_FREQUENCY_DEFAULT,
@@ -96,6 +100,11 @@ function mapearPlantacion(fila: FilaPlantacion): Plantacion {
 
 export function esArchivada(plantacion: Pick<Plantacion, 'archivadaEn'>): boolean {
   return plantacion.archivadaEn !== null;
+}
+
+/** El código cambia el ID de los árboles: la base solo lo deja cambiar con la plantación activa y sin archivar. */
+export function codigoEsEditable(plantacion: Pick<Plantacion, 'estado' | 'archivadaEn'>): boolean {
+  return plantacion.estado === ESTADO_PLANTACION.activa && !esArchivada(plantacion);
 }
 
 /** Lo que muestran las vistas globales: sin las archivadas. */

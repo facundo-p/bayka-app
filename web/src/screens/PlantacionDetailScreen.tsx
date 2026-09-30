@@ -69,9 +69,9 @@ function PlantacionNoEncontrada() {
   );
 }
 
-/** Línea de metadatos: período · fecha de creación. */
+/** Línea de metadatos: código · período · fecha de creación. */
 function lineaMeta(plantacion: Plantacion): string {
-  return `${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
+  return `${plantacion.codigo} · ${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
 }
 
 function itemsExportar({ kml, xlsx, csv, idsPendientes }: AccionesProps): ItemDesplegable[] {

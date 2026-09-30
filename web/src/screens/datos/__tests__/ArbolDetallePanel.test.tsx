@@ -20,6 +20,7 @@ function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
   return {
     id: 'tree-1',
     subId: 'A-001',
+    idArbol: 'A-001-SS26',
     especieCodigo: 'QB',
     especieNombre: 'Quebracho',
     parcelaId: 'par-1',
@@ -75,7 +76,7 @@ function metaDato(etiqueta: string): string | null | undefined {
 test('muestra especie, coordenadas con precisión y los metadatos', () => {
   renderPanel();
 
-  expect(screen.getByRole('heading', { name: 'A-001' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'A-001-SS26' })).toBeInTheDocument();
   expect(screen.getByText('QB · Quebracho')).toBeInTheDocument();
   expect(screen.getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
   expect(screen.getByText(/±5m/)).toBeInTheDocument();
@@ -124,6 +125,6 @@ test('la X cierra el panel', async () => {
   const usuario = userEvent.setup();
   const onCerrar = renderPanel();
 
-  await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001' }));
+  await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001-SS26' }));
   expect(onCerrar).toHaveBeenCalled();
 });

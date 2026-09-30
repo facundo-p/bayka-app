@@ -93,9 +93,9 @@ export const COLUMNAS_GRUPOS: Array<TableColumn<GrupoConDetalle>> = [
 
 const COLUMNAS_IDENTIDAD_ARBOL: Array<TableColumn<ArbolDetalle>> = [
   {
-    key: 'subId',
-    header: 'SubID',
-    render: (arbol) => <span className={styles.subId}>{arbol.subId}</span>,
+    key: 'idArbol',
+    header: 'ID Árbol',
+    render: (arbol) => <span className={styles.subId}>{arbol.idArbol}</span>,
   },
   { key: 'especie', header: 'Especie', render: (arbol) => <CeldaEspecie arbol={arbol} /> },
 ];

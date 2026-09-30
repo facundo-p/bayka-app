@@ -3,17 +3,19 @@
  * Recibe los valores tal como se tipean (strings) y devuelve un error
  * en español por campo inválido. Sin acceso a datos: testeable aislado.
  */
+import { errorCodigoPlantacion, normalizarCodigoPlantacion } from '../lib/codigoPlantacion';
 import type { PlantacionInput } from '../repositories/plantationRepository';
 
 export type PlantacionFormValues = {
   lugar: string;
   periodo: string;
+  codigo: string;
   descripcion: string;
   fechaInicio: string;
   objetivoArboles: string;
 };
 
-export type CampoValidado = 'lugar' | 'periodo' | 'objetivoArboles';
+export type CampoValidado = 'lugar' | 'periodo' | 'codigo' | 'objetivoArboles';
 
 export type ErroresValidacion = Partial<Record<CampoValidado, string>>;
 
@@ -35,6 +37,8 @@ export function validarPlantacion(valores: PlantacionFormValues): ErroresValidac
   const errores: ErroresValidacion = {};
   if (valores.lugar.trim() === '') errores.lugar = 'El lugar es obligatorio';
   if (valores.periodo.trim() === '') errores.periodo = 'El período es obligatorio';
+  const codigo = errorCodigoPlantacion(normalizarCodigoPlantacion(valores.codigo));
+  if (codigo) errores.codigo = codigo;
   const objetivo = errorObjetivo(valores.objetivoArboles);
   if (objetivo) errores.objetivoArboles = objetivo;
   return errores;
@@ -69,6 +73,7 @@ export function aPlantacionInput(valores: PlantacionFormValues): PlantacionInput
   return {
     lugar: valores.lugar.trim(),
     periodo: valores.periodo.trim(),
+    codigo: normalizarCodigoPlantacion(valores.codigo),
     descripcion: textoOpcional(valores.descripcion),
     fechaInicio: textoOpcional(valores.fechaInicio),
     objetivoArboles: numeroOpcional(valores.objetivoArboles),

@@ -40,7 +40,7 @@ function BloqueFoto({ arbol }: { arbol: ArbolDetalle }) {
   return (
     <PanelBloque titulo="Foto">
       {tieneFotoSubida(arbol.fotoUrl) ? (
-        <FotoSubida fotoUrl={arbol.fotoUrl} alt={`Foto del árbol ${arbol.subId}`} />
+        <FotoSubida fotoUrl={arbol.fotoUrl} alt={`Foto del árbol ${arbol.idArbol}`} />
       ) : (
         <span className={styles.tenue}>Sin foto</span>
       )}
@@ -108,8 +108,8 @@ export function ArbolDetallePanel({ onCerrar, ...datos }: ArbolDetallePanelProps
   const { arbol } = datos;
   return (
     <PanelLateral
-      etiqueta={`Detalle del árbol ${arbol.subId}`}
-      cabecera={<h2 className={styles.titulo}>{arbol.subId}</h2>}
+      etiqueta={`Detalle del árbol ${arbol.idArbol}`}
+      cabecera={<h2 className={styles.titulo}>{arbol.idArbol}</h2>}
       onCerrar={onCerrar}
     >
       <BloqueEspecie arbol={arbol} />

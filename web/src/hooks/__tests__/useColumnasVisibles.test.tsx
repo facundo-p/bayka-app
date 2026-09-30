@@ -68,7 +68,7 @@ describe('lo que nunca se cae en móvil', () => {
     ['usuarios', usuarios, 'usuario'],
     ['parcelas', COLUMNAS_PARCELAS, 'nombre'],
     ['grupos', COLUMNAS_GRUPOS, 'codigo'],
-    ['arboles', arboles, 'subId'],
+    ['arboles', arboles, 'idArbol'],
   ])('%s conserva su columna de identidad', (_nombre, columnas, identidad) => {
     simularAncho(ANCHO.movil);
     const { result } = renderHook(() =>

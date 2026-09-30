@@ -11,6 +11,7 @@ function valores(cambios: Partial<PlantacionFormValues> = {}): PlantacionFormVal
   return {
     lugar: 'Mendoza',
     periodo: '2025-2026',
+    codigo: 'MD26',
     descripcion: '',
     fechaInicio: '',
     objetivoArboles: '',
@@ -38,10 +39,19 @@ test('objetivo decimal, menor a 1 o no numérico es inválido', () => {
   expect(validarPlantacion(valores({ objetivoArboles: '500' }))).toEqual({});
 });
 
+test('el código se valida con el formato del contrato', () => {
+  expect(validarPlantacion(valores({ codigo: '' })).codigo).toBe('El código es obligatorio');
+  expect(validarPlantacion(valores({ codigo: 'MD26-' })).codigo).toBe(
+    'Solo letras, números y guiones sueltos, sin guion al principio ni al final',
+  );
+  expect(validarPlantacion(valores({ codigo: 'md 26' }))).toEqual({});
+});
+
 test('aPlantacionInput recorta textos y convierte números; vacíos quedan undefined', () => {
   const input = aPlantacionInput(
     valores({
       lugar: '  Mendoza ',
+      codigo: ' md26 ',
       descripcion: ' Finca norte ',
       objetivoArboles: '500',
     }),
@@ -49,6 +59,7 @@ test('aPlantacionInput recorta textos y convierte números; vacíos quedan undef
   expect(input).toEqual({
     lugar: 'Mendoza',
     periodo: '2025-2026',
+    codigo: 'MD26',
     descripcion: 'Finca norte',
     fechaInicio: undefined,
     objetivoArboles: 500,

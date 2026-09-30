@@ -7,6 +7,7 @@ import {
   existePlantacion,
 } from '../../repositories/plantationRepository';
 import {
+  CodigoPlantacionDuplicadoError,
   ConflictoDeEdicionError,
   MENSAJE_CONFLICTO_EDICION,
 } from '../../repositories/edicionDePlantacion';
@@ -37,6 +38,9 @@ const SALTA: PlantacionEditable = {
   id: 'plant-1',
   lugar: 'Salta',
   periodo: '2024-2025',
+  codigo: 'SA24',
+  estado: 'activa',
+  archivadaEn: null,
   descripcion: 'Finca sur',
   fechaInicio: null,
   objetivoArboles: null,
@@ -57,6 +61,7 @@ function renderModal(plantacion: PlantacionEditable | null = null) {
 async function completarObligatorios(usuario: ReturnType<typeof userEvent.setup>) {
   await usuario.type(screen.getByLabelText('Lugar *'), 'Mendoza');
   await usuario.type(screen.getByLabelText('Período *'), '2025-2026');
+  await usuario.type(screen.getByLabelText('Código *'), 'MD26');
 }
 
 test('crear feliz: valida, llama al repository con el perfil y cierra', async () => {
@@ -69,7 +74,12 @@ test('crear feliz: valida, llama al repository con el perfil y cierra', async ()
 
   await waitFor(() => expect(onClose).toHaveBeenCalled());
   expect(vi.mocked(crearPlantacion)).toHaveBeenCalledWith(
-    expect.objectContaining({ lugar: 'Mendoza', periodo: '2025-2026', objetivoArboles: 1000 }),
+    expect.objectContaining({
+      lugar: 'Mendoza',
+      periodo: '2025-2026',
+      codigo: 'MD26',
+      objetivoArboles: 1000,
+    }),
     PERFIL,
   );
 });
@@ -83,6 +93,7 @@ test('con campos inválidos muestra errores por campo y no guarda', async () => 
 
   expect(await screen.findByText('El lugar es obligatorio')).toBeInTheDocument();
   expect(screen.getByText('El período es obligatorio')).toBeInTheDocument();
+  expect(screen.getByText('El código es obligatorio')).toBeInTheDocument();
   expect(
     screen.getByText('El objetivo debe ser un número entero de al menos 1 árbol'),
   ).toBeInTheDocument();
@@ -120,7 +131,7 @@ test('editar: precarga los valores (nulls de la 024 → vacíos) y llama a edita
   expect(vi.mocked(editarPlantacion)).toHaveBeenCalledWith(
     'plant-1',
     expect.objectContaining({ lugar: 'Salta', descripcion: 'Finca sur' }),
-    { lugar: 'Salta', periodo: '2024-2025', descripcion: 'Finca sur' },
+    { lugar: 'Salta', periodo: '2024-2025', codigo: 'SA24', descripcion: 'Finca sur' },
   );
   expect(vi.mocked(existePlantacion)).toHaveBeenCalledWith('Salta', '2024-2025', 'plant-1');
 });
@@ -214,4 +225,57 @@ test('otro error del servidor: muestra el detalle que mandó (#380)', async () =
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'No se pudo guardar la plantación: el servidor rechazó el cambio (periodo inválido).',
   );
+});
+
+describe('código de plantación (#559)', () => {
+  test('se escribe en mayúsculas y sin espacios mientras se tipea', async () => {
+    const usuario = userEvent.setup();
+    renderModal();
+
+    await usuario.type(screen.getByLabelText('Código *'), 'ss 26-1');
+
+    expect(screen.getByLabelText('Código *')).toHaveValue('SS26-1');
+  });
+
+  test('con formato inválido no guarda', async () => {
+    const usuario = userEvent.setup();
+    renderModal();
+
+    await usuario.type(screen.getByLabelText('Lugar *'), 'Mendoza');
+    await usuario.type(screen.getByLabelText('Período *'), '2025-2026');
+    await usuario.type(screen.getByLabelText('Código *'), 'MD26-');
+    await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+    expect(
+      await screen.findByText(
+        'Solo letras, números y guiones sueltos, sin guion al principio ni al final',
+      ),
+    ).toBeInTheDocument();
+    expect(vi.mocked(crearPlantacion)).not.toHaveBeenCalled();
+  });
+
+  test('repetido en la organización: lo marca en el campo y no cierra', async () => {
+    vi.mocked(crearPlantacion).mockRejectedValue(new CodigoPlantacionDuplicadoError());
+    const usuario = userEvent.setup();
+    const { onClose } = renderModal();
+
+    await completarObligatorios(usuario);
+    await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+    expect(await screen.findAllByText('Ya existe otra plantación con ese código.')).toHaveLength(1);
+    expect(screen.getByLabelText('Código *')).toHaveAttribute('aria-invalid', 'true');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ['finalizada', { estado: 'finalizada', archivadaEn: null }],
+    ['archivada', { estado: 'activa', archivadaEn: '2026-09-01T00:00:00Z' }],
+  ] as const)('en una %s no se edita', (_caso, estado) => {
+    renderModal({ ...SALTA, ...estado });
+
+    expect(screen.getByLabelText('Código *')).toBeDisabled();
+    expect(
+      screen.getByText('Solo se cambia mientras la plantación está activa.'),
+    ).toBeInTheDocument();
+  });
 });

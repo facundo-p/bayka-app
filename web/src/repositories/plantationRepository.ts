@@ -4,6 +4,7 @@ import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { ESTADO_PLANTACION } from '../queries/plantationQueries';
 import type { Perfil } from './profileRepository';
 import {
+  CodigoPlantacionDuplicadoError,
   editarCamposDePlantacion,
   type ConflictoDeEdicionError,
   type ValoresDePlantacion,
@@ -21,6 +22,8 @@ export const COLUMNA = {
 export type PlantacionInput = {
   lugar: string;
   periodo: string;
+  /** Único por organización; va en el ID de cada árbol (#559). */
+  codigo: string;
   descripcion?: string;
   fechaInicio?: string;
   objetivoArboles?: number;
@@ -46,7 +49,7 @@ type ResultadoSupabase = { data: unknown; error: ErrorSupabase };
 
 /** Columnas que siempre existen en `plantations` (pre-024). */
 function camposBase(input: PlantacionInput): Payload {
-  return { lugar: input.lugar, periodo: input.periodo };
+  return { lugar: input.lugar, periodo: input.periodo, codigo: input.codigo };
 }
 
 /** Solo campos con valor: PostgREST rechaza columnas desconocidas si van undefined/null. */
@@ -98,6 +101,14 @@ async function crearParcelaDefault(plantationId: string): Promise<void> {
   throw errorDeSupabase(error);
 }
 
+/** El único UNIQUE que un alta puede violar es (organizacion_id, codigo). */
+function traducirCodigoDuplicado(error: unknown): never {
+  if ((error as { code?: unknown }).code === PG_ERROR.UNIQUE_VIOLATION) {
+    throw new CodigoPlantacionDuplicadoError();
+  }
+  throw error;
+}
+
 /** Crea la plantación (estado 'activa') junto con su parcela default P1. */
 export async function crearPlantacion(input: PlantacionInput, perfil: Perfil): Promise<string> {
   const base: Payload = {
@@ -108,7 +119,9 @@ export async function crearPlantacion(input: PlantacionInput, perfil: Perfil): P
   };
   const insertar = (payload: Payload) =>
     supabase.from('plantations').insert(payload).select('id').single();
-  const data = await ejecutarConReintentoSin024(insertar, base, campos024(input));
+  const data = await ejecutarConReintentoSin024(insertar, base, campos024(input)).catch(
+    traducirCodigoDuplicado,
+  );
   const id = (data as { id: string }).id;
   await crearParcelaDefault(id);
   return id;
@@ -119,6 +132,7 @@ function columnasDelFormulario(input: PlantacionInput): ValoresDePlantacion {
   return {
     lugar: input.lugar,
     periodo: input.periodo,
+    codigo: input.codigo,
     descripcion: input.descripcion ?? null,
     fecha_inicio: input.fechaInicio ?? null,
     objetivo_arboles: input.objetivoArboles ?? null,
@@ -141,6 +155,7 @@ export async function editarPlantacion(
 const CAMPO_DE_COLUMNA = {
   lugar: 'lugar',
   periodo: 'periodo',
+  codigo: 'codigo',
   descripcion: 'descripcion',
   fecha_inicio: 'fechaInicio',
   objetivo_arboles: 'objetivoArboles',

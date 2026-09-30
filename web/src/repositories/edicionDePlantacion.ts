@@ -4,6 +4,7 @@
  * el server no lo aplica si alguien lo cambió desde otro lado mientras tanto.
  */
 import { errorDeSupabase, mensajeDeError } from '../lib/clasificarError';
+import { MENSAJE_CODIGO_PLANTACION } from '../lib/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 
 const RPC_EDITAR_PLANTACION = 'editar_plantacion';
@@ -18,6 +19,7 @@ export const ERROR_EDICION = {
   finalizada: 'PLANTACION_FINALIZADA',
   archivada: 'PLANTACION_ARCHIVADA',
   datosInvalidos: 'DATOS_INVALIDOS',
+  codigoDuplicado: 'CODIGO_DUPLICADO',
 } as const;
 
 export const MENSAJE_CONFLICTO_EDICION =
@@ -50,6 +52,14 @@ export class ErrorDeEdicion extends Error {
   constructor(mensaje: string) {
     super(mensaje);
     this.name = 'ErrorDeEdicion';
+  }
+}
+
+/** Otra plantación de la organización ya usa ese código; el formulario lo marca en el campo. */
+export class CodigoPlantacionDuplicadoError extends ErrorDeEdicion {
+  constructor() {
+    super(MENSAJE_CODIGO_PLANTACION.duplicado);
+    this.name = 'CodigoPlantacionDuplicadoError';
   }
 }
 
@@ -99,6 +109,8 @@ function errorDeRespuesta(respuesta: RespuestaEdicion): ErrorDeEdicion {
     }));
     return new ConflictoDeEdicionError(conflictos, (respuesta.aplicados ?? []).length > 0);
   }
+  if (respuesta?.error === ERROR_EDICION.codigoDuplicado)
+    return new CodigoPlantacionDuplicadoError();
   return new ErrorDeEdicion(MENSAJE_RECHAZO[respuesta?.error ?? ''] ?? MENSAJE_RECHAZO_GENERICO);
 }
 

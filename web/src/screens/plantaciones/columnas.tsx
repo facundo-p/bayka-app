@@ -14,6 +14,12 @@ export const COLUMNAS_PLANTACIONES: Array<TableColumn<PlantacionConStats>> = [
     render: (plantacion) => <CeldaLugar lugar={plantacion.lugar} />,
   },
   {
+    key: 'codigo',
+    fueraEnMovil: true,
+    header: 'Código',
+    render: (plantacion) => <span className={tabla.mono}>{plantacion.codigo}</span>,
+  },
+  {
     key: 'periodo',
     fueraEnMovil: true,
     header: 'Temporada',

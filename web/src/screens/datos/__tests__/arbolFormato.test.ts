@@ -4,6 +4,7 @@ import { codigoParcelaDe, etiquetaEspecie, nombreTecnicoDe, tieneGps } from '../
 const ARBOL: ArbolDetalle = {
   id: 'tree-1',
   subId: 'A-001',
+  idArbol: 'A-001-SS26',
   posicion: 1,
   especieCodigo: null,
   especieNombre: null,
