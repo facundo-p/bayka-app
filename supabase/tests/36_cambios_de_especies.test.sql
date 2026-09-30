@@ -27,11 +27,10 @@ insert into species (id, codigo, nombre) values
   ('b3600000-0000-0000-0000-0000000000e3', 'T36X', 'Brachichito 36'),
   ('b3600000-0000-0000-0000-0000000000e4', 'T36W', 'Durazno 36');
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
-  ('b3600000-0000-0000-0000-000000000002', 'b3600000-0000-0000-0000-000000000001',
-   'Activa 36', '2026', 'b3600000-0000-0000-0000-0000000000a1', 'activa', 'T1'),
-  ('b3600000-0000-0000-0000-000000000003', 'b3600000-0000-0000-0000-000000000001',
-   'Finalizada 36', '2026', 'b3600000-0000-0000-0000-0000000000a1', 'finalizada', 'T2');
+select tests.crear_plantacion('b3600000-0000-0000-0000-000000000002', 'b3600000-0000-0000-0000-000000000001',
+  'b3600000-0000-0000-0000-0000000000a1', 'Activa 36');
+select tests.crear_plantacion('b3600000-0000-0000-0000-000000000003', 'b3600000-0000-0000-0000-000000000001',
+  'b3600000-0000-0000-0000-0000000000a1', 'Finalizada 36', p_estado => 'finalizada');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b3600000-0000-0000-0000-000000000002', 'b3600000-0000-0000-0000-0000000000a2', 'tecnico');
