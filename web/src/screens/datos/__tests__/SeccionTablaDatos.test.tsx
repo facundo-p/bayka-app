@@ -12,7 +12,10 @@ const TEXTOS: TextosSeccion = {
   error: 'No se pudieron cargar las parcelas.',
   pie: 'Clic en una fila abre sus grupos',
   vacio: 'Sin parcelas',
+  vacioConFiltros: 'Ninguna parcela coincide con la búsqueda',
 };
+
+const SIN_FILTROS = { activos: 0, onLimpiar: vi.fn() };
 
 const COLUMNAS: Array<TableColumn<Fila>> = [{ key: 'id', header: 'Id' }];
 
@@ -35,9 +38,31 @@ test.each([
         textos={TEXTOS}
         columnas={COLUMNAS}
         onRowClick={vi.fn()}
+        filtros={SIN_FILTROS}
       />
     </MemoryRouter>,
   );
 
   expect(screen.getByText(texto)).toBeInTheDocument();
+});
+
+test.each([
+  { activos: 0, vacio: 'Sin parcelas' },
+  { activos: 1, vacio: 'Ninguna parcela coincide con la búsqueda' },
+])('sin filas y con $activos filtros la tabla dice "$vacio"', ({ activos, vacio }) => {
+  render(
+    <MemoryRouter>
+      <SeccionTablaDatos
+        segmento={SEGMENTO_DATOS.parcelas}
+        consultas={[]}
+        filas={[]}
+        textos={TEXTOS}
+        columnas={COLUMNAS}
+        onRowClick={vi.fn()}
+        filtros={{ activos, onLimpiar: vi.fn() }}
+      />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByText(vacio)).toBeInTheDocument();
 });

@@ -110,7 +110,11 @@ alfabético, y `sync_subgroup` re-habilitando la especie de un árbol que sube
 estado (una finalizada admite, una archivada no), altas y bajas idempotentes,
 un alta concurrente que no pisa las demás, técnico inactivo, de otra
 organización o usuario que no es técnico rechazado solo con su motivo, la baja
-no toca la membresía admin (059, #636). `40`
+no toca la membresía admin (059, #636). `38` un INSERT en `auth.users` deja
+el profile `tecnico` y sin organización aunque la metadata pida otra cosa, y
+así no lee perfiles, organizaciones ni plantaciones; rol y organización en un
+mismo UPDATE (como `admin-users`) suman al admin a las plantaciones de su
+organización (060, #607). `40`
 código de plantación: formato (A-Z, 0-9 y guion suelto, hasta 8), obligatorio,
 único por organización, libre tras eliminar, solo cambia con la plantación
 activa y no archivada —para todos los roles— y el backfill (códigos manuales,

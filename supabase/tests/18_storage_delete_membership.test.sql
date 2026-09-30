@@ -3,7 +3,6 @@
 begin;
 select plan(13);
 
--- org1 usa el UUID que handle_new_user asigna por default a todo auth.users nuevo.
 insert into organizations (id, nombre) values
   ('00000000-0000-0000-0000-000000000001', 'Org1 Test 18'),
   ('18000000-0000-0000-0000-000000000001', 'Org2 Test 18');
@@ -14,6 +13,10 @@ insert into auth.users (id, email) values
   ('18000000-0000-0000-0000-0000000000a3', 'a3-18@test.local'),
   ('18000000-0000-0000-0000-0000000000b1', 't1-18@test.local');
 
+update profiles set organizacion_id = '00000000-0000-0000-0000-000000000001' where id in (
+  '18000000-0000-0000-0000-0000000000a1',
+  '18000000-0000-0000-0000-0000000000a3',
+  '18000000-0000-0000-0000-0000000000b1');
 update profiles set organizacion_id = '18000000-0000-0000-0000-000000000001'
   where id = '18000000-0000-0000-0000-0000000000a2';
 update profiles set rol = 'admin' where id in (

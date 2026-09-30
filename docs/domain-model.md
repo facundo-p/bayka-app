@@ -119,7 +119,15 @@ El email y la contraseña viven en Supabase Auth (`auth.users`); `profiles.email
 es una copia denormalizada que un trigger mantiene sincronizada (migración 026)
 para que la web pueda listarlo con anon key. Al crear un auth user (dashboard o
 invitación), el trigger `handle_new_user` crea el profile automáticamente con
-defaults seguros (rol `tecnico`, organización Bayka).
+defaults seguros: rol `tecnico` y **sin organización** (#607). La pertenencia
+se otorga en el alta administrada: `admin-users` asigna rol y organización
+(la del superadmin que invita) después de invitar. Un profile sin organización
+no lee nada de ninguna y la web y la app lo muestran como sin acceso.
+
+A diferencia del resto del modelo, `profiles` se lee por organización y no por
+membresía: todo usuario activo, técnico incluido, ve nombre, email y rol de los
+demás usuarios de su organización. Es a propósito
+([decisión](decisiones/directorio-de-usuarios.md)).
 
 `activo` implementa la baja reversible: desactivar un usuario marca
 `activo = false` y lo banea en Auth (vía la edge function `admin-users`), sin
