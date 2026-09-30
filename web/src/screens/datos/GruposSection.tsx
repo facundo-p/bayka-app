@@ -8,7 +8,7 @@ import { COLUMNAS_GRUPOS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
 import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
 import { SelectParcela } from './SelectParcela';
-import { useFiltrosDatos } from './useFiltrosDatos';
+import { useBusquedaDatos } from './useFiltrosDatos';
 import { useIrASeccion } from './useIrASeccion';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
@@ -25,7 +25,7 @@ const TEXTOS: TextosSeccion = {
 function useGruposSection() {
   const id = useIdPlantacion();
   const irA = useIrASeccion();
-  const { filtros, setFiltro, filtrosActivos, limpiar } = useFiltrosDatos();
+  const { filtros, setFiltro, buscar, filtrosSeccion } = useBusquedaDatos();
   const parcelas = useParcelasDatos(id);
   const grupos = useGruposDatos(id, filtros.parcelaId);
   const verArboles = (grupo: GrupoConDetalle) =>
@@ -40,8 +40,8 @@ function useGruposSection() {
     visibles: filtrarPorCodigoNombre(grupos.data, filtros.busqueda),
     verArboles,
     elegirParcela: (valor: string) => setFiltro('parcelaId', valor),
-    buscar: (texto: string) => setFiltro('busqueda', texto),
-    filtrosSeccion: { activos: filtrosActivos, onLimpiar: limpiar },
+    buscar,
+    filtrosSeccion,
   };
 }
 

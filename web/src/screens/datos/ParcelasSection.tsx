@@ -7,7 +7,7 @@ import { filtrarPorCodigoNombre } from './busquedaCodigoNombre';
 import { COLUMNAS_PARCELAS } from './columnas';
 import { filtrosAParams } from './filtrosUrl';
 import { SeccionTablaDatos, type TextosSeccion } from './SeccionTablaDatos';
-import { useFiltrosDatos } from './useFiltrosDatos';
+import { useBusquedaDatos } from './useFiltrosDatos';
 import { useParcelasDatos } from './useDatosQueries';
 import { useIrASeccion } from './useIrASeccion';
 
@@ -23,15 +23,14 @@ const TEXTOS: TextosSeccion = {
 /** Parcelas solo se filtra por la búsqueda: el scope de parcela que viaja en la URL no aplica. */
 function useParcelasSection() {
   const irA = useIrASeccion();
-  const { filtros, setFiltro } = useFiltrosDatos();
+  const { filtros, buscar, filtrosSeccion } = useBusquedaDatos();
   const parcelas = useParcelasDatos(useIdPlantacion());
-  const buscar = (texto: string) => setFiltro('busqueda', texto);
   return {
     parcelas,
     busqueda: filtros.busqueda,
     buscar,
     visibles: filtrarPorCodigoNombre(parcelas.data, filtros.busqueda),
-    filtros: { activos: filtros.busqueda ? 1 : 0, onLimpiar: () => buscar('') },
+    filtros: filtrosSeccion,
     verGrupos: (parcela: ParcelaConStats) =>
       irA(SEGMENTO_DATOS.grupos, filtrosAParams({ parcelaId: parcela.id })),
   };
