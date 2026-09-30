@@ -7,7 +7,7 @@ service_role, por eso vive acá y no en el cliente web.
 
 | Acción | Payload | Efecto |
 |--------|---------|--------|
-| `crear` | `{accion, nombre, email, rol}` | `inviteUserByEmail` con metadata → el trigger `handle_new_user` crea el profile; Supabase envía el mail de invitación |
+| `crear` | `{accion, nombre, email, rol}` | `inviteUserByEmail` con metadata → el trigger `handle_new_user` crea el profile (`tecnico`, sin organización); Supabase envía el mail de invitación. Después, un solo UPDATE con `rol` + `organizacion_id` del superadmin que invita, para **toda** alta. Todo-o-nada: si ese UPDATE falla, `deleteUser` del recién invitado y 500 (el link del mail deja de servir). Un superadmin sin organización no puede crear |
 | `reenviarInvitacion` | `{accion, email}` | Envía el mail de recuperación de contraseña (sirve como reenvío de invitación y como "olvidé mi contraseña") |
 | `desactivar` | `{accion, userId}` | Ban en Auth (10 años, reversible) + `profiles.activo = false` |
 | `reactivar` | `{accion, userId}` | Quita el ban + `profiles.activo = true` |

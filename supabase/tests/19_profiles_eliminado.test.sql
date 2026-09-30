@@ -11,6 +11,10 @@ insert into auth.users (id, email) values
   ('19000000-0000-0000-0000-0000000000b1', 'tecnico-19@test.local'),
   ('19000000-0000-0000-0000-0000000000c1', 'admin-19@test.local');
 
+update profiles set organizacion_id = '00000000-0000-0000-0000-000000000001' where id in (
+  '19000000-0000-0000-0000-0000000000a1',
+  '19000000-0000-0000-0000-0000000000b1',
+  '19000000-0000-0000-0000-0000000000c1');
 update profiles set rol = 'superadmin' where id = '19000000-0000-0000-0000-0000000000a1';
 
 select has_column('public', 'profiles', 'eliminado_en', 'profiles tiene eliminado_en');
