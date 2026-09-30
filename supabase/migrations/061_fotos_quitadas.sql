@@ -123,8 +123,9 @@ GRANT EXECUTE ON FUNCTION "public"."quitar_fotos_arboles"("uuid"[]) TO "authenti
 -- Antes de devolver las pendientes cierra como `reasignada` las que ya no se
 -- pueden borrar: el path vuelve a ser el foto_url de un árbol, o el objeto se
 -- reescribió después de quitarla (foto nueva subida, foto_url todavía sin
--- apuntar). Entre esta consulta y el borrado queda una ventana de segundos en
--- la que una subida nueva se perdería; el cron corre de madrugada.
+-- apuntar). Entre esta consulta y el borrado de la última tanda (hasta 10
+-- tandas de Storage en serie) una subida nueva al mismo path se perdería; el
+-- cron corre de madrugada.
 CREATE OR REPLACE FUNCTION "public"."fotos_quitadas_por_limpiar"("p_limite" integer)
 RETURNS TABLE ("id" bigint, "storage_path" "text")
 LANGUAGE "plpgsql" SECURITY DEFINER

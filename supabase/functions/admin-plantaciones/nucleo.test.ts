@@ -4,6 +4,7 @@ import {
   MENSAJES,
   TAMANO_TANDA_FOTOS,
   manejarAdminPlantaciones,
+  secretosIguales,
   type Deps,
   type EntradaStorage,
   type PerfilDb,
@@ -240,5 +241,24 @@ describe('limpiarFotosQuitadas', () => {
       TAMANO_TANDA_FOTOS + 1,
       TAMANO_TANDA_FOTOS + 2,
     ]);
+  });
+});
+
+describe('secretosIguales', () => {
+  test('acepta el mismo secreto', () => {
+    expect(secretosIguales(SERVICE_KEY, SERVICE_KEY)).toBe(true);
+  });
+
+  test.each([
+    ['otro valor del mismo largo', 'service-role-kez'],
+    ['un prefijo', 'service-role'],
+    ['un secreto más largo', `${SERVICE_KEY}x`],
+    ['vacío', ''],
+  ])('rechaza %s', (_caso, recibido) => {
+    expect(secretosIguales(recibido, SERVICE_KEY)).toBe(false);
+  });
+
+  test('sin secreto configurado no acepta nada, ni siquiera un token vacío', () => {
+    expect(secretosIguales('', '')).toBe(false);
   });
 });

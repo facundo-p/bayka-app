@@ -23,6 +23,22 @@ export const TAMANO_TANDA_FOTOS = 100;
 /** Tope por corrida de `limpiarFotosQuitadas`; lo que sobra queda para la siguiente. */
 export const LIMITE_FOTOS_QUITADAS = 1000;
 
+/**
+ * Compara un token contra un secreto en tiempo que depende solo del largo del secreto,
+ * para no filtrar por timing cuántos bytes coinciden. Sin secreto configurado no acepta nada.
+ */
+export function secretosIguales(recibido: string, esperado: string): boolean {
+  if (!esperado) return false;
+  const codificador = new TextEncoder();
+  const bytesRecibidos = codificador.encode(recibido);
+  const bytesEsperados = codificador.encode(esperado);
+  let diferencia = bytesRecibidos.length ^ bytesEsperados.length;
+  for (let i = 0; i < bytesEsperados.length; i++) {
+    diferencia |= (bytesRecibidos[i] ?? 0) ^ bytesEsperados[i];
+  }
+  return diferencia === 0;
+}
+
 /** Las fotos viven en `plantations/{id}/parcelas/{parcela}/trees/{arbol}.jpg`. */
 export function prefijoFotos(plantacionId: string): string {
   return `plantations/${plantacionId}`;

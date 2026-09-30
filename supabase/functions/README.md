@@ -150,3 +150,8 @@ la plataforma. Requiere la migración `039_eliminar_plantacion.sql` aplicada, y
 que ser la key `service_role` (JWT legacy) del proyecto: la función la compara
 con la `SUPABASE_SERVICE_ROLE_KEY` que inyecta la plataforma. Sin el secret, el
 job avisa y no hace nada.
+
+Si el proyecto rota la key legacy o migra a las API keys nuevas (`sb_secret_…`),
+hay que re-sincronizar los dos secrets de GitHub y verificar qué inyecta la
+plataforma en `SUPABASE_SERVICE_ROLE_KEY`: si no coincide con el secret, el cron
+recibe 403.
