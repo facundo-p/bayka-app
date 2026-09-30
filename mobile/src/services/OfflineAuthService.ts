@@ -91,6 +91,12 @@ export async function verifyCredential(
   return entry.userId ? { role: entry.role, userId: entry.userId } : CREDENCIAL_SIN_USUARIO;
 }
 
+/** userId de la credencial offline de `email`; null si no hay o es anterior a #658. */
+export async function userIdDeCredencial(email: string): Promise<string | null> {
+  const all = await getAll();
+  return all.find((c) => c.email === email)?.userId ?? null;
+}
+
 export async function clearCredential(email: string): Promise<void> {
   const all = await getAll();
   const filtered = all.filter((c) => c.email !== email);

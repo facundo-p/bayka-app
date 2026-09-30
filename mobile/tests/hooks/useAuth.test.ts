@@ -46,6 +46,7 @@ jest.mock('../../src/services/OfflineAuthService', () => ({
   isOfflineLoginExpired: jest.fn().mockResolvedValue(false),
   clearCredential: jest.fn().mockResolvedValue(undefined),
   clearAllCredentials: jest.fn().mockResolvedValue(undefined),
+  userIdDeCredencial: jest.fn().mockResolvedValue(null),
 }));
 
 jest.mock('../../src/hooks/useCurrentUserId', () => ({
@@ -347,6 +348,7 @@ describe('useAuth', () => {
       const { clearAllCredentials } = require('../../src/services/OfflineAuthService');
       expect(clearSession).toHaveBeenCalled();
       expect(clearAllCredentials).toHaveBeenCalled();
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user_profile_cache.u-1');
     });
 
     it('en el signIn online devuelve el mensaje de cuenta desactivada y no cachea credenciales', async () => {
@@ -367,6 +369,27 @@ describe('useAuth', () => {
       expect(signInResult.error.message).toContain('desactivada');
       expect(signInResult.data.session).toBeNull();
       expect(cacheCredential).not.toHaveBeenCalled();
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user_profile_cache.user-1');
+    });
+
+    it('rechazada en el signIn online, borra el perfil cacheado de la cuenta de ese email (#667)', async () => {
+      const { userIdDeCredencial, clearAllCredentials } = require('../../src/services/OfflineAuthService');
+      (userIdDeCredencial as jest.Mock).mockResolvedValue('user-9');
+      (supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+        data: { session: null },
+        error: { status: 400, code: 'user_banned', message: 'User is banned' },
+      });
+
+      const { result } = renderHook(() => useAuth());
+      let signInResult: any;
+      await act(async () => {
+        signInResult = await result.current.signIn('baja@test.com', 'password');
+      });
+
+      expect(signInResult.error.message).toContain('desactivada');
+      expect(userIdDeCredencial).toHaveBeenCalledWith('baja@test.com');
+      expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith('user_profile_cache.user-9');
+      expect(clearAllCredentials).toHaveBeenCalled();
     });
 
     it('offline NO consulta el estado: restaura la sesión cacheada (contrato intacto)', async () => {
