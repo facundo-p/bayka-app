@@ -17,13 +17,12 @@ Las credenciales de los dos proyectos viven en el Bitwarden del cliente.
 
 **Authentication → Sign In / Providers → Email → "Allow new users to sign up" → off.**
 
-Con el registro abierto, cualquiera con una casilla de mail entra a la
-organización del cliente: el trigger `handle_new_user` le crea el profile con
-`rol = 'tecnico'` y la organización del MVP, y la policy `Members can read org
-profiles` le muestra el directorio de usuarios —nombre, email y rol de todos
-(#606). No hay escalación de privilegios (el rol elevado solo lo pone
-`admin-users` con service_role) ni acceso a plantaciones (scopeadas por
-`plantation_users`), pero los datos personales quedan expuestos.
+Hasta #607 el registro abierto metía a cualquiera con una casilla de mail en
+la organización del cliente: `handle_new_user` le asignaba la organización del
+MVP y la policy `Members can read org profiles` le mostraba el directorio de
+usuarios (#606). Desde la migración 060 el profile nace sin organización y no
+lee nada, así que el toggle ya no es la única barrera; igual se deja apagado:
+un registro abierto crea cuentas basura en Auth.
 
 **No rompe ningún flujo:** la app no llama a `signUp` en ningún lado. Las altas
 entran por `inviteUserByEmail` desde `admin-users`, que usa la service_role —
@@ -53,8 +52,8 @@ Con el registro cerrado corta antes de mirar los datos.
   verificación en [`supabase/functions/README.md`](../supabase/functions/README.md).
 - **SMTP:** el default de Supabase admite ~2 emails/hora — alcanza para probar,
   no para operar. Para uso real, Authentication → SMTP Settings.
-- **Email templates y rate limits de Auth:** sin relevar contra el proyecto
-  viejo (#249).
+- **Políticas de contraseña, email templates y rate limits de Auth:** no
+  relevados; solo se ven en el dashboard.
 
 ## Edge functions
 
@@ -63,7 +62,15 @@ y `admin-plantaciones`, en cada proyecto. El orden importa y cambiar `WEB_URL`
 exige redeploy: checklist completa en
 [`supabase/functions/README.md`](../supabase/functions/README.md).
 
-## Sin relevar
+## Database webhooks y cron jobs
 
-Pendientes de #249, que es donde se cierra el relevamiento contra el proyecto
-viejo: database webhooks, cron jobs y políticas de contraseña.
+Las migraciones no usan `pg_cron`, `pg_net` ni `supabase_functions.hooks`, y
+los dos proyectos se recrearon desde `supabase/migrations/`. Si hace falta uno,
+va en una migración, no en el dashboard.
+
+## Verificación sin credenciales
+
+- Site URL y allowlist: el `curl` a `/auth/v1/verify` y la tabla de estado
+  esperado en [`supabase/functions/README.md`](../supabase/functions/README.md).
+- Edge functions: un `POST` sin token a `/functions/v1/admin-users` y
+  `/functions/v1/admin-plantaciones` responde `401`.

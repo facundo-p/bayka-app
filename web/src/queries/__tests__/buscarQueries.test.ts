@@ -166,7 +166,7 @@ function esBusquedaArbol(consulta: ConsultaCapturada): boolean {
   );
 }
 
-test('buscarParcelas mapea a resultado de parcela con su plantación y ruta', async () => {
+test('buscarParcelas mapea a resultado de parcela con su plantación y su código en el buscador', async () => {
   capturarConsultas(responder);
   const resultados = await buscar('P1');
   const parcela = resultados.find((resultado) => resultado.tipo === 'parcela');
@@ -174,7 +174,7 @@ test('buscarParcelas mapea a resultado de parcela con su plantación y ruta', as
   expect(parcela).toMatchObject({
     titulo: 'P1 · Norte',
     meta: 'La Maluka',
-    to: '/plantaciones/plant-1/datos/parcelas',
+    to: '/plantaciones/plant-1/datos/parcelas?q=P1',
   });
 });
 
@@ -187,7 +187,7 @@ test('la búsqueda de parcelas arma un .or con ilike escapado sobre código y no
   expect(filtroOr?.valor).toBe('codigo.ilike."%p1%",nombre.ilike."%p1%"');
 });
 
-test('buscarGrupos mapea a resultado de grupo con su parcela y ruta', async () => {
+test('buscarGrupos mapea a resultado de grupo con su parcela y su código en el buscador', async () => {
   capturarConsultas(responder);
   const resultados = await buscar('L1');
   const grupo = resultados.find((resultado) => resultado.tipo === 'grupo');
@@ -195,7 +195,7 @@ test('buscarGrupos mapea a resultado de grupo con su parcela y ruta', async () =
   expect(grupo).toMatchObject({
     titulo: 'L1 · Línea 1',
     meta: 'Parcela P1',
-    to: '/plantaciones/plant-1/datos/grupos',
+    to: '/plantaciones/plant-1/datos/grupos?q=L1',
   });
 });
 

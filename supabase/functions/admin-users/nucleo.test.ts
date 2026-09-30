@@ -2,7 +2,15 @@ import { describe, expect, test, vi } from 'vitest';
 import { MENSAJES, ROL, manejarAdminUsers, type Deps, type PerfilDb } from './nucleo';
 
 function perfil(id: string, nombre: string, rol: string): PerfilDb {
-  return { id, nombre, rol, activo: true, email: `${id}@bayka.org`, eliminado_en: null };
+  return {
+    id,
+    nombre,
+    rol,
+    activo: true,
+    email: `${id}@bayka.org`,
+    eliminado_en: null,
+    organizacion_id: 'org-1',
+  };
 }
 
 const SUPERADMIN = perfil('super-1', 'Sofía', ROL.SUPERADMIN);
@@ -26,7 +34,7 @@ function crearDeps(caller: PerfilDb | null = SUPERADMIN): Deps {
     buscarPerfil: vi.fn(async () => TECNICO),
     contarSuperadminsActivos: vi.fn(async () => 2),
     invitar: vi.fn(async () => ({ error: null, userId: 'nuevo-1' })),
-    asignarRol: vi.fn(async () => ({ error: null })),
+    asignarAlta: vi.fn(async () => ({ error: null })),
     enviarRecuperacion: vi.fn(async () => ({ error: null })),
     banear: vi.fn(async () => ({ error: null })),
     banearParaSiempre: vi.fn(async () => ({ error: null })),
@@ -76,16 +84,20 @@ describe('autorización', () => {
 });
 
 describe('crear', () => {
-  test('feliz (técnico): invita solo con nombre y NO setea rol', async () => {
+  test('técnico: invita solo con nombre y le asigna la organización del caller', async () => {
     const deps = crearDeps();
     const respuesta = await manejarAdminUsers('jwt', CREAR, deps);
     expect(respuesta).toEqual({ status: 200, body: { ok: true } });
     expect(deps.invitar).toHaveBeenCalledWith('nueva@bayka.org', { nombre: 'Nueva' });
-    // El trigger ya crea 'tecnico': no hace falta asignarRol.
-    expect(deps.asignarRol).not.toHaveBeenCalled();
+    // El trigger crea el profile sin organización: toda alta pasa por acá.
+    expect(deps.asignarAlta).toHaveBeenCalledWith('nuevo-1', {
+      rol: 'tecnico',
+      organizacionId: 'org-1',
+    });
+    expect(deps.borrarUsuario).not.toHaveBeenCalled();
   });
 
-  test('rol elevado: tras invitar, setea el rol con service_role', async () => {
+  test('rol elevado: rol y organización en la misma asignación', async () => {
     const deps = crearDeps();
     const respuesta = await manejarAdminUsers(
       'jwt',
@@ -93,7 +105,61 @@ describe('crear', () => {
       deps,
     );
     expect(respuesta.body.ok).toBe(true);
-    expect(deps.asignarRol).toHaveBeenCalledWith('nuevo-1', 'admin');
+    expect(deps.asignarAlta).toHaveBeenCalledTimes(1);
+    expect(deps.asignarAlta).toHaveBeenCalledWith('nuevo-1', {
+      rol: 'admin',
+      organizacionId: 'org-1',
+    });
+  });
+
+  test.each([
+    ['técnico', 'tecnico'],
+    ['rol elevado', 'superadmin'],
+  ])('%s: si la asignación falla, borra el usuario recién invitado → 500', async (_caso, rol) => {
+    const deps = crearDeps();
+    deps.asignarAlta = vi.fn(async () => ({ error: 'db caída' }));
+    const respuesta = await manejarAdminUsers('jwt', { ...CREAR, rol }, deps);
+    expect(respuesta.status).toBe(500);
+    expect(respuesta.body.error).toBe(MENSAJES.errorGenerico);
+    expect(deps.borrarUsuario).toHaveBeenCalledWith('nuevo-1');
+    expect(ordenDeLlamadas(deps, ['invitar', 'asignarAlta', 'borrarUsuario'])).toEqual([
+      'invitar',
+      'asignarAlta',
+      'borrarUsuario',
+    ]);
+  });
+
+  test('si también falla el borrado, igual responde 500', async () => {
+    const deps = crearDeps();
+    deps.asignarAlta = vi.fn(async () => ({ error: 'db caída' }));
+    deps.borrarUsuario = vi.fn(async () => ({ error: 'auth caído' }));
+    const respuesta = await manejarAdminUsers('jwt', CREAR, deps);
+    expect(respuesta.status).toBe(500);
+    expect(respuesta.body.error).toBe(MENSAJES.errorGenerico);
+  });
+
+  test('invitación sin id de usuario → 500 sin asignar nada', async () => {
+    const deps = crearDeps();
+    deps.invitar = vi.fn(async () => ({ error: null, userId: null }));
+    const respuesta = await manejarAdminUsers('jwt', CREAR, deps);
+    expect(respuesta.status).toBe(500);
+    expect(deps.asignarAlta).not.toHaveBeenCalled();
+  });
+
+  test('caller sin organización → 403 sin invitar', async () => {
+    const deps = crearDeps({ ...SUPERADMIN, organizacion_id: null });
+    const respuesta = await manejarAdminUsers('jwt', CREAR, deps);
+    expect(respuesta.status).toBe(403);
+    expect(respuesta.body.error).toBe(MENSAJES.sinOrganizacion);
+    expect(deps.invitar).not.toHaveBeenCalled();
+  });
+
+  test('invitación rechazada por Auth: no asigna ni borra', async () => {
+    const deps = crearDeps();
+    deps.invitar = vi.fn(async () => ({ error: 'User already registered', userId: null }));
+    await manejarAdminUsers('jwt', CREAR, deps);
+    expect(deps.asignarAlta).not.toHaveBeenCalled();
+    expect(deps.borrarUsuario).not.toHaveBeenCalled();
   });
 
   test('email ya registrado → 409 con mensaje claro', async () => {
@@ -301,6 +367,8 @@ describe('reenviarInvitacion', () => {
     );
     expect(respuesta.body.ok).toBe(true);
     expect(deps.enviarRecuperacion).toHaveBeenCalledWith('Teo@bayka.org');
+    // Reenviar no es un alta: la organización ya se asignó al invitar.
+    expect(deps.asignarAlta).not.toHaveBeenCalled();
   });
 
   test('falla del envío → 500 genérico', async () => {
