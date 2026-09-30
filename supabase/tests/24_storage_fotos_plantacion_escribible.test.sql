@@ -17,13 +17,13 @@ update profiles set rol = 'admin' where id = 'b2400000-0000-0000-0000-0000000000
 update profiles set rol = 'superadmin' where id = 'b2400000-0000-0000-0000-0000000000a3';
 
 -- Los admin quedan miembros de las tres por trigger.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, archivada_en, codigo) values
   ('b2400000-0000-0000-0000-000000000010', 'b2400000-0000-0000-0000-000000000001',
-   'Activa 24', '2026', 'b2400000-0000-0000-0000-0000000000a2', 'activa', null),
+   'Activa 24', '2026', 'b2400000-0000-0000-0000-0000000000a2', 'activa', null, 'T1'),
   ('b2400000-0000-0000-0000-000000000020', 'b2400000-0000-0000-0000-000000000001',
-   'Finalizada 24', '2026', 'b2400000-0000-0000-0000-0000000000a2', 'finalizada', null),
+   'Finalizada 24', '2026', 'b2400000-0000-0000-0000-0000000000a2', 'finalizada', null, 'T2'),
   ('b2400000-0000-0000-0000-000000000030', 'b2400000-0000-0000-0000-000000000001',
-   'Archivada 24', '2026', 'b2400000-0000-0000-0000-0000000000a2', 'activa', now());
+   'Archivada 24', '2026', 'b2400000-0000-0000-0000-0000000000a2', 'activa', now(), 'T3');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2400000-0000-0000-0000-000000000010', 'b2400000-0000-0000-0000-0000000000a1', 'tecnico'),

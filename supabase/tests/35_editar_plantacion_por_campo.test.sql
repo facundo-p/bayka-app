@@ -28,15 +28,15 @@ update profiles set rol = 'superadmin', organizacion_id = 'b3500000-0000-0000-00
 update profiles set rol = 'admin', organizacion_id = 'b3500000-0000-0000-0000-000000000009'
   where id = 'b3500000-0000-0000-0000-0000000000a5';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, objetivo_arboles) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, objetivo_arboles, codigo) values
   ('b3500000-0000-0000-0000-000000000002', 'b3500000-0000-0000-0000-000000000001',
-   'Lote Norte', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'activa', 12000),
+   'Lote Norte', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'activa', 12000, 'T1'),
   ('b3500000-0000-0000-0000-000000000003', 'b3500000-0000-0000-0000-000000000001',
-   'Finalizada 35', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'finalizada', null),
+   'Finalizada 35', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'finalizada', null, 'T2'),
   ('b3500000-0000-0000-0000-000000000004', 'b3500000-0000-0000-0000-000000000001',
-   'Archivada 35', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'activa', null),
+   'Archivada 35', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'activa', null, 'T3'),
   ('b3500000-0000-0000-0000-000000000005', 'b3500000-0000-0000-0000-000000000001',
-   'A finalizar 35', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'activa', null);
+   'A finalizar 35', '2026', 'b3500000-0000-0000-0000-0000000000a1', 'activa', null, 'T4');
 
 update plantations set archivada_en = now(), archivada_por = 'b3500000-0000-0000-0000-0000000000a1'
   where id = 'b3500000-0000-0000-0000-000000000004';
@@ -72,9 +72,9 @@ select lives_ok(
   'finalizar (activa → finalizada) sigue siendo un UPDATE');
 
 select lives_ok(
-  $$insert into plantations (id, organizacion_id, lugar, periodo, creado_por, ultima_edicion) values
+  $$insert into plantations (id, organizacion_id, lugar, periodo, creado_por, ultima_edicion, codigo) values
     ('b3500000-0000-0000-0000-000000000006', 'b3500000-0000-0000-0000-000000000001', 'Alta 35', '2026',
-     'b3500000-0000-0000-0000-0000000000a2', '{"lugar": {"por": "b3500000-0000-0000-0000-0000000000a1"}}')$$,
+     'b3500000-0000-0000-0000-0000000000a2', '{"lugar": {"por": "b3500000-0000-0000-0000-0000000000a1"}}', 'T5')$$,
   'un alta con auditoría inventada no falla');
 select is(
   (select ultima_edicion from plantations where id = 'b3500000-0000-0000-0000-000000000006'),

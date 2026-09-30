@@ -82,9 +82,9 @@ select set_config('request.jwt.claim.sub', '', true);
 -- ── Membresías: un eliminado no recibe ninguna ─────────────────────────────
 update profiles set rol = 'admin' where id = '19000000-0000-0000-0000-0000000000c1';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('19000000-0000-0000-0000-000000000010', '00000000-0000-0000-0000-000000000001',
-   'P1 Test 19', '2026', '19000000-0000-0000-0000-0000000000a1');
+   'P1 Test 19', '2026', '19000000-0000-0000-0000-0000000000a1', 'T1');
 
 select is(
   (select count(*)::int from plantation_users

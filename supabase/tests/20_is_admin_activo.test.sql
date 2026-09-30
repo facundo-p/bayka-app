@@ -20,9 +20,9 @@ update profiles set rol = 'superadmin', activo = false,
   organizacion_id = 'b2000000-0000-0000-0000-000000000001'
   where id = 'b2000000-0000-0000-0000-0000000000a3';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('b2000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000001',
-   'Plantación 20', '2026', 'b2000000-0000-0000-0000-0000000000a1');
+   'Plantación 20', '2026', 'b2000000-0000-0000-0000-0000000000a1', 'T1');
 
 -- trg_add_admin_memberships sumó al admin activo. Sin membresías, el acceso
 -- depende solo de is_admin().

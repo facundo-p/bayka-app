@@ -24,9 +24,9 @@ update profiles set rol = 'superadmin'
   where id in ('b2300000-0000-0000-0000-0000000000a3', 'b2300000-0000-0000-0000-0000000000a4');
 
 -- Activos al crear la plantación: el trigger les da membresía a todos los admin.
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('b2300000-0000-0000-0000-000000000010', 'b2300000-0000-0000-0000-000000000001',
-   'Plantación 23', '2026', 'b2300000-0000-0000-0000-0000000000a1');
+   'Plantación 23', '2026', 'b2300000-0000-0000-0000-0000000000a1', 'T1');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b2300000-0000-0000-0000-000000000011', 'b2300000-0000-0000-0000-000000000010', 'P23', 'P23');
@@ -123,9 +123,9 @@ select is(
 -- ── plantations ──────────────────────────────────────────────────────────────
 select set_config('request.jwt.claim.sub', 'b2300000-0000-0000-0000-0000000000a2', true);
 select throws_ok(
-  $$ insert into plantations (organizacion_id, lugar, periodo, creado_por)
+  $$ insert into plantations (organizacion_id, lugar, periodo, creado_por, codigo)
      values ('b2300000-0000-0000-0000-000000000001', 'Inactivo 23', '2026',
-             'b2300000-0000-0000-0000-0000000000a2') $$,
+             'b2300000-0000-0000-0000-0000000000a2', 'T2') $$,
   '42501', null, 'admin inactivo: no crea plantaciones');
 update plantations set lugar = 'Editada por inactivo'
   where id = 'b2300000-0000-0000-0000-000000000010';
@@ -134,9 +134,9 @@ select is((select lugar from plantations where id = 'b2300000-0000-0000-0000-000
 
 select set_config('request.jwt.claim.sub', 'b2300000-0000-0000-0000-0000000000a1', true);
 select lives_ok(
-  $$ insert into plantations (organizacion_id, lugar, periodo, creado_por)
+  $$ insert into plantations (organizacion_id, lugar, periodo, creado_por, codigo)
      values ('b2300000-0000-0000-0000-000000000001', 'Activo 23', '2026',
-             'b2300000-0000-0000-0000-0000000000a1') $$,
+             'b2300000-0000-0000-0000-0000000000a1', 'T3') $$,
   'admin activo: crea plantaciones');
 update plantations set lugar = 'Editada por activo'
   where id = 'b2300000-0000-0000-0000-000000000010';

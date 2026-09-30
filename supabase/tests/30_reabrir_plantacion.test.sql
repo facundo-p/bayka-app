@@ -28,13 +28,13 @@ update profiles set rol = 'superadmin', activo = false,
 update profiles set rol = 'superadmin', organizacion_id = 'b3000000-0000-0000-0000-000000000009'
   where id = 'b3000000-0000-0000-0000-0000000000a5';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, estado, codigo) values
   ('b3000000-0000-0000-0000-000000000002', 'b3000000-0000-0000-0000-000000000001',
-   'Finalizada 30', '2026', 'b3000000-0000-0000-0000-0000000000a2', 'finalizada'),
+   'Finalizada 30', '2026', 'b3000000-0000-0000-0000-0000000000a2', 'finalizada', 'T1'),
   ('b3000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000001',
-   'Activa 30', '2026', 'b3000000-0000-0000-0000-0000000000a2', 'activa'),
+   'Activa 30', '2026', 'b3000000-0000-0000-0000-0000000000a2', 'activa', 'T2'),
   ('b3000000-0000-0000-0000-000000000004', 'b3000000-0000-0000-0000-000000000001',
-   'Archivada 30', '2026', 'b3000000-0000-0000-0000-0000000000a2', 'finalizada');
+   'Archivada 30', '2026', 'b3000000-0000-0000-0000-0000000000a2', 'finalizada', 'T3');
 
 update plantations set archivada_en = now(), archivada_por = 'b3000000-0000-0000-0000-0000000000a2'
   where id = 'b3000000-0000-0000-0000-000000000004';

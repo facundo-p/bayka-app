@@ -110,7 +110,15 @@ alfabético, y `sync_subgroup` re-habilitando la especie de un árbol que sube
 estado (una finalizada admite, una archivada no), altas y bajas idempotentes,
 un alta concurrente que no pisa las demás, técnico inactivo, de otra
 organización o usuario que no es técnico rechazado solo con su motivo, la baja
-no toca la membresía admin (059, #636).
+no toca la membresía admin (059, #636). `40`
+código de plantación: formato (A-Z, 0-9 y guion suelto, hasta 8), obligatorio,
+único por organización, libre tras eliminar, solo cambia con la plantación
+activa y no archivada —para todos los roles— y el backfill (códigos manuales,
+`P<n>` para el resto, falla ante ambigüedad o una de San Sebastián que no calza)
+(062, #559). `41` `editar_plantacion` con `codigo`: lo aplica y audita, rechaza
+uno repetido con CODIGO_DUPLICADO sin aplicar nada, valida formato, detecta
+conflictos y no lo cambia en una finalizada aunque el superadmin edite lo demás
+(062, #559).
 
 ## Hallazgo fuera de alcance (no corregido)
 

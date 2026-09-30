@@ -24,9 +24,9 @@ update profiles set rol = 'superadmin', activo = false,
 update profiles set organizacion_id = 'b2900000-0000-0000-0000-000000000001'
   where id = 'b2900000-0000-0000-0000-0000000000a4';
 
-insert into plantations (id, organizacion_id, lugar, periodo, creado_por) values
+insert into plantations (id, organizacion_id, lugar, periodo, creado_por, codigo) values
   ('b2900000-0000-0000-0000-000000000002', 'b2900000-0000-0000-0000-000000000001',
-   'Plantación 29', '2026', 'b2900000-0000-0000-0000-0000000000a1');
+   'Plantación 29', '2026', 'b2900000-0000-0000-0000-0000000000a1', 'T1');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2900000-0000-0000-0000-000000000002', 'b2900000-0000-0000-0000-0000000000a4', 'tecnico');
