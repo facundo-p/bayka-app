@@ -52,7 +52,7 @@ type Props = {
   syncConfirmVisible: boolean;
   syncConfirmMode: 'global' | 'plantation';
   syncTargetPlantationId: string | null;
-  handleSyncConfirm: (incluirFotos: boolean) => void;
+  handleSyncConfirm: (descargarFotos: boolean) => void;
   closeSyncConfirm: () => void;
 
   // Sync progress

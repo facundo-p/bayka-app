@@ -21,6 +21,9 @@ export const photoViewerStyles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.8,
   },
+  fotoRemota: {
+    width: SCREEN_WIDTH - spacing['4xl'] * 2,
+  },
   actions: {
     position: 'absolute',
     bottom: 0,

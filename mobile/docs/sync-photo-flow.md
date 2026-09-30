@@ -107,7 +107,7 @@ La app no deja crear, editar ni borrar grupos y árboles de una plantación fina
 pullFromServer → pushBorrados → uploadSyncableParcelas → uploadSyncableGroups
 ```
 
-Después, `hooks/useSync.ts` corre `uploadPendingPhotos` y `downloadPhotosForPlantation` si quedó marcado "Incluir fotos".
+Después, `hooks/useSync.ts` corre siempre `uploadPendingPhotos`, y `downloadPhotosForPlantation` solo con "Descargar fotos de otros celulares" prendido (#565).
 
 ### Paso 0: plantaciones creadas o editadas offline, sus especies y técnicos
 
@@ -196,11 +196,13 @@ Para cada una: sube a Storage → `UPDATE trees SET foto_url` en el servidor →
 
 **Archivo:** `services/sync/photoService.ts` → `downloadPhotosForPlantation(plantacionId)`
 
+Solo corre con la preferencia "Descargar fotos de otros celulares" prendida (ver [Descarga de fotos y espacio](#descarga-de-fotos-y-espacio-565)).
+
 Busca árboles locales con `fotoUrl` que NO empiece con `file://` (rutas de Storage
 descargadas del servidor pero sin archivo local). Para cada uno:
 1. Crea signed URL desde Storage (3600s de validez)
 2. Descarga a `{Paths.document}/photos/photo_{tree_id}.jpg`
-3. Actualiza local: `fotoUrl = file://...`, `fotoSynced = true`
+3. Actualiza local: `fotoUrl = file://...`, `fotoSynced = true`, solo si la fila sigue apuntando a ese path (una foto reemplazada o quitada mientras bajaba no se pisa)
 
 ---
 
@@ -323,15 +325,19 @@ const conditions = [
 
 | Función | Cuándo se usa | Flujo |
 |---------|--------------|-------|
-| `startBidirectionalSync` | Sync individual (desde hook con plantacionId fijo) | syncPlantation → uploadPendingPhotos → downloadPhotos |
+| `startBidirectionalSync` | Sync individual (desde hook con plantacionId fijo) | syncPlantation → uploadPendingPhotos → downloadPhotos (si `descargarFotos`) |
 | `startPlantationSync` | Sync de una plantación (desde gear icon) | Igual que bidirectional pero con plantacionId explícito |
 | `startGlobalSync` | Sync global (botón de sync general) | syncAllPlantations (pull+push+fotos por plantación) |
 
 ### SyncConfirmModal
 
-Muestra checkbox "Incluir fotos" (`incluirFotos`). Si está desmarcado:
-- Solo sincroniza datos de subgrupos (sin upload/download de fotos)
-- **Precaución:** si un árbol N/N se creó con foto, la foto NO se sube a Storage si el usuario desmarca esta opción. La foto queda pendiente (`fotoSynced = false`) para la próxima sync con fotos.
+Muestra el checkbox "Descargar fotos de otros celulares" (`descargarFotos`), que es la misma preferencia de Ajustes. Las fotos sacadas en este celular se suben siempre; desmarcarlo solo saltea la bajada.
+
+### Descarga de fotos y espacio (#565)
+
+- **Preferencia** (`services/settings/descargaDeFotosStore.ts`), prendida por defecto. Hereda el valor del viejo "Incluir fotos" (`sync_include_photos`): quien lo tenía apagado queda sin descarga.
+- **Liberar espacio** (Ajustes, `services/LiberarEspacioService.ts`): borra del celular las fotos descargadas (`fotoSynced = true`, `file://`) cuyo path confirma el server, y deja cada fila apuntando a Storage. Nunca toca fotos sin subir ni escribe en el server o en `borrados_pendientes`. Sin conexión no borra nada. Con la descarga prendida, la próxima sync las vuelve a bajar.
+- **Foto sin descargar** (`components/FotoRemota.tsx`): un árbol con `fotoUrl` de Storage muestra un aviso con "Descargar" en el detalle del árbol, el visor y la resolución de N/N, y una nube en la fila. Baja esa sola foto con `descargarFotoRemota`.
 
 ### SyncProgressModal
 

@@ -3,6 +3,7 @@
  * se pierde, y para una plantación eliminada en el server, que eso ya no se puede subir (#478).
  */
 import type { ResumenDePendientes } from '../queries/catalogQueries';
+import { plural } from './plural';
 
 export interface AvisoEliminarDelDispositivo {
   titulo: string;
@@ -13,10 +14,6 @@ export interface AvisoEliminarDelDispositivo {
 
 export const CONFIRMACION_FINAL =
   'Los datos sin sincronizar se perderán para siempre. Esta acción no se puede deshacer.';
-
-function plural(n: number, singular: string, pluralForm = `${singular}s`): string {
-  return `${n} ${n === 1 ? singular : pluralForm}`;
-}
 
 /** "2 grupos sin subir (1 activo, 1 finalizado), 3 fotos sin subir". Vacío si no hay nada. */
 export function detalleDePendientes(r: ResumenDePendientes): string {

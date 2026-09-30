@@ -45,6 +45,7 @@ jest.mock('expo-file-system', () => ({
 }));
 
 import { syncAllPlantations } from '../../src/services/SyncService';
+import * as photoService from '../../src/services/sync/photoService';
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { getSyncableGroups, markGroupSynced } from '../../src/repositories/GroupRepository';
@@ -235,7 +236,7 @@ describe('syncAllPlantations', () => {
     expect(result[0].results[0].success).toBe(true);
   });
 
-  it('runs photo sync when incluirFotos is true', async () => {
+  it('con la descarga de fotos de otros celulares prendida, sube las pendientes', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
 
     await syncAllPlantations(undefined, true);
@@ -243,12 +244,25 @@ describe('syncAllPlantations', () => {
     expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1');
   });
 
-  it('skips photo sync when incluirFotos is false', async () => {
+  it('sin descargar fotos de otros celulares, igual sube las pendientes (#565)', async () => {
     (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
+    const descarga = jest.spyOn(photoService, 'downloadPhotosForPlantation');
 
     await syncAllPlantations(undefined, false);
 
-    expect(mockGetTreesWithPendingPhotos).not.toHaveBeenCalled();
+    expect(mockGetTreesWithPendingPhotos).toHaveBeenCalledWith('p-1');
+    expect(descarga).not.toHaveBeenCalled();
+    descarga.mockRestore();
+  });
+
+  it('con la descarga prendida, baja las fotos de otros celulares', async () => {
+    (mockDb.select as jest.Mock).mockReturnValue(makeSelectChain(ONE_PLANTATION));
+    const descarga = jest.spyOn(photoService, 'downloadPhotosForPlantation');
+
+    await syncAllPlantations(undefined, true);
+
+    expect(descarga).toHaveBeenCalledWith('p-1', expect.any(Function));
+    descarga.mockRestore();
   });
 
   it('per-plantation failure does not abort the batch', async () => {

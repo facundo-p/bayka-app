@@ -2,7 +2,9 @@
  * PhotoViewer — visor full-screen con zoom (pinch/pan/doble-tap), reutilizado
  * donde se visualiza una foto (N/N, detalle de árbol, registro de árboles).
  * `onReplace`/`onRemove` opcionales agregan una barra de edición; si no, es solo lectura.
+ * Con `treeId`, una foto que está solo en la nube se puede descargar desde acá.
  */
+import { useState } from 'react';
 import { Modal, View, Text, Pressable } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -16,16 +18,23 @@ import {
 } from 'react-native-gesture-handler';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
+import { isRemoteUri } from '../utils/photoUri';
+import FotoRemota from './FotoRemota';
 import { photoViewerStyles as styles } from './PhotoViewer.styles';
 
 interface Props {
   uri: string | null;
+  /** Árbol dueño de la foto: sin él, una foto remota no ofrece descargarla. */
+  treeId?: string;
   onClose: () => void;
   onReplace?: () => void;
   onRemove?: () => void;
 }
 
-export default function PhotoViewer({ uri, onClose, onReplace, onRemove }: Props) {
+export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove }: Props) {
+  // El caller sigue pasando el path remoto después de bajarla: se muestra el archivo local.
+  const [descargada, setDescargada] = useState<{ remota: string; local: string } | null>(null);
+  const visible = uri && descargada?.remota === uri ? descargada.local : uri;
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -100,7 +109,7 @@ export default function PhotoViewer({ uri, onClose, onReplace, onRemove }: Props
 
   return (
     <Modal
-      visible={!!uri}
+      visible={!!visible}
       animationType="fade"
       transparent
       onRequestClose={handleClose}
@@ -109,13 +118,23 @@ export default function PhotoViewer({ uri, onClose, onReplace, onRemove }: Props
         <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12} accessibilityLabel="Cerrar">
           <Ionicons name="close" size={28} color={colors.white} />
         </Pressable>
-        <GestureDetector gesture={composedGesture}>
-          <Animated.Image
-            source={{ uri: uri ?? '' }}
-            style={[styles.image, animatedStyle]}
-            resizeMode="contain"
+        {isRemoteUri(visible) && treeId ? (
+          <FotoRemota
+            treeId={treeId}
+            storagePath={visible}
+            oscuro
+            style={styles.fotoRemota}
+            onDescargada={(local) => setDescargada({ remota: visible, local })}
           />
-        </GestureDetector>
+        ) : (
+          <GestureDetector gesture={composedGesture}>
+            <Animated.Image
+              source={{ uri: visible ?? '' }}
+              style={[styles.image, animatedStyle]}
+              resizeMode="contain"
+            />
+          </GestureDetector>
+        )}
         {(onReplace || onRemove) && (
           <View style={styles.actions}>
             {onReplace && (

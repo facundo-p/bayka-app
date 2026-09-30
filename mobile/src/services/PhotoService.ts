@@ -44,6 +44,34 @@ function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
   return nombre !== '' && nombre !== '.' && nombre !== '..' && !/[\\/]/.test(nombre);
 }
 
+/** Con barra final: el uri del directorio puede venir con o sin ella. */
+function uriDeLaCarpetaDeFotos(): string | null {
+  try {
+    return carpetaDeFotos().uri.replace(/\/?$/, '/');
+  } catch (e) {
+    // El borrado corre después del commit: una excepción acá haría fallar una
+    // operación de datos que ya se hizo.
+    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
+    return null;
+  }
+}
+
+/** Archivo de la carpeta propia de fotos, el único que `borrarFotosLocales` borra. */
+export function esFotoDeLaApp(uri: string): boolean {
+  const carpeta = uriDeLaCarpetaDeFotos();
+  return carpeta !== null && esArchivoSueltoDe(carpeta, uri);
+}
+
+/** Bytes de una foto del dispositivo; 0 si no existe o no se puede leer. */
+export function pesoDeFotoLocal(uri: string): number {
+  try {
+    const archivo = new File(uri);
+    return archivo.exists ? archivo.size ?? 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
 /**
  * Borra archivos de fotos del device. Best-effort: un archivo que no se puede borrar
  * se loguea y no corta el resto.
@@ -52,16 +80,8 @@ function esArchivoSueltoDe(carpeta: string, uri: string): boolean {
  * `content://` de la galería no son archivos de la app.
  */
 export function borrarFotosLocales(uris: readonly string[]): void {
-  let carpeta: string;
-  try {
-    // Con barra final: el uri del directorio puede venir con o sin ella.
-    carpeta = carpetaDeFotos().uri.replace(/\/?$/, '/');
-  } catch (e) {
-    // Corre después del commit: una excepción acá haría fallar una operación de
-    // datos que ya se hizo.
-    console.error('[Photo] no se pudo resolver la carpeta de fotos', e);
-    return;
-  }
+  const carpeta = uriDeLaCarpetaDeFotos();
+  if (!carpeta) return;
   for (const uri of uris) {
     if (!esArchivoSueltoDe(carpeta, uri)) continue;
     try {
