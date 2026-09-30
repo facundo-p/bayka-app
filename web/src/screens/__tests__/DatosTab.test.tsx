@@ -4,6 +4,7 @@ import { prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { filaArbol, filaGrupo, filaParcela, filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -22,25 +23,25 @@ vi.mock('../../components/PlantationMap', () => ({
 /** El drill-down monta el dashboard entero antes de llegar a Datos. */
 const ESPERA_RUTA_MS = 5000;
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
   estado: 'activa',
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: true,
-};
+});
 
-const FILA_PARCELA = {
+const FILA_PARCELA = filaParcela({
   id: 'parc-1',
   nombre: 'Norte',
   codigo: 'P1',
   descripcion: 'Lindante al arroyo',
   created_at: '2026-06-01T12:00:00Z',
-};
+});
 
 const FILAS_GRUPOS = [
-  {
+  filaGrupo({
     id: 'gr-1',
     nombre: 'Línea 1',
     codigo: 'L1',
@@ -49,8 +50,8 @@ const FILAS_GRUPOS = [
     parcela_id: 'parc-1',
     created_at: '2026-06-02T12:00:00Z',
     parcelas: { codigo: 'P1' },
-  },
-  {
+  }),
+  filaGrupo({
     id: 'gr-2',
     nombre: 'Bosquete 1',
     codigo: 'B1',
@@ -59,11 +60,11 @@ const FILAS_GRUPOS = [
     parcela_id: 'parc-1',
     created_at: '2026-06-02T13:00:00Z',
     parcelas: { codigo: 'P1' },
-  },
+  }),
 ];
 
 /** Árbol completo: especie, GPS, foto subida. */
-const ARBOL_COMPLETO = {
+const ARBOL_COMPLETO = filaArbol({
   id: 'tree-1',
   sub_id: 'A-001',
   posicion: 3,
@@ -83,7 +84,7 @@ const ARBOL_COMPLETO = {
     plantation_id: 'plant-1',
     plantations: { codigo: 'SS26' },
   },
-};
+});
 
 /** Árbol sin identificar, sin GPS y con foto local (no subida). */
 const ARBOL_SIN_DATOS = {

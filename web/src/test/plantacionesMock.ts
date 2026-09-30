@@ -1,8 +1,10 @@
 /**
  * Fixture compartido para tests del listado de plantaciones: configura el
- * resolver del supabaseMock con filas de `plantations` y los contadores que
- * devuelve el RPC agregado `stats_plantaciones` (migración 027).
+ * resolver del supabaseMock con filas de `plantations` (armadas con
+ * `filaPlantacion` de fabricas.ts) y los contadores que devuelve el RPC
+ * agregado `stats_plantaciones` (migración 027).
  */
+import type { FilaPlantacion } from '../queries/plantationQueries';
 import { estadoMock } from './supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from './queryBuilderMock';
 
@@ -18,10 +20,7 @@ function resolverStats(statsPorPlantacion: Record<string, StatsMock>): Respuesta
 
 /** Con filtro por id (detalle, maybeSingle) responde la fila única; sin
  *  filtro (listado) responde todas. */
-function resolverPlantations(
-  consulta: ConsultaCapturada,
-  filas: Array<Record<string, unknown>>,
-): RespuestaMock {
+function resolverPlantations(consulta: ConsultaCapturada, filas: FilaPlantacion[]): RespuestaMock {
   const filtroId = consulta.filtros.find(
     (filtro) => filtro.metodo === 'eq' && filtro.columna === 'id',
   );
@@ -30,7 +29,7 @@ function resolverPlantations(
 }
 
 export function configurarPlantacionesMock(
-  filas: Array<Record<string, unknown>>,
+  filas: FilaPlantacion[],
   statsPorPlantacion: Record<string, StatsMock> = {},
 ): void {
   estadoMock.resolverConsulta = (consulta) => {

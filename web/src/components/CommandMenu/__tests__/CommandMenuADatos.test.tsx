@@ -4,6 +4,7 @@ import { PERFIL_SUPERADMIN, prepararSesion } from '../../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../../test/queryBuilderMock';
 import { capturarConsultas } from '../../../test/capturarConsultas';
 import { renderRutasEn } from '../../../test/renderConRutas';
+import { filaArbol, filaGrupo, filaParcela, filaPlantacion } from '../../../test/fabricas';
 
 vi.mock('../../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../../test/supabaseMock');
@@ -13,7 +14,7 @@ vi.mock('../../../lib/supabase', async () => {
 /** Del resultado a la tabla: monta el detalle y la sección antes de llegar a la fila. */
 const ESPERA_RUTA_MS = 5000;
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
@@ -21,57 +22,42 @@ const FILA_PLANTACION = {
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
   visible_in_app: true,
-};
+});
 
 /** Cada fila lleva las columnas de la búsqueda y las del listado de su sección:
  *  el mock responde lo mismo a las dos consultas. */
 const FILA_PARCELA = {
-  id: 'parc-1',
-  nombre: 'Norte',
-  codigo: 'P1',
-  descripcion: null,
-  created_at: '2026-04-01T00:00:00Z',
+  ...filaParcela({
+    id: 'parc-1',
+    nombre: 'Norte',
+    codigo: 'P1',
+    created_at: '2026-04-01T00:00:00Z',
+  }),
   plantation_id: 'plant-1',
   plantations: { lugar: 'La Maluka' },
 };
 
 const FILA_GRUPO = {
-  id: 'gr-1',
-  nombre: 'Línea 1',
-  codigo: 'L1',
-  tipo: 'linea',
-  estado: 'activa',
-  parcela_id: 'parc-1',
+  ...filaGrupo({
+    id: 'gr-1',
+    nombre: 'Línea 1',
+    codigo: 'L1',
+    parcela_id: 'parc-1',
+    created_at: '2026-04-01T00:00:00Z',
+    parcelas: { codigo: 'P1' },
+  }),
   plantation_id: 'plant-1',
-  created_at: '2026-04-01T00:00:00Z',
-  parcelas: { codigo: 'P1' },
 };
 
 /** Una fila más por sección: la búsqueda que trae el resultado la tiene que dejar afuera. */
 const OTRA_PARCELA = { ...FILA_PARCELA, id: 'parc-2', nombre: 'Sur', codigo: 'P2' };
 const OTRO_GRUPO = { ...FILA_GRUPO, id: 'gr-2', nombre: 'Línea 2', codigo: 'L2' };
 
-const FILA_ARBOL = {
-  id: 'tree-1',
+const FILA_ARBOL = filaArbol({
   sub_id: 'PAL23ANC12',
-  posicion: 1,
-  group_id: 'gr-1',
-  species_id: null,
-  species: null,
-  foto_url: null,
-  usuario_registro: null,
   created_at: '2026-04-02T00:00:00Z',
-  latitude: null,
-  longitude: null,
-  gps_accuracy: null,
-  gps_captured_at: null,
-  groups: {
-    codigo: 'L1',
-    parcela_id: 'parc-1',
-    plantation_id: 'plant-1',
-    plantations: { codigo: 'LM26' },
-  },
-};
+  groups: { plantations: { codigo: 'LM26' } },
+});
 
 let consultas: ConsultaCapturada[];
 

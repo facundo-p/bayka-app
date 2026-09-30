@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import type { PlantacionConStats } from '../../../queries/plantationQueries';
+import { plantacionConStats } from '../../../test/fabricas';
 import {
   contarArboles,
   FILTRO_ESTADO,
@@ -11,31 +11,7 @@ import {
   type FiltrosPlantaciones,
 } from '../filtros';
 
-/** Fábrica con los campos relevantes al filtrado; el resto son valores neutros. */
-function plantacion(over: Partial<PlantacionConStats>): PlantacionConStats {
-  return {
-    id: 'id',
-    lugar: 'Mendoza',
-    periodo: '2025-2026',
-    codigo: 'P1',
-    estado: 'activa',
-    visibleInApp: true,
-    gpsCaptureFrequency: 0,
-    gpsCaptureRequired: false,
-    photoCaptureAllTrees: false,
-    archivadaEn: null,
-    createdAt: '2026-06-12T12:00:00Z',
-    descripcion: null,
-    fechaInicio: null,
-    objetivoArboles: null,
-    arboles: 0,
-    parcelas: 0,
-    usuarios: 0,
-    ...over,
-  };
-}
-
-const MENDOZA = plantacion({
+const MENDOZA = plantacionConStats({
   id: 'p1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
@@ -44,7 +20,7 @@ const MENDOZA = plantacion({
   arboles: 120,
 });
 
-const SALTA = plantacion({
+const SALTA = plantacionConStats({
   id: 'p2',
   lugar: 'Salta',
   periodo: '2024-2025',
@@ -53,7 +29,7 @@ const SALTA = plantacion({
   arboles: 800,
 });
 
-const CORRIENTES = plantacion({
+const CORRIENTES = plantacionConStats({
   id: 'p3',
   lugar: 'Corrientes',
   periodo: '2024-2025',
@@ -95,7 +71,7 @@ describe('búsqueda', () => {
   });
 
   test('ignora tildes en el término y en el lugar (#438)', () => {
-    const conTilde = [plantacion({ id: 'p9', lugar: 'Ñandubaysal Río Seco' })];
+    const conTilde = [plantacionConStats({ id: 'p9', lugar: 'Ñandubaysal Río Seco' })];
     const buscar = (busqueda: string) =>
       filtrarPlantaciones(conTilde, { ...SIN_FILTROS, busqueda }).map((p) => p.id);
     expect(buscar('rio')).toEqual(['p9']);
@@ -145,8 +121,8 @@ describe('orden', () => {
 
   test('desempata por lugar para que sea estable', () => {
     const empatadas = [
-      plantacion({ id: 'b', lugar: 'Bella Vista', arboles: 10 }),
-      plantacion({ id: 'a', lugar: 'Alvear', arboles: 10 }),
+      plantacionConStats({ id: 'b', lugar: 'Bella Vista', arboles: 10 }),
+      plantacionConStats({ id: 'a', lugar: 'Alvear', arboles: 10 }),
     ];
     const orden = filtrarPlantaciones(empatadas, SIN_FILTROS).map((p) => p.id);
     expect(orden).toEqual(['a', 'b']);
@@ -194,14 +170,14 @@ describe('resumen y conteos', () => {
     [1, '1 árbol registrado'],
     [2, '2 árboles registrados'],
   ])('el resumen concuerda %i árboles: "%s"', (arboles, texto) => {
-    expect(resumenPlantaciones([plantacion({ arboles })])).toBe(
+    expect(resumenPlantaciones([plantacionConStats({ arboles })])).toBe(
       `1 plantación · 1 temporada · ${texto}`,
     );
   });
 });
 
 describe('archivadas', () => {
-  const ARCHIVADA = plantacion({
+  const ARCHIVADA = plantacionConStats({
     id: 'p4',
     lugar: 'Tucumán',
     estado: 'finalizada',
