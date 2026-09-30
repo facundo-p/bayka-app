@@ -15,14 +15,21 @@ export interface TextosSeccion {
   /** Qué hace clickear una fila. */
   pie: string;
   vacio: string;
+  /** Tabla vacía por los filtros, ej. "Ningún grupo coincide con los filtros". */
+  vacioConFiltros: string;
+}
+
+/** Filtros puestos en la sección: la toolbar los cuenta y la tabla vacía ofrece limpiarlos. */
+export interface FiltrosSeccion {
+  activos: number;
+  onLimpiar: () => void;
 }
 
 interface TablaSeccionProps<T> {
   textos: TextosSeccion;
   columnas: Array<TableColumn<T>>;
   onRowClick: (fila: T) => void;
-  /** Solo con filtros activos: la tabla vacía ofrece limpiarlos. */
-  vacioConFiltros?: { mensaje: string; onLimpiar: () => void };
+  filtros: FiltrosSeccion;
 }
 
 interface SeccionTablaDatosProps<T> extends TablaSeccionProps<T> {
@@ -35,9 +42,11 @@ interface SeccionTablaDatosProps<T> extends TablaSeccionProps<T> {
 }
 
 function TablaSeccion<T extends { id: string }>(props: TablaSeccionProps<T> & { filas: T[] }) {
-  const { filas, textos, columnas, onRowClick, vacioConFiltros } = props;
+  const { filas, textos, columnas, onRowClick, filtros } = props;
   const visibles = useColumnasVisibles(columnas);
-  if (filas.length === 0 && vacioConFiltros) return <VacioConFiltros {...vacioConFiltros} />;
+  if (filas.length === 0 && filtros.activos > 0) {
+    return <VacioConFiltros mensaje={textos.vacioConFiltros} onLimpiar={filtros.onLimpiar} />;
+  }
   return (
     <CardTabla pie={textos.pie}>
       <Table
@@ -63,7 +72,12 @@ export function SeccionTablaDatos<T extends { id: string }>(props: SeccionTablaD
   const cuerpo = filas ? <TablaSeccion filas={filas} {...tabla} /> : null;
   return (
     <>
-      <DatosToolbar segmento={segmento} recuento={recuento}>
+      <DatosToolbar
+        segmento={segmento}
+        recuento={recuento}
+        filtrosActivos={tabla.filtros.activos}
+        onLimpiar={tabla.filtros.onLimpiar}
+      >
         {children}
       </DatosToolbar>
       {cuerpo ?? <Cargando label={tabla.textos.cargando} />}
