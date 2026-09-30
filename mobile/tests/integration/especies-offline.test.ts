@@ -142,7 +142,7 @@ beforeEach(async () => {
   mockSesion.activa = true;
   await vaciarTablas(mockTestDb);
 
-  await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026' }));
+  await mockTestDb.insert(plantations).values(createTestPlantation({ id: PLANTACION_ID, lugar: 'Campo', periodo: '2026', codigo: 'CA26' }));
   await mockTestDb.insert(species).values([ROBLE, PINO, ALAMO].map((id) => ({
     id, codigo: id.toUpperCase(), nombre: id, nombreCientifico: null, createdAt: '2026-01-01T00:00:00',
   })));

@@ -18,6 +18,8 @@ import {
 import { uploadOfflinePlantations } from './sync/preSteps';
 import { uploadSyncableParcelas } from './sync/pushService';
 import { ensureServerSession } from './sync/sessionGuard';
+import { codigoEnUsoEnServidor } from './sync/duplicadasEnServidor';
+import { MENSAJE_CODIGO_PLANTACION } from '../utils/codigoDePlantacion';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
 import { syncLog } from '../utils/syncLogger';
 
@@ -65,10 +67,22 @@ async function tryPushNow(plantationId: string): Promise<{ duplicada: boolean }>
   }
 }
 
+/** Otra plantación de la organización ya usa el código: el formulario lo muestra sin cerrarse. */
+export class CodigoPlantacionRepetidoError extends Error {
+  constructor() {
+    super(MENSAJE_CODIGO_PLANTACION.duplicado);
+    this.name = 'CodigoPlantacionRepetidoError';
+  }
+}
+
 /** Crea una plantación (y, si AUTO_PARCELA_DEFAULT, su parcela default) local-first; en modo 'online' intenta pushear de inmediato (best-effort). Retorna la misma forma que antes (drop-in). */
 export async function createPlantationWithDefaultParcela(
   params: CreatePlantationParams,
 ): Promise<CreatePlantationResult> {
+  const codigo = params.ajustes?.codigo;
+  if (params.mode === 'online' && codigo && (await codigoEnUsoEnServidor(params.organizacionId, codigo))) {
+    throw new CodigoPlantacionRepetidoError();
+  }
   const plantation = await createPlantationWithParcelaLocally({
     lugar: params.lugar,
     periodo: params.periodo,

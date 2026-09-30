@@ -29,6 +29,9 @@ export const plantations = sqliteTable('plantations', {
   pendingEdit: integer('pending_edit', { mode: 'boolean' }).notNull().default(false),
   lugarServer: text('lugar_server'),
   periodoServer: text('periodo_server'),
+  // Nullable: las filas anteriores a 0030 lo reciben en el próximo pull (#559).
+  codigo: text('codigo'),
+  codigoServer: text('codigo_server'),
   // Default duplicado en migraciones 0015 (local) y 023 (Supabase); revisar los tres lugares si cambia.
   gpsCaptureFrequency: integer('gps_capture_frequency')
     .notNull()

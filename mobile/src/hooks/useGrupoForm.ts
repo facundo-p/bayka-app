@@ -15,6 +15,8 @@ interface Params {
     codigo: string;
     tipo: GroupTipo;
   }) => Promise<CreateGroupResult | UpdateGroupResult>;
+  /** Antes de guardar, con el código a guardar; false = no guardar, sin error. */
+  confirmar?: (codigo: string) => Promise<boolean>;
 }
 
 const MENSAJES_DE_DUPLICADO = {
@@ -41,7 +43,7 @@ function erroresDelFormulario(
  * la botonera pueda vivir en un footer fijo (NuevoGrupoScreen) sin duplicar la
  * lógica de validación/errores que también usa el bottom-sheet de edición.
  */
-export function useGrupoForm({ mode, initialValues, onSubmit }: Params) {
+export function useGrupoForm({ mode, initialValues, onSubmit, confirmar }: Params) {
   const [nombre, setNombre] = useState(initialValues?.nombre ?? '');
   const [codigo, setCodigo] = useState(initialValues?.codigo ?? '');
   const [tipo, setTipo] = useState<GroupTipo>(initialValues?.tipo ?? GROUP_TIPO_DEFAULT);
@@ -63,13 +65,15 @@ export function useGrupoForm({ mode, initialValues, onSubmit }: Params) {
 
   async function handleSubmit() {
     if (!canSubmit) return;
+    const codigoAGuardar = codigo.trim().toUpperCase();
+    if (confirmar && !(await confirmar(codigoAGuardar))) return;
     setNombreError(null);
     setCodigoError(null);
     setLoading(true);
     try {
       const result = await onSubmit({
         nombre: nombre.trim(),
-        codigo: codigo.trim().toUpperCase(),
+        codigo: codigoAGuardar,
         tipo,
       });
       if (!result.success) {

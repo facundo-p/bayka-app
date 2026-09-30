@@ -252,8 +252,10 @@ export default function PlantacionesModals({
           onCloseEdit={() => setEditingPlantation(null)}
           onEditSubmit={async ({ lugar, periodo, ...ajustes }) => {
             if (!editingPlantation) return;
-            // Los valores con que se abrió el form: solo se guarda lo que el usuario tocó.
-            const enConflicto = await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, ajustes, editingPlantation);
+            // Los valores con que se abrió el form: solo se guarda lo que el usuario tocó. Sin
+            // código visto (todavía no lo bajó), el código no cuenta como tocado.
+            const vistos = { ...editingPlantation, codigo: editingPlantation.codigo ?? undefined };
+            const enConflicto = await adminHook.handleEditSubmit(editingPlantation.id, lugar, periodo, ajustes, vistos);
             setEditingPlantation(null);
             if (enConflicto > 0) irAResolverCambios(editingPlantation.id);
           }}

@@ -2,6 +2,7 @@
 
 import {
   aCamposDePlantacion,
+  codigoLlegaConElPull,
   validarFormulario,
   validateGpsFrequency,
   valoresIniciales,
@@ -22,7 +23,7 @@ describe('validateGpsFrequency', () => {
 });
 
 describe('validarFormulario', () => {
-  const validos = { ...valoresIniciales(), lugar: 'Lote Norte', periodo: 'Otoño 2026' };
+  const validos = { ...valoresIniciales(), lugar: 'Lote Norte', periodo: 'Otoño 2026', codigo: 'LN26' };
 
   it('acepta los opcionales vacíos', () => {
     expect(validarFormulario(validos)).toBeNull();
@@ -31,6 +32,17 @@ describe('validarFormulario', () => {
   it('pide lugar y periodo de al menos 2 caracteres', () => {
     expect(validarFormulario({ ...validos, lugar: ' L ' })).toBe('Lugar debe tener al menos 2 caracteres.');
     expect(validarFormulario({ ...validos, periodo: '' })).not.toBeNull();
+  });
+
+  it('pide el código con el formato del contrato', () => {
+    expect(validarFormulario({ ...validos, codigo: '' })).toBe('El código es obligatorio.');
+    expect(validarFormulario({ ...validos, codigo: 'LN26-' })).toBe(
+      'El código lleva solo letras, números y guiones sueltos, sin guion al principio ni al final.',
+    );
+  });
+
+  it('no pide el código que todavía tiene que llegar del servidor', () => {
+    expect(validarFormulario({ ...validos, codigo: '' }, { codigoEditable: false })).toBeNull();
   });
 
   it('el objetivo, si está, es un entero entre 1 (CHECK de Supabase) y el máximo', () => {
@@ -48,6 +60,7 @@ describe('aCamposDePlantacion', () => {
       ...valoresIniciales(),
       lugar: ' Lote Norte ',
       periodo: 'Otoño 2026',
+      codigo: 'ln 26',
       descripcion: '   ',
       fechaInicio: '2026-04-15',
       objetivoArboles: ' 12000 ',
@@ -58,6 +71,7 @@ describe('aCamposDePlantacion', () => {
     expect(campos).toEqual({
       lugar: 'Lote Norte',
       periodo: 'Otoño 2026',
+      codigo: 'LN26',
       descripcion: null,
       fechaInicio: '2026-04-15',
       objetivoArboles: 12000,
@@ -87,5 +101,20 @@ describe('aCamposDePlantacion', () => {
       descripcion: 'Ribera', fechaInicio: '2026-04-15', objetivoArboles: '300',
       fotoEnTodos: true, visibleParaTecnicos: false,
     });
+  });
+});
+
+describe('codigoLlegaConElPull', () => {
+  it('una plantación subida sin código lo recibe del servidor: no se edita', () => {
+    expect(codigoLlegaConElPull({ lugar: 'L', periodo: 'P', codigo: null, pendingSync: false })).toBe(true);
+  });
+
+  it('un alta sin subir sin código sí lo pide: sin él no sube', () => {
+    expect(codigoLlegaConElPull({ lugar: 'L', periodo: 'P', codigo: null, pendingSync: true })).toBe(false);
+  });
+
+  it('con código, o creando, se edita', () => {
+    expect(codigoLlegaConElPull({ lugar: 'L', periodo: 'P', codigo: 'LN26' })).toBe(false);
+    expect(codigoLlegaConElPull(null)).toBe(false);
   });
 });

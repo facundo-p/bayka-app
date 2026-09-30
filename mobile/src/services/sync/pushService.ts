@@ -18,7 +18,7 @@ import {
 import { markPhotoSynced } from '../../repositories/TreeRepository';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
-  PhotoSyncProgress, classifyServerError,
+  PhotoSyncProgress, classifyServerError, columnasDeLaViolacion,
 } from './types';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { uploadPhotoToStorage } from './storageUpload';
@@ -84,15 +84,7 @@ export function classifyParcelaRpcResult(
   syncLog.error(`Parcela upload error for "${parcela.nombre}" (${parcela.id}):`, JSON.stringify(error));
 
   if (error?.code === PG_ERROR.UNIQUE_VIOLATION) {
-    const details: string | undefined = error?.details;
-    if (!details) {
-      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
-    }
-    const match = details.match(/Key \(([^)]+)\)=/);
-    if (!match) {
-      return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.GENERIC_CONFLICT };
-    }
-    const cols = match[1].split(',').map(c => c.trim().toLowerCase());
+    const cols = columnasDeLaViolacion(error?.details);
     if (cols.includes('codigo')) {
       return { success: false, parcelaId: parcela.id, nombre: parcela.nombre, error: SYNC_ERROR.DUPLICATE_CODE };
     }

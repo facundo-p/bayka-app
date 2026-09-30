@@ -11,6 +11,8 @@ describe('motivoVarado', () => {
     ['PERMISSION', 'sin-permiso'],
     ['SIN_PERMISO_CREAR', 'sin-permiso'],
     ['NOT_AUTHORIZED', 'sin-permiso'],
+    ['CODIGO_DUPLICADO', 'codigo-repetido'],
+    ['SIN_CODIGO_PLANTACION', 'sin-codigo'],
   ])('%s es permanente: %s', (codigo, motivo) => {
     expect(motivoVarado(codigo)).toBe(motivo);
   });

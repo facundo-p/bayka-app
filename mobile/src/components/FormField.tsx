@@ -14,6 +14,7 @@ interface Props {
   editable?: boolean;
   helperText?: string | null;
   keyboardType?: 'default' | 'numeric';
+  maxLength?: number;
   multiline?: boolean;
   testID?: string;
 }
@@ -29,6 +30,7 @@ export default function FormField({
   editable,
   helperText,
   keyboardType,
+  maxLength,
   multiline,
   testID,
 }: Props) {
@@ -52,6 +54,7 @@ export default function FormField({
         autoCorrect={autoCorrect}
         editable={editable}
         keyboardType={keyboardType}
+        maxLength={maxLength}
         multiline={multiline}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

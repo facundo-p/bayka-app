@@ -34,6 +34,29 @@ export async function hayOtraEnServidor(plantacion: PlantacionSubida): Promise<b
   }
 }
 
+/**
+ * Otra plantación de la organización ya usa el código (#559). Solo sirve para avisar antes
+ * de crear: si falla, false, y la subida lo vuelve a verificar contra el UNIQUE.
+ */
+export async function codigoEnUsoEnServidor(organizacionId: string, codigo: string): Promise<boolean> {
+  try {
+    const { count, error } = await supabase
+      .from('plantations')
+      .select('id', { count: 'exact', head: true })
+      .eq('organizacion_id', organizacionId)
+      .eq('codigo', codigo);
+    if (error) {
+      syncLog.error('Chequeo de código falló:', codigo, error.message);
+      return false;
+    }
+    return (count ?? 0) > 0;
+  } catch (e: any) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error('Chequeo de código falló:', codigo, e?.message ?? e);
+    return false;
+  }
+}
+
 /** Nombres de las subidas en este sync que chocan con otra del server. */
 export function nombresDeDuplicadas(resultados: SyncPlantationResult[]): string[] {
   return resultados.filter((r) => r.success && r.duplicada).map((r) => r.nombre);

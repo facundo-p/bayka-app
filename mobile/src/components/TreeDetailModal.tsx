@@ -9,6 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing } from '../theme';
 import { useTreeDetail } from '../hooks/useTreeDetail';
 import { getSpeciesName } from '../utils/speciesHelpers';
+import { idDeArbol } from '../utils/codigoDePlantacion';
 import PhotoViewer from './PhotoViewer';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
 
@@ -93,7 +94,7 @@ export default function TreeDetailModal({
               {tree.especieNombreCientifico ? (
                 <Text style={styles.scientific}>{tree.especieNombreCientifico}</Text>
               ) : null}
-              <Text style={styles.subId}>{tree.subId}</Text>
+              <Text style={styles.subId}>{idDeArbol(tree.subId, tree.plantacionCodigo)}</Text>
             </View>
 
             <View style={styles.section}>

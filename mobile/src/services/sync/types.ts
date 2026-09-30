@@ -25,6 +25,13 @@ export const SYNC_ERROR = {
   PLANTACION_FINALIZADA: 'PLANTACION_FINALIZADA',
   /** La plantación está archivada (#477); tiene prioridad sobre finalizada en el server. */
   PLANTACION_ARCHIVADA: 'PLANTACION_ARCHIVADA',
+  /**
+   * Otra plantación de la organización ya usa el código (#559). Mismo valor que el rechazo
+   * de `editar_plantacion`, así el alta y la edición anotan el mismo motivo.
+   */
+  CODIGO_PLANTACION_REPETIDO: 'CODIGO_DUPLICADO',
+  /** Alta creada con una versión anterior al código (#559): sin él el server no la acepta. */
+  SIN_CODIGO_PLANTACION: 'SIN_CODIGO_PLANTACION',
   /** Legacy: falla de red sin código de postgres. */
   NETWORK: 'NETWORK',
   /** La request no respondió dentro del timeout (#451). Distinto de NETWORK: hay señal, el que no contesta es el server. */
@@ -240,6 +247,8 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
   // El dato NO se pierde: queda en el device y se sube si la plantación se reabre o desarchiva.
   [SYNC_ERROR.PLANTACION_FINALIZADA]: 'La plantación fue finalizada y ya no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la reabra para poder subirlo.',
   [SYNC_ERROR.PLANTACION_ARCHIVADA]: 'La plantación fue archivada y no acepta cambios. Lo que cargaste sigue guardado en el dispositivo; pedile a un administrador que la desarchive para poder subirlo.',
+  [SYNC_ERROR.CODIGO_PLANTACION_REPETIDO]: 'Otra plantación de la organización ya usa este código. Editala y cambiá el código para subirla.',
+  [SYNC_ERROR.SIN_CODIGO_PLANTACION]: 'La plantación no tiene código. Editala y cargale uno para subirla.',
   [SYNC_ERROR.NETWORK]: 'Error de conexión. Verificá tu internet e intentá de nuevo.',
   [SYNC_ERROR.TIMEOUT]: 'El servidor no respondió a tiempo. Puede ser la señal: intentá de nuevo con mejor cobertura.',
   [SYNC_ERROR.UNKNOWN]: 'Error inesperado. Intentá de nuevo.',
@@ -247,6 +256,12 @@ const ERROR_MESSAGES: Record<SyncErrorCode, string> = {
 
 export function getErrorMessage(code: SyncErrorCode): string {
   return ERROR_MESSAGES[code];
+}
+
+/** Columnas de la restricción que violó un 23505, leídas de `details` ("Key (a, b)=(…)"). */
+export function columnasDeLaViolacion(details: string | undefined): string[] {
+  const match = details?.match(/Key \(([^)]+)\)=/);
+  return match ? match[1].split(',').map((c) => c.trim().toLowerCase()) : [];
 }
 
 /** Raw "code: message" del error, para mostrar la causa real en errores opacos. */

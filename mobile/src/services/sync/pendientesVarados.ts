@@ -29,6 +29,8 @@ const MOTIVO_POR_CODIGO: Record<string, MotivoVarado> = {
   [SYNC_ERROR.SIN_PERMISO_CREAR]: MOTIVO_VARADO.sinPermiso,
   // Mismo código en `editar_plantacion` y en los RPC de especies y técnicos.
   [RECHAZO_CONFIGURACION.sinPermiso]: MOTIVO_VARADO.sinPermiso,
+  [SYNC_ERROR.CODIGO_PLANTACION_REPETIDO]: MOTIVO_VARADO.codigoRepetido,
+  [SYNC_ERROR.SIN_CODIGO_PLANTACION]: MOTIVO_VARADO.sinCodigo,
 };
 
 /** Por qué la plantación no admite escrituras, con la misma prioridad que `motivo_no_escribible` del server. */

@@ -7,6 +7,7 @@ import type { Parcela } from '../../src/repositories/ParcelaRepository';
 
 const mockHandleDeleteParcela = jest.fn();
 const mockHandleUpdateParcela = jest.fn();
+const mockArbolesDeLaParcela = jest.fn();
 
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn().mockReturnValue({ top: 0, bottom: 0, left: 0, right: 0 }),
@@ -17,6 +18,7 @@ jest.mock('../../src/hooks/useNewParcela', () => ({
     handleCreateParcela: jest.fn(),
     handleUpdateParcela: mockHandleUpdateParcela,
     handleDeleteParcela: mockHandleDeleteParcela,
+    arbolesDeLaParcela: mockArbolesDeLaParcela,
   }),
 }));
 
@@ -33,6 +35,8 @@ function renderEdicion(parcela: Parcela) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockHandleDeleteParcela.mockResolvedValue({ deleted: true });
+  mockHandleUpdateParcela.mockResolvedValue({ success: true });
+  mockArbolesDeLaParcela.mockResolvedValue(0);
 });
 
 describe('ParcelaFormModal — eliminar', () => {
@@ -70,5 +74,41 @@ describe('ParcelaFormModal — eliminar', () => {
     await waitFor(() =>
       expect(getByText('Solo un administrador puede editar o eliminar una parcela que ya se sincronizó.')).toBeTruthy(),
     );
+  });
+});
+
+describe('ParcelaFormModal — cambiar el código (#559)', () => {
+  it('con árboles avisa que cambian sus IDs y guarda recién al confirmar', async () => {
+    mockArbolesDeLaParcela.mockResolvedValue(12);
+    const { getByDisplayValue, getByText, findByText } = renderEdicion(SUBIDA);
+
+    fireEvent.changeText(getByDisplayValue('L1'), 'L2');
+    fireEvent.press(getByText('Guardar'));
+    expect(await findByText(/Los IDs de los 12 árboles de esta parcela/)).toBeTruthy();
+    expect(mockHandleUpdateParcela).not.toHaveBeenCalled();
+
+    fireEvent.press(getByText('Cambiar código'));
+    await waitFor(() => expect(mockHandleUpdateParcela).toHaveBeenCalledWith('par-1', expect.objectContaining({ codigo: 'L2' })));
+  });
+
+  it('cancelar el aviso no guarda', async () => {
+    mockArbolesDeLaParcela.mockResolvedValue(3);
+    const { getByDisplayValue, getByText, getAllByText, findByText } = renderEdicion(SUBIDA);
+
+    fireEvent.changeText(getByDisplayValue('L1'), 'L2');
+    fireEvent.press(getByText('Guardar'));
+    await findByText(/Los IDs de los 3 árboles/);
+    fireEvent.press(getAllByText('Cancelar').at(-1)!);
+    await waitFor(() => expect(mockHandleUpdateParcela).not.toHaveBeenCalled());
+  });
+
+  it('sin cambiar el código no pregunta', async () => {
+    mockArbolesDeLaParcela.mockResolvedValue(12);
+    const { getByDisplayValue, getByText, queryByText } = renderEdicion(SUBIDA);
+
+    fireEvent.changeText(getByDisplayValue('Lote 1'), 'Lote uno');
+    fireEvent.press(getByText('Guardar'));
+    await waitFor(() => expect(mockHandleUpdateParcela).toHaveBeenCalled());
+    expect(queryByText(/Cambian los IDs/)).toBeNull();
   });
 });

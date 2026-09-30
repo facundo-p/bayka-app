@@ -56,6 +56,7 @@ const fakePendingPlantation = {
   organizacionId: 'org-1',
   lugar: 'Zona Offline',
   periodo: '2026',
+  codigo: 'ZO26',
   estado: 'activa',
   creadoPor: 'user-1',
   createdAt: '2026-04-01T00:00:00Z',
@@ -304,6 +305,51 @@ describe('SyncService — offline functions', () => {
 
       expect(resultado).toMatchObject({ success: false, error: 'SIN_PERMISO_CREAR' });
       expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-permiso');
+    });
+
+    it('23505 por el código: otra plantación de la organización lo usa, varada hasta que lo cambien (#559)', async () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([fakePendingPlantation]) }),
+      });
+      (mockSupabase.from as jest.Mock).mockReturnValue({
+        insert: jest.fn().mockResolvedValue({
+          error: {
+            code: PG_ERROR.UNIQUE_VIOLATION,
+            message: 'duplicate key value violates unique constraint "plantations_organizacion_codigo_key"',
+            details: 'Key (organizacion_id, codigo)=(org-1, ZO26) already exists.',
+          },
+        }),
+      });
+
+      const [resultado] = await conRegistroDeVarados(() => uploadOfflinePlantations(), REINTENTA_TODAS);
+
+      expect(resultado).toMatchObject({ success: false, error: 'CODIGO_DUPLICADO' });
+      expect(mockSupabase.rpc).not.toHaveBeenCalled();
+      expect(setsLocales()).toEqual([]);
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'codigo-repetido');
+    });
+
+    it('alta ya subida cuyo código editado choca con otra: varada por el código (#559)', async () => {
+      conAltaYaSubidaQueNoSeActualiza('CODIGO_DUPLICADO');
+
+      const [resultado] = await conRegistroDeVarados(() => uploadOfflinePlantations(), REINTENTA_TODAS);
+
+      expect(resultado).toMatchObject({ success: false, error: 'CODIGO_DUPLICADO' });
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'codigo-repetido');
+    });
+
+    it('alta de una versión sin código: no la intenta subir y queda varada hasta que le carguen uno (#559)', async () => {
+      (mockDb.select as jest.Mock).mockReturnValueOnce({
+        from: jest.fn().mockReturnValue({ where: jest.fn().mockResolvedValue([{ ...fakePendingPlantation, codigo: null }]) }),
+      });
+      const insert = jest.fn();
+      (mockSupabase.from as jest.Mock).mockReturnValue({ insert });
+
+      const [resultado] = await conRegistroDeVarados(() => uploadOfflinePlantations(), REINTENTA_TODAS);
+
+      expect(resultado).toMatchObject({ success: false, error: 'SIN_CODIGO_PLANTACION' });
+      expect(insert).not.toHaveBeenCalled();
+      expect(guardarMotivoVarado).toHaveBeenCalledWith(fakePendingPlantation.id, 'sin-codigo');
     });
 
     it('non-23505 error — species upload is NOT called and pendingSync remains true (plantation skipped)', async () => {

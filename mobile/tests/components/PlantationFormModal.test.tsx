@@ -11,7 +11,7 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('@expo/vector-icons/Ionicons', () => 'Ionicons');
 
 const EXISTENTE = {
-  id: 'p-1', lugar: 'Lote Norte', periodo: 'Otoño 2026', estado: 'activa', createdAt: '2026-01-01',
+  id: 'p-1', lugar: 'Lote Norte', periodo: 'Otoño 2026', codigo: 'LN26', estado: 'activa', createdAt: '2026-01-01',
   archivadaEn: null, eliminadaEnServidorEn: null,
 };
 
@@ -29,10 +29,10 @@ function renderForm(props: Partial<React.ComponentProps<typeof PlantationFormMod
 }
 
 describe('PlantationFormModal', () => {
-  it('muestra los ocho campos en un solo formulario', () => {
+  it('muestra los nueve campos en un solo formulario', () => {
     const { getByText } = renderForm();
     for (const etiqueta of [
-      'Lugar', 'Periodo', 'Fecha de inicio (opcional)', 'Objetivo (árboles)', 'Descripción (opcional)',
+      'Lugar', 'Periodo', 'Código', 'Fecha de inicio (opcional)', 'Objetivo (árboles)', 'Descripción (opcional)',
       'Captura GPS obligatoria', 'Capturar GPS cada N árboles', 'Foto en todos los botones', 'Visible para técnicos',
     ]) {
       expect(getByText(etiqueta)).toBeTruthy();
@@ -46,6 +46,7 @@ describe('PlantationFormModal', () => {
 
     fireEvent.changeText(getByPlaceholderText('Otoño 2026'), 'OTOÑO 2026');
     expect(getByText('Ya tenés una "Lote Norte · Otoño 2026"')).toBeTruthy();
+    fireEvent.changeText(getByPlaceholderText('SS26-1'), 'LN26-B');
 
     fireEvent.press(getByText('Crear'));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
@@ -81,6 +82,7 @@ describe('PlantationFormModal', () => {
     const { getByPlaceholderText, getByText, getByTestId, onSubmit } = renderForm();
     fireEvent.changeText(getByPlaceholderText('Lote Norte'), 'Campo Sur');
     fireEvent.changeText(getByPlaceholderText('Otoño 2026'), '2026');
+    fireEvent.changeText(getByPlaceholderText('SS26-1'), 'CS26');
     fireEvent.changeText(getByPlaceholderText('Opcional'), '0');
     fireEvent.press(getByText('Crear'));
     expect(getByText('El objetivo debe ser un número entero entre 1 y 10.000.000 árboles.')).toBeTruthy();
@@ -95,5 +97,56 @@ describe('PlantationFormModal', () => {
     await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       objetivoArboles: 500, fechaInicio: '2026-04-15', photoCaptureAllTrees: true, visibleInApp: false,
     })));
+  });
+
+  describe('código (#559)', () => {
+    function completarLugarYPeriodo(getByPlaceholderText: (texto: string) => any) {
+      fireEvent.changeText(getByPlaceholderText('Lote Norte'), 'Campo Sur');
+      fireEvent.changeText(getByPlaceholderText('Otoño 2026'), '2026');
+    }
+
+    it('se escribe en mayúsculas y sin espacios, y sube así', async () => {
+      const { getByPlaceholderText, getByDisplayValue, getByText, onSubmit } = renderForm();
+      completarLugarYPeriodo(getByPlaceholderText);
+      fireEvent.changeText(getByPlaceholderText('SS26-1'), 'cs 26-b');
+      expect(getByDisplayValue('CS26-B')).toBeTruthy();
+      fireEvent.press(getByText('Crear'));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ codigo: 'CS26-B' })));
+    });
+
+    it('es obligatorio al crear', () => {
+      const { getByPlaceholderText, getByText, onSubmit } = renderForm();
+      completarLugarYPeriodo(getByPlaceholderText);
+      fireEvent.press(getByText('Crear'));
+      expect(getByText('El código es obligatorio.')).toBeTruthy();
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('no deja crear con el código de otra plantación del dispositivo', () => {
+      const { getByPlaceholderText, getAllByText, getByText, onSubmit } = renderForm();
+      completarLugarYPeriodo(getByPlaceholderText);
+      fireEvent.changeText(getByPlaceholderText('SS26-1'), 'ln26');
+      expect(getAllByText('Ya existe otra plantación con ese código.')).toHaveLength(1);
+      fireEvent.press(getByText('Crear'));
+      expect(getAllByText('Ya existe otra plantación con ese código.')).toHaveLength(1);
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('en edición conserva el suyo sin avisarse a sí misma', async () => {
+      const { queryByText, getByText, onSubmit } = renderForm({ editingPlantation: EXISTENTE });
+      expect(queryByText('Ya existe otra plantación con ese código.')).toBeNull();
+      fireEvent.press(getByText('Guardar'));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ codigo: 'LN26' })));
+    });
+
+    it('una plantación subida que todavía no bajó su código no lo pide', async () => {
+      const { getByPlaceholderText, getByText, onSubmit } = renderForm({
+        editingPlantation: { ...EXISTENTE, codigo: null, pendingSync: false },
+      });
+      expect(getByPlaceholderText('SS26-1').props.editable).toBe(false);
+      expect(getByText('Llega del servidor en la próxima sincronización.')).toBeTruthy();
+      fireEvent.press(getByText('Guardar'));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    });
   });
 });

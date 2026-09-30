@@ -59,6 +59,8 @@ export default function PlantationDetailScreen() {
     handleLongPress,
     handleDeleteGroup,
     handleEditSubmit,
+    confirmarCodigoDelGrupo,
+    avisoDeIdsProps,
   } = usePlantationDetail(pid, parcelaId);
 
   const goBack = useScreenBack(`/${routePrefix}/plantation/parcelas?plantacionId=${pid}`);
@@ -165,9 +167,11 @@ export default function PlantationDetailScreen() {
                 initialValues={{ nombre: editingGroup.nombre, codigo: editingGroup.codigo, tipo: editingGroup.tipo as GroupTipo }}
                 onSubmit={(values) => handleEditSubmit(values)}
                 onCancel={() => setEditingGroup(null)}
+                confirmar={confirmarCodigoDelGrupo}
               />
             )}
           </View>
+          <ConfirmModal {...avisoDeIdsProps} />
         </KeyboardAvoidingView>
       </Modal>
     </ScreenContainer>
