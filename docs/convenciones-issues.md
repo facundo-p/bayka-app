@@ -125,6 +125,30 @@ nada y hace que el label no valga la pena.
 - **`esta-release`** es solo lo que bloquea el pase a prod en curso. Es la
   decisión más fácil de inflar: ante la duda, no va.
 
+## Relaciones entre issues
+
+El dashboard dibuja las relaciones nativas de GitHub, no las menciones `#N` del
+texto. Una dependencia que solo está escrita en el body no se ve.
+
+- **«Bloqueado por»** se carga cuando B no puede arrancar o terminar hasta que
+  A se resuelva: código que B necesita, o una decisión que se toma en A. No va
+  para un «relacionado», ni para un orden que solo es preferible.
+- **Solo entre issues abiertos.** Cuando A se cierra, la relación deja de
+  bloquear y el dashboard la ignora.
+- **Una épica usa sub-issues**, no «bloqueado por»: el avance se ve como
+  «cerrados de total».
+- **No es el label `bloqueado`.** El label es esperar algo de afuera (el
+  cliente, una cuenta); la relación apunta a otro issue del repo. Si lo único
+  que traba a B es A, basta la relación.
+
+Se carga desde la barra lateral del issue («Relationships» → «Mark as blocked
+by») o con la mutación GraphQL `addBlockedBy`:
+
+```sh
+gh api graphql -f query='mutation { addBlockedBy(input: {
+  issueId: "<node id de B>", blockingIssueId: "<node id de A>" }) { issue { number } } }'
+```
+
 ## Qué NO va en el issue
 
 - **Impacto y costo numéricos.** Son relativos al resto del backlog —un 7 de

@@ -84,6 +84,9 @@
 
   * { box-sizing: border-box; }
 
+  /* Sin esto, un display: flex le gana al atributo hidden. */
+  [hidden] { display: none !important; }
+
   body {
     margin: 0;
     background: var(--ground);
@@ -134,6 +137,22 @@
   }
 
   .lede b { font-weight: 500; color: var(--ink-body); }
+
+  .title-row { display: flex; align-items: center; gap: 10px; position: relative; flex-wrap: wrap; }
+  .info-btn {
+    font: inherit; font-family: Georgia, serif; font-style: italic; font-weight: 700; font-size: 14px;
+    width: 26px; height: 26px; border-radius: 50%; flex: none;
+    border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--ink-soft);
+    cursor: pointer; display: grid; place-items: center; line-height: 1;
+  }
+  .info-btn:hover, .info-btn[aria-expanded="true"] { border-color: var(--ink); color: var(--ink); }
+  .info-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .info-pop {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 60;
+    width: min(460px, 100%);
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 12px;
+    padding: 12px 14px; box-shadow: var(--shadow-lift);
+  }
 
   /* ---------- filtros ---------- */
 
@@ -617,6 +636,18 @@
   tbody tr.is-selected td { background: var(--surface-sunk); }
 
   .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .th-sort {
+    font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+    background: none; border: none; padding: 0; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .th-sort:hover { color: var(--ink); }
+  .th-sort:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 3px; }
+  .th-sort::after { content: "↕"; font-size: 10px; opacity: .35; }
+  th[aria-sort="ascending"] .th-sort, th[aria-sort="descending"] .th-sort { color: var(--ink); font-weight: 600; }
+  th[aria-sort="ascending"] .th-sort::after { content: "▲"; opacity: 1; }
+  th[aria-sort="descending"] .th-sort::after { content: "▼"; opacity: 1; }
   .num-right { text-align: right; }
 
   .row-dot {
@@ -667,19 +698,165 @@
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
   }
+
+  .btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---------- carga por quién ---------- */
+  .carga {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .carga-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .carga-title { font-family: var(--f-display); font-weight: 700; color: var(--ink); font-size: 15px; }
+  .carga-note { font-size: 12.5px; color: var(--ink-soft); }
+  .carga-bar { display: flex; height: 14px; border-radius: 999px; overflow: hidden; background: var(--surface-sunk); gap: 2px; }
+  .carga-seg { height: 100%; }
+  .carga-seg.claude { background: var(--ink-faint); }
+  .carga-seg.ok { background: repeating-linear-gradient(135deg, var(--ink) 0 3px, var(--ink-soft) 3px 6px); }
+  .carga-seg.facu { background: var(--ink); }
+  .carga-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12px; color: var(--ink-body); }
+  .carga-legend span { display: inline-flex; gap: 6px; align-items: center; }
+  .carga-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .carga-legend i.claude { background: var(--ink-faint); }
+  .carga-legend i.ok { background: repeating-linear-gradient(135deg, var(--ink) 0 2px, var(--ink-soft) 2px 4px); }
+  .carga-legend i.facu { background: var(--ink); }
+  .carga-legend b { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* ---------- relaciones y antigüedad ---------- */
+  .rel-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .rel-svg line { stroke-width: 1.6; }
+  .rel-svg .bloquea { stroke: var(--ink); }
+  .rel-svg .familia { stroke: var(--ink-soft); stroke-dasharray: 4 4; }
+  .rel-svg marker path { fill: var(--ink); }
+
+  .dot .subs {
+    display: inline-block; margin-left: 5px; padding-left: 5px;
+    border-left: 1px solid #ffffff80; font-weight: 400; opacity: .95;
+  }
+
+  .dot[data-viejo="quieto"],   .swatch.quieto   { opacity: .72; }
+  .dot[data-viejo="estancado"], .swatch.estancado { opacity: .45; }
+  .swatch.quieto, .swatch.estancado { background: var(--s-infra); }
+  .dot.is-selected { opacity: 1; }
+
+  .detail-rel { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; color: var(--ink-body); }
+  .detail-rel:empty { display: none; }
+  .rel-row { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .rel-k { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; min-width: 88px; }
+  .rel-link { font: inherit; background: none; border: none; padding: 0; color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-variant-numeric: tabular-nums; }
+  .prog { flex: 1; min-width: 80px; height: 6px; border-radius: 999px; background: var(--surface-sunk); overflow: hidden; align-self: center; }
+  .prog i { display: block; height: 100%; background: var(--s-infra); }
+  .idle-2 { color: var(--critical); font-weight: 500; }
+
+  /* ---------- bandeja de decisiones ---------- */
+  .bandeja { display: flex; flex-direction: column; gap: 12px; }
+  .bandeja-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  .bandeja-head h2 { font-family: var(--f-display); font-weight: 700; font-size: 20px; color: var(--ink); margin: 0; }
+  .bandeja-head p { margin: 0; font-size: 12.5px; color: var(--ink-soft); max-width: 60ch; }
+  .d-tabs {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .d-tab {
+    font: inherit; font-size: 12.5px; text-align: left; cursor: pointer; flex: none;
+    background: var(--surface); color: var(--ink-body);
+    border: 1px solid var(--line); border-radius: 10px;
+    padding: 6px 11px 7px; display: flex; flex-direction: column; gap: 1px; max-width: 190px;
+  }
+  .d-tab:hover { border-color: var(--line-strong); }
+  .d-tab[aria-selected="true"] { background: var(--chip-on-bg); border-color: var(--chip-on-bg); color: var(--chip-on-ink); }
+  .d-tab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .d-tab-num { font-weight: 600; font-variant-numeric: tabular-nums; display: flex; gap: 6px; align-items: center; }
+  .d-tab-t { font-size: 11px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .d-tab-mark { width: 7px; height: 7px; border-radius: 50%; background: var(--s-problema); flex: none; }
+  .d-tab.done .d-tab-mark { background: var(--s-infra); }
+  .d-progress { font-size: 12px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .d-panel .d-card { width: 100%; }
+  .d-nav { display: flex; gap: 8px; }
+  .btn-ghost {
+    font: inherit; font-size: 12.5px; background: none; color: var(--ink-soft);
+    border: 1px solid var(--line); border-radius: 8px; padding: 5px 10px; cursor: pointer;
+  }
+  .btn-ghost:hover { color: var(--ink); border-color: var(--line-strong); }
+  .btn-ghost:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .btn-ghost[disabled] { opacity: .4; cursor: default; }
+  .d-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .d-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+    padding: 14px 16px; display: flex; flex-direction: column; gap: 9px;
+  }
+  .d-card.is-selected { border-color: var(--ink); }
+  .d-card.done { background: var(--surface-sunk); }
+  .d-top { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-soft); }
+  .d-top .rel-link { font-weight: 600; }
+  .d-unblock { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600; color: var(--s-problema); }
+  .d-q { margin: 0; font-size: 14px; font-weight: 500; color: var(--ink); line-height: 1.45; }
+  .d-issue { margin: 0; font-size: 12px; color: var(--ink-soft); }
+  .d-chips { display: flex; gap: 5px; flex-wrap: wrap; font-size: 11.5px; color: var(--ink-soft); align-items: center; }
+  .d-card textarea {
+    font: inherit; font-size: 13px; color: var(--ink-body); background: var(--surface-sunk);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 9px; resize: vertical; min-height: 58px; width: 100%;
+  }
+  .d-card textarea:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .d-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-faint); }
+  .btn {
+    font: inherit; font-size: 12.5px; font-weight: 500; color: var(--chip-on-ink); background: var(--chip-on-bg);
+    border: none; border-radius: 8px; padding: 5px 12px; cursor: pointer;
+  }
+  .btn[disabled] { opacity: .4; cursor: default; }
+  .d-empty { margin: 0; font-size: 13px; color: var(--ink-soft); font-weight: 300; }
+  .d-more { border-top: 1px solid var(--line); padding-top: 8px; }
+  .d-more summary {
+    cursor: pointer; font-size: 12.5px; font-weight: 500; color: var(--ink);
+    list-style: none; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .d-more summary::-webkit-details-marker { display: none; }
+  .d-more summary::before { content: "▸"; font-size: 11px; transition: transform .12s; }
+  .d-more[open] summary::before { transform: rotate(90deg); }
+  .d-more summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+  .d-body { display: flex; flex-direction: column; gap: 9px; margin-top: 9px; font-size: 12.8px; line-height: 1.55; color: var(--ink-body); }
+  .d-body h4 { margin: 0 0 2px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+  .d-body p { margin: 0; }
+  .d-opts { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+  .d-opts li { background: var(--surface-sunk); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; }
+  .d-opts li b { font-weight: 600; color: var(--ink); }
+  .d-opts li.reco { border-color: var(--s-infra); }
+  .reco-pill { font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--s-infra); margin-left: 6px; }
+  .d-reco { border-left: 3px solid var(--s-infra); padding-left: 9px; }
+  .d-fuente { font-size: 11px; color: var(--ink-faint); }
+  .d-ya { font-size: 12px; color: var(--s-problema); font-weight: 500; }
 </style>
 
 <div class="wrap">
   <header class="masthead">
     <div class="eyebrow">__EYEBROW__</div>
-    <h1>Matriz de issues Bayka</h1>
-    <p class="lede">
-      Los <b>__N__ issues abiertos</b> ubicados por impacto y por costo de resolverlos.
-      Arriba a la izquierda está lo que más rinde. Pasá el mouse por un punto para leerlo
-      al costado, usá los tags para filtrar, y <b>arrastrá cualquier issue</b> para corregir
-      dónde lo puse — la posición queda guardada.
-    </p>
+    <div class="title-row">
+      <h1>Matriz de issues Bayka</h1>
+      <button class="info-btn" id="info-btn" type="button" aria-expanded="false" aria-controls="info-pop" aria-label="Cómo leer este tablero">i</button>
+      <div class="info-pop" id="info-pop" role="dialog" aria-label="Cómo leer este tablero" hidden>
+        <p class="lede">
+          Los <b>__N__ issues abiertos</b> ubicados por impacto y por costo de resolverlos.
+          Arriba a la izquierda está lo que más rinde. Pasá el mouse por un punto para leerlo
+          al costado, usá los tags para filtrar, y <b>arrastrá cualquier issue</b> para corregir
+          dónde lo puse — la posición queda guardada. Al elegir uno se dibuja lo que lo bloquea
+          y lo que destraba; los que no se tocan hace semanas se ven más tenues. Las decisiones
+          que contestes abajo se publican en el issue en la próxima corrida.
+        </p>
+      </div>
+    </div>
   </header>
+
+  <section class="carga" aria-label="Carga por quién lo resuelve">
+    <div class="carga-head">
+      <span class="carga-title">Dónde está el trabajo</span>
+      <span class="carga-note" id="carga-note"></span>
+    </div>
+    <div class="carga-bar" id="carga-bar"></div>
+    <div class="carga-legend" id="carga-legend"></div>
+  </section>
 
   <section class="filters" aria-label="Filtros por tag">
     <div class="filters-head">
@@ -694,6 +871,10 @@
       <div class="plot-frame">
         <div class="axis-y"><span>Impacto, urgencia →</span></div>
         <div class="plot" id="plot">
+          <svg class="rel-svg" id="rel-svg" aria-hidden="true">
+            <defs><marker id="flecha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs>
+            <g id="rel-lines"></g>
+          </svg>
           <div class="grid-line v"></div>
           <div class="grid-line h"></div>
           <span class="quad-label tl">Hacer ya</span>
@@ -712,6 +893,10 @@
         <span class="legend-item"><span class="swatch blq"></span>Bloqueado</span>
         <span class="legend-item"><span class="swatch q-ok"></span>Necesita tu OK</span>
         <span class="legend-item"><span class="swatch q-facu"></span>Lo hacés vos</span>
+        <span class="legend-item"><svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="currentColor" stroke-width="1.6"/></svg>Bloquea a</span>
+        <span class="legend-item"><svg width="22" height="8" aria-hidden="true"><line x1="0" y1="4" x2="22" y2="4" stroke="currentColor" stroke-width="1.6" stroke-dasharray="4 4"/></svg>Épica / sub-issue</span>
+        <span class="legend-item"><span class="swatch quieto"></span>Quieto hace +30 días</span>
+        <span class="legend-item"><span class="swatch estancado"></span>Quieto hace +90 días</span>
       </div>
     </section>
 
@@ -731,6 +916,7 @@
         <span class="quien-mark"></span>
         <span class="quien-text" id="d-need"></span>
       </div>
+      <div class="detail-rel" id="d-rel"></div>
       <div class="detail-tags" id="d-meta"></div>
       <p class="detail-foot">
         Arrastrá el punto para moverlo. Con el foco puesto en uno, las flechas lo mueven;
@@ -740,17 +926,28 @@
     </aside>
   </div>
 
+  <section class="bandeja" aria-label="Decisiones pendientes">
+    <div class="bandeja-head">
+      <h2>Decisiones que esperan tu respuesta</h2>
+      <span class="d-progress" id="d-progress"></span>
+    </div>
+    <div class="d-tabs" id="d-tabs" role="tablist" aria-label="Issues que esperan una decisión"></div>
+    <div class="d-panel" id="d-grid"></div>
+    <p class="d-empty" id="d-empty" hidden>No hay issues esperando una decisión tuya.</p>
+  </section>
+
   <section class="table-wrap" aria-label="Los issues en tabla">
     <table>
-      <caption id="table-caption">Ordenados por saldo (impacto menos costo): lo de arriba es lo que más rinde por lo que cuesta.</caption>
+      <caption id="table-caption"></caption>
       <thead>
-        <tr>
-          <th scope="col">Issue</th>
-          <th scope="col">Título</th>
-          <th scope="col">Tags</th>
-          <th scope="col" class="num-right">Impacto</th>
-          <th scope="col" class="num-right">Costo</th>
-          <th scope="col" class="num-right">Saldo</th>
+        <tr id="thead-row">
+          <th scope="col" data-k="n"><button class="th-sort" type="button">Issue</button></th>
+          <th scope="col" data-k="title"><button class="th-sort" type="button">Título</button></th>
+          <th scope="col" data-k="tags"><button class="th-sort" type="button">Tags</button></th>
+          <th scope="col" data-k="imp" class="num-right"><button class="th-sort" type="button">Impacto</button></th>
+          <th scope="col" data-k="cost" class="num-right"><button class="th-sort" type="button">Costo</button></th>
+          <th scope="col" data-k="saldo" class="num-right"><button class="th-sort" type="button">Saldo</button></th>
+          <th scope="col" data-k="quieto" class="num-right"><button class="th-sort" type="button">Quieto</button></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -770,14 +967,24 @@
 
   var REPO = "__REPO_ISSUES_URL__";
 
-  // Impacto y costo: estimación inicial, editable arrastrando.
+  // Impacto y costo: estimación inicial, editable arrastrando. Actividad y
+  // relaciones vienen de GitHub; 'decision', de lo que redactó la corrida.
   var ISSUES = __ISSUES_JSON__;
 
+  var TAG = {
+    haceClaude: "hace-claude",
+    necesitaOk: "necesita-ok",
+    necesitaFacu: "necesita-facu",
+    seguridad: "seguridad",
+    bloqueado: "bloqueado",
+    requiereDecision: "requiere-decision"
+  };
+
   var FACETS = [
-    { name: "Quién", tags: ["hace-claude", "necesita-ok", "necesita-facu"] },
-    { name: "Tipo", tags: ["bug", "seguridad", "enhancement", "deuda-tecnica", "infra", "epica"] },
+    { name: "Quién", tags: [TAG.haceClaude, TAG.necesitaOk, TAG.necesitaFacu] },
+    { name: "Tipo", tags: ["bug", TAG.seguridad, "enhancement", "deuda-tecnica", "infra", "epica"] },
     { name: "Área", tags: ["web", "mobile", "db"] },
-    { name: "Estado", tags: ["esta-release", "proxima-release", "fuera-del-release", "quick-win", "requiere-decision", "bloqueado"] }
+    { name: "Estado", tags: ["esta-release", "proxima-release", "fuera-del-release", "quick-win", TAG.requiereDecision, TAG.bloqueado] }
   ];
 
   var LABELS = {
@@ -794,22 +1001,46 @@
   };
 
   function pretty(tag) { return LABELS[tag] || tag; }
+  function tiene(it, tag) { return it.tags.indexOf(tag) !== -1; }
 
   var QUIEN = {
-    claude: { corto: "Lo resuelve Claude entero" },
-    ok:     { corto: "Necesita algo tuyo" },
-    facu:   { corto: "Lo hacés vos" }
+    claude: { corto: "Lo resuelve Claude entero", carga: "Claude puede avanzar solo" },
+    ok:     { corto: "Necesita algo tuyo",        carga: "Espera una decisión o un OK tuyo" },
+    facu:   { corto: "Lo hacés vos",              carga: "Lo tenés que hacer vos" }
   };
+  var QUIEN_ORDEN = ["claude", "ok", "facu"];
 
   // Quién lo resuelve sale de los labels: no hay una segunda fuente que se desfase.
   function quienDe(it) {
-    if (it.tags.indexOf("necesita-facu") !== -1) return "facu";
-    if (it.tags.indexOf("necesita-ok") !== -1) return "ok";
+    if (tiene(it, TAG.necesitaFacu)) return "facu";
+    if (tiene(it, TAG.necesitaOk)) return "ok";
     return "claude";
   }
+  function esDeClaude(it) { return quienDe(it) === "claude"; }
+
+  /* ---------- antigüedad ---------- */
+
+  var DIA_MS = 86400000;
+  var UMBRAL = { quieto: 30, estancado: 90 };
+  var HOY = Date.now();
+
+  function diasQuieto(it) {
+    return Math.max(0, Math.floor((HOY - Date.parse(it.actividad)) / DIA_MS));
+  }
+  function nivelViejo(dias) {
+    if (dias >= UMBRAL.estancado) return "estancado";
+    if (dias >= UMBRAL.quieto) return "quieto";
+    return "";
+  }
+  function esEstancado(it) { return nivelViejo(diasQuieto(it)) === "estancado"; }
 
   var byNum = {};
   ISSUES.forEach(function (it) { byNum[it.n] = it; });
+
+  function hijosDe(n) {
+    return ISSUES.filter(function (it) { return it.rel.padre && it.rel.padre.n === n; })
+      .map(function (it) { return it.n; });
+  }
 
   var active = Object.create(null);   // tag -> true
   var selected = null;                // número de issue
@@ -834,6 +1065,16 @@
   var dNeed = document.getElementById("d-need");
   var dTags = document.getElementById("d-meta");
 
+  function el(tag, cls, txt) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+
+  function fmt(v) { return v.toFixed(1); }
+  function fmtSaldo(it) { var s = it.imp - it.cost; return (s > 0 ? "+" : "") + fmt(s); }
+
   /* ---------- filtros ---------- */
 
   function activeIn(facet) {
@@ -844,54 +1085,34 @@
     for (var i = 0; i < FACETS.length; i++) {
       var on = activeIn(FACETS[i]);
       if (!on.length) continue;
-      var hit = on.some(function (t) { return it.tags.indexOf(t) !== -1; });
-      if (!hit) return false;
+      if (!on.some(function (t) { return tiene(it, t); })) return false;
     }
     return true;
   }
 
   function visibleIssues() { return ISSUES.filter(passes); }
 
+  function chip(tag) {
+    var btn = el("button", "chip");
+    btn.type = "button";
+    btn.id = "chip-" + tag;
+    btn.setAttribute("aria-pressed", "false");
+    btn.title = "label de GitHub: " + tag;
+    btn.appendChild(el("span", "", pretty(tag)));
+    btn.appendChild(el("span", "count", ISSUES.filter(function (it) { return tiene(it, tag); }).length));
+    btn.addEventListener("click", function () {
+      if (active[tag]) delete active[tag]; else active[tag] = true;
+      render();
+    });
+    return btn;
+  }
+
   function buildFacets() {
     FACETS.forEach(function (facet) {
-      var row = document.createElement("div");
-      row.className = "facet";
-
-      var name = document.createElement("div");
-      name.className = "facet-name";
-      name.textContent = facet.name;
-      row.appendChild(name);
-
-      var chips = document.createElement("div");
-      chips.className = "facet-chips";
-
-      facet.tags.forEach(function (tag) {
-        var btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "chip";
-        btn.id = "chip-" + tag;
-        btn.setAttribute("aria-pressed", "false");
-        btn.title = "label de GitHub: " + tag;
-
-        var label = document.createElement("span");
-        label.textContent = pretty(tag);
-        btn.appendChild(label);
-
-        var count = document.createElement("span");
-        count.className = "count";
-        count.textContent = ISSUES.filter(function (it) {
-          return it.tags.indexOf(tag) !== -1;
-        }).length;
-        btn.appendChild(count);
-
-        btn.addEventListener("click", function () {
-          if (active[tag]) delete active[tag]; else active[tag] = true;
-          render();
-        });
-
-        chips.appendChild(btn);
-      });
-
+      var row = el("div", "facet");
+      row.appendChild(el("div", "facet-name", facet.name));
+      var chips = el("div", "facet-chips");
+      facet.tags.forEach(function (tag) { chips.appendChild(chip(tag)); });
       row.appendChild(chips);
       facetsEl.appendChild(row);
     });
@@ -901,21 +1122,25 @@
 
   var dots = {};
 
+  function marcarDot(b, it) {
+    b.dataset.tipo = it.tipo;
+    b.dataset.n = String(it.n);
+    if (tiene(it, TAG.seguridad)) b.dataset.seguridad = "1";
+    if (tiene(it, TAG.bloqueado)) b.dataset.bloqueado = "1";
+    b.dataset.quien = quienDe(it);
+    b.dataset.viejo = nivelViejo(diasQuieto(it));
+    b.setAttribute("aria-label",
+      "Issue " + it.n + ": " + it.title + ". Impacto " + it.imp + ", costo " + it.cost +
+      ". " + QUIEN[quienDe(it)].corto + ". Flechas para mover.");
+  }
+
   function buildDots() {
     ISSUES.forEach(function (it) {
-      var b = document.createElement("button");
+      var b = el("button", "dot", it.n);
       b.type = "button";
-      b.className = "dot";
       b.id = "dot-" + it.n;
-      b.textContent = it.n;
-      b.dataset.tipo = it.tipo;
-      b.dataset.n = String(it.n);
-      if (it.tags.indexOf("seguridad") !== -1) b.dataset.seguridad = "1";
-      if (it.tags.indexOf("bloqueado") !== -1) b.dataset.bloqueado = "1";
-      b.dataset.quien = quienDe(it);
-      b.setAttribute("aria-label",
-        "Issue " + it.n + ": " + it.title + ". Impacto " + it.imp + ", costo " + it.cost +
-        ". " + QUIEN[quienDe(it)].corto + ". Flechas para mover.");
+      marcarDot(b, it);
+      if (it.rel.subs) b.appendChild(el("span", "subs", it.rel.subs.cerrados + "/" + it.rel.subs.total));
       b.addEventListener("pointerenter", function () { showDetail(it.n); });
       b.addEventListener("focus", function () { showDetail(it.n); });
       b.addEventListener("keydown", onDotKey);
@@ -976,25 +1201,24 @@
     window.removeEventListener("pointermove", onDotMove);
     window.removeEventListener("pointerup", onDotUp);
     window.removeEventListener("pointercancel", onDotUp);
-    if (moved) { renderTable(); save(n); }
+    if (moved) { renderTable(); renderCarga(); save(n); }
   }
 
+  var FLECHAS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] };
+
   function onDotKey(ev) {
+    var dir = FLECHAS[ev.key];
+    if (!dir) return;
+    ev.preventDefault();
     var step = ev.shiftKey ? 1 : 0.25;
     var n = Number(ev.currentTarget.dataset.n);
     var it = byNum[n];
-    var dx = 0, dy = 0;
-    if (ev.key === "ArrowLeft") dx = -step;
-    else if (ev.key === "ArrowRight") dx = step;
-    else if (ev.key === "ArrowUp") dy = step;
-    else if (ev.key === "ArrowDown") dy = -step;
-    else return;
-    ev.preventDefault();
-    it.cost = clamp(round1(it.cost + dx));
-    it.imp = clamp(round1(it.imp + dy));
+    it.cost = clamp(round1(it.cost + dir[0] * step));
+    it.imp = clamp(round1(it.imp + dir[1] * step));
     place(it);
     select(n);
     renderTable();
+    renderCarga();
     save(n);
   }
 
@@ -1014,6 +1238,18 @@
     return it.cost < 5 ? "Relleno" : "Postergar";
   }
 
+  function renderQuien(it) {
+    var quien = quienDe(it);
+    dQuien.dataset.quien = quien;
+    dNeed.textContent = "";
+    if (esDeClaude(it)) {
+      dNeed.textContent = "Lo resuelve Claude entero: código, tests y PR.";
+      return;
+    }
+    dNeed.appendChild(el("b", "", quien === "facu" ? "Lo hacés vos: " : "Necesita de vos: "));
+    dNeed.appendChild(document.createTextNode(it.need));
+  }
+
   function showDetail(n) {
     var it = byNum[n];
     if (!it) return;
@@ -1024,95 +1260,442 @@
     dQuad.textContent = cuadrante(it);
     dTitle.textContent = it.title;
     dWhy.textContent = it.why;
-
-    var saldo = it.imp - it.cost;
-    dImp.textContent = it.imp.toFixed(1);
-    dCost.textContent = it.cost.toFixed(1);
-    dSaldo.textContent = (saldo > 0 ? "+" : "") + saldo.toFixed(1);
-
-    var quien = quienDe(it);
-    dQuien.dataset.quien = quien;
-    dNeed.textContent = "";
-    if (quien === "claude") {
-      dNeed.textContent = "Lo resuelve Claude entero: código, tests y PR.";
-    } else {
-      var fuerte = document.createElement("b");
-      fuerte.textContent = quien === "facu" ? "Lo hacés vos: " : "Necesita de vos: ";
-      dNeed.appendChild(fuerte);
-      dNeed.appendChild(document.createTextNode(it.need));
-    }
+    dImp.textContent = fmt(it.imp);
+    dCost.textContent = fmt(it.cost);
+    dSaldo.textContent = fmtSaldo(it);
+    renderQuien(it);
+    drawRel(it.n);
+    renderRelDetail(it);
 
     dTags.textContent = "";
-    it.tags.forEach(function (t) {
-      var span = document.createElement("span");
-      span.className = "tag";
-      span.textContent = pretty(t);
-      dTags.appendChild(span);
+    it.tags.forEach(function (t) { dTags.appendChild(el("span", "tag", pretty(t))); });
+  }
+
+  /* ---------- relaciones ---------- */
+
+  var relLines = document.getElementById("rel-lines");
+  var dRel = document.getElementById("d-rel");
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function pos(n) { var it = byNum[n]; return { x: it.cost * 10, y: (10 - it.imp) * 10 }; }
+
+  function linea(de, a, clase, flecha) {
+    if (!byNum[de] || !byNum[a]) return;
+    if (dots[de].hidden || dots[a].hidden) return;
+    var p = pos(de), q = pos(a);
+    // Recorta la línea para que no entre en la etiqueta del punto.
+    var dx = q.x - p.x, dy = q.y - p.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+    var cut = Math.min(4, len / 3);
+    var l = document.createElementNS(SVGNS, "line");
+    l.setAttribute("x1", (p.x + dx / len * cut) + "%");
+    l.setAttribute("y1", (p.y + dy / len * cut) + "%");
+    l.setAttribute("x2", (q.x - dx / len * cut) + "%");
+    l.setAttribute("y2", (q.y - dy / len * cut) + "%");
+    l.setAttribute("class", clase);
+    if (flecha) l.setAttribute("marker-end", "url(#flecha)");
+    relLines.appendChild(l);
+  }
+
+  function drawRel(n) {
+    relLines.textContent = "";
+    var r = byNum[n].rel;
+    r.bloqueadoPor.forEach(function (b) { linea(b, n, "bloquea", true); });
+    r.bloquea.forEach(function (b) { linea(n, b, "bloquea", true); });
+    if (r.padre) linea(r.padre.n, n, "familia", false);
+    hijosDe(n).forEach(function (h) { linea(n, h, "familia", false); });
+  }
+
+  // Un issue fuera del set (cerrado, por ejemplo) abre GitHub en vez de seleccionarse.
+  function relLink(n) {
+    var b = el("button", "rel-link", "#" + n);
+    b.type = "button";
+    b.addEventListener("click", function () {
+      if (byNum[n]) select(n);
+      else window.open(REPO + n, "_blank", "noopener");
     });
+    return b;
+  }
+
+  function relRow(clave, nodos) {
+    var row = el("div", "rel-row");
+    row.appendChild(el("span", "rel-k", clave));
+    nodos.forEach(function (x, i) {
+      if (i) row.appendChild(document.createTextNode(" "));
+      row.appendChild(typeof x === "string" ? document.createTextNode(x) : x);
+    });
+    dRel.appendChild(row);
+  }
+
+  function barraSubs(subs) {
+    var bar = el("span", "prog");
+    var fill = el("i");
+    fill.style.width = (subs.cerrados / subs.total * 100) + "%";
+    bar.appendChild(fill);
+    return bar;
+  }
+
+  function haceCuanto(it) {
+    var dias = diasQuieto(it);
+    var t = el("span", esEstancado(it) ? "idle-2" : "",
+      dias === 0 ? "hoy" : "hace " + dias + (dias === 1 ? " día" : " días"));
+    return t;
+  }
+
+  function renderRelDetail(it) {
+    dRel.textContent = "";
+    var r = it.rel;
+    if (r.bloqueadoPor.length) relRow("Bloqueado por", r.bloqueadoPor.map(relLink));
+    if (r.bloquea.length) relRow("Destraba a", r.bloquea.map(relLink));
+    if (r.padre) relRow("Parte de", [relLink(r.padre.n)].concat(r.padre.cerrado ? ["(cerrado)"] : []));
+    if (r.subs) relRow("Sub-issues", [r.subs.cerrados + " de " + r.subs.total + " cerrados", barraSubs(r.subs)]);
+    relRow("Última actividad", [haceCuanto(it)]);
+  }
+
+  /* ---------- carga por quién ---------- */
+
+  function renderCarga() {
+    var grupos = {};
+    QUIEN_ORDEN.forEach(function (k) { grupos[k] = { n: 0, c: 0 }; });
+    ISSUES.forEach(function (it) { var g = grupos[quienDe(it)]; g.n++; g.c += it.cost; });
+    var total = QUIEN_ORDEN.reduce(function (s, k) { return s + grupos[k].c; }, 0) || 1;
+    var bar = document.getElementById("carga-bar");
+    var leg = document.getElementById("carga-legend");
+    bar.textContent = "";
+    leg.textContent = "";
+    QUIEN_ORDEN.forEach(function (k) {
+      var s = el("span", "carga-seg " + k);
+      s.style.width = (grupos[k].c / total * 100) + "%";
+      s.title = QUIEN[k].carga;
+      bar.appendChild(s);
+      var l = el("span");
+      l.appendChild(el("i", k));
+      l.appendChild(document.createTextNode(QUIEN[k].carga + " · "));
+      l.appendChild(el("b", "", grupos[k].c.toFixed(1).replace(".", ",")));
+      l.appendChild(document.createTextNode(" de costo en " + grupos[k].n + " issues"));
+      leg.appendChild(l);
+    });
+    var espera = (total - grupos.claude.c) / total * 100;
+    document.getElementById("carga-note").textContent =
+      Math.round(espera) + "% del costo pendiente espera algo tuyo";
+  }
+
+  /* ---------- bandeja de decisiones ---------- */
+
+  var ESTADO_RESP = {
+    sin: "Sin responder",
+    guardada: "Guardada · se publica en la próxima corrida",
+    guardando: "Guardando…",
+    sinBase: "No hay base: esta respuesta no se guarda",
+    error: "No se pudo guardar; probá de nuevo"
+  };
+
+  var respuestas = {};
+  var respDb = null;
+  var pendientes = [];
+  var decisionAbierta = null;
+
+  function seccion(titulo, texto, cls) {
+    var s = el("div", cls || "");
+    s.appendChild(el("h4", "", titulo));
+    s.appendChild(el("p", "", texto));
+    return s;
+  }
+
+  function listaOpciones(opciones) {
+    var sec = el("div");
+    sec.appendChild(el("h4", "", "Opciones"));
+    var ul = el("ul", "d-opts");
+    opciones.forEach(function (o) {
+      var li = el("li", o.recomendada ? "reco" : "");
+      li.appendChild(el("b", "", o.nombre));
+      if (o.recomendada) li.appendChild(el("span", "reco-pill", "recomendada"));
+      li.appendChild(document.createTextNode(" — " + o.detalle));
+      ul.appendChild(li);
+    });
+    sec.appendChild(ul);
+    return sec;
+  }
+
+  function detalleDe(it) {
+    var d = it.decision;
+    if (!d) return null;
+    var box = el("details", "d-more");
+    box.open = true;
+    box.appendChild(el("summary", "", "Ver detalle: por qué, implicancias y opciones"));
+    var body = el("div", "d-body");
+    if (d.nota) body.appendChild(el("p", "d-ya", d.nota));
+    if (d.porque) body.appendChild(seccion("Por qué ahora", d.porque));
+    if (d.implicancias) body.appendChild(seccion("Qué cambia según la respuesta", d.implicancias));
+    if (d.opciones && d.opciones.length) body.appendChild(listaOpciones(d.opciones));
+    if (d.recomendacion) body.appendChild(seccion("Qué te recomiendo", d.recomendacion, "d-reco"));
+    if (d.fuente) body.appendChild(el("p", "d-fuente", "Sale de #" + it.n + ": " + d.fuente));
+    box.appendChild(body);
+    return box;
+  }
+
+  function cabeceraDecision(it) {
+    var top = el("div", "d-top");
+    var izq = el("span");
+    izq.appendChild(relLink(it.n));
+    izq.appendChild(document.createTextNode(" · impacto " + fmt(it.imp).replace(".", ",")));
+    top.appendChild(izq);
+    if (it.rel.bloquea.length) {
+      top.appendChild(el("span", "d-unblock", "Destraba " + (it.rel.bloquea.length + 1) + " issues"));
+    }
+    return top;
+  }
+
+  function tambienLibera(it) {
+    var ch = el("div", "d-chips");
+    ch.appendChild(document.createTextNode("También libera:"));
+    it.rel.bloquea.forEach(function (d) { ch.appendChild(relLink(d)); });
+    return ch;
+  }
+
+  function botonNav(texto, destino) {
+    var b = el("button", "btn-ghost", texto);
+    b.type = "button";
+    b.disabled = destino == null;
+    b.addEventListener("click", function () { abrirDecision(destino, true); });
+    return b;
+  }
+
+  function guardarRespuesta(it, ta, btn, estado, card) {
+    var texto = ta.value.trim();
+    if (!respDb) { estado.textContent = ESTADO_RESP.sinBase; return; }
+    btn.disabled = true;
+    estado.textContent = ESTADO_RESP.guardando;
+    respDb.doc("respuestas/i" + it.n).set({ issue: it.n, texto: texto, fecha: new Date().toISOString() })
+      .then(function () {
+        respuestas[it.n] = texto;
+        card.classList.add("done");
+        marcarTab(it.n);
+        estado.textContent = ESTADO_RESP.guardada;
+      })
+      .catch(function () { estado.textContent = ESTADO_RESP.error; })
+      .then(function () { btn.disabled = !ta.value.trim(); });
+  }
+
+  function accionesDecision(it, idx, card) {
+    var ta = el("textarea");
+    ta.id = "resp-" + it.n;
+    ta.placeholder = "Tu decisión, en una o dos oraciones";
+    ta.setAttribute("aria-label", "Decisión para #" + it.n);
+    card.appendChild(ta);
+
+    var act = el("div", "d-actions");
+    var estado = el("span", "", ESTADO_RESP.sin);
+    var btn = el("button", "btn", "Guardar decisión");
+    btn.type = "button";
+    btn.disabled = true;
+    ta.addEventListener("input", function () { btn.disabled = !ta.value.trim(); });
+    btn.addEventListener("click", function () { guardarRespuesta(it, ta, btn, estado, card); });
+    var nav = el("span", "d-nav");
+    nav.appendChild(botonNav("← Anterior", pendientes[idx - 1]));
+    nav.appendChild(botonNav("Siguiente →", pendientes[idx + 1]));
+    nav.appendChild(btn);
+    act.appendChild(estado);
+    act.appendChild(nav);
+    card.appendChild(act);
+  }
+
+  function tabDecision(it) {
+    var tab = el("button", "d-tab");
+    tab.type = "button";
+    tab.id = "dtab-" + it.n;
+    tab.title = it.title;
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-controls", "dcard-" + it.n);
+    var tn = el("span", "d-tab-num");
+    tn.appendChild(el("span", "d-tab-mark"));
+    tn.appendChild(document.createTextNode("#" + it.n));
+    tab.appendChild(tn);
+    tab.appendChild(el("span", "d-tab-t", it.title));
+    tab.addEventListener("click", function () { abrirDecision(it.n, true); });
+    tab.addEventListener("keydown", onTabKey);
+    return tab;
+  }
+
+  function cardDecision(it, idx) {
+    var card = el("article", "d-card");
+    card.id = "dcard-" + it.n;
+    card.setAttribute("role", "tabpanel");
+    card.setAttribute("aria-labelledby", "dtab-" + it.n);
+    card.hidden = true;
+    card.appendChild(cabeceraDecision(it));
+    card.appendChild(el("p", "d-q", it.decision ? it.decision.pregunta : it.need));
+    card.appendChild(el("p", "d-issue", it.title));
+    if (it.rel.bloquea.length) card.appendChild(tambienLibera(it));
+    var det = detalleDe(it);
+    if (det) card.appendChild(det);
+    accionesDecision(it, idx, card);
+    card.addEventListener("pointerenter", function () { showDetail(it.n); });
+    return card;
+  }
+
+  // Primero lo que destraba más issues; a igualdad, lo de más impacto.
+  function issuesConDecision() {
+    return ISSUES.filter(function (it) { return tiene(it, TAG.requiereDecision); })
+      .sort(function (a, b) { return b.rel.bloquea.length - a.rel.bloquea.length || b.imp - a.imp; });
+  }
+
+  function renderBandeja() {
+    var grid = document.getElementById("d-grid");
+    var tabs = document.getElementById("d-tabs");
+    var pend = issuesConDecision();
+    pendientes = pend.map(function (it) { return it.n; });
+    document.getElementById("d-empty").hidden = pend.length > 0;
+    tabs.hidden = pend.length === 0;
+    pend.forEach(function (it, idx) {
+      tabs.appendChild(tabDecision(it));
+      grid.appendChild(cardDecision(it, idx));
+    });
+    marcarProgreso();
+    if (pend.length) abrirDecision(pend[0].n, false);
+  }
+
+  function abrirDecision(n, foco) {
+    decisionAbierta = n;
+    pendientes.forEach(function (m) {
+      var on = m === n;
+      document.getElementById("dcard-" + m).hidden = !on;
+      var t = document.getElementById("dtab-" + m);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+      t.tabIndex = on ? 0 : -1;
+    });
+    var tab = document.getElementById("dtab-" + n);
+    if (foco) tab.focus();
+    tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    showDetail(n);
+  }
+
+  function onTabKey(ev) {
+    var i = pendientes.indexOf(decisionAbierta);
+    var destino = {
+      ArrowRight: pendientes[Math.min(i + 1, pendientes.length - 1)],
+      ArrowLeft: pendientes[Math.max(i - 1, 0)],
+      Home: pendientes[0],
+      End: pendientes[pendientes.length - 1]
+    }[ev.key];
+    if (destino == null) return;
+    ev.preventDefault();
+    abrirDecision(destino, true);
+  }
+
+  function marcarProgreso() {
+    var faltan = pendientes.filter(function (m) { return !respuestas[m]; }).length;
+    document.getElementById("d-progress").textContent = !pendientes.length ? "" : faltan === 0
+      ? "Respondiste las " + pendientes.length
+      : faltan + " de " + pendientes.length + " sin responder";
+  }
+
+  function marcarTab(n) {
+    var t = document.getElementById("dtab-" + n);
+    if (t) t.classList.toggle("done", !!respuestas[n]);
+    marcarProgreso();
+  }
+
+  // Una respuesta ya publicada en el issue no cuenta: si el issue vuelve a pedir
+  // una decisión, es otra pregunta.
+  function aplicarRespuesta(doc) {
+    var d = doc.data() || {};
+    var n = Number(doc.id.replace(/^i/, ""));
+    if (!d.texto || d.publicada) return;
+    respuestas[n] = d.texto;
+    var ta = document.getElementById("resp-" + n);
+    var card = document.getElementById("dcard-" + n);
+    // Pisa el campo solo si está vacío: no se borra lo que alguien está escribiendo.
+    if (ta && !ta.value.trim()) ta.value = d.texto;
+    marcarTab(n);
+    if (card) {
+      card.classList.add("done");
+      var est = card.querySelector(".d-actions > span");
+      if (est) est.textContent = ESTADO_RESP.guardada;
+    }
   }
 
   /* ---------- tabla ---------- */
 
-  function renderTable() {
-    var rows = visibleIssues().slice().sort(function (a, b) {
-      return (b.imp - b.cost) - (a.imp - a.cost) || b.imp - a.imp;
-    });
-    tbody.textContent = "";
+  var orden = { k: "saldo", dir: "desc" };
+  var ORDEN_NOMBRE = { n: "número", title: "título", tags: "tags", imp: "impacto", cost: "costo", saldo: "saldo", quieto: "días quieto" };
+  var CLAVE = {
+    n: function (it) { return it.n; },
+    title: function (it) { return it.title.toLowerCase(); },
+    tags: function (it) { return it.tags.map(pretty).join(" · ").toLowerCase(); },
+    imp: function (it) { return it.imp; },
+    cost: function (it) { return it.cost; },
+    saldo: function (it) { return it.imp - it.cost; },
+    quieto: function (it) { return diasQuieto(it); }
+  };
+  // Primer click en una columna de texto ordena A→Z; en una numérica, de mayor a menor.
+  var TEXTO = { title: true, tags: true };
+  var COLUMNAS = Object.keys(ORDEN_NOMBRE).length;
 
+  function comparar(a, b) {
+    var f = CLAVE[orden.k], va = f(a), vb = f(b);
+    var c = typeof va === "string" ? va.localeCompare(vb, "es") : va - vb;
+    if (orden.dir === "desc") c = -c;
+    return c || a.n - b.n;
+  }
+
+  function pintarOrden() {
+    Array.prototype.forEach.call(document.querySelectorAll("#thead-row th"), function (th) {
+      if (th.dataset.k === orden.k) th.setAttribute("aria-sort", orden.dir === "asc" ? "ascending" : "descending");
+      else th.removeAttribute("aria-sort");
+    });
+    document.getElementById("table-caption").textContent =
+      "Ordenados por " + ORDEN_NOMBRE[orden.k] + (orden.dir === "asc" ? ", ascendente" : ", descendente") +
+      ". Tocá el título de una columna para ordenar; otra vez, para invertir.";
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll("#thead-row th"), function (th) {
+    th.querySelector(".th-sort").addEventListener("click", function () {
+      var k = th.dataset.k;
+      if (orden.k === k) orden.dir = orden.dir === "asc" ? "desc" : "asc";
+      else orden = { k: k, dir: TEXTO[k] ? "asc" : "desc" };
+      renderTable();
+    });
+  });
+
+  function celdaNumero(it) {
+    var td = el("td", "num");
+    td.appendChild(el("span", "row-dot " + it.tipo));
+    var link = el("a", "", "#" + it.n);
+    link.href = REPO + it.n;
+    link.target = "_blank";
+    link.rel = "noopener";
+    td.appendChild(link);
+    return td;
+  }
+
+  function filaIssue(it) {
+    var tr = el("tr");
+    tr.dataset.n = String(it.n);
+    tr.addEventListener("click", function () { select(it.n); });
+    tr.addEventListener("pointerenter", function () { showDetail(it.n); });
+    tr.appendChild(celdaNumero(it));
+    tr.appendChild(el("td", "t-title", it.title));
+    tr.appendChild(el("td", "t-tags", it.tags.map(pretty).join(" · ")));
+    [fmt(it.imp), fmt(it.cost), fmtSaldo(it)].forEach(function (text) {
+      tr.appendChild(el("td", "num num-right", text));
+    });
+    tr.appendChild(el("td", "num num-right" + (esEstancado(it) ? " idle-2" : ""), diasQuieto(it) + " d"));
+    return tr;
+  }
+
+  function renderTable() {
+    var rows = visibleIssues().slice().sort(comparar);
+    pintarOrden();
+    tbody.textContent = "";
     if (!rows.length) {
-      var tr = document.createElement("tr");
-      tr.className = "empty-row";
-      var td = document.createElement("td");
-      td.colSpan = 6;
-      td.textContent = "Ningún issue tiene todos los tags elegidos. Apagá alguno.";
+      var tr = el("tr", "empty-row");
+      var td = el("td", "", "Ningún issue tiene todos los tags elegidos. Apagá alguno.");
+      td.colSpan = COLUMNAS;
       tr.appendChild(td);
       tbody.appendChild(tr);
       return;
     }
-
-    rows.forEach(function (it) {
-      var tr = document.createElement("tr");
-      tr.dataset.n = String(it.n);
-      tr.addEventListener("click", function () { select(it.n); });
-      tr.addEventListener("pointerenter", function () { showDetail(it.n); });
-
-      var tdN = document.createElement("td");
-      tdN.className = "num";
-      var sw = document.createElement("span");
-      sw.className = "row-dot " + it.tipo;
-      tdN.appendChild(sw);
-      var link = document.createElement("a");
-      link.href = REPO + it.n;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.textContent = "#" + it.n;
-      tdN.appendChild(link);
-      tr.appendChild(tdN);
-
-      var tdT = document.createElement("td");
-      tdT.className = "t-title";
-      tdT.textContent = it.title;
-      tr.appendChild(tdT);
-
-      var tdG = document.createElement("td");
-      tdG.className = "t-tags";
-      tdG.textContent = it.tags.map(pretty).join(" · ");
-      tr.appendChild(tdG);
-
-      var saldo = it.imp - it.cost;
-      [
-        it.imp.toFixed(1),
-        it.cost.toFixed(1),
-        (saldo > 0 ? "+" : "") + saldo.toFixed(1)
-      ].forEach(function (text) {
-        var td = document.createElement("td");
-        td.className = "num num-right";
-        td.textContent = text;
-        tr.appendChild(td);
-      });
-
-      tbody.appendChild(tr);
-    });
+    rows.forEach(function (it) { tbody.appendChild(filaIssue(it)); });
     renderTableSelection();
   }
 
@@ -1130,6 +1713,7 @@
     vis.forEach(function (it) { visSet[it.n] = true; });
 
     ISSUES.forEach(function (it) { dots[it.n].hidden = !visSet[it.n]; });
+    if (selected) drawRel(selected);
 
     var on = Object.keys(active);
     clearBtn.hidden = on.length === 0;
@@ -1179,33 +1763,56 @@
     }
   }
 
+  function aplicarPosiciones(snap) {
+    var touched = false;
+    snap.docs.forEach(function (doc) {
+      var it = byNum[Number(doc.id.replace(/^i/, ""))];
+      if (!it) return;
+      var d = doc.data() || {};
+      if (typeof d.impacto !== "number" || typeof d.costo !== "number") return;
+      if (drag && drag.n === it.n) return;
+      if (it.imp !== d.impacto || it.cost !== d.costo) {
+        it.imp = clamp(d.impacto);
+        it.cost = clamp(d.costo);
+        place(it);
+        touched = true;
+      }
+    });
+    if (!touched) return;
+    renderTable();
+    renderCarga();
+    if (selected) showDetail(selected);
+  }
+
+  // Sin base (vista previa, sin permiso) la página funciona igual: no guarda.
   function connect() {
     if (!window.claude || typeof window.claude.use !== "function") return;
     window.claude.use("db").then(function (store) {
       if (!store) return;
       db = store;
-      db.collection("posiciones").onSnapshot(function (snap) {
-        var touched = false;
-        snap.docs.forEach(function (doc) {
-          var it = byNum[Number(doc.id.replace(/^i/, ""))];
-          if (!it) return;
-          var d = doc.data() || {};
-          if (typeof d.impacto !== "number" || typeof d.costo !== "number") return;
-          if (drag && drag.n === it.n) return;
-          if (it.imp !== d.impacto || it.cost !== d.costo) {
-            it.imp = clamp(d.impacto);
-            it.cost = clamp(d.costo);
-            place(it);
-            touched = true;
-          }
-        });
-        if (touched) {
-          renderTable();
-          if (selected) showDetail(selected);
-        }
-      }, function () { /* la página sigue funcionando sin guardar */ });
-    });
+      respDb = store;
+      db.collection("posiciones").onSnapshot(aplicarPosiciones, function () {});
+      db.collection("respuestas").onSnapshot(function (snap) {
+        snap.docs.forEach(aplicarRespuesta);
+      }, function () {});
+    }).catch(function () {});
   }
+
+  /* ---------- ayuda ---------- */
+
+  var infoBtn = document.getElementById("info-btn");
+  var infoPop = document.getElementById("info-pop");
+  function setInfo(abierto) {
+    infoPop.hidden = !abierto;
+    infoBtn.setAttribute("aria-expanded", abierto ? "true" : "false");
+  }
+  infoBtn.addEventListener("click", function (ev) { ev.stopPropagation(); setInfo(infoPop.hidden); });
+  document.addEventListener("click", function (ev) {
+    if (!infoPop.hidden && !infoPop.contains(ev.target)) setInfo(false);
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape" && !infoPop.hidden) { setInfo(false); infoBtn.focus(); }
+  });
 
   clearBtn.addEventListener("click", function () {
     active = Object.create(null);
@@ -1214,10 +1821,14 @@
 
   buildFacets();
   buildDots();
+  renderCarga();
   render();
-  select(ISSUES.slice().sort(function (a, b) {
-    return (b.imp - b.cost) - (a.imp - a.cost);
-  })[0].n);
+  renderBandeja();
+  if (ISSUES.length) {
+    select(ISSUES.slice().sort(function (a, b) {
+      return (b.imp - b.cost) - (a.imp - a.cost);
+    })[0].n);
+  }
   connect();
 })();
 </script>
