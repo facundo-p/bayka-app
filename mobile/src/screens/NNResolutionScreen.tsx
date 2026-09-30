@@ -13,6 +13,8 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS, Easing } from 'react-native-reanimated';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import PhotoViewer from '../components/PhotoViewer';
+import FotoRemota from '../components/FotoRemota';
+import { isRemoteUri } from '../utils/photoUri';
 import CustomHeader from '../components/CustomHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors } from '../theme';
@@ -129,13 +131,21 @@ export default function NNResolutionScreen() {
       <GestureHandlerRootView>
         <GestureDetector gesture={swipeGesture}>
           <Animated.View style={photoAnimStyle}>
-            <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
-              <Image
-                source={{ uri: currentTree.fotoUrl! }}
+            {isRemoteUri(currentTree.fotoUrl) ? (
+              <FotoRemota
+                treeId={currentTree.id}
+                storagePath={currentTree.fotoUrl}
                 style={[styles.photo, { width: screenWidth }]}
-                resizeMode="cover"
               />
-            </Pressable>
+            ) : (
+              <Pressable onPress={() => setZoomPhotoUri(currentTree.fotoUrl!)}>
+                <Image
+                  source={{ uri: currentTree.fotoUrl! }}
+                  style={[styles.photo, { width: screenWidth }]}
+                  resizeMode="cover"
+                />
+              </Pressable>
+            )}
           </Animated.View>
         </GestureDetector>
       </GestureHandlerRootView>

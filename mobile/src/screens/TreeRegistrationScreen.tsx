@@ -305,6 +305,7 @@ export default function TreeRegistrationScreen() {
 
       <PhotoViewer
         uri={viewingPhoto?.uri ?? null}
+        treeId={viewingPhoto?.treeId}
         onClose={() => setViewingPhoto(null)}
         onReplace={() => {
           if (!viewingPhoto) return;

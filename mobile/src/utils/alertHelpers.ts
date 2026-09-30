@@ -1,7 +1,7 @@
 import type { ConfirmModalButton } from '../components/ConfirmModal';
 import { colors } from '../theme';
 
-type ShowFn = (config: {
+export type ShowFn = (config: {
   icon?: string;
   iconColor?: string;
   title: string;

@@ -10,6 +10,8 @@ import { colors, spacing } from '../theme';
 import { useTreeDetail } from '../hooks/useTreeDetail';
 import { getSpeciesName } from '../utils/speciesHelpers';
 import PhotoViewer from './PhotoViewer';
+import FotoRemota from './FotoRemota';
+import { isRemoteUri } from '../utils/photoUri';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
 
 interface Props {
@@ -98,7 +100,9 @@ export default function TreeDetailModal({
 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Foto</Text>
-              {hasPhoto ? (
+              {isRemoteUri(tree.fotoUrl) ? (
+                <FotoRemota treeId={tree.id} storagePath={tree.fotoUrl} style={styles.photo} />
+              ) : hasPhoto ? (
                 <Pressable onPress={() => setZoomUri(tree.fotoUrl!)} accessibilityLabel="Ampliar foto">
                   <Image source={{ uri: tree.fotoUrl! }} style={styles.photo} resizeMode="cover" />
                 </Pressable>

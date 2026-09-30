@@ -133,7 +133,7 @@ async function getRemoteTreesForPlantation(
 async function downloadSinglePhoto(
   tree: { id: string; fotoUrl: string },
   dir: InstanceType<typeof Directory>
-): Promise<Transferencia> {
+): Promise<Transferencia & { uri?: string }> {
   const { data, error } = await supabase.storage
     .from('tree-photos')
     .createSignedUrl(tree.fotoUrl, 3600);
@@ -149,9 +149,13 @@ async function downloadSinglePhoto(
   syncLog.info(`Download OK for tree ${tree.id}: destUri=${destFile.uri}`);
 
   const localUri = ensureFileUri(destFile.uri);
-  await db.update(trees).set({ fotoUrl: localUri, fotoSynced: true }).where(eq(trees.id, tree.id));
+  // Solo si la fila sigue apuntando a ese path: una foto reemplazada o quitada
+  // mientras bajaba no se pisa.
+  await db.update(trees)
+    .set({ fotoUrl: localUri, fotoSynced: true })
+    .where(and(eq(trees.id, tree.id), eq(trees.fotoUrl, tree.fotoUrl)));
   // `size` ya lo tiene el archivo recién escrito: no es una lectura extra (#450).
-  return { ok: true, bytes: destFile.size ?? 0 };
+  return { ok: true, bytes: destFile.size ?? 0, uri: localUri };
 }
 
 /**
@@ -175,6 +179,26 @@ async function bajarConTimeout(url: string, destino: InstanceType<typeof ExpoFil
   );
 }
 
+function carpetaDeFotosDescargadas(): InstanceType<typeof Directory> {
+  const dir = new Directory(Paths.document, 'photos');
+  if (!dir.exists) dir.create({ intermediates: true });
+  return dir;
+}
+
+/**
+ * Baja una sola foto que está en Storage y no en el celular (#53, #565). Devuelve
+ * el uri local, o null si no se pudo (sin conexión, timeout, sin acceso).
+ */
+export async function descargarFotoRemota(treeId: string, storagePath: string): Promise<string | null> {
+  try {
+    const bajada = await downloadSinglePhoto({ id: treeId, fotoUrl: storagePath }, carpetaDeFotosDescargadas());
+    return bajada.uri ?? null;
+  } catch (e: any) {
+    syncLog.error(`Descarga de la foto del árbol ${treeId} falló: ${e?.message}`);
+    return null;
+  }
+}
+
 /**
  * Downloads remote photos for a plantation to local storage.
  * Runs during pull flow; skips trees with local file:// URIs.
@@ -187,8 +211,7 @@ async function correrDownloadPhotosForPlantation(
   const remoteTrees = await getRemoteTreesForPlantation(plantacionId);
   if (remoteTrees.length === 0) return { downloaded: 0, failed: 0 };
 
-  const dir = new Directory(Paths.document, 'photos');
-  if (!dir.exists) dir.create({ intermediates: true });
+  const dir = carpetaDeFotosDescargadas();
 
   syncLog.info(`Download photos: ${remoteTrees.length} remote trees found`);
 
