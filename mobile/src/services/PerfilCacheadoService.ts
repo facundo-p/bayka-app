@@ -9,7 +9,13 @@ export type CachedProfile = {
   organizacionNombre: string;
 };
 
-const PROFILE_CACHE_KEY = 'user_profile_cache';
+/** Ranura única anterior a #667, pisada por cada login online. Se migra y se borra. */
+const RANURA_VIEJA_KEY = 'user_profile_cache';
+
+/** Un perfil por cuenta. SecureStore solo acepta `[\w.-]` en las claves: no va `:`. */
+function claveDelPerfil(userId: string): string {
+  return `${RANURA_VIEJA_KEY}.${userId}`;
+}
 
 type PerfilGuardado = CachedProfile & { userId?: string };
 
@@ -23,24 +29,60 @@ async function esDeLaCuentaDeLosTokens(perfil: CachedProfile): Promise<boolean> 
   return perfil.email === (await SecureStore.getItemAsync(EMAIL_KEY));
 }
 
-/**
- * Perfil cacheado de la cuenta logueada. En un celular compartido el caché puede
- * ser de otra cuenta: entonces no se usa. Uno sin dueño se adopta si es de la cuenta
- * de los tokens, y se reescribe con su userId.
- */
-export async function leerPerfilCacheado(): Promise<CachedProfile | null> {
-  const raw = await SecureStore.getItemAsync(PROFILE_CACHE_KEY);
-  if (!raw) return null;
-  const { userId, ...perfil } = JSON.parse(raw) as PerfilGuardado;
+async function duenioDeLaRanuraVieja({ userId, ...perfil }: PerfilGuardado): Promise<string | null> {
+  if (userId) return userId;
   const actual = await readCachedUserId();
-  if (!actual) return null;
-  if (userId) return userId === actual ? perfil : null;
-  if (!(await esDeLaCuentaDeLosTokens(perfil))) return null;
-  await guardarPerfilCacheado(actual, perfil);
+  return actual && (await esDeLaCuentaDeLosTokens(perfil)) ? actual : null;
+}
+
+/**
+ * Pasa la ranura vieja a la clave de su dueño y la borra. Si el dueño ya tiene
+ * su propia entrada, esa es más nueva y gana. Un perfil sin dueño atribuible se pierde:
+ * el próximo login online de su cuenta lo vuelve a cachear.
+ */
+async function migrarRanuraVieja(): Promise<void> {
+  const raw = await SecureStore.getItemAsync(RANURA_VIEJA_KEY);
+  if (!raw) return;
+  const guardado = parsear<PerfilGuardado>(raw);
+  if (guardado) {
+    const duenio = await duenioDeLaRanuraVieja(guardado);
+    if (duenio && !(await SecureStore.getItemAsync(claveDelPerfil(duenio)))) await escribir(duenio, sinDuenio(guardado));
+  }
+  await SecureStore.deleteItemAsync(RANURA_VIEJA_KEY);
+}
+
+function sinDuenio({ userId: _userId, ...perfil }: PerfilGuardado): CachedProfile {
   return perfil;
 }
 
+function parsear<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+async function escribir(userId: string, perfil: CachedProfile): Promise<void> {
+  await SecureStore.setItemAsync(claveDelPerfil(userId), JSON.stringify(perfil));
+}
+
+/** Perfil cacheado de la cuenta logueada; nunca el de otra cuenta del mismo celular. */
+export async function leerPerfilCacheado(): Promise<CachedProfile | null> {
+  await migrarRanuraVieja();
+  const actual = await readCachedUserId();
+  if (!actual) return null;
+  return parsear<CachedProfile>(await SecureStore.getItemAsync(claveDelPerfil(actual)));
+}
+
 export async function guardarPerfilCacheado(userId: string, perfil: CachedProfile): Promise<void> {
-  const guardado: PerfilGuardado = { ...perfil, userId };
-  await SecureStore.setItemAsync(PROFILE_CACHE_KEY, JSON.stringify(guardado));
+  await migrarRanuraVieja();
+  await escribir(userId, perfil);
+}
+
+/** Cuenta desactivada: su perfil no queda en el celular. */
+export async function borrarPerfilCacheado(userId: string): Promise<void> {
+  await migrarRanuraVieja();
+  await SecureStore.deleteItemAsync(claveDelPerfil(userId));
 }

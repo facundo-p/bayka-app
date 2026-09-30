@@ -2,7 +2,7 @@
 // Validates profile fetch from Supabase, SecureStore cache, and offline fallback
 
 import * as SecureStore from 'expo-secure-store';
-import { setOnline, setSinInternet, setRedDesconocida } from '../helpers/networkHelper';
+import { setOnline, setOffline, setSinInternet, setRedDesconocida } from '../helpers/networkHelper';
 
 jest.mock('expo-secure-store');
 jest.mock('../../src/supabase/client', () => ({
@@ -41,6 +41,7 @@ function makeSupabaseChain(returnVal: any) {
 
 const USER_ID_KEY = 'user_id';
 const PROFILE_CACHE_KEY = 'user_profile_cache';
+const claveDe = (userId: string) => `user_profile_cache.${userId}`;
 let store: Map<string, string>;
 
 function cachear(perfil: object) {
@@ -53,6 +54,7 @@ describe('useProfileData', () => {
     store = new Map([[USER_ID_KEY, 'user-1']]);
     (SecureStore.getItemAsync as jest.Mock).mockImplementation(async (k: string) => store.get(k) ?? null);
     (SecureStore.setItemAsync as jest.Mock).mockImplementation(async (k: string, v: string) => { store.set(k, v); });
+    (SecureStore.deleteItemAsync as jest.Mock).mockImplementation(async (k: string) => { store.delete(k); });
     setOnline();
   });
 
@@ -131,7 +133,7 @@ describe('useProfileData', () => {
     expect(result.current.profile?.organizacionNombre).toBe('Org Test');
   });
 
-  it('writes fetched profile to SecureStore under user_profile_cache', async () => {
+  it('writes fetched profile to SecureStore under the key of its account', async () => {
     (supabase.auth.getUser as jest.Mock).mockResolvedValue({
       data: { user: { id: 'user-1', email: 'juan@example.com' } },
     });
@@ -157,7 +159,7 @@ describe('useProfileData', () => {
       expect(result.current.loading).toBe(false);
     });
 
-    expect(JSON.parse(store.get(PROFILE_CACHE_KEY)!)).toEqual({ ...mockProfile, userId: 'user-1' });
+    expect(JSON.parse(store.get(claveDe('user-1'))!)).toEqual(mockProfile);
   });
 
   // Celular compartido (#658): B no ve el perfil ni el rol de A.
@@ -190,7 +192,8 @@ describe('useProfileData', () => {
       conTokensDe(mockProfile.email);
 
       expect(await perfilLeido()).toEqual(mockProfile);
-      expect(JSON.parse(store.get(PROFILE_CACHE_KEY)!)).toEqual({ ...mockProfile, userId: 'user-1' });
+      expect(JSON.parse(store.get(claveDe('user-1'))!)).toEqual(mockProfile);
+      expect(store.has(PROFILE_CACHE_KEY)).toBe(false);
     });
 
     it('en una sesión solo local (sin tokens) se descarta', async () => {
@@ -205,7 +208,7 @@ describe('useProfileData', () => {
       conTokensDe('otra@example.com');
 
       expect(await perfilLeido()).toBeNull();
-      expect(JSON.parse(store.get(PROFILE_CACHE_KEY)!)).not.toHaveProperty('userId');
+      expect(store.has(claveDe('user-1'))).toBe(false);
     });
   });
 
@@ -216,7 +219,7 @@ describe('useProfileData', () => {
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.profile).toBeNull();
-    expect(store.has(PROFILE_CACHE_KEY)).toBe(false);
+    expect(store.has(claveDe('user-a'))).toBe(false);
     expect(supabase.from).not.toHaveBeenCalled();
   });
 
@@ -231,5 +234,51 @@ describe('useProfileData', () => {
     });
 
     expect(result.current.profile).toEqual(mockProfile);
+  });
+
+  describe('celular compartido: un perfil por cuenta (#667)', () => {
+    const perfilA: CachedProfile = { ...mockProfile, nombre: 'Ana', email: 'a@x.com', rol: 'admin' };
+    const perfilB: CachedProfile = { ...mockProfile, nombre: 'Beto', email: 'b@x.com', rol: 'admin', organizacionId: 'org-2' };
+
+    function servidorCon(userId: string, perfil: CachedProfile) {
+      (supabase.auth.getUser as jest.Mock).mockResolvedValue({ data: { user: { id: userId, email: perfil.email } } });
+      (supabase.from as jest.Mock).mockReturnValue(makeSupabaseChain({
+        data: {
+          nombre: perfil.nombre,
+          rol: perfil.rol,
+          organizacion_id: perfil.organizacionId,
+          organizations: { nombre: perfil.organizacionNombre },
+        },
+        error: null,
+      }));
+    }
+
+    async function perfilDe(userId: string) {
+      store.set(USER_ID_KEY, userId);
+      const { result } = renderHook(() => useProfileData());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      return result.current.profile;
+    }
+
+    it('A online, B online, B offline: B ve su perfil; A offline ve el suyo', async () => {
+      servidorCon('user-a', perfilA);
+      expect(await perfilDe('user-a')).toEqual(perfilA);
+      servidorCon('user-b', perfilB);
+      expect(await perfilDe('user-b')).toEqual(perfilB);
+
+      setOffline();
+      jest.clearAllMocks();
+      expect(await perfilDe('user-b')).toEqual(perfilB);
+      expect(await perfilDe('user-a')).toEqual(perfilA);
+      expect(supabase.auth.getUser).not.toHaveBeenCalled();
+    });
+
+    it('una cuenta que nunca entró online no ve el perfil de otra', async () => {
+      servidorCon('user-a', perfilA);
+      await perfilDe('user-a');
+
+      setOffline();
+      expect(await perfilDe('user-c')).toBeNull();
+    });
   });
 });
