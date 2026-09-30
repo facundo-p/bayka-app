@@ -40,9 +40,15 @@ const FILA_HUERFANA = {
   groups: {
     nombre: 'Bosquete 2',
     plantation_id: 'plant-1',
-    plantations: null,
+    plantations: { lugar: 'Sitio', periodo: '2025-2026', codigo: 'SS26-1' },
     parcelas: null,
   },
+};
+
+const FILA_SIN_PLANTACION = {
+  ...FILA_HUERFANA,
+  sub_id: 'D-004',
+  groups: { ...FILA_HUERFANA.groups, plantations: null },
 };
 
 describe('listarFilasExportacion', () => {
@@ -70,7 +76,7 @@ describe('listarFilasExportacion', () => {
     expect(deArboles[0].limite).toBeUndefined();
   });
 
-  test('mapea embeds preservando nulls; ID Árbol = SubID-código, solo SubID sin plantación', async () => {
+  test('mapea embeds preservando nulls (parcela/especie null, ids null); ID Árbol = SubID-código', async () => {
     capturarConsultas(() => ({ data: [FILA_COMPLETA, FILA_HUERFANA] }));
 
     expect(await listarFilasExportacion('plant-1')).toEqual([
@@ -87,18 +93,32 @@ describe('listarFilasExportacion', () => {
         especie: 'Quebracho',
       },
       {
-        idArbol: 'B-002',
+        idArbol: 'B-002-SS26-1',
         idGlobal: null,
         idParcial: null,
-        zona: '',
-        plantacion: '',
+        zona: 'Sitio',
+        plantacion: 'Sitio',
         parcela: null,
         grupo: 'Bosquete 2',
         subId: 'B-002',
-        periodo: '',
+        periodo: '2025-2026',
         especie: null,
       },
     ]);
+  });
+
+  test('sin plantación embebida: ID Árbol es solo el SubID y zona/plantación/período vacíos', async () => {
+    capturarConsultas(() => ({ data: [FILA_SIN_PLANTACION] }));
+
+    const [fila] = await listarFilasExportacion('plant-1');
+
+    expect(fila).toMatchObject({
+      idArbol: 'D-004',
+      zona: '',
+      plantacion: '',
+      periodo: '',
+      subId: 'D-004',
+    });
   });
 
   test('una parcela soft-deleted no aparece en la planilla: mapea a null', async () => {

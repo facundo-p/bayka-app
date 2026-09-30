@@ -60,7 +60,7 @@ function mapearFila(fila: FilaCruda): FilaExportacion {
   const plantacion = fila.groups?.plantations;
   const lugar = plantacion?.lugar ?? '';
   return {
-    idArbol: plantacion ? idDeArbol(fila.sub_id, plantacion.codigo) : fila.sub_id,
+    idArbol: idDeArbol(fila.sub_id, plantacion?.codigo),
     idGlobal: fila.global_id,
     idParcial: fila.plantacion_id,
     zona: lugar,
