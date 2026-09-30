@@ -53,8 +53,8 @@ Con el registro cerrado corta antes de mirar los datos.
   verificación en [`supabase/functions/README.md`](../supabase/functions/README.md).
 - **SMTP:** el default de Supabase admite ~2 emails/hora — alcanza para probar,
   no para operar. Para uso real, Authentication → SMTP Settings.
-- **Email templates y rate limits de Auth:** sin relevar contra el proyecto
-  viejo (#249).
+- **Email templates y rate limits de Auth:** no relevados; solo se ven en el
+  dashboard.
 
 ## Edge functions
 
@@ -63,7 +63,18 @@ y `admin-plantaciones`, en cada proyecto. El orden importa y cambiar `WEB_URL`
 exige redeploy: checklist completa en
 [`supabase/functions/README.md`](../supabase/functions/README.md).
 
-## Sin relevar
+## Database webhooks y cron jobs
 
-Pendientes de #249, que es donde se cierra el relevamiento contra el proyecto
-viejo: database webhooks, cron jobs y políticas de contraseña.
+Las migraciones no usan `pg_cron`, `pg_net` ni `supabase_functions.hooks`, y
+los dos proyectos se recrearon desde `supabase/migrations/`. Si hace falta uno,
+va en una migración, no en el dashboard.
+
+## Verificación sin credenciales
+
+- Site URL y allowlist: el `curl` a `/auth/v1/verify` y la tabla de estado
+  esperado en [`supabase/functions/README.md`](../supabase/functions/README.md).
+- Edge functions: un `POST` sin token a `/functions/v1/admin-users` y
+  `/functions/v1/admin-plantaciones` responde `401`.
+
+Las políticas de contraseña, los templates y los rate limits solo se ven en
+el dashboard.
