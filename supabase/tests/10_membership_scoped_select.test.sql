@@ -5,9 +5,8 @@
 begin;
 select plan(37);
 
--- org1 usa el UUID hardcodeado que handle_new_user busca (ver baseline): todo
--- auth.users nuevo cae ahí por default. org2 es una segunda organización para
--- probar el aislamiento cross-org.
+-- org1 es la organización de los fixtures; org2, una segunda para probar el
+-- aislamiento cross-org.
 insert into organizations (id, nombre) values
   ('00000000-0000-0000-0000-000000000001', 'Org1 Test 10'),
   ('10000000-0000-0000-0000-000000000001', 'Org2 Test 10');
@@ -17,8 +16,12 @@ insert into auth.users (id, email) values
   ('10000000-0000-0000-0000-0000000000b2', 't2-10@test.local'),
   ('10000000-0000-0000-0000-0000000000b3', 'a1-10@test.local'),
   ('10000000-0000-0000-0000-0000000000b4', 'u2-10@test.local');
--- trg_handle_new_user les asignó organizacion_id = org1 (rol tecnico) a los 4.
+-- trg_handle_new_user los crea como tecnico sin organización (060).
 
+update profiles set organizacion_id = '00000000-0000-0000-0000-000000000001' where id in (
+  '10000000-0000-0000-0000-0000000000b1',
+  '10000000-0000-0000-0000-0000000000b2',
+  '10000000-0000-0000-0000-0000000000b3');
 update profiles set organizacion_id = '10000000-0000-0000-0000-000000000001'
   where id = '10000000-0000-0000-0000-0000000000b4';
 update profiles set rol = 'admin' where id = '10000000-0000-0000-0000-0000000000b3';

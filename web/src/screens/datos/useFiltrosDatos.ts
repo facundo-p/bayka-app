@@ -19,3 +19,18 @@ export function useFiltrosDatos() {
   const filtrosActivos = contarFiltros(filtros);
   return { filtros, setFiltro, limpiar, filtrosActivos, hayFiltro: filtrosActivos > 0 };
 }
+
+/**
+ * Filtros de la URL más la búsqueda por código o nombre de Parcelas y Grupos.
+ * `filtrosBusqueda` cuenta y limpia solo la búsqueda: la parcela en scope se conserva.
+ */
+export function useBusquedaDatos() {
+  const filtrosDatos = useFiltrosDatos();
+  const buscar = (texto: string) => filtrosDatos.setFiltro('busqueda', texto);
+  const { filtros } = filtrosDatos;
+  return {
+    ...filtrosDatos,
+    buscar,
+    filtrosBusqueda: { activos: filtros.busqueda ? 1 : 0, onLimpiar: () => buscar('') },
+  };
+}

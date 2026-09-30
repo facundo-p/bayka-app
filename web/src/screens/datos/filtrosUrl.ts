@@ -60,3 +60,10 @@ export function filtrosAParams(filtros: FiltrosEscritos): URLSearchParams {
   }
   return params;
 }
+
+/** Al cambiar de sección viaja el scope; la búsqueda no, porque es texto de otra entidad. */
+export function filtrosAlCambiarDeSeccion(search: string): URLSearchParams {
+  const params = new URLSearchParams(search);
+  params.delete(PARAM_URL.busqueda);
+  return params;
+}

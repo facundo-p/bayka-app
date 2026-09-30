@@ -85,6 +85,11 @@ async function buscarUsuarios(texto: string): Promise<ResultadoBusqueda[]> {
     }));
 }
 
+/** Deep-link a la sección con el texto ya cargado en su buscador: se ve la fila elegida. */
+function conBusqueda(texto: string): URLSearchParams {
+  return new URLSearchParams({ [PARAM_URL.busqueda]: texto });
+}
+
 type FilaParcelaBusqueda = {
   id: string;
   nombre: string;
@@ -109,7 +114,7 @@ async function buscarParcelas(texto: string, scope?: ScopeBusqueda): Promise<Res
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
     meta: fila.plantations?.lugar ?? undefined,
-    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.parcelas),
+    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.parcelas, conBusqueda(fila.codigo)),
   }));
 }
 
@@ -138,7 +143,7 @@ async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<Resul
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
     meta: fila.parcelas?.codigo ? `Parcela ${fila.parcelas.codigo}` : undefined,
-    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.grupos),
+    to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.grupos, conBusqueda(fila.codigo)),
   }));
 }
 
@@ -148,11 +153,6 @@ type FilaArbolBusqueda = {
   species: { nombre: string } | null;
   groups: { plantation_id: string; codigo: string } | null;
 };
-
-/** Deep-link al listado de Árboles con el SubID ya cargado en su buscador. */
-function busquedaDeSubId(subId: string): URLSearchParams {
-  return new URLSearchParams({ [PARAM_URL.busqueda]: subId });
-}
 
 async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
@@ -173,11 +173,7 @@ async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<Resu
       id: fila.id,
       titulo: fila.sub_id,
       meta: fila.species?.nombre ?? fila.groups?.codigo,
-      to: rutaDatos(
-        fila.groups!.plantation_id,
-        SEGMENTO_DATOS.arboles,
-        busquedaDeSubId(fila.sub_id),
-      ),
+      to: rutaDatos(fila.groups!.plantation_id, SEGMENTO_DATOS.arboles, conBusqueda(fila.sub_id)),
     }));
 }
 
