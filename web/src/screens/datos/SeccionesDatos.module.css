@@ -73,8 +73,8 @@
   font-family: var(--font-mono);
 }
 
-/* SubID del árbol: mono en azul de acento (es el identificador principal). */
-.subId {
+/* ID del árbol: mono en azul de acento (es el identificador principal). */
+.idArbol {
   font-family: var(--font-mono);
   color: var(--color-primary-accent);
 }

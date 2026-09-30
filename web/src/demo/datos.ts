@@ -27,6 +27,7 @@ type Plantacion = {
   id: string;
   lugar: string;
   periodo: string;
+  codigo: string;
   estado: EstadoPlantacion;
   created_at: string;
   visible_in_app: boolean;
@@ -133,6 +134,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p1',
     lugar: 'San Sebastián',
     periodo: '2025-2026',
+    codigo: 'SS26',
     estado: 'activa',
     created_at: '2025-03-12T12:00:00Z',
     visible_in_app: true,
@@ -142,6 +144,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p2',
     lugar: 'Estancia La Escondida',
     periodo: '2025-2026',
+    codigo: 'LE26',
     estado: 'activa',
     created_at: '2025-04-04T12:00:00Z',
     visible_in_app: true,
@@ -151,6 +154,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p3',
     lugar: 'Campo Los Molles',
     periodo: '2025-2026',
+    codigo: 'LM26',
     estado: 'activa',
     created_at: '2025-05-19T12:00:00Z',
     visible_in_app: true,
@@ -160,6 +164,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p4',
     lugar: 'Puerto Valle',
     periodo: '2024-2025',
+    codigo: 'PV25',
     estado: 'finalizada',
     created_at: '2024-02-08T12:00:00Z',
     visible_in_app: true,
@@ -169,6 +174,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p5',
     lugar: 'Rincón del Socorro',
     periodo: '2024-2025',
+    codigo: 'RS25',
     estado: 'finalizada',
     created_at: '2024-03-22T12:00:00Z',
     visible_in_app: false,
@@ -178,6 +184,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p6',
     lugar: 'La Carolina',
     periodo: '2024-2025',
+    codigo: 'LC25',
     estado: 'activa',
     created_at: '2024-07-30T12:00:00Z',
     visible_in_app: true,
@@ -187,6 +194,7 @@ const PLANTACIONES: Plantacion[] = [
     id: 'p7',
     lugar: 'Arroyo Ceibo',
     periodo: '2023-2024',
+    codigo: 'AC24',
     estado: 'finalizada',
     created_at: '2023-01-15T12:00:00Z',
     visible_in_app: false,

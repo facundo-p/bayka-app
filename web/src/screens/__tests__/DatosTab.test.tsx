@@ -77,7 +77,12 @@ const ARBOL_COMPLETO = {
   gps_accuracy: 4.6,
   gps_captured_at: '2026-06-03T12:00:05Z',
   species: { codigo: 'QB', nombre: 'Quebracho' },
-  groups: { codigo: 'L1', parcela_id: 'parc-1', plantation_id: 'plant-1' },
+  groups: {
+    codigo: 'L1',
+    parcela_id: 'parc-1',
+    plantation_id: 'plant-1',
+    plantations: { codigo: 'SS26' },
+  },
 };
 
 /** Árbol sin identificar, sin GPS y con foto local (no subida). */
@@ -199,8 +204,8 @@ describe('sección Árboles', () => {
   test('muestra "N/N · Sin identificar" sin especie y deja el GPS sin coordenadas', async () => {
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
 
-    expect(await screen.findByRole('cell', { name: 'A-001' })).toBeInTheDocument();
-    const filaCompleta = filaDe('A-001');
+    expect(await screen.findByRole('cell', { name: 'A-001-SS26' })).toBeInTheDocument();
+    const filaCompleta = filaDe('A-001-SS26');
     expect(within(filaCompleta).getByText('QB · Quebracho')).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/-27\.12346, -55\.65432/)).toBeInTheDocument();
     expect(within(filaCompleta).getByText(/±5m/)).toBeInTheDocument();
@@ -208,7 +213,7 @@ describe('sección Árboles', () => {
     // Foto subida → check no interactivo (la foto se ve en el detalle de la fila).
     expect(within(filaCompleta).getByLabelText('Con foto')).toBeInTheDocument();
 
-    const filaVacia = filaDe('A-002');
+    const filaVacia = filaDe('A-002-SS26');
     expect(within(filaVacia).getByText('N/N · Sin identificar')).toBeInTheDocument();
     // Sin coordenadas la celda GPS muestra "—" (nunca "0,0").
     expect(within(filaVacia).queryByText(/-?\d+\.\d{5}/)).not.toBeInTheDocument();
@@ -219,10 +224,10 @@ describe('sección Árboles', () => {
   test('el filtro por especie aplica eq server-side (y N/N aplica is null)', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     await usuario.selectOptions(screen.getByLabelText('Especie'), 'sp-1');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
     expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
       metodo: 'eq',
       columna: 'species_id',
@@ -230,7 +235,7 @@ describe('sección Árboles', () => {
     });
 
     await usuario.selectOptions(screen.getByLabelText('Especie'), 'NN');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
     expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
       metodo: 'is',
       columna: 'species_id',
@@ -241,7 +246,7 @@ describe('sección Árboles', () => {
   test('el filtro de Grupo arranca deshabilitado y se puebla al elegir parcela', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     // Un grupo solo acota dentro de una parcela: sin parcela no hay qué listar.
     const grupo = screen.getByLabelText('Grupo');
@@ -254,7 +259,7 @@ describe('sección Árboles', () => {
     ).toBeInTheDocument();
 
     await usuario.selectOptions(screen.getByLabelText('Grupo'), 'gr-1');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
     expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
       metodo: 'eq',
       columna: 'group_id',
@@ -264,7 +269,7 @@ describe('sección Árboles', () => {
 
   test('llegar desde Grupos deja los dos selects con el scope heredado', async () => {
     renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
     const grupo = screen.getByLabelText('Grupo');
@@ -276,7 +281,7 @@ describe('sección Árboles', () => {
 
   test('una parcela de la URL que no existe se resetea a todas', async () => {
     renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-fantasma');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     // Con la parcela fantasma el grupo quedaría habilitado y la tabla filtrada por ella.
     await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeDisabled());
@@ -288,7 +293,7 @@ describe('sección Árboles', () => {
   test('cambiar de parcela resetea el grupo', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles?parcela=parc-1&grupo=gr-1');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     await usuario.selectOptions(screen.getByLabelText('Parcela'), '');
     await waitFor(() => expect(screen.getByLabelText('Grupo')).toHaveValue(''));
@@ -300,10 +305,10 @@ describe('sección Árboles', () => {
   test('"Con foto" excluye las fotos locales sin sincronizar', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     await usuario.selectOptions(screen.getByLabelText('Foto'), 'con');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     // Mismo criterio que el ✓ de la columna: no basta con que no sea nulo.
     const filtros = consultasListaArboles().at(-1)?.filtros;
@@ -330,10 +335,10 @@ describe('sección Árboles', () => {
   test('"Sin foto" incluye las nulas y las locales, en un solo OR', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     await usuario.selectOptions(screen.getByLabelText('Foto'), 'sin');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     expect(consultasListaArboles().at(-1)?.filtros).toContainEqual({
       metodo: 'or',
@@ -345,7 +350,7 @@ describe('sección Árboles', () => {
   test('la paginación pide el rango siguiente y muestra el estado', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     // El total y la página viven solo en el pie de la card: la toolbar ya no
     // repite el recuento.
@@ -363,14 +368,14 @@ describe('sección Árboles', () => {
 
   /** El detalle vive en un <aside> al costado de la tabla (el sidebar del shell
    *  también es un aside: hay que nombrarlo). */
-  const PANEL_A001 = { name: 'Detalle del árbol A-001' };
+  const PANEL_A001 = { name: 'Detalle del árbol A-001-SS26' };
 
   test('al hacer click en una fila se abre el detalle al costado, con especie y coordenadas', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
-    await usuario.click(filaDe('A-001'));
+    await usuario.click(filaDe('A-001-SS26'));
 
     const panel = await screen.findByRole('complementary', PANEL_A001);
     expect(within(panel).getByText('QB · Quebracho')).toBeInTheDocument();
@@ -385,7 +390,7 @@ describe('sección Árboles', () => {
   test('con el panel abierto la tabla suelta las columnas que el panel repite', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     const encabezados = () =>
       within(screen.getByRole('table'))
@@ -393,22 +398,24 @@ describe('sección Árboles', () => {
         .map((celda) => celda.textContent);
     expect(encabezados()).toEqual(expect.arrayContaining(['GPS', 'Registrado', 'Técnico']));
 
-    await usuario.click(filaDe('A-001'));
+    await usuario.click(filaDe('A-001-SS26'));
     await screen.findByRole('complementary', PANEL_A001);
     expect(encabezados()).not.toEqual(expect.arrayContaining(['GPS']));
     expect(encabezados()).not.toEqual(expect.arrayContaining(['Registrado']));
     expect(encabezados()).not.toEqual(expect.arrayContaining(['Técnico']));
 
-    await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001' }));
+    await usuario.click(
+      screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001-SS26' }),
+    );
     await waitFor(() => expect(encabezados()).toEqual(expect.arrayContaining(['GPS'])));
   });
 
   test('el detalle se cierra con la tecla ESC', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
-    await usuario.click(filaDe('A-001'));
+    await usuario.click(filaDe('A-001-SS26'));
     await screen.findByRole('complementary', PANEL_A001);
 
     await usuario.keyboard('{Escape}');
@@ -429,7 +436,7 @@ describe('sección Árboles', () => {
     expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
 
     await usuario.click(filaDe('Línea 1'));
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
     expect(screen.getByLabelText('Parcela')).toHaveValue('parc-1');
     expect(screen.getByLabelText('Grupo')).toHaveValue('gr-1');
 
@@ -453,14 +460,14 @@ describe('sección Árboles', () => {
   test('clickear otra fila cambia el panel en vez de cerrarlo', async () => {
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1/datos/arboles');
-    await screen.findByRole('cell', { name: 'A-001' });
+    await screen.findByRole('cell', { name: 'A-001-SS26' });
 
-    await usuario.click(filaDe('A-001'));
+    await usuario.click(filaDe('A-001-SS26'));
     await screen.findByRole('complementary', PANEL_A001);
 
-    await usuario.click(filaDe('A-002'));
+    await usuario.click(filaDe('A-002-SS26'));
     expect(
-      await screen.findByRole('complementary', { name: 'Detalle del árbol A-002' }),
+      await screen.findByRole('complementary', { name: 'Detalle del árbol A-002-SS26' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('complementary', PANEL_A001)).not.toBeInTheDocument();
   });

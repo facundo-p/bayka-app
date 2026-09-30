@@ -5,6 +5,7 @@ function plantacion(parcial: Partial<PlantacionConStats> & { id: string }): Plan
   return {
     lugar: parcial.id,
     periodo: '2025-2026',
+    codigo: 'P1',
     estado: 'activa',
     visibleInApp: true,
     gpsCaptureFrequency: 10,

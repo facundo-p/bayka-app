@@ -1,3 +1,4 @@
+import { idDeArbol } from '../lib/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
 import { citarValorOr, patronContiene } from './escaparBusqueda';
@@ -39,6 +40,8 @@ export type GrupoConDetalle = {
 export type ArbolDetalle = {
   id: string;
   subId: string;
+  /** `<SubID>-<código de plantación>` (#559). */
+  idArbol: string;
   posicion: number | null;
   especieCodigo: string | null;
   especieNombre: string | null;
@@ -107,7 +110,11 @@ type FilaArbol = {
   gps_accuracy?: number | null;
   gps_captured_at?: string | null;
   species: { codigo: string; nombre: string } | null;
-  groups: { codigo: string; parcela_id: string | null } | null;
+  groups: {
+    codigo: string;
+    parcela_id: string | null;
+    plantations: { codigo: string } | null;
+  } | null;
 };
 
 async function contarGruposDeParcela(parcelaId: string): Promise<number> {
@@ -209,9 +216,12 @@ export async function listarGrupos(
 function consultaBaseArboles(plantationId: string) {
   return supabase
     .from('trees')
-    .select('*, species(codigo, nombre), groups!inner(codigo, parcela_id, plantation_id)', {
-      count: 'exact',
-    })
+    .select(
+      '*, species(codigo, nombre), groups!inner(codigo, parcela_id, plantation_id, plantations(codigo))',
+      {
+        count: 'exact',
+      },
+    )
     .eq('groups.plantation_id', plantationId);
 }
 
@@ -273,6 +283,7 @@ function mapearArbol(fila: FilaArbol): ArbolDetalle {
   return {
     id: fila.id,
     subId: fila.sub_id,
+    idArbol: idDeArbol(fila.sub_id, fila.groups?.plantations?.codigo),
     posicion: fila.posicion,
     especieCodigo: fila.species?.codigo ?? null,
     especieNombre: fila.species?.nombre ?? null,

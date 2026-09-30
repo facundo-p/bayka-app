@@ -17,6 +17,7 @@ const FILA_PLANTACION = {
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
+  codigo: 'LM26',
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
   visible_in_app: true,
@@ -64,7 +65,12 @@ const FILA_ARBOL = {
   longitude: null,
   gps_accuracy: null,
   gps_captured_at: null,
-  groups: { codigo: 'L1', parcela_id: 'parc-1', plantation_id: 'plant-1' },
+  groups: {
+    codigo: 'L1',
+    parcela_id: 'parc-1',
+    plantation_id: 'plant-1',
+    plantations: { codigo: 'LM26' },
+  },
 };
 
 let consultas: ConsultaCapturada[];
@@ -158,7 +164,7 @@ test.each(CASOS_CODIGO)(
 test('un resultado de árbol abre Árboles con su SubID en el buscador', async () => {
   await elegirResultado('PAL23', /PAL23ANC12/);
 
-  expect(await esperarFila('PAL23ANC12')).toBeInTheDocument();
+  expect(await esperarFila('PAL23ANC12-LM26')).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Árboles' })).toHaveAttribute('aria-checked', 'true');
   expect(screen.getByLabelText('Buscar por ID o SubID')).toHaveValue('PAL23ANC12');
   const listado = consultas.filter(

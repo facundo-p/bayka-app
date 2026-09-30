@@ -6,6 +6,7 @@ import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import { ROL } from '../../repositories/profileRepository';
 import { ENCABEZADO_CSV } from '../../services/exportarCsv';
 import { COLUMNAS_XLSX } from '../../services/exportarXlsx';
+import { CODIGO_PLANTACION } from '../codigoPlantacion';
 
 // `import.meta.url` va a una variable antes de `new URL(...)`: pasado inline, Vite lo reconoce
 // como el patrón de asset estático y lo reescribe a una URL http del dev server (no file://).
@@ -61,5 +62,12 @@ describe('contracts · estados', () => {
   it('ESTADO_PLANTACION coincide con el contrato', () => {
     const contrato = leerContrato('estados.json');
     expect(ESTADO_PLANTACION).toEqual(contrato);
+  });
+});
+
+describe('contracts · codigo-plantacion', () => {
+  it('CODIGO_PLANTACION coincide con el contrato (que es también el CHECK de la base)', () => {
+    const contrato = leerContrato('codigo-plantacion.json');
+    expect(CODIGO_PLANTACION).toEqual(contrato);
   });
 });

@@ -50,7 +50,12 @@ const FILA_ARBOL = {
   gps_accuracy: 4.6,
   gps_captured_at: '2026-06-03T12:00:05Z',
   species: { codigo: 'QB', nombre: 'Quebracho' },
-  groups: { codigo: 'L1', parcela_id: 'parc-1', plantation_id: 'plant-1' },
+  groups: {
+    codigo: 'L1',
+    parcela_id: 'parc-1',
+    plantation_id: 'plant-1',
+    plantations: { codigo: 'SS26' },
+  },
 };
 
 describe('listarParcelasConStats', () => {
@@ -174,6 +179,7 @@ describe('listarArboles', () => {
     expect(arboles[0]).toEqual({
       id: 'tree-1',
       subId: 'A-001',
+      idArbol: 'A-001-SS26',
       posicion: 3,
       especieCodigo: 'QB',
       especieNombre: 'Quebracho',

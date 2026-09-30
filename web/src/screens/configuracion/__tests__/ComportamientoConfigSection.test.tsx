@@ -25,6 +25,7 @@ const PLANTACION: Plantacion = {
   id: 'plant-1',
   lugar: 'Sitio',
   periodo: '2025-2026',
+  codigo: 'SI26',
   estado: 'activa',
   visibleInApp: true,
   gpsCaptureFrequency: 5,
