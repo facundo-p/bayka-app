@@ -1,5 +1,11 @@
 import { FILTROS_INICIALES } from '../filtrosArboles';
-import { conFiltro, filtrosAParams, hayFiltroActivo, leerFiltrosDeUrl } from '../filtrosUrl';
+import {
+  conFiltro,
+  filtrosAlCambiarDeSeccion,
+  filtrosAParams,
+  hayFiltroActivo,
+  leerFiltrosDeUrl,
+} from '../filtrosUrl';
 
 test('conFiltro cambia el campo y, si es la parcela, suelta el grupo', () => {
   const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', groupId: 'g1', speciesId: 'e1' };
@@ -47,4 +53,9 @@ test('hayFiltroActivo distingue el estado inicial de uno con filtro', () => {
 test('roundtrip: filtrosAParams → leerFiltrosDeUrl preserva los valores', () => {
   const filtros = { ...FILTROS_INICIALES, parcelaId: 'p1', speciesId: 'NN', foto: 'con' as const };
   expect(leerFiltrosDeUrl(filtrosAParams(filtros))).toEqual(filtros);
+});
+
+test('al cambiar de sección viaja el scope pero no la búsqueda', () => {
+  const params = filtrosAlCambiarDeSeccion('?parcela=p1&grupo=g1&q=PAL23');
+  expect(params.toString()).toBe('parcela=p1&grupo=g1');
 });

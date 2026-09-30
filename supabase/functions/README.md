@@ -7,7 +7,7 @@ service_role, por eso vive acá y no en el cliente web.
 
 | Acción | Payload | Efecto |
 |--------|---------|--------|
-| `crear` | `{accion, nombre, email, rol}` | `inviteUserByEmail` con metadata → el trigger `handle_new_user` crea el profile; Supabase envía el mail de invitación |
+| `crear` | `{accion, nombre, email, rol}` | `inviteUserByEmail` con metadata → el trigger `handle_new_user` crea el profile (`tecnico`, sin organización); Supabase envía el mail de invitación. Después, un solo UPDATE con `rol` + `organizacion_id` del superadmin que invita, para **toda** alta. Todo-o-nada: si ese UPDATE falla, `deleteUser` del recién invitado y 500 (el link del mail deja de servir). Un superadmin sin organización no puede crear |
 | `reenviarInvitacion` | `{accion, email}` | Envía el mail de recuperación de contraseña (sirve como reenvío de invitación y como "olvidé mi contraseña") |
 | `desactivar` | `{accion, userId}` | Ban en Auth (10 años, reversible) + `profiles.activo = false` |
 | `reactivar` | `{accion, userId}` | Quita el ban + `profiles.activo = true` |
@@ -82,16 +82,27 @@ curl -s -o /dev/null -D - "https://<ref>.supabase.co/auth/v1/verify?token=x&type
 - `Location` es el Site URL sin path: la URL está rechazada, falta en la
   allowlist.
 
-`http://localhost:5173/**` no está en la allowlist de staging: el flujo de
-invitación no se prueba contra `npm run dev`, se prueba en la web de staging.
+Estado esperado (verificado así el 2026-09-29):
+
+| `redirect_to` | staging | prod |
+|---|---|---|
+| `https://staging.bayka-app.pages.dev/…` | permitida | rechazada |
+| `https://bayka-app.pages.dev/…` | rechazada | permitida |
+| `http://localhost:5173/…` | permitida (dev local contra staging) | rechazada |
+| previews `https://<branch>.bayka-app.pages.dev/…` | rechazada | rechazada |
+| cualquier otra | rechazada | rechazada |
+
+Las rechazadas caen al Site URL, que en cada proyecto es la web de su
+entorno. Los previews de Cloudflare no están allowlisteados: un link de
+invitación pedido desde un preview cae a la web de staging.
 
 ### Checklist por entorno (cutover o proyecto nuevo)
 
 - [ ] `supabase secrets set WEB_URL=<url de la web de ese entorno>`
 - [ ] `supabase functions deploy admin-users` y `admin-plantaciones`
 - [ ] URL Configuration: Site URL = la web del entorno; Redirect URLs con
-      `<web>/**` (y `https://*.bayka-app.pages.dev/**` solo en staging, para
-      los previews de PR). La URL de prod no va en la allowlist de staging.
+      `<web>/**` (y `http://localhost:5173/**` solo en staging). La URL de
+      prod no va en la allowlist de staging.
 - [ ] Verificar la allowlist con el `curl` de arriba.
 - [ ] Migraciones que las functions requieren aplicadas (ver cada función).
 

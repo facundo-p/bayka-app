@@ -15,6 +15,7 @@ export const LONGITUD_MINIMA_PASSWORD = 8;
 /** Mensajes de la API (contrato con la web: se muestran tal cual). */
 export const MENSAJES = {
   sinPermisos: 'Necesitás permisos de superadmin para gestionar usuarios',
+  sinOrganizacion: 'Tu usuario no tiene organización: no puede dar de alta usuarios',
   autoDesactivacion: 'Un superadmin no puede desactivarse a sí mismo',
   ultimoSuperadmin: 'No podés desactivar al último superadmin activo',
   autoEliminacion: 'Un superadmin no puede eliminarse a sí mismo',
@@ -48,6 +49,7 @@ export type PerfilDb = {
   activo: boolean;
   email: string | null;
   eliminado_en: string | null;
+  organizacion_id: string | null;
 };
 
 /** Dominio reservado (RFC 2606): nunca recibe mails ni choca con un email real. */
@@ -94,13 +96,17 @@ export type Deps = {
   perfilDelToken: (jwt: string) => Promise<PerfilDb | null>;
   buscarPerfil: (userId: string) => Promise<PerfilDb | null>;
   contarSuperadminsActivos: () => Promise<number>;
-  /** Invita por email; devuelve el id del usuario creado (para setear su rol). */
+  /** Invita por email; devuelve el id del usuario creado (para asignarle el alta). */
   invitar: (
     email: string,
     meta: { nombre: string },
   ) => Promise<{ error: string | null; userId: string | null }>;
-  /** Setea el rol en profiles con service_role (el trigger crea siempre tecnico). */
-  asignarRol: (userId: string, rol: string) => Promise<ResultadoOperacion>;
+  /** Rol y organización en un solo UPDATE con service_role: el trigger crea el profile
+   *  como tecnico y sin organización. */
+  asignarAlta: (
+    userId: string,
+    alta: { rol: string; organizacionId: string },
+  ) => Promise<ResultadoOperacion>;
   enviarRecuperacion: (email: string) => Promise<ResultadoOperacion>;
   banear: (userId: string, banear: boolean) => Promise<ResultadoOperacion>;
   /** Ban sin vuelta atrás práctica, a diferencia del reversible de desactivar. */
@@ -343,18 +349,25 @@ async function cambiarEmail(
   return cambio.error ? falloDeAuth(cambio.error) : ok();
 }
 
+/**
+ * Rol y organización se asignan acá con service_role, nunca desde la metadata (la controla el
+ * cliente en un signUp). Todo-o-nada: sin organización el invitado no aparecería en el ABM,
+ * así que si la asignación falla se borra el usuario recién creado y el admin reintenta.
+ */
 async function crear(
+  caller: PerfilDb,
   cuerpo: Extract<CuerpoAdminUsers, { accion: 'crear' }>,
   deps: Deps,
 ): Promise<Respuesta> {
+  const organizacionId = caller.organizacion_id;
+  if (!organizacionId) return fallo(403, MENSAJES.sinOrganizacion);
   const invitacion = await deps.invitar(cuerpo.email, { nombre: cuerpo.nombre.trim() });
   if (invitacion.error) return falloDeAuth(invitacion.error);
-  // El trigger crea siempre 'tecnico'; el rol elevado se setea acá con service_role (no desde la metadata, controlable por el cliente).
-  if (cuerpo.rol !== ROL.TECNICO && invitacion.userId) {
-    const asignacion = await deps.asignarRol(invitacion.userId, cuerpo.rol);
-    if (asignacion.error) return fallo(500, MENSAJES.errorGenerico);
-  }
-  return ok();
+  if (!invitacion.userId) return fallo(500, MENSAJES.errorGenerico);
+  const asignacion = await deps.asignarAlta(invitacion.userId, { rol: cuerpo.rol, organizacionId });
+  if (!asignacion.error) return ok();
+  await deps.borrarUsuario(invitacion.userId);
+  return fallo(500, MENSAJES.errorGenerico);
 }
 
 async function reenviarInvitacion(email: string, deps: Deps): Promise<Respuesta> {
@@ -369,7 +382,7 @@ async function ejecutarAccion(
 ): Promise<Respuesta> {
   switch (cuerpo.accion) {
     case 'crear':
-      return crear(cuerpo, deps);
+      return crear(caller, cuerpo, deps);
     case 'reenviarInvitacion':
       return reenviarInvitacion(cuerpo.email, deps);
     case 'desactivar':
