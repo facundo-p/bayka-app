@@ -3,8 +3,10 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import {
   MENSAJES,
   manejarAdminPlantaciones,
+  secretosIguales,
   type Deps,
   type EntradaStorage,
+  type FotoQuitada,
   type PerfilDb,
   type ResultadoEliminacion,
 } from './nucleo.ts';
@@ -22,7 +24,9 @@ const PAGINA_STORAGE = 1000;
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SIN_SESION = { auth: { autoRefreshToken: false, persistSession: false } };
 
-const admin = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, SIN_SESION);
+const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, SIN_SESION);
 
 /** Cliente que actúa como el caller: las policies y los RPC lo ven con su auth.uid(). */
 function clienteDelCaller(jwt: string) {
@@ -104,6 +108,19 @@ const deps: Deps = {
     const { data, error } = await consulta;
     lanzarSiError('fotosPendientes', error);
     return (data ?? []).map((fila) => fila.id as string);
+  },
+  esServiceRole: (jwt) => secretosIguales(jwt, SERVICE_ROLE_KEY),
+  fotosQuitadasPorLimpiar: async (limite): Promise<FotoQuitada[]> => {
+    const { data, error } = await admin.rpc('fotos_quitadas_por_limpiar', { p_limite: limite });
+    lanzarSiError('fotosQuitadasPorLimpiar', error);
+    return ((data ?? []) as { id: number; storage_path: string }[]).map((fila) => ({
+      id: fila.id,
+      ruta: fila.storage_path,
+    }));
+  },
+  marcarFotosQuitadasBorradas: async (ids) => {
+    const { error } = await admin.rpc('marcar_fotos_quitadas_borradas', { p_ids: ids });
+    lanzarSiError('marcarFotosQuitadasBorradas', error);
   },
 };
 
