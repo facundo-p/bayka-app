@@ -53,8 +53,8 @@ Con el registro cerrado corta antes de mirar los datos.
   verificación en [`supabase/functions/README.md`](../supabase/functions/README.md).
 - **SMTP:** el default de Supabase admite ~2 emails/hora — alcanza para probar,
   no para operar. Para uso real, Authentication → SMTP Settings.
-- **Email templates y rate limits de Auth:** no relevados; solo se ven en el
-  dashboard.
+- **Políticas de contraseña, email templates y rate limits de Auth:** no
+  relevados; solo se ven en el dashboard.
 
 ## Edge functions
 
@@ -75,6 +75,3 @@ va en una migración, no en el dashboard.
   esperado en [`supabase/functions/README.md`](../supabase/functions/README.md).
 - Edge functions: un `POST` sin token a `/functions/v1/admin-users` y
   `/functions/v1/admin-plantaciones` responde `401`.
-
-Las políticas de contraseña, los templates y los rate limits solo se ven en
-el dashboard.
