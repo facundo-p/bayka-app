@@ -1,20 +1,13 @@
-import type { ArbolDetalle } from '../../../queries/dataExplorerQueries';
+import { arbolDetalle } from '../../../test/fabricas';
 import { codigoParcelaDe, etiquetaEspecie, nombreTecnicoDe, tieneGps } from '../arbolFormato';
 
-const ARBOL: ArbolDetalle = {
-  id: 'tree-1',
-  subId: 'A-001',
-  idArbol: 'A-001-SS26',
-  posicion: 1,
+/** Sin especie ni GPS; parcela y técnico con entrada en los lookups. */
+const ARBOL = arbolDetalle({
   especieCodigo: null,
   especieNombre: null,
-  grupoId: 'g-1',
-  grupoCodigo: 'L1',
   parcelaId: 'parc-1',
-  fotoUrl: null,
   usuarioRegistro: 'user-1',
-  createdAt: '2026-06-03T12:00:00Z',
-};
+});
 
 test('sin especie la etiqueta es N/N · Sin identificar', () => {
   expect(etiquetaEspecie(ARBOL)).toBe('N/N · Sin identificar');

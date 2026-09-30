@@ -1,40 +1,18 @@
-import type { PlantacionConStats } from '../../../queries/plantationQueries';
+import { plantacionConStats } from '../../../test/fabricas';
 import { sugerencias } from '../sugerencias';
-
-function plantacion(parcial: Partial<PlantacionConStats> & { id: string }): PlantacionConStats {
-  return {
-    lugar: parcial.id,
-    periodo: '2025-2026',
-    codigo: 'P1',
-    estado: 'activa',
-    visibleInApp: true,
-    gpsCaptureFrequency: 10,
-    gpsCaptureRequired: true,
-    photoCaptureAllTrees: false,
-    archivadaEn: null,
-    createdAt: '2026-01-01T00:00:00Z',
-    descripcion: null,
-    fechaInicio: null,
-    objetivoArboles: null,
-    arboles: 0,
-    parcelas: 0,
-    usuarios: 0,
-    ...parcial,
-  };
-}
 
 test('sin plantaciones: no hay sugerencias', () => {
   expect(sugerencias([])).toEqual([]);
 });
 
 test('la temporada activa (más árboles entre las activas) va primero', () => {
-  const chica = plantacion({
+  const chica = plantacionConStats({
     id: 'chica',
     estado: 'activa',
     arboles: 10,
     createdAt: '2026-01-01T00:00:00Z',
   });
-  const grande = plantacion({
+  const grande = plantacionConStats({
     id: 'grande',
     estado: 'activa',
     arboles: 500,
@@ -45,19 +23,19 @@ test('la temporada activa (más árboles entre las activas) va primero', () => {
 });
 
 test('luego de la temporada, el resto va por fecha de creación descendente, sin repetir la temporada', () => {
-  const temporada = plantacion({
+  const temporada = plantacionConStats({
     id: 'temporada',
     estado: 'activa',
     arboles: 999,
     createdAt: '2026-01-01T00:00:00Z',
   });
-  const vieja = plantacion({
+  const vieja = plantacionConStats({
     id: 'vieja',
     estado: 'finalizada',
     arboles: 5,
     createdAt: '2024-01-01T00:00:00Z',
   });
-  const reciente = plantacion({
+  const reciente = plantacionConStats({
     id: 'reciente',
     estado: 'finalizada',
     arboles: 5,
@@ -68,15 +46,23 @@ test('luego de la temporada, el resto va por fecha de creación descendente, sin
 });
 
 test('sin plantaciones activas: solo ordena por fecha de creación descendente', () => {
-  const a = plantacion({ id: 'a', estado: 'finalizada', createdAt: '2026-01-01T00:00:00Z' });
-  const b = plantacion({ id: 'b', estado: 'finalizada', createdAt: '2026-06-01T00:00:00Z' });
+  const a = plantacionConStats({
+    id: 'a',
+    estado: 'finalizada',
+    createdAt: '2026-01-01T00:00:00Z',
+  });
+  const b = plantacionConStats({
+    id: 'b',
+    estado: 'finalizada',
+    createdAt: '2026-06-01T00:00:00Z',
+  });
   const resultado = sugerencias([a, b]);
   expect(resultado.map((item) => item.id)).toEqual(['b', 'a']);
 });
 
 test('tope de 4 sugerencias aunque haya más plantaciones', () => {
   const plantaciones = Array.from({ length: 6 }, (_, indice) =>
-    plantacion({
+    plantacionConStats({
       id: `p${indice}`,
       estado: 'finalizada',
       createdAt: `2026-0${indice + 1}-01T00:00:00Z`,
@@ -86,7 +72,7 @@ test('tope de 4 sugerencias aunque haya más plantaciones', () => {
 });
 
 test('mapea al formato de ResultadoBusqueda esperado por la paleta', () => {
-  const unica = plantacion({
+  const unica = plantacionConStats({
     id: 'p1',
     lugar: 'La Maluka',
     periodo: 'Otoño 2026',
@@ -103,11 +89,11 @@ test('mapea al formato de ResultadoBusqueda esperado por la paleta', () => {
 });
 
 test('nunca sugiere una plantación archivada, aunque sea la de más árboles', () => {
-  const archivada = plantacion({
+  const archivada = plantacionConStats({
     id: 'archivada',
     arboles: 999,
     archivadaEn: '2026-09-01T00:00:00Z',
   });
-  const activa = plantacion({ id: 'activa', arboles: 1 });
+  const activa = plantacionConStats({ id: 'activa', arboles: 1 });
   expect(sugerencias([archivada, activa]).map((resultado) => resultado.id)).toEqual(['activa']);
 });

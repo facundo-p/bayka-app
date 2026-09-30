@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { PERFIL_SUPERADMIN, estadoMock, prepararSesion } from '../../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../../test/queryBuilderMock';
 import { renderRutasEn } from '../../../test/renderConRutas';
+import { filaPlantacion } from '../../../test/fabricas';
 
 vi.mock('../../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../../test/supabaseMock');
@@ -14,14 +15,14 @@ vi.mock('../../PlantationMap', () => ({
   PlantationMap: () => <div>Mapa de la plantación</div>,
 }));
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'La Maluka',
   periodo: 'Otoño 2026',
   estado: 'activa',
   created_at: '2026-04-01T00:00:00Z',
   visible_in_app: true,
-};
+});
 
 const FILA_ESPECIE = {
   id: 'sp-1',

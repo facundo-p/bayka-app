@@ -10,6 +10,7 @@ import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMo
 import { renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { ERRORES_GENERACION_IDS } from '../../queries/idsQueries';
+import { filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -22,14 +23,14 @@ vi.mock('write-excel-file/browser', () => ({
   default: vi.fn(() => ({ toBlob: () => Promise.resolve(new Blob(['xlsx'])) })),
 }));
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
   estado: 'activa',
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: false,
-};
+});
 
 const PERFILES = [
   { id: 'user-2', nombre: 'Beto Técnico', rol: 'tecnico', email: 'beto@bayka.org', activo: true },

@@ -4,6 +4,7 @@ import { prepararSesionAdmin } from '../../test/supabaseMock';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import { renderRutasEn } from '../../test/renderConRutas';
+import { filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -28,7 +29,7 @@ vi.mock('../../components/PlantationMap', () => ({
  *  tiempo. Es un timeout por espera, no el global de vitest. */
 const ESPERA_RUTA_MS = 5000;
 
-const FILA_PLANTACION = {
+const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
   lugar: 'Mendoza',
   periodo: '2025-2026',
@@ -36,7 +37,7 @@ const FILA_PLANTACION = {
   created_at: '2026-06-12T12:00:00Z',
   visible_in_app: true,
   objetivo_arboles: 10,
-};
+});
 
 const ARBOL_BASE = {
   species_id: 'sp-1',

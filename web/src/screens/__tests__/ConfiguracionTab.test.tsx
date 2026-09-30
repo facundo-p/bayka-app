@@ -5,6 +5,8 @@ import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMo
 import { renderRutasEn } from '../../test/renderConRutas';
 import { espiarInvalidaciones } from '../../test/espiarInvalidaciones';
 import { MENSAJE_CONFLICTO_EDICION } from '../../repositories/edicionDePlantacion';
+import { filaPlantacion } from '../../test/fabricas';
+import type { FilaPlantacion } from '../../queries/plantationQueries';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -29,7 +31,7 @@ const PERFILES = [
 ];
 
 /** Estado mutable del mock: los updates/inserts lo modifican como la base. */
-let filaPlantacion: Record<string, unknown>;
+let plantacionGuardada: FilaPlantacion;
 let asignadas: Array<{ species_id: string; orden_visual: number }>;
 let tecnicosAsignados: string[];
 let arbolesPorEspecie: Record<string, number>;
@@ -43,13 +45,13 @@ function filaAsignadaConEmbed(asignada: { species_id: string; orden_visual: numb
 
 function resolverEdicion(consulta: ConsultaCapturada): RespuestaMock {
   if (respuestaEdicion) return respuestaEdicion;
-  Object.assign(filaPlantacion, (consulta.payload as { p_cambios: object }).p_cambios);
+  Object.assign(plantacionGuardada, (consulta.payload as { p_cambios: object }).p_cambios);
   return { data: { success: true } };
 }
 
 function resolverPlantations(consulta: ConsultaCapturada): RespuestaMock {
   const filtroId = consulta.filtros.find((filtro) => filtro.columna === 'id');
-  return { data: filtroId?.valor === filaPlantacion.id ? filaPlantacion : null };
+  return { data: filtroId?.valor === plantacionGuardada.id ? plantacionGuardada : null };
 }
 
 function resolverPlantationSpecies(): RespuestaMock {
@@ -113,7 +115,7 @@ function configurarMock(): void {
 
 beforeEach(() => {
   prepararSesionAdmin();
-  filaPlantacion = {
+  plantacionGuardada = filaPlantacion({
     id: 'plant-1',
     lugar: 'Mendoza',
     periodo: '2025-2026',
@@ -123,7 +125,7 @@ beforeEach(() => {
     gps_capture_frequency: 10,
     gps_capture_required: true,
     photo_capture_all_trees: false,
-  };
+  });
   asignadas = [
     { species_id: 'sp-1', orden_visual: 0 },
     { species_id: 'sp-2', orden_visual: 1 },
@@ -346,7 +348,7 @@ describe('sección GPS', () => {
   });
 
   test('una frecuencia no preset deja sin preset activo y resalta el input', async () => {
-    filaPlantacion.gps_capture_frequency = 7;
+    plantacionGuardada.gps_capture_frequency = 7;
     renderRutasEn('/plantaciones/plant-1/configuracion');
     await screen.findByRole('checkbox', { name: 'Quebracho' });
 

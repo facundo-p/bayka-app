@@ -78,7 +78,7 @@ export type PaginaArboles = {
   totalPaginas: number;
 };
 
-type FilaParcela = {
+export type FilaParcela = {
   id: string;
   nombre: string;
   codigo: string;
@@ -86,7 +86,7 @@ type FilaParcela = {
   created_at: string;
 };
 
-type FilaGrupo = {
+export type FilaGrupo = {
   id: string;
   nombre: string;
   codigo: string;
@@ -97,7 +97,7 @@ type FilaGrupo = {
   parcelas: { codigo: string } | null;
 };
 
-type FilaArbol = {
+export type FilaArbol = {
   id: string;
   sub_id: string;
   posicion: number | null;
