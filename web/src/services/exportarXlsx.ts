@@ -1,6 +1,6 @@
 /*
  * XLSX nativo de exportación con `write-excel-file` (liviana, evita `xlsx`@npm por sus CVEs).
- * Espeja el esquema de mobile: mismas 9 columnas y normalizaciones que el CSV; a diferencia
+ * Espeja el esquema de mobile: mismas 10 columnas y normalizaciones que el CSV; a diferencia
  * de este, ID Global/ID Parcial viajan tipados como número. `COLUMNAS_XLSX` es un mapeo puro
  * fila→celdas (testeable); la descarga arma el Blob y delega en `descargarBlob`.
  */
@@ -23,8 +23,9 @@ function celdaTexto(valor: string): Cell {
   return { value: valor, type: String };
 }
 
-/** Las 9 columnas en el orden canónico: parcela null → vacía, especie null → "N/N". */
+/** Las 10 columnas en el orden canónico: parcela null → vacía, especie null → "N/N". */
 export const COLUMNAS_XLSX: Column<FilaExportacion>[] = [
+  { header: 'ID Árbol', cell: (fila) => celdaTexto(fila.idArbol) },
   { header: 'ID Global', cell: (fila) => celdaNumero(fila.idGlobal) },
   { header: 'ID Parcial', cell: (fila) => celdaNumero(fila.idParcial) },
   { header: 'Zona', cell: (fila) => celdaTexto(fila.zona) },

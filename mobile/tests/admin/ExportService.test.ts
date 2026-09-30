@@ -50,6 +50,7 @@ const mockPullSpecies = pullSpeciesFromServer as jest.Mock;
 
 const sampleRows = [
   {
+    idArbol: 'P1-LA-PI-1-ZN26',
     globalId: 10,
     idParcial: 1,
     lugar: 'Zona Norte',
@@ -61,6 +62,7 @@ const sampleRows = [
     especieNombre: 'Pino',
   },
   {
+    idArbol: 'LB-EU-2-ZN26',
     globalId: 11,
     idParcial: 2,
     lugar: 'Zona, Sur',
@@ -74,7 +76,7 @@ const sampleRows = [
 ];
 
 const EXPECTED_HEADER =
-  'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
+  'ID Árbol,ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
 // El CSV se escribe como bytes (BOM EF BB BF + UTF-8) cuando hay TextEncoder.
 // Decodifica el contenido escrito (Uint8Array o string) a string sin el BOM.
@@ -96,7 +98,7 @@ describe('ExportService', () => {
   // ─── exportToCSV ──────────────────────────────────────────────────────────
 
   describe('exportToCSV', () => {
-    it('builds CSV with exact 9-column header in canonical order', async () => {
+    it('builds CSV with exact 10-column header in canonical order', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       expect(mockWrite).toHaveBeenCalledTimes(1);
@@ -117,15 +119,22 @@ describe('ExportService', () => {
       );
     });
 
-    it('body has parcelaNombre at position 5 (0-indexed 4) for rows with parcela', async () => {
+    it('la primera columna es el ID de árbol: SubID-código de plantación (#559)', async () => {
+      await exportToCSV('plantation-1', 'ZonaNorte');
+
+      const lines = decodeWritten(mockWrite.mock.calls[0][0]).split('\n');
+      expect(lines[1].startsWith('P1-LA-PI-1-ZN26,10,1,')).toBe(true);
+    });
+
+    it('body has parcelaNombre at position 6 (0-indexed 5) for rows with parcela', async () => {
       await exportToCSV('plantation-1', 'ZonaNorte');
 
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       const lines = writtenContent.split('\n');
       const firstRowCols = lines[1].split(',');
-      // Columnas: 0 globalId, 1 idParcial, 2 Zona, 3 Plantación, 4 Parcela, 5 Grupo, ...
-      expect(firstRowCols[4]).toBe('Parcela 1');
-      expect(firstRowCols[3]).toBe('Zona Norte'); // Plantación
+      // Columnas: 0 ID Árbol, 1 globalId, 2 idParcial, 3 Zona, 4 Plantación, 5 Parcela, 6 Grupo, ...
+      expect(firstRowCols[5]).toBe('Parcela 1');
+      expect(firstRowCols[4]).toBe('Zona Norte'); // Plantación
     });
 
     it('parcelaNombre viaja tal cual (#90: parcela obligatoria, sin normalización null)', async () => {
@@ -134,9 +143,9 @@ describe('ExportService', () => {
       const writtenContent: string = decodeWritten(mockWrite.mock.calls[0][0]);
       expect(writtenContent).not.toContain('null');
       const lines = writtenContent.split('\n');
-      const row11 = lines.find((l) => l.startsWith('11,'));
+      const row11 = lines.find((l) => l.startsWith('LB-EU-2-ZN26,11,'));
       expect(row11).toBeDefined();
-      // Cols: 11, 2, "Zona, Sur", "Zona, Sur", Sur 2, Línea B, ...
+      // Cols: LB-EU-2-ZN26, 11, 2, "Zona, Sur", "Zona, Sur", Sur 2, Línea B, ...
       expect(row11).toContain('"Zona, Sur","Zona, Sur",Sur 2,Línea B');
     });
 
@@ -152,7 +161,7 @@ describe('ExportService', () => {
   // ─── exportToExcel ────────────────────────────────────────────────────────
 
   describe('exportToExcel', () => {
-    it('calls XLSX.utils.json_to_sheet with 9-column rows in canonical order', async () => {
+    it('calls XLSX.utils.json_to_sheet with 10-column rows in canonical order', async () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       expect(XLSX.utils.json_to_sheet).toHaveBeenCalledTimes(1);
@@ -161,6 +170,7 @@ describe('ExportService', () => {
 
       const keys = Object.keys(sheetArg[0]);
       expect(keys).toEqual([
+        'ID Árbol',
         'ID Global',
         'ID Parcial',
         'Zona',
@@ -213,6 +223,7 @@ describe('ExportService', () => {
       const ws = (XLSX.utils.json_to_sheet as jest.Mock).mock.results[0].value;
       // Ancho = max(largo header, largo de cada valor) + 2 de padding, por columna.
       expect(ws['!cols']).toEqual([
+        { wch: 17 }, // ID Árbol ('P1-LA-PI-1-ZN26' 15)
         { wch: 11 }, // ID Global (header 9)
         { wch: 12 }, // ID Parcial (header 10)
         { wch: 12 }, // Zona ('Zona Norte' 10)
@@ -232,7 +243,7 @@ describe('ExportService', () => {
       await exportToExcel('plantation-1', 'ZonaNorte');
 
       const ws = (XLSX.utils.json_to_sheet as jest.Mock).mock.results[0].value;
-      expect(ws['!cols'][8]).toEqual({ wch: 102 });
+      expect(ws['!cols'][9]).toEqual({ wch: 102 });
     });
 
     it('sin filas no setea anchos (hoja vacía) (#54)', async () => {
@@ -248,7 +259,8 @@ describe('ExportService', () => {
 
   describe('especie no resuelta → "N/N"', () => {
     const nnRow = {
-      globalId: 5870,
+      idArbol: 'MP3L14ZZZ25-ZN26',
+    globalId: 5870,
       idParcial: 5870,
       lugar: 'Zona Norte',
       plantacionLugar: 'Zona Norte',
@@ -275,8 +287,8 @@ describe('ExportService', () => {
 
       const written: string = decodeWritten(mockWrite.mock.calls[0][0]);
       const dataRow = written.split('\n')[1].split(',');
-      // index 8 = columna Especie
-      expect(dataRow[8]).toBe('N/N');
+      // index 9 = columna Especie
+      expect(dataRow[9]).toBe('N/N');
     });
   });
 

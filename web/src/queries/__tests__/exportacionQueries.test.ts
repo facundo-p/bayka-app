@@ -18,7 +18,7 @@ const FILA_COMPLETA = {
   groups: {
     nombre: 'Línea 1',
     plantation_id: 'plant-1',
-    plantations: { lugar: 'Sitio', periodo: '2025-2026' },
+    plantations: { lugar: 'Sitio', periodo: '2025-2026', codigo: 'SS26-1' },
     parcelas: { nombre: 'Norte', deleted_at: null },
   },
 };
@@ -40,7 +40,7 @@ const FILA_HUERFANA = {
   groups: {
     nombre: 'Bosquete 2',
     plantation_id: 'plant-1',
-    plantations: { lugar: 'Sitio', periodo: '2025-2026' },
+    plantations: null,
     parcelas: null,
   },
 };
@@ -54,7 +54,7 @@ describe('listarFilasExportacion', () => {
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
     expect(deArboles).toHaveLength(1);
     expect(deArboles[0].columnas).toContain('groups!inner(');
-    expect(deArboles[0].columnas).toContain('plantations(lugar, periodo)');
+    expect(deArboles[0].columnas).toContain('plantations(lugar, periodo, codigo)');
     expect(deArboles[0].columnas).toContain('parcelas(nombre, deleted_at)');
     expect(deArboles[0].columnas).toContain('species(nombre)');
     expect(deArboles[0].columnas).toContain('global_id');
@@ -70,11 +70,12 @@ describe('listarFilasExportacion', () => {
     expect(deArboles[0].limite).toBeUndefined();
   });
 
-  test('mapea embeds preservando nulls (parcela/especie null, ids null)', async () => {
+  test('mapea embeds preservando nulls; ID Árbol = SubID-código, solo SubID sin plantación', async () => {
     capturarConsultas(() => ({ data: [FILA_COMPLETA, FILA_HUERFANA] }));
 
     expect(await listarFilasExportacion('plant-1')).toEqual([
       {
+        idArbol: 'A-001-SS26-1',
         idGlobal: 1001,
         idParcial: 12,
         zona: 'Sitio',
@@ -86,14 +87,15 @@ describe('listarFilasExportacion', () => {
         especie: 'Quebracho',
       },
       {
+        idArbol: 'B-002',
         idGlobal: null,
         idParcial: null,
-        zona: 'Sitio',
-        plantacion: 'Sitio',
+        zona: '',
+        plantacion: '',
         parcela: null,
         grupo: 'Bosquete 2',
         subId: 'B-002',
-        periodo: '2025-2026',
+        periodo: '',
         especie: null,
       },
     ]);

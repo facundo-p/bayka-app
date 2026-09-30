@@ -76,7 +76,7 @@ async function seedTree(
 
 describe('exportQueries.getExportRows', () => {
   it('returns parcelaNombre when group has parcelaId (happy path)', async () => {
-    const plantation = createTestPlantation({ lugar: 'Campo Test' });
+    const plantation = createTestPlantation({ lugar: 'Campo Test', codigo: 'CT26' });
     await mockTestDb.insert(plantations).values(plantation);
 
     await mockTestDb.insert(parcelas).values({
@@ -116,6 +116,7 @@ describe('exportQueries.getExportRows', () => {
     expect(rows[0].lugar).toBe('Campo Test');
     expect(rows[0].grupoNombre).toBe('Linea A');
     expect(rows[1].parcelaNombre).toBe('Parcela 1');
+    expect(rows[0].idArbol).toBe('P1-G1-PI-1-CT26');
   });
 
   it('una parcela tombstoned no filtra su nombre al export (alineado con la web)', async () => {
@@ -234,6 +235,15 @@ describe('exportQueries.getExportRows', () => {
     const rows = await getExportRows(plantation.id);
 
     expect(rows.map((r) => r.globalId)).toEqual([10, 20, 30]);
+  });
+
+  it('sin código de plantación todavía (no bajó del servidor), el ID de árbol es el SubID', async () => {
+    const plantacionId = await seedPlantationWithGroup('Sin Código');
+    await seedTree(`g-${plantacionId}`, await seedSpecies('SC'), 40, 1);
+
+    const [fila] = await getExportRows(plantacionId);
+
+    expect(fila.idArbol).toBe('P1-G1-PI-1');
   });
 
   // ─── LEFT JOIN a species: el árbol nunca debe perderse (antes el INNER JOIN
