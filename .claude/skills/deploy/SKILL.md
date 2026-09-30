@@ -303,7 +303,8 @@ Facu):
       en PRs a main (el default branch es staging)
 - [ ] Mover Issue y PR a "En prod" en el board (option id 033672b0)
 - [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
-      distribuirlo a los dispositivos
+      distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
+      los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
 - [ ] Si el release incluye migraciones supabase/**: primero drift check
       (`npx --yes supabase@latest migration list --db-url "$PROD_DB_URL"` con
       la URL de `.env.migration`: lo aplicado en prod tiene que ser exactamente
