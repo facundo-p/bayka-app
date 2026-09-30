@@ -5,6 +5,8 @@ export type Plantation = {
   id: string;
   lugar: string;
   periodo: string;
+  /** Null hasta que una plantación anterior al código lo baja del servidor (#559). */
+  codigo?: string | null;
   estado: string;
   createdAt: string;
   pendingSync?: boolean;  // true for offline-created, not yet uploaded

@@ -3,9 +3,12 @@ import { Text, View } from 'react-native';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
 import { colors } from '../theme';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
-import { buscarDuplicada } from '../utils/duplicadoDePlantacion';
+import { buscarCodigoRepetido, buscarDuplicada } from '../utils/duplicadoDePlantacion';
+import { CODIGO_PLANTACION } from '../constants/codigoPlantacion';
+import { MENSAJE_CODIGO_PLANTACION, normalizarCodigoPlantacion } from '../utils/codigoDePlantacion';
 import {
   aCamposDePlantacion,
+  codigoLlegaConElPull,
   validarFormulario,
   valoresIniciales,
   type PlantacionEditable,
@@ -33,10 +36,37 @@ type Props = {
 type Setter = <K extends keyof ValoresDelFormulario>(campo: K) => (valor: ValoresDelFormulario[K]) => void;
 type SeccionProps = { valores: ValoresDelFormulario; set: Setter; editable: boolean };
 
-function DatosDeLaPlantacion({ valores, set, editable, duplicada, editando }: SeccionProps & {
+const AYUDA_CODIGO = 'Forma el ID de los árboles. Hasta 8 letras, números o guiones.';
+const AYUDA_CODIGO_PENDIENTE = 'Llega del servidor en la próxima sincronización.';
+
+function CampoCodigo({ valores, set, editable, repetido, llegaConElPull }: SeccionProps & {
+  repetido: boolean;
+  llegaConElPull: boolean;
+}) {
+  return (
+    <FormField
+      label="Código"
+      value={valores.codigo}
+      onChangeText={(texto) => set('codigo')(normalizarCodigoPlantacion(texto))}
+      placeholder="SS26-1"
+      autoCapitalize="characters"
+      autoCorrect={false}
+      maxLength={CODIGO_PLANTACION.longitudMaxima}
+      editable={editable && !llegaConElPull}
+      error={repetido ? MENSAJE_CODIGO_PLANTACION.duplicado : null}
+      helperText={llegaConElPull ? AYUDA_CODIGO_PENDIENTE : AYUDA_CODIGO}
+    />
+  );
+}
+
+type DatosProps = SeccionProps & {
   duplicada: Plantation | null;
   editando: boolean;
-}) {
+  codigoRepetido: boolean;
+  codigoLlegaConElPull: boolean;
+};
+
+function DatosDeLaPlantacion({ valores, set, editable, duplicada, editando, codigoRepetido, codigoLlegaConElPull }: DatosProps) {
   return (
     <>
       <View style={styles.fila}>
@@ -48,6 +78,13 @@ function DatosDeLaPlantacion({ valores, set, editable, duplicada, editando }: Se
         </View>
       </View>
       {duplicada ? <AvisoPlantacionDuplicada lugar={duplicada.lugar} periodo={duplicada.periodo} editando={editando} /> : null}
+      <CampoCodigo
+        valores={valores}
+        set={set}
+        editable={editable}
+        repetido={codigoRepetido}
+        llegaConElPull={codigoLlegaConElPull}
+      />
       <View style={styles.fila}>
         <View style={styles.columna}>
           <CampoFecha
@@ -148,6 +185,12 @@ export default function PlantationFormModal({ visible, onClose, onSubmit, editin
     [plantaciones, valores, editingPlantation?.id],
   );
 
+  const codigoRepetido = useMemo(
+    () => buscarCodigoRepetido(plantaciones ?? [], valores.codigo, editingPlantation?.id) !== null,
+    [plantaciones, valores.codigo, editingPlantation?.id],
+  );
+  const llegaConElPull = codigoLlegaConElPull(editingPlantation);
+
   const set: Setter = (campo) => (valor) => setValores((actuales) => ({ ...actuales, [campo]: valor }));
 
   function handleClose() {
@@ -157,11 +200,13 @@ export default function PlantationFormModal({ visible, onClose, onSubmit, editin
   }
 
   async function handleSubmit() {
-    const validationError = validarFormulario(valores);
+    const validationError = validarFormulario(valores, { codigoEditable: !llegaConElPull });
     if (validationError) {
       setError(validationError);
       return;
     }
+    // El campo ya lo marca: no se repite abajo.
+    if (codigoRepetido) return;
     setLoading(true);
     setError(null);
     try {
@@ -189,7 +234,15 @@ export default function PlantationFormModal({ visible, onClose, onSubmit, editin
         />
       }
     >
-      <DatosDeLaPlantacion valores={valores} set={set} editable={!loading} duplicada={duplicada} editando={isEdit} />
+      <DatosDeLaPlantacion
+        valores={valores}
+        set={set}
+        editable={!loading}
+        duplicada={duplicada}
+        editando={isEdit}
+        codigoRepetido={codigoRepetido}
+        codigoLlegaConElPull={llegaConElPull}
+      />
       <ComportamientoEnCampo valores={valores} set={set} editable={!loading} />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </EntityFormModal>

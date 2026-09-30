@@ -8,6 +8,8 @@ import type { plantations } from '../database/schema';
 export interface CamposDePlantacion {
   lugar: string;
   periodo: string;
+  /** Único en la organización; forma el ID de los árboles (#559). */
+  codigo: string;
   descripcion: string | null;
   /** YYYY-MM-DD. */
   fechaInicio: string | null;
@@ -27,6 +29,7 @@ type FilaDePlantacion = typeof plantations.$inferSelect;
 const COLUMNA_REMOTA = {
   lugar: 'lugar',
   periodo: 'periodo',
+  codigo: 'codigo',
   descripcion: 'descripcion',
   fechaInicio: 'fecha_inicio',
   objetivoArboles: 'objetivo_arboles',
@@ -39,6 +42,7 @@ const COLUMNA_REMOTA = {
 const COLUMNA_SNAPSHOT = {
   lugar: 'lugarServer',
   periodo: 'periodoServer',
+  codigo: 'codigoServer',
   descripcion: 'descripcionServer',
   fechaInicio: 'fechaInicioServer',
   objetivoArboles: 'objetivoArbolesServer',
@@ -54,6 +58,7 @@ export type SnapshotDePlantacion = Pick<FilaDePlantacion, (typeof COLUMNA_SNAPSH
 const OBLIGATORIOS: ReadonlySet<CampoDePlantacion> = new Set<CampoDePlantacion>([
   'lugar',
   'periodo',
+  'codigo',
   'gpsCaptureFrequency',
   'gpsCaptureRequired',
   'photoCaptureAllTrees',

@@ -80,6 +80,8 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
       'eliminada_en_servidor_en',
       'motivo_varado',
       'alta_en_servidor',
+      'codigo',
+      'codigo_server',
     ]),
   );
   expect(columnNames(sqlite, 'parcelas')).toContain('alta_pendiente_de');

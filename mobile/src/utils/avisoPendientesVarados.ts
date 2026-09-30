@@ -56,6 +56,8 @@ const TEXTO_DEL_MOTIVO: Record<MotivoVarado, string> = {
   [MOTIVO_VARADO.archivada]: 'La plantación está archivada. Si la desarchivan, se suben solos.',
   [MOTIVO_VARADO.eliminada]: 'La plantación fue eliminada en el servidor.',
   [MOTIVO_VARADO.sinPermiso]: 'Tu usuario no tiene permiso para subirlos. Si te lo devuelven, se suben solos.',
+  [MOTIVO_VARADO.codigoRepetido]: 'Otra plantación de la organización ya usa este código. Editala y cambiá el código: se suben en la próxima sincronización.',
+  [MOTIVO_VARADO.sinCodigo]: 'La plantación no tiene código. Editala y cargale uno: se suben en la próxima sincronización.',
 };
 
 export function textoDelMotivo(motivo: MotivoVarado): string {

@@ -18,6 +18,7 @@ import { useCurrentUserId } from './useCurrentUserId';
 import { useUserNames } from './useUserNames';
 import { showDoubleConfirmDialog } from '../utils/alertHelpers';
 import { useConfirm } from './useConfirm';
+import { useAvisoCambioDeIds } from './useAvisoCambioDeIds';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import { getGroupGating, SIN_PERMISOS_DE_GRUPO } from '../utils/permisosDeEdicion';
 import type { GroupGating } from '../utils/permisosDeEdicion';
@@ -34,6 +35,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
   const [editingGroup, setEditingGroup] = useState<Group | null>(null);
   const [groupFilter, setGroupFilter] = useState<string | null>(null);
   const confirm = useConfirm();
+  const avisoDeIds = useAvisoCambioDeIds();
 
   const pid = plantacionId ?? '';
 
@@ -125,6 +127,12 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     );
   }
 
+  /** El código del grupo forma el ID de sus árboles: cambiarlo los cambia (#559). */
+  function confirmarCodigoDelGrupo(codigo: string): Promise<boolean> {
+    if (!editingGroup || codigo === editingGroup.codigo) return Promise.resolve(true);
+    return avisoDeIds.confirmarSiCambianIds(treeCountMap.get(editingGroup.id) ?? 0, 'grupo');
+  }
+
   async function handleEditSubmit(values: { nombre: string; codigo: string; tipo: GroupTipo }): Promise<UpdateGroupResult> {
     if (!editingGroup) return { success: false, error: 'unknown' };
     // El modal pudo quedar abierto mientras un pull finalizaba o archivaba la plantación.
@@ -162,5 +170,7 @@ export function usePlantationDetail(plantacionId: string, parcelaId?: string) {
     handleLongPress,
     handleDeleteGroup,
     handleEditSubmit,
+    confirmarCodigoDelGrupo,
+    avisoDeIdsProps: avisoDeIds.confirmProps,
   };
 }

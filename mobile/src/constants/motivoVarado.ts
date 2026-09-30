@@ -8,6 +8,10 @@ export const MOTIVO_VARADO = {
   archivada: 'archivada',
   finalizada: 'finalizada',
   sinPermiso: 'sin-permiso',
+  /** Otra plantación de la organización ya usa el código (#559). */
+  codigoRepetido: 'codigo-repetido',
+  /** Alta anterior al código (#559): no sube hasta que le carguen uno. */
+  sinCodigo: 'sin-codigo',
 } as const;
 
 export type MotivoVarado = (typeof MOTIVO_VARADO)[keyof typeof MOTIVO_VARADO];
@@ -18,6 +22,8 @@ export const PRIORIDAD_DE_MOTIVOS: readonly MotivoVarado[] = [
   MOTIVO_VARADO.archivada,
   MOTIVO_VARADO.finalizada,
   MOTIVO_VARADO.sinPermiso,
+  MOTIVO_VARADO.codigoRepetido,
+  MOTIVO_VARADO.sinCodigo,
 ];
 
 /** Motivos que dependen solo del estado de la plantación: ver que es escribible alcanza para limpiarlos. */

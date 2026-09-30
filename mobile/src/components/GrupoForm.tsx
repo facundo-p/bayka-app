@@ -21,6 +21,7 @@ interface Props {
   }) => Promise<CreateGroupResult | UpdateGroupResult>;
   onCancel?: () => void;
   lastGroupName?: string | null;
+  confirmar?: (codigo: string) => Promise<boolean>;
 }
 
 /**
@@ -29,8 +30,8 @@ interface Props {
  * botonera en un footer fijo para que "Crear grupo" no quede tapado por el
  * teclado (#89). Ambos comparten estado vía useGrupoForm.
  */
-export default function GrupoForm({ mode, initialValues, onSubmit, onCancel, lastGroupName }: Props) {
-  const form = useGrupoForm({ mode, initialValues, onSubmit });
+export default function GrupoForm({ mode, initialValues, onSubmit, onCancel, lastGroupName, confirmar }: Props) {
+  const form = useGrupoForm({ mode, initialValues, onSubmit, confirmar });
   return (
     <View>
       <GrupoFields form={form} lastGroupName={mode === 'create' ? lastGroupName : null} />

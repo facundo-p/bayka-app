@@ -7,6 +7,7 @@ import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { VISIBLE_IN_APP_DEFAULT } from '../constants/visibilidad';
 import type { CamposDePlantacion } from './camposDePlantacion';
+import { errorCodigoPlantacion, normalizarCodigoPlantacion } from './codigoDePlantacion';
 import { recortarIso } from './fechaDeCalendario';
 
 const LARGO_MINIMO = 2;
@@ -14,6 +15,7 @@ const LARGO_MINIMO = 2;
 export type ValoresDelFormulario = {
   lugar: string;
   periodo: string;
+  codigo: string;
   descripcion: string;
   /** YYYY-MM-DD, o '' sin fecha: la elige el calendario, no se tipea. */
   fechaInicio: string;
@@ -24,7 +26,20 @@ export type ValoresDelFormulario = {
   visibleParaTecnicos: boolean;
 };
 
-export type PlantacionEditable = Partial<CamposDePlantacion> & Pick<CamposDePlantacion, 'lugar' | 'periodo'>;
+export type PlantacionEditable = Partial<Omit<CamposDePlantacion, 'codigo'>> &
+  Pick<CamposDePlantacion, 'lugar' | 'periodo'> & {
+    /** Null en una plantación anterior al código que todavía no lo bajó. */
+    codigo?: string | null;
+    pendingSync?: boolean;
+  };
+
+/**
+ * Subida antes de que existiera el código: lo trae el próximo pull, y un valor tipeado acá no
+ * tendría base contra la cual subirse. Un alta sin subir, en cambio, sin código no sube.
+ */
+export function codigoLlegaConElPull(plantacion?: PlantacionEditable | null): boolean {
+  return !!plantacion && !plantacion.codigo && !plantacion.pendingSync;
+}
 
 // ─── Validación ──────────────────────────────────────────────────────────────
 
@@ -55,10 +70,14 @@ export function validarObjetivo(raw: string): string | null {
 }
 
 /** Primer error del formulario, o null. */
-export function validarFormulario(valores: ValoresDelFormulario): string | null {
+export function validarFormulario(
+  valores: ValoresDelFormulario,
+  { codigoEditable = true }: { codigoEditable?: boolean } = {},
+): string | null {
   if (valores.lugar.trim().length < LARGO_MINIMO) return `Lugar debe tener al menos ${LARGO_MINIMO} caracteres.`;
   if (valores.periodo.trim().length < LARGO_MINIMO) return `Periodo debe tener al menos ${LARGO_MINIMO} caracteres.`;
-  return validarObjetivo(valores.objetivoArboles)
+  return (codigoEditable ? errorCodigoPlantacion(normalizarCodigoPlantacion(valores.codigo)) : null)
+    ?? validarObjetivo(valores.objetivoArboles)
     ?? validateGpsFrequency(valores.gpsFrequency);
 }
 
@@ -68,6 +87,7 @@ export function valoresIniciales(plantacion?: PlantacionEditable | null): Valore
   return {
     lugar: plantacion?.lugar ?? '',
     periodo: plantacion?.periodo ?? '',
+    codigo: plantacion?.codigo ?? '',
     descripcion: plantacion?.descripcion ?? '',
     fechaInicio: recortarIso(plantacion?.fechaInicio),
     objetivoArboles: plantacion?.objetivoArboles != null ? String(plantacion.objetivoArboles) : '',
@@ -84,6 +104,7 @@ export function aCamposDePlantacion(valores: ValoresDelFormulario): CamposDePlan
   return {
     lugar: valores.lugar.trim(),
     periodo: valores.periodo.trim(),
+    codigo: normalizarCodigoPlantacion(valores.codigo),
     // Sin recortar: si no, abrir y guardar reescribe una descripción de la web con espacios.
     descripcion: valores.descripcion.trim() === '' ? null : valores.descripcion,
     fechaInicio: valores.fechaInicio === '' ? null : valores.fechaInicio,

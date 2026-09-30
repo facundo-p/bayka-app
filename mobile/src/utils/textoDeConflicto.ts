@@ -7,6 +7,7 @@ import { conPuntosDeMiles } from './formularioDePlantacion';
 export const ETIQUETA_DE_CAMPO: Record<CampoDePlantacion, string> = {
   lugar: 'Lugar',
   periodo: 'Periodo',
+  codigo: 'Código',
   descripcion: 'Descripción',
   fechaInicio: 'Fecha de inicio',
   objetivoArboles: 'Objetivo de árboles',

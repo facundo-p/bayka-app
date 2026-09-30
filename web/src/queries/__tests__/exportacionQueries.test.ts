@@ -18,7 +18,7 @@ const FILA_COMPLETA = {
   groups: {
     nombre: 'Línea 1',
     plantation_id: 'plant-1',
-    plantations: { lugar: 'Sitio', periodo: '2025-2026' },
+    plantations: { lugar: 'Sitio', periodo: '2025-2026', codigo: 'SS26-1' },
     parcelas: { nombre: 'Norte', deleted_at: null },
   },
 };
@@ -40,9 +40,15 @@ const FILA_HUERFANA = {
   groups: {
     nombre: 'Bosquete 2',
     plantation_id: 'plant-1',
-    plantations: { lugar: 'Sitio', periodo: '2025-2026' },
+    plantations: { lugar: 'Sitio', periodo: '2025-2026', codigo: 'SS26-1' },
     parcelas: null,
   },
+};
+
+const FILA_SIN_PLANTACION = {
+  ...FILA_HUERFANA,
+  sub_id: 'D-004',
+  groups: { ...FILA_HUERFANA.groups, plantations: null },
 };
 
 describe('listarFilasExportacion', () => {
@@ -54,7 +60,7 @@ describe('listarFilasExportacion', () => {
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
     expect(deArboles).toHaveLength(1);
     expect(deArboles[0].columnas).toContain('groups!inner(');
-    expect(deArboles[0].columnas).toContain('plantations(lugar, periodo)');
+    expect(deArboles[0].columnas).toContain('plantations(lugar, periodo, codigo)');
     expect(deArboles[0].columnas).toContain('parcelas(nombre, deleted_at)');
     expect(deArboles[0].columnas).toContain('species(nombre)');
     expect(deArboles[0].columnas).toContain('global_id');
@@ -70,11 +76,12 @@ describe('listarFilasExportacion', () => {
     expect(deArboles[0].limite).toBeUndefined();
   });
 
-  test('mapea embeds preservando nulls (parcela/especie null, ids null)', async () => {
+  test('mapea embeds preservando nulls (parcela/especie null, ids null); ID Árbol = SubID-código', async () => {
     capturarConsultas(() => ({ data: [FILA_COMPLETA, FILA_HUERFANA] }));
 
     expect(await listarFilasExportacion('plant-1')).toEqual([
       {
+        idArbol: 'A-001-SS26-1',
         idGlobal: 1001,
         idParcial: 12,
         zona: 'Sitio',
@@ -86,6 +93,7 @@ describe('listarFilasExportacion', () => {
         especie: 'Quebracho',
       },
       {
+        idArbol: 'B-002-SS26-1',
         idGlobal: null,
         idParcial: null,
         zona: 'Sitio',
@@ -97,6 +105,20 @@ describe('listarFilasExportacion', () => {
         especie: null,
       },
     ]);
+  });
+
+  test('sin plantación embebida: ID Árbol es solo el SubID y zona/plantación/período vacíos', async () => {
+    capturarConsultas(() => ({ data: [FILA_SIN_PLANTACION] }));
+
+    const [fila] = await listarFilasExportacion('plant-1');
+
+    expect(fila).toMatchObject({
+      idArbol: 'D-004',
+      zona: '',
+      plantacion: '',
+      periodo: '',
+      subId: 'D-004',
+    });
   });
 
   test('una parcela soft-deleted no aparece en la planilla: mapea a null', async () => {

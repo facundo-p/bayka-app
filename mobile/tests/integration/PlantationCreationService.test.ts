@@ -59,6 +59,7 @@ import { syncLog } from '../../src/utils/syncLogger';
 const baseParams = {
   lugar: 'Campo Test',
   periodo: '2026-otono',
+  ajustes: { codigo: 'CT26' },
   organizacionId: '00000000-0000-0000-0000-000000000001',
   creadoPor: 'user-admin-1',
   mode: 'offline' as const,
@@ -81,15 +82,18 @@ afterAll(() => {
  * simula cuántas otras plantaciones con el mismo lugar/periodo ve el chequeo de #633/#655
  * (hayOtraEnServidor, .select().ilike().ilike().neq()); default 0 = sin duplicado.
  */
-function mockSupabaseForSuccessfulPush(opts?: { duplicadaCount?: number }) {
+function mockSupabaseForSuccessfulPush(opts?: { duplicadaCount?: number; codigoCount?: number }) {
   const plantationsInsert = jest.fn().mockResolvedValue({ error: null });
   // Sin rol cacheado el push sube solo altas y pide la representación con `.select`.
   const parcelasUpsert = jest.fn(() => Object.assign(Promise.resolve({ data: null, error: null }), {
     select: jest.fn().mockResolvedValue({ data: [{ id: 'parcela' }], error: null }),
   }));
+  // `eq` es el chequeo del código antes de crear (#559); el resultado sale del `then`.
   const duplicadaChain = {
     ilike: jest.fn().mockReturnThis(),
     neq: jest.fn().mockResolvedValue({ count: opts?.duplicadaCount ?? 0, error: null }),
+    eq: jest.fn().mockReturnThis(),
+    then: (resolver: (r: unknown) => void) => resolver({ count: opts?.codigoCount ?? 0, error: null }),
   };
   const plantationsSelect = jest.fn().mockReturnValue(duplicadaChain);
   (supabase.from as jest.Mock).mockImplementation((table: string) => {
@@ -279,5 +283,40 @@ describe('createPlantationWithDefaultParcela — duplicada en servidor (#655)', 
     const r = await createPlantationWithDefaultParcela(onlineParams);
 
     expect(r.duplicada).toBe(false);
+  });
+});
+
+describe('createPlantationWithDefaultParcela — código repetido en la organización (#559)', () => {
+  const onlineParams = { ...baseParams, mode: 'online' as const };
+
+  test('online, el server ya tiene ese código → no crea nada y avisa en el formulario', async () => {
+    const { plantationsInsert } = mockSupabaseForSuccessfulPush({ codigoCount: 1 });
+
+    await expect(createPlantationWithDefaultParcela(onlineParams)).rejects.toThrow(
+      'Ya existe otra plantación con ese código.',
+    );
+
+    expect(plantationsInsert).not.toHaveBeenCalled();
+    expect(await mockTestDb.select().from(plantations)).toHaveLength(0);
+  });
+
+  test('online, código libre → crea y sube con el código', async () => {
+    const { plantationsInsert } = mockSupabaseForSuccessfulPush({ codigoCount: 0 });
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    expect(plantationsInsert).toHaveBeenCalledWith(expect.objectContaining({ codigo: 'CT26' }));
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, r.id));
+    expect(fila).toMatchObject({ codigo: 'CT26', codigoServer: 'CT26' });
+  });
+
+  test('sin red el chequeo no frena el alta: la subida lo vuelve a verificar', async () => {
+    mockSupabaseForFailedPush();
+    jest.spyOn(syncLog, 'error').mockImplementation(() => {});
+
+    const r = await createPlantationWithDefaultParcela(onlineParams);
+
+    const [fila] = await mockTestDb.select().from(plantations).where(eq(plantations.id, r.id));
+    expect(fila).toMatchObject({ codigo: 'CT26', pendingSync: true });
   });
 });

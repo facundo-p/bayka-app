@@ -127,7 +127,13 @@ Ejemplo:
 ```
 Lugar: La Maluka - Zona Alta Lote 1
 Periodo: Otoño 2026
+Código: LM26-1
 ```
+
+El **código** es obligatorio y **único dentro de la organización**: hasta 8
+letras, números o guiones, en mayúsculas, sin guion al principio, al final ni
+doble. Forma el ID de Árbol (4.17). Se edita solo mientras la plantación está
+activa.
 
 Una plantación es un conjunto de **Parcelas**.
 
@@ -621,7 +627,24 @@ Esto habilita la generación de IDs finales.
 
 # 4.17 Generación de IDs Finales
 
-Se generan dos identificadores.
+Se generan dos identificadores numéricos. Además, cada árbol tiene desde que se
+registra su **ID de Árbol**, que no se genera: se arma.
+
+---
+
+## ID de Árbol
+
+Único en toda la organización:
+
+```
+<SubID>-<código de plantación>
+```
+
+Ejemplo: `AL23BANC12-LM26-1`.
+
+Cambia si cambia el código de la plantación, de la parcela o del grupo. Al
+cambiar el código de una parcela o grupo con árboles, la app avisa cuántos IDs
+cambian antes de guardar.
 
 ---
 
@@ -693,12 +716,14 @@ Los IDs quedan generados cuando **todos** los árboles de la plantación tienen
 Los administradores pueden exportar la plantación a CSV o Excel.
 Funcionalidad disponible para plantaciones finalizadas.
 
-Columnas exportadas:
+Columnas exportadas, en este orden (contrato: `contracts/export-columns.json`):
 
 ```
+ID Árbol (SubID-código de plantación)
 ID Global
 ID Parcial
 Zona (Lugar)
+Plantación (Lugar)
 Parcela
 Grupo
 SubID

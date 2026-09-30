@@ -11,6 +11,7 @@ import EntityFormModal from './EntityFormModal';
 import FormActions from './FormActions';
 import { useNewParcela } from '../hooks/useNewParcela';
 import { useConfirm } from '../hooks/useConfirm';
+import { useAvisoCambioDeIds } from '../hooks/useAvisoCambioDeIds';
 import { nuncaSubida } from '../utils/permisosDeEdicion';
 import { colors } from '../theme';
 import { parcelaFormModalStyles as styles } from './ParcelaFormModal.styles';
@@ -84,7 +85,7 @@ function erroresDelGuardado(error: string): ErrorState {
 }
 
 export default function ParcelaFormModal({ visible, mode, plantacionId, parcela, onClose }: Props) {
-  const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela } = useNewParcela(plantacionId);
+  const { handleCreateParcela, handleUpdateParcela, handleDeleteParcela, arbolesDeLaParcela } = useNewParcela(plantacionId);
   const [nombre, setNombre] = useState(parcela?.nombre ?? '');
   const [codigo, setCodigo] = useState(parcela?.codigo ?? '');
   const [descripcion, setDescripcion] = useState(parcela?.descripcion ?? '');
@@ -92,6 +93,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
   const [errors, setErrors] = useState<ErrorState>({ nombre: null, codigo: null, general: null });
   const [hasChildrenError, setHasChildrenError] = useState<number | null>(null);
   const confirm = useConfirm();
+  const avisoDeIds = useAvisoCambioDeIds();
 
   const canSubmit = nombre.trim().length > 0 && codigo.trim().length > 0 && !loading;
 
@@ -113,8 +115,14 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
     onClose();
   }
 
+  async function confirmaCambioDeIds(nuevoCodigo: string): Promise<boolean> {
+    if (mode !== 'edit' || !parcela || nuevoCodigo === parcela.codigo) return true;
+    return avisoDeIds.confirmarSiCambianIds(await arbolesDeLaParcela(parcela.id), 'parcela');
+  }
+
   async function handleSubmit() {
     if (!canSubmit) return;
+    if (!(await confirmaCambioDeIds(codigo.trim().toUpperCase()))) return;
     setErrors({ nombre: null, codigo: null, general: null });
     setLoading(true);
     try {
@@ -181,6 +189,7 @@ export default function ParcelaFormModal({ visible, mode, plantacionId, parcela,
       extraContent={
         <>
           <ConfirmModal {...confirm.confirmProps} />
+          <ConfirmModal {...avisoDeIds.confirmProps} />
           <ConfirmModal
             visible={hasChildrenError !== null}
             icon="alert-circle"

@@ -4,6 +4,7 @@
 import { db } from '../database/client';
 import { trees, groups, plantations, parcelas, species } from '../database/schema';
 import { eq, and, asc, isNotNull } from 'drizzle-orm';
+import { idDeArbol } from '../utils/codigoDePlantacion';
 
 /**
  * Fila para el export CSV/Excel. lugar/plantacionLugar resuelven ambos a plantations.lugar ("Zona"
@@ -12,6 +13,8 @@ import { eq, and, asc, isNotNull } from 'drizzle-orm';
  * vacío y "N/N" respectivamente (mismo criterio que la web).
  */
 export interface ExportRow {
+  /** `<SubID>-<código de plantación>` (#559). */
+  idArbol: string;
   globalId: number | null;
   idParcial: number | null;
   lugar: string;
@@ -40,6 +43,7 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
       parcelaBorradaEn: parcelas.deletedAt,
       grupoNombre: groups.nombre,
       subId: trees.subId,
+      plantacionCodigo: plantations.codigo,
       periodo: plantations.periodo,
       especieNombre: species.nombre,
     })
@@ -51,7 +55,8 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
     .where(eq(groups.plantacionId, plantacionId))
     .orderBy(asc(trees.globalId));
 
-  return filas.map(({ parcelaBorradaEn, ...fila }) => ({
+  return filas.map(({ parcelaBorradaEn, plantacionCodigo, ...fila }) => ({
+    idArbol: idDeArbol(fila.subId, plantacionCodigo),
     ...fila,
     parcelaNombre: nombreVigente(fila.parcelaNombre, parcelaBorradaEn),
   }));

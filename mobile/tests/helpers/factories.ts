@@ -27,6 +27,7 @@ export type NewPlantation = {
   // Opcional: si no se pasa, aplica el default del schema (visible).
   visibleInApp?: boolean;
   eliminadaEnServidorEn?: string | null;
+  codigo?: string | null;
 };
 
 export function createTestPlantation(overrides?: Partial<NewPlantation>): NewPlantation {

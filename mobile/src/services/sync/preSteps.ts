@@ -6,13 +6,20 @@ import { syncLog } from '../../utils/syncLogger';
 import { relanzarSiEsCancelacion } from './cancelacion';
 import { pullSpeciesFromServer } from './catalogoDeEspecies';
 import { esTimeout } from '../../supabase/fetchConTimeout';
-import { SYNC_ERROR, SyncPlantationResult, classifyServerError, rawErrorDetail, type SyncErrorCode } from './types';
+import {
+  SYNC_ERROR,
+  SyncPlantationResult,
+  classifyServerError,
+  columnasDeLaViolacion,
+  rawErrorDetail,
+  type SyncErrorCode,
+} from './types';
 import { MOTIVO_NO_ESCRIBIBLE } from '../PlantacionEscribibleService';
 import { RECHAZO_CONFIGURACION } from '../ReemplazoConfiguracionService';
 import { anotarRechazo, anotarSubida } from './pendientesVarados';
 import { PG_ERROR } from '../../supabase/postgresErrorCodes';
 import { hayOtraEnServidor } from './duplicadasEnServidor';
-import { esRechazada, registrarEdicionSubida, subirEdicion } from './edicionDePlantacion';
+import { ERROR_EDICION, esRechazada, registrarEdicionSubida, subirEdicion } from './edicionDePlantacion';
 import {
   aColumnasRemotas,
   aSnapshot,
@@ -51,6 +58,7 @@ type FalloDeAlta = { error: SyncErrorCode; detail?: string };
 function falloDeAltaRechazada(rechazo: string): FalloDeAlta {
   if (rechazo === MOTIVO_NO_ESCRIBIBLE.finalizada || rechazo === MOTIVO_NO_ESCRIBIBLE.archivada) return { error: rechazo };
   if (rechazo === RECHAZO_CONFIGURACION.sinPermiso) return { error: SYNC_ERROR.SIN_PERMISO_CREAR };
+  if (rechazo === ERROR_EDICION.codigoDuplicado) return { error: SYNC_ERROR.CODIGO_PLANTACION_REPETIDO };
   return { error: SYNC_ERROR.UNKNOWN, detail: rechazo };
 }
 
@@ -91,8 +99,14 @@ function edicionDeAltaExistente(p: PlantacionLocal) {
 /** `fallo` null = subió; `cambiosPorResolver`: campos que chocaron con la web al reintentar. */
 type ResultadoDeAlta = { fallo: FalloDeAlta | null; cambiosPorResolver: number };
 
-/** Inserta la plantación y deja lo subido como snapshot: es la base de un reintento. */
+const esChoqueDeCodigo = (error: { details?: string }) => columnasDeLaViolacion(error.details).includes('codigo');
+
+/**
+ * Inserta la plantación y deja lo subido como snapshot: es la base de un reintento. Un 23505
+ * por el id es un intento anterior que ya la subió; por el código, otra plantación lo usa.
+ */
 async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
+  if (!p.codigo) return { fallo: { error: SYNC_ERROR.SIN_CODIGO_PLANTACION }, cambiosPorResolver: 0 };
   const campos = camposDeFila(p);
   const { error } = await supabase.from('plantations').insert({
     id: p.id,
@@ -102,7 +116,10 @@ async function subirFilaDeAlta(p: PlantacionLocal): Promise<ResultadoDeAlta> {
     created_at: p.createdAt,
     ...aColumnasRemotas(campos),
   });
-  if (error?.code === PG_ERROR.UNIQUE_VIOLATION) return actualizarAltaExistente(p);
+  if (error?.code === PG_ERROR.UNIQUE_VIOLATION) {
+    if (esChoqueDeCodigo(error)) return { fallo: { error: SYNC_ERROR.CODIGO_PLANTACION_REPETIDO }, cambiosPorResolver: 0 };
+    return actualizarAltaExistente(p);
+  }
   if (error) return { fallo: falloDeAlta(error), cambiosPorResolver: 0 };
   await db.update(plantations).set({ ...aSnapshot(campos), altaEnServidor: true }).where(eq(plantations.id, p.id));
   return { fallo: null, cambiosPorResolver: 0 };

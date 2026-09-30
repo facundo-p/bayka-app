@@ -1,6 +1,7 @@
 {
-  "_comment": "Fuente de verdad del orden de columnas de exportación (CSV/XLSX). Cambiar esto implica actualizar las copias runtime (mobile/src/services/ExportService.ts CSV_HEADER/rowToExcel, web/src/services/exportarCsv.ts ENCABEZADO_CSV, web/src/services/exportarXlsx.ts COLUMNAS_XLSX) y sus contract tests en el mismo cambio.",
+  "_comment": "Fuente de verdad del orden de columnas de exportación (CSV/XLSX). Cambiar esto implica actualizar las copias runtime (mobile/src/services/ExportService.ts CSV_HEADER/rowToExcel, web/src/services/exportarCsv.ts ENCABEZADO_CSV, web/src/services/exportarXlsx.ts COLUMNAS_XLSX) y sus contract tests en el mismo cambio. ID Árbol = <SubID>-<código de plantación> (#559); ID Global sigue numérico.",
   "headers": [
+    "ID Árbol",
     "ID Global",
     "ID Parcial",
     "Zona",

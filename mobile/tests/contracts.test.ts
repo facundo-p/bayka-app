@@ -26,6 +26,7 @@ import { UNKNOWN_SPECIES_CODE } from '../src/utils/speciesHelpers';
 import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
 import { ESTADO_PLANTACION } from '../src/constants/estados';
+import { CODIGO_PLANTACION } from '../src/constants/codigoPlantacion';
 import type { ExportRow } from '../src/queries/exportQueries';
 
 /** Lee un contrato de `contracts/` y descarta `_comment` (no forma parte de los valores a comparar). */
@@ -38,6 +39,7 @@ function leerContrato(nombre: string): Record<string, unknown> {
 }
 
 const FILA_EXPORT_VACIA: ExportRow = {
+  idArbol: '',
   globalId: null,
   idParcial: null,
   lugar: '',
@@ -91,5 +93,11 @@ describe('contracts · estados', () => {
   it('ESTADO_PLANTACION coincide con el contrato', () => {
     const contrato = leerContrato('estados.json');
     expect(ESTADO_PLANTACION).toEqual(contrato);
+  });
+});
+
+describe('contracts · codigo-plantacion', () => {
+  it('CODIGO_PLANTACION coincide con el contrato (que es también el CHECK de la base)', () => {
+    expect(CODIGO_PLANTACION).toEqual(leerContrato('codigo-plantacion.json'));
   });
 });

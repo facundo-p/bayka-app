@@ -1,6 +1,6 @@
 /**
  * ExportService — genera CSV/Excel/KML de datos de plantación y los comparte vía share sheet nativo.
- * Orden de columnas: ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie.
+ * Orden de columnas: ID Árbol, ID Global, ID Parcial, Zona, Plantación, Parcela, Grupo, SubID, Periodo, Especie.
  */
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -42,7 +42,7 @@ function writeCsvWithBom(file: File, csvBody: string): void {
 // ─── Header constant ─────────────────────────────────────────────────────────
 
 export const CSV_HEADER =
-  'ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
+  'ID Árbol,ID Global,ID Parcial,Zona,Plantación,Parcela,Grupo,SubID,Periodo,Especie\n';
 
 // ─── CSV helpers ──────────────────────────────────────────────────────────────
 
@@ -61,6 +61,7 @@ function csvField(value: string | number | null | undefined): string {
  */
 function rowToCSV(r: ExportRow): string {
   return [
+    csvField(r.idArbol),
     csvField(r.globalId),
     csvField(r.idParcial),
     csvField(r.lugar),
@@ -76,6 +77,7 @@ function rowToCSV(r: ExportRow): string {
 /** Igual a rowToCSV pero como objeto, para SheetJS. */
 export function rowToExcel(r: ExportRow) {
   return {
+    'ID Árbol': r.idArbol,
     'ID Global': r.globalId,
     'ID Parcial': r.idParcial,
     'Zona': r.lugar,

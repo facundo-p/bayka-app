@@ -324,7 +324,7 @@ test('"Exportar CSV" con árboles dispara la descarga del CSV', async () => {
   vi.unstubAllGlobals();
 });
 
-test('"Exportar Excel" arma el XLSX con las filas y las 9 columnas y lo descarga', async () => {
+test('"Exportar Excel" arma el XLSX con las filas y las 10 columnas y lo descarga', async () => {
   const usuario = userEvent.setup();
   const writeXlsxFile = vi.mocked((await import('write-excel-file/browser')).default);
   const crearUrl = vi.fn(() => 'blob:export');
@@ -345,7 +345,7 @@ test('"Exportar Excel" arma el XLSX con las filas y las 9 columnas y lo descarga
     { columns: unknown[]; sheet: string },
   ];
   expect(filas).toHaveLength(2);
-  expect(opciones.columns).toHaveLength(9);
+  expect(opciones.columns).toHaveLength(10);
   expect(opciones.sheet).toBe('Plantacion');
   vi.unstubAllGlobals();
 });

@@ -1,6 +1,6 @@
 import { desc, eq } from 'drizzle-orm';
 import { db } from '../database/client';
-import { species, trees } from '../database/schema';
+import { groups, plantations, species, trees } from '../database/schema';
 
 /**
  * Árboles de un grupo para la pantalla de registro (más recientes primero),
@@ -32,7 +32,7 @@ export function getTreesForGroup(grupoId: string) {
 
 /**
  * Detalle de un árbol para la pantalla de edición: especie (nombre + nombre
- * científico) y punto GPS completo (lat/lng/precisión/momento de captura).
+ * científico), punto GPS completo y el código de su plantación, que forma el ID.
  */
 export function getTreeDetail(treeId: string) {
   return db
@@ -52,8 +52,11 @@ export function getTreeDetail(treeId: string) {
       especieCodigo: species.codigo,
       especieNombre: species.nombre,
       especieNombreCientifico: species.nombreCientifico,
+      plantacionCodigo: plantations.codigo,
     })
     .from(trees)
     .leftJoin(species, eq(trees.especieId, species.id))
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .where(eq(trees.id, treeId));
 }

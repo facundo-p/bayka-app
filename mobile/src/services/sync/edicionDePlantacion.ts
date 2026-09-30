@@ -7,6 +7,7 @@ import { eq } from 'drizzle-orm';
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
+import { MENSAJE_CODIGO_PLANTACION } from '../../utils/codigoDePlantacion';
 import { aColumnasRemotas, aSnapshot, hayCambios, type CamposDePlantacion } from '../../utils/camposDePlantacion';
 import {
   aplicados,
@@ -23,11 +24,13 @@ export const ERROR_EDICION = {
   conflicto: 'CONFLICTO_EDICION',
   noAutorizado: 'NOT_AUTHORIZED',
   datosInvalidos: 'DATOS_INVALIDOS',
+  codigoDuplicado: 'CODIGO_DUPLICADO',
 } as const;
 
 const MENSAJE_RECHAZO: Record<string, string> = {
   [ERROR_EDICION.noAutorizado]: 'Tu usuario no tiene permisos para editar esta plantación.',
   [ERROR_EDICION.datosInvalidos]: 'El servidor rechazó un dato inválido. Revisá el formulario.',
+  [ERROR_EDICION.codigoDuplicado]: MENSAJE_CODIGO_PLANTACION.duplicado,
 };
 
 export function mensajeDeRechazo(codigo: string): string {

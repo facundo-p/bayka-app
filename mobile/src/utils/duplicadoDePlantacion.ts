@@ -35,3 +35,16 @@ export function buscarDuplicada<T extends PlantacionComparable>(
     p.id !== excluirId && !esEliminadaEnServidor(p) && mismoLugarYPeriodo(p, valores),
   ) ?? null;
 }
+
+/**
+ * Otra plantación local con el mismo código (#559). A diferencia de lugar + periodo, el server
+ * lo rechaza: el formulario no deja guardar. Una eliminada en el servidor ya no lo ocupa.
+ */
+export function buscarCodigoRepetido<T extends { id: string; codigo?: string | null; eliminadaEnServidorEn: string | null }>(
+  plantaciones: readonly T[],
+  codigo: string,
+  excluirId?: string,
+): T | null {
+  if (!codigo) return null;
+  return plantaciones.find((p) => p.id !== excluirId && !esEliminadaEnServidor(p) && p.codigo === codigo) ?? null;
+}
