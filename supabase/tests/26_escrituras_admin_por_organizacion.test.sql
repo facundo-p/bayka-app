@@ -142,14 +142,14 @@ select lives_ok(
              'b2600000-0000-0000-0000-0000000000a1', 'T4') $$,
   'admin A crea plantaciones de A');
 
-update plantations set lugar = 'Editada por A' where id = 'b2600000-0000-0000-0000-0000000000bb';
+select editar_plantacion('b2600000-0000-0000-0000-0000000000bb', '{"lugar": "Editada por A"}', '{"lugar": "Plantación B 26"}');
 select is((select lugar from plantations where id = 'b2600000-0000-0000-0000-0000000000bb'),
   'Plantación B 26', 'admin A no edita una plantación de B');
 select throws_ok(
   $$ update plantations set organizacion_id = 'b2600000-0000-0000-0000-00000000000b'
      where id = 'b2600000-0000-0000-0000-0000000000aa' $$,
   '42501', null, 'admin A no mueve su plantación a B');
-update plantations set lugar = 'Editada por A' where id = 'b2600000-0000-0000-0000-0000000000aa';
+select editar_plantacion('b2600000-0000-0000-0000-0000000000aa', '{"lugar": "Editada por A"}', '{"lugar": "Plantación A 26"}');
 select is((select lugar from plantations where id = 'b2600000-0000-0000-0000-0000000000aa'),
   'Editada por A', 'admin A edita su plantación');
 
@@ -181,7 +181,7 @@ select is((select count(*)::int from plantation_users
   where plantation_id = 'b2600000-0000-0000-0000-0000000000bb'
     and user_id = 'b2600000-0000-0000-0000-0000000000b3'), 0,
   'admin B quita técnicos de su plantación');
-update plantations set lugar = 'Editada por B' where id = 'b2600000-0000-0000-0000-0000000000bb';
+select editar_plantacion('b2600000-0000-0000-0000-0000000000bb', '{"lugar": "Editada por B"}', '{"lugar": "Plantación B 26"}');
 select is((select lugar from plantations where id = 'b2600000-0000-0000-0000-0000000000bb'),
   'Editada por B', 'admin B edita su plantación');
 

@@ -214,14 +214,14 @@ select throws_ok(
 -- Los UPDATE bloqueados por USING no explotan: quedan en cero filas.
 update trees set sub_id = 'X' where id = 'b1500000-0000-0000-0000-000000000f33';
 update parcelas set deleted_at = now() where id = 'b1500000-0000-0000-0000-000000000031';
-update plantations set lugar = 'Cambiada' where id = 'b1500000-0000-0000-0000-000000000030';
+update plantations set estado = 'finalizada' where id = 'b1500000-0000-0000-0000-000000000030';
 
 reset role;
 select is((select sub_id from trees where id = 'b1500000-0000-0000-0000-000000000f33'), 'A1',
   'superadmin no edita árboles de una archivada');
 select is((select deleted_at from parcelas where id = 'b1500000-0000-0000-0000-000000000031'), null,
   'superadmin no tombstonea parcelas de una archivada');
-select is((select lugar from plantations where id = 'b1500000-0000-0000-0000-000000000030'), 'Archivada 15',
+select is((select estado from plantations where id = 'b1500000-0000-0000-0000-000000000030'), 'activa',
   'superadmin no edita la plantación archivada');
 select is((select count(*)::int from trees where id = 'b1500000-0000-0000-0000-000000000f33'), 1,
   'el árbol sigue vivo');
