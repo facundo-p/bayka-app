@@ -1,4 +1,4 @@
-import { View, Text, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CatalogPlantationCard from '../components/CatalogPlantationCard';
@@ -12,6 +12,8 @@ import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
 import { useCatalog } from '../hooks/useCatalog';
 import { catalogScreenStyles as styles } from './CatalogScreen.styles';
+
+const AVISO_SIN_CONEXION = 'Sin conexión · se muestra la última lista cargada';
 
 export default function CatalogScreen() {
   const routePrefix = useRoutePrefix();
@@ -28,7 +30,10 @@ export default function CatalogScreen() {
     downloadProgress,
     downloadResults,
     includePhotos,
+    refreshing,
+    sinConexion,
     loadCatalog,
+    refreshCatalog,
     toggleSelection,
     handleBatchDownload,
     handleDismiss,
@@ -83,8 +88,14 @@ export default function CatalogScreen() {
             onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
           />
         </Animated.View>
+        {sinConexion && (
+          <Text style={styles.offlineNotice}>{AVISO_SIN_CONEXION}</Text>
+        )}
         <FlatList
           data={filteredCatalog}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refreshCatalog} colors={[colors.primary]} />
+          }
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (

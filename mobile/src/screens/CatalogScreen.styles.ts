@@ -12,6 +12,14 @@ export const catalogScreenStyles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.xxl,
   },
+  offlineNotice: {
+    marginHorizontal: spacing.xxl,
+    marginTop: spacing.md,
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   emptyTitle: {
     fontSize: fontSize.xxl,
     fontFamily: fonts.bold,
