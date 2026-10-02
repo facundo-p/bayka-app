@@ -1,11 +1,10 @@
 /**
  * usePlantaciones — all data logic for PlantacionesScreen.
  *
- * Encapsulates plantation list, tree stats and freshness check.
+ * Encapsulates plantation list and tree stats.
  */
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useLiveData } from '../database/liveQuery';
-import { useFocusEffect } from 'expo-router';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useNetStatus } from './useNetStatus';
 import { useProfileData } from './useProfileData';
@@ -15,7 +14,6 @@ import { useConfirm } from './useConfirm';
 import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { useDescartarPendientes } from './useDescartarPendientes';
 import { getPendientesVarados, type PendientesVarados } from '../queries/pendientesVaradosQueries';
-import { checkFreshness } from '../queries/freshnessQueries';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import {
   getPlantationsForRole,
@@ -36,7 +34,6 @@ export function usePlantaciones() {
   const { profile } = useProfileData();
   const confirm = useConfirm();
 
-  const [showFreshnessBanner, setShowFreshnessBanner] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const { data: plantationList } = useLiveData(
@@ -50,15 +47,6 @@ export function usePlantaciones() {
   const { data: totalCounts } = useLiveData(() => getTotalTreeCounts());
   const { data: nnCounts } = useLiveData(() => getUnresolvedNNCountsPerPlantation());
   const { data: pendientesVarados } = useLiveData(() => getPendientesVarados());
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!isOnline || !plantationList?.length) return;
-      checkFreshness(plantationList.map((p) => p.id)).then((hasNewData) => {
-        setShowFreshnessBanner(hasNewData);
-      });
-    }, [isOnline, plantationList])
-  );
 
   // Título fijo para ambos roles; el nombre de la organización va de subtítulo
   // (se oculta solo si el perfil aún no trae la organización).
@@ -95,7 +83,6 @@ export function usePlantaciones() {
     estadoCounts,
     activeFilter,
     setActiveFilter,
-    showFreshnessBanner,
     headerTitle,
     headerSubtitle,
     isOnline,
