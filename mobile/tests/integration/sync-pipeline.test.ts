@@ -262,23 +262,28 @@ describe('fotos pendientes que sube el paso de fotos sueltas', () => {
   });
 });
 
+/** Lo que el pull necesita del server para bajar los árboles del grupo. */
+function servidorConElGrupo() {
+  serverState.plantations.set(PLANTACION_ID, {
+    id: PLANTACION_ID, lugar: 'Campo Norte', periodo: '2026-otono', estado: 'activa',
+    creado_por: 'user-admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
+  });
+  serverState.plantation_users.set('pu-1', {
+    plantation_id: PLANTACION_ID, user_id: 'user-tecnico-1', rol_en_plantacion: 'tecnico', assigned_at: '2026-01-01T00:00:00',
+  });
+  serverState.parcelas.set(PARCELA_ID, {
+    id: PARCELA_ID, plantation_id: PLANTACION_ID, nombre: 'Parcela 1', codigo: 'P1', descripcion: null,
+    created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00', deleted_at: null,
+  });
+  serverState.groups.set(GRUPO_ID, {
+    id: GRUPO_ID, plantation_id: PLANTACION_ID, parcela_id: PARCELA_ID, nombre: 'Linea A', codigo: 'LA',
+    tipo: 'linea', estado: 'finalizada', usuario_creador: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
+  });
+}
+
 describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () => {
   beforeEach(() => {
-    serverState.plantations.set(PLANTACION_ID, {
-      id: PLANTACION_ID, lugar: 'Campo Norte', periodo: '2026-otono', estado: 'activa',
-      creado_por: 'user-admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
-    });
-    serverState.plantation_users.set('pu-1', {
-      plantation_id: PLANTACION_ID, user_id: 'user-tecnico-1', rol_en_plantacion: 'tecnico', assigned_at: '2026-01-01T00:00:00',
-    });
-    serverState.parcelas.set(PARCELA_ID, {
-      id: PARCELA_ID, plantation_id: PLANTACION_ID, nombre: 'Parcela 1', codigo: 'P1', descripcion: null,
-      created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00', deleted_at: null,
-    });
-    serverState.groups.set(GRUPO_ID, {
-      id: GRUPO_ID, plantation_id: PLANTACION_ID, parcela_id: PARCELA_ID, nombre: 'Linea A', codigo: 'LA',
-      tipo: 'linea', estado: 'finalizada', usuario_creador: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
-    });
+    servidorConElGrupo();
     serverState.trees.set('t-nn', {
       id: 't-nn', group_id: GRUPO_ID, species_id: null, posicion: 1, sub_id: 'P1LANN1',
       foto_url: pathEnStorage('t-nn'), usuario_registro: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
@@ -418,6 +423,29 @@ describe('cambio de especie (#679): base local y push', () => {
 
     expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ALAMO, conflictEspecieId: null });
     expect((await leerGrupo()).pendingSync).toBe(true);
+  });
+
+  // El push manda todo el grupo: un árbol que no se tocó acá no es conflicto aunque el server lo haya cambiado.
+  it('un árbol sin cambio local que el server cambió: sin conflicto, y el pull siguiente adopta la del server', async () => {
+    await mockTestDb.insert(trees).values(arbolLocal('t-2', { posicion: 4, especieBaseId: ROBLE }));
+    await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, GRUPO_ID));
+    mockRespuesta.syncSubgroup = { data: { success: true, conservadas: [] }, error: null };
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(arbolesDelPayload().find((t) => t.id === 't-1')).toMatchObject({ species_id: ROBLE, species_base_id: ROBLE });
+    expect(await leerArbol('t-1')).toMatchObject({ especieBaseId: ROBLE, conflictEspecieId: null });
+
+    servidorConElGrupo();
+    serverState.trees.set('t-1', {
+      id: 't-1', group_id: GRUPO_ID, species_id: PINO, posicion: 3, sub_id: 'P1LAPIN3', foto_url: null,
+      usuario_registro: 'user-tecnico-1', created_at: '2026-01-01T00:00:00',
+    });
+    await pullFromServer(PLANTACION_ID);
+
+    expect(await leerArbol('t-1')).toMatchObject({
+      especieId: PINO, especieBaseId: PINO, subId: 'P1LAPIN3', conflictEspecieId: null,
+    });
   });
 
   it('sin conflicto, usar o mantener no hacen nada', async () => {

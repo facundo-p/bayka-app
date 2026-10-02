@@ -285,7 +285,7 @@ Cuando el usuario sincroniza después de resolver N/N:
 **Escenario:** User A crea N/N en device A. User B descarga y resuelve en device B.
 
 1. Device B descarga plantación → árbol tiene `especieId = null`, foto descargada
-2. User B resuelve N/N → `resolveNNTree` cambia `especieId`, marca `pendingSync = true`
+2. User B resuelve N/N → `cambiarEspecie` cambia `especieId`, marca `pendingSync = true`
 3. User B sincroniza:
    - `getSyncableGroups` devuelve el grupo (no filtra por userId ni estado)
    - RPC actualiza `species_id` y `sub_id` en el servidor si User B es miembro y la plantación es escribible

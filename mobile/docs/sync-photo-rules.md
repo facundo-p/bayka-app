@@ -133,7 +133,7 @@ Vale igual para un N/N resuelto distinto en dos dispositivos que para un cambio 
 - Device B, con el grupo sin subir, lo cambia a Y. Su base sigue siendo la especie anterior
 - El pull de B ve que los dos lados se apartaron de la base: no pisa Y, marca el árbol con X (`conflict_especie_id`) y la fila muestra un aviso
 - Si B sube sin decidir, el servidor conserva X: `sync_subgroup` no pisa una especie distinta de la base
-- Si el pull de B no lo vio (falló, o A cambió entre el pull y el push), el push lo marca: `sync_subgroup` devuelve el árbol en `conservadas`
+- Si el pull de B no lo vio (falló, o A cambió entre el pull y el push), el push lo marca: `sync_subgroup` devuelve el árbol en `conservadas`. Solo si B lo había cambiado: un árbol que B no tocó no es conflicto y el pull siguiente baja X
 - En el detalle del árbol, B elige:
   - la del servidor: pasa a X
   - la suya: queda Y con base X, y la próxima sync la sube
