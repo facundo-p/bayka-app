@@ -253,33 +253,32 @@ Lo que no puede subir hasta que algo cambie en el server se avisa en la tarjeta 
 
 ---
 
-## Resolución de N/N
+## Resolución de N/N y cambio de especie
 
 ### Flujo local
 
-**Archivo:** `TreeRepository.ts` → `resolveNNTree(treeId, especieId, subgrupoCodigo)`
+**Archivo:** `TreeRepository.ts` → `cambiarEspecie(treeId, especieId)`
+
+Lo usan la resolución de N/N (`useNNResolution.ts`) y «Cambiar especie» del detalle del árbol (#679).
 
 1. Busca el código de la especie seleccionada
 2. Regenera el `subId` con el nuevo código de especie
-3. `UPDATE trees SET especieId, subId` — **NO toca fotoUrl ni fotoSynced**
+3. `UPDATE trees SET especieId, subId` — **NO toca fotoUrl, fotoSynced ni especieBaseId**
 4. `markGroupPendingSync(grupoId)` → `pendingSync = true`
-
-**Archivo:** `useNNResolution.ts` → `handleGuardar()`
-
-Para cada árbol seleccionado, llama `resolveNNTree()`. Después ejecuta callback.
 
 ### Re-sync después de resolución
 
 Cuando el usuario sincroniza después de resolver N/N:
 
 1. **Pull:** descarga estado actual del servidor
-   - Si el servidor tiene otra especie (conflicto): almacena en `conflictEspecieId`
+   - Si el servidor también cambió la especie (conflicto): almacena en `conflictEspecieId`
 2. **Push:** `getSyncableGroups` devuelve el grupo (`pendingSync = true`)
-   - `uploadGroup` envía `species_id` = especie resuelta
+   - `uploadGroup` envía `species_id` = especie resuelta y `species_base_id` = `especieBaseId`
    - `foto_url` = storage path (ya existente) o null
-   - RPC actualiza `species_id` y `sub_id` en el servidor
+   - RPC actualiza `species_id` y `sub_id` en el servidor, salvo que ya tenga una especie distinta de la base
    - `COALESCE(EXCLUDED.foto_url, trees.foto_url)` preserva foto existente
-3. **markGroupSynced:** `pendingSync = false`
+3. **asentarEspeciesSubidas:** marca como conflicto los árboles que el server devolvió en `conservadas`; en el resto, `especieBaseId` = la especie que viajó
+4. **markGroupSynced:** `pendingSync = false`
 
 ### Resolución cross-device
 
@@ -295,15 +294,13 @@ Cuando el usuario sincroniza después de resolver N/N:
 
 **Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y.
 
-- Si el grupo de B tiene cambios sin subir, el pull no toca ese árbol y el push
-  sube Y (gana el último que sube).
-- Si B ya subió Y y después el server quedó con X, el pull de B detecta el
-  conflicto (local Y ≠ server X): almacena `conflictEspecieId = X`,
-  `conflictEspecieNombre = 'Nombre de X'` y no pisa Y. Nada sube Y ni aplica X
-  por sí solo; la marca queda hasta que local y server coincidan.
-
-Ninguna pantalla muestra la marca: la de N/N solo lista árboles sin especie, y
-el conflicto solo se marca en árboles con especie local (#733).
+1. User A sincroniza → servidor tiene `species_id = X`
+2. User B sincroniza → el pull ve que los dos lados se apartaron de la base
+   - Almacena `conflictEspecieId = X`, `conflictEspecieNombre = 'Nombre de X'`
+   - El push no pisa X: el server conserva una especie distinta de la base
+3. El detalle del árbol muestra el conflicto (y la fila un aviso):
+   - **La del servidor:** `usarEspecieDelServidor()` → cambia a X
+   - **La propia:** `mantenerEspecieLocal()` → base = X, limpia markers, mantiene Y y la próxima sync la sube
 
 ---
 

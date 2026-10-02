@@ -1,9 +1,9 @@
 /** Tests de useNNResolution: permisos de resolución según el estado de la plantación. */
 
-const mockResolveNNTree = jest.fn();
+const mockCambiarEspecie = jest.fn();
 
 jest.mock('../../src/repositories/TreeRepository', () => ({
-  resolveNNTree: (...args: unknown[]) => mockResolveNNTree(...args),
+  cambiarEspecie: (...args: unknown[]) => mockCambiarEspecie(...args),
 }));
 
 jest.mock('../../src/hooks/useTrees', () => ({
@@ -75,7 +75,7 @@ describe('useNNResolution — plantación no editable', () => {
     await act(async () => { await result.current.handleGuardar(jest.fn()); });
 
     expect(result.current.canResolve).toBe(false);
-    expect(mockResolveNNTree).not.toHaveBeenCalled();
+    expect(mockCambiarEspecie).not.toHaveBeenCalled();
   });
 
   test('plantación finalizada → no puede resolver', () => {

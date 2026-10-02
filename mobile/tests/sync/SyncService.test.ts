@@ -32,6 +32,7 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
 jest.mock('../../src/repositories/TreeRepository', () => ({
   getTreesWithPendingPhotos: jest.fn(),
   markPhotoSynced: jest.fn(),
+  confirmarEspeciesSubidas: jest.fn(),
 }));
 
 jest.mock('expo-file-system', () => {
@@ -123,6 +124,7 @@ const makeTrees = (groupId: string) => [
     id: 'tree-1',
     groupId,
     especieId: 'species-1',
+    especieBaseId: 'species-0',
     posicion: 1,
     subId: 'LA-SP-1',
     fotoUrl: null,
@@ -255,6 +257,7 @@ describe('SyncService', () => {
             id: 'tree-1',
             subgroup_id: 'sg-1',
             species_id: 'species-1',
+            species_base_id: 'species-0',
             posicion: 1,
             sub_id: 'LA-SP-1',
             foto_url: null,

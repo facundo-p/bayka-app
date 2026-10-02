@@ -11,6 +11,7 @@ export interface PlantationSpeciesItem {
   ordenVisual: number;
   codigo: string;
   nombre: string;
+  nombreCientifico: string | null;
 }
 
 /** Especies para los botones de registro; una recuperada no se ofrece. */
@@ -23,6 +24,7 @@ export async function getSpeciesForPlantation(plantacionId: string): Promise<Pla
       ordenVisual: plantationSpecies.ordenVisual,
       codigo: species.codigo,
       nombre: species.nombre,
+      nombreCientifico: species.nombreCientifico,
     })
     .from(plantationSpecies)
     .innerJoin(species, eq(plantationSpecies.especieId, species.id))

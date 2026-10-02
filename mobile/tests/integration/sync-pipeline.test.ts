@@ -102,7 +102,9 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { uploadSyncableGroups } from '../../src/services/sync/pushService';
 import { pullFromServer } from '../../src/services/sync/pullService';
-import { resolveNNTree, getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
+import {
+  cambiarEspecie, confirmarEspeciesSubidas, getTreesWithPendingPhotos, mantenerEspecieLocal, usarEspecieDelServidor,
+} from '../../src/repositories/TreeRepository';
 
 const PLANTACION_ID = 'plant-1';
 const PARCELA_ID = 'parc-1';
@@ -291,7 +293,7 @@ describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () 
     // Lo que deja la descarga de fotos: copia local de una foto que ya está en Storage.
     await mockTestDb.update(trees).set({ fotoUrl: 'file:///data/photos/t-nn.jpg' }).where(eq(trees.id, 't-nn'));
 
-    await resolveNNTree('t-nn', ROBLE, 'LA');
+    await cambiarEspecie('t-nn', ROBLE);
     await pullFromServer(PLANTACION_ID);
 
     const resuelto = await leerArbol('t-nn');
@@ -305,6 +307,124 @@ describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () 
     const [arbol] = arbolesDelPayload();
     expect(arbol).toMatchObject({ species_id: ROBLE, sub_id: resuelto.subId, foto_url: null });
     expect(mockSubidas).toEqual([]);
+    expect((await leerGrupo()).pendingSync).toBe(false);
+  });
+});
+
+describe('cambio de especie (#679): base local y push', () => {
+  const PINO = 'sp-pino';
+  const ALAMO = 'sp-alamo';
+  const marcarConflictoConAlamo = () => mockTestDb.update(trees)
+    .set({ conflictEspecieId: ALAMO, conflictEspecieNombre: 'Álamo' }).where(eq(trees.id, 't-1'));
+
+  beforeEach(async () => {
+    await mockTestDb.insert(species).values([
+      { id: PINO, codigo: 'PIN', nombre: 'Pino', nombreCientifico: 'Pinus', createdAt: '2026-01-01T00:00:00' },
+      { id: ALAMO, codigo: 'ALA', nombre: 'Álamo', nombreCientifico: null, createdAt: '2026-01-01T00:00:00' },
+    ]);
+    await mockTestDb.insert(groups).values(grupoLocal({ pendingSync: false }));
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { posicion: 3, especieBaseId: ROBLE }));
+  });
+
+  it('cambia la especie, rearma el SubID, marca el grupo y deja la base', async () => {
+    const resultado = await cambiarEspecie('t-1', PINO);
+
+    expect(resultado).toEqual({ subId: 'P1LAPIN3' });
+    const arbol = await leerArbol('t-1');
+    expect(arbol).toMatchObject({ especieId: PINO, subId: 'P1LAPIN3', especieBaseId: ROBLE });
+    expect((await leerGrupo()).pendingSync).toBe(true);
+  });
+
+  it('el push manda la base y, confirmado, la especie subida pasa a ser la base', async () => {
+    await cambiarEspecie('t-1', PINO);
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(arbolesDelPayload()[0]).toMatchObject({ species_id: PINO, species_base_id: ROBLE });
+    expect((await leerArbol('t-1')).especieBaseId).toBe(PINO);
+  });
+
+  it('un push rechazado deja la base como estaba', async () => {
+    mockRespuesta.syncSubgroup = { data: { success: false, error: 'DUPLICATE_CODE' }, error: null };
+    await cambiarEspecie('t-1', PINO);
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect((await leerArbol('t-1')).especieBaseId).toBe(ROBLE);
+  });
+
+  it('con un conflicto pendiente, el push no confirma la base: el server conservó la suya', async () => {
+    await cambiarEspecie('t-1', PINO);
+    await marcarConflictoConAlamo();
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect((await leerArbol('t-1')).especieBaseId).toBe(ROBLE);
+  });
+
+  // Sin un pull previo que lo detecte (falló, o la web cambió entre el pull y el push),
+  // el server conserva su especie: el árbol queda en conflicto y la base no se confirma.
+  it('si el server conservó su especie, el push marca el conflicto en vez de confirmar la base', async () => {
+    await cambiarEspecie('t-1', PINO);
+    mockRespuesta.syncSubgroup = {
+      data: { success: true, conservadas: [{ id: 't-1', species_id: ALAMO }] }, error: null,
+    };
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(await leerArbol('t-1')).toMatchObject({
+      especieId: PINO, especieBaseId: ROBLE, conflictEspecieId: ALAMO, conflictEspecieNombre: 'Álamo',
+    });
+    expect((await leerGrupo()).pendingSync).toBe(false);
+  });
+
+  it('la base confirmada es la especie que viajó, no la que tiene la fila después', async () => {
+    await cambiarEspecie('t-1', PINO);
+    await cambiarEspecie('t-1', ALAMO);
+
+    await confirmarEspeciesSubidas([{ id: 't-1', especieId: PINO }]);
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: ALAMO, especieBaseId: PINO });
+  });
+
+  it('usar la del server: el árbol queda con esa especie, su SubID y sin conflicto', async () => {
+    await cambiarEspecie('t-1', PINO);
+    await marcarConflictoConAlamo();
+
+    await usarEspecieDelServidor('t-1');
+
+    expect(await leerArbol('t-1')).toMatchObject({
+      especieId: ALAMO, subId: 'P1LAALA3', especieBaseId: ALAMO, conflictEspecieId: null, conflictEspecieNombre: null,
+    });
+  });
+
+  it('usar la del server sin esa especie en el catálogo falla sin tocar la base ni la marca', async () => {
+    await cambiarEspecie('t-1', PINO);
+    await marcarConflictoConAlamo();
+    // La marca no tiene FK: puede apuntar a una especie que el catálogo local no tiene.
+    await mockTestDb.delete(species).where(eq(species.id, ALAMO));
+
+    await expect(usarEspecieDelServidor('t-1')).rejects.toThrow();
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ROBLE, conflictEspecieId: ALAMO });
+  });
+
+  it('mantener la mía: la del server pasa a ser la base y el grupo vuelve a subir', async () => {
+    await cambiarEspecie('t-1', PINO);
+    await marcarConflictoConAlamo();
+    await mockTestDb.update(groups).set({ pendingSync: false }).where(eq(groups.id, GRUPO_ID));
+
+    await mantenerEspecieLocal('t-1');
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ALAMO, conflictEspecieId: null });
+    expect((await leerGrupo()).pendingSync).toBe(true);
+  });
+
+  it('sin conflicto, usar o mantener no hacen nada', async () => {
+    await usarEspecieDelServidor('t-1');
+    await mantenerEspecieLocal('t-1');
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: ROBLE, especieBaseId: ROBLE });
     expect((await leerGrupo()).pendingSync).toBe(false);
   });
 });

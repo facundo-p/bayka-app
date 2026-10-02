@@ -36,7 +36,7 @@ import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
 import { useTreeSelection } from '../hooks/useTreeSelection';
-import { getTreeEditGating } from '../utils/permisosDeEdicion';
+import { getCambioDeEspecie, getTreeEditGating } from '../utils/permisosDeEdicion';
 
 export default function TreeRegistrationScreen() {
   const { id: grupoId } = useLocalSearchParams<{
@@ -127,7 +127,7 @@ export default function TreeRegistrationScreen() {
     if (!grupoId || !treeReg.canReactivate) return;
     showConfirmDialog(confirm.show, 'Reactivar grupo',
       'Cambiar el estado del grupo a activa? Podrás registrar más árboles.',
-      'Reactivar', () => treeReg.executeReactivate(), { icon: 'refresh-outline' });
+      'Reactivar', async () => { await treeReg.executeReactivate(); }, { icon: 'refresh-outline' });
   }
 
   async function handleCaptureGps() {
@@ -163,11 +163,13 @@ export default function TreeRegistrationScreen() {
     sortedTrees, finalizing, deleting, deletingTreeId } = treeReg;
 
   // Gating del detalle de árbol (issue #155) — ver getTreeEditGating.
-  const { canEdit: canEditTree, canDelete: canDeleteTree } = getTreeEditGating({
+  const gatingDeArbol = {
     plantacion: treeReg.plantacion,
     subgroupEstado: treeReg.subgroupEstado,
     isCreator: treeReg.isCreator,
-  });
+  };
+  const { canEdit: canEditTree, canDelete: canDeleteTree } = getTreeEditGating(gatingDeArbol);
+  const cambioDeEspecie = getCambioDeEspecie(gatingDeArbol);
 
   return (
     <ScreenContainer withTexture>
@@ -292,9 +294,12 @@ export default function TreeRegistrationScreen() {
       <TreeDetailModal
         visible={editingTreeId !== null}
         treeId={editingTreeId}
+        plantacionId={plantacionId ?? ''}
         canEdit={canEditTree}
         canDelete={canDeleteTree}
+        cambioDeEspecie={cambioDeEspecie}
         onClose={() => setEditingTreeId(null)}
+        onReabrirGrupo={treeReg.executeReactivate}
         onCapturePhoto={(treeId) => treeReg.addPhotoToTree(treeId)}
         onRemovePhoto={(treeId) => treeReg.removePhoto(treeId)}
         onCaptureGps={(treeId) => treeReg.captureTreeGps(treeId)}

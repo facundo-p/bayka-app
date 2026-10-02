@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useTrees } from './useTrees';
 import { usePlantationSpecies } from './usePlantationSpecies';
-import { resolveNNTree } from '../repositories/TreeRepository';
+import { cambiarEspecie } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
@@ -106,9 +106,7 @@ export function useNNResolution(params: {
     setSaving(true);
     try {
       for (const tree of toResolve) {
-        const speciesId = selections[tree.id];
-        const codigo = tree.grupoCodigo ?? grupoCodigo ?? '';
-        await resolveNNTree(tree.id, speciesId, codigo);
+        await cambiarEspecie(tree.id, selections[tree.id]);
       }
       const resolved = new Set(toResolve.map((t) => t.id));
       setSelections((prev) => {

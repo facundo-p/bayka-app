@@ -135,6 +135,9 @@ export const trees = sqliteTable('trees', {
   createdAt: text('created_at').notNull(),
   conflictEspecieId: text('conflict_especie_id'),
   conflictEspecieNombre: text('conflict_especie_nombre'),
+  // Especie que el servidor tenía la última vez que se lo vio: la base que manda el
+  // push para no pisar un cambio más nuevo del servidor (#679).
+  especieBaseId: text('especie_base_id'),
   // Punto GPS capturado al registrar el árbol; null en árboles históricos o
   // cuando por frecuencia/señal no correspondió capturar.
   latitude: real('latitude'),

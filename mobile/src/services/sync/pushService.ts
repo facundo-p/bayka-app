@@ -16,6 +16,7 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
+import { asentarEspeciesSubidas } from './conflictosDeEspecie';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
   PhotoSyncProgress, classifyServerError, columnasDeLaViolacion,
@@ -256,6 +257,7 @@ type ArbolDeGrupo = {
   id: string;
   groupId: string;
   especieId: string | null;
+  especieBaseId: string | null;
   posicion: number;
   subId: string;
   fotoUrl: string | null;
@@ -321,11 +323,14 @@ function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
 
 // sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
 // (RPC generate_tree_ids, #232) y llegan por el pull.
+// `species_base_id`: la especie que este dispositivo vio en el server. Si el server
+// ya tiene otra, conserva la suya (#679).
 function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>) {
   return sgTrees.map((t) => ({
     id: t.id,
     subgroup_id: t.groupId,
     species_id: t.especieId ?? null,
+    species_base_id: t.especieBaseId,
     posicion: t.posicion,
     sub_id: t.subId,
     foto_url: photoMap.get(t.id) ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null),
@@ -443,7 +448,11 @@ export async function uploadSyncableGroups(
     try {
       const { data, error } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
-      if (result.success) await markGroupSynced(sg.id);
+      if (result.success) {
+        // Antes de bajar la marca: si se corta en el medio, el grupo se vuelve a subir.
+        await asentarEspeciesSubidas(sgTrees.map(({ id, especieId }) => ({ id, especieId })), data);
+        await markGroupSynced(sg.id);
+      }
       await anotarResultado(plantacionId, result);
       results.push(result);
     } catch (e) {
