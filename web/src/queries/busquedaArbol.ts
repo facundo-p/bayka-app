@@ -6,22 +6,38 @@ import { escaparComodinesLike, patronContiene } from './escaparBusqueda';
 export const COLUMNA_CODIGO_PLANTACION = 'groups.plantations.codigo';
 
 /** Los códigos casi no cambian: se reusan entre teclas y páginas. */
-const VIGENCIA_CODIGOS_MS = 5 * 60_000;
+export const VIGENCIA_CODIGOS_MS = 5 * 60_000;
 
-let cacheCodigos: { codigos: string[]; vence: number } | null = null;
+let cacheCodigos: { codigos: Promise<string[]>; vence: number } | null = null;
 
 export function reiniciarCacheCodigosPlantacion(): void {
   cacheCodigos = null;
 }
 
-/** Códigos de las plantaciones visibles; ante un error devuelve [] sin cachear. */
-export async function listarCodigosPlantacion(): Promise<string[]> {
-  if (cacheCodigos && cacheCodigos.vence > Date.now()) return cacheCodigos.codigos;
+async function pedirCodigosPlantacion(): Promise<string[]> {
   const { data, error } = await supabase.from('plantations').select('codigo');
-  if (error) return [];
-  const codigos = ((data ?? []) as Array<{ codigo: string }>).map((fila) => fila.codigo);
-  cacheCodigos = { codigos, vence: Date.now() + VIGENCIA_CODIGOS_MS };
-  return codigos;
+  if (error || !data) throw new Error(error?.message ?? 'Sin datos');
+  return (data as Array<{ codigo: string }>).map((fila) => fila.codigo);
+}
+
+/**
+ * Códigos de las plantaciones visibles. Cachea la promesa (las llamadas simultáneas
+ * comparten un request); un fallo no se cachea y devuelve [].
+ */
+export async function listarCodigosPlantacion(): Promise<string[]> {
+  if (!cacheCodigos || cacheCodigos.vence <= Date.now()) {
+    const codigos = pedirCodigosPlantacion();
+    const entrada = { codigos, vence: Date.now() + VIGENCIA_CODIGOS_MS };
+    cacheCodigos = entrada;
+    codigos.catch(() => {
+      if (cacheCodigos === entrada) cacheCodigos = null;
+    });
+  }
+  try {
+    return await cacheCodigos.codigos;
+  } catch {
+    return [];
+  }
 }
 
 export type BusquedaArbol = {
