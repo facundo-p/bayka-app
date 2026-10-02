@@ -84,7 +84,7 @@ describe('conTimeout', () => {
     await afirmacion;
   });
 
-  // Un `.limit(1)` suelto (checkFreshness) es una query, no una transferencia.
+  // Un `.limit(1)` suelto es una query, no una transferencia.
   it('un limit sin offset sigue siendo una query', async () => {
     const envuelto = conTimeout(fetchQueNoResponde());
     const pedido = envuelto('https://proyecto.supabase.co/rest/v1/groups?select=created_at&limit=1');

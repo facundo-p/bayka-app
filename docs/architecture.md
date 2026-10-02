@@ -479,7 +479,7 @@ mobile/
             TreeRepository
 
         queries/                 (lecturas/agregaciones: admin, catalog,
-                                  dashboard, export, parcela, freshness)
+                                  dashboard, export, parcela)
 
         database/
             schema  (Drizzle)
