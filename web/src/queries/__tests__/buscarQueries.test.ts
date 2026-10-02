@@ -1,4 +1,5 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
+import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import { buscar } from '../buscarQueries';
@@ -9,7 +10,10 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-beforeEach(resetEstadoMock);
+beforeEach(() => {
+  resetEstadoMock();
+  reiniciarCacheCodigosPlantacion();
+});
 
 const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
@@ -173,6 +177,47 @@ test.each(['PAL23-XX99', 'PAL23'])(
     );
   },
 );
+
+test('escapa los comodines del SubID en un ID Árbol completo', async () => {
+  const consultas = capturarConsultas(responder);
+  await buscar('A_B%-SS26');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'ilike',
+    columna: 'sub_id',
+    valor: 'a\\_b\\%',
+  });
+});
+
+test('si falla la consulta de códigos, busca por SubID parcial', async () => {
+  const consultas = capturarConsultas((consulta) =>
+    consulta.tabla === 'plantations' && consulta.columnas === 'codigo'
+      ? { error: { message: 'sin permisos' } }
+      : responder(consulta),
+  );
+  await buscar('PAL23-SS26');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'ilike',
+    columna: 'sub_id',
+    valor: '%pal23-ss26%',
+  });
+});
+
+test('con un código prefijo de otro gana el más largo', async () => {
+  const consultas = capturarConsultas((consulta) =>
+    consulta.tabla === 'plantations' && consulta.columnas === 'codigo'
+      ? { data: [{ codigo: 'SS26' }, { codigo: 'SS26-1' }] }
+      : responder(consulta),
+  );
+  await buscar('PAL23ANC12-SS26-1');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'eq',
+    columna: 'groups.plantations.codigo',
+    valor: 'SS26-1',
+  });
+});
 
 test('respeta el scope: árboles acotados a la plantación vía groups.plantation_id', async () => {
   const consultas = capturarConsultas(responder);

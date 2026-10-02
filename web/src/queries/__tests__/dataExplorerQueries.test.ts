@@ -1,4 +1,5 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
+import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
 import {
@@ -15,7 +16,10 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: supabaseMock };
 });
 
-beforeEach(resetEstadoMock);
+beforeEach(() => {
+  resetEstadoMock();
+  reiniciarCacheCodigosPlantacion();
+});
 
 const FILA_PARCELA = filaParcela({
   id: 'parc-1',
@@ -242,6 +246,12 @@ describe('listarArboles', () => {
       columna: 'groups.plantations.codigo',
       valor: 'SS26-1',
     });
+  });
+
+  test('el select de árboles trae el código de la plantación con join interno', async () => {
+    const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
+    await listarArboles('plant-1');
+    expect(consultas[0].columnas).toContain('plantations!inner(codigo)');
   });
 
   test('el SubID parcial no consulta los códigos y busca como siempre', async () => {

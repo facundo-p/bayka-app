@@ -2,8 +2,9 @@
  * Búsqueda global multi-entidad para la paleta de comandos (⌘K): plantaciones/especies/
  * usuarios filtran en cliente (queries cacheables); parcelas/grupos/árboles van server-side
  * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
- * árboles se buscan por `sub_id` o por ID Árbol completo (`<SubID>-<código>`). Sin scope se excluyen las plantaciones
- * archivadas (#477); con scope se busca dentro de esa plantación aunque esté archivada.
+ * árboles se buscan por `sub_id` o por ID Árbol completo (`<SubID>-<código>`). Sin scope se
+ * excluyen las plantaciones archivadas (#477); con scope se busca dentro de esa plantación
+ * aunque esté archivada.
  */
 import { coincideBusqueda } from '../lib/normalizarTexto';
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
