@@ -8,15 +8,18 @@
 -- manda nada de eso: los árboles nunca cambian de grupo ni los grupos de
 -- plantación o parcela, así que se rechaza todo el sync sin escribir nada.
 --
--- Redefine dos partes de 064, sin tocar la orquestadora:
--- - `sync_subgroup_rechazo`: un grupo o una parcela de otra plantación responde
---   REFERENCIA_AJENA.
--- - `sync_subgroup_upsert_arboles`: un árbol de otro grupo (existente o por su
---   group_id) lanza 42501, que la orquestadora responde como UNKNOWN y deshace.
+-- Redefine tres partes de 064, sin tocar la orquestadora:
+-- - `sync_subgroup_rechazo`: un grupo que ya existe en otra plantación o parcela,
+--   o una parcela de otra plantación, responde REFERENCIA_AJENA.
+-- - `sync_subgroup_upsert_grupo` y `sync_subgroup_upsert_arboles`: el DO UPDATE
+--   solo pisa filas del mismo grupo, plantación y parcela; si saltea alguna (un
+--   árbol de otro grupo, o una carrera con el chequeo) lanza 42501, que la
+--   orquestadora responde como UNKNOWN y deshace.
 --
--- Rollback: volver a correr de 064 `sync_subgroup_rechazo` y
--- `sync_subgroup_upsert_arboles`, con sus OWNER, REVOKE y GRANT. No hay columnas
--- ni datos que deshacer. En el repo, el rollback borra también el test 46.
+-- Rollback: volver a correr de 064 `sync_subgroup_rechazo`,
+-- `sync_subgroup_upsert_grupo` y `sync_subgroup_upsert_arboles`, con sus OWNER,
+-- REVOKE y GRANT. No hay columnas ni datos que deshacer. En el repo, el rollback
+-- borra también el test 46.
 
 -- ── Rechazo ──────────────────────────────────────────────────────────────────
 
@@ -41,7 +44,8 @@ BEGIN
   IF EXISTS (
     SELECT 1 FROM groups
     WHERE id = (p_subgroup->>'id')::UUID
-      AND plantation_id <> (p_subgroup->>'plantation_id')::UUID
+      AND (plantation_id <> (p_subgroup->>'plantation_id')::UUID
+           OR parcela_id IS DISTINCT FROM (p_subgroup->>'parcela_id')::UUID)
   ) OR EXISTS (
     SELECT 1 FROM parcelas
     WHERE id = (p_subgroup->>'parcela_id')::UUID
@@ -75,6 +79,51 @@ $$;
 ALTER FUNCTION "public"."sync_subgroup_rechazo"("jsonb") OWNER TO "postgres";
 REVOKE ALL ON FUNCTION "public"."sync_subgroup_rechazo"("jsonb") FROM PUBLIC, "anon", "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_rechazo"("jsonb") TO "service_role";
+
+-- ── Grupo ────────────────────────────────────────────────────────────────────
+
+-- Un estado fuera del CHECK (el 'sincronizada' de APKs viejos) llega como finalizada.
+-- El WHERE cubre un grupo ajeno creado entre el rechazo y este INSERT.
+CREATE OR REPLACE FUNCTION "public"."sync_subgroup_upsert_grupo"("p_subgroup" "jsonb") RETURNS void
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+DECLARE
+  v_escritos INTEGER;
+BEGIN
+  INSERT INTO groups (id, plantation_id, parcela_id, nombre, codigo, tipo, estado, usuario_creador, created_at)
+  VALUES (
+    (p_subgroup->>'id')::UUID,
+    (p_subgroup->>'plantation_id')::UUID,
+    (p_subgroup->>'parcela_id')::UUID,
+    p_subgroup->>'nombre',
+    p_subgroup->>'codigo',
+    p_subgroup->>'tipo',
+    CASE WHEN p_subgroup->>'estado' IN ('activa', 'finalizada')
+         THEN p_subgroup->>'estado'
+         ELSE 'finalizada' END,
+    (p_subgroup->>'usuario_creador')::UUID,
+    (p_subgroup->>'created_at')::TIMESTAMPTZ
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    estado = EXCLUDED.estado,
+    codigo = EXCLUDED.codigo,
+    nombre = EXCLUDED.nombre,
+    tipo = EXCLUDED.tipo
+  WHERE groups.plantation_id = EXCLUDED.plantation_id
+    AND groups.parcela_id = EXCLUDED.parcela_id;
+
+  GET DIAGNOSTICS v_escritos = ROW_COUNT;
+  IF v_escritos = 0 THEN
+    RAISE EXCEPTION 'sync_subgroup: grupo % de otra plantación o parcela', p_subgroup->>'id'
+      USING ERRCODE = 'insufficient_privilege';
+  END IF;
+END;
+$$;
+
+ALTER FUNCTION "public"."sync_subgroup_upsert_grupo"("jsonb") OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."sync_subgroup_upsert_grupo"("jsonb") FROM PUBLIC, "anon", "authenticated";
+GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_upsert_grupo"("jsonb") TO "service_role";
 
 -- ── Árboles ──────────────────────────────────────────────────────────────────
 

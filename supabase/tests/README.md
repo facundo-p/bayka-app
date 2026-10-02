@@ -155,8 +155,10 @@ deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
 SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `46`
 `sync_subgroup` no escribe fuera del grupo que sube: un árbol de otra
 plantación o de otro grupo (por id o por `group_id`) rechaza todo sin tocarlo,
-un grupo o una parcela de otra plantación responden REFERENCIA_AJENA, y el
-re-sync de un árbol propio sigue andando (066, #732).
+un grupo que ya existe en otra plantación o parcela y una parcela de otra
+plantación responden REFERENCIA_AJENA (antes que DUPLICATE_*), las partes de
+grupo y árboles rechazan aunque las llamen solas, y el re-sync de un árbol
+propio y el alta de grupo con árbol nuevo siguen andando (066, #732).
 
 ## Hallazgo fuera de alcance (no corregido)
 

@@ -1,9 +1,9 @@
 -- sync_subgroup no escribe fuera del grupo que sube (#732): un árbol de otro
--- grupo o plantación, un grupo de otra plantación o una parcela de otra
--- plantación rechazan todo el sync sin escribir nada. El re-sync de un árbol
--- propio sigue andando.
+-- grupo o plantación, un grupo de otra plantación o parcela, o una parcela de
+-- otra plantación rechazan todo el sync sin escribir nada. El re-sync de un
+-- árbol propio y el alta de un grupo con sus árboles siguen andando.
 begin;
-select plan(22);
+select plan(30);
 
 insert into organizations (id, nombre) values
   ('b4600000-0000-0000-0000-000000000001', 'Org Test 46');
@@ -29,6 +29,7 @@ insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b4600000-0000-0000-0000-0000000000ba', 'b4600000-0000-0000-0000-00000000000a', 'Norte', 'P1'),
+  ('b4600000-0000-0000-0000-0000000000bc', 'b4600000-0000-0000-0000-00000000000a', 'Este', 'P2'),
   ('b4600000-0000-0000-0000-0000000000bb', 'b4600000-0000-0000-0000-00000000000b', 'Sur', 'P9');
 
 -- c1 es el grupo que sube; c2 otro grupo de A; cb el de B.
@@ -43,6 +44,8 @@ insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, estado,
 insert into trees (id, group_id, species_id, posicion, sub_id, foto_url, usuario_registro) values
   ('b4600000-0000-0000-0000-0000000000d1', 'b4600000-0000-0000-0000-0000000000c1',
    'b4600000-0000-0000-0000-0000000000e1', 1, 'P1L1T46A1', 'fotos/d1.jpg', 'b4600000-0000-0000-0000-0000000000a1'),
+  ('b4600000-0000-0000-0000-0000000000d3', 'b4600000-0000-0000-0000-0000000000c1',
+   'b4600000-0000-0000-0000-0000000000e1', 3, 'P1L1T46A3', 'fotos/d3.jpg', 'b4600000-0000-0000-0000-0000000000a1'),
   ('b4600000-0000-0000-0000-0000000000d2', 'b4600000-0000-0000-0000-0000000000c2',
    'b4600000-0000-0000-0000-0000000000e1', 1, 'P1L2T46A1', 'fotos/d2.jpg', 'b4600000-0000-0000-0000-0000000000a1'),
   ('b4600000-0000-0000-0000-0000000000db', 'b4600000-0000-0000-0000-0000000000cb',
@@ -70,31 +73,31 @@ $$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'b4600000-0000-0000-0000-0000000000a1', true);
 
-select isnt(
+select is(
   (select sync_subgroup((select g from grupo_46),
      jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000db', 'b4600000-0000-0000-0000-0000000000c1')))
-   ->> 'success'),
-  'true', 'un árbol de otra plantación con el grupo propio se rechaza');
+   ->> 'error'),
+  'UNKNOWN', 'un árbol de otra plantación con el grupo propio se rechaza');
 
-select isnt(
+select is(
   (select sync_subgroup((select g from grupo_46),
      jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000db', 'b4600000-0000-0000-0000-0000000000cb')))
-   ->> 'success'),
-  'true', 'y con el grupo ajeno también');
+   ->> 'error'),
+  'UNKNOWN', 'y con el grupo ajeno también');
 
-select isnt(
+select is(
   (select sync_subgroup((select g from grupo_46),
      jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d2', 'b4600000-0000-0000-0000-0000000000c1')))
-   ->> 'success'),
-  'true', 'un árbol de otro grupo de la misma plantación se rechaza');
+   ->> 'error'),
+  'UNKNOWN', 'un árbol de otro grupo de la misma plantación se rechaza');
 
-select isnt(
+select is(
   (select sync_subgroup((select g from grupo_46),
      jsonb_build_array(
        pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d1', 'b4600000-0000-0000-0000-0000000000c1'),
        pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d9', 'b4600000-0000-0000-0000-0000000000cb')))
-   ->> 'success'),
-  'true', 'un árbol nuevo con el grupo de otra plantación se rechaza, junto con el resto');
+   ->> 'error'),
+  'UNKNOWN', 'un árbol nuevo con el grupo de otra plantación se rechaza, junto con el resto');
 
 select is(
   (select sync_subgroup((select g from grupo_46) || jsonb_build_object(
@@ -109,12 +112,49 @@ select is(
      '[]'::jsonb) ->> 'error'),
   'REFERENCIA_AJENA', 'una parcela de otra plantación también');
 
--- Lo legítimo: re-sync del árbol propio, con su grupo.
+select is(
+  (select sync_subgroup((select g from grupo_46) || jsonb_build_object(
+     'id', 'b4600000-0000-0000-0000-0000000000c4', 'nombre', 'Ajeno', 'codigo', 'L9',
+     'parcela_id', 'b4600000-0000-0000-0000-0000000000bb'),
+     '[]'::jsonb) ->> 'error'),
+  'REFERENCIA_AJENA', 'antes que DUPLICATE_CODE: no revela códigos de una parcela ajena');
+
+select is(
+  (select sync_subgroup((select g from grupo_46) || jsonb_build_object(
+     'parcela_id', 'b4600000-0000-0000-0000-0000000000bc', 'parcela_codigo', 'P2'),
+     '[]'::jsonb) ->> 'error'),
+  'REFERENCIA_AJENA', 'el grupo propio con otra parcela de la misma plantación también');
+
+-- Pasa el chequeo del group_id y lo frena el conteo: el árbol propio del lote no se toca.
 select is(
   (select sync_subgroup((select g from grupo_46),
-     jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d1', 'b4600000-0000-0000-0000-0000000000c1')))
+     jsonb_build_array(
+       pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d3', 'b4600000-0000-0000-0000-0000000000c1'),
+       pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000db', 'b4600000-0000-0000-0000-0000000000c1')))
+   ->> 'error'),
+  'UNKNOWN', 'un árbol ajeno en un lote con uno propio rechaza el lote');
+
+select is(
+  (select sync_subgroup((select g from grupo_46),
+     jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d3', 'b4600000-0000-0000-0000-0000000000c1')
+       || jsonb_build_object('group_id', 'b4600000-0000-0000-0000-0000000000c2')))
+   ->> 'error'),
+  'UNKNOWN', 'group_id manda sobre subgroup_id');
+
+-- Lo legítimo: re-sync del árbol propio (group_id null cae en subgroup_id) y alta de grupo con árbol.
+select is(
+  (select sync_subgroup((select g from grupo_46),
+     jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d1', 'b4600000-0000-0000-0000-0000000000c1')
+       || jsonb_build_object('group_id', null)))
    ->> 'success'),
   'true', 'el re-sync de un árbol propio sigue andando');
+
+select is(
+  (select sync_subgroup((select g from grupo_46) || jsonb_build_object(
+     'id', 'b4600000-0000-0000-0000-0000000000c5', 'nombre', 'Cinco', 'codigo', 'L5'),
+     jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000d5', 'b4600000-0000-0000-0000-0000000000c5')))
+   ->> 'success'),
+  'true', 'el alta de un grupo con un árbol nuevo sigue andando');
 
 reset role;
 
@@ -126,6 +166,12 @@ select is(
   (select (species_id, sub_id, foto_url, group_id)::text from trees where id = 'b4600000-0000-0000-0000-0000000000d2'),
   '(b4600000-0000-0000-0000-0000000000e1,P1L2T46A1,fotos/d2.jpg,b4600000-0000-0000-0000-0000000000c2)',
   'el del otro grupo también');
+select is(
+  (select (species_id, sub_id, foto_url)::text from trees where id = 'b4600000-0000-0000-0000-0000000000d3'),
+  '(b4600000-0000-0000-0000-0000000000e1,P1L1T46A3,fotos/d3.jpg)',
+  'el árbol propio de los lotes rechazados quedó intacto');
+select is((select group_id from trees where id = 'b4600000-0000-0000-0000-0000000000d5'),
+  'b4600000-0000-0000-0000-0000000000c5'::uuid, 'el árbol nuevo quedó en su grupo nuevo');
 select is((select count(*)::int from trees where id = 'b4600000-0000-0000-0000-0000000000d9'),
   0, 'el árbol nuevo en el grupo ajeno no se creó');
 select is((select count(*)::int from trees where group_id = 'b4600000-0000-0000-0000-0000000000cb'),
@@ -149,7 +195,11 @@ select is((select foto_url from trees where id = 'b4600000-0000-0000-0000-000000
 select is((select posicion from trees where id = 'b4600000-0000-0000-0000-0000000000d1'),
   1, 'pero no la posición');
 
--- La parte de los árboles rechaza aunque la llamen sola.
+-- Las partes rechazan aunque las llamen solas.
+select throws_ok(
+  $$ select sync_subgroup_upsert_grupo((select g from grupo_46) || jsonb_build_object(
+       'id', 'b4600000-0000-0000-0000-0000000000cb', 'nombre', 'Pisado', 'codigo', 'LX')) $$,
+  '42501', null, 'upsert_grupo: grupo de otra plantación');
 select throws_ok(
   $$ select sync_subgroup_upsert_arboles((select g from grupo_46),
        jsonb_build_array(pg_temp.arbol_46('b4600000-0000-0000-0000-0000000000db', 'b4600000-0000-0000-0000-0000000000c1')), 'P1') $$,
