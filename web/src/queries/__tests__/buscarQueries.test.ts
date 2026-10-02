@@ -2,7 +2,7 @@ import { resetEstadoMock } from '../../test/supabaseMock';
 import { reiniciarCacheCodigosPlantacion } from '../busquedaArbol';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
-import { buscar } from '../buscarQueries';
+import { buscar, metaGrupo } from '../buscarQueries';
 import { filaPlantacion } from '../../test/fabricas';
 
 vi.mock('../../lib/supabase', async () => {
@@ -59,6 +59,7 @@ const FILA_GRUPO = {
   codigo: 'L1',
   plantation_id: 'plant-1',
   parcelas: { codigo: 'P1' },
+  plantations: { lugar: 'San Sebastián' },
 };
 
 /** Resolver que enruta cada tabla a su fila de fixture. */
@@ -273,9 +274,16 @@ test('buscarGrupos mapea a resultado de grupo con su parcela y su código en el 
 
   expect(grupo).toMatchObject({
     titulo: 'L1 · Línea 1',
-    meta: 'Parcela P1',
+    meta: 'San Sebastián · Parcela P1',
     to: '/plantaciones/plant-1/datos/grupos?q=L1',
   });
+});
+
+test('metaGrupo arma «lugar · Parcela código» y degrada si falta algún dato', () => {
+  expect(metaGrupo('San Sebastián', 'P1')).toBe('San Sebastián · Parcela P1');
+  expect(metaGrupo('San Sebastián', null)).toBe('San Sebastián');
+  expect(metaGrupo(null, 'P1')).toBe('Parcela P1');
+  expect(metaGrupo(undefined, undefined)).toBeUndefined();
 });
 
 test('tolera error de la búsqueda de árbol sin romper el resto', async () => {
