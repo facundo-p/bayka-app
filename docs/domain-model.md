@@ -615,6 +615,28 @@ Especie: ANC
 El SubID sigue a los códigos: cambiar el código de la parcela o del grupo reescribe
 el SubID de sus árboles, en el dispositivo y en el servidor (#623, #626).
 
+### Cambio de especie (#679)
+
+La especie de un árbol ya cargado se puede cambiar por otra habilitada en la
+plantación (nunca a N/N), y el SubID se rearma con el código nuevo:
+
+```
+app: quien registró el árbol, con el grupo activo; con el grupo finalizado
+     ofrece reabrirlo y cambiar en un paso
+web: admin con la plantación activa; superadmin también con la finalizada;
+     en una archivada, nadie
+```
+
+Cada cambio viaja con la **especie base**, la que el cliente vio en el servidor
+(`trees.especie_base_id` en el dispositivo). Si el servidor ya tiene otra, no la
+pisa:
+
+```
+web (RPC cambiar_especie_arbol): rechaza con CONFLICTO_EDICION y muestra la vigente
+sync del celular: gana la del servidor y el celular la adopta; si también la
+  había cambiado, la sync avisa cuántos árboles fueron
+```
+
 ---
 
 # 13. Árboles no identificados (N/N)

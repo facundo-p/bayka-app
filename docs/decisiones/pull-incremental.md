@@ -159,12 +159,11 @@ Pull full **a pedido** (un botón "resincronizar todo" que pone los watermarks e
 "divergencia silenciosa": cualquier desfasaje que se cuele tiene fecha de
 vencimiento en vez de ser permanente.
 
-### El chequeo de conflicto de especie ya es compatible
+### La especie de los árboles ya es compatible
 
 El issue lo marcaba como riesgo: `checkTreeConflict` asumía ver todas las filas.
-Después de #449 no: lee los árboles **locales** de esos grupos de una vez y cruza
-contra las filas remotas recibidas. Un árbol remoto que no llega simplemente no se
-evalúa — que es lo correcto, porque no cambió. No hay nada que adaptar.
+Desde #679 el pull no chequea conflictos de especie: adopta la del server en los
+grupos sin cambios locales. Un árbol remoto que no llega no cambió.
 
 ### Un device que estuvo meses sin sincronizar
 

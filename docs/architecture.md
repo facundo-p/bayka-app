@@ -316,6 +316,16 @@ no pudieron subir y por qué, y ofrece descartarlos (#638).
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
 
+**La especie de cada árbol viaja con su base** (#679). El dispositivo guarda en
+`trees.especie_base_id` la última especie que vio en el server, y `sync_subgroup`
+la recibe como `species_base_id`: si el server ya tiene otra (la cambió la web u
+otro celular), gana la del server. Los árboles en los que el server se quedó con
+la suya vuelven en `conservadas`: el celular los adopta y la sync avisa cuántos
+de esos había cambiado. En el resto, la especie subida pasa a ser la base.
+El pull adopta la especie del server en los grupos sin cambios locales. La web
+cambia la especie por `cambiar_especie_arbol` (admin u, en una finalizada,
+superadmin), con la misma base.
+
 **Los borrados viajan aparte** (#467). Borrar un árbol o un grupo solo borra en
 SQLite; el pull upsertea todo lo que el server tiene, así que sin propagarlos la
 fila volvía en la misma sincronización. Se anotan en `borrados_pendientes`, el pull
@@ -583,6 +593,10 @@ generados localmente, quedó sin callers y se eliminó en la mig. 030.
 
 El gate de export exige que TODOS los árboles tengan ID.
 
+El SubID de un árbol (`<parcela><grupo><especie><posición>`) lo arman la app y
+el server. Sus vectores de prueba viven en `contracts/sub-id.json` y los
+recorren pgTAP y mobile; web y mobile recorren los del ID de árbol (#735).
+
 ---
 
 # 11. Seguridad
@@ -601,6 +615,12 @@ solo admins crean plantaciones
 solo admins exportan datos
 tecnicos solo registran datos
 ```
+
+Las reglas de permisos que el server aplica y los clientes reflejan (qué botón
+se muestra) se escriben como tabla de casos en `contracts/` y las recorren pgTAP
+y los contract tests de web y mobile: hoy `permisos-edicion.json`, para cambiar
+la especie de un árbol. `editar_plantacion` comparte el gate y lo recorre solo
+pgTAP (#735).
 
 ---
 

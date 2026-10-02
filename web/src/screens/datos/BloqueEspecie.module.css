@@ -1,0 +1,47 @@
+/* Especie: punto de color + "código · nombre" en una línea. El hueco lo pone
+   el margen del punto, el mismo que en la celda de la tabla. */
+.especie {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.fila {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+/* Acción secundaria con aspecto de enlace: no compite con el dato. */
+.enlace {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.enlace:hover {
+  text-decoration: underline;
+}
+
+.formulario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-md);
+}
+
+.error {
+  composes: errorEnvio from '../../components/Formulario.module.css';
+}

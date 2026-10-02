@@ -285,10 +285,13 @@ describe('sección Árboles', () => {
     await screen.findByRole('cell', { name: 'A-001-SS26' });
 
     // Con la parcela fantasma el grupo quedaría habilitado y la tabla filtrada por ella.
-    await waitFor(() => expect(screen.getByLabelText('Grupo')).toBeDisabled());
-    expect(consultasListaArboles().at(-1)?.filtros).not.toContainEqual(
-      expect.objectContaining({ columna: 'groups.parcela_id' }),
-    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('Grupo')).toBeDisabled();
+      // La consulta con la parcela fantasma sale antes del reset: cuenta la última.
+      expect(consultasListaArboles().at(-1)?.filtros).not.toContainEqual(
+        expect.objectContaining({ columna: 'groups.parcela_id' }),
+      );
+    });
   });
 
   test('cambiar de parcela resetea el grupo', async () => {

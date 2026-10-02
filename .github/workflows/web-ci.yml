@@ -8,6 +8,8 @@ on:
       - 'supabase/functions/**'
       # Web lintea y testea los scripts de la raíz.
       - 'scripts/**'
+      # Los contract tests de web leen contracts/*.json.
+      - 'contracts/**'
       - '.github/workflows/web-ci.yml'
 
 jobs:

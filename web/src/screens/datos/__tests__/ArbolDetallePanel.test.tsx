@@ -6,6 +6,13 @@ import { ArbolDetallePanel } from '../ArbolDetallePanel';
 import { arbolDetalle } from '../../../test/fabricas';
 import { obtenerUrlDescargaFoto, obtenerUrlFoto } from '../../../services/fotoService';
 import { descargarDesdeUrl } from '../../../services/descargas';
+import { listarEspeciesDePlantacion } from '../../../queries/especieQueries';
+import {
+  cambiarEspecieDeArbol,
+  ConflictoDeEspecieError,
+} from '../../../repositories/especieDeArbol';
+import type { EdicionDeEspecie } from '../useCambioDeEspecie';
+import { ErrorDeEdicion } from '../../../repositories/edicionDePlantacion';
 
 // Leaflet usa APIs de layout que jsdom no implementa.
 vi.mock('../../../components/mapa/MapaPuntos', () => ({
@@ -24,6 +31,15 @@ vi.mock('../../../services/descargas', async () => {
     '../../../services/descargas',
   );
   return { ...actual, descargarDesdeUrl: vi.fn() };
+});
+
+vi.mock('../../../queries/especieQueries', () => ({ listarEspeciesDePlantacion: vi.fn() }));
+
+vi.mock('../../../repositories/especieDeArbol', async () => {
+  const actual = await vi.importActual<typeof import('../../../repositories/especieDeArbol')>(
+    '../../../repositories/especieDeArbol',
+  );
+  return { ...actual, cambiarEspecieDeArbol: vi.fn() };
 });
 
 function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
@@ -61,6 +77,7 @@ function renderPanel(
     parcelaCodigo = 'P-01' as string | null,
     tecnicoNombre = 'Lucía Ferreyra' as string | null,
     nombreFoto = 'foto-finca-2026-a-001.jpg' as string | null,
+    edicionDeEspecie = undefined as EdicionDeEspecie | undefined,
   } = {},
 ) {
   const onCerrar = vi.fn();
@@ -72,6 +89,7 @@ function renderPanel(
         parcelaCodigo={parcelaCodigo}
         tecnicoNombre={tecnicoNombre}
         nombreFoto={nombreFoto}
+        edicionDeEspecie={edicionDeEspecie}
         onCerrar={onCerrar}
       />
     </QueryClientProvider>,
@@ -181,5 +199,122 @@ describe('descarga de la foto', () => {
 
     expect(await screen.findByText('No se pudo descargar la foto')).toBeInTheDocument();
     expect(descargarDesdeUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('cambiar la especie (#679)', () => {
+  const ESPECIES = [
+    { id: 'sp-qb', codigo: 'QB', nombre: 'Quebracho', nombreCientifico: 'Schinopsis balansae' },
+    { id: 'sp-tal', codigo: 'TAL', nombre: 'Tala', nombreCientifico: 'Celtis tala' },
+  ];
+
+  function edicion(): EdicionDeEspecie {
+    return { plantationId: 'p1', codigoPlantacion: 'SS26', onActualizado: vi.fn() };
+  }
+
+  const enlaceCambiar = () => screen.getByRole('button', { name: 'Cambiar la especie' });
+  const disparador = () => screen.getByRole('button', { name: /^Especie nueva/ });
+
+  async function elegirTala(usuario: ReturnType<typeof userEvent.setup>) {
+    await usuario.click(enlaceCambiar());
+    await usuario.click(await screen.findByRole('button', { name: /^Especie nueva/ }));
+    await usuario.type(screen.getByRole('combobox'), 'celtis');
+    await usuario.click(screen.getByRole('option', { name: /TAL · Tala/ }));
+  }
+
+  beforeEach(() => {
+    vi.mocked(listarEspeciesDePlantacion).mockResolvedValue(ESPECIES);
+    vi.mocked(cambiarEspecieDeArbol).mockReset();
+    vi.mocked(listarEspeciesDePlantacion).mockClear();
+  });
+
+  test('sin permiso no se ofrece', () => {
+    renderPanel();
+    expect(screen.queryByRole('button', { name: 'Cambiar la especie' })).not.toBeInTheDocument();
+  });
+
+  test('abre el selector con la especie actual y sin poder guardar', async () => {
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ especieId: 'sp-qb' }), { edicionDeEspecie: edicion() });
+
+    await usuario.click(enlaceCambiar());
+
+    expect(await screen.findByRole('button', { name: /^Especie nueva/ })).toHaveAccessibleName(
+      /QB · Quebracho/,
+    );
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+    expect(listarEspeciesDePlantacion).toHaveBeenCalledWith('p1');
+  });
+
+  test('guardar manda la base y deja el árbol con la especie y el ID nuevos', async () => {
+    const usuario = userEvent.setup();
+    const edicionDeEspecie = edicion();
+    vi.mocked(cambiarEspecieDeArbol).mockResolvedValue('P01G01TAL3');
+    renderPanel(arbol({ especieId: 'sp-qb' }), { edicionDeEspecie });
+
+    await elegirTala(usuario);
+    expect(disparador()).toHaveAccessibleName(/TAL · Tala/);
+    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(cambiarEspecieDeArbol).toHaveBeenCalledWith(arbol().id, 'sp-tal', 'sp-qb');
+    await vi.waitFor(() =>
+      expect(edicionDeEspecie.onActualizado).toHaveBeenCalledWith(
+        expect.objectContaining({
+          especieId: 'sp-tal',
+          especieCodigo: 'TAL',
+          especieNombre: 'Tala',
+          subId: 'P01G01TAL3',
+          idArbol: 'P01G01TAL3-SS26',
+        }),
+      ),
+    );
+    expect(screen.queryByRole('button', { name: 'Guardar' })).not.toBeInTheDocument();
+  });
+
+  test('si alguien la cambió desde otro lado avisa y muestra la del server', async () => {
+    const usuario = userEvent.setup();
+    const edicionDeEspecie = edicion();
+    vi.mocked(cambiarEspecieDeArbol).mockRejectedValue(
+      new ConflictoDeEspecieError({
+        especieId: 'sp-cei',
+        especieCodigo: 'CEI',
+        especieNombre: 'Ceibo',
+        subId: 'P01G01CEI3',
+      }),
+    );
+    renderPanel(arbol({ especieId: 'sp-qb' }), { edicionDeEspecie });
+
+    await elegirTala(usuario);
+    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/ahora es Ceibo/);
+    expect(edicionDeEspecie.onActualizado).toHaveBeenCalledWith(
+      expect.objectContaining({ especieId: 'sp-cei', idArbol: 'P01G01CEI3-SS26' }),
+    );
+  });
+
+  test('si la especie ya no estaba habilitada, avisa y vuelve a leer las opciones', async () => {
+    const usuario = userEvent.setup();
+    vi.mocked(cambiarEspecieDeArbol).mockRejectedValue(
+      new ErrorDeEdicion('Esa especie ya no está habilitada en la plantación.'),
+    );
+    renderPanel(arbol({ especieId: 'sp-qb' }), { edicionDeEspecie: edicion() });
+
+    await elegirTala(usuario);
+    await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/ya no está habilitada/);
+    await vi.waitFor(() => expect(listarEspeciesDePlantacion).toHaveBeenCalledTimes(2));
+  });
+
+  test('cancelar cierra sin guardar', async () => {
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ especieId: 'sp-qb' }), { edicionDeEspecie: edicion() });
+
+    await elegirTala(usuario);
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(cambiarEspecieDeArbol).not.toHaveBeenCalled();
+    expect(enlaceCambiar()).toBeInTheDocument();
   });
 });

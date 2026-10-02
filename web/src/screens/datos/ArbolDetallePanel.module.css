@@ -11,15 +11,6 @@
   composes: overline from '../../theme/utilidades.module.css';
 }
 
-/* Especie: punto de color + "código · nombre" en una línea. El hueco lo pone
-   el margen del punto, el mismo que en la celda de la tabla. */
-.especie {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--text-md);
-  color: var(--color-text-secondary);
-}
-
 .foto {
   max-width: 100%;
   max-height: 320px;

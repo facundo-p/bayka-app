@@ -41,6 +41,13 @@ export const syncProgressModalStyles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.danger,
   },
+  // Algo que cambió sin que el usuario lo pidiera: informa, sin color de éxito ni de falla.
+  avisoText: {
+    fontSize: fontSize.base,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
   // Aviso de estancamiento: informa, no alarma — la sync puede seguir viva.
   estancadoText: {
     fontSize: fontSize.base,

@@ -29,6 +29,7 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
 jest.mock('../../src/repositories/TreeRepository', () => ({
   getTreesWithPendingPhotos: jest.fn().mockResolvedValue([]),
   markPhotoSynced: jest.fn(),
+  confirmarEspeciesSubidas: jest.fn(),
 }));
 
 jest.mock('expo-file-system', () => ({

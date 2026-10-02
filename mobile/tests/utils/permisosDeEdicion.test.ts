@@ -1,4 +1,6 @@
-import { getTreeEditGating, getGroupGating, plantacionEsEditable, puedeEditarParcela } from '../../src/utils/permisosDeEdicion';
+import {
+  getTreeEditGating, getGroupGating, plantacionEsEditable, puedeEditarParcela, getCambioDeEspecie,
+} from '../../src/utils/permisosDeEdicion';
 import { esArchivada, esEliminadaEnServidor } from '../../src/constants/estados';
 
 const ACTIVA = { estado: 'activa', archivadaEn: null, eliminadaEnServidorEn: null };
@@ -160,5 +162,29 @@ describe('eliminada en el servidor (#478)', () => {
   test('esEliminadaEnServidor mira solo la marca, no el estado', () => {
     expect(esEliminadaEnServidor(ACTIVA)).toBe(false);
     expect(esEliminadaEnServidor(ACTIVA_ELIMINADA)).toBe(true);
+  });
+});
+
+describe('getCambioDeEspecie (#679)', () => {
+  test('grupo activo y editable → disponible', () => {
+    expect(getCambioDeEspecie({ plantacion: ACTIVA, subgroupEstado: 'activa', isCreator: true })).toBe('disponible');
+  });
+
+  test('grupo finalizado que se puede reabrir → requiere reabrir', () => {
+    expect(getCambioDeEspecie({ plantacion: ACTIVA, subgroupEstado: 'finalizada', isCreator: true }))
+      .toBe('requiere-reabrir');
+  });
+
+  test('grupo sincronizado: no se reabre → no disponible', () => {
+    expect(getCambioDeEspecie({ plantacion: ACTIVA, subgroupEstado: 'sincronizada', isCreator: true }))
+      .toBe('no-disponible');
+  });
+
+  test.each([
+    ['plantación finalizada', FINALIZADA, true],
+    ['plantación archivada', ACTIVA_ARCHIVADA, true],
+    ['no creador', ACTIVA, false],
+  ])('%s → no disponible', (_caso, plantacion, isCreator) => {
+    expect(getCambioDeEspecie({ plantacion, subgroupEstado: 'activa', isCreator })).toBe('no-disponible');
   });
 });

@@ -8,9 +8,10 @@ Baseline + migraciones archivadas vs. pendientes: ver `docs/db-baseline.md`
 `run-db-tests.sh` arma, en `supabase/.tmp-dbtest/` (gitignored, recreado en
 cada corrida), un proyecto temporal: baseline (copiada como
 `00000000_baseline.sql`, ordena primero sin importar el prefijo real) + todo
-`supabase/migrations/*.sql` + `test-helpers.sql` como última migración
-(`99999999999999_test_helpers.sql`). Sin filtros ni renombrados: la baseline ya
-sale curada de `regenerate-baseline.sh`.
+`supabase/migrations/*.sql` + los contratos de `contracts/`
+(`99999999999998_contratos.sql`, ver Contratos) + `test-helpers.sql` como
+última migración (`99999999999999_test_helpers.sql`). Sin filtros ni
+renombrados: la baseline ya sale curada de `regenerate-baseline.sh`.
 
 ## Cómo correr
 
@@ -21,7 +22,7 @@ proyecto propios (55321+) para no pisar un stack de desarrollo (54321+). Para
 dejar el stack levantado: `DB_TEST_KEEP_RUNNING=1
 supabase/tests/run-db-tests.sh`, luego `npx supabase@<versión> stop
 --workdir supabase/.tmp-dbtest --no-backup`. `.github/workflows/db-tests.yml`
-corre lo mismo en cada PR/push a `supabase/**`.
+corre lo mismo en cada PR/push a `supabase/**` o `contracts/**`.
 
 `run-db-tests.sh` y `regenerate-baseline.sh` usan `supabase db start`
 (levanta solo el contenedor de Postgres) en vez de `supabase start` (~13
@@ -68,6 +69,14 @@ privilegios de quien llama, como el INSERT directo. Una columna obligatoria
 nueva en `plantations` se resuelve ahí, no en cada test (#711). Quedan a mano
 los INSERT que son el objeto del test: los de `lives_ok`/`throws_ok` y el
 backfill de `40`, que necesita filas sin `codigo`.
+
+## Contratos
+
+`run-db-tests.sh` carga cada `contracts/*.json` como fila de `tests.contratos`
+(`99999999999998_contratos.sql`, antes de los auxiliares), y
+`tests.contrato('<archivo>.json')` devuelve su JSON o falla si no está. Así un
+test recorre la misma tabla de casos que los contract tests de web y mobile:
+cambiar una regla de un solo lado rompe el test de los otros (#735).
 
 ## Tests
 
@@ -145,7 +154,30 @@ uno repetido con CODIGO_DUPLICADO sin aplicar nada, valida formato, detecta
 conflictos y no lo cambia en una finalizada aunque el superadmin edite lo demás
 (062, #559). `42` el UPDATE directo de los 9 campos
 editables de `plantations` falla para `authenticated`, `estado` (finalizar) y
-`editar_plantacion` siguen andando (063, #649).
+`editar_plantacion` siguen andando (063, #649). `43`
+`cambiar_especie_arbol`: aplica con la base vigente y rearma el SubID, devuelve
+CONFLICTO_EDICION con la especie del server si la base quedó vieja, acepta la
+especie que el árbol ya tiene, rechaza una especie no habilitada (y N/N), exige
+membresía, y en una finalizada solo deja al superadmin; en una archivada a nadie.
+`sync_subgroup` con `species_base_id` conserva la especie del server si difiere de
+la base, rearma el SubID con su código, no deshace un N/N resuelto, devuelve en
+`conservadas` todo árbol que quedó con otra especie que la que mandó el móvil
+(también uno sin tocar), y sin base pisa como antes
+(065, #679). `44` ramas de `sync_subgroup`
+sin otro test: el re-sync de un árbol pisa especie y SubID pero no la posición,
+y conserva foto, ids y GPS que no vienen; una especie vacía queda N/N; sin
+especies que habilitar no reordena; con código y nombre repetidos gana
+DUPLICATE_CODE; una excepción, también en las validaciones, responde UNKNOWN y
+deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
+`authenticated` ni `anon`, son SECURITY INVOKER, y la orquestadora sigue
+SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `47`
+`contracts/permisos-edicion.json`: los casos `web` contra
+`cambiar_especie_arbol` y `editar_plantacion`, los casos `app` contra
+`sync_subgroup` de un técnico asignado; un rechazo cuenta solo si es del gate, y
+cada tabla trae todas las combinaciones y los dos desenlaces (#735). `48`
+`contracts/sub-id.json`: el SubID que arman `cambiar_especie_arbol` y
+`sync_subgroup` al conservar la especie, y la reescritura del prefijo al
+cambiar el código de la parcela (#735).
 
 ## Hallazgo fuera de alcance (no corregido)
 

@@ -253,54 +253,51 @@ Lo que no puede subir hasta que algo cambie en el server se avisa en la tarjeta 
 
 ---
 
-## Resolución de N/N
+## Resolución de N/N y cambio de especie
 
 ### Flujo local
 
-**Archivo:** `TreeRepository.ts` → `resolveNNTree(treeId, especieId, subgrupoCodigo)`
+**Archivo:** `TreeRepository.ts` → `cambiarEspecie(treeId, especieId)`
+
+Lo usan la resolución de N/N (`useNNResolution.ts`) y «Cambiar especie» del detalle del árbol (#679).
 
 1. Busca el código de la especie seleccionada
 2. Regenera el `subId` con el nuevo código de especie
-3. `UPDATE trees SET especieId, subId` — **NO toca fotoUrl ni fotoSynced**
+3. `UPDATE trees SET especieId, subId` — **NO toca fotoUrl, fotoSynced ni especieBaseId**
 4. `markGroupPendingSync(grupoId)` → `pendingSync = true`
-
-**Archivo:** `useNNResolution.ts` → `handleGuardar()`
-
-Para cada árbol seleccionado, llama `resolveNNTree()`. Después ejecuta callback.
 
 ### Re-sync después de resolución
 
 Cuando el usuario sincroniza después de resolver N/N:
 
-1. **Pull:** descarga estado actual del servidor
-   - Si el servidor tiene otra especie (conflicto): almacena en `conflictEspecieId`
+1. **Pull:** descarga estado actual del servidor; no toca los árboles del grupo pendiente
 2. **Push:** `getSyncableGroups` devuelve el grupo (`pendingSync = true`)
-   - `uploadGroup` envía `species_id` = especie resuelta
+   - `uploadGroup` envía `species_id` = especie resuelta y `species_base_id` = `especieBaseId`
    - `foto_url` = storage path (ya existente) o null
-   - RPC actualiza `species_id` y `sub_id` en el servidor
+   - RPC actualiza `species_id` y `sub_id` en el servidor, salvo que ya tenga una especie distinta de la base
    - `COALESCE(EXCLUDED.foto_url, trees.foto_url)` preserva foto existente
-3. **markGroupSynced:** `pendingSync = false`
+3. **asentarEspeciesSubidas:** los árboles que el server devolvió en `conservadas` adoptan la del server (especie, base y SubID con los códigos locales), salvo que hayan cambiado durante el push o falte su especie (lo adopta el pull siguiente); el resumen de la sync cuenta los que se habían cambiado acá. En el resto, `especieBaseId` = la especie que viajó. Un error en este paso deja el grupo pendiente, sin reportarlo como error de red
+4. **markGroupSynced:** `pendingSync = false`
 
 ### Resolución cross-device
 
 **Escenario:** User A crea N/N en device A. User B descarga y resuelve en device B.
 
 1. Device B descarga plantación → árbol tiene `especieId = null`, foto descargada
-2. User B resuelve N/N → `resolveNNTree` cambia `especieId`, marca `pendingSync = true`
+2. User B resuelve N/N → `cambiarEspecie` cambia `especieId`, marca `pendingSync = true`
 3. User B sincroniza:
    - `getSyncableGroups` devuelve el grupo (no filtra por userId ni estado)
    - RPC actualiza `species_id` y `sub_id` en el servidor si User B es miembro y la plantación es escribible
 
 ### Conflictos de resolución
 
-**Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y.
+**Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y. Gana el server (#679).
 
 1. User A sincroniza → servidor tiene `species_id = X`
-2. User B sincroniza → pull detecta conflicto (local Y ≠ server X)
-   - Almacena `conflictEspecieId = X`, `conflictEspecieNombre = 'Nombre de X'`
-3. NNResolutionScreen muestra banner de conflicto:
-   - **Aceptar servidor:** `acceptServerResolution()` → resuelve como X
-   - **Mantener local:** `keepLocalResolution()` → limpia markers, mantiene Y
+2. User B sincroniza: el push manda Y con su base (N/N), el server conserva X y lo devuelve en `conservadas`
+3. El árbol de B pasa a X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
+
+Un árbol que B no cambió (especie = base) también vuelve en `conservadas` y adopta X, sin aviso: si el grupo llega pendiente a cada sync, el pull nunca se lo baja.
 
 ---
 
@@ -351,23 +348,42 @@ Muestra resultados separados:
 
 ## RPC: sync_subgroup
 
-**Archivo:** `supabase/migrations/054_sync_subgroup_codigo_y_prefijo.sql` (última redefinición)
+**Archivos:** `supabase/migrations/064_partir_sync_subgroup.sql` (los pasos) y
+`065_cambiar_especie_arbol.sql` (la orquestadora y los pasos de la especie)
+
+`sync_subgroup` es una orquestadora: cada paso es una función propia, que solo
+ella (y service_role) ejecuta. Un cambio en un paso redefine solo esa función.
 
 ```sql
+-- sync_subgroup_rechazo            (1-3, el primero que aplique; no escribe nada)
 -- 1. Sin fila en plantation_users para auth.uid()     → PERMISSION
 -- 2. motivo_no_escribible(plantation_id) no null      → PLANTACION_ARCHIVADA | PLANTACION_FINALIZADA
 -- 3. Otro grupo con el mismo código en la parcela     → DUPLICATE_CODE
 --    Otro grupo con el mismo nombre en la parcela     → DUPLICATE_NAME
+-- sync_subgroup_upsert_grupo
 -- 4. INSERT groups ON CONFLICT (id) DO UPDATE SET estado, codigo, nombre, tipo
--- 5. INSERT trees ON CONFLICT (id) DO UPDATE:
+-- sync_subgroup_codigo_parcela
+-- 5. Código vigente de la parcela, con la fila FOR SHARE
+-- sync_subgroup_conservar_especies
+-- 6. Árboles FOR UPDATE; donde el server tiene una especie distinta de
+--    species_base_id, el payload sigue con la del server
+-- sync_subgroup_upsert_arboles
+-- 7. INSERT trees ON CONFLICT (id) DO UPDATE:
 --    species_id, sub_id                                   -- resolución N/N
 --    sub_id que empieza con parcela_codigo + codigo       -- pasa al código vigente de la parcela
 --    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url) -- no borra foto existente
 --    plantacion_id, global_id y GPS también con COALESCE
--- Cualquier excepción                                  → UNKNOWN
+-- sync_subgroup_habilitar_especies
+-- 8. Re-habilita en plantation_species la especie de los árboles que suben
+-- sync_subgroup_conservadas
+-- 9. Árboles que quedaron con otra especie que la que mandó el móvil
+-- Cualquier excepción                                  → UNKNOWN, sin nada escrito
 ```
 
-Respuesta: `{ success: true }` o `{ success: false, error }`.
+Los locks se toman en ese orden: grupo → parcela → árboles →
+`plantation_species`. Otra escritura que tome más de uno tiene que seguirlo.
+
+Respuesta: `{ success: true, conservadas: [{ id, species_id }] }` o `{ success: false, error }`.
 
 ### SECURITY DEFINER
 
@@ -394,8 +410,8 @@ de parcelas —que incluye el tombstone— además exige `is_admin()` (056, #640
 | `especie_id` | text | sí | UUID de especie. `null` = N/N sin resolver |
 | `foto_url` | text | sí | Ruta de Storage o `file://` local. `null` = sin foto |
 | `foto_synced` | integer | no | `0` = foto local pendiente de upload. `1` = foto en Storage |
-| `conflict_especie_id` | text | sí | Especie del servidor cuando hay conflicto de resolución |
-| `conflict_especie_nombre` | text | sí | Nombre de la especie en conflicto (para mostrar en UI) |
+| `especie_base_id` | text | sí | Especie del servidor la última vez que se vio el árbol; el push la manda como base (#679) |
+| `conflict_especie_id`, `conflict_especie_nombre` | text | sí | Sin uso desde #679; siguen porque un JS anterior las nombra |
 
 ---
 
