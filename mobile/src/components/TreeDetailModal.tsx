@@ -11,6 +11,9 @@ import { useTreeDetail } from '../hooks/useTreeDetail';
 import { getSpeciesName } from '../utils/speciesHelpers';
 import { idDeArbol } from '../utils/codigoDePlantacion';
 import PhotoViewer from './PhotoViewer';
+import ConfirmModal from './ConfirmModal';
+import { useConfirm } from '../hooks/useConfirm';
+import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import FotoRemota from './FotoRemota';
 import { isRemoteUri } from '../utils/photoUri';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
@@ -43,6 +46,7 @@ export default function TreeDetailModal({
   const [busyPhoto, setBusyPhoto] = useState(false);
   const [busyGps, setBusyGps] = useState(false);
   const [gpsFailed, setGpsFailed] = useState(false);
+  const confirm = useConfirm();
   const [zoomUri, setZoomUri] = useState<string | null>(null);
 
   async function handleCapturePhoto() {
@@ -51,10 +55,14 @@ export default function TreeDetailModal({
     try { await onCapturePhoto(tree.id); } finally { setBusyPhoto(false); }
   }
 
-  async function handleRemovePhoto() {
-    if (!tree) return;
+  async function quitarFoto(id: string) {
     setBusyPhoto(true);
-    try { await onRemovePhoto(tree.id); } finally { setBusyPhoto(false); }
+    try { await onRemovePhoto(id); } finally { setBusyPhoto(false); }
+  }
+
+  function handleRemovePhoto() {
+    if (!tree) return;
+    confirmarQuitarFoto(confirm.show, tree.fotoSynced ?? true, () => quitarFoto(tree.id));
   }
 
   async function handleCaptureGps() {
@@ -185,6 +193,7 @@ export default function TreeDetailModal({
           </ScrollView>
         )}
         <PhotoViewer uri={zoomUri} treeId={treeId ?? undefined} onClose={() => setZoomUri(null)} />
+        <ConfirmModal {...confirm.confirmProps} />
       </View>
     </Modal>
   );
