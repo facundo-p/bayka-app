@@ -2,14 +2,16 @@
  * Búsqueda global multi-entidad para la paleta de comandos (⌘K): plantaciones/especies/
  * usuarios filtran en cliente (queries cacheables); parcelas/grupos/árboles van server-side
  * con `ilike` (RLS acota a la organización). Usuarios sin email en `profiles` (solo nombre);
- * árboles se buscan por `sub_id`, no por ID global. Sin scope se excluyen las plantaciones
- * archivadas (#477); con scope se busca dentro de esa plantación aunque esté archivada.
+ * árboles se buscan por `sub_id` o por ID Árbol completo (`<SubID>-<código>`). Sin scope se
+ * excluyen las plantaciones archivadas (#477); con scope se busca dentro de esa plantación
+ * aunque esté archivada.
  */
 import { coincideBusqueda } from '../lib/normalizarTexto';
 import { etiquetaRol, nombreVisible } from '../lib/presentacionUsuario';
 import { PARAM_URL, RUTA, rutaDatos, rutaPlantacion, SEGMENTO_DATOS } from '../lib/rutas';
 import { supabase } from '../lib/supabase';
-import { condicionIlikeOr, patronContiene } from './escaparBusqueda';
+import { COLUMNA_CODIGO_PLANTACION, resolverBusquedaArbol } from './busquedaArbol';
+import { condicionIlikeOr } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
 import { listarPlantaciones, sinArchivadas } from './plantationQueries';
 import { listarUsuariosConAsignaciones } from './usuarioQueries';
@@ -155,13 +157,15 @@ type FilaArbolBusqueda = {
 };
 
 async function buscarArboles(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
+  const { patronSubId, codigo } = await resolverBusquedaArbol(texto);
   let consulta = supabase
     .from('trees')
     .select(
-      `id, sub_id, species(nombre), groups!inner(plantation_id, codigo, plantations!inner(${ARCHIVADA_EN}))`,
+      `id, sub_id, species(nombre), groups!inner(plantation_id, codigo, plantations!inner(${ARCHIVADA_EN}, codigo))`,
     )
-    .ilike('sub_id', patronContiene(texto))
+    .ilike('sub_id', patronSubId)
     .limit(TOPE_POR_GRUPO);
+  if (codigo) consulta = consulta.eq(COLUMNA_CODIGO_PLANTACION, codigo);
   if (scope) consulta = consulta.eq('groups.plantation_id', scope.plantationId);
   else consulta = consulta.is(`groups.plantations.${ARCHIVADA_EN}`, null);
   const { data, error } = await consulta;

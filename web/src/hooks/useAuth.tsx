@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import type { AuthError, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
+import { reiniciarCacheCodigosPlantacion } from '../queries/busquedaArbol';
 import { getPerfil, ROL, type Perfil } from '../repositories/profileRepository';
 
 export type EstadoAuth = 'cargando' | 'anonimo' | 'sin-acceso' | 'autenticado';
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userId !== usuarioResuelto.current) {
         usuarioResuelto.current = userId;
         queryClient.clear();
+        reiniciarCacheCodigosPlantacion();
       }
       if (!session) {
         setPerfil(null);

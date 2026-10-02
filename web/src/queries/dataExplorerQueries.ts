@@ -1,7 +1,12 @@
 import { idDeArbol } from '../lib/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
-import { citarValorOr, patronContiene } from './escaparBusqueda';
+import {
+  COLUMNA_CODIGO_PLANTACION,
+  resolverBusquedaArbol,
+  type BusquedaArbol,
+} from './busquedaArbol';
+import { citarValorOr } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { ESQUEMAS_FOTO_LOCAL } from './fotoConstantes';
 import { leerPaginado } from './leerPaginado';
@@ -217,7 +222,7 @@ function consultaBaseArboles(plantationId: string) {
   return supabase
     .from('trees')
     .select(
-      '*, species(codigo, nombre), groups!inner(codigo, parcela_id, plantation_id, plantations(codigo))',
+      '*, species(codigo, nombre), groups!inner(codigo, parcela_id, plantation_id, plantations!inner(codigo))',
       {
         count: 'exact',
       },
@@ -257,6 +262,7 @@ function aplicarFiltroFoto(consulta: ConsultaArboles, conFoto: boolean): Consult
 function aplicarFiltrosArboles(
   consulta: ConsultaArboles,
   filtros: FiltrosArboles,
+  busqueda?: BusquedaArbol,
 ): ConsultaArboles {
   if (filtros.parcelaId) consulta = consulta.eq('groups.parcela_id', filtros.parcelaId);
   if (filtros.groupId) consulta = consulta.eq('group_id', filtros.groupId);
@@ -265,7 +271,8 @@ function aplicarFiltrosArboles(
   if (filtros.conGps === true) consulta = consulta.not('latitude', 'is', null);
   if (filtros.conGps === false) consulta = consulta.is('latitude', null);
   if (filtros.conFoto !== undefined) consulta = aplicarFiltroFoto(consulta, filtros.conFoto);
-  if (filtros.busqueda) consulta = consulta.ilike('sub_id', patronContiene(filtros.busqueda));
+  if (busqueda) consulta = consulta.ilike('sub_id', busqueda.patronSubId);
+  if (busqueda?.codigo) consulta = consulta.eq(COLUMNA_CODIGO_PLANTACION, busqueda.codigo);
   return consulta;
 }
 
@@ -304,9 +311,11 @@ export async function listarArboles(
   pagina = 1,
 ): Promise<PaginaArboles> {
   const desde = (pagina - 1) * ARBOLES_POR_PAGINA;
+  const busqueda = filtros.busqueda ? await resolverBusquedaArbol(filtros.busqueda) : undefined;
   const { data, error, count } = await aplicarFiltrosArboles(
     consultaBaseArboles(plantationId),
     filtros,
+    busqueda,
   )
     .order('created_at', { ascending: false })
     .range(desde, desde + ARBOLES_POR_PAGINA - 1);
