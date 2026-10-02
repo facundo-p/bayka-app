@@ -246,14 +246,6 @@ export async function markPhotoSynced(treeId: string): Promise<void> {
     .where(eq(trees.id, treeId));
 }
 
-/** Limpia el marcador de conflicto N/N (especie server vs local detectada en pull); aplica tanto al aceptar la resolución del server como al mantener la local. */
-export async function clearTreeConflict(treeId: string): Promise<void> {
-  await db.update(trees)
-    .set({ conflictEspecieId: null, conflictEspecieNombre: null })
-    .where(eq(trees.id, treeId));
-  notifyDataChanged();
-}
-
 /**
  * Borra un árbol y recalcula posición+subId de los restantes en el grupo para que
  * queden consecutivos (1,2,3...).
