@@ -70,10 +70,13 @@ describe('construirKml', () => {
     expect(kml).toContain(`<color>${colorKml(COLOR_GRAFICO_NN)}</color>`);
   });
 
-  test('escapa caracteres XML reservados en nombres y códigos', () => {
-    const kml = construirKml([punto({ codigo: 'A&B', nombre: `Ñandubay <"'> & árbol` })], {
-      nombreDocumento: 'Doc & <título>',
-    });
+  test('escapa caracteres XML reservados en nombres, ID Árbol y SubID', () => {
+    const kml = construirKml(
+      [punto({ idArbol: 'A&B-SS26-1', subId: 'A&B', nombre: `Ñandubay <"'> & árbol` })],
+      { nombreDocumento: 'Doc & <título>' },
+    );
+    expect(kml).toContain('<name>A&amp;B-SS26-1</name>');
+    expect(kml).toContain('SubID: A&amp;B\n');
     expect(kml).toContain('Ñandubay &lt;&quot;&apos;&gt; &amp; árbol');
     expect(kml).toContain('Doc &amp; &lt;título&gt;');
     expect(kml).not.toMatch(/&(?!amp;|lt;|gt;|quot;|apos;)/);

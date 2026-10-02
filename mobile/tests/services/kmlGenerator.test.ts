@@ -104,6 +104,7 @@ describe('buildKml', () => {
 
   it('la descripción incluye SubID, especie, grupo, parcela, posición, precisión y fecha', () => {
     const kml = buildKml('Campo', [row()]);
+    expect(kml).toContain('SubID: PL1EUC1');
     expect(kml).toContain('Especie: Eucalipto');
     expect(kml).toContain('Grupo: Línea 1');
     expect(kml).toContain('Parcela: Lote A');
