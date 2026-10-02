@@ -16,8 +16,9 @@ import {
   Gesture,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors } from '../theme';
+import { colors, spacing } from '../theme';
 import { isRemoteUri } from '../utils/photoUri';
 import FotoRemota from './FotoRemota';
 import { photoViewerStyles as styles } from './PhotoViewer.styles';
@@ -34,6 +35,7 @@ interface Props {
 export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove }: Props) {
   // El caller sigue pasando el path remoto después de bajarla: se muestra el archivo local.
   const [descargada, setDescargada] = useState<{ remota: string; local: string } | null>(null);
+  const insets = useSafeAreaInsets();
   const visible = uri && descargada?.remota === uri ? descargada.local : uri;
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
@@ -115,7 +117,13 @@ export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove 
       onRequestClose={handleClose}
     >
       <GestureHandlerRootView style={styles.container}>
-        <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12} accessibilityLabel="Cerrar">
+        <Pressable
+          testID="photo-viewer-close"
+          style={[styles.closeButton, { top: insets.top + spacing.md }]}
+          onPress={handleClose}
+          hitSlop={12}
+          accessibilityLabel="Cerrar"
+        >
           <Ionicons name="close" size={28} color={colors.white} />
         </Pressable>
         {isRemoteUri(visible) && treeId ? (
@@ -136,7 +144,7 @@ export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove 
           </GestureDetector>
         )}
         {(onReplace || onRemove) && (
-          <View style={styles.actions}>
+          <View testID="photo-viewer-actions" style={[styles.actions, { paddingBottom: insets.bottom + spacing.xl }]}>
             {onReplace && (
               <Pressable style={styles.actionBtn} onPress={onReplace}>
                 <Ionicons name="camera-outline" size={20} color={colors.white} />
