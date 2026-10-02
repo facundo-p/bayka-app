@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import { useTrees } from './useTrees';
 import { usePlantationSpecies } from './usePlantationSpecies';
-import { resolveNNTree, clearTreeConflict } from '../repositories/TreeRepository';
+import { resolveNNTree } from '../repositories/TreeRepository';
 import { useLiveData } from '../database/liveQuery';
 import { getNNTreesForPlantation } from '../queries/plantationDetailQueries';
 import { getPlantationEstadoDeEdicion } from '../queries/adminQueries';
@@ -28,8 +28,6 @@ interface NNTree {
   grupoCodigo?: string;
   grupoNombre?: string;
   parcelaNombre?: string | null;
-  conflictEspecieId?: string | null;
-  conflictEspecieNombre?: string | null;
 }
 
 export function useNNResolution(params: {
@@ -131,32 +129,6 @@ export function useNNResolution(params: {
   // otros usuarios). En modo single-group, solo el admin (o el dueño del grupo).
   const canResolve = plantacionEditable && (isAdmin || !grupoId);
 
-  // ─── Conflict helpers ────────────────────────────────────────────────────
-  function getConflictForTree(treeId: string): { serverEspecieId: string; serverEspecieNombre: string } | null {
-    const tree = unresolvedTrees.find(t => t.id === treeId);
-    if (tree?.conflictEspecieId) {
-      return {
-        serverEspecieId: tree.conflictEspecieId,
-        serverEspecieNombre: tree.conflictEspecieNombre ?? 'Desconocida',
-      };
-    }
-    return null;
-  }
-
-  async function acceptServerResolution(treeId: string) {
-    const conflict = getConflictForTree(treeId);
-    if (!conflict) return;
-    const tree = unresolvedTrees.find(t => t.id === treeId);
-    const codigo = tree?.grupoCodigo ?? grupoCodigo ?? '';
-    await resolveNNTree(treeId, conflict.serverEspecieId, codigo);
-    await clearTreeConflict(treeId);
-  }
-
-  async function keepLocalResolution(treeId: string) {
-    // Solo limpia el marcador: lo local queda, el próximo sync sobreescribe al server
-    await clearTreeConflict(treeId);
-  }
-
   function handleAnterior() {
     if (safeIndex > 0) setCurrentIndex(safeIndex - 1);
   }
@@ -187,8 +159,5 @@ export function useNNResolution(params: {
     handleSiguiente,
     setCurrentIndex,
     setZoomPhotoUri,
-    getConflictForTree,
-    acceptServerResolution,
-    keepLocalResolution,
   };
 }
