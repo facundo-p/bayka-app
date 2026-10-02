@@ -152,7 +152,11 @@ especies que habilitar no reordena; con código y nombre repetidos gana
 DUPLICATE_CODE; una excepción, también en las validaciones, responde UNKNOWN y
 deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
 `authenticated` ni `anon`, son SECURITY INVOKER, y la orquestadora sigue
-SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734).
+SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `46`
+`sync_subgroup` no escribe fuera del grupo que sube: un árbol de otra
+plantación o de otro grupo (por id o por `group_id`) rechaza todo sin tocarlo,
+un grupo o una parcela de otra plantación responden REFERENCIA_AJENA, y el
+re-sync de un árbol propio sigue andando (066, #732).
 
 ## Hallazgo fuera de alcance (no corregido)
 
