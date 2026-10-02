@@ -176,6 +176,7 @@ describe('listarArboles', () => {
       subId: 'A-001',
       idArbol: 'A-001-SS26',
       posicion: 3,
+      especieId: 'sp-1',
       especieCodigo: 'QB',
       especieNombre: 'Quebracho',
       grupoId: 'gr-1',

@@ -16,6 +16,7 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
+import { asentarEspeciesSubidas } from './especiesConservadas';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
   PhotoSyncProgress, classifyServerError, columnasDeLaViolacion,
@@ -256,6 +257,7 @@ type ArbolDeGrupo = {
   id: string;
   groupId: string;
   especieId: string | null;
+  especieBaseId: string | null;
   posicion: number;
   subId: string;
   fotoUrl: string | null;
@@ -321,11 +323,14 @@ function payloadDeGrupo(sg: Group, parcelaCodigo: string) {
 
 // sync_subgroup no sube IDs finales (plantacion_id/global_id): los genera el server
 // (RPC generate_tree_ids, #232) y llegan por el pull.
+// `species_base_id`: la especie que este dispositivo vio en el server. Si el server
+// ya tiene otra, conserva la suya (#679).
 function payloadDeArboles(sgTrees: ArbolDeGrupo[], photoMap: Map<string, string>) {
   return sgTrees.map((t) => ({
     id: t.id,
     subgroup_id: t.groupId,
     species_id: t.especieId ?? null,
+    species_base_id: t.especieBaseId,
     posicion: t.posicion,
     sub_id: t.subId,
     foto_url: photoMap.get(t.id) ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null),
@@ -411,6 +416,27 @@ async function codigoDeParcelaLista(parcelaId: string): Promise<string | null> {
   return row?.codigo ?? null;
 }
 
+/**
+ * El server aceptó el grupo: asienta las especies y después baja la marca. Un
+ * error acá no deshace la subida ni es un error del grupo: queda pendiente, y la
+ * próxima sync lo vuelve a subir y asentar.
+ */
+async function asentarGrupoSubido(
+  sg: Group,
+  sgTrees: ArbolDeGrupo[],
+  data: unknown,
+  result: Extract<SyncGroupResult, { success: true }>,
+): Promise<void> {
+  try {
+    const avisos = await asentarEspeciesSubidas(sgTrees, data);
+    if (avisos > 0) result.especiesDelServidor = avisos;
+    await markGroupSynced(sg.id);
+  } catch (e) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error(`Error al asentar "${sg.nombre}" (${sg.id}) después del push:`, e);
+  }
+}
+
 // ─── Upload syncable groups ───────────────────────────────────────────────
 
 export async function uploadSyncableGroups(
@@ -443,7 +469,7 @@ export async function uploadSyncableGroups(
     try {
       const { data, error } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
-      if (result.success) await markGroupSynced(sg.id);
+      if (result.success) await asentarGrupoSubido(sg, sgTrees, data, result);
       await anotarResultado(plantacionId, result);
       results.push(result);
     } catch (e) {

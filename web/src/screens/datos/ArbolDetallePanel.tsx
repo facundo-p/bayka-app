@@ -15,7 +15,9 @@ import {
 import { TAMANO_ICONO } from '../../theme/iconos';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
-import { Coordenadas, EspecieConPunto } from './celdas';
+import { BloqueEspecie } from './BloqueEspecie';
+import { Coordenadas } from './celdas';
+import type { EdicionDeEspecie } from './useCambioDeEspecie';
 import styles from './ArbolDetallePanel.module.css';
 
 interface ArbolDetallePanelProps {
@@ -24,15 +26,9 @@ interface ArbolDetallePanelProps {
   tecnicoNombre: string | null;
   /** Nombre del archivo al descargar la foto; null mientras no cargó la plantación. */
   nombreFoto: string | null;
+  /** Sin esto la especie es de solo lectura. */
+  edicionDeEspecie?: EdicionDeEspecie;
   onCerrar: () => void;
-}
-
-function BloqueEspecie({ arbol }: { arbol: ArbolDetalle }) {
-  return (
-    <PanelBloque titulo="Especie">
-      <EspecieConPunto arbol={arbol} tamano="lg" className={styles.especie} />
-    </PanelBloque>
-  );
 }
 
 /** Tenue mientras carga o si no se pudo firmar la URL. */
@@ -135,7 +131,7 @@ function MetaDato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   );
 }
 
-type BloqueMetaProps = Omit<ArbolDetallePanelProps, 'onCerrar' | 'nombreFoto'>;
+type BloqueMetaProps = Pick<ArbolDetallePanelProps, 'arbol' | 'parcelaCodigo' | 'tecnicoNombre'>;
 
 function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
   return (
@@ -152,8 +148,13 @@ function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
   );
 }
 
-/** Detalle de solo lectura de un árbol, al costado del listado: sin pie de acciones. */
-export function ArbolDetallePanel({ onCerrar, nombreFoto, ...datos }: ArbolDetallePanelProps) {
+/** Detalle de un árbol al costado del listado: solo se edita la especie (#679). */
+export function ArbolDetallePanel({
+  onCerrar,
+  nombreFoto,
+  edicionDeEspecie,
+  ...datos
+}: ArbolDetallePanelProps) {
   const { arbol } = datos;
   return (
     <PanelLateral
@@ -161,7 +162,7 @@ export function ArbolDetallePanel({ onCerrar, nombreFoto, ...datos }: ArbolDetal
       cabecera={<h2 className={styles.titulo}>{arbol.idArbol}</h2>}
       onCerrar={onCerrar}
     >
-      <BloqueEspecie arbol={arbol} />
+      <BloqueEspecie arbol={arbol} edicion={edicionDeEspecie} />
       <BloqueFoto arbol={arbol} nombreFoto={nombreFoto} />
       <BloqueGps arbol={arbol} />
       <BloqueMeta {...datos} />

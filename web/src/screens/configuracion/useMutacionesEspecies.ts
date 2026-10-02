@@ -25,7 +25,13 @@ export function useMutacionOptimistaEspecies<V>(
     },
     onError: (_error, _variables, contexto) =>
       contexto && queryClient.setQueryData(clave, contexto.previas),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: clave }),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: clave }),
+        queryClient.invalidateQueries({
+          queryKey: CLAVE_QUERY.especiesHabilitadas(plantationId),
+        }),
+      ]),
   });
 }
 

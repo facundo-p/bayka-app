@@ -97,3 +97,31 @@ export const SIN_PERMISOS_DE_GRUPO: GroupGating = {
   canDelete: false,
   canReactivate: false,
 };
+
+/** Qué ofrece el detalle de un árbol para cambiar su especie (#679). */
+export const CAMBIO_DE_ESPECIE = {
+  disponible: 'disponible',
+  /** Grupo finalizado: el botón se ve grisado y, al tocarlo, ofrece reabrir el grupo. */
+  requiereReabrir: 'requiere-reabrir',
+  noDisponible: 'no-disponible',
+} as const;
+
+export type CambioDeEspecie = (typeof CAMBIO_DE_ESPECIE)[keyof typeof CAMBIO_DE_ESPECIE];
+
+/**
+ * Cambia la especie quien edita foto y GPS, con el grupo activo. En uno finalizado,
+ * solo si además puede reabrirlo: reabrir y cambiar es una sola tarea.
+ */
+export function getCambioDeEspecie(params: {
+  plantacion: EstadoDeEdicionDePlantacion;
+  subgroupEstado: string;
+  isCreator: boolean;
+}): CambioDeEspecie {
+  if (!getTreeEditGating(params).canEdit) return CAMBIO_DE_ESPECIE.noDisponible;
+  if (params.subgroupEstado === ESTADO_GRUPO.activa) return CAMBIO_DE_ESPECIE.disponible;
+  return getGroupGating(params).canReactivate ? CAMBIO_DE_ESPECIE.requiereReabrir : CAMBIO_DE_ESPECIE.noDisponible;
+}
+
+export const seOfreceCambioDeEspecie = (cambio: CambioDeEspecie) => cambio !== CAMBIO_DE_ESPECIE.noDisponible;
+
+export const cambioRequiereReabrir = (cambio: CambioDeEspecie) => cambio === CAMBIO_DE_ESPECIE.requiereReabrir;

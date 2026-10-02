@@ -93,7 +93,8 @@ export interface UseTreeRegistrationResult {
   executeReverseOrder: () => Promise<void>;
   executeFinalize: () => Promise<void>;
   executeDeleteGroup: () => Promise<void>;
-  executeReactivate: () => Promise<void>;
+  /** true si el grupo quedó activo. */
+  executeReactivate: () => Promise<boolean>;
   executeDeleteTree: (treeId: string) => Promise<void>;
   /** Captura/reemplaza el punto GPS de un árbol cualquiera; false si no hubo fix. */
   captureTreeGps: (treeId: string) => Promise<boolean>;
@@ -289,11 +290,13 @@ export function useTreeRegistration({
   }, [grupoId, router, notifyError]);
 
   const executeReactivate = useCallback(async () => {
-    if (!grupoId || !canReactivate) return;
+    if (!grupoId || !canReactivate) return false;
     try {
       await reactivateGroup(grupoId);
+      return true;
     } catch (e) {
       notifyError(e, 'No se pudo reactivar el grupo.');
+      return false;
     }
   }, [grupoId, canReactivate, notifyError]);
 

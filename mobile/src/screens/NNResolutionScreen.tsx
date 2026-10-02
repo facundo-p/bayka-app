@@ -19,7 +19,6 @@ import CustomHeader from '../components/CustomHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import { colors } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNNResolution } from '../hooks/useNNResolution';
 import { nnResolutionScreenStyles as styles } from './NNResolutionScreen.styles';
 
@@ -54,9 +53,6 @@ export default function NNResolutionScreen() {
     handleGuardar,
     setCurrentIndex,
     setZoomPhotoUri,
-    getConflictForTree,
-    acceptServerResolution,
-    keepLocalResolution,
   } = useNNResolution({ plantacionId: plantacionId ?? '', grupoId, grupoCodigo });
 
   useEffect(() => {
@@ -152,28 +148,6 @@ export default function NNResolutionScreen() {
 
       {/* Scrollable species grid */}
       <ScrollView style={styles.scrollArea} contentContainerStyle={styles.scrollContent}>
-        {currentTree?.id && (() => {
-          const conflict = getConflictForTree(currentTree.id);
-          return conflict ? (
-            <View style={styles.conflictBanner}>
-              <View style={styles.conflictHeader}>
-                <Ionicons name="warning-outline" size={18} color={colors.danger} />
-                <Text style={styles.conflictTitle}>Conflicto detectado</Text>
-              </View>
-              <Text style={styles.conflictBody}>
-                Otro usuario resolvio este arbol como {conflict.serverEspecieNombre}.
-              </Text>
-              <View style={styles.conflictActions}>
-                <Pressable onPress={() => acceptServerResolution(currentTree.id)}>
-                  <Text style={styles.conflictAcceptText}>Aceptar del servidor</Text>
-                </Pressable>
-                <Pressable onPress={() => keepLocalResolution(currentTree.id)}>
-                  <Text style={styles.conflictKeepText}>Mantener la mía</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null;
-        })()}
         {!canResolve && (
           <Text style={styles.readOnlyLabel}>Resolucion pendiente</Text>
         )}

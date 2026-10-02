@@ -31,7 +31,7 @@ export const MENSAJE_CONFLICTO_EDICION_PARCIAL =
   'Alguien cambió algunos de estos datos desde otro lado mientras editabas. Guardamos lo ' +
   'demás y cargamos lo que hay ahora: revisalo y volvé a guardar si hace falta.';
 
-const MENSAJE_RECHAZO: Record<string, string> = {
+export const MENSAJE_RECHAZO_EDICION: Record<string, string> = {
   [ERROR_EDICION.noAutorizado]: 'Tu usuario no tiene permisos para editar esta plantación.',
   [ERROR_EDICION.inexistente]: 'La plantación ya no existe.',
   [ERROR_EDICION.finalizada]: 'La plantación está finalizada: no se puede editar.',
@@ -111,7 +111,9 @@ function errorDeRespuesta(respuesta: RespuestaEdicion): ErrorDeEdicion {
   }
   if (respuesta?.error === ERROR_EDICION.codigoDuplicado)
     return new CodigoPlantacionDuplicadoError();
-  return new ErrorDeEdicion(MENSAJE_RECHAZO[respuesta?.error ?? ''] ?? MENSAJE_RECHAZO_GENERICO);
+  return new ErrorDeEdicion(
+    MENSAJE_RECHAZO_EDICION[respuesta?.error ?? ''] ?? MENSAJE_RECHAZO_GENERICO,
+  );
 }
 
 /** Sube solo los campos que difieren de la base. Lanza `ConflictoDeEdicionError` si alguno chocó. */

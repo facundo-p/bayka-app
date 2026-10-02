@@ -1,7 +1,7 @@
 /**
  * Integration tests de las fases del pull que pasaron a escribir en lotes (#449),
- * contra SQLite real: el upsert multi-fila, el chequeo de conflicto de especie
- * resuelto con una sola lectura, y el guard de parcela obligatoria de los grupos.
+ * contra SQLite real: el upsert multi-fila, la especie del server que se adopta y
+ * el guard de parcela obligatoria de los grupos.
  *
  * Mock de Supabase: estado in-memory por tabla.
  */
@@ -118,7 +118,7 @@ const arbolDelServer = (id: string, speciesId: string | null) => ({
   group_id: GRUPO_ID,
   species_id: speciesId,
   posicion: 1,
-  sub_id: `${id}-sub`,
+  sub_id: `${id}-${speciesId ?? 'NN'}`,
   foto_url: null,
   usuario_registro: 'user-tecnico-1',
   created_at: '2026-01-01T00:00:00',
@@ -182,96 +182,97 @@ beforeEach(async () => {
 
 const leerArbol = async (id: string) => (await mockTestDb.select().from(trees).where(eq(trees.id, id)))[0];
 
-describe('pull de árboles — conflicto de especie', () => {
-  it('descarga fresh: inserta todos los árboles del server', async () => {
+describe('pull de árboles — especie (#679)', () => {
+  it('descarga fresh: inserta todos los árboles del server con su especie como base', async () => {
     serverState.trees.set('t1', arbolDelServer('t1', ROBLE));
     serverState.trees.set('t2', arbolDelServer('t2', PINO));
 
     await pullFromServer(PLANTACION_ID);
 
     expect((await leerArbol('t1')).especieId).toBe(ROBLE);
+    expect((await leerArbol('t1')).especieBaseId).toBe(ROBLE);
     expect((await leerArbol('t2')).especieId).toBe(PINO);
   });
 
-  it('especie local distinta de la del server: marca el conflicto y NO pisa la local', async () => {
-    await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
+  it('grupo sin cambios locales: adopta la especie del server, la base y su SubID', async () => {
+    await mockTestDb.insert(trees).values({ ...arbolLocal('t1', ROBLE), especieBaseId: ROBLE });
     serverState.trees.set('t1', arbolDelServer('t1', PINO));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.especieId).toBe(ROBLE);
-    expect(fila.conflictEspecieId).toBe(PINO);
-    // El nombre sale del catálogo local, en una query para todos los conflictos.
-    expect(fila.conflictEspecieNombre).toBe('Pino');
+    expect(await leerArbol('t1')).toMatchObject({
+      especieId: PINO, especieBaseId: PINO, subId: arbolDelServer('t1', PINO).sub_id,
+    });
   });
 
-  it('especie del server que el catálogo local no tiene: la baja y marca el conflicto con su nombre', async () => {
+  it('al adoptar la especie, el SubID usa el código de parcela local que todavía no subió', async () => {
+    await mockTestDb.update(parcelas).set({ codigo: 'P9', pendingSync: true }).where(eq(parcelas.id, 'parc-1'));
+    await mockTestDb.insert(trees).values({ ...arbolLocal('t1', ROBLE), especieBaseId: ROBLE });
+    serverState.trees.set('t1', { ...arbolDelServer('t1', PINO), sub_id: 'P1LAPIN1' });
+
+    await pullFromServer(PLANTACION_ID);
+
+    const fila = await leerArbol('t1');
+    expect(fila.especieId).toBe(PINO);
+    expect(fila.subId).toBe(`P9LAPIN${arbolDelServer('t1', PINO).posicion}`);
+  });
+
+  it('especie del server que el catálogo local no tiene: la baja y la adopta', async () => {
     await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
     serverState.species.set(ALAMO, especieDelServer(ALAMO, 'ALA', 'Álamo'));
     serverState.trees.set('t1', arbolDelServer('t1', ALAMO));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.conflictEspecieId).toBe(ALAMO);
-    expect(fila.conflictEspecieNombre).toBe('Álamo');
+    expect((await leerArbol('t1')).especieId).toBe(ALAMO);
   });
 
-  // Aceptar un conflicto hacia una especie inexistente dejaría el árbol colgado.
-  it('especie que ni el server devuelve: no marca un conflicto hacia ella', async () => {
+  // Escribirla dejaría el árbol apuntando a una especie inexistente.
+  it('especie que ni el server devuelve: el árbol queda como estaba', async () => {
     await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
     serverState.trees.set('t1', arbolDelServer('t1', 'sp-que-no-existe'));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.especieId).toBe(ROBLE);
-    expect(fila.conflictEspecieId).toBeNull();
+    expect((await leerArbol('t1')).especieId).toBe(ROBLE);
   });
 
-  it('misma especie en ambos lados: no hay conflicto', async () => {
+  it('misma especie en ambos lados: conserva el SubID local', async () => {
     await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
     serverState.trees.set('t1', arbolDelServer('t1', ROBLE));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.especieId).toBe(ROBLE);
-    expect(fila.conflictEspecieId).toBeNull();
+    expect((await leerArbol('t1')).subId).toBe('t1-sub');
   });
 
-  it('sin especie local: adopta la del server sin marcar conflicto', async () => {
+  it('sin especie local: adopta la del server con su SubID', async () => {
     await mockTestDb.insert(trees).values(arbolLocal('t1', null));
     serverState.trees.set('t1', arbolDelServer('t1', PINO));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.especieId).toBe(PINO);
-    expect(fila.conflictEspecieId).toBeNull();
+    expect(await leerArbol('t1')).toMatchObject({ especieId: PINO, subId: `t1-${PINO}` });
   });
 
-  it('server sin especie: no hay conflicto aunque la local tenga una', async () => {
-    await mockTestDb.insert(trees).values(arbolLocal('t1', ROBLE));
+  it('server sin especie: un N/N no pisa la especie local', async () => {
+    await mockTestDb.insert(trees).values({ ...arbolLocal('t1', ROBLE), especieBaseId: ROBLE });
     serverState.trees.set('t1', arbolDelServer('t1', null));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.especieId).toBe(ROBLE);
-    expect(fila.conflictEspecieId).toBeNull();
+    expect(await leerArbol('t1')).toMatchObject({ especieId: ROBLE, especieBaseId: ROBLE });
   });
 
-  it('un conflicto resuelto a favor del server limpia las marcas viejas', async () => {
-    await mockTestDb.insert(trees).values({ ...arbolLocal('t1', ROBLE), conflictEspecieId: PINO, conflictEspecieNombre: 'Pino' });
-    serverState.trees.set('t1', arbolDelServer('t1', ROBLE));
+  // El push lo resuelve: si el server también la cambió, gana el server.
+  it('grupo con cambios sin subir: no pisa la especie local', async () => {
+    await mockTestDb.insert(trees).values({ ...arbolLocal('t1', ROBLE), especieBaseId: ALAMO });
+    await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, GRUPO_ID));
+    serverState.trees.set('t1', arbolDelServer('t1', PINO));
 
     await pullFromServer(PLANTACION_ID);
 
-    const fila = await leerArbol('t1');
-    expect(fila.conflictEspecieId).toBeNull();
-    expect(fila.conflictEspecieNombre).toBeNull();
+    expect(await leerArbol('t1')).toMatchObject({ especieId: ROBLE, especieBaseId: ALAMO });
   });
 });
 

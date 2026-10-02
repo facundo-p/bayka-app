@@ -125,13 +125,15 @@ Si `uploadPhotoToStorage` falla para un árbol:
 - El RPC usa ON CONFLICT DO UPDATE solo para árboles existentes
 - Árboles nuevos se insertan sin conflicto
 
-### Caso 4: Dos dispositivos resuelven el mismo N/N diferente
+### Caso 4: Dos lados cambian la especie del mismo árbol (#679)
 
-- Device A resuelve como Especie X, sincroniza → servidor tiene X
-- Device B resuelve como Especie Y, sincroniza → pull detecta conflicto (local Y ≠ server X)
-- Device B muestra banner "Conflicto detectado":
-  - "Aceptar servidor": cambia a X
-  - "Mantener local": mantiene Y (sobreescribe servidor en la próxima sync)
+Vale igual para un N/N resuelto distinto en dos dispositivos que para un cambio desde la web y otro desde el celular. Gana el server.
+
+- Device A (o la web) cambia el árbol a Especie X → servidor tiene X
+- Device B, con el grupo sin subir, lo cambia a Y. Su base sigue siendo la anterior, y el pull no toca el árbol
+- Al subir, `sync_subgroup` conserva X (difiere de la base de B) y la devuelve en `conservadas`
+- B adopta X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
+- Un árbol que B no tocó también vuelve en `conservadas`: B adopta X sin aviso
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 

@@ -14,6 +14,7 @@ jest.mock('@expo/vector-icons/Ionicons', () => 'Ionicons');
 jest.mock('../../src/components/FotoRemota', () => 'FotoRemota');
 jest.mock('../../src/components/PhotoViewer', () => 'PhotoViewer');
 jest.mock('../../src/hooks/useTreeDetail', () => ({ useTreeDetail: () => mockTree }));
+jest.mock('../../src/components/SeccionEspecie', () => 'SeccionEspecie');
 
 function arbol(fotoSynced: boolean) {
   return {
@@ -27,7 +28,8 @@ function renderModal() {
   const onRemovePhoto = jest.fn().mockResolvedValue(undefined);
   const utils = render(
     <TreeDetailModal
-      visible treeId="t1" canEdit canDelete={false} onClose={jest.fn()}
+      visible treeId="t1" plantacionId="p1" canEdit canDelete={false} cambioDeEspecie="disponible"
+      onClose={jest.fn()} onReabrirGrupo={jest.fn()}
       onCapturePhoto={jest.fn()} onRemovePhoto={onRemovePhoto} onCaptureGps={jest.fn()} onDelete={jest.fn()}
     />,
   );

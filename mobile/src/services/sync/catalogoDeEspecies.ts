@@ -60,7 +60,7 @@ async function reapuntarEspeciesDePlantacion(tx: DbExecutor, desde: string, haci
 /** Pasa las referencias de una especie a otra que ya existe en `species`. */
 async function reapuntarReferencias(tx: DbExecutor, desde: string, hacia: string): Promise<void> {
   await tx.update(trees).set({ especieId: hacia }).where(eq(trees.especieId, desde));
-  await tx.update(trees).set({ conflictEspecieId: hacia }).where(eq(trees.conflictEspecieId, desde));
+  await tx.update(trees).set({ especieBaseId: hacia }).where(eq(trees.especieBaseId, desde));
   await reapuntarEspeciesDePlantacion(tx, desde, hacia);
   await reapuntarCambiosDeEspecie(tx, desde, hacia);
   // user_species_order tiene UNIQUE(user, plantacion, especie): re-apuntar podría colisionar; es
