@@ -5,7 +5,7 @@
 -- `sync_subgroup` conserva la especie del server si difiere de la base que manda
 -- el móvil, y devuelve esos árboles en `conservadas`.
 begin;
-select plan(27);
+select plan(29);
 
 insert into organizations (id, nombre) values
   ('b4300000-0000-0000-0000-000000000001', 'Org Test 43'),
@@ -261,16 +261,28 @@ select is((select species_id from trees where id = 'b4300000-0000-0000-0000-0000
   'b4300000-0000-0000-0000-0000000000e2'::uuid,
   'un N/N desactualizado no deshace la resolución del server');
 
--- Con un código de parcela que el móvil todavía no conoce, el SubID conservado
--- se pasa al vigente igual que el que sube el móvil.
+-- El push manda todo el grupo. d6 viaja sin tocar (especie = base, vieja) y el
+-- server lo tiene en Tala: lo conserva sin conflicto. d7 es un N/N que el móvil
+-- resolvió (base null) y el server resolvió a otra: eso sí es conflicto. Con un
+-- código de parcela que el móvil todavía no conoce, el SubID conservado se pasa
+-- al vigente igual que el que sube el móvil.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'b4300000-0000-0000-0000-0000000000a2', true);
-select sync_subgroup((select g || '{"parcela_codigo": "PX"}' from grupo_43), jsonb_build_array(
-  (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d6',
-    'posicion', 4, 'sub_id', 'PXL1T43A4',
-    'species_id', 'b4300000-0000-0000-0000-0000000000e1',
-    'species_base_id', 'b4300000-0000-0000-0000-0000000000e1')));
+select is(
+  ( select sync_subgroup((select g || '{"parcela_codigo": "PX"}' from grupo_43), jsonb_build_array(
+      (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d6',
+        'posicion', 4, 'sub_id', 'PXL1T43A4',
+        'species_id', 'b4300000-0000-0000-0000-0000000000e1',
+        'species_base_id', 'b4300000-0000-0000-0000-0000000000e1'),
+      (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d7',
+        'posicion', 5, 'sub_id', 'PXL1T43A5',
+        'species_id', 'b4300000-0000-0000-0000-0000000000e1', 'species_base_id', null)
+    )) ),
+  '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
+  'un árbol que el móvil no cambió no vuelve en conservadas; un N/N resuelto distinto sí');
 reset role;
+select is((select species_id from trees where id = 'b4300000-0000-0000-0000-0000000000d6'),
+  'b4300000-0000-0000-0000-0000000000e3'::uuid, 'y el server conserva su especie');
 select is((select sub_id from trees where id = 'b4300000-0000-0000-0000-0000000000d6'),
   'P1L1T43C4', 'el SubID conservado lleva el código de parcela vigente');
 

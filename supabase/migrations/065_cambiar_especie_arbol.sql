@@ -136,10 +136,11 @@ ALTER FUNCTION "public"."sync_subgroup_conservar_especies"("jsonb", "jsonb") OWN
 REVOKE ALL ON FUNCTION "public"."sync_subgroup_conservar_especies"("jsonb", "jsonb") FROM PUBLIC, "anon", "authenticated";
 GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_conservar_especies"("jsonb", "jsonb") TO "service_role";
 
--- Los árboles en los que el móvil mandaba una especie y quedó otra: la del
--- server, conservada ({id, species_id}). El móvil los marca como conflicto en
--- vez de dar su cambio por subido. Un N/N del móvil no cuenta: adopta la del
--- server en el pull, sin conflicto.
+-- Los árboles en los que el móvil cambió la especie (la que manda difiere de su
+-- base) y quedó otra: la del server, conservada ({id, species_id}). El móvil los
+-- marca como conflicto en vez de dar su cambio por subido. El push manda todo el
+-- grupo: un árbol que el móvil no tocó no es conflicto, el pull adopta la del
+-- server. Un N/N del móvil tampoco cuenta.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservadas"("p_trees" "jsonb") RETURNS "jsonb"
     LANGUAGE "sql"
     SET "search_path" TO 'public'
@@ -148,6 +149,7 @@ CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservadas"("p_trees" "jsonb
     FROM jsonb_array_elements(p_trees) AS t
     JOIN trees tr ON tr.id = (t->>'id')::UUID
    WHERE tr.species_id IS DISTINCT FROM NULLIF(t->>'species_id', '')::UUID
+     AND NULLIF(t->>'species_id', '')::UUID IS DISTINCT FROM NULLIF(t->>'species_base_id', '')::UUID
      AND NULLIF(t->>'species_id', '') IS NOT NULL;
 $$;
 
