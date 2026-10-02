@@ -1,10 +1,10 @@
 /**
  * usePlantaciones — all data logic for PlantacionesScreen.
  *
- * Encapsulates plantation list, tree stats, freshness check, and pull logic.
+ * Encapsulates plantation list, tree stats and freshness check.
  */
 import { useState, useCallback } from 'react';
-import { useLiveData, notifyDataChanged } from '../database/liveQuery';
+import { useLiveData } from '../database/liveQuery';
 import { useFocusEffect } from 'expo-router';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useNetStatus } from './useNetStatus';
@@ -16,9 +16,6 @@ import { useEliminarDelDispositivo } from './useEliminarDelDispositivo';
 import { useDescartarPendientes } from './useDescartarPendientes';
 import { getPendientesVarados, type PendientesVarados } from '../queries/pendientesVaradosQueries';
 import { checkFreshness } from '../queries/freshnessQueries';
-import { esSinSesionDelServidor, exigirSesionDelServidor, pullFromServer, uploadPendingEdits } from '../services/SyncService';
-import { showInfoDialog } from '../utils/alertHelpers';
-import { colors } from '../theme';
 import { contarPorEstado } from '../utils/conteoPorEstado';
 import {
   getPlantationsForRole,
@@ -40,7 +37,6 @@ export function usePlantaciones() {
   const confirm = useConfirm();
 
   const [showFreshnessBanner, setShowFreshnessBanner] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const { data: plantationList } = useLiveData(
@@ -63,30 +59,6 @@ export function usePlantaciones() {
       });
     }, [isOnline, plantationList])
   );
-
-  function avisarSinSesion(mensaje: string) {
-    showInfoDialog(confirm.show, 'Iniciá sesión', mensaje, 'lock-closed', colors.secondary);
-  }
-
-  const handleRefresh = async () => {
-    if (!plantationList) return;
-    setRefreshing(true);
-    try {
-      // Sin sesión las ediciones saldrían como anon y el pull leería vacío (#658).
-      await exigirSesionDelServidor('actualizar las plantaciones');
-      await uploadPendingEdits();
-      for (const p of plantationList) {
-        await pullFromServer(p.id);
-      }
-      notifyDataChanged();
-      setShowFreshnessBanner(false);
-    } catch (e) {
-      if (esSinSesionDelServidor(e)) avisarSinSesion(e.message);
-      else console.error('[Freshness] pull failed:', e);
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   // Título fijo para ambos roles; el nombre de la organización va de subtítulo
   // (se oculta solo si el perfil aún no trae la organización).
@@ -124,7 +96,6 @@ export function usePlantaciones() {
     activeFilter,
     setActiveFilter,
     showFreshnessBanner,
-    refreshing,
     headerTitle,
     headerSubtitle,
     isOnline,
@@ -134,7 +105,6 @@ export function usePlantaciones() {
     todayCountMap,
     totalCountMap,
     nnCountMap,
-    handleRefresh,
     handleDeletePlantation,
     pendientesVarados: pendientesVarados ?? SIN_VARADOS,
     handleDescartarPendientes,

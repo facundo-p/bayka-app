@@ -1,4 +1,4 @@
-import { View, Text, FlatList, ActivityIndicator, Pressable } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, Pressable, RefreshControl } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import CatalogPlantationCard from '../components/CatalogPlantationCard';
@@ -6,12 +6,14 @@ import FilterCards from '../components/FilterCards';
 import { filtrosDeEstado } from '../components/filtrosDeEstado';
 import DownloadProgressModal from '../components/DownloadProgressModal';
 import CustomHeader from '../components/CustomHeader';
-import { colors, spacing } from '../theme';
+import { colors } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
 import { useCatalog } from '../hooks/useCatalog';
 import { catalogScreenStyles as styles } from './CatalogScreen.styles';
+
+const AVISO_SIN_CONEXION = 'Sin conexión · se muestra la última lista cargada';
 
 export default function CatalogScreen() {
   const routePrefix = useRoutePrefix();
@@ -28,7 +30,12 @@ export default function CatalogScreen() {
     downloadProgress,
     downloadResults,
     includePhotos,
+    refreshing,
+    sinConexion,
+    puedeRefrescar,
+    catalogSinSesion,
     loadCatalog,
+    refreshCatalog,
     toggleSelection,
     handleBatchDownload,
     handleDismiss,
@@ -51,8 +58,10 @@ export default function CatalogScreen() {
       return (
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No se pudo cargar el catálogo</Text>
-          <Text style={styles.emptySubtext}>Verificá tu conexión y volvé a intentarlo</Text>
+          <Text style={styles.emptyTitle}>{catalogError}</Text>
+          {!catalogSinSesion && (
+            <Text style={styles.emptySubtext}>Verificá tu conexión y volvé a intentarlo</Text>
+          )}
           <Pressable style={styles.retryButton} onPress={loadCatalog}>
             <Text style={styles.retryText}>Reintentar carga</Text>
           </Pressable>
@@ -76,15 +85,21 @@ export default function CatalogScreen() {
 
     return (
       <>
-        <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.filtros}>
           <FilterCards
             filters={filterConfigs}
             activeFilter={activeFilter}
             onToggleFilter={(key) => setActiveFilter(prev => prev === key ? null : key)}
           />
         </Animated.View>
+        {sinConexion && (
+          <Text style={styles.offlineNotice}>{AVISO_SIN_CONEXION}</Text>
+        )}
         <FlatList
           data={filteredCatalog}
+          refreshControl={puedeRefrescar ? (
+            <RefreshControl refreshing={refreshing} onRefresh={refreshCatalog} colors={[colors.primary]} />
+          ) : undefined}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
