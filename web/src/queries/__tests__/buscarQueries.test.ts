@@ -141,6 +141,39 @@ test('la búsqueda de árbol usa ilike sobre sub_id', async () => {
   });
 });
 
+test('un ID Árbol completo filtra por SubID exacto y código de plantación (#705)', async () => {
+  const consultas = capturarConsultas(responder);
+  await buscar('PAL23ANC12-ss26');
+  const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'ilike',
+    columna: 'sub_id',
+    valor: 'pal23anc12',
+  });
+  expect(consultaArbol?.filtros).toContainEqual({
+    metodo: 'eq',
+    columna: 'groups.plantations.codigo',
+    valor: 'SS26',
+  });
+});
+
+test.each(['PAL23-XX99', 'PAL23'])(
+  'sin código conocido (%s) sigue buscando por SubID parcial',
+  async (texto) => {
+    const consultas = capturarConsultas(responder);
+    await buscar(texto);
+    const consultaArbol = consultas.find((consulta) => consulta.tabla === 'trees');
+    expect(consultaArbol?.filtros).toContainEqual({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: `%${texto.toLowerCase()}%`,
+    });
+    expect(consultaArbol?.filtros.some((f) => f.columna === 'groups.plantations.codigo')).toBe(
+      false,
+    );
+  },
+);
+
 test('respeta el scope: árboles acotados a la plantación vía groups.plantation_id', async () => {
   const consultas = capturarConsultas(responder);
   await buscar('PAL23', { plantationId: 'plant-1' });

@@ -212,7 +212,8 @@ describe('listarArboles', () => {
       busqueda: 'A-0',
     });
 
-    expect(consultas[0].filtros).toEqual([
+    const arboles = consultas.find((consulta) => consulta.tabla === 'trees');
+    expect(arboles?.filtros).toEqual([
       { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
       { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
       { metodo: 'eq', columna: 'group_id', valor: 'gr-1' },
@@ -220,6 +221,39 @@ describe('listarArboles', () => {
       { metodo: 'not', columna: 'latitude', operador: 'is', valor: null },
       { metodo: 'ilike', columna: 'sub_id', valor: '%A-0%' },
     ]);
+  });
+
+  test('un ID Árbol completo filtra por SubID exacto y código de plantación (#705)', async () => {
+    const consultas = capturarConsultas((consulta) =>
+      consulta.tabla === 'plantations'
+        ? { data: [{ codigo: 'SS26' }, { codigo: 'SS26-1' }] }
+        : { data: [], count: 0 },
+    );
+    await listarArboles('plant-1', { busqueda: 'LP1L23BANC12-ss26-1' });
+
+    const arboles = consultas.find((consulta) => consulta.tabla === 'trees');
+    expect(arboles?.filtros).toContainEqual({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: 'lp1l23banc12',
+    });
+    expect(arboles?.filtros).toContainEqual({
+      metodo: 'eq',
+      columna: 'groups.plantations.codigo',
+      valor: 'SS26-1',
+    });
+  });
+
+  test('el SubID parcial no consulta los códigos y busca como siempre', async () => {
+    const consultas = capturarConsultas(() => ({ data: [], count: 0 }));
+    await listarArboles('plant-1', { busqueda: 'LP1L23' });
+
+    expect(consultas).toHaveLength(1);
+    expect(consultas[0].filtros).toContainEqual({
+      metodo: 'ilike',
+      columna: 'sub_id',
+      valor: '%LP1L23%',
+    });
   });
 
   test('especie N/N filtra species_id null y sin GPS filtra latitude null', async () => {
