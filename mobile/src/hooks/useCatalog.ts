@@ -76,11 +76,16 @@ export function useCatalog() {
       const items = await getServerCatalog(isAdmin, userId, organizacionId);
       if (carga !== ultimaCargaRef.current) return;
       setCatalogItems(items);
+      // Lo seleccionado que ya no está en el catálogo no puede habilitar la descarga.
+      setSelectedIds((prev) => {
+        const vigentes = new Set(items.filter((i) => prev.has(i.id)).map((i) => i.id));
+        return vigentes.size === prev.size ? prev : vigentes;
+      });
       setCatalogError(null);
     } catch (e) {
       if (carga !== ultimaCargaRef.current) return;
-      if (esSesionExpirada(e)) setCatalogError(CATALOGO_SIN_SESION);
-      else if (!silenciosa) setCatalogError(CATALOGO_NO_DISPONIBLE);
+      // Con lista cargada se conserva en vez de reemplazarla por la pantalla de error.
+      if (!silenciosa) setCatalogError(esSesionExpirada(e) ? CATALOGO_SIN_SESION : CATALOGO_NO_DISPONIBLE);
     } finally {
       if (carga === ultimaCargaRef.current) {
         setLoadingCatalog(false);
@@ -132,6 +137,11 @@ export function useCatalog() {
     setSelectedIds(new Set());
   }
 
+  // Sin conexión o descargando el pull no hace nada: la pantalla no monta el RefreshControl
+  // para que su spinner nativo no quede girando.
+  const puedeRefrescar = isOnline && downloadState !== DOWNLOAD_STATE.downloading;
+  const catalogSinSesion = catalogError === CATALOGO_SIN_SESION;
+
   const estadoCounts = contarPorEstado(catalogItems);
 
   const filteredCatalog = catalogItems.filter(
@@ -154,6 +164,8 @@ export function useCatalog() {
     includePhotos,
     refreshing,
     sinConexion: !isOnline,
+    puedeRefrescar,
+    catalogSinSesion,
     loadCatalog,
     refreshCatalog,
     toggleSelection,

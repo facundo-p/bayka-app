@@ -5,6 +5,7 @@ const mockEnsureServerSession = jest.fn();
 const mockGetServerCatalog = jest.fn();
 const mockBatchDownload = jest.fn();
 let mockIsOnline = true;
+let mockFocusCb: () => void = () => {};
 /** Estable entre renders: la carga depende del perfil. */
 const mockPerfil = { profile: { organizacionId: 'org-1' } };
 
@@ -29,6 +30,7 @@ jest.mock('../../src/hooks/useNetStatus', () => ({ useNetStatus: () => ({ isOnli
 // useFocusEffect se comporta como useEffect (pantalla siempre enfocada en el test).
 jest.mock('expo-router', () => ({
   useFocusEffect: (callback: () => void) => {
+    mockFocusCb = callback;
     const React = require('react');
     React.useEffect(callback, [callback]);
   },
@@ -56,6 +58,12 @@ describe('useCatalog', () => {
 
     expect(result.current.catalogError).toBe('Iniciá sesión con conexión para ver el catálogo.');
     expect(mockGetServerCatalog).not.toHaveBeenCalled();
+  });
+
+  it('sesión vencida en la carga inicial marca catalogSinSesion', async () => {
+    mockEnsureServerSession.mockRejectedValue(new SessionExpiredError());
+    const { result } = renderHook(() => useCatalog());
+    await waitFor(() => expect(result.current.catalogSinSesion).toBe(true));
   });
 
   it('otro error muestra el mensaje genérico', async () => {
@@ -132,7 +140,7 @@ describe('useCatalog', () => {
       expect(result.current.refreshing).toBe(false);
     });
 
-    it('la sesión vencida avisa que hay que iniciar sesión', async () => {
+    it('la sesión vencida conserva la lista ya cargada', async () => {
       mockGetServerCatalog.mockResolvedValueOnce([plantacion('a')]);
       const { result } = renderHook(() => useCatalog());
       await waitFor(() => expect(result.current.catalogItems).toHaveLength(1));
@@ -140,7 +148,47 @@ describe('useCatalog', () => {
       mockEnsureServerSession.mockRejectedValueOnce(new SessionExpiredError());
       await act(() => result.current.refreshCatalog());
 
-      expect(result.current.catalogError).toBe('Iniciá sesión con conexión para ver el catálogo.');
+      expect(result.current.catalogItems).toHaveLength(1);
+      expect(result.current.catalogError).toBeNull();
+    });
+
+    it('refocar la misma instancia vuelve a pedir la lista y conserva la selección', async () => {
+      mockGetServerCatalog.mockResolvedValueOnce([plantacion('a')]);
+      const { result } = renderHook(() => useCatalog());
+      await waitFor(() => expect(result.current.catalogItems).toHaveLength(1));
+      act(() => result.current.toggleSelection('a'));
+
+      mockGetServerCatalog.mockResolvedValueOnce([plantacion('a'), plantacion('b')]);
+      await act(async () => { mockFocusCb(); });
+
+      await waitFor(() => expect(result.current.catalogItems).toHaveLength(2));
+      expect(result.current.selectedIds.has('a')).toBe(true);
+    });
+
+    it('poda de la selección lo que ya no está en el catálogo', async () => {
+      mockGetServerCatalog.mockResolvedValueOnce([plantacion('a'), plantacion('b')]);
+      const { result } = renderHook(() => useCatalog());
+      await waitFor(() => expect(result.current.catalogItems).toHaveLength(2));
+      act(() => result.current.toggleSelection('a'));
+
+      mockGetServerCatalog.mockResolvedValueOnce([plantacion('b')]);
+      await act(() => result.current.refreshCatalog());
+
+      expect(result.current.selectedIds.size).toBe(0);
+    });
+
+    it('offline no se puede refrescar y el pull no deja refreshing colgado', async () => {
+      mockGetServerCatalog.mockResolvedValueOnce([plantacion('a')]);
+      const { result, rerender } = renderHook(() => useCatalog());
+      await waitFor(() => expect(result.current.catalogItems).toHaveLength(1));
+      expect(result.current.puedeRefrescar).toBe(true);
+
+      mockIsOnline = false;
+      rerender({});
+      await act(() => result.current.refreshCatalog());
+
+      expect(result.current.puedeRefrescar).toBe(false);
+      expect(result.current.refreshing).toBe(false);
     });
 
     it('offline conserva la lista anterior, marca sinConexion y no consulta', async () => {

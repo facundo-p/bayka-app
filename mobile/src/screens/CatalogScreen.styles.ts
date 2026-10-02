@@ -12,6 +12,10 @@ export const catalogScreenStyles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.xxl,
   },
+  filtros: {
+    paddingHorizontal: spacing.xxl,
+    paddingTop: spacing.xl,
+  },
   offlineNotice: {
     marginHorizontal: spacing.xxl,
     marginTop: spacing.md,

@@ -6,7 +6,7 @@ import FilterCards from '../components/FilterCards';
 import { filtrosDeEstado } from '../components/filtrosDeEstado';
 import DownloadProgressModal from '../components/DownloadProgressModal';
 import CustomHeader from '../components/CustomHeader';
-import { colors, spacing } from '../theme';
+import { colors } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useRoutePrefix } from '../hooks/useRoutePrefix';
 import { useScreenBack } from '../hooks/useScreenBack';
@@ -32,6 +32,8 @@ export default function CatalogScreen() {
     includePhotos,
     refreshing,
     sinConexion,
+    puedeRefrescar,
+    catalogSinSesion,
     loadCatalog,
     refreshCatalog,
     toggleSelection,
@@ -56,8 +58,10 @@ export default function CatalogScreen() {
       return (
         <View style={styles.centered}>
           <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No se pudo cargar el catálogo</Text>
-          <Text style={styles.emptySubtext}>Verificá tu conexión y volvé a intentarlo</Text>
+          <Text style={styles.emptyTitle}>{catalogError}</Text>
+          {!catalogSinSesion && (
+            <Text style={styles.emptySubtext}>Verificá tu conexión y volvé a intentarlo</Text>
+          )}
           <Pressable style={styles.retryButton} onPress={loadCatalog}>
             <Text style={styles.retryText}>Reintentar carga</Text>
           </Pressable>
@@ -81,7 +85,7 @@ export default function CatalogScreen() {
 
     return (
       <>
-        <Animated.View entering={FadeInDown.duration(300)} style={{ paddingHorizontal: spacing.xxl, paddingTop: spacing.xl }}>
+        <Animated.View entering={FadeInDown.duration(300)} style={styles.filtros}>
           <FilterCards
             filters={filterConfigs}
             activeFilter={activeFilter}
@@ -93,9 +97,9 @@ export default function CatalogScreen() {
         )}
         <FlatList
           data={filteredCatalog}
-          refreshControl={
+          refreshControl={puedeRefrescar ? (
             <RefreshControl refreshing={refreshing} onRefresh={refreshCatalog} colors={[colors.primary]} />
-          }
+          ) : undefined}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
