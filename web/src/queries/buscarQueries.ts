@@ -124,13 +124,23 @@ type FilaGrupoBusqueda = {
   codigo: string;
   plantation_id: string;
   parcelas: { codigo: string } | null;
+  plantations: { lugar: string | null } | null;
 };
+
+/** Subtítulo del grupo: «<lugar> · Parcela <código>»; omite la parte que falte. */
+export function metaGrupo(
+  lugar?: string | null,
+  parcelaCodigo?: string | null,
+): string | undefined {
+  const partes = [lugar, parcelaCodigo ? `Parcela ${parcelaCodigo}` : null].filter(Boolean);
+  return partes.length > 0 ? partes.join(' · ') : undefined;
+}
 
 async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<ResultadoBusqueda[]> {
   let consulta = supabase
     .from('groups')
     .select(
-      `id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(${ARCHIVADA_EN})`,
+      `id, nombre, codigo, plantation_id, parcelas(codigo), plantations!inner(lugar, ${ARCHIVADA_EN})`,
     )
     .or(`${condicionIlikeOr('codigo', texto)},${condicionIlikeOr('nombre', texto)}`)
     .limit(TOPE_POR_GRUPO);
@@ -142,7 +152,7 @@ async function buscarGrupos(texto: string, scope?: ScopeBusqueda): Promise<Resul
     tipo: 'grupo',
     id: fila.id,
     titulo: `${fila.codigo} · ${fila.nombre}`,
-    meta: fila.parcelas?.codigo ? `Parcela ${fila.parcelas.codigo}` : undefined,
+    meta: metaGrupo(fila.plantations?.lugar, fila.parcelas?.codigo),
     to: rutaDatos(fila.plantation_id, SEGMENTO_DATOS.grupos, conBusqueda(fila.codigo)),
   }));
 }
