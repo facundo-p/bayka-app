@@ -65,6 +65,8 @@ export async function getExportRows(plantacionId: string): Promise<ExportRow[]> 
 /** Fila del export KML (solo árboles con coordenadas); especieNombre y parcelaNombre nullables:
  *  el generador les pone etiqueta ("N/N" / "Sin parcela") en vez de perder el punto. */
 export interface KmlExportRow {
+  /** `<SubID>-<código de plantación>` (#704): nombre del punto en el KML. */
+  idArbol: string;
   subId: string;
   posicion: number;
   especieNombre: string | null;
@@ -81,6 +83,7 @@ export async function getKmlExportRows(plantacionId: string): Promise<KmlExportR
   const filas = await db
     .select({
       subId: trees.subId,
+      plantacionCodigo: plantations.codigo,
       posicion: trees.posicion,
       especieNombre: species.nombre,
       grupoNombre: groups.nombre,
@@ -93,6 +96,7 @@ export async function getKmlExportRows(plantacionId: string): Promise<KmlExportR
     })
     .from(trees)
     .innerJoin(groups, eq(trees.groupId, groups.id))
+    .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .leftJoin(parcelas, eq(groups.parcelaId, parcelas.id))
     .leftJoin(species, eq(trees.especieId, species.id))
     .where(and(
@@ -102,7 +106,8 @@ export async function getKmlExportRows(plantacionId: string): Promise<KmlExportR
     ))
     .orderBy(asc(parcelas.nombre), asc(groups.nombre), asc(trees.posicion));
 
-  return filas.map(({ parcelaBorradaEn, ...fila }) => ({
+  return filas.map(({ parcelaBorradaEn, plantacionCodigo, ...fila }) => ({
+    idArbol: idDeArbol(fila.subId, plantacionCodigo),
     ...fila,
     parcelaNombre: nombreVigente(fila.parcelaNombre, parcelaBorradaEn),
   })) as KmlExportRow[];
