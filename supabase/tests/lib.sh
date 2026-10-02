@@ -60,6 +60,27 @@ make_tmp_project() {
   fi
 }
 
+# write_contracts_migration <contracts_dir> <out_file>
+# Escribe una migración que carga cada <contracts_dir>/*.json en
+# tests.contratos (nombre, contenido jsonb). El JSON va entre $contrato$: si
+# algún contrato contuviera ese delimitador, falla en vez de cortarlo.
+write_contracts_migration() {
+  local contracts_dir="$1" out_file="$2" f contenido
+  {
+    echo 'create schema if not exists tests;'
+    echo 'create table tests.contratos (nombre text primary key, contenido jsonb not null);'
+    for f in "$contracts_dir"/*.json; do
+      contenido="$(cat "$f")"
+      if [[ "$contenido" == *'$contrato$'* ]]; then
+        echo "ERROR: $f contiene \$contrato\$" >&2
+        return 1
+      fi
+      printf "insert into tests.contratos values ('%s', \$contrato\$%s\$contrato\$::jsonb);\n" \
+        "$(basename "$f")" "$contenido"
+    done
+  } > "$out_file"
+}
+
 # stack_cleanup <tmp_root> [stop_on_exit]
 # Pensada para `trap 'stack_cleanup "$TMP_ROOT" "$STOP_ON_EXIT"' EXIT`. Para
 # el stack temporal salvo que stop_on_exit sea "0" (DB_TEST_KEEP_RUNNING=1).

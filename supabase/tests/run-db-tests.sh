@@ -27,6 +27,12 @@ make_tmp_project "$SUPABASE_DIR" "$TMP_ROOT" "$PROJECT_ID" "553"
 cp "$SUPABASE_DIR/tests/test-helpers.sql" \
   "$TMP_ROOT/supabase/migrations/99999999999999_test_helpers.sql"
 
+# Los contratos de contracts/ como filas de tests.contratos, antes de los
+# auxiliares: los tests no leen archivos del repo y así recorren el mismo JSON
+# que web y mobile.
+write_contracts_migration "$REPO_ROOT/contracts" \
+  "$TMP_ROOT/supabase/migrations/99999999999998_contratos.sql"
+
 # ── Reuso detectado: si queda un contenedor de una corrida anterior con
 #    DB_TEST_KEEP_RUNNING=1, su volumen ya tiene la baseline+migraciones de
 #    ESA corrida aplicadas — `db start` no las vuelve a aplicar sobre un

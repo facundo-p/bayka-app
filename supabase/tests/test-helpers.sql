@@ -31,3 +31,19 @@ create or replace function tests.crear_plantacion(
      p_archivada_en, p_objetivo_arboles)
   returning id;
 $$;
+
+-- Un contrato de contracts/, que run-db-tests.sh carga en tests.contratos. Falla
+-- si no está: un contrato vacío dejaría pasar un test sin casos.
+create or replace function tests.contrato(p_nombre text) returns jsonb
+  language plpgsql stable
+  as $$
+declare
+  v_contenido jsonb;
+begin
+  select contenido into v_contenido from tests.contratos where nombre = p_nombre;
+  if v_contenido is null then
+    raise exception 'contrato % no cargado en tests.contratos', p_nombre;
+  end if;
+  return v_contenido;
+end;
+$$;
