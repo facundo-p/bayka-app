@@ -351,21 +351,34 @@ Muestra resultados separados:
 
 ## RPC: sync_subgroup
 
-**Archivo:** `supabase/migrations/054_sync_subgroup_codigo_y_prefijo.sql` (última redefinición)
+**Archivo:** `supabase/migrations/064_partir_sync_subgroup.sql` (última redefinición)
+
+`sync_subgroup` es una orquestadora: cada paso es una función propia, que solo
+ella (y service_role) ejecuta. Un cambio en un paso redefine solo esa función.
 
 ```sql
+-- sync_subgroup_rechazo            (1-3, el primero que aplique; no escribe nada)
 -- 1. Sin fila en plantation_users para auth.uid()     → PERMISSION
 -- 2. motivo_no_escribible(plantation_id) no null      → PLANTACION_ARCHIVADA | PLANTACION_FINALIZADA
 -- 3. Otro grupo con el mismo código en la parcela     → DUPLICATE_CODE
 --    Otro grupo con el mismo nombre en la parcela     → DUPLICATE_NAME
+-- sync_subgroup_upsert_grupo
 -- 4. INSERT groups ON CONFLICT (id) DO UPDATE SET estado, codigo, nombre, tipo
--- 5. INSERT trees ON CONFLICT (id) DO UPDATE:
+-- sync_subgroup_codigo_parcela
+-- 5. Código vigente de la parcela, con la fila FOR SHARE
+-- sync_subgroup_upsert_arboles
+-- 6. INSERT trees ON CONFLICT (id) DO UPDATE:
 --    species_id, sub_id                                   -- resolución N/N
 --    sub_id que empieza con parcela_codigo + codigo       -- pasa al código vigente de la parcela
 --    foto_url = COALESCE(EXCLUDED.foto_url, trees.foto_url) -- no borra foto existente
 --    plantacion_id, global_id y GPS también con COALESCE
--- Cualquier excepción                                  → UNKNOWN
+-- sync_subgroup_habilitar_especies
+-- 7. Re-habilita en plantation_species la especie de los árboles que suben
+-- Cualquier excepción                                  → UNKNOWN, sin nada escrito
 ```
+
+Los locks se toman en ese orden: grupo → parcela → árboles →
+`plantation_species`. Otra escritura que tome más de uno tiene que seguirlo.
 
 Respuesta: `{ success: true }` o `{ success: false, error }`.
 
