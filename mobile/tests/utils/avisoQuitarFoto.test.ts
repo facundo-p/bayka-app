@@ -6,9 +6,13 @@ describe('textoQuitarFoto', () => {
       'Se va a quitar de Bayka y de los demás celulares en la próxima sincronización. No se puede deshacer.');
   });
 
-  it('foto sin subir: avisa que solo se quita de este celular', () => {
+  it('foto sin confirmar en Bayka: no afirma que sea solo local', () => {
     expect(textoQuitarFoto(false)).toBe(
-      'Se va a quitar solo de este celular. Todavía no se había subido a Bayka. No se puede deshacer.');
+      'Se va a quitar de este celular. Si la foto ya se había subido a Bayka, también se quita de Bayka y de los demás celulares en la próxima sincronización. No se puede deshacer.');
+  });
+
+  it('foto reemplazada y luego quitada (fotoSynced=false tras el reemplazo): avisa que puede quitarse de Bayka', () => {
+    expect(textoQuitarFoto(false)).toContain('también se quita de Bayka');
   });
 });
 

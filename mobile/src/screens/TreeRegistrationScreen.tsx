@@ -320,7 +320,7 @@ export default function TreeRegistrationScreen() {
         onRemove={() => {
           if (!viewingPhoto) return;
           const { treeId } = viewingPhoto;
-          const fotoSynced = sortedTrees.find((t) => t.id === treeId)?.fotoSynced ?? false;
+          const fotoSynced = sortedTrees.find((t) => t.id === treeId)?.fotoSynced ?? true;
           confirmarQuitarFoto(confirm.show, fotoSynced, () => {
             void treeReg.removePhoto(treeId);
             setViewingPhoto(null);
