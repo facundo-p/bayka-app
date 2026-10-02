@@ -4,16 +4,13 @@ import {
   Text,
   FlatList,
   Pressable,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Group, GroupTipo } from '../hooks/usePlantationDetail';
 import CustomHeader from '../components/CustomHeader';
 import HeaderActionButton from '../components/HeaderActionButton';
 import GroupStateChip from '../components/GroupStateChip';
-import GrupoForm from '../components/GrupoForm';
+import EditarGrupoModal from '../components/EditarGrupoModal';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { colors } from '../theme';
@@ -155,25 +152,15 @@ export default function PlantationDetailScreen() {
 
       <ConfirmModal {...confirmProps} />
 
-      <Modal visible={!!editingGroup} animationType="slide" transparent onRequestClose={() => setEditingGroup(null)}>
-        <KeyboardAvoidingView style={styles.editModalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <Pressable style={styles.editModalDismiss} onPress={() => setEditingGroup(null)} />
-          <View style={styles.editModalContent}>
-            <Text style={styles.editModalTitle}>Editar grupo</Text>
-            {editingGroup && (
-              <GrupoForm
-                mode="edit"
-                plantacionId={pid}
-                initialValues={{ nombre: editingGroup.nombre, codigo: editingGroup.codigo, tipo: editingGroup.tipo as GroupTipo }}
-                onSubmit={(values) => handleEditSubmit(values)}
-                onCancel={() => setEditingGroup(null)}
-                confirmar={confirmarCodigoDelGrupo}
-              />
-            )}
-          </View>
-          <ConfirmModal {...avisoDeIdsProps} />
-        </KeyboardAvoidingView>
-      </Modal>
+      {editingGroup && (
+        <EditarGrupoModal
+          grupo={{ nombre: editingGroup.nombre, codigo: editingGroup.codigo, tipo: editingGroup.tipo as GroupTipo }}
+          onClose={() => setEditingGroup(null)}
+          onSubmit={handleEditSubmit}
+          confirmar={confirmarCodigoDelGrupo}
+          extraContent={<ConfirmModal {...avisoDeIdsProps} />}
+        />
+      )}
     </ScreenContainer>
   );
 }

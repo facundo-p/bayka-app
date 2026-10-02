@@ -209,7 +209,7 @@ App
 - `SpeciesButtonGrid` - Grilla interactiva de botones de especies
 - `PhotoViewer` - Visualizador de fotos con zoom
 - `TreeRowItem` - Fila de arbol en lista con edicion/eliminacion
-- `GrupoForm` - Formulario de creacion/edicion de grupos
+- `EditarGrupoModal` - Edicion de grupos (EntityFormModal + useGrupoForm)
 - `SyncProgressModal` - Progreso de sincronizacion en tiempo real
 - `StatusChip` / `PlantationEstadoChip` - Badges de estado
 - `ScreenContainer` / `ScreenHeader` - Wrappers de layout
