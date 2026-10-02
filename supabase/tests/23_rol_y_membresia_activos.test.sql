@@ -2,7 +2,7 @@
 -- policy de admin reescrita y cada camino por membresía tiene un caso activo y
 -- uno inactivo.
 begin;
-select plan(37);
+select plan(40);
 
 insert into organizations (id, nombre) values
   ('b2300000-0000-0000-0000-000000000001', 'Org Test 23');
@@ -26,6 +26,8 @@ update profiles set rol = 'superadmin'
 -- Activos al crear la plantación: el trigger les da membresía a todos los admin.
 select tests.crear_plantacion('b2300000-0000-0000-0000-000000000010', 'b2300000-0000-0000-0000-000000000001',
   'b2300000-0000-0000-0000-0000000000a1', 'Plantación 23');
+select tests.crear_plantacion('b2300000-0000-0000-0000-000000000011', 'b2300000-0000-0000-0000-000000000001',
+  'b2300000-0000-0000-0000-0000000000a1', 'A finalizar 23');
 
 insert into parcelas (id, plantation_id, nombre, codigo) values
   ('b2300000-0000-0000-0000-000000000011', 'b2300000-0000-0000-0000-000000000010', 'P23', 'P23');
@@ -126,10 +128,15 @@ select throws_ok(
      values ('b2300000-0000-0000-0000-000000000001', 'Inactivo 23', '2026',
              'b2300000-0000-0000-0000-0000000000a2', 'T2') $$,
   '42501', null, 'admin inactivo: no crea plantaciones');
-update plantations set lugar = 'Editada por inactivo'
-  where id = 'b2300000-0000-0000-0000-000000000010';
+select is(
+  editar_plantacion('b2300000-0000-0000-0000-000000000010',
+    '{"lugar": "Editada por inactivo"}', '{"lugar": "Plantación 23"}') ->> 'error',
+  'NOT_AUTHORIZED', 'admin inactivo: no edita plantaciones');
 select is((select lugar from plantations where id = 'b2300000-0000-0000-0000-000000000010'),
-  'Plantación 23', 'admin inactivo: no edita plantaciones');
+  'Plantación 23', 'admin inactivo: la plantación queda igual');
+update plantations set estado = 'finalizada' where id = 'b2300000-0000-0000-0000-000000000010';
+select is((select estado from plantations where id = 'b2300000-0000-0000-0000-000000000010'),
+  'activa', 'admin inactivo: no finaliza plantaciones');
 
 select set_config('request.jwt.claim.sub', 'b2300000-0000-0000-0000-0000000000a1', true);
 select lives_ok(
@@ -137,10 +144,13 @@ select lives_ok(
      values ('b2300000-0000-0000-0000-000000000001', 'Activo 23', '2026',
              'b2300000-0000-0000-0000-0000000000a1', 'T3') $$,
   'admin activo: crea plantaciones');
-update plantations set lugar = 'Editada por activo'
-  where id = 'b2300000-0000-0000-0000-000000000010';
+select editar_plantacion('b2300000-0000-0000-0000-000000000010',
+  '{"lugar": "Editada por activo"}', '{"lugar": "Plantación 23"}');
 select is((select lugar from plantations where id = 'b2300000-0000-0000-0000-000000000010'),
   'Editada por activo', 'admin activo: edita plantaciones');
+update plantations set estado = 'finalizada' where id = 'b2300000-0000-0000-0000-000000000011';
+select is((select estado from plantations where id = 'b2300000-0000-0000-0000-000000000011'),
+  'finalizada', 'admin activo: finaliza plantaciones');
 
 -- ── plantation_species ───────────────────────────────────────────────────────
 select set_config('request.jwt.claim.sub', 'b2300000-0000-0000-0000-0000000000a2', true);

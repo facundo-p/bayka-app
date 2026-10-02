@@ -1,4 +1,4 @@
--- editar_plantacion y el UPDATE directo acotado (057, #634).
+-- editar_plantacion y el UPDATE directo acotado a `estado` (057, #634; 063, #649).
 -- Ramas de la RPC: sin conflicto, conflicto en el mismo campo, campos distintos,
 -- mismo valor en los dos lados, datos inválidos, y los rechazos de siempre. Y el
 -- UPDATE directo: `estado` solo pasa de activa a finalizada, y las columnas
@@ -79,10 +79,11 @@ select is(
   (select ultima_edicion from plantations where id = 'b3500000-0000-0000-0000-000000000006'),
   '{}'::jsonb, 'pero arranca con la auditoría vacía');
 
--- Ana cambia el objetivo desde la web (UPDATE directo, como un APK viejo).
-select lives_ok(
-  $$update plantations set objetivo_arboles = 12500 where id = 'b3500000-0000-0000-0000-000000000002'$$,
-  'los campos editables siguen abiertos al UPDATE');
+-- Ana cambia el objetivo desde la web.
+select is(
+  editar_plantacion('b3500000-0000-0000-0000-000000000002',
+    '{"objetivo_arboles": 12500}', '{"objetivo_arboles": 12000}'),
+  '{"success": true}'::jsonb, 'Ana cambia el objetivo por editar_plantacion');
 select is(
   (select ultima_edicion -> 'objetivo_arboles' ->> 'por' from plantacion_35),
   'b3500000-0000-0000-0000-0000000000a2', 'el trigger registra quién cambió el campo');

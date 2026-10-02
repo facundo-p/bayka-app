@@ -143,7 +143,9 @@ activa y no archivada —para todos los roles— y el backfill (códigos manuale
 (062, #559). `41` `editar_plantacion` con `codigo`: lo aplica y audita, rechaza
 uno repetido con CODIGO_DUPLICADO sin aplicar nada, valida formato, detecta
 conflictos y no lo cambia en una finalizada aunque el superadmin edite lo demás
-(062, #559).
+(062, #559). `42` el UPDATE directo de los 9 campos
+editables de `plantations` falla para `authenticated`, `estado` (finalizar) y
+`editar_plantacion` siguen andando (063, #649).
 
 ## Hallazgo fuera de alcance (no corregido)
 

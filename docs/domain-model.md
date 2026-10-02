@@ -245,8 +245,9 @@ Desde #634 las dos editan por la RPC `editar_plantacion`, campo por campo: cada
 cambio lleva el valor que el usuario vio, y si alguien cambió ese campo desde
 otro lado mientras tanto no se aplica y vuelve como conflicto. La web avisa y
 recarga; mobile deja el valor de la web y ofrece elegir en "Resolver cambios".
-El UPDATE directo solo toca los campos editables, y `estado` solo pasa de
-`activa` a `finalizada` (finalizar); reabrir, archivar y eliminar van por sus RPC.
+El UPDATE directo solo toca `estado`, y solo pasa de `activa` a `finalizada`
+(finalizar); los campos editables se cambian únicamente por la RPC (063, #649).
+Reabrir, archivar y eliminar van por sus RPC.
 
 ### Estados posibles
 
