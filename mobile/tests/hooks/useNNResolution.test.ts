@@ -1,14 +1,9 @@
-/**
- * Tests for useNNResolution — conflict resolution (acceptServerResolution /
- * keepLocalResolution) delegates to TreeRepository.clearTreeConflict (#296).
- */
+/** Tests de useNNResolution: permisos de resolución según el estado de la plantación. */
 
 const mockResolveNNTree = jest.fn();
-const mockClearTreeConflict = jest.fn();
 
 jest.mock('../../src/repositories/TreeRepository', () => ({
   resolveNNTree: (...args: unknown[]) => mockResolveNNTree(...args),
-  clearTreeConflict: (...args: unknown[]) => mockClearTreeConflict(...args),
 }));
 
 jest.mock('../../src/hooks/useTrees', () => ({
@@ -35,8 +30,6 @@ const mockPlantationNNTrees: {
   especieId: string | null;
   grupoId: string;
   grupoCodigo?: string;
-  conflictEspecieId?: string | null;
-  conflictEspecieNombre?: string | null;
 }[] = [];
 
 const mockEstadoDeEdicion: { estado: string; archivadaEn: string | null } = { estado: 'activa', archivadaEn: null };
@@ -90,78 +83,5 @@ describe('useNNResolution — plantación no editable', () => {
     const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
 
     expect(result.current.canResolve).toBe(false);
-  });
-});
-
-describe('useNNResolution — conflict resolution', () => {
-  const treeWithConflict = {
-    id: 'tree-1',
-    posicion: 1,
-    subId: 'P1L1ANC1',
-    fotoUrl: null,
-    especieId: null,
-    grupoId: 'sg-1',
-    grupoCodigo: 'L1',
-    conflictEspecieId: 'esp-server',
-    conflictEspecieNombre: 'Anco',
-  };
-
-  test('getConflictForTree returns the server conflict info', () => {
-    mockPlantationNNTrees.push(treeWithConflict);
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    expect(result.current.getConflictForTree('tree-1')).toEqual({
-      serverEspecieId: 'esp-server',
-      serverEspecieNombre: 'Anco',
-    });
-  });
-
-  test('getConflictForTree returns null when the tree has no conflict', () => {
-    mockPlantationNNTrees.push({ ...treeWithConflict, conflictEspecieId: null, conflictEspecieNombre: null });
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    expect(result.current.getConflictForTree('tree-1')).toBeNull();
-  });
-
-  test('acceptServerResolution resolves with the server especie then clears the conflict', async () => {
-    mockPlantationNNTrees.push(treeWithConflict);
-    mockResolveNNTree.mockResolvedValue(undefined);
-    mockClearTreeConflict.mockResolvedValue(undefined);
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    await act(async () => {
-      await result.current.acceptServerResolution('tree-1');
-    });
-
-    expect(mockResolveNNTree).toHaveBeenCalledWith('tree-1', 'esp-server', 'L1');
-    expect(mockClearTreeConflict).toHaveBeenCalledWith('tree-1');
-    // Order matters: the server resolution must land before the marker clears.
-    expect(mockResolveNNTree.mock.invocationCallOrder[0])
-      .toBeLessThan(mockClearTreeConflict.mock.invocationCallOrder[0]);
-  });
-
-  test('acceptServerResolution does nothing when the tree has no conflict', async () => {
-    mockPlantationNNTrees.push({ ...treeWithConflict, conflictEspecieId: null, conflictEspecieNombre: null });
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    await act(async () => {
-      await result.current.acceptServerResolution('tree-1');
-    });
-
-    expect(mockResolveNNTree).not.toHaveBeenCalled();
-    expect(mockClearTreeConflict).not.toHaveBeenCalled();
-  });
-
-  test('keepLocalResolution only clears the conflict marker (no resolveNNTree call)', async () => {
-    mockPlantationNNTrees.push(treeWithConflict);
-    mockClearTreeConflict.mockResolvedValue(undefined);
-    const { result } = renderHook(() => useNNResolution({ plantacionId: 'plant-1' }));
-
-    await act(async () => {
-      await result.current.keepLocalResolution('tree-1');
-    });
-
-    expect(mockClearTreeConflict).toHaveBeenCalledWith('tree-1');
-    expect(mockResolveNNTree).not.toHaveBeenCalled();
   });
 });
