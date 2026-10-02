@@ -270,14 +270,13 @@ Lo usan la resolución de N/N (`useNNResolution.ts`) y «Cambiar especie» del d
 
 Cuando el usuario sincroniza después de resolver N/N:
 
-1. **Pull:** descarga estado actual del servidor
-   - Si el servidor también cambió la especie (conflicto): almacena en `conflictEspecieId`
+1. **Pull:** descarga estado actual del servidor; no toca los árboles del grupo pendiente
 2. **Push:** `getSyncableGroups` devuelve el grupo (`pendingSync = true`)
    - `uploadGroup` envía `species_id` = especie resuelta y `species_base_id` = `especieBaseId`
    - `foto_url` = storage path (ya existente) o null
    - RPC actualiza `species_id` y `sub_id` en el servidor, salvo que ya tenga una especie distinta de la base
    - `COALESCE(EXCLUDED.foto_url, trees.foto_url)` preserva foto existente
-3. **asentarEspeciesSubidas:** marca como conflicto los árboles que el server devolvió en `conservadas`; en el resto, `especieBaseId` = la especie que viajó
+3. **asentarEspeciesSubidas:** `especieBaseId` = la especie que viajó; los árboles que el server devolvió en `conservadas` adoptan la del server (especie, base y SubID con los códigos locales) y el resumen de la sync los cuenta
 4. **markGroupSynced:** `pendingSync = false`
 
 ### Resolución cross-device
@@ -292,15 +291,13 @@ Cuando el usuario sincroniza después de resolver N/N:
 
 ### Conflictos de resolución
 
-**Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y.
+**Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y. Gana el server (#679).
 
 1. User A sincroniza → servidor tiene `species_id = X`
-2. User B sincroniza → el pull ve que los dos lados se apartaron de la base
-   - Almacena `conflictEspecieId = X`, `conflictEspecieNombre = 'Nombre de X'`
-   - El push no pisa X: el server conserva una especie distinta de la base
-3. El detalle del árbol muestra el conflicto (y la fila un aviso):
-   - **La del servidor:** `usarEspecieDelServidor()` → cambia a X
-   - **La propia:** `mantenerEspecieLocal()` → base = X, limpia markers, mantiene Y y la próxima sync la sube
+2. User B sincroniza: el push manda Y con su base (N/N), el server conserva X y lo devuelve en `conservadas`
+3. El árbol de B pasa a X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
+
+Un árbol que B no cambió (especie = base) no vuelve en `conservadas`: el pull siguiente baja X sin aviso.
 
 ---
 
@@ -407,8 +404,7 @@ de parcelas —que incluye el tombstone— además exige `is_admin()` (056, #640
 | `especie_id` | text | sí | UUID de especie. `null` = N/N sin resolver |
 | `foto_url` | text | sí | Ruta de Storage o `file://` local. `null` = sin foto |
 | `foto_synced` | integer | no | `0` = foto local pendiente de upload. `1` = foto en Storage |
-| `conflict_especie_id` | text | sí | Especie del servidor cuando hay conflicto de resolución |
-| `conflict_especie_nombre` | text | sí | Nombre de la especie en conflicto |
+| `especie_base_id` | text | sí | Especie del servidor la última vez que se vio el árbol; el push la manda como base (#679) |
 
 ---
 

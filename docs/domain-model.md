@@ -633,10 +633,8 @@ pisa:
 
 ```
 web (RPC cambiar_especie_arbol): rechaza con CONFLICTO_EDICION y muestra la vigente
-sync del celular: el servidor conserva su especie; si el celular también la
-  cambió, el árbol queda marcado y el usuario elige cuál queda en su detalle.
-  Lo marca el pull o, si el pull no lo vio, el push: un cambio no se descarta
-  sin aviso
+sync del celular: gana la del servidor; si el celular también la había
+  cambiado, adopta la del servidor y la sync avisa cuántos árboles fueron
 ```
 
 ---

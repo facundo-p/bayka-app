@@ -127,16 +127,13 @@ Si `uploadPhotoToStorage` falla para un árbol:
 
 ### Caso 4: Dos lados cambian la especie del mismo árbol (#679)
 
-Vale igual para un N/N resuelto distinto en dos dispositivos que para un cambio de especie desde la web y otro desde el celular.
+Vale igual para un N/N resuelto distinto en dos dispositivos que para un cambio desde la web y otro desde el celular. Gana el server.
 
 - Device A (o la web) cambia el árbol a Especie X → servidor tiene X
-- Device B, con el grupo sin subir, lo cambia a Y. Su base sigue siendo la especie anterior
-- El pull de B ve que los dos lados se apartaron de la base: no pisa Y, marca el árbol con X (`conflict_especie_id`) y la fila muestra un aviso
-- Si B sube sin decidir, el servidor conserva X: `sync_subgroup` no pisa una especie distinta de la base
-- Si el pull de B no lo vio (falló, o A cambió entre el pull y el push), el push lo marca: `sync_subgroup` devuelve el árbol en `conservadas`. Solo si B lo había cambiado: un árbol que B no tocó no es conflicto y el pull siguiente baja X
-- En el detalle del árbol, B elige:
-  - la del servidor: pasa a X
-  - la suya: queda Y con base X, y la próxima sync la sube
+- Device B, con el grupo sin subir, lo cambia a Y. Su base sigue siendo la anterior, y el pull no toca el árbol
+- Al subir, `sync_subgroup` conserva X (difiere de la base de B) y la devuelve en `conservadas`
+- B adopta X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
+- Un árbol que B no tocó no vuelve en `conservadas`: el pull siguiente baja X sin aviso
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 
