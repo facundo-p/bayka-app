@@ -324,8 +324,9 @@ pull adopta la especie del server salvo que el grupo tenga cambios sin subir y l
 dos lados la hayan cambiado: entonces marca el árbol (`conflict_especie_id`) y el
 usuario elige cuál queda en el detalle del árbol. Si el pull no lo vio (falló, o
 la web cambió en el medio), `sync_subgroup` devuelve en `conservadas` los árboles
-en los que se quedó con su especie y el push los marca igual. En el resto, la
-especie subida pasa a ser la base. La web cambia la especie por
+que el celular cambió y en los que se quedó con su especie, y el push los marca
+igual. Un árbol que el celular no tocó no es conflicto: el pull siguiente adopta
+la del server. En el resto, la especie subida pasa a ser la base. La web cambia la especie por
 `cambiar_especie_arbol` (admin u, en una finalizada, superadmin), con la misma base.
 
 **Los borrados viajan aparte** (#467). Borrar un árbol o un grupo solo borra en
