@@ -145,7 +145,14 @@ uno repetido con CODIGO_DUPLICADO sin aplicar nada, valida formato, detecta
 conflictos y no lo cambia en una finalizada aunque el superadmin edite lo demás
 (062, #559). `42` el UPDATE directo de los 9 campos
 editables de `plantations` falla para `authenticated`, `estado` (finalizar) y
-`editar_plantacion` siguen andando (063, #649).
+`editar_plantacion` siguen andando (063, #649). `44` ramas de `sync_subgroup`
+sin otro test: el re-sync de un árbol pisa especie y SubID pero no la posición,
+y conserva foto, ids y GPS que no vienen; una especie vacía queda N/N; sin
+especies que habilitar no reordena; con código y nombre repetidos gana
+DUPLICATE_CODE; una excepción, también en las validaciones, responde UNKNOWN y
+deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
+`authenticated` ni `anon`, son SECURITY INVOKER, y la orquestadora sigue
+SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734).
 
 ## Hallazgo fuera de alcance (no corregido)
 
