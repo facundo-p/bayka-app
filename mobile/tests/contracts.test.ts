@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-
 // ExportService importa expo-file-system/expo-sharing/xlsx y queries/exportQueries (que a su vez
 // abre el cliente SQLite real) a nivel de módulo: mockeados igual que en tests/admin/ExportService.test.ts
 // para poder importar CSV_HEADER/rowToExcel sin correr ese I/O.
@@ -22,24 +19,15 @@ jest.mock('xlsx', () => ({
 
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT, PHOTO_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/photoCapture';
-import { UNKNOWN_SPECIES_CODE, codigoParaSubId } from '../src/utils/speciesHelpers';
+import { UNKNOWN_SPECIES_CODE } from '../src/utils/speciesHelpers';
 import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
 import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
 import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
-import { generateSubId } from '../src/utils/idGenerator';
 import { idDeArbol } from '../src/utils/codigoDePlantacion';
 import { CODIGO_PLANTACION } from '../src/constants/codigoPlantacion';
 import type { ExportRow } from '../src/queries/exportQueries';
-
-/** Lee un contrato de `contracts/` y descarta `_comment` (no forma parte de los valores a comparar). */
-function leerContrato(nombre: string): Record<string, unknown> {
-  const contrato = JSON.parse(
-    readFileSync(path.resolve(__dirname, '../../contracts', nombre), 'utf8'),
-  );
-  delete contrato._comment;
-  return contrato;
-}
+import { leerContrato } from './helpers/contratos';
 
 const FILA_EXPORT_VACIA: ExportRow = {
   idArbol: '',
@@ -109,7 +97,9 @@ describe('contracts · permisos-edicion', () => {
   type CasoDeLaApp = { estado: EstadoPlantacion; archivada: boolean; permitido: boolean };
   const { casos } = leerContrato('permisos-edicion.json').app as { casos: CasoDeLaApp[] };
 
-  it('trae casos', () => expect(casos.length).toBeGreaterThan(0));
+  it('trae casos permitidos y rechazados', () => {
+    expect(new Set(casos.map((caso) => caso.permitido))).toEqual(new Set([true, false]));
+  });
 
   // Las dimensiones que la app no comparte con sync_subgroup quedan fijas: el
   // creador, con el grupo activo.
@@ -131,21 +121,12 @@ describe('contracts · permisos-edicion', () => {
 });
 
 describe('contracts · sub-id', () => {
-  type VectorDeArmado = { parcela: string; grupo: string; especie: string | null; posicion: number; subId: string };
   type VectorIdArbol = { subId: string; codigoPlantacion: string | null; idArbol: string };
-  const contrato = leerContrato('sub-id.json') as { armado: VectorDeArmado[]; idArbol: VectorIdArbol[] };
+  const { idArbol: vectores } = leerContrato('sub-id.json') as { idArbol: VectorIdArbol[] };
 
-  it('trae vectores', () => {
-    expect(contrato.armado.length).toBeGreaterThan(0);
-    expect(contrato.idArbol.length).toBeGreaterThan(0);
-  });
+  it('trae vectores de ID de árbol', () => expect(vectores.length).toBeGreaterThan(0));
 
-  // Como lo arma TreeRepository: un árbol sin especie va con el código de N/N.
-  it.each(contrato.armado.map((v) => [v.subId, v] as const))('generateSubId arma %s', (_, v) => {
-    expect(generateSubId(v.parcela, v.grupo, codigoParaSubId(v.especie), v.posicion)).toBe(v.subId);
-  });
-
-  it.each(contrato.idArbol.map((v) => [v.idArbol, v] as const))('idDeArbol arma %s', (_, v) => {
+  it.each(vectores.map((v) => [v.idArbol, v] as const))('idDeArbol arma %s', (_, v) => {
     expect(idDeArbol(v.subId, v.codigoPlantacion)).toBe(v.idArbol);
   });
 });

@@ -8,9 +8,10 @@ Baseline + migraciones archivadas vs. pendientes: ver `docs/db-baseline.md`
 `run-db-tests.sh` arma, en `supabase/.tmp-dbtest/` (gitignored, recreado en
 cada corrida), un proyecto temporal: baseline (copiada como
 `00000000_baseline.sql`, ordena primero sin importar el prefijo real) + todo
-`supabase/migrations/*.sql` + `test-helpers.sql` como última migración
-(`99999999999999_test_helpers.sql`). Sin filtros ni renombrados: la baseline ya
-sale curada de `regenerate-baseline.sh`.
+`supabase/migrations/*.sql` + los contratos de `contracts/`
+(`99999999999998_contratos.sql`, ver Contratos) + `test-helpers.sql` como
+última migración (`99999999999999_test_helpers.sql`). Sin filtros ni
+renombrados: la baseline ya sale curada de `regenerate-baseline.sh`.
 
 ## Cómo correr
 
@@ -21,7 +22,7 @@ proyecto propios (55321+) para no pisar un stack de desarrollo (54321+). Para
 dejar el stack levantado: `DB_TEST_KEEP_RUNNING=1
 supabase/tests/run-db-tests.sh`, luego `npx supabase@<versión> stop
 --workdir supabase/.tmp-dbtest --no-backup`. `.github/workflows/db-tests.yml`
-corre lo mismo en cada PR/push a `supabase/**`.
+corre lo mismo en cada PR/push a `supabase/**` o `contracts/**`.
 
 `run-db-tests.sh` y `regenerate-baseline.sh` usan `supabase db start`
 (levanta solo el contenedor de Postgres) en vez de `supabase start` (~13
@@ -172,7 +173,8 @@ deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
 SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `46`
 `contracts/permisos-edicion.json`: los casos `web` contra
 `cambiar_especie_arbol` y `editar_plantacion`, los casos `app` contra
-`sync_subgroup` del técnico que creó el grupo (#735). `47`
+`sync_subgroup` de un técnico asignado; un rechazo cuenta solo si es del gate, y
+cada tabla trae todas las combinaciones y los dos desenlaces (#735). `47`
 `contracts/sub-id.json`: el SubID que arman `cambiar_especie_arbol` y
 `sync_subgroup` al conservar la especie, y la reescritura del prefijo al
 cambiar el código de la parcela (#735).

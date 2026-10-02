@@ -3,7 +3,7 @@
 -- sync_subgroup. La web y la app recorren la misma tabla contra sus predicados.
 begin;
 select plan(
-  2
+  4
   + 2 * jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'web' -> 'casos')
   + jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'app' -> 'casos')
 );
@@ -75,6 +75,21 @@ create function pg_temp.otra_especie(p_arbol uuid) returns uuid language sql as 
     from trees where id = p_arbol;
 $$;
 
+-- Un rechazo cuenta solo si es del gate: un payload roto o una especie no
+-- habilitada también dan success false, y harían pasar los casos rechazados.
+create function pg_temp.desenlace(p_resultado jsonb) returns text language sql as $$
+  select case
+    when (p_resultado ->> 'success')::boolean then 'permitido'
+    when p_resultado ->> 'error' in ('NOT_AUTHORIZED', 'PERMISSION', 'PLANTACION_FINALIZADA', 'PLANTACION_ARCHIVADA')
+      then 'rechazado'
+    else p_resultado ->> 'error'
+  end;
+$$;
+
+create function pg_temp.esperado(c jsonb) returns text language sql as $$
+  select case when (c ->> 'permitido')::boolean then 'permitido' else 'rechazado' end;
+$$;
+
 create function pg_temp.como(p_usuario uuid) returns void language plpgsql as $$
 begin
   perform set_config('request.jwt.claim.sub', p_usuario::text, true);
@@ -82,7 +97,7 @@ begin
 end;
 $$;
 
-create function pg_temp.cambia_especie(p_usuario uuid, p_arbol uuid) returns boolean language plpgsql as $$
+create function pg_temp.cambia_especie(p_usuario uuid, p_arbol uuid) returns text language plpgsql as $$
 declare
   v_actual uuid := (select species_id from trees where id = p_arbol);
   v_otra uuid := pg_temp.otra_especie(p_arbol);
@@ -91,11 +106,11 @@ begin
   perform pg_temp.como(p_usuario);
   v_resultado := cambiar_especie_arbol(p_arbol, v_otra, v_actual);
   reset role;
-  return (v_resultado ->> 'success')::boolean;
+  return pg_temp.desenlace(v_resultado);
 end;
 $$;
 
-create function pg_temp.edita_plantacion(p_usuario uuid, p_plantacion uuid) returns boolean language plpgsql as $$
+create function pg_temp.edita_plantacion(p_usuario uuid, p_plantacion uuid) returns text language plpgsql as $$
 declare
   v_lugar text := (select lugar from plantations where id = p_plantacion);
   v_resultado jsonb;
@@ -105,12 +120,12 @@ begin
     jsonb_build_object('lugar', case when v_lugar = 'Lugar A' then 'Lugar B' else 'Lugar A' end),
     jsonb_build_object('lugar', v_lugar));
   reset role;
-  return (v_resultado ->> 'success')::boolean;
+  return pg_temp.desenlace(v_resultado);
 end;
 $$;
 
 -- El técnico activo que creó el grupo sube el árbol con la otra especie.
-create function pg_temp.sube_cambio(p plantaciones_46) returns boolean language plpgsql as $$
+create function pg_temp.sube_cambio(p plantaciones_46) returns text language plpgsql as $$
 declare
   v_actual uuid := (select species_id from trees where id = p.arbol);
   v_otra uuid := pg_temp.otra_especie(p.arbol);
@@ -129,7 +144,7 @@ begin
       'species_id', v_otra, 'species_base_id', v_actual,
       'usuario_registro', 'b4600000-0000-0000-0000-0000000000a1', 'created_at', now())));
   reset role;
-  return (v_resultado ->> 'success')::boolean;
+  return pg_temp.desenlace(v_resultado);
 end;
 $$;
 
@@ -139,25 +154,45 @@ create function pg_temp.caso(c jsonb) returns text language sql as $$
     case when (c ->> 'permitido')::boolean then 'puede' else 'no puede' end);
 $$;
 
-select ok(jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'web' -> 'casos') > 0,
-  'el contrato trae casos de la web');
-select ok(jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'app' -> 'casos') > 0,
-  'el contrato trae casos de la app');
+-- Una tabla recortada pasaría en todos los consumidores: cada una trae todas las
+-- combinaciones de sus dimensiones, una vez, y casos de los dos desenlaces.
+create temp table casos_web as
+select c ->> 'rol' as rol, (c ->> 'activo')::boolean as activo, c ->> 'estado' as estado,
+       (c ->> 'archivada')::boolean as archivada, (c ->> 'permitido')::boolean as permitido
+  from jsonb_array_elements(tests.contrato('permisos-edicion.json') -> 'web' -> 'casos') as c;
+create temp table casos_app as
+select c ->> 'estado' as estado, (c ->> 'archivada')::boolean as archivada, (c ->> 'permitido')::boolean as permitido
+  from jsonb_array_elements(tests.contrato('permisos-edicion.json') -> 'app' -> 'casos') as c;
+
+select is((select count(distinct (rol, activo, estado, archivada))::int from casos_web),
+  (select (count(distinct rol) * count(distinct activo) * count(distinct estado) * count(distinct archivada))::int
+     from casos_web),
+  'web: todas las combinaciones de rol, activo, estado y archivada');
+select is((select count(distinct (estado, archivada))::int from casos_app),
+  (select (count(distinct estado) * count(distinct archivada))::int from casos_app),
+  'app: todas las combinaciones de estado y archivada');
+select is((select count(*)::int from casos_web) + (select count(*)::int from casos_app),
+  (select count(distinct (rol, activo, estado, archivada))::int from casos_web)
+    + (select count(distinct (estado, archivada))::int from casos_app),
+  'ningún caso repetido');
+select ok((select bool_or(permitido) and not bool_and(permitido) from casos_web)
+      and (select bool_or(permitido) and not bool_and(permitido) from casos_app),
+  'las dos tablas traen casos permitidos y rechazados');
 
 -- Un caso sin usuario o plantación que calce no corre, y el plan lo detecta.
-select is(pg_temp.cambia_especie(u.id, p.arbol), (c ->> 'permitido')::boolean,
+select is(pg_temp.cambia_especie(u.id, p.arbol), pg_temp.esperado(c),
           'cambiar_especie_arbol: ' || pg_temp.caso(c))
   from jsonb_array_elements(tests.contrato('permisos-edicion.json') -> 'web' -> 'casos') as c
   join usuarios_46 u on u.rol = c ->> 'rol' and u.activo = (c ->> 'activo')::boolean
   join plantaciones_46 p on p.estado = c ->> 'estado' and p.archivada = (c ->> 'archivada')::boolean;
 
-select is(pg_temp.edita_plantacion(u.id, p.plantacion), (c ->> 'permitido')::boolean,
+select is(pg_temp.edita_plantacion(u.id, p.plantacion), pg_temp.esperado(c),
           'editar_plantacion: ' || pg_temp.caso(c))
   from jsonb_array_elements(tests.contrato('permisos-edicion.json') -> 'web' -> 'casos') as c
   join usuarios_46 u on u.rol = c ->> 'rol' and u.activo = (c ->> 'activo')::boolean
   join plantaciones_46 p on p.estado = c ->> 'estado' and p.archivada = (c ->> 'archivada')::boolean;
 
-select is(pg_temp.sube_cambio(p), (c ->> 'permitido')::boolean,
+select is(pg_temp.sube_cambio(p), pg_temp.esperado(c),
           'sync_subgroup del técnico creador: ' || pg_temp.caso(c))
   from jsonb_array_elements(tests.contrato('permisos-edicion.json') -> 'app' -> 'casos') as c
   join plantaciones_46 p on p.estado = c ->> 'estado' and p.archivada = (c ->> 'archivada')::boolean;

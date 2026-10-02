@@ -32,8 +32,9 @@ create or replace function tests.crear_plantacion(
   returning id;
 $$;
 
--- Un contrato de contracts/, que run-db-tests.sh carga en tests.contratos. Falla
--- si no está: un contrato vacío dejaría pasar un test sin casos.
+-- Un contrato de contracts/. La tabla tests.contratos la crea y la llena
+-- write_contracts_migration (lib.sh). Falla si no está: un contrato vacío
+-- dejaría pasar un test sin casos.
 create or replace function tests.contrato(p_nombre text) returns jsonb
   language plpgsql stable
   as $$

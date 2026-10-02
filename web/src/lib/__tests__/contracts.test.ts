@@ -91,7 +91,9 @@ const describirCaso = (caso: CasoDePermiso) =>
 describe('contracts · permisos-edicion', () => {
   const { casos } = leerContrato('permisos-edicion.json').web as { casos: CasoDePermiso[] };
 
-  it('trae casos', () => expect(casos.length).toBeGreaterThan(0));
+  it('trae casos permitidos y rechazados', () => {
+    expect(new Set(casos.map((caso) => caso.permitido))).toEqual(new Set([true, false]));
+  });
 
   it.each(casos.map((caso) => [describirCaso(caso), caso] as const))(
     'puedeCambiarEspecie: %s',

@@ -1,15 +1,16 @@
 /**
- * contracts/sub-id.json: cambiar el código de una parcela reescribe el SubID de sus árboles igual
- * que el trigger del server (#735). El armado se prueba en tests/contracts.test.ts.
+ * contracts/sub-id.json contra los caminos de la app que escriben un SubID (#735): registrar un
+ * árbol, cambiarle la especie y cambiar el código de su parcela. El server recorre los mismos
+ * vectores en pgTAP.
  */
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { conRolCacheado } from '../helpers/rolCacheado';
+import { leerContrato } from '../helpers/contratos';
 import { createTestPlantation, createTestParcela, createTestGroup, createTestTree, createTestSpecies } from '../helpers/factories';
 import { plantations, parcelas, groups, trees, species } from '../../src/database/schema';
+import { UNKNOWN_SPECIES_CODE } from '../../src/utils/speciesHelpers';
 
 let mockTestDb: IntegrationDb;
 let mockSqliteDeIntegracion: ReturnType<typeof sqliteDeIntegracion>;
@@ -22,6 +23,9 @@ jest.mock('../../src/database/client', () => ({
 jest.mock('../../src/database/liveQuery', () => ({ notifyDataChanged: jest.fn() }));
 
 import { updateParcela } from '../../src/repositories/ParcelaRepository';
+import { insertTree, cambiarEspecie } from '../../src/repositories/TreeRepository';
+
+type VectorDeArmado = { parcela: string; grupo: string; especie: string | null; posicion: number; subId: string };
 
 type VectorDeReescritura = {
   anterior: string;
@@ -33,28 +37,33 @@ type VectorDeReescritura = {
   subIdDespues: string;
 };
 
-const { cambioDeCodigoDeParcela: vectores } = JSON.parse(
-  readFileSync(path.resolve(__dirname, '../../../contracts/sub-id.json'), 'utf8'),
-) as { cambioDeCodigoDeParcela: VectorDeReescritura[] };
+const contrato = leerContrato('sub-id.json') as {
+  armado: VectorDeArmado[];
+  cambioDeCodigoDeParcela: VectorDeReescritura[];
+};
+const conEspecie = contrato.armado.filter((v) => v.especie !== null);
 
-/** Una plantación con una parcela, un grupo y el árbol del vector; devuelve la parcela y el árbol. */
-async function sembrar(v: VectorDeReescritura): Promise<{ parcelaId: string; arbolId: string }> {
+/** Una plantación con una parcela y un grupo vacío. */
+async function sembrarGrupo(parcelaCodigo: string, grupoCodigo: string) {
   const plantacion = createTestPlantation();
   await mockTestDb.insert(plantations).values(plantacion);
-  const parcela = createTestParcela({ plantacionId: plantacion.id, nombre: 'Norte', codigo: v.anterior });
+  const parcela = createTestParcela({ plantacionId: plantacion.id, nombre: 'Norte', codigo: parcelaCodigo });
   await mockTestDb.insert(parcelas).values({ ...parcela, pendingSync: false });
-  const grupo = createTestGroup({ plantacionId: plantacion.id, parcelaId: parcela.id, codigo: v.grupo, nombre: 'Uno' });
+  const grupo = createTestGroup({ plantacionId: plantacion.id, parcelaId: parcela.id, codigo: grupoCodigo, nombre: 'Uno' });
   await mockTestDb.insert(groups).values({ ...grupo, pendingSync: false });
+  return { parcelaId: parcela.id, grupoId: grupo.id };
+}
 
-  let especieId: string | null = null;
-  if (v.especie) {
-    const especie = createTestSpecies({ codigo: v.especie });
-    await mockTestDb.insert(species).values(especie);
-    especieId = especie.id;
-  }
-  const arbol = createTestTree({ groupId: grupo.id, especieId, posicion: v.posicion, subId: v.subIdAntes });
-  await mockTestDb.insert(trees).values(arbol);
-  return { parcelaId: parcela.id, arbolId: arbol.id };
+async function sembrarEspecie(codigo: string | null): Promise<string | null> {
+  if (codigo === null) return null;
+  const especie = createTestSpecies({ codigo });
+  await mockTestDb.insert(species).values(especie);
+  return especie.id;
+}
+
+async function subIdDe(arbolId: string): Promise<string> {
+  const [arbol] = await mockTestDb.select({ subId: trees.subId }).from(trees).where(eq(trees.id, arbolId));
+  return arbol.subId;
 }
 
 beforeAll(() => {
@@ -71,18 +80,48 @@ beforeEach(async () => {
   await vaciarTablas(mockTestDb);
 });
 
-describe('contracts · sub-id · cambio de código de parcela', () => {
-  it('trae vectores', () => expect(vectores.length).toBeGreaterThan(0));
+describe('contracts · sub-id', () => {
+  it('trae vectores con y sin especie, y de cambio de código de parcela', () => {
+    expect(conEspecie.length).toBeGreaterThan(0);
+    expect(conEspecie.length).toBeLessThan(contrato.armado.length);
+    expect(contrato.cambioDeCodigoDeParcela.length).toBeGreaterThan(0);
+  });
 
-  it.each(vectores.map((v) => [v.subIdAntes, v.subIdDespues, v] as const))(
+  // La posición sale de la última del grupo: un árbol previo la deja en la del vector.
+  it.each(contrato.armado.map((v) => [v.subId, v] as const))('insertTree arma %s', async (_, v) => {
+    const { grupoId } = await sembrarGrupo(v.parcela, v.grupo);
+    const especieId = await sembrarEspecie(v.especie);
+    if (v.posicion > 1) {
+      await mockTestDb.insert(trees).values(createTestTree({ groupId: grupoId, especieId: null, posicion: v.posicion - 1 }));
+    }
+
+    const { subId } = await insertTree({
+      grupoId, grupoCodigo: v.grupo, especieId, especieCodigo: v.especie ?? UNKNOWN_SPECIES_CODE, userId: 'u1',
+    });
+
+    expect(subId).toBe(v.subId);
+  });
+
+  it.each(conEspecie.map((v) => [v.subId, v] as const))('cambiarEspecie arma %s', async (_, v) => {
+    const { grupoId } = await sembrarGrupo(v.parcela, v.grupo);
+    const especieId = (await sembrarEspecie(v.especie))!;
+    const arbol = createTestTree({ groupId: grupoId, especieId: null, posicion: v.posicion, subId: 'sin-armar' });
+    await mockTestDb.insert(trees).values(arbol);
+
+    expect(await cambiarEspecie(arbol.id, especieId)).toEqual({ subId: v.subId });
+    expect(await subIdDe(arbol.id)).toBe(v.subId);
+  });
+
+  it.each(contrato.cambioDeCodigoDeParcela.map((v) => [v.subIdAntes, v.subIdDespues, v] as const))(
     'updateParcela reescribe %s a %s',
     async (_, __, v) => {
-      const { parcelaId, arbolId } = await sembrar(v);
+      const { parcelaId, grupoId } = await sembrarGrupo(v.anterior, v.grupo);
+      const especieId = await sembrarEspecie(v.especie);
+      const arbol = createTestTree({ groupId: grupoId, especieId, posicion: v.posicion, subId: v.subIdAntes });
+      await mockTestDb.insert(trees).values(arbol);
 
       expect(await updateParcela(parcelaId, { nombre: 'Norte', codigo: v.nuevo })).toEqual({ success: true });
-
-      const [arbol] = await mockTestDb.select({ subId: trees.subId }).from(trees).where(eq(trees.id, arbolId));
-      expect(arbol.subId).toBe(v.subIdDespues);
+      expect(await subIdDe(arbol.id)).toBe(v.subIdDespues);
     },
   );
 });

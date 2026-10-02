@@ -2,7 +2,7 @@
 -- cambiar_especie_arbol y sync_subgroup al conservar la especie del server; el
 -- server nunca arma un N/N, así que esos vectores solo los recorre la app.
 -- `cambioDeCodigoDeParcela`: el trigger que reescribe el prefijo. La app recorre
--- los mismos vectores contra generateSubId y su reescritura.
+-- los mismos vectores contra insertTree, cambiarEspecie y updateParcela.
 begin;
 
 create temp table armado_47 as
