@@ -1,7 +1,7 @@
 -- El UPDATE directo de los campos editables de `plantations` está cerrado (063, #649):
 -- se edita solo por `editar_plantacion`. `estado` conserva el UPDATE para finalizar.
 begin;
-select plan(15);
+select plan(17);
 
 insert into organizations (id, nombre) values
   ('b4200000-0000-0000-0000-000000000001', 'Org Test 42');
@@ -68,6 +68,13 @@ select is(
     'gps_capture_frequency', 'gps_capture_required', 'photo_capture_all_trees', 'visible_in_app'
   ]) as c where has_column_privilege('authenticated', 'public.plantations', c, 'UPDATE')),
   0, 'authenticated no tiene UPDATE sobre ninguna de las columnas editables');
+select ok(has_column_privilege('authenticated', 'public.plantations', 'estado', 'UPDATE'),
+  'authenticated conserva UPDATE sobre estado');
+select is(
+  (select count(*)::int from information_schema.columns c
+    where c.table_schema = 'public' and c.table_name = 'plantations'
+      and has_column_privilege('anon', 'public.plantations', c.column_name, 'UPDATE')),
+  0, 'anon no tiene UPDATE sobre ninguna columna');
 
 select * from finish();
 rollback;

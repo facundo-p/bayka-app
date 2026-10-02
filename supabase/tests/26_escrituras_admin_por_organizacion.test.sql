@@ -1,7 +1,7 @@
 -- Escrituras de admin acotadas a la organización (048, #543). Dos organizaciones:
 -- A es la del que escribe, B la ajena. Cada caso cruzado tiene su control en A.
 begin;
-select plan(34);
+select plan(36);
 
 insert into organizations (id, nombre) values
   ('b2600000-0000-0000-0000-00000000000a', 'Org A Test 26'),
@@ -28,6 +28,8 @@ select tests.crear_plantacion('b2600000-0000-0000-0000-0000000000aa', 'b2600000-
   'b2600000-0000-0000-0000-0000000000a1', 'Plantación A 26');
 select tests.crear_plantacion('b2600000-0000-0000-0000-0000000000bb', 'b2600000-0000-0000-0000-00000000000b',
   'b2600000-0000-0000-0000-0000000000b1', 'Plantación B 26');
+select tests.crear_plantacion('b2600000-0000-0000-0000-0000000000cc', 'b2600000-0000-0000-0000-00000000000a',
+  'b2600000-0000-0000-0000-0000000000a1', 'A finalizar 26');
 
 insert into plantation_users (plantation_id, user_id, rol_en_plantacion) values
   ('b2600000-0000-0000-0000-0000000000aa', 'b2600000-0000-0000-0000-0000000000a3', 'tecnico'),
@@ -145,6 +147,9 @@ select lives_ok(
 select editar_plantacion('b2600000-0000-0000-0000-0000000000bb', '{"lugar": "Editada por A"}', '{"lugar": "Plantación B 26"}');
 select is((select lugar from plantations where id = 'b2600000-0000-0000-0000-0000000000bb'),
   'Plantación B 26', 'admin A no edita una plantación de B');
+update plantations set estado = 'finalizada' where id = 'b2600000-0000-0000-0000-0000000000bb';
+select is((select estado from plantations where id = 'b2600000-0000-0000-0000-0000000000bb'),
+  'activa', 'admin A no finaliza una plantación de B');
 select throws_ok(
   $$ update plantations set organizacion_id = 'b2600000-0000-0000-0000-00000000000b'
      where id = 'b2600000-0000-0000-0000-0000000000aa' $$,
@@ -152,6 +157,9 @@ select throws_ok(
 select editar_plantacion('b2600000-0000-0000-0000-0000000000aa', '{"lugar": "Editada por A"}', '{"lugar": "Plantación A 26"}');
 select is((select lugar from plantations where id = 'b2600000-0000-0000-0000-0000000000aa'),
   'Editada por A', 'admin A edita su plantación');
+update plantations set estado = 'finalizada' where id = 'b2600000-0000-0000-0000-0000000000cc';
+select is((select estado from plantations where id = 'b2600000-0000-0000-0000-0000000000cc'),
+  'finalizada', 'admin A finaliza su plantación');
 
 -- ── Superadmin ───────────────────────────────────────────────────────────────
 select set_config('request.jwt.claim.sub', 'b2600000-0000-0000-0000-0000000000a2', true);
