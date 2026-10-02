@@ -30,6 +30,7 @@ function parcelaLabel(row: KmlExportRow): string {
 function buildDescription(row: KmlExportRow): string {
   const precision = formatGpsAccuracy(row.gpsAccuracy);
   const lineas = [
+    `SubID: ${row.subId}`,
     `Especie: ${especieLabel(row)}`,
     `Grupo: ${row.grupoNombre}`,
     `Parcela: ${parcelaLabel(row)}`,
@@ -43,7 +44,7 @@ function buildDescription(row: KmlExportRow): string {
 function buildPlacemark(row: KmlExportRow): string {
   return [
     '        <Placemark>',
-    `          <name>${escapeXml(row.subId)}</name>`,
+    `          <name>${escapeXml(row.idArbol)}</name>`,
     `          <styleUrl>#${getSpeciesStyleId(especieLabel(row))}</styleUrl>`,
     `          <description>${buildDescription(row)}</description>`,
     `          <Point><coordinates>${row.longitude},${row.latitude}</coordinates></Point>`,

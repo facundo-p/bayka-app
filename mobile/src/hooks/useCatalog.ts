@@ -3,7 +3,8 @@
  *
  * Encapsulates catalog browsing, selection and batch download.
  */
-import { useState, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useLiveData } from '../database/liveQuery';
 import { useCurrentUserId } from './useCurrentUserId';
 import { useProfileData } from './useProfileData';
@@ -18,6 +19,10 @@ import { contarPorEstado } from '../utils/conteoPorEstado';
 
 const CATALOGO_NO_DISPONIBLE = 'No se pudo cargar el catálogo';
 const CATALOGO_SIN_SESION = 'Iniciá sesión con conexión para ver el catálogo.';
+
+/** Cómo se dispara la carga: `inicial` muestra spinner y limpia el filtro; el resto no toca la lista visible. */
+const MODO_CARGA = { inicial: 'inicial', alEnfocar: 'al-enfocar', manual: 'manual' } as const;
+type ModoCarga = (typeof MODO_CARGA)[keyof typeof MODO_CARGA];
 
 export function useCatalog() {
   const userId = useCurrentUserId();
@@ -34,39 +39,71 @@ export function useCatalog() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [downloadState, setDownloadState] = useState<DownloadState>(DOWNLOAD_STATE.idle);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null);
   const [downloadResults, setDownloadResults] = useState<DownloadResult[]>([]);
   const [includePhotos, setIncludePhotos] = useState(false);
 
-  useEffect(() => {
+  // Refs para que el efecto de foco no dependa de ellos y no recargue en cada render.
+  const itemsRef = useRef<ServerPlantation[]>([]);
+  itemsRef.current = catalogItems;
+  const descargandoRef = useRef(false);
+  descargandoRef.current = downloadState === DOWNLOAD_STATE.downloading;
+  const ultimaCargaRef = useRef(0);
+
+  const cargar = useCallback(async (modo: ModoCarga) => {
+    if (!userId || !organizacionId) return;
+    if (descargandoRef.current) return;
+    const hayLista = itemsRef.current.length > 0;
     if (!isOnline) {
-      setCatalogError(CATALOGO_NO_DISPONIBLE);
+      // Offline con lista: se conserva y la pantalla avisa; sin lista, no hay qué mostrar.
+      if (!hayLista) setCatalogError(CATALOGO_NO_DISPONIBLE);
       setLoadingCatalog(false);
       return;
     }
-    if (!profile?.organizacionId || !userId) return;
-    loadCatalog();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOnline, profile, userId]);
-
-  async function loadCatalog() {
-    if (!userId) return;
-    setActiveFilter(null);
-    setLoadingCatalog(true);
-    setCatalogError(null);
+    const silenciosa = modo !== MODO_CARGA.inicial && hayLista;
+    const carga = ++ultimaCargaRef.current;
+    if (modo === MODO_CARGA.manual) setRefreshing(true);
+    else if (!silenciosa) {
+      setActiveFilter(null);
+      setLoadingCatalog(true);
+    }
     try {
       // Sin sesión (login offline de otra cuenta, #658) la consulta sale como anon y vuelve vacía.
       await ensureServerSession();
       const items = await getServerCatalog(isAdmin, userId, organizacionId);
+      if (carga !== ultimaCargaRef.current) return;
       setCatalogItems(items);
+      // Lo seleccionado que ya no está en el catálogo no puede habilitar la descarga.
+      setSelectedIds((prev) => {
+        const vigentes = new Set(items.filter((i) => prev.has(i.id)).map((i) => i.id));
+        return vigentes.size === prev.size ? prev : vigentes;
+      });
+      setCatalogError(null);
     } catch (e) {
-      setCatalogError(esSesionExpirada(e) ? CATALOGO_SIN_SESION : CATALOGO_NO_DISPONIBLE);
+      if (carga !== ultimaCargaRef.current) return;
+      // Con lista cargada se conserva en vez de reemplazarla por la pantalla de error.
+      if (!silenciosa) setCatalogError(esSesionExpirada(e) ? CATALOGO_SIN_SESION : CATALOGO_NO_DISPONIBLE);
     } finally {
-      setLoadingCatalog(false);
+      if (carga === ultimaCargaRef.current) {
+        setLoadingCatalog(false);
+        setRefreshing(false);
+      }
     }
-  }
+  }, [isOnline, isAdmin, userId, organizacionId]);
+
+  // Al enfocar recarga: la pantalla no se desmonta al volver, y una plantación nueva
+  // del servidor no aparecería hasta reiniciar la app (#681).
+  useFocusEffect(
+    useCallback(() => {
+      cargar(MODO_CARGA.alEnfocar);
+    }, [cargar])
+  );
+
+  const loadCatalog = useCallback(() => cargar(MODO_CARGA.inicial), [cargar]);
+  const refreshCatalog = useCallback(() => cargar(MODO_CARGA.manual), [cargar]);
 
   function toggleSelection(id: string) {
     setSelectedIds((prev) => {
@@ -100,6 +137,11 @@ export function useCatalog() {
     setSelectedIds(new Set());
   }
 
+  // Sin conexión o descargando el pull no hace nada: la pantalla no monta el RefreshControl
+  // para que su spinner nativo no quede girando.
+  const puedeRefrescar = isOnline && downloadState !== DOWNLOAD_STATE.downloading;
+  const catalogSinSesion = catalogError === CATALOGO_SIN_SESION;
+
   const estadoCounts = contarPorEstado(catalogItems);
 
   const filteredCatalog = catalogItems.filter(
@@ -120,7 +162,12 @@ export function useCatalog() {
     downloadProgress,
     downloadResults,
     includePhotos,
+    refreshing,
+    sinConexion: !isOnline,
+    puedeRefrescar,
+    catalogSinSesion,
     loadCatalog,
+    refreshCatalog,
     toggleSelection,
     handleBatchDownload,
     handleDismiss,

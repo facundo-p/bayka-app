@@ -3,6 +3,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing } from '../theme';
 import TreeRowItem from './TreeRowItem';
+import OrdenArbolesToggle from './OrdenArbolesToggle';
+import { useOrdenArboles } from '../hooks/useOrdenArboles';
+import { ordenarArbolesParaVista } from '../utils/ordenArboles';
 import type { TreeItemData } from './TreeRowItem';
 import { treeListModalStyles as styles } from './TreeListModal.styles';
 
@@ -32,17 +35,21 @@ export default function TreeListModal({
   onSelectTree,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { orden } = useOrdenArboles();
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
           <Text style={styles.title}>Árboles ({trees.length})</Text>
-          <Pressable onPress={onClose} hitSlop={12}>
-            <Ionicons name="close" size={24} color={colors.textMedium} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <OrdenArbolesToggle />
+            <Pressable onPress={onClose} hitSlop={12}>
+              <Ionicons name="close" size={24} color={colors.textMedium} />
+            </Pressable>
+          </View>
         </View>
         <FlatList
-          data={trees}
+          data={ordenarArbolesParaVista(trees, orden)}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (

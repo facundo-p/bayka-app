@@ -16,7 +16,6 @@ export const photoViewerStyles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: 50,
     right: spacing.xxl,
     zIndex: 10,
     padding: spacing.md,
@@ -36,7 +35,6 @@ export const photoViewerStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     gap: spacing.xxl,
-    paddingBottom: spacing['6xl'],
     paddingTop: spacing.xl,
   },
   actionBtn: {

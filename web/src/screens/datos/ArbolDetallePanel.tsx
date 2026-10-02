@@ -103,6 +103,8 @@ function MapaDelArbol({ arbol }: { arbol: ArbolConGps }) {
     lng: arbol.longitude,
     codigo,
     nombre: arbol.especieNombre ?? NOMBRE_SIN_IDENTIFICAR,
+    idArbol: arbol.idArbol,
+    subId: arbol.subId,
     parcelaId: arbol.parcelaId,
   };
   const colorPorCodigo = new Map([[codigo, colorEspeciePorCodigo(arbol.especieCodigo)]]);

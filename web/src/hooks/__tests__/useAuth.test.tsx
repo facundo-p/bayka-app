@@ -9,6 +9,7 @@ import {
   prepararSesionAdmin,
   resetEstadoMock,
 } from '../../test/supabaseMock';
+import * as busquedaArbol from '../../queries/busquedaArbol';
 import { AuthProvider, useAuth } from '../useAuth';
 
 vi.mock('../../lib/supabase', async () => {
@@ -124,6 +125,18 @@ test('cerrar sesión descarta la cache: el usuario siguiente no ve datos del ant
   });
 
   expect(queryClient.getQueryData(CLAVE)).toBeUndefined();
+});
+
+test('cerrar sesión reinicia la caché de códigos de plantación', async () => {
+  const reiniciar = vi.spyOn(busquedaArbol, 'reiniciarCacheCodigosPlantacion');
+  const result = await loguearConCache(new QueryClient());
+  reiniciar.mockClear();
+
+  await act(async () => {
+    await result.current.signOut();
+  });
+
+  expect(reiniciar).toHaveBeenCalled();
 });
 
 test('un refresh de token del mismo usuario no descarta la cache', async () => {

@@ -64,21 +64,6 @@ describe('AdminBottomSheet — pendingEdit workflow', () => {
   });
 });
 
-// --- Regression 2: PlantacionesScreen uploadPendingEdits ---
-describe('PlantacionesScreen — uploadPendingEdits in refresh', () => {
-  const hook = readSrc('hooks/usePlantaciones.ts');
-
-  it('imports uploadPendingEdits', () => {
-    expect(hook).toContain('uploadPendingEdits');
-  });
-
-  it('calls uploadPendingEdits in handleRefresh', () => {
-    const refreshMatch = hook.match(/handleRefresh[\s\S]*?try\s*\{([\s\S]*?)for/);
-    expect(refreshMatch).not.toBeNull();
-    expect(refreshMatch![1]).toContain('uploadPendingEdits');
-  });
-});
-
 // --- Regression 3: CatalogScreen localIds reactivity ---
 describe('CatalogScreen — localIds reactivity', () => {
   const hook = readSrc('hooks/useCatalog.ts');

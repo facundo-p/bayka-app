@@ -36,3 +36,22 @@ export function idDeArbol(subId: string, codigoPlantacion: string | null | undef
     ? `${subId}${CODIGO_PLANTACION.separadorIdArbol}${codigoPlantacion}`
     : subId;
 }
+
+export type IdArbolSeparado = { subId: string; codigo: string };
+
+/**
+ * Separa un ID Árbol pegado en SubID y código, si el texto termina en `-<código>` de alguno de
+ * `codigos` (sin distinguir mayúsculas). Los códigos pueden llevar guiones, así que se comparan
+ * contra los conocidos y gana el más largo. `null` si no hay código o no queda SubID.
+ */
+export function separarIdArbol(texto: string, codigos: readonly string[]): IdArbolSeparado | null {
+  const buscado = texto.trim().toLowerCase();
+  const porLargo = [...codigos].sort((a, b) => b.length - a.length);
+  for (const codigo of porLargo) {
+    const sufijo = `${CODIGO_PLANTACION.separadorIdArbol}${codigo.toLowerCase()}`;
+    if (buscado.length > sufijo.length && buscado.endsWith(sufijo)) {
+      return { subId: buscado.slice(0, -sufijo.length), codigo };
+    }
+  }
+  return null;
+}
