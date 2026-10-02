@@ -137,10 +137,9 @@ REVOKE ALL ON FUNCTION "public"."sync_subgroup_conservar_especies"("jsonb", "jso
 GRANT EXECUTE ON FUNCTION "public"."sync_subgroup_conservar_especies"("jsonb", "jsonb") TO "service_role";
 
 -- Los árboles en los que el móvil cambió la especie (la que manda difiere de su
--- base) y quedó otra: la del server, conservada ({id, species_id}). El móvil los
--- marca como conflicto en vez de dar su cambio por subido. El push manda todo el
--- grupo: un árbol que el móvil no tocó no es conflicto, el pull adopta la del
--- server. Un N/N del móvil tampoco cuenta.
+-- base) y quedó otra: la del server, conservada ({id, species_id}). El móvil la
+-- adopta y avisa. El push manda todo el grupo: un árbol que el móvil no tocó no
+-- cuenta, el pull adopta la del server. Un N/N del móvil tampoco.
 CREATE OR REPLACE FUNCTION "public"."sync_subgroup_conservadas"("p_trees" "jsonb") RETURNS "jsonb"
     LANGUAGE "sql"
     SET "search_path" TO 'public'

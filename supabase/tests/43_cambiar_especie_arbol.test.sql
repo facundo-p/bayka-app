@@ -262,8 +262,9 @@ select is((select species_id from trees where id = 'b4300000-0000-0000-0000-0000
   'un N/N desactualizado no deshace la resolución del server');
 
 -- El push manda todo el grupo. d6 viaja sin tocar (especie = base, vieja) y el
--- server lo tiene en Tala: lo conserva sin conflicto. d7 es un N/N que el móvil
--- resolvió (base null) y el server resolvió a otra: eso sí es conflicto. Con un
+-- server lo tiene en Tala: lo conserva sin avisar. d5 llega cambiado a la misma
+-- especie que ya tiene el server: tampoco vuelve. d7 es un N/N que el móvil
+-- resolvió (base null) y el server resolvió a otra: ese sí vuelve. Con un
 -- código de parcela que el móvil todavía no conoce, el SubID conservado se pasa
 -- al vigente igual que el que sube el móvil.
 set local role authenticated;
@@ -274,12 +275,16 @@ select is(
         'posicion', 4, 'sub_id', 'PXL1T43A4',
         'species_id', 'b4300000-0000-0000-0000-0000000000e1',
         'species_base_id', 'b4300000-0000-0000-0000-0000000000e1'),
+      (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d5',
+        'posicion', 3, 'sub_id', 'PXL1T43B3',
+        'species_id', 'b4300000-0000-0000-0000-0000000000e2',
+        'species_base_id', 'b4300000-0000-0000-0000-0000000000e1'),
       (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d7',
         'posicion', 5, 'sub_id', 'PXL1T43A5',
         'species_id', 'b4300000-0000-0000-0000-0000000000e1', 'species_base_id', null)
     )) ),
   '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
-  'un árbol que el móvil no cambió no vuelve en conservadas; un N/N resuelto distinto sí');
+  'no vuelve un árbol sin cambiar ni uno cambiado a la del server; un N/N resuelto distinto sí');
 reset role;
 select is((select species_id from trees where id = 'b4300000-0000-0000-0000-0000000000d6'),
   'b4300000-0000-0000-0000-0000000000e3'::uuid, 'y el server conserva su especie');
