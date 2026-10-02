@@ -69,6 +69,14 @@ nueva en `plantations` se resuelve ahí, no en cada test (#711). Quedan a mano
 los INSERT que son el objeto del test: los de `lives_ok`/`throws_ok` y el
 backfill de `40`, que necesita filas sin `codigo`.
 
+## Contratos
+
+`run-db-tests.sh` carga cada `contracts/*.json` como fila de `tests.contratos`
+(`99999999999998_contratos.sql`, antes de los auxiliares), y
+`tests.contrato('<archivo>.json')` devuelve su JSON o falla si no está. Así un
+test recorre la misma tabla de casos que los contract tests de web y mobile:
+cambiar una regla de un solo lado rompe el test de los otros (#735).
+
 ## Tests
 
 `01`-`02` membresía en INSERT (groups/parcelas), `03` guard de
@@ -161,7 +169,13 @@ especies que habilitar no reordena; con código y nombre repetidos gana
 DUPLICATE_CODE; una excepción, también en las validaciones, responde UNKNOWN y
 deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
 `authenticated` ni `anon`, son SECURITY INVOKER, y la orquestadora sigue
-SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734).
+SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `46`
+`contracts/permisos-edicion.json`: los casos `web` contra
+`cambiar_especie_arbol` y `editar_plantacion`, los casos `app` contra
+`sync_subgroup` del técnico que creó el grupo (#735). `47`
+`contracts/sub-id.json`: el SubID que arman `cambiar_especie_arbol` y
+`sync_subgroup` al conservar la especie, y la reescritura del prefijo al
+cambiar el código de la parcela (#735).
 
 ## Hallazgo fuera de alcance (no corregido)
 

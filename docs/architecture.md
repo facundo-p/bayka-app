@@ -593,6 +593,10 @@ generados localmente, quedó sin callers y se eliminó en la mig. 030.
 
 El gate de export exige que TODOS los árboles tengan ID.
 
+El SubID de un árbol (`<parcela><grupo><especie><posición>`) lo arman la app y
+el server. Sus vectores de prueba viven en `contracts/sub-id.json` y los
+recorren pgTAP, mobile y web (#735).
+
 ---
 
 # 11. Seguridad
@@ -611,6 +615,11 @@ solo admins crean plantaciones
 solo admins exportan datos
 tecnicos solo registran datos
 ```
+
+Las reglas de permisos que el server aplica y los clientes reflejan (qué botón
+se muestra) se escriben como tabla de casos en `contracts/` y las recorren pgTAP
+y los contract tests de web y mobile: hoy `permisos-edicion.json`, para cambiar
+la especie y editar la plantación (#735).
 
 ---
 
