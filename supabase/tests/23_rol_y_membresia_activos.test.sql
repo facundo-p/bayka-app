@@ -2,7 +2,7 @@
 -- policy de admin reescrita y cada camino por membresía tiene un caso activo y
 -- uno inactivo.
 begin;
-select plan(37);
+select plan(38);
 
 insert into organizations (id, nombre) values
   ('b2300000-0000-0000-0000-000000000001', 'Org Test 23');
