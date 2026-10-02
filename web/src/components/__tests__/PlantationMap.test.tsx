@@ -13,7 +13,15 @@ const LEYENDA = [
 ];
 
 function punto(codigo: string, nombre: string): PuntoGps {
-  return { lat: -27.1, lng: -55.2, codigo, nombre, parcelaId: 'parc-1' };
+  return {
+    lat: -27.1,
+    lng: -55.2,
+    codigo,
+    nombre,
+    idArbol: 'LP1L23BANC12-SS26-1',
+    subId: 'LP1L23BANC12',
+    parcelaId: 'parc-1',
+  };
 }
 
 test('la leyenda usa los nombres de la plantación, no los de los puntos visibles', () => {

@@ -63,11 +63,15 @@ function bloqueEstilo(grupo: GrupoEspecie): string {
     </Style>`;
 }
 
+function descripcionPunto(punto: PuntoGps): string {
+  return `SubID: ${punto.subId}\nEspecie: ${punto.nombre}`;
+}
+
 /** KML espera coordenadas en orden lng,lat,0 (no lat,lng). */
 function bloquePlacemark(punto: PuntoGps, styleId: string): string {
   return `      <Placemark>
-        <name>${escaparXml(punto.nombre)}</name>
-        <description>${escaparXml(punto.codigo)}</description>
+        <name>${escaparXml(punto.idArbol)}</name>
+        <description>${escaparXml(descripcionPunto(punto))}</description>
         <styleUrl>#${styleId}</styleUrl>
         <Point><coordinates>${punto.lng},${punto.lat},0</coordinates></Point>
       </Placemark>`;

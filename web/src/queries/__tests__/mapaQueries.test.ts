@@ -14,17 +14,19 @@ beforeEach(resetEstadoMock);
 const FILA_CON_ESPECIE = {
   latitude: -27.1,
   longitude: -55.2,
+  sub_id: 'LP1L23BANC12',
   species_id: 'sp-1',
   species: { codigo: 'QB', nombre: 'Quebracho' },
-  groups: { parcela_id: 'parc-1' },
+  groups: { parcela_id: 'parc-1', plantations: { codigo: 'SS26-1' } },
 };
 
 const FILA_SIN_ESPECIE = {
   latitude: -27.3,
   longitude: -55.4,
+  sub_id: 'LP1L23NN3',
   species_id: null,
   species: null,
-  groups: { parcela_id: null },
+  groups: { parcela_id: null, plantations: null },
 };
 
 describe('listarPuntosGps', () => {
@@ -61,8 +63,24 @@ describe('listarPuntosGps', () => {
     capturarConsultas(() => ({ data: [FILA_CON_ESPECIE, FILA_SIN_ESPECIE] }));
 
     expect(await listarPuntosGps('plant-1')).toEqual([
-      { lat: -27.1, lng: -55.2, codigo: 'QB', nombre: 'Quebracho', parcelaId: 'parc-1' },
-      { lat: -27.3, lng: -55.4, codigo: 'NN', nombre: 'Sin identificar', parcelaId: null },
+      {
+        lat: -27.1,
+        lng: -55.2,
+        codigo: 'QB',
+        nombre: 'Quebracho',
+        idArbol: 'LP1L23BANC12-SS26-1',
+        subId: 'LP1L23BANC12',
+        parcelaId: 'parc-1',
+      },
+      {
+        lat: -27.3,
+        lng: -55.4,
+        codigo: 'NN',
+        nombre: 'Sin identificar',
+        idArbol: 'LP1L23NN3',
+        subId: 'LP1L23NN3',
+        parcelaId: null,
+      },
     ]);
   });
 

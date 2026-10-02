@@ -6,6 +6,7 @@ import { getSpeciesStyleId } from '../../src/services/kml/speciesStyles';
 
 function row(overrides: Partial<KmlExportRow> = {}): KmlExportRow {
   return {
+    idArbol: 'PL1EUC1-SS26-1',
     subId: 'PL1EUC1',
     posicion: 1,
     especieNombre: 'Eucalipto',
@@ -43,7 +44,8 @@ describe('buildKml', () => {
     expect(kml).toContain(`<Style id="${getSpeciesStyleId('Eucalipto')}">`);
     expect(kml).toContain('<name>Lote A</name>');
     expect(kml).toContain('<name>Línea 1</name>');
-    expect(kml).toContain('<name>PL1EUC1</name>');
+    expect(kml).toContain('<name>PL1EUC1-SS26-1</name>');
+    expect(kml).toContain('SubID: PL1EUC1');
     expect(kml).toContain(`<styleUrl>#${getSpeciesStyleId('Eucalipto')}</styleUrl>`);
   });
 
@@ -55,7 +57,7 @@ describe('buildKml', () => {
   it('un solo <Style> compartido por especie aunque haya varios placemarks', () => {
     const kml = buildKml('Campo', [
       row(),
-      row({ subId: 'PL1EUC2', posicion: 2 }),
+      row({ idArbol: 'PL1EUC2-SS26-1', subId: 'PL1EUC2', posicion: 2 }),
     ]);
     const styleCount = kml.split(`<Style id="${getSpeciesStyleId('Eucalipto')}">`).length - 1;
     expect(styleCount).toBe(1);
@@ -65,18 +67,18 @@ describe('buildKml', () => {
 
   it('caracteres especiales (ñ, acentos, &, <) no rompen el XML', () => {
     const kml = buildKml('Campo & <Sur>', [
-      row({ especieNombre: 'Ñandubay <rojo>', grupoNombre: 'Línea & 1', subId: 'P"L1"Ñ1' }),
+      row({ especieNombre: 'Ñandubay <rojo>', grupoNombre: 'Línea & 1', idArbol: 'P"L1"Ñ1-SS26-1' }),
     ]);
     expect(kml).toContain('<name>Campo &amp; &lt;Sur&gt;</name>');
     expect(kml).toContain('Especie: Ñandubay &lt;rojo&gt;');
-    expect(kml).toContain('<name>P&quot;L1&quot;Ñ1</name>');
+    expect(kml).toContain('<name>P&quot;L1&quot;Ñ1-SS26-1</name>');
     expect(kml).not.toMatch(/<name>[^<]*<rojo>/);
   });
 
   it('especies con nombres que slugifican igual comparten un único <Style> (sin id duplicado)', () => {
     const kml = buildKml('Campo', [
-      row({ especieNombre: 'Pino A', subId: 'P1' }),
-      row({ especieNombre: 'Pino-A', subId: 'P2' }),
+      row({ especieNombre: 'Pino A', idArbol: 'P1-SS26-1', subId: 'P1' }),
+      row({ especieNombre: 'Pino-A', idArbol: 'P2-SS26-1', subId: 'P2' }),
     ]);
     expect(getSpeciesStyleId('Pino A')).toBe(getSpeciesStyleId('Pino-A'));
     const styleCount = kml.split(`<Style id="${getSpeciesStyleId('Pino A')}">`).length - 1;
@@ -97,10 +99,10 @@ describe('buildKml', () => {
     const kml = buildKml('Campo Norte', [row({ parcelaNombre: null })]);
     expect(kml).toContain('<name>Sin parcela</name>');
     expect(kml).toContain('Parcela: Sin parcela');
-    expect(kml).toContain('<name>PL1EUC1</name>');
+    expect(kml).toContain('<name>PL1EUC1-SS26-1</name>');
   });
 
-  it('la descripción incluye especie, grupo, parcela, posición, precisión y fecha', () => {
+  it('la descripción incluye SubID, especie, grupo, parcela, posición, precisión y fecha', () => {
     const kml = buildKml('Campo', [row()]);
     expect(kml).toContain('Especie: Eucalipto');
     expect(kml).toContain('Grupo: Línea 1');
@@ -113,8 +115,8 @@ describe('buildKml', () => {
   it('snapshot de la estructura completa', () => {
     const kml = buildKml('Campo Norte', [
       row(),
-      row({ subId: 'PL1NN2', posicion: 2, especieNombre: null, gpsAccuracy: null }),
-      row({ subId: 'PL2EUC1', grupoNombre: 'Línea 2', latitude: -31.6 }),
+      row({ idArbol: 'PL1NN2-SS26-1', subId: 'PL1NN2', posicion: 2, especieNombre: null, gpsAccuracy: null }),
+      row({ idArbol: 'PL2EUC1-SS26-1', subId: 'PL2EUC1', grupoNombre: 'Línea 2', latitude: -31.6 }),
     ]);
     expect(kml).toMatchSnapshot();
   });
