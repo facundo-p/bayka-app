@@ -1,5 +1,5 @@
 {
-  "_comment": "Quién puede cambiar la especie de un árbol (#679) y editar una plantación, como tabla de casos. Cada tabla trae solo las dimensiones que miran todos sus consumidores. Cambiar una regla implica cambiar esta tabla y los consumidores que fallen: supabase/tests/46_contrato_permisos_edicion.test.sql, web/src/lib/__tests__/contracts.test.ts y mobile/tests/contracts.test.ts.",
+  "_comment": "Quién puede cambiar la especie de un árbol (#679) y editar una plantación, como tabla de casos. Cada tabla trae solo las dimensiones que miran todos sus consumidores. Cambiar una regla implica cambiar esta tabla y los consumidores que fallen: supabase/tests/47_contrato_permisos_edicion.test.sql, web/src/lib/__tests__/contracts.test.ts y mobile/tests/contracts.test.ts.",
   "web": {
     "_comment": "Desde la web. pgTAP la recorre contra cambiar_especie_arbol y editar_plantacion, que comparten el gate; la web, contra puedeCambiarEspecie. Editar la plantación en la web no tiene un predicado con estas dimensiones (motivoEdicion solo mira archivada), así que ese lado no se compara. Usuario de la organización de la plantación: la web no ve plantaciones de otra (RLS), y el rechazo por organización lo prueba el test 43.",
     "casos": [

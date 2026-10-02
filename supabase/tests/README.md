@@ -170,11 +170,11 @@ especies que habilitar no reordena; con código y nombre repetidos gana
 DUPLICATE_CODE; una excepción, también en las validaciones, responde UNKNOWN y
 deshace el grupo ya escrito. `45` las partes de `sync_subgroup` no las ejecutan
 `authenticated` ni `anon`, son SECURITY INVOKER, y la orquestadora sigue
-SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `46`
+SECURITY DEFINER, con sus grants y en menos de 40 líneas (064, #734). `47`
 `contracts/permisos-edicion.json`: los casos `web` contra
 `cambiar_especie_arbol` y `editar_plantacion`, los casos `app` contra
 `sync_subgroup` de un técnico asignado; un rechazo cuenta solo si es del gate, y
-cada tabla trae todas las combinaciones y los dos desenlaces (#735). `47`
+cada tabla trae todas las combinaciones y los dos desenlaces (#735). `48`
 `contracts/sub-id.json`: el SubID que arman `cambiar_especie_arbol` y
 `sync_subgroup` al conservar la especie, y la reescritura del prefijo al
 cambiar el código de la parcela (#735).
