@@ -222,3 +222,26 @@ describe('cliente demo: or(), ilike y paginación', () => {
     expect(() => consulta().not('posicion', 'gt', 3)).toThrow('"gt"');
   });
 });
+
+describe('cliente demo: cambiar_especie_arbol', () => {
+  it('rearma el SubID con el código de la especie elegida', async () => {
+    const { data: arboles } = await supabase.from('trees').select('id, sub_id, species_id');
+    const arbol = (arboles as FilaDemo[]).find((fila) => fila.species_id !== 's4');
+    if (!arbol) throw new Error('la demo no tiene árboles');
+    const { data } = await supabase.rpc('cambiar_especie_arbol', {
+      p_tree_id: arbol.id,
+      p_species_id: 's4',
+      p_base: arbol.species_id,
+    });
+    expect(data).toEqual({ success: true, sub_id: expect.stringContaining('TIM') });
+  });
+
+  it('un árbol inexistente se rechaza', async () => {
+    const { data } = await supabase.rpc('cambiar_especie_arbol', {
+      p_tree_id: 'no-existe',
+      p_species_id: 's4',
+      p_base: null,
+    });
+    expect(data).toEqual({ success: false, error: 'NOT_AUTHORIZED' });
+  });
+});

@@ -10,6 +10,7 @@ const CLAVES_CON_ESPECIES = [
   familia(CLAVE_QUERY.dashboard),
   familia(CLAVE_QUERY.mapa),
   familia(CLAVE_QUERY.datosArboles),
+  familia(CLAVE_QUERY.especiesHabilitadas),
 ];
 
 export function useInvalidarEspecies() {

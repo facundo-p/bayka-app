@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useAuth } from '../../hooks/useAuth';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
@@ -12,9 +13,12 @@ import {
   type ArbolDetalle,
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
+import type { Plantacion } from '../../queries/plantationQueries';
+import { puedeCambiarEspecie } from './cambioDeEspecie';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
+import type { EdicionDeEspecie } from './useCambioDeEspecie';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
 
 /** Retardo del debounce de la búsqueda por ID, en ms. */
@@ -50,6 +54,17 @@ function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
   };
 }
 
+/** undefined si el perfil no puede cambiar especies en esta plantación. */
+function useEdicionDeEspecie(
+  plantationId: string,
+  plantacion: Plantacion | null | undefined,
+  onActualizado: (arbol: ArbolDetalle) => void,
+): EdicionDeEspecie | undefined {
+  const { perfil } = useAuth();
+  if (!plantacion || !puedeCambiarEspecie(perfil, plantacion)) return undefined;
+  return { plantationId, codigoPlantacion: plantacion.codigo, onActualizado };
+}
+
 /**
  * Estado y datos de la sección Árboles: filtros en la URL, página, catálogos
  * de los selects y el árbol abierto en el panel. El componente queda solo con
@@ -65,6 +80,10 @@ export function useArbolesSection() {
   const especies = useCatalogoEspecies();
   const mapas = useMapasArboles(parcelas.data);
   const paginaArboles = usePaginaArboles(id, filtrosDatos.filtros);
+  // La respuesta puede llegar con otro árbol ya abierto: solo se actualiza el mismo.
+  const actualizarArbol = (arbol: ArbolDetalle) =>
+    setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
+  const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -75,5 +94,6 @@ export function useArbolesSection() {
     especies,
     arbolSeleccionado,
     setArbolSeleccionado,
+    edicionDeEspecie,
   };
 }

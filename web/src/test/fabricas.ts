@@ -101,10 +101,7 @@ export function filaGrupo(overrides: Partial<FilaGrupo> = {}): FilaGrupo {
 type GrupoDeArbol = NonNullable<FilaArbol['groups']> & { plantation_id: string };
 
 /** Lo que trae el `select('*, …, groups!inner(…, plantations(codigo))')` de trees. */
-export type FilaArbolDatos = Omit<FilaArbol, 'groups'> & {
-  species_id: string | null;
-  groups: GrupoDeArbol;
-};
+export type FilaArbolDatos = Omit<FilaArbol, 'groups'> & { groups: GrupoDeArbol };
 
 type OverridesFilaArbol = Partial<Omit<FilaArbolDatos, 'groups'>> & {
   groups?: Partial<GrupoDeArbol>;
@@ -144,6 +141,7 @@ export function arbolDetalle(overrides: Partial<ArbolDetalle> = {}): ArbolDetall
     subId: IDS_FABRICA.subIdArbol,
     idArbol: idDeArbol(IDS_FABRICA.subIdArbol, IDS_FABRICA.codigoPlantacion),
     posicion: 1,
+    especieId: null,
     especieCodigo: null,
     especieNombre: null,
     grupoId: IDS_FABRICA.grupo,

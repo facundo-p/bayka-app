@@ -29,6 +29,9 @@ vi.mock('../../../queries/especieQueries', async () => {
   );
   return { ...real, listarCatalogo: vi.fn() };
 });
+vi.mock('../../../hooks/useAuth', () => ({
+  useAuth: () => ({ estado: 'autenticado', perfil: PERFIL }),
+}));
 vi.mock('../../../queries/usuarioQueries', async () => {
   const real = await vi.importActual<typeof import('../../../queries/usuarioQueries')>(
     '../../../queries/usuarioQueries',

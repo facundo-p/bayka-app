@@ -547,3 +547,21 @@ export const RPC: Record<string, unknown> = {
     motivo: null,
   },
 };
+
+/** Rearma el SubID con la especie elegida, como la RPC; la demo no persiste el cambio. */
+function cambiarEspecieDemo(parametros: FilaDemo): FilaDemo {
+  const arbol = ARBOLES.find((fila) => fila.id === parametros.p_tree_id);
+  const grupo = GRUPOS.find((candidato) => candidato.id === arbol?.group_id);
+  if (!arbol || !grupo) return { success: false, error: 'NOT_AUTHORIZED' };
+  const especie = especiePorId(String(parametros.p_species_id));
+  const parcela = parcelaPorId(grupo.parcela_id);
+  return {
+    success: true,
+    sub_id: `${parcela.codigo}${grupo.codigo}${especie.codigo}${String(arbol.posicion)}`,
+  };
+}
+
+/** Respuestas de `supabase.rpc(...)` que dependen de los parámetros. */
+export const RPC_CON_PARAMETROS: Record<string, (parametros: FilaDemo) => unknown> = {
+  cambiar_especie_arbol: cambiarEspecieDemo,
+};
