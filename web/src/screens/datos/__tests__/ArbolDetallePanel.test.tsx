@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ArbolDetalle } from '../../../queries/dataExplorerQueries';
 import { ArbolDetallePanel } from '../ArbolDetallePanel';
 import { arbolDetalle } from '../../../test/fabricas';
+import { obtenerUrlDescargaFoto, obtenerUrlFoto } from '../../../services/fotoService';
+import { descargarDesdeUrl } from '../../../services/descargas';
 
 // Leaflet usa APIs de layout que jsdom no implementa.
 vi.mock('../../../components/mapa/MapaPuntos', () => ({
@@ -14,7 +16,14 @@ vi.mock('../../../services/fotoService', async () => {
   const actual = await vi.importActual<typeof import('../../../services/fotoService')>(
     '../../../services/fotoService',
   );
-  return { ...actual, obtenerUrlFoto: vi.fn() };
+  return { ...actual, obtenerUrlFoto: vi.fn(), obtenerUrlDescargaFoto: vi.fn() };
+});
+
+vi.mock('../../../services/descargas', async () => {
+  const actual = await vi.importActual<typeof import('../../../services/descargas')>(
+    '../../../services/descargas',
+  );
+  return { ...actual, descargarDesdeUrl: vi.fn() };
 });
 
 function arbol(sobreescritura: Partial<ArbolDetalle> = {}): ArbolDetalle {
@@ -61,6 +70,7 @@ function renderPanel(
         arbol={datos}
         parcelaCodigo={parcelaCodigo}
         tecnicoNombre={tecnicoNombre}
+        nombreFoto="foto-finca-2026-a-001.jpg"
         onCerrar={onCerrar}
       />
     </QueryClientProvider>,
@@ -127,4 +137,43 @@ test('la X cierra el panel', async () => {
 
   await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001-SS26' }));
   expect(onCerrar).toHaveBeenCalled();
+});
+
+describe('descarga de la foto', () => {
+  const FOTO_SUBIDA = 'plantations/p1/trees/t1.jpg';
+
+  beforeEach(() => {
+    vi.mocked(descargarDesdeUrl).mockClear();
+    vi.mocked(obtenerUrlFoto).mockResolvedValue('https://firmada.test/foto.jpg');
+  });
+
+  test('sin foto subida no ofrece descargar', () => {
+    renderPanel();
+    expect(screen.queryByRole('button', { name: 'Descargar' })).not.toBeInTheDocument();
+  });
+
+  test('descarga con la URL firmada y el nombre legible', async () => {
+    vi.mocked(obtenerUrlDescargaFoto).mockResolvedValue('https://firmada.test/foto.jpg?download=x');
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
+
+    await usuario.click(screen.getByRole('button', { name: 'Descargar' }));
+
+    expect(obtenerUrlDescargaFoto).toHaveBeenCalledWith(FOTO_SUBIDA, 'foto-finca-2026-a-001.jpg');
+    expect(descargarDesdeUrl).toHaveBeenCalledWith(
+      'https://firmada.test/foto.jpg?download=x',
+      'foto-finca-2026-a-001.jpg',
+    );
+  });
+
+  test('si no se puede firmar avisa y no descarga', async () => {
+    vi.mocked(obtenerUrlDescargaFoto).mockRejectedValue(new Error('sin red'));
+    const usuario = userEvent.setup();
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }));
+
+    await usuario.click(screen.getByRole('button', { name: 'Descargar' }));
+
+    expect(await screen.findByText('No se pudo descargar la foto')).toBeInTheDocument();
+    expect(descargarDesdeUrl).not.toHaveBeenCalled();
+  });
 });

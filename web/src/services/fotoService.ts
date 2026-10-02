@@ -25,15 +25,32 @@ function extraerPathDeFoto(fotoUrl: string): string {
   return path.split('?')[0];
 }
 
+async function firmarFoto(fotoUrl: string, download?: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET_FOTOS_ARBOLES)
+    .createSignedUrl(
+      extraerPathDeFoto(fotoUrl),
+      SEGUNDOS_VALIDEZ_URL,
+      download ? { download } : undefined,
+    );
+  if (error) throw new Error(error.message);
+  return data?.signedUrl ?? null;
+}
+
 /**
  * URL firmada y temporal para ver la foto de un árbol, o null si no hay foto
  * subida (campo vacío o archivo local del dispositivo móvil sin sincronizar).
  */
 export async function obtenerUrlFoto(fotoUrl: string | null | undefined): Promise<string | null> {
   if (!tieneFotoSubida(fotoUrl)) return null;
-  const { data, error } = await supabase.storage
-    .from(BUCKET_FOTOS_ARBOLES)
-    .createSignedUrl(extraerPathDeFoto(fotoUrl), SEGUNDOS_VALIDEZ_URL);
-  if (error) throw new Error(error.message);
-  return data?.signedUrl ?? null;
+  return firmarFoto(fotoUrl);
+}
+
+/** Como `obtenerUrlFoto`, pero la URL baja la foto como archivo con ese nombre. */
+export async function obtenerUrlDescargaFoto(
+  fotoUrl: string | null | undefined,
+  nombreArchivo: string,
+): Promise<string | null> {
+  if (!tieneFotoSubida(fotoUrl)) return null;
+  return firmarFoto(fotoUrl, nombreArchivo);
 }

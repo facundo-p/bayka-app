@@ -2,7 +2,8 @@
  * PhotoViewer — visor full-screen con zoom (pinch/pan/doble-tap), reutilizado
  * donde se visualiza una foto (N/N, detalle de árbol, registro de árboles).
  * `onReplace`/`onRemove` opcionales agregan una barra de edición; si no, es solo lectura.
- * Con `treeId`, una foto que está solo en la nube se puede descargar desde acá.
+ * Con `treeId`, una foto que está solo en la nube se puede descargar desde acá, y el nombre
+ * del archivo al guardar/compartir sale de su plantación.
  */
 import { useState } from 'react';
 import { Modal, View, Text, Pressable } from 'react-native';
@@ -20,6 +21,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { isRemoteUri } from '../utils/photoUri';
 import FotoRemota from './FotoRemota';
+import PhotoViewerAcciones from './PhotoViewerAcciones';
 import { photoViewerStyles as styles } from './PhotoViewer.styles';
 
 interface Props {
@@ -118,6 +120,11 @@ export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove 
         <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12} accessibilityLabel="Cerrar">
           <Ionicons name="close" size={28} color={colors.white} />
         </Pressable>
+        <PhotoViewerAcciones
+          uri={visible}
+          treeId={treeId}
+          onDescargada={(local) => visible && setDescargada({ remota: visible, local })}
+        />
         {isRemoteUri(visible) && treeId ? (
           <FotoRemota
             treeId={treeId}

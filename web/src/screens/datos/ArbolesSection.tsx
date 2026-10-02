@@ -14,6 +14,7 @@ import {
   type ArbolDetalle,
   type PaginaArboles,
 } from '../../queries/dataExplorerQueries';
+import { nombreArchivoFoto } from '../../services/descargas';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { codigoParcelaDe, nombreTecnicoDe } from './arbolFormato';
@@ -77,6 +78,11 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
       arbol={arbol}
       parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
       tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
+      nombreFoto={nombreArchivoFoto(
+        seccion.plantacion?.lugar ?? '',
+        seccion.plantacion?.periodo ?? '',
+        arbol.subId,
+      )}
       onCerrar={() => seccion.setArbolSeleccionado(null)}
     />
   );

@@ -25,6 +25,23 @@ export function nombreArchivoDescarga(
   return `${prefijo}-${partes.join('-')}.${extension}`;
 }
 
+/** Nombre `foto-<lugar>-<periodo>-<subId>.jpg`; mismo formato que la app. */
+export function nombreArchivoFoto(lugar: string, periodo: string, subId: string): string {
+  const partes = [aSlug(lugar), aSlug(periodo), aSlug(subId)].filter(Boolean);
+  return `foto-${partes.join('-')}.jpg`;
+}
+
+/** Descarga una URL ya firmada con `download`: Storage la sirve como adjunto, porque el
+ *  atributo `download` se ignora en otro origen. */
+export function descargarDesdeUrl(url: string, nombreArchivo: string): void {
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = nombreArchivo;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+}
+
 /** Dispara la descarga de un Blob como archivo vía un enlace temporal. */
 export function descargarBlob(blob: Blob, nombreArchivo: string): void {
   const url = URL.createObjectURL(blob);

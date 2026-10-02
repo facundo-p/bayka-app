@@ -205,7 +205,7 @@ export default function NNResolutionScreen() {
         </Pressable>
       </View>
 
-      <PhotoViewer uri={zoomPhotoUri} onClose={() => setZoomPhotoUri(null)} />
+      <PhotoViewer uri={zoomPhotoUri} treeId={currentTree?.id} onClose={() => setZoomPhotoUri(null)} />
       <ConfirmModal {...confirmProps} />
     </ScreenContainer>
   );

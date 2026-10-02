@@ -184,7 +184,7 @@ export default function TreeDetailModal({
             )}
           </ScrollView>
         )}
-        <PhotoViewer uri={zoomUri} onClose={() => setZoomUri(null)} />
+        <PhotoViewer uri={zoomUri} treeId={treeId ?? undefined} onClose={() => setZoomUri(null)} />
       </View>
     </Modal>
   );
