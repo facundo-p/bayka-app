@@ -21,7 +21,6 @@ export function getTreesForGroup(grupoId: string) {
       latitude: trees.latitude,
       longitude: trees.longitude,
       gpsAccuracy: trees.gpsAccuracy,
-      conflictEspecieId: trees.conflictEspecieId,
       especieCodigo: species.codigo,
       especieNombre: species.nombre,
     })
@@ -50,8 +49,6 @@ export function getTreeDetail(treeId: string) {
       longitude: trees.longitude,
       gpsAccuracy: trees.gpsAccuracy,
       gpsCapturedAt: trees.gpsCapturedAt,
-      conflictEspecieId: trees.conflictEspecieId,
-      conflictEspecieNombre: trees.conflictEspecieNombre,
       especieCodigo: species.codigo,
       especieNombre: species.nombre,
       especieNombreCientifico: species.nombreCientifico,

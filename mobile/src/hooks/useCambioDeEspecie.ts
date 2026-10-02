@@ -1,12 +1,11 @@
 /**
  * Cambiar la especie desde el detalle del árbol (#679): buscador sobre las especies
  * de la plantación, cambio sin confirmación (es reversible) y aviso con el ID nuevo.
- * También resuelve un conflicto con la especie del server.
  */
 import { useState } from 'react';
 import { useLiveData } from '../database/liveQuery';
 import { getSpeciesForPlantation, type PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
-import { cambiarEspecie, mantenerEspecieLocal, usarEspecieDelServidor } from '../repositories/TreeRepository';
+import { cambiarEspecie } from '../repositories/TreeRepository';
 import { avisoBreve } from '../utils/avisoBreve';
 import { idDeArbol } from '../utils/codigoDePlantacion';
 import { coincideBusqueda } from '../utils/normalizarTexto';
@@ -24,22 +23,6 @@ export function filtrarEspecies<T extends Pick<PlantationSpeciesItem, 'nombre' |
 }
 
 type ArbolACambiar = { id: string; especieId: string | null; plantacionCodigo: string | null };
-
-/** Corre una escritura con su indicador de ocupado y avisa si falla. */
-function useEscritura() {
-  const [guardando, setGuardando] = useState(false);
-  async function escribir(tarea: () => Promise<void>) {
-    setGuardando(true);
-    try {
-      await tarea();
-    } catch {
-      avisoBreve(MENSAJE_ERROR_CAMBIO_DE_ESPECIE);
-    } finally {
-      setGuardando(false);
-    }
-  }
-  return { guardando, escribir };
-}
 
 /** El buscador: abierto o no, lo tipeado y las especies que coinciden. */
 function useBuscadorDeEspecies(plantacionId: string) {
@@ -67,21 +50,22 @@ async function cambiarYAvisar(arbol: ArbolACambiar, especieId: string) {
 
 export function useCambioDeEspecie(arbol: ArbolACambiar | null, plantacionId: string) {
   const buscador = useBuscadorDeEspecies(plantacionId);
-  const { guardando, escribir } = useEscritura();
+  const [guardando, setGuardando] = useState(false);
 
-  function elegir(especieId: string) {
+  async function elegir(especieId: string) {
     buscador.cerrar();
     if (!arbol || especieId === arbol.especieId) return;
-    void escribir(() => cambiarYAvisar(arbol, especieId));
+    setGuardando(true);
+    try {
+      await cambiarYAvisar(arbol, especieId);
+    } catch {
+      avisoBreve(MENSAJE_ERROR_CAMBIO_DE_ESPECIE);
+    } finally {
+      setGuardando(false);
+    }
   }
 
-  return {
-    ...buscador,
-    guardando,
-    elegir,
-    usarDelServidor: () => arbol && escribir(() => usarEspecieDelServidor(arbol.id)),
-    mantenerLocal: () => arbol && escribir(() => mantenerEspecieLocal(arbol.id)),
-  };
+  return { ...buscador, guardando, elegir };
 }
 
 export type CambioDeEspecieDelArbol = ReturnType<typeof useCambioDeEspecie>;

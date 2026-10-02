@@ -127,13 +127,10 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     // Un árbol apuntando al id del server no puede existir antes de reconciliar:
     // las FKs lo rechazan (#617). Los dos apuntan al id local.
     await mockTestDb.insert(trees).values([
-      {
-        ...createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1', globalId: 6001 }),
-        especieBaseId: LOCAL_ID,
-      },
+      createTestTree({ id: 't1', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC1', globalId: 6001 }),
       {
         ...createTestTree({ id: 't2', groupId: group.id, especieId: LOCAL_ID, subId: 'LACOC2', globalId: 6002 }),
-        conflictEspecieId: LOCAL_ID,
+        especieBaseId: LOCAL_ID,
       },
     ]);
     await mockTestDb.insert(plantationSpecies).values({
@@ -157,8 +154,7 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     // Ambos árboles resuelven al server id (clave del bug de export).
     const treeRows = await mockTestDb.select().from(trees);
     expect(treeRows.every((t) => t.especieId === SERVER_ID)).toBe(true);
-    expect(treeRows.find((t) => t.id === 't2')?.conflictEspecieId).toBe(SERVER_ID);
-    expect(treeRows.find((t) => t.id === 't1')?.especieBaseId).toBe(SERVER_ID);
+    expect(treeRows.find((t) => t.id === 't2')?.especieBaseId).toBe(SERVER_ID);
 
     // plantation_species re-apuntado, con el id que después usa el pull.
     const ps = await especiesDePlantacion(plantation.id);

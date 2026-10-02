@@ -16,7 +16,7 @@ import {
   Parcela,
 } from '../../repositories/ParcelaRepository';
 import { markPhotoSynced } from '../../repositories/TreeRepository';
-import { asentarEspeciesSubidas } from './conflictosDeEspecie';
+import { asentarEspeciesSubidas } from './especiesConservadas';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
   PhotoSyncProgress, classifyServerError, columnasDeLaViolacion,
@@ -450,7 +450,8 @@ export async function uploadSyncableGroups(
       const result = classifyRpcResult(sg, data, error);
       if (result.success) {
         // Antes de bajar la marca: si se corta en el medio, el grupo se vuelve a subir.
-        await asentarEspeciesSubidas(sgTrees.map(({ id, especieId }) => ({ id, especieId })), data);
+        const delServidor = await asentarEspeciesSubidas(sgTrees, data);
+        if (delServidor > 0) result.especiesDelServidor = delServidor;
         await markGroupSynced(sg.id);
       }
       await anotarResultado(plantacionId, result);

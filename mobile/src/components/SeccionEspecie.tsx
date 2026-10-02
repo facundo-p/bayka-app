@@ -1,8 +1,7 @@
 /**
  * Especie en el detalle del árbol: nombre, ID y, si se puede, «Cambiar especie»
  * (#679). En un grupo finalizado el botón se ve grisado y ofrece reabrirlo y
- * cambiar en un solo paso. Si la especie también cambió en otro lado, el usuario
- * elige cuál queda, con la misma reapertura si el grupo está finalizado.
+ * cambiar en un solo paso.
  */
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -18,7 +17,6 @@ import {
   type CambioDeEspecie,
 } from '../utils/permisosDeEdicion';
 import SelectorDeEspecie from './SelectorDeEspecie';
-import AvisoDeConflictoDeEspecie from './AvisoDeConflictoDeEspecie';
 import { treeDetailModalStyles as modalStyles } from './TreeDetailModal.styles';
 import { seccionEspecieStyles as styles } from './SeccionEspecie.styles';
 
@@ -41,18 +39,12 @@ interface Props {
 
 type Accion = () => void;
 
-/** Con el grupo finalizado, la acción espera a que el usuario lo reabra; si no, corre directo. */
-function conReapertura(requiereReabrir: boolean, onReabrirGrupo: Props['onReabrirGrupo'], confirmar: ShowFn) {
-  return (accion: Accion): Accion => () => {
-    if (!requiereReabrir) {
-      accion();
-      return;
-    }
-    showConfirmDialog(confirmar, AVISO_REABRIR_GRUPO.titulo, AVISO_REABRIR_GRUPO.mensaje, AVISO_REABRIR_GRUPO.confirmar,
-      async () => {
-        if (await onReabrirGrupo()) accion();
-      }, { icon: 'lock-open-outline' });
-  };
+/** Con el grupo finalizado, el buscador se abre recién cuando el usuario lo reabre. */
+function abrirAlReabrir(abrir: Accion, onReabrirGrupo: Props['onReabrirGrupo'], confirmar: ShowFn): Accion {
+  return () => showConfirmDialog(confirmar, AVISO_REABRIR_GRUPO.titulo, AVISO_REABRIR_GRUPO.mensaje,
+    AVISO_REABRIR_GRUPO.confirmar, async () => {
+      if (await onReabrirGrupo()) abrir();
+    }, { icon: 'lock-open-outline' });
 }
 
 function BotonCambiar({ grisado, guardando, onPress }: { grisado: boolean; guardando: boolean; onPress: Accion }) {
@@ -92,11 +84,11 @@ function DatosDeEspecie({ tree }: { tree: TreeDetail }) {
   );
 }
 
-function EdicionDeEspecie({ tree, cambio, requiereReabrir, reabrirY }: {
+function EdicionDeEspecie({ tree, cambio, requiereReabrir, onCambiar }: {
   tree: TreeDetail;
   cambio: CambioDeEspecieDelArbol;
   requiereReabrir: boolean;
-  reabrirY: (accion: Accion) => Accion;
+  onCambiar: Accion;
 }) {
   if (cambio.abierto) {
     return (
@@ -110,24 +102,20 @@ function EdicionDeEspecie({ tree, cambio, requiereReabrir, reabrirY }: {
       />
     );
   }
-  return <BotonCambiar grisado={requiereReabrir} guardando={cambio.guardando} onPress={reabrirY(cambio.abrir)} />;
+  return <BotonCambiar grisado={requiereReabrir} guardando={cambio.guardando} onPress={onCambiar} />;
 }
 
 export default function SeccionEspecie({ tree, plantacionId, cambio: permiso, onReabrirGrupo, confirmar }: Props) {
   const cambio = useCambioDeEspecie(tree, plantacionId);
   const ofrecido = seOfreceCambioDeEspecie(permiso);
   const requiereReabrir = cambioRequiereReabrir(permiso);
-  const reabrirY = conReapertura(requiereReabrir, onReabrirGrupo, confirmar);
-  const acciones = ofrecido
-    ? { usarDelServidor: reabrirY(cambio.usarDelServidor), mantenerLocal: reabrirY(cambio.mantenerLocal), ocupado: cambio.guardando }
-    : undefined;
+  const onCambiar = requiereReabrir ? abrirAlReabrir(cambio.abrir, onReabrirGrupo, confirmar) : cambio.abrir;
 
   return (
     <View style={modalStyles.section}>
       <DatosDeEspecie tree={tree} />
-      {tree.conflictEspecieId ? <AvisoDeConflictoDeEspecie tree={tree} acciones={acciones} /> : null}
       {ofrecido && (
-        <EdicionDeEspecie tree={tree} cambio={cambio} requiereReabrir={requiereReabrir} reabrirY={reabrirY} />
+        <EdicionDeEspecie tree={tree} cambio={cambio} requiereReabrir={requiereReabrir} onCambiar={onCambiar} />
       )}
     </View>
   );

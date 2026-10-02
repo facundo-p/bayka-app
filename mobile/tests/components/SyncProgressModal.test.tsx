@@ -186,6 +186,18 @@ describe('SyncProgressModal', () => {
       expect(getByText('1 foto descargada correctamente')).toBeTruthy();
     });
 
+    it('cuenta los árboles que quedaron con la especie del server, sumando los grupos (#679)', () => {
+      const { getByText } = renderModal({
+        results: [
+          { success: true, groupId: 'g1', nombre: 'Grupo 1', especiesDelServidor: 2 },
+          { success: true, groupId: 'g2', nombre: 'Grupo 2', especiesDelServidor: 1 },
+          { ...FALLA_DE_GRUPO, groupId: 'g3' },
+        ],
+        successCount: 2,
+      });
+      expect(getByText('3 árboles quedaron con la especie que se les cambió desde la web u otro celular')).toBeTruthy();
+    });
+
     it('sync sin pull (null) cae en el resultado de push', () => {
       expect(renderModal({ pullSuccess: null }).getByText('Sincronización completa')).toBeTruthy();
     });

@@ -27,13 +27,6 @@ import { abortarSiCancelado } from './cancelacion';
 import { esFuncionInexistente } from '../../supabase/postgresErrorCodes';
 import { marcarEliminadaEnServidor, desmarcarEliminadaEnServidor } from '../../repositories/EliminadaEnServidorRepository';
 import { asegurarEspecies } from './catalogoDeEspecies';
-import {
-  chocaLaEspecie,
-  conflictoDisuelto,
-  limpiarConflictosDeEspecie,
-  marcarConflictosDeEspecie,
-  type ArbolLocal,
-} from './conflictosDeEspecie';
 import { plantationSpeciesId } from '../../utils/plantationSpeciesId';
 import { comoAltasYBajas, getCambiosPendientes } from '../../repositories/CambiosDeEspeciesRepository';
 import { getAltasPendientes } from '../../repositories/TecnicosDePlantacionRepository';
@@ -305,7 +298,7 @@ function codigosDivergentes(remotas: RemoteParcela[], locales: Map<string, Parce
 
 /**
  * Una parcela con el código cambiado sin subir: los árboles que el pull trajo tienen el prefijo del
- * server, y el upsert conserva después el SubID local de los que tienen especie. Se pasan al
+ * server, y el upsert conserva después el SubID local de los que no cambian de especie. Se pasan al
  * código local ahora; al subir la parcela, el trigger hace lo mismo en el server. No marca nada.
  */
 async function reescribirSubIdsDeParcelasPendientes(divergentes: CodigoDivergente[]): Promise<void> {
@@ -558,16 +551,16 @@ function filaDeArbol(t: any) {
   };
 }
 
+/** Lo que el pull necesita saber de cada árbol local antes de escribir. */
+export type ArbolLocal = { fotoUrl: string | null; fotoSynced: boolean };
+
 /**
  * Fotos locales ya subidas cuyo árbol el server manda ahora sin foto: la
  * quitaron desde otro dispositivo (#517). El upsert limpia la referencia; el
  * archivo se borra después del commit. Una foto pendiente de subir
  * (`fotoSynced = false`) no cuenta: es la copia que el server todavía no tiene.
  */
-export function fotosQuitadasEnServer(
-  remotos: any[],
-  locales: Map<string, Pick<ArbolLocal, 'fotoUrl' | 'fotoSynced'>>,
-): string[] {
+export function fotosQuitadasEnServer(remotos: any[], locales: Map<string, ArbolLocal>): string[] {
   const quitadas: string[] = [];
   for (const remoto of remotos) {
     if (isRemoteUri(remoto.foto_url)) continue;
@@ -579,9 +572,8 @@ export function fotosQuitadasEnServer(
 
 /**
  * Upsert de un lote de árboles del server en un solo statement. Lo que llega acá
- * no tiene cambios locales sin subir (#467) ni conflicto de especie: la especie
- * del server se adopta y pasa a ser la base (#679). Un N/N del server no pisa una
- * especie local.
+ * no tiene cambios locales sin subir (#467): la especie del server se adopta y pasa
+ * a ser la base (#679). Un N/N del server no pisa una especie local.
  */
 export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<void> {
   if (remotos.length === 0) return;
@@ -612,33 +604,22 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
       longitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.longitude} ELSE excluded.longitude END`,
       gpsAccuracy: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,
       gpsCapturedAt: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsCapturedAt} ELSE excluded.gps_captured_at END`,
-      conflictEspecieId: sql`NULL`,
-      conflictEspecieNombre: sql`NULL`,
     },
   });
 }
 
 /**
- * Lo que el pull necesita de cada árbol local de esos grupos, en una sola lectura
- * (#449). Alcanza con filtrar por grupo porque un árbol nunca cambia de grupo —
- * ni el alta ni el upsert del pull tocan `group_id` después de crearlo.
+ * Foto local de cada árbol de esos grupos, en una sola lectura (#449). Alcanza con
+ * filtrar por grupo porque un árbol nunca cambia de grupo — ni el alta ni el
+ * upsert del pull tocan `group_id` después de crearlo.
  */
 async function arbolesLocalesPorId(remoteGroupIds: string[]): Promise<Map<string, ArbolLocal>> {
   const locales = await db
-    .select({
-      id: trees.id,
-      especieId: trees.especieId,
-      especieBaseId: trees.especieBaseId,
-      conflictEspecieId: trees.conflictEspecieId,
-      fotoUrl: trees.fotoUrl,
-      fotoSynced: trees.fotoSynced,
-    })
+    .select({ id: trees.id, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
     .from(trees)
     .where(inArray(trees.groupId, remoteGroupIds));
   return new Map(locales.map(({ id, ...arbol }) => [id, arbol]));
 }
-
-const grupoDelRemoto = (remoto: any): string => remoto.group_id ?? remoto.subgroup_id;
 
 /**
  * Árboles que el pull NO debe tocar (#467):
@@ -653,14 +634,14 @@ const grupoDelRemoto = (remoto: any): string => remoto.group_id ?? remoto.subgro
 function omitirDelPull(
   gruposPendientes: Set<string>,
   arbolesBorrados: Set<string>,
-  locales: Map<string, ArbolLocal>,
+  existeLocal: Map<string, ArbolLocal>,
 ) {
   return (remoto: any): boolean => {
     if (arbolesBorrados.has(remoto.id)) return true;
     // El guard protege lo que YA existe local, no bloquea la fase entera: un árbol
     // nuevo del server no puede pisar ninguna edición local, y saltearlo dejaría al
     // técnico sin ver lo que cargó otro mientras el push del grupo siga fallando.
-    return locales.has(remoto.id) && gruposPendientes.has(grupoDelRemoto(remoto));
+    return existeLocal.has(remoto.id) && gruposPendientes.has(remoto.group_id ?? remoto.subgroup_id);
   };
 }
 
@@ -694,46 +675,12 @@ async function pullTrees(
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, 0, all.length);
   if (all.length === 0) return;
 
-  await aplicarArbolesDelServer(all, grupos, borrados, onProgress);
-  emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
-}
-
-/** Marca los conflictos de especie y escribe el resto de los árboles del server. */
-async function aplicarArbolesDelServer(
-  all: any[],
-  grupos: GruposDelPull,
-  borrados: BorradosPorTipo,
-  onProgress?: OnPhaseProgress,
-): Promise<void> {
-  const locales = await arbolesLocalesPorId(grupos.ids);
-  // Descarga fresh: sin filas locales no hay nada con qué chocar.
+  const locales = await arbolesLocalesPorId(remoteGroupIds);
+  const aEscribir = await arbolesAEscribir(all, grupos, borrados, locales);
   if (locales.size === 0) syncLog.info('Pull trees: fresh download — sin árboles locales');
 
-  const enConflicto = await marcarConflictos(all, grupos, borrados, locales);
-  const sinConflicto = (await arbolesAEscribir(all, grupos, borrados, locales))
-    .filter((t: any) => !enConflicto.has(t.id));
-  await escribirArboles(sinConflicto, locales, all.length, onProgress);
-}
-
-/**
- * Los árboles que el pull no escribe porque el usuario tiene que elegir la especie
- * (#679). De paso limpia las marcas que ya no corresponden.
- */
-async function marcarConflictos(
-  all: any[],
-  grupos: GruposDelPull,
-  borrados: BorradosPorTipo,
-  locales: Map<string, ArbolLocal>,
-): Promise<Set<string>> {
-  const vigentes = all.filter((remoto: any) => !borrados.arboles.has(remoto.id));
-  const pendiente = (remoto: any) => grupos.pendientes.has(grupoDelRemoto(remoto));
-  await limpiarConflictosDeEspecie(vigentes
-    .filter((remoto: any) => conflictoDisuelto(remoto, locales.get(remoto.id), pendiente(remoto)))
-    .map((remoto: any) => remoto.id));
-  const chocan = vigentes.filter((remoto: any) => chocaLaEspecie(remoto, locales.get(remoto.id), pendiente(remoto)));
-  if (chocan.length === 0) return new Set();
-  // El nombre de la especie del server sale del catálogo local.
-  return marcarConflictosDeEspecie(await conEspecieLocal(chocan, DOWNLOAD_PHASE.arboles));
+  await escribirArboles(aEscribir, locales, all.length, onProgress);
+  emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
 }
 
 /** Descarta lo que el pull no debe pisar y los árboles cuya especie no se pudo conseguir. */

@@ -1,6 +1,6 @@
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors, iconSizes } from '../theme';
+import { colors } from '../theme';
 import { getSpeciesCode, getSpeciesName } from '../utils/speciesHelpers';
 import { isRemoteUri } from '../utils/photoUri';
 import { treeRowItemStyles as styles } from './TreeRowItem.styles';
@@ -19,8 +19,6 @@ export interface TreeItemData {
   usuarioRegistro: string;
   /** Punto GPS capturado; null/ausente = árbol sin coordenadas. */
   latitude?: number | null;
-  /** La especie también cambió en el server: se resuelve en el detalle (#679). */
-  conflictEspecieId?: string | null;
 }
 
 interface Props {
@@ -43,10 +41,6 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
       </Text>
       <Text style={styles.code} numberOfLines={1}>{getSpeciesCode(item)}</Text>
       <View style={styles.actions}>
-        {item.conflictEspecieId != null && (
-          <Ionicons testID="conflicto-especie" name="warning-outline" size={iconSizes.action}
-            color={colors.conflictoText} accessibilityLabel="Especie en conflicto" />
-        )}
         {item.latitude != null && (
           <View testID="gps-pin" style={styles.gpsPin}>
             <Ionicons name="location" size={16} color={colors.plantation} />

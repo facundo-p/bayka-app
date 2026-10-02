@@ -71,17 +71,3 @@ describe('TreeRowItem — foto sin descargar (#53)', () => {
     expect(queryByTestId('foto-sin-descargar')).toBeNull();
   });
 });
-
-describe('TreeRowItem — conflicto de especie (#679)', () => {
-  it('marca el árbol con la especie en conflicto', () => {
-    const { getByTestId } = render(
-      <TreeRowItem item={item({ conflictEspecieId: 'esp-2' })} isReadOnly={false} onViewPhoto={noop} />,
-    );
-    getByTestId('conflicto-especie');
-  });
-
-  it('sin conflicto no hay marca', () => {
-    const { queryByTestId } = render(<TreeRowItem item={item()} isReadOnly={false} onViewPhoto={noop} />);
-    expect(queryByTestId('conflicto-especie')).toBeNull();
-  });
-});

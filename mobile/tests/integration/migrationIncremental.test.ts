@@ -86,12 +86,13 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
   );
   expect(columnNames(sqlite, 'parcelas')).toContain('alta_pendiente_de');
   expect(columnNames(sqlite, 'trees')).toContain('especie_base_id');
+  expect(columnNames(sqlite, 'trees')).not.toContain('conflict_especie_id');
 
   sqlite.close();
 });
 
 // 0031 (#679): la base de un árbol que ya estaba es su especie local, salvo en un
-// grupo sin subir, donde no se sabe y queda como N/N.
+// grupo sin subir, donde no se sabe y queda como N/N. La marca de conflicto se va.
 test('0031 arranca la especie base con la local, salvo en un grupo sin subir', () => {
   const sqlite = new Database(':memory:');
   const db = drizzle(sqlite);
