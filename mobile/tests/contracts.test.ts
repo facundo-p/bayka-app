@@ -22,10 +22,13 @@ jest.mock('xlsx', () => ({
 
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/gpsCapture';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT, PHOTO_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/photoCapture';
-import { UNKNOWN_SPECIES_CODE } from '../src/utils/speciesHelpers';
+import { UNKNOWN_SPECIES_CODE, codigoParaSubId } from '../src/utils/speciesHelpers';
 import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
-import { ESTADO_PLANTACION } from '../src/constants/estados';
+import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
+import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
+import { generateSubId } from '../src/utils/idGenerator';
+import { idDeArbol } from '../src/utils/codigoDePlantacion';
 import { CODIGO_PLANTACION } from '../src/constants/codigoPlantacion';
 import type { ExportRow } from '../src/queries/exportQueries';
 
@@ -99,5 +102,50 @@ describe('contracts · estados', () => {
 describe('contracts · codigo-plantacion', () => {
   it('CODIGO_PLANTACION coincide con el contrato (que es también el CHECK de la base)', () => {
     expect(CODIGO_PLANTACION).toEqual(leerContrato('codigo-plantacion.json'));
+  });
+});
+
+describe('contracts · permisos-edicion', () => {
+  type CasoDeLaApp = { estado: EstadoPlantacion; archivada: boolean; permitido: boolean };
+  const { casos } = leerContrato('permisos-edicion.json').app as { casos: CasoDeLaApp[] };
+
+  it('trae casos', () => expect(casos.length).toBeGreaterThan(0));
+
+  // Las dimensiones que la app no comparte con sync_subgroup quedan fijas: el
+  // creador, con el grupo activo.
+  it.each(casos.map((caso) => [`${caso.estado}${caso.archivada ? ' archivada' : ''}`, caso] as const))(
+    'getCambioDeEspecie: %s',
+    (_, caso) => {
+      const cambio = getCambioDeEspecie({
+        plantacion: {
+          estado: caso.estado,
+          archivadaEn: caso.archivada ? '2026-01-01T00:00:00Z' : null,
+          eliminadaEnServidorEn: null,
+        },
+        subgroupEstado: ESTADO_GRUPO.activa,
+        isCreator: true,
+      });
+      expect(seOfreceCambioDeEspecie(cambio)).toBe(caso.permitido);
+    },
+  );
+});
+
+describe('contracts · sub-id', () => {
+  type VectorDeArmado = { parcela: string; grupo: string; especie: string | null; posicion: number; subId: string };
+  type VectorIdArbol = { subId: string; codigoPlantacion: string | null; idArbol: string };
+  const contrato = leerContrato('sub-id.json') as { armado: VectorDeArmado[]; idArbol: VectorIdArbol[] };
+
+  it('trae vectores', () => {
+    expect(contrato.armado.length).toBeGreaterThan(0);
+    expect(contrato.idArbol.length).toBeGreaterThan(0);
+  });
+
+  // Como lo arma TreeRepository: un árbol sin especie va con el código de N/N.
+  it.each(contrato.armado.map((v) => [v.subId, v] as const))('generateSubId arma %s', (_, v) => {
+    expect(generateSubId(v.parcela, v.grupo, codigoParaSubId(v.especie), v.posicion)).toBe(v.subId);
+  });
+
+  it.each(contrato.idArbol.map((v) => [v.idArbol, v] as const))('idDeArbol arma %s', (_, v) => {
+    expect(idDeArbol(v.subId, v.codigoPlantacion)).toBe(v.idArbol);
   });
 });
