@@ -3,7 +3,7 @@
 -- especie que el árbol ya tiene, exige especie habilitada, admin de la
 -- organización y plantación escribible (una finalizada solo para superadmin).
 -- `sync_subgroup` conserva la especie del server si difiere de la base que manda
--- el móvil, y devuelve esos árboles en `conservadas`.
+-- el móvil, y devuelve en `conservadas` los árboles que quedaron con otra especie.
 begin;
 select plan(29);
 
@@ -244,8 +244,8 @@ select is(
         'posicion', 5, 'sub_id', 'P1L1NN5',
         'species_id', null, 'species_base_id', null)
     )) ),
-  '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d5", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
-  'sync_subgroup devuelve el árbol en el que conservó la especie del server, no el N/N');
+  '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d5", "species_id": "b4300000-0000-0000-0000-0000000000e2"}, {"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
+  'sync_subgroup devuelve los árboles que quedaron con la especie del server, también un N/N ya resuelto');
 
 reset role;
 
@@ -262,15 +262,18 @@ select is((select species_id from trees where id = 'b4300000-0000-0000-0000-0000
   'un N/N desactualizado no deshace la resolución del server');
 
 -- El push manda todo el grupo. d6 viaja sin tocar (especie = base, vieja) y el
--- server lo tiene en Tala: lo conserva sin avisar. d5 llega cambiado a la misma
--- especie que ya tiene el server: tampoco vuelve. d7 es un N/N que el móvil
--- resolvió (base null) y el server resolvió a otra: ese sí vuelve. Con un
+-- server lo tiene en Tala: lo conserva y vuelve, para que el móvil lo adopte. d5
+-- llega cambiado a la misma especie que ya tiene el server: no vuelve. d7 es un
+-- N/N que el móvil resolvió (base null) y el server resolvió a otra: vuelve. Con un
 -- código de parcela que el móvil todavía no conoce, el SubID conservado se pasa
--- al vigente igual que el que sube el móvil.
+-- al vigente igual que el que sube el móvil. `conservadas` sale ordenada por id.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'b4300000-0000-0000-0000-0000000000a2', true);
 select is(
   ( select sync_subgroup((select g || '{"parcela_codigo": "PX"}' from grupo_43), jsonb_build_array(
+      (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d7',
+        'posicion', 5, 'sub_id', 'PXL1T43A5',
+        'species_id', 'b4300000-0000-0000-0000-0000000000e1', 'species_base_id', null),
       (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d6',
         'posicion', 4, 'sub_id', 'PXL1T43A4',
         'species_id', 'b4300000-0000-0000-0000-0000000000e1',
@@ -278,13 +281,10 @@ select is(
       (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d5',
         'posicion', 3, 'sub_id', 'PXL1T43B3',
         'species_id', 'b4300000-0000-0000-0000-0000000000e2',
-        'species_base_id', 'b4300000-0000-0000-0000-0000000000e1'),
-      (select base from arbol_43) || jsonb_build_object('id', 'b4300000-0000-0000-0000-0000000000d7',
-        'posicion', 5, 'sub_id', 'PXL1T43A5',
-        'species_id', 'b4300000-0000-0000-0000-0000000000e1', 'species_base_id', null)
+        'species_base_id', 'b4300000-0000-0000-0000-0000000000e1')
     )) ),
-  '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
-  'no vuelve un árbol sin cambiar ni uno cambiado a la del server; un N/N resuelto distinto sí');
+  '{"success": true, "conservadas": [{"id": "b4300000-0000-0000-0000-0000000000d6", "species_id": "b4300000-0000-0000-0000-0000000000e3"}, {"id": "b4300000-0000-0000-0000-0000000000d7", "species_id": "b4300000-0000-0000-0000-0000000000e2"}]}'::jsonb,
+  'vuelven un árbol sin cambiar y un N/N resuelto distinto; uno cambiado a la del server no');
 reset role;
 select is((select species_id from trees where id = 'b4300000-0000-0000-0000-0000000000d6'),
   'b4300000-0000-0000-0000-0000000000e3'::uuid, 'y el server conserva su especie');

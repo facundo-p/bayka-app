@@ -151,8 +151,9 @@ CONFLICTO_EDICION con la especie del server si la base quedó vieja, acepta la
 especie que el árbol ya tiene, rechaza una especie no habilitada (y N/N), exige
 membresía, y en una finalizada solo deja al superadmin; en una archivada a nadie.
 `sync_subgroup` con `species_base_id` conserva la especie del server si difiere de
-la base, rearma el SubID con su código, no deshace un N/N resuelto, no devuelve
-en `conservadas` un árbol que el móvil no cambió, y sin base pisa como antes
+la base, rearma el SubID con su código, no deshace un N/N resuelto, devuelve en
+`conservadas` todo árbol que quedó con otra especie que la que mandó el móvil
+(también uno sin tocar), y sin base pisa como antes
 (065, #679). `44` ramas de `sync_subgroup`
 sin otro test: el re-sync de un árbol pisa especie y SubID pero no la posición,
 y conserva foto, ids y GPS que no vienen; una especie vacía queda N/N; sin
