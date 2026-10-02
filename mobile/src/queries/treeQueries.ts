@@ -60,3 +60,14 @@ export function getTreeDetail(treeId: string) {
     .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
     .where(eq(trees.id, treeId));
 }
+
+/** Datos para nombrar el archivo de la foto de un árbol: lugar y periodo de su plantación + SubID. */
+export async function getDatosNombreDeFoto(treeId: string) {
+  const [fila] = await db
+    .select({ subId: trees.subId, lugar: plantations.lugar, periodo: plantations.periodo })
+    .from(trees)
+    .innerJoin(groups, eq(trees.groupId, groups.id))
+    .innerJoin(plantations, eq(groups.plantacionId, plantations.id))
+    .where(eq(trees.id, treeId));
+  return fila ?? null;
+}

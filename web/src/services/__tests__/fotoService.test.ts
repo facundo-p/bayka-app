@@ -1,5 +1,5 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { obtenerUrlFoto, tieneFotoSubida } from '../fotoService';
+import { obtenerUrlDescargaFoto, obtenerUrlFoto, tieneFotoSubida } from '../fotoService';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -53,5 +53,24 @@ describe('obtenerUrlFoto', () => {
   test('propaga el error de Storage', async () => {
     estadoMock.errorFirma = { message: 'objeto inexistente' };
     await expect(obtenerUrlFoto(PATH_FOTO)).rejects.toThrow('objeto inexistente');
+  });
+});
+
+describe('obtenerUrlDescargaFoto', () => {
+  test('firma pidiendo el nombre del archivo como descarga', async () => {
+    await obtenerUrlDescargaFoto(PATH_FOTO, 'foto-finca-2026-a-1.jpg');
+    expect(estadoMock.firmas).toEqual([
+      {
+        bucket: 'tree-photos',
+        path: PATH_FOTO,
+        segundos: 3600,
+        download: 'foto-finca-2026-a-1.jpg',
+      },
+    ]);
+  });
+
+  test('sin foto subida devuelve null sin firmar', async () => {
+    expect(await obtenerUrlDescargaFoto('file:///data/foto.jpg', 'x.jpg')).toBeNull();
+    expect(estadoMock.firmas).toHaveLength(0);
   });
 });

@@ -42,6 +42,14 @@
         {
           "cameraPermission": "Bayka usa la cámara para tomar fotos de los árboles."
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Bayka guarda en tu galería las fotos de árboles que elegís descargar.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": ["photo"]
+        }
       ]
     ]
   }

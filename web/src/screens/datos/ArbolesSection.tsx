@@ -14,6 +14,7 @@ import {
   type ArbolDetalle,
   type PaginaArboles,
 } from '../../queries/dataExplorerQueries';
+import { nombreArchivoFoto } from '../../services/descargas';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { codigoParcelaDe, nombreTecnicoDe } from './arbolFormato';
@@ -69,6 +70,12 @@ interface PanelArbolProps {
   arbol: ArbolDetalle;
 }
 
+/** Sin la plantación cargada no hay lugar ni periodo: null deshabilita la descarga. */
+function nombreFotoDe(seccion: SeccionArboles, arbol: ArbolDetalle): string | null {
+  const { plantacion } = seccion;
+  return plantacion ? nombreArchivoFoto(plantacion.lugar, plantacion.periodo, arbol.subId) : null;
+}
+
 /** La key remonta el panel al cambiar de fila: la foto y el mapa se rearman. */
 function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
   return (
@@ -77,6 +84,7 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
       arbol={arbol}
       parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
       tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
+      nombreFoto={nombreFotoDe(seccion, arbol)}
       onCerrar={() => seccion.setArbolSeleccionado(null)}
     />
   );

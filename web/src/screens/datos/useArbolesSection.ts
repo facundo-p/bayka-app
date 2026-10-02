@@ -4,6 +4,7 @@ import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useIdPlantacion } from '../../hooks/useIdPlantacion';
 import { usePerfiles } from '../../hooks/usePerfiles';
+import { usePlantacion } from '../../hooks/usePlantacion';
 import { nombreVisible } from '../../lib/presentacionUsuario';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
@@ -59,6 +60,7 @@ export function useArbolesSection() {
   const filtrosDatos = useFiltrosDatos();
   const [arbolSeleccionado, setArbolSeleccionado] = useState<ArbolDetalle | null>(null);
   const parcelas = useParcelasDatos(id);
+  const plantacion = usePlantacion(id).data;
   const grupos = useGruposDatos(id, filtrosDatos.filtros.parcelaId);
   const especies = useCatalogoEspecies();
   const mapas = useMapasArboles(parcelas.data);
@@ -68,6 +70,7 @@ export function useArbolesSection() {
     ...paginaArboles,
     ...mapas,
     parcelas,
+    plantacion,
     grupos,
     especies,
     arbolSeleccionado,

@@ -1,10 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { Cargando, MapaPuntos, PanelBloque, PanelLateral } from '../../components';
+import { Download } from 'lucide-react';
+import { Button, Cargando, MapaPuntos, PanelBloque, PanelLateral } from '../../components';
+import { useDescarga } from '../../hooks/useDescarga';
 import { formatearFechaCorta } from '../../lib/fechas';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
-import { obtenerUrlFoto, tieneFotoSubida } from '../../services/fotoService';
+import { descargarDesdeUrl } from '../../services/descargas';
+import {
+  obtenerUrlDescargaFoto,
+  obtenerUrlFoto,
+  tieneFotoSubida,
+} from '../../services/fotoService';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
 import { Coordenadas, EspecieConPunto } from './celdas';
@@ -14,6 +22,8 @@ interface ArbolDetallePanelProps {
   arbol: ArbolDetalle;
   parcelaCodigo: string | null;
   tecnicoNombre: string | null;
+  /** Nombre del archivo al descargar la foto; null mientras no cargó la plantación. */
+  nombreFoto: string | null;
   onCerrar: () => void;
 }
 
@@ -36,11 +46,48 @@ function FotoSubida({ fotoUrl, alt }: { fotoUrl: string; alt: string }) {
   return <img className={styles.foto} src={foto.data} alt={alt} />;
 }
 
-function BloqueFoto({ arbol }: { arbol: ArbolDetalle }) {
+const ERROR_DESCARGA_FOTO = 'No se pudo descargar la foto';
+
+/** La URL firmada lleva el nombre: Storage la sirve como adjunto aunque sea de otro origen. */
+function BotonDescargarFoto({
+  fotoUrl,
+  nombreFoto,
+}: {
+  fotoUrl: string;
+  nombreFoto: string | null;
+}) {
+  const { descargar, descargando, mensaje } = useDescarga(async () => {
+    if (!nombreFoto) return ERROR_DESCARGA_FOTO;
+    const url = await obtenerUrlDescargaFoto(fotoUrl, nombreFoto);
+    if (!url) return ERROR_DESCARGA_FOTO;
+    descargarDesdeUrl(url, nombreFoto);
+    return null;
+  }, ERROR_DESCARGA_FOTO);
+  return (
+    <>
+      <Button
+        variant="contorno"
+        size="sm"
+        loading={descargando}
+        disabled={!nombreFoto}
+        onClick={descargar}
+      >
+        <Download size={TAMANO_ICONO.md} aria-hidden />
+        Descargar
+      </Button>
+      {mensaje && <span className={styles.tenue}>{mensaje}</span>}
+    </>
+  );
+}
+
+function BloqueFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: string | null }) {
   return (
     <PanelBloque titulo="Foto">
       {tieneFotoSubida(arbol.fotoUrl) ? (
-        <FotoSubida fotoUrl={arbol.fotoUrl} alt={`Foto del árbol ${arbol.idArbol}`} />
+        <>
+          <FotoSubida fotoUrl={arbol.fotoUrl} alt={`Foto del árbol ${arbol.idArbol}`} />
+          <BotonDescargarFoto fotoUrl={arbol.fotoUrl} nombreFoto={nombreFoto} />
+        </>
       ) : (
         <span className={styles.tenue}>Sin foto</span>
       )}
@@ -88,7 +135,7 @@ function MetaDato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   );
 }
 
-type BloqueMetaProps = Omit<ArbolDetallePanelProps, 'onCerrar'>;
+type BloqueMetaProps = Omit<ArbolDetallePanelProps, 'onCerrar' | 'nombreFoto'>;
 
 function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
   return (
@@ -106,7 +153,7 @@ function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
 }
 
 /** Detalle de solo lectura de un árbol, al costado del listado: sin pie de acciones. */
-export function ArbolDetallePanel({ onCerrar, ...datos }: ArbolDetallePanelProps) {
+export function ArbolDetallePanel({ onCerrar, nombreFoto, ...datos }: ArbolDetallePanelProps) {
   const { arbol } = datos;
   return (
     <PanelLateral
@@ -115,7 +162,7 @@ export function ArbolDetallePanel({ onCerrar, ...datos }: ArbolDetallePanelProps
       onCerrar={onCerrar}
     >
       <BloqueEspecie arbol={arbol} />
-      <BloqueFoto arbol={arbol} />
+      <BloqueFoto arbol={arbol} nombreFoto={nombreFoto} />
       <BloqueGps arbol={arbol} />
       <BloqueMeta {...datos} />
     </PanelLateral>
