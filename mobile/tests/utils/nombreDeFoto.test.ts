@@ -11,6 +11,13 @@ describe('nombreDeFoto', () => {
   });
 });
 
+describe('nombreDeFoto degenerado', () => {
+  it('sin ninguna parte cae a foto.jpg', () => {
+    expect(nombreDeFoto('', '', '')).toBe('foto.jpg');
+    expect(nombreDeFoto('???', '--', '')).toBe('foto.jpg');
+  });
+});
+
 describe('mensajeDeFoto', () => {
   it('textos que ve el usuario', () => {
     expect(mensajeDeFoto('guardada')).toBe('Guardada en el álbum Bayka');
@@ -19,5 +26,8 @@ describe('mensajeDeFoto', () => {
     );
     expect(mensajeDeFoto('sin-conexion')).toMatch(/^Sin conexión/);
     expect(mensajeDeFoto('compartida')).toBeNull();
+    expect(mensajeDeFoto('descarga-fallida')).toBe('No se pudo descargar la foto. Probá de nuevo.');
+    expect(mensajeDeFoto('sin-arbol')).toBe('No se pudo identificar el árbol de esta foto.');
+    expect(mensajeDeFoto('error')).toBe('No se pudo completar la acción. Probá de nuevo.');
   });
 });

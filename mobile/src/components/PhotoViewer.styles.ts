@@ -3,6 +3,10 @@ import { colors, fontSize, spacing, fonts } from '../theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+/** ✕ del visor: tamaño del ícono y ancho de su área táctil (ícono + padding a cada lado). */
+export const TAMANO_ICONO_CERRAR = 28;
+export const ANCHO_CERRAR = TAMANO_ICONO_CERRAR + spacing.md * 2;
+
 export const photoViewerStyles = StyleSheet.create({
   container: {
     flex: 1,

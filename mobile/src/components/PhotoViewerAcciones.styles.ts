@@ -1,8 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { spacing, touchTarget } from '../theme';
-
-// ✕ del visor: ícono 28 + padding md a cada lado = 44.
-const ANCHO_CERRAR = touchTarget.min;
+import { ANCHO_CERRAR } from './PhotoViewer.styles';
 
 export const photoViewerAccionesStyles = StyleSheet.create({
   barra: {

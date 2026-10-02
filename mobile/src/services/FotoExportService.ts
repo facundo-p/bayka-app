@@ -15,47 +15,62 @@ import { nombreDeFoto } from '../utils/nombreDeFoto';
 import { ALBUM_GALERIA, RESULTADO_FOTO, type ResultadoFoto } from '../constants/fotoAcciones';
 
 const MIME_JPEG = 'image/jpeg';
+const PERMISO_FOTOS = 'photo';
 
-export interface FotoLocal {
-  uri: string;
-  /** Solo si la foto se bajó recién: el visor pasa a mostrar el archivo local. */
-  descargadaAhora: boolean;
-}
+export type FotoLocal =
+  | { ok: true; uri: string; /** Solo si se bajó recién: el visor pasa a mostrar el archivo local. */ descargadaAhora: boolean }
+  | { ok: false; resultado: ResultadoFoto };
 
-/** Uri local de la foto, bajándola si está en la nube; null sin conexión o si la descarga falla. */
-export async function asegurarFotoLocal(uri: string, treeId: string | undefined): Promise<FotoLocal | null> {
-  if (!isRemoteUri(uri)) return { uri, descargadaAhora: false };
-  if (!treeId || !estaConectado(await NetInfo.fetch())) return null;
+/** Uri local de la foto, bajándola si está en la nube; si no se puede, el motivo. */
+export async function asegurarFotoLocal(uri: string, treeId: string | undefined): Promise<FotoLocal> {
+  if (!isRemoteUri(uri)) return { ok: true, uri, descargadaAhora: false };
+  if (!treeId) return { ok: false, resultado: RESULTADO_FOTO.sinArbol };
+  if (!estaConectado(await NetInfo.fetch())) return { ok: false, resultado: RESULTADO_FOTO.sinConexion };
   const local = await descargarFotoRemota(treeId, uri);
-  return local ? { uri: local, descargadaAhora: true } : null;
+  return local
+    ? { ok: true, uri: local, descargadaAhora: true }
+    : { ok: false, resultado: RESULTADO_FOTO.descargaFallida };
 }
 
-/** Copia la foto a cache con su nombre legible, pisando una copia anterior. */
-async function copiarConNombre(uriLocal: string, treeId: string | undefined): Promise<File> {
+/** Copia la foto a cache con su nombre legible, corre `usar` y borra la copia. */
+async function conCopiaNombrada<T>(
+  uriLocal: string,
+  treeId: string | undefined,
+  usar: (copia: File) => Promise<T>,
+): Promise<T> {
   const datos = treeId ? await getDatosNombreDeFoto(treeId) : null;
-  const nombre = datos ? nombreDeFoto(datos.lugar, datos.periodo, datos.subId) : nombreDeFoto('', '', treeId ?? '');
-  const copia = new File(Paths.cache, nombre);
+  const copia = new File(Paths.cache, nombreDeFoto(datos?.lugar ?? '', datos?.periodo ?? '', datos?.subId ?? ''));
   if (copia.exists) copia.delete();
   new File(uriLocal).copy(copia);
-  return copia;
+  try {
+    return await usar(copia);
+  } finally {
+    if (copia.exists) copia.delete();
+  }
 }
 
-/** Guarda la foto en el álbum «Bayka»; pide permiso la primera vez. */
+/**
+ * Guarda la foto en el álbum «Bayka». Pide permiso de lectura de fotos, no solo de escritura:
+ * buscar el álbum exige leer (Android 13+: READ_MEDIA_IMAGES; 10-12: READ/WRITE_EXTERNAL_STORAGE).
+ * El álbum se resuelve antes de crear el asset: si falla, no queda una foto suelta que un
+ * reintento duplicaría.
+ */
 export async function guardarFotoEnGaleria(uriLocal: string, treeId: string | undefined): Promise<ResultadoFoto> {
-  // writeOnly: alcanza para guardar y no pide acceso a las demás fotos del teléfono.
-  const permiso = await MediaLibrary.requestPermissionsAsync(true);
+  const permiso = await MediaLibrary.requestPermissionsAsync(false, [PERMISO_FOTOS]);
   if (!permiso.granted) return RESULTADO_FOTO.sinPermiso;
-  const copia = await copiarConNombre(uriLocal, treeId);
-  const asset = await MediaLibrary.createAssetAsync(copia.uri);
   const album = await MediaLibrary.getAlbumAsync(ALBUM_GALERIA);
-  if (album) await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-  else await MediaLibrary.createAlbumAsync(ALBUM_GALERIA, asset, false);
+  await conCopiaNombrada(uriLocal, treeId, async (copia) => {
+    const asset = await MediaLibrary.createAssetAsync(copia.uri);
+    if (album) await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
+    else await MediaLibrary.createAlbumAsync(ALBUM_GALERIA, asset, false);
+  });
   return RESULTADO_FOTO.guardada;
 }
 
 /** Abre la hoja de compartir del sistema con la foto. */
 export async function compartirFoto(uriLocal: string, treeId: string | undefined): Promise<ResultadoFoto> {
-  const copia = await copiarConNombre(uriLocal, treeId);
-  await Sharing.shareAsync(copia.uri, { mimeType: MIME_JPEG, dialogTitle: 'Compartir foto' });
+  await conCopiaNombrada(uriLocal, treeId, (copia) =>
+    Sharing.shareAsync(copia.uri, { mimeType: MIME_JPEG, dialogTitle: 'Compartir foto' }),
+  );
   return RESULTADO_FOTO.compartida;
 }

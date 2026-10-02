@@ -25,13 +25,15 @@ export function useAccionesDeFoto(
     setOcupado(true);
     try {
       const foto = await asegurarFotoLocal(uri, treeId);
-      let resultado: ResultadoFoto = RESULTADO_FOTO.sinConexion;
-      if (foto) {
+      let resultado: ResultadoFoto;
+      if (foto.ok) {
         if (foto.descargadaAhora) {
           notifyDataChanged();
           onDescargada?.(foto.uri);
         }
         resultado = await accion(foto.uri, treeId);
+      } else {
+        resultado = foto.resultado;
       }
       const mensaje = mensajeDeFoto(resultado);
       if (mensaje) avisoBreve(mensaje);

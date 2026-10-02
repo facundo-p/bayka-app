@@ -22,7 +22,7 @@ import { colors } from '../theme';
 import { isRemoteUri } from '../utils/photoUri';
 import FotoRemota from './FotoRemota';
 import PhotoViewerAcciones from './PhotoViewerAcciones';
-import { photoViewerStyles as styles } from './PhotoViewer.styles';
+import { photoViewerStyles as styles, TAMANO_ICONO_CERRAR } from './PhotoViewer.styles';
 
 interface Props {
   uri: string | null;
@@ -118,7 +118,7 @@ export default function PhotoViewer({ uri, treeId, onClose, onReplace, onRemove 
     >
       <GestureHandlerRootView style={styles.container}>
         <Pressable style={styles.closeButton} onPress={handleClose} hitSlop={12} accessibilityLabel="Cerrar">
-          <Ionicons name="close" size={28} color={colors.white} />
+          <Ionicons name="close" size={TAMANO_ICONO_CERRAR} color={colors.white} />
         </Pressable>
         <PhotoViewerAcciones
           uri={visible}

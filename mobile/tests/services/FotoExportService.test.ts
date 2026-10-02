@@ -54,12 +54,12 @@ describe('guardarFotoEnGaleria', () => {
     expect(ml.createAssetAsync).not.toHaveBeenCalled();
   });
 
-  it('pide permiso solo de escritura y crea el álbum Bayka con el nombre legible', async () => {
+  it('pide permiso de lectura de fotos y crea el álbum Bayka con el nombre legible', async () => {
     ml.requestPermissionsAsync.mockResolvedValue({ granted: true } as never);
     ml.getAlbumAsync.mockResolvedValue(null as never);
     const res = await guardarFotoEnGaleria('file:///photos/a.jpg', 't1');
     expect(res).toBe('guardada');
-    expect(ml.requestPermissionsAsync).toHaveBeenCalledWith(true);
+    expect(ml.requestPermissionsAsync).toHaveBeenCalledWith(false, ['photo']);
     expect(ml.createAssetAsync).toHaveBeenCalledWith('file:///cache/foto-finca-el-alamo-2026-a-12.jpg');
     expect(ml.createAlbumAsync).toHaveBeenCalledWith('Bayka', { id: 'asset-1' }, false);
   });
@@ -71,6 +71,23 @@ describe('guardarFotoEnGaleria', () => {
     await guardarFotoEnGaleria('file:///photos/a.jpg', 't1');
     expect(ml.addAssetsToAlbumAsync).toHaveBeenCalledWith([{ id: 'asset-1' }], album, false);
     expect(ml.createAlbumAsync).not.toHaveBeenCalled();
+  });
+
+  it('si getAlbumAsync rechaza (PermissionsException) no crea la foto y propaga el error', async () => {
+    ml.requestPermissionsAsync.mockResolvedValue({ granted: true } as never);
+    ml.getAlbumAsync.mockRejectedValue(new Error('PermissionsException'));
+    await expect(guardarFotoEnGaleria('file:///photos/a.jpg', 't1')).rejects.toThrow('PermissionsException');
+    expect(ml.createAssetAsync).not.toHaveBeenCalled();
+    expect(ml.createAlbumAsync).not.toHaveBeenCalled();
+  });
+
+  it('borra la copia de cache al terminar, también si falla', async () => {
+    ml.requestPermissionsAsync.mockResolvedValue({ granted: true } as never);
+    ml.getAlbumAsync.mockResolvedValue(null as never);
+    ml.createAssetAsync.mockRejectedValueOnce(new Error('disco lleno'));
+    mockExists = true;
+    await expect(guardarFotoEnGaleria('file:///photos/a.jpg', 't1')).rejects.toThrow('disco lleno');
+    expect(mockDelete).toHaveBeenCalledTimes(2);
   });
 
   it('pisa la copia anterior en cache', async () => {
@@ -96,13 +113,13 @@ describe('compartirFoto', () => {
 describe('asegurarFotoLocal', () => {
   it('una foto local se usa tal cual, sin mirar la red', async () => {
     const res = await asegurarFotoLocal('file:///photos/a.jpg', 't1');
-    expect(res).toEqual({ uri: 'file:///photos/a.jpg', descargadaAhora: false });
+    expect(res).toEqual({ ok: true, uri: 'file:///photos/a.jpg', descargadaAhora: false });
     expect(NetInfo.fetch).not.toHaveBeenCalled();
   });
 
   it('una foto en la nube sin conexión da null y no intenta bajarla', async () => {
     (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: false, isInternetReachable: false });
-    expect(await asegurarFotoLocal('plantacion/t1.jpg', 't1')).toBeNull();
+    expect(await asegurarFotoLocal('plantacion/t1.jpg', 't1')).toEqual({ ok: false, resultado: 'sin-conexion' });
     expect(descargarFotoRemota).not.toHaveBeenCalled();
   });
 
@@ -110,14 +127,19 @@ describe('asegurarFotoLocal', () => {
     (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: true, isInternetReachable: true });
     (descargarFotoRemota as jest.Mock).mockResolvedValue('file:///photos/t1.jpg');
     expect(await asegurarFotoLocal('plantacion/t1.jpg', 't1')).toEqual({
+      ok: true,
       uri: 'file:///photos/t1.jpg',
       descargadaAhora: true,
     });
   });
 
-  it('si la descarga falla da null', async () => {
+  it('con conexión pero descarga fallida, es descarga-fallida y no sin-conexion', async () => {
     (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: true, isInternetReachable: true });
     (descargarFotoRemota as jest.Mock).mockResolvedValue(null);
-    expect(await asegurarFotoLocal('plantacion/t1.jpg', 't1')).toBeNull();
+    expect(await asegurarFotoLocal('plantacion/t1.jpg', 't1')).toEqual({ ok: false, resultado: 'descarga-fallida' });
+  });
+
+  it('una foto en la nube sin treeId es sin-arbol', async () => {
+    expect(await asegurarFotoLocal('plantacion/t1.jpg', undefined)).toEqual({ ok: false, resultado: 'sin-arbol' });
   });
 });

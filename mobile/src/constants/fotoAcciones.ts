@@ -5,6 +5,8 @@ export const RESULTADO_FOTO = {
   compartida: 'compartida',
   sinPermiso: 'sin-permiso',
   sinConexion: 'sin-conexion',
+  descargaFallida: 'descarga-fallida',
+  sinArbol: 'sin-arbol',
   error: 'error',
 } as const;
 export type ResultadoFoto = (typeof RESULTADO_FOTO)[keyof typeof RESULTADO_FOTO];
