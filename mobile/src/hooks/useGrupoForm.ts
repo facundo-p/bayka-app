@@ -39,9 +39,9 @@ function erroresDelFormulario(
 }
 
 /**
- * Estado y submit del formulario de grupo, (#89) para que
- * la botonera pueda vivir en un footer fijo (NuevoGrupoScreen) sin duplicar la
- * lógica de validación/errores.
+ * Estado y submit del formulario de grupo, compartido entre NuevoGrupoScreen y
+ * EditarGrupoModal (#89); permite que la botonera viva en un footer fijo sin
+ * duplicar validación/errores.
  */
 export function useGrupoForm({ mode, initialValues, onSubmit, confirmar }: Params) {
   const [nombre, setNombre] = useState(initialValues?.nombre ?? '');

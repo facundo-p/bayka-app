@@ -64,7 +64,7 @@ describe('EditarGrupoModal usa el template de formularios', () => {
     expect(src).toContain('EntityFormModal');
     expect(src).toContain('useGrupoForm');
     expect(src).toContain('GrupoFields');
-    expect(src).toMatch(/footer=\{[\s\S]*FormActions/);
+    expect(src).toMatch(/footer=\{\s*<FormActions/);
     expect(src).not.toContain('KeyboardAvoidingView');
   });
 });
