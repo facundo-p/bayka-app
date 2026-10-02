@@ -60,6 +60,7 @@ function renderPanel(
   {
     parcelaCodigo = 'P-01' as string | null,
     tecnicoNombre = 'Lucía Ferreyra' as string | null,
+    nombreFoto = 'foto-finca-2026-a-001.jpg' as string | null,
   } = {},
 ) {
   const onCerrar = vi.fn();
@@ -70,7 +71,7 @@ function renderPanel(
         arbol={datos}
         parcelaCodigo={parcelaCodigo}
         tecnicoNombre={tecnicoNombre}
-        nombreFoto="foto-finca-2026-a-001.jpg"
+        nombreFoto={nombreFoto}
         onCerrar={onCerrar}
       />
     </QueryClientProvider>,
@@ -164,6 +165,11 @@ describe('descarga de la foto', () => {
       'https://firmada.test/foto.jpg?download=x',
       'foto-finca-2026-a-001.jpg',
     );
+  });
+
+  test('con la plantación sin cargar el botón está deshabilitado', () => {
+    renderPanel(arbol({ fotoUrl: FOTO_SUBIDA }), { nombreFoto: null });
+    expect(screen.getByRole('button', { name: 'Descargar' })).toBeDisabled();
   });
 
   test('si no se puede firmar avisa y no descarga', async () => {

@@ -22,8 +22,8 @@ interface ArbolDetallePanelProps {
   arbol: ArbolDetalle;
   parcelaCodigo: string | null;
   tecnicoNombre: string | null;
-  /** Nombre del archivo al descargar la foto. */
-  nombreFoto: string;
+  /** Nombre del archivo al descargar la foto; null mientras no cargó la plantación. */
+  nombreFoto: string | null;
   onCerrar: () => void;
 }
 
@@ -49,8 +49,15 @@ function FotoSubida({ fotoUrl, alt }: { fotoUrl: string; alt: string }) {
 const ERROR_DESCARGA_FOTO = 'No se pudo descargar la foto';
 
 /** La URL firmada lleva el nombre: Storage la sirve como adjunto aunque sea de otro origen. */
-function BotonDescargarFoto({ fotoUrl, nombreFoto }: { fotoUrl: string; nombreFoto: string }) {
+function BotonDescargarFoto({
+  fotoUrl,
+  nombreFoto,
+}: {
+  fotoUrl: string;
+  nombreFoto: string | null;
+}) {
   const { descargar, descargando, mensaje } = useDescarga(async () => {
+    if (!nombreFoto) return ERROR_DESCARGA_FOTO;
     const url = await obtenerUrlDescargaFoto(fotoUrl, nombreFoto);
     if (!url) return ERROR_DESCARGA_FOTO;
     descargarDesdeUrl(url, nombreFoto);
@@ -58,7 +65,13 @@ function BotonDescargarFoto({ fotoUrl, nombreFoto }: { fotoUrl: string; nombreFo
   }, ERROR_DESCARGA_FOTO);
   return (
     <>
-      <Button variant="contorno" size="sm" loading={descargando} onClick={descargar}>
+      <Button
+        variant="contorno"
+        size="sm"
+        loading={descargando}
+        disabled={!nombreFoto}
+        onClick={descargar}
+      >
         <Download size={TAMANO_ICONO.md} aria-hidden />
         Descargar
       </Button>
@@ -67,7 +80,7 @@ function BotonDescargarFoto({ fotoUrl, nombreFoto }: { fotoUrl: string; nombreFo
   );
 }
 
-function BloqueFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: string }) {
+function BloqueFoto({ arbol, nombreFoto }: { arbol: ArbolDetalle; nombreFoto: string | null }) {
   return (
     <PanelBloque titulo="Foto">
       {tieneFotoSubida(arbol.fotoUrl) ? (

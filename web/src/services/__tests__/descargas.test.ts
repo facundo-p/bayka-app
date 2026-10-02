@@ -74,4 +74,5 @@ test('nombreArchivoFoto arma foto-<lugar>-<periodo>-<subId>.jpg y omite partes v
     'foto-finca-el-alamo-2026-a-12.jpg',
   );
   expect(nombreArchivoFoto('', '2026', 'A-12')).toBe('foto-2026-a-12.jpg');
+  expect(nombreArchivoFoto('', '', '')).toBe('foto.jpg');
 });

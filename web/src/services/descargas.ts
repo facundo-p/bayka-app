@@ -28,7 +28,7 @@ export function nombreArchivoDescarga(
 /** Nombre `foto-<lugar>-<periodo>-<subId>.jpg`; mismo formato que la app. */
 export function nombreArchivoFoto(lugar: string, periodo: string, subId: string): string {
   const partes = [aSlug(lugar), aSlug(periodo), aSlug(subId)].filter(Boolean);
-  return `foto-${partes.join('-')}.jpg`;
+  return partes.length > 0 ? `foto-${partes.join('-')}.jpg` : 'foto.jpg';
 }
 
 /** Descarga una URL ya firmada con `download`: Storage la sirve como adjunto, porque el
