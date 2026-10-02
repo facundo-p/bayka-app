@@ -236,9 +236,12 @@ function cantidad(n: number, singular: string, plural: string): string {
   return `${n} ${n > 1 ? plural : singular}`;
 }
 
-function Conteo({ n, singular, plural, falla }: { n?: number; singular: string; plural: string; falla?: boolean }) {
+type PropsDeConteo = { n?: number; singular: string; plural: string; falla?: boolean; aviso?: boolean };
+
+function Conteo({ n, singular, plural, falla, aviso }: PropsDeConteo) {
   if (n == null || n <= 0) return null;
-  return <Text style={falla ? styles.failureMessage : styles.successText}>{cantidad(n, singular, plural)}</Text>;
+  const estilo = falla ? styles.failureMessage : styles.successText;
+  return <Text style={aviso ? styles.avisoText : estilo}>{cantidad(n, singular, plural)}</Text>;
 }
 
 function FotosDescargadas({ photoResult }: { photoResult: PhotoResult | null }) {
@@ -298,7 +301,7 @@ function ResultadoPull(p: Props) {
   );
 }
 
-/** Árboles cambiados acá y en el server: gana el server (#679). */
+/** Árboles cambiados acá y en el server: gana el server (#679). Neutro: no es un éxito ni una falla. */
 const CONTEO_ESPECIE_DEL_SERVIDOR = {
   singular: 'árbol quedó con la especie que se le cambió desde la web u otro celular',
   plural: 'árboles quedaron con la especie que se les cambió desde la web u otro celular',
@@ -308,7 +311,7 @@ function ConteosDePush({ successCount, photoResult, results }: Pick<Props, 'succ
   return (
     <>
       <Conteo n={successCount} singular="grupo sincronizado" plural="grupos sincronizados" />
-      <Conteo n={arbolesConEspecieDelServidor(results)} {...CONTEO_ESPECIE_DEL_SERVIDOR} />
+      <Conteo n={arbolesConEspecieDelServidor(results)} {...CONTEO_ESPECIE_DEL_SERVIDOR} aviso />
       <Conteo n={photoResult?.uploaded} singular="foto subida correctamente" plural="fotos subidas correctamente" />
       <Conteo n={photoResult?.uploadFailed} singular="foto no pudo subirse." plural="fotos no pudieron subirse." falla />
       <Conteo

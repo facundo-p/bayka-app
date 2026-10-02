@@ -86,13 +86,14 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
   );
   expect(columnNames(sqlite, 'parcelas')).toContain('alta_pendiente_de');
   expect(columnNames(sqlite, 'trees')).toContain('especie_base_id');
-  expect(columnNames(sqlite, 'trees')).not.toContain('conflict_especie_id');
+  // Sin uso desde #679, pero siguen: un JS anterior (rollback, OTA de otra branch) las nombra.
+  expect(columnNames(sqlite, 'trees')).toEqual(expect.arrayContaining(['conflict_especie_id', 'conflict_especie_nombre']));
 
   sqlite.close();
 });
 
 // 0031 (#679): la base de un árbol que ya estaba es su especie local, salvo en un
-// grupo sin subir, donde no se sabe y queda como N/N. La marca de conflicto se va.
+// grupo sin subir, donde no se sabe y queda como N/N.
 test('0031 arranca la especie base con la local, salvo en un grupo sin subir', () => {
   const sqlite = new Database(':memory:');
   const db = drizzle(sqlite);

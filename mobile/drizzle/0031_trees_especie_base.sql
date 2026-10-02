@@ -6,8 +6,4 @@
 -- la del server y la sync lo avisa.
 ALTER TABLE `trees` ADD `especie_base_id` text;--> statement-breakpoint
 UPDATE `trees` SET `especie_base_id` = `especie_id`
- WHERE `group_id` NOT IN (SELECT `id` FROM `groups` WHERE `pending_sync` = 1);--> statement-breakpoint
--- Sin marca de conflicto por árbol: si los dos lados cambiaron la especie, gana
--- la del server. Las columnas no tienen índice ni FK: DROP COLUMN alcanza.
-ALTER TABLE `trees` DROP COLUMN `conflict_especie_id`;--> statement-breakpoint
-ALTER TABLE `trees` DROP COLUMN `conflict_especie_nombre`;
+ WHERE `group_id` NOT IN (SELECT `id` FROM `groups` WHERE `pending_sync` = 1);

@@ -416,6 +416,27 @@ async function codigoDeParcelaLista(parcelaId: string): Promise<string | null> {
   return row?.codigo ?? null;
 }
 
+/**
+ * El server aceptó el grupo: asienta las especies y después baja la marca. Un
+ * error acá no deshace la subida ni es un error del grupo: queda pendiente, y la
+ * próxima sync lo vuelve a subir y asentar.
+ */
+async function asentarGrupoSubido(
+  sg: Group,
+  sgTrees: ArbolDeGrupo[],
+  data: unknown,
+  result: Extract<SyncGroupResult, { success: true }>,
+): Promise<void> {
+  try {
+    const avisos = await asentarEspeciesSubidas(sgTrees, data);
+    if (avisos > 0) result.especiesDelServidor = avisos;
+    await markGroupSynced(sg.id);
+  } catch (e) {
+    relanzarSiEsCancelacion(e);
+    syncLog.error(`Error al asentar "${sg.nombre}" (${sg.id}) después del push:`, e);
+  }
+}
+
 // ─── Upload syncable groups ───────────────────────────────────────────────
 
 export async function uploadSyncableGroups(
@@ -448,12 +469,7 @@ export async function uploadSyncableGroups(
     try {
       const { data, error } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
-      if (result.success) {
-        // Antes de bajar la marca: si se corta en el medio, el grupo se vuelve a subir.
-        const delServidor = await asentarEspeciesSubidas(sgTrees, data);
-        if (delServidor > 0) result.especiesDelServidor = delServidor;
-        await markGroupSynced(sg.id);
-      }
+      if (result.success) await asentarGrupoSubido(sg, sgTrees, data, result);
       await anotarResultado(plantacionId, result);
       results.push(result);
     } catch (e) {

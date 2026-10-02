@@ -571,9 +571,23 @@ export function fotosQuitadasEnServer(remotos: any[], locales: Map<string, Arbol
 }
 
 /**
+ * La especie del server se adopta y pasa a ser la base (#679); un N/N del server no
+ * pisa una especie local. Con la misma especie se conserva el SubID local: puede
+ * llevar un código de parcela que todavía no subió. Con otra se toma el del server,
+ * y `reescribirSubIdsDeParcelasPendientes` le pone ese código después.
+ */
+function especieDelServer() {
+  const cambiaLaEspecie = sql`excluded.especie_id IS NOT NULL AND excluded.especie_id IS NOT ${trees.especieId}`;
+  return {
+    especieId: sql`COALESCE(excluded.especie_id, ${trees.especieId})`,
+    especieBaseId: sql`COALESCE(excluded.especie_id, ${trees.especieBaseId})`,
+    subId: sql`CASE WHEN ${cambiaLaEspecie} OR ${trees.especieId} IS NULL THEN excluded.sub_id ELSE ${trees.subId} END`,
+  };
+}
+
+/**
  * Upsert de un lote de árboles del server en un solo statement. Lo que llega acá
- * no tiene cambios locales sin subir (#467): la especie del server se adopta y pasa
- * a ser la base (#679). Un N/N del server no pisa una especie local.
+ * no tiene cambios locales sin subir (#467).
  */
 export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<void> {
   if (remotos.length === 0) return;
@@ -581,17 +595,12 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
   // La foto local se conserva mientras esté pendiente de subir o el server siga
   // teniendo foto; si ya se subió y el server la quitó, se limpia (#517).
   const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR excluded.foto_synced = 1)`;
-  const cambiaLaEspecie = sql`excluded.especie_id IS NOT NULL AND excluded.especie_id IS NOT ${trees.especieId}`;
 
   await tx.insert(trees).values(remotos.map(filaDeArbol)).onConflictDoUpdate({
     target: trees.id,
     set: {
-      especieId: sql`COALESCE(excluded.especie_id, ${trees.especieId})`,
-      especieBaseId: sql`COALESCE(excluded.especie_id, ${trees.especieBaseId})`,
+      ...especieDelServer(),
       posicion: sql`excluded.posicion`,
-      // Con la misma especie se conserva el SubID local: puede llevar un código de parcela que todavía no subió.
-      // Con otra se toma el del server, y `reescribirSubIdsDeParcelasPendientes` le pone ese código después.
-      subId: sql`CASE WHEN ${cambiaLaEspecie} OR ${trees.especieId} IS NULL THEN excluded.sub_id ELSE ${trees.subId} END`,
       fotoUrl: sql`CASE WHEN ${conservarFotoLocal} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
       // `excluded.foto_synced` es el "hay foto en el server" de ESA fila: con un
       // insert multi-fila la condición viaja en los valores, no en el `set`.

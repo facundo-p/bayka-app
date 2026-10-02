@@ -1,6 +1,8 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import SyncProgressModal from '../../src/components/SyncProgressModal';
+import { colors } from '../../src/theme';
 
 type Props = React.ComponentProps<typeof SyncProgressModal>;
 
@@ -196,6 +198,16 @@ describe('SyncProgressModal', () => {
         successCount: 2,
       });
       expect(getByText('3 árboles quedaron con la especie que se les cambió desde la web u otro celular')).toBeTruthy();
+    });
+
+    it('en singular para un solo árbol', () => {
+      const { getByText } = renderModal({
+        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1', especiesDelServidor: 1 }],
+        successCount: 1,
+      });
+      const aviso = getByText('1 árbol quedó con la especie que se le cambió desde la web u otro celular');
+      // Neutro: se descartó un cambio del usuario, no es un éxito.
+      expect(StyleSheet.flatten(aviso.props.style).color).toBe(colors.textSecondary);
     });
 
     it('sync sin pull (null) cae en el resultado de push', () => {

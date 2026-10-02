@@ -1,7 +1,7 @@
 import { db } from '../database/client';
 import { enTransaccion, enTransaccionPorLotes } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
-import { eq, max, and, isNotNull } from 'drizzle-orm';
+import { eq, max, and, isNotNull, sql } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -154,34 +154,42 @@ export async function cambiarEspecie(treeId: string, especieId: string): Promise
 /** La especie con la que un árbol viajó en el push, y su base de entonces. */
 export type EspecieSubida = { id: string; especieId: string | null; especieBaseId: string | null };
 
+/** El árbol viajó con una especie cambiada en este dispositivo. */
+export const cambiadaAca = (subida: EspecieSubida) => subida.especieId !== subida.especieBaseId;
+
 /**
  * Después de un push confirmado, la especie que se subió pasa a ser la base
  * (#679): la del payload, no la de la fila, que pudo cambiar durante el push.
  */
 export async function confirmarEspeciesSubidas(subidas: EspecieSubida[]): Promise<void> {
-  const cambiadas = subidas.filter((subida) => subida.especieId !== subida.especieBaseId);
-  await enTransaccionPorLotes(cambiadas, async (tx, lote) => {
+  await enTransaccionPorLotes(subidas.filter(cambiadaAca), async (tx, lote) => {
     for (const subida of lote) {
       await tx.update(trees).set({ especieBaseId: subida.especieId }).where(eq(trees.id, subida.id));
     }
   });
 }
 
+/** Árbol que el server dejó con otra especie que la que subió este dispositivo. */
+export type EspecieDelServidor = { id: string; especieId: string; especieSubida: string | null };
+
 /**
  * Árboles en los que el server se quedó con su especie (#679): gana la del server.
- * Pasa a ser la especie y la base, con el SubID armado con los códigos locales. Sin
- * esa especie en el catálogo local el árbol queda como está y la adopta el pull.
- * Devuelve cuántos la adoptaron.
+ * Pasa a ser la especie y la base, con el SubID armado con los códigos locales.
+ * Queda como está un árbol que cambió acá durante el push, o cuya especie falta en
+ * el catálogo local. Devuelve los ids que la adoptaron.
  */
-export async function adoptarEspeciesDelServidor(arboles: { id: string; especieId: string }[]): Promise<number> {
-  let adoptados = 0;
-  for (const { id, especieId } of arboles) {
+export async function adoptarEspeciesDelServidor(arboles: EspecieDelServidor[]): Promise<string[]> {
+  const adoptados: string[] = [];
+  for (const { id, especieId, especieSubida } of arboles) {
     const destino = await destinoDelCambio(id, especieId);
     if (!destino) continue;
-    await db.update(trees).set({ especieId, especieBaseId: especieId, subId: destino.subId }).where(eq(trees.id, id));
-    adoptados++;
+    const escritos = await db.update(trees)
+      .set({ especieId, especieBaseId: especieId, subId: destino.subId })
+      .where(and(eq(trees.id, id), sql`${trees.especieId} IS ${especieSubida}`))
+      .returning({ id: trees.id });
+    if (escritos.length > 0) adoptados.push(id);
   }
-  if (adoptados > 0) notifyDataChanged();
+  if (adoptados.length > 0) notifyDataChanged();
   return adoptados;
 }
 
