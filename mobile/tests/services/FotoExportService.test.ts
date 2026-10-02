@@ -100,6 +100,12 @@ describe('guardarFotoEnGaleria', () => {
 });
 
 describe('compartirFoto', () => {
+  it('no borra la copia de cache tras compartir', async () => {
+    mockExists = true;
+    await compartirFoto('file:///photos/a.jpg', 't1');
+    expect(mockDelete).toHaveBeenCalledTimes(1); // solo la copia previa, antes de copiar
+  });
+
   it('copia a cache con nombre legible y abre la hoja de compartir', async () => {
     const res = await compartirFoto('file:///photos/a.jpg', 't1');
     expect(res).toBe('compartida');
