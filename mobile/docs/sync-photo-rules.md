@@ -133,7 +133,7 @@ Vale igual para un N/N resuelto distinto en dos dispositivos que para un cambio 
 - Device B, con el grupo sin subir, lo cambia a Y. Su base sigue siendo la anterior, y el pull no toca el árbol
 - Al subir, `sync_subgroup` conserva X (difiere de la base de B) y la devuelve en `conservadas`
 - B adopta X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
-- Un árbol que B no tocó no vuelve en `conservadas`: el pull siguiente baja X sin aviso
+- Un árbol que B no tocó también vuelve en `conservadas`: B adopta X sin aviso
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 

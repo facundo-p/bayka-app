@@ -633,8 +633,8 @@ pisa:
 
 ```
 web (RPC cambiar_especie_arbol): rechaza con CONFLICTO_EDICION y muestra la vigente
-sync del celular: gana la del servidor; si el celular también la había
-  cambiado, adopta la del servidor y la sync avisa cuántos árboles fueron
+sync del celular: gana la del servidor y el celular la adopta; si también la
+  había cambiado, la sync avisa cuántos árboles fueron
 ```
 
 ---

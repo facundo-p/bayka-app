@@ -319,9 +319,9 @@ offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
 **La especie de cada árbol viaja con su base** (#679). El dispositivo guarda en
 `trees.especie_base_id` la última especie que vio en el server, y `sync_subgroup`
 la recibe como `species_base_id`: si el server ya tiene otra (la cambió la web u
-otro celular), gana la del server. Los árboles que el celular cambió y en los que
-el server se quedó con la suya vuelven en `conservadas`: el celular los adopta y
-la sync avisa cuántos fueron. En el resto, la especie subida pasa a ser la base.
+otro celular), gana la del server. Los árboles en los que el server se quedó con
+la suya vuelven en `conservadas`: el celular los adopta y la sync avisa cuántos
+de esos había cambiado. En el resto, la especie subida pasa a ser la base.
 El pull adopta la especie del server en los grupos sin cambios locales. La web
 cambia la especie por `cambiar_especie_arbol` (admin u, en una finalizada,
 superadmin), con la misma base.
