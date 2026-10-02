@@ -31,6 +31,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
+import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
@@ -318,8 +319,12 @@ export default function TreeRegistrationScreen() {
         }}
         onRemove={() => {
           if (!viewingPhoto) return;
-          void treeReg.removePhoto(viewingPhoto.treeId);
-          setViewingPhoto(null);
+          const { treeId } = viewingPhoto;
+          const fotoSynced = sortedTrees.find((t) => t.id === treeId)?.fotoSynced ?? false;
+          confirmarQuitarFoto(confirm.show, fotoSynced, () => {
+            void treeReg.removePhoto(treeId);
+            setViewingPhoto(null);
+          });
         }}
       />
 
