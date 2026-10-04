@@ -386,7 +386,8 @@ export function classifyRpcResult(
   }
   syncLog.error(`RPC rejected "${sg.nombre}" (${sg.id}):`, JSON.stringify(data));
   // Los códigos que sync_subgroup devuelve explícitamente: unicidad de código y nombre por parcela (#626),
-  // guard de membresía, y plantación finalizada o archivada (#469, #477).
+  // guard de membresía, y plantación finalizada o archivada (#469, #477). REFERENCIA_AJENA (#732)
+  // queda como UNKNOWN a propósito: un cliente legítimo no la recibe nunca.
   const RPC_CODES: SyncErrorCode[] = [
     SYNC_ERROR.DUPLICATE_CODE,
     SYNC_ERROR.DUPLICATE_NAME,
