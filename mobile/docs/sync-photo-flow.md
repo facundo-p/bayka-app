@@ -295,12 +295,15 @@ Cuando el usuario sincroniza después de resolver N/N:
 
 **Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y.
 
-1. User A sincroniza → servidor tiene `species_id = X`
-2. User B sincroniza → pull detecta conflicto (local Y ≠ server X)
-   - Almacena `conflictEspecieId = X`, `conflictEspecieNombre = 'Nombre de X'`
-3. NNResolutionScreen muestra banner de conflicto:
-   - **Aceptar servidor:** `acceptServerResolution()` → resuelve como X
-   - **Mantener local:** `keepLocalResolution()` → limpia markers, mantiene Y
+- Si el grupo de B tiene cambios sin subir, el pull no toca ese árbol y el push
+  sube Y (gana el último que sube).
+- Si B ya subió Y y después el server quedó con X, el pull de B detecta el
+  conflicto (local Y ≠ server X): almacena `conflictEspecieId = X`,
+  `conflictEspecieNombre = 'Nombre de X'` y no pisa Y. Nada sube Y ni aplica X
+  por sí solo; la marca queda hasta que local y server coincidan.
+
+Ninguna pantalla muestra la marca: la de N/N solo lista árboles sin especie, y
+el conflicto solo se marca en árboles con especie local (#733).
 
 ---
 
@@ -395,7 +398,7 @@ de parcelas —que incluye el tombstone— además exige `is_admin()` (056, #640
 | `foto_url` | text | sí | Ruta de Storage o `file://` local. `null` = sin foto |
 | `foto_synced` | integer | no | `0` = foto local pendiente de upload. `1` = foto en Storage |
 | `conflict_especie_id` | text | sí | Especie del servidor cuando hay conflicto de resolución |
-| `conflict_especie_nombre` | text | sí | Nombre de la especie en conflicto (para mostrar en UI) |
+| `conflict_especie_nombre` | text | sí | Nombre de la especie en conflicto |
 
 ---
 

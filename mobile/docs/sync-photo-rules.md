@@ -128,10 +128,11 @@ Si `uploadPhotoToStorage` falla para un árbol:
 ### Caso 4: Dos dispositivos resuelven el mismo N/N diferente
 
 - Device A resuelve como Especie X, sincroniza → servidor tiene X
-- Device B resuelve como Especie Y, sincroniza → pull detecta conflicto (local Y ≠ server X)
-- Device B muestra banner "Conflicto detectado":
-  - "Aceptar servidor": cambia a X
-  - "Mantener local": mantiene Y (sobreescribe servidor en la próxima sync)
+- Device B resuelve como Especie Y con el grupo pendiente: el pull no toca el
+  árbol y el push sube Y (gana el último que sube)
+- Si B ya había subido Y y el server quedó con X, el pull de B marca
+  `conflictEspecieId = X` y conserva Y; nada lo resuelve solo y la marca queda
+  hasta que local y server coincidan. Ninguna pantalla la muestra (#733)
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 
