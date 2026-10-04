@@ -32,6 +32,7 @@ jest.mock('../../src/repositories/GroupRepository', () => ({
 jest.mock('../../src/repositories/TreeRepository', () => ({
   getTreesWithPendingPhotos: jest.fn(),
   markPhotoSynced: jest.fn(),
+  confirmarEspeciesSubidas: jest.fn(),
 }));
 
 jest.mock('expo-file-system', () => {
@@ -73,7 +74,7 @@ import {
 import { supabase } from '../../src/supabase/client';
 import { db } from '../../src/database/client';
 import { markGroupSynced, getSyncableGroups } from '../../src/repositories/GroupRepository';
-import { getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
+import { confirmarEspeciesSubidas, getTreesWithPendingPhotos, markPhotoSynced } from '../../src/repositories/TreeRepository';
 import { File as ExpoFile } from 'expo-file-system';
 import { FOTOS_EN_PARALELO } from '../../src/services/sync/concurrencia';
 import type { PhotoSyncProgress } from '../../src/services/sync/types';
@@ -123,6 +124,7 @@ const makeTrees = (groupId: string) => [
     id: 'tree-1',
     groupId,
     especieId: 'species-1',
+    especieBaseId: 'species-0',
     posicion: 1,
     subId: 'LA-SP-1',
     fotoUrl: null,
@@ -255,6 +257,7 @@ describe('SyncService', () => {
             id: 'tree-1',
             subgroup_id: 'sg-1',
             species_id: 'species-1',
+            species_base_id: 'species-0',
             posicion: 1,
             sub_id: 'LA-SP-1',
             foto_url: null,
@@ -380,6 +383,37 @@ describe('SyncService', () => {
       await syncPlantation('plantation-1');
 
       expect(mockMarkGroupSynced).toHaveBeenCalledWith('sg-1');
+    });
+
+    // El server ya lo aceptó: queda pendiente para asentarlo en la próxima sync (#679).
+    it('un error local al asentar el grupo no es de red: éxito, sin bajar la marca', async () => {
+      mockGetFinalizadaSubGroups.mockResolvedValue([makeSg('sg-1')]);
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+      (confirmarEspeciesSubidas as jest.Mock).mockRejectedValueOnce(new Error('disk I/O error'));
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(whereResult([])),
+        }),
+      });
+
+      const results = await syncPlantation('plantation-1');
+
+      expect(results[0].success).toBe(true);
+      expect(mockMarkGroupSynced).not.toHaveBeenCalled();
+    });
+
+    it('una cancelación al asentar el grupo corta la sync', async () => {
+      mockGetFinalizadaSubGroups.mockResolvedValue([makeSg('sg-1')]);
+      (mockSupabase.rpc as jest.Mock).mockResolvedValue({ data: { success: true }, error: null });
+      (confirmarEspeciesSubidas as jest.Mock).mockRejectedValueOnce(new SyncCanceladoError());
+      (mockDb.select as jest.Mock).mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue(whereResult([])),
+        }),
+      });
+
+      await expect(syncPlantation('plantation-1')).rejects.toBeInstanceOf(SyncCanceladoError);
+      expect(mockMarkGroupSynced).not.toHaveBeenCalled();
     });
 
     it('does NOT call markGroupSynced on DUPLICATE_CODE error', async () => {

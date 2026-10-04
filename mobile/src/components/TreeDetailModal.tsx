@@ -1,6 +1,7 @@
 /**
  * TreeDetailModal — detalle/edición de un árbol del listado de un grupo.
- * Foto y punto GPS se editan según el gating de `canEdit`/`canDelete`.
+ * Foto y punto GPS se editan según el gating de `canEdit`/`canDelete`; la especie,
+ * según `cambioDeEspecie` (#679).
  */
 import { useState } from 'react';
 import { Modal, View, Text, Image, Pressable, ScrollView, ActivityIndicator } from 'react-native';
@@ -8,22 +9,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing } from '../theme';
 import { useTreeDetail } from '../hooks/useTreeDetail';
-import { getSpeciesName } from '../utils/speciesHelpers';
-import { idDeArbol } from '../utils/codigoDePlantacion';
 import PhotoViewer from './PhotoViewer';
 import ConfirmModal from './ConfirmModal';
 import { useConfirm } from '../hooks/useConfirm';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import FotoRemota from './FotoRemota';
 import { isRemoteUri } from '../utils/photoUri';
+import type { CambioDeEspecie } from '../utils/permisosDeEdicion';
+import SeccionEspecie from './SeccionEspecie';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
 
 interface Props {
   visible: boolean;
   treeId: string | null;
+  plantacionId: string;
   canEdit: boolean;
   canDelete: boolean;
+  cambioDeEspecie: CambioDeEspecie;
   onClose: () => void;
+  /** Reabre el grupo finalizado para poder cambiar la especie; true si quedó activo. */
+  onReabrirGrupo: () => Promise<boolean>;
   onCapturePhoto: (treeId: string) => Promise<void>;
   onRemovePhoto: (treeId: string) => Promise<void>;
   onCaptureGps: (treeId: string) => Promise<boolean>;
@@ -33,9 +38,12 @@ interface Props {
 export default function TreeDetailModal({
   visible,
   treeId,
+  plantacionId,
   canEdit,
   canDelete,
+  cambioDeEspecie,
   onClose,
+  onReabrirGrupo,
   onCapturePhoto,
   onRemovePhoto,
   onCaptureGps,
@@ -95,17 +103,14 @@ export default function TreeDetailModal({
             <ActivityIndicator size="large" color={colors.plantation} />
           </View>
         ) : (
-          <ScrollView contentContainerStyle={styles.body}>
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Especie</Text>
-              <Text style={[styles.speciesName, tree.especieId === null && styles.speciesNN]}>
-                {getSpeciesName(tree)}
-              </Text>
-              {tree.especieNombreCientifico ? (
-                <Text style={styles.scientific}>{tree.especieNombreCientifico}</Text>
-              ) : null}
-              <Text style={styles.subId}>{idDeArbol(tree.subId, tree.plantacionCodigo)}</Text>
-            </View>
+          <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+            <SeccionEspecie
+              tree={tree}
+              plantacionId={plantacionId}
+              cambio={cambioDeEspecie}
+              onReabrirGrupo={onReabrirGrupo}
+              confirmar={confirm.show}
+            />
 
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Foto</Text>

@@ -102,7 +102,8 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { uploadSyncableGroups } from '../../src/services/sync/pushService';
 import { pullFromServer } from '../../src/services/sync/pullService';
-import { resolveNNTree, getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
+import { cambiarEspecie, confirmarEspeciesSubidas, getTreesWithPendingPhotos } from '../../src/repositories/TreeRepository';
+import { asentarEspeciesSubidas } from '../../src/services/sync/especiesConservadas';
 
 const PLANTACION_ID = 'plant-1';
 const PARCELA_ID = 'parc-1';
@@ -260,23 +261,28 @@ describe('fotos pendientes que sube el paso de fotos sueltas', () => {
   });
 });
 
+/** Lo que el pull necesita del server para bajar los árboles del grupo. */
+function servidorConElGrupo() {
+  serverState.plantations.set(PLANTACION_ID, {
+    id: PLANTACION_ID, lugar: 'Campo Norte', periodo: '2026-otono', estado: 'activa',
+    creado_por: 'user-admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
+  });
+  serverState.plantation_users.set('pu-1', {
+    plantation_id: PLANTACION_ID, user_id: 'user-tecnico-1', rol_en_plantacion: 'tecnico', assigned_at: '2026-01-01T00:00:00',
+  });
+  serverState.parcelas.set(PARCELA_ID, {
+    id: PARCELA_ID, plantation_id: PLANTACION_ID, nombre: 'Parcela 1', codigo: 'P1', descripcion: null,
+    created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00', deleted_at: null,
+  });
+  serverState.groups.set(GRUPO_ID, {
+    id: GRUPO_ID, plantation_id: PLANTACION_ID, parcela_id: PARCELA_ID, nombre: 'Linea A', codigo: 'LA',
+    tipo: 'linea', estado: 'finalizada', usuario_creador: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
+  });
+}
+
 describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () => {
   beforeEach(() => {
-    serverState.plantations.set(PLANTACION_ID, {
-      id: PLANTACION_ID, lugar: 'Campo Norte', periodo: '2026-otono', estado: 'activa',
-      creado_por: 'user-admin-1', created_at: '2026-01-01T00:00:00', visible_in_app: true,
-    });
-    serverState.plantation_users.set('pu-1', {
-      plantation_id: PLANTACION_ID, user_id: 'user-tecnico-1', rol_en_plantacion: 'tecnico', assigned_at: '2026-01-01T00:00:00',
-    });
-    serverState.parcelas.set(PARCELA_ID, {
-      id: PARCELA_ID, plantation_id: PLANTACION_ID, nombre: 'Parcela 1', codigo: 'P1', descripcion: null,
-      created_at: '2026-01-01T00:00:00', updated_at: '2026-01-01T00:00:00', deleted_at: null,
-    });
-    serverState.groups.set(GRUPO_ID, {
-      id: GRUPO_ID, plantation_id: PLANTACION_ID, parcela_id: PARCELA_ID, nombre: 'Linea A', codigo: 'LA',
-      tipo: 'linea', estado: 'finalizada', usuario_creador: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
-    });
+    servidorConElGrupo();
     serverState.trees.set('t-nn', {
       id: 't-nn', group_id: GRUPO_ID, species_id: null, posicion: 1, sub_id: 'P1LANN1',
       foto_url: pathEnStorage('t-nn'), usuario_registro: 'otro-tecnico', created_at: '2026-01-01T00:00:00',
@@ -291,7 +297,7 @@ describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () 
     // Lo que deja la descarga de fotos: copia local de una foto que ya está en Storage.
     await mockTestDb.update(trees).set({ fotoUrl: 'file:///data/photos/t-nn.jpg' }).where(eq(trees.id, 't-nn'));
 
-    await resolveNNTree('t-nn', ROBLE, 'LA');
+    await cambiarEspecie('t-nn', ROBLE);
     await pullFromServer(PLANTACION_ID);
 
     const resuelto = await leerArbol('t-nn');
@@ -306,6 +312,135 @@ describe('N/N resuelto en otro dispositivo: pull, resolución, pull y push', () 
     expect(arbol).toMatchObject({ species_id: ROBLE, sub_id: resuelto.subId, foto_url: null });
     expect(mockSubidas).toEqual([]);
     expect((await leerGrupo()).pendingSync).toBe(false);
+  });
+});
+
+describe('cambio de especie (#679): base local y push', () => {
+  const PINO = 'sp-pino';
+  const ALAMO = 'sp-alamo';
+  const conserva = (especie: string) => {
+    mockRespuesta.syncSubgroup = { data: { success: true, conservadas: [{ id: 't-1', species_id: especie }] }, error: null };
+  };
+  const conservaAlamo = () => conserva(ALAMO);
+  const alamoLocal = () => mockTestDb.insert(species).values({
+    id: ALAMO, codigo: 'ALA', nombre: 'Álamo', nombreCientifico: null, createdAt: '2026-01-01T00:00:00',
+  });
+
+  beforeEach(async () => {
+    await mockTestDb.insert(species).values({
+      id: PINO, codigo: 'PIN', nombre: 'Pino', nombreCientifico: 'Pinus', createdAt: '2026-01-01T00:00:00',
+    });
+    await mockTestDb.insert(groups).values(grupoLocal({ pendingSync: false }));
+    await mockTestDb.insert(trees).values(arbolLocal('t-1', { posicion: 3, especieBaseId: ROBLE }));
+  });
+
+  it('cambia la especie, rearma el SubID, marca el grupo y deja la base', async () => {
+    const resultado = await cambiarEspecie('t-1', PINO);
+
+    expect(resultado).toEqual({ subId: 'P1LAPIN3' });
+    const arbol = await leerArbol('t-1');
+    expect(arbol).toMatchObject({ especieId: PINO, subId: 'P1LAPIN3', especieBaseId: ROBLE });
+    expect((await leerGrupo()).pendingSync).toBe(true);
+  });
+
+  it('el push manda la base y, confirmado, la especie subida pasa a ser la base', async () => {
+    await cambiarEspecie('t-1', PINO);
+
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(arbolesDelPayload()[0]).toMatchObject({ species_id: PINO, species_base_id: ROBLE });
+    expect((await leerArbol('t-1')).especieBaseId).toBe(PINO);
+    expect(resultado).not.toHaveProperty('especiesDelServidor');
+  });
+
+  it('un push rechazado deja la base como estaba', async () => {
+    mockRespuesta.syncSubgroup = { data: { success: false, error: 'DUPLICATE_CODE' }, error: null };
+    await cambiarEspecie('t-1', PINO);
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect((await leerArbol('t-1')).especieBaseId).toBe(ROBLE);
+  });
+
+  // Gana el server: lo cambiaron en los dos lados y `sync_subgroup` se quedó con la suya.
+  it('si el server conservó su especie, el árbol la adopta con su SubID y el resultado lo cuenta', async () => {
+    await alamoLocal();
+    await cambiarEspecie('t-1', PINO);
+    conservaAlamo();
+
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: ALAMO, especieBaseId: ALAMO, subId: 'P1LAALA3' });
+    expect(resultado).toMatchObject({ success: true, especiesDelServidor: 1 });
+    expect((await leerGrupo()).pendingSync).toBe(false);
+  });
+
+  it('la especie conservada que falta en el catálogo local se baja antes de adoptarla', async () => {
+    serverState.species.set(ALAMO, {
+      id: ALAMO, codigo: 'ALA', nombre: 'Álamo', nombre_cientifico: null, created_at: '2026-01-01T00:00:00',
+    });
+    await cambiarEspecie('t-1', PINO);
+    conservaAlamo();
+
+    await uploadSyncableGroups(PLANTACION_ID);
+
+    expect((await leerArbol('t-1')).especieId).toBe(ALAMO);
+  });
+
+  // Sin confirmar la base: si el grupo vuelve a subir, el server lo vuelve a devolver.
+  it('sin la especie conservada en ningún catálogo, el árbol queda como está, con su base, y no se cuenta', async () => {
+    await cambiarEspecie('t-1', PINO);
+    conservaAlamo();
+
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ROBLE });
+    expect(resultado).not.toHaveProperty('especiesDelServidor');
+  });
+
+  it('no pisa un árbol que cambió acá durante el push', async () => {
+    await alamoLocal();
+    await cambiarEspecie('t-1', PINO);
+
+    const avisos = await asentarEspeciesSubidas(
+      [{ id: 't-1', especieId: ROBLE, especieBaseId: ROBLE }],
+      { conservadas: [{ id: 't-1', species_id: ALAMO }] },
+    );
+
+    expect(avisos).toBe(0);
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ROBLE });
+  });
+
+  it('la base confirmada es la especie que viajó, no la que tiene la fila después', async () => {
+    await cambiarEspecie('t-1', PINO);
+    await cambiarEspecie('t-1', ROBLE);
+
+    await confirmarEspeciesSubidas([{ id: 't-1', especieId: PINO, especieBaseId: ROBLE }]);
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: ROBLE, especieBaseId: PINO });
+  });
+
+  it('un N/N que el server ya resolvió: lo adopta en el push, sin aviso', async () => {
+    await mockTestDb.update(trees).set({ especieId: null, especieBaseId: null, subId: 'P1LANN3' }).where(eq(trees.id, 't-1'));
+    await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, GRUPO_ID));
+    conserva(PINO);
+
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: PINO, subId: 'P1LAPIN3' });
+    expect(resultado).not.toHaveProperty('especiesDelServidor');
+  });
+
+  // Un grupo que llega pendiente a cada sync nunca recibe la especie por el pull.
+  it('un árbol sin cambio local que el server cambió: lo adopta en el push, sin aviso', async () => {
+    await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, GRUPO_ID));
+    conserva(PINO);
+
+    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+
+    expect(arbolesDelPayload()[0]).toMatchObject({ species_id: ROBLE, species_base_id: ROBLE });
+    expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: PINO, subId: 'P1LAPIN3' });
+    expect(resultado).not.toHaveProperty('especiesDelServidor');
   });
 });
 

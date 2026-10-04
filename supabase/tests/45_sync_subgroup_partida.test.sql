@@ -1,5 +1,6 @@
--- sync_subgroup partida (064, #734): las partes no se ejecutan desde el cliente
--- y la orquestadora sigue siendo el único RPC, corto y con los mismos grants.
+-- sync_subgroup partida (064, #734; 065 suma dos partes, #679): las partes no se
+-- ejecutan desde el cliente y la orquestadora sigue siendo el único RPC, corto y
+-- con los mismos grants.
 begin;
 select plan(8);
 
@@ -11,9 +12,10 @@ create temp view partes_45 as
 
 select is(
   (select array_agg(nombre order by nombre) from partes_45),
-  array['sync_subgroup_codigo_parcela', 'sync_subgroup_habilitar_especies',
-        'sync_subgroup_rechazo', 'sync_subgroup_upsert_arboles', 'sync_subgroup_upsert_grupo'],
-  'las cinco partes existen');
+  array['sync_subgroup_codigo_parcela', 'sync_subgroup_conservadas', 'sync_subgroup_conservar_especies',
+        'sync_subgroup_habilitar_especies', 'sync_subgroup_rechazo', 'sync_subgroup_upsert_arboles',
+        'sync_subgroup_upsert_grupo'],
+  'las siete partes existen');
 
 select is(
   (select count(*)::int from partes_45
@@ -23,7 +25,7 @@ select is(
 
 select is(
   (select count(*)::int from partes_45 where has_function_privilege('service_role', oid, 'execute')),
-  5, 'service_role ejecuta las partes');
+  7, 'service_role ejecuta las partes');
 
 select is(
   (select count(*)::int from partes_45 where prosecdef or not coalesce('search_path=public' = any(proconfig), false)),

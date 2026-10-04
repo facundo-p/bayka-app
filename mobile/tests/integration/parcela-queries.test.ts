@@ -91,8 +91,6 @@ async function seedTree(groupId: string, posicion: number): Promise<void> {
     globalId: null,
     usuarioRegistro: 'u1',
     createdAt: localNow(),
-    conflictEspecieId: null,
-    conflictEspecieNombre: null,
   });
 }
 

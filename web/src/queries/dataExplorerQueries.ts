@@ -48,6 +48,8 @@ export type ArbolDetalle = {
   /** `<SubID>-<código de plantación>` (#559). */
   idArbol: string;
   posicion: number | null;
+  /** null = N/N. */
+  especieId: string | null;
   especieCodigo: string | null;
   especieNombre: string | null;
   grupoId: string;
@@ -114,6 +116,7 @@ export type FilaArbol = {
   longitude?: number | null;
   gps_accuracy?: number | null;
   gps_captured_at?: string | null;
+  species_id: string | null;
   species: { codigo: string; nombre: string } | null;
   groups: {
     codigo: string;
@@ -292,6 +295,7 @@ function mapearArbol(fila: FilaArbol): ArbolDetalle {
     subId: fila.sub_id,
     idArbol: idDeArbol(fila.sub_id, fila.groups?.plantations?.codigo),
     posicion: fila.posicion,
+    especieId: fila.species_id,
     especieCodigo: fila.species?.codigo ?? null,
     especieNombre: fila.species?.nombre ?? null,
     grupoId: fila.group_id,

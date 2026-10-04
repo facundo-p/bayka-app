@@ -1,7 +1,7 @@
 import { db } from '../database/client';
-import { enTransaccion } from '../database/transaccion';
+import { enTransaccion, enTransaccionPorLotes } from '../database/transaccion';
 import { trees, species as speciesTable, groups } from '../database/schema';
-import { eq, max, and, isNotNull } from 'drizzle-orm';
+import { eq, max, and, isNotNull, sql } from 'drizzle-orm';
 import { generateSubId } from '../utils/idGenerator';
 import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
@@ -11,7 +11,7 @@ import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
 import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
-import { codigoParaSubId, especieCodigoParaSubId } from '../utils/speciesHelpers';
+import { codigoParaSubId, especieCodigoParaSubId, esEspecieRecuperada } from '../utils/speciesHelpers';
 import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
 
@@ -46,6 +46,7 @@ export async function insertTree(params: InsertTreeParams): Promise<InsertTreeRe
     id,
     groupId: params.grupoId,
     especieId: params.especieId,
+    especieBaseId: params.especieId,
     posicion: nextPosition,
     subId,
     fotoUrl: params.fotoUrl ?? null,
@@ -113,29 +114,83 @@ export async function reverseTreeOrder(
   notifyDataChanged();
 }
 
-export async function resolveNNTree(
-  treeId: string,
-  especieId: string,
-  grupoCodigo: string
-): Promise<void> {
+/**
+ * El árbol listo para pasar a `especieId`, con su SubID nuevo; null si falta el
+ * árbol o la especie, o si es una recuperada: sin su código real no hay SubID.
+ */
+async function destinoDelCambio(treeId: string, especieId: string) {
   const [sp] = await db.select({ codigo: speciesTable.codigo })
     .from(speciesTable)
     .where(eq(speciesTable.id, especieId));
-
-  const [tree] = await db.select({ posicion: trees.posicion, grupoId: trees.groupId })
+  const [tree] = await db.select({ posicion: trees.posicion, grupoId: trees.groupId, grupoCodigo: groups.codigo })
     .from(trees)
+    .innerJoin(groups, eq(groups.id, trees.groupId))
     .where(eq(trees.id, treeId));
-
-  if (!sp || !tree) return;
+  if (!sp || !tree || esEspecieRecuperada(sp.codigo)) return null;
 
   const parcelaCodigo = await getGroupParcelaCodigo(tree.grupoId);
-  const newSubId = generateSubId(parcelaCodigo, grupoCodigo, codigoParaSubId(sp.codigo), tree.posicion);
+  const subId = generateSubId(parcelaCodigo, tree.grupoCodigo, sp.codigo, tree.posicion);
+  return { grupoId: tree.grupoId, subId };
+}
 
-  await db.update(trees)
-    .set({ especieId, subId: newSubId })
-    .where(eq(trees.id, treeId));
-  await markGroupPendingSync(tree.grupoId);
+/**
+ * Cambia la especie de un árbol y rearma su SubID (#679). También resuelve un N/N.
+ * No toca la base: el push la manda para que el server no pise un cambio que este
+ * dispositivo no vio. Devuelve el SubID nuevo, o null si el árbol o la especie no
+ * están.
+ */
+export async function cambiarEspecie(treeId: string, especieId: string): Promise<{ subId: string } | null> {
+  const destino = await destinoDelCambio(treeId, especieId);
+  if (!destino) return null;
+  // Con la marca del grupo en la misma transacción: sin ella, el cambio no sube nunca.
+  await enTransaccion(async (tx) => {
+    await tx.update(trees).set({ especieId, subId: destino.subId }).where(eq(trees.id, treeId));
+    await markGroupPendingSync(destino.grupoId);
+  });
   notifyDataChanged();
+  return { subId: destino.subId };
+}
+
+/** La especie con la que un árbol viajó en el push, y su base de entonces. */
+export type EspecieSubida = { id: string; especieId: string | null; especieBaseId: string | null };
+
+/** El árbol viajó con una especie cambiada en este dispositivo. */
+export const cambiadaAca = (subida: EspecieSubida) => subida.especieId !== subida.especieBaseId;
+
+/**
+ * Después de un push confirmado, la especie que se subió pasa a ser la base
+ * (#679): la del payload, no la de la fila, que pudo cambiar durante el push.
+ */
+export async function confirmarEspeciesSubidas(subidas: EspecieSubida[]): Promise<void> {
+  await enTransaccionPorLotes(subidas.filter(cambiadaAca), async (tx, lote) => {
+    for (const subida of lote) {
+      await tx.update(trees).set({ especieBaseId: subida.especieId }).where(eq(trees.id, subida.id));
+    }
+  });
+}
+
+/** Árbol que el server dejó con otra especie que la que subió este dispositivo. */
+export type EspecieDelServidor = { id: string; especieId: string; especieSubida: string | null };
+
+/**
+ * Árboles en los que el server se quedó con su especie (#679): gana la del server.
+ * Pasa a ser la especie y la base, con el SubID armado con los códigos locales.
+ * Queda como está un árbol que cambió acá durante el push, o cuya especie falta en
+ * el catálogo local. Devuelve los ids que la adoptaron.
+ */
+export async function adoptarEspeciesDelServidor(arboles: EspecieDelServidor[]): Promise<string[]> {
+  const adoptados: string[] = [];
+  for (const { id, especieId, especieSubida } of arboles) {
+    const destino = await destinoDelCambio(id, especieId);
+    if (!destino) continue;
+    const escritos = await db.update(trees)
+      .set({ especieId, especieBaseId: especieId, subId: destino.subId })
+      .where(and(eq(trees.id, id), sql`${trees.especieId} IS ${especieSubida}`))
+      .returning({ id: trees.id });
+    if (escritos.length > 0) adoptados.push(id);
+  }
+  if (adoptados.length > 0) notifyDataChanged();
+  return adoptados;
 }
 
 export interface TreeGpsPoint {

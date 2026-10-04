@@ -91,7 +91,7 @@ import {
   insertTree,
   deleteLastTree,
   reverseTreeOrder,
-  resolveNNTree,
+  cambiarEspecie,
   updateTreePhoto,
   deleteTreeAndRecalculate,
 } from '../../src/repositories/TreeRepository';
@@ -294,34 +294,42 @@ describe('TreeRepository', () => {
     });
   });
 
-  describe('resolveNNTree', () => {
+  describe('cambiarEspecie', () => {
     it('sets especieId and recalculates subId', async () => {
       let callCount = 0;
       mockDb = {
         ...buildMockDb([]),
         select: jest.fn(() => ({
-          from: jest.fn(() => ({
-            where: jest.fn(() => {
+          from: jest.fn(() => {
+            const where = jest.fn(() => {
               callCount++;
               if (callCount === 1) return Promise.resolve([{ codigo: 'ANC' }]); // especie
-              if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1' }]); // árbol
+              if (callCount === 2) return Promise.resolve([{ posicion: 3, grupoId: 'sg-1', grupoCodigo: 'L1' }]); // árbol
               if (callCount === 3) return Promise.resolve([{ parcelaId: 'p1' }]); // grupo (getGroupParcelaCodigo)
               return Promise.resolve([{ codigo: 'PC' }]); // parcela
-            }),
-          })),
+            });
+            return { where, innerJoin: jest.fn(() => ({ where })) };
+          }),
         })),
       };
 
-      await resolveNNTree('tree-1', 'esp-1', 'L1');
+      const resultado = await cambiarEspecie('tree-1', 'esp-1');
 
+      expect(resultado).toEqual({ subId: 'PCL1ANC3' });
       // Called twice: once for tree update, once for markGroupPendingSync
       expect(mockUpdateWhere).toHaveBeenCalledTimes(2);
     });
 
     it('does nothing if species or tree not found', async () => {
       mockDb = buildMockDb([]);
+      mockDb.select = jest.fn(() => ({
+        from: jest.fn(() => {
+          const where = jest.fn(() => Promise.resolve([]));
+          return { where, innerJoin: jest.fn(() => ({ where })) };
+        }),
+      }));
 
-      await resolveNNTree('tree-nonexistent', 'esp-nonexistent', 'L1');
+      await cambiarEspecie('tree-nonexistent', 'esp-nonexistent');
 
       expect(mockUpdateWhere).not.toHaveBeenCalled();
     });

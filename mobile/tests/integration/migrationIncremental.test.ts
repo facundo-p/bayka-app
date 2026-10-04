@@ -85,6 +85,48 @@ test('device en idx 15 no reaplica 0008-0014 y sí aplica 0016-0019 al actualiza
     ]),
   );
   expect(columnNames(sqlite, 'parcelas')).toContain('alta_pendiente_de');
+  expect(columnNames(sqlite, 'trees')).toContain('especie_base_id');
+  // Sin uso desde #679, pero siguen: un JS anterior (rollback, OTA de otra branch) las nombra.
+  expect(columnNames(sqlite, 'trees')).toEqual(expect.arrayContaining(['conflict_especie_id', 'conflict_especie_nombre']));
 
+  sqlite.close();
+});
+
+// 0031 (#679): la base de un árbol que ya estaba es su especie local, salvo en un
+// grupo sin subir, donde no se sabe y queda como N/N.
+test('0031 arranca la especie base con la local, salvo en un grupo sin subir', () => {
+  const sqlite = new Database(':memory:');
+  const db = drizzle(sqlite);
+  const idx0030 = journal.entries.find((e) => e.tag === '0030_plantations_codigo')!.idx;
+  const partialDir = buildTruncatedMigrationsFolder(idx0030);
+  try {
+    migrate(db, { migrationsFolder: partialDir });
+  } finally {
+    fs.rmSync(partialDir, { recursive: true, force: true });
+  }
+  sqlite.exec(`
+    INSERT INTO plantations (id, organizacion_id, lugar, periodo, estado, creado_por, created_at)
+      VALUES ('p1', 'o1', 'Campo', '2026', 'activa', 'u1', '2026-01-01');
+    INSERT INTO parcelas (id, plantacion_id, nombre, codigo, created_at, updated_at)
+      VALUES ('pa1', 'p1', 'Norte', 'P1', '2026-01-01', '2026-01-01');
+    INSERT INTO groups (id, plantacion_id, parcela_id, nombre, codigo, tipo, estado, usuario_creador, created_at)
+      VALUES ('g1', 'p1', 'pa1', 'Uno', 'L1', 'linea', 'activa', 'u1', '2026-01-01');
+    INSERT INTO groups (id, plantacion_id, parcela_id, nombre, codigo, tipo, estado, usuario_creador, created_at, pending_sync)
+      VALUES ('g2', 'p1', 'pa1', 'Dos', 'L2', 'linea', 'activa', 'u1', '2026-01-01', 1);
+    INSERT INTO species (id, codigo, nombre, created_at) VALUES ('sp1', 'ROB', 'Roble', '2026-01-01');
+    INSERT INTO trees (id, group_id, especie_id, posicion, sub_id, usuario_registro, created_at) VALUES
+      ('t1', 'g1', 'sp1', 1, 'P1L1ROB1', 'u1', '2026-01-01'),
+      ('t2', 'g1', NULL, 2, 'P1L1NN2', 'u1', '2026-01-01'),
+      ('t3', 'g2', 'sp1', 1, 'P1L2ROB1', 'u1', '2026-01-01');
+  `);
+
+  migrate(db, { migrationsFolder: DRIZZLE_DIR });
+
+  const filas = sqlite.prepare('SELECT id, especie_base_id FROM trees ORDER BY id').all();
+  expect(filas).toEqual([
+    { id: 't1', especie_base_id: 'sp1' },
+    { id: 't2', especie_base_id: null },
+    { id: 't3', especie_base_id: null },
+  ]);
   sqlite.close();
 });

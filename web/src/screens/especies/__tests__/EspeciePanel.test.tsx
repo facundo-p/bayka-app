@@ -128,6 +128,7 @@ const CLAVES_CON_ESPECIES = [
   ['dashboard'],
   ['mapa'],
   ['datos-arboles'],
+  ['especies-habilitadas'],
 ];
 
 function clavesInvalidadas(invalidaciones: ReturnType<typeof espiarInvalidaciones>) {

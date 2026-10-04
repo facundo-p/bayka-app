@@ -6,7 +6,14 @@
  * `vite.demo.config.ts` lo pone en lugar de `lib/supabase` por alias, así que
  * ningún módulo de producción lo importa y nunca entra al bundle.
  */
-import { RPC, SESION_DEMO, TABLAS, type FilaDemo, type TablaDemo } from './datos';
+import {
+  RPC,
+  RPC_CON_PARAMETROS,
+  SESION_DEMO,
+  TABLAS,
+  type FilaDemo,
+  type TablaDemo,
+} from './datos';
 import { conEmbebidos, embebidosDe, type Embebido } from './embebidos';
 import {
   OPERADOR,
@@ -143,7 +150,11 @@ const SIN_SESION = new URLSearchParams(window.location.search).has(PARAMETRO_SIN
 
 export const supabase = {
   from: (tabla: string) => crearConsulta(tabla),
-  rpc: (nombre: string) => Promise.resolve({ data: RPC[nombre] ?? [], error: null }),
+  rpc: (nombre: string, parametros: FilaDemo = {}) =>
+    Promise.resolve({
+      data: RPC_CON_PARAMETROS[nombre]?.(parametros) ?? RPC[nombre] ?? [],
+      error: null,
+    }),
   auth: {
     getSession: () =>
       Promise.resolve({ data: { session: SIN_SESION ? null : SESION_DEMO }, error: null }),

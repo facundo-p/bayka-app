@@ -1,7 +1,7 @@
 import { supabase } from '../../supabase/client';
 import { ensureServerSession, SessionExpiredError } from './sessionGuard';
 import { db } from '../../database/client';
-import { groups, trees, plantationUsers, plantationSpecies, plantations, species, parcelas } from '../../database/schema';
+import { groups, trees, plantationUsers, plantationSpecies, plantations, parcelas } from '../../database/schema';
 import { eq, and, sql, inArray, notInArray, isNotNull } from 'drizzle-orm';
 import { isLocalUri, isRemoteUri, sqlIsLocalUri } from '../../utils/photoUri';
 import { borrarFotosLocales } from '../PhotoService';
@@ -298,7 +298,7 @@ function codigosDivergentes(remotas: RemoteParcela[], locales: Map<string, Parce
 
 /**
  * Una parcela con el código cambiado sin subir: los árboles que el pull trajo tienen el prefijo del
- * server, y el upsert conserva después el SubID local de los que tienen especie. Se pasan al
+ * server, y el upsert conserva después el SubID local de los que no cambian de especie. Se pasan al
  * código local ahora; al subir la parcela, el trigger hace lo mismo en el server. No marca nada.
  */
 async function reescribirSubIdsDeParcelasPendientes(divergentes: CodigoDivergente[]): Promise<void> {
@@ -535,6 +535,7 @@ function filaDeArbol(t: any) {
     // El server usa group_id directo; el compat shim 012b mantiene subgroup_id como GENERATED column para APKs viejos.
     groupId: t.group_id ?? t.subgroup_id,
     especieId: t.species_id,
+    especieBaseId: t.species_id,
     posicion: t.posicion,
     subId: t.sub_id,
     fotoUrl: hasFotoOnServer ? t.foto_url : null,
@@ -551,7 +552,7 @@ function filaDeArbol(t: any) {
 }
 
 /** Lo que el pull necesita saber de cada árbol local antes de escribir. */
-export type ArbolLocal = { especieId: string | null; fotoUrl: string | null; fotoSynced: boolean };
+export type ArbolLocal = { fotoUrl: string | null; fotoSynced: boolean };
 
 /**
  * Fotos locales ya subidas cuyo árbol el server manda ahora sin foto: la
@@ -569,7 +570,25 @@ export function fotosQuitadasEnServer(remotos: any[], locales: Map<string, Arbol
   return quitadas;
 }
 
-/** Upsert de un lote de árboles del server en un solo statement. */
+/**
+ * La especie del server se adopta y pasa a ser la base (#679); un N/N del server no
+ * pisa una especie local. Con la misma especie se conserva el SubID local: puede
+ * llevar un código de parcela que todavía no subió. Con otra se toma el del server,
+ * y `reescribirSubIdsDeParcelasPendientes` le pone ese código después.
+ */
+function especieDelServer() {
+  const cambiaLaEspecie = sql`excluded.especie_id IS NOT NULL AND excluded.especie_id IS NOT ${trees.especieId}`;
+  return {
+    especieId: sql`COALESCE(excluded.especie_id, ${trees.especieId})`,
+    especieBaseId: sql`COALESCE(excluded.especie_id, ${trees.especieBaseId})`,
+    subId: sql`CASE WHEN ${cambiaLaEspecie} OR ${trees.especieId} IS NULL THEN excluded.sub_id ELSE ${trees.subId} END`,
+  };
+}
+
+/**
+ * Upsert de un lote de árboles del server en un solo statement. Lo que llega acá
+ * no tiene cambios locales sin subir (#467).
+ */
 export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<void> {
   if (remotos.length === 0) return;
 
@@ -580,9 +599,8 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
   await tx.insert(trees).values(remotos.map(filaDeArbol)).onConflictDoUpdate({
     target: trees.id,
     set: {
-      especieId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.especieId} ELSE excluded.especie_id END`,
+      ...especieDelServer(),
       posicion: sql`excluded.posicion`,
-      subId: sql`CASE WHEN ${trees.especieId} IS NOT NULL THEN ${trees.subId} ELSE excluded.sub_id END`,
       fotoUrl: sql`CASE WHEN ${conservarFotoLocal} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`,
       // `excluded.foto_synced` es el "hay foto en el server" de ESA fila: con un
       // insert multi-fila la condición viaja en los valores, no en el `set`.
@@ -595,64 +613,18 @@ export async function upsertTreesFromServerTx(tx: Tx, remotos: any[]): Promise<v
       longitude: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.longitude} ELSE excluded.longitude END`,
       gpsAccuracy: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsAccuracy} ELSE excluded.gps_accuracy END`,
       gpsCapturedAt: sql`CASE WHEN ${trees.latitude} IS NOT NULL THEN ${trees.gpsCapturedAt} ELSE excluded.gps_captured_at END`,
-      conflictEspecieId: sql`NULL`,
-      conflictEspecieNombre: sql`NULL`,
     },
   });
 }
 
-/** Nombre a mostrar cuando el server manda una especie que el catálogo local todavía no tiene. */
-const ESPECIE_DESCONOCIDA = 'Desconocida';
-
-/** Árbol del server cuya fila local ya tiene otra especie asignada: lo resuelve el usuario, no el pull. */
-type ConflictoDeEspecie = { remoto: any; especieLocal: string };
-
-/** `especieLocal` null o undefined = la fila local no existe o no tiene especie: no hay con qué chocar. */
-function esConflictoDeEspecie(
-  candidato: { remoto: any; especieLocal: string | null | undefined },
-): candidato is ConflictoDeEspecie {
-  if (!candidato.remoto.species_id) return false;
-  if (candidato.especieLocal == null) return false;
-  return candidato.especieLocal !== candidato.remoto.species_id;
-}
-
 /**
- * Marca los árboles en conflicto con `conflictEspecieId` para que la UI prompte.
- * El remoto de esas filas no se upsertea: lo decide el usuario.
- */
-async function marcarConflictosDeEspecie(conflictivos: ConflictoDeEspecie[]): Promise<Set<string>> {
-  if (conflictivos.length === 0) return new Set();
-
-  // Un solo select de nombres para todos los conflictos, en vez de uno por árbol.
-  const idsDeEspecie = [...new Set(conflictivos.map(({ remoto }) => remoto.species_id as string))];
-  const filas = await db.select({ id: species.id, nombre: species.nombre }).from(species)
-    .where(inArray(species.id, idsDeEspecie));
-  const nombrePorEspecie = new Map(filas.map((e) => [e.id, e.nombre]));
-
-  await enTransaccionPorLotes(conflictivos, async (tx, lote) => {
-    for (const { remoto } of lote) {
-      await tx.update(trees).set({
-        conflictEspecieId: remoto.species_id,
-        conflictEspecieNombre: nombrePorEspecie.get(remoto.species_id) ?? ESPECIE_DESCONOCIDA,
-      }).where(eq(trees.id, remoto.id));
-    }
-  });
-
-  for (const { remoto, especieLocal } of conflictivos) {
-    syncLog.info(`Conflict detected for tree ${remoto.id}: local=${especieLocal}, server=${remoto.species_id}`);
-  }
-  return new Set(conflictivos.map(({ remoto }) => remoto.id as string));
-}
-
-/**
- * Especie y foto local de cada árbol de esos grupos, en una sola lectura (#449):
- * antes el chequeo de conflicto costaba dos selects por árbol. Alcanza con
+ * Foto local de cada árbol de esos grupos, en una sola lectura (#449). Alcanza con
  * filtrar por grupo porque un árbol nunca cambia de grupo — ni el alta ni el
  * upsert del pull tocan `group_id` después de crearlo.
  */
 async function arbolesLocalesPorId(remoteGroupIds: string[]): Promise<Map<string, ArbolLocal>> {
   const locales = await db
-    .select({ id: trees.id, especieId: trees.especieId, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
+    .select({ id: trees.id, fotoUrl: trees.fotoUrl, fotoSynced: trees.fotoSynced })
     .from(trees)
     .where(inArray(trees.groupId, remoteGroupIds));
   return new Map(locales.map(({ id, ...arbol }) => [id, arbol]));
@@ -671,7 +643,7 @@ async function arbolesLocalesPorId(remoteGroupIds: string[]): Promise<Map<string
 function omitirDelPull(
   gruposPendientes: Set<string>,
   arbolesBorrados: Set<string>,
-  existeLocal: Map<string, string | null>,
+  existeLocal: Map<string, ArbolLocal>,
 ) {
   return (remoto: any): boolean => {
     if (arbolesBorrados.has(remoto.id)) return true;
@@ -713,11 +685,8 @@ async function pullTrees(
   if (all.length === 0) return;
 
   const locales = await arbolesLocalesPorId(remoteGroupIds);
-  const especieLocal = new Map([...locales].map(([id, arbol]) => [id, arbol.especieId]));
-
-  const aEscribir = await arbolesAEscribir(all, grupos, borrados, especieLocal);
-  // Descarga fresh: sin filas locales no hay nada con qué chocar.
-  if (especieLocal.size === 0) syncLog.info('Pull trees: fresh download — sin árboles locales');
+  const aEscribir = await arbolesAEscribir(all, grupos, borrados, locales);
+  if (locales.size === 0) syncLog.info('Pull trees: fresh download — sin árboles locales');
 
   await escribirArboles(aEscribir, locales, all.length, onProgress);
   emitProgress(onProgress, DOWNLOAD_PHASE.arboles, all.length, all.length);
@@ -728,13 +697,12 @@ async function arbolesAEscribir(
   all: any[],
   grupos: GruposDelPull,
   borrados: BorradosPorTipo,
-  especieLocal: Map<string, string | null>,
+  locales: Map<string, ArbolLocal>,
 ): Promise<any[]> {
-  const omitir = omitirDelPull(grupos.pendientes, borrados.arboles, especieLocal);
+  const omitir = omitirDelPull(grupos.pendientes, borrados.arboles, locales);
   const noOmitidos = all.filter((t: any) => !omitir(t));
   const omitidos = all.length - noOmitidos.length;
   if (omitidos > 0) syncLog.info(`Pull trees: ${omitidos} omitidos (edición local sin subir o borrado sin propagar)`);
-  // Antes de los conflictos: el nombre de la especie del server sale del catálogo local.
   return conEspecieLocal(noOmitidos.map(sinFotoQuitada(borrados.fotos)), DOWNLOAD_PHASE.arboles);
 }
 
@@ -744,16 +712,9 @@ async function escribirArboles(
   total: number,
   onProgress?: OnPhaseProgress,
 ): Promise<void> {
-  const especieLocal = (id: string) => locales.get(id)?.especieId;
-  const conflictivos = aEscribir
-    .map((remoto: any) => ({ remoto, especieLocal: especieLocal(remoto.id) }))
-    .filter(esConflictoDeEspecie);
-  const enConflicto = await marcarConflictosDeEspecie(conflictivos);
-
-  const escribibles = aEscribir.filter((t: any) => !enConflicto.has(t.id));
-  const archivosQuitados = fotosQuitadasEnServer(escribibles, locales);
+  const archivosQuitados = fotosQuitadasEnServer(aEscribir, locales);
   await enTransaccionPorLotes(aEscribir, async (tx, lote) => {
-      await upsertTreesFromServerTx(tx, lote.filter((t: any) => !enConflicto.has(t.id)));
+      await upsertTreesFromServerTx(tx, lote);
     },
     alEscribirLote(onProgress, DOWNLOAD_PHASE.arboles, total),
   );

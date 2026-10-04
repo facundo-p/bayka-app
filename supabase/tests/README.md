@@ -145,7 +145,16 @@ uno repetido con CODIGO_DUPLICADO sin aplicar nada, valida formato, detecta
 conflictos y no lo cambia en una finalizada aunque el superadmin edite lo demás
 (062, #559). `42` el UPDATE directo de los 9 campos
 editables de `plantations` falla para `authenticated`, `estado` (finalizar) y
-`editar_plantacion` siguen andando (063, #649). `44` ramas de `sync_subgroup`
+`editar_plantacion` siguen andando (063, #649). `43`
+`cambiar_especie_arbol`: aplica con la base vigente y rearma el SubID, devuelve
+CONFLICTO_EDICION con la especie del server si la base quedó vieja, acepta la
+especie que el árbol ya tiene, rechaza una especie no habilitada (y N/N), exige
+membresía, y en una finalizada solo deja al superadmin; en una archivada a nadie.
+`sync_subgroup` con `species_base_id` conserva la especie del server si difiere de
+la base, rearma el SubID con su código, no deshace un N/N resuelto, devuelve en
+`conservadas` todo árbol que quedó con otra especie que la que mandó el móvil
+(también uno sin tocar), y sin base pisa como antes
+(065, #679). `44` ramas de `sync_subgroup`
 sin otro test: el re-sync de un árbol pisa especie y SubID pero no la posición,
 y conserva foto, ids y GPS que no vienen; una especie vacía queda N/N; sin
 especies que habilitar no reordena; con código y nombre repetidos gana
