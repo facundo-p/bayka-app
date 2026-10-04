@@ -11,7 +11,7 @@
 --    las de 064 y redefine solo la orquestadora.
 --
 -- Rollback: volver a correr de 064 la orquestadora `sync_subgroup` y
---   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservar_especies"("jsonb");
+--   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservar_especies"("jsonb", "jsonb");
 --   DROP FUNCTION IF EXISTS "public"."sync_subgroup_conservadas"("jsonb");
 --   DROP FUNCTION IF EXISTS "public"."cambiar_especie_arbol"("uuid", "uuid", "uuid");
 -- No hay columnas ni datos nuevos que deshacer. En el repo, el rollback borra
