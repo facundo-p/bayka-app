@@ -6,6 +6,7 @@ import {
   accionDeArchivado,
   CONFIRMACION_ARCHIVADO,
   motivoEdicion,
+  MOTIVO_FINALIZADA,
   puedeArchivar,
 } from '../archivado';
 
@@ -37,9 +38,21 @@ test('la acción depende de si está archivada', () => {
   expect(accionDeArchivado(ARCHIVADA)).toBe('desarchivar');
 });
 
-test('solo una archivada tiene motivo para no editar', () => {
-  expect(motivoEdicion(ACTIVA)).toBeNull();
-  expect(motivoEdicion(ARCHIVADA)).toMatch(/desarchivala/);
+describe('motivoEdicion', () => {
+  const ADMIN = { rol: 'admin' } as const;
+  const SUPERADMIN = { rol: 'superadmin' } as const;
+  const FINALIZADA = { estado: 'finalizada', archivadaEn: null } as const;
+  const ACTIVA_E = { estado: 'activa', archivadaEn: null } as const;
+  const ARCHIVADA_E = { estado: 'activa', archivadaEn: '2026-09-01T12:00:00Z' } as const;
+
+  test('admin edita una activa', () => expect(motivoEdicion(ADMIN, ACTIVA_E)).toBeNull());
+  test('admin no edita una finalizada', () =>
+    expect(motivoEdicion(ADMIN, FINALIZADA)).toBe(MOTIVO_FINALIZADA));
+  test('superadmin edita una finalizada', () =>
+    expect(motivoEdicion(SUPERADMIN, FINALIZADA)).toBeNull());
+  test.each([ADMIN, SUPERADMIN])('nadie edita una archivada (%o)', (perfil) => {
+    expect(motivoEdicion(perfil, ARCHIVADA_E)).toMatch(/desarchivala/);
+  });
 });
 
 describe('confirmaciones', () => {

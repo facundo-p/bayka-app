@@ -160,11 +160,12 @@ function useAdministracionDetalle(plantacion: Plantacion) {
 export function useAccionesDetalle(plantacion: Plantacion, onEditar: () => void) {
   const { mensaje, ...descargas } = useDescargasDetalle(plantacion);
   const { administracion, ...modales } = useAdministracionDetalle(plantacion);
+  const { perfil } = useAuth();
   const [generandoIds, setGenerandoIds] = useState(false);
   const acciones: AccionesProps = {
     ...descargas,
     idsPendientes: useIdsPendientes(plantacion.id),
-    motivoEdicion: motivoEdicion(plantacion),
+    motivoEdicion: motivoEdicion(perfil, plantacion),
     onEditar,
     onGenerarIds: () => setGenerandoIds(true),
     administracion,
