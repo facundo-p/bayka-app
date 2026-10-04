@@ -6,7 +6,10 @@ import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import { ROL } from '../../repositories/profileRepository';
 import { ENCABEZADO_CSV } from '../../services/exportarCsv';
 import { COLUMNAS_XLSX } from '../../services/exportarXlsx';
-import { CODIGO_PLANTACION } from '../codigoPlantacion';
+import { CODIGO_PLANTACION, idDeArbol } from '../codigoPlantacion';
+import { puedeCambiarEspecie } from '../../screens/datos/cambioDeEspecie';
+import type { EstadoPlantacion } from '../../queries/plantationQueries';
+import type { Rol } from '../../repositories/profileRepository';
 
 // `import.meta.url` va a una variable antes de `new URL(...)`: pasado inline, Vite lo reconoce
 // como el patrón de asset estático y lo reescribe a una URL http del dev server (no file://).
@@ -70,4 +73,49 @@ describe('contracts · codigo-plantacion', () => {
     const contrato = leerContrato('codigo-plantacion.json');
     expect(CODIGO_PLANTACION).toEqual(contrato);
   });
+});
+
+type CasoDePermiso = {
+  rol: Rol;
+  activo: boolean;
+  estado: EstadoPlantacion;
+  archivada: boolean;
+  permitido: boolean;
+};
+
+const ARCHIVADA_EN = '2026-01-01T00:00:00Z';
+
+const describirCaso = (caso: CasoDePermiso) =>
+  `${caso.rol} ${caso.activo ? 'activo' : 'inactivo'}, ${caso.estado}${caso.archivada ? ' archivada' : ''}`;
+
+describe('contracts · permisos-edicion', () => {
+  const { casos } = leerContrato('permisos-edicion.json').web as { casos: CasoDePermiso[] };
+
+  it('trae casos permitidos y rechazados', () => {
+    expect(new Set(casos.map((caso) => caso.permitido))).toEqual(new Set([true, false]));
+  });
+
+  it.each(casos.map((caso) => [describirCaso(caso), caso] as const))(
+    'puedeCambiarEspecie: %s',
+    (_, caso) => {
+      const plantacion = { estado: caso.estado, archivadaEn: caso.archivada ? ARCHIVADA_EN : null };
+      expect(puedeCambiarEspecie({ rol: caso.rol, activo: caso.activo }, plantacion)).toBe(
+        caso.permitido,
+      );
+    },
+  );
+});
+
+describe('contracts · sub-id', () => {
+  type VectorIdArbol = { subId: string; codigoPlantacion: string | null; idArbol: string };
+  const { idArbol: vectores } = leerContrato('sub-id.json') as { idArbol: VectorIdArbol[] };
+
+  it('trae vectores de ID de árbol', () => expect(vectores.length).toBeGreaterThan(0));
+
+  it.each(vectores.map((vector) => [vector.idArbol, vector] as const))(
+    'idDeArbol arma %s',
+    (_, vector) => {
+      expect(idDeArbol(vector.subId, vector.codigoPlantacion)).toBe(vector.idArbol);
+    },
+  );
 });

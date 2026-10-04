@@ -1,0 +1,41 @@
+{
+  "_comment": "Quién puede cambiar la especie de un árbol (#679) y editar una plantación, como tabla de casos. Cada tabla trae solo las dimensiones que miran todos sus consumidores. Cambiar una regla implica cambiar esta tabla y los consumidores que fallen: supabase/tests/47_contrato_permisos_edicion.test.sql, web/src/lib/__tests__/contracts.test.ts y mobile/tests/contracts.test.ts.",
+  "web": {
+    "_comment": "Desde la web. pgTAP la recorre contra cambiar_especie_arbol y editar_plantacion, que comparten el gate; la web, contra puedeCambiarEspecie. Editar la plantación en la web no tiene un predicado con estas dimensiones (motivoEdicion solo mira archivada), así que ese lado no se compara. Usuario de la organización de la plantación: la web no ve plantaciones de otra (RLS), y el rechazo por organización lo prueba el test 43.",
+    "casos": [
+      { "rol": "tecnico", "activo": true, "estado": "activa", "archivada": false, "permitido": false },
+      { "rol": "tecnico", "activo": true, "estado": "activa", "archivada": true, "permitido": false },
+      { "rol": "tecnico", "activo": true, "estado": "finalizada", "archivada": false, "permitido": false },
+      { "rol": "tecnico", "activo": true, "estado": "finalizada", "archivada": true, "permitido": false },
+      { "rol": "tecnico", "activo": false, "estado": "activa", "archivada": false, "permitido": false },
+      { "rol": "tecnico", "activo": false, "estado": "activa", "archivada": true, "permitido": false },
+      { "rol": "tecnico", "activo": false, "estado": "finalizada", "archivada": false, "permitido": false },
+      { "rol": "tecnico", "activo": false, "estado": "finalizada", "archivada": true, "permitido": false },
+      { "rol": "admin", "activo": true, "estado": "activa", "archivada": false, "permitido": true },
+      { "rol": "admin", "activo": true, "estado": "activa", "archivada": true, "permitido": false },
+      { "rol": "admin", "activo": true, "estado": "finalizada", "archivada": false, "permitido": false },
+      { "rol": "admin", "activo": true, "estado": "finalizada", "archivada": true, "permitido": false },
+      { "rol": "admin", "activo": false, "estado": "activa", "archivada": false, "permitido": false },
+      { "rol": "admin", "activo": false, "estado": "activa", "archivada": true, "permitido": false },
+      { "rol": "admin", "activo": false, "estado": "finalizada", "archivada": false, "permitido": false },
+      { "rol": "admin", "activo": false, "estado": "finalizada", "archivada": true, "permitido": false },
+      { "rol": "superadmin", "activo": true, "estado": "activa", "archivada": false, "permitido": true },
+      { "rol": "superadmin", "activo": true, "estado": "activa", "archivada": true, "permitido": false },
+      { "rol": "superadmin", "activo": true, "estado": "finalizada", "archivada": false, "permitido": true },
+      { "rol": "superadmin", "activo": true, "estado": "finalizada", "archivada": true, "permitido": false },
+      { "rol": "superadmin", "activo": false, "estado": "activa", "archivada": false, "permitido": false },
+      { "rol": "superadmin", "activo": false, "estado": "activa", "archivada": true, "permitido": false },
+      { "rol": "superadmin", "activo": false, "estado": "finalizada", "archivada": false, "permitido": false },
+      { "rol": "superadmin", "activo": false, "estado": "finalizada", "archivada": true, "permitido": false }
+    ]
+  },
+  "app": {
+    "_comment": "Cambiar la especie desde la app, que lo sube por sync_subgroup. pgTAP la recorre contra sync_subgroup de un técnico asignado (el server no mira quién creó el grupo); mobile, contra getCambioDeEspecie del creador con el grupo activo. La app no mira el rol: a un superadmin asignado no le ofrece el cambio en una finalizada aunque el server lo aceptaría.",
+    "casos": [
+      { "estado": "activa", "archivada": false, "permitido": true },
+      { "estado": "activa", "archivada": true, "permitido": false },
+      { "estado": "finalizada", "archivada": false, "permitido": false },
+      { "estado": "finalizada", "archivada": true, "permitido": false }
+    ]
+  }
+}

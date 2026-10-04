@@ -1,6 +1,3 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
-
 // ExportService importa expo-file-system/expo-sharing/xlsx y queries/exportQueries (que a su vez
 // abre el cliente SQLite real) a nivel de módulo: mockeados igual que en tests/admin/ExportService.test.ts
 // para poder importar CSV_HEADER/rowToExcel sin correr ese I/O.
@@ -25,18 +22,12 @@ import { PHOTO_CAPTURE_ALL_TREES_DEFAULT, PHOTO_CAPTURE_REQUIRED_DEFAULT } from 
 import { UNKNOWN_SPECIES_CODE } from '../src/utils/speciesHelpers';
 import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
-import { ESTADO_PLANTACION } from '../src/constants/estados';
+import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
+import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
+import { idDeArbol } from '../src/utils/codigoDePlantacion';
 import { CODIGO_PLANTACION } from '../src/constants/codigoPlantacion';
 import type { ExportRow } from '../src/queries/exportQueries';
-
-/** Lee un contrato de `contracts/` y descarta `_comment` (no forma parte de los valores a comparar). */
-function leerContrato(nombre: string): Record<string, unknown> {
-  const contrato = JSON.parse(
-    readFileSync(path.resolve(__dirname, '../../contracts', nombre), 'utf8'),
-  );
-  delete contrato._comment;
-  return contrato;
-}
+import { leerContrato } from './helpers/contratos';
 
 const FILA_EXPORT_VACIA: ExportRow = {
   idArbol: '',
@@ -99,5 +90,43 @@ describe('contracts · estados', () => {
 describe('contracts · codigo-plantacion', () => {
   it('CODIGO_PLANTACION coincide con el contrato (que es también el CHECK de la base)', () => {
     expect(CODIGO_PLANTACION).toEqual(leerContrato('codigo-plantacion.json'));
+  });
+});
+
+describe('contracts · permisos-edicion', () => {
+  type CasoDeLaApp = { estado: EstadoPlantacion; archivada: boolean; permitido: boolean };
+  const { casos } = leerContrato('permisos-edicion.json').app as { casos: CasoDeLaApp[] };
+
+  it('trae casos permitidos y rechazados', () => {
+    expect(new Set(casos.map((caso) => caso.permitido))).toEqual(new Set([true, false]));
+  });
+
+  // Las dimensiones que la app no comparte con sync_subgroup quedan fijas: el
+  // creador, con el grupo activo.
+  it.each(casos.map((caso) => [`${caso.estado}${caso.archivada ? ' archivada' : ''}`, caso] as const))(
+    'getCambioDeEspecie: %s',
+    (_, caso) => {
+      const cambio = getCambioDeEspecie({
+        plantacion: {
+          estado: caso.estado,
+          archivadaEn: caso.archivada ? '2026-01-01T00:00:00Z' : null,
+          eliminadaEnServidorEn: null,
+        },
+        subgroupEstado: ESTADO_GRUPO.activa,
+        isCreator: true,
+      });
+      expect(seOfreceCambioDeEspecie(cambio)).toBe(caso.permitido);
+    },
+  );
+});
+
+describe('contracts · sub-id', () => {
+  type VectorIdArbol = { subId: string; codigoPlantacion: string | null; idArbol: string };
+  const { idArbol: vectores } = leerContrato('sub-id.json') as { idArbol: VectorIdArbol[] };
+
+  it('trae vectores de ID de árbol', () => expect(vectores.length).toBeGreaterThan(0));
+
+  it.each(vectores.map((v) => [v.idArbol, v] as const))('idDeArbol arma %s', (_, v) => {
+    expect(idDeArbol(v.subId, v.codigoPlantacion)).toBe(v.idArbol);
   });
 });
