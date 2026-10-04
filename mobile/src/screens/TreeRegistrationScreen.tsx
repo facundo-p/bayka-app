@@ -300,8 +300,8 @@ export default function TreeRegistrationScreen() {
         cambioDeEspecie={cambioDeEspecie}
         onClose={() => setEditingTreeId(null)}
         onReabrirGrupo={treeReg.executeReactivate}
-        onCapturePhoto={(treeId) => treeReg.addPhotoToTree(treeId)}
-        onRemovePhoto={(treeId) => treeReg.removePhoto(treeId)}
+        onCapturePhoto={treeReg.addPhotoToTree}
+        onRemovePhoto={treeReg.removePhoto}
         onCaptureGps={(treeId) => treeReg.captureTreeGps(treeId)}
         onDelete={(treeId, posicion) => {
           setEditingTreeId(null);

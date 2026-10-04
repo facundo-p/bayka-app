@@ -12,12 +12,16 @@ import { useTreeDetail } from '../hooks/useTreeDetail';
 import PhotoViewer from './PhotoViewer';
 import ConfirmModal from './ConfirmModal';
 import { useConfirm } from '../hooks/useConfirm';
+import { showInfoDialog } from '../utils/alertHelpers';
+import type { ErrorSink } from '../hooks/useTreeRegistration';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
 import FotoRemota from './FotoRemota';
 import { isRemoteUri } from '../utils/photoUri';
 import type { CambioDeEspecie } from '../utils/permisosDeEdicion';
 import SeccionEspecie from './SeccionEspecie';
 import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
+
+const MENSAJE_GPS_ERROR = 'No se pudo capturar el punto GPS.';
 
 interface Props {
   visible: boolean;
@@ -29,8 +33,9 @@ interface Props {
   onClose: () => void;
   /** Reabre el grupo finalizado para poder cambiar la especie; true si quedó activo. */
   onReabrirGrupo: () => Promise<boolean>;
-  onCapturePhoto: (treeId: string) => Promise<void>;
-  onRemovePhoto: (treeId: string) => Promise<void>;
+  /** Los errores se reportan por `onError`: el diálogo de la pantalla queda detrás de este Modal. */
+  onCapturePhoto: (treeId: string, onError: ErrorSink) => Promise<void>;
+  onRemovePhoto: (treeId: string, onError: ErrorSink) => Promise<void>;
   onCaptureGps: (treeId: string) => Promise<boolean>;
   onDelete: (treeId: string, posicion: number) => void;
 }
@@ -57,15 +62,18 @@ export default function TreeDetailModal({
   const confirm = useConfirm();
   const [zoomUri, setZoomUri] = useState<string | null>(null);
 
+  const showError: ErrorSink = (mensaje) =>
+    showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
+
   async function handleCapturePhoto() {
     if (!tree) return;
     setBusyPhoto(true);
-    try { await onCapturePhoto(tree.id); } finally { setBusyPhoto(false); }
+    try { await onCapturePhoto(tree.id, showError); } finally { setBusyPhoto(false); }
   }
 
   async function quitarFoto(id: string) {
     setBusyPhoto(true);
-    try { await onRemovePhoto(id); } finally { setBusyPhoto(false); }
+    try { await onRemovePhoto(id, showError); } finally { setBusyPhoto(false); }
   }
 
   function handleRemovePhoto() {
@@ -80,6 +88,8 @@ export default function TreeDetailModal({
     try {
       const ok = await onCaptureGps(tree.id);
       if (!ok) setGpsFailed(true);
+    } catch (e) {
+      showError(e instanceof Error && e.message ? e.message : MENSAJE_GPS_ERROR);
     } finally {
       setBusyGps(false);
     }
