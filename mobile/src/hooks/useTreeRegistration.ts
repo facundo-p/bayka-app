@@ -54,7 +54,7 @@ export interface UseTreeRegistrationParams {
    * un throw (p.ej. grupo sin parcela) se perdía como unhandled rejection sin
    * ningún aviso al técnico. Cualquier error de escritura pasa por acá.
    */
-  onError?: (mensaje: string) => void;
+  onError?: ErrorSink;
 }
 
 export interface UseTreeRegistrationResult {
@@ -87,9 +87,9 @@ export interface UseTreeRegistrationResult {
   /** Alta de N/N: foto obligatoria, sin especie. */
   registerNN: () => Promise<void>;
   undoLast: () => Promise<void>;
-  addPhotoToTree: (treeId: string) => Promise<void>;
+  addPhotoToTree: (treeId: string, sink?: ErrorSink) => Promise<void>;
   updatePhoto: (treeId: string, newUri: string) => Promise<void>;
-  removePhoto: (treeId: string) => Promise<void>;
+  removePhoto: (treeId: string, sink?: ErrorSink) => Promise<void>;
   executeReverseOrder: () => Promise<void>;
   executeFinalize: () => Promise<void>;
   executeDeleteGroup: () => Promise<void>;
@@ -99,6 +99,8 @@ export interface UseTreeRegistrationResult {
   /** Captura/reemplaza el punto GPS de un árbol cualquiera; false si no hubo fix. */
   captureTreeGps: (treeId: string) => Promise<boolean>;
 }
+
+export type ErrorSink = (mensaje: string) => void;
 
 export function useTreeRegistration({
   grupoId,
@@ -113,8 +115,9 @@ export function useTreeRegistration({
 
   // Mensaje del error real si lo hay (p.ej. "Grupo X sin parcela: dato
   // inválido"); si no, el fallback de la acción.
-  const notifyError = useCallback((e: unknown, fallback: string) => {
-    onError?.(e instanceof Error && e.message ? e.message : fallback);
+  // `sink` redirige el aviso a otra superficie (p.ej. el detalle, que tapa la de la pantalla).
+  const notifyError = useCallback((e: unknown, fallback: string, sink: ErrorSink | undefined = onError) => {
+    sink?.(e instanceof Error && e.message ? e.message : fallback);
   }, [onError]);
   const [finalizing, setFinalizing] = useState(false);
   const [reversing, setReversing] = useState(false);
@@ -228,13 +231,13 @@ export function useTreeRegistration({
     }
   }, [getLastGpsFix]);
 
-  const addPhotoToTree = useCallback(async (treeId: string) => {
+  const addPhotoToTree = useCallback(async (treeId: string, sink?: ErrorSink) => {
     const photoUri = await pickPhoto();
     if (!photoUri) return;
     try {
       await updateTreePhoto(treeId, photoUri);
     } catch (e) {
-      notifyError(e, 'No se pudo guardar la foto.');
+      notifyError(e, 'No se pudo guardar la foto.', sink);
     }
   }, [pickPhoto, notifyError]);
 
@@ -246,11 +249,11 @@ export function useTreeRegistration({
     }
   }, [notifyError]);
 
-  const removePhoto = useCallback(async (treeId: string) => {
+  const removePhoto = useCallback(async (treeId: string, sink?: ErrorSink) => {
     try {
       await updateTreePhoto(treeId, '');
     } catch (e) {
-      notifyError(e, 'No se pudo quitar la foto.');
+      notifyError(e, 'No se pudo quitar la foto.', sink);
     }
   }, [notifyError]);
 

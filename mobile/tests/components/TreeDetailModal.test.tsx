@@ -24,13 +24,14 @@ function arbol(fotoSynced: boolean) {
   };
 }
 
-function renderModal() {
-  const onRemovePhoto = jest.fn().mockResolvedValue(undefined);
+function renderModal(over: { onRemovePhoto?: jest.Mock; onCapturePhoto?: jest.Mock; onCaptureGps?: jest.Mock } = {}) {
+  const onRemovePhoto = over.onRemovePhoto ?? jest.fn().mockResolvedValue(undefined);
   const utils = render(
     <TreeDetailModal
       visible treeId="t1" plantacionId="p1" canEdit canDelete={false} cambioDeEspecie="disponible"
       onClose={jest.fn()} onReabrirGrupo={jest.fn()}
-      onCapturePhoto={jest.fn()} onRemovePhoto={onRemovePhoto} onCaptureGps={jest.fn()} onDelete={jest.fn()}
+      onCapturePhoto={over.onCapturePhoto ?? jest.fn()} onRemovePhoto={onRemovePhoto}
+      onCaptureGps={over.onCaptureGps ?? jest.fn()} onDelete={jest.fn()}
     />,
   );
   return { ...utils, onRemovePhoto };
@@ -59,7 +60,7 @@ describe('TreeDetailModal: quitar foto', () => {
     fireEvent.press(getAllByText('Quitar')[0]);
     const botones = getAllByText('Quitar');
     fireEvent.press(botones[botones.length - 1]);
-    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1'));
+    await waitFor(() => expect(onRemovePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
   });
 
   it.each([true, false])('muestra el texto de fotoSynced=%s', (synced) => {
@@ -67,5 +68,44 @@ describe('TreeDetailModal: quitar foto', () => {
     const { getByText } = renderModal();
     fireEvent.press(getByText('Quitar'));
     expect(getByText(textoQuitarFoto(synced))).toBeTruthy();
+  });
+});
+
+describe('TreeDetailModal: errores de sus acciones (#730)', () => {
+  const MENSAJE = 'No se pudo hacer algo.';
+
+  it('quitar foto: el error que reporta la acción se muestra desde el detalle', async () => {
+    mockTree = arbol(true);
+    const onRemovePhoto = jest.fn((_id: string, onError: (m: string) => void) => { onError(MENSAJE); return Promise.resolve(); });
+    const { getAllByText, findByText } = renderModal({ onRemovePhoto });
+    fireEvent.press(getAllByText('Quitar')[0]);
+    const botones = getAllByText('Quitar');
+    fireEvent.press(botones[botones.length - 1]);
+    expect(await findByText(MENSAJE)).toBeTruthy();
+  });
+
+  it('capturar foto: el error se muestra desde el detalle', async () => {
+    mockTree = arbol(true);
+    const onCapturePhoto = jest.fn((_id: string, onError: (m: string) => void) => { onError(MENSAJE); return Promise.resolve(); });
+    const { getByText, findByText } = renderModal({ onCapturePhoto });
+    fireEvent.press(getByText('Cambiar foto'));
+    expect(await findByText(MENSAJE)).toBeTruthy();
+  });
+
+  it('capturar GPS que lanza: el error se muestra desde el detalle', async () => {
+    mockTree = arbol(true);
+    const onCaptureGps = jest.fn().mockRejectedValue(new Error(MENSAJE));
+    const { getByText, findByText } = renderModal({ onCaptureGps });
+    fireEvent.press(getByText('Capturar punto'));
+    expect(await findByText(MENSAJE)).toBeTruthy();
+  });
+
+  it('capturar GPS sin fix: sigue el aviso en línea, sin diálogo', async () => {
+    mockTree = arbol(true);
+    const onCaptureGps = jest.fn().mockResolvedValue(false);
+    const { getByText, findByText, queryByText } = renderModal({ onCaptureGps });
+    fireEvent.press(getByText('Capturar punto'));
+    expect(await findByText(/No se pudo capturar el punto\./)).toBeTruthy();
+    expect(queryByText('Error')).toBeNull();
   });
 });
