@@ -7,6 +7,7 @@ import { ROL } from '../../repositories/profileRepository';
 import { ENCABEZADO_CSV } from '../../services/exportarCsv';
 import { COLUMNAS_XLSX } from '../../services/exportarXlsx';
 import { CODIGO_PLANTACION, idDeArbol } from '../codigoPlantacion';
+import { puedeEditarPlantacion } from '../../screens/plantaciones/archivado';
 import { puedeCambiarEspecie } from '../../screens/datos/cambioDeEspecie';
 import type { EstadoPlantacion } from '../../queries/plantationQueries';
 import type { Rol } from '../../repositories/profileRepository';
@@ -100,6 +101,20 @@ describe('contracts · permisos-edicion', () => {
     (_, caso) => {
       const plantacion = { estado: caso.estado, archivadaEn: caso.archivada ? ARCHIVADA_EN : null };
       expect(puedeCambiarEspecie({ rol: caso.rol, activo: caso.activo }, plantacion)).toBe(
+        caso.permitido,
+      );
+    },
+  );
+});
+
+describe('contracts · permisos-edicion · editar plantación', () => {
+  const { casos } = leerContrato('permisos-edicion.json').web as { casos: CasoDePermiso[] };
+
+  it.each(casos.map((caso) => [describirCaso(caso), caso] as const))(
+    'puedeEditarPlantacion: %s',
+    (_, caso) => {
+      const plantacion = { estado: caso.estado, archivadaEn: caso.archivada ? ARCHIVADA_EN : null };
+      expect(puedeEditarPlantacion({ rol: caso.rol, activo: caso.activo }, plantacion)).toBe(
         caso.permitido,
       );
     },

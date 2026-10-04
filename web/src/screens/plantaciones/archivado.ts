@@ -2,7 +2,7 @@
  * Archivar/desarchivar una plantación (#477): quién puede, qué acción toca y qué
  * dice la confirmación. Puro: se testea sin renderizar.
  */
-import { esArchivada, type Plantacion } from '../../queries/plantationQueries';
+import { esArchivada, ESTADO_PLANTACION, type Plantacion } from '../../queries/plantationQueries';
 import { archivarPlantacion, desarchivarPlantacion } from '../../repositories/plantationRepository';
 import { ROL, type Perfil } from '../../repositories/profileRepository';
 
@@ -27,9 +27,30 @@ export function accionDeArchivado(plantacion: Pick<Plantacion, 'archivadaEn'>): 
   return esArchivada(plantacion) ? ACCION_ARCHIVADO.desarchivar : ACCION_ARCHIVADO.archivar;
 }
 
+/** Por qué la edición está deshabilitada en una finalizada para un admin. */
+export const MOTIVO_FINALIZADA = 'Solo el superadmin edita una plantación finalizada';
+
+type PlantacionEditable = Pick<Plantacion, 'estado' | 'archivadaEn'>;
+
+/** Espeja `editar_plantacion`: admin edita activas, el superadmin también finalizadas, nadie archivadas. */
+export function puedeEditarPlantacion(
+  perfil: Pick<Perfil, 'rol' | 'activo'> | null,
+  plantacion: PlantacionEditable,
+): boolean {
+  if (!perfil?.activo || !ROLES_QUE_ARCHIVAN.includes(perfil.rol) || esArchivada(plantacion)) {
+    return false;
+  }
+  return plantacion.estado === ESTADO_PLANTACION.activa || perfil.rol === ROL.SUPERADMIN;
+}
+
 /** null = se puede editar; texto = por qué no. */
-export function motivoEdicion(plantacion: Pick<Plantacion, 'archivadaEn'>): string | null {
-  return esArchivada(plantacion) ? MOTIVO_ARCHIVADA : null;
+export function motivoEdicion(
+  perfil: Pick<Perfil, 'rol'> | null,
+  plantacion: PlantacionEditable,
+): string | null {
+  if (esArchivada(plantacion)) return MOTIVO_ARCHIVADA;
+  const esFinalizada = plantacion.estado === ESTADO_PLANTACION.finalizada;
+  return esFinalizada && perfil?.rol !== ROL.SUPERADMIN ? MOTIVO_FINALIZADA : null;
 }
 
 export interface ConfirmacionArchivado {
