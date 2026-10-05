@@ -305,12 +305,24 @@ Facu):
 - [ ] Si mobile bumpeó: buildear APK prod desde main (/build-apk-local prod) y
       distribuirlo a los dispositivos. El bump cambia el fingerprint (runtime de
       los OTA): los APK anteriores dejan de recibir OTA hasta instalar este
-- [ ] Si el release incluye migraciones supabase/**: primero drift check
-      (`npx --yes supabase@latest migration list --db-url "$PROD_DB_URL"` con
-      la URL de `.env.migration`: lo aplicado en prod tiene que ser exactamente
-      lo aplicado en staging antes de este release, sin huecos ni extras);
-      después aplicarlas a prod con confirmación dedicada (CLAUDE.md, "Flujo
-      de branches")
+- [ ] Si el release incluye migraciones supabase/**: en el checkout principal
+      (el único con `.env.migration`), con main actualizado (`git switch main &&
+      git pull`):
+      1. Drift check: `migration list` contra prod y contra staging. Lo
+         registrado en prod tiene que ser lo de staging menos las migraciones de
+         este release, sin huecos ni extras.
+      2. `db push --dry-run` contra prod: tiene que listar justo las migraciones
+         de este release.
+      3. Con confirmación dedicada, Facu corre el mismo push sin `--dry-run`
+         (nunca el SQL Editor; ver docs/db-baseline.md).
+
+      ```sh
+      PROD="$(grep '^PROD_DB_URL=' .env.migration | cut -d= -f2-)"
+      STG="$(grep '^STAGING_DB_URL=' .env.migration | cut -d= -f2-)"
+      npx --yes supabase@2.116.0 migration list --db-url "$STG"
+      npx --yes supabase@2.116.0 migration list --db-url "$PROD"
+      npx --yes supabase@2.116.0 db push --dry-run --db-url "$PROD"
+      ```
 - [ ] Regla mientras este PR estuvo/esté abierto: NO mergear nada más a staging
 ```
 
