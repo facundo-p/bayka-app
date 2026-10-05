@@ -35,7 +35,10 @@ npx --yes supabase@2.116.0 db push --db-url "$URL"                # aplica y reg
 ```
 
 - **El push real lo corre Facu.** Claude corre solo `migration list` y
-  `--dry-run`, y le pasa el comando exacto.
+  `--dry-run`, y le pasa el comando exacto con `/migrar`. Ese comando funciona
+  desde cualquier directorio. Los de arriba, en cambio, solo funcionan en el
+  checkout principal y en la rama del entorno: en un worktree no encuentran
+  `.env.migration` y aplicarían las migraciones de otra rama.
 - **Orden:** staging primero; prod recién con el pase a `main` y confirmación
   dedicada.
 - **Una migración que figura antes de la última registrada** (porque falló o se
