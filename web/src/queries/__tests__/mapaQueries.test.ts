@@ -39,6 +39,7 @@ describe('listarPuntosGps', () => {
     // Mock con < 1000 filas: una sola página (range 0–999) y corta.
     expect(deArboles).toHaveLength(1);
     expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
+    expect(deArboles[0].orden).toEqual({ columna: 'id', ascending: true });
     expect(deArboles[0].limite).toBeUndefined();
     expect(deArboles[0].filtros).toContainEqual({
       metodo: 'eq',

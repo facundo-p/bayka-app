@@ -17,6 +17,8 @@ type RespuestaPagina<T> = { data: T[] | null; error: { message: string; code?: s
  * hasta que una página devuelve menos filas que el tamaño (no hay más).
  * Ante error, lanza un Error preservando el `code` de Postgres (para que el
  * caller pueda distinguir, p.ej., UNDEFINED_COLUMN de la migración 023).
+ * `consultar` tiene que ordenar por una clave única: sin ORDER BY, el OFFSET
+ * puede repetir o saltear filas entre páginas (#682).
  */
 export async function leerPaginado<T>(
   consultar: (desde: number, hasta: number) => PromiseLike<RespuestaPagina<T>>,

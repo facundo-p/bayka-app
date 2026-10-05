@@ -113,6 +113,7 @@ describe('listarGrupos', () => {
     expect(lecturas[0].columnas).toContain('group_id');
     // Lectura paginada con `.range()`, no `.limit()`: sin el tope de 1000.
     expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
+    expect(lecturas[0].orden).toEqual({ columna: 'id', ascending: true });
     expect(lecturas[0].limite).toBeUndefined();
     expect(lecturas[0].filtros).toEqual([
       { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
