@@ -151,8 +151,9 @@ registró algo:
     un check garantiza que un eliminado nunca esté activo.
 
 Un perfil inactivo no pasa ningún permiso por rol ni por membresía aunque
-conserve un access token vigente: `is_admin()`, `is_superadmin()` e
-`is_plantation_member()` exigen `activo`. Las filas de `plantation_users` no se
+conserve un access token vigente: `is_admin()`, `is_superadmin()`,
+`is_plantation_member()` y `mis_plantaciones()` (la lectura de grupos y árboles)
+exigen `activo`. Las filas de `plantation_users` no se
 borran, así que reactivarlo le devuelve el acceso tal cual estaba.
 
 ### Relaciones
