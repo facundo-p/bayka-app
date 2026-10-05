@@ -189,6 +189,10 @@ mismas filas que antes; `catalogo_conteos` cuenta solo lo visible (067, #682).
 `50` `dashboard_arboles` y `arboles_por_grupo` cuentan solo lo que el usuario
 puede leer, agrupan el mes en UTC, no cuentan fotos locales (`file://`,
 `content://`) ni vacías, e incluyen los grupos vacíos (068, #684).
+`51` `catalogo_conteos` suma fotos y bytes desde `storage.objects` (paths
+relativos y URLs viejas con `?token=`), sin contar fotos locales, referencias sin
+objeto ni objetos que la policy de Storage no deja leer, y sin alterar grupos ni
+árboles (069, #685).
 
 ## Hallazgo fuera de alcance (no corregido)
 
