@@ -49,6 +49,15 @@ test('pide las páginas de una tanda a la vez y las arma en orden aunque lleguen
   expect(filas.map(({ n }) => n)).toEqual(lote(total).map(({ n }) => n));
 });
 
+test('un total múltiplo exacto de la página corta en la primera vacía de la tanda', async () => {
+  const { rangos, consultar } = tabla(2 * TAMANO_PAGINA);
+  const filas = await leerPaginado(consultar);
+
+  expect(filas.map(({ n }) => n)).toEqual(lote(2 * TAMANO_PAGINA).map(({ n }) => n));
+  // Página 0 llena; en la tanda, la 1 llena y la 2 vacía: no pide otra tanda.
+  expect(rangos).toHaveLength(1 + PAGINAS_EN_PARALELO);
+});
+
 test('una sola página parcial corta sin pedir más', async () => {
   let llamadas = 0;
   const filas = await leerPaginado(async () => {
@@ -65,4 +74,14 @@ test('propaga el error preservando el code de Postgres', async () => {
     error: { message: 'falló', code: '42703' },
   }));
   await expect(error).rejects.toMatchObject({ message: 'falló', code: '42703' });
+});
+
+test('propaga el error de una página de la tanda', async () => {
+  const { consultar } = tabla(3 * TAMANO_PAGINA);
+  const error = leerPaginado(async (desde, hasta) =>
+    desde === 2 * TAMANO_PAGINA
+      ? { data: null, error: { message: 'timeout', code: '57014' } }
+      : consultar(desde, hasta),
+  );
+  await expect(error).rejects.toMatchObject({ message: 'timeout', code: '57014' });
 });
