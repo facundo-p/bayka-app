@@ -10,6 +10,7 @@ import {
   resetEstadoMock,
 } from '../../test/supabaseMock';
 import * as busquedaArbol from '../../queries/busquedaArbol';
+import * as profileRepository from '../../repositories/profileRepository';
 import { AuthProvider, useAuth } from '../useAuth';
 
 vi.mock('../../lib/supabase', async () => {
@@ -149,4 +150,19 @@ test('un refresh de token del mismo usuario no descarta la cache', async () => {
 
   await waitFor(() => expect(result.current.estado).toBe('autenticado'));
   expect(queryClient.getQueryData(CLAVE)).toEqual([{ id: 'plant-1' }]);
+});
+
+test('al arrancar con sesión carga el perfil una sola vez', async () => {
+  prepararSesionAdmin();
+  const getPerfil = vi.spyOn(profileRepository, 'getPerfil');
+  const { result } = renderAuth();
+  await waitFor(() => expect(result.current.estado).toBe('autenticado'));
+
+  await act(async () => {
+    emitirEventoAuth('INITIAL_SESSION');
+    await new Promise((resolver) => setTimeout(resolver, 0));
+  });
+
+  expect(getPerfil).toHaveBeenCalledTimes(1);
+  getPerfil.mockRestore();
 });

@@ -4,7 +4,7 @@ import { CircleMarker, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import { cx } from '../../lib/classNames';
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
-import type { MapaPuntosProps, PuntoGps } from './types';
+import { VARIANTE_MAPA_POR_DEFECTO, type MapaPuntosProps, type PuntoGps } from './types';
 import styles from './MapaPuntos.module.css';
 
 /** Capa base satelital sin API key (Esri World Imagery). */
@@ -70,7 +70,11 @@ function CapaPuntos({
 /** Implementación Leaflet del mapa: satelital con un CircleMarker por punto GPS
  *  coloreado por especie. Sin puntos no renderiza nada (el caller maneja el
  *  estado vacío). Usada por `PlantationMap` y `ArbolDetallePanel`. */
-export function MapaPuntosLeaflet({ puntos, colorPorCodigo, variante = 'panel' }: MapaPuntosProps) {
+export function MapaPuntosLeaflet({
+  puntos,
+  colorPorCodigo,
+  variante = VARIANTE_MAPA_POR_DEFECTO,
+}: MapaPuntosProps) {
   if (puntos.length === 0) return null;
   return (
     <div className={cx(styles.contenedor, styles[variante])}>
