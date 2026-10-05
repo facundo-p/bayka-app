@@ -176,6 +176,7 @@ export default function TreeRegistrationScreen() {
 
   function handleReplacePhoto(foto: FotoDeArbol) {
     const arbol = arbolDelGrupo(foto.treeId);
+    // Borrado con el visor abierto: ya no hay foto que reemplazar.
     if (!arbol) return;
     confirmarReemplazoEnVisor(confirm.show, { subId: arbol.subId, fotoSynced: arbol.fotoSynced ?? true },
       foto.reemplazoConfirmado, () => capturarReemplazo(foto.treeId));

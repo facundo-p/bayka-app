@@ -1,6 +1,9 @@
 import PhotoViewer from './PhotoViewer';
 
-/** `reemplazoConfirmado`: se abrió desde «Ver actual» del aviso de reemplazo; Reemplazar no vuelve a preguntar. */
+/**
+ * `reemplazoConfirmado`: se abrió desde «Ver actual» de un aviso de reemplazo (el botón de la
+ * botonera, #751); Reemplazar no vuelve a preguntar.
+ */
 export type FotoDeArbol = { uri: string; treeId: string; reemplazoConfirmado?: boolean };
 
 interface Props {

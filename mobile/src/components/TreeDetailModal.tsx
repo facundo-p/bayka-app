@@ -24,6 +24,8 @@ import { treeDetailModalStyles as styles } from './TreeDetailModal.styles';
 
 const MENSAJE_GPS_ERROR = 'No se pudo capturar el punto GPS.';
 
+type AccionDeFoto = (treeId: string, onError: ErrorSink) => Promise<void>;
+
 interface Props {
   visible: boolean;
   treeId: string | null;
@@ -35,8 +37,8 @@ interface Props {
   /** Reabre el grupo finalizado para poder cambiar la especie; true si quedó activo. */
   onReabrirGrupo: () => Promise<boolean>;
   /** Los errores se reportan por `onError`: el diálogo de la pantalla queda detrás de este Modal. */
-  onCapturePhoto: (treeId: string, onError: ErrorSink) => Promise<void>;
-  onRemovePhoto: (treeId: string, onError: ErrorSink) => Promise<void>;
+  onCapturePhoto: AccionDeFoto;
+  onRemovePhoto: AccionDeFoto;
   onCaptureGps: (treeId: string) => Promise<boolean>;
   onDelete: (treeId: string, posicion: number) => void;
 }
@@ -67,7 +69,7 @@ export default function TreeDetailModal({
   const showError: ErrorSink = (mensaje) =>
     showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
 
-  async function accionDeFoto(accion: Props['onCapturePhoto'], id: string) {
+  async function accionDeFoto(accion: AccionDeFoto, id: string) {
     setBusyPhoto(true);
     try { await accion(id, showError); } finally { setBusyPhoto(false); }
   }

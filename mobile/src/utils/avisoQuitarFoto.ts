@@ -3,7 +3,7 @@ import { colors } from '../theme';
 
 export const TITULO_QUITAR_FOTO = 'Quitar la foto';
 
-export const NO_SE_PUEDE_DESHACER ='No se puede deshacer.';
+export const NO_SE_PUEDE_DESHACER = 'No se puede deshacer.';
 
 /**
  * Qué se pierde al quitar. fotoSynced=false no prueba que el server no la tenga: reemplazar
