@@ -30,7 +30,9 @@
 - **El pase a prod se arma SOLO con el skill `/deploy`** (#273): calcula bumps
   semver por conventional commits clasificados por paths, propone changelog, y
   con OK de Facu commitea el release en staging y abre el PR staging→main.
-  Detalle en `.claude/skills/deploy/SKILL.md`.
+  Un commit en `shared/` (lógica pura que importan las dos apps, #713) cuenta
+  para web y para mobile: bumpea las dos y exige APK nueva. Detalle en
+  `.claude/skills/deploy/SKILL.md`.
 - **Tags `web-vX.Y.Z` / `mobile-vX.Y.Z` + GitHub Releases**: los crea
   `.github/workflows/release-tags.yml` al mergear a main, con notas extraídas
   de `CHANGELOG.md` (los headers `## `/`### ` del changelog son anclas de ese
