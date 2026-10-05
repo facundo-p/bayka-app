@@ -14,7 +14,7 @@ import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
 import TreeStrip, { type TreeChipItem } from '../components/TreeStrip';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
-import TreePhotoViewer from '../components/TreePhotoViewer';
+import TreePhotoViewer, { type FotoDeArbol } from '../components/TreePhotoViewer';
 import TreeListModal from '../components/TreeListModal';
 import TreeDetailModal from '../components/TreeDetailModal';
 import TreeConfigModal from '../components/TreeConfigModal';
@@ -58,7 +58,7 @@ export default function TreeRegistrationScreen() {
     showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
   }, [confirm.show]);
 
-  const [viewingPhoto, setViewingPhoto] = useState<{ uri: string; treeId: string } | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<FotoDeArbol | null>(null);
   const [showTreeList, setShowTreeList] = useState(false);
   const [editingTreeId, setEditingTreeId] = useState<string | null>(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
