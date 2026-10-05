@@ -20,6 +20,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { colors } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useNNResolution } from '../hooks/useNNResolution';
+import { useEstiloBotonera } from '../hooks/useEstiloBotonera';
 import { nnResolutionScreenStyles as styles } from './NNResolutionScreen.styles';
 
 const SWIPE_THRESHOLD = 40;
@@ -34,6 +35,7 @@ export default function NNResolutionScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
+  const botonera = useEstiloBotonera();
 
   const {
     unresolvedTrees,
@@ -157,6 +159,7 @@ export default function NNResolutionScreen() {
           ) : (
             <SpeciesButtonGrid
               species={species}
+              estilo={botonera.estilo}
               onSelectSpecies={({ especieId }) => handleSelectSpecies(especieId)}
               selectedId={currentSelectionId}
             />

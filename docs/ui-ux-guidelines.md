@@ -262,6 +262,11 @@ ANC
 Anchico
 ```
 
+Ese es el diseño por defecto. Cada usuario puede cambiarlo en Opciones
+(«Tamaño de la botonera»): poner el nombre arriba y elegir el tamaño de letra
+del código y del nombre, de 9 a 24. El texto de arriba va siempre en negrita.
+Vale para todas sus plantaciones en ese dispositivo.
+
 ---
 
 # 8. Registro de Árboles

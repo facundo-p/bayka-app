@@ -10,6 +10,7 @@ import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
 import { usePhotoCapture } from '../hooks/usePhotoCapture';
 import { useTreeRegistration } from '../hooks/useTreeRegistration';
 import { useSpeciesOrder } from '../hooks/useSpeciesOrder';
+import { useEstiloBotonera } from '../hooks/useEstiloBotonera';
 import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
 import TreeStrip, { type TreeChipItem } from '../components/TreeStrip';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
@@ -83,6 +84,7 @@ export default function TreeRegistrationScreen() {
     refreshWatcher: gpsWatcher.refresh,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
+  const botonera = useEstiloBotonera();
   const treeSelection = useTreeSelection(treeReg.sortedTrees);
   const { selectedTree } = treeSelection;
 
@@ -254,6 +256,7 @@ export default function TreeRegistrationScreen() {
               <Animated.View entering={FadeInDown.delay(100).duration(300)}>
                 <SpeciesButtonGrid
                   species={speciesOrder.orderedSpecies}
+                  estilo={botonera.estilo}
                   onSelectSpecies={({ especieId, especieCodigo }) =>
                     treeReg.registerTree(especieId, especieCodigo)
                   }
@@ -345,6 +348,9 @@ export default function TreeRegistrationScreen() {
           speciesOrder.initReorderFromCurrent();
           setShowReorderModal(true);
         }}
+        estiloBotonera={botonera.estilo}
+        especies={speciesOrder.orderedSpecies}
+        onCambiarEstiloBotonera={botonera.setEstilo}
       />
 
       <SpeciesReorderModal
