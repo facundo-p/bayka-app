@@ -62,7 +62,7 @@ describe('catalogQueries', () => {
       plantationsChain.order = () => Promise.resolve({ data: remotePlantations, error: null });
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(plantationsChain); // trees
+        .mockReturnValueOnce(plantationsChain);
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 

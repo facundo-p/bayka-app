@@ -22,7 +22,9 @@ export type ConsultaCapturada = {
   columnas?: string;
   opciones?: { count?: string; head?: boolean };
   filtros: Filtro[];
+  /** El último `.order()`; `ordenes` los guarda todos, en orden. */
   orden?: { columna: string; ascending: boolean };
+  ordenes?: { columna: string; ascending: boolean }[];
   rango?: { desde: number; hasta: number };
   limite?: number;
 };
@@ -85,6 +87,7 @@ export function crearConsultaMock(tabla: string, resolver: ResolverConsulta) {
     },
     order(columna: string, opciones?: { ascending?: boolean }) {
       consulta.orden = { columna, ascending: opciones?.ascending ?? true };
+      consulta.ordenes = [...(consulta.ordenes ?? []), consulta.orden];
       return builder;
     },
     range(desde: number, hasta: number) {

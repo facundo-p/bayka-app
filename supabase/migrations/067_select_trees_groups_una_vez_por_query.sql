@@ -52,6 +52,9 @@ CREATE POLICY "Members can read trees" ON "public"."trees" FOR SELECT TO "authen
 
 -- ── Índices ──────────────────────────────────────────────────────────────────
 
+-- Sin CONCURRENTLY porque la migración corre en una transacción: bloquean
+-- escrituras en trees mientras se arman. Con decenas de miles de filas son
+-- segundos; aplicar fuera del horario de sync.
 CREATE INDEX IF NOT EXISTS "trees_created_at_idx" ON "public"."trees" USING "btree" ("created_at" DESC);
 CREATE INDEX IF NOT EXISTS "trees_species_id_idx" ON "public"."trees" USING "btree" ("species_id");
 
