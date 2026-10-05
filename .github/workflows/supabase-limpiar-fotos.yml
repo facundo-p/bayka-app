@@ -31,9 +31,10 @@ jobs:
         env:
           SERVICE_ROLE_KEY: ${{ secrets[matrix.key_secret] }}
         run: |
+          # Sin secret el job falla: un run en verde que no limpia nada esconde el problema.
           if [ -z "$SERVICE_ROLE_KEY" ]; then
-            echo "::warning::Falta el secret ${{ matrix.key_secret }}; no se limpia ${{ matrix.env_name }}."
-            exit 0
+            echo "::error::Falta el secret ${{ matrix.key_secret }}; no se limpia ${{ matrix.env_name }}."
+            exit 1
           fi
           # Sin -f para mostrar el cuerpo del error; el status decide el resultado.
           status=$(curl -s -o respuesta.json -w '%{http_code}' -X POST \
