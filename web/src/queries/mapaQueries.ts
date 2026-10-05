@@ -51,6 +51,7 @@ function consultarPuntos(plantationId: string, desde: number, hasta: number) {
     .eq('groups.plantation_id', plantationId)
     .not('latitude', 'is', null)
     .not('longitude', 'is', null)
+    .order('id')
     .range(desde, hasta);
 }
 

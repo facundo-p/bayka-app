@@ -161,6 +161,7 @@ function consultarArbolesDashboard(
     .from('trees')
     .select(`${columnas}, ${EMBED_GRUPO}`)
     .eq('groups.plantation_id', plantationId)
+    .order('id')
     .range(desde, hasta);
 }
 

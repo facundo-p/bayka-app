@@ -177,6 +177,7 @@ async function contarArbolesPorGrupo(plantationId: string): Promise<Map<string, 
       .from('trees')
       .select('group_id, groups!inner(plantation_id)')
       .eq('groups.plantation_id', plantationId)
+      .order('id')
       .range(desde, hasta),
   );
   const conteos = new Map<string, number>();

@@ -70,7 +70,11 @@ describe('listarFilasExportacion', () => {
       columna: 'groups.plantation_id',
       valor: 'plant-1',
     });
-    expect(deArboles[0].orden).toEqual({ columna: 'global_id', ascending: true });
+    // global_id puede ser null: `id` desempata para que la paginación no repita filas.
+    expect(deArboles[0].ordenes).toEqual([
+      { columna: 'global_id', ascending: true },
+      { columna: 'id', ascending: true },
+    ]);
     // Lectura paginada con `.range()`, no `.limit()`.
     expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
     expect(deArboles[0].limite).toBeUndefined();

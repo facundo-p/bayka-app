@@ -85,6 +85,7 @@ export async function listarFilasExportacion(plantationId: string): Promise<Fila
         .select(SELECT_EXPORTACION)
         .eq('groups.plantation_id', plantationId)
         .order('global_id', { ascending: true })
+        .order('id')
         .range(desde, hasta) as unknown as PromiseLike<{
         data: FilaCruda[] | null;
         error: { message: string; code?: string } | null;
