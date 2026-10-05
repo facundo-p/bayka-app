@@ -15,6 +15,11 @@
     prod + APK de producción.
 - Migraciones de DB: se aplican primero a staging; a prod recién con el pase a
   `main` correspondiente y confirmación dedicada.
+- **Las migraciones se aplican solo con `supabase db push --db-url`** (vigente
+  desde 2026-10-05, #759), nunca pegándolas en el SQL Editor. El push las
+  registra en `supabase_migrations.schema_migrations`, y `migration list`
+  muestra lo que falta. Siempre `--dry-run` antes; el push real lo corre Facu.
+  Las migraciones ya no se archivan. Detalle en `docs/db-baseline.md`.
 
 ## Releases y versionado (OBLIGATORIO — vigente desde 2026-08-20)
 

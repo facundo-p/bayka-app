@@ -1,50 +1,79 @@
-# Baseline de la base de datos (#283)
+# Baseline y migraciones de la base de datos (#283, #759)
 
 ## Fuente de verdad
 
-`supabase/baseline_schema.sql` es el schema completo y auto-contenido tal
-como quedó tras la última regeneración (hoy incluye hasta 030). No es
-histórico: es el estado que se busca alcanzar. **Regla de archivado: una
-migración se mueve a `supabase/migrations/archive/` recién cuando ya está
-aplicada en prod** — no cuando se funde en la baseline. Por eso puede haber
-migraciones (como 030 hoy) que ya están en la baseline pero siguen viviendo
-en `supabase/migrations/` porque prod todavía no las corrió; ese archivado
-pendiente se hace en el mismo momento en que se regenera la baseline tras
-aplicar a prod. Las ya archivadas viven, solo como referencia, en
-`supabase/migrations/archive/` (no replayables desde cero: algunas, como
-013-015, son migraciones de **datos** de un momento puntual, no de esquema).
+`supabase/baseline_schema.sql` es el schema completo y auto-contenido hasta la
+030. Encima van todas las migraciones de `supabase/migrations/`, de la 030 en
+adelante. Las de `supabase/migrations/archive/` (hasta la 029) quedan solo como
+referencia: no son replayables desde cero, porque algunas, como 013-015, son
+migraciones de **datos** de un momento puntual.
+
+**No se archiva más como rutina** (decisión de Facu, 2026-10-05). Con el
+registro de migraciones, `supabase db push` exige que cada versión registrada
+en la base siga existiendo en `supabase/migrations/`: mover una a `archive/`
+rompe el push en todos los entornos.
+
+## Aplicar migraciones
+
+Cada base registra qué migraciones tiene en `supabase_migrations.schema_migrations`,
+la tabla estándar de la CLI de Supabase. **Las migraciones se aplican solo con
+`supabase db push`**, nunca pegándolas en el SQL Editor: el push aplica cada
+una en su transacción y la registra al terminar. Si una falla, se frena ahí,
+y lo que falta queda a la vista en el registro.
+
+Antes, en staging se aplicaban a mano. Así, la 038 nunca corrió, y 039, 045,
+047, 048 y 049 fallaron y se revirtieron sin que nadie lo notara (#759).
+
+Con la URL de `.env.migration` (`STAGING_DB_URL` o `PROD_DB_URL`) y la versión
+de la CLI fijada en `supabase/tests/lib.sh`:
+
+```sh
+URL="$(grep '^STAGING_DB_URL=' .env.migration | cut -d= -f2-)"
+npx --yes supabase@2.116.0 migration list --db-url "$URL"         # drift: Local vs Remote
+npx --yes supabase@2.116.0 db push --dry-run --db-url "$URL"      # qué aplicaría
+npx --yes supabase@2.116.0 db push --db-url "$URL"                # aplica y registra
+```
+
+- **El push lo corre Facu.** `supabase db push` está en la lista deny de
+  `.claude/settings.local.json`; Claude prepara el dry-run y el comando.
+- **Orden:** staging primero; prod recién con el pase a `main` y confirmación
+  dedicada.
+- **Una migración que figura antes de la última registrada** (porque falló o se
+  salteó) solo se aplica con `--include-all`. El dry-run la muestra.
+- **`migration repair --status applied <versiones>`** marca como aplicadas
+  migraciones que ya están en la base sin correrlas. Sirve para un entorno
+  restaurado o creado a mano. Antes de usarlo, verificar contra el schema que
+  de verdad estén.
 
 ## Migraciones nuevas
 
-Todo cambio de esquema nuevo va en `supabase/migrations/NNN_descripcion.sql`
-(numeración siguiente a la última archivada). Regla dura: **debe poder
-aplicarse sobre una base vacía** (baseline + migraciones pendientes, sin
-datos). Si una migración necesita tocar filas existentes de un ambiente real
-(backfill, limpieza puntual), esa parte va aparte en
-`supabase/migrations/data/`, nunca mezclada con el cambio de esquema
-replayable.
+Todo cambio de esquema nuevo va en `supabase/migrations/NNN_descripcion.sql`,
+con la numeración siguiente a la última. Regla dura: **debe poder aplicarse
+sobre una base vacía** (baseline + migraciones anteriores, sin datos). Si una
+migración necesita tocar filas existentes de un ambiente real (backfill,
+limpieza puntual), esa parte va aparte en `supabase/migrations/data/`, que el
+push no lee, nunca mezclada con el cambio de esquema.
 
 Idempotencia: `IF EXISTS` / `IF NOT EXISTS` / `DROP POLICY IF EXISTS` antes de
-`CREATE POLICY`, etc. — mismo criterio que ya usa 030.
+`CREATE POLICY`, etc.
 
 ## Crear un ambiente desde cero
 
-1. Aplicar `supabase/baseline_schema.sql` + todo `supabase/migrations/*.sql`
-   pendiente (es literalmente lo que hace
-   `supabase/tests/run-db-tests.sh`, contra un stack local).
-2. Configuración manual que ningún SQL cubre (issue #249): crear el proyecto
+1. Aplicar `supabase/baseline_schema.sql` con `psql`, y después `db push` de
+   todo `supabase/migrations/`. Es lo mismo que hace
+   `supabase/tests/run-db-tests.sh` contra un stack local.
+2. Configuración manual que ningún SQL cubre (#249): crear el proyecto
    Supabase, variables de entorno de la app, Auth (proveedores, redirect
    URLs), y credenciales cargadas en Bitwarden del cliente.
 
 ## Regenerar la baseline
 
-Después de aplicar migraciones nuevas a prod (nunca antes: la baseline y el
-archivado reflejan un estado real, no uno planeado):
-`supabase/tests/regenerate-baseline.sh`. Automatiza: levantar un stack local
-con la baseline actual + las migraciones pendientes, `supabase db dump
---schema public`, y pegarle `supabase/tests/baseline-extras.sql` (objetos
-fuera de `public` que un dump de un solo schema no trae: bucket de storage,
-triggers sobre `auth.users`). El script no archiva nada — eso es manual,
-después de confirmar `supabase/tests/run-db-tests.sh` en verde: recién ahí
-esas migraciones pasan a `supabase/migrations/archive/`. Detalle completo en
-`supabase/tests/README.md`.
+Ya no es rutina. `supabase/tests/regenerate-baseline.sh` sigue disponible:
+levanta un stack local con la baseline actual + las migraciones, corre
+`supabase db dump --schema public` y le pega `supabase/tests/baseline-extras.sql`
+(objetos fuera de `public` que un dump de un solo schema no trae: bucket de
+storage, triggers sobre `auth.users`). Detalle en `supabase/tests/README.md`.
+
+Si alguna vez se regenera y se archivan migraciones, es una decisión puntual.
+Incluye `migration repair --status reverted <versiones>` de las archivadas en
+cada base, que pierde ese tramo del registro.

@@ -28,16 +28,15 @@ Los cinco secrets del repo que necesita: `SUPABASE_DB_URL`, `R2_ENDPOINT`,
 
 El dump es de la base entera, no solo de `public`: trae `auth` (usuarios e
 identidades, así que un restore no deja a nadie afuera) y las **filas** de
-`storage.objects`. Dos cosas quedan afuera, y las dos importan:
+`storage.objects`. También trae `supabase_migrations.schema_migrations`, el
+registro de qué migraciones se aplicaron (#759): un proyecto restaurado sabe qué
+tiene y el próximo `db push` aplica solo lo que falta. Los dumps anteriores al
+2026-10-05 no lo traen, porque la tabla no existía; ver
+`migration repair` en `docs/db-baseline.md`.
 
-- **Los archivos de Storage.** Viajan las filas que describen cada foto, no los
-  bytes. Restaurar el dump deja 148 registros apuntando a archivos que solo
-  existen en el bucket de Supabase. Respaldarlos es #603.
-- **`supabase_migrations.schema_migrations`**, el registro de qué migraciones se
-  aplicaron. Un proyecto restaurado desde este dump tiene el schema al día pero
-  no lo sabe, y el próximo `db push` intenta reaplicar todo desde cero. Al
-  restaurar sobre un proyecto nuevo hay que repoblar esa tabla a mano con las
-  migraciones que el dump ya trae aplicadas.
+Quedan afuera **los archivos de Storage**. Viajan las filas que describen cada
+foto, no los bytes. Restaurar el dump deja 148 registros apuntando a archivos
+que solo existen en el bucket de Supabase. Respaldarlos es #603.
 
 ## El ensayo de restore
 
@@ -131,5 +130,6 @@ harness de pgTAP. No es drift.
 El ensayo prueba el dump. Poner esa base en un proyecto de Supabase es otra
 cosa: va contra la URL del proyecto destino, con los roles ya existentes, y
 conviene hacerlo sobre un proyecto vacío o pausable antes que sobre uno en uso.
-Además hay que repoblar `supabase_migrations.schema_migrations` y recuperar los
-archivos de Storage, que el dump no trae.
+Además hay que recuperar los archivos de Storage, que el dump no trae, y, si
+el dump es anterior al 2026-10-05, repoblar `supabase_migrations.schema_migrations`
+con `migration repair`.
