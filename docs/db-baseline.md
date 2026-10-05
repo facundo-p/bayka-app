@@ -11,7 +11,7 @@ migraciones de **datos** de un momento puntual.
 **No se archiva más como rutina** (decisión de Facu, 2026-10-05). Con el
 registro de migraciones, `supabase db push` exige que cada versión registrada
 en la base siga existiendo en `supabase/migrations/`: mover una a `archive/`
-rompe el push en todos los entornos.
+rompe el push en los entornos que la tienen registrada.
 
 ## Aplicar migraciones
 
@@ -34,8 +34,8 @@ npx --yes supabase@2.116.0 db push --dry-run --db-url "$URL"      # qué aplicar
 npx --yes supabase@2.116.0 db push --db-url "$URL"                # aplica y registra
 ```
 
-- **El push lo corre Facu.** `supabase db push` está en la lista deny de
-  `.claude/settings.local.json`; Claude prepara el dry-run y el comando.
+- **El push real lo corre Facu.** Claude corre solo `migration list` y
+  `--dry-run`, y le pasa el comando exacto.
 - **Orden:** staging primero; prod recién con el pase a `main` y confirmación
   dedicada.
 - **Una migración que figura antes de la última registrada** (porque falló o se
@@ -60,7 +60,8 @@ Idempotencia: `IF EXISTS` / `IF NOT EXISTS` / `DROP POLICY IF EXISTS` antes de
 ## Crear un ambiente desde cero
 
 1. Aplicar `supabase/baseline_schema.sql` con `psql`, y después `db push` de
-   todo `supabase/migrations/`. Es lo mismo que hace
+   todo `supabase/migrations/`. La 030 ya está en la baseline y se reaplica, lo
+   que es seguro porque es idempotente. Equivale a lo que hace
    `supabase/tests/run-db-tests.sh` contra un stack local.
 2. Configuración manual que ningún SQL cubre (#249): crear el proyecto
    Supabase, variables de entorno de la app, Auth (proveedores, redirect
@@ -74,6 +75,6 @@ levanta un stack local con la baseline actual + las migraciones, corre
 (objetos fuera de `public` que un dump de un solo schema no trae: bucket de
 storage, triggers sobre `auth.users`). Detalle en `supabase/tests/README.md`.
 
-Si alguna vez se regenera y se archivan migraciones, es una decisión puntual.
-Incluye `migration repair --status reverted <versiones>` de las archivadas en
-cada base, que pierde ese tramo del registro.
+Si alguna vez se regenera y se archivan migraciones, es una decisión puntual:
+hay que correr `migration repair --status reverted <versiones>` de las
+archivadas en cada base que las tenga registradas; sin eso, `db push` falla.

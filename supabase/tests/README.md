@@ -37,7 +37,7 @@ anterior con `DB_TEST_KEEP_RUNNING=1`.
 
 ## Regenerar la baseline
 
-Cuándo y cómo regenerar/archivar: ver `docs/db-baseline.md`. Mecánica del
+Regenerar ya no es rutina y no se archiva: ver `docs/db-baseline.md`. Mecánica del
 script (`regenerate-baseline.sh`): stack con baseline + migraciones
 pendientes → `db dump --schema public` → agrega `baseline-extras.sql`.
 

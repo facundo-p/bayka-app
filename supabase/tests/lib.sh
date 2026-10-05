@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # supabase/tests/lib.sh — funciones compartidas por run-db-tests.sh y
 # regenerate-baseline.sh: detección del CLI, armado de un proyecto Supabase
-# temporal (baseline + migraciones pendientes) y su cleanup. No se ejecuta
+# temporal (baseline + migraciones) y su cleanup. No se ejecuta
 # solo: se hace `source`.
 
 # CLI pinneado a la versión que resolvía `npx supabase@latest --version` al

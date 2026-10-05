@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Regenera supabase/baseline_schema.sql a partir de un Postgres local
-# (baseline actual + migraciones pendientes en supabase/migrations/), vía
+# (baseline actual + las migraciones de supabase/migrations/), vía
 # `supabase db dump --schema public` curado. Ver docs/db-baseline.md.
 #
 # Ya no es rutina, y las migraciones no se archivan después (#759): `db push`
