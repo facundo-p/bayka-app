@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Muestra qué migraciones aplicaría `db push` en un entorno y arma el comando
-# para aplicarlas. Solo lee la base (migration list y dry-run): el push lo corre
+# para aplicarlas. En la base solo lee (migration list y dry-run): el push lo corre
 # Facu. Se puede invocar desde cualquier directorio o worktree del repo.
 #
 # Uso: preparar.sh <staging|prod>
@@ -19,8 +19,11 @@ ROOT="$(dirname "$GIT_COMMON_DIR")"
 ENV_FILE="$ROOT/.env.migration"
 [ -f "$ENV_FILE" ] || { echo "No existe $ENV_FILE" >&2; exit 1; }
 
-DB_URL="$(set -a; . "$ENV_FILE"; printf '%s' "${!VAR_URL:-}")"
-[ -n "$DB_URL" ] || { echo "$VAR_URL está vacía en $ENV_FILE" >&2; exit 1; }
+# Se lee la URL sin ejecutar el archivo, igual que en el comando impreso: así el
+# dry-run y el push ven lo mismo, y ninguna otra variable del archivo le llega a la CLI.
+LEER_URL="grep '^$VAR_URL=' $(printf '%q' "$ENV_FILE") | cut -d= -f2-"
+DB_URL="$(eval "$LEER_URL" || true)"
+[ -n "$DB_URL" ] || { echo "$VAR_URL está vacía o falta en $ENV_FILE" >&2; exit 1; }
 
 # db push aplica las migraciones del directorio en el que corre: se toman de la
 # rama del entorno en origin, no de la rama local.
@@ -40,7 +43,8 @@ CLI=(npx --yes "supabase@$CLI_VERSION")
 
 echo "== $ENTORNO · migraciones de $REF ($SHA)"
 echo "== migration list"
-"${CLI[@]}" migration list --workdir "$DIR" --db-url "$DB_URL" 2>&1
+"${CLI[@]}" migration list --workdir "$DIR" --db-url "$DB_URL" 2>&1 \
+  || { echo "== migration list falló." >&2; exit 1; }
 echo "== db push --dry-run"
 if ! DRY_RUN="$("${CLI[@]}" db push --dry-run --workdir "$DIR" --db-url "$DB_URL" 2>&1)"; then
   echo "$DRY_RUN"
@@ -49,13 +53,16 @@ if ! DRY_RUN="$("${CLI[@]}" db push --dry-run --workdir "$DIR" --db-url "$DB_URL
 fi
 echo "$DRY_RUN"
 
+# Si la CLI cambia este formato, se imprime un comando de más, y el push
+# responde que no hay nada que aplicar.
 if grep -q '"upToDate":true' <<<"$DRY_RUN"; then
   echo "== Nada pendiente en $ENTORNO."
   exit 0
 fi
 
-# El subshell evita que las credenciales queden exportadas en la terminal de Facu,
-# y el comando nombra la variable, no la URL, para no imprimir la contraseña.
+# El comando lee la URL al correr, para no imprimir la contraseña. El subshell no
+# la deja en la terminal, y ${URL:?} corta si falta: con --db-url vacío, la CLI
+# se conecta a un Postgres local.
 printf '\n== Comando para aplicar (desde cualquier directorio):\n'
-printf '( set -a; . %q; set +a; npx --yes supabase@%s db push --workdir %q --db-url "$%s" )\n' \
-  "$ENV_FILE" "$CLI_VERSION" "$DIR" "$VAR_URL"
+printf '( URL="$(%s)"; %s db push --workdir %q --db-url "${URL:?falta %s}" )\n' \
+  "$LEER_URL" "${CLI[*]}" "$DIR" "$VAR_URL"

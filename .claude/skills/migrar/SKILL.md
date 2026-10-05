@@ -25,10 +25,10 @@ checkout principal de dos formas:
 1. **Entorno.** Staging por defecto. Prod solo después de mergear el pase
    staging → main y con confirmación explícita de Facu para ese push.
 
-2. **Preparar.** Correr, desde cualquier directorio:
+2. **Preparar.** Correr, con el entorno explícito:
 
    ```sh
-   bash .claude/skills/migrar/preparar.sh <staging|prod>
+   bash "$(git rev-parse --show-toplevel)/.claude/skills/migrar/preparar.sh" staging   # o prod
    ```
 
    El script:
@@ -46,16 +46,17 @@ checkout principal de dos formas:
    - Si falla por drift (versiones registradas que no existen en el repo), no
      hay comando: se resuelve primero (ver `docs/db-baseline.md`).
    - Si Facu dice que una pendiente ya la corrió a mano, verificar en la base
-     que esté (un RPC con la anon key responde `permission denied` si existe y
-     `PGRST202` si no). Si la migración es idempotente (`CREATE OR REPLACE`,
-     `IF NOT EXISTS`), el push la vuelve a correr y la registra. Si no lo es, el
-     camino es `migration repair --status applied <versión>`, que también corre
-     Facu.
+     que esté. Para una función con `REVOKE ... FROM anon`, llamarla por RPC con
+     la anon key responde `permission denied` si existe y `PGRST202` si no; si
+     anon puede ejecutarla, la llamada la corre, así que no sirve. Si la
+     migración es idempotente (`CREATE OR REPLACE`, `IF NOT EXISTS`), el push la
+     vuelve a correr y la registra. Si no lo es, el camino es
+     `migration repair --status applied <versión>`, que también corre Facu.
 
 4. **Pasar el comando** tal cual lo imprimió el script, en un bloque de código,
-   con la lista de migraciones que aplica. Corre en un subshell, así no deja
-   las credenciales exportadas en la terminal, y nombra la variable
-   (`$STAGING_DB_URL`), no la URL. Aplica exactamente lo que mostró el
+   con la lista de migraciones que aplica. El comando lee la URL de
+   `.env.migration` al correr, así la contraseña no queda en el chat ni en la
+   terminal, y corta si la URL viene vacía. Aplica exactamente lo que mostró el
    dry-run, aunque después se mergee algo más a la rama.
 
 5. **Verificar** cuando Facu avise que lo corrió: volver a correr el script.
