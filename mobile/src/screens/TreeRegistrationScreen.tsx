@@ -14,7 +14,7 @@ import TreeRegistrationHeader from '../components/TreeRegistrationHeader';
 import TreeStrip, { type TreeChipItem } from '../components/TreeStrip';
 import SpeciesButtonGrid from '../components/SpeciesButtonGrid';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
-import PhotoViewer from '../components/PhotoViewer';
+import TreePhotoViewer from '../components/TreePhotoViewer';
 import TreeListModal from '../components/TreeListModal';
 import TreeDetailModal from '../components/TreeDetailModal';
 import TreeConfigModal from '../components/TreeConfigModal';
@@ -157,6 +157,22 @@ export default function TreeRegistrationScreen() {
       `Eliminar el árbol en posición ${posicion}? Las posiciones se recalcularán automáticamente.`,
       'Eliminar', () => treeReg.executeDeleteTree(treeId),
       { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' });
+  }
+
+  function handleReplacePhoto(treeId: string) {
+    void pickPhoto().then((newUri) => {
+      if (!newUri) return;
+      void treeReg.updatePhoto(treeId, newUri);
+      setViewingPhoto({ uri: newUri, treeId });
+    });
+  }
+
+  function handleRemovePhoto(treeId: string) {
+    const fotoSynced = treeReg.sortedTrees.find((t) => t.id === treeId)?.fotoSynced ?? true;
+    confirmarQuitarFoto(confirm.show, fotoSynced, () => {
+      void treeReg.removePhoto(treeId);
+      setViewingPhoto(null);
+    });
   }
 
   const { dataLoaded, isReadOnly, canReactivate, totalCount, unresolvedNN,
@@ -309,28 +325,12 @@ export default function TreeRegistrationScreen() {
         }}
       />
 
-      <PhotoViewer
-        uri={viewingPhoto?.uri ?? null}
-        treeId={viewingPhoto?.treeId}
+      <TreePhotoViewer
+        foto={viewingPhoto}
+        canEdit={canEditTree}
         onClose={() => setViewingPhoto(null)}
-        onReplace={() => {
-          if (!viewingPhoto) return;
-          void pickPhoto().then((newUri) => {
-            if (newUri) {
-              void treeReg.updatePhoto(viewingPhoto.treeId, newUri);
-              setViewingPhoto({ uri: newUri, treeId: viewingPhoto.treeId });
-            }
-          });
-        }}
-        onRemove={() => {
-          if (!viewingPhoto) return;
-          const { treeId } = viewingPhoto;
-          const fotoSynced = sortedTrees.find((t) => t.id === treeId)?.fotoSynced ?? true;
-          confirmarQuitarFoto(confirm.show, fotoSynced, () => {
-            void treeReg.removePhoto(treeId);
-            setViewingPhoto(null);
-          });
-        }}
+        onReplace={handleReplacePhoto}
+        onRemove={handleRemovePhoto}
       />
 
       <ConfirmModal {...confirm.confirmProps} />
