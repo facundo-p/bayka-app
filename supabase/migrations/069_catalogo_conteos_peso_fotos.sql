@@ -19,7 +19,8 @@ DROP FUNCTION IF EXISTS "public"."catalogo_conteos"("uuid"[]);
 -- usuario puede descargar. El LATERAL con LIMIT 1 busca el objeto por índice
 -- solo para árboles con foto (la policy se evalúa por foto, no por objeto del
 -- bucket) y no infla `grupos` ni `arboles` aunque haya más de una versión.
--- Un `foto_url` local (`file://`) o sin objeto en Storage no suma.
+-- Un `foto_url` local (`file://`) o sin objeto en Storage no suma. Un `size`
+-- ausente o no entero cuenta la foto con 0 bytes en vez de romper el catálogo.
 CREATE FUNCTION "public"."catalogo_conteos"("p_ids" "uuid"[])
     RETURNS TABLE(
       "plantation_id" "uuid",
@@ -40,9 +41,11 @@ CREATE FUNCTION "public"."catalogo_conteos"("p_ids" "uuid"[])
   FROM groups g
   LEFT JOIN trees t ON t.group_id = g.id
   LEFT JOIN LATERAL (
-    SELECT coalesce((o.metadata->>'size')::bigint, 0) AS bytes
+    SELECT CASE WHEN o.metadata->>'size' ~ '^[0-9]+$'
+                THEN (o.metadata->>'size')::bigint ELSE 0 END AS bytes
     FROM storage.objects o
-    WHERE o.bucket_id = 'tree-photos'
+    WHERE t.foto_url IS NOT NULL
+      AND o.bucket_id = 'tree-photos'
       AND o.name = path_foto_storage(t.foto_url)
     LIMIT 1
   ) f ON true

@@ -45,7 +45,8 @@ insert into groups (id, plantation_id, parcela_id, nombre, codigo, tipo, usuario
 
 -- P1, G1: A1 path relativo (1000 B), A2 URL completa con token (2500 B), A3 URI
 -- local, A4 path sin objeto, A5 sin foto, A6 path en la carpeta de P2 (que la
--- policy de Storage no deja leer a los miembros de P1). G2 vacío.
+-- policy de Storage no deja leer a los miembros de P1), A7 objeto sin `size`
+-- (foto con 0 bytes). G2 vacío.
 -- P2: A1 con foto (7000 B).
 insert into trees (id, group_id, posicion, sub_id, usuario_registro, foto_url) values
   ('b5100000-0000-0000-0000-000000000101', 'b5100000-0000-0000-0000-000000000012', 1, 'A1',
@@ -64,6 +65,9 @@ insert into trees (id, group_id, posicion, sub_id, usuario_registro, foto_url) v
   ('b5100000-0000-0000-0000-000000000106', 'b5100000-0000-0000-0000-000000000012', 6, 'A6',
    'b5100000-0000-0000-0000-0000000000a1',
    'plantations/b5100000-0000-0000-0000-000000000020/parcelas/p/trees/ajena.jpg'),
+  ('b5100000-0000-0000-0000-000000000107', 'b5100000-0000-0000-0000-000000000012', 7, 'A7',
+   'b5100000-0000-0000-0000-0000000000a1',
+   'plantations/b5100000-0000-0000-0000-000000000010/parcelas/p/trees/a7.jpg'),
   ('b5100000-0000-0000-0000-000000000201', 'b5100000-0000-0000-0000-000000000022', 1, 'A1',
    'b5100000-0000-0000-0000-0000000000a2',
    'plantations/b5100000-0000-0000-0000-000000000020/parcelas/p/trees/b1.jpg');
@@ -73,6 +77,8 @@ insert into storage.objects (bucket_id, name, metadata) values
    '{"size": 1000}'),
   ('tree-photos', 'plantations/b5100000-0000-0000-0000-000000000010/parcelas/p/trees/a2.jpg',
    '{"size": 2500}'),
+  ('tree-photos', 'plantations/b5100000-0000-0000-0000-000000000010/parcelas/p/trees/a7.jpg',
+   '{"mimetype": "image/jpeg"}'),
   ('tree-photos', 'plantations/b5100000-0000-0000-0000-000000000020/parcelas/p/trees/ajena.jpg',
    '{"size": 9999}'),
   ('tree-photos', 'plantations/b5100000-0000-0000-0000-000000000020/parcelas/p/trees/b1.jpg',
@@ -93,18 +99,18 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub', 'b5100000-0000-0000-0000-0000000000a3', true);
 select results_eq(
   $$ select plantation_id, grupos, arboles from catalogo_conteos((select ids from ids_51)) $$,
-  $$ values ('b5100000-0000-0000-0000-000000000010'::uuid, 2::bigint, 6::bigint) $$,
-  'Las fotos no inflan grupos ni árboles: P1 con 2 grupos (uno vacío) y 6 árboles');
+  $$ values ('b5100000-0000-0000-0000-000000000010'::uuid, 2::bigint, 7::bigint) $$,
+  'Las fotos no inflan grupos ni árboles: P1 con 2 grupos (uno vacío) y 7 árboles');
 select results_eq(
   $$ select plantation_id, fotos, bytes_fotos from catalogo_conteos((select ids from ids_51)) $$,
-  $$ values ('b5100000-0000-0000-0000-000000000010'::uuid, 2::bigint, 3500::bigint) $$,
-  'Técnico: suma path relativo y URL con token; ni URI local, ni sin objeto, ni la de P2, ni la huérfana');
+  $$ values ('b5100000-0000-0000-0000-000000000010'::uuid, 3::bigint, 3500::bigint) $$,
+  'Técnico: suma path relativo, URL con token y sin size (0 B); ni URI local, ni sin objeto, ni la de P2, ni la huérfana');
 
 -- ── Admin de org1: miembro de P1 por trigger ────────────────────────────────
 select set_config('request.jwt.claim.sub', 'b5100000-0000-0000-0000-0000000000a1', true);
 select results_eq(
   $$ select plantation_id, fotos, bytes_fotos from catalogo_conteos((select ids from ids_51)) $$,
-  $$ values ('b5100000-0000-0000-0000-000000000010'::uuid, 2::bigint, 3500::bigint) $$,
+  $$ values ('b5100000-0000-0000-0000-000000000010'::uuid, 3::bigint, 3500::bigint) $$,
   'Admin de org1: mismas fotos de P1 y nada de P2');
 
 -- ── Admin de org2 ───────────────────────────────────────────────────────────

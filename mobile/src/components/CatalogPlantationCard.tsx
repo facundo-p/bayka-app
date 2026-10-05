@@ -65,7 +65,7 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
         <View style={styles.statsRow}>
           <Stat icon="layers-outline" texto={`${item.group_count} grupos`} />
           <Stat icon="leaf-outline" texto={`${item.tree_count} arboles`} />
-          {peso && <Stat icon="image-outline" texto={peso} />}
+          {peso ? <Stat icon="image-outline" texto={peso} /> : null}
         </View>
 
         <View style={[styles.estadoChip, { backgroundColor: stateColor + '26' }]}>
