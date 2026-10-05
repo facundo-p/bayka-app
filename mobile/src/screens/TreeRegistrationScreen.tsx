@@ -33,6 +33,7 @@ import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
+import { confirmarReemplazoEnVisor } from '../utils/avisoReemplazarFoto';
 import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
@@ -161,7 +162,11 @@ export default function TreeRegistrationScreen() {
       { icon: 'trash-outline', iconColor: colors.danger, style: 'danger' });
   }
 
-  function handleReplacePhoto(treeId: string) {
+  function arbolDelGrupo(treeId: string) {
+    return treeReg.sortedTrees.find((t) => t.id === treeId);
+  }
+
+  function capturarReemplazo(treeId: string) {
     void pickPhoto().then((newUri) => {
       if (!newUri) return;
       void treeReg.updatePhoto(treeId, newUri);
@@ -169,8 +174,15 @@ export default function TreeRegistrationScreen() {
     });
   }
 
+  function handleReplacePhoto(foto: FotoDeArbol) {
+    const arbol = arbolDelGrupo(foto.treeId);
+    if (!arbol) return;
+    confirmarReemplazoEnVisor(confirm.show, { subId: arbol.subId, fotoSynced: arbol.fotoSynced ?? true },
+      foto.reemplazoConfirmado, () => capturarReemplazo(foto.treeId));
+  }
+
   function handleRemovePhoto(treeId: string) {
-    const fotoSynced = treeReg.sortedTrees.find((t) => t.id === treeId)?.fotoSynced ?? true;
+    const fotoSynced = arbolDelGrupo(treeId)?.fotoSynced ?? true;
     confirmarQuitarFoto(confirm.show, fotoSynced, () => {
       void treeReg.removePhoto(treeId);
       setViewingPhoto(null);

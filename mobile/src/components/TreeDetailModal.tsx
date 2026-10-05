@@ -15,6 +15,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { showInfoDialog } from '../utils/alertHelpers';
 import type { ErrorSink } from '../hooks/useTreeRegistration';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
+import { confirmarReemplazarFoto } from '../utils/avisoReemplazarFoto';
 import FotoRemota from './FotoRemota';
 import { isRemoteUri } from '../utils/photoUri';
 import type { CambioDeEspecie } from '../utils/permisosDeEdicion';
@@ -60,25 +61,35 @@ export default function TreeDetailModal({
   const [busyGps, setBusyGps] = useState(false);
   const [gpsFailed, setGpsFailed] = useState(false);
   const confirm = useConfirm();
-  const [zoomUri, setZoomUri] = useState<string | null>(null);
+  // Ampliar la foto es solo lectura; abierto desde «Ver actual» del aviso, ofrece Reemplazar.
+  const [visor, setVisor] = useState<{ uri: string; reemplazable: boolean } | null>(null);
 
   const showError: ErrorSink = (mensaje) =>
     showInfoDialog(confirm.show, 'Error', mensaje, 'alert-circle-outline', colors.danger);
 
-  async function handleCapturePhoto() {
-    if (!tree) return;
+  async function accionDeFoto(accion: Props['onCapturePhoto'], id: string) {
     setBusyPhoto(true);
-    try { await onCapturePhoto(tree.id, showError); } finally { setBusyPhoto(false); }
+    try { await accion(id, showError); } finally { setBusyPhoto(false); }
   }
 
-  async function quitarFoto(id: string) {
-    setBusyPhoto(true);
-    try { await onRemovePhoto(id, showError); } finally { setBusyPhoto(false); }
+  function handleCapturePhoto() {
+    if (!tree) return;
+    const fotoActual = tree.fotoUrl;
+    if (!fotoActual) { void accionDeFoto(onCapturePhoto, tree.id); return; }
+    confirmarReemplazarFoto(confirm.show, { subId: tree.subId, fotoSynced: tree.fotoSynced ?? true }, {
+      onVerActual: () => setVisor({ uri: fotoActual, reemplazable: true }),
+      onConfirm: () => { void accionDeFoto(onCapturePhoto, tree.id); },
+    });
+  }
+
+  function reemplazarDesdeVisor() {
+    setVisor(null);
+    if (tree) void accionDeFoto(onCapturePhoto, tree.id);
   }
 
   function handleRemovePhoto() {
     if (!tree) return;
-    confirmarQuitarFoto(confirm.show, tree.fotoSynced ?? true, () => quitarFoto(tree.id));
+    confirmarQuitarFoto(confirm.show, tree.fotoSynced ?? true, () => accionDeFoto(onRemovePhoto, tree.id));
   }
 
   async function handleCaptureGps() {
@@ -127,7 +138,7 @@ export default function TreeDetailModal({
               {isRemoteUri(tree.fotoUrl) ? (
                 <FotoRemota treeId={tree.id} storagePath={tree.fotoUrl} style={styles.photo} />
               ) : hasPhoto ? (
-                <Pressable onPress={() => setZoomUri(tree.fotoUrl!)} accessibilityLabel="Ampliar foto">
+                <Pressable onPress={() => setVisor({ uri: tree.fotoUrl!, reemplazable: false })} accessibilityLabel="Ampliar foto">
                   <Image source={{ uri: tree.fotoUrl! }} style={styles.photo} resizeMode="cover" />
                 </Pressable>
               ) : (
@@ -207,7 +218,12 @@ export default function TreeDetailModal({
             )}
           </ScrollView>
         )}
-        <PhotoViewer uri={zoomUri} treeId={treeId ?? undefined} onClose={() => setZoomUri(null)} />
+        <PhotoViewer
+          uri={visor?.uri ?? null}
+          treeId={treeId ?? undefined}
+          onClose={() => setVisor(null)}
+          onReplace={visor?.reemplazable ? reemplazarDesdeVisor : undefined}
+        />
         <ConfirmModal {...confirm.confirmProps} />
       </View>
     </Modal>

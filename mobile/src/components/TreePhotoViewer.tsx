@@ -1,13 +1,14 @@
 import PhotoViewer from './PhotoViewer';
 
-export type FotoDeArbol = { uri: string; treeId: string };
+/** `reemplazoConfirmado`: se abrió desde «Ver actual» del aviso de reemplazo; Reemplazar no vuelve a preguntar. */
+export type FotoDeArbol = { uri: string; treeId: string; reemplazoConfirmado?: boolean };
 
 interface Props {
   foto: FotoDeArbol | null;
   /** Sin permiso (grupo ajeno, plantación no editable) solo se ve la foto (#745). */
   canEdit: boolean;
   onClose: () => void;
-  onReplace: (treeId: string) => void;
+  onReplace: (foto: FotoDeArbol) => void;
   onRemove: (treeId: string) => void;
 }
 
@@ -19,7 +20,7 @@ export default function TreePhotoViewer({ foto, canEdit, onClose, onReplace, onR
       uri={foto?.uri ?? null}
       treeId={foto?.treeId}
       onClose={onClose}
-      onReplace={editable ? () => onReplace(editable.treeId) : undefined}
+      onReplace={editable ? () => onReplace(editable) : undefined}
       onRemove={editable ? () => onRemove(editable.treeId) : undefined}
     />
   );
