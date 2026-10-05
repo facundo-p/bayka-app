@@ -149,16 +149,21 @@ function useTakePicture(onCapture: (raw: RawPhoto) => void) {
   return { cameraRef, capturing, takePicture };
 }
 
-export default function CameraCaptureView({ visible, optional, onCapture, onGallery, onCancel }: Props) {
+/** Pide el permiso al abrirse mientras el sistema todavía deje preguntar. */
+function useCameraPermissionOnOpen(visible: boolean) {
   const [permission, requestPermission] = useCameraPermissions();
-  const { zoom, pinchGesture } = usePinchZoom(visible);
-  const { cameraRef, capturing, takePicture } = useTakePicture(onCapture);
-
   useEffect(() => {
     if (visible && permission && !permission.granted && permission.canAskAgain) {
       void requestPermission();
     }
   }, [visible, permission, requestPermission]);
+  return { permission, requestPermission };
+}
+
+export default function CameraCaptureView({ visible, optional, onCapture, onGallery, onCancel }: Props) {
+  const { permission, requestPermission } = useCameraPermissionOnOpen(visible);
+  const { zoom, pinchGesture } = usePinchZoom(visible);
+  const { cameraRef, capturing, takePicture } = useTakePicture(onCapture);
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onCancel}>

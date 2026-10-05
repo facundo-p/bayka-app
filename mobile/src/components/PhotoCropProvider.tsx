@@ -41,7 +41,10 @@ function useGalleryStage(flow: Flow | null, setFlow: SetFlow) {
   useEffect(() => {
     if (!inGallery) return;
     void launchGalleryRaw()
-      .catch(() => null)
+      .catch((e) => {
+        console.error('[Photo] no se pudo abrir la galería', e);
+        return null;
+      })
       .then((raw) => {
         setFlow((f) => {
           if (!isStage(f, PHOTO_FLOW_STAGE.gallery)) return f;
@@ -53,32 +56,44 @@ function useGalleryStage(flow: Flow | null, setFlow: SetFlow) {
   }, [inGallery, setFlow]);
 }
 
-export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
-  const [flow, setFlow] = useState<Flow | null>(null);
+function usePickPhoto(setFlow: SetFlow) {
   // Fuera de flow: mantiene el texto mientras el Modal de la cámara se anima al cerrarse.
   const [optional, setOptional] = useState(false);
-  useGalleryStage(flow, setFlow);
-
+  // Un pedido nuevo (p. ej. doble toque) resuelve null el anterior en vez de dejarlo colgado.
   const pickPhoto = useCallback<PickPhoto>((options) => new Promise((resolve) => {
     setOptional(options?.optional ?? false);
-    setFlow({ stage: PHOTO_FLOW_STAGE.camera, resolve });
-  }), []);
+    setFlow((previo) => {
+      previo?.resolve(null);
+      return { stage: PHOTO_FLOW_STAGE.camera, resolve };
+    });
+  }), [setFlow]);
   const value = useMemo(() => ({ pickPhoto }), [pickPhoto]);
+  return { value, optional };
+}
+
+function usePhotoFlow() {
+  const [flow, setFlow] = useState<Flow | null>(null);
+  const { value, optional } = usePickPhoto(setFlow);
+  useGalleryStage(flow, setFlow);
 
   function finish(result: string | null) {
     flow?.resolve(result);
     setFlow(null);
   }
-
   function fromCamera(next: (f: FlowAt<typeof PHOTO_FLOW_STAGE.camera>) => Flow) {
     setFlow((f) => (isStage(f, PHOTO_FLOW_STAGE.camera) ? next(f) : f));
   }
-
   // Reintentar vuelve siempre a la cámara, que ya ofrece la galería.
   function retry() {
     setFlow((f) => (isStage(f, PHOTO_FLOW_STAGE.crop) ? { stage: PHOTO_FLOW_STAGE.camera, resolve: f.resolve } : f));
   }
 
+  return { flow, value, optional, finish, fromCamera, retry };
+}
+
+export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
+  const { flow, value, optional, finish, fromCamera, retry } = usePhotoFlow();
+  const cropFlow = isStage(flow, PHOTO_FLOW_STAGE.crop) ? flow : null;
   return (
     <PhotoCropContext.Provider value={value}>
       {children}
@@ -90,10 +105,10 @@ export function PhotoCropProvider({ children }: { children: React.ReactNode }) {
         onCancel={() => finish(null)}
       />
       <PhotoCropModal
-        raw={isStage(flow, PHOTO_FLOW_STAGE.crop) ? flow.raw : null}
+        raw={cropFlow?.raw ?? null}
         onCancel={() => finish(null)}
         onSave={(uri) => finish(uri)}
-        onRetry={isStage(flow, PHOTO_FLOW_STAGE.crop) ? retry : undefined}
+        onRetry={cropFlow ? retry : undefined}
       />
     </PhotoCropContext.Provider>
   );

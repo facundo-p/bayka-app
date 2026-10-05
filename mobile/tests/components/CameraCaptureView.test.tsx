@@ -1,6 +1,7 @@
 // Cámara in-app (#749): Galería adentro, «Sin foto» con foto opcional y galería también sin permiso de cámara.
 
 import React from 'react';
+import { Modal } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 import { useCameraPermissions } from 'expo-camera';
 import CameraCaptureView from '../../src/components/CameraCaptureView';
@@ -47,6 +48,12 @@ describe('CameraCaptureView con permiso', () => {
     expect(onGallery).toHaveBeenCalledTimes(1);
   });
 
+  it('el back de Android cancela, para no dejar colgado el registro (#659)', () => {
+    const { UNSAFE_getByType, onCancel } = renderCamara(true);
+    UNSAFE_getByType(Modal).props.onRequestClose();
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it('con foto opcional ofrece «Sin foto» en vez de la X', () => {
     const { getByText, queryByLabelText, onCancel } = renderCamara(true);
     expect(queryByLabelText('Cerrar cámara')).toBeNull();
@@ -72,9 +79,10 @@ describe('CameraCaptureView sin permiso de cámara', () => {
   });
 
   it('el link de cancelar dice «Sin foto» con foto opcional', () => {
-    const { getByText, queryByText } = renderCamara(true);
-    expect(getByText('Sin foto')).toBeTruthy();
+    const { getByText, queryByText, onCancel } = renderCamara(true);
     expect(queryByText('Cancelar')).toBeNull();
+    fireEvent.press(getByText('Sin foto'));
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('el link de cancelar dice «Cancelar» con foto obligatoria', () => {

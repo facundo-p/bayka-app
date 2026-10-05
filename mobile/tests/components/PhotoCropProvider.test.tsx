@@ -69,6 +69,19 @@ describe('pickPhoto', () => {
     expect(screen.getByText('foto opcional')).toBeTruthy();
   });
 
+  it('un pedido nuevo con la cámara abierta resuelve null el anterior', async () => {
+    const { pickPhoto } = renderFlujo();
+    let primero!: Promise<string | null>;
+    let segundo!: Promise<string | null>;
+    act(() => { primero = pickPhoto(); });
+    act(() => { segundo = pickPhoto({ optional: true }); });
+    await expect(primero).resolves.toBeNull();
+    expect(screen.getByText('foto opcional')).toBeTruthy();
+    fireEvent.press(screen.getByText('capturar'));
+    fireEvent.press(screen.getByText('guardar'));
+    await expect(segundo).resolves.toBe('file:///camara.jpg');
+  });
+
   it('cancelar la cámara resuelve null y la cierra', async () => {
     const promesa = abrir({ optional: true });
     fireEvent.press(screen.getByText('cancelar cámara'));
@@ -106,9 +119,12 @@ describe('galería desde la cámara', () => {
 
   it('un error de la galería también vuelve a la cámara', async () => {
     mockedGallery.mockRejectedValue(new Error('sin permiso'));
+    const consola = jest.spyOn(console, 'error').mockImplementation(() => {});
     void abrir();
     fireEvent.press(screen.getByText('galería'));
     await waitFor(() => expect(screen.getByTestId('camara')).toBeTruthy());
+    expect(consola).toHaveBeenCalled();
+    consola.mockRestore();
   });
 });
 
