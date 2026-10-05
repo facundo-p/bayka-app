@@ -9,7 +9,7 @@ import { getExportRows, getKmlExportRows, type ExportRow } from '../queries/expo
 import { pullSpeciesFromServer } from './sync/catalogoDeEspecies';
 import { syncLog } from '../utils/syncLogger';
 import { buildKml } from './kml/kmlGenerator';
-import { NN_SPECIES_LABEL } from '../utils/speciesHelpers';
+import { NN_SPECIES_LABEL } from '../constants/especies';
 
 // BOM UTF-8 (EF BB BF): sin él, Excel (Windows) interpreta el CSV como ANSI y rompe acentos/ñ;
 // el .xlsx no lo necesita (ya embebe la codificación).

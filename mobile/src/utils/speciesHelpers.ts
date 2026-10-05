@@ -1,12 +1,10 @@
 import { notLike } from 'drizzle-orm';
 import { species as speciesTable } from '../database/schema';
 import { especieDelSubId } from './idGenerator';
+import { NN_SPECIES_LABEL } from '../constants/especies';
 
 /** Placeholder especie codigo embedded in a tree's subId when unresolved (N/N). */
 export const UNKNOWN_SPECIES_CODE = 'NN';
-
-/** Etiqueta de un árbol sin especie (N/N). */
-export const NN_SPECIES_LABEL = 'N/N';
 
 /** Etiqueta de un árbol con especie que no está en el catálogo local, o es una recuperada. */
 const ETIQUETA_ESPECIE_FUERA_DE_CATALOGO = '??';

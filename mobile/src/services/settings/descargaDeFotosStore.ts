@@ -1,4 +1,4 @@
-import { crearPreferenciaBooleana } from './preferenciaBooleana';
+import { crearPreferenciaBooleana } from './preferencia';
 
 /**
  * "Descargar fotos de otros celulares" (#565). La subida de las fotos sacadas en

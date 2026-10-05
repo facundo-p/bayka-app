@@ -1,7 +1,10 @@
-import { View, Text, Pressable } from 'react-native';
+import { View, Text } from 'react-native';
 import type { GroupTipo } from '../repositories/GroupRepository';
 import { GROUP_TIPO, GROUP_TIPO_LABELS } from '../constants/groupTipo';
+import SegmentedControl from './SegmentedControl';
 import { tipoSegmentedControlStyles as styles } from './TipoSegmentedControl.styles';
+
+const OPCIONES_DE_TIPO = Object.values(GROUP_TIPO).map((tipo) => ({ valor: tipo, etiqueta: GROUP_TIPO_LABELS[tipo] }));
 
 interface Props {
   value: GroupTipo;
@@ -12,19 +15,7 @@ export default function TipoSegmentedControl({ value, onChange }: Props) {
   return (
     <View style={styles.field}>
       <Text style={styles.label}>Tipo</Text>
-      <View style={styles.segmentedControl}>
-        {Object.values(GROUP_TIPO).map((tipo) => (
-          <Pressable
-            key={tipo}
-            style={[styles.segmentButton, value === tipo && styles.segmentButtonActive]}
-            onPress={() => onChange(tipo)}
-          >
-            <Text style={[styles.segmentLabel, value === tipo && styles.segmentLabelActive]}>
-              {GROUP_TIPO_LABELS[tipo]}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <SegmentedControl opciones={OPCIONES_DE_TIPO} valor={value} onChange={onChange} />
     </View>
   );
 }

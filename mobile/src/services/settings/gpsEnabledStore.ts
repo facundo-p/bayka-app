@@ -1,4 +1,4 @@
-import { crearPreferenciaBooleana } from './preferenciaBooleana';
+import { crearPreferenciaBooleana } from './preferencia';
 
 // Fuente de verdad compartida entre Ajustes y el registro de árboles.
 export const preferenciaGps = crearPreferenciaBooleana({ clave: 'gps_enabled_in_app', porDefecto: true });

@@ -5,7 +5,7 @@
 import type { KmlExportRow } from '../../queries/exportQueries';
 import { buildSpeciesStyles, getSpeciesStyleId } from './speciesStyles';
 import { formatGpsAccuracy } from '../../utils/gpsAccuracyFormat';
-import { NN_SPECIES_LABEL } from '../../utils/speciesHelpers';
+import { NN_SPECIES_LABEL } from '../../constants/especies';
 
 /** Folder para árboles cuya parcela fue borrada: el punto se conserva, el nombre viejo no. */
 export const SIN_PARCELA_LABEL = 'Sin parcela';

@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 
-import type { PreferenciaBooleana } from '../services/settings/preferenciaBooleana';
+import type { Preferencia } from '../services/settings/preferencia';
 
 /** Valor reactivo de una preferencia local: cambiarla en una pantalla actualiza a todas. */
-export function usePreferenciaBooleana(preferencia: PreferenciaBooleana): boolean {
+export function usePreferencia<T>(preferencia: Preferencia<T>): T {
   const [valor, setValor] = useState(preferencia.get());
 
   useEffect(() => {
