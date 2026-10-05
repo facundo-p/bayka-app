@@ -3,7 +3,10 @@
  * Recibe los valores tal como se tipean (strings) y devuelve un error
  * en español por campo inválido. Sin acceso a datos: testeable aislado.
  */
-import { errorCodigoPlantacion, normalizarCodigoPlantacion } from '../lib/codigoPlantacion';
+import {
+  errorCodigoPlantacion,
+  normalizarCodigoPlantacion,
+} from '../../../shared/codigoPlantacion';
 import type { PlantacionInput } from '../repositories/plantationRepository';
 
 export type PlantacionFormValues = {

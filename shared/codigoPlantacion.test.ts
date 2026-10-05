@@ -3,7 +3,7 @@ import {
   idDeArbol,
   normalizarCodigoPlantacion,
   separarIdArbol,
-} from '../codigoPlantacion';
+} from './codigoPlantacion';
 
 describe('normalizarCodigoPlantacion', () => {
   it('pasa a mayúsculas y saca los espacios', () => {
@@ -17,16 +17,16 @@ describe('errorCodigoPlantacion', () => {
   });
 
   it('vacío es obligatorio', () => {
-    expect(errorCodigoPlantacion('')).toBe('El código es obligatorio');
+    expect(errorCodigoPlantacion('')).toBe('El código es obligatorio.');
   });
 
   it('más de ocho caracteres no', () => {
-    expect(errorCodigoPlantacion('123456789')).toBe('El código tiene hasta 8 caracteres');
+    expect(errorCodigoPlantacion('123456789')).toBe('El código tiene hasta 8 caracteres.');
   });
 
   it.each(['-SS26', 'SS26-', 'SS--26', 'ss26', 'SÑ26', 'SS_26'])('%s no', (codigo) => {
     expect(errorCodigoPlantacion(codigo)).toBe(
-      'Solo letras, números y guiones sueltos, sin guion al principio ni al final',
+      'El código lleva solo letras, números y guiones sueltos, sin guion al principio ni al final.',
     );
   });
 });

@@ -40,11 +40,13 @@ export default defineConfig({
     setupFiles: './src/setupTests.ts',
     globals: true,
     // Suma la lógica de las edge functions (nucleo.ts, sin imports de Deno; el
-    // entry index.ts es solo-Deno y queda afuera) y los scripts de la raíz.
+    // entry index.ts es solo-Deno y queda afuera), los scripts de la raíz y la
+    // lógica pura que comparte con mobile.
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
       '../supabase/functions/**/*.test.ts',
       '../scripts/**/*.test.ts',
+      '../shared/**/*.test.ts',
     ],
     // Config dummy de Supabase para los tests: sin web/.env (p.ej. en CI) el
     // cliente lanzaría al importarse. Los tests mockean las llamadas reales.

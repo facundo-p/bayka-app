@@ -215,17 +215,19 @@ git rev-list --count $RANGE      # 0 → abortar: "staging y main están al día
 
 # PRs mergeados (para el resumen del PR de release):
 git log --merges --first-parent --pretty='%h %s' $RANGE
-# Clasificación por paths (un commit que toca ambas apps cuenta para ambas):
-git log --no-merges --pretty='%h|%s' $RANGE -- web/
-git log --no-merges --pretty='%h|%s' $RANGE -- mobile/
-git log --no-merges --pretty='%h|%s' $RANGE -- . ':(exclude)web' ':(exclude)mobile'
+# Clasificación por paths (un commit que toca ambas apps cuenta para ambas;
+# shared/ lo importan las dos, así que cuenta para web y para mobile):
+git log --no-merges --pretty='%h|%s' $RANGE -- web/ shared/
+git log --no-merges --pretty='%h|%s' $RANGE -- mobile/ shared/
+git log --no-merges --pretty='%h|%s' $RANGE -- . ':(exclude)web' ':(exclude)mobile' ':(exclude)shared'
 # Breaking changes declarados en el body:
 git log --no-merges --pretty='%h %s%n%b--END--' $RANGE | grep -B3 'BREAKING CHANGE' || true
 ```
 
 **Los paths deciden, el scope refuerza**: si un `feat(web):` solo tocó
 `mobile/**`, se clasifica como mobile y la inconsistencia se lista en la
-propuesta para que Facu la vea.
+propuesta para que Facu la vea. Un `feat(web):` que solo tocó `shared/**` cuenta
+para las dos apps sin que eso sea inconsistencia.
 
 ## 2. Calcular bumps (semver por app)
 
@@ -240,8 +242,12 @@ Sobre los subjects de la lista de cada app:
 | Subject que no matchea conventional commits | patch + aviso en la propuesta |
 
 Gana el bump más alto de la lista. Reglas extra:
-- `supabase/**` y demás paths fuera de `web/`/`mobile/` → sección `### Otros`
-  del changelog; **no bumpean ninguna app por sí solos**.
+- `shared/**` (#713) entra en la lista de **las dos apps**: un `feat`/`fix` ahí
+  bumpea web y mobile, y mobile lleva versionCode +1 ⇒ APK nueva. Las APKs
+  viejas siguen en uso semanas: si el cambio rompe compatibilidad con ellas,
+  marcarlo en la propuesta.
+- `supabase/**` y demás paths fuera de `web/`/`mobile/`/`shared/` → sección
+  `### Otros` del changelog; **no bumpean ninguna app por sí solos**.
 - `versionCode` de mobile: **+1 solo si mobile bumpea**.
 
 ## 3. Proponer y ESPERAR el OK

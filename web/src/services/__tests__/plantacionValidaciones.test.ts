@@ -40,9 +40,9 @@ test('objetivo decimal, menor a 1 o no numérico es inválido', () => {
 });
 
 test('el código se valida con el formato del contrato', () => {
-  expect(validarPlantacion(valores({ codigo: '' })).codigo).toBe('El código es obligatorio');
+  expect(validarPlantacion(valores({ codigo: '' })).codigo).toBe('El código es obligatorio.');
   expect(validarPlantacion(valores({ codigo: 'MD26-' })).codigo).toBe(
-    'Solo letras, números y guiones sueltos, sin guion al principio ni al final',
+    'El código lleva solo letras, números y guiones sueltos, sin guion al principio ni al final.',
   );
   expect(validarPlantacion(valores({ codigo: 'md 26' }))).toEqual({});
 });

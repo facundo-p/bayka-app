@@ -2,7 +2,7 @@
  * Puntos GPS de los árboles para el mapa satelital del dashboard. A diferencia de los
  * conteos del dashboard, acá cada árbol es un punto: se leen las filas, paginadas.
  */
-import { idDeArbol } from '../lib/codigoPlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';

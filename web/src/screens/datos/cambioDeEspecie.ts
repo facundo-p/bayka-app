@@ -3,7 +3,7 @@
  * opciones del selector y el árbol que queda. Puro: se testea sin renderizar.
  */
 import type { OpcionConDetalle } from '../../components';
-import { idDeArbol } from '../../lib/codigoPlantacion';
+import { idDeArbol } from '../../../../shared/codigoPlantacion';
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import type { EspecieDePlantacion } from '../../queries/especieQueries';
 import { esArchivada, ESTADO_PLANTACION, type Plantacion } from '../../queries/plantationQueries';

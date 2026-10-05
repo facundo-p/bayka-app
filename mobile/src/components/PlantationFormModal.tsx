@@ -4,8 +4,11 @@ import { GPS_CAPTURE_FREQUENCY_DEFAULT } from '../constants/gpsCapture';
 import { colors } from '../theme';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { buscarCodigoRepetido, buscarDuplicada } from '../utils/duplicadoDePlantacion';
-import { CODIGO_PLANTACION } from '../constants/codigoPlantacion';
-import { MENSAJE_CODIGO_PLANTACION, normalizarCodigoPlantacion } from '../utils/codigoDePlantacion';
+import {
+  CODIGO_PLANTACION,
+  MENSAJE_CODIGO_PLANTACION,
+  normalizarCodigoPlantacion,
+} from '../../../shared/codigoPlantacion';
 import {
   aCamposDePlantacion,
   codigoLlegaConElPull,

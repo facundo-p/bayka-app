@@ -7,7 +7,7 @@ import { eq } from 'drizzle-orm';
 import { supabase } from '../../supabase/client';
 import { db } from '../../database/client';
 import { plantations } from '../../database/schema';
-import { MENSAJE_CODIGO_PLANTACION } from '../../utils/codigoDePlantacion';
+import { MENSAJE_CODIGO_PLANTACION } from '../../../../shared/codigoPlantacion';
 import { aColumnasRemotas, aSnapshot, hayCambios, type CamposDePlantacion } from '../../utils/camposDePlantacion';
 import {
   aplicados,

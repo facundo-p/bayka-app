@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useInvalidarConListado } from '../hooks/useInvalidarConListado';
-import { CODIGO_PLANTACION, normalizarCodigoPlantacion } from '../lib/codigoPlantacion';
+import { CODIGO_PLANTACION, normalizarCodigoPlantacion } from '../../../shared/codigoPlantacion';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import { codigoEsEditable, type Plantacion } from '../queries/plantationQueries';
 import {

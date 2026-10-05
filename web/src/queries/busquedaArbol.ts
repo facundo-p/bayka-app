@@ -1,4 +1,4 @@
-import { CODIGO_PLANTACION, separarIdArbol } from '../lib/codigoPlantacion';
+import { CODIGO_PLANTACION, separarIdArbol } from '../../../shared/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 import { escaparComodinesLike, patronContiene } from './escaparBusqueda';
 

@@ -6,7 +6,7 @@ import { ESTADO_PLANTACION } from '../../queries/plantationQueries';
 import { ROL } from '../../repositories/profileRepository';
 import { ENCABEZADO_CSV } from '../../services/exportarCsv';
 import { COLUMNAS_XLSX } from '../../services/exportarXlsx';
-import { CODIGO_PLANTACION, idDeArbol } from '../codigoPlantacion';
+import { CODIGO_PLANTACION, idDeArbol } from '../../../../shared/codigoPlantacion';
 import { puedeEditarPlantacion } from '../../screens/plantaciones/archivado';
 import { puedeCambiarEspecie } from '../../screens/datos/cambioDeEspecie';
 import type { EstadoPlantacion } from '../../queries/plantationQueries';

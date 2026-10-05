@@ -597,6 +597,11 @@ El SubID de un árbol (`<parcela><grupo><especie><posición>`) lo arman la app y
 el server. Sus vectores de prueba viven en `contracts/sub-id.json` y los
 recorren pgTAP y mobile; web y mobile recorren los del ID de árbol (#735).
 
+El código de plantación y el ID de árbol (`<SubID>-<código>`) no tienen copias
+por app: los resuelve `shared/codigoPlantacion.ts`, lógica pura que importan web
+y mobile (#713). `contracts/codigo-plantacion.json` lo ata al CHECK de la base.
+Las reglas de `shared/` están en `shared/README.md`.
+
 ---
 
 # 11. Seguridad
