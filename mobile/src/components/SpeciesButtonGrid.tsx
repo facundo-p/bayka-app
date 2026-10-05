@@ -1,10 +1,12 @@
 import { View, FlatList } from 'react-native';
-import SpeciesButton from './SpeciesButton';
+import SpeciesButton, { BOTON_NN } from './SpeciesButton';
+import type { EstiloBotonera } from '../constants/estiloBotonera';
 import type { PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
-import { speciesButtonGridStyles as styles } from './SpeciesButtonGrid.styles';
+import { speciesButtonGridStyles as styles, COLUMNAS_BOTONERA } from './SpeciesButtonGrid.styles';
 
 interface Props {
   species: PlantationSpeciesItem[];
+  estilo: EstiloBotonera;
   onSelectSpecies: (item: { especieId: string; especieCodigo: string }) => void;
   onNNPress?: () => void;
   disabled?: boolean;
@@ -12,17 +14,15 @@ interface Props {
   selectedId?: string | null;
 }
 
-const NUM_COLUMNS = 3;
-
 const NN_ITEM = { _nn: true, id: '__nn__' };
 
-export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress, disabled = false, selectedId }: Props) {
+export default function SpeciesButtonGrid({ species, estilo, onSelectSpecies, onNNPress, disabled = false, selectedId }: Props) {
   const isSelectionMode = selectedId !== undefined;
 
   // Build data: species + N/N (if not selection mode) + placeholders
   const allItems = isSelectionMode ? [...species] : [...species, NN_ITEM];
-  const remainder = allItems.length % NUM_COLUMNS;
-  const placeholderCount = remainder === 0 ? 0 : NUM_COLUMNS - remainder;
+  const remainder = allItems.length % COLUMNAS_BOTONERA;
+  const placeholderCount = remainder === 0 ? 0 : COLUMNAS_BOTONERA - remainder;
   const data = [
     ...allItems,
     ...Array.from({ length: placeholderCount }, (_, i) => ({ _placeholder: true, id: `placeholder-${i}` })),
@@ -31,7 +31,7 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
   return (
     <FlatList
       data={data}
-      numColumns={NUM_COLUMNS}
+      numColumns={COLUMNAS_BOTONERA}
       keyExtractor={(item) => item.id}
       scrollEnabled={false}
       contentContainerStyle={styles.grid}
@@ -44,8 +44,8 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
           return (
             <View style={styles.cell}>
               <SpeciesButton
-                codigo="N/N"
-                nombre="No identificado"
+                {...BOTON_NN}
+                estilo={estilo}
                 onPress={onNNPress ?? (() => {})}
                 isNN
                 disabled={disabled}
@@ -60,6 +60,7 @@ export default function SpeciesButtonGrid({ species, onSelectSpecies, onNNPress,
             <SpeciesButton
               codigo={speciesItem.codigo}
               nombre={speciesItem.nombre}
+              estilo={estilo}
               onPress={() => onSelectSpecies({ especieId: speciesItem.especieId, especieCodigo: speciesItem.codigo })}
               disabled={disabled}
               selected={isSelectionMode && selectedId === speciesItem.especieId}

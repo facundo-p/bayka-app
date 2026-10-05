@@ -1,6 +1,6 @@
 // Estilos de SpeciesButton.
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, spacing, borderRadius, fonts } from '../theme';
 
 export const speciesButtonStyles = StyleSheet.create({
   button: {
@@ -33,28 +33,22 @@ export const speciesButtonStyles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.4,
   },
-  code: {
-    fontSize: fontSize.xxl,
+  // El de arriba lleva el peso visual; el de abajo acompaña. Los tamaños los elige cada usuario (#744).
+  textoArriba: {
     fontFamily: fonts.bold,
     color: colors.plantationDark,
+    textAlign: 'center',
   },
-  codeNN: {
-    color: colors.secondary,
-  },
-  codeSelected: {
-    color: colors.white,
-  },
-  name: {
-    fontSize: fontSize.xs,
+  textoAbajo: {
     fontFamily: fonts.regular,
     color: colors.plantationMedium,
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: spacing.xxs,
   },
-  nameNN: {
+  textoNN: {
     color: colors.secondary,
   },
-  nameSelected: {
+  textoSelected: {
     color: colors.white,
   },
 });
