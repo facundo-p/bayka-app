@@ -148,6 +148,35 @@ describe('catalogQueries', () => {
     });
   });
 
+  describe('getServerCatalog — peso de fotos (#685)', () => {
+    const conRpc = async (filas: any[]) => {
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(makeOrderTerminalChain({
+          data: [makePlantation('p-1'), makePlantation('p-2')],
+          error: null,
+        }));
+      (supabase.rpc as jest.Mock).mockResolvedValue({ data: filas, error: null });
+      return getServerCatalog(true, 'user-admin', 'org-1');
+    };
+
+    it('toma fotos y bytes del RPC catalogo_conteos', async () => {
+      const results = await conRpc([
+        { plantation_id: 'p-1', grupos: 2, arboles: 3, fotos: 2, bytes_fotos: 3500 },
+      ]);
+
+      expect(results.map((p) => [p.id, p.photo_count, p.photo_bytes])).toEqual([
+        ['p-1', 2, 3500],
+        ['p-2', null, null],
+      ]);
+    });
+
+    it('server sin la migración: sin el peso, con los conteos de siempre', async () => {
+      const results = await conRpc([{ plantation_id: 'p-1', grupos: 2, arboles: 3 }]);
+
+      expect(results[0]).toMatchObject({ group_count: 2, tree_count: 3, photo_count: null, photo_bytes: null });
+    });
+  });
+
   describe('getServerCatalog — visible_in_app', () => {
     it('mapea visible_in_app y defaultea true cuando el server no trae la columna', async () => {
       const remotePlantations = [

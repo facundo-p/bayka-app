@@ -30,6 +30,7 @@ export default function CatalogScreen() {
     downloadProgress,
     downloadResults,
     includePhotos,
+    rotuloIncluirFotos,
     refreshing,
     sinConexion,
     puedeRefrescar,
@@ -137,7 +138,7 @@ export default function CatalogScreen() {
             size={22}
             color={includePhotos ? colors.primary : colors.textMuted}
           />
-          <Text style={styles.photosToggleLabel}>Incluir fotos</Text>
+          <Text style={styles.photosToggleLabel}>{rotuloIncluirFotos}</Text>
         </Pressable>
         <Pressable
           onPress={handleBatchDownload}

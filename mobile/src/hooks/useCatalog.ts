@@ -16,6 +16,7 @@ import {
   batchDownload, ensureServerSession, esSesionExpirada, DownloadResult, DownloadProgress, DOWNLOAD_STATE, DownloadState,
 } from '../services/SyncService';
 import { contarPorEstado } from '../utils/conteoPorEstado';
+import { rotuloIncluirFotos } from '../utils/pesoDeFotosDelCatalogo';
 
 const CATALOGO_NO_DISPONIBLE = 'No se pudo cargar el catálogo';
 const CATALOGO_SIN_SESION = 'Iniciá sesión con conexión para ver el catálogo.';
@@ -143,6 +144,7 @@ export function useCatalog() {
   const catalogSinSesion = catalogError === CATALOGO_SIN_SESION;
 
   const estadoCounts = contarPorEstado(catalogItems);
+  const rotuloDeFotos = rotuloIncluirFotos(catalogItems, selectedIds);
 
   const filteredCatalog = catalogItems.filter(
     (p) => !activeFilter || p.estado === activeFilter
@@ -162,6 +164,7 @@ export function useCatalog() {
     downloadProgress,
     downloadResults,
     includePhotos,
+    rotuloIncluirFotos: rotuloDeFotos,
     refreshing,
     sinConexion: !isOnline,
     puedeRefrescar,

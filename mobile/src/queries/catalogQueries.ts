@@ -24,6 +24,9 @@ export type ServerPlantation = {
   visible_in_app: boolean;
   group_count: number;
   tree_count: number;
+  /** Árboles con foto en Storage y su peso (#685). Null si el server no trae el dato. */
+  photo_count: number | null;
+  photo_bytes: number | null;
 };
 
 /**
@@ -36,68 +39,38 @@ function sinArchivadas(rows: any[]): any[] {
 
 const RPC_CATALOGO_CONTEOS = 'catalogo_conteos';
 
-type Conteos = { grupos: number; arboles: number };
+type FilaDeConteos = {
+  plantation_id: string;
+  grupos: number;
+  arboles: number;
+  // Ausentes en un server sin la migración de #685.
+  fotos?: number;
+  bytes_fotos?: number;
+};
 
-/** Grupos y árboles por plantación, contados en el server (#682). Sin grupos, no hay entrada. */
+type Conteos = { grupos: number; arboles: number; fotos: number | null; bytesFotos: number | null };
+
+const numeroONull = (valor: number | undefined | null) => (valor == null ? null : Number(valor));
+
+function aConteos(f: FilaDeConteos): Conteos {
+  return {
+    grupos: Number(f.grupos),
+    arboles: Number(f.arboles),
+    fotos: numeroONull(f.fotos),
+    bytesFotos: numeroONull(f.bytes_fotos),
+  };
+}
+
+/** Grupos, árboles y fotos por plantación, contados en el server (#682, #685). Sin grupos, no hay entrada. */
 async function contarPorPlantacion(plantationIds: string[]): Promise<Map<string, Conteos>> {
   const { data, error } = await supabase.rpc(RPC_CATALOGO_CONTEOS, { p_ids: plantationIds });
   if (error) throw error;
-  const filas = (data ?? []) as { plantation_id: string; grupos: number; arboles: number }[];
-  return new Map(filas.map((f) => [f.plantation_id, { grupos: Number(f.grupos), arboles: Number(f.arboles) }]));
+  const filas = (data ?? []) as FilaDeConteos[];
+  return new Map(filas.map((f) => [f.plantation_id, aConteos(f)]));
 }
 
-/**
- * Fetches plantations from Supabase with role-based filtering.
- * - Admin: all plantations in the organization
- * - Tecnico: only plantations assigned via plantation_users
- * Also fetches subgroup and tree counts per plantation and merges them.
- * Throws if any Supabase query returns an error.
- */
-export async function getServerCatalog(
-  isAdmin: boolean,
-  userId: string,
-  organizacionId: string
-): Promise<ServerPlantation[]> {
-  let remotePlantations: any[];
-
-  if (isAdmin) {
-    const { data, error } = await fetchAllRows<any>(() =>
-      supabase
-        .from('plantations')
-        .select('*')
-        .eq('organizacion_id', organizacionId)
-        .order('created_at', { ascending: false })
-    );
-
-    if (error) throw error;
-    remotePlantations = sinArchivadas(data ?? []);
-  } else {
-    const { data: puData, error: puError } = await fetchAllRows<any>(() =>
-      supabase.from('plantation_users').select('plantation_id').eq('user_id', userId)
-    );
-
-    if (puError) throw puError;
-
-    const assignedIds = (puData ?? []).map((row: any) => row.plantation_id);
-    if (assignedIds.length === 0) return [];
-
-    const { data, error } = await fetchAllRows<any>(() =>
-      supabase
-        .from('plantations')
-        .select('*')
-        .in('id', assignedIds)
-        .order('created_at', { ascending: false })
-    );
-
-    if (error) throw error;
-    remotePlantations = sinArchivadas(data ?? []);
-  }
-
-  if (remotePlantations.length === 0) return [];
-
-  const conteos = await contarPorPlantacion(remotePlantations.map((p: any) => p.id));
-
-  return remotePlantations.map((p: any): ServerPlantation => ({
+function aServerPlantation(p: any, conteos: Conteos | undefined): ServerPlantation {
+  return {
     id: p.id,
     organizacion_id: p.organizacion_id,
     lugar: p.lugar,
@@ -106,9 +79,64 @@ export async function getServerCatalog(
     creado_por: p.creado_por,
     created_at: p.created_at,
     visible_in_app: p.visible_in_app ?? true,
-    group_count: conteos.get(p.id)?.grupos ?? 0,
-    tree_count: conteos.get(p.id)?.arboles ?? 0,
-  }));
+    group_count: conteos?.grupos ?? 0,
+    tree_count: conteos?.arboles ?? 0,
+    photo_count: conteos?.fotos ?? null,
+    photo_bytes: conteos?.bytesFotos ?? null,
+  };
+}
+
+async function plantacionesDeLaOrganizacion(organizacionId: string): Promise<any[]> {
+  const { data, error } = await fetchAllRows<any>(() =>
+    supabase
+      .from('plantations')
+      .select('*')
+      .eq('organizacion_id', organizacionId)
+      .order('created_at', { ascending: false })
+  );
+  if (error) throw error;
+  return data ?? [];
+}
+
+async function plantacionesAsignadas(userId: string): Promise<any[]> {
+  const { data: puData, error: puError } = await fetchAllRows<any>(() =>
+    supabase.from('plantation_users').select('plantation_id').eq('user_id', userId)
+  );
+  if (puError) throw puError;
+
+  const assignedIds = (puData ?? []).map((row: any) => row.plantation_id);
+  if (assignedIds.length === 0) return [];
+
+  const { data, error } = await fetchAllRows<any>(() =>
+    supabase
+      .from('plantations')
+      .select('*')
+      .in('id', assignedIds)
+      .order('created_at', { ascending: false })
+  );
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Fetches plantations from Supabase with role-based filtering.
+ * - Admin: all plantations in the organization
+ * - Tecnico: only plantations assigned via plantation_users
+ * Also fetches subgroup, tree and photo counts per plantation and merges them.
+ * Throws if any Supabase query returns an error.
+ */
+export async function getServerCatalog(
+  isAdmin: boolean,
+  userId: string,
+  organizacionId: string
+): Promise<ServerPlantation[]> {
+  const remotePlantations = sinArchivadas(
+    isAdmin ? await plantacionesDeLaOrganizacion(organizacionId) : await plantacionesAsignadas(userId)
+  );
+  if (remotePlantations.length === 0) return [];
+
+  const conteos = await contarPorPlantacion(remotePlantations.map((p: any) => p.id));
+  return remotePlantations.map((p: any) => aServerPlantation(p, conteos.get(p.id)));
 }
 
 /** Returns a Set of plantation IDs stored in local SQLite. */
