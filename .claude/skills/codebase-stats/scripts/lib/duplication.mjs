@@ -6,7 +6,7 @@ import { OUT_DIR, TOP_N } from './config.mjs';
 
 const JSCPD = 'jscpd@4.0.5';
 // Las migraciones redefinen funciones con CREATE OR REPLACE a propósito: fuera.
-const TARGETS = Object.freeze(['mobile/src', 'mobile/app', 'web/src', 'supabase/functions', 'scripts']);
+const TARGETS = Object.freeze(['mobile/src', 'mobile/app', 'web/src', 'supabase/functions', 'scripts', 'shared']);
 // Los tests repiten fixtures a propósito: no cuentan como duplicación.
 const IGNORE = '**/*.test.*,**/__tests__/**,**/__mocks__/**,**/node_modules/**';
 const MIN_TOKENS = '60';

@@ -26,6 +26,7 @@ export const SECTORS = Object.freeze([
   { sector: 'supabase', sub: 'config', prefix: 'supabase/' },
   { sector: 'scripts', sub: 'scripts', prefix: 'scripts/' },
   { sector: 'contracts', sub: 'contracts', prefix: 'contracts/' },
+  { sector: 'shared', sub: 'shared', prefix: 'shared/' },
   { sector: 'tooling', sub: 'github', prefix: '.github/' },
   { sector: 'tooling', sub: 'claude', prefix: '.claude/' },
   { sector: 'docs', sub: 'docs', prefix: 'docs/' },
