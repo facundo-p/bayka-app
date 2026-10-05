@@ -160,7 +160,7 @@ la plataforma. Requiere la migración `039_eliminar_plantacion.sql` aplicada, y
 `SUPABASE_SERVICE_ROLE_KEY_STAGING` y `SUPABASE_SERVICE_ROLE_KEY_PROD`. Tienen
 que ser la key `service_role` (JWT legacy) del proyecto: la función la compara
 con la `SUPABASE_SERVICE_ROLE_KEY` que inyecta la plataforma. Sin el secret, el
-job avisa y no hace nada.
+job de ese entorno falla en rojo.
 
 Si el proyecto rota la key legacy o migra a las API keys nuevas (`sb_secret_…`),
 hay que re-sincronizar los dos secrets de GitHub y verificar qué inyecta la
