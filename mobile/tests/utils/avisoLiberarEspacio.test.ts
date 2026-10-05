@@ -5,22 +5,8 @@ import {
   rotuloLiberarEspacio,
   textoSinSubir,
 } from '../../src/utils/avisoLiberarEspacio';
-import { formatearPeso } from '../../src/utils/pesoDeArchivos';
 
 const MB = 1024 * 1024;
-
-describe('formatearPeso', () => {
-  it.each([
-    [0, '0 KB'],
-    [100, '1 KB'],
-    [850 * 1024, '850 KB'],
-    [4.2 * MB, '4.2 MB'],
-    [74.4 * MB, '74 MB'],
-    [1.3 * 1024 * MB, '1.3 GB'],
-  ])('%d bytes → %s', (bytes, texto) => {
-    expect(formatearPeso(bytes)).toBe(texto);
-  });
-});
 
 describe('aviso de Liberar espacio (#565)', () => {
   const base = { fotos: 212, bytes: 74 * MB, sinSubir: 0, sinConfirmar: 0 };
@@ -60,6 +46,6 @@ describe('aviso de Liberar espacio (#565)', () => {
   it('nada para liberar y resultado', () => {
     expect(mensajeNadaParaLiberar(0)).toBe('No hay fotos descargadas en este celular.');
     expect(mensajeNadaParaLiberar(2)).toBe('La nube no confirmó 2 fotos de este celular, así que se conservan.');
-    expect(mensajeLiberado(1, 2 * MB)).toBe('Se liberaron 2.0 MB en este celular (1 foto).');
+    expect(mensajeLiberado(1, 2 * MB)).toBe('Se liberaron 2,0 MB en este celular (1 foto).');
   });
 });

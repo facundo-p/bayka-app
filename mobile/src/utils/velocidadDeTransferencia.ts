@@ -8,7 +8,7 @@
  * alcanza para distinguir "lento" de "trabado", que es el objetivo.
  */
 
-import { KB, MB } from './pesoDeArchivos';
+import { KB, MB, conUnDecimal } from './pesoDeArchivos';
 
 /** Debajo de esto el número redondeado sería 0 KB/s, que parece "no avanza". */
 const MINIMO_LEGIBLE = KB;
@@ -35,6 +35,6 @@ export function formatearVelocidad(medida: TransferenciaMedida, ahora: number): 
   if (!Number.isFinite(porSegundo) || porSegundo <= 0) return null;
 
   if (porSegundo < MINIMO_LEGIBLE) return '~<1 KB/s';
-  if (porSegundo >= MB) return `~${(porSegundo / MB).toFixed(1)} MB/s`;
+  if (porSegundo >= MB) return `~${conUnDecimal(porSegundo / MB)} MB/s`;
   return `~${Math.round(porSegundo / KB)} KB/s`;
 }

@@ -75,6 +75,24 @@ describe('useCatalog', () => {
     expect(result.current.catalogError).toBe('No se pudo cargar el catálogo');
   });
 
+  it('el rótulo de "Incluir fotos" suma el peso de lo seleccionado (#685)', async () => {
+    const MB = 1024 * 1024;
+    mockGetServerCatalog.mockResolvedValueOnce([
+      { ...plantacion('a'), photo_count: 10, photo_bytes: 100 * MB },
+      { ...plantacion('b'), photo_count: 3, photo_bytes: 28 * MB },
+    ]);
+    const { result } = renderHook(() => useCatalog());
+    await waitFor(() => expect(result.current.catalogItems).toHaveLength(2));
+    expect(result.current.rotuloIncluirFotos).toBe('Incluir fotos');
+
+    act(() => {
+      result.current.toggleSelection('a');
+      result.current.toggleSelection('b');
+    });
+
+    expect(result.current.rotuloIncluirFotos).toBe('Incluir fotos · 128 MB');
+  });
+
   describe('recarga con la lista ya cargada (#681)', () => {
     it('una recarga trae las plantaciones nuevas del servidor', async () => {
       mockGetServerCatalog.mockResolvedValueOnce([plantacion('a')]);

@@ -1,9 +1,20 @@
+import type { ComponentProps } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { esActiva, esFinalizada } from '../constants/estados';
 import type { ServerPlantation } from '../queries/catalogQueries';
+import { pesoDeFotos } from '../utils/pesoDeFotosDelCatalogo';
 import { catalogPlantationCardStyles as styles } from './CatalogPlantationCard.styles';
+
+function Stat({ icon, texto }: { icon: ComponentProps<typeof Ionicons>['name']; texto: string }) {
+  return (
+    <View style={styles.stat}>
+      <Ionicons name={icon} size={12} color={colors.statTotal} />
+      <Text style={styles.statText}>{texto}</Text>
+    </View>
+  );
+}
 
 interface Props {
   item: ServerPlantation;
@@ -21,6 +32,7 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
         : colors.stateSincronizada;
 
   const borderLeftColor = isDownloaded ? colors.stateSincronizada : stateColor;
+  const peso = pesoDeFotos(item);
 
   return (
     <Pressable
@@ -49,12 +61,11 @@ export default function CatalogPlantationCard({ item, isDownloaded, isSelected, 
         <Text style={styles.cardTitle}>{item.lugar}</Text>
         <Text style={styles.cardSubtitle}>{item.periodo}</Text>
 
+        {/* Envuelve en vez de desbordar en pantallas angostas con los tres datos. */}
         <View style={styles.statsRow}>
-          <Ionicons name="layers-outline" size={12} color={colors.statTotal} />
-          <Text style={styles.statText}>{item.group_count} grupos</Text>
-          <View style={styles.statSpacer} />
-          <Ionicons name="leaf-outline" size={12} color={colors.statTotal} />
-          <Text style={styles.statText}>{item.tree_count} arboles</Text>
+          <Stat icon="layers-outline" texto={`${item.group_count} grupos`} />
+          <Stat icon="leaf-outline" texto={`${item.tree_count} arboles`} />
+          {peso ? <Stat icon="image-outline" texto={peso} /> : null}
         </View>
 
         <View style={[styles.estadoChip, { backgroundColor: stateColor + '26' }]}>

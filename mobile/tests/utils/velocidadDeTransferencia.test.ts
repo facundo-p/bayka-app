@@ -11,11 +11,11 @@ describe('formatearVelocidad', () => {
   });
 
   it('pasa a MB/s cuando el número en KB dejaría de leerse', () => {
-    expect(formatearVelocidad({ bytes: 5 * MB, desde: ARRANQUE }, seg(2))).toBe('~2.5 MB/s');
+    expect(formatearVelocidad({ bytes: 5 * MB, desde: ARRANQUE }, seg(2))).toBe('~2,5 MB/s');
   });
 
   it('exactamente 1 MB/s ya se muestra en MB', () => {
-    expect(formatearVelocidad({ bytes: MB, desde: ARRANQUE }, seg(1))).toBe('~1.0 MB/s');
+    expect(formatearVelocidad({ bytes: MB, desde: ARRANQUE }, seg(1))).toBe('~1,0 MB/s');
   });
 
   // Un "0 KB/s" redondeado parece "no avanza", que es justo lo contrario de lo que
