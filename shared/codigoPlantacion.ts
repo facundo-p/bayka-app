@@ -1,6 +1,6 @@
 /**
- * Código de plantación y ID de árbol (#559). Contrato con contracts/codigo-plantacion.json,
- * que es también el CHECK de la base: cambian juntos.
+ * Código de plantación y ID de árbol (#559), el mismo módulo en web y mobile (#713). Contrato con
+ * contracts/codigo-plantacion.json, que es también el CHECK de la base: cambian juntos.
  */
 export const CODIGO_PLANTACION = {
   longitudMaxima: 8,
@@ -12,9 +12,10 @@ const PATRON_CODIGO = new RegExp(CODIGO_PLANTACION.patron);
 const ESPACIOS = /\s+/g;
 
 export const MENSAJE_CODIGO_PLANTACION = {
-  obligatorio: 'El código es obligatorio',
-  largo: `El código tiene hasta ${CODIGO_PLANTACION.longitudMaxima} caracteres`,
-  formato: 'Solo letras, números y guiones sueltos, sin guion al principio ni al final',
+  obligatorio: 'El código es obligatorio.',
+  largo: `El código tiene hasta ${CODIGO_PLANTACION.longitudMaxima} caracteres.`,
+  formato:
+    'El código lleva solo letras, números y guiones sueltos, sin guion al principio ni al final.',
   duplicado: 'Ya existe otra plantación con ese código.',
 } as const;
 
@@ -30,7 +31,10 @@ export function errorCodigoPlantacion(codigo: string): string | undefined {
   if (!PATRON_CODIGO.test(codigo)) return MENSAJE_CODIGO_PLANTACION.formato;
 }
 
-/** ID del árbol en toda la organización: `<SubID>-<código de plantación>`; sin código, el SubID solo. */
+/**
+ * ID del árbol en toda la organización: `<SubID>-<código de plantación>`. Sin código (una
+ * plantación que en mobile todavía no lo bajó), el SubID solo.
+ */
 export function idDeArbol(subId: string, codigoPlantacion: string | null | undefined): string {
   return codigoPlantacion
     ? `${subId}${CODIGO_PLANTACION.separadorIdArbol}${codigoPlantacion}`

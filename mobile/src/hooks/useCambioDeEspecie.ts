@@ -7,7 +7,7 @@ import { useLiveData } from '../database/liveQuery';
 import { getSpeciesForPlantation, type PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
 import { cambiarEspecie } from '../repositories/TreeRepository';
 import { avisoBreve } from '../utils/avisoBreve';
-import { idDeArbol } from '../utils/codigoDePlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { coincideBusqueda } from '../utils/normalizarTexto';
 
 export const MENSAJE_ERROR_CAMBIO_DE_ESPECIE = 'No se pudo cambiar la especie.';

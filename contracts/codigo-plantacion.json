@@ -1,5 +1,5 @@
 {
-  "_comment": "Fuente de verdad del formato del código de plantación y del ID de árbol (<SubID><separador><código>). Cambiar esto implica actualizar la base (supabase/migrations/062_codigo_de_plantacion.sql codigo_de_plantacion_valido), las copias runtime (web/src/lib/codigoPlantacion.ts, mobile/src/constants/codigoPlantacion.ts) y sus contract tests en el mismo cambio.",
+  "_comment": "Fuente de verdad del formato del código de plantación y del ID de árbol (<SubID><separador><código>). Cambiar esto implica actualizar la base (supabase/migrations/062_codigo_de_plantacion.sql codigo_de_plantacion_valido), el módulo que usan web y mobile (shared/codigoPlantacion.ts) y los contract tests en el mismo cambio.",
   "longitudMaxima": 8,
   "patron": "^[A-Z0-9]+(-[A-Z0-9]+)*$",
   "separadorIdArbol": "-"

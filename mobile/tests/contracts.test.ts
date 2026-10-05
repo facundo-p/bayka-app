@@ -24,8 +24,7 @@ import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
 import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
 import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
-import { idDeArbol } from '../src/utils/codigoDePlantacion';
-import { CODIGO_PLANTACION } from '../src/constants/codigoPlantacion';
+import { CODIGO_PLANTACION, idDeArbol } from '../../shared/codigoPlantacion';
 import type { ExportRow } from '../src/queries/exportQueries';
 import { leerContrato } from './helpers/contratos';
 

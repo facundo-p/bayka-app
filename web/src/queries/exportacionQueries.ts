@@ -1,6 +1,6 @@
 /* Filas de exportación de una plantación (espeja `getExportRows` de mobile); LEFT JOIN a species
  * para que un árbol sin especie o huérfano nunca se caiga del export, se marca "N/N". */
-import { idDeArbol } from '../lib/codigoPlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 import { leerPaginado } from './leerPaginado';
 

@@ -1,4 +1,4 @@
-import { idDeArbol } from '../lib/codigoPlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 import {
   COLUMNA_CODIGO_PLANTACION,

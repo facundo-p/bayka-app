@@ -7,7 +7,7 @@ import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../constants/photoCapture';
 import { VISIBLE_IN_APP_DEFAULT } from '../constants/visibilidad';
 import type { CamposDePlantacion } from './camposDePlantacion';
-import { errorCodigoPlantacion, normalizarCodigoPlantacion } from './codigoDePlantacion';
+import { errorCodigoPlantacion, normalizarCodigoPlantacion } from '../../../shared/codigoPlantacion';
 import { recortarIso } from './fechaDeCalendario';
 
 const LARGO_MINIMO = 2;

@@ -19,7 +19,7 @@ import { uploadOfflinePlantations } from './sync/preSteps';
 import { uploadSyncableParcelas } from './sync/pushService';
 import { ensureServerSession } from './sync/sessionGuard';
 import { codigoEnUsoEnServidor } from './sync/duplicadasEnServidor';
-import { MENSAJE_CODIGO_PLANTACION } from '../utils/codigoDePlantacion';
+import { MENSAJE_CODIGO_PLANTACION } from '../../../shared/codigoPlantacion';
 import { AUTO_PARCELA_DEFAULT } from '../config/featureFlags';
 import { syncLog } from '../utils/syncLogger';
 

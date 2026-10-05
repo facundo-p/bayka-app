@@ -91,7 +91,7 @@ test('con campos inválidos muestra errores por campo y no guarda', async () => 
 
   expect(await screen.findByText('El lugar es obligatorio')).toBeInTheDocument();
   expect(screen.getByText('El período es obligatorio')).toBeInTheDocument();
-  expect(screen.getByText('El código es obligatorio')).toBeInTheDocument();
+  expect(screen.getByText('El código es obligatorio.')).toBeInTheDocument();
   expect(
     screen.getByText('El objetivo debe ser un número entero de al menos 1 árbol'),
   ).toBeInTheDocument();
@@ -246,7 +246,7 @@ describe('código de plantación (#559)', () => {
 
     expect(
       await screen.findByText(
-        'Solo letras, números y guiones sueltos, sin guion al principio ni al final',
+        'El código lleva solo letras, números y guiones sueltos, sin guion al principio ni al final.',
       ),
     ).toBeInTheDocument();
     expect(vi.mocked(crearPlantacion)).not.toHaveBeenCalled();

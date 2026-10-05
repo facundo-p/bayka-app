@@ -9,7 +9,7 @@ import { colors, iconSizes } from '../theme';
 import type { TreeDetail } from '../hooks/useTreeDetail';
 import { useCambioDeEspecie, type CambioDeEspecieDelArbol } from '../hooks/useCambioDeEspecie';
 import { getSpeciesName } from '../utils/speciesHelpers';
-import { idDeArbol } from '../utils/codigoDePlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { showConfirmDialog, type ShowFn } from '../utils/alertHelpers';
 import {
   cambioRequiereReabrir,

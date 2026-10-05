@@ -4,7 +4,7 @@
 import { db } from '../database/client';
 import { trees, groups, plantations, parcelas, species } from '../database/schema';
 import { eq, and, asc, isNotNull } from 'drizzle-orm';
-import { idDeArbol } from '../utils/codigoDePlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 
 /**
  * Fila para el export CSV/Excel. lugar/plantacionLugar resuelven ambos a plantations.lugar ("Zona"

@@ -5,7 +5,7 @@
  * Usa `ESTADO_PLANTACION` real: un `vi.mock` de plantationQueries que no
  * conserve el módulo original (`importOriginal`) rompe al importar esto.
  */
-import { idDeArbol } from '../lib/codigoPlantacion';
+import { idDeArbol } from '../../../shared/codigoPlantacion';
 import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../lib/gpsDefaults';
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT } from '../lib/photoDefaults';
 import type {

@@ -9,6 +9,8 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.ts', '**/tests/**/*.test.tsx'],
   testPathIgnorePatterns: ['/node_modules/', '/tests/integration/'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
+  // ../shared (#713) no tiene node_modules arriba: los helpers que inyecta babel salen de los de mobile.
+  modulePaths: ['<rootDir>/node_modules'],
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg|drizzle-orm)',
   ],

@@ -4,7 +4,7 @@
  * el server no lo aplica si alguien lo cambió desde otro lado mientras tanto.
  */
 import { errorDeSupabase, mensajeDeError } from '../lib/clasificarError';
-import { MENSAJE_CODIGO_PLANTACION } from '../lib/codigoPlantacion';
+import { MENSAJE_CODIGO_PLANTACION } from '../../../shared/codigoPlantacion';
 import { supabase } from '../lib/supabase';
 
 const RPC_EDITAR_PLANTACION = 'editar_plantacion';
