@@ -3,6 +3,7 @@
 jest.mock('../../src/supabase/client', () => ({
   supabase: {
     from: jest.fn(),
+    rpc: jest.fn(),
   },
   isSupabaseConfigured: true,
 }));
@@ -41,18 +42,10 @@ function makeOrderTerminalChain(resolvedValue: any) {
   return chain;
 }
 
-// Groups/trees count chain, terminal at in() (select().eq().in())
-function makeInTerminalChain(resolvedValue: any) {
-  const chain: any = {};
-  chain.select = () => chain;
-  chain.eq = () => chain;
-  chain.in = () => Promise.resolve(resolvedValue);
-  return chain;
-}
-
 describe('catalogQueries', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    (supabase.rpc as jest.Mock).mockResolvedValue({ data: [], error: null });
   });
 
   // ─── getServerCatalog ─────────────────────────────────────────────────────────
@@ -69,9 +62,7 @@ describe('catalogQueries', () => {
       plantationsChain.order = () => Promise.resolve({ data: remotePlantations, error: null });
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(plantationsChain)
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))  // groups
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null })); // trees
+        .mockReturnValueOnce(plantationsChain); // trees
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -95,9 +86,7 @@ describe('catalogQueries', () => {
 
       (supabase.from as jest.Mock)
         .mockReturnValueOnce(puChain)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
 
       const results = await getServerCatalog(false, 'user-tec', 'org-1');
 
@@ -125,39 +114,32 @@ describe('catalogQueries', () => {
   });
 
   describe('getServerCatalog — counts', () => {
-    it('merges subgroup and tree counts into results', async () => {
-      const remotePlantations = [makePlantation('p-1')];
-
-      const subgroupsData = [
-        { plantation_id: 'p-1', id: 'sg-1' },
-        { plantation_id: 'p-1', id: 'sg-2' },
-      ];
-
-      const treesData = [
-        { group_id: 'sg-1' },
-        { group_id: 'sg-1' },
-        { group_id: 'sg-2' },
-      ];
+    it('toma los conteos del RPC catalogo_conteos', async () => {
+      const remotePlantations = [makePlantation('p-1'), makePlantation('p-2')];
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: subgroupsData, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: treesData, error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
+      (supabase.rpc as jest.Mock).mockResolvedValue({
+        data: [{ plantation_id: 'p-1', grupos: 2, arboles: 3 }],
+        error: null,
+      });
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
-      expect(results).toHaveLength(1);
-      expect(results[0].group_count).toBe(2);
-      expect(results[0].tree_count).toBe(3);
+      expect(supabase.rpc).toHaveBeenCalledWith('catalogo_conteos', { p_ids: ['p-1', 'p-2'] });
+      expect(supabase.from).not.toHaveBeenCalledWith('trees');
+      expect(supabase.from).not.toHaveBeenCalledWith('groups');
+      expect(results.map((p) => [p.id, p.group_count, p.tree_count])).toEqual([
+        ['p-1', 2, 3],
+        ['p-2', 0, 0],
+      ]);
     });
 
     it('defaults to 0 counts when no groups or trees for plantation', async () => {
       const remotePlantations = [makePlantation('p-empty')];
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -174,9 +156,7 @@ describe('catalogQueries', () => {
       ];
 
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: remotePlantations, error: null }));
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -192,9 +172,7 @@ describe('catalogQueries', () => {
 
     it('admin: no lista las archivadas y tolera servers sin la columna', async () => {
       (supabase.from as jest.Mock)
-        .mockReturnValueOnce(makeOrderTerminalChain({ data: [archivada, noArchivada, sinColumna], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }))
-        .mockReturnValueOnce(makeInTerminalChain({ data: [], error: null }));
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: [archivada, noArchivada, sinColumna], error: null }));
 
       const results = await getServerCatalog(true, 'user-admin', 'org-1');
 
@@ -225,6 +203,14 @@ describe('catalogQueries', () => {
       (supabase.from as jest.Mock).mockReturnValueOnce(errorChain);
 
       await expect(getServerCatalog(true, 'user-admin', 'org-1')).rejects.toBeTruthy();
+    });
+
+    it('propaga el error del RPC de conteos', async () => {
+      (supabase.from as jest.Mock)
+        .mockReturnValueOnce(makeOrderTerminalChain({ data: [makePlantation('p-1')], error: null }));
+      (supabase.rpc as jest.Mock).mockResolvedValue({ data: null, error: new Error('RPC Error') });
+
+      await expect(getServerCatalog(true, 'user-admin', 'org-1')).rejects.toThrow('RPC Error');
     });
   });
 

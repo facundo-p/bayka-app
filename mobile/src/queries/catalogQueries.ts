@@ -34,6 +34,18 @@ function sinArchivadas(rows: any[]): any[] {
   return rows.filter((p) => !esArchivada({ archivadaEn: p.archivada_en ?? null }));
 }
 
+const RPC_CATALOGO_CONTEOS = 'catalogo_conteos';
+
+type Conteos = { grupos: number; arboles: number };
+
+/** Grupos y árboles por plantación, contados en el server (#682). Sin grupos, no hay entrada. */
+async function contarPorPlantacion(plantationIds: string[]): Promise<Map<string, Conteos>> {
+  const { data, error } = await supabase.rpc(RPC_CATALOGO_CONTEOS, { p_ids: plantationIds });
+  if (error) throw error;
+  const filas = (data ?? []) as { plantation_id: string; grupos: number; arboles: number }[];
+  return new Map(filas.map((f) => [f.plantation_id, { grupos: Number(f.grupos), arboles: Number(f.arboles) }]));
+}
+
 /**
  * Fetches plantations from Supabase with role-based filtering.
  * - Admin: all plantations in the organization
@@ -83,47 +95,7 @@ export async function getServerCatalog(
 
   if (remotePlantations.length === 0) return [];
 
-  const plantationIds = remotePlantations.map((p: any) => p.id);
-
-  const { data: groupRows, error: sgError } = await fetchAllRows<any>(() =>
-    supabase.from('groups').select('plantation_id, id').in('plantation_id', plantationIds)
-  );
-
-  if (sgError) throw sgError;
-
-  const groupCountMap: Record<string, number> = {};
-  const groupIdsByPlantation: Record<string, string[]> = {};
-  for (const sg of groupRows ?? []) {
-    groupCountMap[sg.plantation_id] = (groupCountMap[sg.plantation_id] ?? 0) + 1;
-    if (!groupIdsByPlantation[sg.plantation_id]) {
-      groupIdsByPlantation[sg.plantation_id] = [];
-    }
-    groupIdsByPlantation[sg.plantation_id].push(sg.id);
-  }
-
-  // Flat list of subgroup IDs, needed to query tree counts across all of them at once
-  const allGroupIds = (groupRows ?? []).map((sg: any) => sg.id);
-
-  const treeCountMap: Record<string, number> = {};
-  if (allGroupIds.length > 0) {
-    const { data: treeRows, error: treeError } = await fetchAllRows<any>(() =>
-      supabase.from('trees').select('group_id').in('group_id', allGroupIds)
-    );
-
-    if (treeError) throw treeError;
-
-    const sgToPlantation: Record<string, string> = {};
-    for (const sg of groupRows ?? []) {
-      sgToPlantation[sg.id] = sg.plantation_id;
-    }
-
-    for (const tree of treeRows ?? []) {
-      const plantationId = sgToPlantation[tree.group_id];
-      if (plantationId) {
-        treeCountMap[plantationId] = (treeCountMap[plantationId] ?? 0) + 1;
-      }
-    }
-  }
+  const conteos = await contarPorPlantacion(remotePlantations.map((p: any) => p.id));
 
   return remotePlantations.map((p: any): ServerPlantation => ({
     id: p.id,
@@ -134,8 +106,8 @@ export async function getServerCatalog(
     creado_por: p.creado_por,
     created_at: p.created_at,
     visible_in_app: p.visible_in_app ?? true,
-    group_count: groupCountMap[p.id] ?? 0,
-    tree_count: treeCountMap[p.id] ?? 0,
+    group_count: conteos.get(p.id)?.grupos ?? 0,
+    tree_count: conteos.get(p.id)?.arboles ?? 0,
   }));
 }
 
