@@ -1,5 +1,6 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
+import { PAGINAS_EN_PARALELO } from '../leerPaginado';
 import {
   listarCatalogo,
   listarCatalogoConUso,
@@ -163,8 +164,8 @@ describe('listarCatalogoConUso', () => {
 
     expect(catalogo[0].plantaciones).toBe(totalFilas);
     const lecturas = consultas.filter((consulta) => consulta.tabla === 'plantation_species');
-    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
-    expect(lecturas).toHaveLength(2);
+    // Página 0 llena → una tanda en paralelo, cuya primera página (500) ya es la última.
+    expect(lecturas).toHaveLength(1 + PAGINAS_EN_PARALELO);
     expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
     expect(lecturas[1].rango).toEqual({ desde: 1000, hasta: 1999 });
   });

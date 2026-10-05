@@ -39,26 +39,23 @@ const FILA_PLANTACION = filaPlantacion({
   objetivo_arboles: 10,
 });
 
-const ARBOL_BASE = {
+const CONTEO_BASE = {
+  parcela_id: 'parc-1',
   species_id: 'sp-1',
-  foto_url: 'plantations/p1/trees/t1.jpg',
-  created_at: '2026-06-03T12:00:00Z',
-  latitude: -27.1,
-  longitude: -55.2,
-  group_id: 'gr-1',
-  groups: { plantation_id: 'plant-1', parcela_id: 'parc-1' },
+  mes: '2026-06',
+  con_gps: true,
+  con_foto: true,
+  cantidad: 1,
 };
 
-/** 5 árboles: 3 con GPS (60%), 2 con foto subida (40%), 1 N/N, 2 especies.
- *  Repartidos 3 en parc-1 (67% GPS, 67% foto, el N/N) y 2 en parc-2 (50% GPS,
- *  0% foto), para que filtrar mueva los números. */
-const EN_PARC_2 = { groups: { plantation_id: 'plant-1', parcela_id: 'parc-2' } };
-const FILAS_ARBOLES = [
-  ARBOL_BASE,
-  ARBOL_BASE,
-  { ...ARBOL_BASE, ...EN_PARC_2, species_id: 'sp-2', foto_url: 'file:///data/foto.jpg' },
-  { ...ARBOL_BASE, ...EN_PARC_2, latitude: null, longitude: null, foto_url: null },
-  { ...ARBOL_BASE, species_id: null, latitude: null, longitude: null, foto_url: null },
+/** Conteos de `dashboard_arboles` para 5 árboles: 3 con GPS (60%), 2 con foto
+ *  subida (40%), 1 N/N, 2 especies. Repartidos 3 en parc-1 (67% GPS, 67% foto,
+ *  el N/N) y 2 en parc-2 (50% GPS, 0% foto), para que filtrar mueva los números. */
+const CONTEOS_ARBOLES = [
+  { ...CONTEO_BASE, cantidad: 2 },
+  { ...CONTEO_BASE, species_id: null, con_gps: false, con_foto: false },
+  { ...CONTEO_BASE, parcela_id: 'parc-2', species_id: 'sp-2', con_foto: false },
+  { ...CONTEO_BASE, parcela_id: 'parc-2', con_gps: false, con_foto: false },
 ];
 
 const CATALOGO = [
@@ -132,22 +129,15 @@ function esConteo(consulta: ConsultaCapturada): boolean {
   return consulta.opciones?.head === true;
 }
 
-/** Distingue la lectura de puntos del mapa (trae longitude) de la del dashboard. */
-function esLecturaPuntos(consulta: ConsultaCapturada): boolean {
-  return (consulta.columnas ?? '').includes('longitude');
-}
-
-function crearResolver(arboles: RespuestaMock['data']) {
+function crearResolver(conteos: RespuestaMock['data']) {
   return (consulta: ConsultaCapturada): RespuestaMock => {
     if (consulta.tabla === 'plantations') return { data: FILA_PLANTACION };
     if (consulta.tabla === 'species') return { data: CATALOGO };
     if (consulta.tabla === 'parcelas') return { data: FILAS_PARCELAS };
     if (consulta.tabla === 'groups') return esConteo(consulta) ? { count: 2 } : { count: 3 };
-    if (consulta.tabla === 'trees') {
-      if (esConteo(consulta)) return { count: 4 };
-      if (esLecturaPuntos(consulta)) return { data: FILAS_PUNTOS };
-      return { data: arboles };
-    }
+    if (consulta.tabla === 'dashboard_arboles') return { data: conteos };
+    if (consulta.tabla === 'trees')
+      return esConteo(consulta) ? { count: 4 } : { data: FILAS_PUNTOS };
     return { data: [], count: 0 };
   };
 }
@@ -156,7 +146,7 @@ beforeEach(prepararSesionAdmin);
 
 describe('DashboardTab', () => {
   test('muestra el hero, los KPIs y los paneles de especies y parcelas', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     renderRutasEn('/plantaciones/plant-1');
 
     // Número grande (total de árboles) y overline.
@@ -187,7 +177,7 @@ describe('DashboardTab', () => {
   });
 
   test('clickear una parcela filtra el mapa; volver a clickearla lo restaura', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -209,7 +199,7 @@ describe('DashboardTab', () => {
   });
 
   test('clickear otra parcela cambia el filtro directo, sin pasar por "todos"', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -222,7 +212,7 @@ describe('DashboardTab', () => {
   });
 
   test('seleccionar una parcela recalcula el hero, los KPIs y las especies', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -247,7 +237,7 @@ describe('DashboardTab', () => {
   });
 
   test('"Ver todos" vuelve a la plantación entera y suelta la parcela', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 
@@ -261,7 +251,7 @@ describe('DashboardTab', () => {
   });
 
   test('una parcela sin árboles muestra ceros, no el estado vacío', async () => {
-    capturarConsultas(crearResolver(FILAS_ARBOLES));
+    capturarConsultas(crearResolver(CONTEOS_ARBOLES));
     const usuario = userEvent.setup();
     renderRutasEn('/plantaciones/plant-1');
 

@@ -1,28 +1,28 @@
 /*
- * Datos del dashboard de una plantación: una sola lectura liviana de árboles (columnas
- * mínimas) agregada en cliente (~7600 árboles/plantación); evita RPCs y mantiene la lógica
- * testeable como funciones puras. Migrar a RPC con `group by` si el volumen crece.
+ * Datos del dashboard de una plantación. El server agrupa los árboles por parcela,
+ * especie, mes, GPS y foto (RPC `dashboard_arboles`, #684); acá se suman esos grupos
+ * con funciones puras, así el filtro por parcela no vuelve a pedir nada.
  */
 import { porcentaje } from '../lib/formato';
-import { PG_ERROR } from '../lib/postgresErrorCodes';
 import { supabase } from '../lib/supabase';
-import { tieneFotoSubida } from '../services/fotoService';
 import { contarOLanzar } from './conteo';
 import { ESPECIE_SIN_IDENTIFICAR, NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { listarCatalogo, type EspecieCatalogo } from './especieQueries';
-import { leerPaginado } from './leerPaginado';
 
-const LARGO_MES_ISO = 7;
+const RPC_DASHBOARD_ARBOLES = 'dashboard_arboles';
 
 export { NOMBRE_SIN_IDENTIFICAR } from './especiesConstantes';
 
-export type ArbolDashboard = {
-  speciesId: string | null;
-  fotoUrl: string | null;
-  createdAt: string;
-  latitude: number | null;
-  groupId: string;
+/** Cantidad de árboles que comparten parcela, especie, mes de registro, GPS y foto. */
+export type ConteoArboles = {
   parcelaId: string | null;
+  speciesId: string | null;
+  /** `YYYY-MM`, en UTC. */
+  mes: string;
+  conGps: boolean;
+  /** Foto subida al bucket; una local de mobile sin sincronizar no cuenta. */
+  conFoto: boolean;
+  cantidad: number;
 };
 
 export type ParcelaDashboard = {
@@ -51,26 +51,29 @@ export type DashboardData = KpisArboles & {
   porMes: RegistrosMes[];
 };
 
-function contarPor<Elemento, Clave>(
-  elementos: Elemento[],
-  claveDe: (elemento: Elemento) => Clave,
+function sumarPor<Clave>(
+  conteos: ConteoArboles[],
+  claveDe: (conteo: ConteoArboles) => Clave,
 ): Map<Clave, number> {
-  const conteos = new Map<Clave, number>();
-  for (const elemento of elementos) {
-    const clave = claveDe(elemento);
-    conteos.set(clave, (conteos.get(clave) ?? 0) + 1);
+  const sumas = new Map<Clave, number>();
+  for (const conteo of conteos) {
+    const clave = claveDe(conteo);
+    sumas.set(clave, (sumas.get(clave) ?? 0) + conteo.cantidad);
   }
-  return conteos;
+  return sumas;
 }
 
-/** KPIs derivados de la lista de árboles (foto local de mobile no cuenta). */
-export function calcularKpis(arboles: ArbolDashboard[]): KpisArboles {
-  const total = arboles.length;
-  const sinEspecie = arboles.filter((arbol) => arbol.speciesId === null).length;
-  const conGps = arboles.filter((arbol) => arbol.latitude !== null).length;
-  const conFoto = arboles.filter((arbol) => tieneFotoSubida(arbol.fotoUrl)).length;
+function sumar(conteos: ConteoArboles[], incluir: (conteo: ConteoArboles) => boolean): number {
+  return conteos.reduce((total, conteo) => total + (incluir(conteo) ? conteo.cantidad : 0), 0);
+}
+
+export function calcularKpis(arboles: ConteoArboles[]): KpisArboles {
+  const total = sumar(arboles, () => true);
+  const sinEspecie = sumar(arboles, (conteo) => conteo.speciesId === null);
+  const conGps = sumar(arboles, (conteo) => conteo.conGps);
+  const conFoto = sumar(arboles, (conteo) => conteo.conFoto);
   const especies = new Set(
-    arboles.map((arbol) => arbol.speciesId).filter((speciesId) => speciesId !== null),
+    arboles.map((conteo) => conteo.speciesId).filter((speciesId) => speciesId !== null),
   ).size;
   return {
     totalArboles: total,
@@ -83,11 +86,11 @@ export function calcularKpis(arboles: ArbolDashboard[]): KpisArboles {
 
 /** Cantidad de árboles por especie, orden descendente; N/N van como "Sin identificar". */
 export function agruparPorEspecie(
-  arboles: ArbolDashboard[],
+  arboles: ConteoArboles[],
   especies: EspecieCatalogo[],
 ): DistribucionEspecie[] {
   const porId = new Map(especies.map((especie) => [especie.id, especie]));
-  const conteos = contarPor(arboles, (arbol) => arbol.speciesId);
+  const conteos = sumarPor(arboles, (conteo) => conteo.speciesId);
   const distribucion = [...conteos].map(([speciesId, cantidad]) => {
     const especie = speciesId !== null ? porId.get(speciesId) : undefined;
     return {
@@ -101,10 +104,10 @@ export function agruparPorEspecie(
 
 /** Árboles por parcela activa, en el orden recibido; sin árboles queda en 0 (barra en cero informa). */
 export function agruparPorParcela(
-  arboles: ArbolDashboard[],
+  arboles: ConteoArboles[],
   parcelas: ParcelaDashboard[],
 ): DistribucionParcela[] {
-  const conteos = contarPor(arboles, (arbol) => arbol.parcelaId);
+  const conteos = sumarPor(arboles, (conteo) => conteo.parcelaId);
   return parcelas.map((parcela) => ({
     nombre: parcela.nombre,
     codigo: parcela.codigo,
@@ -114,78 +117,41 @@ export function agruparPorParcela(
 
 /** Árboles de una parcela; sin parcela, la lista entera. */
 export function filtrarPorParcela(
-  arboles: ArbolDashboard[],
+  arboles: ConteoArboles[],
   parcelaId: string | null,
-): ArbolDashboard[] {
-  return parcelaId === null ? arboles : arboles.filter((arbol) => arbol.parcelaId === parcelaId);
+): ConteoArboles[] {
+  return parcelaId === null ? arboles : arboles.filter((conteo) => conteo.parcelaId === parcelaId);
 }
 
-export function agruparPorMes(arboles: ArbolDashboard[]): RegistrosMes[] {
-  const conteos = contarPor(arboles, (arbol) => arbol.createdAt.slice(0, LARGO_MES_ISO));
+export function agruparPorMes(arboles: ConteoArboles[]): RegistrosMes[] {
+  const conteos = sumarPor(arboles, (conteo) => conteo.mes);
   return [...conteos]
     .map(([mes, cantidad]) => ({ mes, cantidad }))
     .sort((primero, segundo) => primero.mes.localeCompare(segundo.mes));
 }
 
-type FilaArbolDashboard = {
+type FilaConteoArboles = {
+  parcela_id: string | null;
   species_id: string | null;
-  foto_url: string | null;
-  created_at: string;
-  /** Columna de la migración 023: puede no existir todavía. */
-  latitude?: number | null;
-  group_id: string;
-  groups: { parcela_id: string | null } | null;
+  mes: string;
+  con_gps: boolean;
+  con_foto: boolean;
+  cantidad: number;
 };
 
-function mapearArbolDashboard(fila: FilaArbolDashboard): ArbolDashboard {
-  return {
+async function listarConteosArboles(plantationId: string): Promise<ConteoArboles[]> {
+  const { data, error } = await supabase.rpc(RPC_DASHBOARD_ARBOLES, {
+    p_plantation_id: plantationId,
+  });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as FilaConteoArboles[]).map((fila) => ({
+    parcelaId: fila.parcela_id,
     speciesId: fila.species_id,
-    fotoUrl: fila.foto_url,
-    createdAt: fila.created_at,
-    latitude: fila.latitude ?? null,
-    groupId: fila.group_id,
-    parcelaId: fila.groups?.parcela_id ?? null,
-  };
-}
-
-const COLUMNAS_ARBOL_BASE = 'species_id, foto_url, created_at, group_id';
-const EMBED_GRUPO = 'groups!inner(plantation_id, parcela_id)';
-
-function consultarArbolesDashboard(
-  plantationId: string,
-  columnas: string,
-  desde: number,
-  hasta: number,
-) {
-  return supabase
-    .from('trees')
-    .select(`${columnas}, ${EMBED_GRUPO}`)
-    .eq('groups.plantation_id', plantationId)
-    .order('id')
-    .range(desde, hasta);
-}
-
-/**
- * Lectura paginada (sin el tope de 1000 de PostgREST). `latitude` es de la migración 023:
- * si falla con UNDEFINED_COLUMN se reintenta sin ella (el KPI de GPS queda en 0).
- */
-async function listarArbolesDashboard(plantationId: string): Promise<ArbolDashboard[]> {
-  // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
-  const aFilas = (filas: unknown[]) => (filas as FilaArbolDashboard[]).map(mapearArbolDashboard);
-  try {
-    return aFilas(
-      await leerPaginado((desde, hasta) =>
-        consultarArbolesDashboard(plantationId, `${COLUMNAS_ARBOL_BASE}, latitude`, desde, hasta),
-      ),
-    );
-  } catch (error) {
-    if ((error as { code?: string }).code !== PG_ERROR.UNDEFINED_COLUMN) throw error;
-    return aFilas(
-      await leerPaginado((desde, hasta) =>
-        consultarArbolesDashboard(plantationId, COLUMNAS_ARBOL_BASE, desde, hasta),
-      ),
-    );
-  }
+    mes: fila.mes,
+    conGps: fila.con_gps,
+    conFoto: fila.con_foto,
+    cantidad: fila.cantidad,
+  }));
 }
 
 async function listarParcelasDashboard(plantationId: string): Promise<ParcelaDashboard[]> {
@@ -209,7 +175,7 @@ async function contarGrupos(plantationId: string): Promise<number> {
 
 /** Lecturas crudas: los agregados salen después, según la parcela elegida. */
 export type FuenteDashboard = {
-  arboles: ArbolDashboard[];
+  arboles: ConteoArboles[];
   especies: EspecieCatalogo[];
   parcelas: ParcelaDashboard[];
   totalGrupos: number;
@@ -217,7 +183,7 @@ export type FuenteDashboard = {
 
 export async function obtenerFuenteDashboard(plantationId: string): Promise<FuenteDashboard> {
   const [arboles, especies, parcelas, totalGrupos] = await Promise.all([
-    listarArbolesDashboard(plantationId),
+    listarConteosArboles(plantationId),
     listarCatalogo(),
     listarParcelasDashboard(plantationId),
     contarGrupos(plantationId),

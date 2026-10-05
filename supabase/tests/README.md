@@ -183,7 +183,12 @@ propio y el alta de grupo con árbol nuevo siguen andando (066, #732). `47`
 cada tabla trae todas las combinaciones y los dos desenlaces (#735). `48`
 `contracts/sub-id.json`: el SubID que arman `cambiar_especie_arbol` y
 `sync_subgroup` al conservar la especie, y la reescritura del prefijo al
-cambiar el código de la parcela (#735).
+cambiar el código de la parcela (#735). `49` las policies de SELECT de `trees`
+y `groups` calculan `mis_plantaciones()` una vez por query y cada rol ve las
+mismas filas que antes; `catalogo_conteos` cuenta solo lo visible (067, #682).
+`50` `dashboard_arboles` y `arboles_por_grupo` cuentan solo lo que el usuario
+puede leer, agrupan el mes en UTC, no cuentan fotos locales (`file://`,
+`content://`) ni vacías, e incluyen los grupos vacíos (068, #684).
 
 ## Hallazgo fuera de alcance (no corregido)
 

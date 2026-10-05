@@ -1,6 +1,5 @@
 import { idDeArbol } from '../lib/codigoPlantacion';
 import { supabase } from '../lib/supabase';
-import { contarOLanzar } from './conteo';
 import {
   COLUMNA_CODIGO_PLANTACION,
   resolverBusquedaArbol,
@@ -9,8 +8,9 @@ import {
 import { citarValorOr } from './escaparBusqueda';
 import { ESPECIE_SIN_IDENTIFICAR } from './especiesConstantes';
 import { ESQUEMAS_FOTO_LOCAL } from './fotoConstantes';
-import { leerPaginado } from './leerPaginado';
 import type { EstadoPlantacion } from './plantationQueries';
+
+const RPC_ARBOLES_POR_GRUPO = 'arboles_por_grupo';
 
 export type TipoGrupo = 'linea' | 'bosquete';
 export type EstadoGrupo = EstadoPlantacion;
@@ -125,66 +125,43 @@ export type FilaArbol = {
   } | null;
 };
 
-async function contarGruposDeParcela(parcelaId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('groups')
-    .select('id', { count: 'exact', head: true })
-    .eq('parcela_id', parcelaId);
-  return contarOLanzar(count, error);
+type ArbolesDeGrupo = { group_id: string; parcela_id: string | null; arboles: number };
+
+/** Cada grupo de la plantación con su parcela y su cantidad de árboles, incluidos los vacíos (#684). */
+async function listarArbolesPorGrupo(plantationId: string): Promise<ArbolesDeGrupo[]> {
+  const { data, error } = await supabase.rpc(RPC_ARBOLES_POR_GRUPO, {
+    p_plantation_id: plantationId,
+  });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ArbolesDeGrupo[];
 }
 
-/** Árboles de la parcela: trees → groups (join interno por parcela_id). */
-async function contarArbolesDeParcela(parcelaId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('trees')
-    .select('id, groups!inner(parcela_id)', { count: 'exact', head: true })
-    .eq('groups.parcela_id', parcelaId);
-  return contarOLanzar(count, error);
-}
-
-async function parcelaConStats(fila: FilaParcela): Promise<ParcelaConStats> {
-  const [grupos, arboles] = await Promise.all([
-    contarGruposDeParcela(fila.id),
-    contarArbolesDeParcela(fila.id),
-  ]);
+function statsDeParcela(fila: FilaParcela, grupos: ArbolesDeGrupo[]): ParcelaConStats {
+  const deLaParcela = grupos.filter((grupo) => grupo.parcela_id === fila.id);
   return {
     id: fila.id,
     nombre: fila.nombre,
     codigo: fila.codigo,
     descripcion: fila.descripcion,
     createdAt: fila.created_at,
-    grupos,
-    arboles,
+    grupos: deLaParcela.length,
+    arboles: deLaParcela.reduce((total, grupo) => total + grupo.arboles, 0),
   };
 }
 
-/** Parcelas activas con counts de grupos/árboles: dos counts head en paralelo por parcela (costo marginal). */
+/** Parcelas activas con sus conteos de grupos y árboles, contados en el server. */
 export async function listarParcelasConStats(plantationId: string): Promise<ParcelaConStats[]> {
-  const { data, error } = await supabase
-    .from('parcelas')
-    .select('id, nombre, codigo, descripcion, created_at')
-    .eq('plantation_id', plantationId)
-    .is('deleted_at', null)
-    .order('codigo', { ascending: true });
-  if (error) throw new Error(error.message);
-  return Promise.all(((data ?? []) as FilaParcela[]).map(parcelaConStats));
-}
-
-/** Agrega en cliente (no count head por grupo, ~250 grupos → N+1); paginado para evitar el tope de 1000 de PostgREST. */
-async function contarArbolesPorGrupo(plantationId: string): Promise<Map<string, number>> {
-  const filas = await leerPaginado<{ group_id: string }>((desde, hasta) =>
+  const [{ data, error }, grupos] = await Promise.all([
     supabase
-      .from('trees')
-      .select('group_id, groups!inner(plantation_id)')
-      .eq('groups.plantation_id', plantationId)
-      .order('id')
-      .range(desde, hasta),
-  );
-  const conteos = new Map<string, number>();
-  for (const fila of filas) {
-    conteos.set(fila.group_id, (conteos.get(fila.group_id) ?? 0) + 1);
-  }
-  return conteos;
+      .from('parcelas')
+      .select('id, nombre, codigo, descripcion, created_at')
+      .eq('plantation_id', plantationId)
+      .is('deleted_at', null)
+      .order('codigo', { ascending: true }),
+    listarArbolesPorGrupo(plantationId),
+  ]);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as FilaParcela[]).map((fila) => statsDeParcela(fila, grupos));
 }
 
 function mapearGrupo(fila: FilaGrupo, arboles: number): GrupoConDetalle {
@@ -211,11 +188,12 @@ export async function listarGrupos(
     .select('id, nombre, codigo, tipo, estado, parcela_id, created_at, parcelas(codigo)')
     .eq('plantation_id', plantationId);
   if (filtros.parcelaId) consulta = consulta.eq('parcela_id', filtros.parcelaId);
-  const [{ data, error }, conteos] = await Promise.all([
+  const [{ data, error }, grupos] = await Promise.all([
     consulta.order('codigo', { ascending: true }),
-    contarArbolesPorGrupo(plantationId),
+    listarArbolesPorGrupo(plantationId),
   ]);
   if (error) throw new Error(error.message);
+  const conteos = new Map(grupos.map((grupo) => [grupo.group_id, grupo.arboles]));
   // Embed many-to-one: llega como objeto, no array (cliente sin typegen).
   const filas = (data ?? []) as unknown as FilaGrupo[];
   return filas.map((fila) => mapearGrupo(fila, conteos.get(fila.id) ?? 0));

@@ -9,6 +9,8 @@ export type { PuntoGps };
  *  alto fijo del detalle de árbol. Las medidas viven en `MapaPuntos.module.css`. */
 export type VarianteMapa = 'panel' | 'compacto';
 
+export const VARIANTE_MAPA_POR_DEFECTO: VarianteMapa = 'panel';
+
 export interface MapaPuntosProps {
   puntos: PuntoGps[];
   colorPorCodigo: Map<string, string>;

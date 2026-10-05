@@ -155,7 +155,7 @@ describe('cliente demo: árboles de muestra', () => {
       listarPuntosGps('p2'),
     ]);
 
-    expect(fuente.arboles).toHaveLength(32);
+    expect(fuente.arboles.reduce((total, { cantidad }) => total + cantidad, 0)).toBe(32);
     expect(fuente.parcelas).toHaveLength(2);
     expect(puntos.length).toBeGreaterThan(0);
   });

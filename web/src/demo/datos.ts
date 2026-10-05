@@ -7,6 +7,7 @@
  * embebe, la FK a `COLUMNA_QUE_APUNTA_A`.
  */
 import type { TipoGrupo } from '../queries/dataExplorerQueries';
+import { ESQUEMAS_FOTO_LOCAL } from '../queries/fotoConstantes';
 import type { EstadoPlantacion } from '../queries/plantationQueries';
 
 export type FilaDemo = Record<string, unknown>;
@@ -561,7 +562,60 @@ function cambiarEspecieDemo(parametros: FilaDemo): FilaDemo {
   };
 }
 
+const LARGO_MES_ISO = 7;
+
+function arbolesDeLaPlantacion(parametros: FilaDemo): FilaDemo[] {
+  const grupos = new Set(
+    GRUPOS.filter((grupo) => grupo.plantation_id === parametros.p_plantation_id).map(
+      (grupo) => grupo.id,
+    ),
+  );
+  return ARBOLES.filter((arbol) => grupos.has(String(arbol.group_id)));
+}
+
+/** Sin importar `fotoService`: trae el cliente de Supabase, que acá es esta demo. */
+function fotoSubida(fotoUrl: unknown): boolean {
+  return (
+    typeof fotoUrl === 'string' &&
+    fotoUrl !== '' &&
+    !ESQUEMAS_FOTO_LOCAL.some((esquema) => fotoUrl.startsWith(esquema))
+  );
+}
+
+/** Como el RPC: árboles agrupados por parcela, especie, mes, GPS y foto. */
+function dashboardArbolesDemo(parametros: FilaDemo): FilaDemo[] {
+  const conteos = new Map<string, FilaDemo>();
+  for (const arbol of arbolesDeLaPlantacion(parametros)) {
+    const grupo = GRUPOS.find((candidato) => candidato.id === arbol.group_id);
+    const fila = {
+      parcela_id: grupo?.parcela_id ?? null,
+      species_id: arbol.species_id ?? null,
+      mes: String(arbol.created_at).slice(0, LARGO_MES_ISO),
+      con_gps: arbol.latitude !== null,
+      con_foto: fotoSubida(arbol.foto_url),
+    };
+    const clave = JSON.stringify(fila);
+    const cantidad = Number(conteos.get(clave)?.cantidad ?? 0);
+    conteos.set(clave, { ...fila, cantidad: cantidad + 1 });
+  }
+  return [...conteos.values()];
+}
+
+/** Como el RPC: cada grupo de la plantación con su parcela y sus árboles. */
+function arbolesPorGrupoDemo(parametros: FilaDemo): FilaDemo[] {
+  const arboles = arbolesDeLaPlantacion(parametros);
+  return GRUPOS.filter((grupo) => grupo.plantation_id === parametros.p_plantation_id).map(
+    (grupo) => ({
+      group_id: grupo.id,
+      parcela_id: grupo.parcela_id,
+      arboles: arboles.filter((arbol) => arbol.group_id === grupo.id).length,
+    }),
+  );
+}
+
 /** Respuestas de `supabase.rpc(...)` que dependen de los parámetros. */
 export const RPC_CON_PARAMETROS: Record<string, (parametros: FilaDemo) => unknown> = {
   cambiar_especie_arbol: cambiarEspecieDemo,
+  dashboard_arboles: dashboardArbolesDemo,
+  arboles_por_grupo: arbolesPorGrupoDemo,
 };

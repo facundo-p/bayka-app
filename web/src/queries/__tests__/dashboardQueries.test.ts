@@ -9,7 +9,7 @@ import {
   calcularKpis,
   filtrarPorParcela,
   obtenerFuenteDashboard,
-  type ArbolDashboard,
+  type ConteoArboles,
 } from '../dashboardQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -19,15 +19,15 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-/** Árbol base de los tests de agregación; cada caso pisa lo que necesita. */
-function arbol(extra: Partial<ArbolDashboard> = {}): ArbolDashboard {
+/** Un árbol de la parcela 1; cada caso pisa lo que necesita. */
+function conteo(extra: Partial<ConteoArboles> = {}): ConteoArboles {
   return {
-    speciesId: 'sp-1',
-    fotoUrl: null,
-    createdAt: '2026-06-03T12:00:00Z',
-    latitude: null,
-    groupId: 'gr-1',
     parcelaId: 'parc-1',
+    speciesId: 'sp-1',
+    mes: '2026-06',
+    conGps: false,
+    conFoto: false,
+    cantidad: 1,
     ...extra,
   };
 }
@@ -38,20 +38,19 @@ const ESPECIES = [
 ];
 
 describe('calcularKpis', () => {
-  test('cuenta NN y especies, y redondea los porcentajes de GPS y foto', () => {
+  test('suma cantidades: NN, especies y porcentajes de GPS y foto redondeados', () => {
     const arboles = [
-      arbol({ latitude: -27.1, fotoUrl: 'plantations/p1/trees/t1.jpg' }),
-      // Foto local de mobile sin sincronizar: no cuenta como subida.
-      arbol({ fotoUrl: 'file:///data/foto.jpg' }),
-      arbol({ speciesId: null }),
+      conteo({ conGps: true, conFoto: true }),
+      conteo({ cantidad: 2 }),
+      conteo({ speciesId: null }),
     ];
 
     expect(calcularKpis(arboles)).toEqual({
-      totalArboles: 3,
+      totalArboles: 4,
       arbolesNN: 1,
       especiesUsadas: 1,
-      porcentajeConGps: 33,
-      porcentajeConFoto: 33,
+      porcentajeConGps: 25,
+      porcentajeConFoto: 25,
     });
   });
 
@@ -69,12 +68,10 @@ describe('calcularKpis', () => {
 describe('agruparPorEspecie', () => {
   test('ordena descendente y agrupa los sin especie como Sin identificar', () => {
     const arboles = [
-      arbol({ speciesId: 'sp-2' }),
-      arbol({ speciesId: 'sp-2' }),
-      arbol({ speciesId: 'sp-2' }),
-      arbol({ speciesId: null }),
-      arbol({ speciesId: null }),
-      arbol(),
+      conteo({ speciesId: 'sp-2', cantidad: 2 }),
+      conteo({ speciesId: 'sp-2', mes: '2026-05' }),
+      conteo({ speciesId: null, cantidad: 2 }),
+      conteo(),
     ];
 
     expect(agruparPorEspecie(arboles, ESPECIES)).toEqual([
@@ -86,12 +83,12 @@ describe('agruparPorEspecie', () => {
 });
 
 describe('agruparPorParcela', () => {
-  test('cuenta por parcela y deja en 0 las que no tienen árboles', () => {
+  test('suma por parcela y deja en 0 las que no tienen árboles', () => {
     const parcelas = [
       { id: 'parc-1', nombre: 'Norte', codigo: 'P1' },
       { id: 'parc-2', nombre: 'Sur', codigo: 'P2' },
     ];
-    const arboles = [arbol(), arbol(), arbol({ parcelaId: 'parc-1' })];
+    const arboles = [conteo({ cantidad: 2 }), conteo({ conGps: true })];
 
     expect(agruparPorParcela(arboles, parcelas)).toEqual([
       { nombre: 'Norte', codigo: 'P1', cantidad: 3 },
@@ -101,22 +98,22 @@ describe('agruparPorParcela', () => {
 });
 
 describe('agruparPorMes', () => {
-  test('agrupa como YYYY-MM y ordena cronológicamente', () => {
+  test('suma por mes y ordena cronológicamente', () => {
     const arboles = [
-      arbol({ createdAt: '2026-06-03T12:00:00Z' }),
-      arbol({ createdAt: '2026-04-10T08:00:00Z' }),
-      arbol({ createdAt: '2026-06-20T18:30:00Z' }),
+      conteo({ mes: '2026-06' }),
+      conteo({ mes: '2026-04' }),
+      conteo({ mes: '2026-06', speciesId: 'sp-2', cantidad: 3 }),
     ];
 
     expect(agruparPorMes(arboles)).toEqual([
       { mes: '2026-04', cantidad: 1 },
-      { mes: '2026-06', cantidad: 2 },
+      { mes: '2026-06', cantidad: 4 },
     ]);
   });
 });
 
 describe('filtrarPorParcela', () => {
-  const arboles = [arbol(), arbol({ parcelaId: 'parc-2' })];
+  const arboles = [conteo(), conteo({ parcelaId: 'parc-2' })];
 
   test('sin parcela devuelve la misma lista, sin copiarla', () => {
     expect(filtrarPorParcela(arboles, null)).toBe(arboles);
@@ -130,9 +127,9 @@ describe('filtrarPorParcela', () => {
 describe('calcularDashboard', () => {
   const FUENTE = {
     arboles: [
-      arbol({ latitude: -27.1, fotoUrl: 'plantations/p1/trees/t1.jpg' }),
-      arbol({ speciesId: null }),
-      arbol({ speciesId: 'sp-2', parcelaId: 'parc-2', latitude: -27.2 }),
+      conteo({ conGps: true, conFoto: true }),
+      conteo({ speciesId: null }),
+      conteo({ speciesId: 'sp-2', parcelaId: 'parc-2', conGps: true }),
     ],
     especies: ESPECIES,
     parcelas: [
@@ -174,22 +171,19 @@ describe('calcularDashboard', () => {
 });
 
 describe('obtenerFuenteDashboard', () => {
-  const FILA_ARBOL = {
+  const FILA_CONTEO = {
+    parcela_id: 'parc-1',
     species_id: 'sp-1',
-    foto_url: 'plantations/p1/trees/t1.jpg',
-    created_at: '2026-06-03T12:00:00Z',
-    latitude: -27.1,
-    group_id: 'gr-1',
-    groups: { plantation_id: 'plant-1', parcela_id: 'parc-1' },
+    mes: '2026-06',
+    con_gps: true,
+    con_foto: true,
+    cantidad: 1,
   };
 
   function responder(consulta: ConsultaCapturada): RespuestaMock {
-    if (consulta.tabla === 'trees') {
+    if (consulta.tabla === 'dashboard_arboles') {
       return {
-        data: [
-          FILA_ARBOL,
-          { ...FILA_ARBOL, species_id: null, foto_url: 'file:///f.jpg', latitude: null },
-        ],
+        data: [FILA_CONTEO, { ...FILA_CONTEO, species_id: null, con_gps: false, con_foto: false }],
       };
     }
     if (consulta.tabla === 'species') {
@@ -201,25 +195,18 @@ describe('obtenerFuenteDashboard', () => {
     return { count: 3 };
   }
 
-  test('lee los árboles paginando con range (sin el tope de 1000)', async () => {
+  test('cuenta los árboles en el server con un solo RPC, sin bajarlos', async () => {
     const consultas = capturarConsultas(responder);
     await obtenerFuenteDashboard('plant-1');
 
-    const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
-    // Mock con < 1000 filas: una sola página (range 0–999) y corta.
-    expect(deArboles).toHaveLength(1);
-    expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
-    expect(deArboles[0].orden).toEqual({ columna: 'id', ascending: true });
-    expect(deArboles[0].limite).toBeUndefined();
-    expect(deArboles[0].columnas).toMatch(/^species_id/);
-    expect(deArboles[0].filtros).toContainEqual({
-      metodo: 'eq',
-      columna: 'groups.plantation_id',
-      valor: 'plant-1',
-    });
+    const rpcs = consultas.filter((consulta) => consulta.operacion === 'rpc');
+    expect(rpcs).toHaveLength(1);
+    expect(rpcs[0].tabla).toBe('dashboard_arboles');
+    expect(rpcs[0].payload).toEqual({ p_plantation_id: 'plant-1' });
+    expect(consultas.some((consulta) => consulta.tabla === 'trees')).toBe(false);
   });
 
-  test('arma los KPIs y las distribuciones agregadas en cliente', async () => {
+  test('arma los KPIs y las distribuciones con los conteos del server', async () => {
     capturarConsultas(responder);
 
     expect(calcularDashboard(await obtenerFuenteDashboard('plant-1'), null)).toEqual({
@@ -239,31 +226,13 @@ describe('obtenerFuenteDashboard', () => {
     });
   });
 
-  test('si latitude no existe (migracion 023 sin aplicar) reintenta sin la columna', async () => {
-    const consultas = capturarConsultas((consulta) => {
-      if (consulta.tabla === 'trees') {
-        if (consulta.columnas?.includes('latitude')) {
-          return { error: { message: 'column trees.latitude does not exist', code: '42703' } };
-        }
-        // El server real no devuelve la columna no pedida.
-        const filas = (responder(consulta).data ?? []) as Record<string, unknown>[];
-        return {
-          data: filas.map((fila) => {
-            const sinLatitude = { ...fila };
-            delete sinLatitude.latitude;
-            return sinLatitude;
-          }),
-        };
-      }
-      return responder(consulta);
-    });
+  test('propaga el error del RPC', async () => {
+    capturarConsultas((consulta) =>
+      consulta.tabla === 'dashboard_arboles'
+        ? { error: { message: 'permission denied' } }
+        : responder(consulta),
+    );
 
-    const dashboard = calcularDashboard(await obtenerFuenteDashboard('plant-1'), null);
-
-    const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
-    expect(deArboles).toHaveLength(2);
-    expect(deArboles[1].columnas).not.toContain('latitude');
-    expect(dashboard.porcentajeConGps).toBe(0);
-    expect(dashboard.totalArboles).toBe(2);
+    await expect(obtenerFuenteDashboard('plant-1')).rejects.toThrow('permission denied');
   });
 });

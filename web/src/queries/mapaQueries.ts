@@ -1,6 +1,6 @@
 /*
- * Puntos GPS de los árboles para el mapa satelital del dashboard: lectura liviana agregada
- * en cliente, espejando dashboardQueries (embed `groups!inner`, tolerancia a la migración 023).
+ * Puntos GPS de los árboles para el mapa satelital del dashboard. A diferencia de los
+ * conteos del dashboard, acá cada árbol es un punto: se leen las filas, paginadas.
  */
 import { idDeArbol } from '../lib/codigoPlantacion';
 import { PG_ERROR } from '../lib/postgresErrorCodes';

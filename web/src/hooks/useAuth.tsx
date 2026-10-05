@@ -77,7 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => resolverSesion(data.session));
-    const { data } = supabase.auth.onAuthStateChange((_evento, session) => {
+    const { data } = supabase.auth.onAuthStateChange((evento, session) => {
+      // Repite la sesión que getSession ya resolvió: sin esto, el perfil se pide dos veces al arrancar.
+      if (evento === 'INITIAL_SESSION') return;
       // setTimeout: el SDK sostiene un lock durante el callback; consultar profiles sincrónicamente adentro puede generar deadlock.
       setTimeout(() => void resolverSesion(session), 0);
     });

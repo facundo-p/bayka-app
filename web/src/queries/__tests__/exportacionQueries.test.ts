@@ -1,6 +1,7 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
 import type { ConsultaCapturada, RespuestaMock } from '../../test/queryBuilderMock';
+import { PAGINAS_EN_PARALELO } from '../leerPaginado';
 import { listarFilasExportacion } from '../exportacionQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -149,8 +150,8 @@ describe('listarFilasExportacion', () => {
 
     expect(filas).toHaveLength(totalFilas);
     const deArboles = consultas.filter((consulta) => consulta.tabla === 'trees');
-    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes.
-    expect(deArboles).toHaveLength(2);
+    // Página 0 llena → una tanda en paralelo, cuya primera página (500) ya es la última.
+    expect(deArboles).toHaveLength(1 + PAGINAS_EN_PARALELO);
     expect(deArboles[0].rango).toEqual({ desde: 0, hasta: 999 });
     expect(deArboles[1].rango).toEqual({ desde: 1000, hasta: 1999 });
   });
