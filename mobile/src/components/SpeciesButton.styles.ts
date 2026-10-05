@@ -33,7 +33,7 @@ export const speciesButtonStyles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.4,
   },
-  // El de arriba lleva el peso visual; el de abajo acompaña. Los tamaños los elige cada usuario (#744).
+  // El de arriba lleva el peso visual; el de abajo acompaña. Los tamaños los elige cada usuario.
   textoArriba: {
     fontFamily: fonts.bold,
     color: colors.plantationDark,

@@ -2,11 +2,7 @@ import { Pressable, Text, Vibration } from 'react-native';
 import { useState } from 'react';
 import type { EstiloBotonera } from '../constants/estiloBotonera';
 import { textosDelBoton } from '../utils/estiloBotonera';
-import { NN_SPECIES_LABEL } from '../constants/especies';
 import { speciesButtonStyles as styles } from './SpeciesButton.styles';
-
-/** El botón para cargar un árbol sin especie identificada. */
-export const BOTON_NN = { codigo: NN_SPECIES_LABEL, nombre: 'No identificado' } as const;
 
 interface Props {
   codigo: string;

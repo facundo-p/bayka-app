@@ -1,6 +1,6 @@
 // Estilos de SegmentedControl.
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius, fonts } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts, touchTarget } from '../theme';
 
 export const segmentedControlStyles = StyleSheet.create({
   segmentedControl: {
@@ -12,6 +12,8 @@ export const segmentedControlStyles = StyleSheet.create({
   },
   segmentButton: {
     flex: 1,
+    minHeight: touchTarget.min,
+    justifyContent: 'center',
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.xs,
     alignItems: 'center',

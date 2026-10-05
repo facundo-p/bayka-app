@@ -1,11 +1,17 @@
 import { ESTILO_BOTONERA_ORIGINAL, type EstiloBotonera } from '../../constants/estiloBotonera';
 import { leerEstiloBotonera } from '../../utils/estiloBotonera';
-import { crearPreferencia, type Preferencia } from './preferencia';
+import { crearPreferencia, preferenciaFija, type Preferencia } from './preferencia';
 
 const porUsuario = new Map<string, Preferencia<EstiloBotonera>>();
 
-/** Tamaño y orden de la botonera (#744): de cada usuario en este dispositivo, para todas sus plantaciones. */
-export function preferenciaEstiloBotonera(userId: string): Preferencia<EstiloBotonera> {
+const SIN_USUARIO = preferenciaFija<EstiloBotonera>(ESTILO_BOTONERA_ORIGINAL);
+
+/**
+ * Tamaño y orden de la botonera (#744): de cada usuario en este dispositivo, para todas sus
+ * plantaciones. Sin usuario todavía es el diseño original y no se guarda.
+ */
+export function preferenciaEstiloBotonera(userId: string | null): Preferencia<EstiloBotonera> {
+  if (!userId) return SIN_USUARIO;
   let preferencia = porUsuario.get(userId);
   if (!preferencia) {
     preferencia = crearPreferencia<EstiloBotonera>({

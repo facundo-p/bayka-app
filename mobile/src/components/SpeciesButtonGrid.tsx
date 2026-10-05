@@ -1,5 +1,6 @@
 import { View, FlatList } from 'react-native';
-import SpeciesButton, { BOTON_NN } from './SpeciesButton';
+import SpeciesButton from './SpeciesButton';
+import { BOTON_NN } from '../constants/especies';
 import type { EstiloBotonera } from '../constants/estiloBotonera';
 import type { PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
 import { speciesButtonGridStyles as styles, COLUMNAS_BOTONERA } from './SpeciesButtonGrid.styles';
@@ -32,6 +33,7 @@ export default function SpeciesButtonGrid({ species, estilo, onSelectSpecies, on
     <FlatList
       data={data}
       numColumns={COLUMNAS_BOTONERA}
+      extraData={estilo}
       keyExtractor={(item) => item.id}
       scrollEnabled={false}
       contentContainerStyle={styles.grid}

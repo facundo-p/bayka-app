@@ -4,23 +4,28 @@ import { colors } from '../theme';
 import {
   ESTILO_BOTONERA_ORIGINAL,
   ORDEN_BOTONERA,
+  ORDEN_BOTONERA_LABELS,
   TAMANO_LETRA_BOTONERA,
+  type CampoDeTamano,
   type EstiloBotonera,
-  type TamanoDeBotonera,
 } from '../constants/estiloBotonera';
-import { esEstiloOriginal, especiesDeMuestra, limitarTamano } from '../utils/estiloBotonera';
+import { BOTON_NN } from '../constants/especies';
+import { esEstiloOriginal, especiesDeMuestra } from '../utils/estiloBotonera';
 import type { PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
+import CabeceraDeOpcion from './CabeceraDeOpcion';
 import SegmentedControl from './SegmentedControl';
 import StepperNumerico from './StepperNumerico';
-import SpeciesButton, { BOTON_NN } from './SpeciesButton';
+import SpeciesButton from './SpeciesButton';
 import { anchoDeCelda } from './SpeciesButtonGrid.styles';
-import { treeConfigModalStyles as modalStyles, TAMANO_ICONO_OPCION } from './TreeConfigModal.styles';
+import { treeConfigModalStyles as modalStyles } from './TreeConfigModal.styles';
 import { tamanoBotoneraSectionStyles as styles, TAMANO_ICONO_RESTABLECER } from './TamanoBotoneraSection.styles';
 
-const OPCIONES_DE_ORDEN = [
-  { valor: ORDEN_BOTONERA.codigoArriba, etiqueta: 'Código arriba' },
-  { valor: ORDEN_BOTONERA.nombreArriba, etiqueta: 'Nombre arriba' },
-] as const;
+const OPCIONES_DE_ORDEN = Object.values(ORDEN_BOTONERA).map((orden) => ({
+  valor: orden,
+  etiqueta: ORDEN_BOTONERA_LABELS[orden],
+}));
+
+const RANGO = { min: TAMANO_LETRA_BOTONERA.min, max: TAMANO_LETRA_BOTONERA.max };
 
 const sinAccion = () => {};
 
@@ -30,34 +35,23 @@ interface Props {
   onChange: (estilo: EstiloBotonera) => void;
 }
 
-/** Sección de Opciones para elegir tamaño y orden del código y el nombre en la botonera (#744). */
+/** Sección de Opciones para elegir tamaño y orden del código y el nombre en la botonera. */
 export default function TamanoBotoneraSection({ estilo, especies, onChange }: Props) {
-  const cambiarTamano = (campo: TamanoDeBotonera) => (valor: number) =>
-    onChange({ ...estilo, [campo]: limitarTamano(valor) });
-  const rango = { min: TAMANO_LETRA_BOTONERA.min, max: TAMANO_LETRA_BOTONERA.max };
+  const cambiarTamano = (campo: CampoDeTamano) => (valor: number) => onChange({ ...estilo, [campo]: valor });
 
   return (
     <View style={[modalStyles.option, styles.seccion]}>
-      <Cabecera />
+      <View style={styles.cabecera}>
+        <CabeceraDeOpcion icono="text-outline" color={colors.plantationDark}
+          titulo="Tamaño de la botonera" descripcion="Tamaño y orden del código y del nombre" />
+      </View>
       <SegmentedControl opciones={OPCIONES_DE_ORDEN} valor={estilo.orden} onChange={(orden) => onChange({ ...estilo, orden })} />
       <StepperNumerico etiqueta="Código" descripcion="Letra del código de especie" valor={estilo.tamanoCodigo}
-        {...rango} onChange={cambiarTamano('tamanoCodigo')} testID="tamano-codigo" />
+        {...RANGO} onChange={cambiarTamano('tamanoCodigo')} testID="tamano-codigo" />
       <StepperNumerico etiqueta="Nombre" descripcion="Letra del nombre de especie" valor={estilo.tamanoNombre}
-        {...rango} onChange={cambiarTamano('tamanoNombre')} testID="tamano-nombre" />
+        {...RANGO} onChange={cambiarTamano('tamanoNombre')} testID="tamano-nombre" />
       <VistaPrevia estilo={estilo} especies={especies} />
       <Restablecer deshabilitado={esEstiloOriginal(estilo)} onPress={() => onChange({ ...ESTILO_BOTONERA_ORIGINAL })} />
-    </View>
-  );
-}
-
-function Cabecera() {
-  return (
-    <View style={styles.cabecera}>
-      <Ionicons name="text-outline" size={TAMANO_ICONO_OPCION} color={colors.plantationDark} />
-      <View style={modalStyles.optionInfo}>
-        <Text style={modalStyles.optionLabel}>Tamaño de la botonera</Text>
-        <Text style={modalStyles.optionDesc}>Tamaño y orden del código y del nombre</Text>
-      </View>
     </View>
   );
 }
@@ -69,7 +63,8 @@ function VistaPrevia({ estilo, especies }: Pick<Props, 'estilo' | 'especies'>) {
   return (
     <>
       <Text style={styles.vistaPreviaTitulo}>Vista previa</Text>
-      <View style={styles.vistaPrevia} testID="vista-previa-botonera">
+      {/* Es una muestra: tocarla no carga nada ni vibra. */}
+      <View style={styles.vistaPrevia} pointerEvents="none" testID="vista-previa-botonera">
         {muestras.map((especie) => (
           <View key={especie.especieId} style={celda}>
             <SpeciesButton codigo={especie.codigo} nombre={especie.nombre} estilo={estilo} onPress={sinAccion} />

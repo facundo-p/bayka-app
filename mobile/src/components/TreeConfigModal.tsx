@@ -1,12 +1,11 @@
-import type { ComponentProps } from 'react';
 import { Modal, View, Text, Pressable, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, spacing } from '../theme';
 import type { EstiloBotonera } from '../constants/estiloBotonera';
 import type { PlantationSpeciesItem } from '../repositories/PlantationSpeciesRepository';
 import TamanoBotoneraSection from './TamanoBotoneraSection';
-import { treeConfigModalStyles as styles, TAMANO_ICONO_OPCION } from './TreeConfigModal.styles';
+import CabeceraDeOpcion, { type CabeceraDeOpcionProps } from './CabeceraDeOpcion';
+import { treeConfigModalStyles as styles } from './TreeConfigModal.styles';
 
 interface Props {
   visible: boolean;
@@ -54,22 +53,10 @@ export default function TreeConfigModal({
   );
 }
 
-interface OpcionProps {
-  icono: ComponentProps<typeof Ionicons>['name'];
-  color: string;
-  titulo: string;
-  descripcion: string;
-  onPress: () => void;
-}
-
-function Opcion({ icono, color, titulo, descripcion, onPress }: OpcionProps) {
+function Opcion({ onPress, ...cabecera }: CabeceraDeOpcionProps & { onPress: () => void }) {
   return (
     <Pressable style={styles.option} onPress={onPress}>
-      <Ionicons name={icono} size={TAMANO_ICONO_OPCION} color={color} />
-      <View style={styles.optionInfo}>
-        <Text style={styles.optionLabel}>{titulo}</Text>
-        <Text style={styles.optionDesc}>{descripcion}</Text>
-      </View>
+      <CabeceraDeOpcion {...cabecera} />
     </Pressable>
   );
 }

@@ -84,7 +84,7 @@ export default function TreeRegistrationScreen() {
     refreshWatcher: gpsWatcher.refresh,
   });
   const speciesOrder = useSpeciesOrder(plantacionId ?? '');
-  const botonera = useEstiloBotonera(userId);
+  const botonera = useEstiloBotonera();
   const treeSelection = useTreeSelection(treeReg.sortedTrees);
   const { selectedTree } = treeSelection;
 
@@ -350,7 +350,7 @@ export default function TreeRegistrationScreen() {
         }}
         estiloBotonera={botonera.estilo}
         especies={speciesOrder.orderedSpecies}
-        onCambiarEstiloBotonera={(estilo) => void botonera.setEstilo(estilo)}
+        onCambiarEstiloBotonera={botonera.setEstilo}
       />
 
       <SpeciesReorderModal

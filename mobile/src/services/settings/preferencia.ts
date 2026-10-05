@@ -12,7 +12,7 @@ type Opciones<T> = {
 export type Preferencia<T> = {
   get: () => T;
   subscribe: (listener: (value: T) => void) => () => void;
-  /** Lee el valor persistido una sola vez y notifica si difiere del default. */
+  /** Lee el valor persistido una sola vez y, si hay uno, lo notifica. */
   hydrate: () => Promise<void>;
   set: (value: T) => Promise<void>;
   /** Solo para tests: resetea el singleton entre casos. */
@@ -54,15 +54,14 @@ export function crearPreferencia<T>({ clave, porDefecto, claveAnterior, leer, es
     async hydrate() {
       if (hidratada) return;
       hidratada = true;
-      let guardado: string | null;
       try {
-        guardado = await leerPersistido();
+        const guardado = await leerPersistido();
+        // Lo que el usuario eligió mientras se leía le gana a lo guardado antes.
+        if (guardado === null || elegida) return;
+        valor = leer(guardado);
       } catch {
-        return; // Sin acceso al almacenamiento queda el default.
+        return; // Sin acceso al almacenamiento, o con un valor ilegible, queda el default.
       }
-      // Lo que el usuario eligió mientras se leía le gana a lo guardado antes.
-      if (guardado === null || elegida) return;
-      valor = leer(guardado);
       notificar();
     },
     async set(value) {
@@ -77,6 +76,17 @@ export function crearPreferencia<T>({ clave, porDefecto, claveAnterior, leer, es
       elegida = false;
       listeners.clear();
     },
+  };
+}
+
+/** Una preferencia que no se guarda: el default mientras no hay de quién guardarla. */
+export function preferenciaFija<T>(valor: T): Preferencia<T> {
+  return {
+    get: () => valor,
+    subscribe: () => () => {},
+    hydrate: async () => {},
+    set: async () => {},
+    reset: () => {},
   };
 }
 

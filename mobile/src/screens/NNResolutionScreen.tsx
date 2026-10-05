@@ -21,7 +21,6 @@ import { colors } from '../theme';
 import ScreenContainer from '../components/ScreenContainer';
 import { useNNResolution } from '../hooks/useNNResolution';
 import { useEstiloBotonera } from '../hooks/useEstiloBotonera';
-import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { nnResolutionScreenStyles as styles } from './NNResolutionScreen.styles';
 
 const SWIPE_THRESHOLD = 40;
@@ -36,7 +35,7 @@ export default function NNResolutionScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
-  const botonera = useEstiloBotonera(useCurrentUserId() ?? '');
+  const botonera = useEstiloBotonera();
 
   const {
     unresolvedTrees,
