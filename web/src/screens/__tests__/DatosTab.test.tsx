@@ -105,16 +105,26 @@ const PERFILES = [{ id: 'user-9', nombre: 'Teo Técnico', rol: 'tecnico' }];
 
 let consultas: ConsultaCapturada[];
 
-function resolverTrees(consulta: ConsultaCapturada): RespuestaMock {
-  // Count head por parcela (stats de la sección Parcelas).
-  if (consulta.opciones?.head) return { count: 10 };
-  // Lectura de group_id para los counts por grupo de la sección Grupos.
-  if (consulta.columnas?.startsWith('group_id')) {
-    return { data: [{ group_id: 'gr-1' }, { group_id: 'gr-1' }] };
-  }
-  // Listado paginado de la sección Árboles.
-  return { data: [ARBOL_COMPLETO, ARBOL_SIN_DATOS], count: 120 };
-}
+/** `arboles_por_grupo`: Norte suma 4 grupos y 10 árboles; de los listados,
+ *  Línea 1 tiene 2 y Bosquete 1 ninguno. */
+const ARBOLES_POR_GRUPO = [
+  { group_id: 'gr-1', parcela_id: 'parc-1', arboles: 2 },
+  { group_id: 'gr-2', parcela_id: 'parc-1', arboles: 0 },
+  { group_id: 'gr-3', parcela_id: 'parc-1', arboles: 3 },
+  { group_id: 'gr-4', parcela_id: 'parc-1', arboles: 5 },
+];
+
+/** `dashboard_arboles`: alcanza con un árbol para que el dashboard no quede vacío. */
+const CONTEOS_ARBOLES = [
+  {
+    parcela_id: 'parc-1',
+    species_id: 'sp-1',
+    mes: '2026-06',
+    con_gps: true,
+    con_foto: true,
+    cantidad: 1,
+  },
+];
 
 function resolver(consulta: ConsultaCapturada): RespuestaMock {
   if (consulta.tabla === 'plantations') return { data: FILA_PLANTACION };
@@ -122,7 +132,10 @@ function resolver(consulta: ConsultaCapturada): RespuestaMock {
   if (consulta.tabla === 'groups') {
     return consulta.opciones?.head ? { count: 4 } : { data: FILAS_GRUPOS };
   }
-  if (consulta.tabla === 'trees') return resolverTrees(consulta);
+  // Listado paginado de la sección Árboles.
+  if (consulta.tabla === 'trees') return { data: [ARBOL_COMPLETO, ARBOL_SIN_DATOS], count: 120 };
+  if (consulta.tabla === 'arboles_por_grupo') return { data: ARBOLES_POR_GRUPO };
+  if (consulta.tabla === 'dashboard_arboles') return { data: CONTEOS_ARBOLES };
   if (consulta.tabla === 'species') return { data: CATALOGO };
   if (consulta.tabla === 'profiles') return { data: PERFILES };
   return { data: [], count: 0 };
@@ -139,7 +152,7 @@ function filaDe(nombreCelda: string): HTMLElement {
   return fila;
 }
 
-/** Consultas del listado paginado de árboles (excluye counts y group_id). */
+/** Consultas del listado paginado de árboles (excluye counts). */
 function consultasListaArboles(): ConsultaCapturada[] {
   return consultas.filter(
     (consulta) =>
@@ -171,7 +184,7 @@ describe('sección Parcelas', () => {
 });
 
 describe('sección Grupos', () => {
-  test('lista grupos con parcela, estado y count de árboles agregado en cliente', async () => {
+  test('lista grupos con parcela, estado y count de árboles del server', async () => {
     renderRutasEn('/plantaciones/plant-1/datos/grupos');
 
     expect(await screen.findByRole('cell', { name: 'Línea 1' })).toBeInTheDocument();

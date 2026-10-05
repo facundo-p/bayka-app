@@ -53,19 +53,25 @@ const FILA_ARBOL = filaArbol({
   },
 });
 
+const ARBOLES_POR_GRUPO = [
+  { group_id: 'gr-1', parcela_id: 'parc-1', arboles: 3 },
+  { group_id: 'gr-2', parcela_id: 'parc-1', arboles: 0 },
+  { group_id: 'gr-9', parcela_id: 'parc-2', arboles: 50 },
+];
+
 describe('listarParcelasConStats', () => {
   function responder(consulta: ConsultaCapturada): RespuestaMock {
     if (consulta.tabla === 'parcelas') return { data: [FILA_PARCELA] };
-    if (consulta.tabla === 'groups') return { count: 4 };
-    return { count: 120 };
+    if (consulta.tabla === 'arboles_por_grupo') return { data: ARBOLES_POR_GRUPO };
+    return { error: { message: `consulta inesperada a ${consulta.tabla}` } };
   }
 
-  test('excluye soft-deleted y cuenta grupos y árboles por parcela', async () => {
+  test('excluye soft-deleted y cuenta grupos y árboles con un solo RPC, sin N+1', async () => {
     const consultas = capturarConsultas(responder);
     const parcelas = await listarParcelasConStats('plant-1');
 
-    expect(consultas[0].tabla).toBe('parcelas');
-    expect(consultas[0].filtros).toEqual([
+    const deParcelas = consultas.find((consulta) => consulta.tabla === 'parcelas');
+    expect(deParcelas?.filtros).toEqual([
       { metodo: 'eq', columna: 'plantation_id', valor: 'plant-1' },
       { metodo: 'is', columna: 'deleted_at', valor: null },
     ]);
@@ -76,15 +82,16 @@ describe('listarParcelasConStats', () => {
         codigo: 'P1',
         descripcion: 'Lindante al arroyo',
         createdAt: '2026-06-01T12:00:00Z',
-        grupos: 4,
-        arboles: 120,
+        grupos: 2,
+        arboles: 3,
       },
     ]);
-    const countArboles = consultas.find((consulta) => consulta.tabla === 'trees');
-    expect(countArboles?.opciones).toEqual({ count: 'exact', head: true });
-    expect(countArboles?.filtros).toEqual([
-      { metodo: 'eq', columna: 'groups.parcela_id', valor: 'parc-1' },
+    expect(consultas.map((consulta) => consulta.tabla).sort()).toEqual([
+      'arboles_por_grupo',
+      'parcelas',
     ]);
+    const rpc = consultas.find((consulta) => consulta.operacion === 'rpc');
+    expect(rpc?.payload).toEqual({ p_plantation_id: 'plant-1' });
   });
 
   test('propaga el error de Supabase', async () => {
@@ -96,11 +103,11 @@ describe('listarParcelasConStats', () => {
 describe('listarGrupos', () => {
   function responder(consulta: ConsultaCapturada): RespuestaMock {
     if (consulta.tabla === 'groups') return { data: [FILA_GRUPO, { ...FILA_GRUPO, id: 'gr-2' }] };
-    // Lectura única de group_id de todos los árboles (agregado en cliente).
-    return { data: [{ group_id: 'gr-1' }, { group_id: 'gr-1' }, { group_id: 'gr-1' }] };
+    if (consulta.tabla === 'arboles_por_grupo') return { data: ARBOLES_POR_GRUPO };
+    return { error: { message: `consulta inesperada a ${consulta.tabla}` } };
   }
 
-  test('embebe la parcela y agrega el count por grupo en cliente sin N+1', async () => {
+  test('embebe la parcela y toma el conteo por grupo del RPC, sin bajar árboles', async () => {
     const consultas = capturarConsultas(responder);
     const grupos = await listarGrupos('plant-1');
 
@@ -108,39 +115,7 @@ describe('listarGrupos', () => {
       ['gr-1', 'P1', 3],
       ['gr-2', 'P1', 0],
     ]);
-    const lecturas = consultas.filter((consulta) => consulta.tabla === 'trees');
-    expect(lecturas).toHaveLength(1);
-    expect(lecturas[0].columnas).toContain('group_id');
-    // Lectura paginada con `.range()`, no `.limit()`: sin el tope de 1000.
-    expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
-    expect(lecturas[0].orden).toEqual({ columna: 'id', ascending: true });
-    expect(lecturas[0].limite).toBeUndefined();
-    expect(lecturas[0].filtros).toEqual([
-      { metodo: 'eq', columna: 'groups.plantation_id', valor: 'plant-1' },
-    ]);
-  });
-
-  test('cuenta árboles por grupo sin truncar a 1000 (pagina con range)', async () => {
-    const totalArboles = 1500;
-    const responderPaginado = (consulta: ConsultaCapturada): RespuestaMock => {
-      if (consulta.tabla === 'groups') return { data: [FILA_GRUPO] };
-      // trees: devuelve el slice [desde, hasta] de un dataset de 1500, todos en gr-1.
-      const { desde, hasta } = consulta.rango ?? { desde: 0, hasta: totalArboles - 1 };
-      const filas = [];
-      for (let indice = desde; indice <= hasta && indice < totalArboles; indice++) {
-        filas.push({ group_id: 'gr-1' });
-      }
-      return { data: filas };
-    };
-    const consultas = capturarConsultas(responderPaginado);
-    const grupos = await listarGrupos('plant-1');
-
-    expect(grupos[0].arboles).toBe(totalArboles);
-    const lecturas = consultas.filter((consulta) => consulta.tabla === 'trees');
-    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
-    expect(lecturas).toHaveLength(2);
-    expect(lecturas[0].rango).toEqual({ desde: 0, hasta: 999 });
-    expect(lecturas[1].rango).toEqual({ desde: 1000, hasta: 1999 });
+    expect(consultas.some((consulta) => consulta.tabla === 'trees')).toBe(false);
   });
 
   test('aplica el filtro por parcela server-side', async () => {
