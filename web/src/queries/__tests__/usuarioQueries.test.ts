@@ -1,5 +1,6 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
 import type { ConsultaCapturada } from '../../test/queryBuilderMock';
+import { PAGINAS_EN_PARALELO } from '../leerPaginado';
 import { listarAsignados, listarPerfiles, listarUsuariosConAsignaciones } from '../usuarioQueries';
 
 vi.mock('../../lib/supabase', async () => {
@@ -171,8 +172,9 @@ describe('listarUsuariosConAsignaciones', () => {
     const usuarios = await listarUsuariosConAsignaciones();
 
     expect(usuarios[0].plantacionesAsignadas).toBe(totalFilas);
-    // Página 0 llena (1000) + página 1 parcial (500) → dos viajes, sin truncar.
-    expect(rangos).toEqual([
+    // Página 0 llena → una tanda en paralelo, cuya primera página (500) ya es la última.
+    expect(rangos).toHaveLength(1 + PAGINAS_EN_PARALELO);
+    expect(rangos.slice(0, 2)).toEqual([
       { desde: 0, hasta: 999 },
       { desde: 1000, hasta: 1999 },
     ]);
