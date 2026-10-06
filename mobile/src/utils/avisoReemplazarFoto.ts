@@ -7,6 +7,11 @@ export const TITULO_REEMPLAZAR_FOTO = 'Reemplazar la foto';
 /** `subId`: el ID del árbol que ve el usuario. */
 export type FotoAReemplazar = { subId: string; fotoSynced: boolean };
 
+/** Sin dato de sync se asume subida: el texto no afirma que se pierda algo que quizás está en Bayka. */
+export function fotoAReemplazar(arbol: { subId: string; fotoSynced?: boolean | null }): FotoAReemplazar {
+  return { subId: arbol.subId, fotoSynced: arbol.fotoSynced ?? true };
+}
+
 /** Sin `onVerActual` el aviso no lo ofrece: es para cuando la foto ya está a la vista. */
 export type AccionesReemplazarFoto = { onVerActual?: () => void; onConfirm: () => void };
 

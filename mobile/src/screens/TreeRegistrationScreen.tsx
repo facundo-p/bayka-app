@@ -33,7 +33,7 @@ import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
-import { confirmarReemplazoEnVisor } from '../utils/avisoReemplazarFoto';
+import { confirmarReemplazoEnVisor, fotoAReemplazar } from '../utils/avisoReemplazarFoto';
 import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
@@ -93,7 +93,7 @@ export default function TreeRegistrationScreen() {
     arbol: selectedTree,
     capturar: treeReg.addPhotoToTree,
     show: confirm.show,
-    onVerActual: (foto) => setViewingPhoto({ ...foto, reemplazoConfirmado: true }),
+    onVerActual: setViewingPhoto,
   });
 
   useEffect(() => {
@@ -185,7 +185,7 @@ export default function TreeRegistrationScreen() {
     const arbol = arbolDelGrupo(foto.treeId);
     // Borrado con el visor abierto: ya no hay foto que reemplazar.
     if (!arbol) return;
-    confirmarReemplazoEnVisor(confirm.show, { subId: arbol.subId, fotoSynced: arbol.fotoSynced ?? true },
+    confirmarReemplazoEnVisor(confirm.show, fotoAReemplazar(arbol),
       foto.reemplazoConfirmado, () => capturarReemplazo(foto.treeId));
   }
 
@@ -303,7 +303,7 @@ export default function TreeRegistrationScreen() {
               disabled={fotoDelSeleccionado.deshabilitado}
               accessibilityRole="button"
               accessibilityLabel={selectedTree ? `Foto de ${selectedTree.subId}` : 'Foto del árbol seleccionado'}
-              accessibilityState={{ disabled: fotoDelSeleccionado.deshabilitado, busy: fotoDelSeleccionado.capturando }}
+              accessibilityState={{ busy: fotoDelSeleccionado.capturando }}
             >
               {fotoDelSeleccionado.capturando ? <ActivityIndicator size="small" color={colors.plantation} />
                 : <Ionicons name="camera-outline" size={20} color={colors.textMuted} />}

@@ -58,11 +58,11 @@ describe('useFotoDelSeleccionado', () => {
     expect(onVerActual).not.toHaveBeenCalled();
   });
 
-  it('Ver actual abre el visor con la foto del árbol, sin capturar', () => {
+  it('Ver actual abre el visor con la foto del árbol y el reemplazo ya confirmado, sin capturar', () => {
     const { hook, capturar, boton, onVerActual } = setup(CON_FOTO);
     act(() => hook.result.current.fotografiar());
     act(() => boton('Ver actual').onPress());
-    expect(onVerActual).toHaveBeenCalledWith({ uri: 'file:///a14.jpg', treeId: 't14' });
+    expect(onVerActual).toHaveBeenCalledWith({ uri: 'file:///a14.jpg', treeId: 't14', reemplazoConfirmado: true });
     expect(capturar).not.toHaveBeenCalled();
   });
 
@@ -97,5 +97,18 @@ describe('useFotoDelSeleccionado', () => {
     hook.rerender({ a: { id: 't15', subId: 'A-15', fotoUrl: null, fotoSynced: true } });
     await act(async () => boton('Reemplazar').onPress());
     expect(capturar).toHaveBeenCalledWith('t14');
+  });
+
+  it('foto quitada (fotoUrl vacía): abre la cámara directo', async () => {
+    const { hook, capturar, show } = setup({ ...SIN_FOTO, fotoUrl: '' });
+    await act(async () => hook.result.current.fotografiar());
+    expect(show).not.toHaveBeenCalled();
+    expect(capturar).toHaveBeenCalledWith('t14');
+  });
+
+  it('sin dato de sync: se avisa como foto subida', () => {
+    const { hook, aviso } = setup({ ...CON_FOTO, fotoSynced: null });
+    act(() => hook.result.current.fotografiar());
+    expect(aviso().message).toContain('A-14 ya tiene foto.');
   });
 });

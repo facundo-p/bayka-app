@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import type { ShowFn } from '../utils/alertHelpers';
-import { confirmarReemplazarFoto } from '../utils/avisoReemplazarFoto';
+import { confirmarReemplazarFoto, fotoAReemplazar } from '../utils/avisoReemplazarFoto';
+import type { FotoDeArbol } from '../components/TreePhotoViewer';
 
 export type ArbolFotografiable = {
   id: string;
@@ -14,8 +15,8 @@ interface Params {
   /** Abre la cámara y guarda la foto en el árbol (marca el grupo pendiente de sync). */
   capturar: (treeId: string) => Promise<void>;
   show: ShowFn;
-  /** «Ver actual» del aviso: el visor que se abra no vuelve a preguntar al reemplazar. */
-  onVerActual: (foto: { uri: string; treeId: string }) => void;
+  /** «Ver actual» del aviso: abre el visor con el reemplazo ya confirmado. */
+  onVerActual: (foto: FotoDeArbol) => void;
 }
 
 /**
@@ -34,8 +35,8 @@ export function useFotoDelSeleccionado({ arbol, capturar, show, onVerActual }: P
     if (!arbol || capturando) return;
     const { id, fotoUrl } = arbol;
     if (!fotoUrl) { void capturarEn(id); return; }
-    confirmarReemplazarFoto(show, { subId: arbol.subId, fotoSynced: arbol.fotoSynced ?? true }, {
-      onVerActual: () => onVerActual({ uri: fotoUrl, treeId: id }),
+    confirmarReemplazarFoto(show, fotoAReemplazar(arbol), {
+      onVerActual: () => onVerActual({ uri: fotoUrl, treeId: id, reemplazoConfirmado: true }),
       onConfirm: () => { void capturarEn(id); },
     });
   }, [arbol, capturando, capturarEn, show, onVerActual]);
