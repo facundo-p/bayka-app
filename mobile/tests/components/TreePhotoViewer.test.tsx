@@ -52,8 +52,18 @@ describe('TreePhotoViewer', () => {
     const { getByText, onReplace, onRemove } = renderVisor(true);
     fireEvent.press(getByText('Reemplazar'));
     fireEvent.press(getByText('Eliminar foto'));
-    expect(onReplace).toHaveBeenCalledWith('tree-1');
+    expect(onReplace).toHaveBeenCalledWith(FOTO);
     expect(onRemove).toHaveBeenCalledWith('tree-1');
+  });
+
+  it('abierto desde Ver actual de un aviso, Reemplazar avisa que el reemplazo ya se confirmó (#750)', () => {
+    const onReplace = jest.fn();
+    const foto = { ...FOTO, reemplazoConfirmado: true };
+    const { getByText } = render(
+      <TreePhotoViewer foto={foto} canEdit onClose={jest.fn()} onReplace={onReplace} onRemove={jest.fn()} />,
+    );
+    fireEvent.press(getByText('Reemplazar'));
+    expect(onReplace).toHaveBeenCalledWith(foto);
   });
 
   it('sin foto no se abre', () => {

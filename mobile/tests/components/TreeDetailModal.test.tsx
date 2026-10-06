@@ -1,9 +1,10 @@
-// «Quitar» foto en el detalle del árbol pide confirmación (#724).
+// «Quitar» (#724) y «Cambiar foto» (#750) en el detalle del árbol piden confirmación.
 
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
 import TreeDetailModal from '../../src/components/TreeDetailModal';
 import { textoQuitarFoto, TITULO_QUITAR_FOTO } from '../../src/utils/avisoQuitarFoto';
+import { textoReemplazarFoto, TITULO_REEMPLAZAR_FOTO } from '../../src/utils/avisoReemplazarFoto';
 
 let mockTree: Record<string, unknown> | null;
 
@@ -71,6 +72,81 @@ describe('TreeDetailModal: quitar foto', () => {
   });
 });
 
+describe('TreeDetailModal: cambiar foto (#750)', () => {
+  function visor(utils: ReturnType<typeof renderModal>) {
+    return utils.UNSAFE_getByType('PhotoViewer' as any).props;
+  }
+
+  it('con foto abre el aviso sin abrir la cámara todavía', () => {
+    mockTree = arbol(true);
+    const onCapturePhoto = jest.fn().mockResolvedValue(undefined);
+    const { getByText } = renderModal({ onCapturePhoto });
+    fireEvent.press(getByText('Cambiar foto'));
+    expect(getByText(TITULO_REEMPLAZAR_FOTO)).toBeTruthy();
+    expect(getByText(textoReemplazarFoto('A', true))).toBeTruthy();
+    expect(getByText('Ver actual')).toBeTruthy();
+    expect(onCapturePhoto).not.toHaveBeenCalled();
+  });
+
+  it('sin foto va directo a la cámara', () => {
+    mockTree = { ...arbol(true), fotoUrl: null };
+    const onCapturePhoto = jest.fn().mockResolvedValue(undefined);
+    const { getByText, queryByText } = renderModal({ onCapturePhoto });
+    fireEvent.press(getByText('Tomar foto'));
+    expect(queryByText(TITULO_REEMPLAZAR_FOTO)).toBeNull();
+    expect(onCapturePhoto).toHaveBeenCalledWith('t1', expect.any(Function));
+  });
+
+  it('cancelar no abre la cámara', () => {
+    mockTree = arbol(false);
+    const onCapturePhoto = jest.fn().mockResolvedValue(undefined);
+    const { getByText } = renderModal({ onCapturePhoto });
+    fireEvent.press(getByText('Cambiar foto'));
+    fireEvent.press(getByText('Cancelar'));
+    expect(onCapturePhoto).not.toHaveBeenCalled();
+  });
+
+  it('Reemplazar en el aviso abre la cámara', async () => {
+    mockTree = arbol(true);
+    const onCapturePhoto = jest.fn().mockResolvedValue(undefined);
+    const { getByText } = renderModal({ onCapturePhoto });
+    fireEvent.press(getByText('Cambiar foto'));
+    fireEvent.press(getByText('Reemplazar'));
+    await waitFor(() => expect(onCapturePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
+  });
+
+  it('ampliar la foto es solo lectura', () => {
+    mockTree = arbol(true);
+    const utils = renderModal();
+    fireEvent.press(utils.getByLabelText('Ampliar foto'));
+    expect(visor(utils).uri).toBe('file:///a.jpg');
+    expect(visor(utils).onReplace).toBeUndefined();
+  });
+
+  it('desde Ver actual, Reemplazar cierra el visor y abre la cámara sin volver a preguntar', async () => {
+    mockTree = arbol(true);
+    const onCapturePhoto = jest.fn().mockResolvedValue(undefined);
+    const utils = renderModal({ onCapturePhoto });
+    fireEvent.press(utils.getByText('Cambiar foto'));
+    fireEvent.press(utils.getByText('Ver actual'));
+    expect(visor(utils).uri).toBe('file:///a.jpg');
+    expect(onCapturePhoto).not.toHaveBeenCalled();
+
+    act(() => visor(utils).onReplace());
+    expect(visor(utils).uri).toBeNull();
+    expect(utils.queryByText(TITULO_REEMPLAZAR_FOTO)).toBeNull();
+    await waitFor(() => expect(onCapturePhoto).toHaveBeenCalledWith('t1', expect.any(Function)));
+  });
+
+  it('Ver actual de una foto que está solo en la nube la abre en el visor con su árbol', () => {
+    mockTree = { ...arbol(true), fotoUrl: 'plantaciones/p1/t1.jpg' };
+    const utils = renderModal();
+    fireEvent.press(utils.getByText('Cambiar foto'));
+    fireEvent.press(utils.getByText('Ver actual'));
+    expect(visor(utils)).toMatchObject({ uri: 'plantaciones/p1/t1.jpg', treeId: 't1' });
+  });
+});
+
 describe('TreeDetailModal: errores de sus acciones (#730)', () => {
   const MENSAJE = 'No se pudo hacer algo.';
 
@@ -89,6 +165,7 @@ describe('TreeDetailModal: errores de sus acciones (#730)', () => {
     const onCapturePhoto = jest.fn((_id: string, onError: (m: string) => void) => { onError(MENSAJE); return Promise.resolve(); });
     const { getByText, findByText } = renderModal({ onCapturePhoto });
     fireEvent.press(getByText('Cambiar foto'));
+    fireEvent.press(getByText('Reemplazar'));
     expect(await findByText(MENSAJE)).toBeTruthy();
   });
 
