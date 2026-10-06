@@ -13,6 +13,8 @@ Las decisiones de diseño y alcance están en
 - Vite + React 19 + TypeScript estricto (SPA estática, sin backend propio).
 - `@supabase/supabase-js` + TanStack Query (RLS de Postgres como autorización).
 - `react-router` v7 (modo librería) · Recharts (gráficos).
+- `@react-pdf/renderer` para los PDF de marca, armados en el navegador y
+  cargados con `import()` recién al pedir uno.
 - CSS Modules + tokens de marca en `src/theme/theme.css` (cero estilos inline,
   cero colores hardcodeados fuera del tema).
 - Vitest + Testing Library.
@@ -141,6 +143,8 @@ src/
   hooks/         Puentes react (sin queries raw)
   lib/           Cliente supabase, constantes (PG_ERROR), helpers
   theme/         theme.css con los tokens de marca
+  pdf/           Documentos PDF: plantilla y tokens de marca (`plantilla/`),
+                 mapa de puntos (`mapa/`), fotos y fichas de árbol (`ficha/`)
 ```
 
 Reglas heredadas del proyecto: separación datos/presentación obligatoria,
