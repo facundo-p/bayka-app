@@ -111,8 +111,12 @@ describe('tieneImagen', () => {
     expect(deps.bajar).toHaveBeenCalledTimes(2);
   });
 
-  test('si el tilemap no responde, rechaza', async () => {
-    const { deps } = dependencias(() => ({ status: 500 }));
-    await expect(crearFuenteTiles(deps).tieneImagen(ZONA)).rejects.toThrow();
+  test('si el tilemap no responde, rechaza y se vuelve a preguntar en el próximo mapa', async () => {
+    let caido = true;
+    const { deps } = dependencias(() => (caido ? { status: 500 } : tilemap([1, 1])));
+    const fuente = crearFuenteTiles(deps);
+    await expect(fuente.tieneImagen(ZONA)).rejects.toThrow();
+    caido = false;
+    await expect(fuente.tieneImagen(ZONA)).resolves.toBe(true);
   });
 });

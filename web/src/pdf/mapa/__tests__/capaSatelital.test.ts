@@ -98,6 +98,13 @@ describe('dibujarMapa con el satélite', () => {
     expect(llamadas.some((llamada) => llamada.startsWith('drawImage'))).toBe(true);
   });
 
+  test('después de pintar, libera las imágenes de los tiles', async () => {
+    const f = fuente();
+    await dibujarMapa({ ...CONTENIDO, fondo: capaSatelital(16, f) });
+    const imagenes = (await f.cargar.mock.results[0].value) as { close: () => void }[];
+    imagenes.forEach((imagen) => expect(imagen.close).toHaveBeenCalled());
+  });
+
   test('si falla un tile, el mapa sale liso, en PNG y sin satélite', async () => {
     const fondo = capaSatelital(16, fuente({ falla: true }));
     const mapa = await dibujarMapa({ ...CONTENIDO, fondo });

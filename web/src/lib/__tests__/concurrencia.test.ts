@@ -40,6 +40,18 @@ describe('crearLimitador', () => {
     expect(maximo).toBe(2);
   });
 
+  test('las que esperan arrancan en el orden en que llegaron', async () => {
+    const limitar = crearLimitador(1);
+    const arranques: number[] = [];
+    const tarea = (orden: number) =>
+      limitar(async () => {
+        arranques.push(orden);
+        await new Promise((resolver) => setTimeout(resolver, 1));
+      });
+    await Promise.all([1, 2, 3, 4].map(tarea));
+    expect(arranques).toEqual([1, 2, 3, 4]);
+  });
+
   test('una tarea que falla libera su lugar', async () => {
     const limitar = crearLimitador(1);
     await expect(limitar(() => Promise.reject(new Error('x')))).rejects.toThrow('x');

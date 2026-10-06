@@ -75,7 +75,8 @@ function memorizar<T>(pedir: (clave: string) => Promise<T>): (clave: string) => 
     if (cache.size >= ENTRADAS_EN_CACHE) cache.delete(cache.keys().next().value as string);
     const pedido = pedir(clave);
     cache.set(clave, pedido);
-    pedido.catch(() => cache.delete(clave));
+    // Si ya la desalojaron y hay un pedido nuevo con la misma clave, no se borra ese.
+    pedido.catch(() => cache.get(clave) === pedido && cache.delete(clave));
     return pedido;
   };
 }

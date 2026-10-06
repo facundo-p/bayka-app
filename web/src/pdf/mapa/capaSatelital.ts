@@ -35,6 +35,8 @@ async function bajarMosaico(
     const zoom = await zoomConImagen(encuadre, tope, fuente);
     if (zoom === null) return null;
     const tiles = tilesDelZoom(encuadre, zoom);
+    // Un encuadre fuera del mundo no tiene tiles: sin imagen, tampoco atribución.
+    if (tiles.length === 0) return null;
     return { tiles, imagenes: await fuente.cargar(tiles) };
   } catch {
     return null;
@@ -58,11 +60,14 @@ function pintarMosaico(
   escalaRender: number,
 ) {
   contexto.imageSmoothingQuality = SUAVIZADO;
-  tiles.forEach((tile, indice) => {
-    const { x, y, ancho, alto } = rectanguloAlPixel(tile, escalaRender);
-    contexto.drawImage(imagenes[indice], x, y, ancho, alto);
-    imagenes[indice].close();
-  });
+  try {
+    tiles.forEach((tile, indice) => {
+      const { x, y, ancho, alto } = rectanguloAlPixel(tile, escalaRender);
+      contexto.drawImage(imagenes[indice], x, y, ancho, alto);
+    });
+  } finally {
+    imagenes.forEach((imagen) => imagen.close());
+  }
 }
 
 /** Fondo satelital de hasta `tope` tiles; null al prepararlo si no se pudo bajar. */

@@ -74,12 +74,14 @@ export function tilesDelZoom(encuadre: Encuadre, zoom: number): TileUbicado[] {
   return tiles;
 }
 
+/** La plantilla con cada `{clave}` reemplazada por su valor. */
+function rellenar(plantilla: string, valores: Record<string, number>): string {
+  return plantilla.replace(/\{(\w+)\}/g, (_, clave: string) => String(valores[clave]));
+}
+
 /** `{z}/{y}/{x}` de la plantilla de la capa, con los números del tile. */
 export function urlDeTile({ z, x, y }: TileXYZ): string {
-  return CAPA_SATELITE.url
-    .replace('{z}', String(z))
-    .replace('{y}', String(y))
-    .replace('{x}', String(x));
+  return rellenar(CAPA_SATELITE.url, { z, x, y });
 }
 
 /** El rango cortado donde empieza un paquete nuevo. */
@@ -98,10 +100,7 @@ export function partirEnPaquetes({ z, x, y }: ZonaTiles): ZonaTiles[] {
 
 /** El tilemap de la zona: un 1 o un 0 por tile, fila por fila. */
 export function urlDisponibilidad({ z, x, y }: ZonaTiles): string {
-  return CAPA_SATELITE.urlDisponibilidad
-    .replace('{z}', String(z))
-    .replace('{y}', String(y.primero))
-    .replace('{x}', String(x.primero))
-    .replace('{ancho}', String(cantidadDe(x)))
-    .replace('{alto}', String(cantidadDe(y)));
+  const ancho = cantidadDe(x);
+  const alto = cantidadDe(y);
+  return rellenar(CAPA_SATELITE.urlDisponibilidad, { z, x: x.primero, y: y.primero, ancho, alto });
 }
