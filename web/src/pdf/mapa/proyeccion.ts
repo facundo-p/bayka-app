@@ -1,0 +1,104 @@
+/*
+ * Web Mercator (EPSG:3857), la proyección de los tiles XYZ de Esri y OSM: un mapa
+ * encuadrado acá se alinea con los tiles del mismo zoom sin otra conversión.
+ */
+
+/** Lado de un tile XYZ en px. */
+export const LADO_TILE = 256;
+
+const RADIO_TIERRA_M = 6378137;
+/** Latitud donde Web Mercator corta el mundo en un cuadrado. */
+const LATITUD_MAXIMA = 85.05112878;
+const GRADOS_A_RADIANES = Math.PI / 180;
+
+export type LatLng = { lat: number; lng: number };
+export type Pixel = { x: number; y: number };
+
+/**
+ * Lo que se ve del mundo en un rectángulo de `ancho` × `alto`. El zoom es
+ * fraccionario: para tiles se baja el entero de arriba y se escala.
+ */
+export type Encuadre = {
+  zoom: number;
+  /** Pixel del mundo, a ese zoom, de la esquina superior izquierda. */
+  origen: Pixel;
+  ancho: number;
+  alto: number;
+  /** Latitud del centro: de ella depende cuántos metros mide un px. */
+  latitudCentro: number;
+};
+
+export type OpcionesEncuadre = {
+  /** Aire mínimo entre los puntos y el borde, en las unidades de `ancho`. */
+  margen: number;
+  /** Lado mínimo de lo encuadrado, para un punto solo o puntos casi coincidentes. */
+  minimoMetros: number;
+};
+
+function acotarLatitud(lat: number): number {
+  return Math.max(-LATITUD_MAXIMA, Math.min(LATITUD_MAXIMA, lat));
+}
+
+/** Pixel del mundo de un punto a un zoom dado; a zoom 0 el mundo mide un tile. */
+export function pixelDelMundo({ lat, lng }: LatLng, zoom: number): Pixel {
+  const lado = LADO_TILE * 2 ** zoom;
+  const seno = Math.sin(acotarLatitud(lat) * GRADOS_A_RADIANES);
+  return {
+    x: ((lng + 180) / 360) * lado,
+    y: (0.5 - Math.log((1 + seno) / (1 - seno)) / (4 * Math.PI)) * lado,
+  };
+}
+
+/** Metros que cubre un px a esa latitud y zoom. */
+export function metrosPorPixel(lat: number, zoom: number): number {
+  const circunferencia = 2 * Math.PI * RADIO_TIERRA_M;
+  return (
+    (circunferencia * Math.cos(acotarLatitud(lat) * GRADOS_A_RADIANES)) / (LADO_TILE * 2 ** zoom)
+  );
+}
+
+type Caja = { min: Pixel; max: Pixel };
+
+function cajaDe(pixeles: Pixel[]): Caja {
+  const xs = pixeles.map((pixel) => pixel.x);
+  const ys = pixeles.map((pixel) => pixel.y);
+  return {
+    min: { x: Math.min(...xs), y: Math.min(...ys) },
+    max: { x: Math.max(...xs), y: Math.max(...ys) },
+  };
+}
+
+function latitudCentral(puntos: readonly LatLng[]): number {
+  const latitudes = puntos.map((punto) => punto.lat);
+  return (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+}
+
+/** El zoom más alto que deja entrar todos los puntos con el margen pedido. */
+export function encuadrar(
+  puntos: readonly LatLng[],
+  ancho: number,
+  alto: number,
+  { margen, minimoMetros }: OpcionesEncuadre,
+): Encuadre {
+  if (puntos.length === 0) throw new Error('No hay puntos que encuadrar');
+  const caja = cajaDe(puntos.map((punto) => pixelDelMundo(punto, 0)));
+  const latitudCentro = latitudCentral(puntos);
+  const minimo = minimoMetros / metrosPorPixel(latitudCentro, 0);
+  const extension = {
+    x: Math.max(caja.max.x - caja.min.x, minimo),
+    y: Math.max(caja.max.y - caja.min.y, minimo),
+  };
+  const zoom = Math.log2(
+    Math.min((ancho - 2 * margen) / extension.x, (alto - 2 * margen) / extension.y),
+  );
+  const escala = 2 ** zoom;
+  const centro = { x: (caja.min.x + caja.max.x) / 2, y: (caja.min.y + caja.max.y) / 2 };
+  const origen = { x: centro.x * escala - ancho / 2, y: centro.y * escala - alto / 2 };
+  return { zoom, origen, ancho, alto, latitudCentro };
+}
+
+/** Posición de un punto dentro del encuadre, en sus unidades. */
+export function proyectar(encuadre: Encuadre, punto: LatLng): Pixel {
+  const mundo = pixelDelMundo(punto, encuadre.zoom);
+  return { x: mundo.x - encuadre.origen.x, y: mundo.y - encuadre.origen.y };
+}
