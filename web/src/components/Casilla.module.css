@@ -1,0 +1,16 @@
+.casilla {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: var(--border-medium) solid var(--color-border-strong);
+  border-radius: 5px;
+  color: var(--color-white);
+}
+
+.marcada {
+  border-color: var(--casilla-color, var(--color-primary-accent));
+  background-color: var(--casilla-color, var(--color-primary-accent));
+}
