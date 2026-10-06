@@ -1,4 +1,5 @@
 import {
+  aspectoDe,
   LADO_TILE,
   distanciaMetros,
   encuadrar,
@@ -90,4 +91,24 @@ test('distancia: un grado de latitud son ~111 km y el mismo punto, cero', () => 
   const unGradoAlSur = { lat: SAN_SEBASTIAN.lat - 1, lng: SAN_SEBASTIAN.lng };
   expect(distanciaMetros(SAN_SEBASTIAN, unGradoAlSur)).toBeCloseTo(111_319, -1);
   expect(distanciaMetros(SAN_SEBASTIAN, SAN_SEBASTIAN)).toBe(0);
+});
+
+describe('aspectoDe', () => {
+  test('ancho sobre alto de lo que ocupan los puntos', () => {
+    const ancha = [
+      { lat: -27.47, lng: -55.9 },
+      { lat: -27.48, lng: -55.85 },
+    ];
+    expect(aspectoDe(ancha, 60)).toBeGreaterThan(4);
+    const alta = [
+      { lat: -27.4, lng: -55.9 },
+      { lat: -27.45, lng: -55.901 },
+    ];
+    expect(aspectoDe(alta, 60)).toBeLessThan(1);
+  });
+
+  test('un punto solo es cuadrado, y sin puntos también', () => {
+    expect(aspectoDe([{ lat: -27.47, lng: -55.9 }], 60)).toBeCloseTo(1);
+    expect(aspectoDe([], 60)).toBe(1);
+  });
 });
