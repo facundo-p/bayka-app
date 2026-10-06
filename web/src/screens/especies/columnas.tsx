@@ -1,6 +1,7 @@
 import { columnaChevron, type TableColumn } from '../../components';
 import tabla from '../../components/Table.module.css';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
+import { ETIQUETA_SUBTIPO_ESPECIE } from '../../lib/tiposEspecie';
 import { CeldaArboles, CeldaCientifico, CeldaCodigo, CeldaTexto } from './celdas';
 
 export const COLUMNAS_ESPECIES: Array<TableColumn<EspecieConCatalogoUso>> = [
@@ -15,6 +16,15 @@ export const COLUMNAS_ESPECIES: Array<TableColumn<EspecieConCatalogoUso>> = [
     fueraEnMovil: true,
     header: 'Nombre científico',
     render: (especie) => <CeldaCientifico especie={especie} />,
+  },
+  {
+    key: 'subtipo',
+    fueraEnMovil: true,
+    fueraConPanel: true,
+    header: 'Subtipo',
+    render: (especie) => (
+      <CeldaTexto especie={especie}>{ETIQUETA_SUBTIPO_ESPECIE[especie.subtipo]}</CeldaTexto>
+    ),
   },
   {
     key: 'plantaciones',

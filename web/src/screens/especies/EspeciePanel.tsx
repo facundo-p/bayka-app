@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
   Button,
@@ -8,11 +8,14 @@ import {
   PanelLateral,
   PanelListaEnlaces,
   PuntoColor,
+  SegmentedControl,
   type EnlacePanel,
 } from '../../components';
+import { TIPOS_ESPECIE, type SubtipoEspecie } from '../../../../shared/tiposEspecie';
 import { useInvalidarEspecies } from '../../hooks/useInvalidarEspecies';
 import { formatearEntero } from '../../lib/formato';
 import { rutaPlantacion } from '../../lib/rutas';
+import { ETIQUETA_TIPO_ESPECIE, opcionesDeSubtipo } from '../../lib/tiposEspecie';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
 import {
@@ -46,6 +49,8 @@ function valoresIniciales(especie: EspecieConCatalogoUso | null): EspecieFormVal
     codigo: especie?.codigo ?? '',
     nombre: especie?.nombre ?? '',
     nombreCientifico: especie?.nombreCientifico ?? '',
+    tipo: especie?.tipo ?? TIPOS_ESPECIE.porDefecto.tipo,
+    subtipo: especie?.subtipo ?? TIPOS_ESPECIE.porDefecto.subtipo,
   };
 }
 
@@ -57,6 +62,36 @@ function CabeceraEspecie({ especie }: { especie: EspecieConCatalogoUso | null })
       titulo={especie ? 'Editar especie' : 'Nueva especie'}
       complemento={especie && <span className={styles.chipCodigo}>{especie.codigo}</span>}
     />
+  );
+}
+
+/** El tipo se muestra fijo mientras haya uno solo; el subtipo se elige entre los de ese tipo. */
+function CamposClasificacion({
+  valores,
+  onSubtipo,
+}: {
+  valores: EspecieFormValues;
+  onSubtipo: (subtipo: SubtipoEspecie) => void;
+}) {
+  const idSubtipo = useId();
+  return (
+    <div className={styles.clasificacion}>
+      <div className={styles.campoClasificacion}>
+        <span className={styles.etiquetaCampo}>Tipo</span>
+        <span className={styles.tipoFijo}>{ETIQUETA_TIPO_ESPECIE[valores.tipo]}</span>
+      </div>
+      <div className={styles.campoClasificacion}>
+        <span id={idSubtipo} className={styles.etiquetaCampo}>
+          Subtipo *
+        </span>
+        <SegmentedControl
+          options={opcionesDeSubtipo(valores.tipo)}
+          value={valores.subtipo}
+          onChange={onSubtipo}
+          aria-labelledby={idSubtipo}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -129,7 +164,7 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
     },
   });
 
-  function cambiarCampo(campo: keyof EspecieFormValues, valor: string) {
+  function cambiarCampo<C extends keyof EspecieFormValues>(campo: C, valor: EspecieFormValues[C]) {
     setValores((previos) => ({ ...previos, [campo]: valor }));
     // Al cambiar el código, el aviso de duplicado queda viejo.
     if (campo === 'codigo') setDuplicado(false);
@@ -181,6 +216,10 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
           className={styles.campoCientifico}
           value={valores.nombreCientifico}
           onChange={(evento) => cambiarCampo('nombreCientifico', evento.target.value)}
+        />
+        <CamposClasificacion
+          valores={valores}
+          onSubtipo={(subtipo) => cambiarCampo('subtipo', subtipo)}
         />
         {duplicado && (
           <p className={styles.advertencia} role="status">

@@ -42,6 +42,31 @@
   font-style: italic;
 }
 
+/* Tipo y subtipo en un renglón: el tipo fijo ocupa lo que mide su texto. */
+.clasificacion {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-2xl);
+}
+
+.campoClasificacion {
+  composes: field from '../../components/FormField.module.css';
+}
+
+/* El rótulo de los labels del panel: `.formCompacto label` no alcanza a un span. */
+.etiquetaCampo {
+  composes: overline from '../../theme/utilidades.module.css';
+}
+
+/* Alineado con el control de al lado, que mide como un input. */
+.tipoFijo {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-height-input);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
 .advertencia {
   composes: advertencia from '../../components/Formulario.module.css';
 }

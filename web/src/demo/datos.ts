@@ -9,6 +9,7 @@
 import type { TipoGrupo } from '../queries/dataExplorerQueries';
 import { ESQUEMAS_FOTO_LOCAL } from '../queries/fotoConstantes';
 import type { EstadoPlantacion } from '../queries/plantationQueries';
+import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../shared/tiposEspecie';
 
 export type FilaDemo = Record<string, unknown>;
 
@@ -35,7 +36,14 @@ type Plantacion = {
   archivada_en: string | null;
 };
 
-type Especie = { id: string; codigo: string; nombre: string; nombre_cientifico: string | null };
+type Especie = {
+  id: string;
+  codigo: string;
+  nombre: string;
+  nombre_cientifico: string | null;
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+};
 
 type Parcela = {
   id: string;
@@ -240,20 +248,54 @@ function arbolesDePlantacion(plantationId: string): number {
   return porEspecie.reduce((total, arboles) => total + arboles, 0);
 }
 
+/** Todas las especies de la demo son árboles: la clasificación por defecto. */
+const ARBOL = TIPOS_ESPECIE.porDefecto;
+
 const ESPECIES: Especie[] = [
-  { id: 's1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
-  { id: 's2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
+  {
+    id: 's1',
+    codigo: 'ANC',
+    nombre: 'Anchico',
+    nombre_cientifico: 'Parapiptadenia rigida',
+    ...ARBOL,
+  },
+  {
+    id: 's2',
+    codigo: 'IBI',
+    nombre: 'Ibirá Pitá',
+    nombre_cientifico: 'Peltophorum dubium',
+    ...ARBOL,
+  },
   {
     id: 's3',
     codigo: 'LAP',
     nombre: 'Lapacho rosado',
     nombre_cientifico: 'Handroanthus impetiginosus',
+    ...ARBOL,
   },
-  { id: 's4', codigo: 'TIM', nombre: 'Timbó', nombre_cientifico: 'Enterolobium contortisiliquum' },
-  { id: 's5', codigo: 'GUA', nombre: 'Guatambú', nombre_cientifico: 'Balfourodendron riedelianum' },
-  { id: 's6', codigo: 'CED', nombre: 'Cedro misionero', nombre_cientifico: 'Cedrela fissilis' },
-  { id: 's7', codigo: 'PET', nombre: 'Petiribí', nombre_cientifico: null },
-  { id: 's8', codigo: 'URU', nombre: 'Urunday', nombre_cientifico: 'Astronium balansae' },
+  {
+    id: 's4',
+    codigo: 'TIM',
+    nombre: 'Timbó',
+    nombre_cientifico: 'Enterolobium contortisiliquum',
+    ...ARBOL,
+  },
+  {
+    id: 's5',
+    codigo: 'GUA',
+    nombre: 'Guatambú',
+    nombre_cientifico: 'Balfourodendron riedelianum',
+    ...ARBOL,
+  },
+  {
+    id: 's6',
+    codigo: 'CED',
+    nombre: 'Cedro misionero',
+    nombre_cientifico: 'Cedrela fissilis',
+    ...ARBOL,
+  },
+  { id: 's7', codigo: 'PET', nombre: 'Petiribí', nombre_cientifico: null, ...ARBOL },
+  { id: 's8', codigo: 'URU', nombre: 'Urunday', nombre_cientifico: 'Astronium balansae', ...ARBOL },
 ];
 
 function especiePorId(id: string): Especie {

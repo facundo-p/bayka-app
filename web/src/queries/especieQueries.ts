@@ -1,3 +1,4 @@
+import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
 import { porNombre } from '../lib/ordenEspecies';
 import { supabase } from '../lib/supabase';
 import { contarOLanzar } from './conteo';
@@ -10,14 +11,17 @@ export type EspecieCatalogo = {
   nombreCientifico: string | null;
 };
 
+/** Especie con su tipo y subtipo (#752): lo que muestra y edita la pantalla de Especies. */
+export type EspecieClasificada = EspecieCatalogo & {
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+};
+
 /** Especie del catálogo + uso agregado a nivel organización. */
-export type EspecieConCatalogoUso = EspecieCatalogo & {
+export type EspecieConCatalogoUso = EspecieClasificada & {
   plantaciones: number;
   arboles: number;
 };
-
-/** Campos editables de una especie (los que expone el formulario de alta/edición). */
-export type EspecieEditable = EspecieCatalogo;
 
 /** Especie habilitada en una plantación. La app las ordena por nombre (#635). */
 export type EspecieDePlantacion = EspecieCatalogo;
@@ -31,6 +35,8 @@ type FilaEspecie = {
   nombre: string;
   nombre_cientifico: string | null;
 };
+
+type FilaEspecieClasificada = FilaEspecie & { tipo: TipoEspecie; subtipo: SubtipoEspecie };
 
 /** Fila del join plantation_species → species (embed de PostgREST). */
 type FilaAsignada = {
@@ -47,13 +53,25 @@ function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
   };
 }
 
-export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
+const COLUMNAS_ESPECIE = 'id, codigo, nombre, nombre_cientifico';
+
+async function leerCatalogo<F extends FilaEspecie>(columnas: string): Promise<F[]> {
   const { data, error } = await supabase
     .from('species')
-    .select('id, codigo, nombre, nombre_cientifico')
+    .select(columnas)
     .order('codigo', { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as FilaEspecie[]).map(mapearEspecie);
+  return (data ?? []) as unknown as F[];
+}
+
+export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
+  return (await leerCatalogo<FilaEspecie>(COLUMNAS_ESPECIE)).map(mapearEspecie);
+}
+
+/** El catálogo con tipo y subtipo, para la pantalla de Especies. */
+async function listarCatalogoClasificado(): Promise<EspecieClasificada[]> {
+  const filas = await leerCatalogo<FilaEspecieClasificada>(`${COLUMNAS_ESPECIE}, tipo, subtipo`);
+  return filas.map((fila) => ({ ...mapearEspecie(fila), tipo: fila.tipo, subtipo: fila.subtipo }));
 }
 
 function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {
@@ -127,10 +145,10 @@ async function contarArbolesDeEspecie(speciesId: string): Promise<number> {
   return contarOLanzar(count, error);
 }
 
-/** Catálogo + uso: count head de árboles por especie en paralelo (~14 especies, costo marginal); mantiene el orden de `listarCatalogo`. */
+/** Catálogo + uso: count head de árboles por especie en paralelo (~14 especies, costo marginal); mantiene el orden por código. */
 export async function listarCatalogoConUso(): Promise<EspecieConCatalogoUso[]> {
   const [catalogo, plantacionesPorEspecie] = await Promise.all([
-    listarCatalogo(),
+    listarCatalogoClasificado(),
     contarPlantacionesPorEspecie(),
   ]);
   const arboles = await Promise.all(catalogo.map((especie) => contarArbolesDeEspecie(especie.id)));

@@ -3,12 +3,16 @@
  * Recibe los valores tal como se tipean (strings) y devuelve un error en
  * español por campo inválido. Sin acceso a datos: testeable aislado.
  */
+import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
 import type { EspecieInput } from '../repositories/especieRepository';
 
+/** Tipo y subtipo no se validan: salen de un control que solo ofrece valores del contrato. */
 export type EspecieFormValues = {
   codigo: string;
   nombre: string;
   nombreCientifico: string;
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
 };
 
 export type CampoEspecie = 'codigo' | 'nombre';
@@ -39,5 +43,7 @@ export function aEspecieInput(valores: EspecieFormValues): EspecieInput {
     codigo: valores.codigo.trim(),
     nombre: valores.nombre.trim(),
     nombreCientifico: textoONull(valores.nombreCientifico),
+    tipo: valores.tipo,
+    subtipo: valores.subtipo,
   };
 }

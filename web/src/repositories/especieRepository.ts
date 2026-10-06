@@ -1,3 +1,4 @@
+import type { SubtipoEspecie, TipoEspecie } from '../../../shared/tiposEspecie';
 import { errorDeSupabase } from '../lib/clasificarError';
 import { supabase } from '../lib/supabase';
 import { PG_ERROR } from '../lib/postgresErrorCodes';
@@ -14,6 +15,8 @@ export type EspecieInput = {
   codigo: string;
   nombre: string;
   nombreCientifico: string | null;
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
 };
 
 export const MENSAJE_CODIGO_DUPLICADO = 'Ya existe una especie con ese código.';
@@ -26,7 +29,13 @@ export class CodigoEspecieDuplicadoError extends Error {
   }
 }
 
-type Payload = { codigo: string; nombre: string; nombre_cientifico: string | null };
+type Payload = {
+  codigo: string;
+  nombre: string;
+  nombre_cientifico: string | null;
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+};
 type ErrorSupabase = { message: string; code?: string } | null;
 
 function aPayload(input: EspecieInput): Payload {
@@ -34,6 +43,8 @@ function aPayload(input: EspecieInput): Payload {
     codigo: input.codigo,
     nombre: input.nombre,
     nombre_cientifico: input.nombreCientifico,
+    tipo: input.tipo,
+    subtipo: input.subtipo,
   };
 }
 

@@ -17,11 +17,15 @@ const INPUT: EspecieInput = {
   codigo: 'ANC',
   nombre: 'Anchico',
   nombreCientifico: 'Parapiptadenia rigida',
+  tipo: 'flora',
+  subtipo: 'arbusto',
 };
 const INPUT_SIN_CIENTIFICO: EspecieInput = {
   codigo: 'IBI',
   nombre: 'Ibirá Pitá',
   nombreCientifico: null,
+  tipo: 'flora',
+  subtipo: 'arbol',
 };
 
 const ERROR_DUPLICADO = {
@@ -32,7 +36,7 @@ const ERROR_DUPLICADO = {
 beforeEach(resetEstadoMock);
 
 describe('crearEspecie', () => {
-  test('inserta código, nombre y nombre_cientifico; devuelve el id creado', async () => {
+  test('inserta código, nombres, tipo y subtipo; devuelve el id creado', async () => {
     const consultas = capturarConsultas((consulta) =>
       consulta.tabla === 'species' ? { data: { id: 'sp-nuevo' } } : { data: null },
     );
@@ -46,6 +50,8 @@ describe('crearEspecie', () => {
       codigo: 'ANC',
       nombre: 'Anchico',
       nombre_cientifico: 'Parapiptadenia rigida',
+      tipo: 'flora',
+      subtipo: 'arbusto',
     });
   });
 
@@ -80,6 +86,8 @@ describe('editarEspecie', () => {
       codigo: 'ANC',
       nombre: 'Anchico',
       nombre_cientifico: 'Parapiptadenia rigida',
+      tipo: 'flora',
+      subtipo: 'arbusto',
     });
   });
 

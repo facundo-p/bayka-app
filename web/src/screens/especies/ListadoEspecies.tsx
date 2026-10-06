@@ -20,7 +20,7 @@ interface ListadoEspeciesProps {
 
 /** Tabla del catálogo con el panel de edición al costado. */
 export function ListadoEspecies({ visibles, seleccion, onSeleccionar }: ListadoEspeciesProps) {
-  const columnas = useColumnasVisibles(COLUMNAS_ESPECIES);
+  const columnas = useColumnasVisibles(COLUMNAS_ESPECIES, seleccion !== null);
   const panel = seleccion && (
     <EspeciePanel
       // Remonta el panel al cambiar de especie: los campos se reinicializan
