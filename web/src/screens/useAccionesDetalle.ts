@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../hooks/useAuth';
 import { useDescarga } from '../hooks/useDescarga';
 import { BP, useMediaQuery } from '../hooks/useMediaQuery';
@@ -13,6 +13,7 @@ import { descargarTexto } from '../services/descargas';
 import { descargarCsvExportacion } from '../services/exportarCsv';
 import { construirKml, nombreArchivoKml, TIPO_MIME_KML } from '../services/exportarKml';
 import { descargarXlsxExportacion } from '../services/exportarXlsx';
+import { descargarInformePdf } from '../services/pdfInforme';
 import {
   accionDeArchivado,
   CONFIRMACION_ARCHIVADO,
@@ -26,6 +27,7 @@ const MENSAJE_SIN_PUNTOS = 'Esta plantación no tiene puntos GPS para exportar.'
 const MENSAJE_ERROR_KML = 'No se pudieron cargar los puntos GPS.';
 const MENSAJE_SIN_ARBOLES = 'Esta plantación no tiene árboles para exportar.';
 const MENSAJE_ERROR_EXPORT = 'No se pudieron cargar los árboles para exportar.';
+const MENSAJE_ERROR_INFORME = 'No se pudo generar el informe PDF.';
 
 /** Descarga los puntos GPS como KML (Google Maps/Earth); no descarga si no hay puntos. */
 function useDescargaKml(plantacion: Plantacion) {
@@ -56,13 +58,23 @@ function useDescargaPlanilla(plantacion: Plantacion, descargarPlanilla: Descarga
   }, MENSAJE_ERROR_EXPORT);
 }
 
+/** El informe sale siempre, aun sin árboles: los bloques vacíos dicen por qué. */
+function useDescargaInforme(plantacion: Plantacion) {
+  const queryClient = useQueryClient();
+  return useDescarga(async () => {
+    await descargarInformePdf(plantacion, queryClient);
+    return null;
+  }, MENSAJE_ERROR_INFORME);
+}
+
 type Descarga = ReturnType<typeof useDescargaKml>;
 
 export interface AccionesProps {
   kml: Descarga;
   xlsx: Descarga;
   csv: Descarga;
-  /** Las planillas necesitan los IDs definitivos; el KML no. */
+  pdf: Descarga;
+  /** Las planillas necesitan los IDs definitivos; el KML y el informe no. */
   idsPendientes: boolean;
   /** null = se puede editar; texto = por qué no (plantación archivada). Exportar sigue disponible. */
   motivoEdicion: string | null;
@@ -89,12 +101,14 @@ export const MODAL_ADMINISTRACION = {
 
 export type ModalAdministracion = (typeof MODAL_ADMINISTRACION)[keyof typeof MODAL_ADMINISTRACION];
 
-/** Las tres descargas de la barra, con el mensaje que devuelva cualquiera. */
+/** Las descargas de la barra, con el mensaje que devuelva cualquiera. */
 function useDescargasDetalle(plantacion: Plantacion) {
   const kml = useDescargaKml(plantacion);
   const xlsx = useDescargaPlanilla(plantacion, descargarXlsxExportacion);
   const csv = useDescargaPlanilla(plantacion, descargarCsvExportacion);
-  return { kml, xlsx, csv, mensaje: xlsx.mensaje ?? csv.mensaje ?? kml.mensaje };
+  const pdf = useDescargaInforme(plantacion);
+  const mensaje = xlsx.mensaje ?? csv.mensaje ?? kml.mensaje ?? pdf.mensaje;
+  return { kml, xlsx, csv, pdf, mensaje };
 }
 
 /** Mientras la consulta no responde no se ofrece generar: solo con un `false` explícito. */

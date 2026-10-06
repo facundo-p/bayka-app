@@ -39,6 +39,8 @@ export type KpisArboles = {
   totalArboles: number;
   arbolesNN: number;
   especiesUsadas: number;
+  arbolesConGps: number;
+  arbolesConFoto: number;
   porcentajeConGps: number;
   porcentajeConFoto: number;
 };
@@ -79,6 +81,8 @@ export function calcularKpis(arboles: ConteoArboles[]): KpisArboles {
     totalArboles: total,
     arbolesNN: sinEspecie,
     especiesUsadas: especies,
+    arbolesConGps: conGps,
+    arbolesConFoto: conFoto,
     porcentajeConGps: porcentaje(conGps, total),
     porcentajeConFoto: porcentaje(conFoto, total),
   };

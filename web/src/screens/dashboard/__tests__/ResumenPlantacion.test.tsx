@@ -7,6 +7,8 @@ const KPIS: KpisArboles = {
   totalArboles: 12480,
   arbolesNN: 37,
   especiesUsadas: 9,
+  arbolesConGps: 11731,
+  arbolesConFoto: 10109,
   porcentajeConGps: 94,
   porcentajeConFoto: 81,
 };

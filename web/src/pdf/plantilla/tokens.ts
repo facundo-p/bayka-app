@@ -10,6 +10,8 @@ export const COLOR_PDF = {
   oliva: '#99b95b',
   papel: '#ffffff',
   papelHundido: '#faf8f1',
+  /** Fondo de la barra de avance hacia la meta. */
+  tinte: '#edf4f9',
   tinta: '#2a2d27',
   cuerpo: '#3a3d36',
   apagado: '#6e6a5e',
@@ -32,6 +34,7 @@ export const TOKEN_CSS_DE_COLOR_PDF = {
   oliva: '--color-secondary',
   papel: '--color-surface',
   papelHundido: '--color-surface-sunken',
+  tinte: '--color-primary-bg',
   tinta: '--color-text-primary',
   cuerpo: '--color-text-body',
   apagado: '--color-text-secondary',
@@ -71,10 +74,21 @@ export const TAMANO_TEXTO = {
   especie: 9.5,
   encabezado: 14,
   idArbol: 14,
+  tituloInforme: 22,
+  tituloSeccion: 16,
+  bloque: 11.5,
+  lineaInforme: 8.5,
+  indicador: 18,
+  rotuloIndicador: 6.8,
+  detalleIndicador: 7,
+  filaInforme: 8,
+  leyenda: 7.5,
 } as const;
 
 /** Medidas de la hoja A4 en pt (595 × 842). */
 export const MEDIDA_HOJA = {
+  ancho: 595,
+  alto: 842,
   margenSuperior: 34,
   margenInferior: 22,
   margenLateral: 30,
@@ -110,4 +124,72 @@ export const MEDIDA_FICHA = {
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
   anchoEtiqueta: 54,
+} as const;
+
+/** Lo que queda para el cuerpo de una hoja, entre encabezado y pie y entre márgenes. */
+export const CUERPO_HOJA = {
+  ancho: MEDIDA_HOJA.ancho - MEDIDA_HOJA.margenLateral * 2,
+  alto:
+    MEDIDA_HOJA.alto -
+    MEDIDA_HOJA.margenSuperior -
+    MEDIDA_HOJA.reservaEncabezado -
+    MEDIDA_HOJA.margenInferior -
+    MEDIDA_HOJA.reservaPie,
+} as const;
+
+/**
+ * Medidas del informe en pt. Los renglones tienen alto fijo: con eso
+ * `planificarInforme` sabe cuánto ocupa cada bloque sin renderizar.
+ */
+export const MEDIDA_INFORME = {
+  separacionBloques: 14,
+  /**
+   * Interlineado de los renglones de alto fijo: el de Poppins por defecto no
+   * entra, y react-pdf no dibuja una línea que no entra en su caja.
+   */
+  interlineado: 1.25,
+  altoTitulo: 26,
+  altoLineaTitulo: 12,
+  aireTitulo: 2,
+  altoIndicadores: 66,
+  separacionIndicadores: 8,
+  /** El de árboles es más ancho que los otros tres. */
+  pesoIndicadorPrincipal: 1.6,
+  rellenoIndicador: { vertical: 8, horizontal: 10 },
+  aireIndicador: 3,
+  altoBarraAvance: 5,
+  radio: 5,
+  altoEncabezadoBloque: 15,
+  /** Lo que tiene que entrar después de un título de bloque para que no quede huérfano. */
+  presenciaTrasEncabezado: 40,
+  aireEncabezadoBloque: 3,
+  separacionEncabezadoBloque: 6,
+  altoFilaEspecie: 11,
+  puntoEspecie: 7,
+  separacionFilaEspecie: 3,
+  anchoNombreEspecie: 140,
+  anchoCantidad: 46,
+  anchoPorcentaje: 30,
+  altoBarraEspecie: 7,
+  radioBarra: 2,
+  separacionColumnas: 8,
+  altoEncabezadoTabla: 14,
+  altoFilaTabla: 16,
+  altoBarraParcela: 4,
+  anchoColumnaNumero: 44,
+  anchoBarraParcela: 90,
+  rellenoCelda: 4,
+  altoMensaje: 14,
+  altoTituloMapa: 20,
+  aireTituloMapa: 8,
+  aireMapa: 4,
+  altoRenglonLeyenda: 11,
+  anchoItemLeyenda: 44,
+  separacionLeyenda: 10,
+  altoNotaMapa: 11,
+  /** Lo mínimo que tiene que medir el mapa para ir al pie de la última hoja: 7 cm. */
+  altoMinimoMapa: 198,
+  /** Colchón contra los redondeos del layout: si el cálculo se queda corto, el mapa salta solo. */
+  holgura: 8,
+  radioPuntoMapa: 1.1,
 } as const;

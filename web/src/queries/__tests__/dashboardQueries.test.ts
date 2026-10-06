@@ -49,6 +49,8 @@ describe('calcularKpis', () => {
       totalArboles: 4,
       arbolesNN: 1,
       especiesUsadas: 1,
+      arbolesConGps: 1,
+      arbolesConFoto: 1,
       porcentajeConGps: 25,
       porcentajeConFoto: 25,
     });
@@ -59,6 +61,8 @@ describe('calcularKpis', () => {
       totalArboles: 0,
       arbolesNN: 0,
       especiesUsadas: 0,
+      arbolesConGps: 0,
+      arbolesConFoto: 0,
       porcentajeConGps: 0,
       porcentajeConFoto: 0,
     });
@@ -213,6 +217,8 @@ describe('obtenerFuenteDashboard', () => {
       totalArboles: 2,
       arbolesNN: 1,
       especiesUsadas: 1,
+      arbolesConGps: 1,
+      arbolesConFoto: 1,
       porcentajeConGps: 50,
       porcentajeConFoto: 50,
       totalGrupos: 3,

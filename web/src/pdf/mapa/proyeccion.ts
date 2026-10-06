@@ -82,6 +82,28 @@ function origenCentrado(caja: Caja, zoom: number, ancho: number, alto: number): 
   return { x: centro.x * escala - ancho / 2, y: centro.y * escala - alto / 2 };
 }
 
+type Extension = { caja: Caja; latitudCentro: number; x: number; y: number };
+
+/** Ancho y alto de lo que ocupan los puntos, en px del mundo a zoom 0, con el lado mínimo. */
+function extensionDe(puntos: readonly LatLng[], minimoMetros: number): Extension {
+  const caja = cajaDe(puntos.map((punto) => pixelDelMundo(punto, 0)));
+  const latitudCentro = latitudCentral(puntos);
+  const minimo = minimoMetros / metrosPorPixel(latitudCentro, 0);
+  return {
+    caja,
+    latitudCentro,
+    x: Math.max(caja.max.x - caja.min.x, minimo),
+    y: Math.max(caja.max.y - caja.min.y, minimo),
+  };
+}
+
+/** Ancho sobre alto de lo que ocupan los puntos en el mapa; 1 sin puntos. */
+export function aspectoDe(puntos: readonly LatLng[], minimoMetros: number): number {
+  if (puntos.length === 0) return 1;
+  const extension = extensionDe(puntos, minimoMetros);
+  return extension.x / extension.y;
+}
+
 /** El zoom más alto que deja entrar todos los puntos con el margen pedido. */
 export function encuadrar(
   puntos: readonly LatLng[],
@@ -90,13 +112,7 @@ export function encuadrar(
   { margen, minimoMetros }: OpcionesEncuadre,
 ): Encuadre {
   if (puntos.length === 0) throw new Error('No hay puntos que encuadrar');
-  const caja = cajaDe(puntos.map((punto) => pixelDelMundo(punto, 0)));
-  const latitudCentro = latitudCentral(puntos);
-  const minimo = minimoMetros / metrosPorPixel(latitudCentro, 0);
-  const extension = {
-    x: Math.max(caja.max.x - caja.min.x, minimo),
-    y: Math.max(caja.max.y - caja.min.y, minimo),
-  };
+  const { caja, latitudCentro, ...extension } = extensionDe(puntos, minimoMetros);
   const zoom = Math.log2(
     Math.min((ancho - 2 * margen) / extension.x, (alto - 2 * margen) / extension.y),
   );

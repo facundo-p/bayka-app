@@ -17,6 +17,17 @@ export const COLORES_GRAFICOS = [
   '#a8c465', // oliva claro-medio
 ];
 
+/**
+ * Cuatro colores más, solo para el informe PDF (#756): ahí cada especie lleva
+ * un color único por orden de cantidad, y con más de 8 la paleta se acabaría.
+ */
+export const COLORES_GRAFICOS_EXTRA = [
+  '#7d4e7a', // ciruela
+  '#3e8a85', // verde azulado
+  '#b0623a', // siena
+  '#5b6b7c', // pizarra
+];
+
 /** Ámbar de especies N/N — "Sin identificar" (--color-warn-dot). */
 export const COLOR_GRAFICO_NN = '#e0a83b';
 
