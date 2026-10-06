@@ -53,25 +53,27 @@ function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
   };
 }
 
-const COLUMNAS_ESPECIE = 'id, codigo, nombre, nombre_cientifico';
-
-async function leerCatalogo<F extends FilaEspecie>(columnas: string): Promise<F[]> {
+/** Una sola lectura del catálogo: el tipo y el subtipo los usa solo la pantalla de Especies. */
+async function leerCatalogo(): Promise<FilaEspecieClasificada[]> {
   const { data, error } = await supabase
     .from('species')
-    .select(columnas)
+    .select('id, codigo, nombre, nombre_cientifico, tipo, subtipo')
     .order('codigo', { ascending: true });
   if (error) throw new Error(error.message);
-  return (data ?? []) as unknown as F[];
+  return (data ?? []) as FilaEspecieClasificada[];
 }
 
 export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
-  return (await leerCatalogo<FilaEspecie>(COLUMNAS_ESPECIE)).map(mapearEspecie);
+  return (await leerCatalogo()).map(mapearEspecie);
 }
 
 /** El catálogo con tipo y subtipo, para la pantalla de Especies. */
 async function listarCatalogoClasificado(): Promise<EspecieClasificada[]> {
-  const filas = await leerCatalogo<FilaEspecieClasificada>(`${COLUMNAS_ESPECIE}, tipo, subtipo`);
-  return filas.map((fila) => ({ ...mapearEspecie(fila), tipo: fila.tipo, subtipo: fila.subtipo }));
+  return (await leerCatalogo()).map((fila) => ({
+    ...mapearEspecie(fila),
+    tipo: fila.tipo,
+    subtipo: fila.subtipo,
+  }));
 }
 
 function mapearAsignada(fila: FilaAsignada): EspecieDePlantacion {

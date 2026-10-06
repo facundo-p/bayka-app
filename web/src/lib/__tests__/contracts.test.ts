@@ -7,7 +7,7 @@ import { ROL } from '../../repositories/profileRepository';
 import { ENCABEZADO_CSV } from '../../services/exportarCsv';
 import { COLUMNAS_XLSX } from '../../services/exportarXlsx';
 import { CODIGO_PLANTACION, idDeArbol } from '../../../../shared/codigoPlantacion';
-import { TIPOS_ESPECIE } from '../../../../shared/tiposEspecie';
+import { TIPOS_ESPECIE, type TipoEspecie } from '../../../../shared/tiposEspecie';
 import { opcionesDeSubtipo } from '../tiposEspecie';
 import { puedeEditarPlantacion } from '../../screens/plantaciones/archivado';
 import { puedeCambiarEspecie } from '../../screens/datos/cambioDeEspecie';
@@ -83,14 +83,20 @@ describe('contracts · tipos-especie', () => {
     expect(TIPOS_ESPECIE).toEqual(leerContrato('tipos-especie.json'));
   });
 
+  it('la clasificación por defecto es un par válido del contrato', () => {
+    const { subtiposPorTipo, porDefecto } = leerContrato('tipos-especie.json') as {
+      subtiposPorTipo: Record<string, string[]>;
+      porDefecto: { tipo: string; subtipo: string };
+    };
+    expect(subtiposPorTipo[porDefecto.tipo]).toContain(porDefecto.subtipo);
+  });
+
   it('el formulario ofrece exactamente los subtipos de cada tipo del contrato', () => {
     const { subtiposPorTipo } = leerContrato('tipos-especie.json') as {
-      subtiposPorTipo: Record<keyof typeof TIPOS_ESPECIE.subtiposPorTipo, string[]>;
+      subtiposPorTipo: Record<TipoEspecie, string[]>;
     };
     for (const [tipo, subtipos] of Object.entries(subtiposPorTipo)) {
-      const ofrecidos = opcionesDeSubtipo(tipo as keyof typeof subtiposPorTipo).map(
-        (opcion) => opcion.value,
-      );
+      const ofrecidos = opcionesDeSubtipo(tipo as TipoEspecie).map((opcion) => opcion.value);
       expect(ofrecidos).toEqual(subtipos);
     }
   });
