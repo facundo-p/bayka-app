@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { CodigoNombre } from '../../queries/fichasQueries';
 import { SIN_DATO } from '../../lib/formato';
 import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
+import { ESTADO_MAPA, esMapaListo, type MapaPdf } from '../mapa/estadoMapa';
 import type { EspecieFicha, GpsFicha, ModeloFicha } from './datosFicha';
 import { fichaStyles as styles } from './Ficha.styles';
 import { TEXTO_FICHA } from './textosFicha';
@@ -10,6 +11,11 @@ import { TEXTO_FICHA } from './textosFicha';
 const TEXTO_FOTO_FALTANTE = {
   [ESTADO_FOTO.sinFoto]: TEXTO_FICHA.sinFoto,
   [ESTADO_FOTO.noDisponible]: TEXTO_FICHA.fotoNoDisponible,
+} as const;
+
+const TEXTO_MAPA_FALTANTE = {
+  [ESTADO_MAPA.sinGps]: TEXTO_FICHA.sinPuntoGps,
+  [ESTADO_MAPA.noDisponible]: TEXTO_FICHA.mapaNoDisponible,
 } as const;
 
 function Especie({ especie }: { especie: EspecieFicha }) {
@@ -54,11 +60,11 @@ function Foto({ foto }: { foto: FotoPdf }) {
   );
 }
 
-function Mapa({ mapa }: { mapa: string | null }) {
-  if (mapa) return <Image style={styles.mapa} src={mapa} />;
+function Mapa({ mapa }: { mapa: MapaPdf }) {
+  if (esMapaListo(mapa)) return <Image style={styles.mapa} src={mapa.src} />;
   return (
     <View style={styles.mapaVacio}>
-      <Text style={styles.textoVacio}>{TEXTO_FICHA.sinPuntoGps}</Text>
+      <Text style={styles.textoVacio}>{TEXTO_MAPA_FALTANTE[mapa.estado]}</Text>
     </View>
   );
 }

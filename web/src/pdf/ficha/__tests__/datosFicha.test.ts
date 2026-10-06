@@ -2,10 +2,11 @@ import { arbolParaFicha } from '../../../test/fabricas';
 import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
 import { colorEspeciePorCodigo } from '../../../theme/coloresEspecie';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
+import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
 import { datosFicha, documentoDeFichas } from '../datosFicha';
 
 const FOTO: FotoPdf = { estado: ESTADO_FOTO.lista, src: 'data:image/jpeg;base64,AAA' };
-const MAPA = 'data:image/png;base64,BBB';
+const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: 'data:image/png;base64,BBB' };
 
 const COMPLETO = arbolParaFicha({
   subId: 'LP12L10ANC23',
@@ -58,7 +59,7 @@ test('sin foto pasa el placeholder que le toca', () => {
 test('sin GPS no hay coordenadas ni mapa, aunque llegue uno', () => {
   const ficha = datosFicha({ ...COMPLETO, gps: null }, CONTEXTO);
   expect(ficha.gps).toBeNull();
-  expect(ficha.mapa).toBeNull();
+  expect(ficha.mapa).toEqual({ estado: 'sin-gps' });
 });
 
 test('GPS sin precisión muestra solo las coordenadas', () => {

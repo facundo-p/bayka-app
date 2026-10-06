@@ -1,5 +1,6 @@
 import {
   LADO_TILE,
+  distanciaMetros,
   encuadrar,
   metrosPorPixel,
   pixelDelMundo,
@@ -83,4 +84,10 @@ describe('encuadrar', () => {
   test('sin puntos no hay encuadre', () => {
     expect(() => encuadrar([], 128, 128, OPCIONES)).toThrow();
   });
+});
+
+test('distancia: un grado de latitud son ~111 km y el mismo punto, cero', () => {
+  const unGradoAlSur = { lat: SAN_SEBASTIAN.lat - 1, lng: SAN_SEBASTIAN.lng };
+  expect(distanciaMetros(SAN_SEBASTIAN, unGradoAlSur)).toBeCloseTo(111_319, -1);
+  expect(distanciaMetros(SAN_SEBASTIAN, SAN_SEBASTIAN)).toBe(0);
 });

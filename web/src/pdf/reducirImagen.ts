@@ -1,4 +1,4 @@
-import { contexto2d, crearCanvas } from './canvas';
+import { contexto2d, crearCanvas, exportarYLiberar } from './canvas';
 
 export type MedidaImagen = { ancho: number; alto: number; calidad: number };
 
@@ -38,5 +38,5 @@ export async function reducirImagen(blob: Blob, medida: MedidaImagen): Promise<s
   const canvas = crearCanvas(medida.ancho, medida.alto);
   const { x, y, ancho, alto } = recorte;
   contexto2d(canvas).drawImage(imagen, x, y, ancho, alto, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL(TIPO_JPEG, medida.calidad);
+  return exportarYLiberar(canvas, TIPO_JPEG, medida.calidad);
 }

@@ -1,7 +1,9 @@
+import { SEPARADOR_PUNTO } from '../../lib/formato';
+
 /** Textos fijos de la plantilla de página: encabezado y pie. */
 export const TEXTO_PLANTILLA = {
   marca: 'Bayka',
-  separador: ' · ',
+  separador: SEPARADOR_PUNTO,
   plantacion: 'Plantación',
   organizacion: 'Organización',
   emitido: 'Emitido el',

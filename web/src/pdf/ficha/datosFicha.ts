@@ -3,10 +3,9 @@
  * solo pinta. Puro y testeable sin react-pdf.
  */
 import { formatearFechaCorta } from '../../lib/fechas';
-import { pluralizar, SIN_DATO } from '../../lib/formato';
+import { etiquetaEspecie, pluralizar, SIN_DATO } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import { ETIQUETA_SUBTIPO_ESPECIE, ETIQUETA_TIPO_ESPECIE } from '../../lib/tiposEspecie';
-import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 import type {
   ArbolParaFicha,
   CodigoNombre,
@@ -15,6 +14,7 @@ import type {
 } from '../../queries/fichasQueries';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { FotoPdf } from '../estadoFoto';
+import { MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
 import { TEXTO_FICHA } from './textosFicha';
 
 const DECIMALES_GPS = 6;
@@ -46,26 +46,25 @@ export type ModeloFicha = {
   /** null sin punto GPS. */
   gps: GpsFicha | null;
   foto: FotoPdf;
-  /** PNG del minimapa; null sin punto GPS. */
-  mapa: string | null;
+  mapa: MapaPdf;
 };
 
-export type ContextoFicha = { tecnico: string | null; foto: FotoPdf; mapa: string | null };
+export type ContextoFicha = { tecnico: string | null; foto: FotoPdf; mapa: MapaPdf };
 
-const ESPECIE_SIN_IDENTIFICAR: EspecieFicha = {
+const ESPECIE_FICHA_NN: EspecieFicha = {
   color: colorEspeciePorCodigo(null),
-  titulo: `${ESPECIE_NO_RESUELTA}${TEXTO_FICHA.separador}${NOMBRE_SIN_IDENTIFICAR}`,
+  titulo: etiquetaEspecie({ especieCodigo: null, especieNombre: null }),
   cientifico: null,
   clasificacion: null,
   sinIdentificar: true,
 };
 
 export function especieFicha(especie: EspecieDeFicha | null): EspecieFicha {
-  if (!especie) return ESPECIE_SIN_IDENTIFICAR;
+  if (!especie) return ESPECIE_FICHA_NN;
   const { separador } = TEXTO_FICHA;
   return {
     color: colorEspeciePorCodigo(especie.codigo),
-    titulo: `${especie.codigo}${separador}${especie.nombre}`,
+    titulo: etiquetaEspecie({ especieCodigo: especie.codigo, especieNombre: especie.nombre }),
     cientifico: especie.nombreCientifico,
     clasificacion: `${ETIQUETA_TIPO_ESPECIE[especie.tipo]}${separador}${ETIQUETA_SUBTIPO_ESPECIE[especie.subtipo]}`,
     sinIdentificar: false,
@@ -96,7 +95,7 @@ export function datosFicha(arbol: ArbolParaFicha, contexto: ContextoFicha): Mode
     tecnico: contexto.tecnico ?? SIN_DATO,
     gps: gpsFicha(arbol.gps),
     foto: contexto.foto,
-    mapa: arbol.gps ? contexto.mapa : null,
+    mapa: arbol.gps ? contexto.mapa : MAPA_SIN_GPS,
   };
 }
 

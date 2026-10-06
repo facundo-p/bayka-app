@@ -5,6 +5,7 @@
  */
 import type { QueryClient } from '@tanstack/react-query';
 import { formatearFechaCorta } from '../lib/fechas';
+import { nombreTecnicoDe } from '../lib/formato';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
 import {
   leerNombreOrganizacion,
@@ -13,7 +14,7 @@ import {
 } from '../queries/fichasQueries';
 import { listarPuntosGps, type PuntoGps } from '../queries/mapaQueries';
 import type { Plantacion } from '../queries/plantationQueries';
-import { descargarBlob, nombreArchivoDescarga } from './descargas';
+import { descargarBlob, EXTENSION_PDF, nombreArchivoDescarga } from './descargas';
 
 export type ContextoFichasPdf = {
   plantacion: Pick<Plantacion, 'id' | 'lugar' | 'periodo' | 'codigo'>;
@@ -25,8 +26,6 @@ export type ContextoFichasPdf = {
 
 export type FichasPdf = { blob: Blob; arboles: ArbolParaFicha[] };
 
-const EXTENSION_PDF = 'pdf';
-
 /**
  * Los puntos solo pintan a los vecinos del minimapa (el árbol sale de su fila):
  * unos minutos viejos alcanzan y evitan releer toda la plantación por ficha. Un
@@ -36,10 +35,6 @@ const VIGENCIA_PUNTOS_MS = 5 * 60_000;
 const PREFIJO_ARCHIVO_FICHAS = { una: 'ficha', varias: 'fichas' } as const;
 
 export const ERROR_FICHAS_SIN_ARBOLES = 'No se encontraron los árboles de las fichas';
-
-function tecnicoDe(arbol: ArbolParaFicha, nombres: ReadonlyMap<string, string>): string | null {
-  return (arbol.usuarioRegistro && nombres.get(arbol.usuarioRegistro)) || null;
-}
 
 /** Los vecinos del minimapa son accesorios: si no se leen, el mapa muestra solo el árbol. */
 function leerPuntos({ plantacion, queryClient }: ContextoFichasPdf): Promise<PuntoGps[]> {
@@ -78,7 +73,7 @@ async function prepararFichas(
   ]);
   return arboles.map((arbol, indice) =>
     motor.datosFicha(arbol, {
-      tecnico: tecnicoDe(arbol, nombres),
+      tecnico: nombreTecnicoDe(arbol, nombres),
       foto: fotos[indice],
       mapa: mapas[indice],
     }),

@@ -15,6 +15,7 @@ export const TEXTO_FICHA = {
   sinFoto: 'Sin foto',
   fotoNoDisponible: 'Foto no disponible',
   sinPuntoGps: 'Sin punto GPS',
+  mapaNoDisponible: 'Mapa no disponible',
   sinPunto: 'Sin punto',
   separador: TEXTO_PLANTILLA.separador,
   precision: '±',

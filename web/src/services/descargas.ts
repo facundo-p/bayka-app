@@ -6,6 +6,9 @@
 
 import { normalizarTexto } from '../lib/normalizarTexto';
 
+/** Extensión de los PDF que arma la web (fichas, informe). */
+export const EXTENSION_PDF = 'pdf';
+
 /** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */
 export function aSlug(texto: string): string {
   return normalizarTexto(texto)

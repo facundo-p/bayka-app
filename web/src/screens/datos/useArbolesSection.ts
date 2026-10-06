@@ -52,6 +52,7 @@ function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
   return {
     codigosParcela: mapaPorId(parcelas, (parcela) => parcela.codigo),
     nombresUsuario: mapaPorId(perfiles.data, (perfil) => nombreVisible(perfil.nombre, perfil.id)),
+    perfilesCargando: perfiles.isPending,
   };
 }
 
@@ -66,15 +67,19 @@ function useEdicionDeEspecie(
   return { plantationId, codigoPlantacion: plantacion.codigo, onActualizado };
 }
 
-/** Genera la ficha PDF de un árbol; null mientras no cargó la plantación. */
+/**
+ * Descarga de la ficha PDF de cada árbol. null (botón deshabilitado) hasta
+ * tener la plantación y los técnicos: antes saldría «Técnico —».
+ */
 function useDescargaFicha(
   plantacion: Plantacion | null | undefined,
-  nombresUsuario: ReadonlyMap<string, string>,
+  { nombresUsuario, perfilesCargando }: ReturnType<typeof useMapasArboles>,
 ) {
   const queryClient = useQueryClient();
-  if (!plantacion) return null;
-  return (arbolId: string) =>
-    descargarFichaPdf(arbolId, { plantacion, nombresUsuario, queryClient });
+  return (arbol: ArbolDetalle): (() => Promise<void>) | null => {
+    if (!plantacion || perfilesCargando) return null;
+    return () => descargarFichaPdf(arbol.id, { plantacion, nombresUsuario, queryClient });
+  };
 }
 
 /**
@@ -96,7 +101,7 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
-  const descargarFicha = useDescargaFicha(plantacion, mapas.nombresUsuario);
+  const descargaFichaDe = useDescargaFicha(plantacion, mapas);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -108,6 +113,6 @@ export function useArbolesSection() {
     arbolSeleccionado,
     setArbolSeleccionado,
     edicionDeEspecie,
-    descargarFicha,
+    descargaFichaDe,
   };
 }

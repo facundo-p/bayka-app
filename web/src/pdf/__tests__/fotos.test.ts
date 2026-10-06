@@ -1,5 +1,4 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { ESTADO_FOTO } from '../estadoFoto';
 import { cargarFotos } from '../fotos';
 import { reducirImagen } from '../reducirImagen';
 
@@ -23,9 +22,9 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals());
 
-const LISTA = { estado: ESTADO_FOTO.lista, src: 'data:image/jpeg;base64,REDUCIDA' };
-const SIN_FOTO = { estado: ESTADO_FOTO.sinFoto };
-const NO_DISPONIBLE = { estado: ESTADO_FOTO.noDisponible };
+const LISTA = { estado: 'lista', src: 'data:image/jpeg;base64,REDUCIDA' };
+const SIN_FOTO = { estado: 'sin-foto' };
+const NO_DISPONIBLE = { estado: 'no-disponible' };
 
 test('firma solo las subidas, en una llamada, y reduce cada una', async () => {
   const fotos = await cargarFotos(['p/a.jpg', null, 'file:///local.jpg', 'p/b.jpg']);

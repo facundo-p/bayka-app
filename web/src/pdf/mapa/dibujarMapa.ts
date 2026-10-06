@@ -2,7 +2,7 @@
  * Raster del mapa de puntos: con miles de árboles, un PNG pesa y tarda menos en
  * el PDF que un círculo vectorial por árbol.
  */
-import { contexto2d, crearCanvas } from '../canvas';
+import { contexto2d, crearCanvas, exportarYLiberar } from '../canvas';
 import { COLOR_PDF, FUENTE_PDF, PESO_FUENTE } from '../plantilla/tokens';
 import { planificarMapa, type ContenidoMapa, type PlanMapa, type PuntoUbicado } from './planMapa';
 import type { Encuadre } from './proyeccion';
@@ -202,5 +202,5 @@ export async function dibujarMapa(opciones: OpcionesMapa): Promise<string | null
   pintarEtiquetas(contexto, plan);
   pintarEscala(contexto, plan);
   pintarNorte(contexto, plan.encuadre);
-  return canvas.toDataURL(TIPO_PNG);
+  return exportarYLiberar(canvas, TIPO_PNG);
 }

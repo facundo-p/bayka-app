@@ -1,5 +1,6 @@
 import { QueryClient } from '@tanstack/react-query';
 import * as motor from '../../pdf/ficha/motorFichas';
+import { ESTADO_MAPA, type MapaPdf } from '../../pdf/mapa/estadoMapa';
 import { leerNombreOrganizacion, listarArbolesParaFichas } from '../../queries/fichasQueries';
 import { listarPuntosGps, type PuntoGps } from '../../queries/mapaQueries';
 import { CLAVE_QUERY } from '../../queries/clavesQuery';
@@ -32,6 +33,7 @@ vi.mock('../../pdf/ficha/motorFichas', () => ({
 }));
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
+const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: 'data:image/png;base64,M' };
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
@@ -50,7 +52,7 @@ beforeEach(() => {
   vi.mocked(leerNombreOrganizacion).mockResolvedValue('Bayka');
   vi.mocked(listarPuntosGps).mockResolvedValue(PUNTOS);
   vi.mocked(motor.cargarFotos).mockResolvedValue([{ estado: 'sin-foto' }]);
-  vi.mocked(motor.minimapaDeArbol).mockResolvedValue('data:image/png;base64,M');
+  vi.mocked(motor.minimapaDeArbol).mockResolvedValue(MAPA);
   vi.mocked(motor.logoNavegador).mockReturnValue('/logo.png');
   vi.mocked(motor.renderizarFichas).mockResolvedValue(BLOB);
 });
@@ -72,7 +74,7 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
   expect(motor.datosFicha).toHaveBeenCalledWith(ARBOL, {
     tecnico: 'Lucía Ferreyra',
     foto: { estado: 'sin-foto' },
-    mapa: 'data:image/png;base64,M',
+    mapa: MAPA,
   });
   expect(motor.encabezadoDePlantacion).toHaveBeenCalledWith(PLANTACION, 'Bayka', '/logo.png');
   expect(descargarBlob).toHaveBeenCalledWith(
