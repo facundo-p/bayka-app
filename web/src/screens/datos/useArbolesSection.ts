@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -14,6 +14,7 @@ import {
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
 import type { Plantacion } from '../../queries/plantationQueries';
+import { descargarFichaPdf } from '../../services/pdfFichas';
 import { puedeCambiarEspecie } from './cambioDeEspecie';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
@@ -51,6 +52,7 @@ function useMapasArboles(parcelas: ParcelaConStats[] | undefined) {
   return {
     codigosParcela: mapaPorId(parcelas, (parcela) => parcela.codigo),
     nombresUsuario: mapaPorId(perfiles.data, (perfil) => nombreVisible(perfil.nombre, perfil.id)),
+    perfilesCargando: perfiles.isPending,
   };
 }
 
@@ -63,6 +65,21 @@ function useEdicionDeEspecie(
   const { perfil } = useAuth();
   if (!plantacion || !puedeCambiarEspecie(perfil, plantacion)) return undefined;
   return { plantationId, codigoPlantacion: plantacion.codigo, onActualizado };
+}
+
+/**
+ * Descarga de la ficha PDF de cada árbol. null (botón deshabilitado) hasta
+ * tener la plantación y los técnicos: antes saldría «Técnico —».
+ */
+function useDescargaFicha(
+  plantacion: Plantacion | null | undefined,
+  { nombresUsuario, perfilesCargando }: ReturnType<typeof useMapasArboles>,
+) {
+  const queryClient = useQueryClient();
+  return (arbol: ArbolDetalle): (() => Promise<void>) | null => {
+    if (!plantacion || perfilesCargando) return null;
+    return () => descargarFichaPdf(arbol.id, { plantacion, nombresUsuario, queryClient });
+  };
 }
 
 /**
@@ -84,6 +101,7 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
+  const descargaFichaDe = useDescargaFicha(plantacion, mapas);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -95,5 +113,6 @@ export function useArbolesSection() {
     arbolSeleccionado,
     setArbolSeleccionado,
     edicionDeEspecie,
+    descargaFichaDe,
   };
 }

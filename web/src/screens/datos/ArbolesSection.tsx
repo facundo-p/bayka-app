@@ -85,6 +85,7 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
       parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
       tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
       nombreFoto={nombreFotoDe(seccion, arbol)}
+      descargarFicha={seccion.descargaFichaDe(arbol)}
       edicionDeEspecie={seccion.edicionDeEspecie}
       onCerrar={() => seccion.setArbolSeleccionado(null)}
     />

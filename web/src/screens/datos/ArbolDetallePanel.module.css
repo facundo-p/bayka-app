@@ -51,3 +51,15 @@
   font-size: var(--text-md);
   color: var(--color-text-secondary);
 }
+
+/* Pie del detalle: la ficha PDF ocupa todo el ancho, con el error debajo. */
+.accionFicha {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  width: 100%;
+}
+
+.botonAncho {
+  width: 100%;
+}

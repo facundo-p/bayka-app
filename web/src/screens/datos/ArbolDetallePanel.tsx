@@ -16,6 +16,7 @@ import { TAMANO_ICONO } from '../../theme/iconos';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import { SIN_DATO, tieneGps, type ArbolConGps } from './arbolFormato';
 import { BloqueEspecie } from './BloqueEspecie';
+import { BotonFichaPdf } from './BotonFichaPdf';
 import { Coordenadas } from './celdas';
 import type { EdicionDeEspecie } from './useCambioDeEspecie';
 import styles from './ArbolDetallePanel.module.css';
@@ -26,6 +27,8 @@ interface ArbolDetallePanelProps {
   tecnicoNombre: string | null;
   /** Nombre del archivo al descargar la foto; null mientras no cargó la plantación. */
   nombreFoto: string | null;
+  /** Genera y descarga la ficha PDF; null mientras no cargó la plantación. */
+  descargarFicha: (() => Promise<void>) | null;
   /** Sin esto la especie es de solo lectura. */
   edicionDeEspecie?: EdicionDeEspecie;
   onCerrar: () => void;
@@ -152,6 +155,7 @@ function BloqueMeta({ arbol, parcelaCodigo, tecnicoNombre }: BloqueMetaProps) {
 export function ArbolDetallePanel({
   onCerrar,
   nombreFoto,
+  descargarFicha,
   edicionDeEspecie,
   ...datos
 }: ArbolDetallePanelProps) {
@@ -160,6 +164,7 @@ export function ArbolDetallePanel({
     <PanelLateral
       etiqueta={`Detalle del árbol ${arbol.idArbol}`}
       cabecera={<h2 className={styles.titulo}>{arbol.idArbol}</h2>}
+      pie={<BotonFichaPdf descargar={descargarFicha} />}
       onCerrar={onCerrar}
     >
       <BloqueEspecie arbol={arbol} edicion={edicionDeEspecie} />

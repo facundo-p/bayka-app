@@ -6,6 +6,9 @@
 
 import { normalizarTexto } from '../lib/normalizarTexto';
 
+/** Extensión de los PDF que arma la web (fichas, informe). */
+export const EXTENSION_PDF = 'pdf';
+
 /** Slug seguro para nombres de archivo: minúsculas, sin acentos ni símbolos. */
 export function aSlug(texto: string): string {
   return normalizarTexto(texto)
@@ -13,15 +16,16 @@ export function aSlug(texto: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/** Nombre descriptivo `<prefijo>-<lugar>-<periodo>.<extension>`, omitiendo
- *  partes vacías tras el slug. */
+/** Nombre descriptivo `<prefijo>-<lugar>-<periodo>[-<detalle>].<extension>`,
+ *  omitiendo partes vacías tras el slug. */
 export function nombreArchivoDescarga(
   prefijo: string,
   lugar: string,
   periodo: string,
   extension: string,
+  detalle = '',
 ): string {
-  const partes = [aSlug(lugar), aSlug(periodo)].filter(Boolean);
+  const partes = [aSlug(lugar), aSlug(periodo), aSlug(detalle)].filter(Boolean);
   return `${prefijo}-${partes.join('-')}.${extension}`;
 }
 

@@ -1,5 +1,10 @@
 import { estadoMock, resetEstadoMock } from '../../test/supabaseMock';
-import { obtenerUrlDescargaFoto, obtenerUrlFoto, tieneFotoSubida } from '../fotoService';
+import {
+  firmarFotos,
+  obtenerUrlDescargaFoto,
+  obtenerUrlFoto,
+  tieneFotoSubida,
+} from '../fotoService';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -71,6 +76,36 @@ describe('obtenerUrlDescargaFoto', () => {
 
   test('sin foto subida devuelve null sin firmar', async () => {
     expect(await obtenerUrlDescargaFoto('file:///data/foto.jpg', 'x.jpg')).toBeNull();
+    expect(estadoMock.firmas).toHaveLength(0);
+  });
+});
+
+describe('firmarFotos', () => {
+  test('firma todo en una llamada, en orden, extrayendo el path', async () => {
+    const urls = await firmarFotos([PATH_FOTO, URL_COMPLETA]);
+    expect(estadoMock.firmas).toEqual([
+      { bucket: 'tree-photos', path: PATH_FOTO, segundos: 3600 },
+      { bucket: 'tree-photos', path: PATH_FOTO, segundos: 3600 },
+    ]);
+    expect(urls).toEqual([
+      `https://firmada.test/${PATH_FOTO}`,
+      `https://firmada.test/${PATH_FOTO}`,
+    ]);
+  });
+
+  test('una foto que Storage no firma queda en null sin afectar al resto', async () => {
+    estadoMock.pathsSinFirma = ['plantations/p1/trees/ajena.jpg'];
+    const urls = await firmarFotos(['plantations/p1/trees/ajena.jpg', PATH_FOTO]);
+    expect(urls).toEqual([null, `https://firmada.test/${PATH_FOTO}`]);
+  });
+
+  test('si falla la llamada entera, todas quedan en null', async () => {
+    estadoMock.errorFirma = { message: 'sin red' };
+    expect(await firmarFotos([PATH_FOTO])).toEqual([null]);
+  });
+
+  test('sin fotos no llama a Storage', async () => {
+    expect(await firmarFotos([])).toEqual([]);
     expect(estadoMock.firmas).toHaveLength(0);
   });
 });

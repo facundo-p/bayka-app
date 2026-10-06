@@ -14,6 +14,7 @@ import type {
   FilaGrupo,
   FilaParcela,
 } from '../queries/dataExplorerQueries';
+import type { ArbolParaFicha } from '../queries/fichasQueries';
 import {
   ESTADO_PLANTACION,
   type FilaPlantacion,
@@ -150,6 +151,26 @@ export function arbolDetalle(overrides: Partial<ArbolDetalle> = {}): ArbolDetall
     fotoUrl: null,
     usuarioRegistro: null,
     createdAt: CREADO_EN,
+    ...overrides,
+  };
+}
+
+/** Árbol de las fichas PDF sin especie, GPS, foto ni ID Global. */
+export function arbolParaFicha(overrides: Partial<ArbolParaFicha> = {}): ArbolParaFicha {
+  return {
+    id: IDS_FABRICA.arbol,
+    subId: IDS_FABRICA.subIdArbol,
+    idArbol: idDeArbol(IDS_FABRICA.subIdArbol, IDS_FABRICA.codigoPlantacion),
+    idGlobal: null,
+    posicion: 1,
+    especie: null,
+    grupo: { codigo: IDS_FABRICA.codigoGrupo, nombre: 'Línea 1' },
+    parcela: { codigo: IDS_FABRICA.codigoParcela, nombre: 'Norte' },
+    parcelaId: IDS_FABRICA.parcela,
+    fotoUrl: null,
+    usuarioRegistro: null,
+    createdAt: CREADO_EN,
+    gps: null,
     ...overrides,
   };
 }

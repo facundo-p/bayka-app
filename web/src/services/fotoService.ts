@@ -54,3 +54,20 @@ export async function obtenerUrlDescargaFoto(
   if (!tieneFotoSubida(fotoUrl)) return null;
   return firmarFoto(fotoUrl, nombreArchivo);
 }
+
+/**
+ * URLs firmadas de varias fotos subidas, en una sola llamada y en el mismo orden. Una foto
+ * que Storage no firma (no existe o la policy la niega) queda en null; un error de la
+ * llamada entera, también.
+ */
+export async function firmarFotos(fotoUrls: readonly string[]): Promise<Array<string | null>> {
+  if (fotoUrls.length === 0) return [];
+  const { data, error } = await supabase.storage
+    .from(BUCKET_FOTOS_ARBOLES)
+    .createSignedUrls(fotoUrls.map(extraerPathDeFoto), SEGUNDOS_VALIDEZ_URL);
+  if (error || !data) return fotoUrls.map(() => null);
+  return fotoUrls.map((_, indice) => {
+    const firmada = data[indice];
+    return firmada && !firmada.error && firmada.signedUrl ? firmada.signedUrl : null;
+  });
+}

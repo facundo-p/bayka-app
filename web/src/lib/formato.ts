@@ -1,3 +1,29 @@
+import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../queries/especiesConstantes';
+
+/** Dato ausente en tablas, paneles y documentos. */
+export const SIN_DATO = '—';
+
+/** Separador de «código · nombre» y de las partes de un rótulo. */
+export const SEPARADOR_PUNTO = ' · ';
+
+/** null = N/N. */
+export type EspecieRotulable = { especieCodigo: string | null; especieNombre: string | null };
+
+/** "código · nombre" de la especie, con N/N si el árbol no la tiene. */
+export function etiquetaEspecie({ especieCodigo, especieNombre }: EspecieRotulable): string {
+  const codigo = especieCodigo ?? ESPECIE_NO_RESUELTA;
+  const nombre = especieNombre ?? NOMBRE_SIN_IDENTIFICAR;
+  return `${codigo}${SEPARADOR_PUNTO}${nombre}`;
+}
+
+/** null si no se sabe quién lo registró o el perfil no tiene nombre. */
+export function nombreTecnicoDe(
+  arbol: { usuarioRegistro: string | null },
+  nombres: ReadonlyMap<string, string>,
+): string | null {
+  return (arbol.usuarioRegistro && nombres.get(arbol.usuarioRegistro)) || null;
+}
+
 /** Formatea un entero con separador de miles es-AR, ej. 12345 → "12.345". */
 export function formatearEntero(valor: number): string {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
