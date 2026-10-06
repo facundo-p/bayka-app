@@ -71,21 +71,24 @@ describe('cajaDelMapa', () => {
 });
 
 describe('radioDePuntos', () => {
-  const HOJA = { ancho: 535, alto: 560 };
+  const grilla = (paso: number, desde = 0) =>
+    Array.from({ length: 100 }, (_, i) => ({
+      x: desde + (i % 10) * paso,
+      y: Math.floor(i / 10) * paso,
+    }));
 
-  test('con miles de puntos, el radio mínimo', () => {
-    expect(radioDePuntos(7800, HOJA)).toBe(1.1);
+  test('una fracción de la separación entre vecinos', () => {
+    expect(radioDePuntos(grilla(6))).toBeCloseTo(2.1);
   });
 
-  test('con pocos, el máximo', () => {
-    expect(radioDePuntos(6, HOJA)).toBe(4);
+  test('bloques separados dan el mismo radio que uno solo', () => {
+    expect(radioDePuntos([...grilla(6), ...grilla(6, 400)])).toBe(radioDePuntos(grilla(6)));
   });
 
-  test('en el medio crece cuanto menos puntos hay', () => {
-    const intermedio = radioDePuntos(1500, HOJA);
-    expect(intermedio).toBeGreaterThan(1.1);
-    expect(intermedio).toBeLessThan(4);
-    expect(radioDePuntos(1000, HOJA)).toBeGreaterThan(intermedio);
+  test('entre el mínimo y el máximo', () => {
+    expect(radioDePuntos(grilla(1))).toBe(1.1);
+    expect(radioDePuntos(grilla(100))).toBe(4);
+    expect(radioDePuntos([{ x: 0, y: 0 }])).toBe(4);
   });
 });
 

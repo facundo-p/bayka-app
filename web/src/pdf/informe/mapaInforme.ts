@@ -1,8 +1,9 @@
 import type { PuntoGps } from '../../queries/mapaQueries';
 import { dibujarMapa, FORMATO_MAPA } from '../mapa/dibujarMapa';
 import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
-import { ENCUADRE_MAPA, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
-import { aspectoDe } from '../mapa/proyeccion';
+import { ENCUADRE_MAPA, planificarMapa, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
+import { aspectoDe, type Pixel } from '../mapa/proyeccion';
+import { medianaAlVecino } from '../mapa/vecinos';
 import { MEDIDA_INFORME } from '../plantilla/tokens';
 
 type Acumulado = { lat: number; lng: number; cantidad: number };
@@ -42,15 +43,14 @@ export function cajaDelMapa(puntos: readonly PuntoMapa[], disponible: Caja): Caj
 }
 
 /**
- * Pocos puntos en un mapa grande se pierden con el radio de miles: el radio
- * sigue a la distancia media entre puntos, entre un mínimo y un máximo.
+ * Pocos puntos en un mapa grande se pierden con el radio de miles, y muchos
+ * juntos se pisan: el radio sigue a la separación entre vecinos, en pt.
  */
-export function radioDePuntos(cantidad: number, caja: Caja): number {
+export function radioDePuntos(pixeles: readonly Pixel[]): number {
   const { minimo, maximo } = MEDIDA_INFORME.radioPuntoMapa;
-  const util =
-    (caja.ancho - MEDIDA_INFORME.margenMapa * 2) * (caja.alto - MEDIDA_INFORME.margenMapa * 2);
-  const radio = MEDIDA_INFORME.factorRadioPunto * Math.sqrt(util / Math.max(1, cantidad));
-  return Math.min(maximo, Math.max(minimo, radio));
+  const separacion = medianaAlVecino(pixeles);
+  if (separacion === null) return maximo;
+  return Math.min(maximo, Math.max(minimo, MEDIDA_INFORME.factorRadioPunto * separacion));
 }
 
 export type MapaInformePdf = { mapa: MapaPdf; caja: Caja };
@@ -63,11 +63,11 @@ export async function dibujarMapaInforme(
   const caja = cajaDelMapa(contenido.puntos, disponible);
   if (contenido.puntos.length === 0) return { mapa: MAPA_SIN_GPS, caja };
   try {
+    const opciones = { ...contenido, ...caja, margen: MEDIDA_INFORME.margenMapa };
+    const ubicados = planificarMapa(opciones)?.puntos ?? [];
     const src = await dibujarMapa({
-      ...contenido,
-      ...caja,
-      margen: MEDIDA_INFORME.margenMapa,
-      radioPunto: radioDePuntos(contenido.puntos.length, caja),
+      ...opciones,
+      radioPunto: radioDePuntos(ubicados),
       // Con ~7800 puntos, JPEG pesa la mitad que PNG y no se nota la diferencia impreso.
       formato: FORMATO_MAPA.jpeg,
     });

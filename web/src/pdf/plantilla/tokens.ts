@@ -193,8 +193,8 @@ export const MEDIDA_INFORME = {
   holgura: 8,
   /** Aire dentro del marco del mapa: las etiquetas, el norte y la escala no tocan los puntos. */
   margenMapa: 24,
-  /** Radio de los puntos del mapa: crece cuanto menos puntos hay por área. */
+  /** Radio de los puntos del mapa: sigue a la separación entre vecinos, dentro de estos topes. */
   radioPuntoMapa: { minimo: 1.1, maximo: 4 },
-  /** Fracción de la distancia media entre puntos: con ~7800 árboles da el mínimo. */
-  factorRadioPunto: 0.19,
+  /** Fracción de la distancia al vecino más cercano: deja aire entre dos puntos vecinos. */
+  factorRadioPunto: 0.35,
 } as const;

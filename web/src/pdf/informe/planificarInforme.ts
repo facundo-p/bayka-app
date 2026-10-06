@@ -45,7 +45,9 @@ function renglonesEspecies({ especies }: ModeloInforme): Renglon[] {
 /** Las filas y el total; en una hoja nueva, el encabezado de columnas se repite. */
 function renglonesTabla({ parcelas }: ModeloInforme): Renglon[] {
   if (parcelas.vacio) return conEncabezado([M.altoMensaje]).map((alto) => renglon(alto));
-  const [primera, ...resto] = [...parcelas.filas, parcelas.total].map(() => M.altoFilaTabla);
+  // La última fila y el total van juntos: no se parten.
+  const sueltas = parcelas.filas.slice(0, -1).map(() => M.altoFilaTabla);
+  const [primera, ...resto] = [...sueltas, M.altoFilaTabla * 2];
   const [inicio, ...siguientes] = conEncabezado([M.altoEncabezadoTabla + primera, ...resto]);
   return [renglon(inicio), ...siguientes.map((alto) => renglon(alto, M.altoEncabezadoTabla))];
 }

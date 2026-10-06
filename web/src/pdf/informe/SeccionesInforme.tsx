@@ -154,7 +154,18 @@ function RenglonTotal({ total }: { total: TotalParcelas }) {
   );
 }
 
+/** La fila Total no queda sola arriba de una hoja: viaja con la última parcela. */
+function FinDeTabla({ ultima, total }: { ultima?: FilaParcela; total: TotalParcelas | null }) {
+  return (
+    <View wrap={false}>
+      {ultima && <RenglonParcela fila={ultima} />}
+      {total && <RenglonTotal total={total} />}
+    </View>
+  );
+}
+
 export function TablaParcelas({ parcelas }: { parcelas: ModeloInforme['parcelas'] }) {
+  const anteriores = parcelas.filas.slice(0, -1);
   return (
     <View>
       <EncabezadoBloque>{TEXTO_INFORME.parcelas}</EncabezadoBloque>
@@ -163,10 +174,10 @@ export function TablaParcelas({ parcelas }: { parcelas: ModeloInforme['parcelas'
       ) : (
         <View>
           <EncabezadoTabla />
-          {parcelas.filas.map((fila) => (
+          {anteriores.map((fila) => (
             <RenglonParcela key={fila.codigo ?? TEXTO_INFORME.sinParcela} fila={fila} />
           ))}
-          {parcelas.total && <RenglonTotal total={parcelas.total} />}
+          <FinDeTabla ultima={parcelas.filas.at(-1)} total={parcelas.total} />
         </View>
       )}
     </View>
