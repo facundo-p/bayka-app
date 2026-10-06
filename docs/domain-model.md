@@ -183,7 +183,8 @@ No se pueden modificar desde la aplicación en la Fase 1.
 id
 codigo
 nombre
-nombre_cientifico (opcional)
+especie_cientifica_id (opcional)
+nombre_cientifico (copia del nombre de la especie científica)
 tipo (por ahora solo flora)
 subtipo (árbol o arbusto; las especies sin clasificar quedan como árbol)
 fecha_creacion
@@ -192,6 +193,10 @@ fecha_creacion
 Tipo y subtipo son fijos en el código: los valores válidos están en
 `contracts/tipos-especie.json` (#752). El subtipo es solo un dato: no cambia
 conteos ni textos.
+
+El nombre científico se elige de la lista de especies científicas (#753);
+`nombre_cientifico` lo mantiene un trigger para que mobile siga leyéndolo sin
+cambios.
 
 Ejemplo:
 
@@ -208,6 +213,21 @@ N:M plantaciones
 ```
 
 Una plantación define qué especies están disponibles en su interfaz de registro.
+
+### Especie científica
+
+Agrupa los nombres comunes regionales de una misma especie botánica (#753): por
+ejemplo, «Prosopis alba» agrupa a Algarrobo blanco y a sus otros nombres
+locales. Es global, opcional para cada especie y la administran los admins
+desde la pestaña Científicas de Especies.
+
+```
+id
+nombre (único sin distinguir mayúsculas; se guarda sin espacios de más)
+```
+
+Renombrarla cambia el nombre científico de todas sus especies. No se puede
+eliminar mientras agrupe alguna.
 
 ---
 
