@@ -21,6 +21,12 @@ test('nombreArchivoDescarga arma <prefijo>-<lugar>-<periodo>.<extension>', () =>
   );
 });
 
+test('nombreArchivoDescarga suma el detalle como slug al final', () => {
+  expect(nombreArchivoDescarga('ficha', 'San Sebastián', '2025-2026', 'pdf', 'LP12L10ANC23')).toBe(
+    'ficha-san-sebastian-2025-2026-lp12l10anc23.pdf',
+  );
+});
+
 test('nombreArchivoDescarga omite partes vacías tras el slug', () => {
   expect(nombreArchivoDescarga('arboles', '', '2025-2026', 'csv')).toBe('arboles-2025-2026.csv');
   expect(nombreArchivoDescarga('arboles', '', '', 'csv')).toBe('arboles-.csv');

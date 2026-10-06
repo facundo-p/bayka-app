@@ -77,6 +77,7 @@ function renderPanel(
     parcelaCodigo = 'P-01' as string | null,
     tecnicoNombre = 'Lucía Ferreyra' as string | null,
     nombreFoto = 'foto-finca-2026-a-001.jpg' as string | null,
+    descargarFicha = null as (() => Promise<void>) | null,
     edicionDeEspecie = undefined as EdicionDeEspecie | undefined,
   } = {},
 ) {
@@ -89,6 +90,7 @@ function renderPanel(
         parcelaCodigo={parcelaCodigo}
         tecnicoNombre={tecnicoNombre}
         nombreFoto={nombreFoto}
+        descargarFicha={descargarFicha}
         edicionDeEspecie={edicionDeEspecie}
         onCerrar={onCerrar}
       />
@@ -156,6 +158,48 @@ test('la X cierra el panel', async () => {
 
   await usuario.click(screen.getByRole('button', { name: 'Cerrar Detalle del árbol A-001-SS26' }));
   expect(onCerrar).toHaveBeenCalled();
+});
+
+describe('ficha PDF (#754)', () => {
+  test('el botón está al pie y genera la ficha', async () => {
+    const descargarFicha = vi.fn(async () => {});
+    renderPanel(arbol(), { descargarFicha });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Descargar ficha PDF' }));
+
+    expect(descargarFicha).toHaveBeenCalledTimes(1);
+  });
+
+  test('mientras genera avisa y no acepta otro click', async () => {
+    let terminar = () => {};
+    const descargarFicha = vi.fn(() => new Promise<void>((resolver) => (terminar = resolver)));
+    renderPanel(arbol(), { descargarFicha });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Descargar ficha PDF' }));
+
+    const generando = screen.getByRole('button', { name: /Generando ficha/ });
+    expect(generando).toBeDisabled();
+    await userEvent.click(generando);
+    expect(descargarFicha).toHaveBeenCalledTimes(1);
+    terminar();
+    expect(await screen.findByRole('button', { name: 'Descargar ficha PDF' })).toBeEnabled();
+  });
+
+  test('si falla, lo dice debajo del botón', async () => {
+    const descargarFicha = vi.fn(async () => {
+      throw new Error('boom');
+    });
+    renderPanel(arbol(), { descargarFicha });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Descargar ficha PDF' }));
+
+    expect(await screen.findByText('No se pudo generar la ficha')).toBeInTheDocument();
+  });
+
+  test('sin la plantación cargada queda deshabilitado', () => {
+    renderPanel(arbol(), { descargarFicha: null });
+    expect(screen.getByRole('button', { name: 'Descargar ficha PDF' })).toBeDisabled();
+  });
 });
 
 describe('descarga de la foto', () => {
