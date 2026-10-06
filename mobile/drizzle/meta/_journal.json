@@ -225,6 +225,13 @@
       "when": 1790812800000,
       "tag": "0031_trees_especie_base",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1790899200000,
+      "tag": "0032_species_tipo_subtipo",
+      "breakpoints": true
     }
   ]
 }

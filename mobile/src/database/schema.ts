@@ -8,12 +8,15 @@ import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ConflictoDeCampo } from '../utils/conflictosDeEdicion';
 import type { MotivoVarado } from '../constants/motivoVarado';
+import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../shared/tiposEspecie';
 
 export const species = sqliteTable('species', {
   id: text('id').primaryKey(),
   codigo: text('codigo').notNull().unique(),
   nombre: text('nombre').notNull(),
   nombreCientifico: text('nombre_cientifico'),
+  tipo: text('tipo').$type<TipoEspecie>().notNull().default(TIPOS_ESPECIE.porDefecto.tipo),
+  subtipo: text('subtipo').$type<SubtipoEspecie>().notNull().default(TIPOS_ESPECIE.porDefecto.subtipo),
   createdAt: text('created_at').notNull(),
 });
 

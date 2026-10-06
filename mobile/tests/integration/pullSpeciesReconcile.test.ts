@@ -259,3 +259,28 @@ describe('pullSpeciesFromServer — reconciliación por codigo', () => {
     expect(rows[0].nombreCientifico).toBe('Coccoloba');
   });
 });
+
+describe('pullSpeciesFromServer — tipo y subtipo (#752)', () => {
+  const clasificacion = async (id: string) => {
+    const [fila] = await mockTestDb.select({ tipo: species.tipo, subtipo: species.subtipo })
+      .from(species).where(eq(species.id, id));
+    return fila;
+  };
+
+  it('guarda el tipo y el subtipo del server, también al actualizar una especie que ya estaba', async () => {
+    await insertarEspecie(SERVER_ID, 'CHI');
+    mockServer.species = [{ ...especieDelServer(SERVER_ID, 'CHI'), tipo: 'flora', subtipo: 'arbusto' }];
+
+    await pullSpeciesFromServer();
+
+    expect(await clasificacion(SERVER_ID)).toEqual({ tipo: 'flora', subtipo: 'arbusto' });
+  });
+
+  it('un server sin las columnas deja la clasificación por defecto', async () => {
+    mockServer.species = [especieDelServer(SERVER_ID, 'CHI')];
+
+    await pullSpeciesFromServer();
+
+    expect(await clasificacion(SERVER_ID)).toEqual({ tipo: 'flora', subtipo: 'arbol' });
+  });
+});

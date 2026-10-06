@@ -25,6 +25,7 @@ import { ROL } from '../src/constants/roles';
 import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
 import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
 import { CODIGO_PLANTACION, idDeArbol } from '../../shared/codigoPlantacion';
+import { TIPOS_ESPECIE } from '../../shared/tiposEspecie';
 import type { ExportRow } from '../src/queries/exportQueries';
 import { leerContrato } from './helpers/contratos';
 
@@ -89,6 +90,12 @@ describe('contracts · estados', () => {
 describe('contracts · codigo-plantacion', () => {
   it('CODIGO_PLANTACION coincide con el contrato (que es también el CHECK de la base)', () => {
     expect(CODIGO_PLANTACION).toEqual(leerContrato('codigo-plantacion.json'));
+  });
+});
+
+describe('contracts · tipos-especie', () => {
+  it('TIPOS_ESPECIE coincide con el contrato (que es también el CHECK y el DEFAULT de la base)', () => {
+    expect(TIPOS_ESPECIE).toEqual(leerContrato('tipos-especie.json'));
   });
 });
 
