@@ -100,13 +100,14 @@ describe('dibujarMapaInforme', () => {
   const DISPONIBLE = { ancho: 535, alto: 400 };
 
   test('dibuja en JPEG, con margen interior y el radio según la densidad', async () => {
-    vi.mocked(dibujarMapa).mockResolvedValue('data:image/jpeg;base64,M');
+    vi.mocked(dibujarMapa).mockResolvedValue({ src: 'data:image/jpeg;base64,M', conFondo: true });
     const { mapa } = await dibujarMapaInforme(contenido, DISPONIBLE);
-    expect(mapa).toEqual({ estado: 'listo', src: 'data:image/jpeg;base64,M' });
+    expect(mapa).toEqual({ estado: 'listo', src: 'data:image/jpeg;base64,M', conSatelite: true });
     expect(vi.mocked(dibujarMapa).mock.calls[0][0]).toMatchObject({
       formato: { tipo: 'image/jpeg' },
       margen: 24,
       radioPunto: 4,
+      fondo: expect.any(Function),
     });
   });
 

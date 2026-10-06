@@ -30,7 +30,9 @@ const CON_TODO = arbolParaFicha({
 });
 
 const LISTA: FotoPdf = { estado: ESTADO_FOTO.lista, src: PNG_DE_PRUEBA };
-const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA };
+const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite: false };
+const MAPA_SATELITE: MapaPdf = { ...MAPA, conSatelite: true };
+const ATRIBUCION = 'Imágenes © Esri, Maxar';
 
 beforeAll(() => registrarFuentes(FUENTES_NODE));
 
@@ -92,13 +94,29 @@ const PEOR_CASO = arbolParaFicha({
   gps: { lat: -27.3601234, lng: -55.8974411, precision: 12.5 },
 });
 
-test('tres fichas en el peor caso realista entran en una hoja', async () => {
-  const contexto = { tecnico: 'María Fernanda Etchegoyen Larrañaga', foto: LISTA, mapa: MAPA };
+test('tres fichas en el peor caso realista, con la atribución del satélite, entran en una hoja', async () => {
+  const tecnico = 'María Fernanda Etchegoyen Larrañaga';
+  const contexto = { tecnico, foto: LISTA, mapa: MAPA_SATELITE };
   const fichas = [1, 2, 3].map(() => datosFicha(PEOR_CASO, contexto));
   const pdf = await renderToBuffer(
     <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
   );
   expect(paginasDelPdf(pdf)).toBe(1);
+});
+
+test('la atribución de Esri va al pie del minimapa solo si tiene satélite', async () => {
+  const textosCon = async (mapa: MapaPdf) =>
+    textosDelPdf(
+      await renderToBuffer(
+        <DocumentoFichas
+          encabezado={ENCABEZADO}
+          emitido="06/10/2026"
+          fichas={[datosFicha(CON_TODO, { tecnico: null, foto: LISTA, mapa })]}
+        />,
+      ),
+    );
+  expect(await textosCon(MAPA_SATELITE)).toContain(ATRIBUCION);
+  expect(await textosCon(MAPA)).not.toContain(ATRIBUCION);
 });
 
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {

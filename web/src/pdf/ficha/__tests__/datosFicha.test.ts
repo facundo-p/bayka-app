@@ -6,7 +6,11 @@ import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
 import { datosFicha, documentoDeFichas } from '../datosFicha';
 
 const FOTO: FotoPdf = { estado: ESTADO_FOTO.lista, src: 'data:image/jpeg;base64,AAA' };
-const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: 'data:image/png;base64,BBB' };
+const MAPA: MapaPdf = {
+  estado: ESTADO_MAPA.listo,
+  src: 'data:image/png;base64,BBB',
+  conSatelite: false,
+};
 
 const COMPLETO = arbolParaFicha({
   subId: 'LP12L10ANC23',

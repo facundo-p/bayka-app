@@ -33,7 +33,11 @@ vi.mock('../../pdf/ficha/motorFichas', () => ({
 }));
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
-const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: 'data:image/png;base64,M' };
+const MAPA: MapaPdf = {
+  estado: ESTADO_MAPA.listo,
+  src: 'data:image/png;base64,M',
+  conSatelite: false,
+};
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
