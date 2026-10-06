@@ -191,5 +191,10 @@ export const MEDIDA_INFORME = {
   altoMinimoMapa: 198,
   /** Colchón contra los redondeos del layout: si el cálculo se queda corto, el mapa salta solo. */
   holgura: 8,
-  radioPuntoMapa: 1.1,
+  /** Aire dentro del marco del mapa: las etiquetas, el norte y la escala no tocan los puntos. */
+  margenMapa: 24,
+  /** Radio de los puntos del mapa: crece cuanto menos puntos hay por área. */
+  radioPuntoMapa: { minimo: 1.1, maximo: 4 },
+  /** Fracción de la distancia media entre puntos: con ~7800 árboles da el mínimo. */
+  factorRadioPunto: 0.19,
 } as const;

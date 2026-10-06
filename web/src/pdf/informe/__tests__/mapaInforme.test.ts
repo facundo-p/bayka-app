@@ -1,6 +1,11 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
 import { dibujarMapa } from '../../mapa/dibujarMapa';
-import { cajaDelMapa, dibujarMapaInforme, etiquetasDeParcelas } from '../mapaInforme';
+import {
+  cajaDelMapa,
+  dibujarMapaInforme,
+  etiquetasDeParcelas,
+  radioDePuntos,
+} from '../mapaInforme';
 
 vi.mock('../../mapa/dibujarMapa', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../mapa/dibujarMapa')>()),
@@ -65,6 +70,25 @@ describe('cajaDelMapa', () => {
   });
 });
 
+describe('radioDePuntos', () => {
+  const HOJA = { ancho: 535, alto: 560 };
+
+  test('con miles de puntos, el radio mínimo', () => {
+    expect(radioDePuntos(7800, HOJA)).toBe(1.1);
+  });
+
+  test('con pocos, el máximo', () => {
+    expect(radioDePuntos(6, HOJA)).toBe(4);
+  });
+
+  test('en el medio crece cuanto menos puntos hay', () => {
+    const intermedio = radioDePuntos(1500, HOJA);
+    expect(intermedio).toBeGreaterThan(1.1);
+    expect(intermedio).toBeLessThan(4);
+    expect(radioDePuntos(1000, HOJA)).toBeGreaterThan(intermedio);
+  });
+});
+
 describe('dibujarMapaInforme', () => {
   const contenido = {
     puntos: [{ lat: -27.47, lng: -55.9, color: '#000' }],
@@ -72,13 +96,14 @@ describe('dibujarMapaInforme', () => {
   };
   const DISPONIBLE = { ancho: 535, alto: 400 };
 
-  test('dibuja en JPEG con los puntos chicos del informe', async () => {
+  test('dibuja en JPEG, con margen interior y el radio según la densidad', async () => {
     vi.mocked(dibujarMapa).mockResolvedValue('data:image/jpeg;base64,M');
     const { mapa } = await dibujarMapaInforme(contenido, DISPONIBLE);
     expect(mapa).toEqual({ estado: 'listo', src: 'data:image/jpeg;base64,M' });
     expect(vi.mocked(dibujarMapa).mock.calls[0][0]).toMatchObject({
       formato: { tipo: 'image/jpeg' },
-      radioPunto: 1.1,
+      margen: 24,
+      radioPunto: 4,
     });
   });
 

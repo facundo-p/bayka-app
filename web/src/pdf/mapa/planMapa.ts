@@ -13,6 +13,8 @@ export type ContenidoMapa = {
   etiquetas?: readonly EtiquetaMapa[];
   ancho: number;
   alto: number;
+  /** Aire mínimo entre lo encuadrado y el borde, en pt; por defecto `ENCUADRE_MAPA.margenPt`. */
+  margen?: number;
 };
 
 export type PuntoUbicado = Pixel & { color: string };
@@ -44,7 +46,7 @@ export function planificarMapa(contenido: ContenidoMapa): PlanMapa | null {
   const posiciones = todasLasPosiciones(contenido);
   if (posiciones.length === 0) return null;
   const encuadre = encuadrar(posiciones, contenido.ancho, contenido.alto, {
-    margen: ENCUADRE_MAPA.margenPt,
+    margen: contenido.margen ?? ENCUADRE_MAPA.margenPt,
     minimoMetros: ENCUADRE_MAPA.minimoMetros,
   });
   const ubicar = (punto: PuntoMapa) => ({ ...proyectar(encuadre, punto), color: punto.color });

@@ -32,13 +32,25 @@ export type Caja = { ancho: number; alto: number };
  * así el mapa no deja franjas vacías a los costados de la plantación.
  */
 export function cajaDelMapa(puntos: readonly PuntoMapa[], disponible: Caja): Caja {
-  const margen = ENCUADRE_MAPA.margenPt * 2;
+  const margen = MEDIDA_INFORME.margenMapa * 2;
   const aspecto = aspectoDe(puntos, ENCUADRE_MAPA.minimoMetros);
   const util = { ancho: disponible.ancho - margen, alto: disponible.alto - margen };
   if (util.ancho / util.alto > aspecto) {
     return { ancho: util.alto * aspecto + margen, alto: disponible.alto };
   }
   return { ancho: disponible.ancho, alto: util.ancho / aspecto + margen };
+}
+
+/**
+ * Pocos puntos en un mapa grande se pierden con el radio de miles: el radio
+ * sigue a la distancia media entre puntos, entre un mínimo y un máximo.
+ */
+export function radioDePuntos(cantidad: number, caja: Caja): number {
+  const { minimo, maximo } = MEDIDA_INFORME.radioPuntoMapa;
+  const util =
+    (caja.ancho - MEDIDA_INFORME.margenMapa * 2) * (caja.alto - MEDIDA_INFORME.margenMapa * 2);
+  const radio = MEDIDA_INFORME.factorRadioPunto * Math.sqrt(util / Math.max(1, cantidad));
+  return Math.min(maximo, Math.max(minimo, radio));
 }
 
 export type MapaInformePdf = { mapa: MapaPdf; caja: Caja };
@@ -54,7 +66,8 @@ export async function dibujarMapaInforme(
     const src = await dibujarMapa({
       ...contenido,
       ...caja,
-      radioPunto: MEDIDA_INFORME.radioPuntoMapa,
+      margen: MEDIDA_INFORME.margenMapa,
+      radioPunto: radioDePuntos(contenido.puntos.length, caja),
       // Con ~7800 puntos, JPEG pesa la mitad que PNG y no se nota la diferencia impreso.
       formato: FORMATO_MAPA.jpeg,
     });
