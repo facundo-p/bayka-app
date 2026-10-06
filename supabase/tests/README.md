@@ -192,7 +192,9 @@ puede leer, agrupan el mes en UTC, no cuentan fotos locales (`file://`,
 `51` `catalogo_conteos` suma fotos y bytes desde `storage.objects` (paths
 relativos y URLs viejas con `?token=`), sin contar fotos locales, referencias sin
 objeto ni objetos que la policy de Storage no deja leer, y sin alterar grupos ni
-árboles (069, #685).
+árboles (069, #685). `52` `contracts/tipos-especie.json`: el CHECK de `species`
+acepta exactamente los pares tipo/subtipo del contrato y rechaza el resto, y el
+DEFAULT es la clasificación por defecto (070, #752).
 
 ## Hallazgo fuera de alcance (no corregido)
 

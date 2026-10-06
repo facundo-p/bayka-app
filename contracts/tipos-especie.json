@@ -1,0 +1,7 @@
+{
+  "_comment": "Tipo y subtipo de una especie (#752): de cada tipo, sus subtipos válidos, y la clasificación que toma una especie que no dice la suya. Es también el CHECK species_tipo_subtipo_valido de la base (supabase/migrations/070_species_tipo_subtipo.sql) y el DEFAULT de la base y de mobile (drizzle 0032): cambian juntos, con shared/tiposEspecie.ts y los contract tests (supabase/tests/52_contrato_tipos_especie.test.sql, web/src/lib/__tests__/contracts.test.ts y mobile/tests/contracts.test.ts).",
+  "subtiposPorTipo": {
+    "flora": ["arbol", "arbusto"]
+  },
+  "porDefecto": { "tipo": "flora", "subtipo": "arbol" }
+}

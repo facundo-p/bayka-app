@@ -169,7 +169,7 @@ N:M plantaciones (como técnico asignado)
 
 # 4. Especie
 
-Representa un tipo de árbol.
+Representa un tipo de planta: por ahora, un árbol o un arbusto.
 
 Las especies son **globales al sistema**.
 
@@ -184,8 +184,14 @@ id
 codigo
 nombre
 nombre_cientifico (opcional)
+tipo (por ahora solo flora)
+subtipo (árbol o arbusto; las especies sin clasificar quedan como árbol)
 fecha_creacion
 ```
+
+Tipo y subtipo son fijos en el código: los valores válidos están en
+`contracts/tipos-especie.json` (#752). El subtipo es solo un dato: no cambia
+conteos ni textos.
 
 Ejemplo:
 

@@ -111,8 +111,15 @@ describe('listarEspeciesConUso', () => {
 
 describe('listarCatalogoConUso', () => {
   test('cuenta plantaciones por especie y árboles totales, manteniendo el orden del catálogo', async () => {
-    capturarConsultas((consulta) => {
-      if (consulta.tabla === 'species') return { data: [FILA_QUEBRACHO, FILA_ALGARROBO] };
+    const consultas = capturarConsultas((consulta) => {
+      if (consulta.tabla === 'species') {
+        return {
+          data: [
+            { ...FILA_QUEBRACHO, tipo: 'flora', subtipo: 'arbol' },
+            { ...FILA_ALGARROBO, tipo: 'flora', subtipo: 'arbusto' },
+          ],
+        };
+      }
       if (consulta.tabla === 'plantation_species') {
         // Quebracho habilitado en 2 plantaciones; Algarrobo en ninguna.
         return { data: [{ species_id: 'sp-1' }, { species_id: 'sp-1' }] };
@@ -124,12 +131,17 @@ describe('listarCatalogoConUso', () => {
 
     const catalogo = await listarCatalogoConUso();
 
+    expect(consultas.find((consulta) => consulta.tabla === 'species')?.columnas).toBe(
+      'id, codigo, nombre, nombre_cientifico, tipo, subtipo',
+    );
     expect(catalogo).toEqual([
       {
         id: 'sp-1',
         codigo: 'QB',
         nombre: 'Quebracho',
         nombreCientifico: 'Schinopsis balansae',
+        tipo: 'flora',
+        subtipo: 'arbol',
         plantaciones: 2,
         arboles: 42,
       },
@@ -138,6 +150,8 @@ describe('listarCatalogoConUso', () => {
         codigo: 'AL',
         nombre: 'Algarrobo',
         nombreCientifico: null,
+        tipo: 'flora',
+        subtipo: 'arbusto',
         plantaciones: 0,
         arboles: 0,
       },

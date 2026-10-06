@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -37,6 +37,8 @@ const IBIRA: EspecieConCatalogoUso = {
   codigo: 'IBI',
   nombre: 'Ibirá Pitá',
   nombreCientifico: 'Peltophorum dubium',
+  tipo: 'flora',
+  subtipo: 'arbusto',
   plantaciones: 2,
   arboles: 1402,
 };
@@ -64,7 +66,7 @@ function renderPanel(especie: EspecieConCatalogoUso | null = null) {
   return onCerrar;
 }
 
-test('crear feliz: valida, llama a crearEspecie (científico null) y cierra', async () => {
+test('crear feliz: valida, llama a crearEspecie (científico null, Flora / Árbol) y cierra', async () => {
   const usuario = userEvent.setup();
   const onCerrar = renderPanel();
 
@@ -77,7 +79,33 @@ test('crear feliz: valida, llama a crearEspecie (científico null) y cierra', as
     codigo: 'ANC',
     nombre: 'Anchico',
     nombreCientifico: null,
+    tipo: 'flora',
+    subtipo: 'arbol',
   });
+});
+
+test('el alta muestra el tipo fijo en Flora y el subtipo preseleccionado en Árbol', () => {
+  renderPanel();
+
+  expect(screen.getByText('Flora')).toBeInTheDocument();
+  const subtipo = screen.getByRole('radiogroup', { name: 'Subtipo *' });
+  expect(within(subtipo).getByRole('radio', { name: 'Árbol' })).toBeChecked();
+  expect(within(subtipo).getByRole('radio', { name: 'Arbusto' })).not.toBeChecked();
+});
+
+test('elegir Arbusto en el alta lo guarda como subtipo', async () => {
+  const usuario = userEvent.setup();
+  const onCerrar = renderPanel();
+
+  await usuario.type(screen.getByLabelText('Código *'), 'CHI');
+  await usuario.type(screen.getByLabelText('Nombre común *'), 'Chilca');
+  await usuario.click(screen.getByRole('radio', { name: 'Arbusto' }));
+  await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+  await waitFor(() => expect(onCerrar).toHaveBeenCalled());
+  expect(vi.mocked(crearEspecie)).toHaveBeenCalledWith(
+    expect.objectContaining({ tipo: 'flora', subtipo: 'arbusto' }),
+  );
 });
 
 test('campos obligatorios vacíos muestran errores y no guarda', async () => {
@@ -111,6 +139,7 @@ test('editar: precarga los valores y llama a editarEspecie con el id', async () 
   expect(screen.getByLabelText('Código *')).toHaveValue('IBI');
   expect(screen.getByLabelText('Nombre común *')).toHaveValue('Ibirá Pitá');
   expect(screen.getByLabelText('Nombre científico')).toHaveValue('Peltophorum dubium');
+  expect(screen.getByRole('radio', { name: 'Arbusto' })).toBeChecked();
 
   await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
   await waitFor(() => expect(onCerrar).toHaveBeenCalled());
@@ -118,6 +147,8 @@ test('editar: precarga los valores y llama a editarEspecie con el id', async () 
     codigo: 'IBI',
     nombre: 'Ibirá Pitá',
     nombreCientifico: 'Peltophorum dubium',
+    tipo: 'flora',
+    subtipo: 'arbusto',
   });
 });
 

@@ -1,6 +1,7 @@
 /**
  * Filtro y orden del catálogo de especies. Puro: se testea sin renderizar.
  */
+import { SUBTIPO_ESPECIE } from '../../../../shared/tiposEspecie';
 import { formatearEntero, pluralizar, type Sustantivo } from '../../lib/formato';
 import { coincideBusqueda } from '../../lib/normalizarTexto';
 import type { EspecieConCatalogoUso } from '../../queries/especieQueries';
@@ -15,6 +16,11 @@ export const USO_ESPECIE = {
 
 export type UsoEspecie = (typeof USO_ESPECIE)[keyof typeof USO_ESPECIE];
 
+/** Filtro por subtipo: uno de los del contrato, o todos. */
+export const SUBTIPO_FILTRO = { todos: 'todos', ...SUBTIPO_ESPECIE } as const;
+
+export type SubtipoFiltro = (typeof SUBTIPO_FILTRO)[keyof typeof SUBTIPO_FILTRO];
+
 export const ORDEN_ESPECIE = {
   arboles: 'arboles',
   plantaciones: 'plantaciones',
@@ -26,6 +32,7 @@ export type OrdenEspecie = (typeof ORDEN_ESPECIE)[keyof typeof ORDEN_ESPECIE];
 export type FiltrosEspecies = {
   busqueda: string;
   uso: UsoEspecie;
+  subtipo: SubtipoFiltro;
   orden: OrdenEspecie;
 };
 
@@ -34,6 +41,7 @@ export type FiltrosBarraEspecies = Omit<FiltrosEspecies, 'busqueda'>;
 
 export const FILTROS_INICIALES_ESPECIES: FiltrosBarraEspecies = {
   uso: USO_ESPECIE.todas,
+  subtipo: SUBTIPO_FILTRO.todos,
   orden: ORDEN_ESPECIE.arboles,
 };
 
@@ -51,6 +59,10 @@ function pasaUso(especie: EspecieConCatalogoUso, uso: UsoEspecie): boolean {
   if (uso === USO_ESPECIE.enUso) return !sinUso(especie);
   if (uso === USO_ESPECIE.sinUso) return sinUso(especie);
   return true;
+}
+
+function pasaSubtipo(especie: EspecieConCatalogoUso, subtipo: SubtipoFiltro): boolean {
+  return subtipo === SUBTIPO_FILTRO.todos || especie.subtipo === subtipo;
 }
 
 /** Comparadores por criterio; los conteos van de mayor a menor. */
@@ -71,10 +83,13 @@ function comparar(orden: OrdenEspecie) {
 
 export function filtrarEspecies(
   catalogo: EspecieConCatalogoUso[],
-  { busqueda, uso, orden }: FiltrosEspecies,
+  { busqueda, uso, subtipo, orden }: FiltrosEspecies,
 ): EspecieConCatalogoUso[] {
   return catalogo
-    .filter((especie) => coincide(especie, busqueda) && pasaUso(especie, uso))
+    .filter(
+      (especie) =>
+        coincide(especie, busqueda) && pasaUso(especie, uso) && pasaSubtipo(especie, subtipo),
+    )
     .sort(comparar(orden));
 }
 

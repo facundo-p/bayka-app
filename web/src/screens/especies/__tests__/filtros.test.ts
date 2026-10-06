@@ -6,9 +6,11 @@ import {
   metaCatalogo,
   ORDEN_ESPECIE,
   sinUso,
+  SUBTIPO_FILTRO,
   USO_ESPECIE,
   type FiltrosEspecies,
 } from '../filtros';
+import type { SubtipoEspecie } from '../../../../../shared/tiposEspecie';
 
 function especie(
   codigo: string,
@@ -16,20 +18,31 @@ function especie(
   plantaciones: number,
   arboles: number,
   nombreCientifico: string | null = null,
+  subtipo: SubtipoEspecie = 'arbol',
 ): EspecieConCatalogoUso {
-  return { id: codigo, codigo, nombre, nombreCientifico, plantaciones, arboles };
+  return {
+    id: codigo,
+    codigo,
+    nombre,
+    nombreCientifico,
+    tipo: 'flora',
+    subtipo,
+    plantaciones,
+    arboles,
+  };
 }
 
 const CATALOGO = [
   especie('ALG', 'Algarrobo blanco', 6, 3412, 'Prosopis alba'),
   especie('LAP', 'Lapacho rosado', 4, 1402, 'Handroanthus impetiginosus'),
-  especie('MOL', 'Molle', 0, 0, 'Schinus molle'),
+  especie('MOL', 'Molle', 0, 0, 'Schinus molle', 'arbusto'),
   especie('TAL', 'Tala', 0, 0),
 ];
 
 const BASE: FiltrosEspecies = {
   busqueda: '',
   uso: USO_ESPECIE.todas,
+  subtipo: SUBTIPO_FILTRO.todos,
   orden: ORDEN_ESPECIE.codigo,
 };
 
@@ -73,6 +86,16 @@ test('el orden por conteo va de mayor a menor y desempata por código', () => {
     'MOL',
     'TAL',
   ]);
+});
+
+test('el filtro de subtipo deja solo las especies de ese subtipo', () => {
+  expect(codigos({ subtipo: SUBTIPO_FILTRO.arbusto })).toEqual(['MOL']);
+  expect(codigos({ subtipo: SUBTIPO_FILTRO.arbol })).toEqual(['ALG', 'LAP', 'TAL']);
+  expect(codigos({ subtipo: SUBTIPO_FILTRO.todos })).toHaveLength(4);
+});
+
+test('subtipo y uso componen entre sí', () => {
+  expect(codigos({ subtipo: SUBTIPO_FILTRO.arbol, uso: USO_ESPECIE.sinUso })).toEqual(['TAL']);
 });
 
 test('búsqueda y uso componen entre sí', () => {
