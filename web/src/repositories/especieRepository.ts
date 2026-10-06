@@ -10,11 +10,14 @@ import { PG_ERROR } from '../lib/postgresErrorCodes';
  * mutaciones fallan con insufficient_privilege hasta que se agregue por migración.
  */
 
-/** `nombreCientifico` null cuando el campo quedó vacío, así el update lo limpia en la base. */
+/**
+ * `especieCientificaId` null desvincula. El nombre científico no se escribe: el server lo copia de
+ * la especie científica (#753).
+ */
 export type EspecieInput = {
   codigo: string;
   nombre: string;
-  nombreCientifico: string | null;
+  especieCientificaId: string | null;
   tipo: TipoEspecie;
   subtipo: SubtipoEspecie;
 };
@@ -32,7 +35,7 @@ export class CodigoEspecieDuplicadoError extends Error {
 type Payload = {
   codigo: string;
   nombre: string;
-  nombre_cientifico: string | null;
+  especie_cientifica_id: string | null;
   tipo: TipoEspecie;
   subtipo: SubtipoEspecie;
 };
@@ -42,7 +45,7 @@ function aPayload(input: EspecieInput): Payload {
   return {
     codigo: input.codigo,
     nombre: input.nombre,
-    nombre_cientifico: input.nombreCientifico,
+    especie_cientifica_id: input.especieCientificaId,
     tipo: input.tipo,
     subtipo: input.subtipo,
   };

@@ -38,7 +38,12 @@ export function BarraLateral() {
           label="Plantaciones"
           activeOnDetail
         />
-        <NavItem to={RUTA.especies} icon={<Leaf size={TAMANO_ICONO.lg} />} label="Especies" />
+        <NavItem
+          to={RUTA.especies}
+          icon={<Leaf size={TAMANO_ICONO.lg} />}
+          label="Especies"
+          activeOnDetail
+        />
         {esSuperadmin && (
           <NavItem to={RUTA.usuarios} icon={<Users size={TAMANO_ICONO.lg} />} label="Usuarios" />
         )}

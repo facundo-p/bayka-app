@@ -16,14 +16,14 @@ vi.mock('../../lib/supabase', async () => {
 const INPUT: EspecieInput = {
   codigo: 'ANC',
   nombre: 'Anchico',
-  nombreCientifico: 'Parapiptadenia rigida',
+  especieCientificaId: 'ec-1',
   tipo: 'flora',
   subtipo: 'arbusto',
 };
 const INPUT_SIN_CIENTIFICO: EspecieInput = {
   codigo: 'IBI',
   nombre: 'Ibirá Pitá',
-  nombreCientifico: null,
+  especieCientificaId: null,
   tipo: 'flora',
   subtipo: 'arbol',
 };
@@ -36,7 +36,7 @@ const ERROR_DUPLICADO = {
 beforeEach(resetEstadoMock);
 
 describe('crearEspecie', () => {
-  test('inserta código, nombres, tipo y subtipo; devuelve el id creado', async () => {
+  test('inserta código, nombre, especie científica, tipo y subtipo; devuelve el id creado', async () => {
     const consultas = capturarConsultas((consulta) =>
       consulta.tabla === 'species' ? { data: { id: 'sp-nuevo' } } : { data: null },
     );
@@ -49,17 +49,19 @@ describe('crearEspecie', () => {
     expect(insert.payload).toEqual({
       codigo: 'ANC',
       nombre: 'Anchico',
-      nombre_cientifico: 'Parapiptadenia rigida',
+      especie_cientifica_id: 'ec-1',
       tipo: 'flora',
       subtipo: 'arbusto',
     });
   });
 
-  test('nombre científico vacío se guarda como null', async () => {
+  test('sin especie científica manda el vínculo en null', async () => {
     const consultas = capturarConsultas(() => ({ data: { id: 'sp-2' } }));
     await crearEspecie(INPUT_SIN_CIENTIFICO);
 
-    expect((consultas[0].payload as Record<string, unknown>).nombre_cientifico).toBeNull();
+    const payload = consultas[0].payload as Record<string, unknown>;
+    expect(payload.especie_cientifica_id).toBeNull();
+    expect(payload).not.toHaveProperty('nombre_cientifico');
   });
 
   test('código duplicado (unique_violation) lanza CodigoEspecieDuplicadoError', async () => {
@@ -85,7 +87,7 @@ describe('editarEspecie', () => {
     expect(update.payload).toEqual({
       codigo: 'ANC',
       nombre: 'Anchico',
-      nombre_cientifico: 'Parapiptadenia rigida',
+      especie_cientifica_id: 'ec-1',
       tipo: 'flora',
       subtipo: 'arbusto',
     });

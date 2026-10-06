@@ -33,10 +33,12 @@ import {
 import {
   aEspecieInput,
   hayErroresEspecie,
+  SIN_ESPECIE_CIENTIFICA,
   validarEspecie,
   type ErroresEspecie,
   type EspecieFormValues,
 } from '../../services/especieValidaciones';
+import { SelectorEspecieCientifica } from './SelectorEspecieCientifica';
 import styles from './Especies.module.css';
 import { mensajeDeError } from '../../lib/clasificarError';
 
@@ -48,7 +50,7 @@ function valoresIniciales(especie: EspecieConCatalogoUso | null): EspecieFormVal
   return {
     codigo: especie?.codigo ?? '',
     nombre: especie?.nombre ?? '',
-    nombreCientifico: especie?.nombreCientifico ?? '',
+    especieCientificaId: especie?.especieCientificaId ?? SIN_ESPECIE_CIENTIFICA,
     tipo: especie?.tipo ?? TIPOS_ESPECIE.porDefecto.tipo,
     subtipo: especie?.subtipo ?? TIPOS_ESPECIE.porDefecto.subtipo,
   };
@@ -211,11 +213,12 @@ export function EspeciePanel({ especie, onCerrar }: EspeciePanelProps) {
           error={errores.nombre}
           onChange={(evento) => cambiarCampo('nombre', evento.target.value)}
         />
-        <Input
-          label="Nombre científico"
-          className={styles.campoCientifico}
-          value={valores.nombreCientifico}
-          onChange={(evento) => cambiarCampo('nombreCientifico', evento.target.value)}
+        <SelectorEspecieCientifica
+          especieId={especie?.id ?? null}
+          value={valores.especieCientificaId}
+          onChange={(especieCientificaId) =>
+            cambiarCampo('especieCientificaId', especieCientificaId)
+          }
         />
         <CamposClasificacion
           valores={valores}

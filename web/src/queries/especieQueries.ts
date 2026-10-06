@@ -11,10 +11,11 @@ export type EspecieCatalogo = {
   nombreCientifico: string | null;
 };
 
-/** Especie con su tipo y subtipo (#752): lo que muestra y edita la pantalla de Especies. */
+/** Especie con su tipo, subtipo (#752) y especie científica (#753): lo que muestra y edita la pantalla de Especies. */
 export type EspecieClasificada = EspecieCatalogo & {
   tipo: TipoEspecie;
   subtipo: SubtipoEspecie;
+  especieCientificaId: string | null;
 };
 
 /** Especie del catálogo + uso agregado a nivel organización. */
@@ -36,7 +37,11 @@ type FilaEspecie = {
   nombre_cientifico: string | null;
 };
 
-type FilaEspecieClasificada = FilaEspecie & { tipo: TipoEspecie; subtipo: SubtipoEspecie };
+type FilaEspecieClasificada = FilaEspecie & {
+  tipo: TipoEspecie;
+  subtipo: SubtipoEspecie;
+  especie_cientifica_id: string | null;
+};
 
 /** Fila del join plantation_species → species (embed de PostgREST). */
 type FilaAsignada = {
@@ -53,11 +58,11 @@ function mapearEspecie(fila: FilaEspecie): EspecieCatalogo {
   };
 }
 
-/** Una sola lectura del catálogo: el tipo y el subtipo los usa solo la pantalla de Especies. */
+/** Una sola lectura del catálogo: la clasificación la usan solo las pantallas de Especies. */
 async function leerCatalogo(): Promise<FilaEspecieClasificada[]> {
   const { data, error } = await supabase
     .from('species')
-    .select('id, codigo, nombre, nombre_cientifico, tipo, subtipo')
+    .select('id, codigo, nombre, nombre_cientifico, tipo, subtipo, especie_cientifica_id')
     .order('codigo', { ascending: true });
   if (error) throw new Error(error.message);
   return (data ?? []) as FilaEspecieClasificada[];
@@ -67,12 +72,13 @@ export async function listarCatalogo(): Promise<EspecieCatalogo[]> {
   return (await leerCatalogo()).map(mapearEspecie);
 }
 
-/** El catálogo con tipo y subtipo, para la pantalla de Especies. */
-async function listarCatalogoClasificado(): Promise<EspecieClasificada[]> {
+/** El catálogo con su clasificación, para las pantallas de Especies. */
+export async function listarCatalogoClasificado(): Promise<EspecieClasificada[]> {
   return (await leerCatalogo()).map((fila) => ({
     ...mapearEspecie(fila),
     tipo: fila.tipo,
     subtipo: fila.subtipo,
+    especieCientificaId: fila.especie_cientifica_id,
   }));
 }
 

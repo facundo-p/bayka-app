@@ -10,6 +10,7 @@ export const RUTA = {
   establecerPassword: '/establecer-password',
   plantaciones: '/plantaciones',
   especies: '/especies',
+  especiesCientificas: '/especies/cientificas',
   novedades: '/novedades',
   usuarios: '/usuarios',
 } as const;

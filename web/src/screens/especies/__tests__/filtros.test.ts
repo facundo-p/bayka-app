@@ -27,6 +27,7 @@ function especie(
     nombreCientifico,
     tipo: 'flora',
     subtipo,
+    especieCientificaId: null,
     plantaciones,
     arboles,
   };
