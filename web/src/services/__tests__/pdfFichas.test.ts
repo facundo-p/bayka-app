@@ -92,6 +92,27 @@ test('varias fichas van a un solo archivo', async () => {
   expect(descargarBlob).toHaveBeenCalledWith(BLOB, 'fichas-san-sebastian-2025-2026.pdf');
 });
 
+test('los minimapas se dibujan de a cuatro como mucho', async () => {
+  const arboles = Array.from({ length: 10 }, (_, indice) => arbolParaFicha({ id: `t${indice}` }));
+  vi.mocked(listarArbolesParaFichas).mockResolvedValue(arboles);
+  vi.mocked(motor.cargarFotos).mockResolvedValue(arboles.map(() => ({ estado: 'sin-foto' })));
+  let enVuelo = 0;
+  let maximo = 0;
+  vi.mocked(motor.minimapaDeArbol).mockImplementation(async () => {
+    enVuelo += 1;
+    maximo = Math.max(maximo, enVuelo);
+    await new Promise((resolver) => setTimeout(resolver, 1));
+    enVuelo -= 1;
+    return MAPA;
+  });
+  await descargarFichasPdf(
+    arboles.map(({ id }) => id),
+    contexto(),
+  );
+  expect(motor.minimapaDeArbol).toHaveBeenCalledTimes(10);
+  expect(maximo).toBe(4);
+});
+
 test('los puntos del mapa salen de la caché del dashboard', async () => {
   const ctx = contexto();
   ctx.queryClient.setQueryData(CLAVE_QUERY.mapa(PLANTACION.id), PUNTOS);

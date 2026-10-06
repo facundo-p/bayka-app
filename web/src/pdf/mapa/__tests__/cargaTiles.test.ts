@@ -172,6 +172,22 @@ describe('cortacircuito', () => {
     expect(deps.bajar).toHaveBeenCalledTimes(6);
   });
 
+  test('un 404 no es una caída: el pedido siguiente vuelve a llegar a Esri', async () => {
+    const { deps } = dependencias(() => ({ status: 404 }));
+    const fuente = crearFuenteTiles(deps);
+    await expect(fuente.cargar(TILES.slice(0, 1))).rejects.toThrow('404');
+    await expect(fuente.cargar(TILES.slice(1))).rejects.toThrow('404');
+    expect(deps.bajar).toHaveBeenCalledTimes(2);
+  });
+
+  test('un tilemap inválido no es una caída: el pedido siguiente vuelve a llegar a Esri', async () => {
+    const { deps } = dependencias(() => ({ status: 200, json: { error: { code: 400 } } }));
+    const fuente = crearFuenteTiles(deps);
+    await expect(fuente.tieneImagen(ZONA)).rejects.toThrow('inválido');
+    await expect(fuente.tieneImagen(ZONA)).rejects.toThrow('inválido');
+    expect(deps.bajar).toHaveBeenCalledTimes(2);
+  });
+
   test('pasada la pausa se vuelve a intentar', async () => {
     vi.useFakeTimers();
     const { deps } = dependencias(() => tilemap([1, 1]));

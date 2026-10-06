@@ -1,3 +1,4 @@
+import { liberarCanvas } from '../../canvas';
 import { capaSatelital, rectanguloAlPixel } from '../capaSatelital';
 import type { FuenteTiles } from '../cargaTiles';
 import { dibujarMapa, type CapaFondo } from '../dibujarMapa';
@@ -8,16 +9,21 @@ type Llamada = { nombre: string; args: unknown[] };
 
 // jsdom no tiene canvas: un contexto que anota lo que se le pide.
 const llamadas: Llamada[] = [];
+/** Método del contexto que lanza, para simular un canvas que falla a mitad del dibujo. */
+let metodoQueFalla: string | null = null;
 vi.mock('../../canvas', () => ({
   crearCanvas: () => ({}),
   contexto2d: () =>
     new Proxy(
       {},
       {
-        get: (_objetivo, nombre: string) =>
-          nombre === 'measureText'
-            ? () => ({ width: 10 })
-            : (...args: unknown[]) => llamadas.push({ nombre, args }),
+        get: (_objetivo, nombre: string) => {
+          if (nombre === 'measureText') return () => ({ width: 10 });
+          return (...args: unknown[]) => {
+            if (nombre === metodoQueFalla) throw new Error(nombre);
+            llamadas.push({ nombre, args });
+          };
+        },
         set: () => true,
       },
     ),
@@ -49,7 +55,15 @@ const zoomsPreguntados = (f: ReturnType<typeof fuente>) =>
 
 beforeEach(() => {
   llamadas.length = 0;
+  metodoQueFalla = null;
+  vi.mocked(liberarCanvas).mockClear();
 });
+
+/** Rellenos del canvas entero: el fondo liso. */
+const fondosLisos = (desde = 0) =>
+  llamadas
+    .slice(desde)
+    .filter(({ nombre, args }) => nombre === 'fillRect' && args.join() === '0,0,128,128');
 
 describe('capaSatelital', () => {
   test('con los tiles bajados, devuelve con qué pintarlos', async () => {
@@ -133,12 +147,25 @@ describe('dibujarMapa con el satélite', () => {
 
   test('si pintar el fondo falla, el mapa sale liso, sin satélite, y libera la imagen', async () => {
     const liberar = vi.fn();
+    let tras = -1;
     const pintar = () => {
+      tras = llamadas.length;
       throw new Error('drawImage');
     };
     const fondo: CapaFondo = async () => ({ pintar, liberar });
     const mapa = await dibujarMapa({ ...CONTENIDO, fondo });
     expect(mapa).toEqual({ src: 'data:image/png;base64,M', conFondo: false });
-    expect(liberar).toHaveBeenCalled();
+    expect(liberar).toHaveBeenCalledTimes(1);
+    // Lo que alcanzó a pintar queda tapado por el fondo liso otra vez.
+    expect(fondosLisos(tras)).toHaveLength(1);
+  });
+
+  test('si falla lo que va encima, igual libera la imagen del fondo y el canvas', async () => {
+    const liberar = vi.fn();
+    const fondo: CapaFondo = async () => ({ pintar: () => {}, liberar });
+    metodoQueFalla = 'arc';
+    await expect(dibujarMapa({ ...CONTENIDO, fondo })).rejects.toThrow('arc');
+    expect(liberar).toHaveBeenCalledTimes(1);
+    expect(liberarCanvas).toHaveBeenCalledTimes(1);
   });
 });
