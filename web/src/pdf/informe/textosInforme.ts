@@ -1,3 +1,4 @@
+import { SIN_DATO } from '../../lib/formato';
 import { ESPECIE_NO_RESUELTA } from '../../queries/especiesConstantes';
 import { TEXTO_PLANTILLA } from '../plantilla/textos';
 
@@ -5,10 +6,10 @@ import { TEXTO_PLANTILLA } from '../plantilla/textos';
 export const TEXTO_INFORME = {
   documento: 'Informe de plantación',
   periodo: 'Período',
-  plantacion: 'Plantación',
+  plantacion: TEXTO_PLANTILLA.plantacion,
   estado: 'Estado:',
   arboles: 'Árboles registrados',
-  de: 'de',
+  de: TEXTO_PLANTILLA.de,
   deLaMeta: 'de la meta',
   conGps: 'Con GPS',
   conFoto: 'Con foto',
@@ -21,6 +22,8 @@ export const TEXTO_INFORME = {
   columnaArboles: 'Árboles',
   columnaPorcentaje: '%',
   total: 'Total',
+  sinParcela: 'Sin parcela',
+  sinDato: SIN_DATO,
   mapa: 'Puntos GPS por especie',
   sinArboles: 'Todavía no hay árboles registrados.',
   sinParcelas: 'La plantación no tiene parcelas.',

@@ -100,6 +100,13 @@ test('sin organización ni puntos legibles, el informe sale igual', async () => 
   expect(descargarBlob).toHaveBeenCalled();
 });
 
+test('sin parcelas legibles, el informe sale igual con los grupos sin dato', async () => {
+  vi.mocked(listarParcelasConStats).mockRejectedValue(new Error('red'));
+  await descargarInformePdf(PLANTACION, new QueryClient());
+  expect(vi.mocked(motor.renderizarInforme).mock.calls[0][0].parcelas).toBeNull();
+  expect(descargarBlob).toHaveBeenCalled();
+});
+
 test('si el dashboard no se puede leer, falla sin descargar nada', async () => {
   vi.mocked(obtenerFuenteDashboard).mockRejectedValue(new Error('red'));
   await expect(descargarInformePdf(PLANTACION, new QueryClient())).rejects.toThrow('red');

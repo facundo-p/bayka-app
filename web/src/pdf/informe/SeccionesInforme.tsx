@@ -48,7 +48,7 @@ function Indicador({ rotulo, valor, detalle, alerta = false }: IndicadorProps) {
   return (
     <View style={styles.indicador}>
       <Text style={styles.rotulo}>{rotulo}</Text>
-      <Text style={[styles.valorIndicador, alerta ? styles.valorAlerta : {}]}>{valor}</Text>
+      <Text style={[styles.valorIndicador, alerta ? styles.valorAlerta : undefined]}>{valor}</Text>
       <Text style={styles.detalleIndicador}>{detalle}</Text>
     </View>
   );
@@ -109,10 +109,11 @@ export function BloqueEspecies({ especies }: { especies: ModeloInforme['especies
   );
 }
 
+/** `fixed`: si la tabla sigue en otra hoja, el encabezado se repite arriba. */
 function EncabezadoTabla() {
   const t = TEXTO_INFORME;
   return (
-    <View style={styles.encabezadoTabla} wrap={false}>
+    <View style={styles.encabezadoTabla} wrap={false} fixed>
       <Text style={styles.celdaParcela}>{t.columnaParcela}</Text>
       <Text style={styles.celdaNumero}>{t.columnaGrupos}</Text>
       <Text style={styles.celdaNumero}>{t.columnaArboles}</Text>
@@ -126,7 +127,8 @@ function RenglonParcela({ fila }: { fila: FilaParcela }) {
   return (
     <View style={styles.filaTabla} wrap={false}>
       <Text style={styles.celdaParcela}>
-        <Text style={styles.codigo}>{fila.codigo}</Text> {fila.nombre}
+        {fila.codigo && <Text style={styles.codigo}>{fila.codigo} </Text>}
+        {fila.nombre}
       </Text>
       <Text style={styles.celdaNumero}>{fila.grupos}</Text>
       <Text style={styles.celdaNumero}>{fila.arboles}</Text>
@@ -159,13 +161,13 @@ export function TablaParcelas({ parcelas }: { parcelas: ModeloInforme['parcelas'
       {parcelas.vacio ? (
         <Text style={styles.mensaje}>{parcelas.vacio}</Text>
       ) : (
-        <>
+        <View>
           <EncabezadoTabla />
           {parcelas.filas.map((fila) => (
-            <RenglonParcela key={fila.codigo} fila={fila} />
+            <RenglonParcela key={fila.codigo ?? TEXTO_INFORME.sinParcela} fila={fila} />
           ))}
           {parcelas.total && <RenglonTotal total={parcelas.total} />}
-        </>
+        </View>
       )}
     </View>
   );

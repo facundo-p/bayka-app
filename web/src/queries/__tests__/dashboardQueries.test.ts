@@ -95,8 +95,8 @@ describe('agruparPorParcela', () => {
     const arboles = [conteo({ cantidad: 2 }), conteo({ conGps: true })];
 
     expect(agruparPorParcela(arboles, parcelas)).toEqual([
-      { nombre: 'Norte', codigo: 'P1', cantidad: 3 },
-      { nombre: 'Sur', codigo: 'P2', cantidad: 0 },
+      { id: 'parc-1', nombre: 'Norte', codigo: 'P1', cantidad: 3 },
+      { id: 'parc-2', nombre: 'Sur', codigo: 'P2', cantidad: 0 },
     ]);
   });
 });
@@ -227,7 +227,7 @@ describe('obtenerFuenteDashboard', () => {
         { codigo: 'QB', nombre: 'Quebracho', cantidad: 1 },
         { codigo: 'NN', nombre: 'Sin identificar', cantidad: 1 },
       ],
-      porParcela: [{ nombre: 'Norte', codigo: 'P1', cantidad: 2 }],
+      porParcela: [{ id: 'parc-1', nombre: 'Norte', codigo: 'P1', cantidad: 2 }],
       porMes: [{ mes: '2026-06', cantidad: 2 }],
     });
   });

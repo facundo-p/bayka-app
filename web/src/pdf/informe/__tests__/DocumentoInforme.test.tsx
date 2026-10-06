@@ -73,8 +73,9 @@ test('un PDF anterior no rompe los caracteres del siguiente', async () => {
   await renderizar(entradaInforme({ parcelas: 2, especies: 2 }));
   const conMiles = entradaInforme({ parcelas: 2, especies: 2 });
   conMiles.dashboard.porParcela[0].cantidad = 8221;
+  conMiles.dashboard.totalArboles = 8236;
   const { textos } = await renderizar(conMiles);
-  // La fila de total, en negrita: 8.221 + 15.
+  // La fila de total, en negrita.
   expect(textos).toContain('8.236');
 });
 

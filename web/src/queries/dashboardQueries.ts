@@ -32,7 +32,7 @@ export type ParcelaDashboard = {
 };
 
 export type DistribucionEspecie = { codigo: string; nombre: string; cantidad: number };
-export type DistribucionParcela = { nombre: string; codigo: string; cantidad: number };
+export type DistribucionParcela = { id: string; nombre: string; codigo: string; cantidad: number };
 export type RegistrosMes = { mes: string; cantidad: number };
 
 export type KpisArboles = {
@@ -113,6 +113,7 @@ export function agruparPorParcela(
 ): DistribucionParcela[] {
   const conteos = sumarPor(arboles, (conteo) => conteo.parcelaId);
   return parcelas.map((parcela) => ({
+    id: parcela.id,
     nombre: parcela.nombre,
     codigo: parcela.codigo,
     cantidad: conteos.get(parcela.id) ?? 0,

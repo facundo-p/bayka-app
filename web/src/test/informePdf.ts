@@ -49,6 +49,7 @@ function dashboard(porEspecie: DistribucionEspecie[], cantidadParcelas: number, 
   const total = porEspecie.reduce((suma, especie) => suma + especie.cantidad, 0);
   const nn = porEspecie.find((especie) => especie.codigo === CODIGO_NN)?.cantidad ?? 0;
   const porParcela = Array.from({ length: cantidadParcelas }, (_, indice) => ({
+    id: `parc-${indice}`,
     codigo: `P${indice + 1}`,
     nombre: `Parcela ${indice + 1}`,
     cantidad: Math.floor(total / cantidadParcelas) + (indice === 0 ? total % cantidadParcelas : 0),
@@ -82,7 +83,6 @@ export function entradaInforme(opciones: OpcionesEntrada): EntradaInforme {
     puntos,
     parcelas: Array.from({ length: opciones.parcelas }, (_, indice) => ({
       id: `parc-${indice}`,
-      codigo: `P${indice + 1}`,
       grupos: 2,
     })),
     plantacion: { lugar: 'San Sebastián', periodo: '2025-2026', codigo: 'SS26', estado: 'Activa' },

@@ -1,5 +1,4 @@
 import { entradaInforme } from '../../../test/informePdf';
-import { PALETA_INFORME } from '../coloresInforme';
 import { datosInforme, notaCoordenadas } from '../datosInforme';
 
 describe('datosInforme', () => {
@@ -50,7 +49,7 @@ describe('datosInforme', () => {
     expect(especies.filas).toEqual([
       expect.objectContaining({
         titulo: 'LAP · Especie LAP',
-        color: PALETA_INFORME[0],
+        color: '#0a3760',
         fraccion: 1,
       }),
       expect.objectContaining({ titulo: 'TIM · Especie TIM', fraccion: 0.5, porcentaje: '29%' }),
@@ -58,7 +57,7 @@ describe('datosInforme', () => {
     ]);
   });
 
-  test('parcelas con grupos, barra, % con decimal y fila de total', () => {
+  test('parcelas con grupos, barra, % entero y fila de total', () => {
     const { parcelas } = datosInforme(entradaInforme({ parcelas: 3, especies: 2 }));
     expect(parcelas.filas[0]).toEqual({
       codigo: 'P1',
@@ -66,7 +65,7 @@ describe('datosInforme', () => {
       grupos: '2',
       arboles: '10',
       fraccion: 1,
-      porcentaje: '33,3%',
+      porcentaje: '33%',
     });
     expect(parcelas.total).toEqual({
       titulo: 'Total · 3 parcelas',
@@ -76,14 +75,49 @@ describe('datosInforme', () => {
     });
   });
 
+  test('los árboles fuera de toda parcela van en «Sin parcela» y el total cierra', () => {
+    const entrada = entradaInforme({ parcelas: 2, especies: 2 });
+    entrada.dashboard.porParcela[1].cantidad -= 5;
+    entrada.dashboard.totalGrupos += 1;
+    const { parcelas } = datosInforme(entrada);
+    expect(parcelas.filas.at(-1)).toMatchObject({
+      codigo: null,
+      nombre: 'Sin parcela',
+      grupos: '1',
+      arboles: '5',
+      porcentaje: '17%',
+    });
+    expect(parcelas.total).toMatchObject({ grupos: '5', arboles: '30', porcentaje: '100%' });
+  });
+
+  test('los grupos se cruzan por id de parcela: sin match, «—» en la fila y en el total', () => {
+    const entrada = entradaInforme({ parcelas: 2, especies: 2 });
+    entrada.dashboard.porParcela[0].codigo = 'OTRO';
+    const conIdAjeno = { ...entrada, parcelas: [{ id: 'parc-1', grupos: 4 }] };
+    const { parcelas } = datosInforme(conIdAjeno);
+    expect(parcelas.filas.map((fila) => fila.grupos)).toEqual(['—', '4']);
+    expect(parcelas.total?.grupos).toBe('—');
+  });
+
+  test('sin parcelas legibles: Grupos en «—», el resto igual y el mapa con etiquetas', () => {
+    const entrada = { ...entradaInforme({ parcelas: 2, especies: 2 }), parcelas: null };
+    const modelo = datosInforme(entrada);
+    expect(modelo.parcelas.filas.map((fila) => [fila.grupos, fila.arboles])).toEqual([
+      ['—', '15'],
+      ['—', '15'],
+    ]);
+    expect(modelo.parcelas.total).toMatchObject({ grupos: '—', arboles: '30' });
+    expect(modelo.mapa.etiquetas.map((etiqueta) => etiqueta.texto)).toEqual(['P1', 'P2']);
+  });
+
   test('el mapa pinta cada punto con el color de su especie y deja la leyenda en el mismo orden', () => {
     const { mapa } = datosInforme(entradaInforme({ parcelas: 2, especies: 2, nn: 5 }));
     expect(mapa.leyenda).toEqual([
-      { texto: 'LAP', color: PALETA_INFORME[0] },
-      { texto: 'TIM', color: PALETA_INFORME[1] },
+      { texto: 'LAP', color: '#0a3760' },
+      { texto: 'TIM', color: '#99b95b' },
       { texto: 'N/N', color: '#e0a83b' },
     ]);
-    expect(mapa.puntos[0].color).toBe(PALETA_INFORME[0]);
+    expect(mapa.puntos[0].color).toBe('#0a3760');
     expect(mapa.etiquetas.map((etiqueta) => etiqueta.texto)).toEqual(['P1', 'P2']);
     expect(mapa.vacio).toBeNull();
   });
@@ -105,6 +139,27 @@ describe('datosInforme', () => {
     expect(mapa.vacio).toBe(
       'Ningún árbol tiene coordenadas GPS: no hay puntos para mostrar en el mapa.',
     );
+  });
+
+  test('«sin GPS» lo deciden los conteos, aunque la lectura de puntos traiga alguno', () => {
+    const entrada = entradaInforme({ parcelas: 2, especies: 2 });
+    entrada.dashboard.arbolesConGps = 0;
+    expect(datosInforme(entrada).mapa.vacio).toBe(
+      'Ningún árbol tiene coordenadas GPS: no hay puntos para mostrar en el mapa.',
+    );
+  });
+
+  test('con árboles con GPS pero sin puntos leídos, el mapa no está disponible', () => {
+    const entrada = { ...entradaInforme({ parcelas: 2, especies: 2 }), puntos: [] };
+    expect(datosInforme(entrada).mapa.vacio).toBe('Mapa no disponible.');
+  });
+
+  test('descarta los puntos de especies que no están en los conteos', () => {
+    const entrada = entradaInforme({ parcelas: 2, especies: 2 });
+    const ajeno = { ...entrada.puntos![0], codigo: 'XYZ' };
+    const { mapa } = datosInforme({ ...entrada, puntos: [...entrada.puntos!, ajeno] });
+    expect(mapa.puntos).toHaveLength(entrada.puntos!.length);
+    expect(mapa.leyenda.map((item) => item.texto)).toEqual(['LAP', 'TIM']);
   });
 });
 

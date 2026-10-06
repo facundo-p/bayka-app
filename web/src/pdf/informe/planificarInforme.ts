@@ -25,39 +25,48 @@ export function esMapaEnHojaCompleta(plan: PlanInforme): boolean {
 const ALTO_ENCABEZADO_BLOQUE =
   M.altoEncabezadoBloque + M.aireEncabezadoBloque + M.separacionEncabezadoBloque;
 
+/** Lo que ocupa un tramo que no se parte; `alEmpezarHoja` es lo que suma si abre una hoja. */
+export type Renglon = { alto: number; alEmpezarHoja: number };
+
+const renglon = (alto: number, alEmpezarHoja = 0): Renglon => ({ alto, alEmpezarHoja });
+
 /** El título de bloque no queda solo al pie de una hoja: viaja con lo que lo sigue. */
 function conEncabezado([primero = 0, ...resto]: number[]): number[] {
   return [ALTO_ENCABEZADO_BLOQUE + Math.max(primero, M.presenciaTrasEncabezado), ...resto];
 }
 
-function renglonesEspecies({ especies }: ModeloInforme): number[] {
+function renglonesEspecies({ especies }: ModeloInforme): Renglon[] {
   const fila = M.altoFilaEspecie + M.separacionFilaEspecie;
-  return conEncabezado(especies.vacio ? [M.altoMensaje] : especies.filas.map(() => fila));
+  return conEncabezado(especies.vacio ? [M.altoMensaje] : especies.filas.map(() => fila)).map(
+    (alto) => renglon(alto),
+  );
 }
 
-function renglonesTabla({ parcelas }: ModeloInforme): number[] {
-  if (parcelas.vacio) return conEncabezado([M.altoMensaje]);
-  const filas = [...parcelas.filas.map(() => M.altoFilaTabla), M.altoFilaTabla];
-  const [primera, ...resto] = filas;
-  return conEncabezado([M.altoEncabezadoTabla + primera, ...resto]);
+/** Las filas y el total; en una hoja nueva, el encabezado de columnas se repite. */
+function renglonesTabla({ parcelas }: ModeloInforme): Renglon[] {
+  if (parcelas.vacio) return conEncabezado([M.altoMensaje]).map((alto) => renglon(alto));
+  const [primera, ...resto] = [...parcelas.filas, parcelas.total].map(() => M.altoFilaTabla);
+  const [inicio, ...siguientes] = conEncabezado([M.altoEncabezadoTabla + primera, ...resto]);
+  return [renglon(inicio), ...siguientes.map((alto) => renglon(alto, M.altoEncabezadoTabla))];
 }
 
-/** Lo que ocupa cada renglón que no se parte, en el orden del documento. */
-function renglonesDelFlujo(modelo: ModeloInforme): number[] {
+/** Cada tramo que no se parte, en el orden del documento. */
+function renglonesDelFlujo(modelo: ModeloInforme): Renglon[] {
   const [tabla, ...restoTabla] = renglonesTabla(modelo);
   return [
-    M.altoTitulo + M.aireTitulo + M.altoLineaTitulo + M.separacionBloques,
-    M.altoIndicadores + M.separacionBloques,
+    renglon(M.altoTitulo + M.aireTitulo + M.altoLineaTitulo + M.separacionBloques),
+    renglon(M.altoIndicadores + M.separacionBloques),
     ...renglonesEspecies(modelo),
-    M.separacionBloques + tabla,
+    { ...tabla, alto: M.separacionBloques + tabla.alto },
     ...restoTabla,
   ];
 }
 
 /** Alto ocupado en la última hoja: un renglón que no entra empieza la hoja siguiente. */
-export function altoEnUltimaHoja(renglones: readonly number[]): number {
+export function altoEnUltimaHoja(renglones: readonly Renglon[]): number {
   return renglones.reduce(
-    (ocupado, alto) => (ocupado + alto > CUERPO_HOJA.alto ? alto : ocupado + alto),
+    (ocupado, { alto, alEmpezarHoja }) =>
+      ocupado + alto > CUERPO_HOJA.alto ? alto + alEmpezarHoja : ocupado + alto,
     0,
   );
 }
@@ -73,12 +82,15 @@ function altoLeyenda(modelo: ModeloInforme): number {
   return M.aireMapa + renglonesLeyenda(modelo.mapa.leyenda.length) * M.altoRenglonLeyenda;
 }
 
-/** Al pie de la última hoja: título de bloque, mapa, leyenda y la nota de los sin GPS. */
-function planEnUltimaHoja(modelo: ModeloInforme, libre: number): PlanInforme | null {
-  const acompana = M.separacionBloques + ALTO_ENCABEZADO_BLOQUE + altoLeyenda(modelo);
-  const alto = libre - acompana - M.aireMapa - M.altoNotaMapa - M.holgura;
-  if (alto < M.altoMinimoMapa) return null;
-  return { ubicacion: UBICACION_MAPA.ultimaHoja, disponible: { ancho: CUERPO_HOJA.ancho, alto } };
+/** Lo que acompaña al mapa al pie: título de bloque, leyenda, nota y el colchón. */
+function altoQueAcompana(modelo: ModeloInforme): number {
+  const titulo = M.separacionBloques + ALTO_ENCABEZADO_BLOQUE;
+  return titulo + altoLeyenda(modelo) + M.aireMapa + M.altoNotaMapa + M.holgura;
+}
+
+/** Lo mínimo que tiene que quedar libre en la última hoja para que el mapa vaya al pie. */
+export function libreMinimoAlPie(modelo: ModeloInforme): number {
+  return altoQueAcompana(modelo) + M.altoMinimoMapa;
 }
 
 /** En hoja propia: título y nota arriba, mapa y leyenda debajo. */
@@ -88,7 +100,13 @@ function planEnHojaCompleta(modelo: ModeloInforme): PlanInforme {
   return { ubicacion: UBICACION_MAPA.hojaCompleta, disponible: { ancho: CUERPO_HOJA.ancho, alto } };
 }
 
+/** Al pie si en lo que queda `libre` entra un mapa de al menos 7 cm; si no, en hoja propia. */
+export function planSegunLibre(modelo: ModeloInforme, libre: number): PlanInforme {
+  if (libre < libreMinimoAlPie(modelo)) return planEnHojaCompleta(modelo);
+  const alto = libre - altoQueAcompana(modelo);
+  return { ubicacion: UBICACION_MAPA.ultimaHoja, disponible: { ancho: CUERPO_HOJA.ancho, alto } };
+}
+
 export function planificarInforme(modelo: ModeloInforme): PlanInforme {
-  const libre = CUERPO_HOJA.alto - altoEnUltimaHoja(renglonesDelFlujo(modelo));
-  return planEnUltimaHoja(modelo, libre) ?? planEnHojaCompleta(modelo);
+  return planSegunLibre(modelo, CUERPO_HOJA.alto - altoEnUltimaHoja(renglonesDelFlujo(modelo)));
 }

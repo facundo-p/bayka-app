@@ -34,10 +34,13 @@ function leerInsumos(id: string, queryClient: QueryClient) {
     queryClient
       .fetchQuery({ queryKey: CLAVE_QUERY.mapa(id), queryFn: () => listarPuntosGps(id) })
       .catch(() => null),
-    queryClient.fetchQuery({
-      queryKey: CLAVE_QUERY.datosParcelas(id),
-      queryFn: () => listarParcelasConStats(id),
-    }),
+    // Sin parcelas legibles, la columna Grupos sale «—».
+    queryClient
+      .fetchQuery({
+        queryKey: CLAVE_QUERY.datosParcelas(id),
+        queryFn: () => listarParcelasConStats(id),
+      })
+      .catch(() => null),
     // Sin organización legible, el encabezado lleva solo el código.
     leerNombreOrganizacion(id).catch(() => null),
     import('../pdf/informe/motorInforme'),

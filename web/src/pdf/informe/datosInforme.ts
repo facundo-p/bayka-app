@@ -4,7 +4,6 @@
  */
 import {
   etiquetaEspecie,
-  formatearConDecimal,
   formatearEntero,
   PORCENTAJE_COMPLETO,
   porcentaje,
@@ -12,22 +11,28 @@ import {
   pluralizar,
 } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
-import type { DashboardData, DistribucionEspecie } from '../../queries/dashboardQueries';
+import type {
+  DashboardData,
+  DistribucionEspecie,
+  DistribucionParcela,
+} from '../../queries/dashboardQueries';
+import { esSinIdentificar } from '../../queries/especiesConstantes';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import type { EtiquetaMapa, PuntoMapa } from '../mapa/planMapa';
-import { asignarColoresInforme, esSinIdentificar, type ColoresInforme } from './coloresInforme';
+import { asignarColoresInforme, type ColoresInforme } from './coloresInforme';
 import { etiquetasDeParcelas } from './mapaInforme';
 import { TEXTO_INFORME } from './textosInforme';
 
 /** Lo que el informe necesita de cada parcela además de sus árboles. */
-export type ParcelaDelInforme = { id: string; codigo: string; grupos: number };
+export type ParcelaDelInforme = { id: string; grupos: number };
 
 export type EntradaInforme = {
   /** `calcularDashboard(fuente, null)`: siempre la plantación entera. */
   dashboard: DashboardData;
   /** null si no se pudieron leer: el informe sale con «Mapa no disponible». */
   puntos: readonly PuntoGps[] | null;
-  parcelas: readonly ParcelaDelInforme[];
+  /** null si no se pudieron leer: la columna Grupos sale «—». */
+  parcelas: readonly ParcelaDelInforme[] | null;
   plantacion: { lugar: string; periodo: string; codigo: string; estado: string };
   objetivo: number | null;
   organizacion: string | null;
@@ -63,7 +68,8 @@ export type FilaEspecie = {
 };
 
 export type FilaParcela = {
-  codigo: string;
+  /** null en la fila «Sin parcela». */
+  codigo: string | null;
   nombre: string;
   grupos: string;
   arboles: string;
@@ -98,9 +104,8 @@ export type ModeloInforme = {
 
 const conPorciento = (valor: number | string) => `${valor}%`;
 
-function porcentajeDecimal(parte: number, total: number): string {
-  return conPorciento(formatearConDecimal(total === 0 ? 0 : (parte / total) * PORCENTAJE_COMPLETO));
-}
+const formatearGrupos = (grupos: number | null) =>
+  grupos === null ? TEXTO_INFORME.sinDato : formatearEntero(grupos);
 
 function fraccionDe(parte: number, maximo: number): number {
   return maximo === 0 ? 0 : parte / maximo;
@@ -180,37 +185,66 @@ function especies(dashboard: DashboardData, colores: ColoresInforme) {
   };
 }
 
-/** Grupos de cada fila, por código de parcela. */
-function gruposDeLasFilas({ dashboard, parcelas }: EntradaInforme): number[] {
-  const gruposPorCodigo = new Map(parcelas.map((parcela) => [parcela.codigo, parcela.grupos]));
-  return dashboard.porParcela.map((parcela) => gruposPorCodigo.get(parcela.codigo) ?? 0);
+/** Lo que va en una fila de la tabla, antes de formatear. */
+type ConteoFila = { codigo: string | null; nombre: string; grupos: number | null; arboles: number };
+
+const sumar = (valores: readonly number[]) => valores.reduce((suma, valor) => suma + valor, 0);
+
+/** Grupos de cada parcela, por id; null si no se pudieron leer o la parcela no figura. */
+function gruposPorParcela({ parcelas }: EntradaInforme) {
+  const porId = new Map((parcelas ?? []).map((parcela) => [parcela.id, parcela.grupos]));
+  return ({ id }: DistribucionParcela) => porId.get(id) ?? null;
 }
 
-function filasParcelas(entrada: EntradaInforme): FilaParcela[] {
-  const { dashboard } = entrada;
-  const grupos = gruposDeLasFilas(entrada);
-  const maximo = Math.max(0, ...dashboard.porParcela.map((parcela) => parcela.cantidad));
-  return dashboard.porParcela.map((parcela, indice) => ({
+/**
+ * Árboles de grupos sin parcela, o de una parcela borrada: van en una fila
+ * propia para que el total cierre con el del dashboard. Sus grupos son los que
+ * no son de ninguna parcela activa.
+ */
+function filaSinParcela({ dashboard, parcelas }: EntradaInforme): ConteoFila | null {
+  const arboles =
+    dashboard.totalArboles - sumar(dashboard.porParcela.map((parcela) => parcela.cantidad));
+  if (arboles <= 0) return null;
+  const grupos = parcelas
+    ? Math.max(0, dashboard.totalGrupos - sumar(parcelas.map((parcela) => parcela.grupos)))
+    : null;
+  return { codigo: null, nombre: TEXTO_INFORME.sinParcela, grupos, arboles };
+}
+
+function conteosDeFilas(entrada: EntradaInforme): ConteoFila[] {
+  const grupos = gruposPorParcela(entrada);
+  const filas = entrada.dashboard.porParcela.map((parcela) => ({
     codigo: parcela.codigo,
     nombre: parcela.nombre,
-    grupos: formatearEntero(grupos[indice]),
-    arboles: formatearEntero(parcela.cantidad),
-    fraccion: fraccionDe(parcela.cantidad, maximo),
-    porcentaje: porcentajeDecimal(parcela.cantidad, dashboard.totalArboles),
+    grupos: grupos(parcela),
+    arboles: parcela.cantidad,
+  }));
+  const sinParcela = filaSinParcela(entrada);
+  return sinParcela ? [...filas, sinParcela] : filas;
+}
+
+function filasParcelas(conteos: readonly ConteoFila[], total: number): FilaParcela[] {
+  const maximo = Math.max(0, ...conteos.map((conteo) => conteo.arboles));
+  return conteos.map(({ codigo, nombre, grupos, arboles }) => ({
+    codigo,
+    nombre,
+    grupos: formatearGrupos(grupos),
+    arboles: formatearEntero(arboles),
+    fraccion: fraccionDe(arboles, maximo),
+    porcentaje: conPorciento(porcentaje(arboles, total)),
   }));
 }
 
-/** Suma de las filas: un árbol de un grupo sin parcela no entra en ninguna. */
-function filaTotal(entrada: EntradaInforme): TotalParcelas {
-  const { dashboard } = entrada;
-  const arboles = dashboard.porParcela.reduce((suma, parcela) => suma + parcela.cantidad, 0);
-  const grupos = gruposDeLasFilas(entrada).reduce((suma, cantidad) => suma + cantidad, 0);
+/** «Total · 17 parcelas»: todos los árboles de la plantación, en 100%. */
+function filaTotal(conteos: readonly ConteoFila[], dashboard: DashboardData): TotalParcelas {
+  const grupos = conteos.map((conteo) => conteo.grupos);
+  const sabidos = grupos.filter((cantidad): cantidad is number => cantidad !== null);
   const { total, separador } = TEXTO_INFORME;
   return {
     titulo: `${total}${separador}${pluralizar(dashboard.porParcela.length, SUSTANTIVO.parcela)}`,
-    grupos: formatearEntero(grupos),
-    arboles: formatearEntero(arboles),
-    porcentaje: conPorciento(porcentaje(arboles, dashboard.totalArboles)),
+    grupos: formatearGrupos(sabidos.length === grupos.length ? sumar(sabidos) : null),
+    arboles: formatearEntero(dashboard.totalArboles),
+    porcentaje: conPorciento(PORCENTAJE_COMPLETO),
   };
 }
 
@@ -218,7 +252,12 @@ function tablaParcelas(entrada: EntradaInforme) {
   const { totalArboles, porParcela } = entrada.dashboard;
   if (totalArboles === 0) return { filas: [], total: null, vacio: TEXTO_INFORME.sinArboles };
   if (porParcela.length === 0) return { filas: [], total: null, vacio: TEXTO_INFORME.sinParcelas };
-  return { filas: filasParcelas(entrada), total: filaTotal(entrada), vacio: null };
+  const conteos = conteosDeFilas(entrada);
+  return {
+    filas: filasParcelas(conteos, totalArboles),
+    total: filaTotal(conteos, entrada.dashboard),
+    vacio: null,
+  };
 }
 
 /** «7.959 de 8.467 árboles tienen coordenadas; los 508 restantes no aparecen en el mapa.» */
@@ -238,20 +277,26 @@ function leyenda(dashboard: DashboardData, colores: ColoresInforme): ItemLeyenda
   }));
 }
 
-function vacioDelMapa(total: number, puntos: readonly PuntoGps[] | null): string | null {
-  if (total === 0) return TEXTO_INFORME.sinArboles;
-  if (!puntos) return TEXTO_INFORME.mapaNoDisponible;
-  return puntos.length === 0 ? TEXTO_INFORME.sinGps : null;
+/** Los conteos mandan: los puntos solo dibujan. */
+function vacioDelMapa(dashboard: DashboardData, puntos: readonly PuntoGps[]): string | null {
+  if (dashboard.totalArboles === 0) return TEXTO_INFORME.sinArboles;
+  if (dashboard.arbolesConGps === 0) return TEXTO_INFORME.sinGps;
+  return puntos.length === 0 ? TEXTO_INFORME.mapaNoDisponible : null;
 }
 
-function mapa({ dashboard, puntos: leidos, parcelas }: EntradaInforme, colores: ColoresInforme) {
-  const vacio = vacioDelMapa(dashboard.totalArboles, leidos);
-  const puntos = leidos ?? [];
+/** Un punto de una especie que no está en los conteos viene de una lectura más vieja. */
+function puntosDeLasEspecies(dashboard: DashboardData, puntos: readonly PuntoGps[] | null) {
+  const codigos = new Set(dashboard.porEspecie.map((especie) => especie.codigo));
+  return (puntos ?? []).filter((punto) => codigos.has(punto.codigo));
+}
+
+function mapa({ dashboard, puntos: leidos }: EntradaInforme, colores: ColoresInforme) {
+  const puntos = puntosDeLasEspecies(dashboard, leidos);
+  const vacio = vacioDelMapa(dashboard, puntos);
   return {
     puntos: puntos.map(({ lat, lng, codigo }) => ({ lat, lng, color: colores(codigo) })),
-    etiquetas: etiquetasDeParcelas(puntos, parcelas),
+    etiquetas: etiquetasDeParcelas(puntos, dashboard.porParcela),
     leyenda: leyenda(dashboard, colores),
-    // La cuenta del indicador «Con GPS»: los puntos solo dibujan.
     nota: vacio ? null : notaCoordenadas(dashboard.arbolesConGps, dashboard.totalArboles),
     vacio,
   };

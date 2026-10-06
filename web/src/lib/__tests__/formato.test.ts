@@ -1,5 +1,4 @@
 import {
-  formatearConDecimal,
   acotarPorcentaje,
   concordar,
   etiquetaCodigoNombre,
@@ -84,9 +83,4 @@ describe('porcentajeDeObjetivo', () => {
   test('sin árboles con objetivo definido es 0, no null', () => {
     expect(porcentajeDeObjetivo(0, 10000)).toBe(0);
   });
-});
-
-test('formatearConDecimal deja siempre un decimal con coma', () => {
-  expect(formatearConDecimal(7.6543)).toBe('7,7');
-  expect(formatearConDecimal(100)).toBe('100,0');
 });
