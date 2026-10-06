@@ -1,6 +1,5 @@
 import { resetEstadoMock } from '../../test/supabaseMock';
 import { capturarConsultas } from '../../test/capturarConsultas';
-import { PG_ERROR } from '../../lib/postgresErrorCodes';
 import {
   crearEspecieCientifica,
   editarEspecieCientifica,
@@ -16,8 +15,8 @@ vi.mock('../../lib/supabase', async () => {
 
 beforeEach(resetEstadoMock);
 
-const ERROR_DUPLICADO = { message: 'duplicate key', code: PG_ERROR.UNIQUE_VIOLATION };
-const ERROR_EN_USO = { message: 'violates foreign key', code: PG_ERROR.FOREIGN_KEY_VIOLATION };
+const ERROR_DUPLICADO = { message: 'duplicate key', code: '23505' };
+const ERROR_EN_USO = { message: 'violates foreign key', code: '23503' };
 
 test('crear inserta el nombre y devuelve el id', async () => {
   const consultas = capturarConsultas(() => ({ data: { id: 'ec-nueva' } }));

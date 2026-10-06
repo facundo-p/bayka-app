@@ -18,13 +18,14 @@
 -- trg_especies_cientificas_normaliza_nombre y
 -- trg_especies_cientificas_propaga_nombre ON especies_cientificas; ALTER TABLE
 -- species DROP COLUMN especie_cientifica_id; DROP TABLE especies_cientificas;
--- DROP FUNCTION de los tres triggers y nombre_cientifico_normalizado(text). La
--- copia en species.nombre_cientifico queda con el último nombre de la entidad.
+-- DROP FUNCTION de los tres triggers, vincular_nombres_cientificos() y
+-- nombre_cientifico_normalizado(text). La copia en species.nombre_cientifico
+-- queda con el último nombre de la entidad.
 
 CREATE OR REPLACE FUNCTION "public"."nombre_cientifico_normalizado"("p_nombre" "text") RETURNS "text"
     LANGUAGE "sql" IMMUTABLE
     AS $$
-  SELECT regexp_replace(btrim(p_nombre), '\s+', ' ', 'g');
+  SELECT btrim(regexp_replace(p_nombre, '\s+', ' ', 'g'));
 $$;
 
 ALTER FUNCTION "public"."nombre_cientifico_normalizado"("text") OWNER TO "postgres";
@@ -138,23 +139,36 @@ CREATE TRIGGER "trg_especies_cientificas_propaga_nombre"
   EXECUTE FUNCTION "public"."propagar_nombre_cientifico"();
 
 -- Datos. Corre después de los triggers: al vincular, la copia toma el nombre
--- de la entidad, y las especies sin vínculo quedan en null.
-INSERT INTO "public"."especies_cientificas" ("nombre")
-SELECT mode() WITHIN GROUP (ORDER BY normalizado)
-  FROM (SELECT nombre_cientifico_normalizado(nombre_cientifico) AS normalizado
-          FROM "public"."species"
-         WHERE nombre_cientifico IS NOT NULL) AS nombres
- WHERE normalizado <> ''
- GROUP BY lower(normalizado)
-ON CONFLICT DO NOTHING;
+-- de la entidad, y las especies sin vínculo quedan en null. Es una función
+-- para poder testearla sobre filas cargadas.
+CREATE OR REPLACE FUNCTION "public"."vincular_nombres_cientificos"() RETURNS void
+    LANGUAGE "plpgsql"
+    SET "search_path" TO 'public'
+    AS $$
+BEGIN
+  INSERT INTO especies_cientificas (nombre)
+  SELECT mode() WITHIN GROUP (ORDER BY normalizado)
+    FROM (SELECT nombre_cientifico_normalizado(nombre_cientifico) AS normalizado
+            FROM species
+           WHERE nombre_cientifico IS NOT NULL) AS nombres
+   WHERE normalizado <> ''
+   GROUP BY lower(normalizado)
+  ON CONFLICT DO NOTHING;
 
-UPDATE "public"."species" AS s
-   SET especie_cientifica_id = e.id
-  FROM "public"."especies_cientificas" AS e
- WHERE s.especie_cientifica_id IS NULL
-   AND lower(nombre_cientifico_normalizado(s.nombre_cientifico)) = lower(e.nombre);
+  UPDATE species AS s
+     SET especie_cientifica_id = e.id
+    FROM especies_cientificas AS e
+   WHERE s.especie_cientifica_id IS NULL
+     AND lower(nombre_cientifico_normalizado(s.nombre_cientifico)) = lower(e.nombre);
 
-UPDATE "public"."species"
-   SET nombre_cientifico = NULL
- WHERE especie_cientifica_id IS NULL
-   AND nombre_cientifico IS NOT NULL;
+  UPDATE species
+     SET nombre_cientifico = NULL
+   WHERE especie_cientifica_id IS NULL
+     AND nombre_cientifico IS NOT NULL;
+END;
+$$;
+
+ALTER FUNCTION "public"."vincular_nombres_cientificos"() OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."vincular_nombres_cientificos"() FROM PUBLIC, "anon", "authenticated";
+
+SELECT "public"."vincular_nombres_cientificos"();

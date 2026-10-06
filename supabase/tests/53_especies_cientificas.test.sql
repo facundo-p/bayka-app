@@ -2,7 +2,7 @@
 -- distinguir mayúsculas, RLS como species, borrado restringido y la copia en
 -- species.nombre_cientifico que mantienen los triggers.
 begin;
-select plan(15);
+select plan(23);
 
 insert into organizations (id, nombre) values
   ('b5300000-0000-0000-0000-000000000001', 'Org Test 53');
@@ -27,6 +27,15 @@ select throws_ok(
 select throws_ok(
   $$insert into especies_cientificas (nombre) values ('   ')$$,
   '23514', null, 'un nombre vacío se rechaza');
+
+insert into especies_cientificas (id, nombre) values
+  ('b5300000-0000-0000-0000-0000000000c3', E'\tCordia\n  americana\r\n');
+select is((select nombre from especies_cientificas where id = 'b5300000-0000-0000-0000-0000000000c3'),
+  'Cordia americana', 'tabs y saltos de línea también se normalizan, incluso en los bordes');
+
+select throws_ok(
+  $$insert into especies_cientificas (nombre) values (E'\t\n')$$,
+  '23514', null, 'un nombre de solo tabs y saltos de línea se rechaza');
 
 -- La copia en species.
 insert into species (id, codigo, nombre, especie_cientifica_id) values
@@ -55,6 +64,36 @@ select throws_ok(
   $$delete from especies_cientificas where id = 'b5300000-0000-0000-0000-0000000000c1'$$,
   '23503', null, 'una especie científica que agrupa especies no se borra');
 
+-- Migración de datos, sobre especies con el nombre científico como texto libre.
+alter table species disable trigger trg_species_copia_nombre_cientifico;
+insert into species (codigo, nombre, nombre_cientifico) values
+  ('T53D', 'Algarrobo negro', 'Prosopis nigra'),
+  ('T53E', 'Ibopé-hú', 'Prosopis nigra'),
+  ('T53F', 'Algarrobo', E'prosopis  NIGRA\n'),
+  ('T53G', 'En blanco', '   ');
+alter table species enable trigger trg_species_copia_nombre_cientifico;
+
+select lives_ok($$select vincular_nombres_cientificos()$$, 'la migración de datos corre');
+
+select is((select array_agg(nombre) from especies_cientificas where lower(nombre) = 'prosopis nigra'),
+  array['Prosopis nigra'], 'las variantes en mayúsculas o espacios quedan en una entidad, con la grafía más usada');
+
+select is((select array_agg(nombre_cientifico order by codigo) from species where codigo in ('T53D', 'T53E', 'T53F')),
+  array['Prosopis nigra', 'Prosopis nigra', 'Prosopis nigra'], 'las especies quedan vinculadas y copian el nombre de la entidad');
+
+select ok((select especie_cientifica_id is null and nombre_cientifico is null from species where codigo = 'T53G'),
+  'un nombre en blanco queda sin vínculo');
+
+create temp table antes_53 as
+  select (select count(*) from especies_cientificas) as entidades,
+         (select count(*) from species where especie_cientifica_id is not null) as vinculadas;
+select vincular_nombres_cientificos();
+select is(
+  (select count(*) from especies_cientificas) || ' entidades, '
+    || (select count(*) from species where especie_cientifica_id is not null) || ' vinculadas',
+  (select entidades || ' entidades, ' || vinculadas || ' vinculadas' from antes_53),
+  'correrla de nuevo no cambia nada');
+
 -- RLS, como técnico.
 set local role authenticated;
 select set_config('request.jwt.claim.sub', 'b5300000-0000-0000-0000-0000000000a2', true);
@@ -68,6 +107,9 @@ select throws_ok(
 
 update especies_cientificas set nombre = 'Cambiado por técnico'
  where id = 'b5300000-0000-0000-0000-0000000000c1';
+delete from especies_cientificas where id = 'b5300000-0000-0000-0000-0000000000c3';
+select is((select count(*) from especies_cientificas where id = 'b5300000-0000-0000-0000-0000000000c3'),
+  1::bigint, 'un técnico no borra especies científicas');
 select set_config('request.jwt.claim.sub', 'b5300000-0000-0000-0000-0000000000a1', true);
 select is((select nombre from especies_cientificas where id = 'b5300000-0000-0000-0000-0000000000c1'),
   'Prosopis alba var. panta', 'un técnico no renombra especies científicas');
