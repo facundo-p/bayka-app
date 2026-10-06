@@ -25,16 +25,21 @@ function useMarcadasDePagina(clavePagina: string) {
 /** Modo selección sobre los árboles de la página a la vista, en su orden. */
 function useSeleccionDePagina(clavePagina: string, idsPagina: readonly string[]) {
   const [activa, setActiva] = useState(false);
+  // Al cancelar, el foco vuelve a «Seleccionar»; al cargar la pantalla, no.
+  const [recienCancelada, setRecienCancelada] = useState(false);
   const { marcadas, fijar } = useMarcadasDePagina(clavePagina);
+  const ids = marcadasEnOrden(idsPagina, marcadas);
   return {
     activa,
-    ids: marcadasEnOrden(idsPagina, marcadas),
+    recienCancelada,
+    ids,
     totalPagina: idsPagina.length,
     maestro: estadoMaestro(idsPagina, marcadas),
-    estaMarcado: (id: string) => marcadas.has(id),
+    estaMarcado: (id: string) => ids.includes(id),
     entrar: () => setActiva(true),
     cancelar: () => {
       setActiva(false);
+      setRecienCancelada(true);
       fijar(NINGUNA);
     },
     alternar: (id: string) => fijar(alternarId(marcadas, id)),

@@ -18,11 +18,6 @@ export type AccionMasiva = (typeof ACCION_MASIVA)[keyof typeof ACCION_MASIVA];
 export const estanTodas = (estado: EstadoMaestro) => estado === ESTADO_MAESTRO.todas;
 export const esParcial = (estado: EstadoMaestro) => estado === ESTADO_MAESTRO.parcial;
 
-/** `aria-checked` del maestro: «mixed» con algunas marcadas. */
-export function ariaCheckedMaestro(estado: EstadoMaestro): boolean | 'mixed' {
-  return esParcial(estado) ? 'mixed' : estanTodas(estado);
-}
-
 /** Las marcadas fuera de `idsVisibles` no cuentan. */
 export function estadoMaestro(
   idsVisibles: readonly string[],

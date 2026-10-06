@@ -136,6 +136,20 @@ describe('entrar y salir del modo selección', () => {
   });
 });
 
+describe('foco', () => {
+  test('al entrar pasa a la franja y al cancelar vuelve a «Seleccionar»', async () => {
+    const usuario = await entrarAlModo();
+    expect(barra()).toHaveFocus();
+    await usuario.click(within(barra()).getByRole('button', { name: 'Cancelar' }));
+    expect(screen.getByRole('button', { name: 'Seleccionar' })).toHaveFocus();
+  });
+
+  test('al cargar la pantalla no se lo lleva «Seleccionar»', async () => {
+    renderSeccion();
+    expect(await screen.findByRole('button', { name: 'Seleccionar' })).not.toHaveFocus();
+  });
+});
+
 describe('marcar filas', () => {
   test('el checkbox marca la fila sin abrir el detalle', async () => {
     const usuario = await entrarAlModo();
@@ -186,6 +200,15 @@ describe('la selección vale para la página actual', () => {
     await usuario.click(screen.getByRole('button', { name: 'Página anterior' }));
     await screen.findByText('A1-SS26');
     expect(casilla(1)).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('mientras llega la página nueva, las filas viejas no se marcan', async () => {
+    const usuario = await entrarAlModo();
+    vi.mocked(listarArboles).mockReturnValue(new Promise(() => {}));
+    await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
+    await usuario.click(casilla(1));
+    expect(casilla(1)).toHaveAttribute('aria-checked', 'false');
+    expect(barra()).toHaveTextContent('0 árboles seleccionados');
   });
 
   test('cambiar un filtro la limpia', async () => {

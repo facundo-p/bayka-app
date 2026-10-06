@@ -1,5 +1,6 @@
 import { Button } from '../../components';
 import { useDescarga } from '../../hooks/useDescarga';
+import { useEnfocarAlMontar } from '../../hooks/useEnfocarAlMontar';
 import { textoGenerarFichas, textoSeleccion } from './seleccionFichas';
 import type { SeleccionFichas } from './useSeleccionFichas';
 import styles from './BarraSeleccionFichas.module.css';
@@ -21,12 +22,24 @@ export function BarraSeleccionFichas({ seleccion }: { seleccion: SeleccionFichas
     return null;
   }, TEXTO_BARRA.error);
   const cantidad = seleccion.ids.length;
+  // «Seleccionar» se desmonta al entrar: el foco pasa a la franja y no se pierde.
+  const ref = useEnfocarAlMontar<HTMLDivElement>(true);
   return (
-    <div className={styles.barra} role="region" aria-label={TEXTO_BARRA.region}>
+    <div
+      ref={ref}
+      tabIndex={-1}
+      className={styles.barra}
+      role="region"
+      aria-label={TEXTO_BARRA.region}
+    >
       <span className={styles.cuenta} aria-live="polite">
         {textoSeleccion(cantidad, seleccion.totalPagina)}
       </span>
-      {descarga.mensaje && <span className={styles.error}>{descarga.mensaje}</span>}
+      {descarga.mensaje && (
+        <span className={styles.error} role="alert">
+          {descarga.mensaje}
+        </span>
+      )}
       <div className={styles.botones}>
         <Button
           variant="inversoSutil"

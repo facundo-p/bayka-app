@@ -1,6 +1,6 @@
+import type { ComponentProps } from 'react';
 import { Check, Minus } from 'lucide-react';
 import { cx } from '../lib/classNames';
-import { esParcial, estanTodas, type EstadoMaestro } from '../lib/seleccionMaestro';
 import { TAMANO_ICONO } from '../theme/iconos';
 import styles from './Casilla.module.css';
 
@@ -13,11 +13,8 @@ interface CasillaProps {
   parcial?: boolean;
 }
 
-/**
- * Dibujo del checkbox; el rol y el click los pone el botón que la contiene. El
- * color marcado sale de `--casilla-color`, así cada lista usa el suyo.
- */
-export function Casilla({ marcada, parcial = false }: CasillaProps) {
+/** Dibujo del checkbox. El color marcado sale de `--casilla-color`, así cada lista usa el suyo. */
+function Casilla({ marcada, parcial = false }: CasillaProps) {
   return (
     <span className={cx(styles.casilla, (marcada || parcial) && styles.marcada)} aria-hidden>
       {parcial ? (
@@ -29,6 +26,15 @@ export function Casilla({ marcada, parcial = false }: CasillaProps) {
   );
 }
 
-export function CasillaMaestro({ estado }: { estado: EstadoMaestro }) {
-  return <Casilla marcada={estanTodas(estado)} parcial={esParcial(estado)} />;
+type BotonCasillaProps = CasillaProps &
+  Omit<ComponentProps<'button'>, 'type' | 'role' | 'aria-checked'>;
+
+/** Botón con rol de checkbox: la casilla y, detrás, lo que reciba como hijos. */
+export function BotonCasilla({ marcada, parcial = false, children, ...resto }: BotonCasillaProps) {
+  return (
+    <button type="button" role="checkbox" aria-checked={parcial ? 'mixed' : marcada} {...resto}>
+      <Casilla marcada={marcada} parcial={parcial} />
+      {children}
+    </button>
+  );
 }

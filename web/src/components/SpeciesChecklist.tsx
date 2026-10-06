@@ -1,7 +1,7 @@
-import { Casilla, CasillaMaestro } from './Casilla';
+import { BotonCasilla } from './Casilla';
 import { Input } from './Input';
 import { cx } from '../lib/classNames';
-import { ariaCheckedMaestro, type EstadoMaestro } from '../lib/seleccionMaestro';
+import { esParcial, estanTodas, type EstadoMaestro } from '../lib/seleccionMaestro';
 import { filtrarCatalogo } from '../lib/speciesChecklistSelection';
 import type { EspecieCatalogo } from '../queries/especieQueries';
 import styles from './SpeciesChecklist.module.css';
@@ -52,18 +52,16 @@ export function MaestroEspecies({
   onMaestro: () => void;
 }) {
   return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={ariaCheckedMaestro(estado)}
+    <BotonCasilla
+      marcada={estanTodas(estado)}
+      parcial={esParcial(estado)}
       aria-label={LABEL_MAESTRO}
       disabled={deshabilitado}
       className={styles.maestro}
       onClick={onMaestro}
     >
-      <CasillaMaestro estado={estado} />
       {LABEL_MAESTRO}
-    </button>
+    </BotonCasilla>
   );
 }
 
@@ -83,10 +81,8 @@ function FilaEspecie({
   };
   return (
     <li>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={marcada}
+      <BotonCasilla
+        marcada={marcada}
         aria-label={especie.nombre}
         disabled={bloqueada}
         // La fila ya no muestra el nombre científico (no entra en dos columnas):
@@ -95,11 +91,10 @@ function FilaEspecie({
         className={cx(styles.fila, marcada && styles.filaMarcada)}
         onClick={alternar}
       >
-        <Casilla marcada={marcada} />
         <span className={styles.codigo}>{especie.codigo}</span>
         <span className={styles.nombre}>{especie.nombre}</span>
         {bloqueada && <span className={styles.conArboles}>{MARCA_BLOQUEADA}</span>}
-      </button>
+      </BotonCasilla>
     </li>
   );
 }

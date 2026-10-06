@@ -91,11 +91,13 @@ export function BarraHerramientas(props: BarraHerramientasProps) {
  * quedan en su última fila en vez de bajar a un renglón propio.
  */
 function FiltrosConAcciones({ acciones, children }: { acciones?: ReactNode; children: ReactNode }) {
-  if (!acciones) return children;
+  // Con la prop puesta el contenedor queda aunque esté vacía: si apareciera y
+  // desapareciera, los filtros se remontarían y perderían el foco.
+  if (acciones === undefined) return children;
   return (
     <div className={styles.filtrosConAcciones}>
       {children}
-      <div className={styles.acciones}>{acciones}</div>
+      {acciones && <div className={styles.acciones}>{acciones}</div>}
     </div>
   );
 }

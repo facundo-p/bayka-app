@@ -1,7 +1,7 @@
 import type { MouseEvent, ReactNode } from 'react';
 import { cx } from '../lib/classNames';
-import { ariaCheckedMaestro, type EstadoMaestro } from '../lib/seleccionMaestro';
-import { Casilla, CasillaMaestro } from './Casilla';
+import { esParcial, estanTodas, type EstadoMaestro } from '../lib/seleccionMaestro';
+import { BotonCasilla } from './Casilla';
 import { EmptyState } from './EmptyState';
 import styles from './Table.module.css';
 
@@ -63,40 +63,38 @@ function renderCells<T>(columns: Array<TableColumn<T>>, row: T): ReactNode {
 
 function EncabezadoSeleccion<T>({ seleccion }: { seleccion: SeleccionTabla<T> }) {
   return (
-    <th className={styles.celdaCasilla}>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={ariaCheckedMaestro(seleccion.maestro)}
+    <th className={cx(styles.encabezado, styles.celdaCasilla)}>
+      <BotonCasilla
+        marcada={estanTodas(seleccion.maestro)}
+        parcial={esParcial(seleccion.maestro)}
         aria-label={seleccion.etiquetaMaestro}
         className={styles.botonCasilla}
         onClick={seleccion.onMaestro}
-      >
-        <CasillaMaestro estado={seleccion.maestro} />
-      </button>
+      />
     </th>
   );
 }
 
+interface CeldaSeleccionProps<T> {
+  seleccion: SeleccionTabla<T>;
+  row: T;
+  marcada: boolean;
+}
+
 /** Todo el alto de la celda es clickeable; el click no llega a la fila (no abre el detalle). */
-function CeldaSeleccion<T>({ seleccion, row }: { seleccion: SeleccionTabla<T>; row: T }) {
-  const marcada = seleccion.marcada(row);
+function CeldaSeleccion<T>({ seleccion, row, marcada }: CeldaSeleccionProps<T>) {
   const alternar = (evento: MouseEvent) => {
     evento.stopPropagation();
     seleccion.onAlternar(row);
   };
   return (
     <td className={styles.celdaCasilla}>
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={marcada}
+      <BotonCasilla
+        marcada={marcada}
         aria-label={seleccion.etiquetaFila(row)}
         className={styles.botonCasilla}
         onClick={alternar}
-      >
-        <Casilla marcada={marcada} />
-      </button>
+      />
     </td>
   );
 }
@@ -126,17 +124,18 @@ export function Table<T>({
       <tbody>
         {rows.map((row) => {
           const clave = getRowKey(row);
+          const marcada = seleccion?.marcada(row) ?? false;
           return (
             <tr
               key={clave}
               className={cx(
                 onRowClick && styles.clickableRow,
-                seleccion?.marcada(row) && styles.filaMarcada,
+                marcada && styles.filaMarcada,
                 claveSeleccionada != null && clave === claveSeleccionada && styles.filaSeleccionada,
               )}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
-              {seleccion && <CeldaSeleccion seleccion={seleccion} row={row} />}
+              {seleccion && <CeldaSeleccion seleccion={seleccion} row={row} marcada={marcada} />}
               {renderCells(columns, row)}
             </tr>
           );

@@ -9,6 +9,7 @@ import {
   type SeleccionTabla,
 } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
+import { useEnfocarAlMontar } from '../../hooks/useEnfocarAlMontar';
 import { formatearEntero } from '../../lib/formato';
 import { SEGMENTO_DATOS } from '../../lib/rutas';
 import {
@@ -131,8 +132,10 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
 }
 
 function BotonSeleccionar({ seleccion }: { seleccion: SeleccionFichas }) {
+  const ref = useEnfocarAlMontar<HTMLButtonElement>(seleccion.recienCancelada);
   return (
     <Button
+      ref={ref}
       variant="contorno"
       size="sm"
       disabled={seleccion.totalPagina === 0}

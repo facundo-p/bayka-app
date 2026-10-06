@@ -90,7 +90,9 @@ function useSeleccionDeArboles(
   { arboles, clavePagina }: ReturnType<typeof usePaginaArboles>,
   contexto: ContextoFichasPdf | null,
 ) {
-  const idsPagina = (arboles.data?.arboles ?? []).map((arbol) => arbol.id);
+  // Mientras llega otra página se ven las filas viejas: no se pueden marcar.
+  const filas = arboles.isPlaceholderData ? [] : (arboles.data?.arboles ?? []);
+  const idsPagina = filas.map((arbol) => arbol.id);
   return useSeleccionFichas(clavePagina, idsPagina, contexto);
 }
 
