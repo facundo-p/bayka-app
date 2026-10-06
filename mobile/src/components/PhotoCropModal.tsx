@@ -23,7 +23,7 @@ interface Props {
   raw: RawPhoto | null;
   onCancel: () => void;
   onSave: (uri: string) => void;
-  /** Si se pasa, muestra "Reintentar" (reabre cámara/galería según el origen). */
+  /** Si se pasa, muestra "Reintentar" (vuelve a la cámara). */
   onRetry?: () => void;
 }
 

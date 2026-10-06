@@ -114,22 +114,6 @@ export async function cropResizeAndSave(
   return saveToPhotos(result.uri);
 }
 
-/** Captura con cámara SIN procesar (para el paso de recorte). null si cancela/sin permiso. */
-export async function launchCameraRaw(): Promise<RawPhoto | null> {
-  const permission = await ImagePicker.requestCameraPermissionsAsync();
-  if (!permission.granted) return null;
-  const result = await ImagePicker.launchCameraAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    quality: 1,
-    // allowsEditing: paso de recorte nativo tras capturar. En Android el
-    // recorte es libre; lo recortado es lo que se guarda. Cancelar degrada sin crash.
-    allowsEditing: true,
-  });
-  if (result.canceled || !result.assets?.[0]) return null;
-  const asset = result.assets[0];
-  return { uri: asset.uri, width: asset.width ?? 0, height: asset.height ?? 0 };
-}
-
 /** Selección de galería SIN procesar (para el paso de recorte). */
 export async function launchGalleryRaw(): Promise<RawPhoto | null> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();

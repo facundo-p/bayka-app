@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router';
-import { usePhotoCapture } from '../hooks/usePhotoCapture';
+import { usePhotoCaptureFlow } from '../components/PhotoCropProvider';
 import { useTreeRegistration } from '../hooks/useTreeRegistration';
 import { useSpeciesOrder } from '../hooks/useSpeciesOrder';
 import { useEstiloBotonera } from '../hooks/useEstiloBotonera';
@@ -52,7 +52,7 @@ export default function TreeRegistrationScreen() {
   const navigation = useNavigation();
   const userId = useCurrentUserId() ?? '';
   const confirm = useConfirm();
-  const { pickPhoto } = usePhotoCapture(confirm.show);
+  const { pickPhoto } = usePhotoCaptureFlow();
 
   // Surface de errores de escritura (#90): notifica cualquier writer que
   // falle (registro, borrado, foto, finalización).

@@ -2,11 +2,11 @@
 import { PHOTO_CAPTURE_REQUIRED_DEFAULT } from '../../constants/photoCapture';
 
 export interface PickPhotoOptions {
-  /** La foto es opcional: el selector ofrece "Sin foto" en vez de "Cancelar". */
+  /** La foto es opcional: la cámara ofrece "Sin foto" en vez de cerrar. */
   optional?: boolean;
 }
 
-/** Selector de foto de la pantalla; resuelve la URI final o null si no hubo foto. */
+/** Captura de foto de la pantalla; resuelve la URI final o null si no hubo foto. */
 export type PickPhoto = (options?: PickPhotoOptions) => Promise<string | null>;
 
 export interface PhotoPolicy {
