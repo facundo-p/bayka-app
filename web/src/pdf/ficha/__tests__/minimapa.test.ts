@@ -45,3 +45,10 @@ test('toda la parcela del árbol, sin otras parcelas ni el árbol repetido', () 
     color: COLOR_GRAFICO_NN,
   });
 });
+
+test('sin parcela no suma vecinos de toda la plantación', () => {
+  const sinParcela = { ...ARBOL, parcelaId: null };
+  const contenido = contenidoMinimapa(sinParcela, [punto({ parcelaId: null })]);
+  expect(contenido?.puntos).toEqual([]);
+  expect(contenido?.resaltado).toBeDefined();
+});

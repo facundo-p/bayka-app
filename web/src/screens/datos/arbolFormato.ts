@@ -1,8 +1,7 @@
 import type { ArbolDetalle } from '../../queries/dataExplorerQueries';
 import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
 
-/** Dato ausente en las tablas y en el panel de Datos. */
-export const SIN_DATO = '—';
+export { SIN_DATO } from '../../lib/formato';
 
 export type ArbolConGps = ArbolDetalle & { latitude: number; longitude: number };
 

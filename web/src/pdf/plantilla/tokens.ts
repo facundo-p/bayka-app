@@ -87,6 +87,11 @@ export const MEDIDA_FICHA = {
   hueco: 12,
   radio: 6,
   borde: 0.75,
+  bordeFino: 0.5,
   punto: 8,
+  aireTrasPunto: 5,
+  rellenoMarca: { vertical: 1, horizontal: 4 },
+  /** Espaciado de letras de los rótulos en mayúsculas. */
+  espaciadoMayusculas: 0.4,
   anchoEtiqueta: 54,
 } as const;

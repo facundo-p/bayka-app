@@ -1,7 +1,7 @@
 import { Image, Text, View } from '@react-pdf/renderer';
 import type { ReactNode } from 'react';
 import type { CodigoNombre } from '../../queries/fichasQueries';
-import { SIN_DATO } from '../../screens/datos/arbolFormato';
+import { SIN_DATO } from '../../lib/formato';
 import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
 import type { EspecieFicha, GpsFicha, ModeloFicha } from './datosFicha';
 import { fichaStyles as styles } from './Ficha.styles';
@@ -16,6 +16,7 @@ function Especie({ especie }: { especie: EspecieFicha }) {
   return (
     <View style={styles.especie}>
       <View style={styles.filaEspecie}>
+        {/* El color sale del dato, no del tema: única propiedad de estilo en el componente. */}
         <View style={[styles.punto, { backgroundColor: especie.color }]} />
         <Text style={[styles.nombreEspecie, especie.sinIdentificar ? styles.sinIdentificar : {}]}>
           {especie.titulo}

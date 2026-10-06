@@ -1,3 +1,5 @@
+import { TEXTO_PLANTILLA } from '../plantilla/textos';
+
 /** Textos visibles de la ficha de árbol. */
 export const TEXTO_FICHA = {
   documentoUno: 'Ficha de árbol',
@@ -14,7 +16,7 @@ export const TEXTO_FICHA = {
   fotoNoDisponible: 'Foto no disponible',
   sinPuntoGps: 'Sin punto GPS',
   sinPunto: 'Sin punto',
-  separador: ' · ',
+  separador: TEXTO_PLANTILLA.separador,
   precision: '±',
   metros: 'm',
 } as const;

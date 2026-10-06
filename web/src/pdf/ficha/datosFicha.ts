@@ -3,7 +3,7 @@
  * solo pinta. Puro y testeable sin react-pdf.
  */
 import { formatearFechaCorta } from '../../lib/fechas';
-import { pluralizar } from '../../lib/formato';
+import { pluralizar, SIN_DATO } from '../../lib/formato';
 import { SUSTANTIVO } from '../../lib/sustantivos';
 import { ETIQUETA_SUBTIPO_ESPECIE, ETIQUETA_TIPO_ESPECIE } from '../../lib/tiposEspecie';
 import { ESPECIE_NO_RESUELTA, NOMBRE_SIN_IDENTIFICAR } from '../../queries/especiesConstantes';
@@ -13,7 +13,6 @@ import type {
   EspecieDeFicha,
   GpsDeFicha,
 } from '../../queries/fichasQueries';
-import { SIN_DATO } from '../../screens/datos/arbolFormato';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { FotoPdf } from '../estadoFoto';
 import { TEXTO_FICHA } from './textosFicha';

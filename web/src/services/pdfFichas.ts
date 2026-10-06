@@ -41,7 +41,7 @@ function tecnicoDe(arbol: ArbolParaFicha, nombres: ReadonlyMap<string, string>):
   return (arbol.usuarioRegistro && nombres.get(arbol.usuarioRegistro)) || null;
 }
 
-/** El mapa y la organización son accesorios: si fallan, la ficha sale sin ellos. */
+/** Los vecinos del minimapa son accesorios: si no se leen, el mapa muestra solo el árbol. */
 function leerPuntos({ plantacion, queryClient }: ContextoFichasPdf): Promise<PuntoGps[]> {
   return queryClient
     .fetchQuery({
@@ -52,6 +52,7 @@ function leerPuntos({ plantacion, queryClient }: ContextoFichasPdf): Promise<Pun
     .catch(() => []);
 }
 
+/** Sin organización legible, el encabezado lleva solo el código de la plantación. */
 function leerInsumos(ids: readonly string[], contexto: ContextoFichasPdf) {
   const { id } = contexto.plantacion;
   return Promise.all([

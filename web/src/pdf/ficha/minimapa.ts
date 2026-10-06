@@ -4,16 +4,20 @@ import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
 import type { ContenidoMapa } from '../mapa/planMapa';
 import { MEDIDA_FICHA } from '../plantilla/tokens';
 
-/** Toda la parcela del árbol, con el árbol resaltado; null si el árbol no tiene GPS. */
+/**
+ * Toda la parcela del árbol, con el árbol resaltado; null si el árbol no tiene GPS.
+ * Sin parcela no hay vecinos: «sin parcela» juntaría árboles de toda la plantación.
+ */
 export function contenidoMinimapa(
   arbol: ArbolParaFicha,
   puntos: readonly PuntoGps[],
 ): ContenidoMapa | null {
   if (!arbol.gps) return null;
   const { lat, lng } = arbol.gps;
-  const vecinos = puntos.filter(
-    (punto) => punto.parcelaId === arbol.parcelaId && punto.idArbol !== arbol.idArbol,
-  );
+  const { parcelaId } = arbol;
+  const vecinos = parcelaId
+    ? puntos.filter((punto) => punto.parcelaId === parcelaId && punto.idArbol !== arbol.idArbol)
+    : [];
   return {
     puntos: vecinos.map((vecino) => ({
       lat: vecino.lat,

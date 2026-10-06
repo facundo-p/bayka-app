@@ -107,6 +107,21 @@ function fuente(peso: number, tamano: number, familia: string): string {
   return `${peso} ${tamano}px "${familia}"`;
 }
 
+const FUENTES_DEL_MAPA = [
+  fuente(PESO_FUENTE.medio, ESTILO_MAPA.letra, FUENTE_PDF.cuerpo),
+  fuente(PESO_FUENTE.semibold, ESTILO_MAPA.letraNorte, FUENTE_PDF.cuerpo),
+  fuente(PESO_FUENTE.medio, ESTILO_MAPA.letraEtiqueta, FUENTE_PDF.mono),
+];
+
+/** Las fuentes de la página cargan recién cuando algo las usa: el canvas no espera solo. */
+async function esperarFuentes(): Promise<void> {
+  try {
+    await Promise.all(FUENTES_DEL_MAPA.map((descriptor) => document.fonts.load(descriptor)));
+  } catch {
+    // Con la fuente de respaldo el mapa se lee igual.
+  }
+}
+
 function pintarEtiquetas(contexto: CanvasRenderingContext2D, { etiquetas }: PlanMapa) {
   contexto.font = fuente(PESO_FUENTE.medio, ESTILO_MAPA.letraEtiqueta, FUENTE_PDF.mono);
   contexto.fillStyle = COLOR_PDF.navy;
@@ -175,6 +190,7 @@ function pintarNorte(contexto: CanvasRenderingContext2D, { ancho }: Encuadre) {
 export async function dibujarMapa(opciones: OpcionesMapa): Promise<string | null> {
   const plan = planificarMapa(opciones);
   if (!plan) return null;
+  await esperarFuentes();
   const escalaRender = opciones.escalaRender ?? ESCALA_RENDER;
   const canvas = crearCanvas(opciones.ancho * escalaRender, opciones.alto * escalaRender);
   const contexto = contexto2d(canvas);

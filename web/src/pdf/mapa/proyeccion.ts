@@ -59,18 +59,27 @@ export function metrosPorPixel(lat: number, zoom: number): number {
 
 type Caja = { min: Pixel; max: Pixel };
 
-function cajaDe(pixeles: Pixel[]): Caja {
-  const xs = pixeles.map((pixel) => pixel.x);
-  const ys = pixeles.map((pixel) => pixel.y);
-  return {
-    min: { x: Math.min(...xs), y: Math.min(...ys) },
-    max: { x: Math.max(...xs), y: Math.max(...ys) },
-  };
+/** En una pasada y sin spread: `Math.min(...xs)` revienta la pila con decenas de miles de puntos. */
+function cajaDe(pixeles: readonly Pixel[]): Caja {
+  return pixeles.reduce<Caja>(
+    (caja, { x, y }) => ({
+      min: { x: Math.min(caja.min.x, x), y: Math.min(caja.min.y, y) },
+      max: { x: Math.max(caja.max.x, x), y: Math.max(caja.max.y, y) },
+    }),
+    { min: { x: Infinity, y: Infinity }, max: { x: -Infinity, y: -Infinity } },
+  );
 }
 
 function latitudCentral(puntos: readonly LatLng[]): number {
-  const latitudes = puntos.map((punto) => punto.lat);
-  return (Math.min(...latitudes) + Math.max(...latitudes)) / 2;
+  const { min, max } = cajaDe(puntos.map((punto) => ({ x: 0, y: punto.lat })));
+  return (min.y + max.y) / 2;
+}
+
+/** Origen que deja el centro de la caja en el centro del rectángulo. */
+function origenCentrado(caja: Caja, zoom: number, ancho: number, alto: number): Pixel {
+  const escala = 2 ** zoom;
+  const centro = { x: (caja.min.x + caja.max.x) / 2, y: (caja.min.y + caja.max.y) / 2 };
+  return { x: centro.x * escala - ancho / 2, y: centro.y * escala - alto / 2 };
 }
 
 /** El zoom más alto que deja entrar todos los puntos con el margen pedido. */
@@ -91,9 +100,7 @@ export function encuadrar(
   const zoom = Math.log2(
     Math.min((ancho - 2 * margen) / extension.x, (alto - 2 * margen) / extension.y),
   );
-  const escala = 2 ** zoom;
-  const centro = { x: (caja.min.x + caja.max.x) / 2, y: (caja.min.y + caja.max.y) / 2 };
-  const origen = { x: centro.x * escala - ancho / 2, y: centro.y * escala - alto / 2 };
+  const origen = origenCentrado(caja, zoom, ancho, alto);
   return { zoom, origen, ancho, alto, latitudCentro };
 }
 
