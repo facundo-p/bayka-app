@@ -131,19 +131,26 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
-function BotonSeleccionar({ seleccion }: { seleccion: SeleccionFichas }) {
-  const ref = useEnfocarAlMontar<HTMLButtonElement>(seleccion.recienCancelada);
+interface BotonSeleccionarProps {
+  seleccion: SeleccionFichas;
+  /** Del total de la query y no de la página a la vista: no parpadea al paginar. */
+  sinArboles: boolean;
+}
+
+function BotonSeleccionar({ seleccion, sinArboles }: BotonSeleccionarProps) {
+  const ref = useEnfocarAlMontar<HTMLButtonElement>(
+    seleccion.focoEnSeleccionar,
+    seleccion.focoTomado,
+  );
   return (
-    <Button
-      ref={ref}
-      variant="contorno"
-      size="sm"
-      disabled={seleccion.totalPagina === 0}
-      onClick={seleccion.entrar}
-    >
+    <Button ref={ref} variant="contorno" size="sm" disabled={sinArboles} onClick={seleccion.entrar}>
       {TEXTO_SELECCION.entrar}
     </Button>
   );
+}
+
+function sinArboles({ arboles }: SeccionArboles): boolean {
+  return !arboles.data || arboles.data.total === 0;
 }
 
 function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
@@ -154,7 +161,11 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
       filtrosActivos={seccion.filtrosActivos}
       onLimpiar={seccion.limpiar}
       // En modo selección la salida es «Cancelar», en la franja azul.
-      acciones={!seccion.seleccion.activa && <BotonSeleccionar seleccion={seccion.seleccion} />}
+      acciones={
+        !seccion.seleccion.activa && (
+          <BotonSeleccionar seleccion={seccion.seleccion} sinArboles={sinArboles(seccion)} />
+        )
+      }
     >
       <ArbolesFiltros
         filtros={seccion.filtros}

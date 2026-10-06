@@ -30,3 +30,8 @@ test('la variante destructiva queda deshabilitada con su motivo en el title', ()
   expect(button).toBeDisabled();
   expect(button).toHaveAttribute('title', 'No podés desactivarte');
 });
+
+test.each([['inverso'], ['inversoSutil']] as const)('aplica la variante %s', (variante) => {
+  render(<Button variant={variante}>Generar</Button>);
+  expect(screen.getByRole('button', { name: 'Generar' }).className).toContain(styles[variante]);
+});

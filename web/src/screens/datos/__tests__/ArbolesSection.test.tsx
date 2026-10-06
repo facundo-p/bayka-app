@@ -82,6 +82,7 @@ function renderSeccion() {
   return userEvent.setup();
 }
 
+const BUSCADOR = 'Buscar por ID o SubID';
 const barra = () => screen.getByRole('region', { name: 'Árboles seleccionados' });
 const casilla = (numero: number) =>
   screen.getByRole('checkbox', { name: `Seleccionar el árbol A${numero}-SS26` });
@@ -144,6 +145,15 @@ describe('foco', () => {
     expect(screen.getByRole('button', { name: 'Seleccionar' })).toHaveFocus();
   });
 
+  test('si la sección se remonta tras un error, la franja no roba el foco', async () => {
+    const usuario = await entrarAlModo();
+    vi.mocked(listarArboles).mockRejectedValueOnce(new Error('caída'));
+    await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
+    await usuario.click(await screen.findByRole('button', { name: 'Reintentar' }));
+    await screen.findByText('A5-SS26');
+    expect(barra()).not.toHaveFocus();
+  });
+
   test('al cargar la pantalla no se lo lleva «Seleccionar»', async () => {
     renderSeccion();
     expect(await screen.findByRole('button', { name: 'Seleccionar' })).not.toHaveFocus();
@@ -180,6 +190,14 @@ describe('marcar filas', () => {
     expect(maestro()).toHaveAttribute('aria-checked', 'false');
   });
 
+  test('Espacio sobre el checkbox lo marca sin abrir el detalle', async () => {
+    const usuario = await entrarAlModo();
+    casilla(2).focus();
+    await usuario.keyboard(' ');
+    expect(casilla(2)).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('complementary', { name: 'Detalle del árbol' })).toBeNull();
+  });
+
   test('singular y plural del recuento', async () => {
     const usuario = await entrarAlModo();
     await usuario.click(casilla(1));
@@ -209,6 +227,22 @@ describe('la selección vale para la página actual', () => {
     await usuario.click(casilla(1));
     expect(casilla(1)).toHaveAttribute('aria-checked', 'false');
     expect(barra()).toHaveTextContent('0 árboles seleccionados');
+  });
+
+  test('«Seleccionar» no se deshabilita mientras llega otra página', async () => {
+    const usuario = renderSeccion();
+    await screen.findByText('A1-SS26');
+    vi.mocked(listarArboles).mockReturnValue(new Promise(() => {}));
+    await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
+    expect(screen.getByRole('button', { name: 'Seleccionar' })).toBeEnabled();
+  });
+
+  test('la búsqueda, al aplicarse tras el debounce, la limpia', async () => {
+    const usuario = await entrarAlModo();
+    await usuario.click(casilla(1));
+    await usuario.type(screen.getByLabelText(BUSCADOR), 'A');
+    expect(barra()).toHaveTextContent('1 árbol seleccionado');
+    await waitFor(() => expect(barra()).toHaveTextContent('0 árboles seleccionados'));
   });
 
   test('cambiar un filtro la limpia', async () => {
@@ -258,6 +292,18 @@ describe('generar fichas', () => {
     expect(within(barra()).getByRole('button', { name: 'Cancelar' })).toBeDisabled();
     terminar();
     await waitFor(() => expect(generar()).toHaveTextContent('Generar fichas (1)'));
+  });
+
+  test('el error se borra al cambiar la selección', async () => {
+    vi.mocked(descargarFichasPdf).mockRejectedValue(new Error('boom'));
+    const usuario = await entrarAlModo();
+    await usuario.click(casilla(2));
+    await waitFor(() => expect(generar()).toBeEnabled());
+    await usuario.click(generar());
+    await within(barra()).findByText('No se pudieron generar las fichas');
+
+    await usuario.click(casilla(3));
+    expect(within(barra()).queryByText('No se pudieron generar las fichas')).toBeNull();
   });
 
   test('si falla, muestra el error', async () => {

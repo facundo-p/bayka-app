@@ -1,11 +1,20 @@
 import { useEffect, useRef } from 'react';
 
-/** Ref que recibe el foco al montarse el elemento, si `enfocar` es true en ese momento. */
-export function useEnfocarAlMontar<T extends HTMLElement>(enfocar: boolean) {
+/**
+ * Ref que recibe el foco al montarse el elemento, si `enfocar` es true en ese
+ * momento. `alEnfocar` avisa para que quien lo pidió baje el pedido: si no, un
+ * remonte posterior volvería a robar el foco.
+ */
+export function useEnfocarAlMontar<T extends HTMLElement>(
+  enfocar: boolean,
+  alEnfocar?: () => void,
+) {
   const ref = useRef<T>(null);
-  const enfocarInicial = useRef(enfocar);
+  const pedido = useRef({ enfocar, alEnfocar });
   useEffect(() => {
-    if (enfocarInicial.current) ref.current?.focus();
+    if (!pedido.current.enfocar) return;
+    ref.current?.focus();
+    pedido.current.alEnfocar?.();
   }, []);
   return ref;
 }

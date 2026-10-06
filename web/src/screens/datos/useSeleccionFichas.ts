@@ -9,6 +9,28 @@ import { descargarFichasPdf, type ContextoFichasPdf } from '../../services/pdfFi
 
 const NINGUNA: ReadonlySet<string> = new Set();
 
+/** Control que toma el foco al montarse: la franja al entrar, «Seleccionar» al salir. */
+export const FOCO_SELECCION = { franja: 'franja', seleccionar: 'seleccionar' } as const;
+type FocoSeleccion = (typeof FOCO_SELECCION)[keyof typeof FOCO_SELECCION];
+
+/** Modo activo y a dónde va el foco. El pedido se baja al enfocar (`focoTomado`). */
+function useModoSeleccion() {
+  const [activa, setActiva] = useState(false);
+  const [foco, setFoco] = useState<FocoSeleccion | null>(null);
+  const cambiar = (proxima: boolean, destino: FocoSeleccion) => {
+    setActiva(proxima);
+    setFoco(destino);
+  };
+  return {
+    activa,
+    focoEnFranja: foco === FOCO_SELECCION.franja,
+    focoEnSeleccionar: foco === FOCO_SELECCION.seleccionar,
+    focoTomado: () => setFoco(null),
+    entrar: () => cambiar(true, FOCO_SELECCION.franja),
+    salir: () => cambiar(false, FOCO_SELECCION.seleccionar),
+  };
+}
+
 /**
  * La marca se guarda junto a la clave de la página. Con otra página u otros
  * filtros se descarta en el mismo render, así no reaparece al volver.
@@ -22,28 +44,20 @@ function useMarcadasDePagina(clavePagina: string) {
   return { marcadas, fijar };
 }
 
-/** Modo selección sobre los árboles de la página a la vista, en su orden. */
-function useSeleccionDePagina(clavePagina: string, idsPagina: readonly string[]) {
-  const [activa, setActiva] = useState(false);
-  // Al cancelar, el foco vuelve a «Seleccionar»; al cargar la pantalla, no.
-  const [recienCancelada, setRecienCancelada] = useState(false);
+/** Marcas sobre los árboles de la página a la vista, en su orden. Un id ajeno no se marca. */
+function useMarcasDePagina(clavePagina: string, idsPagina: readonly string[]) {
   const { marcadas, fijar } = useMarcadasDePagina(clavePagina);
   const ids = marcadasEnOrden(idsPagina, marcadas);
   return {
-    activa,
-    recienCancelada,
     ids,
     totalPagina: idsPagina.length,
     maestro: estadoMaestro(idsPagina, marcadas),
     estaMarcado: (id: string) => ids.includes(id),
-    entrar: () => setActiva(true),
-    cancelar: () => {
-      setActiva(false);
-      setRecienCancelada(true);
-      fijar(NINGUNA);
+    alternar: (id: string) => {
+      if (idsPagina.includes(id)) fijar(alternarId(marcadas, id));
     },
-    alternar: (id: string) => fijar(alternarId(marcadas, id)),
     alternarTodos: () => fijar(aplicarMaestro(idsPagina, marcadas)),
+    limpiar: () => fijar(NINGUNA),
   };
 }
 
@@ -56,10 +70,15 @@ export function useSeleccionFichas(
   idsPagina: readonly string[],
   contexto: ContextoFichasPdf | null,
 ) {
-  const seleccion = useSeleccionDePagina(clavePagina, idsPagina);
-  const { ids } = seleccion;
+  const { salir, ...modo } = useModoSeleccion();
+  const { limpiar, ...marcas } = useMarcasDePagina(clavePagina, idsPagina);
+  const { ids } = marcas;
+  const cancelar = () => {
+    salir();
+    limpiar();
+  };
   const generar = contexto && ids.length > 0 ? () => descargarFichasPdf(ids, contexto) : null;
-  return { ...seleccion, generar };
+  return { ...modo, ...marcas, cancelar, generar };
 }
 
 export type SeleccionFichas = ReturnType<typeof useSeleccionFichas>;

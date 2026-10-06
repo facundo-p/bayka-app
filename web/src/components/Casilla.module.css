@@ -3,10 +3,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
+  width: var(--tamano-casilla);
+  height: var(--tamano-casilla);
   border: var(--border-medium) solid var(--color-border-strong);
-  border-radius: 5px;
+  border-radius: var(--radius-casilla);
   color: var(--color-white);
 }
 
