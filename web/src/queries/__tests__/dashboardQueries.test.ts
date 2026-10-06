@@ -49,6 +49,8 @@ describe('calcularKpis', () => {
       totalArboles: 4,
       arbolesNN: 1,
       especiesUsadas: 1,
+      arbolesConGps: 1,
+      arbolesConFoto: 1,
       porcentajeConGps: 25,
       porcentajeConFoto: 25,
     });
@@ -59,6 +61,8 @@ describe('calcularKpis', () => {
       totalArboles: 0,
       arbolesNN: 0,
       especiesUsadas: 0,
+      arbolesConGps: 0,
+      arbolesConFoto: 0,
       porcentajeConGps: 0,
       porcentajeConFoto: 0,
     });
@@ -91,8 +95,8 @@ describe('agruparPorParcela', () => {
     const arboles = [conteo({ cantidad: 2 }), conteo({ conGps: true })];
 
     expect(agruparPorParcela(arboles, parcelas)).toEqual([
-      { nombre: 'Norte', codigo: 'P1', cantidad: 3 },
-      { nombre: 'Sur', codigo: 'P2', cantidad: 0 },
+      { id: 'parc-1', nombre: 'Norte', codigo: 'P1', cantidad: 3 },
+      { id: 'parc-2', nombre: 'Sur', codigo: 'P2', cantidad: 0 },
     ]);
   });
 });
@@ -213,6 +217,8 @@ describe('obtenerFuenteDashboard', () => {
       totalArboles: 2,
       arbolesNN: 1,
       especiesUsadas: 1,
+      arbolesConGps: 1,
+      arbolesConFoto: 1,
       porcentajeConGps: 50,
       porcentajeConFoto: 50,
       totalGrupos: 3,
@@ -221,7 +227,7 @@ describe('obtenerFuenteDashboard', () => {
         { codigo: 'QB', nombre: 'Quebracho', cantidad: 1 },
         { codigo: 'NN', nombre: 'Sin identificar', cantidad: 1 },
       ],
-      porParcela: [{ nombre: 'Norte', codigo: 'P1', cantidad: 2 }],
+      porParcela: [{ id: 'parc-1', nombre: 'Norte', codigo: 'P1', cantidad: 2 }],
       porMes: [{ mes: '2026-06', cantidad: 2 }],
     });
   });

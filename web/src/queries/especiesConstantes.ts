@@ -9,6 +9,10 @@
 /** Código del árbol sin especie identificada. */
 export const ESPECIE_SIN_IDENTIFICAR = 'NN';
 
+export function esSinIdentificar(codigo: string): boolean {
+  return codigo === ESPECIE_SIN_IDENTIFICAR;
+}
+
 /** Nombre visible del segmento/grupo de árboles sin especie. */
 export const NOMBRE_SIN_IDENTIFICAR = 'Sin identificar';
 

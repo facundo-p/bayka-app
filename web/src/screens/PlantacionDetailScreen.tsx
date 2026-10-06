@@ -74,7 +74,7 @@ function lineaMeta(plantacion: Plantacion): string {
   return `${plantacion.codigo} · ${plantacion.periodo} · Creada ${formatearFechaCorta(plantacion.createdAt)}`;
 }
 
-function itemsExportar({ kml, xlsx, csv, idsPendientes }: AccionesProps): ItemDesplegable[] {
+function itemsExportar({ kml, xlsx, csv, pdf, idsPendientes }: AccionesProps): ItemDesplegable[] {
   const motivoPlanilla = idsPendientes ? MOTIVO_IDS_PENDIENTES : null;
   return [
     { clave: 'kml', etiqueta: 'Descargar KML', onSeleccionar: () => void kml.descargar() },
@@ -90,11 +90,13 @@ function itemsExportar({ kml, xlsx, csv, idsPendientes }: AccionesProps): ItemDe
       motivo: motivoPlanilla,
       onSeleccionar: () => void csv.descargar(),
     },
+    { clave: 'pdf', etiqueta: 'Informe PDF', onSeleccionar: () => void pdf.descargar() },
   ];
 }
 
 function MenuExportar(props: AccionesProps) {
-  const descargando = props.kml.descargando || props.xlsx.descargando || props.csv.descargando;
+  const { kml, xlsx, csv, pdf } = props;
+  const descargando = [kml, xlsx, csv, pdf].some((descarga) => descarga.descargando);
   return (
     <MenuDesplegable
       etiqueta="Exportar"

@@ -4,7 +4,13 @@
  */
 import { contexto2d, crearCanvas, exportarYLiberar } from '../canvas';
 import { COLOR_PDF, FUENTE_PDF, PESO_FUENTE } from '../plantilla/tokens';
-import { planificarMapa, type ContenidoMapa, type PlanMapa, type PuntoUbicado } from './planMapa';
+import {
+  planificarMapa,
+  type ContenidoMapa,
+  type EtiquetaUbicada,
+  type PlanMapa,
+  type PuntoUbicado,
+} from './planMapa';
 import type { Encuadre } from './proyeccion';
 
 /**
@@ -23,10 +29,19 @@ export type OpcionesMapa = ContenidoMapa & {
   /** Radio de los puntos en pt: más chico cuanto más denso el mapa. */
   radioPunto?: number;
   fondo?: CapaFondo;
+  /** PNG por defecto; JPEG achica el archivo de un mapa grande. */
+  formato?: FormatoMapa;
 };
 
+/** Tipo de imagen del mapa, con la calidad si comprime con pérdida. */
+export type FormatoMapa = { tipo: string; calidad?: number };
+
+export const FORMATO_MAPA = {
+  png: { tipo: 'image/png' },
+  jpeg: { tipo: 'image/jpeg', calidad: 0.85 },
+} as const satisfies Record<string, FormatoMapa>;
+
 const ESCALA_RENDER = 2.5;
-const TIPO_PNG = 'image/png';
 const VUELTA = Math.PI * 2;
 
 /** Medidas en pt. */
@@ -43,7 +58,9 @@ const ESTILO_MAPA = {
   rellenoInsignia: 3,
   margen: 6,
   letra: 5,
-  letraEtiqueta: 6,
+  letraEtiqueta: 7,
+  rellenoEtiqueta: { vertical: 1.5, horizontal: 3 },
+  radioEtiqueta: 2,
   topeEscala: 1.5,
   grosorEscala: 0.7,
   radioNorte: 6,
@@ -122,12 +139,26 @@ async function esperarFuentes(): Promise<void> {
   }
 }
 
+/** Insignia clara detrás de la etiqueta: sobre los puntos, el texto solo no se lee. */
+function pintarInsignia(contexto: CanvasRenderingContext2D, { x, y, texto }: EtiquetaUbicada) {
+  const { letraEtiqueta: letra, rellenoEtiqueta: relleno } = ESTILO_MAPA;
+  const ancho = contexto.measureText(texto).width + relleno.horizontal * 2;
+  const alto = letra + relleno.vertical * 2;
+  contexto.fillStyle = COLOR_PDF.mapaInsignia;
+  contexto.beginPath();
+  contexto.roundRect(x - ancho / 2, y - alto / 2, ancho, alto, ESTILO_MAPA.radioEtiqueta);
+  contexto.fill();
+}
+
 function pintarEtiquetas(contexto: CanvasRenderingContext2D, { etiquetas }: PlanMapa) {
   contexto.font = fuente(PESO_FUENTE.medio, ESTILO_MAPA.letraEtiqueta, FUENTE_PDF.mono);
-  contexto.fillStyle = COLOR_PDF.navy;
   contexto.textAlign = 'center';
   contexto.textBaseline = 'middle';
-  for (const { x, y, texto } of etiquetas) contexto.fillText(texto, x, y);
+  for (const etiqueta of etiquetas) {
+    pintarInsignia(contexto, etiqueta);
+    contexto.fillStyle = COLOR_PDF.navy;
+    contexto.fillText(etiqueta.texto, etiqueta.x, etiqueta.y);
+  }
 }
 
 function pintarBarra(contexto: CanvasRenderingContext2D, desde: number, largo: number, y: number) {
@@ -186,7 +217,7 @@ function pintarNorte(contexto: CanvasRenderingContext2D, { ancho }: Encuadre) {
   contexto.fillText(LETRA_NORTE, cx, cy + ESTILO_MAPA.alturaLetraNorte);
 }
 
-/** PNG del mapa como data URL; null si no hay ningún punto que mostrar. */
+/** Imagen del mapa como data URL; null si no hay ningún punto que mostrar. */
 export async function dibujarMapa(opciones: OpcionesMapa): Promise<string | null> {
   const plan = planificarMapa(opciones);
   if (!plan) return null;
@@ -202,5 +233,6 @@ export async function dibujarMapa(opciones: OpcionesMapa): Promise<string | null
   pintarEtiquetas(contexto, plan);
   pintarEscala(contexto, plan);
   pintarNorte(contexto, plan.encuadre);
-  return exportarYLiberar(canvas, TIPO_PNG);
+  const { tipo, calidad }: FormatoMapa = opciones.formato ?? FORMATO_MAPA.png;
+  return exportarYLiberar(canvas, tipo, calidad);
 }

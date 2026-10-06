@@ -11,6 +11,7 @@ import { renderRutasEn } from '../../test/renderConRutas';
 import { ANCHO, simularAncho } from '../../test/simularAncho';
 import { ERRORES_GENERACION_IDS } from '../../queries/idsQueries';
 import { filaPlantacion } from '../../test/fabricas';
+import { descargarInformePdf } from '../../services/pdfInforme';
 
 vi.mock('../../lib/supabase', async () => {
   const { supabaseMock } = await import('../../test/supabaseMock');
@@ -22,6 +23,9 @@ vi.mock('../../lib/supabase', async () => {
 vi.mock('write-excel-file/browser', () => ({
   default: vi.fn(() => ({ toBlob: () => Promise.resolve(new Blob(['xlsx'])) })),
 }));
+
+/** El informe se prueba en su service; acá alcanza con que el menú lo dispare. */
+vi.mock('../../services/pdfInforme', () => ({ descargarInformePdf: vi.fn() }));
 
 const FILA_PLANTACION = filaPlantacion({
   id: 'plant-1',
@@ -294,6 +298,31 @@ test('sin IDs generados el KML sigue disponible y las planillas explican por qu�
   );
 });
 
+test('«Informe PDF» está en Exportar aunque falten los IDs y genera el informe', async () => {
+  const usuario = userEvent.setup();
+  totalArboles = 5;
+  conIdArboles = 3; // set parcial → todavía no generado
+  renderRutasEn('/plantaciones/plant-1');
+
+  expect(await screen.findByRole('button', { name: 'Generar IDs' })).toBeInTheDocument();
+  const informe = await itemExportar(usuario, 'Informe PDF');
+  expect(informe).toBeEnabled();
+  await usuario.click(informe);
+  await vi.waitFor(() => expect(descargarInformePdf).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(descargarInformePdf).mock.calls[0][0]).toMatchObject({ id: 'plant-1' });
+});
+
+test('si el informe falla, se avisa en la barra', async () => {
+  const usuario = userEvent.setup();
+  vi.mocked(descargarInformePdf).mockRejectedValueOnce(new Error('canvas'));
+  totalArboles = 5;
+  conIdArboles = 5;
+  renderRutasEn('/plantaciones/plant-1');
+
+  await usuario.click(await itemExportar(usuario, 'Informe PDF'));
+  expect(await screen.findByText('No se pudo generar el informe PDF.')).toBeInTheDocument();
+});
+
 test('exportar sin árboles muestra el mensaje en vez de descargar una planilla vacía', async () => {
   const usuario = userEvent.setup();
   totalArboles = 5;
@@ -491,6 +520,7 @@ test('a ≤900px las acciones se pliegan en un solo «⋯» sin perder ninguna',
   expect(await within(menu).findByRole('menuitem', { name: 'Generar IDs' })).toBeInTheDocument();
   expect(within(menu).getByRole('menuitem', { name: 'Editar plantación' })).toBeInTheDocument();
   expect(within(menu).getByRole('menuitem', { name: 'Descargar KML' })).toBeEnabled();
+  expect(within(menu).getByRole('menuitem', { name: 'Informe PDF' })).toBeEnabled();
   // El gate de las planillas viaja con la acción, no con el control que la muestra.
   const excel = within(menu).getByRole('menuitem', { name: 'Exportar Excel' });
   expect(excel).toBeDisabled();
