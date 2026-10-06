@@ -24,7 +24,7 @@ describe('datosInforme', () => {
     expect(arboles).toEqual({
       valor: '100',
       meta: 'de 80',
-      avance: 100,
+      avance: 1,
       textoAvance: '125% de la meta',
     });
   });

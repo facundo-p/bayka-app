@@ -19,6 +19,9 @@ const numero = { textAlign: 'right' } as const;
 
 const barra = { borderRadius: M.radioBarra, overflow: 'hidden' } as const;
 
+/** Un renglón de alto fijo: lo que no entra termina en «…» en vez de perderse. */
+const recortado = { maxLines: 1, textOverflow: 'ellipsis' } as const;
+
 const celda = { paddingHorizontal: M.rellenoCelda } as const;
 
 const titulo = {
@@ -31,6 +34,7 @@ export const informeStyles = StyleSheet.create({
   titulo: { marginBottom: M.separacionBloques },
   tituloTexto: { ...titulo, fontSize: TAMANO_TEXTO.tituloInforme, height: M.altoTitulo },
   linea: {
+    ...recortado,
     lineHeight: M.interlineado,
     marginTop: M.aireTitulo,
     height: M.altoLineaTitulo,
@@ -106,6 +110,7 @@ export const informeStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.filaInforme,
     color: COLOR_PDF.tinta,
   },
+  recortado: { ...recortado, flexShrink: 1 },
   nombreEspecie: { flexDirection: 'row', alignItems: 'center', width: M.anchoNombreEspecie },
   punto: {
     width: M.puntoEspecie,
@@ -144,7 +149,7 @@ export const informeStyles = StyleSheet.create({
     borderBottomColor: COLOR_PDF.linea,
   },
   filaTotal: { fontWeight: PESO_FUENTE.semibold, borderBottomWidth: 0 },
-  celdaParcela: { ...celda, flexGrow: 1, flexBasis: 0 },
+  celdaParcela: { ...celda, ...recortado, flexGrow: 1, flexBasis: 0 },
   celdaNumero: { ...celda, ...numero, width: M.anchoColumnaNumero },
   celdaBarra: { ...celda, width: M.anchoBarraParcela },
   codigo: { fontFamily: FUENTE_PDF.mono, color: COLOR_PDF.navy },

@@ -4,6 +4,7 @@
  */
 import {
   etiquetaEspecie,
+  formatearConDecimal,
   formatearEntero,
   PORCENTAJE_COMPLETO,
   porcentaje,
@@ -38,7 +39,7 @@ export type IndicadorArboles = {
   valor: string;
   /** «de 8.000»; null sin meta. */
   meta: string | null;
-  /** Relleno de la barra, de 0 a 100; null sin meta. */
+  /** Relleno de la barra, de 0 a 1; null sin meta. */
   avance: number | null;
   /** «106% de la meta»: el texto no se acota, la barra sí. */
   textoAvance: string | null;
@@ -95,17 +96,10 @@ export type ModeloInforme = {
   mapa: MapaDelInforme;
 };
 
-const PORCENTAJE_CON_DECIMAL = new Intl.NumberFormat('es-AR', {
-  minimumFractionDigits: 1,
-  maximumFractionDigits: 1,
-});
-
 const conPorciento = (valor: number | string) => `${valor}%`;
 
 function porcentajeDecimal(parte: number, total: number): string {
-  return conPorciento(
-    PORCENTAJE_CON_DECIMAL.format(total === 0 ? 0 : (parte / total) * PORCENTAJE_COMPLETO),
-  );
+  return conPorciento(formatearConDecimal(total === 0 ? 0 : (parte / total) * PORCENTAJE_COMPLETO));
 }
 
 function fraccionDe(parte: number, maximo: number): number {
@@ -134,7 +128,7 @@ function indicadorArboles(total: number, objetivo: number | null): IndicadorArbo
   return {
     valor,
     meta: `${TEXTO_INFORME.de} ${formatearEntero(objetivo)}`,
-    avance,
+    avance: avance / PORCENTAJE_COMPLETO,
     textoAvance: `${conPorciento(porcentaje(total, objetivo))} ${TEXTO_INFORME.deLaMeta}`,
   };
 }
@@ -186,13 +180,20 @@ function especies(dashboard: DashboardData, colores: ColoresInforme) {
   };
 }
 
-function filasParcelas({ dashboard, parcelas }: EntradaInforme): FilaParcela[] {
+/** Grupos de cada fila, por código de parcela. */
+function gruposDeLasFilas({ dashboard, parcelas }: EntradaInforme): number[] {
   const gruposPorCodigo = new Map(parcelas.map((parcela) => [parcela.codigo, parcela.grupos]));
+  return dashboard.porParcela.map((parcela) => gruposPorCodigo.get(parcela.codigo) ?? 0);
+}
+
+function filasParcelas(entrada: EntradaInforme): FilaParcela[] {
+  const { dashboard } = entrada;
+  const grupos = gruposDeLasFilas(entrada);
   const maximo = Math.max(0, ...dashboard.porParcela.map((parcela) => parcela.cantidad));
-  return dashboard.porParcela.map((parcela) => ({
+  return dashboard.porParcela.map((parcela, indice) => ({
     codigo: parcela.codigo,
     nombre: parcela.nombre,
-    grupos: formatearEntero(gruposPorCodigo.get(parcela.codigo) ?? 0),
+    grupos: formatearEntero(grupos[indice]),
     arboles: formatearEntero(parcela.cantidad),
     fraccion: fraccionDe(parcela.cantidad, maximo),
     porcentaje: porcentajeDecimal(parcela.cantidad, dashboard.totalArboles),
@@ -200,9 +201,10 @@ function filasParcelas({ dashboard, parcelas }: EntradaInforme): FilaParcela[] {
 }
 
 /** Suma de las filas: un árbol de un grupo sin parcela no entra en ninguna. */
-function filaTotal({ dashboard, parcelas }: EntradaInforme): TotalParcelas {
+function filaTotal(entrada: EntradaInforme): TotalParcelas {
+  const { dashboard } = entrada;
   const arboles = dashboard.porParcela.reduce((suma, parcela) => suma + parcela.cantidad, 0);
-  const grupos = parcelas.reduce((suma, parcela) => suma + parcela.grupos, 0);
+  const grupos = gruposDeLasFilas(entrada).reduce((suma, cantidad) => suma + cantidad, 0);
   const { total, separador } = TEXTO_INFORME;
   return {
     titulo: `${total}${separador}${pluralizar(dashboard.porParcela.length, SUSTANTIVO.parcela)}`,
@@ -249,7 +251,8 @@ function mapa({ dashboard, puntos: leidos, parcelas }: EntradaInforme, colores: 
     puntos: puntos.map(({ lat, lng, codigo }) => ({ lat, lng, color: colores(codigo) })),
     etiquetas: etiquetasDeParcelas(puntos, parcelas),
     leyenda: leyenda(dashboard, colores),
-    nota: vacio ? null : notaCoordenadas(puntos.length, dashboard.totalArboles),
+    // La cuenta del indicador «Con GPS»: los puntos solo dibujan.
+    nota: vacio ? null : notaCoordenadas(dashboard.arbolesConGps, dashboard.totalArboles),
     vacio,
   };
 }

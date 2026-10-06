@@ -29,6 +29,16 @@ export function formatearEntero(valor: number): string {
   return new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(valor);
 }
 
+const UN_DECIMAL = new Intl.NumberFormat('es-AR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+/** Con un decimal y coma es-AR, ej. 7.6543 → "7,7". */
+export function formatearConDecimal(valor: number): string {
+  return UN_DECIMAL.format(valor);
+}
+
 /** Las dos formas de lo que concuerda con una cantidad, ej. árbol/árboles. */
 export interface Sustantivo {
   singular: string;

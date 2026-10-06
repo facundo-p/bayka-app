@@ -25,20 +25,32 @@ export function esMapaEnHojaCompleta(plan: PlanInforme): boolean {
 const ALTO_ENCABEZADO_BLOQUE =
   M.altoEncabezadoBloque + M.aireEncabezadoBloque + M.separacionEncabezadoBloque;
 
+/** El título de bloque no queda solo al pie de una hoja: viaja con lo que lo sigue. */
+function conEncabezado([primero = 0, ...resto]: number[]): number[] {
+  return [ALTO_ENCABEZADO_BLOQUE + Math.max(primero, M.presenciaTrasEncabezado), ...resto];
+}
+
+function renglonesEspecies({ especies }: ModeloInforme): number[] {
+  const fila = M.altoFilaEspecie + M.separacionFilaEspecie;
+  return conEncabezado(especies.vacio ? [M.altoMensaje] : especies.filas.map(() => fila));
+}
+
+function renglonesTabla({ parcelas }: ModeloInforme): number[] {
+  if (parcelas.vacio) return conEncabezado([M.altoMensaje]);
+  const filas = [...parcelas.filas.map(() => M.altoFilaTabla), M.altoFilaTabla];
+  const [primera, ...resto] = filas;
+  return conEncabezado([M.altoEncabezadoTabla + primera, ...resto]);
+}
+
 /** Lo que ocupa cada renglón que no se parte, en el orden del documento. */
 function renglonesDelFlujo(modelo: ModeloInforme): number[] {
-  const { especies, parcelas } = modelo;
-  const filaEspecie = M.altoFilaEspecie + M.separacionFilaEspecie;
-  const tabla = parcelas.vacio
-    ? [M.altoMensaje]
-    : [M.altoEncabezadoTabla, ...parcelas.filas.map(() => M.altoFilaTabla), M.altoFilaTabla];
+  const [tabla, ...restoTabla] = renglonesTabla(modelo);
   return [
     M.altoTitulo + M.aireTitulo + M.altoLineaTitulo + M.separacionBloques,
     M.altoIndicadores + M.separacionBloques,
-    ALTO_ENCABEZADO_BLOQUE,
-    ...(especies.vacio ? [M.altoMensaje] : especies.filas.map(() => filaEspecie)),
-    M.separacionBloques + ALTO_ENCABEZADO_BLOQUE,
-    ...tabla,
+    ...renglonesEspecies(modelo),
+    M.separacionBloques + tabla,
+    ...restoTabla,
   ];
 }
 

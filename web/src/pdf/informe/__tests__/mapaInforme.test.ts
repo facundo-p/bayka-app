@@ -1,5 +1,13 @@
 import type { PuntoGps } from '../../../queries/mapaQueries';
-import { cajaDelMapa, etiquetasDeParcelas } from '../mapaInforme';
+import { dibujarMapa } from '../../mapa/dibujarMapa';
+import { cajaDelMapa, dibujarMapaInforme, etiquetasDeParcelas } from '../mapaInforme';
+
+vi.mock('../../mapa/dibujarMapa', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../mapa/dibujarMapa')>()),
+  dibujarMapa: vi.fn(),
+}));
+
+beforeEach(() => vi.clearAllMocks());
 
 function punto(lat: number, lng: number, parcelaId: string | null): PuntoGps {
   return { lat, lng, parcelaId, codigo: 'LAP', nombre: '', idArbol: 'x', subId: 'x' };
@@ -54,5 +62,36 @@ describe('cajaDelMapa', () => {
     const caja = cajaDelMapa(alta, DISPONIBLE);
     expect(caja.alto).toBe(400);
     expect(caja.ancho).toBeLessThan(535);
+  });
+});
+
+describe('dibujarMapaInforme', () => {
+  const contenido = {
+    puntos: [{ lat: -27.47, lng: -55.9, color: '#000' }],
+    etiquetas: [],
+  };
+  const DISPONIBLE = { ancho: 535, alto: 400 };
+
+  test('dibuja en JPEG con los puntos chicos del informe', async () => {
+    vi.mocked(dibujarMapa).mockResolvedValue('data:image/jpeg;base64,M');
+    const { mapa } = await dibujarMapaInforme(contenido, DISPONIBLE);
+    expect(mapa).toEqual({ estado: 'listo', src: 'data:image/jpeg;base64,M' });
+    expect(vi.mocked(dibujarMapa).mock.calls[0][0]).toMatchObject({
+      formato: { tipo: 'image/jpeg' },
+      radioPunto: 1.1,
+    });
+  });
+
+  test('sin puntos no dibuja nada', async () => {
+    const { mapa } = await dibujarMapaInforme({ puntos: [], etiquetas: [] }, DISPONIBLE);
+    expect(mapa.estado).toBe('sin-gps');
+    expect(dibujarMapa).not.toHaveBeenCalled();
+  });
+
+  test('si el canvas falla o no devuelve imagen, el mapa no está disponible', async () => {
+    vi.mocked(dibujarMapa).mockRejectedValueOnce(new Error('canvas'));
+    expect((await dibujarMapaInforme(contenido, DISPONIBLE)).mapa.estado).toBe('no-disponible');
+    vi.mocked(dibujarMapa).mockResolvedValueOnce(null);
+    expect((await dibujarMapaInforme(contenido, DISPONIBLE)).mapa.estado).toBe('no-disponible');
   });
 });

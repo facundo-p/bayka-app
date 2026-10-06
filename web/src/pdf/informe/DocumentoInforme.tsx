@@ -4,7 +4,7 @@ import { Hoja } from '../plantilla/Hoja';
 import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
 import type { ItemLeyenda, ModeloInforme } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
-import type { MapaInformePdf } from './mapaInforme';
+import type { Caja, MapaInformePdf } from './mapaInforme';
 import { esMapaEnHojaCompleta, type PlanInforme } from './planificarInforme';
 import {
   BloqueEspecies,
@@ -37,15 +37,14 @@ function Leyenda({ items }: { items: readonly ItemLeyenda[] }) {
   );
 }
 
-function ImagenMapa({ mapa }: { mapa: MapaInformePdf }) {
-  if (!esMapaListo(mapa.mapa)) {
-    return <Text style={styles.mensaje}>{TEXTO_INFORME.mapaNoDisponible}</Text>;
-  }
+type MapaListo = { src: string; caja: Caja };
+
+function ImagenMapa({ mapa }: { mapa: MapaListo }) {
   const { ancho, alto } = mapa.caja;
-  return <Image style={[styles.mapa, { width: ancho, height: alto }]} src={mapa.mapa.src} />;
+  return <Image style={[styles.mapa, { width: ancho, height: alto }]} src={mapa.src} />;
 }
 
-type MapaProps = { modelo: ModeloInforme; mapa: MapaInformePdf };
+type MapaProps = { modelo: ModeloInforme; mapa: MapaListo };
 
 /** Hoja propia al final: título y nota arriba, como un capítulo aparte. */
 function MapaEnHojaCompleta({ modelo, mapa }: MapaProps) {
@@ -81,11 +80,12 @@ function SinMapa({ motivo }: { motivo: string }) {
 }
 
 function BloqueMapa({ modelo, plan, mapa }: Omit<DocumentoInformeProps, 'encabezado' | 'emitido'>) {
-  if (!mapa || modelo.mapa.vacio) {
-    return <SinMapa motivo={modelo.mapa.vacio ?? TEXTO_INFORME.mapaNoDisponible} />;
-  }
-  if (esMapaEnHojaCompleta(plan)) return <MapaEnHojaCompleta modelo={modelo} mapa={mapa} />;
-  return <MapaAlPie modelo={modelo} mapa={mapa} />;
+  if (modelo.mapa.vacio) return <SinMapa motivo={modelo.mapa.vacio} />;
+  // Si el canvas falló, el aviso va en el flujo: no merece una hoja propia.
+  if (!mapa || !esMapaListo(mapa.mapa)) return <SinMapa motivo={TEXTO_INFORME.mapaNoDisponible} />;
+  const listo = { src: mapa.mapa.src, caja: mapa.caja };
+  if (esMapaEnHojaCompleta(plan)) return <MapaEnHojaCompleta modelo={modelo} mapa={listo} />;
+  return <MapaAlPie modelo={modelo} mapa={listo} />;
 }
 
 /** Resumen, especies y parcelas fluyen; el mapa va al pie o en hoja propia según `plan`. */

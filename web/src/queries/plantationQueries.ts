@@ -12,8 +12,8 @@ export type EstadoPlantacion = (typeof ESTADO_PLANTACION)[keyof typeof ESTADO_PL
 
 /** Etiqueta visible de cada estado: el badge y el informe PDF. */
 export const ETIQUETA_ESTADO_PLANTACION: Record<EstadoPlantacion, string> = {
-  activa: 'Activa',
-  finalizada: 'Finalizada',
+  [ESTADO_PLANTACION.activa]: 'Activa',
+  [ESTADO_PLANTACION.finalizada]: 'Finalizada',
 };
 
 /** Campos opcionales: de las migraciones 023 (GPS), 024, 035 (foto) y 038 (archivada), que pueden no estar aplicadas. */

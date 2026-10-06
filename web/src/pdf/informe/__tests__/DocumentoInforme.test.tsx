@@ -5,17 +5,19 @@ import { entradaInforme } from '../../../test/informePdf';
 import { FUENTES_NODE, LOGO_NODE, paginasDelPdf, PNG_DE_PRUEBA } from '../../../test/pdfNode';
 import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_MAPA } from '../../mapa/estadoMapa';
-import { registrarFuentes } from '../../plantilla/fuentes';
+import { registrarFuentes, renderizarEnSerie } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { datosInforme, type EntradaInforme } from '../datosInforme';
 import { DocumentoInforme } from '../DocumentoInforme';
 import { cajaDelMapa } from '../mapaInforme';
-import { planificarInforme } from '../planificarInforme';
+import { esMapaEnHojaCompleta, planificarInforme } from '../planificarInforme';
 
 /** Como el motor del navegador, pero con un PNG cualquiera en lugar del canvas. */
-async function renderizar(entrada: EntradaInforme) {
+async function renderizar(entrada: EntradaInforme, sinMapa = false) {
   registrarFuentes(FUENTES_NODE);
-  const modelo = datosInforme(entrada);
+  const calculado = datosInforme(entrada);
+  // Sin mapa: el aviso de una línea en su lugar, para contar las hojas del resto.
+  const modelo = sinMapa ? { ...calculado, mapa: { ...calculado.mapa, vacio: 'x' } } : calculado;
   const plan = planificarInforme(modelo);
   const mapa = modelo.mapa.vacio
     ? null
@@ -27,7 +29,7 @@ async function renderizar(entrada: EntradaInforme) {
   const pdf = await renderToBuffer(
     <DocumentoInforme {...{ encabezado, emitido: '06/10/2026', modelo, plan, mapa }} />,
   );
-  return { pdf, textos: textosDelPdf(pdf) };
+  return { pdf, textos: textosDelPdf(pdf), plan };
 }
 
 test('4 parcelas y 4 especies: todo en una hoja, con el mapa al pie', async () => {
@@ -74,4 +76,28 @@ test('un PDF anterior no rompe los caracteres del siguiente', async () => {
   const { textos } = await renderizar(conMiles);
   // La fila de total, en negrita: 8.221 + 15.
   expect(textos).toContain('8.236');
+});
+
+test('cuando el plan pone el mapa al pie, entra en la última hoja', async () => {
+  for (let parcelas = 1; parcelas <= 30; parcelas += 2) {
+    const entrada = entradaInforme({ parcelas, especies: 9, nn: 3 });
+    const { pdf, plan } = await renderizar(entrada);
+    if (esMapaEnHojaCompleta(plan)) continue;
+    const { pdf: sinMapa } = await renderizar(entrada, true);
+    expect(paginasDelPdf(pdf), `${parcelas} parcelas`).toBe(paginasDelPdf(sinMapa));
+  }
+}, 30_000);
+
+test('dos documentos pedidos a la vez salen enteros, uno después del otro', async () => {
+  const documento = (parcelas: number) => {
+    const entrada = entradaInforme({ parcelas, especies: 2 });
+    const modelo = datosInforme(entrada);
+    const encabezado = encabezadoDePlantacion(entrada.plantacion, null, LOGO_NODE);
+    const plan = planificarInforme(modelo);
+    const props = { encabezado, emitido: '06/10/2026', modelo, plan, mapa: null };
+    return renderizarEnSerie(FUENTES_NODE, () => renderToBuffer(<DocumentoInforme {...props} />));
+  };
+  const [primero, segundo] = await Promise.all([documento(2), documento(3)]);
+  expect(textosDelPdf(primero)).toContain('Total · 2 parcelas');
+  expect(textosDelPdf(segundo)).toContain('Total · 3 parcelas');
 });

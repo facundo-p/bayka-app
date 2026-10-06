@@ -12,7 +12,7 @@ import type {
 import { informeStyles as styles } from './Informe.styles';
 import { TEXTO_INFORME } from './textosInforme';
 
-/** Ancho de un relleno de barra; el dato manda, no el tema. */
+/** Ancho del relleno de una barra, de una fracción de 0 a 1. */
 const anchoRelleno = (fraccion: number) => `${fraccion * PORCENTAJE_COMPLETO}%`;
 
 export function Titulo({ linea }: { linea: string }) {
@@ -34,7 +34,7 @@ function IndicadorPrincipal({ arboles }: { arboles: IndicadorArboles }) {
       </Text>
       {arboles.avance !== null && (
         <View style={styles.barraAvance}>
-          <View style={[styles.rellenoAvance, { width: `${arboles.avance}%` }]} />
+          <View style={[styles.rellenoAvance, { width: anchoRelleno(arboles.avance) }]} />
         </View>
       )}
       {arboles.textoAvance && <Text style={styles.detalleIndicador}>{arboles.textoAvance}</Text>}
@@ -80,7 +80,7 @@ function RenglonEspecie({ fila }: { fila: FilaEspecie }) {
     <View style={styles.filaEspecie} wrap={false}>
       <View style={styles.nombreEspecie}>
         <View style={[styles.punto, { backgroundColor: fila.color }]} />
-        <Text>{fila.titulo}</Text>
+        <Text style={styles.recortado}>{fila.titulo}</Text>
       </View>
       <View style={styles.barraEspecie}>
         <View
