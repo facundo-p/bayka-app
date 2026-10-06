@@ -166,6 +166,11 @@ export const supabase = {
   storage: {
     from: () => ({
       createSignedUrl: () => Promise.resolve({ data: { signedUrl: FOTO_DEMO }, error: null }),
+      createSignedUrls: (paths: string[]) =>
+        Promise.resolve({
+          data: paths.map((path) => ({ path, signedUrl: FOTO_DEMO, error: null })),
+          error: null,
+        }),
     }),
   },
   functions: {

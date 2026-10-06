@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../hooks/useAuth';
 import { useCatalogoEspecies } from '../../hooks/useCatalogoEspecies';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -14,6 +14,7 @@ import {
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
 import type { Plantacion } from '../../queries/plantationQueries';
+import { descargarFichaPdf } from '../../services/pdfFichas';
 import { puedeCambiarEspecie } from './cambioDeEspecie';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
@@ -65,6 +66,17 @@ function useEdicionDeEspecie(
   return { plantationId, codigoPlantacion: plantacion.codigo, onActualizado };
 }
 
+/** Genera la ficha PDF de un árbol; null mientras no cargó la plantación. */
+function useDescargaFicha(
+  plantacion: Plantacion | null | undefined,
+  nombresUsuario: ReadonlyMap<string, string>,
+) {
+  const queryClient = useQueryClient();
+  if (!plantacion) return null;
+  return (arbolId: string) =>
+    descargarFichaPdf(arbolId, { plantacion, nombresUsuario, queryClient });
+}
+
 /**
  * Estado y datos de la sección Árboles: filtros en la URL, página, catálogos
  * de los selects y el árbol abierto en el panel. El componente queda solo con
@@ -84,6 +96,7 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
+  const descargarFicha = useDescargaFicha(plantacion, mapas.nombresUsuario);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -95,5 +108,6 @@ export function useArbolesSection() {
     arbolSeleccionado,
     setArbolSeleccionado,
     edicionDeEspecie,
+    descargarFicha,
   };
 }

@@ -76,6 +76,11 @@ function nombreFotoDe(seccion: SeccionArboles, arbol: ArbolDetalle): string | nu
   return plantacion ? nombreArchivoFoto(plantacion.lugar, plantacion.periodo, arbol.subId) : null;
 }
 
+function descargaFichaDe(seccion: SeccionArboles, arbol: ArbolDetalle) {
+  const { descargarFicha } = seccion;
+  return descargarFicha && (() => descargarFicha(arbol.id));
+}
+
 /** La key remonta el panel al cambiar de fila: la foto y el mapa se rearman. */
 function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
   return (
@@ -85,6 +90,7 @@ function PanelArbolSeleccionado({ seccion, arbol }: PanelArbolProps) {
       parcelaCodigo={codigoParcelaDe(arbol, seccion.codigosParcela)}
       tecnicoNombre={nombreTecnicoDe(arbol, seccion.nombresUsuario)}
       nombreFoto={nombreFotoDe(seccion, arbol)}
+      descargarFicha={descargaFichaDe(seccion, arbol)}
       edicionDeEspecie={seccion.edicionDeEspecie}
       onCerrar={() => seccion.setArbolSeleccionado(null)}
     />
