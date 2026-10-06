@@ -84,7 +84,9 @@ export const informeStyles = StyleSheet.create({
   },
   rellenoAvance: { height: '100%', backgroundColor: COLOR_PDF.oliva },
 
-  bloque: { marginBottom: M.separacionBloques },
+  // Relleno y no margen: react-pdf manda entero a la hoja siguiente un bloque que
+  // entra en la hoja pero cuyo margen inferior no, y deja la anterior en blanco.
+  bloque: { paddingBottom: M.separacionBloques },
   encabezadoBloque: {
     ...titulo,
     fontSize: TAMANO_TEXTO.bloque,

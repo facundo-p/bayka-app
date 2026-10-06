@@ -21,8 +21,18 @@ type OpcionesEntrada = {
   conGps?: boolean;
 };
 
+/** Pasadas las 18 con nombre, los códigos siguen numerados: E19, E20… */
+function codigosEspecie(cantidad: number): string[] {
+  const conNombre = [...CODIGOS_ESPECIE, ...CODIGOS_ESPECIE_EXTRA];
+  const numerados = Array.from(
+    { length: Math.max(0, cantidad - conNombre.length) },
+    (_, indice) => `E${conNombre.length + indice + 1}`,
+  );
+  return [...conNombre, ...numerados].slice(0, cantidad);
+}
+
 function especies(cantidad: number, nn: number): DistribucionEspecie[] {
-  const codigos = [...CODIGOS_ESPECIE, ...CODIGOS_ESPECIE_EXTRA].slice(0, cantidad);
+  const codigos = codigosEspecie(cantidad);
   const lista = codigos.map((codigo, indice) => ({
     codigo,
     nombre: `Especie ${codigo}`,
