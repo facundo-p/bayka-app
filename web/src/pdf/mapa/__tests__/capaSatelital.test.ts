@@ -1,11 +1,13 @@
 import { capaSatelital, rectanguloAlPixel } from '../capaSatelital';
 import type { FuenteTiles } from '../cargaTiles';
-import { dibujarMapa } from '../dibujarMapa';
+import { dibujarMapa, type CapaFondo } from '../dibujarMapa';
 import { encuadrar, type Encuadre } from '../proyeccion';
-import { TOPE_TILES, type TileXYZ, type ZonaTiles } from '../tiles';
+import { TOPE_TILES, tilesDelZoom, type TileXYZ, type ZonaTiles } from '../tiles';
+
+type Llamada = { nombre: string; args: unknown[] };
 
 // jsdom no tiene canvas: un contexto que anota lo que se le pide.
-const llamadas: string[] = [];
+const llamadas: Llamada[] = [];
 vi.mock('../../canvas', () => ({
   crearCanvas: () => ({}),
   contexto2d: () =>
@@ -15,12 +17,15 @@ vi.mock('../../canvas', () => ({
         get: (_objetivo, nombre: string) =>
           nombre === 'measureText'
             ? () => ({ width: 10 })
-            : (...args: unknown[]) => llamadas.push(`${nombre}:${args.length}`),
+            : (...args: unknown[]) => llamadas.push({ nombre, args }),
         set: () => true,
       },
     ),
   exportarYLiberar: (_canvas: unknown, tipo: string) => `data:${tipo};base64,M`,
+  liberarCanvas: vi.fn(),
 }));
+
+const dibujos = () => llamadas.filter(({ nombre }) => nombre === 'drawImage');
 
 const PUNTO = { lat: -27.36012, lng: -55.89744 };
 const ENCUADRE: Encuadre = encuadrar([PUNTO], 128, 128, { margen: 10, minimoMetros: 60 });
@@ -49,7 +54,10 @@ beforeEach(() => {
 describe('capaSatelital', () => {
   test('con los tiles bajados, devuelve con qué pintarlos', async () => {
     const f = fuente();
-    expect(await capaSatelital(TOPE_TILES.ficha, f)(ENCUADRE)).toEqual(expect.any(Function));
+    expect(await capaSatelital(TOPE_TILES.ficha, f)(ENCUADRE)).toEqual({
+      pintar: expect.any(Function),
+      liberar: expect.any(Function),
+    });
     expect(f.cargar.mock.calls[0][0].length).toBeLessThanOrEqual(16);
   });
 
@@ -95,7 +103,18 @@ describe('dibujarMapa con el satélite', () => {
   test('con el fondo pintado, el mapa sale en JPEG y marcado con satélite', async () => {
     const mapa = await dibujarMapa({ ...CONTENIDO, fondo: capaSatelital(16, fuente()) });
     expect(mapa).toEqual({ src: 'data:image/jpeg;base64,M', conFondo: true });
-    expect(llamadas.some((llamada) => llamada.startsWith('drawImage'))).toBe(true);
+  });
+
+  test('cada tile va en su rectángulo, llevado al px del canvas', async () => {
+    const f = fuente();
+    await dibujarMapa({ ...CONTENIDO, fondo: capaSatelital(16, f), escalaRender: 2.5 });
+    const imagenes = (await f.cargar.mock.results[0].value) as ImageBitmap[];
+    const tiles = tilesDelZoom(ENCUADRE, f.cargar.mock.calls[0][0][0].z);
+    expect(dibujos()).toHaveLength(tiles.length);
+    tiles.forEach((tile, indice) => {
+      const { x, y, ancho, alto } = rectanguloAlPixel(tile, 2.5);
+      expect(dibujos()[indice].args).toEqual([imagenes[indice], x, y, ancho, alto]);
+    });
   });
 
   test('después de pintar, libera las imágenes de los tiles', async () => {
@@ -109,6 +128,17 @@ describe('dibujarMapa con el satélite', () => {
     const fondo = capaSatelital(16, fuente({ falla: true }));
     const mapa = await dibujarMapa({ ...CONTENIDO, fondo });
     expect(mapa).toEqual({ src: 'data:image/png;base64,M', conFondo: false });
-    expect(llamadas.some((llamada) => llamada.startsWith('drawImage'))).toBe(false);
+    expect(dibujos()).toHaveLength(0);
+  });
+
+  test('si pintar el fondo falla, el mapa sale liso, sin satélite, y libera la imagen', async () => {
+    const liberar = vi.fn();
+    const pintar = () => {
+      throw new Error('drawImage');
+    };
+    const fondo: CapaFondo = async () => ({ pintar, liberar });
+    const mapa = await dibujarMapa({ ...CONTENIDO, fondo });
+    expect(mapa).toEqual({ src: 'data:image/png;base64,M', conFondo: false });
+    expect(liberar).toHaveBeenCalled();
   });
 });
