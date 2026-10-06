@@ -13,6 +13,11 @@
   color: var(--color-text-faint);
 }
 
+/* Nombre de una especie científica en su propio listado: itálica, sin atenuar. */
+.nombreCientifico {
+  font-style: italic;
+}
+
 /* Fila sin uso (0 plantaciones y 0 árboles): texto atenuado. */
 .filaSinUso {
   color: var(--color-text-muted);
@@ -36,10 +41,6 @@
 
 .campoCodigo {
   font-family: var(--font-mono);
-}
-
-.campoCientifico {
-  font-style: italic;
 }
 
 /* Tipo y subtipo en un renglón: el tipo fijo ocupa lo que mide su texto. */
@@ -102,4 +103,53 @@
   font-size: var(--text-kpi-sm);
   line-height: var(--line-height-tight);
   color: var(--color-text-heading);
+}
+
+/* ─── Panel de especie científica ────────────────────────────────────── */
+
+.marcaCientifica {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+/* Sin especies agrupadas: explica cómo se vincula una. */
+.textoBloque {
+  margin: 0;
+  font-size: var(--text-md);
+  color: var(--color-text-secondary);
+}
+
+.listaAgrupadas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.agrupada {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  font-size: var(--text-md);
+  color: var(--color-text-primary);
+}
+
+.codigoAgrupada {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.ayuda {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
 }

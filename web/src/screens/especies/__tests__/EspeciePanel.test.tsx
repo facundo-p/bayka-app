@@ -11,6 +11,7 @@ import {
   listarPlantacionesDeEspecie,
   type EspecieConCatalogoUso,
 } from '../../../queries/especieQueries';
+import { listarEspeciesCientificas } from '../../../queries/especieCientificaQueries';
 import { espiarInvalidaciones } from '../../../test/espiarInvalidaciones';
 import { EspeciePanel } from '../EspeciePanel';
 
@@ -24,6 +25,10 @@ vi.mock('../../../repositories/especieRepository', async () => {
     editarEspecie: vi.fn(),
   };
 });
+
+vi.mock('../../../queries/especieCientificaQueries', () => ({
+  listarEspeciesCientificas: vi.fn(),
+}));
 
 vi.mock('../../../queries/especieQueries', async () => {
   const actual = await vi.importActual<typeof import('../../../queries/especieQueries')>(
@@ -39,6 +44,7 @@ const IBIRA: EspecieConCatalogoUso = {
   nombreCientifico: 'Peltophorum dubium',
   tipo: 'flora',
   subtipo: 'arbusto',
+  especieCientificaId: 'ec-1',
   plantaciones: 2,
   arboles: 1402,
 };
@@ -47,6 +53,17 @@ beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(crearEspecie).mockResolvedValue('sp-nuevo');
   vi.mocked(editarEspecie).mockResolvedValue(undefined);
+  vi.mocked(listarEspeciesCientificas).mockResolvedValue([
+    {
+      id: 'ec-1',
+      nombre: 'Peltophorum dubium',
+      especies: [
+        { id: 'sp-1', codigo: 'IBI', nombre: 'Ibirá Pitá' },
+        { id: 'sp-9', codigo: 'CAN', nombre: 'Caña fístola' },
+      ],
+    },
+    { id: 'ec-2', nombre: 'Prosopis alba', especies: [] },
+  ]);
   vi.mocked(listarPlantacionesDeEspecie).mockResolvedValue([
     { id: 'pl-1', nombre: 'Estancia La Escondida', arboles: 934 },
     { id: 'pl-2', nombre: 'Campo Los Molles', arboles: 468 },
@@ -78,7 +95,7 @@ test('crear feliz: valida, llama a crearEspecie (científico null, Flora / Árbo
   expect(vi.mocked(crearEspecie)).toHaveBeenCalledWith({
     codigo: 'ANC',
     nombre: 'Anchico',
-    nombreCientifico: null,
+    especieCientificaId: null,
     tipo: 'flora',
     subtipo: 'arbol',
   });
@@ -138,7 +155,9 @@ test('editar: precarga los valores y llama a editarEspecie con el id', async () 
 
   expect(screen.getByLabelText('Código *')).toHaveValue('IBI');
   expect(screen.getByLabelText('Nombre común *')).toHaveValue('Ibirá Pitá');
-  expect(screen.getByLabelText('Nombre científico')).toHaveValue('Peltophorum dubium');
+  expect(await screen.findByRole('button', { name: /Especie científica/ })).toHaveTextContent(
+    'Peltophorum dubium',
+  );
   expect(screen.getByRole('radio', { name: 'Arbusto' })).toBeChecked();
 
   await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
@@ -146,16 +165,17 @@ test('editar: precarga los valores y llama a editarEspecie con el id', async () 
   expect(vi.mocked(editarEspecie)).toHaveBeenCalledWith('sp-1', {
     codigo: 'IBI',
     nombre: 'Ibirá Pitá',
-    nombreCientifico: 'Peltophorum dubium',
+    especieCientificaId: 'ec-1',
     tipo: 'flora',
     subtipo: 'arbusto',
   });
 });
 
-/** Catálogo, catálogo con uso y, por familia, dashboard, mapa y tabla de Árboles. */
+/** Catálogo, catálogo con uso, científicas y, por familia, dashboard, mapa y tabla de Árboles. */
 const CLAVES_CON_ESPECIES = [
   ['especies-catalogo'],
   ['especies-catalogo-uso'],
+  ['especies-cientificas'],
   ['dashboard'],
   ['mapa'],
   ['datos-arboles'],
@@ -234,4 +254,36 @@ test('Escape cierra el panel', async () => {
 
   await usuario.keyboard('{Escape}');
   expect(onCerrar).toHaveBeenCalled();
+});
+
+test('elegir una especie científica la vincula; la lista muestra las otras especies que agrupa', async () => {
+  const usuario = userEvent.setup();
+  const onCerrar = renderPanel();
+
+  await usuario.type(screen.getByLabelText('Código *'), 'CAN');
+  await usuario.type(screen.getByLabelText('Nombre común *'), 'Caña fístola');
+  await usuario.click(await screen.findByRole('button', { name: /Especie científica/ }));
+  expect(screen.getByText('Agrupa Ibirá Pitá, Caña fístola')).toBeInTheDocument();
+  await usuario.click(screen.getByRole('option', { name: /Prosopis alba/ }));
+  await usuario.click(screen.getByRole('button', { name: 'Crear' }));
+
+  await waitFor(() => expect(onCerrar).toHaveBeenCalled());
+  expect(vi.mocked(crearEspecie)).toHaveBeenCalledWith(
+    expect.objectContaining({ especieCientificaId: 'ec-2' }),
+  );
+});
+
+test('elegir «Sin especie científica» desvincula al guardar', async () => {
+  const usuario = userEvent.setup();
+  const onCerrar = renderPanel(IBIRA);
+
+  await usuario.click(await screen.findByRole('button', { name: /Especie científica/ }));
+  await usuario.click(screen.getByRole('option', { name: 'Sin especie científica' }));
+  await usuario.click(screen.getByRole('button', { name: 'Guardar' }));
+
+  await waitFor(() => expect(onCerrar).toHaveBeenCalled());
+  expect(vi.mocked(editarEspecie)).toHaveBeenCalledWith(
+    'sp-1',
+    expect.objectContaining({ especieCientificaId: null }),
+  );
 });

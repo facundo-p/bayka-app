@@ -43,6 +43,7 @@ type Especie = {
   nombre_cientifico: string | null;
   tipo: TipoEspecie;
   subtipo: SubtipoEspecie;
+  especie_cientifica_id: string | null;
 };
 
 type Parcela = {
@@ -248,54 +249,46 @@ function arbolesDePlantacion(plantationId: string): number {
   return porEspecie.reduce((total, arboles) => total + arboles, 0);
 }
 
+/**
+ * Especies científicas de la demo (#753). Algarrobo blanco no agrupa ninguna:
+ * es la que se puede eliminar.
+ */
+const ESPECIES_CIENTIFICAS = [
+  { id: 'ec1', nombre: 'Astronium balansae' },
+  { id: 'ec2', nombre: 'Balfourodendron riedelianum' },
+  { id: 'ec3', nombre: 'Cedrela fissilis' },
+  { id: 'ec4', nombre: 'Enterolobium contortisiliquum' },
+  { id: 'ec5', nombre: 'Handroanthus impetiginosus' },
+  { id: 'ec6', nombre: 'Parapiptadenia rigida' },
+  { id: 'ec7', nombre: 'Peltophorum dubium' },
+  { id: 'ec8', nombre: 'Prosopis alba' },
+];
+
 /** Todas las especies de la demo son árboles: la clasificación por defecto. */
 const ARBOL = TIPOS_ESPECIE.porDefecto;
 
+/** La especie con su científica: la copia del nombre la mantiene el server. */
+function especie(id: string, codigo: string, nombre: string, cientificaId: string | null): Especie {
+  const cientifica = ESPECIES_CIENTIFICAS.find((candidata) => candidata.id === cientificaId);
+  return {
+    id,
+    codigo,
+    nombre,
+    nombre_cientifico: cientifica?.nombre ?? null,
+    especie_cientifica_id: cientifica?.id ?? null,
+    ...ARBOL,
+  };
+}
+
 const ESPECIES: Especie[] = [
-  {
-    id: 's1',
-    codigo: 'ANC',
-    nombre: 'Anchico',
-    nombre_cientifico: 'Parapiptadenia rigida',
-    ...ARBOL,
-  },
-  {
-    id: 's2',
-    codigo: 'IBI',
-    nombre: 'Ibirá Pitá',
-    nombre_cientifico: 'Peltophorum dubium',
-    ...ARBOL,
-  },
-  {
-    id: 's3',
-    codigo: 'LAP',
-    nombre: 'Lapacho rosado',
-    nombre_cientifico: 'Handroanthus impetiginosus',
-    ...ARBOL,
-  },
-  {
-    id: 's4',
-    codigo: 'TIM',
-    nombre: 'Timbó',
-    nombre_cientifico: 'Enterolobium contortisiliquum',
-    ...ARBOL,
-  },
-  {
-    id: 's5',
-    codigo: 'GUA',
-    nombre: 'Guatambú',
-    nombre_cientifico: 'Balfourodendron riedelianum',
-    ...ARBOL,
-  },
-  {
-    id: 's6',
-    codigo: 'CED',
-    nombre: 'Cedro misionero',
-    nombre_cientifico: 'Cedrela fissilis',
-    ...ARBOL,
-  },
-  { id: 's7', codigo: 'PET', nombre: 'Petiribí', nombre_cientifico: null, ...ARBOL },
-  { id: 's8', codigo: 'URU', nombre: 'Urunday', nombre_cientifico: 'Astronium balansae', ...ARBOL },
+  especie('s1', 'ANC', 'Anchico', 'ec6'),
+  especie('s2', 'IBI', 'Ibirá Pitá', 'ec7'),
+  especie('s3', 'LAP', 'Lapacho rosado', 'ec5'),
+  especie('s4', 'TIM', 'Timbó', 'ec4'),
+  especie('s5', 'GUA', 'Guatambú', 'ec2'),
+  especie('s6', 'CED', 'Cedro misionero', 'ec3'),
+  especie('s7', 'PET', 'Petiribí', null),
+  especie('s8', 'URU', 'Urunday', 'ec1'),
 ];
 
 function especiePorId(id: string): Especie {
@@ -564,6 +557,7 @@ export const TABLAS: Record<string, TablaDemo> = {
   plantations: { filas: PLANTACIONES },
   stats_plantaciones: { filas: STATS_PLANTACIONES },
   species: { filas: ESPECIES },
+  especies_cientificas: { filas: ESPECIES_CIENTIFICAS },
   plantation_species: { filas: PLANTACION_ESPECIES },
   plantation_users: { filas: PLANTACION_USUARIOS },
   parcelas: { filas: PARCELAS },

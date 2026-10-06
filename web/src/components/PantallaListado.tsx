@@ -21,6 +21,8 @@ interface PantallaListadoProps {
   meta?: string;
   /** Alta de la entidad, arriba a la derecha. */
   accion: AccionAlta;
+  /** Pestañas entre listados hermanos (ej. especies comunes y científicas), sobre la barra. */
+  pestanas?: ReactNode;
   /** Búsqueda y filtros: visibles en todos los estados de la consulta. */
   barra: ReactNode;
   consulta: ConsultaListado;
@@ -36,7 +38,7 @@ interface PantallaListadoProps {
  * devuelve al scroll de documento.
  */
 export function PantallaListado(props: PantallaListadoProps) {
-  const { titulo, meta, accion, barra, consulta, textos, children, modales } = props;
+  const { titulo, meta, accion, pestanas, barra, consulta, textos, children, modales } = props;
   return (
     <section>
       <Topbar
@@ -50,6 +52,7 @@ export function PantallaListado(props: PantallaListadoProps) {
         }
       />
       <div className={styles.contenido}>
+        {pestanas}
         {barra}
         <EstadoConsulta consulta={consulta} textos={textos}>
           {children}

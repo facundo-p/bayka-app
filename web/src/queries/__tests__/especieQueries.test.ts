@@ -115,8 +115,8 @@ describe('listarCatalogoConUso', () => {
       if (consulta.tabla === 'species') {
         return {
           data: [
-            { ...FILA_QUEBRACHO, tipo: 'flora', subtipo: 'arbol' },
-            { ...FILA_ALGARROBO, tipo: 'flora', subtipo: 'arbusto' },
+            { ...FILA_QUEBRACHO, tipo: 'flora', subtipo: 'arbol', especie_cientifica_id: 'ec-1' },
+            { ...FILA_ALGARROBO, tipo: 'flora', subtipo: 'arbusto', especie_cientifica_id: null },
           ],
         };
       }
@@ -132,7 +132,7 @@ describe('listarCatalogoConUso', () => {
     const catalogo = await listarCatalogoConUso();
 
     expect(consultas.find((consulta) => consulta.tabla === 'species')?.columnas).toBe(
-      'id, codigo, nombre, nombre_cientifico, tipo, subtipo',
+      'id, codigo, nombre, nombre_cientifico, tipo, subtipo, especie_cientifica_id',
     );
     expect(catalogo).toEqual([
       {
@@ -142,6 +142,7 @@ describe('listarCatalogoConUso', () => {
         nombreCientifico: 'Schinopsis balansae',
         tipo: 'flora',
         subtipo: 'arbol',
+        especieCientificaId: 'ec-1',
         plantaciones: 2,
         arboles: 42,
       },
@@ -152,6 +153,7 @@ describe('listarCatalogoConUso', () => {
         nombreCientifico: null,
         tipo: 'flora',
         subtipo: 'arbusto',
+        especieCientificaId: null,
         plantaciones: 0,
         arboles: 0,
       },

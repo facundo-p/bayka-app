@@ -69,6 +69,8 @@ function responder(consulta: ConsultaCapturada): RespuestaMock {
       return { data: [FILA_PLANTACION] };
     case 'species':
       return { data: [FILA_ESPECIE] };
+    case 'especies_cientificas':
+      return { data: [{ id: 'ec-1', nombre: 'Schinopsis balansae' }] };
     case 'profiles':
       return { data: [FILA_USUARIO] };
     case 'trees':
@@ -107,6 +109,16 @@ test('agrega coincidencias de listas cacheadas (plantación, especie, usuario)',
   });
   const usuario = resultados.find((resultado) => resultado.tipo === 'usuario');
   expect(usuario).toMatchObject({ titulo: 'Ana Admin', meta: 'Administrador', to: '/usuarios' });
+});
+
+test('encuentra la especie científica por su nombre y lleva a su pestaña (#753)', async () => {
+  capturarConsultas(responder);
+  const resultados = await buscar('schinopsis');
+
+  expect(resultados.find((resultado) => resultado.tipo === 'especieCientifica')).toMatchObject({
+    titulo: 'Schinopsis balansae',
+    to: '/especies/cientificas',
+  });
 });
 
 test('las listas cacheadas ignoran tildes en el término y en el dato (#438)', async () => {

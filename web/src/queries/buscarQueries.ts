@@ -13,10 +13,18 @@ import { supabase } from '../lib/supabase';
 import { COLUMNA_CODIGO_PLANTACION, resolverBusquedaArbol } from './busquedaArbol';
 import { condicionIlikeOr } from './escaparBusqueda';
 import { listarCatalogo } from './especieQueries';
+import { listarNombresCientificos } from './especieCientificaQueries';
 import { listarPlantaciones, sinArchivadas } from './plantationQueries';
 import { listarUsuariosConAsignaciones } from './usuarioQueries';
 
-export type TipoResultado = 'plantacion' | 'parcela' | 'grupo' | 'arbol' | 'especie' | 'usuario';
+export type TipoResultado =
+  | 'plantacion'
+  | 'parcela'
+  | 'grupo'
+  | 'arbol'
+  | 'especie'
+  | 'especieCientifica'
+  | 'usuario';
 
 export type ResultadoBusqueda = {
   tipo: TipoResultado;
@@ -69,6 +77,19 @@ async function buscarEspecies(texto: string): Promise<ResultadoBusqueda[]> {
       titulo: especie.nombre,
       meta: especie.nombreCientifico ?? especie.codigo,
       to: RUTA.especies,
+    }));
+}
+
+async function buscarEspeciesCientificas(texto: string): Promise<ResultadoBusqueda[]> {
+  const cientificas = await listarNombresCientificos();
+  return cientificas
+    .filter((cientifica) => coincide(texto, cientifica.nombre))
+    .slice(0, TOPE_LISTA)
+    .map((cientifica) => ({
+      tipo: 'especieCientifica',
+      id: cientifica.id,
+      titulo: cientifica.nombre,
+      to: RUTA.especiesCientificas,
     }));
 }
 
@@ -210,6 +231,7 @@ export async function buscar(texto: string, scope?: ScopeBusqueda): Promise<Resu
     tolerante(buscarGrupos(normalizado, scope)),
     tolerante(buscarArboles(normalizado, scope)),
     tolerante(buscarEspecies(normalizado)),
+    tolerante(buscarEspeciesCientificas(normalizado)),
     tolerante(buscarUsuarios(normalizado)),
   ]);
   return grupos.flat();

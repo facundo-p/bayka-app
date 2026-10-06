@@ -4,6 +4,7 @@ import type { Sustantivo } from './formato';
 export const SUSTANTIVO = {
   arbol: { singular: 'árbol', plural: 'árboles' },
   especie: { singular: 'especie', plural: 'especies' },
+  especieCientifica: { singular: 'especie científica', plural: 'especies científicas' },
   grupo: { singular: 'grupo', plural: 'grupos' },
   parcela: { singular: 'parcela', plural: 'parcelas' },
   persona: { singular: 'persona', plural: 'personas' },

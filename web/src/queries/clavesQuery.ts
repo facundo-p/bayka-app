@@ -25,6 +25,7 @@ export const CLAVE_QUERY = {
 
   especiesCatalogo: () => ['especies-catalogo'] as const,
   especiesCatalogoUso: () => ['especies-catalogo-uso'] as const,
+  especiesCientificas: () => ['especies-cientificas'] as const,
   especiePlantaciones: (especieId: string) => ['especie-plantaciones', especieId] as const,
   plantacionEspecies: (plantationId: string) => ['plantacion-especies', plantationId] as const,
   /** Solo las especies, sin el uso de cada una: lo que ofrece un selector. */

@@ -12,8 +12,25 @@ vi.mock('../../lib/supabase', async () => {
 beforeEach(prepararSesionAdmin);
 
 const FILAS_ESPECIES = [
-  { id: 'sp-1', codigo: 'ANC', nombre: 'Anchico', nombre_cientifico: 'Parapiptadenia rigida' },
-  { id: 'sp-2', codigo: 'IBI', nombre: 'Ibirá Pitá', nombre_cientifico: 'Peltophorum dubium' },
+  {
+    id: 'sp-1',
+    codigo: 'ANC',
+    nombre: 'Anchico',
+    nombre_cientifico: 'Parapiptadenia rigida',
+    especie_cientifica_id: 'ec-1',
+  },
+  {
+    id: 'sp-2',
+    codigo: 'IBI',
+    nombre: 'Ibirá Pitá',
+    nombre_cientifico: null,
+    especie_cientifica_id: null,
+  },
+];
+
+const FILAS_CIENTIFICAS = [
+  { id: 'ec-1', nombre: 'Parapiptadenia rigida' },
+  { id: 'ec-2', nombre: 'Prosopis alba' },
 ];
 
 /** Resuelve el catálogo (species), el uso (plantation_species / trees) y deja
@@ -21,6 +38,7 @@ const FILAS_ESPECIES = [
 function configurarEspeciesMock(): void {
   estadoMock.resolverConsulta = (consulta) => {
     if (consulta.tabla === 'species') return { data: FILAS_ESPECIES, error: null };
+    if (consulta.tabla === 'especies_cientificas') return { data: FILAS_CIENTIFICAS, error: null };
     if (consulta.tabla === 'plantation_species') {
       // Anchico habilitado en 1 plantación; Ibirá Pitá en ninguna.
       return { data: [{ species_id: 'sp-1' }], error: null };
@@ -118,7 +136,28 @@ test('click en una fila abre el panel de edición precargado con esa especie', a
   expect(await screen.findByRole('heading', { name: 'Editar especie' })).toBeInTheDocument();
   expect(screen.getByLabelText('Código *')).toHaveValue('ANC');
   expect(screen.getByLabelText('Nombre común *')).toHaveValue('Anchico');
-  expect(screen.getByLabelText('Nombre científico')).toHaveValue('Parapiptadenia rigida');
+  expect(await screen.findByRole('button', { name: /Especie científica/ })).toHaveTextContent(
+    'Parapiptadenia rigida',
+  );
+});
+
+test('la pestaña Científicas lista cada especie científica con las especies que agrupa (#753)', async () => {
+  configurarEspeciesMock();
+  const usuario = userEvent.setup();
+  renderRutasEn('/especies');
+  await screen.findByText('Anchico');
+
+  await usuario.click(screen.getByRole('link', { name: 'Científicas' }));
+
+  const main = enMain();
+  const filaParapiptadenia = (await main.findByText('Parapiptadenia rigida')).closest('tr');
+  if (!filaParapiptadenia) throw new Error('No se encontró la fila de Parapiptadenia rigida');
+  expect(within(filaParapiptadenia).getByText('Anchico')).toBeInTheDocument();
+  expect(within(filaParapiptadenia).getByText('1')).toBeInTheDocument();
+  expect(
+    main.getByText('Catálogo global · 2 especies científicas · 1 con especies'),
+  ).toBeInTheDocument();
+  expect(main.getByRole('button', { name: 'Nueva especie científica' })).toBeInTheDocument();
 });
 
 test('el filtro de uso separa las especies usadas de las que no', async () => {

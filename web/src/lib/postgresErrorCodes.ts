@@ -6,6 +6,8 @@
 export const PG_ERROR = {
   /** unique_violation — choca una UNIQUE/PK (p.ej. asignar dos veces el mismo usuario a una plantación). */
   UNIQUE_VIOLATION: '23505',
+  /** foreign_key_violation — una FK con RESTRICT impide borrar (p.ej. especie científica en uso, #753). */
+  FOREIGN_KEY_VIOLATION: '23503',
   /** restrict_violation — un guard del server impide borrar (p.ej. especie con árboles, #632). */
   RESTRICT_VIOLATION: '23001',
   /** undefined_column — la columna no existe (p.ej. campos de la migración 024 sin aplicar). */
