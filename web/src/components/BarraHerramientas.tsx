@@ -16,6 +16,8 @@ interface BarraHerramientasProps {
   children?: ReactNode;
   /** Recuento de lo que quedó visible, pegado a la derecha. */
   recuento?: ReactNode;
+  /** Botones que actúan sobre el listado, al final de la fila. */
+  acciones?: ReactNode;
   /** Nombre del diálogo cuando los filtros se guardan en la hoja del teléfono. */
   tituloFiltros: string;
   /** Cuántos filtros están puestos: el botón de la hoja lo muestra. */
@@ -35,7 +37,8 @@ interface BarraHerramientasProps {
  * borrador ni "Aplicar", y el recuento viaja a su botón de cierre.
  */
 export function BarraHerramientas(props: BarraHerramientasProps) {
-  const { encabezado, children, recuento, tituloFiltros, filtrosActivos, onLimpiar } = props;
+  const { encabezado, children, recuento, acciones, tituloFiltros, filtrosActivos, onLimpiar } =
+    props;
   const enMovil = useMediaQuery(BP.movil);
   const [hojaAbierta, setHojaAbierta] = useState(false);
 
@@ -48,6 +51,7 @@ export function BarraHerramientas(props: BarraHerramientasProps) {
           Filtros
           {filtrosActivos > 0 && <span className={styles.cuenta}>{filtrosActivos}</span>}
         </Button>
+        {acciones && <div className={styles.acciones}>{acciones}</div>}
         <Modal
           open={hojaAbierta}
           title={tituloFiltros}
@@ -74,8 +78,26 @@ export function BarraHerramientas(props: BarraHerramientasProps) {
     <div className={styles.barra}>
       {encabezado}
       {encabezado && children && <Divisor />}
+      <FiltrosConAcciones acciones={acciones}>
+        {children}
+        {recuento && <span className={styles.recuento}>{recuento}</span>}
+      </FiltrosConAcciones>
+    </div>
+  );
+}
+
+/**
+ * Las acciones comparten bloque con los filtros: cuando los filtros envuelven,
+ * quedan en su última fila en vez de bajar a un renglón propio.
+ */
+function FiltrosConAcciones({ acciones, children }: { acciones?: ReactNode; children: ReactNode }) {
+  // Con la prop puesta el contenedor queda aunque esté vacía: si apareciera y
+  // desapareciera, los filtros se remontarían y perderían el foco.
+  if (acciones === undefined) return children;
+  return (
+    <div className={styles.filtrosConAcciones}>
       {children}
-      {recuento && <span className={styles.recuento}>{recuento}</span>}
+      {acciones && <div className={styles.acciones}>{acciones}</div>}
     </div>
   );
 }

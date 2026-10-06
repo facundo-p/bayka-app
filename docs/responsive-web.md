@@ -102,13 +102,18 @@ buscador y un botón con el contador de filtros puestos; el resto va a un
 `Modal posicion="hoja"`. Se aplican al toque, sin "Aplicar", y el recuento se muda
 al botón de cierre. Es el único lugar del rediseño donde se decide en JS *qué* se
 renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
-autoriza: el layout sigue yendo en `@media`.
+autoriza: el layout sigue yendo en `@media`. Las `acciones` de la barra (el
+«Seleccionar» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
 
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía
 22rem de base y el buscador 18rem, y por más chico que fuera el vecino no entraba.
 Un control que tiene que compartir renglón en teléfono va con `flex-basis: 0` y
-crece, no con una base grande que después se achica.
+crece, no con una base grande que después se achica. Lo mismo con un botón detrás
+de un bloque que envuelve adentro, como los filtros de Árboles: al mismo nivel, la
+base del bloque es su ancho en una sola línea y el botón bajaba solo. Por eso
+`BarraHerramientas` mete filtros y acciones en un contenedor sin wrap, donde el
+bloque se angosta y el botón queda en su última fila.
 
 ## Columnas de tabla en teléfono
 

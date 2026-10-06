@@ -17,7 +17,7 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 | Fichas por hoja | 3 por hoja A4. La ficha suelta usa el mismo tamaño, sola arriba. |
 | Minimapa de la ficha | Toda la parcela del árbol, con el árbol resaltado. |
 | Botón de la ficha | «Descargar ficha PDF», ancho, al final del panel de detalle. |
-| Selección | Botón «Seleccionar». Los checkboxes solo existen en ese modo. Con algo marcado aparece una barra azul bajo los filtros: «N árboles seleccionados · Cancelar · Generar fichas (N)». Vale para la página actual (≤ 50) y se limpia al cambiar de página o de filtro. |
+| Selección | Botón «Seleccionar». Los checkboxes solo existen en ese modo. Al entrar aparece una barra azul bajo los filtros, con 0 marcados: «N árboles seleccionados · Cancelar · Generar fichas (N)». Con 0, «Generar fichas» queda deshabilitado y «Cancelar» disponible. Con la página entera marcada dice «Los N árboles de esta página». Vale para la página actual (≤ 50) y se limpia al cambiar de página o de filtro. |
 | Colores del informe | Únicos dentro del informe, por orden de cantidad: los 8 de `COLORES_GRAFICOS` y 4 extra (ciruela `#7d4e7a`, verde azulado `#3e8a85`, siena `#b0623a`, pizarra `#5b6b7c`). N/N siempre ámbar. |
 | Parcelas en el informe | Una tabla con barra por fila (sin gráfico de barras aparte). |
 | Disposición del informe | Todo fluye. Si el mapa entra en lo que queda de la última hoja con al menos 7 cm de alto, va ahí. Si no, va a hoja completa al final. |

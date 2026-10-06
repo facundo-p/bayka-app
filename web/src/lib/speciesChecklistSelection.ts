@@ -1,10 +1,5 @@
 import type { EspecieCatalogo } from '../queries/especieQueries';
-
-/** Estado tri-estado del checkbox maestro según las filas visibles. */
-export type EstadoMaestro = 'todas' | 'ninguna' | 'parcial';
-
-/** Acción masiva a aplicar sobre las especies visibles. */
-export type AccionMasiva = 'marcar' | 'desmarcar';
+import { ACCION_MASIVA, type AccionMasiva } from './seleccionMaestro';
 
 /** Contexto de selección: filas visibles + habilitadas + bloqueadas. */
 export interface ContextoSeleccion {
@@ -38,27 +33,13 @@ export function filtrarCatalogo(catalogo: EspecieCatalogo[], busqueda: string): 
   );
 }
 
-/** Tri-estado del maestro según cuántas filas visibles están habilitadas. */
-export function estadoMaestro({ idsVisibles, habilitadas }: ContextoSeleccion): EstadoMaestro {
-  if (idsVisibles.length === 0) return 'ninguna';
-  const marcadas = idsVisibles.filter((id) => habilitadas.has(id)).length;
-  if (marcadas === 0) return 'ninguna';
-  if (marcadas === idsVisibles.length) return 'todas';
-  return 'parcial';
-}
-
-/** Un maestro 'todas' desmarca; 'ninguna'/'parcial' marca todo lo visible. */
-export function accionDesdeEstado(estado: EstadoMaestro): AccionMasiva {
-  return estado === 'todas' ? 'desmarcar' : 'marcar';
-}
-
 /** Plan puro de la acción masiva sobre las filas visibles. */
 export function planificarAccionMasiva(
   contexto: ContextoSeleccion,
   accion: AccionMasiva,
 ): PlanSeleccion {
   const { idsVisibles, habilitadas, bloqueadas } = contexto;
-  if (accion === 'marcar') {
+  if (accion === ACCION_MASIVA.marcar) {
     return {
       idsHabilitar: idsVisibles.filter((id) => !habilitadas.has(id)),
       idsQuitar: [],

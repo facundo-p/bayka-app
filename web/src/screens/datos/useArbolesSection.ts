@@ -14,13 +14,14 @@ import {
   type ParcelaConStats,
 } from '../../queries/dataExplorerQueries';
 import type { Plantacion } from '../../queries/plantationQueries';
-import { descargarFichaPdf } from '../../services/pdfFichas';
+import { descargarFichaPdf, type ContextoFichasPdf } from '../../services/pdfFichas';
 import { puedeCambiarEspecie } from './cambioDeEspecie';
 import { aFiltrosArboles, type FiltrosUi } from './filtrosArboles';
 import { filtrosAParams } from './filtrosUrl';
 import { useFiltrosDatos } from './useFiltrosDatos';
 import type { EdicionDeEspecie } from './useCambioDeEspecie';
 import { useGruposDatos, useParcelasDatos } from './useDatosQueries';
+import { useSeleccionFichas } from './useSeleccionFichas';
 
 /** Retardo del debounce de la búsqueda por ID, en ms. */
 const RETARDO_BUSQUEDA_MS = 300;
@@ -39,7 +40,7 @@ function usePaginaArboles(plantationId: string, filtros: FiltrosUi) {
   // de los filtros aplicados: un filtro nuevo entra solo, sin sumarlo acá.
   const claveFiltros = filtrosAParams(aplicados).toString();
   useEffect(() => setPagina(1), [claveFiltros]);
-  return { arboles, pagina, setPagina };
+  return { arboles, pagina, setPagina, clavePagina: `${claveFiltros}#${pagina}` };
 }
 
 function mapaPorId<T extends { id: string }>(filas: T[] | undefined, valor: (fila: T) => string) {
@@ -68,18 +69,31 @@ function useEdicionDeEspecie(
 }
 
 /**
- * Descarga de la ficha PDF de cada árbol. null (botón deshabilitado) hasta
- * tener la plantación y los técnicos: antes saldría «Técnico —».
+ * Lo que necesitan las fichas PDF. null (botones deshabilitados) hasta tener
+ * la plantación y los técnicos: antes saldría «Técnico —».
  */
-function useDescargaFicha(
+function useContextoFichas(
   plantacion: Plantacion | null | undefined,
   { nombresUsuario, perfilesCargando }: ReturnType<typeof useMapasArboles>,
-) {
+): ContextoFichasPdf | null {
   const queryClient = useQueryClient();
-  return (arbol: ArbolDetalle): (() => Promise<void>) | null => {
-    if (!plantacion || perfilesCargando) return null;
-    return () => descargarFichaPdf(arbol.id, { plantacion, nombresUsuario, queryClient });
-  };
+  if (!plantacion || perfilesCargando) return null;
+  return { plantacion, nombresUsuario, queryClient };
+}
+
+function descargaFichaDe(contexto: ContextoFichasPdf | null) {
+  return (arbol: ArbolDetalle): (() => Promise<void>) | null =>
+    contexto && (() => descargarFichaPdf(arbol.id, contexto));
+}
+
+function useSeleccionDeArboles(
+  { arboles, clavePagina }: ReturnType<typeof usePaginaArboles>,
+  contexto: ContextoFichasPdf | null,
+) {
+  // Mientras llega otra página se ven las filas viejas: no se pueden marcar.
+  const filas = arboles.isPlaceholderData ? [] : (arboles.data?.arboles ?? []);
+  const idsPagina = filas.map((arbol) => arbol.id);
+  return useSeleccionFichas(clavePagina, idsPagina, contexto);
 }
 
 /**
@@ -101,7 +115,8 @@ export function useArbolesSection() {
   const actualizarArbol = (arbol: ArbolDetalle) =>
     setArbolSeleccionado((abierto) => (abierto?.id === arbol.id ? arbol : abierto));
   const edicionDeEspecie = useEdicionDeEspecie(id, plantacion, actualizarArbol);
-  const descargaFichaDe = useDescargaFicha(plantacion, mapas);
+  const contextoFichas = useContextoFichas(plantacion, mapas);
+  const seleccion = useSeleccionDeArboles(paginaArboles, contextoFichas);
   return {
     ...filtrosDatos,
     ...paginaArboles,
@@ -113,6 +128,7 @@ export function useArbolesSection() {
     arbolSeleccionado,
     setArbolSeleccionado,
     edicionDeEspecie,
-    descargaFichaDe,
+    descargaFichaDe: descargaFichaDe(contextoFichas),
+    seleccion,
   };
 }

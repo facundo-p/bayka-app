@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { cx } from '../lib/classNames';
+import { esParcial, estanTodas, type EstadoMaestro } from '../lib/seleccionMaestro';
+import { BotonCasilla } from './Casilla';
 import { EmptyState } from './EmptyState';
 import styles from './Table.module.css';
 
@@ -20,6 +22,17 @@ export interface TableColumn<T> {
   fueraConPanel?: boolean;
 }
 
+/** Columna de checkboxes al inicio de la tabla, con maestro en el encabezado. */
+export interface SeleccionTabla<T> {
+  marcada: (row: T) => boolean;
+  onAlternar: (row: T) => void;
+  maestro: EstadoMaestro;
+  onMaestro: () => void;
+  /** Nombre accesible del checkbox de cada fila. */
+  etiquetaFila: (row: T) => string;
+  etiquetaMaestro: string;
+}
+
 interface TableProps<T> {
   columns: Array<TableColumn<T>>;
   rows: T[];
@@ -28,6 +41,7 @@ interface TableProps<T> {
   /** Clave de la fila abierta en el panel lateral: se resalta. */
   claveSeleccionada?: string | number;
   emptyMessage?: string;
+  seleccion?: SeleccionTabla<T>;
 }
 
 function alignClass(align?: TableColumn<unknown>['align']): string | undefined {
@@ -47,41 +61,95 @@ function renderCells<T>(columns: Array<TableColumn<T>>, row: T): ReactNode {
   ));
 }
 
-export function Table<T>({
-  columns,
-  rows,
-  getRowKey,
-  onRowClick,
-  claveSeleccionada,
-  emptyMessage = 'Sin datos para mostrar',
-}: TableProps<T>) {
+function EncabezadoSeleccion<T>({ seleccion }: { seleccion: SeleccionTabla<T> }) {
+  return (
+    <th className={cx(styles.encabezado, styles.celdaCasilla)}>
+      <BotonCasilla
+        marcada={estanTodas(seleccion.maestro)}
+        parcial={esParcial(seleccion.maestro)}
+        aria-label={seleccion.etiquetaMaestro}
+        className={styles.botonCasilla}
+        onClick={seleccion.onMaestro}
+      />
+    </th>
+  );
+}
+
+interface CeldaSeleccionProps<T> {
+  seleccion: SeleccionTabla<T>;
+  row: T;
+  marcada: boolean;
+}
+
+/** Todo el alto de la celda es clickeable; el click no llega a la fila (no abre el detalle). */
+function CeldaSeleccion<T>({ seleccion, row, marcada }: CeldaSeleccionProps<T>) {
+  const alternar = (evento: MouseEvent) => {
+    evento.stopPropagation();
+    seleccion.onAlternar(row);
+  };
+  return (
+    <td className={styles.celdaCasilla}>
+      <BotonCasilla
+        marcada={marcada}
+        aria-label={seleccion.etiquetaFila(row)}
+        className={styles.botonCasilla}
+        onClick={alternar}
+      />
+    </td>
+  );
+}
+
+interface FilaTablaProps<T> extends Pick<TableProps<T>, 'columns' | 'onRowClick' | 'seleccion'> {
+  row: T;
+  /** Abierta en el panel lateral. */
+  abierta: boolean;
+}
+
+function FilaTabla<T>({ row, columns, abierta, onRowClick, seleccion }: FilaTablaProps<T>) {
+  const marcada = seleccion?.marcada(row) ?? false;
+  return (
+    <tr
+      className={cx(
+        onRowClick && styles.clickableRow,
+        marcada && styles.filaMarcada,
+        abierta && styles.filaSeleccionada,
+      )}
+      onClick={onRowClick ? () => onRowClick(row) : undefined}
+    >
+      {seleccion && <CeldaSeleccion seleccion={seleccion} row={row} marcada={marcada} />}
+      {renderCells(columns, row)}
+    </tr>
+  );
+}
+
+function EncabezadoTabla<T>({ columns, seleccion }: Pick<TableProps<T>, 'columns' | 'seleccion'>) {
+  return (
+    <thead>
+      <tr>
+        {seleccion && <EncabezadoSeleccion seleccion={seleccion} />}
+        {columns.map((column) => (
+          <th key={column.key} className={cx(styles.encabezado, alignClass(column.align))}>
+            {column.header}
+          </th>
+        ))}
+      </tr>
+    </thead>
+  );
+}
+
+export function Table<T>(props: TableProps<T>) {
+  const { rows, getRowKey, claveSeleccionada, emptyMessage = 'Sin datos para mostrar' } = props;
   if (rows.length === 0) return <EmptyState title={emptyMessage} />;
+  const { columns, onRowClick, seleccion } = props;
   return (
     <table className={styles.table}>
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column.key} className={cx(styles.encabezado, alignClass(column.align))}>
-              {column.header}
-            </th>
-          ))}
-        </tr>
-      </thead>
+      <EncabezadoTabla columns={columns} seleccion={seleccion} />
       <tbody>
         {rows.map((row) => {
           const clave = getRowKey(row);
-          return (
-            <tr
-              key={clave}
-              className={cx(
-                onRowClick && styles.clickableRow,
-                claveSeleccionada != null && clave === claveSeleccionada && styles.filaSeleccionada,
-              )}
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-            >
-              {renderCells(columns, row)}
-            </tr>
-          );
+          const abierta = claveSeleccionada != null && clave === claveSeleccionada;
+          const fila = { row, columns, abierta, onRowClick, seleccion };
+          return <FilaTabla key={clave} {...fila} />;
         })}
       </tbody>
     </table>

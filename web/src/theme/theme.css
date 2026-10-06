@@ -160,6 +160,7 @@
   --radius-pill: var(--radius-round); /* badges de estado/rol */
   --radius-code: var(--radius-sm); /* chip de código mono */
   --radius-segment: 7px; /* opción de control segmentado, dentro de un --radius-control */
+  --radius-casilla: 5px; /* checkbox de listas y tablas */
 
   /* ─── Tamaños de fuente ────────────────────────────────────────────── */
   --text-xs: 11px;
@@ -243,6 +244,7 @@
   --spinner-size-md: 24px;
   --pad-riel: 3px; /* hueco entre un riel segmentado y sus opciones */
   --tamano-avatar: 32px;
+  --tamano-casilla: 18px; /* checkbox de listas y tablas */
   --tamano-punto: 8px; /* punto de color de especie en tablas */
   --tamano-punto-lg: 10px; /* ídem en paneles y leyenda del mapa */
   --alto-barra-progreso-lg: 8px;

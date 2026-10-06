@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react';
+import { accionDesdeEstado, estadoMaestro } from '../../lib/seleccionMaestro';
 import {
-  accionDesdeEstado,
   avisoBloqueadas,
-  estadoMaestro,
   filtrarCatalogo,
   planificarAccionMasiva,
   type ContextoSeleccion,
@@ -42,7 +41,7 @@ function avisoDelPlan({ bloqueadasMantenidas }: PlanSeleccion): string | null {
 function useAccionMasiva(datos: DatosChecklist, contexto: ContextoSeleccion) {
   const [aviso, setAviso] = useState<string | null>(null);
   const sincronizar = useSincronizarEspecies(datos.plantationId, datos.catalogo);
-  const estado = estadoMaestro(contexto);
+  const estado = estadoMaestro(contexto.idsVisibles, contexto.habilitadas);
   const alternarTodas = () => {
     const plan = planificarAccionMasiva(contexto, accionDesdeEstado(estado));
     setAviso(avisoDelPlan(plan));

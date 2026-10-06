@@ -43,6 +43,23 @@
   color: var(--color-text-heading);
 }
 
+/* Sin envolver: los filtros se angostan y envuelven adentro, y las acciones
+   quedan abajo a la derecha, alineadas con la última fila de filtros. */
+.filtrosConAcciones {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: flex-end;
+  gap: var(--space-lg);
+  min-width: 0;
+}
+
+.acciones {
+  display: flex;
+  gap: var(--space-md);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 /* Cuántos filtros están puestos, sobre el botón que abre la hoja. */
 .cuenta {
   min-width: var(--space-3xl);

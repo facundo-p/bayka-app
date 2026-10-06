@@ -24,5 +24,5 @@ export function useDescarga(ejecutar: () => Promise<string | null>, mensajeError
     }
   }
 
-  return { descargar, descargando, mensaje };
+  return { descargar, descargando, mensaje, limpiarMensaje: () => setMensaje(null) };
 }

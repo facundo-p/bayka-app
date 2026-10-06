@@ -100,3 +100,41 @@ test('con filtros puestos, limpiar los devuelve al inicio', async () => {
   await usuario.click(screen.getByRole('button', { name: 'Limpiar' }));
   expect(onLimpiar).toHaveBeenCalledOnce();
 });
+
+describe('acciones', () => {
+  function renderConAcciones(acciones: React.ReactNode) {
+    return render(
+      <BarraHerramientas tituloFiltros="Filtros de prueba" filtrosActivos={0} acciones={acciones}>
+        <input aria-label="Filtro" />
+      </BarraHerramientas>,
+    );
+  }
+  const accion = <button type="button">Seleccionar</button>;
+
+  test('en escritorio van en la fila, junto a los filtros', () => {
+    renderConAcciones(accion);
+    expect(screen.getByRole('button', { name: 'Seleccionar' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Filtro')).toBeInTheDocument();
+  });
+
+  test('en teléfono quedan en la fila y no van a la hoja de filtros', async () => {
+    simularAncho(ANCHO.movil);
+    renderConAcciones(accion);
+    expect(screen.getByRole('button', { name: 'Seleccionar' })).toBeInTheDocument();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Filtros' }));
+    const hoja = screen.getByRole('dialog', { name: 'Filtros de prueba' });
+    expect(within(hoja).queryByRole('button', { name: 'Seleccionar' })).not.toBeInTheDocument();
+  });
+
+  test('con acciones={false} no se dibujan y los filtros no se remontan', () => {
+    const { rerender } = renderConAcciones(accion);
+    const filtro = screen.getByLabelText('Filtro');
+    rerender(
+      <BarraHerramientas tituloFiltros="Filtros de prueba" filtrosActivos={0} acciones={false}>
+        <input aria-label="Filtro" />
+      </BarraHerramientas>,
+    );
+    expect(screen.queryByRole('button', { name: 'Seleccionar' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Filtro')).toBe(filtro);
+  });
+});
