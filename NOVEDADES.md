@@ -8,6 +8,424 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
 > web, y cambiarlo la rompe. Está en `.claude/skills/deploy/SKILL.md`
 > ("Contrato de formato"); leerlo antes de editar este archivo a mano.
 
+## En pruebas · próxima versión
+<!-- sincronizado-hasta: 72ae4ca #776 -->
+
+- **Cada plantación tiene su código.** Al crear o editar una plantación cargás
+  un código corto y único en la organización (por ejemplo, SS26-1), que pasa a
+  formar el ID de sus árboles. Se ve en el listado y en el detalle, junto al
+  período, y solo se cambia mientras la plantación está activa. Las
+  plantaciones que ya existían recibieron el suyo. <!-- #691 #699 #764 -->
+  - En la web de pruebas, entrá a Plantaciones → "Nueva plantación" y escribí
+    "ab 12-x" en Código.
+  - Creala y después intentá crear otra con el mismo código.
+  - Esperá ver: el código queda "AB12-X" y aparece en el listado y en el
+    detalle; el repetido se marca en el campo con "Ya existe otra plantación
+    con ese código." sin cerrar el formulario.
+- **Cada árbol tiene un ID único en toda la organización.** Es su SubID más el
+  código de la plantación (por ejemplo, LP1L23BANC12-SS26-1). En Datos →
+  Árboles reemplaza a la columna SubID y titula el detalle del árbol, y podés
+  pegarlo entero en la búsqueda global o en el buscador de Árboles para
+  encontrar ese árbol. <!-- #699 #717 -->
+  - En la web de pruebas, abrí una plantación → Datos → Árboles y copiá el ID
+    de un árbol.
+  - Pegalo en la búsqueda (Ctrl/⌘ K) y después en "Buscar por ID o SubID…".
+  - Esperá ver: la columna "ID Árbol", el ID como título del detalle, y en las
+    dos búsquedas solo ese árbol; un SubID parcial sigue encontrando como
+    antes.
+- **Las exportaciones llevan el ID Árbol.** El Excel y el CSV suman el ID Árbol
+  como primera columna, y en el KML cada punto se llama con ese ID, no con el
+  nombre de la especie. <!-- #703 #721 -->
+  - En la web de pruebas, abrí una plantación con los IDs generados →
+    Exportar → "Exportar Excel" y después "Descargar KML".
+  - Abrí el Excel y cargá el KML en Google Earth.
+  - Esperá ver: la primera columna del Excel es "ID Árbol" y cada punto del
+    mapa se llama con el ID de su árbol.
+- **La búsqueda te lleva directo a la parcela o al grupo.** Elegir una parcela
+  o un grupo en la búsqueda global abre su sección con el código ya buscado,
+  así ves la fila que elegiste. Parcelas y Grupos suman su propio buscador por
+  código o nombre, y los grupos de la búsqueda global muestran de qué
+  plantación son. <!-- #688 #722 -->
+  - En la web de pruebas, abrí la búsqueda (Ctrl/⌘ K) y escribí el código de
+    un grupo que exista en más de una plantación (por ejemplo, L1).
+  - Elegí uno de los grupos.
+  - Esperá ver: cada grupo con «lugar · Parcela …» debajo y, al elegirlo,
+    Datos → Grupos con el código en "Buscar por código o nombre…" y su fila a
+    la vista.
+- **Cambiá la especie de un árbol desde la web.** En el detalle de un árbol, el
+  bloque Especie suma «Cambiar»: elegís otra especie de la plantación y el ID
+  del árbol toma su código. Si alguien la cambió desde otro lado mientras
+  tanto, te avisa y muestra la que quedó. <!-- #731 -->
+  - En la web de pruebas, como administrador, abrí una plantación activa →
+    Datos y tocá un árbol.
+  - En Especie tocá «Cambiar», elegí otra especie y guardá.
+  - Esperá ver: la especie y el ID nuevos en el panel, la tabla, el mapa y el
+    dashboard. En una plantación finalizada «Cambiar» solo lo ve el
+    superadmin, y en una archivada no aparece.
+- **Clasificá las especies en árbol o arbusto.** Cada especie tiene tipo, por
+  ahora Flora, y subtipo: Árbol o Arbusto. Las que ya existían quedan como
+  Árbol. El listado de Especies suma la columna Subtipo y un filtro por
+  subtipo. <!-- #775 -->
+  - En la web de pruebas, entrá a Especies y abrí una especie.
+  - Elegí «Arbusto» en Subtipo, guardá y filtrá por «Subtipo: arbusto».
+  - Esperá ver: la especie aparece en el filtro con subtipo Arbusto, las demás
+    siguen en Árbol y una especie nueva arranca en Árbol.
+- **Las especies científicas tienen su propia pestaña.** En Especies, la
+  pestaña Científicas reúne cada nombre científico con los nombres comunes que
+  agrupa. Ahí se crean, se renombran y se eliminan, la búsqueda (Ctrl/⌘ K) las
+  encuentra, y en cada especie el nombre científico se elige de esa lista en
+  vez de escribirse a mano. Los que ya estaban cargados aparecen vinculados a
+  sus especies. <!-- #776 -->
+  - En la web de pruebas, entrá a Especies → Científicas y creá «Prosopis
+    alba».
+  - En Comunes abrí una especie, elegile «Prosopis alba» y guardá. Después
+    renombrá la científica.
+  - Esperá ver: la científica lista esa especie y deja de verse atenuada, el
+    nombre nuevo aparece en la columna «Nombre científico» de Comunes y
+    «Eliminar» queda deshabilitado mientras agrupe especies.
+- **Editar una plantación no pisa lo que otro cambió mientras tanto.** Si
+  alguien cambió el mismo dato desde otra pestaña o desde la app mientras
+  editabas, la web te avisa, guarda el resto y te muestra el valor actual. Vale
+  para el formulario de la plantación y para la configuración de GPS,
+  visibilidad y foto. <!-- #648 -->
+  - En la web de pruebas, abrí la misma plantación en dos pestañas y en las
+    dos tocá Editar.
+  - En una cambiá el objetivo y guardá; en la otra cambiá el objetivo y la
+    descripción y guardá.
+  - Esperá ver: el aviso de que alguien cambió algunos datos, el objetivo con
+    el valor de la primera pestaña y la descripción guardada.
+- **Vaciar un dato opcional de la plantación ahora se guarda.** Borrar la
+  descripción, la fecha de inicio o el objetivo desde Editar deja el campo
+  vacío; antes volvía el valor anterior. <!-- #648 -->
+  - En la web de pruebas, abrí una plantación con descripción → Editar.
+  - Borrá la descripción, guardá y recargá la página.
+  - Esperá ver: la plantación queda sin descripción.
+- **Especies por nombre y sin pisar los cambios de la app.** La configuración
+  de especies muestra el catálogo en orden alfabético, el mismo de la botonera
+  de la app, y cada cambio toca solo la especie que marcaste o desmarcaste: ya
+  no deshace lo que un celular cambió en otras. <!-- #650 #642 -->
+  - En la web de pruebas, abrí una plantación → Configuración → Especies.
+  - Con la app Bayka TEST en modo avión, quitá una especie sin árboles de esa
+    plantación; en la web habilitá otra distinta y después sincronizá la app.
+  - Esperá ver: el listado en orden alfabético con el pie "En la app se
+    ordenan por nombre", y los dos cambios en la web y en la app.
+- **Editar una plantación finalizada es solo del superadmin.** Un administrador
+  ve «Editar» deshabilitado en una plantación finalizada, con el motivo, en vez
+  de cargar cambios que no se guardaban. <!-- #742 -->
+  - En la web de pruebas, como administrador, abrí una plantación finalizada.
+  - Pasá el mouse por el lápiz de Editar.
+  - Esperá ver: el botón deshabilitado con «Solo el superadmin edita una
+    plantación finalizada»; como superadmin, sigue habilitado.
+- **Descargá la foto de un árbol.** El detalle de un árbol suma un botón
+  Descargar debajo de la foto; el archivo lleva la plantación y el SubID en
+  el nombre. <!-- #726 -->
+  - En la web de pruebas, abrí una plantación → Datos → Árboles y tocá un
+    árbol con foto.
+  - Tocá «Descargar» debajo de la foto.
+  - Esperá ver: se descarga un archivo foto-<lugar>-<período>-<SubID>.jpg con
+    la foto del árbol.
+- **La web abre más rápido las plantaciones grandes.** El listado de
+  plantaciones, el dashboard y la pestaña Datos ya no descargan todos los
+  árboles para contarlos, y el mapa se carga recién cuando hay puntos para
+  mostrar. <!-- #758 #761 -->
+  - En la web de pruebas, abrí la plantación con más árboles.
+  - Mirá el Dashboard, con su mapa, y después la pestaña Datos.
+  - Esperá ver: los dos cargan casi enseguida, el mapa muestra los árboles y
+    el total del dashboard coincide con la suma de la columna Árboles de las
+    parcelas en Datos.
+- **Todos los datos de la plantación, desde la app.** Al crear o editar una
+  plantación cargás lugar, periodo, fecha de inicio, objetivo de árboles,
+  descripción, GPS obligatorio y su frecuencia, foto en todos los botones y si
+  la ven los técnicos. La fecha se elige con el calendario del celular. Se
+  guarda sin señal y sube al sincronizar. <!-- #645 #677 -->
+  - En la app Bayka TEST, como administrador y en modo avión, creá una
+    plantación completando todos los campos.
+  - Sincronizá; después, desde su engranaje → "Editar plantación", cambiá el
+    objetivo y "Visible para técnicos" y volvé a sincronizar.
+  - Esperá ver: en la web de pruebas, la plantación con todos los datos tal
+    como los cargaste en el celular, la fecha sin correrse un día, también
+    después de editarla.
+- **Te avisa si ya hay una plantación con el mismo lugar y periodo.** Mientras
+  escribís, el formulario compara con las plantaciones del celular sin
+  distinguir mayúsculas; al subirla, con las de toda la organización. El aviso
+  no frena la creación. <!-- #645 #656 -->
+  - En la app Bayka TEST, creá una plantación con el lugar y el periodo de una
+    que ya tenés en el celular, escritos con otras mayúsculas.
+  - Con señal, creá otra igual a una plantación de la web de pruebas que el
+    celular no tenga descargada.
+  - Esperá ver: en el primer caso el aviso amarillo "Ya tenés una …" debajo
+    del lugar y periodo; en el segundo, el aviso "Mismo lugar y periodo" al
+    crear. En los dos, la plantación se crea igual.
+- **La app también pide el código de la plantación.** Al crear o editar una
+  plantación en el celular cargás su código, en mayúsculas y hasta 8
+  caracteres, y la app te avisa si otra plantación ya lo usa. Si la creaste
+  sin conexión y al sincronizar resulta repetido, la tarjeta te avisa que no
+  se pudo subir hasta que lo cambies. <!-- #703 #764 -->
+  - En la web de pruebas, creá una plantación con el código PRUEBA1.
+  - En la app Bayka TEST, en modo avión, creá una plantación con ese mismo
+    código; después sacá el modo avión y sincronizá.
+  - Esperá ver: la tarjeta avisa que otra plantación de la organización ya usa
+    ese código; al editarla y cambiarle el código, se sube en la próxima
+    sincronización.
+- **Si un dato cambió en la app y en la web, elegís cuál queda.** Editar una
+  plantación ya no pisa lo que otro cambió desde la web: lo que no choca se
+  sube, y la pantalla "Resolver cambios" muestra, por cada dato que cambió en
+  los dos lados, tu valor, el de la web con quién y cuándo lo cambió, y el
+  anterior. <!-- #648 -->
+  - En la app Bayka TEST, en modo avión, cambiá el objetivo y la descripción
+    de una plantación; en la web de pruebas cambiá el objetivo de la misma.
+  - Recuperá la señal, sincronizá y tocá "Resolver" en el resumen (o "Cambios
+    por resolver" en la tarjeta); elegí tu valor y guardá la elección.
+  - Esperá ver: la descripción subió sin aviso, y después de elegir y
+    sincronizar la web muestra el objetivo que elegiste.
+- **Configurá las especies de una plantación sin señal.** Los cambios se
+  guardan en el celular y suben al sincronizar, sin pisar lo que se cambió
+  desde la web en otras especies. Si quitaste una especie que ya tenía árboles
+  cargados desde otro celular, el resumen de la sincronización te avisa y la
+  especie vuelve a la botonera. <!-- #650 -->
+  - En la app Bayka TEST, en modo avión, habilitá una especie y quitá otra sin
+    árboles en una plantación ya sincronizada; en la web de pruebas habilitá
+    o quitá una especie distinta de la misma plantación.
+  - Recuperá la señal y sincronizá.
+  - Esperá ver: la botonera cambia apenas guardás, aun sin señal, y después de
+    sincronizar quedan los dos cambios en la app y en la web.
+- **Las especies del celular quedan al día con la web.** Una especie que se
+  quita desde la web deja de aparecer en la botonera al sincronizar, y una
+  especie que ya tiene árboles no se puede destildar en la configuración de la
+  app. <!-- #642 #650 -->
+  - En la web de pruebas, quitá una especie sin árboles de una plantación que
+    tengas descargada en la app Bayka TEST, y sincronizá la app.
+  - Abrí "Configurar especies" de una plantación con árboles.
+  - Esperá ver: la especie quitada ya no está en la botonera, y las que tienen
+    árboles muestran el candado y no se pueden destildar.
+- **Asigná técnicos sin señal.** "Asignar técnicos" funciona en modo avión con
+  la lista de técnicos de la última sincronización, y la asignación sube al
+  sincronizar. Quitar a un técnico sigue pidiendo conexión. <!-- #651 -->
+  - En la app Bayka TEST, como administrador, sincronizá una vez con señal.
+  - En modo avión, abrí el engranaje de una plantación → "Asignar técnicos",
+    asigná uno, guardá y volvé a abrir la pantalla.
+  - Esperá ver: el técnico con "Se asignará al sincronizar", los ya asignados
+    sin poder quitarse y la ayuda "Quitar técnicos requiere conexión a
+    internet"; al sincronizar, el técnico ve la plantación.
+- **Reabrí una plantación finalizada desde la app.** Un superadmin ya no
+  necesita la web: el engranaje de una finalizada ofrece "Reabrir plantación",
+  con la misma confirmación que la web. Requiere conexión. <!-- #644 -->
+  - En la app Bayka TEST, como superadmin, abrí el engranaje de una plantación
+    finalizada → "Reabrir plantación" y confirmá.
+  - Repetí en modo avión con otra plantación finalizada.
+  - Esperá ver: la plantación queda activa, con Configurar especies, Asignar
+    técnicos y Finalizar disponibles, y la web la muestra activa; sin señal la
+    opción aparece gris con "Reabrir requiere conexión a internet".
+- **Te avisa cuando hay cambios que no pueden subir.** Si la plantación se
+  finalizó, se archivó o se eliminó en el servidor, o perdiste el permiso, su
+  tarjeta dice cuántos cambios quedaron sin subir y por qué. Si la reabren o
+  te devuelven el permiso, suben solos; si no, "Descartar" te dice qué se
+  pierde antes de borrarlos. <!-- #653 -->
+  - En la app Bayka TEST, cargá un grupo sin señal en una plantación,
+    archivala o finalizala desde la web de pruebas y sincronizá la app.
+  - Desarchivala o reabrila desde la web y volvé a sincronizar; después repetí
+    el primer paso y tocá "Descartar".
+  - Esperá ver: el aviso "N cambios no se pudieron subir" con el motivo, que
+    desaparece al sincronizar después de reabrir; al descartar, la
+    confirmación lista qué se pierde y la plantación queda como en el servidor.
+- **Las parcelas ya sincronizadas las edita y borra un administrador.** El
+  técnico sigue creando parcelas y puede corregir o borrar las que creó en su
+  celular mientras no se sincronizaron; borrar una parcela sin sincronizar
+  pide confirmación porque no queda copia en el servidor. <!-- #643 #657 -->
+  - En la app Bayka TEST, como técnico y en modo avión, creá una parcela,
+    mantenela presionada, cambiale el nombre y guardá.
+  - Sincronizá y volvé a mantenerla presionada.
+  - Esperá ver: antes de sincronizar se edita; después ya no abre la edición y
+    la web la muestra con el nombre corregido. Un administrador sigue editando
+    y borrando como antes.
+- **Cambiá la especie de un árbol desde la app.** En el detalle de un árbol de
+  un grupo que cargaste, «Cambiar especie» abre un buscador por nombre común o
+  científico. En un grupo finalizado te ofrece reabrirlo y cambiar en un solo
+  paso. Si la especie también se cambió desde la web, al sincronizar queda la
+  de la web y la app te avisa. <!-- #731 -->
+  - En la app Bayka TEST, abrí un grupo activo que hayas cargado → «Ver todos
+    los árboles» → tocá un árbol.
+  - Tocá «Cambiar especie», elegí otra y sincronizá.
+  - Esperá ver: el aviso «Especie cambiada» con el ID nuevo, y el árbol con la
+    especie nueva en la web de pruebas.
+- **Cada árbol muestra su ID en la app.** El detalle de un árbol muestra el ID
+  completo, con el código de la plantación al final. Como ese ID se arma con
+  los códigos de la parcela y del grupo, al cambiar uno de esos códigos la app
+  te avisa antes cuántos árboles cambian de ID. <!-- #703 -->
+  - En la app Bayka TEST, sincronizá, abrí una plantación con árboles y tocá
+    un árbol de un grupo.
+  - Volvé, mantené apretado ese grupo, cambiale el código y guardá.
+  - Esperá ver: el ID del árbol termina en el código de la plantación, y antes
+    de guardar el código nuevo aparece "Cambian los IDs de los árboles" con la
+    cantidad; si cancelás, no se guarda.
+- **Las exportaciones de la app llevan el ID Árbol.** El CSV y el Excel suman el
+  ID Árbol como primera columna, y en el KML cada punto se llama con ese ID; el
+  SubID pasa a la descripción. <!-- #703 #721 -->
+  - En la app Bayka TEST, como administrador, tocá el engranaje de una
+    plantación finalizada con los IDs generados.
+  - Exportá el Excel y el KML.
+  - Esperá ver: la primera columna del Excel es "ID Árbol" y en Google Earth
+    cada punto se llama con el ID de su árbol.
+- **La cámara se abre directo.** Ya no aparece el menú «Agregar foto»: tocar
+  N/N, una especie con foto, o agregar o reemplazar la foto de un árbol abre la
+  cámara, y la galería se elige con el botón «Galería» que está adentro. Si la
+  foto es opcional, «Sin foto» registra el árbol sin foto; sin permiso de
+  cámara podés elegir de la galería. <!-- #772 #660 -->
+  - En la app Bayka TEST, entrá a un grupo activo y tocá N/N.
+  - Tocá «Galería», elegí una foto y en el recorte tocá «Reintentar».
+  - Esperá ver: la cámara sin menú previo, la foto de la galería pasa por el
+    recorte, «Reintentar» vuelve a la cámara, y cerrar con la X o con atrás no
+    registra nada.
+- **Fotografiá el árbol seleccionado sin salir de la botonera.** Un botón de
+  cámara junto al engranaje le saca la foto al árbol elegido en la tira. Si ya
+  tiene foto, primero te avisa que la vas a reemplazar. <!-- #773 -->
+  - En la app Bayka TEST, en un grupo activo registrá dos árboles sin foto y
+    tocá el primero en la tira.
+  - Tocá el botón de cámara y sacá la foto; después tocalo de nuevo.
+  - Esperá ver: la foto queda en el árbol que elegiste y no en el último, y la
+    segunda vez aparece el aviso «Reemplazar la foto» antes de la cámara.
+- **Quitar o reemplazar una foto te pide confirmación.** Antes de borrar o
+  pisar la foto de un árbol, la app avisa que no se puede deshacer y si el
+  cambio llega a Bayka y a los demás celulares. Desde el detalle del árbol,
+  «Ver actual» te muestra la foto antes de decidir. <!-- #723 #729 #771 -->
+  - En la app Bayka TEST, abrí el listado de un grupo y entrá al detalle de un
+    árbol con foto.
+  - Tocá «Cambiar foto» → «Ver actual»; cerrá la foto y tocá «Quitar».
+  - Esperá ver: el aviso «Reemplazar la foto» con Cancelar, Ver actual y
+    Reemplazar; desde la foto ampliada, «Reemplazar» abre la cámara sin volver
+    a preguntar; «Quitar» pide confirmación y Cancelar deja la foto.
+- **Guardá o compartí la foto de un árbol.** El visor de fotos suma dos
+  botones arriba a la derecha: Guardar deja una copia en el álbum «Bayka» de
+  la galería y Compartir la manda por la app que elijas. Si la foto está solo
+  en la nube, primero se descarga. <!-- #726 -->
+  - En la app Bayka TEST, abrí la foto de un árbol desde el listado de un
+    grupo.
+  - Tocá Guardar (la flecha hacia abajo) y después Compartir.
+  - Esperá ver: el aviso «Guardada en el álbum Bayka», la foto en ese álbum
+    con la plantación y el SubID en el nombre, y la hoja de compartir del
+    teléfono.
+- **Elegí si bajar las fotos de otros celulares.** Las fotos que sacás en el
+  celular se suben siempre al sincronizar; lo que podés apagar, en Ajustes →
+  Fotos o en el aviso de sincronizar, es bajar las de los demás. Las que no
+  bajaste se ven con una nube y se descargan de a una. Reemplaza al «Incluir
+  fotos» del aviso de sincronizar: si lo tenías apagado, sigue apagado.
+  <!-- #700 -->
+  - En la app Bayka TEST, apagá «Descargar fotos de otros celulares» en
+    Ajustes → Fotos.
+  - Sincronizá una plantación con fotos sacadas en otro celular y abrí el
+    detalle de uno de esos árboles.
+  - Esperá ver: la nube en el listado, «Foto sin descargar en este celular»
+    en el detalle y, al tocar «Descargar», la foto.
+- **Liberá espacio en el celular.** En Ajustes → Fotos, «Liberar espacio»
+  borra del celular las fotos que ya están en la nube, sin quitarlas de Bayka
+  ni de los demás celulares. Antes de confirmar te dice cuántas fotos y cuánto
+  espacio libera; las fotos sin subir se conservan. <!-- #700 -->
+  - En la app Bayka TEST, con fotos ya sincronizadas, sacá una foto nueva sin
+    sincronizar y entrá a Ajustes → Fotos.
+  - Tocá «Liberar espacio · N fotos, X MB» y confirmá.
+  - Esperá ver: el aviso de cuánto se libera y de que la foto sin subir se
+    conserva; después las fotos liberadas muestran la nube, la nueva sigue en
+    el celular y en la web no falta ninguna.
+- **Sabé cuánto pesan las fotos antes de descargar una plantación.** En el
+  catálogo, cada plantación muestra el peso de sus fotos y «Incluir fotos»
+  suma el total de las que seleccionaste. <!-- #765 -->
+  - En la app Bayka TEST, abrí el catálogo de plantaciones.
+  - Seleccioná una o dos plantaciones con fotos.
+  - Esperá ver: en cada tarjeta, junto a grupos y árboles, el peso de las
+    fotos (por ejemplo, «41 MB»), y abajo «Incluir fotos · <total>»; una
+    plantación sin fotos no muestra peso.
+- **El catálogo se actualiza solo y abre más rápido.** Cada vez que entrás al
+  catálogo ves las plantaciones nuevas sin reiniciar la app, y deslizando
+  hacia abajo lo actualizás a mano sin perder lo que tenías seleccionado. Si
+  te quedás sin conexión, sigue mostrando la última lista con un aviso.
+  <!-- #718 #758 -->
+  - En la app Bayka TEST, entrá al catálogo (el botón de descarga de
+    Plantaciones) y volvé.
+  - Creá en la web de pruebas una plantación asignada a tu usuario y volvé a
+    entrar al catálogo; seleccioná una, filtrá por estado, deslizá hacia
+    abajo y después poné el modo avión.
+  - Esperá ver: el catálogo aparece enseguida, con la plantación nueva sin
+    reiniciar la app, la selección y el filtro intactos después de deslizar,
+    y sin conexión la lista con el aviso "Sin conexión · se muestra la última
+    lista cargada".
+- **Elegí el tamaño y el orden del código y del nombre en la botonera.** En
+  Opciones de la carga de árboles, «Tamaño de la botonera» te deja poner
+  arriba el código o el nombre y agrandar o achicar la letra de cada uno, con
+  vista previa. Se aplica al instante, también en la resolución de N/N, queda
+  guardado para tu usuario en este celular y «Restablecer el diseño original»
+  lo deshace. <!-- #770 -->
+  - En la app Bayka TEST, entrá a un grupo activo y tocá el engranaje.
+  - En «Tamaño de la botonera» elegí «Nombre arriba» y subí la letra del
+    nombre.
+  - Esperá ver: la vista previa y la botonera con el nombre arriba, en
+    negrita y más grande, y que se mantiene al cerrar y abrir la app.
+- **Ordená los árboles de un grupo del último al primero.** El listado de
+  árboles de un grupo suma un botón que alterna entre 1→N y N→1, así lo último
+  que registraste queda arriba. La app recuerda tu elección para todos los
+  grupos, aunque la cierres. <!-- #725 -->
+  - En la app Bayka TEST, abrí un grupo con varios árboles → "Ver todos los
+    árboles".
+  - Tocá el botón «1→N» de arriba, salí, entrá a otro grupo y después cerrá y
+    volvé a abrir la app.
+  - Esperá ver: el listado sigue de N a 1 en todos los grupos, también en los
+    finalizados, y la tira deslizable de árboles conserva su orden.
+- **Editar un grupo se ve como los demás formularios.** "Editar grupo" se abre
+  en pantalla completa, igual que "Nuevo grupo", y el botón Guardar queda
+  siempre a la vista, arriba del teclado. <!-- #716 -->
+  - En la app Bayka TEST, abrí una parcela y mantené presionado un grupo.
+  - Tocá el nombre para que se abra el teclado.
+  - Esperá ver: "Editar grupo" en pantalla completa, con Cancelar y Guardar
+    visibles arriba del teclado.
+- **El visor de fotos ya no queda tapado por las barras del teléfono.** La X
+  y los botones Reemplazar y Eliminar foto respetan la barra de estado y la de
+  navegación. <!-- #719 -->
+  - En la app Bayka TEST, en un teléfono con muesca o navegación por gestos,
+    abrí la foto de un árbol desde el listado de un grupo.
+  - Mirá los bordes de arriba y de abajo.
+  - Esperá ver: la X debajo de la barra de estado y los botones de abajo por
+    encima de la barra de gestos.
+- **Sin permiso de edición, el visor de fotos no ofrece cambiarla.** En un
+  grupo de otro técnico o de una plantación finalizada o archivada, la foto se
+  ve sin Reemplazar ni Eliminar foto. <!-- #769 -->
+  - En la app Bayka TEST, abrí un grupo de otro técnico.
+  - Tocá el ícono de foto de un árbol.
+  - Esperá ver: la foto, con Guardar y Compartir arriba, y sin Reemplazar ni
+    Eliminar foto abajo.
+- **En un celular compartido, cada uno trabaja con su cuenta.** Si entrás sin
+  conexión en un celular donde antes entró otra persona, lo que cargás queda a
+  tu nombre y ves tu propio perfil. Al volver la señal, la app te pide iniciar
+  sesión con conexión antes de sincronizar, así nada se sube a nombre de otro.
+  Después de actualizar, cada cuenta tiene que entrar una vez con conexión para
+  poder volver a entrar sin conexión. <!-- #662 #669 #695 -->
+  - En la app Bayka TEST, con conexión, entrá con una cuenta A y cerrá sesión;
+    repetí con una cuenta B.
+  - En modo avión, entrá con A, creá un grupo y abrí Perfil.
+  - Sacá el modo avión y sincronizá; cuando lo pida, entrá como A con conexión
+    y volvé a sincronizar.
+  - Esperá ver: el grupo figura como creado por A y Perfil muestra los datos de
+    A; el primer intento de sincronizar muestra "Iniciá sesión" y, después de
+    entrar como A, sincroniza.
+- **Entrar con señal débil ya no te hace esperar.** En un wifi sin internet, una
+  cuenta que ya usaste en el celular entra al instante. Si el servidor tarda en
+  responder al iniciar sesión, la app termina de entrar cuando contesta y esa
+  cuenta queda lista para entrar sin conexión. Y sincronizar con señal floja
+  avisa que no se pudo conectar, en vez de pedirte que inicies sesión de
+  nuevo. <!-- #670 #675 #669 -->
+  - En la app Bayka TEST, conectate a un wifi sin salida a internet (por
+    ejemplo, el hotspot de otro celular sin datos).
+  - Iniciá sesión con una cuenta que ya usaste en este celular.
+  - Esperá ver: entra al instante, sin quedarse unos segundos esperando al
+    servidor.
+- **Al volver la señal, la app actualiza tu cuenta.** Si abriste la app sin
+  conexión, cuando se conecta actualiza tu rol y, si un administrador desactivó
+  tu cuenta, cierra la sesión, sin que tengas que reiniciarla. <!-- #670 -->
+  - En la app Bayka TEST, con la sesión iniciada, cerrá la app, poné el celular
+    en modo avión y volvé a abrirla.
+  - En la web de pruebas, desactivá esa cuenta; después sacá el modo avión en
+    el celular.
+  - Esperá ver: sin reiniciar la app, se cierra la sesión y aparece la pantalla
+    de inicio de sesión.
+
 ## Web 1.4.0 · Mobile 1.3.0 · 24 de septiembre de 2026
 
 - **Reabrí una plantación finalizada.** Si una plantación se finalizó y quedó
