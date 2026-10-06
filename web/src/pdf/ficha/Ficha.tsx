@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import type { CodigoNombre } from '../../queries/fichasQueries';
 import { SIN_DATO } from '../../lib/formato';
 import { ESTADO_FOTO, esFotoLista, type FotoPdf } from '../estadoFoto';
-import { AtribucionSatelite } from '../mapa/AtribucionSatelite';
+import { LlamadaSatelite } from '../mapa/LlamadaSatelite';
 import { ESTADO_MAPA, esMapaListo, type MapaPdf } from '../mapa/estadoMapa';
 import type { EspecieFicha, GpsFicha, ModeloFicha } from './datosFicha';
 import { fichaStyles as styles } from './Ficha.styles';
@@ -66,7 +66,7 @@ function Mapa({ mapa }: { mapa: MapaPdf }) {
     return (
       <View>
         <Image style={styles.mapa} src={mapa.src} />
-        {mapa.conSatelite && <AtribucionSatelite style={styles.atribucion} />}
+        {mapa.conSatelite && <LlamadaSatelite style={styles.llamada} />}
       </View>
     );
   }

@@ -118,11 +118,11 @@ export const fichaStyles = StyleSheet.create({
   },
   mapaVacio: { ...vacio, width: MEDIDA_FICHA.ladoMapa, height: MEDIDA_FICHA.ladoMapa },
   // En el relleno inferior de la ficha: no empuja el cuerpo, y siguen entrando tres por hoja.
-  atribucion: {
+  llamada: {
     position: 'absolute',
     top: MEDIDA_FICHA.ladoMapa,
     right: 0,
     width: MEDIDA_FICHA.ladoMapa,
-    lineHeight: MEDIDA_FICHA.interlineadoAtribucion,
+    lineHeight: MEDIDA_FICHA.interlineadoLlamada,
   },
 });

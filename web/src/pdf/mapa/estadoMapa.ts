@@ -7,7 +7,7 @@ export const ESTADO_MAPA = {
   noDisponible: 'no-disponible',
 } as const;
 
-/** `conSatelite`: lleva la imagen de Esri y, con ella, la atribución al pie. */
+/** `conSatelite`: lleva la imagen de Esri y, con ella, la llamada a la nota al pie. */
 export type MapaPdf =
   | { estado: typeof ESTADO_MAPA.listo; src: string; conSatelite: boolean }
   | { estado: typeof ESTADO_MAPA.sinGps }
@@ -20,6 +20,10 @@ export const MAPA_NO_DISPONIBLE: MapaPdf = { estado: ESTADO_MAPA.noDisponible };
 
 export function esMapaListo(mapa: MapaPdf): mapa is MapaListo {
   return mapa.estado === ESTADO_MAPA.listo;
+}
+
+export function esMapaSatelital(mapa: MapaPdf): boolean {
+  return esMapaListo(mapa) && mapa.conSatelite;
 }
 
 /** El mapa ya dibujado, con su fondo satelital; no disponible si no se dibujó. */

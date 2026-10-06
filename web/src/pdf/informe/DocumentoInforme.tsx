@@ -1,7 +1,7 @@
 import { Document, Image, Text, View } from '@react-pdf/renderer';
-import { AtribucionSatelite } from '../mapa/AtribucionSatelite';
-import { esMapaListo } from '../mapa/estadoMapa';
-import { Hoja } from '../plantilla/Hoja';
+import { LlamadaSatelite, NOTA_SATELITE } from '../mapa/LlamadaSatelite';
+import { esMapaListo, esMapaSatelital } from '../mapa/estadoMapa';
+import { Hoja, type NotaAlPie } from '../plantilla/Hoja';
 import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
 import type { ItemLeyenda, ModeloInforme } from './datosInforme';
 import { informeStyles as styles } from './Informe.styles';
@@ -38,21 +38,17 @@ function Leyenda({ items }: { items: readonly ItemLeyenda[] }) {
   );
 }
 
-/** La atribución va en la línea de la leyenda, a la derecha, solo si hay satélite. */
-function PieMapa({ items, conSatelite }: { items: readonly ItemLeyenda[]; conSatelite: boolean }) {
-  return (
-    <View style={styles.pieMapa}>
-      <Leyenda items={items} />
-      {conSatelite && <AtribucionSatelite style={styles.atribucion} />}
-    </View>
-  );
-}
-
 type MapaListo = { src: string; caja: Caja; conSatelite: boolean };
 
+/** Con satélite, la llamada a la nota al pie va bajo la esquina derecha de la imagen. */
 function ImagenMapa({ mapa }: { mapa: MapaListo }) {
   const { ancho, alto } = mapa.caja;
-  return <Image style={[styles.mapa, { width: ancho, height: alto }]} src={mapa.src} />;
+  return (
+    <View style={[styles.mapa, { width: ancho, height: alto }]}>
+      <Image style={styles.imagenMapa} src={mapa.src} />
+      {mapa.conSatelite && <LlamadaSatelite style={styles.llamada} />}
+    </View>
+  );
 }
 
 type MapaProps = { modelo: ModeloInforme; mapa: MapaListo };
@@ -64,7 +60,7 @@ function MapaEnHojaCompleta({ modelo, mapa }: MapaProps) {
       <Text style={styles.tituloMapa}>{TEXTO_INFORME.mapa}</Text>
       <Text style={styles.notaTitulo}>{modelo.mapa.nota}</Text>
       <ImagenMapa mapa={mapa} />
-      <PieMapa items={modelo.mapa.leyenda} conSatelite={mapa.conSatelite} />
+      <Leyenda items={modelo.mapa.leyenda} />
     </View>
   );
 }
@@ -74,7 +70,7 @@ function MapaAlPie({ modelo, mapa }: MapaProps) {
     <View style={styles.bloqueMapa} wrap={false}>
       <EncabezadoBloque>{TEXTO_INFORME.mapa}</EncabezadoBloque>
       <ImagenMapa mapa={mapa} />
-      <PieMapa items={modelo.mapa.leyenda} conSatelite={mapa.conSatelite} />
+      <Leyenda items={modelo.mapa.leyenda} />
       <Text style={styles.notaMapa}>{modelo.mapa.nota}</Text>
     </View>
   );
@@ -100,6 +96,12 @@ function BloqueMapa({ modelo, plan, mapa }: Omit<DocumentoInformeProps, 'encabez
   return <MapaAlPie modelo={modelo} mapa={listo} />;
 }
 
+/** El mapa es lo último del informe: con satélite, la nota va al pie de la última hoja. */
+function notaDelMapa(mapa: MapaInformePdf | null): NotaAlPie | undefined {
+  if (!mapa || !esMapaSatelital(mapa.mapa)) return undefined;
+  return { texto: NOTA_SATELITE, enHoja: (hoja, total) => hoja === total };
+}
+
 /** Resumen, especies y parcelas fluyen; el mapa va al pie o en hoja propia según `plan`. */
 export function DocumentoInforme({ encabezado, emitido, ...contenido }: DocumentoInformeProps) {
   const { modelo } = contenido;
@@ -109,7 +111,12 @@ export function DocumentoInforme({ encabezado, emitido, ...contenido }: Document
       creator={TEXTO_PLANTILLA.marca}
       producer={TEXTO_PLANTILLA.marca}
     >
-      <Hoja encabezado={encabezado} documento={TEXTO_INFORME.documento} emitido={emitido}>
+      <Hoja
+        encabezado={encabezado}
+        documento={TEXTO_INFORME.documento}
+        emitido={emitido}
+        notaAlPie={notaDelMapa(contenido.mapa)}
+      >
         <Titulo linea={modelo.linea} />
         <FilaIndicadores indicadores={modelo.indicadores} />
         <BloqueEspecies especies={modelo.especies} />

@@ -3,7 +3,7 @@ import { COLOR_GRAFICO_NN } from '../../../theme/chartColors';
 import { colorEspeciePorCodigo } from '../../../theme/coloresEspecie';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, type MapaPdf } from '../../mapa/estadoMapa';
-import { datosFicha, documentoDeFichas } from '../datosFicha';
+import { datosFicha, documentoDeFichas, hojasConSatelite } from '../datosFicha';
 
 const FOTO: FotoPdf = { estado: ESTADO_FOTO.lista, src: 'data:image/jpeg;base64,AAA' };
 const MAPA: MapaPdf = {
@@ -108,4 +108,14 @@ test('sin posición, técnico ni parcela', () => {
 test('el pie nombra el documento según cuántas fichas lleva', () => {
   expect(documentoDeFichas(1)).toBe('Ficha de árbol');
   expect(documentoDeFichas(12)).toBe('Fichas de árboles · 12 árboles');
+});
+
+test('hojasConSatelite: las hojas, de a tres fichas, con algún minimapa satelital', () => {
+  const contexto = { tecnico: null, foto: FOTO };
+  const liso = datosFicha(COMPLETO, { ...contexto, mapa: MAPA });
+  const satelital = datosFicha(COMPLETO, { ...contexto, mapa: { ...MAPA, conSatelite: true } });
+  const sinGps = datosFicha({ ...COMPLETO, gps: null }, { ...contexto, mapa: MAPA });
+  expect(hojasConSatelite([liso, liso, liso, satelital, sinGps, liso, liso])).toEqual(new Set([2]));
+  expect(hojasConSatelite([satelital, liso, liso, liso])).toEqual(new Set([1]));
+  expect(hojasConSatelite([liso, sinGps])).toEqual(new Set());
 });

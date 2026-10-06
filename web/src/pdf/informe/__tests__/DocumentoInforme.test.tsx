@@ -12,6 +12,9 @@ import { DocumentoInforme } from '../DocumentoInforme';
 import { cajaDelMapa } from '../mapaInforme';
 import { esMapaEnHojaCompleta, planificarInforme } from '../planificarInforme';
 
+// El extractor lee la nota al pie en dos tramos: «* » y la atribución.
+const ATRIBUCION = 'Imágenes © Esri, Maxar';
+
 /** Como el motor del navegador, pero con un PNG cualquiera en lugar del canvas. */
 async function renderizar(entrada: EntradaInforme, sinMapa = false, conSatelite = false) {
   registrarFuentes(FUENTES_NODE);
@@ -112,13 +115,26 @@ test('120 parcelas: la tabla sigue en las hojas siguientes con su encabezado', a
   expect(hojaDeTexto(textos, 'Puntos GPS por especie')).toBe(paginasDelPdf(pdf));
 }, 30_000);
 
-test('la atribución de Esri va en la línea de la leyenda solo si el mapa tiene satélite', async () => {
-  const ATRIBUCION = 'Imágenes © Esri, Maxar';
+test('con satélite, el mapa lleva la llamada y la última hoja la nota de Esri al pie', async () => {
   const entrada = entradaInforme({ parcelas: 4, especies: 4, nn: 3 });
   const conSatelite = await renderizar(entrada, false, true);
-  expect(conSatelite.textos).toContain(ATRIBUCION);
+  expect(conSatelite.textos).toEqual(expect.arrayContaining(['*', ATRIBUCION]));
   expect(paginasDelPdf(conSatelite.pdf)).toBe(1);
-  expect((await renderizar(entrada)).textos).not.toContain(ATRIBUCION);
+  const liso = (await renderizar(entrada)).textos;
+  expect(liso).not.toContain(ATRIBUCION);
+  expect(liso).not.toContain('*');
+});
+
+test('la nota de Esri va solo al pie de la hoja del mapa', async () => {
+  const { pdf, textos } = await renderizar(
+    entradaInforme({ parcelas: 17, especies: 9, nn: 3 }),
+    false,
+    true,
+  );
+  expect(paginasDelPdf(pdf)).toBe(2);
+  const nota = textos.indexOf(ATRIBUCION);
+  expect(nota).toBeGreaterThan(textos.findIndex((texto) => texto.includes('Página 1 de 2')));
+  expect(textos.lastIndexOf(ATRIBUCION)).toBe(nota);
 });
 
 test('sin árboles ni GPS el informe sale igual y explica los vacíos', async () => {

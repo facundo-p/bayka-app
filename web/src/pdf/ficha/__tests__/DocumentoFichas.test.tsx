@@ -32,6 +32,7 @@ const CON_TODO = arbolParaFicha({
 const LISTA: FotoPdf = { estado: ESTADO_FOTO.lista, src: PNG_DE_PRUEBA };
 const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite: false };
 const MAPA_SATELITE: MapaPdf = { ...MAPA, conSatelite: true };
+// El extractor lee la nota en dos tramos: «* » y la atribución.
 const ATRIBUCION = 'Imágenes © Esri, Maxar';
 
 beforeAll(() => registrarFuentes(FUENTES_NODE));
@@ -94,7 +95,7 @@ const PEOR_CASO = arbolParaFicha({
   gps: { lat: -27.3601234, lng: -55.8974411, precision: 12.5 },
 });
 
-test('tres fichas en el peor caso realista, con la atribución del satélite, entran en una hoja', async () => {
+test('tres fichas en el peor caso realista, con la llamada del satélite, entran en una hoja', async () => {
   const tecnico = 'María Fernanda Etchegoyen Larrañaga';
   const contexto = { tecnico, foto: LISTA, mapa: MAPA_SATELITE };
   const fichas = [1, 2, 3].map(() => datosFicha(PEOR_CASO, contexto));
@@ -104,7 +105,7 @@ test('tres fichas en el peor caso realista, con la atribución del satélite, en
   expect(paginasDelPdf(pdf)).toBe(1);
 });
 
-test('la atribución de Esri va al pie del minimapa solo si tiene satélite', async () => {
+test('con satélite, el minimapa lleva la llamada y la hoja la nota de Esri al pie', async () => {
   const textosCon = async (mapa: MapaPdf) =>
     textosDelPdf(
       await renderToBuffer(
@@ -115,8 +116,26 @@ test('la atribución de Esri va al pie del minimapa solo si tiene satélite', as
         />,
       ),
     );
-  expect(await textosCon(MAPA_SATELITE)).toContain(ATRIBUCION);
-  expect(await textosCon(MAPA)).not.toContain(ATRIBUCION);
+  expect(await textosCon(MAPA_SATELITE)).toEqual(expect.arrayContaining(['*', ATRIBUCION]));
+  const liso = await textosCon(MAPA);
+  expect(liso).not.toContain(ATRIBUCION);
+  expect(liso).not.toContain('*');
+});
+
+test('la nota de Esri va solo al pie de las hojas con minimapa satelital', async () => {
+  const contexto = { tecnico: null, foto: LISTA };
+  const fichas = [
+    ...[1, 2, 3].map(() => datosFicha(CON_TODO, { ...contexto, mapa: MAPA })),
+    datosFicha(CON_TODO, { ...contexto, mapa: MAPA_SATELITE }),
+  ];
+  const pdf = await renderToBuffer(
+    <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
+  );
+  const textos = textosDelPdf(pdf);
+  expect(paginasDelPdf(pdf)).toBe(2);
+  const nota = textos.indexOf(ATRIBUCION);
+  expect(nota).toBeGreaterThan(textos.findIndex((texto) => texto.includes('Página 1 de 2')));
+  expect(textos.lastIndexOf(ATRIBUCION)).toBe(nota);
 });
 
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {

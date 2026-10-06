@@ -168,28 +168,26 @@ export const informeStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.lineaInforme,
     color: COLOR_PDF.apagado,
   },
-  mapa: {
-    alignSelf: 'center',
+  mapa: { alignSelf: 'center' },
+  imagenMapa: {
+    width: '100%',
+    height: '100%',
     borderRadius: MEDIDA_FICHA.radioRecuadro,
     borderWidth: MEDIDA_FICHA.bordeFino,
     borderColor: COLOR_PDF.linea,
   },
-  pieMapa: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginTop: M.aireMapa,
+  // En el aire entre la imagen y la leyenda: no suma alto.
+  llamada: {
+    position: 'absolute',
+    top: '100%',
+    right: 0,
+    lineHeight: MEDIDA_FICHA.interlineadoLlamada,
   },
   leyenda: {
-    flex: 1,
+    marginTop: M.aireMapa,
     flexDirection: 'row',
     flexWrap: 'wrap',
     columnGap: M.separacionLeyenda,
-  },
-  atribucion: {
-    width: M.anchoAtribucion,
-    lineHeight: M.interlineado,
-    paddingTop: M.aireAtribucion,
   },
   itemLeyenda: {
     lineHeight: M.interlineado,
