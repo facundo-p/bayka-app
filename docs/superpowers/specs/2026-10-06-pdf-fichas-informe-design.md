@@ -87,6 +87,13 @@ Se elige el zoom más alto cuya cobertura del encuadre entre en un tope de tiles
 componen en el canvas del mapa y los puntos van encima. Si falla cualquier tile,
 el mapa sale liso, sin atribución.
 
+Donde Esri no tiene imagen a ese zoom sirve un tile gris «Map data not yet
+available» con 200, y el 404 de `blankTile=false` llega sin CORS. Por eso antes
+de bajar los tiles se consulta el `tilemap` del servicio y, si falta imagen, se
+baja de a un zoom, hasta tres. Con satélite el mapa sale en JPEG; la atribución
+va bajo el minimapa, en el relleno de la ficha, y a la derecha de la leyenda en
+el informe.
+
 ## Errores
 
 - Si falla la generación, se muestra el mensaje de `useDescarga` y no se descarga nada.
