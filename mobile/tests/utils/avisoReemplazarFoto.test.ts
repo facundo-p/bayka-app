@@ -1,6 +1,7 @@
 import {
   confirmarReemplazarFoto,
   confirmarReemplazoEnVisor,
+  fotoAReemplazar,
   textoReemplazarFoto,
 } from '../../src/utils/avisoReemplazarFoto';
 
@@ -80,5 +81,16 @@ describe('confirmarReemplazoEnVisor', () => {
     confirmarReemplazoEnVisor(show, FOTO, true, onConfirm);
     expect(show).not.toHaveBeenCalled();
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('fotoAReemplazar', () => {
+  it('sin dato de sync se asume subida', () => {
+    expect(fotoAReemplazar({ subId: 'A-14', fotoSynced: null })).toEqual({ subId: 'A-14', fotoSynced: true });
+    expect(fotoAReemplazar({ subId: 'A-14' })).toEqual({ subId: 'A-14', fotoSynced: true });
+  });
+
+  it('respeta el dato cuando existe', () => {
+    expect(fotoAReemplazar({ subId: 'A-14', fotoSynced: false })).toEqual({ subId: 'A-14', fotoSynced: false });
   });
 });

@@ -33,11 +33,12 @@ import { useGpsWatcher } from '../hooks/useGpsWatcher';
 import { useGpsEnabledSetting } from '../hooks/useGpsEnabledSetting';
 import ConfirmModal from '../components/ConfirmModal';
 import { confirmarQuitarFoto } from '../utils/avisoQuitarFoto';
-import { confirmarReemplazoEnVisor } from '../utils/avisoReemplazarFoto';
+import { confirmarReemplazoEnVisor, fotoAReemplazar } from '../utils/avisoReemplazarFoto';
 import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
 import { useTreeSelection } from '../hooks/useTreeSelection';
+import { useFotoDelSeleccionado } from '../hooks/useFotoDelSeleccionado';
 import { getCambioDeEspecie, getTreeEditGating } from '../utils/permisosDeEdicion';
 
 export default function TreeRegistrationScreen() {
@@ -88,6 +89,12 @@ export default function TreeRegistrationScreen() {
   const botonera = useEstiloBotonera();
   const treeSelection = useTreeSelection(treeReg.sortedTrees);
   const { selectedTree } = treeSelection;
+  const fotoDelSeleccionado = useFotoDelSeleccionado({
+    arbol: selectedTree,
+    capturar: treeReg.addPhotoToTree,
+    show: confirm.show,
+    onVerActual: setViewingPhoto,
+  });
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -178,7 +185,7 @@ export default function TreeRegistrationScreen() {
     const arbol = arbolDelGrupo(foto.treeId);
     // Borrado con el visor abierto: ya no hay foto que reemplazar.
     if (!arbol) return;
-    confirmarReemplazoEnVisor(confirm.show, { subId: arbol.subId, fotoSynced: arbol.fotoSynced ?? true },
+    confirmarReemplazoEnVisor(confirm.show, fotoAReemplazar(arbol),
       foto.reemplazoConfirmado, () => capturarReemplazo(foto.treeId));
   }
 
@@ -286,8 +293,20 @@ export default function TreeRegistrationScreen() {
               {deleting ? <ActivityIndicator size="small" color={colors.danger} />
                 : <Ionicons name="trash-outline" size={20} color={colors.danger} />}
             </Pressable>
-            <Pressable style={styles.configButton} onPress={() => setShowConfigModal(true)}>
+            <Pressable style={styles.iconButton} onPress={() => setShowConfigModal(true)}>
               <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
+            </Pressable>
+            <Pressable
+              testID="foto-seleccionado-button"
+              style={[styles.iconButton, fotoDelSeleccionado.deshabilitado && styles.buttonDisabled]}
+              onPress={fotoDelSeleccionado.fotografiar}
+              disabled={fotoDelSeleccionado.deshabilitado}
+              accessibilityRole="button"
+              accessibilityLabel={selectedTree ? `Foto de ${selectedTree.subId}` : 'Foto del árbol seleccionado'}
+              accessibilityState={{ busy: fotoDelSeleccionado.capturando }}
+            >
+              {fotoDelSeleccionado.capturando ? <ActivityIndicator size="small" color={colors.plantation} />
+                : <Ionicons name="camera-outline" size={20} color={colors.textMuted} />}
             </Pressable>
             <View style={styles.spacer} />
             <Pressable
