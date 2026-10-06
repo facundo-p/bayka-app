@@ -1,0 +1,30 @@
+/* Franja primary del modo selección: envuelve antes que desbordarse. */
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-lg);
+  flex-shrink: 0;
+  padding: var(--space-md) var(--space-md) var(--space-md) var(--space-2xl);
+  border-radius: var(--radius-control);
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.cuenta {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.error {
+  font-size: var(--text-sm);
+  color: var(--color-on-primary-soft);
+}
+
+/* Juntos: si no entran al lado del recuento, bajan los dos a la derecha. */
+.botones {
+  display: flex;
+  gap: var(--space-md);
+  margin-left: auto;
+}

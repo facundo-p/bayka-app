@@ -87,3 +87,25 @@
   color: var(--color-text-disabled);
   border-color: var(--color-border);
 }
+
+/* Sobre una franja primary (la barra del modo selección): el principal se
+   invierte a blanco y el secundario queda como texto claro. */
+.inverso {
+  background-color: var(--color-white);
+  color: var(--color-primary);
+}
+
+.inverso:hover:not(:disabled) {
+  background-color: var(--color-primary-bg);
+}
+
+.inversoSutil {
+  background-color: transparent;
+  color: var(--color-primary-border);
+  font-weight: var(--font-weight-regular);
+}
+
+.inversoSutil:hover:not(:disabled) {
+  background-color: var(--color-on-primary-chip);
+  color: var(--color-white);
+}

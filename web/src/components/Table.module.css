@@ -35,10 +35,32 @@
   background-color: var(--color-surface-sunken);
 }
 
-/* Fila abierta en el panel lateral: gana sobre el hover. */
+/* Marcada en el modo selección. */
+.filaMarcada,
+.clickableRow.filaMarcada:hover {
+  background-color: var(--color-primary-bg);
+}
+
+/* Fila abierta en el panel lateral: gana sobre el hover y sobre la marca. */
 .filaSeleccionada,
 .clickableRow.filaSeleccionada:hover {
   background-color: var(--color-secondary-bg);
+}
+
+/* Columna de checkboxes: el botón ocupa la celda entera, con el padding adentro,
+   para que el click no caiga en la fila por errarle al cuadradito. */
+.table .celdaCasilla {
+  width: 1px;
+  padding: 0;
+}
+
+.botonCasilla {
+  display: flex;
+  align-items: center;
+  padding: var(--space-lg) var(--space-lg) var(--space-lg) var(--space-2xl);
+  border: none;
+  background: none;
+  cursor: pointer;
 }
 
 /* ─── Contenido de las celdas ────────────────────────────────────────── */

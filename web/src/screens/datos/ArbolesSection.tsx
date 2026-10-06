@@ -1,10 +1,12 @@
 import {
+  Button,
   Cargando,
   CardTabla,
   ErrorConReintento,
   LayoutConPanel,
   Paginacion,
   Table,
+  type SeleccionTabla,
 } from '../../components';
 import { useColumnasVisibles } from '../../hooks/useColumnasVisibles';
 import { formatearEntero } from '../../lib/formato';
@@ -17,15 +19,23 @@ import {
 import { nombreArchivoFoto } from '../../services/descargas';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
+import { BarraSeleccionFichas } from './BarraSeleccionFichas';
 import { codigoParcelaDe, nombreTecnicoDe } from './arbolFormato';
 import { columnasArboles } from './columnas';
 import { DatosToolbar } from './DatosToolbar';
 import { useArbolesSection } from './useArbolesSection';
+import type { SeleccionFichas } from './useSeleccionFichas';
 import { VacioConFiltros } from './VacioConFiltros';
 
 type SeccionArboles = ReturnType<typeof useArbolesSection>;
 
 const VACIO_CON_FILTROS = 'Ningún árbol coincide con los filtros';
+
+const TEXTO_SELECCION = {
+  entrar: 'Seleccionar',
+  maestro: 'Seleccionar todos los árboles de esta página',
+  fila: 'Seleccionar el árbol',
+} as const;
 
 /** Rango visible de la página actual, ej. "Mostrando 1–50 de 934". */
 function rangoVisible(pagina: number, total: number): string {
@@ -45,6 +55,19 @@ function useColumnasArboles(seccion: SeccionArboles) {
   return useColumnasVisibles(columnas, seccion.arbolSeleccionado !== null);
 }
 
+/** Sin modo selección, la tabla no tiene columna de checkboxes. */
+function seleccionDeTabla(seleccion: SeleccionFichas): SeleccionTabla<ArbolDetalle> | undefined {
+  if (!seleccion.activa) return undefined;
+  return {
+    marcada: (arbol) => seleccion.estaMarcado(arbol.id),
+    onAlternar: (arbol) => seleccion.alternar(arbol.id),
+    maestro: seleccion.maestro,
+    onMaestro: seleccion.alternarTodos,
+    etiquetaFila: (arbol) => `${TEXTO_SELECCION.fila} ${arbol.idArbol}`,
+    etiquetaMaestro: TEXTO_SELECCION.maestro,
+  };
+}
+
 function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: PaginaArboles }) {
   const { pagina, setPagina } = seccion;
   const columnas = useColumnasArboles(seccion);
@@ -60,6 +83,7 @@ function TablaArboles({ seccion, datos }: { seccion: SeccionArboles; datos: Pagi
         claveSeleccionada={seccion.arbolSeleccionado?.id}
         emptyMessage="Sin árboles para mostrar"
         onRowClick={seccion.setArbolSeleccionado}
+        seleccion={seleccionDeTabla(seccion.seleccion)}
       />
     </CardTabla>
   );
@@ -106,6 +130,19 @@ function CuerpoArboles({ seccion }: { seccion: SeccionArboles }) {
   );
 }
 
+function BotonSeleccionar({ seleccion }: { seleccion: SeleccionFichas }) {
+  return (
+    <Button
+      variant="contorno"
+      size="sm"
+      disabled={seleccion.totalPagina === 0}
+      onClick={seleccion.entrar}
+    >
+      {TEXTO_SELECCION.entrar}
+    </Button>
+  );
+}
+
 function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
   return (
     <DatosToolbar
@@ -113,6 +150,8 @@ function ToolbarArboles({ seccion }: { seccion: SeccionArboles }) {
       tituloFiltros="Filtros de árboles"
       filtrosActivos={seccion.filtrosActivos}
       onLimpiar={seccion.limpiar}
+      // En modo selección la salida es «Cancelar», en la franja azul.
+      acciones={!seccion.seleccion.activa && <BotonSeleccionar seleccion={seccion.seleccion} />}
     >
       <ArbolesFiltros
         filtros={seccion.filtros}
@@ -140,6 +179,7 @@ export function ArbolesSection() {
   return (
     <>
       <ToolbarArboles seccion={seccion} />
+      {seccion.seleccion.activa && <BarraSeleccionFichas seleccion={seccion.seleccion} />}
       <CuerpoArboles seccion={seccion} />
     </>
   );

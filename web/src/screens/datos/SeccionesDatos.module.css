@@ -74,9 +74,11 @@
 }
 
 /* ID del árbol: mono en azul de acento (es el identificador principal). */
+/* Un ID partido en dos renglones no se lee: si no entra, la tabla scrollea. */
 .idArbol {
   font-family: var(--font-mono);
   color: var(--color-primary-accent);
+  white-space: nowrap;
 }
 
 /* Conteos numéricos alineados a la derecha: dígitos de ancho fijo. */

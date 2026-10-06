@@ -21,6 +21,8 @@ interface DatosToolbarProps {
   tituloFiltros?: string;
   filtrosActivos?: number;
   onLimpiar?: () => void;
+  /** Botones sobre el listado, al final de la fila. */
+  acciones?: ReactNode;
 }
 
 function SelectorSeccion({ segmento }: { segmento: SegmentoDatos }) {
@@ -49,6 +51,7 @@ export function DatosToolbar(props: DatosToolbarProps) {
     <BarraHerramientas
       encabezado={<SelectorSeccion segmento={segmento} />}
       recuento={recuento}
+      acciones={resto.acciones}
       tituloFiltros={tituloFiltros}
       filtrosActivos={resto.filtrosActivos ?? 0}
       onLimpiar={resto.onLimpiar}

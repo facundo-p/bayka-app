@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import { cx } from '../lib/classNames';
+import { ariaCheckedMaestro, type EstadoMaestro } from '../lib/seleccionMaestro';
+import { Casilla, CasillaMaestro } from './Casilla';
 import { EmptyState } from './EmptyState';
 import styles from './Table.module.css';
 
@@ -20,6 +22,17 @@ export interface TableColumn<T> {
   fueraConPanel?: boolean;
 }
 
+/** Columna de checkboxes al inicio de la tabla, con maestro en el encabezado. */
+export interface SeleccionTabla<T> {
+  marcada: (row: T) => boolean;
+  onAlternar: (row: T) => void;
+  maestro: EstadoMaestro;
+  onMaestro: () => void;
+  /** Nombre accesible del checkbox de cada fila. */
+  etiquetaFila: (row: T) => string;
+  etiquetaMaestro: string;
+}
+
 interface TableProps<T> {
   columns: Array<TableColumn<T>>;
   rows: T[];
@@ -28,6 +41,7 @@ interface TableProps<T> {
   /** Clave de la fila abierta en el panel lateral: se resalta. */
   claveSeleccionada?: string | number;
   emptyMessage?: string;
+  seleccion?: SeleccionTabla<T>;
 }
 
 function alignClass(align?: TableColumn<unknown>['align']): string | undefined {
@@ -47,6 +61,46 @@ function renderCells<T>(columns: Array<TableColumn<T>>, row: T): ReactNode {
   ));
 }
 
+function EncabezadoSeleccion<T>({ seleccion }: { seleccion: SeleccionTabla<T> }) {
+  return (
+    <th className={styles.celdaCasilla}>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={ariaCheckedMaestro(seleccion.maestro)}
+        aria-label={seleccion.etiquetaMaestro}
+        className={styles.botonCasilla}
+        onClick={seleccion.onMaestro}
+      >
+        <CasillaMaestro estado={seleccion.maestro} />
+      </button>
+    </th>
+  );
+}
+
+/** Todo el alto de la celda es clickeable; el click no llega a la fila (no abre el detalle). */
+function CeldaSeleccion<T>({ seleccion, row }: { seleccion: SeleccionTabla<T>; row: T }) {
+  const marcada = seleccion.marcada(row);
+  const alternar = (evento: MouseEvent) => {
+    evento.stopPropagation();
+    seleccion.onAlternar(row);
+  };
+  return (
+    <td className={styles.celdaCasilla}>
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={marcada}
+        aria-label={seleccion.etiquetaFila(row)}
+        className={styles.botonCasilla}
+        onClick={alternar}
+      >
+        <Casilla marcada={marcada} />
+      </button>
+    </td>
+  );
+}
+
 export function Table<T>({
   columns,
   rows,
@@ -54,12 +108,14 @@ export function Table<T>({
   onRowClick,
   claveSeleccionada,
   emptyMessage = 'Sin datos para mostrar',
+  seleccion,
 }: TableProps<T>) {
   if (rows.length === 0) return <EmptyState title={emptyMessage} />;
   return (
     <table className={styles.table}>
       <thead>
         <tr>
+          {seleccion && <EncabezadoSeleccion seleccion={seleccion} />}
           {columns.map((column) => (
             <th key={column.key} className={cx(styles.encabezado, alignClass(column.align))}>
               {column.header}
@@ -75,10 +131,12 @@ export function Table<T>({
               key={clave}
               className={cx(
                 onRowClick && styles.clickableRow,
+                seleccion?.marcada(row) && styles.filaMarcada,
                 claveSeleccionada != null && clave === claveSeleccionada && styles.filaSeleccionada,
               )}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
             >
+              {seleccion && <CeldaSeleccion seleccion={seleccion} row={row} />}
               {renderCells(columns, row)}
             </tr>
           );
