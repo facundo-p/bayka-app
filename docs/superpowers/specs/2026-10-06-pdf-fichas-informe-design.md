@@ -30,12 +30,15 @@ https://claude.ai/artifact/JQnn1hEKyEHFzLpn8bxyFy (versión 3).
 nombre científico en itálica y `tipo · subtipo` (Flora · Árbol). Arriba a la
 derecha, el ID Árbol (`SubID-código de plantación`) en mono grande; debajo,
 `ID Global N` o la marca «ID Global sin generar». En el cuerpo, de izquierda a
-derecha: foto 4 × 3 cm, datos (parcela y grupo con código y nombre, posición,
-fecha de registro, técnico, GPS con precisión) y minimapa de 4,5 cm.
+derecha: foto de 120 × 90 pt (≈ 4,2 × 3,2 cm), datos (parcela y grupo con
+código y nombre, posición, fecha de registro, técnico, GPS con precisión) y
+minimapa de 128 × 128 pt (≈ 4,5 cm), con las medidas del mockup aprobado.
 
 Casos borde: sin foto («Sin foto»), foto no legible («Foto no disponible»), sin
-GPS («Sin punto GPS» en el lugar del mapa y en el dato), N/N («N/N · Sin
-identificar», sin científico ni subtipo).
+GPS («Sin punto GPS» en el lugar del mapa y en el dato), mapa que no se pudo
+dibujar («Mapa no disponible»; las demás fichas salen igual), N/N («N/N · Sin
+identificar», sin científico ni subtipo). Al encuadrar el minimapa se descartan
+los vecinos a más de 2 km del árbol: un GPS errado no achica la parcela.
 
 **Informe.** Título, línea con lugar, período, código, organización y estado.
 Cuatro indicadores: árboles contra la meta con barra de avance, % con GPS, % con
