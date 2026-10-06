@@ -74,9 +74,12 @@ export function tilesDelZoom(encuadre: Encuadre, zoom: number): TileUbicado[] {
   return tiles;
 }
 
-/** La plantilla con cada `{clave}` reemplazada por su valor. */
+/** La plantilla con cada `{clave}` reemplazada por su valor; una clave sin valor es un error. */
 function rellenar(plantilla: string, valores: Record<string, number>): string {
-  return plantilla.replace(/\{(\w+)\}/g, (_, clave: string) => String(valores[clave]));
+  return plantilla.replace(/\{(\w+)\}/g, (_, clave: string) => {
+    if (!(clave in valores)) throw new Error(`Falta {${clave}} para ${plantilla}`);
+    return String(valores[clave]);
+  });
 }
 
 /** `{z}/{y}/{x}` de la plantilla de la capa, con los números del tile. */

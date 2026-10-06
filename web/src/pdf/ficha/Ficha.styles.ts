@@ -123,6 +123,6 @@ export const fichaStyles = StyleSheet.create({
     top: MEDIDA_FICHA.ladoMapa,
     right: 0,
     width: MEDIDA_FICHA.ladoMapa,
-    lineHeight: 1,
+    lineHeight: MEDIDA_FICHA.interlineadoAtribucion,
   },
 });

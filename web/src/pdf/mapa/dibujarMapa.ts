@@ -2,7 +2,7 @@
  * Raster del mapa de puntos: con miles de árboles, una imagen pesa y tarda menos en
  * el PDF que un círculo vectorial por árbol.
  */
-import { contexto2d, crearCanvas, exportarYLiberar } from '../canvas';
+import { contexto2d, crearCanvas, exportarYLiberar, liberarCanvas } from '../canvas';
 import { COLOR_PDF, FUENTE_PDF, PESO_FUENTE } from '../plantilla/tokens';
 import {
   planificarMapa,
@@ -14,13 +14,17 @@ import {
 import type { Encuadre } from './proyeccion';
 
 /**
- * Pinta una imagen sobre el fondo liso y debajo de los puntos. El contexto ya
- * está escalado a pt; `escalaRender` dice cuántos px reales hay por pt.
+ * Una imagen lista para ir sobre el fondo liso y debajo de los puntos. El
+ * contexto ya está escalado a pt; `escalaRender` dice cuántos px reales hay por
+ * pt. `liberar` suelta la imagen se haya pintado o no.
  */
-export type PintarFondo = (contexto: CanvasRenderingContext2D, escalaRender: number) => void;
+export type FondoListo = {
+  pintar: (contexto: CanvasRenderingContext2D, escalaRender: number) => void;
+  liberar: () => void;
+};
 
 /** Prepara la imagen del encuadre (#757: satélite); null si no se pudo y el mapa sale liso. */
-export type CapaFondo = (encuadre: Encuadre) => Promise<PintarFondo | null>;
+export type CapaFondo = (encuadre: Encuadre) => Promise<FondoListo | null>;
 
 export type OpcionesMapa = ContenidoMapa & {
   /** px por pt del PNG: 2,5 da nitidez de impresión sin inflar el archivo. */
@@ -287,22 +291,47 @@ function formatoDe({ formato = FORMATO_MAPA.png }: OpcionesMapa, conFondo: boole
   return conFondo ? FORMATO_MAPA.jpeg : formato;
 }
 
+/** El fondo liso y, encima, la imagen si la hay; si pintarla falla, queda el liso solo. */
+function pintarFondos(
+  contexto: CanvasRenderingContext2D,
+  encuadre: Encuadre,
+  fondo: FondoListo | null,
+  escalaRender: number,
+): boolean {
+  pintarFondoLiso(contexto, encuadre);
+  if (!fondo) return false;
+  try {
+    fondo.pintar(contexto, escalaRender);
+    return true;
+  } catch {
+    pintarFondoLiso(contexto, encuadre);
+    return false;
+  }
+}
+
+function rasterizar(plan: PlanMapa, opciones: OpcionesMapa, fondo: FondoListo | null) {
+  const escalaRender = opciones.escalaRender ?? ESCALA_RENDER;
+  const canvas = crearCanvas(opciones.ancho * escalaRender, opciones.alto * escalaRender);
+  try {
+    const contexto = contexto2d(canvas);
+    contexto.scale(escalaRender, escalaRender);
+    const conFondo = pintarFondos(contexto, plan.encuadre, fondo, escalaRender);
+    pintarEncima(contexto, plan, opciones, conFondo ? TEMA_MAPA.sobreImagen : TEMA_MAPA.liso);
+    const { tipo, calidad } = formatoDe(opciones, conFondo);
+    return { src: exportarYLiberar(canvas, tipo, calidad), conFondo };
+  } finally {
+    liberarCanvas(canvas);
+  }
+}
+
 /** Imagen del mapa como data URL; null si no hay ningún punto que mostrar. */
 export async function dibujarMapa(opciones: OpcionesMapa): Promise<MapaDibujado | null> {
   const plan = planificarMapa(opciones);
   if (!plan) return null;
-  const [pintarFondo] = await Promise.all([
-    opciones.fondo?.(plan.encuadre) ?? null,
-    esperarFuentes(),
-  ]);
-  const escalaRender = opciones.escalaRender ?? ESCALA_RENDER;
-  const canvas = crearCanvas(opciones.ancho * escalaRender, opciones.alto * escalaRender);
-  const contexto = contexto2d(canvas);
-  contexto.scale(escalaRender, escalaRender);
-  pintarFondoLiso(contexto, plan.encuadre);
-  pintarFondo?.(contexto, escalaRender);
-  const conFondo = pintarFondo !== null;
-  pintarEncima(contexto, plan, opciones, conFondo ? TEMA_MAPA.sobreImagen : TEMA_MAPA.liso);
-  const { tipo, calidad } = formatoDe(opciones, conFondo);
-  return { src: exportarYLiberar(canvas, tipo, calidad), conFondo };
+  const [fondo] = await Promise.all([opciones.fondo?.(plan.encuadre) ?? null, esperarFuentes()]);
+  try {
+    return rasterizar(plan, opciones, fondo);
+  } finally {
+    fondo?.liberar();
+  }
 }

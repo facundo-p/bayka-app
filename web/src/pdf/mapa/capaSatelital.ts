@@ -60,14 +60,10 @@ function pintarMosaico(
   escalaRender: number,
 ) {
   contexto.imageSmoothingQuality = SUAVIZADO;
-  try {
-    tiles.forEach((tile, indice) => {
-      const { x, y, ancho, alto } = rectanguloAlPixel(tile, escalaRender);
-      contexto.drawImage(imagenes[indice], x, y, ancho, alto);
-    });
-  } finally {
-    imagenes.forEach((imagen) => imagen.close());
-  }
+  tiles.forEach((tile, indice) => {
+    const { x, y, ancho, alto } = rectanguloAlPixel(tile, escalaRender);
+    contexto.drawImage(imagenes[indice], x, y, ancho, alto);
+  });
 }
 
 /** Fondo satelital de hasta `tope` tiles; null al prepararlo si no se pudo bajar. */
@@ -75,6 +71,9 @@ export function capaSatelital(tope: number, fuente = fuenteSatelite): CapaFondo 
   return async (encuadre) => {
     const mosaico = await bajarMosaico(encuadre, tope, fuente);
     if (!mosaico) return null;
-    return (contexto, escalaRender) => pintarMosaico(contexto, mosaico, escalaRender);
+    return {
+      pintar: (contexto, escalaRender) => pintarMosaico(contexto, mosaico, escalaRender),
+      liberar: () => mosaico.imagenes.forEach((imagen) => imagen.close()),
+    };
   };
 }

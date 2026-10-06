@@ -3,6 +3,7 @@
  * parcela comparten encuadre y bajan cada tile una sola vez.
  */
 import { crearLimitador, type Limitador } from '../../lib/concurrencia';
+import { senalConEspera, type SenalConEspera } from '../../lib/espera';
 import {
   partirEnPaquetes,
   urlDeTile,
@@ -14,14 +15,23 @@ import {
 /** Esri sirve por HTTP/1.1: el navegador no abre más de 6 conexiones por host. */
 const TILES_EN_PARALELO = 6;
 const ESPERA_TILE_MS = 8000;
+/**
+ * Tras una espera vencida, Esri se da por caído este rato: lo encolado y los
+ * mapas siguientes salen lisos enseguida en vez de esperar cada uno su timeout.
+ */
+const PAUSA_TRAS_CAIDA_MS = 60_000;
 /** Unos 30 KB por tile: el tope deja la caché en decenas de MB. */
 const ENTRADAS_EN_CACHE = 1000;
 /** Valor del tilemap para un tile con imagen. */
 const CON_IMAGEN = 1;
+/** Un portal cautivo responde 200 con HTML: solo cuenta lo que es imagen. */
+const TIPO_IMAGEN = 'image/';
+const CABECERA_TIPO = 'content-type';
 
 export type DependenciasTiles = {
   bajar: (url: string, senal: AbortSignal) => Promise<Response>;
   decodificar: (imagen: Blob) => Promise<ImageBitmap>;
+  senalDeEspera: (ms: number) => SenalConEspera;
 };
 
 export type FuenteTiles = {
@@ -39,6 +49,7 @@ type Tilemap = {
 const DEPENDENCIAS_NAVEGADOR: DependenciasTiles = {
   bajar: (url, senal) => fetch(url, { signal: senal }),
   decodificar: (imagen) => createImageBitmap(imagen),
+  senalDeEspera: (ms) => senalConEspera(ms),
 };
 
 /** Un tile fuera de lo que devolvió el tilemap cuenta como sin imagen. */
@@ -81,21 +92,47 @@ function memorizar<T>(pedir: (clave: string) => Promise<T>): (clave: string) => 
   };
 }
 
-/** Pedido acotado por el limitador; el cuerpo se lee adentro, con el mismo timeout. */
+async function leerImagen(respuesta: Response): Promise<Blob> {
+  const tipo = respuesta.headers.get(CABECERA_TIPO) ?? '';
+  if (!tipo.startsWith(TIPO_IMAGEN)) throw new Error(`El tile no es una imagen: ${tipo}`);
+  return respuesta.blob();
+}
+
+/** Un tilemap con `error` o sin datos no se guarda: se vuelve a preguntar después. */
+async function leerTilemap(respuesta: Response): Promise<Tilemap> {
+  const tilemap = (await respuesta.json()) as Partial<Tilemap>;
+  if (!Array.isArray(tilemap.data) || !tilemap.location) throw new Error('Tilemap inválido');
+  return tilemap as Tilemap;
+}
+
+/**
+ * Pedido acotado por el limitador, con el cuerpo leído adentro y bajo la misma
+ * espera. Si la espera vence, corta todo lo que sigue por `PAUSA_TRAS_CAIDA_MS`.
+ */
 function pedidoCon(dependencias: DependenciasTiles, limitar: Limitador) {
+  let caidoHasta = 0;
   return <T>(leer: (respuesta: Response) => Promise<T>) =>
     (url: string) =>
       limitar(async () => {
-        const respuesta = await dependencias.bajar(url, AbortSignal.timeout(ESPERA_TILE_MS));
-        if (!respuesta.ok) throw new Error(`${url}: ${respuesta.status}`);
-        return leer(respuesta);
+        if (Date.now() < caidoHasta) throw new Error('Esri no responde');
+        const { senal, liberar } = dependencias.senalDeEspera(ESPERA_TILE_MS);
+        try {
+          const respuesta = await dependencias.bajar(url, senal);
+          if (!respuesta.ok) throw new Error(`${url}: ${respuesta.status}`);
+          return await leer(respuesta);
+        } catch (error) {
+          if (senal.aborted) caidoHasta = Date.now() + PAUSA_TRAS_CAIDA_MS;
+          throw error;
+        } finally {
+          liberar();
+        }
       });
 }
 
 export function crearFuenteTiles(dependencias = DEPENDENCIAS_NAVEGADOR): FuenteTiles {
   const pedido = pedidoCon(dependencias, crearLimitador(TILES_EN_PARALELO));
-  const imagen = memorizar(pedido((respuesta) => respuesta.blob()));
-  const tilemap = memorizar(pedido((respuesta): Promise<Tilemap> => respuesta.json()));
+  const imagen = memorizar(pedido(leerImagen));
+  const tilemap = memorizar(pedido(leerTilemap));
   return {
     tieneImagen: async (zona) => {
       const partes = partirEnPaquetes(zona);

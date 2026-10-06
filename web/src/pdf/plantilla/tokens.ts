@@ -128,6 +128,8 @@ export const MEDIDA_FICHA = {
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
   anchoEtiqueta: 54,
+  /** Interlineado justo: la atribución entra en el relleno inferior de la ficha. */
+  interlineadoAtribucion: 1,
 } as const;
 
 /** Lo que queda para el cuerpo de una hoja, entre encabezado y pie y entre márgenes. */
@@ -190,7 +192,7 @@ export const MEDIDA_INFORME = {
   altoRenglonLeyenda: 11,
   anchoItemLeyenda: 44,
   separacionLeyenda: 10,
-  /** Columna de la atribución del satélite, a la derecha de la leyenda. */
+  /** Columna de la atribución del satélite, a la derecha de la leyenda: el texto mide 63,5 pt. */
   anchoAtribucion: 80,
   /** Baja la atribución, de letra más chica, al centro del renglón de la leyenda. */
   aireAtribucion: 2,
