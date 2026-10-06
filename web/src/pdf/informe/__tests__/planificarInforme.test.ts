@@ -50,6 +50,12 @@ describe('en el umbral de lo libre', () => {
   });
 });
 
+test('la leyenda deja lugar a la atribución del satélite: 9 ítems ya ocupan dos renglones', () => {
+  // 7 y 8 especies, más N/N. Sin la columna de la atribución entrarían 10 por renglón.
+  const diferencia = libreMinimoAlPie(modelo(4, 8)) - libreMinimoAlPie(modelo(4, 7));
+  expect(diferencia).toBe(MEDIDA_INFORME.altoRenglonLeyenda);
+});
+
 describe('altoEnUltimaHoja', () => {
   const renglon = (alto: number, alEmpezarHoja = 0) => ({ alto, alEmpezarHoja });
 

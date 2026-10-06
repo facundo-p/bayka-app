@@ -172,11 +172,22 @@ export const informeStyles = StyleSheet.create({
     borderWidth: MEDIDA_FICHA.bordeFino,
     borderColor: COLOR_PDF.linea,
   },
+  pieMapa: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginTop: M.aireMapa,
+  },
   leyenda: {
+    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     columnGap: M.separacionLeyenda,
-    marginTop: M.aireMapa,
+  },
+  atribucion: {
+    width: M.anchoAtribucion,
+    lineHeight: M.interlineado,
+    paddingTop: M.aireAtribucion,
   },
   itemLeyenda: {
     lineHeight: M.interlineado,

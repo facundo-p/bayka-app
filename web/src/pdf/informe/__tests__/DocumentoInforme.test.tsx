@@ -13,7 +13,7 @@ import { cajaDelMapa } from '../mapaInforme';
 import { esMapaEnHojaCompleta, planificarInforme } from '../planificarInforme';
 
 /** Como el motor del navegador, pero con un PNG cualquiera en lugar del canvas. */
-async function renderizar(entrada: EntradaInforme, sinMapa = false) {
+async function renderizar(entrada: EntradaInforme, sinMapa = false, conSatelite = false) {
   registrarFuentes(FUENTES_NODE);
   const calculado = datosInforme(entrada);
   // Sin mapa: el aviso de una línea en su lugar, para contar las hojas del resto.
@@ -22,7 +22,7 @@ async function renderizar(entrada: EntradaInforme, sinMapa = false) {
   const mapa = modelo.mapa.vacio
     ? null
     : {
-        mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA },
+        mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite },
         caja: cajaDelMapa(modelo.mapa.puntos, plan.disponible),
       };
   const encabezado = encabezadoDePlantacion(entrada.plantacion, entrada.organizacion, LOGO_NODE);
@@ -58,6 +58,15 @@ test('17 parcelas y 9 especies: resumen y tabla en la hoja 1, el mapa en la 2', 
       'Emitido el 06/10/2026 · Página 2 de 2',
     ]),
   );
+});
+
+test('la atribución de Esri va en la línea de la leyenda solo si el mapa tiene satélite', async () => {
+  const ATRIBUCION = 'Imágenes © Esri, Maxar';
+  const entrada = entradaInforme({ parcelas: 4, especies: 4, nn: 3 });
+  const conSatelite = await renderizar(entrada, false, true);
+  expect(conSatelite.textos).toContain(ATRIBUCION);
+  expect(paginasDelPdf(conSatelite.pdf)).toBe(1);
+  expect((await renderizar(entrada)).textos).not.toContain(ATRIBUCION);
 });
 
 test('sin árboles ni GPS el informe sale igual y explica los vacíos', async () => {

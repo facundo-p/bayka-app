@@ -73,9 +73,14 @@ export function altoEnUltimaHoja(renglones: readonly Renglon[]): number {
   );
 }
 
+/**
+ * Siempre descuenta la columna de la atribución: el satélite se sabe recién al
+ * dibujar, y sin él la leyenda a lo sumo ocupa un renglón menos de lo previsto.
+ */
 function renglonesLeyenda(items: number): number {
+  const ancho = CUERPO_HOJA.ancho - M.anchoAtribucion;
   const porRenglon = Math.floor(
-    (CUERPO_HOJA.ancho + M.separacionLeyenda) / (M.anchoItemLeyenda + M.separacionLeyenda),
+    (ancho + M.separacionLeyenda) / (M.anchoItemLeyenda + M.separacionLeyenda),
   );
   return Math.max(1, Math.ceil(items / porRenglon));
 }

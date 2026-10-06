@@ -4,6 +4,7 @@
  * `import()`.
  */
 import type { QueryClient } from '@tanstack/react-query';
+import { mapearConConcurrencia } from '../lib/concurrencia';
 import { formatearFechaCorta } from '../lib/fechas';
 import { nombreTecnicoDe } from '../lib/formato';
 import { CLAVE_QUERY } from '../queries/clavesQuery';
@@ -33,6 +34,8 @@ export type FichasPdf = { blob: Blob; arboles: ArbolParaFicha[] };
  */
 const VIGENCIA_PUNTOS_MS = 5 * 60_000;
 const PREFIJO_ARCHIVO_FICHAS = { una: 'ficha', varias: 'fichas' } as const;
+/** Pocos canvas y mosaicos decodificados a la vez: 50 minimapas juntos serían 800 tiles en memoria. */
+const MINIMAPAS_SIMULTANEOS = 4;
 
 export const ERROR_FICHAS_SIN_ARBOLES = 'No se encontraron los árboles de las fichas';
 
@@ -69,7 +72,9 @@ async function prepararFichas(
 ) {
   const [fotos, mapas] = await Promise.all([
     motor.cargarFotos(arboles.map((arbol) => arbol.fotoUrl)),
-    Promise.all(arboles.map((arbol) => motor.minimapaDeArbol(arbol, puntos))),
+    mapearConConcurrencia(arboles, MINIMAPAS_SIMULTANEOS, (arbol) =>
+      motor.minimapaDeArbol(arbol, puntos),
+    ),
   ]);
   return arboles.map((arbol, indice) =>
     motor.datosFicha(arbol, {

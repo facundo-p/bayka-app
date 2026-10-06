@@ -33,7 +33,11 @@ vi.mock('../../pdf/ficha/motorFichas', () => ({
 }));
 
 const PLANTACION = plantacion({ lugar: 'San Sebastián', periodo: '2025-2026' });
-const MAPA: MapaPdf = { estado: ESTADO_MAPA.listo, src: 'data:image/png;base64,M' };
+const MAPA: MapaPdf = {
+  estado: ESTADO_MAPA.listo,
+  src: 'data:image/png;base64,M',
+  conSatelite: false,
+};
 const ARBOL = arbolParaFicha({ id: 't1', subId: 'LP12L10ANC23', usuarioRegistro: 'u1' });
 const PUNTOS: PuntoGps[] = [];
 const BLOB = new Blob(['%PDF']);
@@ -86,6 +90,27 @@ test('la ficha de un árbol lleva su técnico, su foto y su minimapa, y se desca
 test('varias fichas van a un solo archivo', async () => {
   await descargarFichasPdf(['t1'], contexto());
   expect(descargarBlob).toHaveBeenCalledWith(BLOB, 'fichas-san-sebastian-2025-2026.pdf');
+});
+
+test('los minimapas se dibujan de a cuatro como mucho', async () => {
+  const arboles = Array.from({ length: 10 }, (_, indice) => arbolParaFicha({ id: `t${indice}` }));
+  vi.mocked(listarArbolesParaFichas).mockResolvedValue(arboles);
+  vi.mocked(motor.cargarFotos).mockResolvedValue(arboles.map(() => ({ estado: 'sin-foto' })));
+  let enVuelo = 0;
+  let maximo = 0;
+  vi.mocked(motor.minimapaDeArbol).mockImplementation(async () => {
+    enVuelo += 1;
+    maximo = Math.max(maximo, enVuelo);
+    await new Promise((resolver) => setTimeout(resolver, 1));
+    enVuelo -= 1;
+    return MAPA;
+  });
+  await descargarFichasPdf(
+    arboles.map(({ id }) => id),
+    contexto(),
+  );
+  expect(motor.minimapaDeArbol).toHaveBeenCalledTimes(10);
+  expect(maximo).toBe(4);
 });
 
 test('los puntos del mapa salen de la caché del dashboard', async () => {

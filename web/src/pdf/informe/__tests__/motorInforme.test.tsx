@@ -22,7 +22,7 @@ vi.mock('../mapaInforme', async (importOriginal) => ({
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(dibujarMapaInforme).mockImplementation(async (_contenido, disponible) => ({
-    mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA },
+    mapa: { estado: ESTADO_MAPA.listo, src: PNG_DE_PRUEBA, conSatelite: false },
     caja: disponible,
   }));
 });

@@ -19,3 +19,29 @@ export async function mapearConConcurrencia<T, R>(
   await Promise.all(Array.from({ length: trabajadores }, trabajador));
   return resultados;
 }
+
+export type Limitador = <R>(tarea: () => Promise<R>) => Promise<R>;
+
+/**
+ * Comparte un tope de tareas en vuelo entre llamadas independientes; las que
+ * esperan arrancan en orden. Al terminar, el lugar pasa directo a la siguiente:
+ * así nadie se cuela entre medio y el tope nunca se pasa.
+ */
+export function crearLimitador(limite: number): Limitador {
+  let enVuelo = 0;
+  const esperando: (() => void)[] = [];
+  const liberar = () => {
+    const siguiente = esperando.shift();
+    if (siguiente) siguiente();
+    else enVuelo -= 1;
+  };
+  return async (tarea) => {
+    if (enVuelo < limite) enVuelo += 1;
+    else await new Promise<void>((arrancar) => esperando.push(arrancar));
+    try {
+      return await tarea();
+    } finally {
+      liberar();
+    }
+  };
+}

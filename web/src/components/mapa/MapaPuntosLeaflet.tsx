@@ -2,14 +2,11 @@ import { useEffect, useMemo } from 'react';
 import L from 'leaflet';
 import { CircleMarker, MapContainer, TileLayer, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
+import { CAPA_SATELITE } from '../../lib/capaSatelite';
 import { cx } from '../../lib/classNames';
 import { COLOR_GRAFICO_NN } from '../../theme/chartColors';
 import { VARIANTE_MAPA_POR_DEFECTO, type MapaPuntosProps, type PuntoGps } from './types';
 import styles from './MapaPuntos.module.css';
-
-/** Capa base satelital sin API key (Esri World Imagery). */
-const TILE_SATELITE =
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
 /** Zoom inicial cuando hay un único punto (fitBounds degenera con bounds nulos). */
 const ZOOM_PUNTO_UNICO = 17;
@@ -85,7 +82,11 @@ export function MapaPuntosLeaflet({
         center={[0, 0]}
         zoom={2}
       >
-        <TileLayer url={TILE_SATELITE} attribution="Imágenes © Esri, Maxar" maxZoom={19} />
+        <TileLayer
+          url={CAPA_SATELITE.url}
+          attribution={CAPA_SATELITE.atribucion}
+          maxZoom={CAPA_SATELITE.zoomMaximo}
+        />
         <CapaPuntos puntos={puntos} colorPorCodigo={colorPorCodigo} />
         <AjustarVista puntos={puntos} />
       </MapContainer>

@@ -22,7 +22,12 @@ export function exportarYLiberar(
   calidad?: number,
 ): string {
   const dataUrl = canvas.toDataURL(tipo, calidad);
+  liberarCanvas(canvas);
+  return dataUrl;
+}
+
+/** Achicarlo a cero es la única forma de que el navegador suelte su memoria. */
+export function liberarCanvas(canvas: HTMLCanvasElement): void {
   canvas.width = 0;
   canvas.height = 0;
-  return dataUrl;
 }

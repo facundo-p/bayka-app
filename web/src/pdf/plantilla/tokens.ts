@@ -25,6 +25,9 @@ export const COLOR_PDF = {
   // Solo del PDF: la grilla y las insignias del mapa no tienen par en la web.
   mapaGrilla: '#e6edd8',
   mapaInsignia: 'rgba(255, 255, 255, 0.85)',
+  // Sobre el satélite (#757), las insignias oscurecen la imagen y el texto va blanco.
+  mapaVeloEtiqueta: 'rgba(0, 0, 0, 0.45)',
+  mapaVeloInsignia: 'rgba(0, 0, 0, 0.35)',
   blanco: '#ffffff',
 } as const;
 
@@ -83,6 +86,7 @@ export const TAMANO_TEXTO = {
   detalleIndicador: 7,
   filaInforme: 8,
   leyenda: 7.5,
+  atribucion: 5.5,
 } as const;
 
 /** Medidas de la hoja A4 en pt (595 × 842). */
@@ -124,6 +128,8 @@ export const MEDIDA_FICHA = {
   /** Espaciado de letras de los rótulos en mayúsculas. */
   espaciadoMayusculas: 0.4,
   anchoEtiqueta: 54,
+  /** Interlineado justo: la atribución entra en el relleno inferior de la ficha. */
+  interlineadoAtribucion: 1,
 } as const;
 
 /** Lo que queda para el cuerpo de una hoja, entre encabezado y pie y entre márgenes. */
@@ -186,6 +192,10 @@ export const MEDIDA_INFORME = {
   altoRenglonLeyenda: 11,
   anchoItemLeyenda: 44,
   separacionLeyenda: 10,
+  /** Columna de la atribución del satélite, a la derecha de la leyenda: el texto mide 63,5 pt. */
+  anchoAtribucion: 80,
+  /** Baja la atribución, de letra más chica, al centro del renglón de la leyenda. */
+  aireAtribucion: 2,
   altoNotaMapa: 11,
   /** Lo mínimo que tiene que medir el mapa para ir al pie de la última hoja: 7 cm. */
   altoMinimoMapa: 198,

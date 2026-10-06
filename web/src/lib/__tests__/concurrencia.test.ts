@@ -1,4 +1,4 @@
-import { mapearConConcurrencia } from '../concurrencia';
+import { crearLimitador, mapearConConcurrencia } from '../concurrencia';
 
 test('conserva el orden y nunca pasa del límite en vuelo', async () => {
   let enVuelo = 0;
@@ -20,4 +20,41 @@ test('conserva el orden y nunca pasa del límite en vuelo', async () => {
 
 test('sin items devuelve vacío', async () => {
   expect(await mapearConConcurrencia([], 4, async () => 1)).toEqual([]);
+});
+
+describe('crearLimitador', () => {
+  test('entre llamadas sueltas nunca pasa del tope y todas terminan', async () => {
+    const limitar = crearLimitador(2);
+    let enVuelo = 0;
+    let maximo = 0;
+    const tarea = (demora: number) =>
+      limitar(async () => {
+        enVuelo += 1;
+        maximo = Math.max(maximo, enVuelo);
+        await new Promise((resolver) => setTimeout(resolver, demora));
+        enVuelo -= 1;
+        return demora;
+      });
+    const resultados = await Promise.all([tarea(20), tarea(5), tarea(10), tarea(1), tarea(3)]);
+    expect(resultados).toEqual([20, 5, 10, 1, 3]);
+    expect(maximo).toBe(2);
+  });
+
+  test('las que esperan arrancan en el orden en que llegaron', async () => {
+    const limitar = crearLimitador(1);
+    const arranques: number[] = [];
+    const tarea = (orden: number) =>
+      limitar(async () => {
+        arranques.push(orden);
+        await new Promise((resolver) => setTimeout(resolver, 1));
+      });
+    await Promise.all([1, 2, 3, 4].map(tarea));
+    expect(arranques).toEqual([1, 2, 3, 4]);
+  });
+
+  test('una tarea que falla libera su lugar', async () => {
+    const limitar = crearLimitador(1);
+    await expect(limitar(() => Promise.reject(new Error('x')))).rejects.toThrow('x');
+    await expect(limitar(async () => 'sigue')).resolves.toBe('sigue');
+  });
 });

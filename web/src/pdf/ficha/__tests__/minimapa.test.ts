@@ -72,11 +72,22 @@ test('si el canvas falla, ese mapa queda no disponible en vez de cortar las fich
   await expect(minimapaDeArbol(ARBOL, [])).resolves.toEqual({ estado: 'no-disponible' });
 });
 
-test('con el mapa dibujado, la ficha lo muestra', async () => {
-  vi.mocked(dibujarMapa).mockResolvedValueOnce('data:image/png;base64,M');
+test('con el mapa dibujado sobre el satélite, la ficha lo muestra con satélite', async () => {
+  vi.mocked(dibujarMapa).mockResolvedValueOnce({ src: 'data:image/jpeg;base64,M', conFondo: true });
+  await expect(minimapaDeArbol(ARBOL, [])).resolves.toEqual({
+    estado: 'listo',
+    src: 'data:image/jpeg;base64,M',
+    conSatelite: true,
+  });
+  expect(vi.mocked(dibujarMapa).mock.lastCall?.[0].fondo).toEqual(expect.any(Function));
+});
+
+test('si el satélite no se pudo bajar, el mapa sale liso y sin satélite', async () => {
+  vi.mocked(dibujarMapa).mockResolvedValueOnce({ src: 'data:image/png;base64,M', conFondo: false });
   await expect(minimapaDeArbol(ARBOL, [])).resolves.toEqual({
     estado: 'listo',
     src: 'data:image/png;base64,M',
+    conSatelite: false,
   });
 });
 

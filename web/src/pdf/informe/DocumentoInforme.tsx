@@ -1,4 +1,5 @@
 import { Document, Image, Text, View } from '@react-pdf/renderer';
+import { AtribucionSatelite } from '../mapa/AtribucionSatelite';
 import { esMapaListo } from '../mapa/estadoMapa';
 import { Hoja } from '../plantilla/Hoja';
 import { TEXTO_PLANTILLA, type EncabezadoPdf } from '../plantilla/textos';
@@ -37,7 +38,17 @@ function Leyenda({ items }: { items: readonly ItemLeyenda[] }) {
   );
 }
 
-type MapaListo = { src: string; caja: Caja };
+/** La atribución va en la línea de la leyenda, a la derecha, solo si hay satélite. */
+function PieMapa({ items, conSatelite }: { items: readonly ItemLeyenda[]; conSatelite: boolean }) {
+  return (
+    <View style={styles.pieMapa}>
+      <Leyenda items={items} />
+      {conSatelite && <AtribucionSatelite style={styles.atribucion} />}
+    </View>
+  );
+}
+
+type MapaListo = { src: string; caja: Caja; conSatelite: boolean };
 
 function ImagenMapa({ mapa }: { mapa: MapaListo }) {
   const { ancho, alto } = mapa.caja;
@@ -53,7 +64,7 @@ function MapaEnHojaCompleta({ modelo, mapa }: MapaProps) {
       <Text style={styles.tituloMapa}>{TEXTO_INFORME.mapa}</Text>
       <Text style={styles.notaTitulo}>{modelo.mapa.nota}</Text>
       <ImagenMapa mapa={mapa} />
-      <Leyenda items={modelo.mapa.leyenda} />
+      <PieMapa items={modelo.mapa.leyenda} conSatelite={mapa.conSatelite} />
     </View>
   );
 }
@@ -63,7 +74,7 @@ function MapaAlPie({ modelo, mapa }: MapaProps) {
     <View style={styles.bloqueMapa} wrap={false}>
       <EncabezadoBloque>{TEXTO_INFORME.mapa}</EncabezadoBloque>
       <ImagenMapa mapa={mapa} />
-      <Leyenda items={modelo.mapa.leyenda} />
+      <PieMapa items={modelo.mapa.leyenda} conSatelite={mapa.conSatelite} />
       <Text style={styles.notaMapa}>{modelo.mapa.nota}</Text>
     </View>
   );
@@ -83,7 +94,8 @@ function BloqueMapa({ modelo, plan, mapa }: Omit<DocumentoInformeProps, 'encabez
   if (modelo.mapa.vacio) return <SinMapa motivo={modelo.mapa.vacio} />;
   // Si el canvas falló, el aviso va en el flujo: no merece una hoja propia.
   if (!mapa || !esMapaListo(mapa.mapa)) return <SinMapa motivo={TEXTO_INFORME.mapaNoDisponible} />;
-  const listo = { src: mapa.mapa.src, caja: mapa.caja };
+  const { src, conSatelite } = mapa.mapa;
+  const listo = { src, conSatelite, caja: mapa.caja };
   if (esMapaEnHojaCompleta(plan)) return <MapaEnHojaCompleta modelo={modelo} mapa={listo} />;
   return <MapaAlPie modelo={modelo} mapa={listo} />;
 }
