@@ -138,6 +138,22 @@ test('la nota de Esri va solo al pie de las hojas con minimapa satelital', async
   expect(textos.lastIndexOf(ATRIBUCION)).toBe(nota);
 });
 
+test('con fichas del peor caso siguen entrando tres por hoja y la nota cae en la hoja 2', async () => {
+  const tecnico = 'María Fernanda Etchegoyen Larrañaga';
+  const contexto = { tecnico, foto: LISTA };
+  const fichas = [1, 2, 3, 4, 5, 6].map((numero) =>
+    datosFicha(PEOR_CASO, { ...contexto, mapa: numero === 5 ? MAPA_SATELITE : MAPA }),
+  );
+  const pdf = await renderToBuffer(
+    <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
+  );
+  const textos = textosDelPdf(pdf);
+  expect(paginasDelPdf(pdf)).toBe(2);
+  expect(textos.indexOf(ATRIBUCION)).toBeGreaterThan(
+    textos.findIndex((texto) => texto.includes('Página 1 de 2')),
+  );
+});
+
 test('una ficha anterior no rompe los caracteres de la siguiente', async () => {
   const renderizar = (arbol: typeof CON_TODO) =>
     renderizarEnSerie(FUENTES_NODE, () =>

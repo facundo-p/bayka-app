@@ -20,6 +20,18 @@ function Encabezado({ encabezado }: { encabezado: EncabezadoPdf }) {
 /** Una nota que va al pie solo de algunas hojas, como la atribución del satélite. */
 export type NotaAlPie = { texto: string; enHoja: (hoja: number, total: number) => boolean };
 
+/** Vacía en las hojas que no la llevan. */
+function NotaPie({ nota }: { nota: NotaAlPie }) {
+  return (
+    <Text
+      style={styles.notaAlPie}
+      render={({ pageNumber, totalPages }) =>
+        nota.enHoja(pageNumber, totalPages) ? nota.texto : ''
+      }
+    />
+  );
+}
+
 type PieProps = { documento: string; emitido: string; nota?: NotaAlPie };
 
 function Pie({ documento, emitido, nota }: PieProps) {
@@ -30,14 +42,7 @@ function Pie({ documento, emitido, nota }: PieProps) {
         {TEXTO_PLANTILLA.separador}
         {documento}
       </Text>
-      {nota && (
-        <Text
-          style={styles.notaAlPie}
-          render={({ pageNumber, totalPages }) =>
-            nota.enHoja(pageNumber, totalPages) ? nota.texto : ''
-          }
-        />
-      )}
+      {nota && <NotaPie nota={nota} />}
       <Text
         render={({ pageNumber, totalPages }) => textoPiePagina(emitido, pageNumber, totalPages)}
       />

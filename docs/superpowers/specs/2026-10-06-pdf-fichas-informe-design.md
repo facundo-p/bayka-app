@@ -90,9 +90,11 @@ el mapa sale liso, sin atribución.
 Donde Esri no tiene imagen a ese zoom sirve un tile gris «Map data not yet
 available» con 200, y el 404 de `blankTile=false` llega sin CORS. Por eso antes
 de bajar los tiles se consulta el `tilemap` del servicio y, si falta imagen, se
-baja de a un zoom, hasta tres. Con satélite el mapa sale en JPEG; la atribución
-va bajo el minimapa, en el relleno de la ficha, y a la derecha de la leyenda en
-el informe.
+baja de a un zoom, hasta tres. Con satélite el mapa sale en JPEG y lleva un
+asterisco bajo su esquina inferior derecha; la atribución, «* Imágenes © Esri,
+Maxar», va en letra mínima al centro del pie de cada hoja con un mapa satelital.
+Las fichas calculan esas hojas de a tres fichas por hoja; el informe, en la
+última, donde va el mapa.
 
 ## Errores
 
