@@ -7,7 +7,7 @@ import { arbolParaFicha } from '../../../test/fabricas';
 import { textosDelPdf } from '../../../test/textoPdf';
 import { ESTADO_FOTO, type FotoPdf } from '../../estadoFoto';
 import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, type MapaPdf } from '../../mapa/estadoMapa';
-import { registrarFuentes, type ArchivosFuentes } from '../../plantilla/fuentes';
+import { registrarFuentes, renderizarEnSerie, type ArchivosFuentes } from '../../plantilla/fuentes';
 import { encabezadoDePlantacion } from '../../plantilla/textos';
 import { datosFicha } from '../datosFicha';
 import { DocumentoFichas } from '../DocumentoFichas';
@@ -120,4 +120,21 @@ test('tres fichas en el peor caso realista entran en una hoja', async () => {
     <DocumentoFichas encabezado={ENCABEZADO} emitido="06/10/2026" fichas={fichas} />,
   );
   expect(paginas(pdf)).toBe(1);
+});
+
+test('una ficha anterior no rompe los caracteres de la siguiente', async () => {
+  const renderizar = (arbol: typeof CON_TODO) =>
+    renderizarEnSerie(FUENTES, () =>
+      renderToBuffer(
+        <DocumentoFichas
+          encabezado={ENCABEZADO}
+          emitido="06/10/2026"
+          fichas={[datosFicha(arbol, { tecnico: 'Lucía', foto: LISTA, mapa: MAPA })]}
+        />,
+      ),
+    );
+  // La primera usa «·» en semibold sin «.»: fontkit guarda el punto sin su carácter.
+  await renderizar(CON_TODO);
+  const conPunto = { ...CON_TODO, especie: { ...CON_TODO.especie!, nombre: 'Anchico s.l.' } };
+  expect(textosDelPdf(await renderizar(conPunto))).toContain('ANC · Anchico s.l.');
 });

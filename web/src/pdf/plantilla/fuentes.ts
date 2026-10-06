@@ -30,9 +30,28 @@ const FAMILIAS = Object.values(FUENTE_PDF);
 
 let registradas = false;
 
-/** Registra las familias una sola vez: react-pdf acumula registros si se repite. */
+/**
+ * fontkit guarda sin su carácter los glifos que un PDF usó como parte de otro
+ * («.» en «·», «a» en «á»): el PDF siguiente los perdería.
+ */
+function descartarFuentesLeidas(): void {
+  for (const familia of Object.values(Font.getRegisteredFonts())) {
+    for (const fuente of familia.sources) {
+      fuente.data = null;
+      fuente.loadResultPromise = null;
+    }
+  }
+}
+
+/**
+ * Se llama antes de cada documento. Registra las familias una sola vez
+ * (react-pdf acumula registros si se repite) y descarta las ya leídas.
+ */
 export function registrarFuentes(archivos: ArchivosFuentes): void {
-  if (registradas) return;
+  if (registradas) {
+    descartarFuentesLeidas();
+    return;
+  }
   for (const familia of FAMILIAS) {
     const fonts = VARIANTES.filter((variante) => variante.familia === familia).map(
       (variante: Variante) => ({
@@ -46,4 +65,19 @@ export function registrarFuentes(archivos: ArchivosFuentes): void {
   // Sin guiones automáticos: cortarían IDs y nombres propios.
   Font.registerHyphenationCallback((palabra) => [palabra]);
   registradas = true;
+}
+
+let enCurso: Promise<unknown> = Promise.resolve();
+
+/** Un documento por vez: releer las fuentes en medio de otro render lo rompería. */
+export function renderizarEnSerie<T>(
+  archivos: ArchivosFuentes,
+  renderizar: () => Promise<T>,
+): Promise<T> {
+  const turno = enCurso.then(() => {
+    registrarFuentes(archivos);
+    return renderizar();
+  });
+  enCurso = turno.catch(() => undefined);
+  return turno;
 }

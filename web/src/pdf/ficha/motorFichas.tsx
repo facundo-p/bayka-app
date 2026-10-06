@@ -3,7 +3,7 @@
  * react-pdf y todo `pdf/` quedan fuera del bundle inicial.
  */
 import { pdf } from '@react-pdf/renderer';
-import { registrarFuentes } from '../plantilla/fuentes';
+import { renderizarEnSerie } from '../plantilla/fuentes';
 import { archivosFuentesNavegador, logoNavegador } from '../plantilla/recursosNavegador';
 import { DocumentoFichas, type DocumentoFichasProps } from './DocumentoFichas';
 
@@ -14,6 +14,7 @@ export { minimapaDeArbol } from './minimapa';
 export { logoNavegador };
 
 export async function renderizarFichas(props: DocumentoFichasProps): Promise<Blob> {
-  registrarFuentes(archivosFuentesNavegador());
-  return pdf(<DocumentoFichas {...props} />).toBlob();
+  return renderizarEnSerie(archivosFuentesNavegador(), () =>
+    pdf(<DocumentoFichas {...props} />).toBlob(),
+  );
 }
