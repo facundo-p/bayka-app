@@ -57,7 +57,8 @@ export const styles = StyleSheet.create({
     alignItems: 'center' as const,
     justifyContent: 'center' as const,
   },
-  configButton: {
+  /** Engranaje y cámara de la barra: mismo tamaño y estilo. */
+  iconButton: {
     paddingVertical: spacing.button,
     paddingHorizontal: spacing.button,
     borderRadius: borderRadius.lg,

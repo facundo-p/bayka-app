@@ -38,6 +38,7 @@ import GpsGateBanner from '../components/GpsGateBanner';
 import TreeGpsRow from '../components/TreeGpsRow';
 import { useGpsGate } from '../hooks/useGpsGate';
 import { useTreeSelection } from '../hooks/useTreeSelection';
+import { useFotoDelSeleccionado } from '../hooks/useFotoDelSeleccionado';
 import { getCambioDeEspecie, getTreeEditGating } from '../utils/permisosDeEdicion';
 
 export default function TreeRegistrationScreen() {
@@ -88,6 +89,12 @@ export default function TreeRegistrationScreen() {
   const botonera = useEstiloBotonera();
   const treeSelection = useTreeSelection(treeReg.sortedTrees);
   const { selectedTree } = treeSelection;
+  const fotoDelSeleccionado = useFotoDelSeleccionado({
+    arbol: selectedTree,
+    capturar: treeReg.addPhotoToTree,
+    show: confirm.show,
+    onVerActual: (foto) => setViewingPhoto({ ...foto, reemplazoConfirmado: true }),
+  });
 
   useEffect(() => {
     navigation.setOptions({ headerShown: false });
@@ -286,8 +293,20 @@ export default function TreeRegistrationScreen() {
               {deleting ? <ActivityIndicator size="small" color={colors.danger} />
                 : <Ionicons name="trash-outline" size={20} color={colors.danger} />}
             </Pressable>
-            <Pressable style={styles.configButton} onPress={() => setShowConfigModal(true)}>
+            <Pressable style={styles.iconButton} onPress={() => setShowConfigModal(true)}>
               <Ionicons name="settings-outline" size={20} color={colors.textMuted} />
+            </Pressable>
+            <Pressable
+              testID="foto-seleccionado-button"
+              style={[styles.iconButton, fotoDelSeleccionado.deshabilitado && styles.buttonDisabled]}
+              onPress={fotoDelSeleccionado.fotografiar}
+              disabled={fotoDelSeleccionado.deshabilitado}
+              accessibilityRole="button"
+              accessibilityLabel={selectedTree ? `Foto de ${selectedTree.subId}` : 'Foto del árbol seleccionado'}
+              accessibilityState={{ disabled: fotoDelSeleccionado.deshabilitado, busy: fotoDelSeleccionado.capturando }}
+            >
+              {fotoDelSeleccionado.capturando ? <ActivityIndicator size="small" color={colors.plantation} />
+                : <Ionicons name="camera-outline" size={20} color={colors.textMuted} />}
             </Pressable>
             <View style={styles.spacer} />
             <Pressable
