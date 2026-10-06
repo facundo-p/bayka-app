@@ -1,10 +1,12 @@
 import type { ArbolParaFicha } from '../../queries/fichasQueries';
 import type { PuntoGps } from '../../queries/mapaQueries';
 import { colorEspeciePorCodigo } from '../../theme/coloresEspecie';
+import { capaSatelital } from '../mapa/capaSatelital';
 import { dibujarMapa } from '../mapa/dibujarMapa';
-import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
+import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
 import type { ContenidoMapa } from '../mapa/planMapa';
 import { distanciaMetros, type LatLng } from '../mapa/proyeccion';
+import { TOPE_TILES } from '../mapa/tiles';
 import { MEDIDA_FICHA } from '../plantilla/tokens';
 
 /**
@@ -52,8 +54,9 @@ export async function minimapaDeArbol(
   const contenido = contenidoMinimapa(arbol, puntos);
   if (!contenido) return MAPA_SIN_GPS;
   try {
-    const src = await dibujarMapa(contenido);
-    return src ? { estado: ESTADO_MAPA.listo, src } : MAPA_NO_DISPONIBLE;
+    return mapaDeDibujo(
+      await dibujarMapa({ ...contenido, fondo: capaSatelital(TOPE_TILES.ficha) }),
+    );
   } catch {
     return MAPA_NO_DISPONIBLE;
   }

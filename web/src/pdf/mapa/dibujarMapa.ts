@@ -1,5 +1,5 @@
 /*
- * Raster del mapa de puntos: con miles de árboles, un PNG pesa y tarda menos en
+ * Raster del mapa de puntos: con miles de árboles, una imagen pesa y tarda menos en
  * el PDF que un círculo vectorial por árbol.
  */
 import { contexto2d, crearCanvas, exportarYLiberar } from '../canvas';
@@ -14,14 +14,13 @@ import {
 import type { Encuadre } from './proyeccion';
 
 /**
- * Capa que se pinta sobre el fondo liso y debajo de los puntos (#757: satélite).
- * El contexto ya está escalado a pt; `escalaRender` dice cuántos px reales hay por pt.
+ * Pinta una imagen sobre el fondo liso y debajo de los puntos. El contexto ya
+ * está escalado a pt; `escalaRender` dice cuántos px reales hay por pt.
  */
-export type CapaFondo = (
-  contexto: CanvasRenderingContext2D,
-  encuadre: Encuadre,
-  escalaRender: number,
-) => Promise<void>;
+export type PintarFondo = (contexto: CanvasRenderingContext2D, escalaRender: number) => void;
+
+/** Prepara la imagen del encuadre (#757: satélite); null si no se pudo y el mapa sale liso. */
+export type CapaFondo = (encuadre: Encuadre) => Promise<PintarFondo | null>;
 
 export type OpcionesMapa = ContenidoMapa & {
   /** px por pt del PNG: 2,5 da nitidez de impresión sin inflar el archivo. */
@@ -29,9 +28,12 @@ export type OpcionesMapa = ContenidoMapa & {
   /** Radio de los puntos en pt: más chico cuanto más denso el mapa. */
   radioPunto?: number;
   fondo?: CapaFondo;
-  /** PNG por defecto; JPEG achica el archivo de un mapa grande. */
+  /** Sin fondo, PNG por defecto; JPEG achica el archivo de un mapa grande. Con fondo, siempre JPEG. */
   formato?: FormatoMapa;
 };
+
+/** `conFondo`: la capa de fondo se pintó; si no, el mapa salió liso. */
+export type MapaDibujado = { src: string; conFondo: boolean };
 
 /** Tipo de imagen del mapa, con la calidad si comprime con pérdida. */
 export type FormatoMapa = { tipo: string; calidad?: number };
@@ -50,7 +52,6 @@ const ESTILO_MAPA = {
   grosorGrilla: 0.4,
   radioPunto: 1.4,
   bordePunto: 0.3,
-  opacidadPunto: 0.85,
   radioAnillo: 5,
   grosorAnillo: 1,
   radioResaltado: 2.4,
@@ -71,6 +72,36 @@ const ESTILO_MAPA = {
 } as const;
 
 const LETRA_NORTE = 'N';
+
+/** Colores de lo que va sobre el fondo: sobre una imagen, insignias oscuras y texto blanco. */
+type TemaMapa = {
+  insignia: string;
+  insigniaEtiqueta: string;
+  tinta: string;
+  textoEtiqueta: string;
+  anillo: string;
+  opacidadPunto: number;
+};
+
+const TEMA_MAPA = {
+  liso: {
+    insignia: COLOR_PDF.mapaInsignia,
+    insigniaEtiqueta: COLOR_PDF.mapaInsignia,
+    tinta: COLOR_PDF.cuerpo,
+    textoEtiqueta: COLOR_PDF.navy,
+    anillo: COLOR_PDF.navy,
+    opacidadPunto: 0.85,
+  },
+  sobreImagen: {
+    insignia: COLOR_PDF.mapaVeloInsignia,
+    insigniaEtiqueta: COLOR_PDF.mapaVeloEtiqueta,
+    tinta: COLOR_PDF.blanco,
+    textoEtiqueta: COLOR_PDF.blanco,
+    // Blanco: el navy se pierde sobre el monte oscuro.
+    anillo: COLOR_PDF.blanco,
+    opacidadPunto: 0.95,
+  },
+} as const satisfies Record<string, TemaMapa>;
 
 function pintarFondoLiso(contexto: CanvasRenderingContext2D, { ancho, alto }: Encuadre) {
   contexto.fillStyle = COLOR_PDF.mapaFondo;
@@ -94,12 +125,17 @@ function circulo(contexto: CanvasRenderingContext2D, { x, y }: PuntoUbicado, rad
   contexto.arc(x, y, radio, 0, VUELTA);
 }
 
-function pintarPuntos(contexto: CanvasRenderingContext2D, puntos: PuntoUbicado[], radio: number) {
+function pintarPuntos(
+  contexto: CanvasRenderingContext2D,
+  puntos: PuntoUbicado[],
+  radio: number,
+  opacidad: number,
+) {
   contexto.strokeStyle = COLOR_PDF.blanco;
   contexto.lineWidth = ESTILO_MAPA.bordePunto;
   for (const punto of puntos) {
     circulo(contexto, punto, radio);
-    contexto.globalAlpha = ESTILO_MAPA.opacidadPunto;
+    contexto.globalAlpha = opacidad;
     contexto.fillStyle = punto.color;
     contexto.fill();
     contexto.globalAlpha = 1;
@@ -107,9 +143,9 @@ function pintarPuntos(contexto: CanvasRenderingContext2D, puntos: PuntoUbicado[]
   }
 }
 
-function pintarResaltado(contexto: CanvasRenderingContext2D, punto: PuntoUbicado) {
+function pintarResaltado(contexto: CanvasRenderingContext2D, punto: PuntoUbicado, anillo: string) {
   circulo(contexto, punto, ESTILO_MAPA.radioAnillo);
-  contexto.strokeStyle = COLOR_PDF.navy;
+  contexto.strokeStyle = anillo;
   contexto.lineWidth = ESTILO_MAPA.grosorAnillo;
   contexto.stroke();
   circulo(contexto, punto, ESTILO_MAPA.radioResaltado);
@@ -139,31 +175,41 @@ async function esperarFuentes(): Promise<void> {
   }
 }
 
-/** Insignia clara detrás de la etiqueta: sobre los puntos, el texto solo no se lee. */
-function pintarInsignia(contexto: CanvasRenderingContext2D, { x, y, texto }: EtiquetaUbicada) {
+/** Insignia detrás de la etiqueta: sobre los puntos, el texto solo no se lee. */
+function pintarInsignia(
+  contexto: CanvasRenderingContext2D,
+  { x, y, texto }: EtiquetaUbicada,
+  color: string,
+) {
   const { letraEtiqueta: letra, rellenoEtiqueta: relleno } = ESTILO_MAPA;
   const ancho = contexto.measureText(texto).width + relleno.horizontal * 2;
   const alto = letra + relleno.vertical * 2;
-  contexto.fillStyle = COLOR_PDF.mapaInsignia;
+  contexto.fillStyle = color;
   contexto.beginPath();
   contexto.roundRect(x - ancho / 2, y - alto / 2, ancho, alto, ESTILO_MAPA.radioEtiqueta);
   contexto.fill();
 }
 
-function pintarEtiquetas(contexto: CanvasRenderingContext2D, { etiquetas }: PlanMapa) {
+function pintarEtiquetas(
+  contexto: CanvasRenderingContext2D,
+  { etiquetas }: PlanMapa,
+  tema: TemaMapa,
+) {
   contexto.font = fuente(PESO_FUENTE.medio, ESTILO_MAPA.letraEtiqueta, FUENTE_PDF.mono);
   contexto.textAlign = 'center';
   contexto.textBaseline = 'middle';
   for (const etiqueta of etiquetas) {
-    pintarInsignia(contexto, etiqueta);
-    contexto.fillStyle = COLOR_PDF.navy;
+    pintarInsignia(contexto, etiqueta, tema.insigniaEtiqueta);
+    contexto.fillStyle = tema.textoEtiqueta;
     contexto.fillText(etiqueta.texto, etiqueta.x, etiqueta.y);
   }
 }
 
-function pintarBarra(contexto: CanvasRenderingContext2D, desde: number, largo: number, y: number) {
+type Trazo = { desde: number; largo: number; y: number; tinta: string };
+
+function pintarBarra(contexto: CanvasRenderingContext2D, { desde, largo, y, tinta }: Trazo) {
   const { topeEscala } = ESTILO_MAPA;
-  contexto.strokeStyle = COLOR_PDF.cuerpo;
+  contexto.strokeStyle = tinta;
   contexto.lineWidth = ESTILO_MAPA.grosorEscala;
   contexto.beginPath();
   contexto.moveTo(desde, y - topeEscala);
@@ -174,24 +220,28 @@ function pintarBarra(contexto: CanvasRenderingContext2D, desde: number, largo: n
 }
 
 /** Abajo a la izquierda: barra con topes y la distancia a la derecha, sobre una insignia. */
-function pintarEscala(contexto: CanvasRenderingContext2D, { escala, encuadre }: PlanMapa) {
+function pintarEscala(
+  contexto: CanvasRenderingContext2D,
+  { escala, encuadre }: PlanMapa,
+  tema: TemaMapa,
+) {
   const { margen, letra, rellenoInsignia: relleno } = ESTILO_MAPA;
   contexto.font = fuente(PESO_FUENTE.medio, letra, FUENTE_PDF.cuerpo);
   const anchoTexto = contexto.measureText(escala.texto).width;
   const y = encuadre.alto - margen - letra / 2;
-  contexto.fillStyle = COLOR_PDF.mapaInsignia;
+  contexto.fillStyle = tema.insignia;
   const anchoInsignia = escala.largo + anchoTexto + relleno * 3;
   contexto.fillRect(margen - relleno, y - letra, anchoInsignia, letra * 2);
-  pintarBarra(contexto, margen, escala.largo, y);
-  contexto.fillStyle = COLOR_PDF.cuerpo;
+  pintarBarra(contexto, { desde: margen, largo: escala.largo, y, tinta: tema.tinta });
+  contexto.fillStyle = tema.tinta;
   contexto.textAlign = 'left';
   contexto.textBaseline = 'middle';
   contexto.fillText(escala.texto, margen + escala.largo + relleno, y);
 }
 
+/** Con el color de relleno ya puesto: la N usa el mismo. */
 function pintarFlecha(contexto: CanvasRenderingContext2D, cx: number, cy: number) {
   const { medioAncho, punta, muesca, base } = ESTILO_MAPA.flechaNorte;
-  contexto.fillStyle = COLOR_PDF.cuerpo;
   contexto.beginPath();
   contexto.moveTo(cx, cy + punta);
   contexto.lineTo(cx + medioAncho, cy + base);
@@ -202,14 +252,15 @@ function pintarFlecha(contexto: CanvasRenderingContext2D, cx: number, cy: number
 }
 
 /** Arriba a la derecha: flecha al norte con la N encima, sobre una insignia redonda. */
-function pintarNorte(contexto: CanvasRenderingContext2D, { ancho }: Encuadre) {
+function pintarNorte(contexto: CanvasRenderingContext2D, { ancho }: Encuadre, tema: TemaMapa) {
   const { radioNorte: radio, margen } = ESTILO_MAPA;
   const cx = ancho - margen - radio;
   const cy = margen + radio;
   contexto.beginPath();
   contexto.arc(cx, cy, radio, 0, VUELTA);
-  contexto.fillStyle = COLOR_PDF.mapaInsignia;
+  contexto.fillStyle = tema.insignia;
   contexto.fill();
+  contexto.fillStyle = tema.tinta;
   pintarFlecha(contexto, cx, cy);
   contexto.font = fuente(PESO_FUENTE.semibold, ESTILO_MAPA.letraNorte, FUENTE_PDF.cuerpo);
   contexto.textAlign = 'center';
@@ -217,22 +268,41 @@ function pintarNorte(contexto: CanvasRenderingContext2D, { ancho }: Encuadre) {
   contexto.fillText(LETRA_NORTE, cx, cy + ESTILO_MAPA.alturaLetraNorte);
 }
 
+/** Puntos, árbol resaltado, etiquetas, escala y norte, con los colores del tema. */
+function pintarEncima(
+  contexto: CanvasRenderingContext2D,
+  plan: PlanMapa,
+  { radioPunto = ESTILO_MAPA.radioPunto }: OpcionesMapa,
+  tema: TemaMapa,
+) {
+  pintarPuntos(contexto, plan.puntos, radioPunto, tema.opacidadPunto);
+  if (plan.resaltado) pintarResaltado(contexto, plan.resaltado, tema.anillo);
+  pintarEtiquetas(contexto, plan, tema);
+  pintarEscala(contexto, plan, tema);
+  pintarNorte(contexto, plan.encuadre, tema);
+}
+
+/** Una imagen de fondo comprime mal en PNG: con fondo, el mapa sale en JPEG. */
+function formatoDe({ formato = FORMATO_MAPA.png }: OpcionesMapa, conFondo: boolean): FormatoMapa {
+  return conFondo ? FORMATO_MAPA.jpeg : formato;
+}
+
 /** Imagen del mapa como data URL; null si no hay ningún punto que mostrar. */
-export async function dibujarMapa(opciones: OpcionesMapa): Promise<string | null> {
+export async function dibujarMapa(opciones: OpcionesMapa): Promise<MapaDibujado | null> {
   const plan = planificarMapa(opciones);
   if (!plan) return null;
-  await esperarFuentes();
+  const [pintarFondo] = await Promise.all([
+    opciones.fondo?.(plan.encuadre) ?? null,
+    esperarFuentes(),
+  ]);
   const escalaRender = opciones.escalaRender ?? ESCALA_RENDER;
   const canvas = crearCanvas(opciones.ancho * escalaRender, opciones.alto * escalaRender);
   const contexto = contexto2d(canvas);
   contexto.scale(escalaRender, escalaRender);
   pintarFondoLiso(contexto, plan.encuadre);
-  if (opciones.fondo) await opciones.fondo(contexto, plan.encuadre, escalaRender);
-  pintarPuntos(contexto, plan.puntos, opciones.radioPunto ?? ESTILO_MAPA.radioPunto);
-  if (plan.resaltado) pintarResaltado(contexto, plan.resaltado);
-  pintarEtiquetas(contexto, plan);
-  pintarEscala(contexto, plan);
-  pintarNorte(contexto, plan.encuadre);
-  const { tipo, calidad }: FormatoMapa = opciones.formato ?? FORMATO_MAPA.png;
-  return exportarYLiberar(canvas, tipo, calidad);
+  pintarFondo?.(contexto, escalaRender);
+  const conFondo = pintarFondo !== null;
+  pintarEncima(contexto, plan, opciones, conFondo ? TEMA_MAPA.sobreImagen : TEMA_MAPA.liso);
+  const { tipo, calidad } = formatoDe(opciones, conFondo);
+  return { src: exportarYLiberar(canvas, tipo, calidad), conFondo };
 }

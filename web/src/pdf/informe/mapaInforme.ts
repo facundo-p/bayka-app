@@ -1,8 +1,10 @@
 import type { PuntoGps } from '../../queries/mapaQueries';
+import { capaSatelital } from '../mapa/capaSatelital';
 import { dibujarMapa, FORMATO_MAPA } from '../mapa/dibujarMapa';
-import { ESTADO_MAPA, MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, type MapaPdf } from '../mapa/estadoMapa';
+import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
 import { ENCUADRE_MAPA, planificarMapa, type EtiquetaMapa, type PuntoMapa } from '../mapa/planMapa';
 import { aspectoDe, type Pixel } from '../mapa/proyeccion';
+import { TOPE_TILES } from '../mapa/tiles';
 import { medianaAlVecino } from '../mapa/vecinos';
 import { MEDIDA_INFORME } from '../plantilla/tokens';
 
@@ -65,13 +67,14 @@ export async function dibujarMapaInforme(
   try {
     const opciones = { ...contenido, ...caja, margen: MEDIDA_INFORME.margenMapa };
     const ubicados = planificarMapa(opciones)?.puntos ?? [];
-    const src = await dibujarMapa({
+    const dibujado = await dibujarMapa({
       ...opciones,
       radioPunto: radioDePuntos(ubicados),
+      fondo: capaSatelital(TOPE_TILES.informe),
       // Con ~7800 puntos, JPEG pesa la mitad que PNG y no se nota la diferencia impreso.
       formato: FORMATO_MAPA.jpeg,
     });
-    return { mapa: src ? { estado: ESTADO_MAPA.listo, src } : MAPA_NO_DISPONIBLE, caja };
+    return { mapa: mapaDeDibujo(dibujado), caja };
   } catch {
     return { mapa: MAPA_NO_DISPONIBLE, caja };
   }
