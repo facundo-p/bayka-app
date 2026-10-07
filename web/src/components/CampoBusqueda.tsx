@@ -10,8 +10,9 @@ interface CampoBusquedaProps {
   placeholder: string;
   value: string;
   onChange: (texto: string) => void;
-  /** `compacta`: más angosto, para cuando comparte renglón con otros filtros. */
-  densidad?: 'normal' | 'compacta';
+  /** `compacta`: más angosto, para cuando comparte renglón con otros filtros.
+   *  `minima`: al ancho mínimo, para una fila que no tiene lugar de sobra. */
+  densidad?: 'normal' | 'compacta' | 'minima';
 }
 
 /** Buscador de un listado: lupa dentro del campo, label oculto. */
@@ -23,7 +24,7 @@ export function CampoBusqueda({
   densidad = 'normal',
 }: CampoBusquedaProps) {
   return (
-    <div className={cx(styles.campo, densidad === 'compacta' && styles.compacta)}>
+    <div className={cx(styles.campo, densidad !== 'normal' && styles[densidad])}>
       <Search className={styles.icono} size={TAMANO_ICONO.sm} aria-hidden />
       <Input
         label={label}

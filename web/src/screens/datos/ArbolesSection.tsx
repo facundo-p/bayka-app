@@ -1,3 +1,4 @@
+import { Download } from 'lucide-react';
 import {
   Button,
   Cargando,
@@ -18,6 +19,7 @@ import {
   type PaginaArboles,
 } from '../../queries/dataExplorerQueries';
 import { nombreArchivoFoto } from '../../services/descargas';
+import { TAMANO_ICONO } from '../../theme/iconos';
 import { ArbolDetallePanel } from './ArbolDetallePanel';
 import { ArbolesFiltros } from './ArbolesFiltros';
 import { BarraSeleccionFichas } from './BarraSeleccionFichas';
@@ -33,7 +35,9 @@ type SeccionArboles = ReturnType<typeof useArbolesSection>;
 const VACIO_CON_FILTROS = 'Ningún árbol coincide con los filtros';
 
 const TEXTO_SELECCION = {
-  entrar: 'Seleccionar',
+  entrar: 'PDF',
+  // Incluye el «PDF» visible: el botón no descarga, entra en el modo selección.
+  entrarDescripcion: 'Elegir árboles para las fichas PDF',
   maestro: 'Seleccionar todos los árboles de esta página',
   fila: 'Seleccionar el árbol',
 } as const;
@@ -143,7 +147,16 @@ function BotonSeleccionar({ seleccion, sinArboles }: BotonSeleccionarProps) {
     seleccion.focoTomado,
   );
   return (
-    <Button ref={ref} variant="contorno" size="sm" disabled={sinArboles} onClick={seleccion.entrar}>
+    <Button
+      ref={ref}
+      variant="contorno"
+      size="sm"
+      aria-label={TEXTO_SELECCION.entrarDescripcion}
+      title={TEXTO_SELECCION.entrarDescripcion}
+      disabled={sinArboles}
+      onClick={seleccion.entrar}
+    >
+      <Download size={TAMANO_ICONO.md} aria-hidden />
       {TEXTO_SELECCION.entrar}
     </Button>
   );

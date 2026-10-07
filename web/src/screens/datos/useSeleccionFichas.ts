@@ -9,7 +9,7 @@ import { descargarFichasPdf, type ContextoFichasPdf } from '../../services/pdfFi
 
 const NINGUNA: ReadonlySet<string> = new Set();
 
-/** Control que toma el foco al montarse: la franja al entrar, «Seleccionar» al salir. */
+/** Control que toma el foco al montarse: la franja al entrar, el botón «PDF» al salir. */
 export const FOCO_SELECCION = { franja: 'franja', seleccionar: 'seleccionar' } as const;
 type FocoSeleccion = (typeof FOCO_SELECCION)[keyof typeof FOCO_SELECCION];
 
