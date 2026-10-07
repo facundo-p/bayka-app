@@ -152,7 +152,7 @@ test('un resultado de árbol abre Árboles con su SubID en el buscador', async (
 
   expect(await esperarFila('PAL23ANC12-LM26')).toBeInTheDocument();
   expect(screen.getByRole('radio', { name: 'Árboles' })).toHaveAttribute('aria-checked', 'true');
-  expect(screen.getByLabelText('Buscar por ID o SubID')).toHaveValue('PAL23ANC12');
+  expect(screen.getByLabelText('Buscar por SubID o ID Árbol')).toHaveValue('PAL23ANC12');
   const listado = consultas.filter(
     (consulta) => consulta.tabla === 'trees' && Boolean(consulta.columnas?.startsWith('*')),
   );

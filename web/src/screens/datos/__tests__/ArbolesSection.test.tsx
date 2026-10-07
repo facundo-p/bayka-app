@@ -82,7 +82,8 @@ function renderSeccion() {
   return userEvent.setup();
 }
 
-const BUSCADOR = 'Buscar por ID o SubID';
+const BUSCADOR = 'Buscar por SubID o ID Árbol';
+const BOTON_PDF = 'Elegir árboles para las fichas PDF';
 const barra = () => screen.getByRole('region', { name: 'Árboles seleccionados' });
 const casilla = (numero: number) =>
   screen.getByRole('checkbox', { name: `Seleccionar el árbol A${numero}-SS26` });
@@ -93,7 +94,7 @@ const generar = () =>
 
 async function entrarAlModo() {
   const usuario = renderSeccion();
-  await usuario.click(await screen.findByRole('button', { name: 'Seleccionar' }));
+  await usuario.click(await screen.findByRole('button', { name: BOTON_PDF }));
   return usuario;
 }
 
@@ -118,12 +119,19 @@ describe('entrar y salir del modo selección', () => {
     expect(screen.queryByRole('region', { name: 'Árboles seleccionados' })).toBeNull();
   });
 
-  test('«Seleccionar» muestra los checkboxes y la franja, y se oculta', async () => {
+  test('el botón dice «PDF» y su tooltip explica que elige árboles', async () => {
+    renderSeccion();
+    const boton = await screen.findByRole('button', { name: BOTON_PDF });
+    expect(boton).toHaveTextContent('PDF');
+    expect(boton).toHaveAttribute('title', 'Elegir árboles para las fichas PDF');
+  });
+
+  test('el botón «PDF» muestra los checkboxes y la franja, y se oculta', async () => {
     await entrarAlModo();
     expect(casilla(1)).toBeInTheDocument();
     expect(maestro()).toHaveAttribute('aria-checked', 'false');
     expect(barra()).toHaveTextContent('0 árboles seleccionados');
-    expect(screen.queryByRole('button', { name: 'Seleccionar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: BOTON_PDF })).toBeNull();
   });
 
   test('«Cancelar» sale del modo y limpia la selección', async () => {
@@ -132,17 +140,17 @@ describe('entrar y salir del modo selección', () => {
     await usuario.click(within(barra()).getByRole('button', { name: 'Cancelar' }));
     expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
 
-    await usuario.click(screen.getByRole('button', { name: 'Seleccionar' }));
+    await usuario.click(screen.getByRole('button', { name: BOTON_PDF }));
     expect(casilla(1)).toHaveAttribute('aria-checked', 'false');
   });
 });
 
 describe('foco', () => {
-  test('al entrar pasa a la franja y al cancelar vuelve a «Seleccionar»', async () => {
+  test('al entrar pasa a la franja y al cancelar vuelve al botón «PDF»', async () => {
     const usuario = await entrarAlModo();
     expect(barra()).toHaveFocus();
     await usuario.click(within(barra()).getByRole('button', { name: 'Cancelar' }));
-    expect(screen.getByRole('button', { name: 'Seleccionar' })).toHaveFocus();
+    expect(screen.getByRole('button', { name: BOTON_PDF })).toHaveFocus();
   });
 
   test('si la sección se remonta tras un error, la franja no roba el foco', async () => {
@@ -154,9 +162,9 @@ describe('foco', () => {
     expect(barra()).not.toHaveFocus();
   });
 
-  test('al cargar la pantalla no se lo lleva «Seleccionar»', async () => {
+  test('al cargar la pantalla no se lo lleva el botón «PDF»', async () => {
     renderSeccion();
-    expect(await screen.findByRole('button', { name: 'Seleccionar' })).not.toHaveFocus();
+    expect(await screen.findByRole('button', { name: BOTON_PDF })).not.toHaveFocus();
   });
 });
 
@@ -229,12 +237,12 @@ describe('la selección vale para la página actual', () => {
     expect(barra()).toHaveTextContent('0 árboles seleccionados');
   });
 
-  test('«Seleccionar» no se deshabilita mientras llega otra página', async () => {
+  test('el botón «PDF» no se deshabilita mientras llega otra página', async () => {
     const usuario = renderSeccion();
     await screen.findByText('A1-SS26');
     vi.mocked(listarArboles).mockReturnValue(new Promise(() => {}));
     await usuario.click(screen.getByRole('button', { name: 'Página siguiente' }));
-    expect(screen.getByRole('button', { name: 'Seleccionar' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: BOTON_PDF })).toBeEnabled();
   });
 
   test('la búsqueda, al aplicarse tras el debounce, la limpia', async () => {

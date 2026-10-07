@@ -38,7 +38,7 @@ test('un refetch que saca un id marcado lo deja fuera del recuento y del PDF', a
   expect(descargarFichasPdf).toHaveBeenCalledWith(['c'], CONTEXTO);
 });
 
-test('el pedido de foco va a la franja al entrar, a «Seleccionar» al cancelar, y se baja al tomarlo', () => {
+test('el pedido de foco va a la franja al entrar, al botón «PDF» al cancelar, y se baja al tomarlo', () => {
   const { result } = renderSeleccion(['a']);
   expect(result.current.focoEnFranja).toBe(false);
   expect(result.current.focoEnSeleccionar).toBe(false);

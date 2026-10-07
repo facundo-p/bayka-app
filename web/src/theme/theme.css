@@ -223,7 +223,7 @@
   --ancho-buscador-min: 10rem;
   --ancho-buscador-compacto: 220px;
   /* Filtros de Datos: el más informativo (parcela) es el más ancho. */
-  --ancho-filtro-lg: 210px;
+  --ancho-filtro-lg: 180px;
   --ancho-filtro-md: 150px;
   --ancho-filtro-sm: 130px;
   --ancho-filtro-xs: 120px;

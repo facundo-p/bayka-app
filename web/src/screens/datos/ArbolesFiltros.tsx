@@ -108,9 +108,10 @@ function BusquedaYParcela({ parcelas, filtros, onCambiar }: BusquedaYParcelaProp
   return (
     <>
       <CampoBusqueda
-        densidad="compacta"
-        label="Buscar por ID o SubID"
-        placeholder="Buscar por ID o SubID…"
+        densidad="minima"
+        // El placeholder nombra solo el SubID para entrar en el ancho mínimo.
+        label="Buscar por SubID o ID Árbol"
+        placeholder="Buscar SubID…"
         value={filtros.busqueda}
         onChange={(texto) => onCambiar('busqueda', texto)}
       />

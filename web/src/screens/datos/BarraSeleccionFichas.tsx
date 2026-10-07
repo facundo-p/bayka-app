@@ -58,7 +58,7 @@ function BotonesBarra({ seleccion, descarga }: { seleccion: SeleccionFichas; des
 /** Franja del modo selección, bajo los filtros (#755). */
 export function BarraSeleccionFichas({ seleccion }: { seleccion: SeleccionFichas }) {
   const descarga = useDescargaFichas(seleccion);
-  // «Seleccionar» se desmonta al entrar: el foco pasa a la franja y no se pierde.
+  // El botón «PDF» se desmonta al entrar: el foco pasa a la franja y no se pierde.
   const ref = useEnfocarAlMontar<HTMLDivElement>(seleccion.focoEnFranja, seleccion.focoTomado);
   return (
     <div
