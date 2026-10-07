@@ -57,68 +57,86 @@ function claseSimple(regla: Rule): string | null {
   return /^\.([\w-]+)$/.exec(regla.selector)?.[1] ?? null;
 }
 
-/** Reglas de primer nivel por clase: `composes` solo vale ahí. */
-function reglasPorClase(texto: string): Map<string, Rule> {
-  const reglas = new Map<string, Rule>();
+const PROP_COMPOSES = 'composes';
+
+/** Reglas de primer nivel por clase: `composes` solo vale ahí. Una clase puede repetirse. */
+function reglasPorClase(texto: string): Map<string, Rule[]> {
+  const reglas = new Map<string, Rule[]>();
   postcss.parse(texto).each((nodo) => {
     const clase = nodo.type === 'rule' ? claseSimple(nodo) : null;
-    if (clase) reglas.set(clase, nodo as Rule);
+    if (clase) reglas.set(clase, [...(reglas.get(clase) ?? []), nodo as Rule]);
   });
   return reglas;
 }
 
 function propiedades(regla: Rule): string[] {
   return regla.nodes.flatMap((nodo) =>
-    nodo.type === 'decl' && nodo.prop !== 'composes' ? [nodo.prop] : [],
+    nodo.type === 'decl' && nodo.prop !== PROP_COMPOSES ? [nodo.prop] : [],
   );
 }
 
 interface Composicion {
-  regla: Rule;
   clases: string[];
-  /** Absoluta; las composiciones del mismo archivo o de `global` no entran. */
-  desde: string;
+  /** Ruta absoluta del archivo de las clases; null si son `global`. */
+  desde: string | null;
 }
 
-/** Los `composes: a b from './x.css'` de un archivo. */
-function composicionesEntreArchivos(archivo: ArchivoCss): Composicion[] {
-  return [...reglasPorClase(archivo.texto).values()].flatMap((regla) =>
-    regla.nodes.flatMap((nodo) => {
-      if (nodo.type !== 'decl' || nodo.prop !== 'composes') return [];
-      const partes = /^(.+?)\s+from\s+['"](.+)['"]$/.exec(nodo.value);
-      if (!partes) return [];
-      const desde = resolve(dirname(archivo.absoluta), partes[2]);
-      return [{ regla, clases: partes[1].split(/\s+/), desde }];
-    }),
-  );
+/** Sin `from`, las clases son del mismo archivo. */
+function archivoDeOrigen(origen: string | undefined, archivo: string): string | null {
+  if (!origen) return archivo;
+  if (origen === 'global') return null;
+  return resolve(dirname(archivo), origen.replace(/^['"]|['"]$/g, ''));
+}
+
+function composicionesDe(regla: Rule, archivo: string): Composicion[] {
+  return regla.nodes.flatMap((nodo) => {
+    if (nodo.type !== 'decl' || nodo.prop !== PROP_COMPOSES) return [];
+    const [, clases, origen] = /^(.+?)(?:\s+from\s+(\S+))?$/.exec(nodo.value) ?? [];
+    return clases ? [{ clases: clases.split(/\s+/), desde: archivoDeOrigen(origen, archivo) }] : [];
+  });
 }
 
 type Indice = Map<string, ArchivoCss>;
 
+/** Longhands que fija una clase, sumando las que compone a cualquier profundidad. */
+function fijadasPor(clase: string, archivo: string | null, indice: Indice): string[] {
+  if (!archivo) return [];
+  const reglas = reglasPorClase(indice.get(archivo)?.texto ?? '').get(clase) ?? [];
+  return reglas.flatMap((regla) => [
+    ...propiedades(regla).flatMap(longhands),
+    ...composicionesDe(regla, archivo).flatMap(({ clases, desde }) =>
+      clases.flatMap((compuesta) => fijadasPor(compuesta, desde, indice)),
+    ),
+  ]);
+}
+
 /** Propiedades que la regla redeclara de una clase compuesta, como hallazgos. */
-function pisadas({ regla, clases, desde }: Composicion, indice: Indice): string[] {
-  const reglasDestino = reglasPorClase(indice.get(desde)?.texto ?? '');
+function pisadas(regla: Rule, { clases, desde }: Composicion, indice: Indice): string[] {
   return clases.flatMap((clase) => {
-    const compuesta = reglasDestino.get(clase);
-    if (!compuesta) return [];
-    const fijadas = new Set(propiedades(compuesta).flatMap(longhands));
+    const fijadas = new Set(fijadasPor(clase, desde, indice));
     return propiedades(regla)
       .filter((propiedad) => longhands(propiedad).some((longhand) => fijadas.has(longhand)))
       .map((propiedad) => `${regla.selector} redeclara ${propiedad} de .${clase}`);
   });
 }
 
-function hallazgos(archivos: ArchivoCss[]): string[] {
-  const indice: Indice = new Map(archivos.map((archivo) => [archivo.absoluta, archivo]));
-  return archivos.flatMap((archivo) =>
-    composicionesEntreArchivos(archivo).flatMap((composicion) =>
-      pisadas(composicion, indice).map((hallazgo) => `${archivo.ruta}: ${hallazgo}`),
-    ),
+/** Solo entre archivos: dentro de uno, el orden de las reglas es fijo. */
+function hallazgosDe(archivo: ArchivoCss, indice: Indice): string[] {
+  return [...reglasPorClase(archivo.texto).values()].flat().flatMap((regla) =>
+    composicionesDe(regla, archivo.absoluta)
+      .filter(({ desde }) => desde !== null && desde !== archivo.absoluta)
+      .flatMap((composicion) => pisadas(regla, composicion, indice))
+      .map((hallazgo) => `${archivo.ruta}: ${hallazgo}`),
   );
 }
 
+function hallazgos(archivos: ArchivoCss[]): string[] {
+  const indice: Indice = new Map(archivos.map((archivo) => [archivo.absoluta, archivo]));
+  return archivos.flatMap((archivo) => hallazgosDe(archivo, indice));
+}
+
 test('ninguna clase que compone de otro módulo redeclara una propiedad de la compuesta', () => {
-  expect(CSS.some((archivo) => archivo.texto.includes('composes:'))).toBe(true);
+  expect(CSS.some((archivo) => archivo.texto.includes(`${PROP_COMPOSES}:`))).toBe(true);
   expect(hallazgos(CSS)).toEqual([]);
 });
 
@@ -129,25 +147,38 @@ describe('el chequeo dispara', () => {
     texto,
   });
   const base = archivo('base.css', '.control { padding: 0 16px; background-color: white; }');
+  const select = (declaracion: string) =>
+    archivo('select.css', `.select { composes: control from './base.css'; ${declaracion} }`);
 
   test.each([
     ['padding-right contra el shorthand', 'padding-right: 32px;', ['padding-right']],
     ['background contra background-color', 'background: none;', ['background']],
   ])('%s', (_, declaracion, pisadasEsperadas) => {
-    const select = archivo(
-      'select.css',
-      `.select { composes: control from './base.css'; ${declaracion} }`,
-    );
-    expect(hallazgos([select, base])).toEqual(
+    expect(hallazgos([select(declaracion), base])).toEqual(
       pisadasEsperadas.map((p) => `select.css: .select redeclara ${p} de .control`),
     );
   });
 
   test('una propiedad custom o un longhand que la compuesta no fija no son pisadas', () => {
-    const select = archivo(
-      'select.css',
-      `.select { composes: control from './base.css'; --control-padding-derecho: 32px; background-image: none; }`,
+    const variante = select('--control-padding-derecho: 32px; background-image: none;');
+    expect(hallazgos([variante, base])).toEqual([]);
+  });
+
+  test('ve lo que la compuesta hereda de otra composición', () => {
+    const disparador = archivo(
+      'disparador.css',
+      `.disparador { composes: select from './select.css'; padding-right: 8px; }`,
     );
-    expect(hallazgos([select, base])).toEqual([]);
+    expect(hallazgos([disparador, select(''), base])).toEqual([
+      'disparador.css: .disparador redeclara padding-right de .select',
+    ]);
+  });
+
+  test('las composiciones del mismo archivo y las de global no se revisan', () => {
+    const local = archivo(
+      'local.css',
+      `.base { padding: 0; } .a { composes: base; padding: 1px; } .b { composes: x from global; padding: 1px; }`,
+    );
+    expect(hallazgos([local])).toEqual([]);
   });
 });
