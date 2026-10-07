@@ -103,7 +103,7 @@ buscador y un botón con el contador de filtros puestos; el resto va a un
 al botón de cierre. Es el único lugar del rediseño donde se decide en JS *qué* se
 renderiza (`useMediaQuery(BP.movil)`), que es justo el uso que su docblock
 autoriza: el layout sigue yendo en `@media`. Las `acciones` de la barra (el
-«Seleccionar» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
+botón «PDF» de Árboles) no son filtros: quedan en la fila, fuera de la hoja.
 
 **Para repartir en líneas, flex mira el tamaño base y no el mínimo.** Dos veces
 dejó un botón en un renglón propio con lugar de sobra: `.left` de la topbar pedía

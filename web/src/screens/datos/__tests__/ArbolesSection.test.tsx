@@ -82,7 +82,7 @@ function renderSeccion() {
   return userEvent.setup();
 }
 
-const BUSCADOR = 'Buscar por SubID';
+const BUSCADOR = 'Buscar por SubID o ID Árbol';
 const BOTON_PDF = 'Elegir árboles para las fichas PDF';
 const barra = () => screen.getByRole('region', { name: 'Árboles seleccionados' });
 const casilla = (numero: number) =>
@@ -123,7 +123,7 @@ describe('entrar y salir del modo selección', () => {
     renderSeccion();
     const boton = await screen.findByRole('button', { name: BOTON_PDF });
     expect(boton).toHaveTextContent('PDF');
-    expect(boton).toHaveAttribute('title', BOTON_PDF);
+    expect(boton).toHaveAttribute('title', 'Elegir árboles para las fichas PDF');
   });
 
   test('el botón «PDF» muestra los checkboxes y la franja, y se oculta', async () => {

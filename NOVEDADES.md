@@ -29,7 +29,7 @@ detalles técnicos (esos viven en [CHANGELOG.md](CHANGELOG.md)).
   encontrar ese árbol. <!-- #699 #717 -->
   - En la web de pruebas, abrí una plantación → Datos → Árboles y copiá el ID
     de un árbol.
-  - Pegalo en la búsqueda (Ctrl/⌘ K) y después en "Buscar por ID o SubID…".
+  - Pegalo en la búsqueda (Ctrl/⌘ K) y después en "Buscar SubID…".
   - Esperá ver: la columna "ID Árbol", el ID como título del detalle, y en las
     dos búsquedas solo ese árbol; un SubID parcial sigue encontrando como
     antes.
