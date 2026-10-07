@@ -17,7 +17,24 @@ function Encabezado({ encabezado }: { encabezado: EncabezadoPdf }) {
   );
 }
 
-function Pie({ documento, emitido }: { documento: string; emitido: string }) {
+/** Una nota que va al pie solo de algunas hojas, como la atribución del satélite. */
+export type NotaAlPie = { texto: string; enHoja: (hoja: number, total: number) => boolean };
+
+/** Vacía en las hojas que no la llevan. */
+function NotaPie({ nota }: { nota: NotaAlPie }) {
+  return (
+    <Text
+      style={styles.notaAlPie}
+      render={({ pageNumber, totalPages }) =>
+        nota.enHoja(pageNumber, totalPages) ? nota.texto : ''
+      }
+    />
+  );
+}
+
+type PieProps = { documento: string; emitido: string; nota?: NotaAlPie };
+
+function Pie({ documento, emitido, nota }: PieProps) {
   return (
     <View style={styles.pie} fixed>
       <Text>
@@ -25,6 +42,7 @@ function Pie({ documento, emitido }: { documento: string; emitido: string }) {
         {TEXTO_PLANTILLA.separador}
         {documento}
       </Text>
+      {nota && <NotaPie nota={nota} />}
       <Text
         render={({ pageNumber, totalPages }) => textoPiePagina(emitido, pageNumber, totalPages)}
       />
@@ -38,16 +56,17 @@ export type HojaProps = {
   documento: string;
   /** Fecha de emisión ya formateada. */
   emitido: string;
+  notaAlPie?: NotaAlPie;
   children: ReactNode;
 };
 
 /** Página A4 de marca: encabezado y pie se repiten en cada hoja si el cuerpo no entra en una. */
-export function Hoja({ encabezado, documento, emitido, children }: HojaProps) {
+export function Hoja({ encabezado, documento, emitido, notaAlPie, children }: HojaProps) {
   return (
     <Page size={TAMANO_HOJA} style={styles.pagina}>
       <Encabezado encabezado={encabezado} />
       {children}
-      <Pie documento={documento} emitido={emitido} />
+      <Pie documento={documento} emitido={emitido} nota={notaAlPie} />
     </Page>
   );
 }

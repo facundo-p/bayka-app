@@ -53,6 +53,7 @@ export const hojaStyles = StyleSheet.create({
     fontSize: TAMANO_TEXTO.pie,
     color: COLOR_PDF.tenue,
   },
+  notaAlPie: { alignSelf: 'center', fontSize: TAMANO_TEXTO.notaAlPie },
   pieMarca: {
     fontFamily: FUENTE_PDF.titulo,
     fontWeight: PESO_FUENTE.bold,
