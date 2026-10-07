@@ -60,6 +60,58 @@ test('17 parcelas y 9 especies: resumen y tabla en la hoja 1, el mapa en la 2', 
   );
 });
 
+test('las especies empiezan en la hoja 1 aunque el bloque entero entre en la siguiente', async () => {
+  // Con 38 especies el bloque entraba justo en la hoja 1 salvo su margen inferior,
+  // y react-pdf lo mandaba entero a la hoja 2: la 1 quedaba con el resumen solo.
+  for (let especies = 30; especies <= 44; especies += 1) {
+    const { textos } = await renderizar(entradaInforme({ parcelas: 17, especies }), true);
+    const titulo = textos.indexOf(`Distribución por especie · ${especies} especies`);
+    const pieHoja1 = textos.findIndex((texto) => texto.includes('Página 1 de'));
+    expect(titulo, `${especies} especies`).toBeLessThan(pieHoja1);
+  }
+}, 30_000);
+
+/** Hoja, desde 1, del tramo en esa posición: cada hoja cierra con su pie de página. */
+function hojaDe(textos: string[], posicion: number) {
+  if (posicion < 0) throw new Error('El texto no está en el PDF');
+  return textos.slice(0, posicion).filter((texto) => texto.includes('Página ')).length + 1;
+}
+
+const hojaDeTexto = (textos: string[], texto: string) => hojaDe(textos, textos.indexOf(texto));
+
+function posiciones(textos: string[], patron: RegExp) {
+  return textos.flatMap((texto, posicion) => (patron.test(texto) ? [posicion] : []));
+}
+
+// Más allá de la hoja 2: el listado cruza al menos dos saltos de hoja.
+const HOJA_MINIMA_DEL_FINAL = 3;
+
+test('100 especies: el listado sigue en las hojas siguientes, sin perder filas', async () => {
+  const { pdf, textos } = await renderizar(entradaInforme({ parcelas: 17, especies: 100 }));
+  // Las filas del fixture: «E30 · Especie E30».
+  const filas = posiciones(textos, /^\S+ · Especie \S+$/);
+  expect(filas).toHaveLength(100);
+  expect(hojaDeTexto(textos, 'Distribución por especie · 100 especies')).toBe(1);
+  expect(hojaDe(textos, filas[0])).toBe(1);
+  expect(hojaDe(textos, filas[filas.length - 1])).toBeGreaterThanOrEqual(HOJA_MINIMA_DEL_FINAL);
+  expect(hojaDeTexto(textos, 'Puntos GPS por especie')).toBe(paginasDelPdf(pdf));
+}, 30_000);
+
+test('120 parcelas: la tabla sigue en las hojas siguientes con su encabezado', async () => {
+  const { pdf, textos } = await renderizar(entradaInforme({ parcelas: 120, especies: 14 }));
+  // Las filas del fixture: «Parcela 7», con el código aparte.
+  const filas = posiciones(textos, /^Parcela \d+$/);
+  expect(filas).toHaveLength(120);
+  const primera = hojaDeTexto(textos, 'Árboles por parcela');
+  const ultima = hojaDe(textos, filas[filas.length - 1]);
+  expect(primera).toBe(1);
+  expect(ultima).toBeGreaterThanOrEqual(HOJA_MINIMA_DEL_FINAL);
+  // Una vez por hoja que ocupa la tabla; el estilo lo pasa a mayúsculas.
+  expect(textos.filter((texto) => texto === 'GRUPOS')).toHaveLength(ultima - primera + 1);
+  expect(hojaDeTexto(textos, 'Total · 120 parcelas')).toBe(ultima);
+  expect(hojaDeTexto(textos, 'Puntos GPS por especie')).toBe(paginasDelPdf(pdf));
+}, 30_000);
+
 test('la atribución de Esri va en la línea de la leyenda solo si el mapa tiene satélite', async () => {
   const ATRIBUCION = 'Imágenes © Esri, Maxar';
   const entrada = entradaInforme({ parcelas: 4, especies: 4, nn: 3 });
