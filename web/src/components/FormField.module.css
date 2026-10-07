@@ -33,11 +33,18 @@
   color: var(--color-danger);
 }
 
-/* Control base compartido: Input y Select lo composen desde sus módulos. */
+/*
+ * Control base compartido: Input, Select, Textarea y PasswordInput lo componen.
+ * Cada módulo que compone vuelve a emitir esta regla, y la última copia gana:
+ * una variante que redeclarara `padding` perdería según qué pantalla cargó
+ * antes (#789). Por eso el padding variable se pide con propiedades custom.
+ */
 .control {
   min-height: var(--control-height);
   width: 100%;
-  padding: 0 var(--space-2xl);
+  padding-block: var(--control-padding-vertical, 0);
+  padding-left: var(--space-2xl);
+  padding-right: var(--control-padding-derecho, var(--space-2xl));
   border: var(--border-thin) solid var(--color-border-muted);
   border-radius: var(--radius-md);
   background-color: var(--color-surface);
