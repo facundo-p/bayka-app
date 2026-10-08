@@ -2,7 +2,7 @@
 -- (072, #768): sync_subgroup recorre la tabla `grupoAjeno` de
 -- contracts/permisos-edicion.json; las policies de trees y Storage y
 -- quitar_fotos_arboles, con un técnico ajeno, el creador y los dos admins.
--- sincronizar_borrados todavía no aplica la regla (#796).
+-- sincronizar_borrados, en el test 56.
 begin;
 select plan(
   29 + jsonb_array_length(tests.contrato('permisos-edicion.json') -> 'grupoAjeno' -> 'casos')
