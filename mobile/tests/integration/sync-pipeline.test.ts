@@ -103,7 +103,7 @@ jest.mock('../../src/utils/syncLogger', () => ({
 
 import { uploadSyncableGroups } from '../../src/services/sync/pushService';
 import { pullFromServer } from '../../src/services/sync/pullService';
-import { cambiarEspecie, getTreesWithPendingPhotos, updateTreeGps } from '../../src/repositories/TreeRepository';
+import { cambiarEspecie, getTreesWithPendingPhotos, updateTreeGps, updateTreePhoto } from '../../src/repositories/TreeRepository';
 import { deleteGroup, type Group } from '../../src/repositories/GroupRepository';
 import { conflictosDePlantacion } from '../../src/repositories/ConflictosDeSyncRepository';
 import { asentarGrupo } from '../../src/services/sync/asentarGrupo';
@@ -438,6 +438,8 @@ describe('cambio de especie (#679): base local y push', () => {
 
     expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ROBLE });
     expect(resultado).not.toHaveProperty('conflictos');
+    // Sincronizado, el pull siguiente pisaría la propia sin dejar conflicto.
+    expect((await leerGrupo()).pendingSync).toBe(true);
   });
 
   it('no pisa un árbol que cambió acá durante el push', async () => {
@@ -451,6 +453,7 @@ describe('cambio de especie (#679): base local y push', () => {
 
     expect(conflictos).toBe(0);
     expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ROBLE });
+    expect((await leerGrupo()).pendingSync).toBe(true);
   });
 
   it('la base confirmada es la especie que viajó, no la que tiene la fila después', async () => {
@@ -629,6 +632,18 @@ describe('conflictos de sincronización (#795)', () => {
       ]);
     });
 
+    it('un nombre del server que ya usa otro grupo local no se adopta: el grupo sigue pendiente', async () => {
+      await mockTestDb.insert(groups).values(grupoLocal({ id: 'g-otro', nombre: 'Linea Admin', codigo: 'LO', pendingSync: false }));
+      await conArbol(MIO);
+
+      await conConflictoDeNombre();
+
+      expect(await leerGrupo()).toMatchObject({ nombre: 'Linea Mia', pendingSync: true });
+      expect(await conflictos()).toEqual([]);
+      // El resto del grupo se asienta igual.
+      expect((await leerArbol('t-1')).latitudeBase).toBe(-34.3);
+    });
+
     it('código cambiado solo en el server: lo adopta y rearma los SubID', async () => {
       await mockTestDb.insert(trees).values(arbolLocal('t-1', { subId: 'P1LAROB1' }));
       conserva({ grupo: { codigo: 'LS' } });
@@ -691,6 +706,17 @@ describe('conflictos de sincronización (#795)', () => {
 
       expect(await leerArbol('t-1')).toMatchObject({ fotoUrl: FOTO_DEL_SERVER });
       expect(borrarFotosLocales).toHaveBeenCalledWith([FOTO_LOCAL]);
+      expect(await conflictos()).toEqual([]);
+    });
+
+    // Conservar la mía cortado entre la edición y el quitar: la foto ya es del árbol.
+    it('descartar no borra una foto propia que el árbol ya usa', async () => {
+      await conConflictoDeFoto();
+      await updateTreePhoto('t-1', FOTO_LOCAL);
+
+      expect(await descartarConflicto('t-1', 'foto')).toEqual({ success: true });
+
+      expect(borrarFotosLocales).not.toHaveBeenCalledWith(expect.arrayContaining([FOTO_LOCAL]));
       expect(await conflictos()).toEqual([]);
     });
 

@@ -27,6 +27,17 @@ export const CAMPOS_DE_GRUPO = [
 
 export type CampoDeGrupo = (typeof CAMPOS_DE_GRUPO)[number];
 
+/** Nombre, código, tipo y estado de un grupo: la base y lo que el servidor conserva. */
+export type DatosDeGrupo = Record<CampoDeGrupo, string>;
+
+/** Un punto GPS. Latitud, longitud y momento de captura lo identifican. */
+export interface PuntoGps {
+  latitude: number | null;
+  longitude: number | null;
+  gpsAccuracy: number | null;
+  gpsCapturedAt: string | null;
+}
+
 export const esCampoDeGrupo = (campo: CampoEnConflicto): campo is CampoDeGrupo =>
   (CAMPOS_DE_GRUPO as readonly CampoEnConflicto[]).includes(campo);
 

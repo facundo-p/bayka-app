@@ -20,12 +20,11 @@ import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
 import { getGroupById } from '../queries/plantationDetailQueries';
 import { borrarFotosLocales } from './PhotoService';
 import {
-  CAMPO_EN_CONFLICTO, ERROR_DE_CONFLICTO, type CampoEnConflicto, type ErrorDeConflicto,
+  CAMPO_EN_CONFLICTO, ERROR_DE_CONFLICTO, type CampoEnConflicto, type ErrorDeConflicto, type PuntoGps,
 } from '../constants/conflictoDeSync';
 import { ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion } from '../constants/errorDeEdicion';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { esGroupTipo } from '../constants/groupTipo';
-import type { PuntoGps } from './sync/basesDeSync';
 
 export type ResultadoDeConflicto =
   | { success: true }
@@ -88,8 +87,14 @@ function aplicarLoMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
       return aplicarLoMioDelArbol(c);
     case CAMPO_EN_CONFLICTO.estado:
       return estadoMio(c);
-    default:
+    case CAMPO_EN_CONFLICTO.nombre:
+    case CAMPO_EN_CONFLICTO.codigo:
+    case CAMPO_EN_CONFLICTO.tipo:
       return datoMioDelGrupo(c);
+    default: {
+      const desconocido: never = c.campo;
+      throw new Error(`Campo en conflicto desconocido: ${String(desconocido)}`);
+    }
   }
 }
 

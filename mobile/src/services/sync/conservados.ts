@@ -2,8 +2,7 @@
  * Lo que `sync_subgroup` conservó del servidor y quedó distinto de lo que mandó el
  * teléfono (`conservados`, 075). Lógica pura: lee la respuesta del RPC.
  */
-import { CAMPOS_DE_GRUPO, type CampoDeGrupo } from '../../constants/conflictoDeSync';
-import type { PuntoGps } from './basesDeSync';
+import { CAMPOS_DE_GRUPO, type DatosDeGrupo, type PuntoGps } from '../../constants/conflictoDeSync';
 
 /** Un dato ausente es uno que el servidor no conservó. */
 export interface ArbolConservado {
@@ -13,7 +12,7 @@ export interface ArbolConservado {
 }
 
 export interface Conservados {
-  grupo: Partial<Record<CampoDeGrupo, string>>;
+  grupo: Partial<DatosDeGrupo>;
   arboles: Map<string, ArbolConservado>;
 }
 
@@ -40,7 +39,7 @@ function arbolConservado(remoto: ArbolRemoto): ArbolConservado {
   };
 }
 
-function grupoConservado(grupo: Record<string, string> | undefined): Partial<Record<CampoDeGrupo, string>> {
+function grupoConservado(grupo: Record<string, string> | undefined): Partial<DatosDeGrupo> {
   return Object.fromEntries(CAMPOS_DE_GRUPO.flatMap((campo) => (grupo?.[campo] !== undefined ? [[campo, grupo[campo]]] : [])));
 }
 

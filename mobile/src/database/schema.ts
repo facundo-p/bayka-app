@@ -8,7 +8,7 @@ import { ESTADO_GRUPO, ESTADO_PLANTACION } from '../constants/estados';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ConflictoDeCampo } from '../utils/conflictosDeEdicion';
 import type { MotivoVarado } from '../constants/motivoVarado';
-import type { CampoDeGrupo, CampoEnConflicto } from '../constants/conflictoDeSync';
+import type { CampoEnConflicto, DatosDeGrupo } from '../constants/conflictoDeSync';
 import { TIPOS_ESPECIE, type SubtipoEspecie, type TipoEspecie } from '../../../shared/tiposEspecie';
 
 export const species = sqliteTable('species', {
@@ -120,7 +120,7 @@ export const groups = sqliteTable('groups', {
   pendingSync: integer('pending_sync', { mode: 'boolean' }).notNull().default(false),
   // Nombre, código, tipo y estado que el servidor tenía la última vez que se vio el
   // grupo: la base del push (#795). Null = no se sabe, y el push no la manda.
-  baseDelServidor: text('base_del_servidor', { mode: 'json' }).$type<Record<CampoDeGrupo, string>>(),
+  baseDelServidor: text('base_del_servidor', { mode: 'json' }).$type<DatosDeGrupo>(),
 }, (t) => ({
   uniqueCode: uniqueIndex('groups_parcela_code_unique').on(t.parcelaId, t.codigo),
   uniqueName: uniqueIndex('groups_parcela_name_unique').on(t.parcelaId, t.nombre),

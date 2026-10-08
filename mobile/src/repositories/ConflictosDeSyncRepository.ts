@@ -3,12 +3,12 @@
  * servidor. El árbol o el grupo ya tienen el valor del servidor; acá queda el del
  * teléfono hasta que la persona elige.
  *
- * En un conflicto de foto, `mio` es el archivo local que el teléfono no subió:
- * ninguna fila de `trees` lo referencia, así que quien quita el conflicto se
- * lleva la lista de archivos a borrar después del commit.
+ * En un conflicto de foto, `mio` es el archivo local que el teléfono no subió.
+ * Quien quita el conflicto se lleva la lista de archivos que ningún árbol usa,
+ * para borrarlos después del commit.
  */
 import { db } from '../database/client';
-import { conflictosDeSync } from '../database/schema';
+import { conflictosDeSync, trees } from '../database/schema';
 import { and, asc, count, eq, inArray, type SQL } from 'drizzle-orm';
 import { CAMPO_EN_CONFLICTO, type CampoEnConflicto } from '../constants/conflictoDeSync';
 import { isLocalUri } from '../utils/photoUri';
@@ -23,6 +23,14 @@ export type ConflictoNuevo = Omit<ConflictoDeSync, 'detectadoEn'>;
 const archivoPropio = (c: Pick<ConflictoDeSync, 'campo' | 'mio'>): string[] =>
   c.campo === CAMPO_EN_CONFLICTO.foto && typeof c.mio === 'string' && isLocalUri(c.mio) ? [c.mio] : [];
 
+/** Los que ningún árbol usa. Tras "conservar la mía" la foto propia es la del árbol. */
+async function sinUsoEnArboles(tx: Tx, archivos: string[]): Promise<string[]> {
+  if (archivos.length === 0) return [];
+  const enUso = await tx.select({ fotoUrl: trees.fotoUrl }).from(trees).where(inArray(trees.fotoUrl, archivos));
+  const usados = new Set(enUso.map((f) => f.fotoUrl));
+  return archivos.filter((archivo) => !usados.has(archivo));
+}
+
 const delCampo = (entidadId: string, campo: CampoEnConflicto) =>
   and(eq(conflictosDeSync.entidadId, entidadId), eq(conflictosDeSync.campo, campo));
 
@@ -34,7 +42,8 @@ export async function guardarConflicto(tx: Tx, conflicto: ConflictoNuevo): Promi
     target: [conflictosDeSync.entidadId, conflictosDeSync.campo],
     set: { mio: fila.mio, servidor: fila.servidor, detectadoEn: fila.detectadoEn },
   });
-  return anterior ? archivoPropio(anterior).filter((archivo) => archivo !== conflicto.mio) : [];
+  if (!anterior) return [];
+  return sinUsoEnArboles(tx, archivoPropio(anterior).filter((archivo) => archivo !== conflicto.mio));
 }
 
 /** Quita los conflictos de esos campos. Devuelve los archivos que dejan de usarse. */
@@ -43,7 +52,7 @@ export async function quitarConflictos(tx: Tx, entidadId: string, campos: CampoE
   const quitados = await tx.delete(conflictosDeSync)
     .where(and(eq(conflictosDeSync.entidadId, entidadId), inArray(conflictosDeSync.campo, campos)))
     .returning();
-  return quitados.flatMap(archivoPropio);
+  return sinUsoEnArboles(tx, quitados.flatMap(archivoPropio));
 }
 
 // Al borrar un árbol, un grupo o una plantación sus conflictos se van con ellos.

@@ -29,28 +29,36 @@ import { leerConservados, type ArbolConservado, type Conservados } from './conse
 
 type Tx = typeof db;
 
-/** Conflictos nuevos y archivos locales que quedaron sin uso. */
+/**
+ * Conflictos nuevos, archivos locales que quedaron sin uso, y si algo no se pudo
+ * adoptar (cambió durante el push, o falta la especie): el grupo sigue pendiente.
+ */
 interface Asentado {
   conflictos: number;
   archivos: string[];
+  sinAdoptar: boolean;
 }
 
-const NADA: Asentado = { conflictos: 0, archivos: [] };
+const NADA: Asentado = { conflictos: 0, archivos: [], sinAdoptar: false };
+const SIN_ADOPTAR: Asentado = { ...NADA, sinAdoptar: true };
 
-const sumar = (a: Asentado, b: Asentado): Asentado =>
-  ({ conflictos: a.conflictos + b.conflictos, archivos: [...a.archivos, ...b.archivos] });
+const sumar = (a: Asentado, b: Asentado): Asentado => ({
+  conflictos: a.conflictos + b.conflictos,
+  archivos: [...a.archivos, ...b.archivos],
+  sinAdoptar: a.sinAdoptar || b.sinAdoptar,
+});
 
 /** Un dato que el servidor conservó, ya adoptado: conflicto si también cambió acá. */
 async function conflictoSiCambioAca(tx: Tx, sg: Group, cambioAca: boolean, conflicto: Omit<ConflictoNuevo, 'grupoId' | 'plantacionId'>): Promise<Asentado> {
   if (!cambioAca) return NADA;
   const archivos = await guardarConflicto(tx, { ...conflicto, grupoId: sg.id, plantacionId: sg.plantacionId });
-  return { conflictos: 1, archivos };
+  return { ...NADA, conflictos: 1, archivos };
 }
 
 /** Un dato que el servidor aceptó: si cambió acá, deja atrás un conflicto anterior. */
 async function aceptado(tx: Tx, entidadId: string, campo: CampoEnConflicto, cambioAca: boolean): Promise<Asentado> {
   if (!cambioAca) return NADA;
-  return { conflictos: 0, archivos: await quitarConflictos(tx, entidadId, [campo]) };
+  return { ...NADA, archivos: await quitarConflictos(tx, entidadId, [campo]) };
 }
 
 async function asentarEspecie(tx: Tx, sg: Group, t: ArbolDeGrupo, conservado: ArbolConservado): Promise<Asentado> {
@@ -59,7 +67,7 @@ async function asentarEspecie(tx: Tx, sg: Group, t: ArbolDeGrupo, conservado: Ar
     if (cambioAca) await confirmarBaseDeEspecie(tx, t.id, t.especieId);
     return aceptado(tx, t.id, CAMPO_EN_CONFLICTO.especie, cambioAca);
   }
-  if (!(await adoptarEspecie(tx, t.id, t.especieId, conservado.especieId))) return NADA;
+  if (!(await adoptarEspecie(tx, t.id, t.especieId, conservado.especieId))) return SIN_ADOPTAR;
   return conflictoSiCambioAca(tx, sg, cambioAca,
     { entidadId: t.id, campo: CAMPO_EN_CONFLICTO.especie, mio: t.especieId, servidor: conservado.especieId });
 }
@@ -72,7 +80,7 @@ async function asentarGps(tx: Tx, sg: Group, t: ArbolDeGrupo, conservado: ArbolC
     if (cambioAca && enviado.latitude != null) await confirmarBaseDeGps(tx, t.id, enviado);
     return aceptado(tx, t.id, CAMPO_EN_CONFLICTO.gps, cambioAca);
   }
-  if (!(await adoptarGps(tx, t.id, enviado, conservado.gps))) return NADA;
+  if (!(await adoptarGps(tx, t.id, enviado, conservado.gps))) return SIN_ADOPTAR;
   return conflictoSiCambioAca(tx, sg, cambioAca,
     { entidadId: t.id, campo: CAMPO_EN_CONFLICTO.gps, mio: enviado, servidor: conservado.gps });
 }
@@ -92,9 +100,9 @@ async function confirmarFoto(tx: Tx, t: ArbolDeGrupo, subida: string | undefined
  */
 async function asentarFoto(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: string | undefined, conservado: ArbolConservado): Promise<Asentado> {
   if (conservado.fotoUrl === undefined) return confirmarFoto(tx, t, subida);
-  if (!(await adoptarFoto(tx, t.id, t.fotoUrl, conservado.fotoUrl))) return NADA;
+  if (!(await adoptarFoto(tx, t.id, t.fotoUrl, conservado.fotoUrl))) return SIN_ADOPTAR;
   const cambioAca = fotoCambiadaAca(t);
-  if (!cambioAca && isLocalUri(t.fotoUrl)) return { conflictos: 0, archivos: [t.fotoUrl] };
+  if (!cambioAca && isLocalUri(t.fotoUrl)) return { ...NADA, archivos: [t.fotoUrl] };
   return conflictoSiCambioAca(tx, sg, cambioAca,
     { entidadId: t.id, campo: CAMPO_EN_CONFLICTO.foto, mio: t.fotoUrl, servidor: conservado.fotoUrl });
 }
@@ -113,7 +121,7 @@ async function asentarCampoDeGrupo(
 ): Promise<{ base: string | undefined; asentado: Asentado }> {
   if (delServidor === undefined) return { base: sg[campo], asentado: await aceptado(tx, sg.id, campo, cambioAca) };
   if (!(await adoptarCampoDeGrupo(tx, sg.id, campo, sg[campo], delServidor))) {
-    return { base: sg.baseDelServidor?.[campo], asentado: NADA };
+    return { base: sg.baseDelServidor?.[campo], asentado: SIN_ADOPTAR };
   }
   const asentado = await conflictoSiCambioAca(tx, sg, cambioAca, { entidadId: sg.id, campo, mio: sg[campo], servidor: delServidor });
   return { base: delServidor, asentado };
@@ -153,7 +161,7 @@ export async function asentarGrupo(
   });
   // Recién con el commit: con rollback las filas seguirían apuntando a los archivos.
   borrarFotosLocales(asentado.archivos);
-  if (await hayConflictosEnGrupo(sg.id)) notifyDataChanged();
+  if (asentado.sinAdoptar || await hayConflictosEnGrupo(sg.id)) notifyDataChanged();
   else await markGroupSynced(sg.id);
   return asentado.conflictos;
 }

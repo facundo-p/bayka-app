@@ -20,7 +20,7 @@ import { ESTADO_GRUPO, type EstadoGrupo } from '../constants/estados';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { borrarFotosLocales } from '../services/PhotoService';
 import { gruposQueSube, type Subidor } from './subidor';
-import type { CampoDeGrupo } from '../constants/conflictoDeSync';
+import type { DatosDeGrupo } from '../constants/conflictoDeSync';
 import { archivosDeConflictosDeGrupo, quitarConflictosDeGrupo } from './ConflictosDeSyncRepository';
 
 export type GroupEstado = EstadoGrupo;
@@ -39,7 +39,7 @@ export interface Group {
   createdAt: string;
   pendingSync: boolean;
   /** Lo que el servidor tenía la última vez que se vio el grupo; null si no se sabe (#795). */
-  baseDelServidor: Record<CampoDeGrupo, string> | null;
+  baseDelServidor: DatosDeGrupo | null;
 }
 
 /** Codigo de parcela del grupo (primer segmento del SubID); toda parcela lo tiene — sin código, lanza en vez de degradar a '' (#59). */

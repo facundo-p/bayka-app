@@ -3,8 +3,8 @@
  * el servidor, y lo que el servidor conservó se adopta.
  *
  * Toda adopción va con la guarda "la fila sigue con lo que se mandó": si cambió
- * durante el push no se pisa, no se toca la base, y el próximo push lo vuelve a
- * resolver.
+ * durante el push no se pisa, no se toca la base, y devuelve false para que el
+ * grupo siga pendiente y el próximo push lo vuelva a resolver.
  */
 import { db } from '../database/client';
 import { groups, trees } from '../database/schema';
@@ -14,8 +14,10 @@ import { isRemoteUri } from '../utils/photoUri';
 import { getGroupParcelaCodigo } from './GroupRepository';
 import { destinoDelCambio } from './TreeRepository';
 import { recalcularSubIdsDelGrupo } from './subIdsDeArboles';
-import type { PuntoGps } from '../services/sync/basesDeSync';
-import { CAMPO_EN_CONFLICTO, type CampoDeGrupo } from '../constants/conflictoDeSync';
+import { isUniqueConstraintError } from '../database/sqliteErrors';
+import {
+  CAMPO_EN_CONFLICTO, type CampoDeGrupo, type DatosDeGrupo, type PuntoGps,
+} from '../constants/conflictoDeSync';
 
 type Tx = typeof db;
 
@@ -77,6 +79,19 @@ export async function adoptarFoto(tx: Tx, treeId: string, local: string | null, 
   return escritos.length > 0;
 }
 
+async function escribirCampoDeGrupo(tx: Tx, grupoId: string, campo: CampoDeGrupo, enviado: string, delServidor: string) {
+  try {
+    return await tx.update(groups)
+      .set({ [campo]: delServidor } as Partial<typeof groups.$inferInsert>)
+      .where(and(eq(groups.id, grupoId), eq(groups[campo], enviado)))
+      .returning({ id: groups.id });
+  } catch (e) {
+    // Otro grupo local de la parcela ya usa ese nombre o código.
+    if (isUniqueConstraintError(e)) return [];
+    throw e;
+  }
+}
+
 /** Sin marcar el grupo pendiente: el valor viene del servidor. */
 export async function adoptarCampoDeGrupo(
   tx: Tx,
@@ -85,10 +100,7 @@ export async function adoptarCampoDeGrupo(
   enviado: string,
   delServidor: string,
 ): Promise<boolean> {
-  const escritos = await tx.update(groups)
-    .set({ [campo]: delServidor } as Partial<typeof groups.$inferInsert>)
-    .where(and(eq(groups.id, grupoId), eq(groups[campo], enviado)))
-    .returning({ id: groups.id });
+  const escritos = await escribirCampoDeGrupo(tx, grupoId, campo, enviado, delServidor);
   if (escritos.length === 0) return false;
   if (campo === CAMPO_EN_CONFLICTO.codigo) await rearmarSubIds(tx, grupoId, enviado, delServidor);
   return true;
@@ -99,5 +111,5 @@ async function rearmarSubIds(tx: Tx, grupoId: string, anterior: string, nuevo: s
   await recalcularSubIdsDelGrupo(tx, grupoId, { parcelaCodigo, grupoCodigo: anterior }, { parcelaCodigo, grupoCodigo: nuevo });
 }
 
-export const confirmarBaseDelGrupo = (tx: Tx, grupoId: string, base: Record<CampoDeGrupo, string>) =>
+export const confirmarBaseDelGrupo = (tx: Tx, grupoId: string, base: DatosDeGrupo) =>
   tx.update(groups).set({ baseDelServidor: base }).where(eq(groups.id, grupoId));

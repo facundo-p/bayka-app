@@ -530,9 +530,13 @@ async function pullPlantationSpecies(
 
 type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
 
+/** La foto que el servidor todavía tiene en un árbol que se baja sin ella: sigue siendo la base. */
+const FOTO_EN_SERVIDOR = 'foto_url_en_servidor';
+
 /** Árbol del server en columnas locales. Las filas de un lote comparten forma: el `set` del upsert es uno solo para todas y se resuelve con `excluded`. */
 function filaDeArbol(t: any) {
   const hasFotoOnServer = isRemoteUri(t.foto_url);
+  const fotoEnServidor = FOTO_EN_SERVIDOR in t ? t[FOTO_EN_SERVIDOR] : t.foto_url;
   return {
     id: t.id,
     // El server usa group_id directo; el compat shim 012b mantiene subgroup_id como GENERATED column para APKs viejos.
@@ -543,7 +547,7 @@ function filaDeArbol(t: any) {
     subId: t.sub_id,
     fotoUrl: hasFotoOnServer ? t.foto_url : null,
     fotoSynced: hasFotoOnServer,
-    fotoBase: hasFotoOnServer ? t.foto_url : null,
+    fotoBase: isRemoteUri(fotoEnServidor) ? fotoEnServidor : null,
     plantacionId: t.plantacion_id ?? null,
     globalId: t.global_id ?? null,
     usuarioRegistro: t.usuario_registro,
@@ -680,7 +684,9 @@ function omitirDelPull(
  * (#498).
  */
 function sinFotoQuitada(fotosQuitadas: Set<string>) {
-  return (remoto: any) => (fotosQuitadas.has(remoto.id) ? { ...remoto, foto_url: null } : remoto);
+  return (remoto: any) => (fotosQuitadas.has(remoto.id)
+    ? { ...remoto, foto_url: null, [FOTO_EN_SERVIDOR]: remoto.foto_url }
+    : remoto);
 }
 
 async function pullTrees(
