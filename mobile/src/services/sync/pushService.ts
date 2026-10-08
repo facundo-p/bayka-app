@@ -12,8 +12,9 @@ import {
   puedeEditarParcelas,
   Parcela,
 } from '../../repositories/ParcelaRepository';
-import { asentarGrupo } from './asentarGrupo';
-import { basesDelArbol, fotoCambiadaAca, type ArbolDeGrupo } from './basesDeSync';
+import { asentarFotosQuitadas, asentarGrupo } from './asentarGrupo';
+import { basesDeFotosQuitadas, basesDelArbol, fotoCambiadaAca, type ArbolDeGrupo } from './basesDeSync';
+import { getFotoBaseDeArboles } from '../../queries/treeQueries';
 import {
   SYNC_ERROR, SyncErrorCode, SyncGroupResult, SyncParcelaResult, SyncProgress,
   PhotoSyncProgress, classifyServerError, columnasDeLaViolacion,
@@ -191,25 +192,35 @@ async function pushBorradosDeFilas(plantacionId: string): Promise<void> {
   if (rechazados > 0) syncLog.info(`Push borrados: ${rechazados} pendientes, ${motivosDeRechazo(data.rechazos)}`);
 }
 
+async function quitarFotosEnServer(ids: string[]) {
+  return supabase.rpc('quitar_fotos_arboles', {
+    p_arboles: ids,
+    p_bases: basesDeFotosQuitadas(await getFotoBaseDeArboles(ids)),
+  });
+}
+
 /**
  * `sync_subgroup` no puede quitar una foto: un `foto_url` null no pisa el del
  * server. Sin esto el pull la restauraba y se volvía a bajar (#498).
+ *
+ * Con la foto que el teléfono vio (#810): si el server ya tiene otra, la conserva
+ * y el teléfono guarda lo quitado como conflicto.
  */
 async function pushFotosQuitadas(plantacionId: string): Promise<void> {
   const pendientes = await borradosDePlantacion(plantacionId, FOTOS_QUITADAS);
   if (pendientes.length === 0) return;
 
-  const { data, error } = await supabase.rpc('quitar_fotos_arboles', {
-    p_arboles: pendientes.map((b) => b.id),
-  });
+  const { data, error } = await quitarFotosEnServer(pendientes.map((b) => b.id));
   if (error || data?.success !== true) {
     syncLog.error('Push fotos quitadas falló:', JSON.stringify(error ?? data));
     return;
   }
 
   await anotarRechazos(plantacionId, data.rechazos);
+  const conflictos = await asentarFotosQuitadas(pendientes, data);
   const rechazadas = await limpiarConfirmados(pendientes, data.rechazados, FOTOS_QUITADAS);
   syncLog.info(`Push fotos quitadas: ${data.quitadas}`);
+  if (conflictos > 0) syncLog.info(`Push fotos quitadas: ${conflictos} cambiaron en el server, quedan para resolver`);
   if (rechazadas > 0) syncLog.info(`Push fotos quitadas: ${rechazadas} pendientes, ${motivosDeRechazo(data.rechazos)}`);
 }
 

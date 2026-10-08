@@ -14,7 +14,7 @@ import { GROUP_TIPO_LABELS, esGroupTipo } from '../constants/groupTipo';
 import type {
   ConflictoEnContexto, ConflictoParaResolver, EspecieEnConflicto, MotivoSinConservar,
 } from '../types/conflictoDeSync';
-import { entidadPresente, tieneCoordenadas } from './conflictosDeSync';
+import { entidadPresente, esFotoQuitada, tieneCoordenadas } from './conflictosDeSync';
 import { textoDeMomento } from './textoDeConflicto';
 import type { OpcionDeConflicto, VistaDeConflicto } from './vistaDeConflicto';
 
@@ -37,9 +37,13 @@ const METROS_EN_KM = 1000;
 
 const DESCRIPCION_DE_FOTO = { mia: 'Foto sacada en este teléfono', servidor: 'Foto del servidor' } as const;
 
+/** Sin foto de un lado. En el teléfono solo pasa si la quitaron acá. */
+const SIN_FOTO = { mia: 'Sin foto (la quitaste)', servidor: 'Sin foto' } as const;
+
 const ADVERTENCIA_DE_FOTO = {
   siQuedaLaDelServidor: 'Si queda la del servidor, la foto sacada en este teléfono se borra.',
   alGuardar: 'Al guardar se borra la foto sacada en este teléfono.',
+  siQuedaSinFoto: 'Si queda sin foto, se borra la del servidor.',
 } as const;
 
 const AVISO_DE_FALLA: Record<FallaAlResolver, string> = {
@@ -112,7 +116,7 @@ function opcion(c: ConflictoEnContexto, esMio: boolean, enLinea: boolean): Omit<
     case CAMPO_EN_CONFLICTO.especie: return { valor: textoDeEspecie(esMio ? c.especies.mia : c.especies.servidor, valor) };
     case CAMPO_EN_CONFLICTO.gps: return { valor: textoDePunto(valor), detalle: detalleDePunto(valor) };
     case CAMPO_EN_CONFLICTO.foto: {
-      if (!tieneFoto(valor)) return { valor: 'Sin foto' };
+      if (!tieneFoto(valor)) return { valor: esMio ? SIN_FOTO.mia : SIN_FOTO.servidor };
       const descripcion = esMio ? DESCRIPCION_DE_FOTO.mia : DESCRIPCION_DE_FOTO.servidor;
       return { valor: '', foto: { treeId: entidadId, uri: valor, enLinea, descripcion } };
     }
@@ -135,9 +139,14 @@ function notaDeDistancia(c: ConflictoEnContexto): string | null {
   return `Los dos puntos están a ${textoDeDistancia(metros)}.`;
 }
 
-/** La foto propia se borra si queda la del servidor; sin poder conservarla, se borra seguro. */
+/**
+ * La foto propia se borra si queda la del servidor; sin poder conservarla, se borra
+ * seguro. Una quitada acá, si se conserva, se lleva la del servidor.
+ */
 function advertenciaDeFoto({ conflicto, motivo }: ConflictoParaResolver): string | null {
-  if (conflicto.campo !== CAMPO_EN_CONFLICTO.foto || !tieneFoto(conflicto.mio)) return null;
+  if (conflicto.campo !== CAMPO_EN_CONFLICTO.foto) return null;
+  if (esFotoQuitada(conflicto.mio)) return motivo ? null : ADVERTENCIA_DE_FOTO.siQuedaSinFoto;
+  if (!tieneFoto(conflicto.mio)) return null;
   return motivo ? ADVERTENCIA_DE_FOTO.alGuardar : ADVERTENCIA_DE_FOTO.siQuedaLaDelServidor;
 }
 
@@ -152,7 +161,6 @@ function motivoSinValor(campo: CampoEnConflicto, mio: unknown): string {
   switch (campo) {
     case CAMPO_EN_CONFLICTO.especie:
       return mio == null ? 'Dejaste el árbol sin especie; eso no se puede volver a aplicar.' : 'Tu especie ya no está en la plantación.';
-    case CAMPO_EN_CONFLICTO.foto: return 'Habías quitado la foto en este teléfono; eso no se puede volver a aplicar desde acá.';
     case CAMPO_EN_CONFLICTO.gps: return 'Tu punto GPS quedó incompleto y no se puede volver a aplicar.';
     default: return 'Tu valor no se puede volver a aplicar.';
   }

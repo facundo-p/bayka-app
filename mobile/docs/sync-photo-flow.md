@@ -74,8 +74,17 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 | Paso | Qué hace con la foto quitada |
 |------|------------------------------|
 | Pull (`pullTrees`) | Baja la fila del árbol con `foto_url = null`: no restaura ni re-descarga |
-| Push (`pushBorrados`) | Llama `quitar_fotos_arboles(ids)` (migración 044), que pone `trees.foto_url = NULL` |
-| Confirmación | Limpia el registro, salvo los ids `rechazados` (plantación no escribible), que quedan pendientes |
+| Push (`pushBorrados`) | Llama `quitar_fotos_arboles(ids, bases)` (044, 076), que pone `trees.foto_url = NULL`. `bases` lleva el `fotoBase` de cada árbol: si el server ya tiene otra foto, no la quita (#810) |
+| Confirmación | Limpia el registro, salvo los ids `rechazados` (plantación no escribible), que quedan pendientes. Los `conservados` se asientan como conflicto (ver abajo) |
+
+- **La foto cambió en el server (#810):** `quitar_fotos_arboles` la conserva y la
+  devuelve en `conservados.arboles`, con la forma de `sync_subgroup`.
+  `asentarFotosQuitadas` (`asentarGrupo.ts`) adopta la del server y guarda un
+  conflicto de foto con `mio = null` ("Sin foto (la quitaste)"), en la misma
+  transacción que limpia el registro. "Conservar la mía" la vuelve a quitar, con
+  la del server como base; "descartar" se queda con la del server. Un árbol sin
+  `fotoBase` (una foto bajada antes de que existieran las bases) viaja sin base y
+  el server la quita como antes, igual que con el APK de prod.
 
 - **Id compartido con el borrado del árbol:** `borrados_pendientes.id` es la
   clave. Si después se borra el árbol, el registro pasa a `tipo = 'arbol'`: borrar

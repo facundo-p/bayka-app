@@ -56,7 +56,16 @@ export function basesDelArbol(t: ArbolDeGrupo) {
   };
 }
 
-export const datosDeGrupo = (g: DatosDeGrupo): DatosDeGrupo =>
+/**
+ * `p_bases` de `quitar_fotos_arboles` (076, #810): por árbol, la foto que el
+ * teléfono vio en el servidor. Sin `fotoBase` no se sabe si no vio ninguna o si
+ * la bajó antes de guardar bases: va sin base y el servidor la quita como antes.
+ */
+export function basesDeFotosQuitadas(arboles: Pick<ArbolDeGrupo, 'id' | 'fotoBase'>[]): Record<string, string> {
+  return Object.fromEntries(arboles.flatMap((t) => (t.fotoBase == null ? [] : [[t.id, t.fotoBase]])));
+}
+
+export const datosDeGrupo =(g: DatosDeGrupo): DatosDeGrupo =>
   Object.fromEntries(CAMPOS_DE_GRUPO.map((campo) => [campo, g[campo]])) as DatosDeGrupo;
 
 /** Los campos del grupo que cambiaron acá desde la base. Sin base, ninguno: no se sabe. */

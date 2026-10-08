@@ -34,6 +34,13 @@ describe('valorReaplicable', () => {
     expect(valorReaplicable('nombre', '')).toBe(false);
     expect(valorReaplicable('foto', 'file:///mia.jpg')).toBe(true);
   });
+
+  it('una foto quitada acá se puede volver a quitar; un valor que no es texto, no (#810)', () => {
+    expect(valorReaplicable('foto', null)).toBe(true);
+    expect(valorReaplicable('foto', '')).toBe(true);
+    expect(valorReaplicable('foto', 42)).toBe(false);
+    expect(valorReaplicable('nombre', null)).toBe(false);
+  });
 });
 
 describe('entidadPresente', () => {

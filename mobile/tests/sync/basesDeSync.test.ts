@@ -1,6 +1,6 @@
 // Bases que manda el push, respuesta `conservados` de sync_subgroup y path versionado de la foto (#795).
 import {
-  basesDelArbol, camposDeGrupoCambiadosAca, gpsCambiadoAca, type ArbolDeGrupo,
+  basesDeFotosQuitadas, basesDelArbol, camposDeGrupoCambiadosAca, gpsCambiadoAca, type ArbolDeGrupo,
 } from '../../src/services/sync/basesDeSync';
 import { leerConservados } from '../../src/services/sync/conservados';
 import { pathDeFotoEnStorage } from '../../src/services/sync/storageUpload';
@@ -38,6 +38,35 @@ describe('basesDelArbol', () => {
 
   it('una foto nueva sin subir manda la base aunque sea null', () => {
     expect(basesDelArbol(arbol({ fotoUrl: 'file:///photos/t-1.jpg' }))).toHaveProperty('foto_base', null);
+  });
+});
+
+describe('basesDeFotosQuitadas (#810)', () => {
+  it('por árbol, la foto que el teléfono vio en el servidor', () => {
+    expect(basesDeFotosQuitadas([
+      arbol({ id: 't-1', fotoBase: 'plantations/p/trees/t-1-v1.jpg' }),
+      arbol({ id: 't-2', fotoBase: 'plantations/p/trees/t-2.jpg' }),
+    ])).toEqual({ 't-1': 'plantations/p/trees/t-1-v1.jpg', 't-2': 'plantations/p/trees/t-2.jpg' });
+  });
+
+  // Puede ser una foto bajada antes de que existieran las bases: el server la quita como antes.
+  it('un árbol sin base va sin base', () => {
+    expect(basesDeFotosQuitadas([arbol({ id: 't-1' }), arbol({ id: 't-2', fotoBase: 'p/t-2.jpg' })])).toEqual({ 't-2': 'p/t-2.jpg' });
+  });
+
+  it('sin árboles, nada', () => {
+    expect(basesDeFotosQuitadas([])).toEqual({});
+  });
+});
+
+describe('leerConservados de quitar_fotos_arboles (076)', () => {
+  it('lee los árboles aunque no haya grupo', () => {
+    const { grupo, arboles } = leerConservados({
+      success: true, quitadas: 0, rechazados: [], conservados: { arboles: [{ id: 't-1', foto_url: 'p/t-1-v2.jpg' }] },
+    });
+
+    expect(grupo).toEqual({});
+    expect(arboles.get('t-1')).toEqual({ fotoUrl: 'p/t-1-v2.jpg' });
   });
 });
 

@@ -1,7 +1,8 @@
 /**
- * Cierre del push de un grupo (#795). Por cada dato: si el servidor aceptó lo que
- * se mandó, eso pasa a ser la base; si conservó el suyo, el teléfono lo adopta y,
- * si también lo había cambiado acá, guarda el propio como conflicto.
+ * Cierre del push de un grupo (#795) y de las fotos quitadas (#810). Por cada
+ * dato: si el servidor aceptó lo que se mandó, eso pasa a ser la base; si conservó
+ * el suyo, el teléfono lo adopta y, si también lo había cambiado acá, guarda el
+ * propio como conflicto.
  *
  * El grupo queda pendiente mientras tenga conflictos: no está sincronizado hasta
  * que la persona decide. Los demás cambios del grupo ya subieron.
@@ -17,8 +18,10 @@ import {
   adoptarCampoDeGrupo, adoptarEspecie, adoptarFoto, adoptarGps, confirmarBaseDeEspecie,
   confirmarBaseDeFoto, confirmarBaseDeGps, confirmarBaseDelGrupo, confirmarFotoSubida,
 } from '../../repositories/AsentamientoDeSyncRepository';
+import { limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
 import { borrarFotosLocales } from '../PhotoService';
 import { CAMPO_EN_CONFLICTO, CAMPOS_DE_GRUPO, type CampoDeGrupo, type CampoEnConflicto } from '../../constants/conflictoDeSync';
+import { FOTOS_QUITADAS } from '../../constants/entidadBorrada';
 import { isLocalUri, isRemoteUri } from '../../utils/photoUri';
 import { asegurarEspecies } from './catalogoDeEspecies';
 import {
@@ -28,6 +31,9 @@ import {
 import { leerConservados, type ArbolConservado, type Conservados } from './conservados';
 
 type Tx = typeof db;
+
+/** El grupo al que va un conflicto. */
+type DondeVa = Pick<Group, 'id' | 'plantacionId'>;
 
 /**
  * Conflictos nuevos, archivos locales que quedaron sin uso, y si algo no se pudo
@@ -49,7 +55,7 @@ const sumar = (a: Asentado, b: Asentado): Asentado => ({
 });
 
 /** Un dato que el servidor conservó, ya adoptado: conflicto si también cambió acá. */
-async function conflictoSiCambioAca(tx: Tx, sg: Group, cambioAca: boolean, conflicto: Omit<ConflictoNuevo, 'grupoId' | 'plantacionId'>): Promise<Asentado> {
+async function conflictoSiCambioAca(tx: Tx, sg: DondeVa, cambioAca: boolean, conflicto: Omit<ConflictoNuevo, 'grupoId' | 'plantacionId'>): Promise<Asentado> {
   if (!cambioAca) return NADA;
   const archivos = await guardarConflicto(tx, { ...conflicto, grupoId: sg.id, plantacionId: sg.plantacionId });
   return { ...NADA, conflictos: 1, archivos };
@@ -163,5 +169,40 @@ export async function asentarGrupo(
   borrarFotosLocales(asentado.archivos);
   if (asentado.sinAdoptar || await hayConflictosEnGrupo(sg.id)) notifyDataChanged();
   else await markGroupSynced(sg.id);
+  return asentado.conflictos;
+}
+
+/** Una foto quitada acá que el servidor conservó porque allá cambió: queda la del servidor y lo quitado, en conflicto. */
+async function asentarFotoQuitada(tx: Tx, quitada: BorradoPendiente & { grupoId: string }, delServidor: string | null): Promise<Asentado> {
+  if (!(await adoptarFoto(tx, quitada.id, null, delServidor))) return SIN_ADOPTAR;
+  return conflictoSiCambioAca(tx, { id: quitada.grupoId, plantacionId: quitada.plantacionId }, true,
+    { entidadId: quitada.id, campo: CAMPO_EN_CONFLICTO.foto, mio: null, servidor: delServidor });
+}
+
+/** Las quitadas que el servidor conservó, con la foto que tiene. */
+function quitadasConservadas(pendientes: BorradoPendiente[], respuesta: unknown) {
+  const { arboles } = leerConservados(respuesta);
+  return pendientes.flatMap((b) => {
+    const fotoUrl = arboles.get(b.id)?.fotoUrl;
+    return b.grupoId != null && fotoUrl !== undefined ? [{ quitada: { ...b, grupoId: b.grupoId }, fotoUrl }] : [];
+  });
+}
+
+/**
+ * Asienta lo que `quitar_fotos_arboles` conservó (#810). En la misma transacción
+ * deja de estar pendiente: si no, el próximo push la quitaría con la base nueva
+ * sin que nadie lo haya decidido. Devuelve cuántos conflictos nuevos quedaron.
+ */
+export async function asentarFotosQuitadas(pendientes: BorradoPendiente[], respuesta: unknown): Promise<number> {
+  const conservadas = quitadasConservadas(pendientes, respuesta);
+  if (conservadas.length === 0) return 0;
+  const asentado = await enTransaccion(async (tx) => {
+    let total = NADA;
+    for (const { quitada, fotoUrl } of conservadas) total = sumar(total, await asentarFotoQuitada(tx, quitada, fotoUrl));
+    await limpiarBorrados(conservadas.map((c) => c.quitada.id), FOTOS_QUITADAS, tx);
+    return total;
+  });
+  borrarFotosLocales(asentado.archivos);
+  notifyDataChanged();
   return asentado.conflictos;
 }

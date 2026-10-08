@@ -60,12 +60,27 @@ describe('vistaDeConflictoDeSync', () => {
     expect(vista.advertencia).toBe('Al guardar se borra la foto sacada en este teléfono.');
   });
 
-  it('foto que se había quitado acá: sin foto propia, sin advertencia y con el motivo claro', () => {
-    const vista = vistaDeConflictoDeSync(conflicto('foto', null, { motivo: 'conflicto_sin_valor' }), true);
+  it('foto quitada acá (#810): dice que la quitaste y avisa que conservarla borra la del servidor', () => {
+    const vista = vistaDeConflictoDeSync(conflicto('foto', null), true);
 
-    expect(vista.mio.valor).toBe('Sin foto');
+    expect(vista.mio).toEqual({ origen: 'En este teléfono', valor: 'Sin foto (la quitaste)' });
+    expect(vista.otro.foto).toEqual({ treeId: 't1', uri: ARBOL.fotoUrl, enLinea: true, descripcion: 'Foto del servidor' });
+    expect(vista.advertencia).toBe('Si queda sin foto, se borra la del servidor.');
+    expect(vista.motivo).toBeNull();
+  });
+
+  it('foto quitada que no se puede conservar: sin advertencia, con el motivo', () => {
+    const vista = vistaDeConflictoDeSync(conflicto('foto', '', { motivo: 'plantacion_no_editable' }), true);
+
+    expect(vista.mio.valor).toBe('Sin foto (la quitaste)');
     expect(vista.advertencia).toBeNull();
-    expect(vista.motivo).toBe('Habías quitado la foto en este teléfono; eso no se puede volver a aplicar desde acá.');
+    expect(vista.motivo).toBe('La plantación está finalizada. Para conservar la tuya, pedí que la reabran.');
+  });
+
+  it('el servidor sin foto dice solo "Sin foto"', () => {
+    const vista = vistaDeConflictoDeSync(conflicto('foto', 'file:///mia.jpg', { arbol: { ...ARBOL, fotoUrl: null } }), true);
+
+    expect(vista.otro.valor).toBe('Sin foto');
   });
 
   it('un guardado que no se aplicó: "cambió de nuevo" siempre; un error, solo si no hay motivo a la vista', () => {

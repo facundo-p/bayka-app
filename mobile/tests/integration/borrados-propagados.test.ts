@@ -13,7 +13,7 @@ import { conUsuarioCacheado } from '../helpers/rolCacheado';
 import { eq } from 'drizzle-orm';
 import { createTestDb, closeTestDb, sqliteDeIntegracion, IntegrationDb, vaciarTablas } from '../helpers/integrationDb';
 import { createTestPlantation } from '../helpers/factories';
-import { plantations, parcelas, groups, trees, species, borradosPendientes, plantationSpecies } from '../../src/database/schema';
+import { plantations, parcelas, groups, trees, species, borradosPendientes, conflictosDeSync, plantationSpecies } from '../../src/database/schema';
 
 const mockServerState: Record<string, Map<string, any>> = {
   plantations: new Map(),
@@ -69,17 +69,22 @@ jest.mock('../../src/supabase/client', () => {
         };
 
         // Doble de `quitar_fotos_arboles` (#498): pone la foto en null, mismo criterio de rechazo.
+        // Con base (#810), la foto que no es la que vio el teléfono vuelve en `conservados`.
         if (nombre === 'quitar_fotos_arboles') {
           let quitadas = 0;
           const rechazados: string[] = [];
+          const conservados: { id: string; foto_url: string }[] = [];
+          const bases: Record<string, string | null> = args.p_bases ?? {};
           for (const id of args.p_arboles as string[]) {
             const arbol = mockServerState.trees.get(id);
             if (!arbol) continue;
             if (!escribible(arbol.group_id)) { rechazados.push(id); continue; }
-            if (arbol.foto_url !== null) quitadas++;
+            if (arbol.foto_url === null) continue;
+            if (id in bases && bases[id] !== arbol.foto_url) { conservados.push({ id, foto_url: arbol.foto_url }); continue; }
+            quitadas++;
             arbol.foto_url = null;
           }
-          return Promise.resolve({ data: { success: true, quitadas, rechazados }, error: null });
+          return Promise.resolve({ data: { success: true, quitadas, rechazados, conservados: { arboles: conservados } }, error: null });
         }
         if (nombre !== 'sincronizar_borrados') return Promise.resolve({ data: null, error: { message: `rpc ${nombre} no mockeado` } });
 
@@ -137,6 +142,7 @@ import { deleteLastTree, deleteTreeAndRecalculate, updateTreePhoto } from '../..
 import { deleteGroup } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { plantationSpeciesId } from '../../src/utils/plantationSpeciesId';
+import { conservarLaMia, descartarConflicto } from '../../src/services/ConflictosDeSyncService';
 
 const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
@@ -612,6 +618,86 @@ describe('quitar la foto de un árbol sincronizado (#498)', () => {
 
     expect(rpc.mock.calls.map((c: any[]) => c[0])).toEqual(['quitar_fotos_arboles']);
     rpc.mockRestore();
+  });
+});
+
+describe('quitar una foto que cambió en el server (#810)', () => {
+  const VISTA = 'plantations/plant-1/parcelas/parc-1/trees/t2-v1.jpg';
+  const NUEVA = 'plantations/plant-1/parcelas/parc-1/trees/t2-v2.jpg';
+
+  /** t2 con la foto que el teléfono vio (v1); `enServer` es la que tiene hoy el server. */
+  async function quitarFotoVista(enServer: string) {
+    await grupoSincronizadoDeTres();
+    serverState.trees.get('t2').foto_url = enServer;
+    await mockTestDb.update(trees).set({ fotoUrl: VISTA, fotoSynced: true, fotoBase: VISTA }).where(eq(trees.id, 't2'));
+    await updateTreePhoto('t2', '');
+  }
+
+  const conflictos = () => mockTestDb.select().from(conflictosDeSync);
+  const pendientes = () => mockTestDb.select().from(borradosPendientes);
+
+  it('manda la foto que vio y, si sigue siendo la del server, la quita', async () => {
+    await quitarFotoVista(VISTA);
+    const { supabase } = jest.requireMock('../../src/supabase/client');
+    const rpc = jest.spyOn(supabase, 'rpc');
+
+    await sincronizar();
+
+    expect(rpc).toHaveBeenCalledWith('quitar_fotos_arboles', { p_arboles: ['t2'], p_bases: { t2: VISTA } });
+    rpc.mockRestore();
+    expect(serverState.trees.get('t2').foto_url).toBeNull();
+    expect(await conflictos()).toEqual([]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('si el server tiene otra, la conserva: el teléfono la adopta y lo quitado queda como conflicto', async () => {
+    await quitarFotoVista(NUEVA);
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoSynced: true, fotoBase: NUEVA });
+    expect(await conflictos()).toEqual([expect.objectContaining({
+      entidadId: 't2', campo: 'foto', grupoId: GRUPO_ID, plantacionId: PLANTACION_ID, mio: null, servidor: NUEVA,
+    })]);
+    expect(await pendientes()).toEqual([]);
+    const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
+    expect(grupo.pendingSync).toBe(true);
+  });
+
+  it('conservar la mía la vuelve a quitar con la del server como base, y el push siguiente la quita', async () => {
+    await quitarFotoVista(NUEVA);
+    await sincronizar();
+
+    expect(await conservarLaMia('t2', 'foto')).toEqual({ success: true });
+    expect((await leerArbol('t2')).fotoUrl).toBeNull();
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBeNull();
+    expect(await conflictos()).toEqual([]);
+    expect(await pendientes()).toEqual([]);
+  });
+
+  it('descartar se queda con la del server', async () => {
+    await quitarFotoVista(NUEVA);
+    await sincronizar();
+
+    await descartarConflicto('t2', 'foto');
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
+    expect((await leerArbol('t2')).fotoUrl).toBe(NUEVA);
+    expect(await conflictos()).toEqual([]);
+  });
+
+  it('si el server falla al responder, la quitada queda pendiente y sin conflicto', async () => {
+    await quitarFotoVista(NUEVA);
+    rpcFalla.activo = true;
+
+    await sincronizar();
+
+    expect(await pendientes()).toHaveLength(1);
+    expect(await conflictos()).toEqual([]);
   });
 });
 

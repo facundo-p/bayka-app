@@ -29,10 +29,14 @@ const esTextoConValor = (valor: unknown): valor is string => typeof valor === 's
 const esEstadoReaplicable = (valor: unknown) =>
   valor === ESTADO_GRUPO.activa || valor === ESTADO_GRUPO.finalizada;
 
+/** En un conflicto de foto, lo propio vacío es la foto quitada en este teléfono (#810). */
+export const esFotoQuitada = (mio: unknown): boolean => mio == null || mio === '';
+
 /** Si el valor propio tiene la forma que necesita su campo. Que la especie esté en la plantación se valida aparte. */
 export function valorReaplicable(campo: CampoEnConflicto, mio: unknown): boolean {
   switch (campo) {
     case CAMPO_EN_CONFLICTO.gps: return puntoCompleto(mio);
+    case CAMPO_EN_CONFLICTO.foto: return esFotoQuitada(mio) || esTextoConValor(mio);
     case CAMPO_EN_CONFLICTO.estado: return esEstadoReaplicable(mio);
     case CAMPO_EN_CONFLICTO.tipo: return esGroupTipo(mio);
     default: return esTextoConValor(mio);
