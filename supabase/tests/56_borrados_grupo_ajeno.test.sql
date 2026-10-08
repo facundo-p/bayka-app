@@ -1,9 +1,9 @@
--- sincronizar_borrados aplica la regla de escritura de #768 (073, #796): el
--- árbol y el grupo de un grupo ajeno los borran admin y superadmin, no un
--- técnico. Lo que se saltea no vuelve en `rechazados`: quedaría pendiente en el
--- teléfono para siempre.
+-- sincronizar_borrados aplica la regla de escritura de #768 (073, #796): un
+-- técnico solo borra lo suyo; admin y superadmin borran también lo ajeno. En una
+-- plantación escribible, lo que se saltea no vuelve en `rechazados`: quedaría
+-- pendiente en el teléfono para siempre.
 begin;
-select plan(16);
+select plan(22);
 
 insert into organizations (id, nombre) values
   ('b5600000-0000-0000-0000-000000000001', 'Org Test 56');
@@ -63,6 +63,27 @@ create temp table r56 (quien text primary key, resultado jsonb);
 
 -- ── Técnico sobre lo ajeno ───────────────────────────────────────────────────
 
+-- Solo el árbol, sin el grupo: lo frena el DELETE de `trees`, no la cascada.
+create function pg_temp.borra_arbol(p_usuario text, n int) returns jsonb language plpgsql as $$
+declare
+  v_resultado jsonb;
+begin
+  perform set_config('request.jwt.claim.sub', p_usuario, true);
+  set local role authenticated;
+  v_resultado := sincronizar_borrados(jsonb_build_array(
+    jsonb_build_object('id', 'b5600000-0000-0000-0000-00000000003' || n, 'tipo', 'arbol')));
+  reset role;
+  return v_resultado;
+end;
+$$;
+
+insert into r56 values ('tp-arbol', pg_temp.borra_arbol('b5600000-0000-0000-0000-0000000000a1', 1));
+select is((select (resultado ->> 'arboles')::int from r56 where quien = 'tp-arbol'), 0,
+  'técnico: no borra solo el árbol de un grupo ajeno');
+select is((select resultado -> 'rechazados' from r56 where quien = 'tp-arbol'), '[]'::jsonb,
+  'técnico: el árbol ajeno no vuelve en rechazados');
+select is(pg_temp.quedan(1), 2, 'técnico: el árbol ajeno sigue');
+
 insert into r56 values ('tp', pg_temp.borra('b5600000-0000-0000-0000-0000000000a1', 1));
 select is((select (resultado ->> 'success')::boolean from r56 where quien = 'tp'), true,
   'técnico: el borrado ajeno no es un error');
@@ -102,6 +123,15 @@ select is((select (resultado ->> 'grupos')::int from r56 where quien = 'to'), 1,
 select is((select resultado -> 'rechazados' from r56 where quien = 'to'), '[]'::jsonb,
   'creador: sin rechazados');
 select is(pg_temp.quedan(1), 0, 'creador: el árbol y el grupo ya no están');
+
+-- ── Grants ───────────────────────────────────────────────────────────────────
+
+select ok(has_function_privilege('authenticated', 'public.sincronizar_borrados(jsonb)', 'EXECUTE'),
+  'authenticated ejecuta sincronizar_borrados');
+select ok(has_function_privilege('service_role', 'public.sincronizar_borrados(jsonb)', 'EXECUTE'),
+  'service_role ejecuta sincronizar_borrados');
+select ok(not has_function_privilege('anon', 'public.sincronizar_borrados(jsonb)', 'EXECUTE'),
+  'anon no ejecuta sincronizar_borrados');
 
 select * from finish();
 rollback;

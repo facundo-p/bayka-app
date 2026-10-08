@@ -331,7 +331,8 @@ SQLite; el pull upsertea todo lo que el server tiene, así que sin propagarlos l
 fila volvía en la misma sincronización. Se anotan en `borrados_pendientes`, el pull
 los excluye y el push los manda por `sincronizar_borrados`, que es un RPC
 `SECURITY DEFINER` porque **no hay policy de DELETE sobre `trees` ni `groups`**: un
-delete desde el cliente sería un no-op silencioso.
+delete desde el cliente sería un no-op silencioso. Lo que el usuario no puede
+escribir (un grupo ajeno, para un técnico) lo saltea en silencio (#796).
 
 El registro es explícito —una fila por id— y no una semántica de reemplazo: el
 device puede tener un set parcial y "borrá todo lo que no te mandé" borraría del

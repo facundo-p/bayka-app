@@ -335,9 +335,10 @@ datos de campo (#522).
 En un grupo que ya existe y creó otro usuario solo escriben admin y superadmin
 (072, #768): `sync_subgroup` responde `PERMISSION`, y las policies de `trees`,
 `quitar_fotos_arboles`, `sincronizar_borrados` (073, #796) y las de
-`tree-photos` (por el árbol del nombre del archivo) lo rechazan. Los dos RPC
-saltean el id ajeno sin devolverlo como rechazado, para que no quede pendiente
-en el teléfono. Un técnico escribe solo en sus grupos. En la app, el admin
+`tree-photos` (por el árbol del nombre del archivo) lo rechazan. En una
+plantación escribible, `quitar_fotos_arboles` y `sincronizar_borrados` saltean
+el id ajeno sin devolverlo como rechazado, para que no quede pendiente en el
+teléfono. Un técnico escribe solo en sus grupos. En la app, el admin
 edita foto y GPS y resuelve N/N de un grupo ajeno, pero no borra árboles, no
 cambia la especie de uno identificado ni renombra, elimina o reactiva el grupo;
 un técnico sube solo sus grupos y resuelve solo los N/N de sus grupos. Si un

@@ -208,6 +208,10 @@ y un rechazo no toca el grupo; INSERT y UPDATE de `trees` (también mover un ár
 propio a un grupo ajeno), `quitar_fotos_arboles` (el ajeno no queda en
 `rechazados`) y subir, reemplazar o actualizar la foto de un árbol ajeno en
 `tree-photos`; la foto de un árbol que todavía no existe sí sube (072, #768).
+`56` `sincronizar_borrados` en un grupo ajeno: un técnico no borra el árbol (solo
+o con el grupo) ni el grupo de otro, y lo salteado no vuelve en `rechazados`;
+admin, superadmin y el creador sí lo borran; EXECUTE solo para `authenticated` y
+`service_role` (073, #796).
 
 ## Hallazgo fuera de alcance (no corregido)
 

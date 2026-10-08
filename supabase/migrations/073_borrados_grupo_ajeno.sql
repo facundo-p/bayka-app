@@ -1,18 +1,19 @@
--- `sincronizar_borrados` aplica la regla de escritura de #768: los árboles y
--- grupos de un grupo ajeno los borran solo admin y superadmin (#796).
+-- `sincronizar_borrados` aplica la regla de escritura de #768: un técnico solo
+-- borra lo suyo; admin y superadmin borran también lo ajeno (#796).
 --
--- Hasta acá bastaba la membresía y la plantación escribible: un técnico asignado
--- borraba en el server el árbol o el grupo de otro (un bug de la app o un APK
--- viejo alcanzaba). Ahora pasa por `puede_escribir_grupo`, como `sync_subgroup`.
+-- Hasta acá bastaba la membresía y la plantación escribible: un técnico
+-- asignado borraba en el server el árbol o el grupo de otro (un bug de la app o
+-- un APK viejo alcanzaba). Ahora pasa por `puede_escribir_grupo`, como
+-- `sync_subgroup`.
 --
--- El id de un grupo ajeno se saltea sin quedar en `rechazados`, igual que en
--- `quitar_fotos_arboles`: ahí quedaría pendiente en el teléfono para siempre,
--- porque reabrir la plantación no lo destraba. El pull devuelve la fila.
+-- En una plantación escribible, el id ajeno se saltea sin quedar en
+-- `rechazados`, igual que en `quitar_fotos_arboles`: ahí quedaría pendiente en
+-- el teléfono para siempre, y el pull ya devuelve la fila. En una no escribible
+-- vuelve en `rechazados` como cualquier borrado.
 --
 -- Rollback: volver a correr `sincronizar_borrados` de 038. No hay columnas ni
 -- datos que deshacer. En el repo, el rollback borra también el test 56.
 
--- Igual a 038 salvo `puede_escribir_grupo` en los dos DELETE.
 CREATE OR REPLACE FUNCTION "public"."sincronizar_borrados"("p_borrados" "jsonb")
 RETURNS "jsonb"
 LANGUAGE "plpgsql" SECURITY DEFINER
@@ -77,4 +78,5 @@ END;
 $$;
 
 ALTER FUNCTION "public"."sincronizar_borrados"("jsonb") OWNER TO "postgres";
+REVOKE ALL ON FUNCTION "public"."sincronizar_borrados"("jsonb") FROM PUBLIC, "anon";
 GRANT EXECUTE ON FUNCTION "public"."sincronizar_borrados"("jsonb") TO "authenticated", "service_role";
