@@ -12,6 +12,7 @@ import SyncConfirmModal from './SyncConfirmModal';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import type { ExpandedMeta } from '../hooks/usePlantationAdmin';
 import type { Plantation } from '../types/plantation';
+import type { PlantacionConCambios } from '../utils/conflictosDeEdicion';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
@@ -82,6 +83,8 @@ type Props = {
   handleSessionExpiredReauth: () => void;
   /** Abre "Resolver cambios" de una plantación (#634). */
   irAResolverCambios: (plantacionId: string) => void;
+  /** Plantaciones de la corrida con conflictos de sincronización sin resolver (#804). */
+  conflictosDeSync: PlantacionConCambios[];
 
   // Admin bottom sheet
   bottomSheetVisible: boolean;
@@ -143,6 +146,7 @@ export default function PlantacionesModals({
   resetSync,
   handleSessionExpiredReauth,
   irAResolverCambios,
+  conflictosDeSync,
   bottomSheetVisible,
   bottomSheetPlantation,
   bottomSheetMeta,
@@ -207,7 +211,8 @@ export default function PlantacionesModals({
         huboTimeout={huboTimeout}
         onCancelar={cancelarSync}
         onDismiss={resetSync}
-        onResolverCambios={isAdmin ? irAResolverCambios : undefined}
+        conflictosDeSync={conflictosDeSync}
+        onResolverCambios={irAResolverCambios}
       />
 
       <ConfirmModal

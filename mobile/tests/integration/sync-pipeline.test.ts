@@ -385,11 +385,10 @@ describe('cambio de especie (#679): base local y push', () => {
   it('el push manda la base y, confirmado, la especie subida pasa a ser la base', async () => {
     await cambiarEspecie('t-1', PINO);
 
-    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+    await uploadSyncableGroups(PLANTACION_ID);
 
     expect(arbolesDelPayload()[0]).toMatchObject({ species_id: PINO, species_base_id: ROBLE });
     expect((await leerArbol('t-1')).especieBaseId).toBe(PINO);
-    expect(resultado).not.toHaveProperty('conflictos');
   });
 
   it('un push rechazado deja la base como estaba', async () => {
@@ -410,7 +409,7 @@ describe('cambio de especie (#679): base local y push', () => {
     const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
 
     expect(await leerArbol('t-1')).toMatchObject({ especieId: ALAMO, especieBaseId: ALAMO, subId: 'P1LAALA3' });
-    expect(resultado).toMatchObject({ success: true, conflictos: 1 });
+    expect(resultado).toMatchObject({ success: true });
     expect(await conflictosDePlantacion(PLANTACION_ID)).toEqual([
       expect.objectContaining({ entidadId: 't-1', campo: 'especie', mio: PINO, servidor: ALAMO }),
     ]);
@@ -434,10 +433,9 @@ describe('cambio de especie (#679): base local y push', () => {
     await cambiarEspecie('t-1', PINO);
     conservaAlamo();
 
-    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+    await uploadSyncableGroups(PLANTACION_ID);
 
     expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: ROBLE });
-    expect(resultado).not.toHaveProperty('conflictos');
     // Sincronizado, el pull siguiente pisaría la propia sin dejar conflicto.
     expect((await leerGrupo()).pendingSync).toBe(true);
   });
@@ -471,10 +469,9 @@ describe('cambio de especie (#679): base local y push', () => {
     await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, GRUPO_ID));
     conserva(PINO);
 
-    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+    await uploadSyncableGroups(PLANTACION_ID);
 
     expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: PINO, subId: 'P1LAPIN3' });
-    expect(resultado).not.toHaveProperty('conflictos');
   });
 
   // Un grupo que llega pendiente a cada sync nunca recibe la especie por el pull.
@@ -482,11 +479,10 @@ describe('cambio de especie (#679): base local y push', () => {
     await mockTestDb.update(groups).set({ pendingSync: true }).where(eq(groups.id, GRUPO_ID));
     conserva(PINO);
 
-    const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+    await uploadSyncableGroups(PLANTACION_ID);
 
     expect(arbolesDelPayload()[0]).toMatchObject({ species_id: ROBLE, species_base_id: ROBLE });
     expect(await leerArbol('t-1')).toMatchObject({ especieId: PINO, especieBaseId: PINO, subId: 'P1LAPIN3' });
-    expect(resultado).not.toHaveProperty('conflictos');
   });
 });
 
@@ -574,7 +570,7 @@ describe('conflictos de sincronización (#795)', () => {
 
       const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
 
-      expect(resultado).toMatchObject({ success: true, conflictos: 1 });
+      expect(resultado).toMatchObject({ success: true });
       expect(await leerArbol('t-1')).toMatchObject({
         ...PUNTO_DEL_SERVER, latitudeBase: -34.2, longitudeBase: -58.2, gpsCapturedAtBase: '2026-10-02T10:00:00',
       });
@@ -588,10 +584,9 @@ describe('conflictos de sincronización (#795)', () => {
       await conArbol();
       conservaElArbol({ gps: DEL_SERVER });
 
-      const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+      await uploadSyncableGroups(PLANTACION_ID);
 
-      expect(resultado).not.toHaveProperty('conflictos');
-      expect(await leerArbol('t-1')).toMatchObject(PUNTO_DEL_SERVER);
+        expect(await leerArbol('t-1')).toMatchObject(PUNTO_DEL_SERVER);
       expect(await conflictos()).toEqual([]);
       expect((await leerGrupo()).pendingSync).toBe(false);
     });
@@ -614,10 +609,9 @@ describe('conflictos de sincronización (#795)', () => {
       await conArbol({ fotoUrl: FOTO_LOCAL, fotoSynced: true });
       conservaElArbol({ foto_url: FOTO_DEL_SERVER });
 
-      const [resultado] = await uploadSyncableGroups(PLANTACION_ID);
+      await uploadSyncableGroups(PLANTACION_ID);
 
-      expect(resultado).not.toHaveProperty('conflictos');
-      expect(await leerArbol('t-1')).toMatchObject({ fotoUrl: FOTO_DEL_SERVER, fotoBase: FOTO_DEL_SERVER });
+        expect(await leerArbol('t-1')).toMatchObject({ fotoUrl: FOTO_DEL_SERVER, fotoBase: FOTO_DEL_SERVER });
       expect(borrarFotosLocales).toHaveBeenCalledWith([FOTO_LOCAL]);
     });
 

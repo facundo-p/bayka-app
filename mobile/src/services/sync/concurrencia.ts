@@ -45,3 +45,33 @@ export async function conLimiteDeConcurrencia<T>(
   await Promise.all(Array.from({ length: obreros }, obrero));
   if (fallo) throw error;
 }
+
+/**
+ * Un semáforo para tareas que llegan de a una (cada foto de una pantalla, por
+ * ejemplo): a lo sumo `limite` en vuelo y el resto espera en orden de llegada.
+ */
+export function limitador(limite: number) {
+  const maximo = Math.max(1, limite);
+  let enVuelo = 0;
+  const esperando: (() => void)[] = [];
+  const tomar = () => new Promise<void>((resolve) => {
+    if (enVuelo < maximo) {
+      enVuelo += 1;
+      resolve();
+    } else esperando.push(resolve);
+  });
+  // El lugar pasa directo al siguiente: `enVuelo` solo baja si nadie espera.
+  const soltar = () => {
+    const siguiente = esperando.shift();
+    if (siguiente) siguiente();
+    else enVuelo -= 1;
+  };
+  return async function correr<T>(tarea: () => Promise<T>): Promise<T> {
+    await tomar();
+    try {
+      return await tarea();
+    } finally {
+      soltar();
+    }
+  };
+}

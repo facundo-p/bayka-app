@@ -1,8 +1,6 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 import SyncProgressModal from '../../src/components/SyncProgressModal';
-import { colors } from '../../src/theme';
 
 type Props = React.ComponentProps<typeof SyncProgressModal>;
 
@@ -147,7 +145,7 @@ describe('SyncProgressModal', () => {
         onResolverCambios,
         plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 1 }],
       });
-      expect(getByText('Un dato cambió también en la web. Elegí cuál queda.')).toBeTruthy();
+      expect(getByText('Un dato cambió también en otro celular o en la web. Elegí cuál queda.')).toBeTruthy();
 
       fireEvent.press(getByText('Resolver'));
 
@@ -159,7 +157,7 @@ describe('SyncProgressModal', () => {
       const { getByText, queryByText } = renderModal({
         plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 2 }],
       });
-      expect(getByText('2 datos cambiaron también en la web. Elegí cuáles quedan.')).toBeTruthy();
+      expect(getByText('2 datos cambiaron también en otro celular o en la web. Elegí cuáles quedan.')).toBeTruthy();
       expect(queryByText('Resolver')).toBeNull();
     });
 
@@ -188,26 +186,24 @@ describe('SyncProgressModal', () => {
       expect(getByText('1 foto descargada correctamente')).toBeTruthy();
     });
 
-    it('cuenta los conflictos nuevos, sumando los grupos (#795)', () => {
-      const { getByText } = renderModal({
-        results: [
-          { success: true, groupId: 'g1', nombre: 'Grupo 1', conflictos: 2 },
-          { success: true, groupId: 'g2', nombre: 'Grupo 2', conflictos: 1 },
-          { ...FALLA_DE_GRUPO, groupId: 'g3' },
-        ],
-        successCount: 2,
-      });
-      expect(getByText('3 datos también cambiaron desde la web u otro celular: quedaron esos y los tuyos esperan que elijas')).toBeTruthy();
-    });
-
-    it('en singular para un solo conflicto', () => {
-      const { getByText } = renderModal({
-        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1', conflictos: 1 }],
+    it('suma los conflictos de sincronización al aviso de la plantación y "Resolver" la abre (#804)', () => {
+      const onResolverCambios = jest.fn();
+      const { getByText, getAllByText } = renderModal({
+        results: [{ success: true, groupId: 'g1', nombre: 'Grupo 1' }],
         successCount: 1,
+        onResolverCambios,
+        plantationResults: [{ success: true, plantacionId: 'p1', nombre: 'Lote Norte', cambiosPorResolver: 1 }],
+        conflictosDeSync: [
+          { plantacionId: 'p1', nombre: 'Lote Norte', cantidad: 2 },
+          { plantacionId: 'p2', nombre: 'Campo Sur', cantidad: 1 },
+        ],
       });
-      const aviso = getByText('1 dato también cambió desde la web u otro celular: quedó ese y el tuyo espera que elijas');
-      // Neutro: lo propio no se perdió ni subió, espera una decisión.
-      expect(StyleSheet.flatten(aviso.props.style).color).toBe(colors.textSecondary);
+      expect(getByText('3 datos cambiaron también en otro celular o en la web. Elegí cuáles quedan.')).toBeTruthy();
+      expect(getByText('Campo Sur')).toBeTruthy();
+
+      fireEvent.press(getAllByText('Resolver')[1]);
+
+      expect(onResolverCambios).toHaveBeenCalledWith('p2');
     });
 
     it('sync sin pull (null) cae en el resultado de push', () => {

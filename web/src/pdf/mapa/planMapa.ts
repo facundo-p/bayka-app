@@ -1,5 +1,6 @@
 import { barraDeEscala, type BarraEscala } from './escala';
-import { encuadrar, proyectar, type Encuadre, type LatLng, type Pixel } from './proyeccion';
+import type { LatLng } from '../../../../shared/distancia';
+import { encuadrar, proyectar, type Encuadre, type Pixel } from './proyeccion';
 
 export type PuntoMapa = LatLng & { color: string };
 export type EtiquetaMapa = LatLng & { texto: string };

@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { colors, fontSize, spacing, borderRadius, fonts, iconSizes } from '../theme';
+import { colors, fontSize, spacing, borderRadius, fonts, iconSizes, touchTarget } from '../theme';
 
 const RADIO = iconSizes.action;
 const RADIO_PUNTO = spacing.md;
@@ -26,11 +26,16 @@ export const tarjetaDeConflictoStyles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: borderRadius.md,
     padding: spacing.lg,
-    minHeight: 44,
+    minHeight: touchTarget.min,
   },
   opcionElegida: {
     borderColor: colors.primary,
     backgroundColor: colors.primaryBg,
+  },
+  opcionDeshabilitada: {
+    borderStyle: 'dashed',
+    borderColor: colors.borderMuted,
+    backgroundColor: colors.backgroundAlt,
   },
   radio: {
     width: RADIO,
@@ -53,7 +58,7 @@ export const tarjetaDeConflictoStyles = StyleSheet.create({
   },
   opcionTexto: {
     flex: 1,
-    gap: spacing.xxs,
+    gap: spacing.xs,
   },
   origen: {
     fontSize: fontSize.xs,
@@ -61,14 +66,42 @@ export const tarjetaDeConflictoStyles = StyleSheet.create({
     color: colors.textSecondary,
     textTransform: 'uppercase',
   },
+  textoDeshabilitado: {
+    color: colors.textMuted,
+  },
   valor: {
     fontSize: fontSize.base,
     fontFamily: fonts.medium,
     color: colors.textPrimary,
   },
-  anterior: {
+  valorTachado: {
+    color: colors.textMuted,
+    textDecorationLine: 'line-through',
+  },
+  detalle: {
     fontSize: fontSize.sm,
     fontFamily: fonts.regular,
     color: colors.textSecondary,
+  },
+  nota: {
+    fontSize: fontSize.sm,
+    fontFamily: fonts.regular,
+    color: colors.textSecondary,
+  },
+  advertencia: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  advertenciaTexto: {
+    flex: 1,
+    fontSize: fontSize.md,
+    fontFamily: fonts.regular,
+    color: colors.conflictoText,
+  },
+  motivo: {
+    fontSize: fontSize.md,
+    fontFamily: fonts.regular,
+    color: colors.conflictoText,
   },
 });

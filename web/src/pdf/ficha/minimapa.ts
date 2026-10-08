@@ -5,7 +5,7 @@ import { capaSatelital } from '../mapa/capaSatelital';
 import { dibujarMapa } from '../mapa/dibujarMapa';
 import { MAPA_NO_DISPONIBLE, MAPA_SIN_GPS, mapaDeDibujo, type MapaPdf } from '../mapa/estadoMapa';
 import type { ContenidoMapa } from '../mapa/planMapa';
-import { distanciaMetros, type LatLng } from '../mapa/proyeccion';
+import { distanciaMetros, type LatLng } from '../../../../shared/distancia';
 import { TOPE_TILES } from '../mapa/tiles';
 import { MEDIDA_FICHA } from '../plantilla/tokens';
 

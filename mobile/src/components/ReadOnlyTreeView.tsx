@@ -13,12 +13,14 @@ export type { TreeItemData as ReadOnlyTreeItem };
 interface Props {
   trees: TreeItemData[];
   canReactivate: boolean;
+  /** Árboles con conflictos de sincronización sin resolver. */
+  arbolesConCambios?: ReadonlySet<string>;
   onReactivate: () => void;
   onViewPhoto: (treeId: string, uri: string) => void;
   onSelectTree: (treeId: string) => void;
 }
 
-export default function ReadOnlyTreeView({ trees, canReactivate, onReactivate, onViewPhoto, onSelectTree }: Props) {
+export default function ReadOnlyTreeView({ trees, canReactivate, arbolesConCambios, onReactivate, onViewPhoto, onSelectTree }: Props) {
   const { orden } = useOrdenArboles();
   return (
     <>
@@ -39,6 +41,7 @@ export default function ReadOnlyTreeView({ trees, canReactivate, onReactivate, o
           <TreeRowItem
             item={item}
             isReadOnly={true}
+            conCambiosPorResolver={arbolesConCambios?.has(item.id)}
             onViewPhoto={onViewPhoto}
             onPress={onSelectTree}
           />

@@ -16,6 +16,8 @@ import TreeConfigModal from '../components/TreeConfigModal';
 import SpeciesReorderModal from '../components/SpeciesReorderModal';
 import ConfirmModal from '../components/ConfirmModal';
 import ScreenContainer from '../components/ScreenContainer';
+import ConflictosDelGrupoAviso from '../components/ConflictosDelGrupoAviso';
+import { useConflictosDeGrupo } from '../hooks/useConflictosDeGrupo';
 import { colors } from '../theme';
 import { GROUP_TIPO_LABELS, type GroupTipo } from '../constants/groupTipo';
 import { treeRegistrationScreenStyles as styles } from './TreeRegistrationScreen.styles';
@@ -31,6 +33,7 @@ export default function TreeRegistrationScreen() {
     visor, fotoDelSeleccionado, accionesDeGrupo, accionesDeArbol, permisos,
   } = useTreeRegistrationScreen({ grupoId, plantacionId, grupoCodigo });
   const { selectedTree } = treeSelection;
+  const conflictos = useConflictosDeGrupo(grupoId ?? '', plantacionId ?? '');
 
   const [showTreeList, setShowTreeList] = useState(false);
   const [editingTreeId, setEditingTreeId] = useState<string | null>(null);
@@ -55,6 +58,8 @@ export default function TreeRegistrationScreen() {
         unresolvedNN={unresolvedNN}
         onBack={() => router.back()}
       />
+
+      {conflictos.aviso && <ConflictosDelGrupoAviso texto={conflictos.aviso} onResolver={conflictos.resolver} />}
 
       {dataLoaded && !isReadOnly && (
         <ViewAllTreesRow totalCount={totalCount} onPress={() => setShowTreeList(true)} />
@@ -110,6 +115,7 @@ export default function TreeRegistrationScreen() {
         <ReadOnlyTreeView
           trees={sortedTrees}
           canReactivate={canReactivate}
+          arbolesConCambios={conflictos.arbolesConCambios}
           onReactivate={accionesDeGrupo.handleReactivate}
           onViewPhoto={(treeId, uri) => visor.abrir({ uri, treeId })}
           onSelectTree={setEditingTreeId}
@@ -120,6 +126,7 @@ export default function TreeRegistrationScreen() {
         visible={showTreeList}
         trees={sortedTrees}
         isReadOnly={isReadOnly}
+        arbolesConCambios={conflictos.arbolesConCambios}
         deletingTreeId={deletingTreeId}
         onClose={() => setShowTreeList(false)}
         onViewPhoto={(treeId, uri) => visor.abrir({ uri, treeId })}

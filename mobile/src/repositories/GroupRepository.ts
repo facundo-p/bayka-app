@@ -69,7 +69,7 @@ export async function getLastGroupName(plantacionId: string): Promise<string | n
 }
 
 /** Valida nombre/codigo únicos dentro de la parcela del grupo (#90: parcela obligatoria, sin fallback per-plantación). */
-async function validateGroupUniqueness(
+export async function validateGroupUniqueness(
   parcelaId: string,
   nombre: string,
   codigo: string,

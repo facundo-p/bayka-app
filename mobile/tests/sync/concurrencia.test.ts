@@ -1,4 +1,4 @@
-import { conLimiteDeConcurrencia } from '../../src/services/sync/concurrencia';
+import { conLimiteDeConcurrencia, limitador } from '../../src/services/sync/concurrencia';
 
 /** Promesa que se resuelve/rechaza desde afuera, para controlar el orden exacto de finalización. */
 function diferida<T = void>() {
@@ -113,5 +113,41 @@ describe('conLimiteDeConcurrencia', () => {
     });
 
     await expect(corrida).rejects.toThrow('error 1');
+  });
+});
+
+describe('limitador', () => {
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  it('a lo sumo `limite` en vuelo; el resto arranca en orden a medida que se liberan', async () => {
+    const correr = limitador(2);
+    const tareas = [diferida(), diferida(), diferida(), diferida()];
+    const arrancadas: number[] = [];
+    const corridas = tareas.map((t, i) => correr(async () => {
+      arrancadas.push(i);
+      await t.promesa;
+      return i;
+    }));
+    const primera = expect(corridas[0]).rejects.toThrow('falló');
+
+    await tick();
+    expect(arrancadas).toEqual([0, 1]);
+
+    tareas[1].resolver();
+    await tick();
+    expect(arrancadas).toEqual([0, 1, 2]);
+
+    tareas[0].rechazar(new Error('falló'));
+    await tick();
+    expect(arrancadas).toEqual([0, 1, 2, 3]);
+
+    tareas[2].resolver();
+    tareas[3].resolver();
+    await primera;
+    await expect(Promise.all(corridas.slice(1))).resolves.toEqual([1, 2, 3]);
+  });
+
+  it('un límite de 0 igual deja pasar de a una', async () => {
+    await expect(limitador(0)(async () => 'ok')).resolves.toBe('ok');
   });
 });

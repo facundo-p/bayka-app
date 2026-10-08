@@ -314,6 +314,26 @@ unidad), la foto y los datos del grupo (nombre, código, tipo y estado).
   no se puede reaplicar.
 - Borrar un árbol, un grupo o la plantación, o descartar pendientes varados, se
   lleva sus conflictos y sus archivos.
+- **Pantalla** (#804): la misma `ResolverCambiosScreen` de #634 suma una sección
+  por grupo y por árbol, con lo del teléfono contra lo del servidor y la opción
+  propia marcada. "Guardar elección" aplica `conservarLaMia` o `descartarConflicto`
+  a cada uno (`ConflictosParaResolverService`). Si lo propio no se puede conservar
+  (plantación no editable, sin permiso, árbol o grupo borrado, especie que ya no
+  está, punto incompleto, nombre o código de grupo repetido),
+  `motivoParaNoConservar` lo dice antes y la opción queda deshabilitada;
+  `conservarLaMia` aplica los mismos rechazos (un test de integración los compara
+  caso por caso).
+- Cada elección lleva el `detectadoEn` que vio el usuario. Si un pull reemplazó el
+  conflicto mientras elegía, no se aplica: la tarjeta vuelve con "Cambió de nuevo"
+  y la elección arranca otra vez. Un conflicto que ya no está cuenta como resuelto.
+- Las fotos del servidor se bajan solas al mostrarse, de a `FOTOS_EN_PARALELO`.
+- **Avisos:** el resumen de la sync suma los conflictos sin resolver de las
+  plantaciones sincronizadas al aviso de "Cambios por resolver", la tarjeta de la
+  plantación muestra la marca y la pantalla del grupo avisa arriba y marca cada
+  árbol afectado.
+- Descartar el último conflicto deja el grupo pendiente hasta el próximo push, que
+  no cambia nada y lo marca sincronizado. Marcarlo antes no es seguro: un grupo
+  pendiente puede tener otros cambios sin subir y la marca no los distingue.
 
 ---
 

@@ -14,9 +14,11 @@ import { CAMPO_EN_CONFLICTO, type CampoEnConflicto } from '../constants/conflict
 import { isLocalUri } from '../utils/photoUri';
 import { localNow } from '../utils/dateUtils';
 
+import type { ConflictoDeSync } from '../types/conflictoDeSync';
+
 type Tx = typeof db;
 
-export type ConflictoDeSync = typeof conflictosDeSync.$inferSelect;
+export type { ConflictoDeSync };
 export type ConflictoNuevo = Omit<ConflictoDeSync, 'detectadoEn'>;
 
 /** El archivo local de un conflicto de foto. */

@@ -406,11 +406,9 @@ async function codigoDeParcelaLista(parcelaId: string): Promise<string | null> {
 async function asentarGrupoSubido(
   sg: Group,
   subida: { enviados: ArbolDeGrupo[]; fotosSubidas: Map<string, string>; data: unknown },
-  result: Extract<SyncGroupResult, { success: true }>,
 ): Promise<void> {
   try {
-    const conflictos = await asentarGrupo(sg, subida.enviados, subida.fotosSubidas, subida.data);
-    if (conflictos > 0) result.conflictos = conflictos;
+    await asentarGrupo(sg, subida.enviados, subida.fotosSubidas, subida.data);
   } catch (e) {
     relanzarSiEsCancelacion(e);
     syncLog.error(`Error al asentar "${sg.nombre}" (${sg.id}) después del push:`, e);
@@ -448,7 +446,7 @@ export async function uploadSyncableGroups(
     try {
       const { data, error, fotosSubidas } = await uploadGroup(sg, sgTrees, parcelaCodigo, onPhotoProgress);
       const result = classifyRpcResult(sg, data, error);
-      if (result.success) await asentarGrupoSubido(sg, { enviados: sgTrees, fotosSubidas, data }, result);
+      if (result.success) await asentarGrupoSubido(sg, { enviados: sgTrees, fotosSubidas, data });
       await anotarResultado(plantacionId, result);
       results.push(result);
     } catch (e) {

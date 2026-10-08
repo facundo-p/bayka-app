@@ -215,6 +215,8 @@ export const headerActionButton = {
 // ─── Icon size tokens ────────────────────────────────────────────────────────
 export const iconSizes = {
   action: 18,
+  /** Íconos de estado dentro de una fila de lista. */
+  fila: 16,
   stat: 14,
   checkbox: 20,
   badge: 12,

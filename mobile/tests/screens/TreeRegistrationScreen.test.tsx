@@ -21,6 +21,9 @@ jest.mock('../../src/hooks/useSpeciesOrder', () => ({
 }));
 jest.mock('../../src/hooks/useEstiloBotonera', () => ({ useEstiloBotonera: () => ({ estilo: 'grilla' }) }));
 jest.mock('../../src/hooks/useCurrentUserId', () => ({ useCurrentUserId: () => 'u1' }));
+const mockSinConflictos = () => ({ aviso: null as string | null, arbolesConCambios: new Set<string>(), resolver: jest.fn() });
+const mockConflictosDeGrupo = jest.fn(mockSinConflictos);
+jest.mock('../../src/hooks/useConflictosDeGrupo', () => ({ useConflictosDeGrupo: () => mockConflictosDeGrupo() }));
 jest.mock('../../src/hooks/useGpsEnabledSetting', () => ({ useGpsEnabledSetting: () => ({ gpsEnabled: false }) }));
 jest.mock('../../src/hooks/useGpsWatcher', () => ({ useGpsWatcher: () => ({ getLastFix: () => null }) }));
 jest.mock('../../src/hooks/useGpsGate', () => ({ useGpsGate: () => ({ blocked: false }) }));
@@ -121,5 +124,27 @@ describe('TreeRegistrationScreen: aviso de reemplazo y visor', () => {
     expect(screen.getByText('Reemplazar la foto')).toBeTruthy();
     expect(screen.queryByText('Ver actual')).toBeNull();
     expect(mockPickPhoto).not.toHaveBeenCalled();
+  });
+});
+
+describe('TreeRegistrationScreen: conflictos de sincronización (#804)', () => {
+  beforeEach(() => jest.clearAllMocks());
+  afterEach(() => mockConflictosDeGrupo.mockImplementation(mockSinConflictos));
+
+  it('con conflictos, el aviso arriba lleva a resolverlos', () => {
+    const resolver = jest.fn();
+    const aviso = '1 árbol tiene cambios por resolver. El grupo no termina de sincronizarse hasta que elijas.';
+    mockConflictosDeGrupo.mockReturnValue({ aviso, arbolesConCambios: new Set(['t14']), resolver });
+    const { screen } = setup();
+
+    expect(screen.getByText(aviso)).toBeTruthy();
+    fireEvent.press(screen.getByText('Resolver'));
+
+    expect(resolver).toHaveBeenCalled();
+  });
+
+  it('sin conflictos no hay aviso', () => {
+    const { screen } = setup();
+    expect(screen.queryByText('Resolver')).toBeNull();
   });
 });
