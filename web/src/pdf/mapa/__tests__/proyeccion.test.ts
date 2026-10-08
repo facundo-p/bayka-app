@@ -1,3 +1,4 @@
+import type { LatLng } from '../../../../../shared/distancia';
 import {
   aspectoDe,
   LADO_TILE,
@@ -5,7 +6,6 @@ import {
   metrosPorPixel,
   pixelDelMundo,
   proyectar,
-  type LatLng,
 } from '../proyeccion';
 
 const SAN_SEBASTIAN: LatLng = { lat: -27.36012, lng: -55.89744 };

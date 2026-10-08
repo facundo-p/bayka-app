@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { View, Text, Pressable, ActivityIndicator, type StyleProp, type ViewStyle } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
@@ -13,18 +12,11 @@ interface Props {
   oscuro?: boolean;
   style?: StyleProp<ViewStyle>;
   onDescargada?: (uri: string) => void;
-  /** Se baja sola al aparecer; el botón queda para reintentar. */
-  descargarAlMostrar?: boolean;
 }
 
 /** Foto que está en la nube y no en este celular (#53): se baja de a una. */
-export default function FotoRemota({ treeId, storagePath, oscuro, style, onDescargada, descargarAlMostrar }: Props) {
+export default function FotoRemota({ treeId, storagePath, oscuro, style, onDescargada }: Props) {
   const { descargar, descargando, fallo } = useDescargarFoto(treeId, storagePath, onDescargada);
-  useEffect(() => {
-    if (descargarAlMostrar) void descargar();
-    // Solo al montar: un fallo no reintenta solo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <View testID="foto-remota" style={[styles.contenedor, oscuro && styles.contenedorOscuro, style]}>

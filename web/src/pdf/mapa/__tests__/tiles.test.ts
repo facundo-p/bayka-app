@@ -1,4 +1,5 @@
-import { encuadrar, proyectar, type Encuadre, type LatLng } from '../proyeccion';
+import type { LatLng } from '../../../../../shared/distancia';
+import { encuadrar, proyectar, type Encuadre } from '../proyeccion';
 import {
   cantidadDeTiles,
   elegirZoom,

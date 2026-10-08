@@ -5,8 +5,6 @@
 
 import { GRADOS_A_RADIANES, RADIO_TIERRA_M, type LatLng } from '../../../../shared/distancia';
 
-export { distanciaMetros, type LatLng } from '../../../../shared/distancia';
-
 /** Lado de un tile XYZ en px. */
 export const LADO_TILE = 256;
 
