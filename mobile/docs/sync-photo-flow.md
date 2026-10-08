@@ -414,7 +414,6 @@ de parcelas —que incluye el tombstone— además exige `is_admin()` (056, #640
 | `foto_url` | text | sí | Ruta de Storage o `file://` local. `null` = sin foto |
 | `foto_synced` | integer | no | `0` = foto local pendiente de upload. `1` = foto en Storage |
 | `especie_base_id` | text | sí | Especie del servidor la última vez que se vio el árbol; el push la manda como base (#679) |
-| `conflict_especie_id`, `conflict_especie_nombre` | text | sí | Sin uso desde #679; siguen porque un JS anterior las nombra |
 
 ---
 
