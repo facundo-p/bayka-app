@@ -1,24 +1,30 @@
 /**
- * Plantaciones cuya edición chocó con un cambio de la web en este sync (#634). Lo demás
- * subió; esos campos quedan con el valor de la web hasta que el usuario elija.
+ * Plantaciones de este sync con datos que cambiaron también en otro lado: campos de la
+ * edición que chocaron con la web (#634) y conflictos de sincronización de grupos y
+ * árboles (#804). Lo demás subió; esos datos quedan con el valor del servidor hasta
+ * que el usuario elija.
  */
 import { View, Text, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, iconSizes } from '../theme';
 import type { SyncPlantationResult } from '../services/SyncService';
-import { cambiosPorResolverDe } from '../utils/conflictosDeEdicion';
+import { cambiosPorResolverDe, type PlantacionConCambios } from '../utils/conflictosDeEdicion';
 import { cambiosPorResolverAvisoStyles as styles } from './CambiosPorResolverAviso.styles';
 
-type Props = { resultados: SyncPlantationResult[]; onResolver?: (plantacionId: string) => void };
+type Props = {
+  resultados: SyncPlantationResult[];
+  conflictosDeSync?: PlantacionConCambios[];
+  onResolver?: (plantacionId: string) => void;
+};
 
 function detalle(cantidad: number): string {
   return cantidad > 1
-    ? `${cantidad} datos cambiaron también en la web. Elegí cuáles quedan.`
-    : 'Un dato cambió también en la web. Elegí cuál queda.';
+    ? `${cantidad} datos cambiaron también en otro celular o en la web. Elegí cuáles quedan.`
+    : 'Un dato cambió también en otro celular o en la web. Elegí cuál queda.';
 }
 
-export default function CambiosPorResolverAviso({ resultados, onResolver }: Props) {
-  const plantaciones = cambiosPorResolverDe(resultados);
+export default function CambiosPorResolverAviso({ resultados, conflictosDeSync, onResolver }: Props) {
+  const plantaciones = cambiosPorResolverDe(resultados, conflictosDeSync);
   if (plantaciones.length === 0) return null;
   return (
     <View style={styles.aviso}>

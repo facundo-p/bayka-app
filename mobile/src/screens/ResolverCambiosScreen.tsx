@@ -4,10 +4,15 @@ import CustomHeader from '../components/CustomHeader';
 import FormActions from '../components/FormActions';
 import ScreenContainer from '../components/ScreenContainer';
 import TarjetaDeConflicto from '../components/TarjetaDeConflicto';
-import { eleccionDe, useResolverCambios } from '../hooks/useResolverCambios';
+import { eleccionDe, useResolverCambios, type TarjetaDeSync } from '../hooks/useResolverCambios';
+import { vistaDeConflictoDeCampo } from '../utils/textoDeConflicto';
+import type { SeccionDeConflictos } from '../utils/seccionesDeConflictos';
+import type { Eleccion } from '../utils/conflictosDeEdicion';
 import { resolverCambiosScreenStyles as styles } from './ResolverCambiosScreen.styles';
 
 const TITULO = 'Resolver cambios';
+const NOTA = 'Estos datos cambiaron también en otro celular o en la web desde tu última sincronización. '
+  + 'Lo demás ya se subió. Elegí qué valor queda: el otro se descarta.';
 
 function SinCambios({ onVolver }: { onVolver: () => void }) {
   return (
@@ -20,35 +25,57 @@ function SinCambios({ onVolver }: { onVolver: () => void }) {
   );
 }
 
+type SeccionProps = { seccion: SeccionDeConflictos<TarjetaDeSync>; onElegir: (clave: string, eleccion: Eleccion) => void };
+
+/** Los conflictos de un grupo o de un árbol. */
+function Seccion({ seccion, onElegir }: SeccionProps) {
+  return (
+    <View style={styles.seccion}>
+      <View style={styles.encabezado}>
+        <Text style={styles.seccionTitulo}>{seccion.titulo}</Text>
+        {seccion.sub ? <Text style={styles.seccionSub}>{seccion.sub}</Text> : null}
+      </View>
+      {seccion.conflictos.map(({ clave, vista, eleccion }) => (
+        <TarjetaDeConflicto key={clave} vista={vista} eleccion={eleccion} onElegir={(e) => onElegir(clave, e)} />
+      ))}
+    </View>
+  );
+}
+
+const subtitulo = (lugar: string, cantidad: number) => {
+  if (cantidad === 0) return lugar || undefined;
+  const pendientes = cantidad === 1 ? '1 cambio por resolver' : `${cantidad} cambios por resolver`;
+  return lugar ? `${lugar} · ${pendientes}` : pendientes;
+};
+
 /**
- * Campos que cambiaron en el teléfono y en la web a la vez (#634): por cada uno, el usuario
- * elige cuál queda. Mientras tanto la plantación muestra el de la web.
+ * Datos que cambiaron en el teléfono y en otro lado a la vez: campos de la plantación
+ * (#634) y, por grupo y por árbol, conflictos de sincronización (#804). Por cada uno
+ * el usuario elige cuál queda.
  */
 export default function ResolverCambiosScreen() {
   const { plantacionId } = useLocalSearchParams<{ plantacionId: string }>();
   const r = useResolverCambios(plantacionId ?? '');
-  const hayConflictos = r.conflictos.length > 0;
 
   return (
     <ScreenContainer>
-      <CustomHeader title={TITULO} subtitle={r.lugar || undefined} onBack={r.despues} />
-      {!r.cargando && !hayConflictos && <SinCambios onVolver={r.despues} />}
-      {hayConflictos && (
+      <CustomHeader title={TITULO} subtitle={subtitulo(r.lugar, r.cantidad)} onBack={r.despues} />
+      {!r.cargando && r.cantidad === 0 && <SinCambios onVolver={r.despues} />}
+      {r.cantidad > 0 && (
         <>
           <ScrollView style={styles.lista} contentContainerStyle={styles.listaContenido}>
-            <Text style={styles.nota}>
-              Esto cambió también en la web. Lo demás ya se subió. Elegí qué valor queda: el otro se descarta.
-            </Text>
+            <Text style={styles.nota}>{NOTA}</Text>
             {r.conflictos.map((conflicto) => (
               <TarjetaDeConflicto
                 key={conflicto.campo}
-                conflicto={conflicto}
+                vista={vistaDeConflictoDeCampo(conflicto)}
                 eleccion={eleccionDe(r.elecciones, conflicto.campo)}
                 onElegir={(eleccion) => r.elegir(conflicto.campo, eleccion)}
               />
             ))}
-            {r.error ? <Text style={styles.error}>{r.error}</Text> : null}
+            {r.secciones.map((seccion) => <Seccion key={seccion.clave} seccion={seccion} onElegir={r.elegirEnSync} />)}
           </ScrollView>
+          {r.error ? <Text style={styles.error}>{r.error}</Text> : null}
           <View style={styles.pie}>
             <FormActions
               submitLabel="Guardar elección"

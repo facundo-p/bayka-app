@@ -36,6 +36,7 @@ export interface ConflictoRemoto {
 
 export const ELECCION = {
   mio: 'mio',
+  /** Lo del servidor: lo cambió la web u otro celular. */
   web: 'web',
 } as const;
 
@@ -101,11 +102,22 @@ export function tieneCambiosPorResolver(p: { conflictosDeEdicion?: ConflictoDeCa
 
 type ResultadoDeSync = { success: boolean; plantacionId: string; nombre: string; cambiosPorResolver?: number };
 
-/** Las plantaciones de un sync que quedaron con cambios por resolver. */
+export type PlantacionConCambios = { plantacionId: string; nombre: string; cantidad: number };
+
+/**
+ * Las plantaciones de un sync que quedaron con cambios por resolver: los campos de la
+ * edición (#634) más los conflictos de sincronización (#804) de cada una.
+ */
 export function cambiosPorResolverDe(
   resultados: ResultadoDeSync[],
-): { plantacionId: string; nombre: string; cantidad: number }[] {
-  return resultados
+  conflictosDeSync: PlantacionConCambios[] = [],
+): PlantacionConCambios[] {
+  const porId = new Map(resultados
     .filter((r) => r.success && (r.cambiosPorResolver ?? 0) > 0)
-    .map((r) => ({ plantacionId: r.plantacionId, nombre: r.nombre, cantidad: r.cambiosPorResolver ?? 0 }));
+    .map((r) => [r.plantacionId, { plantacionId: r.plantacionId, nombre: r.nombre, cantidad: r.cambiosPorResolver ?? 0 }]));
+  for (const p of conflictosDeSync) {
+    const previa = porId.get(p.plantacionId);
+    porId.set(p.plantacionId, previa ? { ...previa, cantidad: previa.cantidad + p.cantidad } : p);
+  }
+  return [...porId.values()];
 }

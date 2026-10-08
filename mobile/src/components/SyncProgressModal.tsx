@@ -1,7 +1,7 @@
 import { Text, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
-import { SYNC_STATE, SYNC_ERROR, getErrorMessage, conflictosNuevos } from '../services/SyncService';
+import { SYNC_STATE, SYNC_ERROR, getErrorMessage } from '../services/SyncService';
 import type { SyncState } from '../hooks/useSync';
 import type { SyncProgress, SyncGroupResult, SyncParcelaResult, SyncPlantationResult, PhotoSyncProgress, DownloadPhaseProgress, PlantacionesOmitidas } from '../services/SyncService';
 import BaseModal from './BaseModal';
@@ -9,6 +9,7 @@ import FailureList from './FailureList';
 import PlantacionesOmitidasAviso from './PlantacionesOmitidasAviso';
 import PlantacionesDuplicadasAviso from './PlantacionesDuplicadasAviso';
 import CambiosPorResolverAviso from './CambiosPorResolverAviso';
+import type { PlantacionConCambios } from '../utils/conflictosDeEdicion';
 import EspeciesConArbolesAviso from './EspeciesConArbolesAviso';
 import TecnicosNoAsignadosAviso from './TecnicosNoAsignadosAviso';
 import ProgressBar from './ProgressBar';
@@ -51,6 +52,8 @@ interface Props {
   onDismiss: () => void;
   /** Abre "Resolver cambios" de una plantación (#634); sin esto el aviso no ofrece el botón. */
   onResolverCambios?: (plantacionId: string) => void;
+  /** Plantaciones de la corrida con conflictos de sincronización sin resolver (#804). */
+  conflictosDeSync?: PlantacionConCambios[];
 }
 
 type GlobalProgress = { plantationName: string; done: number; total: number } | null | undefined;
@@ -236,12 +239,11 @@ function cantidad(n: number, singular: string, plural: string): string {
   return `${n} ${n > 1 ? plural : singular}`;
 }
 
-type PropsDeConteo = { n?: number; singular: string; plural: string; falla?: boolean; aviso?: boolean };
+type PropsDeConteo = { n?: number; singular: string; plural: string; falla?: boolean };
 
-function Conteo({ n, singular, plural, falla, aviso }: PropsDeConteo) {
+function Conteo({ n, singular, plural, falla }: PropsDeConteo) {
   if (n == null || n <= 0) return null;
-  const estilo = falla ? styles.failureMessage : styles.successText;
-  return <Text style={aviso ? styles.avisoText : estilo}>{cantidad(n, singular, plural)}</Text>;
+  return <Text style={falla ? styles.failureMessage : styles.successText}>{cantidad(n, singular, plural)}</Text>;
 }
 
 function FotosDescargadas({ photoResult }: { photoResult: PhotoResult | null }) {
@@ -270,11 +272,11 @@ function hayFallas(p: Props): boolean {
 }
 
 /** Cierra el resumen y abre la pantalla donde se elige. */
-function AvisoDeCambiosPorResolver({ plantationResults, onDismiss, onResolverCambios }: Props) {
+function AvisoDeCambiosPorResolver({ plantationResults, conflictosDeSync, onDismiss, onResolverCambios }: Props) {
   const resolver = onResolverCambios
     ? (plantacionId: string) => { onDismiss(); onResolverCambios(plantacionId); }
     : undefined;
-  return <CambiosPorResolverAviso resultados={plantationResults} onResolver={resolver} />;
+  return <CambiosPorResolverAviso resultados={plantationResults} conflictosDeSync={conflictosDeSync} onResolver={resolver} />;
 }
 
 /** Solo hubo pull: no se subió ni falló nada que listar. */
@@ -301,17 +303,10 @@ function ResultadoPull(p: Props) {
   );
 }
 
-/** Datos cambiados acá y en el server: gana el server y el propio queda para decidir (#795). Neutro: no es un éxito ni una falla. */
-const CONTEO_CONFLICTOS = {
-  singular: 'dato también cambió desde la web u otro celular: quedó ese y el tuyo espera que elijas',
-  plural: 'datos también cambiaron desde la web u otro celular: quedaron esos y los tuyos esperan que elijas',
-} as const;
-
-function ConteosDePush({ successCount, photoResult, results }: Pick<Props, 'successCount' | 'photoResult' | 'results'>) {
+function ConteosDePush({ successCount, photoResult }: Pick<Props, 'successCount' | 'photoResult'>) {
   return (
     <>
       <Conteo n={successCount} singular="grupo sincronizado" plural="grupos sincronizados" />
-      <Conteo n={conflictosNuevos(results)} {...CONTEO_CONFLICTOS} aviso />
       <Conteo n={photoResult?.uploaded} singular="foto subida correctamente" plural="fotos subidas correctamente" />
       <Conteo n={photoResult?.uploadFailed} singular="foto no pudo subirse." plural="fotos no pudieron subirse." falla />
       <Conteo
@@ -331,7 +326,7 @@ function ResultadoPush(p: Props) {
     <>
       <IconoDeResultado ok={!conFallas} />
       <Text style={styles.title}>{conFallas ? 'Sincronización parcial' : 'Sincronización completa'}</Text>
-      <ConteosDePush successCount={p.successCount} photoResult={p.photoResult} results={p.results} />
+      <ConteosDePush successCount={p.successCount} photoResult={p.photoResult} />
       {/* Plantación primero: si no se subió, FK-bloquea sus parcelas y grupos (la causa
           raíz más upstream). Luego parcela (bloquea grupos con PARCELA_PENDING), luego grupos. */}
       <FailureList label="plantación" plural="plantaciones" results={p.plantationResults} getKey={(r) => r.plantacionId} />

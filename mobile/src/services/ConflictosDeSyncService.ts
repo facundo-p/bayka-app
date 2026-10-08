@@ -20,8 +20,9 @@ import { plantacionEditablePorId } from '../queries/estadoDeEdicionQueries';
 import { getGroupById } from '../queries/plantationDetailQueries';
 import { borrarFotosLocales } from './PhotoService';
 import {
-  CAMPO_EN_CONFLICTO, ERROR_DE_CONFLICTO, type CampoEnConflicto, type ErrorDeConflicto, type PuntoGps,
+  CAMPO_EN_CONFLICTO, ERROR_DE_CONFLICTO, type CampoEnConflicto, type ErrorDeConflicto,
 } from '../constants/conflictoDeSync';
+import { puntoCompleto } from '../utils/conflictosDeSync';
 import { ERROR_DE_EDICION, type ErrorDeDuplicado, type ErrorDeEdicion } from '../constants/errorDeEdicion';
 import { ESTADO_GRUPO } from '../constants/estados';
 import { esGroupTipo } from '../constants/groupTipo';
@@ -39,11 +40,8 @@ async function especieMia(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
 }
 
 async function gpsMio(c: ConflictoDeSync): Promise<ResultadoDeConflicto> {
-  const punto = c.mio as PuntoGps | null;
-  if (punto?.latitude == null || punto.longitude == null || punto.gpsCapturedAt == null) {
-    return falla(ERROR_DE_CONFLICTO.sinValor);
-  }
-  const { latitude, longitude, gpsAccuracy, gpsCapturedAt } = punto;
+  if (!puntoCompleto(c.mio)) return falla(ERROR_DE_CONFLICTO.sinValor);
+  const { latitude, longitude, gpsAccuracy, gpsCapturedAt } = c.mio;
   await updateTreeGps(c.entidadId, { latitude, longitude, gpsAccuracy, gpsCapturedAt });
   return OK;
 }

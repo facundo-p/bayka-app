@@ -14,7 +14,6 @@ import { usePlantacionesScreen } from '../hooks/usePlantacionesScreen';
 import type { Plantation } from '../types/plantation';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
 import { esEliminadaEnServidor } from '../constants/estados';
-import { tieneCambiosPorResolver } from '../utils/conflictosDeEdicion';
 import { avisoDeLaTarjeta } from '../utils/avisoPendientesVarados';
 
 export default function PlantacionesScreen() {
@@ -100,7 +99,7 @@ export default function PlantacionesScreen() {
                     nnCount: s.nnCountMap.get(item.id) ?? 0,
                     visibleInApp: item.visibleInApp,
                     eliminadaEnServidor: esEliminadaEnServidor(item),
-                    onResolverCambios: s.isAdmin && tieneCambiosPorResolver(item)
+                    onResolverCambios: s.hayCambiosPorResolver(item)
                       ? () => s.irAResolverCambios(item.id)
                       : undefined,
                     pendientesVarados: avisoDeVarados(item.id),

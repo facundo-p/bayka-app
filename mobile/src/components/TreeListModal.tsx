@@ -15,6 +15,8 @@ interface Props {
   visible: boolean;
   trees: TreeItemData[];
   isReadOnly: boolean;
+  /** Árboles con conflictos de sincronización sin resolver. */
+  arbolesConCambios?: ReadonlySet<string>;
   deletingTreeId: string | null;
   onClose: () => void;
   onViewPhoto: (treeId: string, uri: string) => void;
@@ -27,6 +29,7 @@ export default function TreeListModal({
   visible,
   trees,
   isReadOnly,
+  arbolesConCambios,
   deletingTreeId,
   onClose,
   onViewPhoto,
@@ -57,6 +60,7 @@ export default function TreeListModal({
               item={item}
               isReadOnly={isReadOnly}
               isDeleting={deletingTreeId === item.id}
+              conCambiosPorResolver={arbolesConCambios?.has(item.id)}
               onViewPhoto={onViewPhoto}
               onAttachPhoto={onAttachPhoto}
               onDeleteTree={onDeleteTree}

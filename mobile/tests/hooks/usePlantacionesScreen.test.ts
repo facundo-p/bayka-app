@@ -95,6 +95,9 @@ jest.mock('../../src/hooks/usePendingSyncCount', () => ({
   usePendingSyncCount: () => ({ pendingCount: 0 }),
 }));
 
+jest.mock('../../src/hooks/useConflictosDeSyncPorPlantacion', () => ({
+  useConflictosDeSyncPorPlantacion: () => new Map(),
+}));
 jest.mock('../../src/hooks/usePendingSyncMap', () => ({
   usePendingSyncMap: () => new Map(),
 }));

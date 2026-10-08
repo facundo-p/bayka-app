@@ -25,6 +25,8 @@ interface Props {
   item: TreeItemData;
   isReadOnly: boolean;
   isDeleting?: boolean;
+  /** Tiene un conflicto de sincronización sin resolver (#804). */
+  conCambiosPorResolver?: boolean;
   onViewPhoto: (treeId: string, uri: string) => void;
   onAttachPhoto?: (treeId: string) => void;
   onDeleteTree?: (treeId: string, posicion: number) => void;
@@ -32,7 +34,9 @@ interface Props {
   onPress?: (treeId: string) => void;
 }
 
-export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto, onAttachPhoto, onDeleteTree, onPress }: Props) {
+export default function TreeRowItem({
+  item, isReadOnly, isDeleting, conCambiosPorResolver, onViewPhoto, onAttachPhoto, onDeleteTree, onPress,
+}: Props) {
   const content = (
     <>
       <Text style={styles.pos}>{item.posicion}</Text>
@@ -41,6 +45,11 @@ export default function TreeRowItem({ item, isReadOnly, isDeleting, onViewPhoto,
       </Text>
       <Text style={styles.code} numberOfLines={1}>{getSpeciesCode(item)}</Text>
       <View style={styles.actions}>
+        {conCambiosPorResolver && (
+          <View testID="cambios-por-resolver" style={styles.gpsPin}>
+            <Ionicons name="warning-outline" size={16} color={colors.conflictoText} accessibilityLabel="Cambios por resolver" />
+          </View>
+        )}
         {item.latitude != null && (
           <View testID="gps-pin" style={styles.gpsPin}>
             <Ionicons name="location" size={16} color={colors.plantation} />

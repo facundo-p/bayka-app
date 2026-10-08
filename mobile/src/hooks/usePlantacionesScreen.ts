@@ -4,7 +4,7 @@
  * local (confirm de sync, bottom sheet admin, expand/edit inline de parcela, modales admin). Sin
  * imports de SQL/db — solo llama a hooks/repositories/services existentes.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useRoutePrefix } from './useRoutePrefix';
 import { usePlantaciones } from './usePlantaciones';
@@ -19,7 +19,10 @@ import type { ParcelaWithStats } from '../queries/parcelaQueries';
 import type { Parcela } from '../repositories/ParcelaRepository';
 import type { CamposDePlantacion } from '../utils/camposDePlantacion';
 import { plantacionEsEditable } from '../utils/permisosDeEdicion';
+import { tieneCambiosPorResolver } from '../utils/conflictosDeEdicion';
+import { plantacionesConConflictos } from '../utils/conflictosDeSync';
 import { useIrAResolverCambios } from './useIrAResolverCambios';
+import { useConflictosDeSyncPorPlantacion } from './useConflictosDeSyncPorPlantacion';
 import { usePuedeEditarParcela } from './usePuedeEditarParcela';
 
 const EMPTY_META: ExpandedMeta = { canFinalize: false, idsGenerated: false, unresolvedNNCount: 0, unresolvedNNGroups: 0, pendientesSinSubir: '' };
@@ -37,6 +40,7 @@ export function usePlantacionesScreen() {
   const { signOut } = useAuth();
   const { pendingCount: globalPendingCount } = usePendingSyncCount();
   const pendingSyncBoolMap = usePendingSyncMap();
+  const conflictosDeSyncMap = useConflictosDeSyncPorPlantacion();
 
   const hasAnyPending = globalPendingCount > 0;
   const isSyncing = sync.state !== 'idle' && sync.state !== 'done';
@@ -144,6 +148,17 @@ export function usePlantacionesScreen() {
     router.push(`/${routePrefix}/plantation/${navId}` as any);
   }, [plantacionPendienteNav, router, routePrefix]);
 
+  // Los campos de la edición solo los cambia un admin (#634); los conflictos de sync, cualquiera (#804).
+  const hayCambiosPorResolver = useCallback((p: Plantation) =>
+    (plantaciones.isAdmin && tieneCambiosPorResolver(p)) || (conflictosDeSyncMap.get(p.id) ?? 0) > 0,
+  [plantaciones.isAdmin, conflictosDeSyncMap]);
+
+  // El global no fija plantación: el aviso cubre todas.
+  const conflictosDeSync = useMemo(
+    () => plantacionesConConflictos(conflictosDeSyncMap, plantaciones.plantationList ?? [], syncTargetPlantationId),
+    [conflictosDeSyncMap, plantaciones.plantationList, syncTargetPlantationId],
+  );
+
   // Editar lugar/período/config escribe en `plantations`: bloqueado si está
   // finalizada o archivada (#469, #477). Cubre las dos entradas: long-press de la card y el gear.
   const handleEditPress = useCallback((plantation: Plantation) => {
@@ -185,6 +200,8 @@ export function usePlantacionesScreen() {
     photoResult: sync.photoResult,
     handleSessionExpiredReauth,
     irAResolverCambios,
+    hayCambiosPorResolver,
+    conflictosDeSync,
     hasAnyPending,
     isSyncing,
     pendingSyncBoolMap,

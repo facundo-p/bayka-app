@@ -1,6 +1,7 @@
 /** Textos de la pantalla "Resolver cambios" (#634): etiquetas, valores y quién/cuándo. */
 import type { CampoDePlantacion } from './camposDePlantacion';
 import type { ConflictoDeCampo, ValorDeCampo } from './conflictosDeEdicion';
+import type { VistaDeConflicto } from './vistaDeConflicto';
 import { isoAFecha } from './fechaDeCalendario';
 import { conPuntosDeMiles } from './formularioDePlantacion';
 
@@ -81,4 +82,15 @@ export function origenDelCambioWeb(conflicto: ConflictoDeCampo): string {
 
 export function textoAnterior(conflicto: ConflictoDeCampo): string {
   return `Antes de los dos cambios: ${textoDeValor(conflicto.campo, conflicto.anterior)}`;
+}
+
+/** La tarjeta de un campo de la plantación. */
+export function vistaDeConflictoDeCampo(conflicto: ConflictoDeCampo): VistaDeConflicto {
+  const { campo } = conflicto;
+  return {
+    titulo: ETIQUETA_DE_CAMPO[campo],
+    mio: { origen: origenDeMiCambio(conflicto), valor: textoDeValor(campo, conflicto.mio) },
+    otro: { origen: origenDelCambioWeb(conflicto), valor: textoDeValor(campo, conflicto.web) },
+    nota: textoAnterior(conflicto),
+  };
 }

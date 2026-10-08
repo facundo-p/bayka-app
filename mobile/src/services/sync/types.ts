@@ -67,9 +67,6 @@ export type SyncGroupResult =
   | { success: true; groupId: string; nombre: string; conflictos?: number }
   | { success: false; groupId: string; nombre: string; error: SyncErrorCode; parcelaId?: string | null; detail?: string };
 
-export const conflictosNuevos = (resultados: SyncGroupResult[]): number =>
-  resultados.reduce((total, r) => total + (r.success ? r.conflictos ?? 0 : 0), 0);
-
 export type SyncParcelaResult =
   | { success: true; parcelaId: string; nombre: string }
   | { success: false; parcelaId: string; nombre: string; error: SyncErrorCode; detail?: string };
