@@ -173,7 +173,10 @@ test('sin texto, recientes ni plantaciones: mensaje neutro, sin encabezados ni c
   estadoMock.resolverConsulta = (consulta) =>
     consulta.tabla === 'plantations' ? { data: [], count: 0 } : responder(consulta);
   renderRutasEn('/plantaciones');
-  await screen.findByRole('button', { name: /Buscar/ });
+  // No alcanza con ver el trigger: el listener de ⌘K se registra en un effect
+  // que puede correr después del commit que lo pinta (#809). Un render posterior,
+  // como el estado vacío del listado, asegura que el effect ya corrió.
+  await screen.findByText('Sin plantaciones');
   fireEvent.keyDown(document, { key: 'k', metaKey: true });
   const dialog = await screen.findByRole('dialog', { name: 'Buscar' });
 
