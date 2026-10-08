@@ -139,10 +139,11 @@ jest.mock('../../src/utils/syncLogger', () => ({
 import { pullFromServer } from '../../src/services/sync/pullService';
 import { pushBorrados } from '../../src/services/sync/pushService';
 import { deleteLastTree, deleteTreeAndRecalculate, updateTreePhoto } from '../../src/repositories/TreeRepository';
-import { deleteGroup } from '../../src/repositories/GroupRepository';
+import { deleteGroup, type Group } from '../../src/repositories/GroupRepository';
 import { deletePlantationLocally } from '../../src/repositories/PlantationRepository';
 import { plantationSpeciesId } from '../../src/utils/plantationSpeciesId';
 import { conservarLaMia, descartarConflicto } from '../../src/services/ConflictosDeSyncService';
+import { asentarGrupo } from '../../src/services/sync/asentarGrupo';
 
 const PLANTACION_ID = 'plant-1';
 const GRUPO_ID = 'g-1';
@@ -688,6 +689,31 @@ describe('quitar una foto que cambió en el server (#810)', () => {
     expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
     expect((await leerArbol('t2')).fotoUrl).toBe(NUEVA);
     expect(await conflictos()).toEqual([]);
+  });
+
+  // El grupo sube aunque falle la quitada; el pull siguiente no lo omite.
+  it('con el grupo ya subido, el pull no cambia la base: la foto nueva del server igual queda en conflicto', async () => {
+    await quitarFotoVista(VISTA);
+    await mockTestDb.update(groups).set({ pendingSync: false }).where(eq(groups.id, GRUPO_ID));
+    serverState.trees.get('t2').foto_url = NUEVA;
+
+    await sincronizar();
+
+    expect(serverState.trees.get('t2').foto_url).toBe(NUEVA);
+    expect(await conflictos()).toEqual([expect.objectContaining({ entidadId: 't2', mio: null, servidor: NUEVA })]);
+  });
+
+  it('si el push del grupo trae la foto nueva antes que la quitada, también queda en conflicto', async () => {
+    await quitarFotoVista(NUEVA);
+    const [grupo] = await mockTestDb.select().from(groups).where(eq(groups.id, GRUPO_ID));
+
+    await asentarGrupo(grupo as Group, [await leerArbol('t2')], new Map(), {
+      success: true, conservados: { grupo: {}, arboles: [{ id: 't2', foto_url: NUEVA }] },
+    });
+
+    expect(await leerArbol('t2')).toMatchObject({ fotoUrl: NUEVA, fotoBase: NUEVA });
+    expect(await conflictos()).toEqual([expect.objectContaining({ entidadId: 't2', mio: null, servidor: NUEVA })]);
+    expect(await pendientes()).toEqual([]);
   });
 
   it('si el server falla al responder, la quitada queda pendiente y sin conflicto', async () => {

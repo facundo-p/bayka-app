@@ -65,7 +65,7 @@ export function basesDeFotosQuitadas(arboles: Pick<ArbolDeGrupo, 'id' | 'fotoBas
   return Object.fromEntries(arboles.flatMap((t) => (t.fotoBase == null ? [] : [[t.id, t.fotoBase]])));
 }
 
-export const datosDeGrupo =(g: DatosDeGrupo): DatosDeGrupo =>
+export const datosDeGrupo = (g: DatosDeGrupo): DatosDeGrupo =>
   Object.fromEntries(CAMPOS_DE_GRUPO.map((campo) => [campo, g[campo]])) as DatosDeGrupo;
 
 /** Los campos del grupo que cambiaron acá desde la base. Sin base, ninguno: no se sabe. */

@@ -530,7 +530,7 @@ async function pullPlantationSpecies(
 
 type Tx = any; // Drizzle tx type or full db when transactions unsupported (test mocks).
 
-/** La foto que el servidor todavía tiene en un árbol que se baja sin ella: sigue siendo la base. */
+/** La base de un árbol que se baja sin su foto quitada (ver `sinFotoQuitada`). */
 const FOTO_EN_SERVIDOR = 'foto_url_en_servidor';
 
 /** Árbol del server en columnas locales. Las filas de un lote comparten forma: el `set` del upsert es uno solo para todas y se resuelve con `excluded`. */
@@ -681,11 +681,12 @@ function omitirDelPull(
 /**
  * Una foto quitada localmente sigue en el server hasta que el push la propaga. Se
  * baja la fila sin foto: con la foto, el pull la restaura y se vuelve a descargar
- * (#498).
+ * (#498). La base sigue siendo la foto que el teléfono vio al quitarla: con la del
+ * server, el push quitaría una foto nueva sin conflicto (#810). Sin base, la del server.
  */
-function sinFotoQuitada(fotosQuitadas: Set<string>) {
+function sinFotoQuitada(fotosQuitadas: Set<string>, locales: Map<string, ArbolLocal>) {
   return (remoto: any) => (fotosQuitadas.has(remoto.id)
-    ? { ...remoto, foto_url: null, [FOTO_EN_SERVIDOR]: remoto.foto_url }
+    ? { ...remoto, foto_url: null, [FOTO_EN_SERVIDOR]: locales.get(remoto.id)?.fotoBase ?? remoto.foto_url }
     : remoto);
 }
 
@@ -729,7 +730,7 @@ async function arbolesAEscribir(
   const noOmitidos = all.filter((t: any) => !omitir(t));
   const omitidos = all.length - noOmitidos.length;
   if (omitidos > 0) syncLog.info(`Pull trees: ${omitidos} omitidos (edición local sin subir o borrado sin propagar)`);
-  return conEspecieLocal(noOmitidos.map(sinFotoQuitada(borrados.fotos)), DOWNLOAD_PHASE.arboles);
+  return conEspecieLocal(noOmitidos.map(sinFotoQuitada(borrados.fotos, locales)), DOWNLOAD_PHASE.arboles);
 }
 
 async function escribirArboles(

@@ -18,7 +18,7 @@ import {
   adoptarCampoDeGrupo, adoptarEspecie, adoptarFoto, adoptarGps, confirmarBaseDeEspecie,
   confirmarBaseDeFoto, confirmarBaseDeGps, confirmarBaseDelGrupo, confirmarFotoSubida,
 } from '../../repositories/AsentamientoDeSyncRepository';
-import { limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
+import { borradosDePlantacion, limpiarBorrados, type BorradoPendiente } from '../../repositories/BorradosRepository';
 import { borrarFotosLocales } from '../PhotoService';
 import { CAMPO_EN_CONFLICTO, CAMPOS_DE_GRUPO, type CampoDeGrupo, type CampoEnConflicto } from '../../constants/conflictoDeSync';
 import { FOTOS_QUITADAS } from '../../constants/entidadBorrada';
@@ -34,6 +34,13 @@ type Tx = typeof db;
 
 /** El grupo al que va un conflicto. */
 type DondeVa = Pick<Group, 'id' | 'plantacionId'>;
+
+/** Lo que subió el push del grupo y lo que el servidor conservó; `quitadas`, las fotos quitadas sin propagar. */
+interface SubidaDelGrupo {
+  fotos: Map<string, string>;
+  conservados: Conservados;
+  quitadas: Set<string>;
+}
 
 /**
  * Conflictos nuevos, archivos locales que quedaron sin uso, y si algo no se pudo
@@ -101,11 +108,26 @@ async function confirmarFoto(tx: Tx, t: ArbolDeGrupo, subida: string | undefined
 }
 
 /**
- * La foto del servidor reemplaza a la local. Una propia sin subir queda en el
- * conflicto; una copia de la anterior del servidor ya no sirve.
+ * Una foto quitada acá que el servidor conservó porque allá cambió (#810): queda
+ * la del servidor y lo quitado pasa a conflicto. La quitada deja de estar
+ * pendiente: si no, el próximo push la quitaría con la base nueva sin que nadie
+ * lo haya decidido.
  */
-async function asentarFoto(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: string | undefined, conservado: ArbolConservado): Promise<Asentado> {
-  if (conservado.fotoUrl === undefined) return confirmarFoto(tx, t, subida);
+async function asentarFotoQuitada(tx: Tx, donde: DondeVa, treeId: string, delServidor: string | null): Promise<Asentado> {
+  await limpiarBorrados([treeId], FOTOS_QUITADAS, tx);
+  if (!(await adoptarFoto(tx, treeId, null, delServidor))) return SIN_ADOPTAR;
+  return conflictoSiCambioAca(tx, donde, true,
+    { entidadId: treeId, campo: CAMPO_EN_CONFLICTO.foto, mio: null, servidor: delServidor });
+}
+
+/**
+ * La foto del servidor reemplaza a la local. Una propia sin subir queda en el
+ * conflicto; una copia de la anterior del servidor ya no sirve. Una quitada que
+ * todavía no llegó al servidor también es un cambio de acá.
+ */
+async function asentarFoto(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: SubidaDelGrupo, conservado: ArbolConservado): Promise<Asentado> {
+  if (conservado.fotoUrl === undefined) return confirmarFoto(tx, t, subida.fotos.get(t.id));
+  if (subida.quitadas.has(t.id)) return asentarFotoQuitada(tx, sg, t.id, conservado.fotoUrl);
   if (!(await adoptarFoto(tx, t.id, t.fotoUrl, conservado.fotoUrl))) return SIN_ADOPTAR;
   const cambioAca = fotoCambiadaAca(t);
   if (!cambioAca && isLocalUri(t.fotoUrl)) return { ...NADA, archivos: [t.fotoUrl] };
@@ -113,8 +135,8 @@ async function asentarFoto(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: string | 
     { entidadId: t.id, campo: CAMPO_EN_CONFLICTO.foto, mio: t.fotoUrl, servidor: conservado.fotoUrl });
 }
 
-async function asentarArbol(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: string | undefined, conservados: Conservados): Promise<Asentado> {
-  const conservado = conservados.arboles.get(t.id) ?? {};
+async function asentarArbol(tx: Tx, sg: Group, t: ArbolDeGrupo, subida: SubidaDelGrupo): Promise<Asentado> {
+  const conservado = subida.conservados.arboles.get(t.id) ?? {};
   return sumar(
     sumar(await asentarEspecie(tx, sg, t, conservado), await asentarGps(tx, sg, t, conservado)),
     await asentarFoto(tx, sg, t, subida, conservado),
@@ -160,9 +182,11 @@ export async function asentarGrupo(
   const conservados = leerConservados(respuesta);
   // El pull no baja la especie de un grupo pendiente: puede faltar acá.
   await asegurarEspecies([...conservados.arboles.values()].map((a) => a.especieId));
+  const quitadas = new Set((await borradosDePlantacion(sg.plantacionId, FOTOS_QUITADAS)).map((b) => b.id));
+  const subida: SubidaDelGrupo = { fotos: fotosSubidas, conservados, quitadas };
   const asentado = await enTransaccion(async (tx) => {
     let total = await asentarDatosDelGrupo(tx, sg, conservados);
-    for (const t of enviados) total = sumar(total, await asentarArbol(tx, sg, t, fotosSubidas.get(t.id), conservados));
+    for (const t of enviados) total = sumar(total, await asentarArbol(tx, sg, t, subida));
     return total;
   });
   // Recién con el commit: con rollback las filas seguirían apuntando a los archivos.
@@ -172,34 +196,24 @@ export async function asentarGrupo(
   return asentado.conflictos;
 }
 
-/** Una foto quitada acá que el servidor conservó porque allá cambió: queda la del servidor y lo quitado, en conflicto. */
-async function asentarFotoQuitada(tx: Tx, quitada: BorradoPendiente & { grupoId: string }, delServidor: string | null): Promise<Asentado> {
-  if (!(await adoptarFoto(tx, quitada.id, null, delServidor))) return SIN_ADOPTAR;
-  return conflictoSiCambioAca(tx, { id: quitada.grupoId, plantacionId: quitada.plantacionId }, true,
-    { entidadId: quitada.id, campo: CAMPO_EN_CONFLICTO.foto, mio: null, servidor: delServidor });
-}
-
 /** Las quitadas que el servidor conservó, con la foto que tiene. */
 function quitadasConservadas(pendientes: BorradoPendiente[], respuesta: unknown) {
   const { arboles } = leerConservados(respuesta);
   return pendientes.flatMap((b) => {
     const fotoUrl = arboles.get(b.id)?.fotoUrl;
-    return b.grupoId != null && fotoUrl !== undefined ? [{ quitada: { ...b, grupoId: b.grupoId }, fotoUrl }] : [];
+    return b.grupoId != null && fotoUrl !== undefined
+      ? [{ treeId: b.id, donde: { id: b.grupoId, plantacionId: b.plantacionId }, fotoUrl }]
+      : [];
   });
 }
 
-/**
- * Asienta lo que `quitar_fotos_arboles` conservó (#810). En la misma transacción
- * deja de estar pendiente: si no, el próximo push la quitaría con la base nueva
- * sin que nadie lo haya decidido. Devuelve cuántos conflictos nuevos quedaron.
- */
+/** Asienta lo que `quitar_fotos_arboles` conservó (#810). Devuelve cuántos conflictos nuevos quedaron. */
 export async function asentarFotosQuitadas(pendientes: BorradoPendiente[], respuesta: unknown): Promise<number> {
   const conservadas = quitadasConservadas(pendientes, respuesta);
   if (conservadas.length === 0) return 0;
   const asentado = await enTransaccion(async (tx) => {
     let total = NADA;
-    for (const { quitada, fotoUrl } of conservadas) total = sumar(total, await asentarFotoQuitada(tx, quitada, fotoUrl));
-    await limpiarBorrados(conservadas.map((c) => c.quitada.id), FOTOS_QUITADAS, tx);
+    for (const c of conservadas) total = sumar(total, await asentarFotoQuitada(tx, c.donde, c.treeId, c.fotoUrl));
     return total;
   });
   borrarFotosLocales(asentado.archivos);

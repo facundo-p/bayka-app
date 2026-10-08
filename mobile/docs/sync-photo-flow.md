@@ -85,6 +85,13 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
   la del server como base; "descartar" se queda con la del server. Un árbol sin
   `fotoBase` (una foto bajada antes de que existieran las bases) viaja sin base y
   el server la quita como antes, igual que con el APK de prod.
+- **La base no se pierde si la quitada tarda:** el pull baja la fila sin foto pero
+  conserva el `fotoBase` local, y si el push del grupo trae la foto nueva antes que
+  la quitada, `asentarGrupo` también la asienta como conflicto. Sin esto, el push
+  siguiente quitaría la foto nueva con ella como base.
+- **Límite conocido:** un `fotoBase` null no distingue "no vio foto" de "la bajó
+  antes de las bases", así que viaja sin base. Sacar una foto, quitarla sin
+  sincronizar y que otro celular suba una entre medio sigue quitando la del otro.
 
 - **Id compartido con el borrado del árbol:** `borrados_pendientes.id` es la
   clave. Si después se borra el árbol, el registro pasa a `tipo = 'arbol'`: borrar
