@@ -211,7 +211,10 @@ propio a un grupo ajeno), `quitar_fotos_arboles` (el ajeno no queda en
 `56` `sincronizar_borrados` en un grupo ajeno: un técnico no borra el árbol (solo
 o con el grupo) ni el grupo de otro, y lo salteado no vuelve en `rechazados`;
 admin, superadmin y el creador sí lo borran; EXECUTE solo para `authenticated` y
-`service_role` (073, #796).
+`service_role` (073, #796). `57` un grupo nuevo a nombre de otro: el técnico no
+lo sube y no se crea, admin y superadmin sí y queda con el creador real; a
+nombre propio lo suben todos, sin creador nadie, y el rechazo del creador gana
+sobre DUPLICATE_CODE; un grupo que ya existe sigue la regla de 072 (074, #798).
 
 ## Hallazgo fuera de alcance (no corregido)
 
