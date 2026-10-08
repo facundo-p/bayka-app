@@ -332,6 +332,12 @@ Las asignaciones de técnicos (`plantation_users`) usan otro gate,
 archivada, pero una finalizada las admite, porque son control de acceso y no
 datos de campo (#522).
 
+Un grupo nuevo lo sube solo quien figura como su creador, también si es admin o
+superadmin (074, #798): si `usuario_creador` no es quien sube, `sync_subgroup`
+responde `PERMISSION`. En un celular compartido, el grupo que un técnico no
+subió le da ese error al admin que sincroniza, hasta que lo sube su creador
+(#800).
+
 En un grupo que ya existe y creó otro usuario solo escriben admin y superadmin
 (072, #768): `sync_subgroup` responde `PERMISSION`, y las policies de `trees`,
 `quitar_fotos_arboles`, `sincronizar_borrados` (073, #796) y las de
