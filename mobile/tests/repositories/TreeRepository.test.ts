@@ -30,6 +30,12 @@ jest.mock('../../src/services/PhotoService', () => ({
   borrarFotosLocales: jest.fn(),
 }));
 
+const mockPuedeEditarArbolesDe = jest.fn().mockResolvedValue(true);
+jest.mock('../../src/repositories/edicionDeArboles', () => ({
+  ...jest.requireActual('../../src/repositories/edicionDeArboles'),
+  puedeEditarArbolesDe: (...args: unknown[]) => mockPuedeEditarArbolesDe(...args),
+}));
+
 let mockDb: any;
 
 beforeAll(() => {
@@ -98,6 +104,7 @@ import {
 import { enTransaccion } from '../../src/database/transaccion';
 import { ENTIDAD_BORRADA } from '../../src/constants/entidadBorrada';
 import { borrarFotosLocales } from '../../src/services/PhotoService';
+import { SIN_PERMISO_SOBRE_ARBOLES } from '../../src/repositories/edicionDeArboles';
 
 const mockBorrarFotos = borrarFotosLocales as jest.Mock;
 const FOTO_VIEJA = 'file://document/photos/photo_1.jpg';
@@ -470,6 +477,19 @@ describe('TreeRepository', () => {
 
       expect(mockUpdateWhere).not.toHaveBeenCalled();
       expect(mockInsertValues).not.toHaveBeenCalled();
+    });
+
+    // #768: el server rechazaría la foto; la fila local no cambia ni se marca pendiente.
+    it('sin permiso sobre los árboles del grupo lanza y no escribe nada', async () => {
+      mockDb = buildMockDb([{ fotoUrl: FOTO_VIEJA, grupoId: 'sg-1', plantacionId: 'plant-1' }]);
+      mockPuedeEditarArbolesDe.mockResolvedValueOnce(false);
+
+      await expect(updateTreePhoto('tree-1', FOTO_NUEVA)).rejects.toThrow(SIN_PERMISO_SOBRE_ARBOLES);
+
+      expect(mockPuedeEditarArbolesDe).toHaveBeenCalledWith('sg-1');
+      expect(mockUpdateWhere).not.toHaveBeenCalled();
+      expect(mockInsertValues).not.toHaveBeenCalled();
+      expect(mockBorrarFotos).not.toHaveBeenCalled();
     });
   });
 

@@ -30,16 +30,18 @@ export function descartarLaSaca(fila: { pendingSync: boolean; eliminadaEnServido
 }
 
 /**
- * En una finalizada el server sí acepta técnicos y fotos de grupos ya subidos: suben en la
- * próxima sync, así que ni se cuentan como varados ni se descartan.
+ * En una finalizada el server sí acepta técnicos: suben en la próxima sync, así que ni se
+ * cuentan como varados ni se descartan. Las fotos no: Storage y `trees` exigen plantación
+ * escribible (#512), que en una finalizada solo lo es para el superadmin, y a él se le
+ * suben en la misma sync.
  */
-export function conservaLoQueSube(motivo: MotivoVarado | null): boolean {
+export function conservaTecnicos(motivo: MotivoVarado | null): boolean {
   return motivo === MOTIVO_VARADO.finalizada;
 }
 
 /** Lo que de verdad no puede subir, con ese motivo. */
 export function varadosDelResumen(r: ResumenDeDescarte, motivo: MotivoVarado | null): ResumenDeDescarte {
-  return conservaLoQueSube(motivo) ? { ...r, tecnicos: 0, fotos: 0 } : r;
+  return conservaTecnicos(motivo) ? { ...r, tecnicos: 0 } : r;
 }
 
 export function totalDeCambios(r: ResumenDeDescarte): number {

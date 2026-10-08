@@ -7,13 +7,14 @@ import { computeReversedPositions } from '../utils/reverseOrder';
 import { notifyDataChanged } from '../database/liveQuery';
 import * as Crypto from 'expo-crypto';
 import { localNow } from '../utils/dateUtils';
-import { markGroupPendingSync, getGroupParcelaCodigo } from './GroupRepository';
+import { markGroupPendingSync, getGroupParcelaCodigo, gruposQueSube, type Subidor } from './GroupRepository';
 import { descartarFotoQuitada, plantacionDelGrupo, registrarBorrado } from './BorradosRepository';
 import { ENTIDAD_BORRADA } from '../constants/entidadBorrada';
 import { isLocalUri, sqlIsLocalUri } from '../utils/photoUri';
 import { codigoParaSubId, especieCodigoParaSubId, esEspecieRecuperada } from '../utils/speciesHelpers';
 import { arbolesParaSubId } from './subIdsDeArboles';
 import { borrarFotosLocales } from '../services/PhotoService';
+import { puedeEditarArbolesDe, SIN_PERMISO_SOBRE_ARBOLES } from './edicionDeArboles';
 
 export interface InsertTreeParams {
   grupoId: string;
@@ -231,6 +232,7 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   const [treeRow] = await db.select({ grupoId: trees.groupId, fotoUrl: trees.fotoUrl })
     .from(trees).where(eq(trees.id, treeId));
   if (!treeRow) return;
+  if (!(await puedeEditarArbolesDe(treeRow.grupoId))) throw new Error(SIN_PERMISO_SOBRE_ARBOLES);
   const plantacionId = await plantacionDelGrupo(db, treeRow.grupoId);
 
   await enTransaccion(async (tx) => {
@@ -249,8 +251,11 @@ export async function updateTreePhoto(treeId: string, fotoUrl: string): Promise<
   notifyDataChanged();
 }
 
-/** Árboles con fotos locales sin subir a Storage en toda la plantación (cualquier grupo, sincronizado o no); filtra a file:// (rutas remotas del pull no se re-suben). */
-export async function getTreesWithPendingPhotos(plantacionId: string): Promise<{
+/**
+ * Árboles con fotos locales sin subir a Storage en la plantación, de los grupos que sube
+ * `subidor` (sincronizados o no); filtra a file:// (rutas remotas del pull no se re-suben).
+ */
+export async function getTreesWithPendingPhotos(plantacionId: string, subidor: Subidor): Promise<{
   id: string;
   fotoUrl: string;
   grupoId: string;
@@ -272,7 +277,8 @@ export async function getTreesWithPendingPhotos(plantacionId: string): Promise<{
         eq(groups.plantacionId, plantacionId),
         // Sin filtro por pendingSync del grupo: el upload de fotos debe funcionar sin importar el estado de sync, incluso con árboles de RPCs fallidos.
         isNotNull(trees.fotoUrl),
-        eq(trees.fotoSynced, false)
+        eq(trees.fotoSynced, false),
+        gruposQueSube(subidor),
       )
     );
   return rows.filter(r => isLocalUri(r.fotoUrl)) as {

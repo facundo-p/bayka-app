@@ -10,6 +10,7 @@ jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'g1', plantacionId: 'p1', grupoCodigo: 'A', grupoNombre: 'Grupo A' }),
   useRouter: () => ({ back: jest.fn() }),
   useNavigation: () => ({ setOptions: jest.fn() }),
+  useSegments: () => ['(tecnico)'],
 }));
 jest.mock('../../src/components/PhotoCropProvider', () => ({
   usePhotoCaptureFlow: () => ({ pickPhoto: mockPickPhoto }),

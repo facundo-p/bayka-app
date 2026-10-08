@@ -21,9 +21,10 @@ import { GPS_CAPTURE_FREQUENCY_DEFAULT, GPS_CAPTURE_REQUIRED_DEFAULT } from '../
 import { PHOTO_CAPTURE_ALL_TREES_DEFAULT, PHOTO_CAPTURE_REQUIRED_DEFAULT } from '../src/constants/photoCapture';
 import { UNKNOWN_SPECIES_CODE } from '../src/utils/speciesHelpers';
 import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
-import { ROL } from '../src/constants/roles';
+import { ROL, type Rol } from '../src/constants/roles';
+import { esRolAdmin } from '../src/types/domain';
 import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
-import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
+import { getCambioDeEspecie, getTreeEditGating, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
 import { LOCAL_URI_SCHEMES } from '../src/utils/photoUri';
 import { CODIGO_PLANTACION, idDeArbol } from '../../shared/codigoPlantacion';
 import { TIPOS_ESPECIE } from '../../shared/tiposEspecie';
@@ -129,6 +130,28 @@ describe('contracts · permisos-edicion', () => {
         isCreator: true,
       });
       expect(seOfreceCambioDeEspecie(cambio)).toBe(caso.permitido);
+    },
+  );
+});
+
+describe('contracts · permisos-edicion · grupo ajeno', () => {
+  type CasoDeGrupoAjeno = { rol: Rol; creador: boolean; permitido: boolean };
+  const { casos } = leerContrato('permisos-edicion.json').grupoAjeno as { casos: CasoDeGrupoAjeno[] };
+
+  it('trae casos permitidos y rechazados', () => {
+    expect(new Set(casos.map((caso) => caso.permitido))).toEqual(new Set([true, false]));
+  });
+
+  it.each(casos.map((caso) => [`${caso.rol}${caso.creador ? ' creador' : ' en un grupo ajeno'}`, caso] as const))(
+    'getTreeEditGating: %s',
+    (_, caso) => {
+      const { canEdit } = getTreeEditGating({
+        plantacion: { estado: ESTADO_PLANTACION.activa, archivadaEn: null, eliminadaEnServidorEn: null },
+        subgroupEstado: ESTADO_GRUPO.activa,
+        isCreator: caso.creador,
+        esAdmin: esRolAdmin(caso.rol),
+      });
+      expect(canEdit).toBe(caso.permitido);
     },
   );
 });

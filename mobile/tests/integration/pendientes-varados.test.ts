@@ -128,10 +128,11 @@ describe('lo que lee la tarjeta', () => {
     expect((await getPendientesVarados()).get(P)?.resumen.fotos).toBe(1);
   });
 
-  it('en una finalizada no cuenta lo que el server acepta igual: técnicos y fotos de grupos subidos', async () => {
+  // Las fotos sí cuentan: Storage exige plantación escribible (#512, #768).
+  it('en una finalizada no cuenta los técnicos, que el server acepta igual, y sí las fotos sin subir', async () => {
     await sembrarConPendientes('finalizada');
 
-    expect((await getPendientesVarados()).get(P)?.resumen).toMatchObject({ tecnicos: 0, fotos: 0 });
+    expect((await getPendientesVarados()).get(P)?.resumen).toMatchObject({ tecnicos: 0, fotos: 1 });
   });
 
   it('con motivo pero sin nada pendiente: no avisa (la query no escribe)', async () => {
@@ -219,13 +220,14 @@ describe('Descartar una plantación que existe en el server', () => {
     expect(await ids(groups)).toEqual(['g-de-editada']);
   });
 
-  it('en una finalizada conserva los técnicos y las fotos sin subir: el server los acepta', async () => {
+  it('en una finalizada conserva los técnicos, que el server acepta, y suelta las fotos sin subir', async () => {
     await sembrarConPendientes('finalizada');
     await descartarPendientes(P);
 
     expect(await mockTestDb.select().from(altasDeTecnicosPendientes)).toHaveLength(1);
     const [sinSubir] = await mockTestDb.select().from(trees).where(eq(trees.id, 't-foto-sin-subir'));
-    expect(sinSubir.fotoUrl).toBe('file://sin-subir.jpg');
+    expect(sinSubir.fotoUrl).toBeNull();
+    expect((borrarFotosLocales as jest.Mock).mock.calls[0][0]).toContain('file://sin-subir.jpg');
     expect(await ids(groups)).toEqual(['g-de-editada', 'g-subido']);
   });
 });

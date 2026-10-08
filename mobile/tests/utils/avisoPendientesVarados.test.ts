@@ -99,9 +99,10 @@ describe('confirmación de Descartar', () => {
     expect(mensaje).not.toContain('catálogo');
   });
 
-  it('en una finalizada no cuenta técnicos ni fotos: suben igual', () => {
+  // Las fotos sí: Storage exige plantación escribible (#512, #768).
+  it('en una finalizada no cuenta técnicos, que suben igual, y sí fotos', () => {
     const r = { ...VACIO, tecnicos: 2, fotos: 3, activaCount: 1 };
-    expect(totalDeCambios(varadosDelResumen(r, 'finalizada'))).toBe(1);
+    expect(totalDeCambios(varadosDelResumen(r, 'finalizada'))).toBe(4);
     expect(totalDeCambios(varadosDelResumen(r, 'archivada'))).toBe(6);
   });
 

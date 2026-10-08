@@ -36,7 +36,7 @@ jest.mock('../../src/queries/plantationDetailQueries', () => ({
   getGroupById: jest.fn(),
 }));
 
-const { insertTree, deleteLastTree } = require('../../src/repositories/TreeRepository');
+const { insertTree, deleteLastTree, updateTreePhoto } = require('../../src/repositories/TreeRepository');
 const { finalizeGroup, canEdit } = require('../../src/repositories/GroupRepository');
 const { useLiveData } = require('../../src/database/liveQuery');
 const { useTrees } = require('../../src/hooks/useTrees');
@@ -51,6 +51,7 @@ const DEFAULT_PARAMS = {
   plantacionId: 'plant-1',
   grupoCodigo: 'L1',
   userId: 'user-1',
+  esAdmin: false,
   pickPhoto,
 };
 
@@ -297,6 +298,53 @@ describe('useTreeRegistration', () => {
       });
 
       expect(mockBack).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // #768: el server rechaza la foto de un técnico en un grupo ajeno; un admin sí la edita.
+  describe('foto de un árbol según quién creó el grupo', () => {
+    const grupoAjeno = { ...mockGroup, usuarioCreador: 'otro-tecnico' };
+
+    it.each([
+      ['updatePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.updatePhoto('tree-1', FOTO)],
+      ['removePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.removePhoto('tree-1')],
+      ['addPhotoToTree', (r: ReturnType<typeof useTreeRegistration>) => r.addPhotoToTree('tree-1')],
+    ])('%s: un técnico no escribe en un grupo ajeno', async (_, accion) => {
+      mockLiveQueries({ group: grupoAjeno });
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => { await accion(result.current); });
+
+      expect(updateTreePhoto).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['updatePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.updatePhoto('tree-1', FOTO), FOTO],
+      ['removePhoto', (r: ReturnType<typeof useTreeRegistration>) => r.removePhoto('tree-1'), ''],
+    ])('%s: un admin escribe en un grupo ajeno', async (_, accion, esperado) => {
+      mockLiveQueries({ group: grupoAjeno });
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
+
+      await act(async () => { await accion(result.current); });
+
+      expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', esperado);
+    });
+
+    it('el creador escribe en su grupo', async () => {
+      const { result } = renderHook(() => useTreeRegistration(DEFAULT_PARAMS));
+
+      await act(async () => { await result.current.updatePhoto('tree-1', FOTO); });
+
+      expect(updateTreePhoto).toHaveBeenCalledWith('tree-1', FOTO);
+    });
+
+    it('nadie escribe en una plantación finalizada', async () => {
+      mockLiveQueries({ group: grupoAjeno, plantacionEstado: 'finalizada' });
+      const { result } = renderHook(() => useTreeRegistration({ ...DEFAULT_PARAMS, esAdmin: true }));
+
+      await act(async () => { await result.current.updatePhoto('tree-1', FOTO); });
+
+      expect(updateTreePhoto).not.toHaveBeenCalled();
     });
   });
 
