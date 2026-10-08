@@ -200,6 +200,8 @@ sin distinguir mayúsculas, la lee cualquier autenticado y la escriben solo los
 admins; la FK impide borrar una que agrupe especies, los triggers copian,
 propagan y limpian `species.nombre_cientifico`, y la migración de datos unifica
 variantes, deja sin vínculo los nombres en blanco y es idempotente (071, #753).
+`54` `contracts/foto-local.json`: `dashboard_arboles` no cuenta como foto un
+árbol con foto de cada esquema local del contrato, y sí una foto subida (#762).
 
 ## Hallazgo fuera de alcance (no corregido)
 
