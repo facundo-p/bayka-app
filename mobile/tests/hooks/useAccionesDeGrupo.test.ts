@@ -74,6 +74,8 @@ describe('useAccionesDeGrupo', () => {
       expect(aviso(1).message).toBe(
         'Esta es la confirmación final. El grupo y todos sus árboles serán eliminados permanentemente.',
       );
+      boton('Sí, eliminar', 1).onPress();
+      expect(g.executeDeleteGroup).toHaveBeenCalled();
     });
 
     it('un árbol en singular; sin árboles, solo la advertencia', () => {

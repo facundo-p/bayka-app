@@ -2,11 +2,11 @@ import { View, Text, Pressable, ActivityIndicator } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors } from '../theme';
 import { treeActionBarStyles as styles } from './TreeActionBar.styles';
+import type { useFotoDelSeleccionado } from '../hooks/useFotoDelSeleccionado';
 
 const TAMANO_ICONO = 20;
 
-/** Estado del botón de foto del árbol seleccionado (`useFotoDelSeleccionado`). */
-type FotoDelSeleccionado = { fotografiar: () => void; capturando: boolean; deshabilitado: boolean };
+type FotoDelSeleccionado = ReturnType<typeof useFotoDelSeleccionado>;
 
 interface Props {
   deleting: boolean;
@@ -21,7 +21,7 @@ interface Props {
 
 function DeleteGroupButton({ deleting, onPress }: { deleting: boolean; onPress: () => void }) {
   return (
-    <Pressable style={[styles.deleteButton, deleting && styles.buttonDisabled]}
+    <Pressable testID="delete-group-button" style={[styles.deleteButton, deleting && styles.buttonDisabled]}
       onPress={onPress} disabled={deleting}>
       {deleting ? <ActivityIndicator size="small" color={colors.danger} />
         : <Ionicons name="trash-outline" size={TAMANO_ICONO} color={colors.danger} />}
@@ -37,7 +37,7 @@ function FotoButton({ foto, subId }: { foto: FotoDelSeleccionado; subId: string 
       onPress={foto.fotografiar}
       disabled={foto.deshabilitado}
       accessibilityRole="button"
-      accessibilityLabel={subId ? `Foto de ${subId}` : 'Foto del árbol seleccionado'}
+      accessibilityLabel={subId != null ? `Foto de ${subId}` : 'Foto del árbol seleccionado'}
       accessibilityState={{ busy: foto.capturando }}
     >
       {foto.capturando ? <ActivityIndicator size="small" color={colors.plantation} />

@@ -7,7 +7,7 @@ type Grupo = Pick<UseTreeRegistrationResult,
 
 type ArbolDeLaTira = { id: string; posicion: number; latitude?: number | null };
 
-export function textoSinSenalGps(teniaPunto: boolean): string {
+function textoSinSenalGps(teniaPunto: boolean): string {
   return teniaPunto
     ? 'No se pudo obtener un punto. El punto anterior se conserva; probá de nuevo cuando mejore la señal.'
     : 'No se pudo obtener un punto. Probá de nuevo cuando mejore la señal.';

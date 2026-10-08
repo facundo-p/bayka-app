@@ -13,14 +13,14 @@ type Grupo = Pick<UseTreeRegistrationResult,
 
 const plural = (n: number, sufijo: string) => (n > 1 ? sufijo : '');
 
-export function textoFinalizarGrupo(unresolvedNN: number): string {
+function textoFinalizarGrupo(unresolvedNN: number): string {
   const nnWarn = unresolvedNN > 0
     ? ` Hay ${unresolvedNN} árbol${plural(unresolvedNN, 'es')} N/N sin resolver.\n      (deberan resolverse antes de sincronizar).`
     : '';
   return `Confirmar finalización? \n      ${nnWarn}`;
 }
 
-export function textoEliminarGrupo(totalCount: number): string {
+function textoEliminarGrupo(totalCount: number): string {
   return totalCount > 0
     ? `Este grupo tiene ${totalCount} árbol${plural(totalCount, 'es')} cargado${plural(totalCount, 's')}. Esta acción no se puede deshacer.`
     : 'Esta acción no se puede deshacer.';

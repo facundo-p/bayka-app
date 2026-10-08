@@ -1,4 +1,5 @@
 import React from 'react';
+import { ActivityIndicator } from 'react-native';
 import { fireEvent, render } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons/Ionicons', () => {
@@ -57,6 +58,10 @@ describe('TreeActionBar', () => {
     expect(screen.queryByText('trash-outline')).toBeNull();
     expect(screen.queryByText('camera-outline')).toBeNull();
     expect(screen.queryByText('Finalizar')).toBeNull();
-    expect(screen.getByTestId('finalize-button').props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.UNSAFE_getAllByType(ActivityIndicator)).toHaveLength(3);
+    for (const id of ['delete-group-button', 'foto-seleccionado-button', 'finalize-button']) {
+      expect(screen.getByTestId(id).props.accessibilityState).toMatchObject({ disabled: true });
+    }
+    expect(screen.getByTestId('foto-seleccionado-button').props.accessibilityState).toMatchObject({ busy: true });
   });
 });

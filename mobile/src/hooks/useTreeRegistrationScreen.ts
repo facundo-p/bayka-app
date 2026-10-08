@@ -71,12 +71,12 @@ export function useTreeRegistrationScreen(grupo: ParamsDelGrupo) {
   const registro = { userId, pickPhoto, show: confirm.show };
   const { treeReg, gpsWatcher, gpsGate } = useRegistroConGps(grupo, registro);
   const fotos = useFotosDelGrupo(treeReg, registro);
+  const speciesOrder = useSpeciesOrder(grupo.plantacionId ?? '');
+  const botonera = useEstiloBotonera();
+  const accionesDeGrupo = useAccionesDeGrupo(treeReg, confirm.show, grupo.grupoId);
+  const accionesDeArbol = useAccionesDeArbol(treeReg, confirm.show, fotos.treeSelection.selectedTree);
   return {
-    userId, confirm, treeReg, gpsWatcher, gpsGate, ...fotos,
-    speciesOrder: useSpeciesOrder(grupo.plantacionId ?? ''),
-    botonera: useEstiloBotonera(),
-    accionesDeGrupo: useAccionesDeGrupo(treeReg, confirm.show, grupo.grupoId),
-    accionesDeArbol: useAccionesDeArbol(treeReg, confirm.show, fotos.treeSelection.selectedTree),
-    permisos: permisosDeArbol(treeReg),
+    userId, confirm, treeReg, gpsWatcher, gpsGate, ...fotos, speciesOrder, botonera,
+    accionesDeGrupo, accionesDeArbol, permisos: permisosDeArbol(treeReg),
   };
 }
