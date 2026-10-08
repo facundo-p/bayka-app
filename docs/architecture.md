@@ -316,12 +316,14 @@ no pudieron subir y por qué, y ofrece descartarlos (#638).
 El ciclo completo además sincroniza: catálogo de especies, plantaciones creadas
 offline, ediciones de plantación, parcelas (push/pull) y fotos (Storage).
 
-**La especie de cada árbol viaja con su base** (#679). El dispositivo guarda en
-`trees.especie_base_id` la última especie que vio en el server, y `sync_subgroup`
-la recibe como `species_base_id`: si el server ya tiene otra (la cambió la web u
-otro celular), gana la del server. Los árboles en los que el server se quedó con
-la suya vuelven en `conservadas`: el celular los adopta y la sync avisa cuántos
-de esos había cambiado. En el resto, la especie subida pasa a ser la base.
+**La especie, el GPS y la foto de cada árbol, y los datos del grupo, viajan con
+su base** (#679, #795). El dispositivo guarda lo último que vio en el server
+(`trees.especie_base_id`, `foto_base`, `*_base` del GPS, `groups.base_del_servidor`)
+y `sync_subgroup` lo recibe como base: si el server ya tiene otro valor (lo cambió
+la web u otro celular), gana el del server y lo devuelve en `conservados`. El
+celular lo adopta y guarda el propio en `conflictos_de_sync` para que el usuario
+elija; mientras no elija, el grupo sigue pendiente. En el resto, lo subido pasa a
+ser la base. Detalle en `mobile/docs/sync-photo-flow.md`.
 El pull adopta la especie del server en los grupos sin cambios locales. La web
 cambia la especie por `cambiar_especie_arbol` (admin u, en una finalizada,
 superadmin), con la misma base.

@@ -11,7 +11,7 @@ Documento pensado para que cualquier persona pueda entender cómo funciona el si
 Las fotos existen en **tres lugares** posibles:
 
 1. **El dispositivo** — archivo local, ruta tipo `file:///data/.../photo_123.jpg`
-2. **Supabase Storage** — archivo en la nube, ruta tipo `plantations/{id}/trees/{id}.jpg`
+2. **Supabase Storage** — archivo en la nube, ruta tipo `plantations/{id}/parcelas/{id}/trees/{id}-{version}.jpg`
 3. **Base de datos del servidor** — campo `foto_url` en la tabla `trees`, apunta al Storage
 
 Para que una foto esté correctamente sincronizada, debe estar en los tres lugares:
@@ -42,7 +42,7 @@ Es un flag booleano **local** (solo existe en el SQLite del dispositivo):
 **Prohibido:** que el campo `foto_url` en la tabla `trees` del servidor contenga una ruta `file:///...`.
 
 **Correcto:** el servidor solo puede tener:
-- Una ruta de Storage (`plantations/{id}/trees/{id}.jpg`)
+- Una ruta de Storage (`plantations/{id}/parcelas/{id}/trees/{id}-{version}.jpg`)
 - `null` (sin foto, o foto que falló al subir)
 
 **Por qué:** las rutas `file://` son locales de un dispositivo específico. Otro dispositivo no puede usarlas.
@@ -55,7 +55,7 @@ Cuando se adjunta, reemplaza o elimina una foto de un árbol, `fotoSynced` vuelv
 
 ### Regla 4: El pull preserva fotos locales
 
-Cuando se descargan datos del servidor, si el dispositivo ya tiene una foto local (`file://...`), no se sobreescribe con la ruta de Storage del servidor.
+Cuando se descargan datos del servidor, si el dispositivo ya tiene una foto local (`file://...`) de la misma foto que tiene el server, no se sobreescribe con la ruta de Storage del servidor. Si el server la reemplazó o la quitó, y la local ya se había subido, gana el server (#517, #795).
 
 **Por qué:** el dispositivo ya tiene el archivo. No tiene sentido reemplazar una referencia funcional con una que necesitaría re-descargarse.
 
@@ -125,15 +125,17 @@ Si `uploadPhotoToStorage` falla para un árbol:
 - El RPC usa ON CONFLICT DO UPDATE solo para árboles existentes
 - Árboles nuevos se insertan sin conflicto
 
-### Caso 4: Dos lados cambian la especie del mismo árbol (#679)
+### Caso 4: Dos lados cambian el mismo dato (#679, #795)
 
-Vale igual para un N/N resuelto distinto en dos dispositivos que para un cambio desde la web y otro desde el celular. Gana el server.
+Vale para la especie (también un N/N resuelto distinto), el GPS, la foto y los datos del grupo, desde la web o desde otro celular. Gana el server.
 
-- Device A (o la web) cambia el árbol a Especie X → servidor tiene X
-- Device B, con el grupo sin subir, lo cambia a Y. Su base sigue siendo la anterior, y el pull no toca el árbol
-- Al subir, `sync_subgroup` conserva X (difiere de la base de B) y la devuelve en `conservadas`
-- B adopta X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
-- Un árbol que B no tocó también vuelve en `conservadas`: B adopta X sin aviso
+- Device A (o la web) cambia la foto del árbol → servidor tiene la foto X
+- Device B, con el grupo sin subir, le saca otra foto Y. Su base sigue siendo la anterior, y el pull no toca el árbol
+- Al subir, `sync_subgroup` conserva X (difiere de la base de B) y la devuelve en `conservados`
+- B adopta X y guarda Y como conflicto. El resumen de la sync avisa cuántos datos esperan que B elija
+- B elige: "conservar la mía" vuelve a subir Y con X como base, y pisa; "descartar" se queda con X
+- Mientras no elija, el grupo sigue pendiente; lo demás del grupo ya subió
+- Un dato que B no tocó también vuelve en `conservados`: B adopta X sin conflicto
 
 ### Caso 5: Dispositivo B descarga plantación pero falla la descarga de algunas fotos
 

@@ -25,7 +25,8 @@ Esto garantiza que el servidor siempre tiene una referencia válida en un solo p
 ### Conceptos clave
 
 - **Storage bucket**: `tree-photos`
-- **Ruta en Storage**: `plantations/{plantation_id}/parcelas/{parcela_id}/trees/{tree_id}.jpg` (las fotos viejas pueden tener la ruta sin parcela)
+- **Ruta en Storage**: `plantations/{plantation_id}/parcelas/{parcela_id}/trees/{tree_id}-{version}.jpg`, con la versión sacada del nombre del archivo local (#795). Cada foto nueva tiene su path, así que una subida que pierde contra otra no pisa el archivo ganador. Las fotos viejas pueden tener la ruta sin versión o sin parcela
+- **fotoBase / latitudeBase / longitudeBase / gpsCapturedAtBase**: lo último que el teléfono sabe que tiene el server. Viajan como base y el server decide con ellas (ver [Conflictos de sincronización](#conflictos-de-sincronización-795))
 - **foto_url local**: `file://...` (ruta en el dispositivo, varía entre dispositivos)
 - **foto_url servidor**: la ruta relativa en Storage
 - **fotoSynced**: flag booleano en la tabla local `trees`. `true` = la foto local está sincronizada con Storage
@@ -82,8 +83,8 @@ el pull, que corre antes del push, adoptaba el path del server y la volvía a ba
 - **Árbol que nunca llegó al server:** el RPC no encuentra la fila, no la rechaza
   y el registro se limpia.
 - **Objeto de Storage:** NO se borra. La policy de DELETE de `tree-photos` exige
-  admin, así que un técnico no podría. Queda huérfano hasta que se suba otra foto
-  (mismo path, `upsert`).
+  admin, así que un técnico no podría. Queda huérfano (las fotos reemplazadas o
+  perdedoras de un conflicto sí las anota `sync_subgroup` para el borrado programado).
 - **Otros devices:** conservan su copia local (`file://`), porque el pull preserva
   siempre la foto local.
 
@@ -138,20 +139,13 @@ se asume acceso.
 
 Descarga datos del servidor y hace upsert en local. Para cada árbol (`upsertTreesFromServerTx`):
 
-```ts
-// La foto local se conserva mientras esté pendiente de subir o el server siga
-// teniendo foto; si ya se subió y el server la quitó, se limpia (#517)
-const conservarFotoLocal = sql`${sqlIsLocalUri(trees.fotoUrl)} AND (${trees.fotoSynced} = 0 OR excluded.foto_synced = 1)`;
-fotoUrl: sql`CASE WHEN ${conservarFotoLocal} THEN ${trees.fotoUrl} ELSE excluded.foto_url END`
+- **Foto**: la copia local (`file://`) se conserva si está pendiente de subir, o si el server sigue teniendo la misma foto que la base (sin base, mientras tenga alguna). Si el server la quitó o la reemplazó, la fila toma el path del server. `fotoBase` pasa a ser lo del server.
+- **GPS**: el punto local se conserva solo si existe y difiere de la base; si no, se toma el del server. Las bases pasan a ser lo del server.
+- **Grupo**: `base_del_servidor` guarda nombre, código, tipo y estado del server.
 
-// fotoSynced: true si el servidor tiene storage path; false si se limpió; si no, el valor local
-fotoSynced: sql`CASE WHEN excluded.foto_synced = 1 THEN 1 WHEN ${conservarFotoLocal} THEN ${trees.fotoSynced} ELSE 0 END`
-```
-
-**Foto quitada desde otro dispositivo (#517):** la fila local tiene `fotoUrl =
-file://…` y `fotoSynced = true`, y el server manda `foto_url = null`. El pull
-limpia la referencia y, cerrados los lotes, borra el archivo
-(`fotosQuitadasEnServer`, calculado sobre la misma lectura de árboles locales del
+**Foto quitada o reemplazada desde otro dispositivo (#517, #795):** el pull limpia
+la referencia y, cerrados los lotes, borra el archivo local que quedó sin fila
+(`fotosLocalesObsoletas`, calculado sobre la misma lectura de árboles locales del
 chequeo de conflictos, #449). Una foto con `fotoSynced = false` es la copia que
 el server todavía no tiene: no se toca.
 
@@ -168,21 +162,17 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
 
 **Archivo:** `services/sync/pushService.ts` → `uploadSyncableGroups` → `uploadGroup(sg, sgTrees)`
 
-1. **Para cada árbol con foto local (`file://`) y `fotoSynced = false`:**
-   - Sube la foto a Storage: `uploadPhotoToStorage(fotoUrl, storagePath)`
-   - Si éxito: guarda `storagePath` en un mapa. `fotoSynced` todavía no se marca (ver punto 4)
+1. **Para cada árbol con foto cambiada acá (`fotoCambiadaAca`: local y sin subir):**
+   - Sube la foto a Storage en su path versionado (`pathDeFotoEnStorage`)
+   - Si éxito: guarda el path en un mapa. `fotoSynced` todavía no se marca (ver punto 4)
    - Si falla: log del error. El árbol irá con `foto_url: null` en el RPC. La foto queda local (`fotoSynced = false`) para retry en la próxima sync.
 
-2. **Construye el payload del RPC:**
-   ```ts
-   foto_url: photoMap.get(t.id) ?? (isRemoteUri(t.fotoUrl) ? t.fotoUrl : null)
-   // Subida recién → storage path; ya tenía storage path → lo envía; file:// o null → null
-   ```
+2. **Construye el payload del RPC:** `foto_url` = el path recién subido, el path remoto que ya tenía, o `null`. Cada árbol lleva sus bases (`species_base_id`, `gps_base`, `foto_base`, de `basesDelArbol`) y el grupo su `base` si el teléfono la conoce.
 
 3. **Llama al RPC `sync_subgroup`** (ver [RPC: sync_subgroup](#rpc-sync_subgroup)). Quitar una foto no va por acá, sino por `quitar_fotos_arboles` (paso 2).
 
 4. **Clasifica la respuesta** con `classifyRpcResult(sg, data, error)`:
-   - Éxito: marca `fotoSynced = true` en las fotos del mapa y `markGroupSynced(sg.id)` → `pendingSync = false`. No toca `estado` (#60).
+   - Éxito: `asentarGrupo` (`services/sync/asentarGrupo.ts`), en una transacción, confirma las bases de lo que viajó, marca `fotoSynced = true` en las fotos subidas y adopta lo que el server devolvió en `conservados`, guardando el valor propio como conflicto (ver [Conflictos de sincronización](#conflictos-de-sincronización-795)). Sin conflictos sin decidir, `markGroupSynced` → `pendingSync = false`. No toca `estado` (#60).
    - Rechazo: el grupo sigue con `pendingSync = true` y el código va al resultado del sync. Las fotos quedan con `fotoSynced = false`: el reintento las resube al mismo path (upsert) y las vuelve a mandar en `foto_url` (#489).
 
 ### Paso 4: Retry de fotos pendientes
@@ -190,7 +180,7 @@ Los grupos con `pendingSync = true` no se escriben: gana el cambio local, que el
 **Archivo:** `services/sync/photoService.ts` → `uploadPendingPhotos(plantacionId)`
 
 Corre **después** del sync de grupos. Busca árboles con foto local (`file://`) y `fotoSynced = false`: las que fallaron en el paso 3.1.
-Para cada una: sube a Storage → `UPDATE trees SET foto_url` en el servidor → marca `fotoSynced` local.
+Para cada una: sube a Storage en su path versionado → `UPDATE trees SET foto_url` en el servidor, solo si sigue teniendo la base (`foto_url = fotoBase`, o null sin base) → `confirmarFotoSubida` marca `fotoSynced` y mueve la base. Si el UPDATE no toca ninguna fila (otro cambió la foto), el grupo vuelve a pendiente y el próximo push la decide por `sync_subgroup`, con conflicto.
 
 ### Paso 5: Download de fotos (bidireccional)
 
@@ -217,9 +207,9 @@ Lo que el device cargó antes de enterarse **no se pierde**: queda local, pendie
 | `sync_subgroup` | `{ success: false, error: 'PLANTACION_ARCHIVADA' }` o `'PLANTACION_FINALIZADA'` | `classifyRpcResult` conserva el código y el grupo sigue pendiente. `getErrorMessage` (`services/sync/types.ts`) le dice al usuario que pida desarchivar o reabrir. |
 | `sincronizar_borrados` | `rechazados: uuid[]` y `rechazos: [{ id, error }]` | `pushBorrados` limpia solo lo aceptado; los rechazados siguen anotados. `motivosDeRechazo` loguea los motivos. |
 | Upsert de parcelas | Error de RLS (`42501`) | `classifyParcelaRpcResult` lo clasifica como `PERMISSION`, no como plantación bloqueada (#511). |
-| `UPDATE trees SET foto_url` (paso 4) | 0 filas y sin error: la policy UPDATE no deja ver la fila | Se marca `fotoSynced` igual (#482). |
+| `UPDATE trees SET foto_url` (paso 4) | 0 filas y sin error: la policy UPDATE no deja ver la fila, o la foto del server ya no es la base | El grupo vuelve a pendiente y el próximo push lo resuelve por `sync_subgroup` (#795). |
 
-Storage no mira el estado de la plantación (#512): las fotos suben aunque después el RPC rechace el grupo, y `uploadGroup` ya las marcó `fotoSynced = true` (#489).
+Storage no mira el estado de la plantación (#512): las fotos suben aunque después el RPC rechace el grupo. `fotoSynced` recién se marca cuando el RPC acepta (#489).
 
 Un server sin la 038 no manda `rechazos`: `motivosDeRechazo` asume finalizada, el único motivo posible antes de #477.
 
@@ -276,8 +266,8 @@ Cuando el usuario sincroniza después de resolver N/N:
    - `foto_url` = storage path (ya existente) o null
    - RPC actualiza `species_id` y `sub_id` en el servidor, salvo que ya tenga una especie distinta de la base
    - `COALESCE(EXCLUDED.foto_url, trees.foto_url)` preserva foto existente
-3. **asentarEspeciesSubidas:** los árboles que el server devolvió en `conservadas` adoptan la del server (especie, base y SubID con los códigos locales), salvo que hayan cambiado durante el push o falte su especie (lo adopta el pull siguiente); el resumen de la sync cuenta los que se habían cambiado acá. En el resto, `especieBaseId` = la especie que viajó. Un error en este paso deja el grupo pendiente, sin reportarlo como error de red
-4. **markGroupSynced:** `pendingSync = false`
+3. **asentarGrupo:** si el server conservó su especie, el árbol la adopta (especie, base y SubID con los códigos locales) y la propia queda como conflicto. En el resto, `especieBaseId` = la especie que viajó. Un error en este paso deja el grupo pendiente, sin reportarlo como error de red
+4. **markGroupSynced:** `pendingSync = false`, salvo que queden conflictos sin decidir
 
 ### Resolución cross-device
 
@@ -291,13 +281,39 @@ Cuando el usuario sincroniza después de resolver N/N:
 
 ### Conflictos de resolución
 
-**Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y. Gana el server (#679).
+**Escenario:** User A resuelve como Especie X, User B resuelve como Especie Y. Gana el server (#679, #795).
 
 1. User A sincroniza → servidor tiene `species_id = X`
-2. User B sincroniza: el push manda Y con su base (N/N), el server conserva X y lo devuelve en `conservadas`
-3. El árbol de B pasa a X y el resumen de la sync avisa cuántos árboles quedaron con la especie del server
+2. User B sincroniza: el push manda Y con su base (N/N), el server conserva X y lo devuelve en `conservados`
+3. El árbol de B pasa a X, Y queda como conflicto y el resumen de la sync avisa cuántos datos esperan que B elija
 
-Un árbol que B no cambió (especie = base) también vuelve en `conservadas` y adopta X, sin aviso: si el grupo llega pendiente a cada sync, el pull nunca se lo baja.
+Un árbol que B no cambió (especie = base) también vuelve en `conservados` y adopta X, sin conflicto: si el grupo llega pendiente a cada sync, el pull nunca se lo baja.
+
+---
+
+## Conflictos de sincronización (#795)
+
+Dos personas editan el mismo grupo o árbol sin sincronizar entre medio. Cubre la
+especie, el GPS (latitud, longitud, precisión y momento de captura, como una
+unidad), la foto y los datos del grupo (nombre, código, tipo y estado).
+
+- **Bases:** el push manda, por campo, lo último que el teléfono vio en el server.
+  El server aplica el valor si todavía tiene esa base; si no, conserva el suyo y
+  lo devuelve en `conservados: { grupo: {campo: valor}, arboles: [{id, species_id?, foto_url?, gps?}] }`.
+  Sin base (APK vieja) pisa como antes.
+- **Gana el server:** `asentarGrupo` adopta el valor del server y guarda el propio
+  en `conflictos_de_sync` (`ConflictosDeSyncRepository`), uno por entidad y campo.
+  Una foto perdedora queda como archivo local del conflicto.
+- **El resto sube igual:** los demás campos y árboles del grupo se aplican. El
+  grupo queda `pendingSync = true` mientras haya conflictos sin decidir; el push
+  siguiente manda los valores del server con base = server, sin efecto.
+- **Resolver** (`services/ConflictosDeSyncService.ts`): `conservarLaMia` reaplica
+  el valor propio con la edición normal (la base queda en el valor del server, así
+  que el próximo push lo pisa) y quita el conflicto. `descartarConflicto` lo quita
+  y borra su foto. Un árbol o grupo que ya no existe, o una especie N/N o borrada,
+  no se puede reaplicar.
+- Borrar un árbol, un grupo o la plantación, o descartar pendientes varados, se
+  lleva sus conflictos y sus archivos.
 
 ---
 
