@@ -11,6 +11,7 @@ import { TIPOS_ESPECIE, type TipoEspecie } from '../../../../shared/tiposEspecie
 import { opcionesDeSubtipo } from '../tiposEspecie';
 import { puedeEditarPlantacion } from '../../screens/plantaciones/archivado';
 import { puedeCambiarEspecie } from '../../screens/datos/cambioDeEspecie';
+import { ESQUEMAS_FOTO_LOCAL } from '../../queries/fotoConstantes';
 import type { EstadoPlantacion } from '../../queries/plantationQueries';
 import type { Rol } from '../../repositories/profileRepository';
 
@@ -68,6 +69,12 @@ describe('contracts · estados', () => {
   it('ESTADO_PLANTACION coincide con el contrato', () => {
     const contrato = leerContrato('estados.json');
     expect(ESTADO_PLANTACION).toEqual(contrato);
+  });
+});
+
+describe('contracts · foto-local', () => {
+  it('ESQUEMAS_FOTO_LOCAL coincide con el contrato (que es también el de dashboard_arboles)', () => {
+    expect(ESQUEMAS_FOTO_LOCAL).toEqual(leerContrato('foto-local.json').esquemas);
   });
 });
 

@@ -1,0 +1,4 @@
+{
+  "_comment": "Esquemas de URI de una foto que sigue en el dispositivo y todavía no se subió al bucket (#762). Esa foto no cuenta en el KPI «con foto» del dashboard ni en el filtro «Con foto» del explorador, y el push de mobile la sube. Cambian juntos: web/src/queries/fotoConstantes.ts ESQUEMAS_FOTO_LOCAL, mobile/src/utils/photoUri.ts LOCAL_URI_SCHEMES, una migración que redefina dashboard_arboles y los contract tests (web/src/lib/__tests__/contracts.test.ts, mobile/tests/contracts.test.ts y supabase/tests/54_contrato_foto_local.test.sql).",
+  "esquemas": ["file://", "content://"]
+}

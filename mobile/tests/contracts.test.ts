@@ -24,6 +24,7 @@ import { CSV_HEADER, rowToExcel } from '../src/services/ExportService';
 import { ROL } from '../src/constants/roles';
 import { ESTADO_PLANTACION, ESTADO_GRUPO, type EstadoPlantacion } from '../src/constants/estados';
 import { getCambioDeEspecie, seOfreceCambioDeEspecie } from '../src/utils/permisosDeEdicion';
+import { LOCAL_URI_SCHEMES } from '../src/utils/photoUri';
 import { CODIGO_PLANTACION, idDeArbol } from '../../shared/codigoPlantacion';
 import { TIPOS_ESPECIE } from '../../shared/tiposEspecie';
 import type { ExportRow } from '../src/queries/exportQueries';
@@ -84,6 +85,12 @@ describe('contracts · estados', () => {
   it('ESTADO_PLANTACION coincide con el contrato', () => {
     const contrato = leerContrato('estados.json');
     expect(ESTADO_PLANTACION).toEqual(contrato);
+  });
+});
+
+describe('contracts · foto-local', () => {
+  it('LOCAL_URI_SCHEMES coincide con el contrato (que es también el de dashboard_arboles)', () => {
+    expect(LOCAL_URI_SCHEMES).toEqual(leerContrato('foto-local.json').esquemas);
   });
 });
 
