@@ -62,7 +62,10 @@
   border-bottom: var(--border-thin) solid var(--color-border);
 }
 
-.busqueda {
+/* Anidado a propósito: la clase llega al Input por `className` y tiene que
+   ganarle a `FormField.control`, que es de la misma especificidad y cada
+   módulo que la compone vuelve a inyectar después (#790). */
+.cabecera .busqueda {
   min-height: var(--control-height-input);
   font-size: var(--text-md);
 }
